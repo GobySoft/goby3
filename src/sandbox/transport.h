@@ -23,69 +23,115 @@ namespace goby
     class NoOpTransporter
     {
     public:
-        template<MarshallingScheme scheme, typename CharIterator>
-            void publish(CharIterator data_begin, CharIterator data_end,
-                         const std::string& group, const TransporterConfig& transport_cfg)
+        template<typename DataType, int scheme = scheme<DataType>()>
+            void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg)
         {
-            std::cout << "NoOp publish" << std::endl;
+            std::cout << "NoOp const ref publish" << std::endl;
         }
 
-        template<MarshallingScheme scheme, typename DataType>
+        template<typename DataType, int scheme = scheme<DataType>()>
             void publish(std::shared_ptr<DataType> data,
-                         const std::string& group, const TransporterConfig& transport_cfg) { }
+                         const std::string& group, const TransporterConfig& transport_cfg)
+        {
+            std::cout << "NoOp shared_ptr publish" << std::endl;
+        }
     };
     
     
     template<typename InnerTransporter = NoOpTransporter>
-        class ZMQTransporter : public InnerTransporter
+        class ZMQTransporter
         {
         public:
-        template<MarshallingScheme scheme, typename CharIterator>
-        void publish(CharIterator data_begin, CharIterator data_end,
-                     const std::string& group, const TransporterConfig& transport_cfg)
+        ZMQTransporter() : own_inner_(new InnerTransporter), inner_(*own_inner_) { }
+        ZMQTransporter(InnerTransporter& inner) : inner_(inner) { }
+        ~ZMQTransporter() { }
+
+        template<typename DataType, int scheme = scheme<DataType>()>
+        void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
         {
-            _publish(data_begin, data_end, group, transport_cfg);
-            InnerTransporter::template publish<scheme, CharIterator>(data_begin, data_end, group, transport_cfg);
+            _publish<DataType, scheme>(data, group, transport_cfg);
+            inner_.publish<DataType, scheme>(data, group, transport_cfg);
         }
 
-        template<MarshallingScheme scheme, typename DataType>
-        void publish(std::shared_ptr<DataType> data, const std::string& group, const TransporterConfig& transport_cfg)
+        template<typename DataType, int scheme = scheme<DataType>()>
+        void publish(std::shared_ptr<DataType> data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
         {
             if(data)
             {
-                std::vector<char> bytes(SP<DataType, scheme>::serialize(*data));
-                _publish(bytes.begin(), bytes.end(), group, transport_cfg);
-                InnerTransporter::template publish<scheme, DataType>(data, group, transport_cfg);
-
+                _publish<DataType, scheme>(*data, group, transport_cfg);
+                inner_.publish<DataType, scheme>(data, group, transport_cfg);
             }
         }
             
         private:
-        template<typename CharIterator>
-        void _publish(CharIterator data_begin, CharIterator data_end,
-                     const std::string& group, const TransporterConfig& transport_cfg)
+        template<typename DataType, int scheme>
+        void _publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg)
         {
-            std::cout << "Publishing: " << goby::util::hex_encode(std::string(data_begin, data_end)) << std::endl;
+            std::vector<char> bytes(SerializerParserHelper<DataType, scheme>::serialize(data));
+            std::cout << "ZMQTransporter: Publishing to group [" << group << "], using scheme [" << MarshallingScheme::as_string(scheme) << "]: " << goby::util::hex_encode(std::string(bytes.begin(), bytes.end())) << std::endl;
         }
-        
+
+        std::unique_ptr<InnerTransporter> own_inner_;
+        InnerTransporter& inner_;
         
         };
 
-    class IntraProcessTransporter 
+    class IntraProcessTransporter
     {
     public:
-        template<MarshallingScheme scheme, typename CharIterator>
-            void publish(CharIterator data_begin, CharIterator data_end, const std::string& group, const TransporterConfig& transport_cfg)
+        template<typename DataType, int scheme = scheme<DataType>()>
+            void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
         {
-            static_assert(False<CharIterator>(), "ZMQTransporter does not implement serialized form of publish(). You must use a std::shared_ptr<>()");
+            std::cout << "IntraProcessTransporter const ref publish" << std::endl;
+
         }
 
-        template<MarshallingScheme scheme, typename DataType>
-            void publish(std::shared_ptr<DataType> data, const std::string& group, const TransporterConfig& transport_cfg)
+        template<typename DataType, int scheme = scheme<DataType>()>
+            void publish(std::shared_ptr<DataType> data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
         {
+            std::cout << "IntraProcessTransporter shared_ptr publish" << std::endl;
         }
-    };
-    
+    };    
+
+
+    template<typename InnerTransporter = NoOpTransporter>
+        class SlowLinkTransporter
+        {
+        public:
+        SlowLinkTransporter() : own_inner_(new InnerTransporter), inner_(*own_inner_) { }
+        SlowLinkTransporter(InnerTransporter& inner) : inner_(inner) { }
+        ~SlowLinkTransporter() { }
+
+        template<typename DataType, int scheme = scheme<DataType>()>
+        void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
+        {
+            _publish<DataType, scheme>(data, group, transport_cfg);
+            inner_.publish<DataType, scheme>(data, group, transport_cfg);
+        }
+
+        template<typename DataType, int scheme = scheme<DataType>()>
+        void publish(std::shared_ptr<DataType> data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
+        {
+            if(data)
+            {
+                _publish<DataType, scheme>(*data, group, transport_cfg);
+                inner_.publish<DataType, scheme>(data, group, transport_cfg);
+            }
+        }
+            
+        private:
+        template<typename DataType, int scheme>
+        void _publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg)
+        {
+            std::vector<char> bytes(SerializerParserHelper<DataType, scheme>::serialize(data));
+            std::cout << "SlowLinkTransporter: Publishing to group [" << group << "], using scheme [" << MarshallingScheme::as_string(scheme) << "]: " << goby::util::hex_encode(std::string(bytes.begin(), bytes.end())) << std::endl;
+        }
+
+        std::unique_ptr<InnerTransporter> own_inner_;
+        InnerTransporter& inner_;
+        
+        };
+
     
 }
 

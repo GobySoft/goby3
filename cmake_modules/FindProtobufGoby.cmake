@@ -106,7 +106,7 @@ function(PROTOBUF_GENERATE_CPP SRCS HDRS)
       OUTPUT "${FIL_PATH}/${FIL_WE}.pb.cc"
              "${FIL_PATH}/${FIL_WE}.pb.h"
       COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE}
-      ARGS --cpp_out ${goby_INC_DIR} --proto_path ${goby_INC_DIR} ${goby_INC_DIR}/goby/${REL_FIL} ${ALL_PROTOBUF_INCLUDE_DIRS} -I ${goby_INC_DIR}
+      ARGS --cpp_out ${goby_INC_DIR} --proto_path ${goby_INC_DIR} ${goby_INC_DIR}/goby/${REL_FIL} ${ALL_PROTOBUF_INCLUDE_DIRS} -I ${goby_INC_DIR} --dccl_out ${goby_INC_DIR}
       DEPENDS ${ABS_FIL}
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )

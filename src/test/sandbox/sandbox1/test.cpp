@@ -1,3 +1,8 @@
+#include <deque>
+
+// plugin new serialization/parse scheme
+#include "test-scheme.h"
+
 #include "goby/common/logger.h"
 #include "goby/sandbox/transport.h"
 #include "goby/sandbox/marshalling.h"
@@ -8,22 +13,41 @@ int main(int argc, char* argv[])
     goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
 
-    goby::ProtobufMarshaller pb;
-    goby::ZMQTransporter<> zmq;
+    //    goby::ProtobufMarshaller pb;
+    goby::ZMQTransporter<> zmq_blank;
+    goby::ZMQTransporter<goby::IntraProcessTransporter> zmq_default;
+
+    goby::IntraProcessTransporter inproc;
+    goby::ZMQTransporter<goby::IntraProcessTransporter> zmq(inproc);
     
     CTDSample s;
     s.set_salinity(38.5);
-    
-    pb.publish(s, "CTD", zmq);
+
+    std::cout << "Should be DCCL" << std::endl;
+    zmq_blank.publish(s, "CTD");
 
     std::shared_ptr<CTDSample> sp(new CTDSample);
     sp->set_salinity(40.1);
 
-    pb.publish(*sp, "CTD2", zmq);
+    std::cout << "Should NOT be DCCL" << std::endl;
+    zmq.publish<CTDSample, goby::MarshallingScheme::PROTOBUF>(sp, "CTD2");
 
-    goby::IntraProcessTransporter inproc;
+    std::cout << "Should NOT be DCCL" << std::endl;
+    TempSample t;
+    t.set_temperature(15);
+    zmq.publish(t, "TEMP");
+ 
+    std::string value("HI");
+    zmq.publish(value, "GroupHi");
 
-    pb.publish(sp, "CTD3", inproc);
+    std::deque<char> dc = { 'H', 'E', 'L', 'L', 'O' };
+
+    zmq.publish(dc, "GroupChar");
+    
+    inproc.publish(sp, "CTD3");
+
+    goby::SlowLinkTransporter<goby::ZMQTransporter<goby::IntraProcessTransporter>> slow(zmq);
+    slow.publish(t, "Temp2");
     
     std::cout << "all tests passed" << std::endl;
 }

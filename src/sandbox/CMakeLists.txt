@@ -3,6 +3,7 @@
 
 set(SRC
   transport.cpp
+  serialize_parse.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 
