@@ -10,6 +10,7 @@ endif()
 
 if(build_common)
   add_subdirectory(common)
+  add_subdirectory(sandbox)
 endif()
 
 if(build_util)

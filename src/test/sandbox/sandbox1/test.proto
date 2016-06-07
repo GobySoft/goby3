@@ -1,0 +1,6 @@
+message CTDSample
+{
+    optional double salinity = 1;
+    optional double temperature = 2;
+    optional double depth = 3;
+}

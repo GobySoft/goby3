@@ -193,6 +193,8 @@ if(build_common)
 
   add_subdirectory(common)
 
+  add_subdirectory(sandbox)
+
   option(build_util "Build the Goby Utility library and applications (requires goby-common)" ON)
   if(build_util)    
     add_subdirectory(util)
