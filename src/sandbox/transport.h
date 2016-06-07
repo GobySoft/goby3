@@ -98,33 +98,36 @@ namespace goby
         class SlowLinkTransporter
         {
         public:
+       
         SlowLinkTransporter() : own_inner_(new InnerTransporter), inner_(*own_inner_) { }
         SlowLinkTransporter(InnerTransporter& inner) : inner_(inner) { }
         ~SlowLinkTransporter() { }
 
-        template<typename DataType, int scheme = scheme<DataType>()>
-        void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
+        template<typename DCCLMessage>
+        void publish(const DCCLMessage& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
         {
-            _publish<DataType, scheme>(data, group, transport_cfg);
-            inner_.publish<DataType, scheme>(data, group, transport_cfg);
+            _publish<DCCLMessage>(data, group, transport_cfg);
+            inner_.publish<DCCLMessage, MarshallingScheme::DCCL>(data, group, transport_cfg);
         }
 
-        template<typename DataType, int scheme = scheme<DataType>()>
-        void publish(std::shared_ptr<DataType> data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
+        template<typename DCCLMessage>
+        void publish(std::shared_ptr<DCCLMessage> data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
         {
             if(data)
             {
-                _publish<DataType, scheme>(*data, group, transport_cfg);
-                inner_.publish<DataType, scheme>(data, group, transport_cfg);
+                _publish<DCCLMessage>(*data, group, transport_cfg);
+                inner_.publish<DCCLMessage, MarshallingScheme::DCCL>(data, group, transport_cfg);
             }
         }
             
         private:
-        template<typename DataType, int scheme>
-        void _publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg)
+        template<typename DCCLMessage>
+        void _publish(const DCCLMessage& data, const std::string& group, const TransporterConfig& transport_cfg)
         {
-            std::vector<char> bytes(SerializerParserHelper<DataType, scheme>::serialize(data));
-            std::cout << "SlowLinkTransporter: Publishing to group [" << group << "], using scheme [" << MarshallingScheme::as_string(scheme) << "]: " << goby::util::hex_encode(std::string(bytes.begin(), bytes.end())) << std::endl;
+            static_assert(scheme<DCCLMessage>() == MarshallingScheme::DCCL, "Can only use DCCL messages with SlowLinkTransporter");
+            
+            std::vector<char> bytes(SerializerParserHelper<DCCLMessage, MarshallingScheme::DCCL>::serialize(data));
+            std::cout << "SlowLinkTransporter: Publishing to group [" << group << "], using scheme [" << MarshallingScheme::as_string(MarshallingScheme::DCCL) << "]: " << goby::util::hex_encode(std::string(bytes.begin(), bytes.end())) << std::endl;
         }
 
         std::unique_ptr<InnerTransporter> own_inner_;

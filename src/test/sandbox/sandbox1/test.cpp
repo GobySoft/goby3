@@ -46,8 +46,8 @@ int main(int argc, char* argv[])
     
     inproc.publish(sp, "CTD3");
 
-    goby::SlowLinkTransporter<goby::ZMQTransporter<goby::IntraProcessTransporter>> slow(zmq);
-    slow.publish(t, "Temp2");
+    goby::SlowLinkTransporter<decltype(zmq)> slow(zmq);
+    slow.publish(s, "CTD4");
     
     std::cout << "all tests passed" << std::endl;
 }
