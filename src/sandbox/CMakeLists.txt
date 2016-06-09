@@ -4,6 +4,7 @@
 set(SRC
   transport.cpp
   serialize_parse.cpp
+  transport-intraprocess.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 
