@@ -1,18 +1,16 @@
 import "dccl/protobuf/option_extensions.proto";
 
-message CTDSample
+message Sample
 {
     option (dccl.msg).id = 127;
     option (dccl.msg).max_bytes = 32;
     option (dccl.msg).codec_version = 3;
     
-    optional double salinity = 1;
-    optional double temperature = 2;
-    optional double depth = 3;
+    optional int32 a = 1;
+
 }
 
-
-message TempSample
+message Widget
 {
-    optional double temperature = 1;
+    optional int32 b = 1;
 }

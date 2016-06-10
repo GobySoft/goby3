@@ -6,6 +6,7 @@
 #include <memory>
 #include <mutex>
 #include <condition_variable>
+#include <set>
 
 #include "transport-common.h"
 
@@ -38,6 +39,7 @@ namespace goby
         template<typename StoreType> 
             static void insert()
         {
+            // check the store, and if there isn't one for this type, create one
             std::lock_guard<decltype(stores_mutex_)> lock(stores_mutex_);   
             auto index = std::type_index(typeid(StoreType));
             if(!stores_.count(index))
@@ -49,6 +51,7 @@ namespace goby
         
 
     private:
+        // stores a map of DataTypes to SubscriptionStores so that can call poll() on all the stores
         static std::unordered_map<std::type_index, std::unique_ptr<SubscriptionStoreBase>> stores_;
         static std::timed_mutex stores_mutex_;
     };
@@ -62,79 +65,125 @@ namespace goby
         static void subscribe(const Group& group, std::function<void(std::shared_ptr<const DataType>)> func, std::thread::id thread_id, std::shared_ptr<std::condition_variable_any> cv)
         {
             std::lock_guard<decltype(subscription_mutex)> lock(subscription_mutex);
-            auto it = subscription_callbacks_.insert(std::make_pair(thread_id, std::make_pair(group, func)));
+            // insert callback
+            auto it = subscription_callbacks_.insert(std::make_pair(thread_id, Callback(group, func)));
+            // insert group with interator to callback
             subscription_groups_.insert(std::make_pair(group, it));
 
+            // if we don't have a condition variable already for this thread, store it
             if(!data_condition_.count(thread_id))
                 data_condition_.insert(std::make_pair(thread_id, cv));
-            
+
+            // try inserting a copy of this templated class via the base class for SubscriptionStoreBase::poll_all to use
             SubscriptionStoreBase::insert<SubscriptionStore<DataType>>();
         }
 
         static void publish(std::shared_ptr<const DataType> data, const Group& group)
         {
+            // push new data
+            // build up local vector of relevant condition variables while locked
+            std::set<std::shared_ptr<std::condition_variable_any>> cv_to_notify;
             {
                 std::lock_guard<decltype(subscription_mutex)> lock(subscription_mutex);
                 auto range = subscription_groups_.equal_range(group);
                 for (auto it = range.first; it != range.second; ++it)
                 {
                     std::thread::id thread_id = it->second->first;
-                    data_.insert(std::make_pair(thread_id, std::make_pair(group, data)));
+                    auto queue_it = data_.find(thread_id);
+                    if(queue_it == data_.end())
+                        queue_it = data_.insert(std::make_pair(thread_id, DataQueue())).first;
+                    queue_it->second.insert(group, data);
+                    cv_to_notify.insert(data_condition_.at(thread_id));
                 }
             }
 
-            auto range = subscription_groups_.equal_range(group);
-            for (auto it = range.first; it != range.second; ++it)
-            {
-                std::thread::id thread_id = it->second->first;
-                data_condition_.at(thread_id)->notify_all();
-            }
+            // unlock and notify condition variables from local vector
+            for (auto cv : cv_to_notify)
+                cv->notify_all();
         }
 
     private:
-        
         int poll(std::thread::id thread_id, const std::chrono::system_clock::time_point& timeout_time)
         {
             std::lock_guard<decltype(subscription_mutex)> lock(subscription_mutex);
-            
-            auto poll_items_count = data_.count(thread_id);
-            if(poll_items_count == 0)
-                return poll_items_count;
-            
-            auto data_range = data_.equal_range(thread_id);
-            for (auto data_it = data_range.first; data_it != data_range.second; ++data_it) 
+
+            auto queue_it = data_.find(thread_id);
+            if(queue_it == data_.end())
+                queue_it = data_.insert(std::make_pair(thread_id, DataQueue())).first;
+
+            if(queue_it->second.empty())
+                return 0;
+
+            int poll_items_count = 0;
+            // loop over all Groups stored in this DataQueue
+            for (auto data_it = queue_it->second.cbegin(), end = queue_it->second.cend(); data_it != end; ++data_it) 
             {
-                const Group& group = data_it->second.first;
+                const Group& group = data_it->first;
                 auto group_range = subscription_groups_.equal_range(group);
+                // For a given Group, loop over all subscriptions to this Group
                 for(auto group_it = group_range.first; group_it != group_range.second; ++group_it)
                 {
-                    auto& callback = group_it->second->second.second;
-                    callback(data_it->second.second);
+                    if(group_it->second->first != thread_id)
+                        continue;
+                    
+                    auto& callback = group_it->second->second.callback;
+                    // actually call the callback function for all the elements queued
+                    for(auto datum : data_it->second)
+                    {
+                        ++poll_items_count;
+                        callback(datum);
+                    }
                 }
             }
 
-            data_.erase(data_range.first, data_range.second);
+            queue_it->second.clear();
             return poll_items_count;
         }
             
     private:
+        struct Callback
+        {
+        Callback(const Group& g, const std::function<void(std::shared_ptr<const DataType>)>& c) : group(g), callback(c) {}
+            Group group;
+            std::function<void(std::shared_ptr<const DataType>)> callback;
+        };
 
+        class DataQueue
+        {
+        private:
+            std::map<Group, std::vector<std::shared_ptr<const DataType>>> data_;
+        public:
+            void insert(const Group& g, std::shared_ptr<const DataType> datum)
+            { data_[g].push_back(datum); }
+            void clear()
+            { data_.clear(); }
+            bool empty()
+            { return data_.empty(); }
+            typename decltype(data_)::const_iterator cbegin()
+            { return data_.begin(); }
+            typename decltype(data_)::const_iterator cend()
+            { return data_.end(); }
+        };
+        
+        
+        
         // subscriptions for a given thread
-        static std::unordered_multimap<std::thread::id, std::pair<Group, std::function<void(std::shared_ptr<const DataType>)>>> subscription_callbacks_;
+        static std::unordered_multimap<std::thread::id, Callback> subscription_callbacks_;
         // threads that are subscribed to a given group
         static std::unordered_multimap<Group, typename decltype(subscription_callbacks_)::const_iterator> subscription_groups_;
-        // data for a given thread
-        static std::unordered_multimap<std::thread::id, std::pair<Group, std::shared_ptr<const DataType>>> data_;
-        
         // condition variable to use for data
         static std::unordered_map<std::thread::id, std::shared_ptr<std::condition_variable_any>> data_condition_;
+        
+        // data for a given thread
+        static std::unordered_map<std::thread::id, DataQueue> data_;
+        
         
     };        
         
     template<typename DataType>
-        std::unordered_multimap<std::thread::id, std::pair<Group, std::function<void(std::shared_ptr<const DataType>)>>> SubscriptionStore<DataType>::subscription_callbacks_;
+        std::unordered_multimap<std::thread::id, typename SubscriptionStore<DataType>::Callback> SubscriptionStore<DataType>::subscription_callbacks_;
     template<typename DataType>
-        std::unordered_multimap<std::thread::id, std::pair<Group, std::shared_ptr<const DataType>>> SubscriptionStore<DataType>::data_;            
+        std::unordered_map<std::thread::id, typename SubscriptionStore<DataType>::DataQueue> SubscriptionStore<DataType>::data_;            
     template<typename DataType>
         std::unordered_multimap<Group, typename decltype(SubscriptionStore<DataType>::subscription_callbacks_)::const_iterator> SubscriptionStore<DataType>::subscription_groups_;
     template<typename DataType>
@@ -152,14 +201,12 @@ namespace goby
         template<typename DataType, int scheme = scheme<DataType>()>
             void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
         {
-            std::cout << "IntraProcessTransporter const ref publish" << std::endl;
-
+            std::cout << "IntraProcessTransporter const ref publish" << std::endl; 
         }
 
         template<typename DataType, int scheme = scheme<DataType>()>
             void publish(std::shared_ptr<DataType> data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
         {
-            std::cout << "IntraProcessTransporter shared_ptr publish" << std::endl;
             SubscriptionStore<DataType>::publish(data, group);
         }
 
@@ -184,6 +231,7 @@ namespace goby
 
             while(poll_items == 0) // no items, so wait
             {
+                //                std::cout << thread_id << ": waiting on condition var" << std::endl;
                 if(cv_->wait_until(lock, timeout) == std::cv_status::no_timeout)
                 {
                     poll_items = SubscriptionStoreBase::poll_all(thread_id, timeout);
