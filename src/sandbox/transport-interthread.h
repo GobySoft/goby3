@@ -201,7 +201,8 @@ namespace goby
         template<typename DataType, int scheme = scheme<DataType>()>
             void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
         {
-            std::cout << "InterThreadTransporter const ref publish" << std::endl; 
+            std::cout << "IntraProcessTransporter const ref publish" << std::endl; 
+            publish(std::make_shared<DataType>(data), group, transport_cfg);
         }
 
         template<typename DataType, int scheme = scheme<DataType>()>
