@@ -3,12 +3,11 @@
 
 #include "goby/common/logger.h"
 #include "goby/sandbox/transport.h"
-#include "goby/sandbox/marshalling.h"
 #include "test.pb.h"
 
-// tests IntraProcessTransporter
+// tests InterThreadTransporter
 
-goby::IntraProcessTransporter inproc;
+goby::InterThreadTransporter inproc;
 
 int publish_count = 0;
 const int max_publish = 10000;

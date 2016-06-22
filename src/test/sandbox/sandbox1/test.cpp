@@ -5,7 +5,6 @@
 
 #include "goby/common/logger.h"
 #include "goby/sandbox/transport.h"
-#include "goby/sandbox/marshalling.h"
 #include "test.pb.h"
 
 int main(int argc, char* argv[])
@@ -15,10 +14,10 @@ int main(int argc, char* argv[])
 
     //    goby::ProtobufMarshaller pb;
     goby::ZMQTransporter<> zmq_blank;
-    goby::ZMQTransporter<goby::IntraProcessTransporter> zmq_default;
+    goby::ZMQTransporter<goby::InterThreadTransporter> zmq_default;
 
-    goby::IntraProcessTransporter inproc;
-    goby::ZMQTransporter<goby::IntraProcessTransporter> zmq(inproc);
+    goby::InterThreadTransporter inproc;
+    goby::ZMQTransporter<goby::InterThreadTransporter> zmq(inproc);
     
     CTDSample s;
     s.set_salinity(38.5);

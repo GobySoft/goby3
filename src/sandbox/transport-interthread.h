@@ -1,5 +1,5 @@
-#ifndef TransportIntraProcess20160609H
-#define TransportIntraProcess20160609H
+#ifndef TransportInterThread20160609H
+#define TransportInterThread20160609H
 
 #include <thread>
 #include <typeindex>
@@ -190,10 +190,10 @@ namespace goby
         std::unordered_map<std::thread::id, std::shared_ptr<std::condition_variable_any>> SubscriptionStore<DataType>::data_condition_;
 
 
-    class IntraProcessTransporter
+    class InterThreadTransporter
     {
     public:
-    IntraProcessTransporter() :
+    InterThreadTransporter() :
         cv_(std::make_shared<std::condition_variable_any>())
         { }
         
@@ -201,7 +201,7 @@ namespace goby
         template<typename DataType, int scheme = scheme<DataType>()>
             void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
         {
-            std::cout << "IntraProcessTransporter const ref publish" << std::endl; 
+            std::cout << "InterThreadTransporter const ref publish" << std::endl; 
         }
 
         template<typename DataType, int scheme = scheme<DataType>()>
@@ -247,7 +247,7 @@ namespace goby
         
         int poll(std::thread::id thread_id, std::chrono::system_clock::duration wait_for)
         {
-            poll(thread_id, std::chrono::system_clock::now() + wait_for);
+            return poll(thread_id, std::chrono::system_clock::now() + wait_for);
         }
         
     private:

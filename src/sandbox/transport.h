@@ -2,6 +2,6 @@
 #define Transport20160607H
 
 #include "transport-common.h"
-#include "transport-intraprocess.h"
+#include "transport-interthread.h"
 
 #endif

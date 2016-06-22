@@ -2,9 +2,8 @@
 #protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
 
 set(SRC
-  transport.cpp
   serialize_parse.cpp
-  transport-intraprocess.cpp
+  transport-interthread.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 
