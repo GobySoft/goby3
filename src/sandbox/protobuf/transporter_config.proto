@@ -1,0 +1,6 @@
+package goby.protobuf;
+
+message TransporterConfig
+{
+    optional int32 ttl = 1;
+}

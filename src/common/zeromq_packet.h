@@ -30,7 +30,7 @@ namespace goby
     namespace common
     {
         
-        std::string zeromq_packet_make_header(MarshallingScheme marshalling_scheme,
+        std::string zeromq_packet_make_header(int marshalling_scheme,
                                               const std::string& identifier)
         {
             std::string zmq_filter;
@@ -47,14 +47,14 @@ namespace goby
         }
         
         /// \brief Encodes a packet for Goby over ZeroMQ 
-        void zeromq_packet_encode(std::string* raw, MarshallingScheme marshalling_scheme, const std::string& identifier, const std::string& body)
+        void zeromq_packet_encode(std::string* raw, int marshalling_scheme, const std::string& identifier, const std::string& body)
         {
             *raw = zeromq_packet_make_header(marshalling_scheme, identifier);
             *raw += body;
         }
 
         /// \brief Decodes a packet for Goby over ZeroMQ
-        void zeromq_packet_decode(const std::string& raw, MarshallingScheme* marshalling_scheme, std::string* identifier, std::string* body)
+        void zeromq_packet_decode(const std::string& raw, int* marshalling_scheme, std::string* identifier, std::string* body)
         {
             // byte size of marshalling id
             const unsigned MARSHALLING_SIZE = BITS_IN_UINT32 / BITS_IN_BYTE;
@@ -72,7 +72,7 @@ namespace goby
             
             if(marshalling_int >= MARSHALLING_UNKNOWN &&
                marshalling_int <= MARSHALLING_MAX)
-                *marshalling_scheme = static_cast<MarshallingScheme>(marshalling_int);
+                *marshalling_scheme = static_cast<int>(marshalling_int);
             else
             {
                 std::stringstream ss;

@@ -62,7 +62,7 @@ void goby::common::ZeroMQService::init()
     glog.add_group(glog_in_group(), common::Colors::lt_blue);
 }
 
-void goby::common::ZeroMQService::process_cfg(const protobuf::ZeroMQServiceConfig& cfg)
+void goby::common::ZeroMQService::process_cfg(protobuf::ZeroMQServiceConfig& cfg)
 {
     for(int i = 0, n = cfg.socket_size(); i < n; ++i)
     {
@@ -162,9 +162,25 @@ void goby::common::ZeroMQService::process_cfg(const protobuf::ZeroMQServiceConfi
             try
             {
                 this_socket->bind(endpoint.c_str());
+
+                size_t last_endpoint_size = 100;
+                char last_endpoint[last_endpoint_size];
+                int rc = zmq_getsockopt (*this_socket, ZMQ_LAST_ENDPOINT, &last_endpoint, &last_endpoint_size);
+
+                if(rc != 0)
+                    throw(std::runtime_error("Could not retrieve ZMQ_LAST_ENDPOINT"));
+
+                if(cfg.socket(i).transport() == protobuf::ZeroMQServiceConfig::Socket::TCP &&
+                   cfg.socket(i).ethernet_port() == 0)
+                {
+                    std::string last_ep(last_endpoint);
+                    cfg.mutable_socket(i)->set_ethernet_port(std::stoi(last_ep.substr(last_ep.find_last_of(":")+1)));
+                }
+                
+                
                 glog.is(DEBUG1) &&
                     glog << group(glog_out_group())
-                         << "bound to endpoint - " << endpoint
+                         << "bound to endpoint - " << last_endpoint
                          << ", Socket: " << cfg.socket(i).ShortDebugString()
                          << std::endl ;
             }    
@@ -220,7 +236,7 @@ void goby::common::ZeroMQService::unsubscribe_all(int socket_id)
     socket_from_id(socket_id).socket()->setsockopt(ZMQ_UNSUBSCRIBE, 0, 0);
 }
 
-void goby::common::ZeroMQService::subscribe(MarshallingScheme marshalling_scheme,
+void goby::common::ZeroMQService::subscribe(int marshalling_scheme,
                                        const std::string& identifier,
                                        int socket_id)
 {
@@ -241,7 +257,7 @@ void goby::common::ZeroMQService::subscribe(MarshallingScheme marshalling_scheme
     post_subscribe_hooks(marshalling_scheme, identifier, socket_id);
 }
 
-void goby::common::ZeroMQService::unsubscribe(MarshallingScheme marshalling_scheme,
+void goby::common::ZeroMQService::unsubscribe(int marshalling_scheme,
                                        const std::string& identifier,
                                        int socket_id)
 {
@@ -258,7 +274,7 @@ void goby::common::ZeroMQService::unsubscribe(MarshallingScheme marshalling_sche
 }
 
 
-void goby::common::ZeroMQService::send(MarshallingScheme marshalling_scheme,
+void goby::common::ZeroMQService::send(int marshalling_scheme,
                                        const std::string& identifier,
                                        const std::string& body,
                                        int socket_id)
@@ -296,7 +312,7 @@ void goby::common::ZeroMQService::handle_receive(const void* data,
              << std::endl ;
     
     
-    MarshallingScheme marshalling_scheme = MARSHALLING_UNKNOWN;
+    int marshalling_scheme = MARSHALLING_UNKNOWN;
     std::string identifier;
     std::string body;
     
@@ -404,7 +420,7 @@ void goby::common::ZeroMQSocket::set_global_blackout(boost::posix_time::time_dur
 }
 
 
-void goby::common::ZeroMQSocket::set_blackout(MarshallingScheme marshalling_scheme,
+void goby::common::ZeroMQSocket::set_blackout(int marshalling_scheme,
                                             const std::string& identifier,
                                             boost::posix_time::time_duration duration)            
 {
@@ -415,7 +431,7 @@ void goby::common::ZeroMQSocket::set_blackout(MarshallingScheme marshalling_sche
     local_blackout_set_ = true;
 }
 
-bool goby::common::ZeroMQSocket::check_blackout(MarshallingScheme marshalling_scheme,
+bool goby::common::ZeroMQSocket::check_blackout(int marshalling_scheme,
                                               const std::string& identifier)
 {
     if(!local_blackout_set_ && !global_blackout_set_)

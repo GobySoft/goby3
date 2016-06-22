@@ -19,6 +19,10 @@ namespace goby
             std::vector<char> bytes(msg.begin(), msg.end());
             return bytes;
         }
+        
+        static std::string type_name(const DataType& msg)
+        { return "DEQUECHAR"; }
+
         static DataType parse(const std::vector<char>& bytes)
         {
             if(bytes.size())

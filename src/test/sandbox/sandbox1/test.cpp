@@ -11,13 +11,14 @@ int main(int argc, char* argv[])
 {
     goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
+    goby::glog.set_lock_action(goby::common::logger_lock::lock);    
 
     //    goby::ProtobufMarshaller pb;
-    goby::ZMQTransporter<> zmq_blank;
-    goby::ZMQTransporter<goby::InterThreadTransporter> zmq_default;
+    goby::InterProcessTransporter<> zmq_blank;
+    goby::InterProcessTransporter<goby::InterThreadTransporter> zmq_default;
 
     goby::InterThreadTransporter inproc;
-    goby::ZMQTransporter<goby::InterThreadTransporter> zmq(inproc);
+    goby::InterProcessTransporter<goby::InterThreadTransporter> zmq(inproc);
     
     CTDSample s;
     s.set_salinity(38.5);

@@ -1,0 +1,13 @@
+import "goby/sandbox/protobuf/transporter_config.proto";
+
+package goby.protobuf;
+
+message InterProcessData
+{
+    required int32 marshalling_scheme = 1;
+    required string type = 2;
+    required string group = 3;
+    required bytes data = 4;
+    optional TransporterConfig cfg = 5;
+}
+

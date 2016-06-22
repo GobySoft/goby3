@@ -199,34 +199,35 @@ namespace goby
         
         
         template<typename DataType, int scheme = scheme<DataType>()>
-            void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
+            void publish(const DataType& data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
-            std::cout << "IntraProcessTransporter const ref publish" << std::endl; 
+            std::cout << "InterThreadTransporter const ref publish" << std::endl; 
             publish(std::make_shared<DataType>(data), group, transport_cfg);
         }
 
         template<typename DataType, int scheme = scheme<DataType>()>
-            void publish(std::shared_ptr<DataType> data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
+            void publish(std::shared_ptr<DataType> data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             SubscriptionStore<DataType>::publish(data, group);
         }
 
         
         template<typename DataType, int scheme = scheme<DataType>(), class Function>
-            void subscribe(const std::string& group, Function f, std::thread::id thread_id)
+            void subscribe(const std::string& group, Function f)
         {
             std::function<void(std::shared_ptr<const DataType>)> func(f);
-            SubscriptionStore<DataType>::subscribe(group, func, thread_id, cv_);
+            SubscriptionStore<DataType>::subscribe(group, func, std::this_thread::get_id(), cv_);
         }
         
         template<typename DataType, int scheme = scheme<DataType>(), class C>
-            void subscribe(const std::string& group, void(C::*mem_func)(std::shared_ptr<const DataType>), C* c, std::thread::id thread_id)
+            void subscribe(const std::string& group, void(C::*mem_func)(std::shared_ptr<const DataType>), C* c)
         {
-            subscribe<DataType, scheme>(group, std::bind(mem_func, c, std::placeholders::_1), thread_id);
+            subscribe<DataType, scheme>(group, std::bind(mem_func, c, std::placeholders::_1));
         }
 
-        int poll(std::thread::id thread_id, const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
+        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         {
+            std::thread::id thread_id = std::this_thread::get_id();
             std::unique_lock<decltype(subscription_mutex)> lock(subscription_mutex);
             int poll_items = SubscriptionStoreBase::poll_all(thread_id, timeout);
 
@@ -246,9 +247,9 @@ namespace goby
             return poll_items;
         }
         
-        int poll(std::thread::id thread_id, std::chrono::system_clock::duration wait_for)
+        int poll(std::chrono::system_clock::duration wait_for)
         {
-            return poll(thread_id, std::chrono::system_clock::now() + wait_for);
+            return poll(std::chrono::system_clock::now() + wait_for);
         }
         
     private:

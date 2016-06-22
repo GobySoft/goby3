@@ -34,13 +34,10 @@ namespace goby
         static std::map<int, std::string> e2s;
         static std::string unknown;
     };
-    
+
     template<typename DataType, int scheme>
-        struct SerializerParserHelper
-        {
-            static std::vector<char> serialize(const DataType& msg);
-            static DataType parse(const std::vector<char>& bytes);
-        };
+        struct SerializerParserHelper 
+    { };
 
     
     template<typename DataType>
@@ -52,6 +49,10 @@ namespace goby
             bytes.push_back('\0');
             return bytes;
         }
+
+        static std::string type_name(const DataType& msg)
+        { return "CSTR"; }
+        
         static DataType parse(const std::vector<char>& bytes)
         {
             if(bytes.size())
@@ -64,12 +65,14 @@ namespace goby
     {
         static std::vector<char> serialize(const DataType& msg)
         {
-            std::cout << "****USING Normal Protobuf Serialize" << std::endl;
-
             std::vector<char> bytes(msg.ByteSize(), 0);
             msg.SerializeToArray(bytes.data(), bytes.size());
             return bytes;
         }
+
+        static std::string type_name(const DataType& msg)
+        { return DataType::descriptor()->full_name(); }
+
         static DataType parse(const std::vector<char>& bytes)
         {
             DataType msg;
@@ -83,11 +86,14 @@ namespace goby
     {
         static std::vector<char> serialize(const DataType& msg)
         {
-            std::cout << "****USING DCCL Serialize" << std::endl;
             std::vector<char> bytes(msg.ByteSize(), 0);
             msg.SerializeToArray(bytes.data(), bytes.size());
             return bytes;
         }
+
+        static std::string type_name(const DataType& msg)
+        { return DataType::descriptor()->full_name(); }
+
         static DataType parse(const std::vector<char>& bytes)
         {
             DataType msg;

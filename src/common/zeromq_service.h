@@ -58,11 +58,11 @@ namespace goby
                 { }
 
             void set_global_blackout(boost::posix_time::time_duration duration);
-            void set_blackout(MarshallingScheme marshalling_scheme,
+            void set_blackout(int marshalling_scheme,
                               const std::string& identifier,
                               boost::posix_time::time_duration duration);
 
-            void clear_blackout(MarshallingScheme marshalling_scheme,
+            void clear_blackout(int marshalling_scheme,
                                 const std::string& identifier)
             {
                 blackout_info_.erase(std::make_pair(marshalling_scheme, identifier));
@@ -76,7 +76,7 @@ namespace goby
 
             // true means go ahead and post this message
             // false means in blackout
-            bool check_blackout(MarshallingScheme marshalling_scheme,
+            bool check_blackout(int marshalling_scheme,
                                 const std::string& identifier);
             
             
@@ -105,7 +105,7 @@ namespace goby
             boost::posix_time::time_duration global_blackout_;
             bool local_blackout_set_;
             bool global_blackout_set_;
-            std::map<std::pair<MarshallingScheme, std::string>, BlackoutInfo> blackout_info_;
+            std::map<std::pair<int, std::string>, BlackoutInfo> blackout_info_;
         };
 
         
@@ -117,37 +117,49 @@ namespace goby
             virtual ~ZeroMQService();
             
 
-            void set_cfg(const protobuf::ZeroMQServiceConfig& cfg)
+            void set_cfg(protobuf::ZeroMQServiceConfig* cfg)
             {
-                process_cfg(cfg);
-                cfg_.CopyFrom(cfg);
+                process_cfg(*cfg);
+                cfg_.CopyFrom(*cfg);
             }
             
-            void merge_cfg(const protobuf::ZeroMQServiceConfig& cfg)
+            void merge_cfg(protobuf::ZeroMQServiceConfig* cfg)
             {
-                process_cfg(cfg);
-                cfg_.MergeFrom(cfg);
+                process_cfg(*cfg);
+                cfg_.MergeFrom(*cfg);
             }
 
+            void set_cfg(const protobuf::ZeroMQServiceConfig& orig_cfg)
+            {
+                protobuf::ZeroMQServiceConfig cfg(orig_cfg);
+                set_cfg(&cfg);
+            }
+            
+            void merge_cfg(const protobuf::ZeroMQServiceConfig& orig_cfg)
+            {
+                protobuf::ZeroMQServiceConfig cfg(orig_cfg);
+                merge_cfg(&cfg);
+            }
+            
             void subscribe_all(int socket_id);
             void unsubscribe_all(int socket_id);            
             
-            void send(MarshallingScheme marshalling_scheme,
+            void send(int marshalling_scheme,
                       const std::string& identifier,
                       const std::string& body,
                       int socket_id);
             
-            void subscribe(MarshallingScheme marshalling_scheme,
+            void subscribe(int marshalling_scheme,
                            const std::string& identifier,
                            int socket_id);
 
-            void unsubscribe(MarshallingScheme marshalling_scheme,
+            void unsubscribe(int marshalling_scheme,
                            const std::string& identifier,
                            int socket_id);
             
             template<class C>
                 void connect_inbox_slot(
-                    void(C::*mem_func)(MarshallingScheme,
+                    void(C::*mem_func)(int,
                                        const std::string&,
                                        const std::string&,
                                        int),
@@ -161,7 +173,7 @@ namespace goby
 
             
             void connect_inbox_slot(
-                boost::function<void (MarshallingScheme marshalling_scheme,
+                boost::function<void (int marshalling_scheme,
                                       const std::string& identifier,
                                       const std::string& body,
                                       int socket_id)> slot)
@@ -198,19 +210,19 @@ namespace goby
             boost::shared_ptr<zmq::context_t> zmq_context() { return context_; }
 
 
-            boost::signals2::signal<void (MarshallingScheme marshalling_scheme,
+            boost::signals2::signal<void (int marshalling_scheme,
                                 const std::string& identifier,
                                 int socket_id)> pre_send_hooks;
 
-            boost::signals2::signal<void (MarshallingScheme marshalling_scheme,
+            boost::signals2::signal<void (int marshalling_scheme,
                                 const std::string& identifier,
                                 int socket_id)> pre_subscribe_hooks;
 
-            boost::signals2::signal<void (MarshallingScheme marshalling_scheme,
+            boost::signals2::signal<void (int marshalling_scheme,
                                 const std::string& identifier,
                                 int socket_id)> post_send_hooks;
 
-            boost::signals2::signal<void (MarshallingScheme marshalling_scheme,
+            boost::signals2::signal<void (int marshalling_scheme,
                                 const std::string& identifier,
                                 int socket_id)> post_subscribe_hooks;
 
@@ -224,7 +236,7 @@ namespace goby
             
             void init();
             
-            void process_cfg(const protobuf::ZeroMQServiceConfig& cfg);
+            void process_cfg(protobuf::ZeroMQServiceConfig& cfg);
 
             void handle_receive(const void* data, int size, int message_part, int socket_id);
 
@@ -240,7 +252,7 @@ namespace goby
             // maps poll_items_ index to a callback function
             std::map<size_t, boost::function<void (const void* data, int size, int message_part)> > poll_callbacks_;
             
-            boost::signals2::signal<void (MarshallingScheme marshalling_scheme,
+            boost::signals2::signal<void (int marshalling_scheme,
                                           const std::string& identifier,
                                           const std::string& body,
                                           int socket_id)> inbox_signal_;

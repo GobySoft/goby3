@@ -1,5 +1,5 @@
-#file(GLOB PROTOS protobuf/*.proto)
-#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
+file(GLOB PROTOS protobuf/*.proto)
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
 
 set(SRC
   serialize_parse.cpp

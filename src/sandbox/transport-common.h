@@ -3,79 +3,59 @@
 
 #include <memory>
 #include <unordered_map>
+#include <chrono>
 
 #include "goby/util/binary.h"
 
 #include "serialize_parse.h"
 
+#include "goby/sandbox/protobuf/transporter_config.pb.h"
+
 namespace goby
 {
-    class TransporterConfig
-    {
-    public:
-    TransporterConfig() : ttl_(64) {}   
-    private:
-        int ttl_;
-    };
-    
-    
+
     template<typename T> constexpr bool False()  { return false; }
 
     class NoOpTransporter
     {
     public:
         template<typename DataType, int scheme = scheme<DataType>()>
-            void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg)
-        {
-            std::cout << "NoOp const ref publish" << std::endl;
-        }
+            void publish(const DataType& data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            {
+                std::cout << "NoOp const ref publish" << std::endl;
+            }
 
         template<typename DataType, int scheme = scheme<DataType>()>
             void publish(std::shared_ptr<DataType> data,
-                         const std::string& group, const TransporterConfig& transport_cfg)
+                         const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            {
+                std::cout << "NoOp shared_ptr publish" << std::endl;
+            }
+        
+        template<typename DataType, int scheme = scheme<DataType>(), class Function>
+            void subscribe(const std::string& group, Function f)
+            {
+            }
+        
+        template<typename DataType, int scheme = scheme<DataType>(), class C>
+            void subscribe(const std::string& group, void(C::*mem_func)(const DataType&), C* c)
+            {
+                subscribe<DataType, scheme>(group, std::bind(mem_func, c, std::placeholders::_1));
+            }
+
+        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         {
-            std::cout << "NoOp shared_ptr publish" << std::endl;
+            return 0;
         }
+        
+        int poll(std::chrono::system_clock::duration wait_for)
+        {
+            return poll(std::chrono::system_clock::now() + wait_for);
+        }
+    
+        
     };
     
-    template<typename InnerTransporter = NoOpTransporter>
-        class ZMQTransporter
-        {
-        public:
-        ZMQTransporter() : own_inner_(new InnerTransporter), inner_(*own_inner_) { }
-        ZMQTransporter(InnerTransporter& inner) : inner_(inner) { }
-        ~ZMQTransporter() { }
-
-        template<typename DataType, int scheme = scheme<DataType>()>
-        void publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
-        {
-            _publish<DataType, scheme>(data, group, transport_cfg);
-            inner_.publish<DataType, scheme>(data, group, transport_cfg);
-        }
-
-        template<typename DataType, int scheme = scheme<DataType>()>
-        void publish(std::shared_ptr<DataType> data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
-        {
-            if(data)
-            {
-                _publish<DataType, scheme>(*data, group, transport_cfg);
-                inner_.publish<DataType, scheme>(data, group, transport_cfg);
-            }
-        }
-            
-        private:
-        template<typename DataType, int scheme>
-        void _publish(const DataType& data, const std::string& group, const TransporterConfig& transport_cfg)
-        {
-            std::vector<char> bytes(SerializerParserHelper<DataType, scheme>::serialize(data));
-            std::cout << "ZMQTransporter: Publishing to group [" << group << "], using scheme [" << MarshallingScheme::as_string(scheme) << "]: " << goby::util::hex_encode(std::string(bytes.begin(), bytes.end())) << std::endl;
-        }
-
-        std::unique_ptr<InnerTransporter> own_inner_;
-        InnerTransporter& inner_;
-        
-        };
-
 
 
     template<typename InnerTransporter = NoOpTransporter>
@@ -88,14 +68,14 @@ namespace goby
         ~SlowLinkTransporter() { }
 
         template<typename DCCLMessage>
-        void publish(const DCCLMessage& data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
+        void publish(const DCCLMessage& data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             _publish<DCCLMessage>(data, group, transport_cfg);
             inner_.publish<DCCLMessage, MarshallingScheme::DCCL>(data, group, transport_cfg);
         }
 
         template<typename DCCLMessage>
-        void publish(std::shared_ptr<DCCLMessage> data, const std::string& group, const TransporterConfig& transport_cfg = TransporterConfig())
+        void publish(std::shared_ptr<DCCLMessage> data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             if(data)
             {
@@ -106,7 +86,7 @@ namespace goby
             
         private:
         template<typename DCCLMessage>
-        void _publish(const DCCLMessage& data, const std::string& group, const TransporterConfig& transport_cfg)
+        void _publish(const DCCLMessage& data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
             static_assert(scheme<DCCLMessage>() == MarshallingScheme::DCCL, "Can only use DCCL messages with SlowLinkTransporter");
             
