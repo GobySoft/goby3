@@ -1,3 +1,6 @@
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include <deque>
 #include <atomic>
 
@@ -11,11 +14,17 @@ goby::InterThreadTransporter inproc;
 
 int publish_count = 0;
 const int max_publish = 10;
+int ipc_receive_count = {0};
 
 std::atomic<int> ready(0);
 std::atomic<bool> forward(true);
+std::atomic<bool> zmq_ready(false);
 
-// thread 1
+using goby::glog;
+using namespace goby::common::logger;
+
+
+// thread 1 - parent process
 void publisher()
 {
     goby::InterProcessTransporter<goby::InterThreadTransporter> ipc(inproc);
@@ -35,7 +44,41 @@ void publisher()
     }    
 }
 
-// thread 2
+// thread 1 - child process
+
+void handle_sample1(std::shared_ptr<const Sample> sample)
+{
+    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << sample->ShortDebugString() << std::endl;
+    ++ipc_receive_count;
+}
+
+void handle_sample2(std::shared_ptr<const Sample> sample)
+{
+    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << sample->ShortDebugString() << std::endl;
+    ++ipc_receive_count;
+}
+
+
+void handle_widget(std::shared_ptr<const Widget> widget)
+{
+    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << widget->ShortDebugString() << std::endl;
+    ++ipc_receive_count;
+}
+
+void subscriber()
+{
+    goby::InterProcessTransporter<goby::InterThreadTransporter> ipc(inproc);
+    ipc.subscribe<Sample>("Sample1", &handle_sample1);
+    ipc.subscribe<Sample>("Sample2", &handle_sample2);
+    ipc.subscribe<Widget>("Widget", &handle_widget);
+    while(ipc_receive_count < 3*max_publish)
+        ipc.poll();
+}
+
+
+
+
+// thread(s) 2
 
 class ThreadSubscriber
 {
@@ -45,33 +88,34 @@ public:
             inproc.subscribe<Sample>("Sample1", &ThreadSubscriber::handle_sample1, this);
             inproc.subscribe<Sample>("Sample2", &ThreadSubscriber::handle_sample2, this);
             inproc.subscribe("Widget", &ThreadSubscriber::handle_widget1, this);
+            ++ready;
             while(receive_count1 < max_publish || receive_count2 < max_publish || receive_count3 < max_publish)
             {
-                ++ready;
-                int items = inproc.poll();
+                inproc.poll();
                 //  std::cout << "Polled " << items  << " items. " << std::endl;
             }
+            glog.is(DEBUG1) && glog << "ThreadSubscriber  " <<  std::this_thread::get_id() << " is done." << std::endl;
         }
 private:
     void handle_sample1(std::shared_ptr<const Sample> sample)
         {
-            //            std::thread::id this_id = std::this_thread::get_id();
-            // std::cout << this_id << ": Received1: " << sample->DebugString() << std::endl;
+            std::thread::id this_id = std::this_thread::get_id();
+            glog.is(DEBUG1) && glog << this_id << ": Received1: " << sample->DebugString() << std::endl;
             assert(sample->a() == receive_count1);
             ++receive_count1;
         }
     void handle_sample2(std::shared_ptr<const Sample> sample)
         {
-            //std::thread::id this_id = std::this_thread::get_id();
-            // std::cout << this_id << ": Received2: " << sample->DebugString() << std::endl;
+            std::thread::id this_id = std::this_thread::get_id();
+            glog.is(DEBUG1) && glog << this_id << ": Received2: " << sample->DebugString() << std::endl;
             assert(sample->a() == receive_count2+10);
             ++receive_count2;
         }
 
     void handle_widget1(std::shared_ptr<const Widget> widget)
         {
-            //std::thread::id this_id = std::this_thread::get_id();
-            // std::cout << this_id << ": Received3: " << widget->DebugString() << std::endl;
+            std::thread::id this_id = std::this_thread::get_id();
+            glog.is(DEBUG1) && glog << this_id << ": Received3: " << widget->DebugString() << std::endl;
             assert(widget->b() == receive_count3-8);
             ++receive_count3;
         }
@@ -87,27 +131,36 @@ private:
 void zmq_forward()
 {
     goby::ZMQTransporter<goby::InterThreadTransporter> zmq(inproc);
-
+    zmq_ready = true;
     while(forward)
+    {
         zmq.poll(std::chrono::milliseconds(100));
+    }
 }
 
 
 
 int main(int argc, char* argv[])
 {
+    pid_t child_pid = fork();
+
+    bool is_child = (child_pid == 0);
+
     goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
-    goby::glog.set_name(argv[0]);
+
+    std::string os_name = std::string("/tmp/goby_test_sandbox3_") + (is_child ? "subscriber" : "publisher");
+    std::ofstream os(os_name.c_str());
+    goby::glog.add_stream(goby::common::logger::DEBUG3, &os);
+    goby::glog.set_name(std::string(argv[0]) + (is_child ? "_subscriber" : "_publisher"));
     goby::glog.set_lock_action(goby::common::logger_lock::lock);
-    
-    
+                        
     //    std::thread t3(subscriber);
     const int max_subs = 3;
-    std::vector<ThreadSubscriber> subscribers(max_subs, ThreadSubscriber());
+    std::vector<ThreadSubscriber> thread_subscribers(max_subs, ThreadSubscriber());
     std::vector<std::thread> threads;
     for(int i = 0; i < max_subs; ++i)
     {
-        threads.push_back(std::thread(std::bind(&ThreadSubscriber::run, &subscribers.at(i))));
+        threads.push_back(std::thread(std::bind(&ThreadSubscriber::run, &thread_subscribers.at(i))));
     }
 
     while(ready < max_subs)
@@ -115,15 +168,31 @@ int main(int argc, char* argv[])
 
     std::thread t3(zmq_forward);
 
-    std::thread t1(publisher);
- 
-    t1.join();
+    while(!zmq_ready)
+        usleep(1e5);
+    
+    if(!is_child)
+    {
+        std::thread t1(publisher);
+        t1.join();
+    }
+    else
+    {
+        std::thread t1(subscriber);
+        t1.join();
+    }
 
     for(int i = 0; i < max_subs; ++i)
         threads.at(i).join();
+    
+    if(!is_child)
+    {
+        int wstatus;
+        pid_t pid = wait(&wstatus);
+    }
 
     forward = false;
     t3.join();
     
-    std::cout << "all tests passed" << std::endl;
+    glog.is(VERBOSE) && glog << (is_child ? "subscriber" : "publisher") << ": all tests passed" << std::endl;
 }

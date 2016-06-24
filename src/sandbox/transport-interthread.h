@@ -196,7 +196,7 @@ namespace goby
     InterThreadTransporter() :
         cv_(std::make_shared<std::condition_variable_any>())
         { }
-        
+
         
         template<typename DataType, int scheme = scheme<DataType>()>
             void publish(const DataType& data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())

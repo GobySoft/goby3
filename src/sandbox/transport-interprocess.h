@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <unistd.h>
+#include <functional>
 
 #include "goby/common/zeromq_service.h"
 
@@ -13,6 +14,47 @@ namespace goby
 {   
 
     enum { ZMQ_MARSHALLING_SCHEME = 0x474f4259 };
+
+    
+    class InterProcessSubscriptionBase
+    {
+    public:
+        virtual void post(const std::vector<char>& body) const = 0;
+        virtual const std::string& type_name() const = 0;
+        virtual const std::string& group() const = 0;
+        virtual int scheme() const = 0;
+    };
+
+    template<typename DataType, int scheme_id>
+        class InterProcessSubscription : public InterProcessSubscriptionBase
+    {
+    public:
+        typedef std::function<void (std::shared_ptr<DataType> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)> HandlerType;
+
+    InterProcessSubscription(HandlerType& handler,
+                             const std::string& group)
+        : handler_(handler),
+            type_name_(SerializerParserHelper<DataType, scheme_id>::type_name(DataType())),
+            group_(group)
+            { }
+            
+        // handle an incoming message
+        void post(const std::vector<char>& body) const
+        {
+            auto msg = std::make_shared<DataType>(SerializerParserHelper<DataType, scheme_id>::parse(body));
+            handler_(msg, group_, goby::protobuf::TransporterConfig());
+        }
+
+        // getters
+        const std::string& type_name() const { return type_name_; }
+        const std::string& group() const { return group_; }            
+        int scheme() const { return scheme_id; }
+            
+    private:
+        HandlerType handler_;
+        const std::string type_name_;
+        const std::string group_;
+    };
     
     
     template<typename InnerTransporter>
@@ -38,12 +80,23 @@ namespace goby
                 inner_.publish<DataType, scheme>(data, group, transport_cfg);
             }
         }
+
+        
         
         template<typename DataType, int scheme = scheme<DataType>(), class Function>
         void subscribe(const std::string& group, Function f)
         {
-            std::function<void(const DataType&)> func(f);
-            inner_.subscribe<DataType, scheme, Function>(group, f);        
+            // subscribe to inner transporter
+            // std::function<void(const DataType&)> func(f);
+            std::function<void(std::shared_ptr<const DataType>)> func(f);
+            inner_.subscribe<DataType, scheme, Function>(group, f);
+
+            // forward subscription to edge
+            auto inner_publication_lambda = [&](std::shared_ptr<DataType> d, const std::string& g, const goby::protobuf::TransporterConfig& t) { inner_.template publish<DataType, scheme>(d, g, t); };
+            typename InterProcessSubscription<DataType, scheme>::HandlerType inner_publication_function(inner_publication_lambda);
+            auto subscription = std::shared_ptr<InterProcessSubscriptionBase>(new InterProcessSubscription<DataType, scheme>(inner_publication_function, group));
+            inner_.publish<InterProcessSubscriptionBase, MarshallingScheme::CXX_OBJECT>(subscription, forward_group);
+            std::cout << "Published subscription: " << subscription->type_name() << ":" << subscription->group() << std::endl;
         }
         
         template<typename DataType, int scheme = scheme<DataType>(), class C>
@@ -68,6 +121,7 @@ namespace goby
         template<typename DataType, int scheme>
         void _publish(const DataType& d, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
+            // create and forward publication to edge
             std::vector<char> bytes(SerializerParserHelper<DataType, scheme>::serialize(d));
             std::string* sbytes = new std::string(bytes.begin(), bytes.end());
             std::shared_ptr<goby::protobuf::InterProcessData> data = std::make_shared<goby::protobuf::InterProcessData>();
@@ -119,13 +173,16 @@ namespace goby
                 inner_.publish<DataType, scheme>(data, group, transport_cfg);
             }
         }
-        
+
+        // direct subscriptions (possibly without an "InnerTransporter")
         template<typename DataType, int scheme = scheme<DataType>(), class Function>
         void subscribe(const std::string& group, Function f)
         {
             std::function<void(const DataType&)> func(f);
-            inner_.subscribe<DataType, scheme, Function>(group, f);        
-            zmq_.subscribe(ZMQ_MARSHALLING_SCHEME, _make_identifier<DataType>(group), SOCKET_SUBSCRIBE);
+            inner_.subscribe<DataType, scheme, Function>(group, f);
+            std::string identifier = _make_identifier<DataType>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+            //local_subscriptions_.insert(std::make_pair(identifier, f));
+            zmq_.subscribe(ZMQ_MARSHALLING_SCHEME, identifier, SOCKET_SUBSCRIBE);
         }
         
         template<typename DataType, int scheme = scheme<DataType>(), class C>
@@ -148,7 +205,9 @@ namespace goby
         private:
         void _init()
         {
-            inner_.subscribe<goby::protobuf::InterProcessData>(InterProcessTransporter<InnerTransporter>::forward_group, &ZMQTransporter::_receive_forwarded, this);
+            inner_.subscribe<goby::protobuf::InterProcessData>(InterProcessTransporter<InnerTransporter>::forward_group, &ZMQTransporter::_receive_publication_forwarded, this);
+            inner_.subscribe<InterProcessSubscriptionBase, MarshallingScheme::CXX_OBJECT>(InterProcessTransporter<InnerTransporter>::forward_group, &ZMQTransporter::_receive_subscription_forwarded, this);
+
             zmq_.connect_inbox_slot(&ZMQTransporter::_zmq_inbox, this);
 
             goby::common::protobuf::ZeroMQServiceConfig cfg;
@@ -174,17 +233,31 @@ namespace goby
             publish_port_ = cfg.socket(0).ethernet_port();
         }
         
-        void _receive_forwarded(std::shared_ptr<const goby::protobuf::InterProcessData> data)
+        void _receive_publication_forwarded(std::shared_ptr<const goby::protobuf::InterProcessData> data)
         {
-            //            std::cout << "Forwarding: " << data->DebugString() << std::endl;
+            zmq_.send(ZMQ_MARSHALLING_SCHEME,
+                      _make_identifier(data->type(), data->marshalling_scheme(), data->group(), IdentifierWildcard::NO_WILDCARDS),
+                      data->data(),
+                      SOCKET_PUBLISH);
+
         }
+
+        void _receive_subscription_forwarded(std::shared_ptr<const InterProcessSubscriptionBase> subscription)
+        {
+            std::cout << "Subscription forwarded to us: " << subscription->type_name() << ":" << subscription->group() << std::endl;
+            std::string identifier = _make_identifier(subscription->type_name(), subscription->scheme(), subscription->group(), IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+
+            forwarded_subscriptions_[identifier] = subscription;
+            zmq_.subscribe(ZMQ_MARSHALLING_SCHEME, identifier, SOCKET_SUBSCRIBE);
+        }
+
         
         template<typename DataType, int scheme>
         void _publish(const DataType& d, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
             std::vector<char> bytes(SerializerParserHelper<DataType, scheme>::serialize(d));
             std::string sbytes(bytes.begin(), bytes.end());
-            zmq_.send(ZMQ_MARSHALLING_SCHEME, _make_identifier<DataType>(group), sbytes, SOCKET_PUBLISH);
+            zmq_.send(ZMQ_MARSHALLING_SCHEME, _make_identifier<DataType>(group, IdentifierWildcard::NO_WILDCARDS), sbytes, SOCKET_PUBLISH);
         }
 
         void _zmq_inbox(int marshalling_scheme,
@@ -192,23 +265,44 @@ namespace goby
                         const std::string& body,
                         int socket_id)
         {
-            std::vector<std::string> identifier_parts;
-            boost::split(identifier_parts, identifier, boost::is_any_of("/"));
-            std::cout << "ZMQ inbox: " << identifier << std::endl;
+            for(auto &sub : forwarded_subscriptions_)
+            {
+                std::cout << "Ide: [" << goby::util::hex_encode(identifier) << "]" << std::endl;
+
+                std::cout << "Sub: [" << goby::util::hex_encode(sub.first) << "]" << std::endl;
+                if(identifier.compare(0, sub.first.size(), sub.first) == 0)
+                {
+                    std::vector<char> data(body.begin(), body.end());
+                    sub.second->post(data);
+                }
+            }
         }
 
+        enum class IdentifierWildcard { NO_WILDCARDS,
+                                        THREAD_WILDCARD,
+                                        PROCESS_THREAD_WILDCARD };
+        
         template<typename DataType, int scheme>
-        std::string _make_identifier(const std::string& group)
+        std::string _make_identifier(const std::string& group, IdentifierWildcard wildcard)
+        {
+            return _make_identifier(SerializerParserHelper<DataType, scheme>::type_name(DataType()), scheme, group, wildcard);
+        }
+
+        std::string _make_identifier(const std::string& type_name, int scheme, const std::string& group, IdentifierWildcard wildcard)
         {
             std::string sscheme(std::to_string(scheme));
             std::string process(std::to_string(getpid()));
             std::string thread(std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
             
-            return std::string("/" + SerializerParserHelper<DataType, scheme>::type_name(DataType()) +
-                               "/" + sscheme +
-                               "/" + process +
-                               "/" + thread +
-                               "/");
+            std::string id("/" + group +
+                           "/" + sscheme +
+                           "/" + type_name + 
+                           "/");
+            if(wildcard != IdentifierWildcard::PROCESS_THREAD_WILDCARD)
+                id += process + "/";
+            if(wildcard == IdentifierWildcard::NO_WILDCARDS)
+                id += thread + "/";
+            return id;
         }
         
         private:
@@ -219,11 +313,13 @@ namespace goby
         InnerTransporter& inner_;
         goby::common::ZeroMQService zmq_;
         int publish_port_ = { 0 };
+
+        // maps identifier to forwarded subscription
+        std::unordered_map<std::string, std::shared_ptr<const InterProcessSubscriptionBase>> forwarded_subscriptions_;
+
+        // maps identifier to local subscription function
+        // std::unordered_multimap<std::string, std::function<void(const DataType&)>> local_subscriptions_;
         };
-
-
-    
-
 }
 
 

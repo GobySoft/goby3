@@ -21,7 +21,8 @@ namespace goby
             PROTOBUF = 1,
             DCCL = 2,
             CAPTN_PROTO = 3,
-            MSGPACK = 4
+            MSGPACK = 4,
+            CXX_OBJECT = 5
         };
 
         static std::string as_string(int e)
@@ -56,7 +57,15 @@ namespace goby
         static DataType parse(const std::vector<char>& bytes)
         {
             if(bytes.size())
+            {
                 DataType msg(bytes.begin(), bytes.end()-1);
+                return msg;
+            }
+            else
+            {
+                return DataType();
+            }
+            
         }
     };
     
@@ -77,6 +86,7 @@ namespace goby
         {
             DataType msg;
             msg.ParseFromArray(bytes.data(), bytes.size());
+            return msg;
         }
     };
 
@@ -98,6 +108,7 @@ namespace goby
         {
             DataType msg;
             msg.ParseFromArray(bytes.data(), bytes.size());
+            return msg;
         }
     };
 

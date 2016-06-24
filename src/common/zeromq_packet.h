@@ -70,16 +70,7 @@ namespace goby
                 marshalling_int ^= raw[i];
             }        
             
-            if(marshalling_int >= MARSHALLING_UNKNOWN &&
-               marshalling_int <= MARSHALLING_MAX)
-                *marshalling_scheme = static_cast<int>(marshalling_int);
-            else
-            {
-                std::stringstream ss;
-                ss << "Invalid marshalling value = " << marshalling_int;
-                throw(std::runtime_error(ss.str()));
-            }
-            
+            *marshalling_scheme = marshalling_int;
             
             *identifier = raw.substr(MARSHALLING_SIZE,
                                      raw.find('\0', MARSHALLING_SIZE)-MARSHALLING_SIZE);
