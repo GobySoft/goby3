@@ -8,12 +8,14 @@
 #include "goby/sandbox/transport.h"
 #include "test.pb.h"
 
+#include <zmq.hpp>
+
 // tests InterProcessTransporter
 
 goby::InterThreadTransporter inproc;
 
 int publish_count = 0;
-const int max_publish = 10;
+const int max_publish = 100;
 int ipc_receive_count = {0};
 
 std::atomic<int> ready(0);
@@ -46,22 +48,22 @@ void publisher()
 
 // thread 1 - child process
 
-void handle_sample1(std::shared_ptr<const Sample> sample)
+void handle_sample1(const Sample& sample)
 {
-    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << sample->ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << sample.ShortDebugString() << std::endl;
     ++ipc_receive_count;
 }
 
-void handle_sample2(std::shared_ptr<const Sample> sample)
+void handle_sample2(const Sample& sample)
 {
-    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << sample->ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << sample.ShortDebugString() << std::endl;
     ++ipc_receive_count;
 }
 
 
-void handle_widget(std::shared_ptr<const Widget> widget)
+void handle_widget(const Widget& widget)
 {
-    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << widget->ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << widget.ShortDebugString() << std::endl;
     ++ipc_receive_count;
 }
 
@@ -85,7 +87,9 @@ class ThreadSubscriber
 public:
     void run()
         {
-            inproc.subscribe<Sample>("Sample1", &ThreadSubscriber::handle_sample1, this);
+            // subscribe using lambda capture
+            inproc.subscribe<Sample>("Sample1", [&](const Sample& s) { handle_sample1(s); });
+            // subscribe using overload for member functions
             inproc.subscribe<Sample>("Sample2", &ThreadSubscriber::handle_sample2, this);
             inproc.subscribe("Widget", &ThreadSubscriber::handle_widget1, this);
             ++ready;
@@ -97,11 +101,11 @@ public:
             glog.is(DEBUG1) && glog << "ThreadSubscriber  " <<  std::this_thread::get_id() << " is done." << std::endl;
         }
 private:
-    void handle_sample1(std::shared_ptr<const Sample> sample)
+    void handle_sample1(Sample sample)
         {
             std::thread::id this_id = std::this_thread::get_id();
-            glog.is(DEBUG1) && glog << this_id << ": Received1: " << sample->DebugString() << std::endl;
-            assert(sample->a() == receive_count1);
+            glog.is(DEBUG1) && glog << this_id << ": Received1: " << sample.DebugString() << std::endl;
+            assert(sample.a() == receive_count1);
             ++receive_count1;
         }
     void handle_sample2(std::shared_ptr<const Sample> sample)
@@ -138,6 +142,35 @@ void zmq_forward()
     }
 }
 
+// thread 4
+std::unique_ptr<zmq::context_t> router_context(new zmq::context_t(1));
+void zmq_router()
+{
+    //  Socket facing clients
+    zmq::socket_t frontend (*router_context, ZMQ_XPUB);
+    frontend.bind("tcp://*:5555");
+
+    //  Socket facing services
+    zmq::socket_t backend (*router_context, ZMQ_XSUB);
+    backend.bind("tcp://*:5556");
+
+    zmq_ready = true;
+    //  Start the proxy
+    try
+    {
+        zmq::proxy(frontend, backend, nullptr);
+    }
+    catch(const zmq::error_t& e)
+    {
+        // context terminated
+        if(e.num() == ETERM)
+            return;
+        else
+            throw(e);
+    }
+    
+}
+
 
 
 int main(int argc, char* argv[])
@@ -146,7 +179,7 @@ int main(int argc, char* argv[])
 
     bool is_child = (child_pid == 0);
 
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    //    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
 
     std::string os_name = std::string("/tmp/goby_test_sandbox3_") + (is_child ? "subscriber" : "publisher");
     std::ofstream os(os_name.c_str());
@@ -166,6 +199,15 @@ int main(int argc, char* argv[])
     while(ready < max_subs)
         usleep(1e5);
 
+    std::unique_ptr<std::thread> t4;
+    if(!is_child)
+    {
+        t4.reset(new std::thread(zmq_router));
+        while(!zmq_ready)
+            usleep(1e5);
+        zmq_ready = false;
+    }
+    
     std::thread t3(zmq_forward);
 
     while(!zmq_ready)
@@ -188,11 +230,17 @@ int main(int argc, char* argv[])
     if(!is_child)
     {
         int wstatus;
-        pid_t pid = wait(&wstatus);
+        wait(&wstatus);
     }
 
     forward = false;
     t3.join();
+
+    if(!is_child)
+    {
+        router_context.reset();
+        t4->join();
+    }
     
     glog.is(VERBOSE) && glog << (is_child ? "subscriber" : "publisher") << ": all tests passed" << std::endl;
 }

@@ -31,9 +31,14 @@ namespace goby
             {
                 std::cout << "NoOp shared_ptr publish" << std::endl;
             }
-        
-        template<typename DataType, int scheme = scheme<DataType>(), class Function>
-            void subscribe(const std::string& group, Function f)
+
+        template<typename DataType, int scheme = scheme<DataType>()>
+            void subscribe(const std::string& group, std::function<void(const DataType&)> func)
+            {
+            }
+
+        template<typename DataType, int scheme = scheme<DataType>()>
+            void subscribe(const std::string& group, std::function<void(std::shared_ptr<const DataType>)> func)
             {
             }
         
@@ -42,6 +47,14 @@ namespace goby
             {
                 subscribe<DataType, scheme>(group, std::bind(mem_func, c, std::placeholders::_1));
             }
+
+        
+        template<typename DataType, int scheme = scheme<DataType>(), class C>
+            void subscribe(const std::string& group, void(C::*mem_func)(std::shared_ptr<const DataType>), C* c)
+            {
+                subscribe<DataType, scheme>(group, std::bind(mem_func, c, std::placeholders::_1));
+            }
+
 
         int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         {

@@ -83,13 +83,11 @@ namespace goby
 
         
         
-        template<typename DataType, int scheme = scheme<DataType>(), class Function>
-        void subscribe(const std::string& group, Function f)
+        template<typename DataType, int scheme = scheme<DataType>()>
+        void subscribe(const std::string& group, std::function<void(const DataType&)> func)
         {
             // subscribe to inner transporter
-            // std::function<void(const DataType&)> func(f);
-            std::function<void(std::shared_ptr<const DataType>)> func(f);
-            inner_.subscribe<DataType, scheme, Function>(group, f);
+            inner_.subscribe<DataType, scheme>(group, func);
 
             // forward subscription to edge
             auto inner_publication_lambda = [&](std::shared_ptr<DataType> d, const std::string& g, const goby::protobuf::TransporterConfig& t) { inner_.template publish<DataType, scheme>(d, g, t); };
@@ -102,7 +100,7 @@ namespace goby
         template<typename DataType, int scheme = scheme<DataType>(), class C>
         void subscribe(const std::string& group, void(C::*mem_func)(const DataType&), C* c)
         {
-            subscribe<DataType, scheme>(group, std::bind(mem_func, c, std::placeholders::_1));
+            subscribe<DataType, scheme>(group, [=](const DataType& d) { (c->*mem_func)(d); });
         }
 
         int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
@@ -175,12 +173,11 @@ namespace goby
         }
 
         // direct subscriptions (possibly without an "InnerTransporter")
-        template<typename DataType, int scheme = scheme<DataType>(), class Function>
-        void subscribe(const std::string& group, Function f)
+        template<typename DataType, int scheme = scheme<DataType>()>
+        void subscribe(const std::string& group, std::function<void(const DataType&)> func)
         {
-            std::function<void(const DataType&)> func(f);
-            inner_.subscribe<DataType, scheme, Function>(group, f);
-            std::string identifier = _make_identifier<DataType>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+            inner_.subscribe<DataType, scheme>(group, func);
+            std::string identifier = _make_identifier<DataType, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
             //local_subscriptions_.insert(std::make_pair(identifier, f));
             zmq_.subscribe(ZMQ_MARSHALLING_SCHEME, identifier, SOCKET_SUBSCRIBE);
         }
@@ -188,7 +185,7 @@ namespace goby
         template<typename DataType, int scheme = scheme<DataType>(), class C>
         void subscribe(const std::string& group, void(C::*mem_func)(const DataType&), C* c)
         {
-            subscribe<DataType, scheme>(group, std::bind(mem_func, c, std::placeholders::_1));
+            subscribe<DataType, scheme>(group, [=](const DataType& d) { (c->*mem_func)(d); });
         }
 
         int poll(std::chrono::system_clock::duration wait_for)
@@ -257,7 +254,7 @@ namespace goby
         {
             std::vector<char> bytes(SerializerParserHelper<DataType, scheme>::serialize(d));
             std::string sbytes(bytes.begin(), bytes.end());
-            zmq_.send(ZMQ_MARSHALLING_SCHEME, _make_identifier<DataType>(group, IdentifierWildcard::NO_WILDCARDS), sbytes, SOCKET_PUBLISH);
+            zmq_.send(ZMQ_MARSHALLING_SCHEME, _make_identifier<DataType, scheme>(group, IdentifierWildcard::NO_WILDCARDS), sbytes, SOCKET_PUBLISH);
         }
 
         void _zmq_inbox(int marshalling_scheme,

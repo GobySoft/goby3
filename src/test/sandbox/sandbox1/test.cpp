@@ -14,11 +14,10 @@ int main(int argc, char* argv[])
     goby::glog.set_lock_action(goby::common::logger_lock::lock);    
 
     //    goby::ProtobufMarshaller pb;
-    goby::InterProcessTransporter<> zmq_blank;
-    goby::InterProcessTransporter<goby::InterThreadTransporter> zmq_default;
-
     goby::InterThreadTransporter inproc;
-    goby::InterProcessTransporter<goby::InterThreadTransporter> zmq(inproc);
+    goby::ZMQTransporter<> zmq_blank;
+    goby::InterProcessTransporter<goby::InterThreadTransporter> interprocess_default(inproc);
+    goby::ZMQTransporter<goby::InterThreadTransporter> zmq(inproc);
     
     CTDSample s;
     s.set_salinity(38.5);

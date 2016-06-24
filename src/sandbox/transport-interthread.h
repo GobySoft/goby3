@@ -61,7 +61,6 @@ namespace goby
         class SubscriptionStore : public SubscriptionStoreBase
     {
     public:
-
         static void subscribe(const Group& group, std::function<void(std::shared_ptr<const DataType>)> func, std::thread::id thread_id, std::shared_ptr<std::condition_variable_any> cv)
         {
             std::lock_guard<decltype(subscription_mutex)> lock(subscription_mutex);
@@ -211,18 +210,23 @@ namespace goby
             SubscriptionStore<DataType>::publish(data, group);
         }
 
-        
-        template<typename DataType, int scheme = scheme<DataType>(), class Function>
-            void subscribe(const std::string& group, Function f)
+        template<typename DataType, int scheme = scheme<DataType>()>
+            void subscribe(const std::string& group, std::function<void(const DataType&)> f)
         {
-            std::function<void(std::shared_ptr<const DataType>)> func(f);
-            SubscriptionStore<DataType>::subscribe(group, func, std::this_thread::get_id(), cv_);
+            std::function<void(std::shared_ptr<const DataType>)> shared_ptr_func([=](std::shared_ptr<const DataType> pd) { f(*pd); });
+            SubscriptionStore<DataType>::subscribe(group, shared_ptr_func, std::this_thread::get_id(), cv_);
+        }
+        
+        template<typename DataType, int scheme = scheme<DataType>()>
+            void subscribe(const std::string& group, std::function<void(std::shared_ptr<const DataType>)> f)
+        {
+            SubscriptionStore<DataType>::subscribe(group, f, std::this_thread::get_id(), cv_);
         }
         
         template<typename DataType, int scheme = scheme<DataType>(), class C>
             void subscribe(const std::string& group, void(C::*mem_func)(std::shared_ptr<const DataType>), C* c)
         {
-            subscribe<DataType, scheme>(group, std::bind(mem_func, c, std::placeholders::_1));
+            subscribe<DataType, scheme>(group, [=](std::shared_ptr<const DataType> d) { (c->*mem_func)(d); });
         }
 
         int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
