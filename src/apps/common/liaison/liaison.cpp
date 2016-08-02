@@ -233,7 +233,7 @@ void goby::common::Liaison::loop()
 
 }
 
-void goby::common::Liaison::inbox(MarshallingScheme marshalling_scheme,
+void goby::common::Liaison::inbox(int marshalling_scheme,
                                   const std::string& identifier,
                                   const std::string& data,
                                   int socket_id)

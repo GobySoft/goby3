@@ -23,7 +23,7 @@
 
 #include "goby/common/zeromq_service.h"
 
-void inbox(goby::common::MarshallingScheme marshalling_scheme,
+void inbox(int marshalling_scheme,
            const std::string& identifier,
            const std::string& data,
            int socket_id);
@@ -96,7 +96,7 @@ int main(int argc, char* argv[])
 }
 
 
-void inbox(goby::common::MarshallingScheme marshalling_scheme,
+void inbox(int marshalling_scheme,
            const std::string& identifier,
            const std::string& data,
            int socket_id)

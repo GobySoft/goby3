@@ -49,7 +49,7 @@ namespace goby
             Liaison(protobuf::LiaisonConfig* cfg);
             ~Liaison() { }
 
-            void inbox(goby::common::MarshallingScheme marshalling_scheme,
+            void inbox(int marshalling_scheme,
                        const std::string& identifier,
                        const std::string& data,
                        int socket_id);

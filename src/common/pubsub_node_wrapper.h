@@ -43,7 +43,7 @@ namespace goby
             virtual ~PubSubNodeWrapperBase()
             { }
 
-            void publish(MarshallingScheme marshalling_scheme,
+            void publish(int marshalling_scheme,
                          const std::string& identifier,
                          const std::string& body)
             {
@@ -56,7 +56,7 @@ namespace goby
                 zeromq_service_.send(marshalling_scheme, identifier, body, SOCKET_PUBLISH);
             }
 
-            void subscribe(MarshallingScheme marshalling_scheme,
+            void subscribe(int marshalling_scheme,
                            const std::string& identifier)
             {
                 if(!using_pubsub())

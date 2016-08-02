@@ -25,7 +25,7 @@
 
 #include <boost/thread.hpp>
 
-void node_inbox(goby::common::MarshallingScheme marshalling_scheme,
+void node_inbox(int marshalling_scheme,
                 const std::string& identifier,
                 const std::string& data,
                 int socket_id);
@@ -96,7 +96,7 @@ int main(int argc, char* argv[])
 }
 
 
-void node_inbox(goby::common::MarshallingScheme marshalling_scheme,
+void node_inbox(int marshalling_scheme,
                 const std::string& identifier,
                 const std::string& data,
                 int socket_id)
