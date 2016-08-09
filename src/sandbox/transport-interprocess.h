@@ -4,11 +4,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <functional>
+#include <thread>
+#include <atomic>
 
 #include "goby/common/zeromq_service.h"
 
 #include "transport-common.h"
 #include "goby/sandbox/protobuf/interprocess_data.pb.h"
+#include "goby/sandbox/protobuf/zmq_transporter_config.pb.h"
 
 namespace goby
 {   
@@ -131,7 +134,6 @@ namespace goby
         
             *data->mutable_cfg() = transport_cfg;
 
-            //            std::cout << "InterProcessTransporter: Publishing: " << data->DebugString() << std::endl;
             inner_.publish(data, forward_group);
         }
 
@@ -147,14 +149,15 @@ namespace goby
         class ZMQTransporter
         {
         public:
-        ZMQTransporter() : own_inner_(new InnerTransporter), inner_(*own_inner_)
+        ZMQTransporter(const protobuf::ZMQTransporterConfig& cfg) : own_inner_(new InnerTransporter), inner_(*own_inner_), cfg_(cfg)
         { _init(); }
 
-        ZMQTransporter(InnerTransporter& inner) : inner_(inner)
+        ZMQTransporter(InnerTransporter& inner, const protobuf::ZMQTransporterConfig& cfg) : inner_(inner), cfg_(cfg)
         { _init(); }
         
         ~ZMQTransporter() { }
 
+        // direct publications (possibly without an "InnerTransporter")
         template<typename DataType, int scheme = scheme<DataType>()>
         void publish(const DataType& data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
@@ -178,7 +181,12 @@ namespace goby
         {
             inner_.subscribe<DataType, scheme>(group, func);
             std::string identifier = _make_identifier<DataType, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
-            //local_subscriptions_.insert(std::make_pair(identifier, f));
+
+            auto subscribe_lambda = [&](std::shared_ptr<DataType> d, const std::string& g, const goby::protobuf::TransporterConfig& t) { func(*d); };
+            typename InterProcessSubscription<DataType, scheme>::HandlerType subscribe_function(subscribe_lambda);
+            auto subscription = std::shared_ptr<InterProcessSubscriptionBase>(new InterProcessSubscription<DataType, scheme>(subscribe_function, group));
+            
+            local_subscriptions_.insert(std::make_pair(identifier, subscription));
             zmq_.subscribe(ZMQ_MARSHALLING_SCHEME, identifier, SOCKET_SUBSCRIBE);
         }
         
@@ -209,25 +217,37 @@ namespace goby
 
             goby::common::protobuf::ZeroMQServiceConfig cfg;
 
-            goby::common::protobuf::ZeroMQServiceConfig::Socket* subscribe_socket = cfg.add_socket();
-            subscribe_socket->set_socket_type(common::protobuf::ZeroMQServiceConfig::Socket::SUBSCRIBE);
-            subscribe_socket->set_socket_id(SOCKET_SUBSCRIBE);
-            subscribe_socket->set_transport(common::protobuf::ZeroMQServiceConfig::Socket::TCP);
-            subscribe_socket->set_connect_or_bind(common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
-            subscribe_socket->set_ethernet_address("127.0.0.1");
-            subscribe_socket->set_ethernet_port(5555);
+            goby::common::protobuf::ZeroMQServiceConfig::Socket* query_socket = cfg.add_socket();
+            query_socket->set_socket_type(common::protobuf::ZeroMQServiceConfig::Socket::REQUEST);
+            query_socket->set_socket_id(SOCKET_MANAGER);
 
-            goby::common::protobuf::ZeroMQServiceConfig::Socket* publish_socket = cfg.add_socket();
-            publish_socket->set_socket_type(common::protobuf::ZeroMQServiceConfig::Socket::PUBLISH);
-            publish_socket->set_socket_id(SOCKET_PUBLISH);
-            publish_socket->set_transport(common::protobuf::ZeroMQServiceConfig::Socket::TCP);
-            publish_socket->set_connect_or_bind(common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
-            publish_socket->set_ethernet_address("127.0.0.1");
-            publish_socket->set_ethernet_port(5556);
+            switch(cfg_.transport())
+            {
+                case protobuf::ZMQTransporterConfig::IPC:
+                    query_socket->set_transport(common::protobuf::ZeroMQServiceConfig::Socket::IPC);
+                    query_socket->set_socket_name((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.node()) + ".manager");
+                    break;
+                case protobuf::ZMQTransporterConfig::TCP:
+                    query_socket->set_transport(common::protobuf::ZeroMQServiceConfig::Socket::TCP);
+                    query_socket->set_ethernet_address(cfg_.ipv4_address());
+                    query_socket->set_ethernet_port(cfg_.tcp_port());
+                    break;
+            }
+            query_socket->set_connect_or_bind(common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
 
             zmq_.set_cfg(&cfg);
-            //            std::cout << "Bound to port: " << cfg.socket(0).ethernet_port() << std::endl;
-            publish_port_ = cfg.socket(0).ethernet_port();
+            
+            protobuf::ZMQManagerRequest req;
+            req.set_request(protobuf::PROVIDE_PUB_SUB_SOCKETS);
+            zmq_.send(ZMQ_MARSHALLING_SCHEME, "", req.SerializeAsString(), SOCKET_MANAGER);
+            poll(std::chrono::seconds(cfg_.manager_timeout_seconds()));
+            
+            if(!have_pubsub_sockets_)
+            {
+                std::cerr << "No response from manager: " << cfg_.ShortDebugString() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            
         }
         
         void _receive_publication_forwarded(std::shared_ptr<const goby::protobuf::InterProcessData> data)
@@ -262,15 +282,48 @@ namespace goby
                         const std::string& body,
                         int socket_id)
         {
-            for(auto &sub : forwarded_subscriptions_)
+            if(marshalling_scheme != ZMQ_MARSHALLING_SCHEME)
+                return;
+            
+            if(socket_id == SOCKET_SUBSCRIBE)
             {
-                std::cout << "Ide: [" << goby::util::hex_encode(identifier) << "]" << std::endl;
-
-                std::cout << "Sub: [" << goby::util::hex_encode(sub.first) << "]" << std::endl;
-                if(identifier.compare(0, sub.first.size(), sub.first) == 0)
+                for(auto &sub : forwarded_subscriptions_)
                 {
-                    std::vector<char> data(body.begin(), body.end());
-                    sub.second->post(data);
+                    if(identifier.compare(0, sub.first.size(), sub.first) == 0)
+                    {
+                        std::vector<char> data(body.begin(), body.end());
+                        sub.second->post(data);
+                    }
+                }
+                for(auto &sub : local_subscriptions_)
+                {
+                    if(identifier.compare(0, sub.first.size(), sub.first) == 0)
+                    {
+                        std::vector<char> data(body.begin(), body.end());
+                        sub.second->post(data);
+                    }
+                }
+            }
+            else if(socket_id == SOCKET_MANAGER)
+            {
+                protobuf::ZMQManagerResponse response;
+                response.ParseFromString(body);
+                if(response.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
+                {
+                    goby::common::protobuf::ZeroMQServiceConfig cfg;
+
+                    response.mutable_subscribe_socket()->set_socket_id(SOCKET_SUBSCRIBE);
+                    response.mutable_publish_socket()->set_socket_id(SOCKET_PUBLISH);
+
+                    if(response.subscribe_socket().transport() == common::protobuf::ZeroMQServiceConfig::Socket::TCP)
+                        response.mutable_subscribe_socket()->set_ethernet_address(cfg_.ipv4_address());
+                    if(response.publish_socket().transport() == common::protobuf::ZeroMQServiceConfig::Socket::TCP)
+                        response.mutable_publish_socket()->set_ethernet_address(cfg_.ipv4_address());
+                    
+                    *cfg.add_socket() = response.publish_socket();
+                    *cfg.add_socket() = response.subscribe_socket();
+                    zmq_.merge_cfg(&cfg);
+                    have_pubsub_sockets_ = true;
                 }
             }
         }
@@ -308,15 +361,60 @@ namespace goby
         
         std::unique_ptr<InnerTransporter> own_inner_;
         InnerTransporter& inner_;
+        const protobuf::ZMQTransporterConfig& cfg_;
         goby::common::ZeroMQService zmq_;
-        int publish_port_ = { 0 };
-
+        bool have_pubsub_sockets_{false};
+        
         // maps identifier to forwarded subscription
         std::unordered_map<std::string, std::shared_ptr<const InterProcessSubscriptionBase>> forwarded_subscriptions_;
 
         // maps identifier to local subscription function
-        // std::unordered_multimap<std::string, std::function<void(const DataType&)>> local_subscriptions_;
-        };
+        std::unordered_map<std::string, std::shared_ptr<const InterProcessSubscriptionBase>> local_subscriptions_;
+    };
+    
+    class ZMQRouter
+    {
+    public:
+    ZMQRouter(zmq::context_t& context, const goby::protobuf::ZMQTransporterConfig& cfg) :
+        context_(context),
+            cfg_(cfg)
+            { }
+
+        void run();
+        unsigned last_port(zmq::socket_t& socket);
+
+        
+        ZMQRouter(ZMQRouter&) = delete;
+        ZMQRouter& operator=(ZMQRouter&) = delete;
+    
+    public:
+        std::atomic<unsigned> pub_port{0};
+        std::atomic<unsigned> sub_port{0};
+    
+    private:
+        zmq::context_t& context_;
+        const goby::protobuf::ZMQTransporterConfig& cfg_;
+    
+    };
+
+    class ZMQManager
+    {
+    public:
+    ZMQManager(zmq::context_t& context, const goby::protobuf::ZMQTransporterConfig& cfg, const ZMQRouter& router) :
+        context_(context),
+            cfg_(cfg),
+            router_(router)
+            { }
+
+        void run();
+        
+    private:
+        zmq::context_t& context_;
+        const goby::protobuf::ZMQTransporterConfig& cfg_;
+        const ZMQRouter& router_;
+    };
+
+
 }
 
 

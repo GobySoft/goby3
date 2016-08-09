@@ -132,9 +132,9 @@ private:
 
 
 // thread 3
-void zmq_forward()
+void zmq_forward(const goby::protobuf::ZMQTransporterConfig& cfg)
 {
-    goby::ZMQTransporter<goby::InterThreadTransporter> zmq(inproc);
+    goby::ZMQTransporter<goby::InterThreadTransporter> zmq(inproc, cfg);
     zmq_ready = true;
     while(forward)
     {
@@ -142,39 +142,12 @@ void zmq_forward()
     }
 }
 
-// thread 4
-std::unique_ptr<zmq::context_t> router_context(new zmq::context_t(1));
-void zmq_router()
-{
-    //  Socket facing clients
-    zmq::socket_t frontend (*router_context, ZMQ_XPUB);
-    frontend.bind("tcp://*:5555");
-
-    //  Socket facing services
-    zmq::socket_t backend (*router_context, ZMQ_XSUB);
-    backend.bind("tcp://*:5556");
-
-    zmq_ready = true;
-    //  Start the proxy
-    try
-    {
-        zmq::proxy(frontend, backend, nullptr);
-    }
-    catch(const zmq::error_t& e)
-    {
-        // context terminated
-        if(e.num() == ETERM)
-            return;
-        else
-            throw(e);
-    }
-    
-}
-
-
 
 int main(int argc, char* argv[])
 {
+    goby::protobuf::ZMQTransporterConfig cfg;
+    cfg.set_node("test4");
+    
     pid_t child_pid = fork();
 
     bool is_child = (child_pid == 0);
@@ -199,48 +172,49 @@ int main(int argc, char* argv[])
     while(ready < max_subs)
         usleep(1e5);
 
-    std::unique_ptr<std::thread> t4;
+    std::unique_ptr<std::thread> t4, t5;
+    std::unique_ptr<zmq::context_t> manager_context;
+    std::unique_ptr<zmq::context_t> router_context;
     if(!is_child)
     {
-        t4.reset(new std::thread(zmq_router));
+        manager_context.reset(new zmq::context_t(1));
+        router_context.reset(new zmq::context_t(1));
+
+        goby::ZMQRouter router(*router_context, cfg);
+        t4.reset(new std::thread([&] { router.run(); }));
+        goby::ZMQManager manager(*manager_context, cfg, router);
+        t5.reset(new std::thread([&] { manager.run(); }));
+        sleep(1);
+        std::thread t3([&] { zmq_forward(cfg); });
         while(!zmq_ready)
             usleep(1e5);
-        zmq_ready = false;
-    }
-    
-    std::thread t3(zmq_forward);
-
-    while(!zmq_ready)
-        usleep(1e5);
-    
-    if(!is_child)
-    {
         std::thread t1(publisher);
         t1.join();
+        for(int i = 0; i < max_subs; ++i)
+            threads.at(i).join();
+        int wstatus;
+        wait(&wstatus);
+        forward = false;
+        t3.join();
+        manager_context.reset();
+        router_context.reset();
+        t4->join();
+        t5->join();
     }
     else
     {
+        std::thread t3([&] { zmq_forward(cfg); });
+        while(!zmq_ready)
+            usleep(1e5);
         std::thread t1(subscriber);
         t1.join();
+        for(int i = 0; i < max_subs; ++i)
+            threads.at(i).join();
+        forward = false;
+        t3.join();
+
     }
 
-    for(int i = 0; i < max_subs; ++i)
-        threads.at(i).join();
-    
-    if(!is_child)
-    {
-        int wstatus;
-        wait(&wstatus);
-    }
-
-    forward = false;
-    t3.join();
-
-    if(!is_child)
-    {
-        router_context.reset();
-        t4->join();
-    }
-    
     glog.is(VERBOSE) && glog << (is_child ? "subscriber" : "publisher") << ": all tests passed" << std::endl;
+    std::cout << (is_child ? "subscriber" : "publisher") << ": all tests passed" << std::endl;
 }

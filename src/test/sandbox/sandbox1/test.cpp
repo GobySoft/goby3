@@ -11,13 +11,23 @@ int main(int argc, char* argv[])
 {
     goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
-    goby::glog.set_lock_action(goby::common::logger_lock::lock);    
+    goby::glog.set_lock_action(goby::common::logger_lock::lock);
 
+    goby::protobuf::ZMQTransporterConfig cfg;
+    cfg.set_node("test1");
+    std::unique_ptr<zmq::context_t> manager_context(new zmq::context_t(1));
+    std::unique_ptr<zmq::context_t> router_context(new zmq::context_t(1));
+    goby::ZMQRouter router(*router_context, cfg);
+    std::thread t1([&] { router.run(); });
+    goby::ZMQManager manager(*manager_context, cfg, router);
+    std::thread t2([&] { manager.run(); });
+    
     //    goby::ProtobufMarshaller pb;
     goby::InterThreadTransporter inproc;
-    goby::ZMQTransporter<> zmq_blank;
+    goby::ZMQTransporter<> zmq_blank(cfg);
     goby::InterProcessTransporter<goby::InterThreadTransporter> interprocess_default(inproc);
-    goby::ZMQTransporter<goby::InterThreadTransporter> zmq(inproc);
+    goby::ZMQTransporter<goby::InterThreadTransporter> zmq(inproc, cfg);
+
     
     CTDSample s;
     s.set_salinity(38.5);
@@ -47,7 +57,13 @@ int main(int argc, char* argv[])
 
     goby::SlowLinkTransporter<decltype(zmq)> slow(zmq);
     slow.publish(s, "CTD4");
-    
+
+
+    router_context.reset();
+    manager_context.reset();
+    t1.join();
+    t2.join();
+
     std::cout << "all tests passed" << std::endl;
 }
 

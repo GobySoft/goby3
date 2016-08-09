@@ -4,6 +4,7 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
 set(SRC
   serialize_parse.cpp
   transport-interthread.cpp
+  transport-interprocess.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 
