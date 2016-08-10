@@ -88,7 +88,7 @@ void subscriber(const goby::protobuf::ZMQTransporterConfig& cfg)
 int main(int argc, char* argv[])
 {
     goby::protobuf::ZMQTransporterConfig cfg;
-    cfg.set_node("test4");
+    cfg.set_platform("test4");
     cfg.set_transport(goby::protobuf::ZMQTransporterConfig::TCP);
     cfg.set_ipv4_address("127.0.0.1");
     cfg.set_tcp_port(10005);
@@ -127,6 +127,7 @@ int main(int argc, char* argv[])
         manager_context.reset();
         t2->join();
         t3->join();
+        if(wstatus != 0) exit(EXIT_FAILURE);
     }
     else
     {

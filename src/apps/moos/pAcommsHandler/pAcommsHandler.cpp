@@ -576,7 +576,6 @@ void CpAcommsHandler::create_driver(boost::shared_ptr<goby::acomms::ModemDriverB
     }
     else
     {
-    
         switch(driver_type)
         {
             case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:

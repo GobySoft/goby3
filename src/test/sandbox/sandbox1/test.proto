@@ -6,9 +6,9 @@ message CTDSample
     option (dccl.msg).max_bytes = 32;
     option (dccl.msg).codec_version = 3;
     
-    optional double salinity = 1;
-    optional double temperature = 2;
-    optional double depth = 3;
+    optional double salinity = 1 [(dccl.field) = { min: 0 max: 40 precision: 1}];
+    optional double temperature = 2 [(dccl.field) = { min: 3 max: 30 precision: 1}];
+    optional double depth = 3 [(dccl.field) = { min: 0 max: 5000 }];
 }
 
 

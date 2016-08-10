@@ -146,7 +146,7 @@ void zmq_forward(const goby::protobuf::ZMQTransporterConfig& cfg)
 int main(int argc, char* argv[])
 {
     goby::protobuf::ZMQTransporterConfig cfg;
-    cfg.set_node("test4");
+    cfg.set_platform("test4");
     
     pid_t child_pid = fork();
 
@@ -200,6 +200,7 @@ int main(int argc, char* argv[])
         router_context.reset();
         t4->join();
         t5->join();
+        if(wstatus != 0) exit(EXIT_FAILURE);
     }
     else
     {

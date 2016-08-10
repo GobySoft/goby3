@@ -23,8 +23,8 @@ void goby::ZMQRouter::run()
     {
         case goby::protobuf::ZMQTransporterConfig::IPC:
         {
-            std::string xpub_sock_name = "ipc://" + (cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.node()) + ".xpub";
-            std::string xsub_sock_name = "ipc://" + (cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.node()) + ".xsub";
+            std::string xpub_sock_name = "ipc://" + (cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".xpub";
+            std::string xsub_sock_name = "ipc://" + (cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".xsub";
             frontend.bind(xpub_sock_name.c_str());
             backend.bind(xsub_sock_name.c_str());
             break;
@@ -60,7 +60,7 @@ void goby::ZMQManager::run()
     {
         case goby::protobuf::ZMQTransporterConfig::IPC:
         {
-            std::string sock_name = "ipc://" + ((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.node()) + ".manager");
+            std::string sock_name = "ipc://" + ((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".manager");
             socket.bind(sock_name.c_str());
             break;
         }
@@ -103,8 +103,8 @@ void goby::ZMQManager::run()
                     case goby::protobuf::ZMQTransporterConfig::IPC:
                         subscribe_socket->set_transport(goby::common::protobuf::ZeroMQServiceConfig::Socket::IPC);
                         publish_socket->set_transport(goby::common::protobuf::ZeroMQServiceConfig::Socket::IPC);
-                        subscribe_socket->set_socket_name((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.node()) + ".xpub");
-                        publish_socket->set_socket_name((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.node()) + ".xsub");
+                        subscribe_socket->set_socket_name((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".xpub");
+                        publish_socket->set_socket_name((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".xsub");
                         break;
                     case goby::protobuf::ZMQTransporterConfig::TCP:
                         subscribe_socket->set_transport(goby::common::protobuf::ZeroMQServiceConfig::Socket::TCP);

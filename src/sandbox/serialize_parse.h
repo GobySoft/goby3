@@ -1,14 +1,13 @@
 #ifndef SerializeParse20160607H
 #define SerializeParse20160607H
 
-// TODO remove
-#include <iostream>
-
 #include <map>
 #include <type_traits>
+#include <unordered_map>
+#include <typeindex>
 
 #include <google/protobuf/message.h>
-
+#include <dccl.h>
 
 namespace goby 
 {
@@ -53,12 +52,16 @@ namespace goby
 
         static std::string type_name(const DataType& msg)
         { return "CSTR"; }
-        
-        static DataType parse(const std::vector<char>& bytes)
+
+        template<typename CharIterator>
+        static DataType parse(CharIterator bytes_begin,
+                              CharIterator bytes_end,
+                              CharIterator& actual_end)
         {
-            if(bytes.size())
+            actual_end = bytes_end;
+            if(bytes_begin != bytes_end)
             {
-                DataType msg(bytes.begin(), bytes.end()-1);
+                DataType msg(bytes_begin, bytes_end-1);
                 return msg;
             }
             else
@@ -82,35 +85,92 @@ namespace goby
         static std::string type_name(const DataType& msg)
         { return DataType::descriptor()->full_name(); }
 
-        static DataType parse(const std::vector<char>& bytes)
+        template<typename CharIterator>
+        static DataType parse(CharIterator bytes_begin,
+                              CharIterator bytes_end,
+                              CharIterator& actual_end)
         {
             DataType msg;
-            msg.ParseFromArray(bytes.data(), bytes.size());
+            msg.ParseFromArray(&*bytes_begin, bytes_end-bytes_begin);
+            actual_end = bytes_begin + msg.ByteSize();
             return msg;
         }
     };
 
-    // TODO, actually use DCCL Codec
-    template<typename DataType>
-        struct SerializerParserHelper<DataType, MarshallingScheme::DCCL>
+    struct DCCLSerializerParserHelperBase
     {
+    private:
+        static std::unique_ptr<dccl::Codec> codec_;
+
+    protected:
+        struct LoaderBase { };
+        
+        template<typename DataType>
+        struct Loader : public LoaderBase
+        {
+            Loader()
+                { codec().load<DataType>(); }
+            ~Loader()
+                { codec().unload<DataType>(); }
+            void check() { }
+        };
+        
+        static std::unordered_map<std::type_index, std::unique_ptr<LoaderBase>> loader_map_;
+
+        template<typename DataType>
+        static void check_load()
+            {
+                auto index = std::type_index(typeid(DataType));
+                if(!loader_map_.count(index))
+                    loader_map_.insert(std::make_pair(index, std::unique_ptr<LoaderBase>(new Loader<DataType>())));
+            }
+                    
+    public:
+        static dccl::Codec& codec()
+        {
+            if(!codec_) codec_.reset(new dccl::Codec);
+            return *codec_;
+        }
+        
+        static dccl::Codec& set_codec(dccl::Codec* new_codec)
+        {
+            codec_.reset(new_codec);
+            loader_map_.clear();
+            return *new_codec;
+        }
+    };
+    
+    
+    template<typename DataType>
+        struct SerializerParserHelper<DataType, MarshallingScheme::DCCL> : public DCCLSerializerParserHelperBase
+    {
+    public:
         static std::vector<char> serialize(const DataType& msg)
         {
-            std::vector<char> bytes(msg.ByteSize(), 0);
-            msg.SerializeToArray(bytes.data(), bytes.size());
+            check_load<DataType>();
+            std::vector<char> bytes(codec().size(msg), 0);
+            codec().encode(bytes.data(), bytes.size(), msg);
             return bytes;
         }
 
         static std::string type_name(const DataType& msg)
         { return DataType::descriptor()->full_name(); }
 
-        static DataType parse(const std::vector<char>& bytes)
+        template<typename CharIterator>
+        static DataType parse(CharIterator bytes_begin,
+                              CharIterator bytes_end,
+                              CharIterator& actual_end)
         {
+            check_load<DataType>();
             DataType msg;
-            msg.ParseFromArray(bytes.data(), bytes.size());
+            actual_end = codec().decode(bytes_begin, bytes_end, &msg);
             return msg;
         }
+
+
+    private:
     };
+
 
     template<typename T,
         typename std::enable_if<std::is_same<T, std::string>::value>::type* = nullptr>

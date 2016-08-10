@@ -11,7 +11,7 @@ set(SRC
 add_library(goby_sandbox ${SRC})
 
 
-target_link_libraries(goby_sandbox ${PROTOBUF_LIBRARY})
+target_link_libraries(goby_sandbox ${PROTOBUF_LIBRARY} goby_acomms)
 set_target_properties(goby_sandbox PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
 goby_install_lib(goby_sandbox)

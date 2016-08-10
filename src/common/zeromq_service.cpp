@@ -166,7 +166,7 @@ void goby::common::ZeroMQService::process_cfg(protobuf::ZeroMQServiceConfig& cfg
                 size_t last_endpoint_size = 100;
                 char last_endpoint[last_endpoint_size];
                 int rc = zmq_getsockopt (*this_socket, ZMQ_LAST_ENDPOINT, &last_endpoint, &last_endpoint_size);
-
+                
                 if(rc != 0)
                     throw(std::runtime_error("Could not retrieve ZMQ_LAST_ENDPOINT"));
 
@@ -348,12 +348,12 @@ void goby::common::ZeroMQService::handle_receive(const void* data,
     }
 }
 
-bool goby::common::ZeroMQService::poll(long timeout /* = -1 */)
+int goby::common::ZeroMQService::poll(long timeout /* = -1 */)
 {
     boost::mutex::scoped_lock slock(poll_mutex_);
 
 //    glog.is(DEBUG2) && glog << "Have " << poll_items_.size() << " items to poll" << std::endl ;   
-    bool had_events = false;
+    int had_events = 0;
     zmq::poll (&poll_items_[0], poll_items_.size(), timeout/ZMQ_POLL_DIVISOR);
     for(int i = 0, n = poll_items_.size(); i < n; ++i)
     {
@@ -401,7 +401,7 @@ bool goby::common::ZeroMQService::poll(long timeout /* = -1 */)
                 zmq_msg_close (&part);
                 ++message_part;
             } while (more);
-            had_events = true;
+            ++had_events;
         }
     }
     return had_events;

@@ -6,3 +6,6 @@ std::map<int, std::string> goby::MarshallingScheme::e2s =
   {DCCL, "DCCL"},
   {CAPTN_PROTO, "CAPTN_PROTO"},
   {MSGPACK, "MSGPACK"} };
+
+std::unique_ptr<dccl::Codec> goby::DCCLSerializerParserHelperBase::codec_(nullptr);
+std::unordered_map<std::type_index, std::unique_ptr<goby::DCCLSerializerParserHelperBase::LoaderBase>> goby::DCCLSerializerParserHelperBase::loader_map_;

@@ -180,7 +180,7 @@ namespace goby
             { inbox_signal_.connect(slot); }
 
             
-            bool poll(long timeout = -1);
+            int poll(long timeout = -1);
 	    void close_all()
 	    {
 	      sockets_.clear();

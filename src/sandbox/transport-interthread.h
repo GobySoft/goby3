@@ -12,7 +12,6 @@
 
 namespace goby
 {
-    typedef std::string Group;
     
     extern std::recursive_timed_mutex subscription_mutex;
     class SubscriptionStoreBase

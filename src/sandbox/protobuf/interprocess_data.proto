@@ -2,7 +2,7 @@ import "goby/sandbox/protobuf/transporter_config.proto";
 
 package goby.protobuf;
 
-message InterProcessData
+message SerializerTransporterData
 {
     required int32 marshalling_scheme = 1;
     required string type = 2;
@@ -11,3 +11,7 @@ message InterProcessData
     optional TransporterConfig cfg = 5;
 }
 
+message InterVehicleSubscription
+{
+    
+}

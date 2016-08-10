@@ -4,7 +4,7 @@ package goby.protobuf;
 
 message ZMQTransporterConfig
 {
-    required string node = 1;
+    required string platform = 1;
     
     enum Transport
     {
