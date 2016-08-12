@@ -61,18 +61,18 @@ void handle_sample2(const Sample& sample)
 }
 
 
-void handle_widget(const Widget& widget)
+void handle_widget(std::shared_ptr<const Widget> widget)
 {
-    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << widget.ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << widget->ShortDebugString() << std::endl;
     ++ipc_receive_count;
 }
 
 void subscriber()
 {
     goby::InterProcessTransporter<goby::InterThreadTransporter> ipc(inproc);
-    ipc.subscribe<Sample>("Sample1", &handle_sample1);
-    ipc.subscribe<Sample>("Sample2", &handle_sample2);
-    ipc.subscribe<Widget>("Widget", &handle_widget);
+    ipc.subscribe<Sample>(&handle_sample1, "Sample1");
+    ipc.subscribe<Sample>(&handle_sample2, "Sample2");
+    ipc.subscribe<Widget>(&handle_widget, "Widget");
     while(ipc_receive_count < 3*max_publish)
         ipc.poll();
 }
@@ -87,11 +87,9 @@ class ThreadSubscriber
 public:
     void run()
         {
-            // subscribe using lambda capture
-            inproc.subscribe<Sample>("Sample1", [&](const Sample& s) { handle_sample1(s); });
-            // subscribe using overload for member functions
-            inproc.subscribe<Sample>("Sample2", &ThreadSubscriber::handle_sample2, this);
-            inproc.subscribe("Widget", &ThreadSubscriber::handle_widget1, this);
+            inproc.subscribe<Sample>([&](const Sample& s) { handle_sample1(s); }, "Sample1");
+            inproc.subscribe<Sample>([&](std::shared_ptr<const Sample> s) { handle_sample2(s); }, "Sample2");
+            inproc.subscribe<Widget>([&](std::shared_ptr<const Widget> w) { handle_widget1(w); }, "Widget");
             ++ready;
             while(receive_count1 < max_publish || receive_count2 < max_publish || receive_count3 < max_publish)
             {

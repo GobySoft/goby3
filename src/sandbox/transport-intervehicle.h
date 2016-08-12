@@ -23,11 +23,11 @@
 
 namespace goby
 {   
-    template<typename InnerTransporter>
-        class InterVehicleTransporter : public SerializationTransporterBase<InnerTransporter, int>
+    template<typename InnerTransporter, typename GroupType = int>
+        class InterVehicleTransporter : public SerializationTransporterBase<InnerTransporter, GroupType>
         {
         public:
-            typedef int Group;
+            typedef GroupType Group;
             
         InterVehicleTransporter(InnerTransporter& inner) : SerializationTransporterBase<InnerTransporter, Group>(inner) { }
             ~InterVehicleTransporter() { }
@@ -37,61 +37,60 @@ namespace goby
             const std::string& forward_group_name() override { return forward_group; }
         };
 
-    template<typename InnerTransport>
-        const std::string InterVehicleTransporter<InnerTransport>::forward_group( "goby::InterVehicleTransporter");
+    template<typename InnerTransport, typename GroupType>
+        const std::string InterVehicleTransporter<InnerTransport, GroupType>::forward_group( "goby::InterVehicleTransporter");
     
     
 
-    template<typename InnerTransporter = NoOpTransporter>
+    template<typename InnerTransporter = NoOpTransporter, typename GroupType = int>
         class SlowLinkTransporter
         {
         public:
-        typedef typename InterVehicleTransporter<InnerTransporter>::Group Group;
+        typedef typename InterVehicleTransporter<InnerTransporter, GroupType>::Group Group;
 
         SlowLinkTransporter(const protobuf::SlowLinkTransporterConfig& cfg) : own_inner_(new InnerTransporter), inner_(*own_inner_), cfg_(cfg) { _init(); }
         SlowLinkTransporter(InnerTransporter& inner, const protobuf::SlowLinkTransporterConfig& cfg) : inner_(inner), cfg_(cfg) { _init(); }
         ~SlowLinkTransporter() { }
 
-        template<typename DCCLMessage>
-        void publish(const DCCLMessage& data,
-                     const Group& group,
+        template<typename Data>
+        void publish(const Data& data,
+                     const Group& group = Group(),
                      const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
-            _publish<DCCLMessage>(data, group, transport_cfg);
-            inner_.publish<DCCLMessage, MarshallingScheme::DCCL>(data, group_convert(group), transport_cfg);
+            _publish<Data>(data, group, transport_cfg);
+            inner_.publish<Data, MarshallingScheme::DCCL>(data, group_convert(group), transport_cfg);
         }
 
-        template<typename DCCLMessage>
-        void publish(std::shared_ptr<DCCLMessage> data,
-                     const Group& group,
+        template<typename Data>
+        void publish(std::shared_ptr<Data> data,
+                     const Group& group = Group(),
                      const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             if(data)
             {
-                _publish<DCCLMessage>(*data, group, transport_cfg);
-                inner_.publish<DCCLMessage, MarshallingScheme::DCCL>(data, group_convert(group), transport_cfg);
+                _publish<Data>(*data, group, transport_cfg);
+                inner_.publish<Data, MarshallingScheme::DCCL>(data, group_convert(group), transport_cfg);
             }
         }
 
-        // direct subscriptions (possibly without an "InnerTransporter")
-        template<typename DCCLMessage>
-        void subscribe(const Group& group,
-                       std::function<void(const DCCLMessage&)> func)
-        {
-            inner_.subscribe<DCCLMessage, MarshallingScheme::DCCL>(group_convert(group), func);
-            int dccl_id = SerializerParserHelper<DCCLMessage, MarshallingScheme::DCCL>::codec().template id<DCCLMessage>();
-            
-            auto subscribe_lambda = [&](std::shared_ptr<DCCLMessage> d, const std::string& g, const goby::protobuf::TransporterConfig& t) { func(*d); };
-            typename SerializationSubscription<DCCLMessage, MarshallingScheme::DCCL>::HandlerType subscribe_function(subscribe_lambda);
-            auto subscription = std::shared_ptr<SerializationSubscriptionBase>(new SerializationSubscription<DCCLMessage, MarshallingScheme::DCCL>(subscribe_function, group_convert(group)));
-            
-            subscriptions_.insert(std::make_pair(dccl_id, subscription));
-        }
 
-        template<typename DataType, int scheme = scheme<DataType>(), class C>
-        void subscribe(const std::string& group, void(C::*mem_func)(const DataType&), C* c)
+        // direct subscriptions (possibly without an "InnerTransporter")
+        template<typename Data>
+        void subscribe(std::function<void(const Data&)> func,
+                       const Group& group = Group(),
+                       std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
-            subscribe<DataType, scheme>(group, [=](const DataType& d) { (c->*mem_func)(d); });
+            inner_.subscribe<Data, MarshallingScheme::DCCL>(func, group_convert(group));
+            _subscribe<Data>([=](std::shared_ptr<const Data> d) { func(*d); }, group, group_func);
+        }
+        
+        template<typename Data>
+        void subscribe(std::function<void(std::shared_ptr<const Data>)> func,
+                       const Group& group = Group(),
+                       std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
+        {
+            inner_.subscribe<Data, MarshallingScheme::DCCL>(func, group_convert(group));
+            _subscribe<Data>(func, group, group_func);
         }
 
         
@@ -119,21 +118,33 @@ namespace goby
         }
         
         private:
-        template<typename DCCLMessage>
-        void _publish(const DCCLMessage& data,
+        template<typename Data>
+        void _publish(const Data& data,
                       const Group& group,
                       const goby::protobuf::TransporterConfig& transport_cfg)
         {
-            static_assert(scheme<DCCLMessage>() == MarshallingScheme::DCCL, "Can only use DCCL messages with SlowLinkTransporter");
+            static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with SlowLinkTransporter");
             
-            std::vector<char> bytes(SerializerParserHelper<DCCLMessage, MarshallingScheme::DCCL>::serialize(data));
-            std::cout << "SlowLinkTransporter: Publishing to group [" << group << "], using scheme [" << MarshallingScheme::as_string(MarshallingScheme::DCCL) << "]: " << goby::util::hex_encode(std::string(bytes.begin(), bytes.end())) << std::endl;
-
+            std::vector<char> bytes(SerializerParserHelper<Data, MarshallingScheme::DCCL>::serialize(data));
             q_manager_.push_message(data);
         }
 
-        private:
-
+        template<typename Data>
+        void _subscribe(std::function<void(std::shared_ptr<const Data> d)> func,
+                        const Group& group,
+                        std::function<Group(const Data&)> group_func)
+        {
+            int dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::codec().template id<Data>();
+            auto subscribe_lambda = [=](std::shared_ptr<Data> d, const std::string& g, const goby::protobuf::TransporterConfig& t) { func(d); };
+            typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType subscribe_function(subscribe_lambda);
+            auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
+                new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function,
+                                                                             group_convert(group),
+                                                                             [=](const Data&d) { return group_convert(group_func(d)); })); 
+            
+            subscriptions_[dccl_id].insert(std::make_pair(group_convert(group), subscription));
+        }
+        
         void _init()
         {
             switch(cfg_.driver_type())
@@ -167,12 +178,10 @@ namespace goby
     
             driver_->signal_receive.connect([&](const goby::acomms::protobuf::ModemTransmission& rx_msg) { this->_receive(rx_msg); });
 
-            //inner_.subscribe<goby::protobuf::SerializerTransporterData>(InterVehicleTransporter<InnerTransporter>::forward_group, &SlowLinkTransporter::_receive_publication_forwarded, this);
-            inner_.subscribe<goby::protobuf::SerializerTransporterData>(InterVehicleTransporter<InnerTransporter>::forward_group,
-                                                                        [this](const goby::protobuf::SerializerTransporterData& d) { this->_receive_publication_forwarded(d); });
+            inner_.subscribe<goby::protobuf::SerializerTransporterData>([this](const goby::protobuf::SerializerTransporterData& d) { _receive_publication_forwarded(d); }, InterVehicleTransporter<InnerTransporter, GroupType>::forward_group);
 
             
-            inner_.subscribe<goby::protobuf::InterVehicleSubscription>(InterVehicleTransporter<InnerTransporter>::forward_group, &SlowLinkTransporter::_receive_subscription_forwarded, this);
+            inner_.subscribe<goby::protobuf::InterVehicleSubscription>([this](const goby::protobuf::InterVehicleSubscription& d) { _receive_subscription_forwarded(d); },InterVehicleTransporter<InnerTransporter, GroupType>::forward_group);
 
             q_manager_.set_cfg(cfg_.queue_cfg());
             mac_.startup(cfg_.mac_cfg());
@@ -188,12 +197,11 @@ namespace goby
                 while(frame_it < frame_end)
                 {
                     auto dccl_id = DCCLSerializerParserHelperBase::codec().id(frame_it, frame_end);
-                    auto p = subscriptions_.equal_range(dccl_id);
-                    for (auto sub_it = p.first; sub_it != p.second; ++sub_it)
-                    {
-                        ++received_items_;
-                        frame_it = sub_it->second->post(frame_it, frame_end);
-                    }
+                    std::string::const_iterator next_frame_it;
+                    for(auto p : subscriptions_[dccl_id])
+                        next_frame_it = p.second->post(frame_it, frame_end);
+                    frame_it = next_frame_it;
+                    ++received_items_;
                 }
             }
             
@@ -216,8 +224,8 @@ namespace goby
 
         const goby::protobuf::SlowLinkTransporterConfig& cfg_;
         
-        // maps DCCL ID to subscription
-        std::unordered_map<int, std::shared_ptr<const SerializationSubscriptionBase>> subscriptions_;
+        // maps DCCL ID to map of Group->subscription
+        std::unordered_map<int, std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase>>> subscriptions_;
 
         goby::acomms::QueueManager q_manager_;
 

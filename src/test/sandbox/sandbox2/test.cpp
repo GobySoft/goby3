@@ -40,9 +40,9 @@ class Subscriber
 public:
     void run()
         {
-            inproc.subscribe<Sample>("Sample1", &Subscriber::handle_sample1, this);
-            inproc.subscribe<Sample>("Sample2", &Subscriber::handle_sample2, this);
-            inproc.subscribe("Widget", &Subscriber::handle_widget1, this);
+            inproc.subscribe<Sample>([this](std::shared_ptr<const Sample> s) { handle_sample1(s); }, "Sample1");
+            inproc.subscribe<Sample>([this](std::shared_ptr<const Sample> s) { handle_sample2(s); }, "Sample2");
+            inproc.subscribe<Widget>([this](std::shared_ptr<const Widget> w) { handle_widget1(w); }, "Widget");
             while(receive_count1 < max_publish || receive_count2 < max_publish || receive_count3 < max_publish)
             {
                 ++ready;

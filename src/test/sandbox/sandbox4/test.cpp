@@ -59,9 +59,9 @@ void handle_sample1(const Sample& sample)
     ++ipc_receive_count;
 }
 
-void handle_sample2(const Sample& sample)
+void handle_sample2(std::shared_ptr<const Sample> sample)
 {
-    glog.is(DEBUG1) && glog <<  "ZMQTransporter received publication sample2: " << sample.ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "ZMQTransporter received publication sample2: " << sample->ShortDebugString() << std::endl;
     ++ipc_receive_count;
 }
 
@@ -75,9 +75,9 @@ void handle_widget(const Widget& widget)
 void subscriber(const goby::protobuf::ZMQTransporterConfig& cfg)
 {
     goby::ZMQTransporter<> zmq(cfg);
-    zmq.subscribe<Sample>("Sample1", &handle_sample1);
-    zmq.subscribe<Sample>("Sample2", &handle_sample2);
-    zmq.subscribe<Widget>("Widget", &handle_widget);
+    zmq.subscribe<Sample>(&handle_sample1, "Sample1");
+    zmq.subscribe<Sample>(&handle_sample2, "Sample2");
+    zmq.subscribe<Widget>(&handle_widget, "Widget");
     while(ipc_receive_count < 3*max_publish)
     {
         zmq.poll();

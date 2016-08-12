@@ -27,34 +27,60 @@ void direct_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, const
 {
     goby::ZMQTransporter<> zmq(zmq_cfg);
     goby::SlowLinkTransporter<decltype(zmq)> slt(zmq, slow_cfg);
-    try
+
+    double a = 0;
+    while(publish_count < max_publish)
     {
-        double a = 0;
-        while(publish_count < max_publish)
-        {
-            auto s1 = std::make_shared<Sample>();
-            s1->set_a(a++);
-            s1->set_group(1);
-            slt.publish(s1, s1->group());
+        auto s1 = std::make_shared<Sample>();
+        s1->set_a(a-10);
+        s1->set_group(1);
+        slt.publish(s1, s1->group());
+
+        auto s2 = std::make_shared<Sample>();
+        s2->set_a(a++);
+        s2->set_group(2);
+        slt.publish(s2, s2->group());
+
+        Widget w;
+        w.set_b(a-2);
+        slt.publish(w);
             
-            glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
-            usleep(1e3);
-            ++publish_count;
-        }    
+        glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
+        usleep(1e3);
+        ++publish_count;
+    }    
 
-        while(forward)
-        {
-            slt.poll(std::chrono::milliseconds(100));
-        }
-
-    }
-    catch(std::exception& e)
+    while(forward)
     {
-        std::cerr << e.what() << std::endl;
-        return;
+        slt.poll(std::chrono::milliseconds(100));
     }
-    
 }
+
+// thread 2
+void indirect_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
+{
+    goby::ZMQTransporter<> zmq(zmq_cfg);
+    goby::InterVehicleTransporter<decltype(zmq)> intervehicle(zmq);
+    double a = 0;
+    while(publish_count < max_publish)
+    {
+        auto s1 = std::make_shared<Sample>();
+        s1->set_a(a-10);
+        s1->set_group(3);
+        intervehicle.publish(s1, s1->group());
+            
+        glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
+        usleep(1e3);
+        ++publish_count;
+    }    
+
+    while(forward)
+    {
+        intervehicle.poll(std::chrono::milliseconds(100));
+    }
+}
+
+
 
 // child process
 void handle_sample1(const Sample& sample)
@@ -63,42 +89,50 @@ void handle_sample1(const Sample& sample)
     ++ipc_receive_count;
 }
 
+void handle_sample_indirect(const Sample& sample)
+{
+    glog.is(DEBUG1) && glog <<  "SlowLinkTransporter received indirect sample: " << sample.ShortDebugString() << std::endl;
+    ++ipc_receive_count;
+}
+
+void handle_widget(std::shared_ptr<const Widget> w)
+{
+    glog.is(DEBUG1) && glog <<  "SlowLinkTransporter received publication widget: " << w->ShortDebugString() << std::endl;
+    ++ipc_receive_count;
+}
+
 void direct_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, const goby::protobuf::SlowLinkTransporterConfig& slow_cfg)
 {
     goby::ZMQTransporter<> zmq(zmq_cfg);
     goby::SlowLinkTransporter<decltype(zmq)> slt(zmq, slow_cfg);
-    try
+
+    slt.subscribe<Sample>(&handle_sample1, 2, [](const Sample& s) { return s.group(); });
+    slt.subscribe<Sample>(&handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
+    slt.subscribe<Widget>(&handle_widget);
+
+    while(ipc_receive_count < 2*max_publish)
     {
-        slt.subscribe<Sample>(1, &handle_sample1);
-        while(ipc_receive_count < max_publish)
-        {
-            slt.poll();
-            std::cout << "poll" << std::endl;
-        }
+        slt.poll();
+        std::cout << "poll" << std::endl;
     }
-    catch(std::exception& e)
-    {
-        std::cerr << e.what() << std::endl;
-        return;
-    }
+
 }
 
 int main(int argc, char* argv[])
 {
     pid_t child_pid = fork();
-
+    
     bool is_child = (child_pid == 0);
 
     // goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
-
     std::string os_name = std::string("/tmp/goby_test_sandbox5_") + (is_child ? "subscriber" : "publisher");
     std::ofstream os(os_name.c_str());
     goby::glog.add_stream(goby::common::logger::DEBUG3, &os);
-    dccl::dlog.connect(dccl::logger::ALL, &os, true);
+    //    dccl::dlog.connect(dccl::logger::ALL, &os, true);
     goby::glog.set_name(std::string(argv[0]) + (is_child ? "_subscriber" : "_publisher"));
     goby::glog.set_lock_action(goby::common::logger_lock::lock);                        
 
-    std::unique_ptr<std::thread> t2, t3;
+    std::unique_ptr<std::thread> t10, t11;
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
 
@@ -109,17 +143,23 @@ int main(int argc, char* argv[])
         driver_cfg.MutableExtension(UDPDriverConfig::local);
     UDPDriverConfig::EndPoint* remote_endpoint =
         driver_cfg.MutableExtension(UDPDriverConfig::remote);
+    driver_cfg.SetExtension(UDPDriverConfig::max_frame_size, 64);
     
     goby::acomms::protobuf::MACConfig& mac_cfg = *slow_cfg.mutable_mac_cfg();
     mac_cfg.set_type(goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED);
     goby::acomms::protobuf::ModemTransmission& slot = *mac_cfg.add_slot();
-    slot.set_slot_seconds(1);
+    slot.set_slot_seconds(0.2);
     goby::acomms::protobuf::QueueManagerConfig& queue_cfg = *slow_cfg.mutable_queue_cfg();
-    goby::acomms::protobuf::QueuedMessageEntry& ctd_entry = *queue_cfg.add_message_entry();
-    ctd_entry.set_protobuf_name("Sample");
-    ctd_entry.set_newest_first(false);
-    ctd_entry.set_max_queue(max_publish + 1);
+    goby::acomms::protobuf::QueuedMessageEntry& sample_entry = *queue_cfg.add_message_entry();
+    sample_entry.set_protobuf_name("Sample");
+    sample_entry.set_newest_first(false);
+    sample_entry.set_max_queue(2*max_publish + 1);
 
+    goby::acomms::protobuf::QueuedMessageEntry& widget_entry = *queue_cfg.add_message_entry();
+    widget_entry.set_protobuf_name("Widget");
+    widget_entry.set_newest_first(false);
+    widget_entry.set_max_queue(max_publish + 1);
+    
     if(!is_child)
     {
         driver_cfg.set_modem_id(1);
@@ -138,12 +178,15 @@ int main(int argc, char* argv[])
         router_context.reset(new zmq::context_t(1));
 
         goby::ZMQRouter router(*router_context, zmq_cfg);
-        t2.reset(new std::thread([&] { router.run(); }));
+        t10.reset(new std::thread([&] { router.run(); }));
         goby::ZMQManager manager(*manager_context, zmq_cfg, router);
-        t3.reset(new std::thread([&] { manager.run(); }));
+        t11.reset(new std::thread([&] { manager.run(); }));
         sleep(1);
         
+
         std::thread t1([&] { direct_publisher(zmq_cfg, slow_cfg); });
+        sleep(2);
+        std::thread t2([&] { indirect_publisher(zmq_cfg); });
         int wstatus;
         wait(&wstatus);
         
@@ -151,8 +194,8 @@ int main(int argc, char* argv[])
         t1.join();
         router_context.reset();
         manager_context.reset();
-        t2->join();
-        t3->join();
+        t10->join();
+        t11->join();
         if(wstatus != 0) exit(EXIT_FAILURE);
     }
     else
@@ -172,17 +215,17 @@ int main(int argc, char* argv[])
         router_context.reset(new zmq::context_t(1));
 
         goby::ZMQRouter router(*router_context, zmq_cfg);
-        t2.reset(new std::thread([&] { router.run(); }));
+        t10.reset(new std::thread([&] { router.run(); }));
         goby::ZMQManager manager(*manager_context, zmq_cfg, router);
-        t3.reset(new std::thread([&] { manager.run(); }));
+        t11.reset(new std::thread([&] { manager.run(); }));
         sleep(1);
         
         std::thread t1([&] { direct_subscriber(zmq_cfg, slow_cfg); });
         t1.join();
         router_context.reset();
         manager_context.reset();
-        t2->join();
-        t3->join();
+        t10->join();
+        t11->join();
     }
 
     glog.is(VERBOSE) && glog << (is_child ? "subscriber" : "publisher") << ": all tests passed" << std::endl;

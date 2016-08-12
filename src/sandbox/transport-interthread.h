@@ -50,19 +50,19 @@ namespace goby
         
 
     private:
-        // stores a map of DataTypes to SubscriptionStores so that can call poll() on all the stores
+        // stores a map of Datas to SubscriptionStores so that can call poll() on all the stores
         static std::unordered_map<std::type_index, std::unique_ptr<SubscriptionStoreBase>> stores_;
         static std::timed_mutex stores_mutex_;
     };
 
     
-    template<typename DataType>
+    template<typename Data>
         class SubscriptionStore : public SubscriptionStoreBase
     {        
     public:
         typedef std::string Group;
 
-        static void subscribe(const Group& group, std::function<void(std::shared_ptr<const DataType>)> func, std::thread::id thread_id, std::shared_ptr<std::condition_variable_any> cv)
+        static void subscribe(std::function<void(std::shared_ptr<const Data>)> func, const Group& group, std::thread::id thread_id, std::shared_ptr<std::condition_variable_any> cv)
         {
             std::lock_guard<decltype(subscription_mutex)> lock(subscription_mutex);
             // insert callback
@@ -75,10 +75,10 @@ namespace goby
                 data_condition_.insert(std::make_pair(thread_id, cv));
 
             // try inserting a copy of this templated class via the base class for SubscriptionStoreBase::poll_all to use
-            SubscriptionStoreBase::insert<SubscriptionStore<DataType>>();
+            SubscriptionStoreBase::insert<SubscriptionStore<Data>>();
         }
 
-        static void publish(std::shared_ptr<const DataType> data, const Group& group)
+        static void publish(std::shared_ptr<const Data> data, const Group& group)
         {
             // push new data
             // build up local vector of relevant condition variables while locked
@@ -143,17 +143,17 @@ namespace goby
     private:
         struct Callback
         {
-        Callback(const Group& g, const std::function<void(std::shared_ptr<const DataType>)>& c) : group(g), callback(c) {}
+        Callback(const Group& g, const std::function<void(std::shared_ptr<const Data>)>& c) : group(g), callback(c) {}
             Group group;
-            std::function<void(std::shared_ptr<const DataType>)> callback;
+            std::function<void(std::shared_ptr<const Data>)> callback;
         };
 
         class DataQueue
         {
         private:
-            std::map<Group, std::vector<std::shared_ptr<const DataType>>> data_;
+            std::map<Group, std::vector<std::shared_ptr<const Data>>> data_;
         public:
-            void insert(const Group& g, std::shared_ptr<const DataType> datum)
+            void insert(const Group& g, std::shared_ptr<const Data> datum)
             { data_[g].push_back(datum); }
             void clear()
             { data_.clear(); }
@@ -180,14 +180,14 @@ namespace goby
         
     };        
         
-    template<typename DataType>
-        std::unordered_multimap<std::thread::id, typename SubscriptionStore<DataType>::Callback> SubscriptionStore<DataType>::subscription_callbacks_;
-    template<typename DataType>
-        std::unordered_map<std::thread::id, typename SubscriptionStore<DataType>::DataQueue> SubscriptionStore<DataType>::data_;            
-    template<typename DataType>
-        std::unordered_multimap<typename SubscriptionStore<DataType>::Group, typename decltype(SubscriptionStore<DataType>::subscription_callbacks_)::const_iterator> SubscriptionStore<DataType>::subscription_groups_;
-    template<typename DataType>
-        std::unordered_map<std::thread::id, std::shared_ptr<std::condition_variable_any>> SubscriptionStore<DataType>::data_condition_;
+    template<typename Data>
+        std::unordered_multimap<std::thread::id, typename SubscriptionStore<Data>::Callback> SubscriptionStore<Data>::subscription_callbacks_;
+    template<typename Data>
+        std::unordered_map<std::thread::id, typename SubscriptionStore<Data>::DataQueue> SubscriptionStore<Data>::data_;            
+    template<typename Data>
+        std::unordered_multimap<typename SubscriptionStore<Data>::Group, typename decltype(SubscriptionStore<Data>::subscription_callbacks_)::const_iterator> SubscriptionStore<Data>::subscription_groups_;
+    template<typename Data>
+        std::unordered_map<std::thread::id, std::shared_ptr<std::condition_variable_any>> SubscriptionStore<Data>::data_condition_;
 
 
     class InterThreadTransporter
@@ -199,37 +199,31 @@ namespace goby
         { }
 
         
-        template<typename DataType, int scheme = scheme<DataType>()>
-            void publish(const DataType& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish(const Data& data, const Group& group = Group(), const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             std::cout << "InterThreadTransporter const ref publish" << std::endl; 
-            publish(std::make_shared<DataType>(data), group, transport_cfg);
+            publish(std::make_shared<Data>(data), group, transport_cfg);
         }
 
-        template<typename DataType, int scheme = scheme<DataType>()>
-            void publish(std::shared_ptr<DataType> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish(std::shared_ptr<Data> data, const Group& group = Group(), const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
-            SubscriptionStore<DataType>::publish(data, group);
+            SubscriptionStore<Data>::publish(data, group);
         }
 
-        template<typename DataType, int scheme = scheme<DataType>()>
-            void subscribe(const Group& group, std::function<void(const DataType&)> f)
+        template<typename Data, int scheme = scheme<Data>()>
+            void subscribe(std::function<void(const Data&)> f, const Group& group = Group())
         {
-            SubscriptionStore<DataType>::subscribe(group, [=](std::shared_ptr<const DataType> pd) { f(*pd); }, std::this_thread::get_id(), cv_);
+            SubscriptionStore<Data>::subscribe([=](std::shared_ptr<const Data> pd) { f(*pd); }, group, std::this_thread::get_id(), cv_);
         }
         
-        template<typename DataType, int scheme = scheme<DataType>()>
-            void subscribe(const Group& group, std::function<void(std::shared_ptr<const DataType>)> f)
+        template<typename Data, int scheme = scheme<Data>()>
+            void subscribe(std::function<void(std::shared_ptr<const Data>)> f, const Group& group = Group())
         {
-            SubscriptionStore<DataType>::subscribe(group, f, std::this_thread::get_id(), cv_);
+            SubscriptionStore<Data>::subscribe(f, group, std::this_thread::get_id(), cv_);
         }
         
-        template<typename DataType, int scheme = scheme<DataType>(), class C>
-            void subscribe(const Group& group, void(C::*mem_func)(std::shared_ptr<const DataType>), C* c)
-        {
-            subscribe<DataType, scheme>(group, [=](std::shared_ptr<const DataType> d) { (c->*mem_func)(d); });
-        }
-
         int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         {
             std::thread::id thread_id = std::this_thread::get_id();
