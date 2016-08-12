@@ -14,7 +14,6 @@
 
 namespace goby
 {
-    typedef std::string Group;
 
     class NoOpTransporter
     {
@@ -35,7 +34,7 @@ namespace goby
         template<typename DataType, int scheme = scheme<DataType>()>
             void subscribe(const std::string& group, std::function<void(std::shared_ptr<const DataType>)> func)
             { }
-        
+
         template<typename DataType, int scheme = scheme<DataType>(), class C>
             void subscribe(const std::string& group, void(C::*mem_func)(const DataType&), C* c)
             { }
@@ -43,7 +42,6 @@ namespace goby
         template<typename DataType, int scheme = scheme<DataType>(), class C>
             void subscribe(const std::string& group, void(C::*mem_func)(std::shared_ptr<const DataType>), C* c)
             { }
-
 
         int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         { return 0; }
@@ -53,7 +51,6 @@ namespace goby
         
     };
     
-
     class SerializationSubscriptionBase
     {
     public:
@@ -68,7 +65,7 @@ namespace goby
         class SerializationSubscription : public SerializationSubscriptionBase
     {
     public:
-        typedef std::function<void (std::shared_ptr<DataType> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)> HandlerType;
+        typedef std::function<void (std::shared_ptr<DataType> data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg)> HandlerType;
 
     SerializationSubscription(HandlerType& handler,
                               const std::string& group)
@@ -108,7 +105,7 @@ namespace goby
     };
     
     
-    template<typename InnerTransporter>
+    template<typename InnerTransporter, typename Group>
         class SerializationTransporterBase
     {
     public:
@@ -116,42 +113,42 @@ namespace goby
         ~SerializationTransporterBase() { }
 
         template<typename DataType, int scheme = scheme<DataType>()>
-            void publish(const DataType& data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish(const DataType& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             {
                 _publish<DataType, scheme>(data, group, transport_cfg);
-                inner_.publish<DataType, scheme>(data, group, transport_cfg);
+                inner_.publish<DataType, scheme>(data, group_convert(group), transport_cfg);
             }
 
         template<typename DataType, int scheme = scheme<DataType>()>
-            void publish(std::shared_ptr<DataType> data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish(std::shared_ptr<DataType> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             {
                 if(data)
                 {
                     _publish<DataType, scheme>(*data, group, transport_cfg);
-                    inner_.publish<DataType, scheme>(data, group, transport_cfg);
+                    inner_.publish<DataType, scheme>(data, group_convert(group), transport_cfg);
                 }
             }
         
         template<typename DataType, int scheme = scheme<DataType>()>
-            void subscribe(const std::string& group, std::function<void(const DataType&)> func)
+            void subscribe(const Group& group, std::function<void(const DataType&)> func)
             {
                 // subscribe to inner transporter
-                inner_.subscribe<DataType, scheme>(group, func);
+                inner_.subscribe<DataType, scheme>(group_convert(group), func);
 
                 // forward subscription to edge
                 auto inner_publication_lambda = [=](std::shared_ptr<DataType> d, const std::string& g, const goby::protobuf::TransporterConfig& t) { inner_.template publish<DataType, scheme>(d, g, t); };
                 typename SerializationSubscription<DataType, scheme>::HandlerType inner_publication_function(inner_publication_lambda);
-                auto subscription = std::shared_ptr<SerializationSubscriptionBase>(new SerializationSubscription<DataType, scheme>(inner_publication_function, group));
+                auto subscription = std::shared_ptr<SerializationSubscriptionBase>(new SerializationSubscription<DataType, scheme>(inner_publication_function, group_convert(group)));
                 inner_.publish<SerializationSubscriptionBase, MarshallingScheme::CXX_OBJECT>(subscription, forward_group_name());
                 std::cout << "Published subscription: " << subscription->type_name() << ":" << subscription->group() << std::endl;
             }
         
         template<typename DataType, int scheme = scheme<DataType>(), class C>
-            void subscribe(const std::string& group, void(C::*mem_func)(const DataType&), C* c)
+            void subscribe(const Group& group, void(C::*mem_func)(const DataType&), C* c)
             {
                 subscribe<DataType, scheme>(group, [=](const DataType& d) { (c->*mem_func)(d); });
             }
-
+        
         int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         {
             return inner_.poll(timeout);
@@ -163,11 +160,11 @@ namespace goby
         }
 
     protected:
-        virtual const std::string& forward_group_name() = 0;
+        virtual const std::string& forward_group_name() = 0;        
         
     private:
         template<typename DataType, int scheme>
-            void _publish(const DataType& d, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg)
+            void _publish(const DataType& d, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
             // create and forward publication to edge
             std::vector<char> bytes(SerializerParserHelper<DataType, scheme>::serialize(d));
@@ -176,7 +173,7 @@ namespace goby
 
             data->set_marshalling_scheme(scheme);
             data->set_type(SerializerParserHelper<DataType, scheme>::type_name(d));
-            data->set_group(group);
+            data->set_group(group_convert(group));
             data->set_allocated_data(sbytes);
         
             *data->mutable_cfg() = transport_cfg;

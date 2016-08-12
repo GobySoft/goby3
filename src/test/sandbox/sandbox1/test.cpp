@@ -79,7 +79,8 @@ int main(int argc, char* argv[])
     
     
     goby::SlowLinkTransporter<decltype(zmq)> slow(zmq, slow_cfg);
-    slow.publish(s, "CTD4");
+    int slow_group = 0;
+    slow.publish(s, slow_group);
 
 
     router_context.reset();

@@ -34,7 +34,8 @@ void direct_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, const
         {
             auto s1 = std::make_shared<Sample>();
             s1->set_a(a++);
-            slt.publish(s1, "Sample1");
+            s1->set_group(1);
+            slt.publish(s1, s1->group());
             
             glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
             usleep(1e3);
@@ -68,7 +69,7 @@ void direct_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, cons
     goby::SlowLinkTransporter<decltype(zmq)> slt(zmq, slow_cfg);
     try
     {
-        slt.subscribe<Sample>("Sample1", &handle_sample1);
+        slt.subscribe<Sample>(1, &handle_sample1);
         while(ipc_receive_count < max_publish)
         {
             slt.poll();

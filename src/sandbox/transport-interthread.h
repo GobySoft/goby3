@@ -58,8 +58,10 @@ namespace goby
     
     template<typename DataType>
         class SubscriptionStore : public SubscriptionStoreBase
-    {
+    {        
     public:
+        typedef std::string Group;
+
         static void subscribe(const Group& group, std::function<void(std::shared_ptr<const DataType>)> func, std::thread::id thread_id, std::shared_ptr<std::condition_variable_any> cv)
         {
             std::lock_guard<decltype(subscription_mutex)> lock(subscription_mutex);
@@ -183,7 +185,7 @@ namespace goby
     template<typename DataType>
         std::unordered_map<std::thread::id, typename SubscriptionStore<DataType>::DataQueue> SubscriptionStore<DataType>::data_;            
     template<typename DataType>
-        std::unordered_multimap<Group, typename decltype(SubscriptionStore<DataType>::subscription_callbacks_)::const_iterator> SubscriptionStore<DataType>::subscription_groups_;
+        std::unordered_multimap<typename SubscriptionStore<DataType>::Group, typename decltype(SubscriptionStore<DataType>::subscription_callbacks_)::const_iterator> SubscriptionStore<DataType>::subscription_groups_;
     template<typename DataType>
         std::unordered_map<std::thread::id, std::shared_ptr<std::condition_variable_any>> SubscriptionStore<DataType>::data_condition_;
 
@@ -191,39 +193,39 @@ namespace goby
     class InterThreadTransporter
     {
     public:
+        typedef std::string Group;
     InterThreadTransporter() :
         cv_(std::make_shared<std::condition_variable_any>())
         { }
 
         
         template<typename DataType, int scheme = scheme<DataType>()>
-            void publish(const DataType& data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish(const DataType& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             std::cout << "InterThreadTransporter const ref publish" << std::endl; 
             publish(std::make_shared<DataType>(data), group, transport_cfg);
         }
 
         template<typename DataType, int scheme = scheme<DataType>()>
-            void publish(std::shared_ptr<DataType> data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish(std::shared_ptr<DataType> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             SubscriptionStore<DataType>::publish(data, group);
         }
 
         template<typename DataType, int scheme = scheme<DataType>()>
-            void subscribe(const std::string& group, std::function<void(const DataType&)> f)
+            void subscribe(const Group& group, std::function<void(const DataType&)> f)
         {
-            std::function<void(std::shared_ptr<const DataType>)> shared_ptr_func([=](std::shared_ptr<const DataType> pd) { f(*pd); });
-            SubscriptionStore<DataType>::subscribe(group, shared_ptr_func, std::this_thread::get_id(), cv_);
+            SubscriptionStore<DataType>::subscribe(group, [=](std::shared_ptr<const DataType> pd) { f(*pd); }, std::this_thread::get_id(), cv_);
         }
         
         template<typename DataType, int scheme = scheme<DataType>()>
-            void subscribe(const std::string& group, std::function<void(std::shared_ptr<const DataType>)> f)
+            void subscribe(const Group& group, std::function<void(std::shared_ptr<const DataType>)> f)
         {
             SubscriptionStore<DataType>::subscribe(group, f, std::this_thread::get_id(), cv_);
         }
         
         template<typename DataType, int scheme = scheme<DataType>(), class C>
-            void subscribe(const std::string& group, void(C::*mem_func)(std::shared_ptr<const DataType>), C* c)
+            void subscribe(const Group& group, void(C::*mem_func)(std::shared_ptr<const DataType>), C* c)
         {
             subscribe<DataType, scheme>(group, [=](std::shared_ptr<const DataType> d) { (c->*mem_func)(d); });
         }

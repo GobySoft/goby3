@@ -12,6 +12,10 @@
 namespace goby 
 {
 
+    //
+    // MarshallingScheme
+    //
+
     struct MarshallingScheme
     {
         enum MarshallingSchemeEnum
@@ -35,6 +39,10 @@ namespace goby
         static std::string unknown;
     };
 
+    //
+    // SerializerParserHelper
+    //
+    
     template<typename DataType, int scheme>
         struct SerializerParserHelper 
     { };
@@ -172,6 +180,10 @@ namespace goby
     };
 
 
+    //
+    // scheme
+    //
+
     template<typename T,
         typename std::enable_if<std::is_same<T, std::string>::value>::type* = nullptr>
         constexpr int scheme()
@@ -216,6 +228,14 @@ namespace goby
         return protobuf::detail::scheme_protobuf_or_dccl<T>(protobuf::detail::dccl_selector());
     }
 
+
+    //
+    // group_convert
+    //
+    inline std::string group_convert(const std::string& group) { return group; }
+    inline std::string group_convert(const int& group) { return std::to_string(group); }
+    
+    
     
 }
 
