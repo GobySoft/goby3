@@ -47,7 +47,6 @@ void publisher()
 }
 
 // thread 1 - child process
-
 void handle_sample1(const Sample& sample)
 {
     glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << sample.ShortDebugString() << std::endl;
@@ -73,8 +72,15 @@ void subscriber()
     ipc.subscribe<Sample>(&handle_sample1, "Sample1");
     ipc.subscribe<Sample>(&handle_sample2, "Sample2");
     ipc.subscribe<Widget>(&handle_widget, "Widget");
+
+    std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+    std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
     while(ipc_receive_count < 3*max_publish)
-        ipc.poll();
+    {
+        ipc.poll(std::chrono::seconds(1));
+        if(std::chrono::system_clock::now() > timeout)
+            glog.is(DIE) && glog <<  "InterProcessTransporter timed out waiting for data" << std::endl;
+    }
 }
 
 
@@ -93,8 +99,12 @@ public:
             ++ready;
             while(receive_count1 < max_publish || receive_count2 < max_publish || receive_count3 < max_publish)
             {
-                inproc.poll();
-                //  std::cout << "Polled " << items  << " items. " << std::endl;
+                std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+                std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
+
+                inproc.poll(std::chrono::seconds(1));
+                if(std::chrono::system_clock::now() > timeout)
+                    glog.is(DIE) && glog <<  "ThreadSubscriber timed out waiting for data" << std::endl;
             }
             glog.is(DEBUG1) && glog << "ThreadSubscriber  " <<  std::this_thread::get_id() << " is done." << std::endl;
         }

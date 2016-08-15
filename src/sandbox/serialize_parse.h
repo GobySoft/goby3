@@ -131,7 +131,6 @@ namespace goby
                 auto index = std::type_index(typeid(DataType));
                 if(!loader_map_.count(index))
                 {
-                    std::cout << "Loading: " << codec().id<DataType>() << std::endl;
                     loader_map_.insert(std::make_pair(index, std::unique_ptr<LoaderBase>(new Loader<DataType>())));
                 }
             }

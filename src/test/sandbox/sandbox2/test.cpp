@@ -46,7 +46,7 @@ public:
             while(receive_count1 < max_publish || receive_count2 < max_publish || receive_count3 < max_publish)
             {
                 ++ready;
-                int items = inproc.poll();
+                inproc.poll();
                 //  std::cout << "Polled " << items  << " items. " << std::endl;
             }
         }

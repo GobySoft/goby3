@@ -7,11 +7,18 @@ message SerializerTransporterData
     required int32 marshalling_scheme = 1;
     required string type = 2;
     required string group = 3;
-    required bytes data = 4;
+    optional bytes data = 4;
     optional TransporterConfig cfg = 5;
 }
 
-message InterVehicleSubscription
+message DCCLSubscription
 {
-    
+    required int32 dccl_id = 1;
+    required int32 group = 2;
+    optional TransporterConfig cfg = 3;    
+}
+
+message DCCLForwardedData
+{
+    repeated bytes frame = 1;
 }

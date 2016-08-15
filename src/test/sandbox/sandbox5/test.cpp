@@ -14,7 +14,7 @@
 
 int publish_count = 0;
 const int max_publish = 100;
-int ipc_receive_count = {0};
+std::array<int, 3> ipc_receive_count = {0, 0, 0};
 
 std::atomic<bool> forward(true);
 std::atomic<int> zmq_reqs(0);
@@ -22,7 +22,7 @@ std::atomic<int> zmq_reqs(0);
 using goby::glog;
 using namespace goby::common::logger;
 
-// parent process - thread 1
+// process 1
 void direct_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, const goby::protobuf::SlowLinkTransporterConfig& slow_cfg)
 {
     goby::ZMQTransporter<> zmq(zmq_cfg);
@@ -56,7 +56,7 @@ void direct_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, const
     }
 }
 
-// thread 2
+// process 2
 void indirect_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
 {
     goby::ZMQTransporter<> zmq(zmq_cfg);
@@ -65,7 +65,7 @@ void indirect_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
     while(publish_count < max_publish)
     {
         auto s1 = std::make_shared<Sample>();
-        s1->set_a(a-10);
+        s1->set_a(a++-10);
         s1->set_group(3);
         intervehicle.publish(s1, s1->group());
             
@@ -82,23 +82,26 @@ void indirect_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
 
 
 
-// child process
+// process 3
 void handle_sample1(const Sample& sample)
 {
     glog.is(DEBUG1) && glog <<  "SlowLinkTransporter received publication sample1: " << sample.ShortDebugString() << std::endl;
-    ++ipc_receive_count;
+    assert(sample.a() == ipc_receive_count[0]);
+    ++ipc_receive_count[0];
 }
 
 void handle_sample_indirect(const Sample& sample)
 {
     glog.is(DEBUG1) && glog <<  "SlowLinkTransporter received indirect sample: " << sample.ShortDebugString() << std::endl;
-    ++ipc_receive_count;
+    assert(sample.a() == ipc_receive_count[1]-10);
+    ++ipc_receive_count[1];
 }
 
 void handle_widget(std::shared_ptr<const Widget> w)
 {
     glog.is(DEBUG1) && glog <<  "SlowLinkTransporter received publication widget: " << w->ShortDebugString() << std::endl;
-    ++ipc_receive_count;
+    assert(w->b() == ipc_receive_count[2]-1);
+    ++ipc_receive_count[2];
 }
 
 void direct_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, const goby::protobuf::SlowLinkTransporterConfig& slow_cfg)
@@ -110,26 +113,66 @@ void direct_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, cons
     slt.subscribe<Sample>(&handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
     slt.subscribe<Widget>(&handle_widget);
 
-    while(ipc_receive_count < 2*max_publish)
+    std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+    std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
+    while(ipc_receive_count[0] < max_publish || ipc_receive_count[1] < max_publish || ipc_receive_count[2] < max_publish)
     {
-        slt.poll();
-        std::cout << "poll" << std::endl;
+        slt.poll(std::chrono::seconds(1));
+        if(std::chrono::system_clock::now() > timeout)
+            glog.is(DIE) && glog <<  "SlowLinkTransporter timed out waiting for data" << std::endl;
     }
 
 }
 
+// process 4
+
+
+void indirect_handle_sample_indirect(const Sample& sample)
+{
+    glog.is(DEBUG1) && glog <<  "InterVehicleTransporter received indirect sample: " << sample.ShortDebugString() << std::endl;
+    assert(sample.a() == ipc_receive_count[0]-10);
+    ++ipc_receive_count[0];
+}
+
+void indirect_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
+{
+    goby::ZMQTransporter<> zmq(zmq_cfg);
+    goby::InterVehicleTransporter<decltype(zmq)> intervehicle(zmq);
+    intervehicle.subscribe<Sample>(&indirect_handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
+
+    std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+    std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
+    while(ipc_receive_count[0] < max_publish)
+    {
+        intervehicle.poll(std::chrono::seconds(1));
+        if(std::chrono::system_clock::now() > timeout)
+            glog.is(DIE) && glog <<  "InterVehicleTransport timed out waiting for data" << std::endl;
+    }
+
+}
+
+
 int main(int argc, char* argv[])
 {
-    pid_t child_pid = fork();
-    
-    bool is_child = (child_pid == 0);
-
+    int process_index = 0;
+    const int number_children = 3;
+    for(int i = 1; i <= number_children; ++i)
+    {
+        pid_t child_pid = fork();
+        if(child_pid == 0)
+        {
+            process_index = i;
+            break;
+        }
+    }
+        
     // goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
-    std::string os_name = std::string("/tmp/goby_test_sandbox5_") + (is_child ? "subscriber" : "publisher");
+    std::string process_suffix =  ((process_index >= 2) ? ("subscriber_" + std::to_string(process_index)) : ("publisher_" + std::to_string(process_index)));
+    std::string os_name = std::string("/tmp/goby_test_sandbox5_") + process_suffix;
     std::ofstream os(os_name.c_str());
     goby::glog.add_stream(goby::common::logger::DEBUG3, &os);
     //    dccl::dlog.connect(dccl::logger::ALL, &os, true);
-    goby::glog.set_name(std::string(argv[0]) + (is_child ? "_subscriber" : "_publisher"));
+    goby::glog.set_name(std::string(argv[0])  + process_suffix);
     goby::glog.set_lock_action(goby::common::logger_lock::lock);                        
 
     std::unique_ptr<std::thread> t10, t11;
@@ -160,7 +203,7 @@ int main(int argc, char* argv[])
     widget_entry.set_newest_first(false);
     widget_entry.set_max_queue(max_publish + 1);
     
-    if(!is_child)
+    if(process_index == 0)
     {
         driver_cfg.set_modem_id(1);
         local_endpoint->set_port(60011);
@@ -185,10 +228,9 @@ int main(int argc, char* argv[])
         
 
         std::thread t1([&] { direct_publisher(zmq_cfg, slow_cfg); });
-        sleep(2);
-        std::thread t2([&] { indirect_publisher(zmq_cfg); });
-        int wstatus;
-        wait(&wstatus);
+        std::array<int, number_children> wstatus;
+        for(int i = 0; i < number_children; ++i)
+            wait(&wstatus[i]);
         
         forward = false;
         t1.join();
@@ -196,9 +238,28 @@ int main(int argc, char* argv[])
         manager_context.reset();
         t10->join();
         t11->join();
-        if(wstatus != 0) exit(EXIT_FAILURE);
+        for(int ws : wstatus)
+        {
+            if(ws != 0)
+            {
+                std::cout << "Test failed (see logs in /tmp)" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+        
     }
-    else
+    else if(process_index == 1)
+    {
+        goby::protobuf::ZMQTransporterConfig zmq_cfg;
+        zmq_cfg.set_platform("test5-vehicle1");
+
+        // wait for ZMQ (process_index == 0) to start up
+        sleep(3);
+        std::thread t1([&] { indirect_publisher(zmq_cfg); });
+        forward = false;
+        t1.join();
+    }
+    else if(process_index == 2)
     {
         driver_cfg.set_modem_id(2);
         local_endpoint->set_port(60012);
@@ -227,7 +288,15 @@ int main(int argc, char* argv[])
         t10->join();
         t11->join();
     }
+    else if(process_index == 3)
+    {
+        sleep(3);
+        goby::protobuf::ZMQTransporterConfig zmq_cfg;
+        zmq_cfg.set_platform("test5-vehicle2");
+        std::thread t1([&] { indirect_subscriber(zmq_cfg); });
+        t1.join();
+    }    
 
-    glog.is(VERBOSE) && glog << (is_child ? "subscriber" : "publisher") << ": all tests passed" << std::endl;
-    std::cout << (is_child ? "subscriber" : "publisher") << ": all tests passed" << std::endl;
+    glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
+    std::cout << process_suffix << ": all tests passed" << std::endl;
 }
