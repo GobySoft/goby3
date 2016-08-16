@@ -23,9 +23,9 @@ using goby::glog;
 using namespace goby::common::logger;
 
 // parent process - thread 1
-void publisher(const goby::protobuf::ZMQTransporterConfig& cfg)
+void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
-    goby::ZMQTransporter<> zmq(cfg);
+    goby::InterProcessPortal<> zmq(cfg);
 
     double a = 0;
     while(publish_count < max_publish)
@@ -55,26 +55,26 @@ void publisher(const goby::protobuf::ZMQTransporterConfig& cfg)
 // child process
 void handle_sample1(const Sample& sample)
 {
-    glog.is(DEBUG1) && glog <<  "ZMQTransporter received publication sample1: " << sample.ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterProcessPortal received publication sample1: " << sample.ShortDebugString() << std::endl;
     ++ipc_receive_count;
 }
 
 void handle_sample2(std::shared_ptr<const Sample> sample)
 {
-    glog.is(DEBUG1) && glog <<  "ZMQTransporter received publication sample2: " << sample->ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterProcessPortal received publication sample2: " << sample->ShortDebugString() << std::endl;
     ++ipc_receive_count;
 }
 
 
 void handle_widget(const Widget& widget)
 {
-    glog.is(DEBUG1) && glog <<  "ZMQTransporter received publication widget: " << widget.ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterProcessPortal received publication widget: " << widget.ShortDebugString() << std::endl;
     ++ipc_receive_count;
 }
 
-void subscriber(const goby::protobuf::ZMQTransporterConfig& cfg)
+void subscriber(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
-    goby::ZMQTransporter<> zmq(cfg);
+    goby::InterProcessPortal<> zmq(cfg);
     zmq.subscribe<Sample>(&handle_sample1, "Sample1");
     zmq.subscribe<Sample>(&handle_sample2, "Sample2");
     zmq.subscribe<Widget>(&handle_widget, "Widget");
@@ -87,9 +87,9 @@ void subscriber(const goby::protobuf::ZMQTransporterConfig& cfg)
 
 int main(int argc, char* argv[])
 {
-    goby::protobuf::ZMQTransporterConfig cfg;
+    goby::protobuf::InterProcessPortalConfig cfg;
     cfg.set_platform("test4");
-    cfg.set_transport(goby::protobuf::ZMQTransporterConfig::TCP);
+    cfg.set_transport(goby::protobuf::InterProcessPortalConfig::TCP);
     cfg.set_ipv4_address("127.0.0.1");
     cfg.set_tcp_port(10005);
        

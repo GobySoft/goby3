@@ -10,7 +10,7 @@
 
 #include <zmq.hpp>
 
-// tests InterProcessTransporter
+// tests InterProcessForwarder
 
 goby::InterThreadTransporter inproc;
 
@@ -29,7 +29,7 @@ using namespace goby::common::logger;
 // thread 1 - parent process
 void publisher()
 {
-    goby::InterProcessTransporter<goby::InterThreadTransporter> ipc(inproc);
+    goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc);
     double a = 0;
     while(publish_count < max_publish)
     {
@@ -68,7 +68,7 @@ void handle_widget(std::shared_ptr<const Widget> widget)
 
 void subscriber()
 {
-    goby::InterProcessTransporter<goby::InterThreadTransporter> ipc(inproc);
+    goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc);
     ipc.subscribe<Sample>(&handle_sample1, "Sample1");
     ipc.subscribe<Sample>(&handle_sample2, "Sample2");
     ipc.subscribe<Widget>(&handle_widget, "Widget");
@@ -79,7 +79,7 @@ void subscriber()
     {
         ipc.poll(std::chrono::seconds(1));
         if(std::chrono::system_clock::now() > timeout)
-            glog.is(DIE) && glog <<  "InterProcessTransporter timed out waiting for data" << std::endl;
+            glog.is(DIE) && glog <<  "InterProcessForwarder timed out waiting for data" << std::endl;
     }
 }
 
@@ -140,9 +140,9 @@ private:
 
 
 // thread 3
-void zmq_forward(const goby::protobuf::ZMQTransporterConfig& cfg)
+void zmq_forward(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
-    goby::ZMQTransporter<goby::InterThreadTransporter> zmq(inproc, cfg);
+    goby::InterProcessPortal<goby::InterThreadTransporter> zmq(inproc, cfg);
     zmq_ready = true;
     while(forward)
     {
@@ -153,7 +153,7 @@ void zmq_forward(const goby::protobuf::ZMQTransporterConfig& cfg)
 
 int main(int argc, char* argv[])
 {
-    goby::protobuf::ZMQTransporterConfig cfg;
+    goby::protobuf::InterProcessPortalConfig cfg;
     cfg.set_platform("test4");
     
     pid_t child_pid = fork();

@@ -10,7 +10,7 @@
 
 #include <zmq.hpp>
 
-// tests SlowLinkTransporter with ZMQTransporter
+// tests InterPlatformPortal with InterProcessPortal
 
 int publish_count = 0;
 const int max_publish = 100;
@@ -23,10 +23,10 @@ using goby::glog;
 using namespace goby::common::logger;
 
 // process 1
-void direct_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, const goby::protobuf::SlowLinkTransporterConfig& slow_cfg)
+void direct_publisher(const goby::protobuf::InterProcessPortalConfig& zmq_cfg, const goby::protobuf::InterPlatformPortalConfig& slow_cfg)
 {
-    goby::ZMQTransporter<> zmq(zmq_cfg);
-    goby::SlowLinkTransporter<decltype(zmq)> slt(zmq, slow_cfg);
+    goby::InterProcessPortal<> zmq(zmq_cfg);
+    goby::InterPlatformPortal<decltype(zmq)> slt(zmq, slow_cfg);
 
     double a = 0;
     while(publish_count < max_publish)
@@ -57,10 +57,10 @@ void direct_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, const
 }
 
 // process 2
-void indirect_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
+void indirect_publisher(const goby::protobuf::InterProcessPortalConfig& zmq_cfg)
 {
-    goby::ZMQTransporter<> zmq(zmq_cfg);
-    goby::InterPlatformTransporter<decltype(zmq)> interplatform(zmq);
+    goby::InterProcessPortal<> zmq(zmq_cfg);
+    goby::InterPlatformForwarder<decltype(zmq)> interplatform(zmq);
     double a = 0;
     while(publish_count < max_publish)
     {
@@ -85,29 +85,29 @@ void indirect_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
 // process 3
 void handle_sample1(const Sample& sample)
 {
-    glog.is(DEBUG1) && glog <<  "SlowLinkTransporter received publication sample1: " << sample.ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterPlatformPortal received publication sample1: " << sample.ShortDebugString() << std::endl;
     assert(sample.a() == ipc_receive_count[0]);
     ++ipc_receive_count[0];
 }
 
 void handle_sample_indirect(const Sample& sample)
 {
-    glog.is(DEBUG1) && glog <<  "SlowLinkTransporter received indirect sample: " << sample.ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterPlatformPortal received indirect sample: " << sample.ShortDebugString() << std::endl;
     assert(sample.a() == ipc_receive_count[1]-10);
     ++ipc_receive_count[1];
 }
 
 void handle_widget(std::shared_ptr<const Widget> w)
 {
-    glog.is(DEBUG1) && glog <<  "SlowLinkTransporter received publication widget: " << w->ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterPlatformPortal received publication widget: " << w->ShortDebugString() << std::endl;
     assert(w->b() == ipc_receive_count[2]-1);
     ++ipc_receive_count[2];
 }
 
-void direct_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, const goby::protobuf::SlowLinkTransporterConfig& slow_cfg)
+void direct_subscriber(const goby::protobuf::InterProcessPortalConfig& zmq_cfg, const goby::protobuf::InterPlatformPortalConfig& slow_cfg)
 {
-    goby::ZMQTransporter<> zmq(zmq_cfg);
-    goby::SlowLinkTransporter<decltype(zmq)> slt(zmq, slow_cfg);
+    goby::InterProcessPortal<> zmq(zmq_cfg);
+    goby::InterPlatformPortal<decltype(zmq)> slt(zmq, slow_cfg);
 
     slt.subscribe<Sample>(&handle_sample1, 2, [](const Sample& s) { return s.group(); });
     slt.subscribe<Sample>(&handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
@@ -119,7 +119,7 @@ void direct_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, cons
     {
         slt.poll(std::chrono::seconds(1));
         if(std::chrono::system_clock::now() > timeout)
-            glog.is(DIE) && glog <<  "SlowLinkTransporter timed out waiting for data" << std::endl;
+            glog.is(DIE) && glog <<  "InterPlatformPortal timed out waiting for data" << std::endl;
     }
 
 }
@@ -129,15 +129,15 @@ void direct_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, cons
 
 void indirect_handle_sample_indirect(const Sample& sample)
 {
-    glog.is(DEBUG1) && glog <<  "InterPlatformTransporter received indirect sample: " << sample.ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterPlatformForwarder received indirect sample: " << sample.ShortDebugString() << std::endl;
     assert(sample.a() == ipc_receive_count[0]-10);
     ++ipc_receive_count[0];
 }
 
-void indirect_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
+void indirect_subscriber(const goby::protobuf::InterProcessPortalConfig& zmq_cfg)
 {
-    goby::ZMQTransporter<> zmq(zmq_cfg);
-    goby::InterPlatformTransporter<decltype(zmq)> interplatform(zmq);
+    goby::InterProcessPortal<> zmq(zmq_cfg);
+    goby::InterPlatformForwarder<decltype(zmq)> interplatform(zmq);
     interplatform.subscribe<Sample>(&indirect_handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
 
-    goby::protobuf::SlowLinkTransporterConfig slow_cfg;
+    goby::protobuf::InterPlatformPortalConfig slow_cfg;
     slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
     goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
     UDPDriverConfig::EndPoint* local_endpoint =
@@ -214,7 +214,7 @@ int main(int argc, char* argv[])
         remote_endpoint->set_port(60012);
     
         
-        goby::protobuf::ZMQTransporterConfig zmq_cfg;
+        goby::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle1");
     
         manager_context.reset(new zmq::context_t(1));
@@ -250,7 +250,7 @@ int main(int argc, char* argv[])
     }
     else if(process_index == 1)
     {
-        goby::protobuf::ZMQTransporterConfig zmq_cfg;
+        goby::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle1");
 
         // wait for ZMQ (process_index == 0) to start up
@@ -269,7 +269,7 @@ int main(int argc, char* argv[])
         remote_endpoint->set_ip("127.0.0.1");
         remote_endpoint->set_port(60011);
 
-        goby::protobuf::ZMQTransporterConfig zmq_cfg;
+        goby::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle2");
         
         manager_context.reset(new zmq::context_t(1));
@@ -291,7 +291,7 @@ int main(int argc, char* argv[])
     else if(process_index == 3)
     {
         sleep(3);
-        goby::protobuf::ZMQTransporterConfig zmq_cfg;
+        goby::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle2");
         std::thread t1([&] { indirect_subscriber(zmq_cfg); });
         t1.join();

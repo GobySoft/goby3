@@ -21,7 +21,7 @@ void goby::ZMQRouter::run()
     zmq::socket_t backend(context_, ZMQ_XSUB);
     switch(cfg_.transport())
     {
-        case goby::protobuf::ZMQTransporterConfig::IPC:
+        case goby::protobuf::InterProcessPortalConfig::IPC:
         {
             std::string xpub_sock_name = "ipc://" + (cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".xpub";
             std::string xsub_sock_name = "ipc://" + (cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".xsub";
@@ -29,7 +29,7 @@ void goby::ZMQRouter::run()
             backend.bind(xsub_sock_name.c_str());
             break;
         }
-        case goby::protobuf::ZMQTransporterConfig::TCP:
+        case goby::protobuf::InterProcessPortalConfig::TCP:
         {
             frontend.bind("tcp://*:0");
             backend.bind("tcp://*:0");
@@ -58,13 +58,13 @@ void goby::ZMQManager::run()
 
     switch(cfg_.transport())
     {
-        case goby::protobuf::ZMQTransporterConfig::IPC:
+        case goby::protobuf::InterProcessPortalConfig::IPC:
         {
             std::string sock_name = "ipc://" + ((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".manager");
             socket.bind(sock_name.c_str());
             break;
         }
-        case goby::protobuf::ZMQTransporterConfig::TCP:
+        case goby::protobuf::InterProcessPortalConfig::TCP:
         {
             std::string sock_name = "tcp://*:" + std::to_string(cfg_.tcp_port());
             socket.bind(sock_name.c_str());
@@ -83,7 +83,7 @@ void goby::ZMQManager::run()
             const int packet_header_size = 5; // uint32 and '\0'
             pb_request.ParseFromArray((char*)request.data()+packet_header_size, request.size()-packet_header_size);
 
-            while(cfg_.transport() == goby::protobuf::ZMQTransporterConfig::TCP && (router_.pub_port == 0 || router_.sub_port == 0))
+            while(cfg_.transport() == goby::protobuf::InterProcessPortalConfig::TCP && (router_.pub_port == 0 || router_.sub_port == 0))
                 usleep(1e4);
 
             goby::protobuf::ZMQManagerResponse pb_response;
@@ -100,13 +100,13 @@ void goby::ZMQManager::run()
                 
                 switch(cfg_.transport())
                 {
-                    case goby::protobuf::ZMQTransporterConfig::IPC:
+                    case goby::protobuf::InterProcessPortalConfig::IPC:
                         subscribe_socket->set_transport(goby::common::protobuf::ZeroMQServiceConfig::Socket::IPC);
                         publish_socket->set_transport(goby::common::protobuf::ZeroMQServiceConfig::Socket::IPC);
                         subscribe_socket->set_socket_name((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".xpub");
                         publish_socket->set_socket_name((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".xsub");
                         break;
-                    case goby::protobuf::ZMQTransporterConfig::TCP:
+                    case goby::protobuf::InterProcessPortalConfig::TCP:
                         subscribe_socket->set_transport(goby::common::protobuf::ZeroMQServiceConfig::Socket::TCP);
                         publish_socket->set_transport(goby::common::protobuf::ZeroMQServiceConfig::Socket::TCP);
                         subscribe_socket->set_ethernet_port(router_.pub_port); // our publish is their subscribe

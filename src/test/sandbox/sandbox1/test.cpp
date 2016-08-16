@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
     goby::glog.set_name(argv[0]);
     goby::glog.set_lock_action(goby::common::logger_lock::lock);
 
-    goby::protobuf::ZMQTransporterConfig zmq_cfg;
+    goby::protobuf::InterProcessPortalConfig zmq_cfg;
     zmq_cfg.set_platform("test1");
     std::unique_ptr<zmq::context_t> manager_context(new zmq::context_t(1));
     std::unique_ptr<zmq::context_t> router_context(new zmq::context_t(1));
@@ -24,9 +24,9 @@ int main(int argc, char* argv[])
     
     //    goby::ProtobufMarshaller pb;
     goby::InterThreadTransporter inproc;
-    goby::ZMQTransporter<> zmq_blank(zmq_cfg);
-    goby::InterProcessTransporter<goby::InterThreadTransporter> interprocess_default(inproc);
-    goby::ZMQTransporter<goby::InterThreadTransporter> zmq(inproc, zmq_cfg);
+    goby::InterProcessPortal<> zmq_blank(zmq_cfg);
+    goby::InterProcessForwarder<decltype(inproc)> interprocess_default(inproc);
+    goby::InterProcessPortal<decltype(inproc)> zmq(inproc, zmq_cfg);
 
     
     CTDSample s;
@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
     inproc.publish(sp, "CTD3");
 
     
-    goby::protobuf::SlowLinkTransporterConfig slow_cfg;
+    goby::protobuf::InterPlatformPortalConfig slow_cfg;
     {
         slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
         goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
     }
     
     
-    goby::SlowLinkTransporter<decltype(zmq)> slow(zmq, slow_cfg);
+    goby::InterPlatformPortal<decltype(zmq)> slow(zmq, slow_cfg);
     int slow_group = 0;
     slow.publish(s, slow_group);
 

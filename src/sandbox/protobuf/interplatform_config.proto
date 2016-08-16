@@ -7,7 +7,7 @@ import "goby/acomms/protobuf/modem_message.proto";
 
 package goby.protobuf;
 
-message SlowLinkTransporterConfig
+message InterPlatformPortalConfig
 {
     optional goby.acomms.protobuf.DriverType driver_type = 10 [default = DRIVER_NONE, (goby.field).description="Corresponding primary driver for the type of physical acoustic modem used (used for sending and receiving)"];
     optional goby.acomms.protobuf.DriverConfig driver_cfg = 11 [(goby.field).description="Configure the primary acoustic modem driver (used for sending and receiving)"]; 

@@ -10,7 +10,7 @@
 #include "goby/common/zeromq_service.h"
 
 #include "transport-common.h"
-#include "goby/sandbox/protobuf/zmq_transporter_config.pb.h"
+#include "goby/sandbox/protobuf/interprocess_config.pb.h"
 
 namespace goby
 {   
@@ -70,17 +70,17 @@ namespace goby
 
         std::unique_ptr<InnerTransporter> own_inner_;
         InnerTransporter& inner_;
-        const std::string forward_group_ { "goby::InterProcessTransporter" };
+        const std::string forward_group_ { "goby::InterProcessForwarder" };
     };    
     
     template<typename InnerTransporter>
-        class InterProcessTransporter : public InterProcessTransporterBase<InterProcessTransporter<InnerTransporter>, InnerTransporter, std::string>
+        class InterProcessForwarder : public InterProcessTransporterBase<InterProcessForwarder<InnerTransporter>, InnerTransporter, std::string>
     {
     public:
         using Group = std::string;
-        using Base = InterProcessTransporterBase<InterProcessTransporter<InnerTransporter>, InnerTransporter, Group>;
+        using Base = InterProcessTransporterBase<InterProcessForwarder<InnerTransporter>, InnerTransporter, Group>;
 
-        InterProcessTransporter(InnerTransporter& inner) : Base(inner)
+        InterProcessForwarder(InnerTransporter& inner) : Base(inner)
         { }
 
         friend Base;
@@ -126,16 +126,16 @@ namespace goby
     
     
     template<typename InnerTransporter = NoOpTransporter>
-        class ZMQTransporter : public InterProcessTransporterBase<ZMQTransporter<InnerTransporter>, InnerTransporter, std::string>
+        class InterProcessPortal : public InterProcessTransporterBase<InterProcessPortal<InnerTransporter>, InnerTransporter, std::string>
         {
         public:
         using Group = std::string;
-        using Base = InterProcessTransporterBase<ZMQTransporter<InnerTransporter>, InnerTransporter, Group>;
+        using Base = InterProcessTransporterBase<InterProcessPortal<InnerTransporter>, InnerTransporter, Group>;
 
-        ZMQTransporter(const protobuf::ZMQTransporterConfig& cfg) : cfg_(cfg)
+        InterProcessPortal(const protobuf::InterProcessPortalConfig& cfg) : cfg_(cfg)
         { _init(); }
 
-        ZMQTransporter(InnerTransporter& inner, const protobuf::ZMQTransporterConfig& cfg) : Base(inner), cfg_(cfg)
+        InterProcessPortal(InnerTransporter& inner, const protobuf::InterProcessPortalConfig& cfg) : Base(inner), cfg_(cfg)
         { _init(); }
 
         friend Base;
@@ -176,7 +176,7 @@ namespace goby
             
             Base::inner_.template subscribe<SerializationSubscriptionBase, MarshallingScheme::CXX_OBJECT>([this](std::shared_ptr<const SerializationSubscriptionBase> s) { _receive_subscription_forwarded(s); }, Base::forward_group_);
 
-            zmq_.connect_inbox_slot(&ZMQTransporter::_zmq_inbox, this);
+            zmq_.connect_inbox_slot(&InterProcessPortal::_zmq_inbox, this);
 
             goby::common::protobuf::ZeroMQServiceConfig cfg;
 
@@ -186,11 +186,11 @@ namespace goby
 
             switch(cfg_.transport())
             {
-                case protobuf::ZMQTransporterConfig::IPC:
+                case protobuf::InterProcessPortalConfig::IPC:
                     query_socket->set_transport(common::protobuf::ZeroMQServiceConfig::Socket::IPC);
                     query_socket->set_socket_name((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".manager");
                     break;
-                case protobuf::ZMQTransporterConfig::TCP:
+                case protobuf::InterProcessPortalConfig::TCP:
                     query_socket->set_transport(common::protobuf::ZeroMQServiceConfig::Socket::TCP);
                     query_socket->set_ethernet_address(cfg_.ipv4_address());
                     query_socket->set_ethernet_port(cfg_.tcp_port());
@@ -303,7 +303,7 @@ namespace goby
 
         enum { SOCKET_MANAGER = 0, SOCKET_SUBSCRIBE = 1, SOCKET_PUBLISH = 2 };
         
-        const protobuf::ZMQTransporterConfig& cfg_;
+        const protobuf::InterProcessPortalConfig& cfg_;
         goby::common::ZeroMQService zmq_;
         bool have_pubsub_sockets_{false};
         
@@ -314,7 +314,7 @@ namespace goby
     class ZMQRouter
     {
     public:
-    ZMQRouter(zmq::context_t& context, const goby::protobuf::ZMQTransporterConfig& cfg) :
+    ZMQRouter(zmq::context_t& context, const goby::protobuf::InterProcessPortalConfig& cfg) :
         context_(context),
             cfg_(cfg)
             { }
@@ -332,14 +332,14 @@ namespace goby
     
     private:
         zmq::context_t& context_;
-        const goby::protobuf::ZMQTransporterConfig& cfg_;
+        const goby::protobuf::InterProcessPortalConfig& cfg_;
     
     };
 
     class ZMQManager
     {
     public:
-    ZMQManager(zmq::context_t& context, const goby::protobuf::ZMQTransporterConfig& cfg, const ZMQRouter& router) :
+    ZMQManager(zmq::context_t& context, const goby::protobuf::InterProcessPortalConfig& cfg, const ZMQRouter& router) :
         context_(context),
             cfg_(cfg),
             router_(router)
@@ -349,7 +349,7 @@ namespace goby
         
     private:
         zmq::context_t& context_;
-        const goby::protobuf::ZMQTransporterConfig& cfg_;
+        const goby::protobuf::InterProcessPortalConfig& cfg_;
         const ZMQRouter& router_;
     };
 

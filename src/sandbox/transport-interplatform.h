@@ -19,7 +19,7 @@
 #include "goby/acomms/modemdriver/udp_driver.h"
 
 #include "transport-common.h"
-#include "goby/sandbox/protobuf/intervehicle_transporter_config.pb.h"
+#include "goby/sandbox/protobuf/interplatform_config.pb.h"
 
 namespace goby
 {
@@ -88,13 +88,13 @@ namespace goby
     
     
     template<typename InnerTransporter>
-        class InterPlatformTransporter : public InterPlatformTransporterBase<InterPlatformTransporter<InnerTransporter>, InnerTransporter, int>
+        class InterPlatformForwarder : public InterPlatformTransporterBase<InterPlatformForwarder<InnerTransporter>, InnerTransporter, int>
     {
     public:
         using Group = int;
-        using Base = InterPlatformTransporterBase<InterPlatformTransporter<InnerTransporter>, InnerTransporter, Group>;
+        using Base = InterPlatformTransporterBase<InterPlatformForwarder<InnerTransporter>, InnerTransporter, Group>;
 
-    InterPlatformTransporter(InnerTransporter& inner) : Base(inner)
+    InterPlatformForwarder(InnerTransporter& inner) : Base(inner)
         {
             Base::inner_.template subscribe<goby::protobuf::DCCLForwardedData>([this](const goby::protobuf::DCCLForwardedData& d) { _receive_dccl_data_forwarded(d); }, Base::forward_group_);
         }
@@ -148,7 +148,7 @@ namespace goby
     
         void _receive_dccl_data_forwarded(const goby::protobuf::DCCLForwardedData& d)
         {
-            std::cout << "InterPlatformTransporter received forwarded data: " << d.DebugString() << std::endl;
+            std::cout << "InterPlatformForwarder received forwarded data: " << d.DebugString() << std::endl;
 
             for(auto& frame: d.frame())
             {
@@ -172,14 +172,14 @@ namespace goby
 
     
     template<typename InnerTransporter = NoOpTransporter>
-    class SlowLinkTransporter : public InterPlatformTransporterBase<SlowLinkTransporter<InnerTransporter>, InnerTransporter, int>
+    class InterPlatformPortal : public InterPlatformTransporterBase<InterPlatformPortal<InnerTransporter>, InnerTransporter, int>
         {
         public:
         using Group = int;
-        using Base = InterPlatformTransporterBase<SlowLinkTransporter<InnerTransporter>, InnerTransporter, Group>;
+        using Base = InterPlatformTransporterBase<InterPlatformPortal<InnerTransporter>, InnerTransporter, Group>;
 
-        SlowLinkTransporter(const protobuf::SlowLinkTransporterConfig& cfg) : cfg_(cfg) { _init(); }
-        SlowLinkTransporter(InnerTransporter& inner, const protobuf::SlowLinkTransporterConfig& cfg) : Base(inner), cfg_(cfg) { _init(); }
+        InterPlatformPortal(const protobuf::InterPlatformPortalConfig& cfg) : cfg_(cfg) { _init(); }
+        InterPlatformPortal(InnerTransporter& inner, const protobuf::InterPlatformPortalConfig& cfg) : Base(inner), cfg_(cfg) { _init(); }
 
         friend Base;
         private:
@@ -291,7 +291,7 @@ namespace goby
             }
 
             // unless we want to require the edge to have all the DCCL messages loaded,
-            // all we can do is forwarded the entire data to the InterPlatformTransporters to parse
+            // all we can do is forwarded the entire data to the InterPlatformForwarders to parse
             if(forwarded_subscriptions_.size() > 0)
             {
                 goby::protobuf::DCCLForwardedData data;
@@ -312,13 +312,13 @@ namespace goby
 
         void _receive_subscription_forwarded(const goby::protobuf::DCCLSubscription& dccl_subscription)
         {
-            std::cout << "SlowLinkTransporter received forwarded subscription: " << dccl_subscription.DebugString() << std::endl;
+            std::cout << "InterPlatformPortal received forwarded subscription: " << dccl_subscription.DebugString() << std::endl;
             
             auto group = dccl_subscription.group();          
             forwarded_subscriptions_[dccl_subscription.dccl_id()].insert(std::make_pair(group_convert(group), dccl_subscription));            
         }        
         
-        const goby::protobuf::SlowLinkTransporterConfig& cfg_;
+        const goby::protobuf::InterPlatformPortalConfig& cfg_;
         
         // maps DCCL ID to map of Group->subscription
         std::unordered_map<int, std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase>>> subscriptions_;
