@@ -60,14 +60,14 @@ void direct_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, const
 void indirect_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
 {
     goby::ZMQTransporter<> zmq(zmq_cfg);
-    goby::InterVehicleTransporter<decltype(zmq)> intervehicle(zmq);
+    goby::InterPlatformTransporter<decltype(zmq)> interplatform(zmq);
     double a = 0;
     while(publish_count < max_publish)
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++-10);
         s1->set_group(3);
-        intervehicle.publish(s1, s1->group());
+        interplatform.publish(s1, s1->group());
             
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
@@ -76,7 +76,7 @@ void indirect_publisher(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
 
     while(forward)
     {
-        intervehicle.poll(std::chrono::milliseconds(100));
+        interplatform.poll(std::chrono::milliseconds(100));
     }
 }
 
@@ -129,7 +129,7 @@ void direct_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg, cons
 
 void indirect_handle_sample_indirect(const Sample& sample)
 {
-    glog.is(DEBUG1) && glog <<  "InterVehicleTransporter received indirect sample: " << sample.ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog <<  "InterPlatformTransporter received indirect sample: " << sample.ShortDebugString() << std::endl;
     assert(sample.a() == ipc_receive_count[0]-10);
     ++ipc_receive_count[0];
 }
@@ -137,16 +137,16 @@ void indirect_handle_sample_indirect(const Sample& sample)
 void indirect_subscriber(const goby::protobuf::ZMQTransporterConfig& zmq_cfg)
 {
     goby::ZMQTransporter<> zmq(zmq_cfg);
-    goby::InterVehicleTransporter<decltype(zmq)> intervehicle(zmq);
-    intervehicle.subscribe<Sample>(&indirect_handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
+    goby::InterPlatformTransporter<decltype(zmq)> interplatform(zmq);
+    interplatform.subscribe<Sample>(&indirect_handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
     while(ipc_receive_count[0] < max_publish)
     {
-        intervehicle.poll(std::chrono::seconds(1));
+        interplatform.poll(std::chrono::seconds(1));
         if(std::chrono::system_clock::now() > timeout)
-            glog.is(DIE) && glog <<  "InterVehicleTransport timed out waiting for data" << std::endl;
+            glog.is(DIE) && glog <<  "InterPlatformTransport timed out waiting for data" << std::endl;
     }
 
 }

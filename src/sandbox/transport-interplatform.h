@@ -1,5 +1,5 @@
-#ifndef TransportInterVehicle20160810H
-#define TransportInterVehicle20160810H
+#ifndef TransportInterPlatform20160810H
+#define TransportInterPlatform20160810H
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -24,16 +24,16 @@
 namespace goby
 {
     template<typename InnerTransporter, typename GroupType = int>
-        class InterVehicleTransporter
+        class InterPlatformTransporter
     {
     public:
         typedef GroupType Group;
 
-    InterVehicleTransporter(InnerTransporter& inner) : inner_(inner)
+    InterPlatformTransporter(InnerTransporter& inner) : inner_(inner)
         {
             inner_.subscribe<goby::protobuf::DCCLForwardedData>([this](const goby::protobuf::DCCLForwardedData& d) { _receive_dccl_data_forwarded(d); }, forward_group);
         }
-        ~InterVehicleTransporter() { }
+        ~InterPlatformTransporter() { }
 
         template<typename Data>
             void publish(const Data& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
@@ -84,7 +84,7 @@ namespace goby
         template<typename Data>
             void _publish(const Data& d, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
-            static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporter");
+            static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterPlatformTransporter");
 
             // create and forward publication to edge
             std::vector<char> bytes(SerializerParserHelper<Data, MarshallingScheme::DCCL>::serialize(d));
@@ -103,7 +103,7 @@ namespace goby
 
         void _receive_dccl_data_forwarded(const goby::protobuf::DCCLForwardedData& d)
         {
-            std::cout << "InterVehicleTransporter received forwarded data: " << d.DebugString() << std::endl;
+            std::cout << "InterPlatformTransporter received forwarded data: " << d.DebugString() << std::endl;
 
             for(auto& frame: d.frame())
             {
@@ -126,7 +126,7 @@ namespace goby
                             const Group& group,
                             std::function<Group(const Data&)> group_func)
         {
-            static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporter");
+            static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterPlatformTransporter");
                         
             int dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::codec().template id<Data>();
             auto subscribe_lambda = [=](std::shared_ptr<Data> d, const std::string& g, const goby::protobuf::TransporterConfig& t) { func(d); };
@@ -157,14 +157,14 @@ namespace goby
     };
 
     template<typename InnerTransport, typename GroupType>
-        const std::string InterVehicleTransporter<InnerTransport, GroupType>::forward_group( "goby::InterVehicleTransporter");
+        const std::string InterPlatformTransporter<InnerTransport, GroupType>::forward_group( "goby::InterPlatformTransporter");
     
 
     template<typename InnerTransporter = NoOpTransporter, typename GroupType = int>
         class SlowLinkTransporter
         {
         public:
-        typedef typename InterVehicleTransporter<InnerTransporter, GroupType>::Group Group;
+        typedef typename InterPlatformTransporter<InnerTransporter, GroupType>::Group Group;
 
         SlowLinkTransporter(const protobuf::SlowLinkTransporterConfig& cfg) : own_inner_(new InnerTransporter), inner_(*own_inner_), cfg_(cfg) { _init(); }
         SlowLinkTransporter(InnerTransporter& inner, const protobuf::SlowLinkTransporterConfig& cfg) : inner_(inner), cfg_(cfg) { _init(); }
@@ -299,10 +299,10 @@ namespace goby
     
             driver_->signal_receive.connect([&](const goby::acomms::protobuf::ModemTransmission& rx_msg) { this->_receive(rx_msg); });
 
-            inner_.subscribe<goby::protobuf::SerializerTransporterData>([this](const goby::protobuf::SerializerTransporterData& d) { _receive_publication_forwarded(d); }, InterVehicleTransporter<InnerTransporter, GroupType>::forward_group);
+            inner_.subscribe<goby::protobuf::SerializerTransporterData>([this](const goby::protobuf::SerializerTransporterData& d) { _receive_publication_forwarded(d); }, InterPlatformTransporter<InnerTransporter, GroupType>::forward_group);
 
             
-            inner_.subscribe<goby::protobuf::DCCLSubscription>([this](const goby::protobuf::DCCLSubscription& d) { _receive_subscription_forwarded(d); },InterVehicleTransporter<InnerTransporter, GroupType>::forward_group);
+            inner_.subscribe<goby::protobuf::DCCLSubscription>([this](const goby::protobuf::DCCLSubscription& d) { _receive_subscription_forwarded(d); },InterPlatformTransporter<InnerTransporter, GroupType>::forward_group);
 
             q_manager_.set_cfg(cfg_.queue_cfg());
             mac_.startup(cfg_.mac_cfg());
@@ -328,13 +328,13 @@ namespace goby
             }
 
             // unless we want to require the edge to have all the DCCL messages loaded,
-            // all we can do is forwarded the entire data to the InterVehicleTransporters to parse
+            // all we can do is forwarded the entire data to the InterPlatformTransporters to parse
             if(forwarded_subscriptions_.size() > 0)
             {
                 goby::protobuf::DCCLForwardedData data;
                 for(auto& frame: rx_msg.frame())
                     *data.add_frame() = frame;
-                inner_.publish(data, InterVehicleTransporter<InnerTransporter, GroupType>::forward_group);
+                inner_.publish(data, InterPlatformTransporter<InnerTransporter, GroupType>::forward_group);
             }
                     
             std::cout << "Received: " << rx_msg.ShortDebugString() << std::endl;
