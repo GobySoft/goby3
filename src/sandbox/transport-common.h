@@ -103,7 +103,8 @@ namespace goby
         const std::string type_name_;
         const std::string group_;
         std::function<std::string(const Data&)> group_func_;
-    };    
+    };
+
 }
 
 #endif
