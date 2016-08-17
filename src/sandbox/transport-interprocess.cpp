@@ -19,6 +19,14 @@ void goby::ZMQRouter::run()
 {
     zmq::socket_t frontend(context_, ZMQ_XPUB);
     zmq::socket_t backend(context_, ZMQ_XSUB);
+
+    int send_hwm = cfg_.send_queue_size();
+    int receive_hwm = cfg_.receive_queue_size();
+    frontend.setsockopt(ZMQ_SNDHWM, &send_hwm, sizeof(send_hwm));
+    backend.setsockopt(ZMQ_SNDHWM, &send_hwm, sizeof(send_hwm));
+    frontend.setsockopt(ZMQ_RCVHWM, &receive_hwm, sizeof(receive_hwm));
+    backend.setsockopt(ZMQ_RCVHWM, &receive_hwm, sizeof(receive_hwm));
+
     switch(cfg_.transport())
     {
         case goby::protobuf::InterProcessPortalConfig::IPC:
@@ -80,7 +88,7 @@ void goby::ZMQManager::run()
             socket.recv (&request);
 
             goby::protobuf::ZMQManagerRequest pb_request;
-            const int packet_header_size = 5; // uint32 and '\0'
+            const int packet_header_size = 1; // '\0'
             pb_request.ParseFromArray((char*)request.data()+packet_header_size, request.size()-packet_header_size);
 
             while(cfg_.transport() == goby::protobuf::InterProcessPortalConfig::TCP && (router_.pub_port == 0 || router_.sub_port == 0))
@@ -97,6 +105,11 @@ void goby::ZMQManager::run()
                 publish_socket->set_socket_type(goby::common::protobuf::ZeroMQServiceConfig::Socket::PUBLISH);
                 subscribe_socket->set_connect_or_bind(goby::common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
                 publish_socket->set_connect_or_bind(goby::common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
+
+                subscribe_socket->set_send_queue_size(cfg_.send_queue_size());
+                subscribe_socket->set_receive_queue_size(cfg_.receive_queue_size());
+                publish_socket->set_send_queue_size(cfg_.send_queue_size());
+                publish_socket->set_receive_queue_size(cfg_.receive_queue_size());
                 
                 switch(cfg_.transport())
                 {
@@ -118,12 +131,7 @@ void goby::ZMQManager::run()
             zmq::message_t reply(pb_response.ByteSize() + packet_header_size);
             pb_response.SerializeToArray((char*)reply.data() + packet_header_size, reply.size() - packet_header_size);
 
-            std::array<char, packet_header_size> header {
-                (goby::ZMQ_MARSHALLING_SCHEME >> 24) & 0xff,
-                    (goby::ZMQ_MARSHALLING_SCHEME >> 16) & 0xff,
-                    (goby::ZMQ_MARSHALLING_SCHEME >> 8) & 0xff,
-                    goby::ZMQ_MARSHALLING_SCHEME & 0xff,
-                    '\0' };
+            std::array<char, packet_header_size> header { '\0' };
             
             memcpy(reply.data(), &header[0], packet_header_size);
             socket.send(reply);

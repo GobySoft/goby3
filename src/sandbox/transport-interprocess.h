@@ -6,19 +6,16 @@
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <tuple>
 
-#include "goby/common/zeromq_service.h"
+#include "zeromq_service.h"
 
 #include "transport-common.h"
 #include "goby/sandbox/protobuf/interprocess_config.pb.h"
 
+
 namespace goby
 {   
-
-    enum { ZMQ_MARSHALLING_SCHEME = 0x474f4259 };
-
-
-
     template<typename Derived, typename InnerTransporter, typename Group>
         class InterProcessTransporterBase
     {
@@ -145,8 +142,14 @@ namespace goby
         void _publish(const Data& d, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
             std::vector<char> bytes(SerializerParserHelper<Data, scheme>::serialize(d));
-            std::string sbytes(bytes.begin(), bytes.end());
-            zmq_.send(ZMQ_MARSHALLING_SCHEME, _make_identifier<Data, scheme>(group, IdentifierWildcard::NO_WILDCARDS), sbytes, SOCKET_PUBLISH);
+            std::string identifier = _make_identifier<Data, scheme>(group, IdentifierWildcard::NO_WILDCARDS) + '\0';
+            
+            zmq::message_t msg(identifier.size() + bytes.size());
+            memcpy(msg.data(), identifier.data(), identifier.size());
+            memcpy(static_cast<char*>(msg.data())+identifier.size(),
+                   &bytes[0], bytes.size());            
+
+            zmq_.send(msg, SOCKET_PUBLISH);
         }
 
         template<typename Data, int scheme>
@@ -157,10 +160,10 @@ namespace goby
             typename SerializationSubscription<Data, scheme>::HandlerType subscribe_function(subscribe_lambda);
             auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
                 new SerializationSubscription<Data, scheme>(subscribe_function,
-                                                                group_convert(group),
-                                                                [=](const Data&d) { return group; })); 
+                                                            group_convert(group),
+                                                            [=](const Data&d) { return group; })); 
             subscriptions_.insert(std::make_pair(identifier, subscription));
-            zmq_.subscribe(ZMQ_MARSHALLING_SCHEME, identifier, SOCKET_SUBSCRIBE);
+            zmq_.subscribe(identifier, SOCKET_SUBSCRIBE);
         }
         
         int _poll(std::chrono::system_clock::duration wait_for)
@@ -175,8 +178,7 @@ namespace goby
             Base::inner_.template subscribe<SerializerTransporterData>([this](std::shared_ptr<const SerializerTransporterData> d) { _receive_publication_forwarded(d);}, Base::forward_group_);
             
             Base::inner_.template subscribe<SerializationSubscriptionBase, MarshallingScheme::CXX_OBJECT>([this](std::shared_ptr<const SerializationSubscriptionBase> s) { _receive_subscription_forwarded(s); }, Base::forward_group_);
-
-            zmq_.connect_inbox_slot(&InterProcessPortal::_zmq_inbox, this);
+            zmq_.receive_func = [&](const void* data, int size, int message_part, int socket_id) { _zmq_inbox(data, size, message_part, socket_id); };
 
             goby::common::protobuf::ZeroMQServiceConfig cfg;
 
@@ -202,7 +204,11 @@ namespace goby
             
             protobuf::ZMQManagerRequest req;
             req.set_request(protobuf::PROVIDE_PUB_SUB_SOCKETS);
-            zmq_.send(ZMQ_MARSHALLING_SCHEME, "", req.SerializeAsString(), SOCKET_MANAGER);
+
+            zmq::message_t msg(1 + req.ByteSize());
+            *static_cast<char*>(msg.data()) = '\0';
+            req.SerializeToArray(static_cast<char*>(msg.data())+1, req.ByteSize());
+            zmq_.send(msg, SOCKET_MANAGER);
             Base::poll(std::chrono::seconds(cfg_.manager_timeout_seconds()));
             
             if(!have_pubsub_sockets_)
@@ -215,11 +221,14 @@ namespace goby
         
         void _receive_publication_forwarded(std::shared_ptr<const goby::protobuf::SerializerTransporterData> data)
         {
-            zmq_.send(ZMQ_MARSHALLING_SCHEME,
-                      _make_identifier(data->type(), data->marshalling_scheme(), data->group(), IdentifierWildcard::NO_WILDCARDS),
-                      data->data(),
-                      SOCKET_PUBLISH);
-
+            std::string identifier = _make_identifier(data->type(), data->marshalling_scheme(), data->group(), IdentifierWildcard::NO_WILDCARDS) + '\0';
+            const auto& bytes = data->data();
+            zmq::message_t msg(identifier.size() + bytes.size());
+            memcpy(msg.data(), identifier.data(), identifier.size());
+            memcpy(static_cast<char*>(msg.data())+identifier.size(),
+                   bytes.data(), bytes.size());
+                        
+            zmq_.send(msg, SOCKET_PUBLISH);
         }
 
         void _receive_subscription_forwarded(std::shared_ptr<const SerializationSubscriptionBase> subscription)
@@ -227,31 +236,33 @@ namespace goby
             std::string identifier = _make_identifier(subscription->type_name(), subscription->scheme(), subscription->subscribed_group(), IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
             subscriptions_.insert(std::make_pair(identifier, subscription));
-            zmq_.subscribe(ZMQ_MARSHALLING_SCHEME, identifier, SOCKET_SUBSCRIBE);
+            zmq_.subscribe(identifier, SOCKET_SUBSCRIBE);
         }
 
-        void _zmq_inbox(int marshalling_scheme,
-                        const std::string& identifier,
-                        const std::string& body,
-                        int socket_id)
+        void _zmq_inbox(const void* data, int size, int message_part, int socket_id)
         {
-            if(marshalling_scheme != ZMQ_MARSHALLING_SCHEME)
-                return;
-            
+            int null_delim_pos = 0;
+            for(int i = 0; i < size; ++i)
+            {
+                if(*(static_cast<const char*>(data) + i) == '\0')
+                {
+                    null_delim_pos = i;
+                    break;
+                }
+            }
             if(socket_id == SOCKET_SUBSCRIBE)
             {
                 for(auto &sub : subscriptions_)
                 {
-                    if(identifier.compare(0, sub.first.size(), sub.first) == 0)
-                    {
-                        sub.second->post(body.begin(), body.end());
-                    }
+                    if(size >= sub.first.size() && memcmp(data, sub.first.data(), sub.first.size()) == 0)
+                        sub.second->post(static_cast<const char*>(data) + null_delim_pos + 1,
+                                         static_cast<const char*>(data) + size);
                 }
             }
             else if(socket_id == SOCKET_MANAGER)
             {
                 protobuf::ZMQManagerResponse response;
-                response.ParseFromString(body);
+                response.ParseFromArray(static_cast<const char*>(data) + null_delim_pos + 1, size - (null_delim_pos + 1));
                 if(response.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
                 {
                     goby::common::protobuf::ZeroMQServiceConfig cfg;
@@ -275,6 +286,19 @@ namespace goby
         enum class IdentifierWildcard { NO_WILDCARDS,
                                         THREAD_WILDCARD,
                                         PROCESS_THREAD_WILDCARD };
+
+        /* template<typename Data, int scheme, std::string group> */
+        /* std::string _make_fully_qualifier_identifier() */
+        /* { */
+        /*     static const std::string("/" + group + */
+        /*                    "/" + id_component(scheme, schemes_) + */
+        /*                    "/" + type_name +  */
+        /*                    "/" + process_ + */
+        /*                    "/" + id_component(std::this_thread::get_id(), threads_) + */
+        /*                              "/") */
+        /*     return  */
+        /* } */
+        
         
         template<typename Data, int scheme>
         std::string _make_identifier(const Group& group, IdentifierWildcard wildcard)
@@ -284,31 +308,58 @@ namespace goby
 
         std::string _make_identifier(const std::string& type_name, int scheme, const Group& group, IdentifierWildcard wildcard)
         {
-            std::string sscheme(std::to_string(scheme));
-            std::string process(std::to_string(getpid()));
-            std::string thread(std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
-            
-            std::string id("/" + group +
-                           "/" + sscheme +
+            switch(wildcard)
+            {
+                default:
+                case IdentifierWildcard::NO_WILDCARDS:
+                   return ("/" + group +
+                           "/" + id_component(scheme, schemes_) +
+                           "/" + type_name + 
+                           "/" + process_ +
+                           "/" + id_component(std::this_thread::get_id(), threads_) +
+                           "/");
+                case IdentifierWildcard::THREAD_WILDCARD:
+                   return ("/" + group +
+                           "/" + id_component(scheme, schemes_) +
+                           "/" + type_name + 
+                           "/" + process_ +
+                           "/");
+                case IdentifierWildcard::PROCESS_THREAD_WILDCARD:
+                   return ("/" + group +
+                           "/" + id_component(scheme, schemes_) +
                            "/" + type_name + 
                            "/");
-            if(wildcard != IdentifierWildcard::PROCESS_THREAD_WILDCARD)
-                id += process + "/";
-            if(wildcard == IdentifierWildcard::NO_WILDCARDS)
-                id += thread + "/";
-            return id;
+            }
+        }        
+
+        template<typename Key>
+        const std::string& id_component(const Key& k, std::unordered_map<Key, std::string>& map)
+        {
+            auto it = map.find(k);
+            if(it != map.end()) return it->second;
+
+            std::string v = to_string(k);
+            auto it_pair = map.insert(std::make_pair(k, v));
+            return it_pair.first->second;
         }
 
+        std::string to_string(int i) { return std::to_string(i); }
+        std::string to_string(std::thread::id i) { return std::to_string(std::hash<std::thread::id>{}(i)); }
+        
+        
         private:
 
         enum { SOCKET_MANAGER = 0, SOCKET_SUBSCRIBE = 1, SOCKET_PUBLISH = 2 };
         
         const protobuf::InterProcessPortalConfig& cfg_;
-        goby::common::ZeroMQService zmq_;
+        goby::sandbox::ZeroMQService zmq_;
         bool have_pubsub_sockets_{false};
         
         // maps identifier to subscription
         std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase>> subscriptions_;
+        std::string process_ {std::to_string(getpid())};
+        std::unordered_map<int, std::string> schemes_;
+        std::unordered_map<std::thread::id, std::string> threads_;
     };
     
     class ZMQRouter

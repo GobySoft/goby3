@@ -17,6 +17,9 @@ message InterProcessPortalConfig
     optional string ipv4_address = 4 [default="127.0.0.1"];
     optional uint32 tcp_port = 5 [default = 11144];
 
+    optional uint32 send_queue_size = 6 [default = 1000];
+    optional uint32 receive_queue_size = 7 [default = 1000];
+    
     optional uint32 manager_timeout_seconds = 10 [default = 1];
 }
 

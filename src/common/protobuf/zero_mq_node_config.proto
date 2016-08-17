@@ -42,7 +42,10 @@ message ZeroMQServiceConfig
 
     // required for INPROC, IPC
     optional string socket_name = 8;
-  }  
+
+    optional uint32 send_queue_size = 10 [default = 1000];
+    optional uint32 receive_queue_size = 11 [default = 1000];
+  }
   
   repeated Socket socket = 1;
 }

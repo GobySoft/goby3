@@ -5,6 +5,8 @@ set(SRC
   serialize_parse.cpp
   transport-interthread.cpp
   transport-interprocess.cpp
+  zeromq_service.cpp
+
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 
