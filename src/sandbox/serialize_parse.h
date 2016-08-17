@@ -236,6 +236,12 @@ namespace goby
     //
     inline std::string group_convert(const std::string& group) { return group; }
     inline std::string group_convert(const int& group) { return std::to_string(group); }
+    template<int group>
+        std::string group_convert()
+    {
+        static const std::string s(std::to_string(group));
+        return s;
+    }
     
     
     

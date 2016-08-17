@@ -267,66 +267,9 @@ void goby::sandbox::ZeroMQService::unsubscribe(const std::string& identifier, in
 void goby::sandbox::ZeroMQService::send(zmq::message_t& msg,
                                         int socket_id)
 {
-    // std::string raw;
-    // zeromq_packet_encode(&raw, identifier, body);
-    
-    // zmq::message_t msg(raw.size());
-    // memcpy(msg.data(), raw.c_str(), raw.size()); // insert packet
-
-    // glog.is(DEBUG3) &&
-    //     glog << group(glog_out_group())
-    //          << "Sent message (hex): " << hex_encode(std::string(static_cast<const char*>(msg.data()),msg.size()))
-    //          << std::endl ;
-
     socket_from_id(socket_id).socket()->send(msg);
 }
 
-
-// void goby::sandbox::ZeroMQService::handle_receive(const void* data,
-//                                                   int size,
-//                                                   int message_part,
-//                                                   int socket_id)
-// {
-//     std::string bytes(static_cast<const char*>(data),
-//                       size);
-    
-
-//     glog.is(DEBUG3) &&
-//         glog << group(glog_in_group())
-//              << "Received message (hex): " << goby::util::hex_encode(bytes)
-//              << std::endl ;
-    
-    
-//     std::string identifier;
-//     std::string body;
-    
-//     switch(message_part)
-//     {
-//         case 0:
-//         {
-//             zeromq_packet_decode(bytes, &identifier, &body);
-
-//             glog.is(DEBUG3) &&
-//                 glog << group(glog_in_group())
-//                      << "Received message of type: [" << identifier << "]" << std::endl;
-
-//             glog.is(DEBUG3) &&
-//                 glog << group(glog_in_group())
-//                      << "Body [" << goby::util::hex_encode(body)<< "]" << std::endl;
-
-            
-//             inbox_signal_(identifier,
-//                           body,
-//                           socket_id);
-//         }
-//         break;
-            
-            
-//         default:
-//             throw(std::runtime_error("Got more parts to the message than expecting (expecting only 1)"));    
-//             break;
-//     }
-// }
 
 int goby::sandbox::ZeroMQService::poll(long timeout /* = -1 */)
 {
@@ -339,47 +282,31 @@ int goby::sandbox::ZeroMQService::poll(long timeout /* = -1 */)
         if (poll_items_[i].revents & ZMQ_POLLIN) 
         {
             int message_part = 0;
-            more_t more;
-            size_t more_size = sizeof(more_t);
-            do {
-                /* Create an empty ØMQ message to hold the message part */
-                zmq_msg_t part;
-                int rc = zmq_msg_init (&part);
+            
+            zmq_msg_t part;
+            int rc = zmq_msg_init (&part);
                 
-                if(rc == -1)
-                {
-                    glog.is(DEBUG1) &&
-                        glog << warn << "zmq_msg_init failed" << std::endl ;
-                    continue;
-                }
+            if(rc == -1)
+            {
+                glog.is(DEBUG1) &&
+                    glog << warn << "zmq_msg_init failed" << std::endl ;
+                continue;
+            }
                 
-                /* Block until a message is available to be received from socket */
-                rc = zmq_msg_recv (&part, poll_items_[i].socket, 0);
-                glog.is(DEBUG3) &&
-                    glog << group(glog_in_group())
-                         << "Had event for poll item " << i << std::endl ;
-                poll_callbacks_[i](zmq_msg_data(&part), zmq_msg_size(&part), message_part);
+            /* Block until a message is available to be received from socket */
+            rc = zmq_msg_recv (&part, poll_items_[i].socket, 0);
+            glog.is(DEBUG3) &&
+                glog << group(glog_in_group())
+                     << "Had event for poll item " << i << std::endl ;
+            poll_callbacks_[i](zmq_msg_data(&part), zmq_msg_size(&part), message_part);
 
-                if(rc == -1)
-                {
-                    glog.is(DEBUG1) &&
-                        glog << warn << "zmq_recv failed" << std::endl ;
-                    continue;
-                }
-                
-                /* Determine if more message parts are to follow */
-                rc = zmq_getsockopt (poll_items_[i].socket, ZMQ_RCVMORE, &more, &more_size);
-
-                if(rc == -1)
-                {
-                    glog.is(DEBUG1) &&
-                        glog << warn << "zmq_getsocketopt failed" << std::endl ;
-                    continue;
-                }
-
-                zmq_msg_close (&part);
-                ++message_part;
-            } while (more);
+            if(rc == -1)
+            {
+                glog.is(DEBUG1) &&
+                    glog << warn << "zmq_recv failed" << std::endl ;
+                continue;
+            }
+            zmq_msg_close (&part);
             ++had_events;
         }
     }

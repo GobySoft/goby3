@@ -23,6 +23,13 @@ namespace goby
     InterProcessTransporterBase(InnerTransporter& inner) : inner_(inner) { }
     InterProcessTransporterBase() : own_inner_(new InnerTransporter), inner_(*own_inner_) { }
             
+        template<int group, typename Data, int scheme = scheme<Data>()>
+            void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            {
+                static_cast<Derived*>(this)->template _publish<group, Data, scheme>(data, transport_cfg);
+                inner_.publish<Data, scheme>(data, group_convert<group>(), transport_cfg);
+            }
+
         template<typename Data, int scheme = scheme<Data>()>
             void publish(const Data& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             {
@@ -82,6 +89,10 @@ namespace goby
 
         friend Base;
     private:
+        template<int group, typename Data, int scheme>
+            void _publish(const Data& d, const goby::protobuf::TransporterConfig& transport_cfg)
+        { _publish(d, group_convert(group), transport_cfg); }
+
         template<typename Data, int scheme>
             void _publish(const Data& d, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
@@ -137,6 +148,22 @@ namespace goby
 
         friend Base;
         private:
+
+        template<int group, typename Data, int scheme>
+        void _publish(const Data& d, const goby::protobuf::TransporterConfig& transport_cfg)
+        {
+            std::vector<char> bytes(SerializerParserHelper<Data, scheme>::serialize(d));
+            std::string identifier = _make_fully_qualified_identifier<group, Data, scheme>();
+            
+            zmq::message_t msg(identifier.size() + 1 + bytes.size());
+            memcpy(msg.data(), identifier.data(), identifier.size());
+            *(static_cast<char*>(msg.data())+identifier.size()) = '\0';
+            memcpy(static_cast<char*>(msg.data())+identifier.size() + 1,
+                   &bytes[0], bytes.size());            
+
+            zmq_.send(msg, SOCKET_PUBLISH);
+        }
+        
         
         template<typename Data, int scheme>
         void _publish(const Data& d, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)
@@ -287,17 +314,18 @@ namespace goby
                                         THREAD_WILDCARD,
                                         PROCESS_THREAD_WILDCARD };
 
-        /* template<typename Data, int scheme, std::string group> */
-        /* std::string _make_fully_qualifier_identifier() */
-        /* { */
-        /*     static const std::string("/" + group + */
-        /*                    "/" + id_component(scheme, schemes_) + */
-        /*                    "/" + type_name +  */
-        /*                    "/" + process_ + */
-        /*                    "/" + id_component(std::this_thread::get_id(), threads_) + */
-        /*                              "/") */
-        /*     return  */
-        /* } */
+
+        template<int group, typename Data, int scheme>
+        std::string _make_fully_qualified_identifier()
+        {
+            static const std::string id("/" + std::to_string(group) +
+                                        "/" + id_component(scheme, schemes_) +
+                                        "/" + SerializerParserHelper<Data, scheme>::type_name(Data()) +
+                                        "/" + process_ +
+                                        "/" + id_component(std::this_thread::get_id(), threads_) +
+                                        "/");
+            return id;
+        }
         
         
         template<typename Data, int scheme>

@@ -31,7 +31,7 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
     int a = 0;
     std::cout << "Start: " << std::setprecision(15) <<goby::common::goby_time<double>() << std::endl;
 
-    std::string group("Sample1");
+    const int group = 1;    
     while(publish_count < max_publish)
     {
         Sample s;
@@ -39,7 +39,7 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
         s.set_salinity(30.1);
         s.set_depth(5.2);
 
-        zmq.publish(s, group);
+        zmq.publish<group>(s);
         ++publish_count;
         //        usleep(1e3);
     }    
@@ -55,6 +55,9 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
 // child process
 void handle_sample1(const Sample& sample)
 {
+    if(ipc_receive_count == 0)
+        std::cout << "Receive start: " << std::setprecision(15) <<goby::common::goby_time<double>() << std::endl;
+
     //std::cout << sample.ShortDebugString() << std::endl;
     ++ipc_receive_count;
     
@@ -69,7 +72,7 @@ void handle_sample1(const Sample& sample)
 void subscriber(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
     goby::InterProcessPortal<> zmq(cfg);
-    zmq.subscribe<Sample>(&handle_sample1, "Sample1");
+    zmq.subscribe<Sample>(&handle_sample1, "1");
     std::cout << "Subscribed. " << std::endl;
     while(ipc_receive_count < max_publish)
     {
