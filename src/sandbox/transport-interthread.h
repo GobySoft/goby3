@@ -82,7 +82,7 @@ namespace goby
         {
             // push new data
             // build up local vector of relevant condition variables while locked
-            std::set<std::shared_ptr<std::condition_variable_any>> cv_to_notify;
+            std::vector<std::shared_ptr<std::condition_variable_any>> cv_to_notify;
             {
                 std::lock_guard<decltype(subscription_mutex)> lock(subscription_mutex);
                 auto range = subscription_groups_.equal_range(group);
@@ -93,12 +93,12 @@ namespace goby
                     if(queue_it == data_.end())
                         queue_it = data_.insert(std::make_pair(thread_id, DataQueue())).first;
                     queue_it->second.insert(group, data);
-                    cv_to_notify.insert(data_condition_.at(thread_id));
+                    cv_to_notify.push_back(data_condition_.at(thread_id));
                 }
             }
 
             // unlock and notify condition variables from local vector
-            for (auto cv : cv_to_notify)
+            for (const auto& cv : cv_to_notify)
                 cv->notify_all();
         }
 

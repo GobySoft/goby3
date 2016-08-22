@@ -4,3 +4,8 @@ message Sample
     required double salinity = 2;
     required double depth = 3;
 }
+
+message Large
+{
+    required bytes data = 1;
+}

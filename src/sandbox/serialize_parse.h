@@ -234,6 +234,19 @@ namespace goby
     //
     // group_convert
     //
+    class Group
+    {
+    public:
+        Group(const char* c = "") : c_(c) { }
+        const std::string& str() const { return c_; }
+        Group& operator=(const Group&) = delete;
+        Group(const Group&) = delete;
+    private:
+        const std::string c_;
+    
+    };
+    inline std::string group_convert(const Group& group) { return group.str(); }
+    
     inline std::string group_convert(const std::string& group) { return group; }
     inline std::string group_convert(const int& group) { return std::to_string(group); }
     template<int group>
@@ -242,6 +255,8 @@ namespace goby
         static const std::string s(std::to_string(group));
         return s;
     }
+
+    template<const Group& group> const std::string& group_convert() { return group.str(); }
     
     
     
