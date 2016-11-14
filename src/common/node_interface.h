@@ -44,7 +44,7 @@ namespace goby
                 zeromq_service_->connect_inbox_slot(&NodeInterface<NodeTypeBase>::inbox, this);
             }            
             
-            virtual void inbox(MarshallingScheme marshalling_scheme,
+            virtual void inbox(int marshalling_scheme,
                                const std::string& identifier,
                                const std::string& body,
                                int socket_id) = 0;

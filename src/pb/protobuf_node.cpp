@@ -28,7 +28,7 @@ using goby::glog;
 using goby::util::as;
 using namespace goby::common::logger;
 
-void goby::pb::ProtobufNode::inbox(common::MarshallingScheme marshalling_scheme,
+void goby::pb::ProtobufNode::inbox(int marshalling_scheme,
                                    const std::string& identifier,
                                    const std::string& body,
                                    int socket_id)

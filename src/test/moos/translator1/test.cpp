@@ -181,7 +181,7 @@ int main(int argc, char* argv[])
         assert(it->second.GetString() == "NAME=unicorn,X=550,Y=1023.5,HEADING=240,REPEAT={1,-1,2,-2,3,-3,4,-4,5,-5,6,-6},REPEAT={1,-1,2,-2,3,-3,4,-4,5,-5,6,-6}");
     }
     
-    typedef std::auto_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
+    typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
     GoogleProtobufMessagePointer report_out =
         translator.moos_to_protobuf<GoogleProtobufMessagePointer>(moos_msgs, "BasicNodeReport");
 
@@ -354,7 +354,7 @@ int main(int argc, char* argv[])
         assert(it->second.GetString() == "em.val=19.998");
     }
     
-    typedef std::auto_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
+    typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
     GoogleProtobufMessagePointer embedded_test_out =
         translator.moos_to_protobuf<GoogleProtobufMessagePointer>(moos_msgs, "TestMsg");
 
@@ -404,7 +404,7 @@ int main(int argc, char* argv[])
        assert(it->second.GetString() == "em0.val=21.123,1uint64=100,0uint64=0.2uint64=200:em1.val=100.5,dbl0=nan,dbl1=nan,dbl2=nan,dbl3=nan,em0.em1.val=45");
    }
    
-   typedef std::auto_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
+   typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
    embedded_test_out = translator.moos_to_protobuf<GoogleProtobufMessagePointer>(moos_msgs, "TestMsg");
 
     goby::glog << "Message out: " << std::endl;
@@ -483,7 +483,7 @@ void run_one_in_one_out_test(MOOSTranslator& translator, int i, bool hex_encode)
         ++i;
     }
     
-    typedef std::auto_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
+    typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
     GoogleProtobufMessagePointer msg_out =
         translator.moos_to_protobuf<GoogleProtobufMessagePointer>(moos_msgs, "TestMsg");
 

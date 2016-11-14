@@ -48,7 +48,7 @@ CMOOSGeodesy geodesy;
 
 void parse_in(const std::string& in, std::map<std::string, std::string>* out);
 bool started()
-{ return !isnan(datum_lat) && !isnan(datum_lon); }
+{ return !std::isnan(datum_lat) && !std::isnan(datum_lon); }
 
 int main(int argc, char* argv[])
 {

@@ -238,6 +238,7 @@ namespace goby
     {
     public:
         Group(const char* c = "") : c_(c) { }
+        Group(const std::string& c) : c_(c) { }
         const std::string& str() const { return c_; }
         Group& operator=(const Group&) = delete;
         Group(const Group&) = delete;

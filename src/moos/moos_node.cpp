@@ -41,7 +41,7 @@ goby::moos::MOOSNode::MOOSNode(ZeroMQService* service)
 }
 
 
-void goby::moos::MOOSNode::inbox(common::MarshallingScheme marshalling_scheme,
+void goby::moos::MOOSNode::inbox(int marshalling_scheme,
                                  const std::string& identifier,
                                  const std::string& bytes,
                                  int socket_id)

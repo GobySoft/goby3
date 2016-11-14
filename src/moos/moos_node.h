@@ -61,7 +61,7 @@ namespace goby
             
             
           private:
-            void inbox(goby::common::MarshallingScheme marshalling_scheme,
+            void inbox(int marshalling_scheme,
                        const std::string& identifier,
                        const std::string& body,
                        int socket_id);

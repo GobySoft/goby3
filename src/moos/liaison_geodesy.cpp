@@ -209,7 +209,7 @@ void goby::common::LiaisonGeodesy::convert_geo_to_local()
     
     geodesy_.LatLong2LocalUTM(lat, lon, last_y_, last_x_);
 
-    if(!isnan(last_x_) && !isnan(last_y_))
+    if(!std::isnan(last_x_) && !std::isnan(last_y_))
     {
         std::stringstream x_ss, y_ss;
         x_ss << std::fixed << std::setprecision(2) << last_x_;
@@ -293,12 +293,12 @@ void goby::common::LiaisonGeodesy::reformat()
     datum_lat_->setText(format(geodesy_config_.lat_origin(), mode_, LAT));
     datum_lon_->setText(format(geodesy_config_.lon_origin(), mode_, LON));
 
-    if(!isnan(last_lat_))
+    if(!std::isnan(last_lat_))
         local_to_geo_lat_->setText(format(last_lat_, mode_, LAT));
     else
         local_to_geo_lat_->setText("---");
 
-    if(!isnan(last_lon_))      
+    if(!std::isnan(last_lon_))      
         local_to_geo_lon_->setText(format(last_lon_, mode_, LON));
     else
         local_to_geo_lon_->setText("---");

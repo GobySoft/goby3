@@ -28,7 +28,7 @@
 
 #include <exception>
 #include <iostream>     // cout
-#include <memory>       // auto_ptr
+#include <memory>       
 #include <vector>
 #include <fstream>
 
@@ -64,7 +64,7 @@ class XMLParser {
     {
         // Initialize Xerces and obtain parser
         XercesInitializer init; 
-        std::auto_ptr<xercesc::SAX2XMLReader> parser(xercesc::XMLReaderFactory::createXMLReader());
+        std::unique_ptr<xercesc::SAX2XMLReader> parser(xercesc::XMLReaderFactory::createXMLReader());
 
         // write XML schema to file
         const std::string schema = "/tmp/dccl_message_schema.xsd";
