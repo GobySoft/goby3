@@ -11,7 +11,7 @@
 #include <zmq.hpp>
 
 // speed test for interprocess
-#define LARGE_MESSAGE
+//#define LARGE_MESSAGE
 
 int publish_count = 0;
 int ipc_receive_count = {0};
@@ -24,15 +24,19 @@ goby::InterThreadTransporter interthread;
 using goby::glog;
 using namespace goby::common::logger;
 
-goby::Group sample1_group{"Sample1"};
+struct TestGroups
+{
+    static constexpr goby::Group sample1_group{"Sample1"};
+};
 
-
+constexpr goby::Group TestGroups::sample1_group;
+    
 #ifdef LARGE_MESSAGE
 using Type = Large;
-const int max_publish = 10000;
+const int max_publish = 1000;
 #else
 using Type = Sample;
-const int max_publish = 1000000;
+const int max_publish = 100000;
 #endif
     
 // parent process - thread 1
@@ -54,7 +58,7 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
             s->set_salinity(30.1);
             s->set_depth(5.2);
 #endif
-            interthread.publish(s, sample1_group.str());
+            interthread.publish<TestGroups::sample1_group>(s);
             ++publish_count;
         }
 
@@ -76,7 +80,8 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
             s.set_salinity(30.1);
             s.set_depth(5.2);            
 #endif
-            zmq.publish<sample1_group>(s);
+            zmq.publish<TestGroups::sample1_group>(s);
+            
             ++publish_count;
         }
         
@@ -112,7 +117,7 @@ void subscriber(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
     if(test == 0)
     {
-        interthread.subscribe<Type>(&handle_sample1, "Sample1");
+        interthread.subscribe<TestGroups::sample1_group, Type>(&handle_sample1);
         std::cout << "Subscribed. " << std::endl;
 
         while(ipc_receive_count < max_publish)
@@ -123,7 +128,7 @@ void subscriber(const goby::protobuf::InterProcessPortalConfig& cfg)
     else if(test == 1)
     {
         goby::InterProcessPortal<> zmq(cfg);
-        zmq.subscribe<Type>(&handle_sample1, "Sample1");
+        zmq.subscribe<TestGroups::sample1_group, Type>(&handle_sample1);
         std::cout << "Subscribed. " << std::endl;
         while(ipc_receive_count < max_publish)
         {

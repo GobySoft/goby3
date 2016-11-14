@@ -22,6 +22,11 @@ std::atomic<int> zmq_reqs(0);
 using goby::glog;
 using namespace goby::common::logger;
 
+
+extern constexpr goby::Group sample1{"Sample1"};
+extern constexpr goby::Group sample2{"Sample2"};
+extern constexpr goby::Group widget{"Widget"};
+
 // parent process - thread 1
 void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
@@ -32,13 +37,13 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++);
-        zmq.publish(s1, "Sample1");
+        zmq.publish<sample1>(s1);
         auto s2 = std::make_shared<Sample>();
         s2->set_a(s1->a() + 10);
-        zmq.publish(s2, "Sample2");
+        zmq.publish<sample2>(s2);
         auto w1 = std::make_shared<Widget>();
         w1->set_b(s1->a() - 8);
-        zmq.publish(w1, "Widget");
+        zmq.publish<widget>(w1);
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
@@ -75,9 +80,9 @@ void handle_widget(const Widget& widget)
 void subscriber(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
     goby::InterProcessPortal<> zmq(cfg);
-    zmq.subscribe<Sample>(&handle_sample1, "Sample1");
-    zmq.subscribe<Sample>(&handle_sample2, "Sample2");
-    zmq.subscribe<Widget>(&handle_widget, "Widget");
+    zmq.subscribe<sample1, Sample>(&handle_sample1);
+    zmq.subscribe<sample2, Sample>(&handle_sample2);
+    zmq.subscribe<widget, Widget>(&handle_widget);
     while(ipc_receive_count < 3*max_publish)
     {
         zmq.poll();

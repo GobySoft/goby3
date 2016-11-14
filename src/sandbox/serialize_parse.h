@@ -231,36 +231,42 @@ namespace goby
     }
 
 
-    //
-    // group_convert
-    //
     class Group
     {
     public:
-        Group(const char* c = "") : c_(c) { }
-        Group(const std::string& c) : c_(c) { }
-        const std::string& str() const { return c_; }
-        Group& operator=(const Group&) = delete;
-        Group(const Group&) = delete;
+        constexpr Group(const char* c = "") : c_(c) { }
+        constexpr Group(int i) : i_(i) { }
+        
+        operator std::string() const
+        {   
+            if(c_ != nullptr) return std::string(c_);
+            else return std::to_string(i_);
+        }
+        
+        constexpr operator int() const { return i_; }   
+        constexpr const char* c_str() const { return c_; }        
+        
     private:
-        const std::string c_;
-    
+        int i_{0};
+        const char* c_{nullptr};
     };
-    inline std::string group_convert(const Group& group) { return group.str(); }
-    
-    inline std::string group_convert(const std::string& group) { return group; }
-    inline std::string group_convert(const int& group) { return std::to_string(group); }
-    template<int group>
-        std::string group_convert()
-    {
-        static const std::string s(std::to_string(group));
-        return s;
-    }
 
-    template<const Group& group> const std::string& group_convert() { return group.str(); }
+    inline bool operator==(const Group& a, const Group& b)
+    { return std::string(a) == std::string(b); }
     
-    
-    
+    inline bool operator<(const Group& a, const Group& b)
+    { return std::string(a) < std::string(b); }
 }
+
+namespace std
+{
+    template<>
+        struct hash<goby::Group>
+    {
+        size_t operator()(const goby::Group& group) const noexcept
+        { return std::hash<std::string>{}(std::string(group)); }
+    };
+}
+
 
 #endif

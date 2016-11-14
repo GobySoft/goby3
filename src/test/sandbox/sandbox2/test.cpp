@@ -10,9 +10,14 @@
 goby::InterThreadTransporter inproc;
 
 int publish_count = 0;
-const int max_publish = 10000;
+const int max_publish = 100;
 
 std::atomic<int> ready(0);
+
+extern constexpr goby::Group sample1{"Sample1"};
+extern constexpr goby::Group sample2{"Sample2"};
+extern constexpr goby::Group widget{"Widget"};
+
 
 // thread 1
 void publisher()
@@ -22,15 +27,15 @@ void publisher()
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++);
-        inproc.publish(s1, "Sample1");
+        inproc.publish<sample1>(s1);
         auto s2 = std::make_shared<Sample>();
         s2->set_a(s1->a() + 10);
-        inproc.publish(s2, "Sample2");
+        inproc.publish<sample2>(s2);
         auto w1 = std::make_shared<Widget>();
         w1->set_b(s1->a() - 8);
-        inproc.publish(w1, "Widget");
+        inproc.publish<widget>(w1);
         ++publish_count;
-    }    
+    }
 }
 
 // thread 2
@@ -40,9 +45,9 @@ class Subscriber
 public:
     void run()
         {
-            inproc.subscribe<Sample>([this](std::shared_ptr<const Sample> s) { handle_sample1(s); }, "Sample1");
-            inproc.subscribe<Sample>([this](std::shared_ptr<const Sample> s) { handle_sample2(s); }, "Sample2");
-            inproc.subscribe<Widget>([this](std::shared_ptr<const Widget> w) { handle_widget1(w); }, "Widget");
+            inproc.subscribe<sample1, Sample>([this](std::shared_ptr<const Sample> s) { handle_sample1(s); });
+            inproc.subscribe<sample2, Sample>([this](std::shared_ptr<const Sample> s) { handle_sample2(s); });
+            inproc.subscribe<widget, Widget>([this](std::shared_ptr<const Widget> w) { handle_widget1(w); });
             while(receive_count1 < max_publish || receive_count2 < max_publish || receive_count3 < max_publish)
             {
                 ++ready;
@@ -53,23 +58,23 @@ public:
 private:
     void handle_sample1(std::shared_ptr<const Sample> sample)
         {
-            //            std::thread::id this_id = std::this_thread::get_id();
-            // std::cout << this_id << ": Received1: " << sample->DebugString() << std::endl;
+            std::thread::id this_id = std::this_thread::get_id();
+            std::cout << this_id << ": Received1: " << sample->DebugString() << std::endl;
             assert(sample->a() == receive_count1);
             ++receive_count1;
         }
     void handle_sample2(std::shared_ptr<const Sample> sample)
         {
-            //std::thread::id this_id = std::this_thread::get_id();
-            // std::cout << this_id << ": Received2: " << sample->DebugString() << std::endl;
+            std::thread::id this_id = std::this_thread::get_id();
+            std::cout << this_id << ": Received2: " << sample->DebugString() << std::endl;
             assert(sample->a() == receive_count2+10);
             ++receive_count2;
         }
 
     void handle_widget1(std::shared_ptr<const Widget> widget)
         {
-            //std::thread::id this_id = std::this_thread::get_id();
-            // std::cout << this_id << ": Received3: " << widget->DebugString() << std::endl;
+            std::thread::id this_id = std::this_thread::get_id();
+            std::cout << this_id << ": Received3: " << widget->DebugString() << std::endl;
             assert(widget->b() == receive_count3-8);
             ++receive_count3;
         }

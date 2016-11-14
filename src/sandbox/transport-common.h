@@ -17,24 +17,22 @@ namespace goby
     class NoOpTransporter
     {
     public:
-        template<typename Data, int scheme = scheme<Data>()>
+        template<const Group& group, typename Data, int scheme = scheme<Data>()>
             void publish(const Data& data,
-                         const std::string& group,
                          const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { }
 
-        template<typename Data, int scheme = scheme<Data>()>
+        template<const Group& group, typename Data, int scheme = scheme<Data>()>
             void publish(std::shared_ptr<Data> data,
-                         const std::string& group,
                          const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { }
 
-        template<typename Data, int scheme = scheme<Data>()>
-            void subscribe(std::function<void(const Data&)> func, const std::string& group)
+        template<const Group& group, typename Data, int scheme = scheme<Data>()>
+            void subscribe(std::function<void(const Data&)> func)
             { }
 
-        template<typename Data, int scheme = scheme<Data>()>
-            void subscribe(std::function<void(std::shared_ptr<const Data>)> func, const std::string& group)
+        template<const Group& group, typename Data, int scheme = scheme<Data>()>
+            void subscribe(std::function<void(std::shared_ptr<const Data>)> func)
             { }
 
         int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
@@ -52,7 +50,7 @@ namespace goby
         virtual std::vector<char>::const_iterator post(std::vector<char>::const_iterator b, std::vector<char>::const_iterator e) const = 0;
         virtual const char* post(const char* b, const char* e) const = 0;
         virtual const std::string& type_name() const = 0;
-        virtual const std::string& subscribed_group() const = 0;
+        virtual const Group& subscribed_group() const = 0;
 
         virtual int scheme() const = 0;
     };
@@ -61,11 +59,11 @@ namespace goby
         class SerializationSubscription : public SerializationSubscriptionBase
     {
     public:
-        typedef std::function<void (std::shared_ptr<Data> data, const std::string& group, const goby::protobuf::TransporterConfig& transport_cfg)> HandlerType;
+        typedef std::function<void (std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg)> HandlerType;
 
     SerializationSubscription(HandlerType& handler,
-                              const std::string& group,
-                              std::function<std::string(const Data&)> group_func)
+                              const Group& group,
+                              std::function<Group(const Data&)> group_func)
         : handler_(handler),
             type_name_(SerializerParserHelper<Data, scheme_id>::type_name(Data())),
             group_(group),
@@ -86,7 +84,7 @@ namespace goby
         
         // getters
         const std::string& type_name() const override { return type_name_; }
-        const std::string& subscribed_group() const override { return group_; }
+        const Group& subscribed_group() const override { return group_; }
         int scheme() const override { return scheme_id; }
 
     private:
@@ -97,7 +95,7 @@ namespace goby
             CharIterator actual_end;
             auto msg = std::make_shared<Data>(SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
             if(subscribed_group() == group_func_(*msg))
-                handler_(msg, group_func_(*msg), goby::protobuf::TransporterConfig());
+                handler_(msg, goby::protobuf::TransporterConfig());
             return actual_end;
         }
 
@@ -105,8 +103,8 @@ namespace goby
     private:
         HandlerType handler_;
         const std::string type_name_;
-        const std::string group_;
-        std::function<std::string(const Data&)> group_func_;
+        const Group group_;
+        std::function<Group(const Data&)> group_func_;
     };
 
 }

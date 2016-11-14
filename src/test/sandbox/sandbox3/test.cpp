@@ -25,6 +25,9 @@ std::atomic<bool> zmq_ready(false);
 using goby::glog;
 using namespace goby::common::logger;
 
+extern constexpr goby::Group sample1{"Sample1"};
+extern constexpr goby::Group sample2{"Sample2"};
+extern constexpr goby::Group widget{"Widget"};
 
 // thread 1 - parent process
 void publisher()
@@ -35,13 +38,13 @@ void publisher()
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++);
-        ipc.publish(s1, "Sample1");
+        ipc.publish<sample1>(s1);
         auto s2 = std::make_shared<Sample>();
         s2->set_a(s1->a() + 10);
-        ipc.publish(s2, "Sample2");
+        ipc.publish<sample2>(s2);
         auto w1 = std::make_shared<Widget>();
         w1->set_b(s1->a() - 8);
-        ipc.publish(w1, "Widget");
+        ipc.publish<widget>(w1);
         ++publish_count;
     }    
 }
@@ -69,9 +72,9 @@ void handle_widget(std::shared_ptr<const Widget> widget)
 void subscriber()
 {
     goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc);
-    ipc.subscribe<Sample>(&handle_sample1, "Sample1");
-    ipc.subscribe<Sample>(&handle_sample2, "Sample2");
-    ipc.subscribe<Widget>(&handle_widget, "Widget");
+    ipc.subscribe<sample1, Sample>(&handle_sample1);
+    ipc.subscribe<sample2, Sample>(&handle_sample2);
+    ipc.subscribe<widget, Widget>(&handle_widget);
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -93,9 +96,9 @@ class ThreadSubscriber
 public:
     void run()
         {
-            inproc.subscribe<Sample>([&](const Sample& s) { handle_sample1(s); }, "Sample1");
-            inproc.subscribe<Sample>([&](std::shared_ptr<const Sample> s) { handle_sample2(s); }, "Sample2");
-            inproc.subscribe<Widget>([&](std::shared_ptr<const Widget> w) { handle_widget1(w); }, "Widget");
+            inproc.subscribe<sample1, Sample>([&](const Sample& s) { handle_sample1(s); });
+            inproc.subscribe<sample2, Sample>([&](std::shared_ptr<const Sample> s) { handle_sample2(s); });
+            inproc.subscribe<widget, Widget>([&](std::shared_ptr<const Widget> w) { handle_widget1(w); });
             ++ready;
             while(receive_count1 < max_publish || receive_count2 < max_publish || receive_count3 < max_publish)
             {

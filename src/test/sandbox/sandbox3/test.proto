@@ -2,11 +2,11 @@ import "dccl/protobuf/option_extensions.proto";
 
 message Sample
 {
-    option (dccl.msg).id = 127;
-    option (dccl.msg).max_bytes = 32;
-    option (dccl.msg).codec_version = 3;
+//    option (dccl.msg).id = 127;
+//    option (dccl.msg).max_bytes = 32;
+//    option (dccl.msg).codec_version = 3;
     
-    optional int32 a = 1 [(dccl.field) = { min: -10000 max: 10000}];
+    optional int32 a = 1; // [(dccl.field) = { min: -10000 max: 10000}];
 
 }
 
