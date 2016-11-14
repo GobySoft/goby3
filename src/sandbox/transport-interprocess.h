@@ -286,7 +286,7 @@ namespace goby
             {
                 for(auto &sub : subscriptions_)
                 {
-                    if(size >= sub.first.size() && memcmp(data, sub.first.data(), sub.first.size()) == 0)
+                    if(static_cast<unsigned>(size) >= sub.first.size() && memcmp(data, sub.first.data(), sub.first.size()) == 0)
                         sub.second->post(static_cast<const char*>(data) + null_delim_pos + 1,
                                          static_cast<const char*>(data) + size);
                 }

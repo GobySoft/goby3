@@ -74,7 +74,7 @@ void goby::sandbox::ZeroMQService::process_cfg(common::protobuf::ZeroMQServiceCo
             sockets_.insert(std::make_pair(cfg.socket(i).socket_id(), ZeroMQSocket(new_socket)));
             
             //  Initialize poll set
-            zmq::pollitem_t item = { *new_socket, 0, ZMQ_POLLIN, 0 };
+            zmq::pollitem_t item = { (void*)*new_socket, 0, ZMQ_POLLIN, 0 };
 
             // publish sockets can't receive
             if(cfg.socket(i).socket_type() != common::protobuf::ZeroMQServiceConfig::Socket::PUBLISH)
@@ -169,7 +169,7 @@ void goby::sandbox::ZeroMQService::process_cfg(common::protobuf::ZeroMQServiceCo
 
                 size_t last_endpoint_size = 100;
                 char last_endpoint[last_endpoint_size];
-                int rc = zmq_getsockopt (*this_socket, ZMQ_LAST_ENDPOINT, &last_endpoint, &last_endpoint_size);
+                int rc = zmq_getsockopt ((void*)*this_socket, ZMQ_LAST_ENDPOINT, &last_endpoint, &last_endpoint_size);
                 
                 if(rc != 0)
                     throw(std::runtime_error("Could not retrieve ZMQ_LAST_ENDPOINT"));

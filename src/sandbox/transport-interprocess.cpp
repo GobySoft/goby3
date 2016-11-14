@@ -4,7 +4,7 @@ unsigned goby::ZMQRouter::last_port(zmq::socket_t& socket)
 {
     size_t last_endpoint_size = 100;
     char last_endpoint[last_endpoint_size];
-    int rc = zmq_getsockopt (socket, ZMQ_LAST_ENDPOINT, &last_endpoint, &last_endpoint_size);
+    int rc = zmq_getsockopt ((void*)socket, ZMQ_LAST_ENDPOINT, &last_endpoint, &last_endpoint_size);
                 
     if(rc != 0)
         throw(std::runtime_error("Could not retrieve ZMQ_LAST_ENDPOINT"));
@@ -48,7 +48,7 @@ void goby::ZMQRouter::run()
     }
     try
     {
-        zmq::proxy(frontend, backend, nullptr);
+        zmq::proxy((void*)frontend, (void*)backend, nullptr);
     }
     catch(const zmq::error_t& e)
     {

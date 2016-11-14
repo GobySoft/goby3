@@ -97,6 +97,7 @@ set(HDF5_DOC_STRING "Enable HDF5 file format tools (requires libhdf5-dev: https:
 if(HDF5_FOUND)
   option(enable_hdf5 ${HDF5_DOC_STRING} ON)
   include_directories(${HDF5_INCLUDE_DIRS})
+  include_directories(${HDF5_INCLUDE_DIRS}/serial)
 else()
   option(enable_hdf5 ${HDF5_DOC_STRING} OFF)
   message(">> setting enable_hdf5 to OFF ... if you need this functionality: 1) install libhdf5-dev; 2) run cmake -Denable_hdf5=ON")
