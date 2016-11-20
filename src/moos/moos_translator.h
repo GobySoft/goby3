@@ -401,7 +401,7 @@ GoogleProtobufMessagePointer goby::moos::MOOSTranslator::moos_to_protobuf(const 
     GoogleProtobufMessagePointer msg =
         goby::util::DynamicProtobufManager::new_protobuf_message<GoogleProtobufMessagePointer>(protobuf_name);
 
-    if(&*msg == 0)
+    if(!msg)
         throw(std::runtime_error("Unknown Protobuf type: " + protobuf_name + "; be sure it is compiled in or directly loaded into the goby::util::DynamicProtobufManager."));
 
     
