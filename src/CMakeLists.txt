@@ -102,8 +102,6 @@ else()
   message(">> setting enable_hdf5 to OFF ... if you need this functionality: 1) install libhdf5-dev; 2) run cmake -Denable_hdf5=ON")
 endif()
 
-
-
 ## Wt
 find_package(WtGoby QUIET)
 set(WT_DOC_STRING "Enable Wt web browser GUI components (requires libwt-dev, libwtdbo-dev, libwtdbosqlite-dev, and libwthttp-dev: http://www.webtoolkit.eu/wt)")
@@ -143,7 +141,6 @@ if(enable_v1_transitional)
 endif()  
 
 # GMP
-
 find_package(GMP QUIET)
 set(GMP_DOC_STRING "Enable Gmp3 database components (requires libgmp-dev: http://gmplib.org")
 # find resources directory
@@ -230,7 +227,8 @@ if(build_common)
         set(MOOS_LIBRARY_HEADER "MOOSLIB/MOOSLib.h" PARENT_SCOPE)
       endif()
 
-      if(MOOS_FOUND)
+      find_package(Proj QUIET)
+      if(MOOS_FOUND AND PROJ_FOUND)
         include_directories(${MOOS_INCLUDE_DIRS})
         option(build_moos ${MOOS_DOC_STRING} ON)
       else()

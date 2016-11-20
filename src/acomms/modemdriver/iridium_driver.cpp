@@ -241,7 +241,6 @@ void goby::acomms::IridiumDriver::do_work()
 
     if(on_call)
     {
-        glog.is(DEBUG2) && glog << on_call->last_tx_time() << std::endl;
         if(!on_call->bye_sent() &&
            now > (on_call->last_tx_time() + driver_cfg_.GetExtension(IridiumDriverConfig::handshake_hangup_seconds)))
         {

@@ -44,6 +44,18 @@ int main()
         std::cout << nmea.message() << std::endl;
         assert(nmea.message() == "$CCTXD,2,1,1,*7A");
     }
+
+    {
+        goby::util::NMEASentence nmea("$CCTXD,2,1,1*56");
+        assert(nmea.as<int>(3) == 1);
+        assert(nmea.at(3) == "1");
+    }
+    
+    {
+        goby::util::NMEASentence nmea("$YXXDR,A,0.3,D,PTCH,A,13.3,D,ROLL*6f ");
+        std::cout << nmea.message() << std::endl;
+        assert(nmea.at(8) == "ROLL");
+    }
     
     std::cout << "all tests passed" << std::endl;
     

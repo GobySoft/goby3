@@ -20,6 +20,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef MOOS_TRANSLATOR_H
+#define MOOS_TRANSLATOR_H
+
 #include <set>
 #include <map>
 #include <string>
@@ -133,8 +136,7 @@ namespace goby
             
             const std::map<std::string, goby::moos::protobuf::TranslatorEntry>&  dictionary() const { return dictionary_; }
             
-          private:
-            CMOOSMsg make_moos_msg(const std::string& var, const std::string& str, bool is_binary, goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique technique, const std::string& pb_name)
+            static CMOOSMsg make_moos_msg(const std::string& var, const std::string& str, bool is_binary, goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique technique, const std::string& pb_name)
             {
                 if(is_binary)
                 {
@@ -157,7 +159,8 @@ namespace goby
                     }
                 }
             }
-            
+        private:
+
             
             void initialize(double lat_origin = std::numeric_limits<double>::quiet_NaN(),
                             double lon_origin = std::numeric_limits<double>::quiet_NaN(),
@@ -362,7 +365,7 @@ inline std::multimap<std::string, CMOOSMsg> goby::moos::MOOSTranslator::protobuf
             break;
         }
         
-        moos_msgs.insert(std::make_pair(moos_var, make_moos_msg(moos_var, return_string, is_binary, entry.publish(i).technique(), pb_name)));
+        moos_msgs.insert(std::make_pair(moos_var, make_moos_msg(moos_var, return_string, is_binary, entry.create(i).technique(), pb_name)));
     }
 
     if(entry.trigger().type() == protobuf::TranslatorEntry::Trigger::TRIGGER_PUBLISH)
@@ -456,3 +459,4 @@ GoogleProtobufMessagePointer goby::moos::MOOSTranslator::moos_to_protobuf(const 
 }
 
 
+#endif

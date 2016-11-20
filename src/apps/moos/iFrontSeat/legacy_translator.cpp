@@ -199,11 +199,9 @@ void FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg& msg)
         *data.mutable_ctd_sample() = ctd_sample_;
         ifs_->frontseat_->compute_missing(data.mutable_ctd_sample());
 
-        std::string serialized;
-        serialize_for_moos(&serialized, data);
-        ifs_->publish(ifs_->cfg_.moos_var().prefix() +
-                      ifs_->cfg_.moos_var().data_to_frontseat(),
-                      serialized);
+        ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() +
+                         ifs_->cfg_.moos_var().data_to_frontseat(),
+                         data);
         
     }
     else if(key == "CTD_PRESSURE")
@@ -235,11 +233,9 @@ void FrontSeatLegacyTranslator::handle_mail_desired_course(const CMOOSMsg& msg)
         command.set_response_requested(true);
         command.set_request_id(LEGACY_REQUEST_IDENTIFIER + request_id_++);
 
-        std::string serialized;
-        serialize_for_moos(&serialized, command);
-        ifs_->publish(ifs_->cfg_.moos_var().prefix() +
-                      ifs_->cfg_.moos_var().command_request(),
-                      serialized);
+        ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() +
+                         ifs_->cfg_.moos_var().command_request(),
+                         command);
     }
     else if(key == "DESIRED_HEADING")
     {
@@ -280,11 +276,9 @@ void FrontSeatLegacyTranslator::handle_mail_modem_raw(const CMOOSMsg& msg, Modem
             break;
     }            
 
-    std::string serialized;
-    serialize_for_moos(&serialized, data);
-    ifs_->publish(ifs_->cfg_.moos_var().prefix() +
-                  ifs_->cfg_.moos_var().data_to_frontseat(),
-                  serialized);
+    ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() +
+                     ifs_->cfg_.moos_var().data_to_frontseat(),
+                     data);
 }
 
 
@@ -426,10 +420,8 @@ void FrontSeatLegacyTranslator::handle_mail_backseat_abort(const CMOOSMsg& msg)
 
 void FrontSeatLegacyTranslator::publish_command(const gpb::CommandRequest& command)
 {
-    std::string serialized;
-    serialize_for_moos(&serialized, command);
-    ifs_->publish(ifs_->cfg_.moos_var().prefix() +
-                  ifs_->cfg_.moos_var().command_request(),
-                  serialized);
+    ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() +
+                     ifs_->cfg_.moos_var().command_request(),
+                     command);
 }
 

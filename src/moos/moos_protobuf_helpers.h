@@ -1317,33 +1317,31 @@ namespace goby
 }
 
 
-inline void serialize_for_moos(std::string* out, const google::protobuf::Message& msg)
+inline bool serialize_for_moos(std::string* out, const google::protobuf::Message& msg)
 {
     switch(goby::moos::moos_technique)
     {
         case goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_NATIVE_ENCODED:
             goby::moos::MOOSTranslation<goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_NATIVE_ENCODED>::serialize(out, msg);
-            break;
+            return true;
         case goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_NATIVE_HEX:
             goby::moos::MOOSTranslation<goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_NATIVE_HEX>::serialize(out, msg);
-            break;
+            return false;
         case goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_TEXT_FORMAT:
             goby::moos::MOOSTranslation<goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_TEXT_FORMAT>::serialize(out, msg);
-            break;
-        
+            return false;
         case goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED:
             goby::moos::MOOSTranslation<goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED>::serialize(out, msg);
-            break;
+            return true;
         case goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_HEX:
             goby::moos::MOOSTranslation<goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_HEX>::serialize(out, msg);
-            break;
+            return false;
         case goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT:
             goby::moos::MOOSTranslation<goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT>::serialize(out, msg);
-            break;
+            return false;
         default:
             goby::glog.is(goby::common::logger::DIE) && goby::glog << "Non-PROTOBUF techniques are not supported for 'moos_parser_technique': " << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(goby::moos::moos_technique) << std::endl;
-            break;
-            
+            return false;
     }    
 }
 
