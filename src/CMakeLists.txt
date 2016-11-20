@@ -184,6 +184,7 @@ endmacro()
 # module dependencies
 # you can optionally build up to any point in this chain
 # common -> util -> acomms -> moos
+#                          -> middleware
 
 if(build_common)
 
@@ -193,8 +194,6 @@ if(build_common)
 
   add_subdirectory(common)
 
-  add_subdirectory(middleware)
-
   option(build_util "Build the Goby Utility library and applications (requires goby-common)" ON)
   if(build_util)    
     add_subdirectory(util)
@@ -203,6 +202,12 @@ if(build_common)
     if(build_acomms)     
       add_subdirectory(acomms)
 
+
+      if(enable_zeromq)
+        option(build_middleware "Build the Goby Middleware" ON)
+        add_subdirectory(middleware)
+      endif()
+      
       if(enable_zeromq AND enable_gmp)
         option(build_pb "Build the Goby implementation in Protobuf/C++ (PB) (requires goby-acomms)" ON)
         if(build_pb)

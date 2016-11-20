@@ -397,8 +397,7 @@ namespace goby
     
     private:
         zmq::context_t& context_;
-        const goby::protobuf::InterProcessPortalConfig& cfg_;
-    
+        const goby::protobuf::InterProcessPortalConfig& cfg_;    
     };
 
     class ZMQManager

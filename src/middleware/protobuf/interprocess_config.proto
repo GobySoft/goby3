@@ -4,7 +4,7 @@ package goby.protobuf;
 
 message InterProcessPortalConfig
 {
-    required string platform = 1;
+    optional string platform = 1 [default = "goby"];
     
     enum Transport
     {

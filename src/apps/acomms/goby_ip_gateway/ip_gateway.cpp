@@ -620,7 +620,7 @@ int main(int argc, char* argv[])
     dccl::FieldCodecManager::add<goby::acomms::IPv4FlagsFragOffsetCodec>("ip.v4.flagsfragoffset");
     
     goby::acomms::protobuf::IPGatewayConfig cfg;
-    goby::run<goby::acomms::IPGateway>(argc, argv, &cfg);
+    return goby::run<goby::acomms::IPGateway>(argc, argv, &cfg);
 }
                             
     

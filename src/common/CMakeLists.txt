@@ -10,6 +10,7 @@ set(SRC
   logger/term_color.cpp
   configuration_reader.cpp
   application_base.cpp
+  application_base3.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 

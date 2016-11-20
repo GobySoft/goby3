@@ -1,0 +1,12 @@
+import "goby/common/protobuf/option_extensions.proto";
+import "goby/common/protobuf/app3.proto";
+import "goby/middleware/protobuf/interprocess_config.proto";
+
+package goby.protobuf;
+
+message GobyDaemonConfig
+{
+  optional App3Config app = 1;
+  optional int32 router_threads = 2 [default = 2];
+  optional InterProcessPortalConfig interprocess_portal = 3;
+}

@@ -1,0 +1,10 @@
+import "goby/common/protobuf/option_extensions.proto";
+import "goby/common/protobuf/logger.proto";
+
+package goby.protobuf;
+
+message App3Config
+{
+  optional goby.common.protobuf.GLogConfig glog_config = 1 [(goby.field).description="configure the Goby Logger (TTY terminal and file debugging logger)"]; 
+}
+

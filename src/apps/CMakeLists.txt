@@ -10,6 +10,10 @@ if(build_util)
   add_subdirectory(util)
 endif()
 
+if(build_middleware)
+  add_subdirectory(middleware)
+endif()
+
 if(build_moos)
   add_subdirectory(moos)
 endif()
