@@ -10,7 +10,7 @@ endif()
 
 if(build_common)
   add_subdirectory(common)
-  add_subdirectory(sandbox)
+  add_subdirectory(middleware)
 endif()
 
 if(build_util)

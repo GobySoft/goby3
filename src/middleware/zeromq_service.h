@@ -38,7 +38,7 @@
 
 namespace goby
 {
-    namespace sandbox
+    namespace middleware
     {
         class ZeroMQSocket
         {

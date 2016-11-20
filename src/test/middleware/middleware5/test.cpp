@@ -5,7 +5,7 @@
 #include <atomic>
 
 #include "goby/common/logger.h"
-#include "goby/sandbox/transport.h"
+#include "goby/middleware/transport.h"
 #include "test.pb.h"
 
 #include <zmq.hpp>
@@ -168,7 +168,7 @@ int main(int argc, char* argv[])
         
     // goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
     std::string process_suffix =  ((process_index >= 2) ? ("subscriber_" + std::to_string(process_index)) : ("publisher_" + std::to_string(process_index)));
-    std::string os_name = std::string("/tmp/goby_test_sandbox5_") + process_suffix;
+    std::string os_name = std::string("/tmp/goby_test_middleware5_") + process_suffix;
     std::ofstream os(os_name.c_str());
     goby::glog.add_stream(goby::common::logger::DEBUG3, &os);
     //    dccl::dlog.connect(dccl::logger::ALL, &os, true);

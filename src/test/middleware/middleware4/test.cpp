@@ -5,7 +5,7 @@
 #include <atomic>
 
 #include "goby/common/logger.h"
-#include "goby/sandbox/transport.h"
+#include "goby/middleware/transport.h"
 #include "test.pb.h"
 
 #include <zmq.hpp>
@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
 
     // goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
 
-    std::string os_name = std::string("/tmp/goby_test_sandbox4_") + (is_child ? "subscriber" : "publisher");
+    std::string os_name = std::string("/tmp/goby_test_middleware4_") + (is_child ? "subscriber" : "publisher");
     std::ofstream os(os_name.c_str());
     goby::glog.add_stream(goby::common::logger::DEBUG3, &os);
     goby::glog.set_name(std::string(argv[0]) + (is_child ? "_subscriber" : "_publisher"));

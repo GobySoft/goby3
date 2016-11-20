@@ -1,4 +1,4 @@
-import "goby/sandbox/protobuf/transporter_config.proto";
+import "goby/middleware/protobuf/transporter_config.proto";
 
 package goby.protobuf;
 

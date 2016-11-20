@@ -11,7 +11,7 @@
 #include "zeromq_service.h"
 
 #include "transport-common.h"
-#include "goby/sandbox/protobuf/interprocess_config.pb.h"
+#include "goby/middleware/protobuf/interprocess_config.pb.h"
 
 
 namespace goby
@@ -366,7 +366,7 @@ namespace goby
         enum { SOCKET_MANAGER = 0, SOCKET_SUBSCRIBE = 1, SOCKET_PUBLISH = 2 };
         
         const protobuf::InterProcessPortalConfig& cfg_;
-        goby::sandbox::ZeroMQService zmq_;
+        goby::middleware::ZeroMQService zmq_;
         bool have_pubsub_sockets_{false};
         
         // maps identifier to subscription

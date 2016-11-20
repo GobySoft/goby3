@@ -27,7 +27,7 @@
 
 namespace goby
 {
-    namespace sandbox
+    namespace middleware
     {
         
         std::string zeromq_packet_make_header(const std::string& identifier)

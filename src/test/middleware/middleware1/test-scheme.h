@@ -1,4 +1,4 @@
-#include "goby/sandbox/serialize_parse.h"
+#include "goby/middleware/serialize_parse.h"
 #include <vector>
 
 namespace goby

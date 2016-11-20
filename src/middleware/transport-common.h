@@ -9,8 +9,8 @@
 
 #include "serialize_parse.h"
 
-#include "goby/sandbox/protobuf/transporter_config.pb.h"
-#include "goby/sandbox/protobuf/interprocess_data.pb.h"
+#include "goby/middleware/protobuf/transporter_config.pb.h"
+#include "goby/middleware/protobuf/interprocess_data.pb.h"
 
 namespace goby
 {    

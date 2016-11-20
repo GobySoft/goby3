@@ -4,7 +4,7 @@
 #include "test-scheme.h"
 
 #include "goby/common/logger.h"
-#include "goby/sandbox/transport.h"
+#include "goby/middleware/transport.h"
 #include "test.pb.h"
 
 int main(int argc, char* argv[])

@@ -43,25 +43,25 @@ using namespace goby::common::logger;
 #   define ZMQ_POLL_DIVISOR    1000     //  zmq_poll is msec
 #endif
 
-goby::sandbox::ZeroMQService::ZeroMQService(std::shared_ptr<zmq::context_t> context)
+goby::middleware::ZeroMQService::ZeroMQService(std::shared_ptr<zmq::context_t> context)
     : context_(context)
 {
     init();
 }
 
-goby::sandbox::ZeroMQService::ZeroMQService()
+goby::middleware::ZeroMQService::ZeroMQService()
     : context_(new zmq::context_t(2))
 {
     init();
 }
 
-void goby::sandbox::ZeroMQService::init()
+void goby::middleware::ZeroMQService::init()
 {
     glog.add_group(glog_out_group(), common::Colors::lt_magenta);
     glog.add_group(glog_in_group(), common::Colors::lt_blue);
 }
 
-void goby::sandbox::ZeroMQService::process_cfg(common::protobuf::ZeroMQServiceConfig& cfg)
+void goby::middleware::ZeroMQService::process_cfg(common::protobuf::ZeroMQServiceConfig& cfg)
 {
     for(int i = 0, n = cfg.socket_size(); i < n; ++i)
     {
@@ -199,13 +199,13 @@ void goby::sandbox::ZeroMQService::process_cfg(common::protobuf::ZeroMQServiceCo
     }
 }
 
-goby::sandbox::ZeroMQService::~ZeroMQService()
+goby::middleware::ZeroMQService::~ZeroMQService()
 {
 //    std::cout << "ZeroMQService: " << this << ": destroyed" << std::endl;
 //    std::cout << "poll_mutex " << &poll_mutex_ << std::endl;
 }
 
-int goby::sandbox::ZeroMQService::socket_type(common::protobuf::ZeroMQServiceConfig::Socket::SocketType type)
+int goby::middleware::ZeroMQService::socket_type(common::protobuf::ZeroMQServiceConfig::Socket::SocketType type)
 {
     switch(type)
     {
@@ -221,7 +221,7 @@ int goby::sandbox::ZeroMQService::socket_type(common::protobuf::ZeroMQServiceCon
     throw(goby::Exception("Invalid SocketType"));
 }
 
-goby::sandbox::ZeroMQSocket& goby::sandbox::ZeroMQService::socket_from_id(int socket_id)
+goby::middleware::ZeroMQSocket& goby::middleware::ZeroMQService::socket_from_id(int socket_id)
 {
     auto it = sockets_.find(socket_id);
     if(it != sockets_.end())
@@ -230,17 +230,17 @@ goby::sandbox::ZeroMQSocket& goby::sandbox::ZeroMQService::socket_from_id(int so
         throw(goby::Exception("Attempted to access socket_id " + as<std::string>(socket_id) + " which does not exist"));
 }
 
-void goby::sandbox::ZeroMQService::subscribe_all(int socket_id)
+void goby::middleware::ZeroMQService::subscribe_all(int socket_id)
 {
     socket_from_id(socket_id).socket()->setsockopt(ZMQ_SUBSCRIBE, 0, 0);
 }
 
-void goby::sandbox::ZeroMQService::unsubscribe_all(int socket_id)
+void goby::middleware::ZeroMQService::unsubscribe_all(int socket_id)
 {
     socket_from_id(socket_id).socket()->setsockopt(ZMQ_UNSUBSCRIBE, 0, 0);
 }
 
-void goby::sandbox::ZeroMQService::subscribe(const std::string& identifier,
+void goby::middleware::ZeroMQService::subscribe(const std::string& identifier,
                                              int socket_id)
 {
     std::string zmq_filter = identifier;
@@ -252,7 +252,7 @@ void goby::sandbox::ZeroMQService::subscribe(const std::string& identifier,
              << goby::util::hex_encode(zmq_filter) << std::endl ;
 }
 
-void goby::sandbox::ZeroMQService::unsubscribe(const std::string& identifier, int socket_id)
+void goby::middleware::ZeroMQService::unsubscribe(const std::string& identifier, int socket_id)
 {
     std::string zmq_filter = identifier;
     socket_from_id(socket_id).socket()->setsockopt(ZMQ_UNSUBSCRIBE, zmq_filter.c_str(), zmq_filter.size());
@@ -264,14 +264,14 @@ void goby::sandbox::ZeroMQService::unsubscribe(const std::string& identifier, in
 }
 
 
-void goby::sandbox::ZeroMQService::send(zmq::message_t& msg,
+void goby::middleware::ZeroMQService::send(zmq::message_t& msg,
                                         int socket_id)
 {
     socket_from_id(socket_id).socket()->send(msg);
 }
 
 
-int goby::sandbox::ZeroMQService::poll(long timeout /* = -1 */)
+int goby::middleware::ZeroMQService::poll(long timeout /* = -1 */)
 {
     boost::mutex::scoped_lock slock(poll_mutex_);
 

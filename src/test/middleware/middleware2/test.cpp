@@ -2,7 +2,7 @@
 #include <atomic>
 
 #include "goby/common/logger.h"
-#include "goby/sandbox/transport.h"
+#include "goby/middleware/transport.h"
 #include "test.pb.h"
 
 // tests InterThreadTransporter

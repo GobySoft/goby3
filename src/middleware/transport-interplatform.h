@@ -19,7 +19,7 @@
 #include "goby/acomms/modemdriver/udp_driver.h"
 
 #include "transport-common.h"
-#include "goby/sandbox/protobuf/interplatform_config.pb.h"
+#include "goby/middleware/protobuf/interplatform_config.pb.h"
 
 namespace goby
 {
