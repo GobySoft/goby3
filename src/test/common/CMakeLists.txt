@@ -13,4 +13,3 @@ if(enable_zeromq)
   # there's a problem with this test failing based on clock parameters
   #add_subdirectory(zero_mq_node4)
 endif()
-

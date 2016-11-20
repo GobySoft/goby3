@@ -53,7 +53,8 @@ namespace goby
         }
 
 
-        inline void merge_app_base_cfg(AppBaseConfig* base_cfg,
+        template<class AppBaseConfig>
+        void merge_app_base_cfg(AppBaseConfig* base_cfg,
                                        const boost::program_options::variables_map& var_map)
         {
             if(var_map.count("ncurses"))

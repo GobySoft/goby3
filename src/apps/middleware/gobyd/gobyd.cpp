@@ -25,21 +25,20 @@
 #include "config.pb.h"
 
 using namespace goby::common::logger;
+using goby::glog;
 
 namespace goby
 {
-    class Daemon : public goby::common::ApplicationBase3
+    class Daemon : public goby::common::ApplicationBase3<goby::protobuf::GobyDaemonConfig>
     {
     public:
-        Daemon(goby::protobuf::GobyDaemonConfig* cfg);
+        Daemon();
         ~Daemon();
         
     private:
         void run() override;
 
     private:
-        goby::protobuf::GobyDaemonConfig& cfg_;
-
         // for handling ZMQ Interprocess Communications
         std::unique_ptr<zmq::context_t> router_context_;
         std::unique_ptr<zmq::context_t> manager_context_;
@@ -51,21 +50,20 @@ namespace goby
 }
 
 int main(int argc, char* argv[])
-{
-    goby::protobuf::GobyDaemonConfig cfg;
-    return goby::run<goby::Daemon>(argc, argv, &cfg);
-}
+{ return goby::run<goby::Daemon>(argc, argv); }
 
-goby::Daemon::Daemon(goby::protobuf::GobyDaemonConfig* cfg)
-    : goby::common::ApplicationBase3(cfg),
-      cfg_(*cfg),
-      router_context_(new zmq::context_t(cfg_.router_threads())),
+goby::Daemon::Daemon()
+    : router_context_(new zmq::context_t(cfg().router_threads())),
       manager_context_(new zmq::context_t(1)),
-      router_(*router_context_, cfg_.interprocess_portal()),
-      manager_(*manager_context_, cfg_.interprocess_portal(), router_),
+      router_(*router_context_, cfg().interprocess_portal()),
+      manager_(*manager_context_, cfg().interprocess_portal(), router_),
       router_thread_(new std::thread([&] { router_.run(); })),
-      manager_thread_(new std::thread([&] { manager_.run(); }))      
+      manager_thread_(new std::thread([&] { manager_.run(); }))
 {
+    if(!cfg().interprocess_portal().has_platform())
+    {
+        glog.is(WARN) && glog << "Using default platform name of " << cfg().interprocess_portal().platform() << std::endl;
+    }
 }
 
 goby::Daemon::~Daemon()

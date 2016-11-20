@@ -186,7 +186,7 @@ namespace goby
         int _poll(std::chrono::system_clock::duration wait_for)
         {
             int items = Base::inner_.poll(std::chrono::seconds(0));
-            return items + zmq_.poll(std::chrono::duration_cast<std::chrono::microseconds>(wait_for).count());
+            return items + zmq_.poll(std::max(0l, (long)std::chrono::duration_cast<std::chrono::microseconds>(wait_for).count()));
         }
         
         void _init()
