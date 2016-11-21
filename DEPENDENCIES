@@ -1,10 +1,10 @@
 #!/bin/bash
 # Dependencies installation script for Goby
 #
-# At a minimum, Goby can be built in a C++ development environment 
-# that also includes Google Protocol Buffers (http://code.google.com/p/protobuf/)
-# and Boost (http://www.boost.org/). Both of these will readily compile on most
-# embedded systems. The other dependencies add useful functionality.
+# At a minimum, Goby can be built in a C++ and CMake development environment 
+# that also includes Google Protocol Buffers (http://code.google.com/p/protobuf/), Boost (http://www.boost.org/), The GNU Multiple Precision Arithmetic Library (https://gmplib.org/), and DCCL (https://github.com/GobySoft/dccl). For the Goby3 middleware, you will also need ZeroMQ (http://zeromq.org/).
+#
+# All of these will readily compile on most embedded systems. The other dependencies add additional useful functionality.
 function usage()
 {
     echo "usage: ./DEPENDENCIES distribution [ALL] [DOC]";
@@ -61,12 +61,12 @@ ubuntu|debian)
             libprotobuf-dev
             libprotoc-dev
             protobuf-compiler
-            libgmp3-dev"
+            libgmp3-dev
+            libzmq-dev"
         if [ $install_all -ne 0 ]; then 
             packages="${packages}
             libcrypto++-dev
             libncurses-dev
-            libzmq-dev
             libwt-dev
             libwtdbo-dev
             libwtdbosqlite-dev
