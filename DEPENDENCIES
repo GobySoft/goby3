@@ -62,7 +62,7 @@ ubuntu|debian)
             libprotoc-dev
             protobuf-compiler
             libgmp3-dev
-            libzmq-dev"
+            libzmq3-dev"
         if [ $install_all -ne 0 ]; then 
             packages="${packages}
             libcrypto++-dev
