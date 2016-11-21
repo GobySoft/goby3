@@ -41,11 +41,12 @@ namespace goby
         unsigned long long loop_count_ {0};
 
     public:
-    SingleThreadApplication(double loop_freq_hertz) :
+        // zero or negative frequency means loop() is never called
+    SingleThreadApplication(double loop_freq_hertz = 0) :
         SingleThreadApplication(loop_freq_hertz*boost::units::si::hertz)
         { }
         
-    SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq = 1*boost::units::si::hertz)
+    SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : loop_frequency_(loop_freq),
             portal_(goby::common::ApplicationBase3<Config>::cfg().interprocess_portal()),
             loop_time_(goby::common::ApplicationBase3<Config>::start_time())
@@ -67,7 +68,7 @@ namespace goby
         
     protected:            
         goby::InterProcessPortal<>& portal() { return portal_; }        
-        virtual void loop() = 0;
+        virtual void loop() {}
 
         double loop_frequency_hertz() { return loop_frequency_/boost::units::si::hertz; }
         decltype(loop_frequency_) loop_frequency() { return loop_frequency_; }
@@ -83,15 +84,22 @@ namespace goby
 template<class Config>
     void goby::SingleThreadApplication<Config>::run()
 {
-    int events = portal_.poll(loop_time_);
-    
-    // timeout
-    if(events == 0)
+    if(loop_frequency_hertz() > 0)
     {
-        loop();
-        ++loop_count_;
-        loop_time_ += std::chrono::nanoseconds((unsigned long long)(1000000000ull / loop_frequency_hertz()));
-    }    
+        int events = portal_.poll(loop_time_);
+        
+    // timeout
+        if(events == 0)
+        {
+            loop();
+            ++loop_count_;
+            loop_time_ += std::chrono::nanoseconds((unsigned long long)(1000000000ull / loop_frequency_hertz()));
+        }
+    }
+    else
+    {
+        portal_.poll();
+    }
 }
 
 #endif
