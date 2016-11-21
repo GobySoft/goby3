@@ -28,9 +28,9 @@ if(enable_testing)
 endif()
 
 
-set(GOBY_VERSION_MAJOR "2")
-set(GOBY_VERSION_MINOR "1")
-set(GOBY_VERSION_PATCH "4")
+set(GOBY_VERSION_MAJOR "3")
+set(GOBY_VERSION_MINOR "0")
+set(GOBY_VERSION_PATCH "0~alpha1")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    message("Compiling in Git source tree.")
@@ -59,7 +59,7 @@ endif()
 set(GOBY_VERSION "${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}")
 
 # give Goby 1 series a few more soversions
-set(GOBY_SOVERSION "27")
+set(GOBY_SOVERSION "30")
 
 # create variables for various directories
 get_filename_component(goby_SRC_DIR src ABSOLUTE)
