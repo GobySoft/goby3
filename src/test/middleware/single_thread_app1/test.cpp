@@ -1,5 +1,7 @@
 #include "goby/middleware/single-thread-application.h"
 #include <boost/units/io.hpp>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "test.pb.h"
 using goby::glog;
@@ -57,5 +59,35 @@ private:
 
 
 int main(int argc, char* argv[])
-{ return goby::run<TestApp>(argc, argv); }
+{
+    int child_pid = fork();
 
+
+    std::unique_ptr<std::thread> t2, t3;
+    std::unique_ptr<zmq::context_t> manager_context;
+    std::unique_ptr<zmq::context_t> router_context;
+
+    if(child_pid != 0)
+    {
+        goby::protobuf::InterProcessPortalConfig cfg;
+        manager_context.reset(new zmq::context_t(1));
+        router_context.reset(new zmq::context_t(1));
+        goby::ZMQRouter router(*router_context, cfg);
+        t2.reset(new std::thread([&] { router.run(); }));
+        goby::ZMQManager manager(*manager_context, cfg, router);
+        t3.reset(new std::thread([&] { manager.run(); }));
+        int wstatus;
+        wait(&wstatus);
+        router_context.reset();
+        manager_context.reset();
+        t2->join();
+        t3->join();
+        if(wstatus != 0) exit(EXIT_FAILURE);
+    }
+    else
+    {
+        sleep(1);
+        return goby::run<TestApp>(argc, argv);
+    }
+}
+    
