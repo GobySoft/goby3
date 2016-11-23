@@ -96,13 +96,13 @@ int main(int argc, char* argv[])
     cfg.set_platform("test4");
     cfg.set_transport(goby::protobuf::InterProcessPortalConfig::TCP);
     cfg.set_ipv4_address("127.0.0.1");
-    cfg.set_tcp_port(10005);
+    cfg.set_tcp_port(54325);
        
     pid_t child_pid = fork();
 
     bool is_child = (child_pid == 0);
 
-    // goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
 
     std::string os_name = std::string("/tmp/goby_test_middleware4_") + (is_child ? "subscriber" : "publisher");
     std::ofstream os(os_name.c_str());
