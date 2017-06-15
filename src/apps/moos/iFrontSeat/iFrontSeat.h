@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -46,7 +46,8 @@ class iFrontSeat : public GobyMOOSApp
 
     // synchronous event
     void loop();
-
+    void status_loop();
+    
     // mail handlers
     void handle_mail_command_request(const CMOOSMsg& msg);
     void handle_mail_data_to_frontseat(const CMOOSMsg& msg);
@@ -63,8 +64,6 @@ class iFrontSeat : public GobyMOOSApp
     boost::shared_ptr<FrontSeatInterfaceBase> frontseat_;
 
     FrontSeatLegacyTranslator translator_;
-
-    double next_status_time_;
 
     static iFrontSeatConfig cfg_;
     static iFrontSeat* inst_;    

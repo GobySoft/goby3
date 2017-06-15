@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -34,9 +34,6 @@ using namespace goby::common::logger;
 
 FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs)
     : ifs_(fs),
-      last_pending_surface_(-1),
-      gps_in_progress_(false),
-      gps_request_id_(0),
       request_id_(0)
 {
 
@@ -87,10 +84,6 @@ FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs)
         ifs_->subscribe("FRONTSEAT_BHVOFF", &FrontSeatLegacyTranslator::handle_mail_frontseat_bhvoff, this);
         ifs_->subscribe("FRONTSEAT_SILENT", &FrontSeatLegacyTranslator::handle_mail_frontseat_silent, this);
         ifs_->subscribe("BACKSEAT_ABORT", &FrontSeatLegacyTranslator::handle_mail_backseat_abort, this);
-        ifs_->subscribe("PENDING_SURFACE", &FrontSeatLegacyTranslator::handle_mail_gps_request, this);
-
-        goby::acomms::connect(&ifs_->frontseat_->signal_command_response,
-                              this, &FrontSeatLegacyTranslator::handle_gps_command_response);   
     }
     
     
@@ -144,6 +137,14 @@ void FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(const goby::mo
         if(status.global_fix().has_altitude()) 
             ifs_->publish("NAV_ALTITUDE", status.global_fix().altitude());
 
+        // surface for GPS variable
+        if(status.global_fix().lat_source() == goby::moos::protobuf::GPS &&
+           status.global_fix().lon_source() == goby::moos::protobuf::GPS)
+        {
+            std::stringstream ss;
+            ss << "Timestamp=" << std::setprecision(15) << status.time();
+            ifs_->publish("GPS_UPDATE_RECEIVED", ss.str());
+        }
     }    
 
 
@@ -294,50 +295,6 @@ void FrontSeatLegacyTranslator::set_fs_bs_ready_flags(goby::moos::protobuf::Inte
         ifs_->publish("BACKSEAT_READY", 1);
     else
         ifs_->publish("BACKSEAT_READY", 0);
-}
-
-void FrontSeatLegacyTranslator::handle_mail_gps_request(const CMOOSMsg& msg)
-{
-    double pending_surface = msg.GetDouble();
-
-    // pending surface crossing from positive to negative triggers the GPS request
-    if(pending_surface < 0 && last_pending_surface_ >= 0 && !gps_in_progress_)
-    {
-        // post GPS request
-        gpb::CommandRequest command;
-        command.set_response_requested(true);
-        gps_request_id_ = LEGACY_REQUEST_IDENTIFIER + request_id_++;
-        command.set_request_id(gps_request_id_);
-        gpb::BluefinExtraCommands* bluefin_command = command.MutableExtension(gpb::bluefin_command);
-        bluefin_command->set_command(gpb::BluefinExtraCommands::GPS_REQUEST);
-        publish_command(command);
-        
-        gps_in_progress_ = true;
-    }
-    // if pending surface resets to positive, and we're still getting GPS, cancel it
-    else if(pending_surface >= 0 && gps_in_progress_)
-    {
-        glog.is(DEBUG1) && glog << warn << "Canceling GPS update ... no acknowledgement within max time at surface." << std::endl;
-
-        gpb::CommandRequest command;
-        command.set_cancel_request_id(gps_request_id_);
-
-        publish_command(command);
-        
-        gps_in_progress_ = false;        
-    }
-    last_pending_surface_ = pending_surface;
-}
-
-void FrontSeatLegacyTranslator::handle_gps_command_response(const goby::moos::protobuf::CommandResponse& response)
-{
-    if(gps_in_progress_ && response.request_id() == gps_request_id_)
-    {
-        std::stringstream ss;
-        ss << "Timestamp=" << std::setprecision(15) << goby::common::goby_time<double>();
-        ifs_->publish("GPS_UPDATE_RECEIVED", ss.str());
-        gps_in_progress_ = false;
-    }
 }
 
 void FrontSeatLegacyTranslator::handle_mail_buoyancy_control(const CMOOSMsg& msg)

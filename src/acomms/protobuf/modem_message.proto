@@ -25,8 +25,8 @@ message ModemTransmission
                                        (goby.field).description = "source of the timestamp given",
                                        (goby.field).cfg.action = NEVER];
   optional int32 rate = 6 [(dccl.field).min = -1,
-                           (dccl.field).max = 5,
-                           (goby.field).description = "0 (lowest) - 5 (highest), -1 (QUERY_RATE). QUERY_RATE is currently unsupported by Goby-Queue",
+                           (dccl.field).max = 14,
+                           (goby.field).description = "0 (lowest) - 14 (highest), -1 (QUERY_RATE). QUERY_RATE is currently unsupported by Goby-Queue",
                            default = 0];
   
   enum TransmissionType
@@ -69,6 +69,7 @@ message ModemTransmission
   // extensions 1341-1360 used by udp_driver.proto
   // extensions 1361-1380 used by bluefin_driver.proto
   // extensions 1381-1400 used by iridium_driver.proto
+  // extensions 1401-1420 used by benthos_atm900.proto
   extensions 1000 to max;
 }
 

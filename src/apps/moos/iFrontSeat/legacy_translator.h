@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -39,7 +39,6 @@ class FrontSeatLegacyTranslator
     void handle_mail_desired_course(const CMOOSMsg& msg);
     enum ModemRawDirection { OUTGOING, INCOMING };
     void handle_mail_modem_raw(const CMOOSMsg& msg, ModemRawDirection direction);
-    void handle_mail_gps_request(const CMOOSMsg& msg);
 
     // all for buoyancy, trim, silent
     void handle_mail_buoyancy_control(const CMOOSMsg& msg);
@@ -51,20 +50,12 @@ class FrontSeatLegacyTranslator
     void handle_driver_data_from_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data);
     void set_fs_bs_ready_flags(goby::moos::protobuf::InterfaceState state);
     
-    void handle_gps_command_response(const goby::moos::protobuf::CommandResponse& response);
-    
     void publish_command(const goby::moos::protobuf::CommandRequest& command);
     
   private:
     iFrontSeat* ifs_;
     goby::moos::protobuf::CTDSample ctd_sample_;
     goby::moos::protobuf::DesiredCourse desired_course_;
-
-    // For GPS requesting
-    double last_pending_surface_;
-    bool gps_in_progress_;
-    int gps_request_id_;
-    
 
     // added to each request we send so as not to conflict with other requestors
     enum { LEGACY_REQUEST_IDENTIFIER = 1 << 16 };

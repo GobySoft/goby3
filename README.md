@@ -15,6 +15,8 @@ For Release 2.1.1 and newer, Goby uses the standalone DCCL project: https://gith
 
 Documentation is still a work in progress. As components get finalized, the goby3-examples repository (https://github.com/GobySoft/goby3-examples) is the best place to see working examples. You may fork this project as a starting point for your own projects using Goby3 so you don't need to configure your own build environment from hand.
 
+Please note that the experimental Goby3 project is a separate fork: https://github.com/GobySoft/goby3
+
 ## compiling goby
 
 please read the INSTALL.txt file in this directory

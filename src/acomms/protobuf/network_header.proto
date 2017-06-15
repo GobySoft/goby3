@@ -98,3 +98,38 @@ message UDPHeader
     required uint32 checksum = 4 [(dccl.field).codec = "net.short"];
     
 }
+
+
+message ICMPHeader
+{
+    option (dccl.msg).id = 0xF003;
+    option (dccl.msg).max_bytes = 8;
+    option (dccl.msg).codec_version = 3;
+
+    required uint32 type = 1 [(dccl.field).min = 0, (dccl.field).max = 255];
+    required uint32 code = 2 [(dccl.field).min = 0, (dccl.field).max = 255];
+    required uint32 checksum = 3 [(dccl.field).codec = "net.short"];
+    required uint32 short1 = 4 [(dccl.field).codec = "net.short"];
+    required uint32 short2 = 5 [(dccl.field).codec = "net.short"];    
+}
+
+message IPGatewayICMPControl
+{
+    enum MessageType
+    {
+        QUEUE_REPORT = 1;
+    }
+    required MessageType type = 1;
+    required string address = 2;
+    
+    message QueueReport
+    {
+        message SubQueue
+        {
+            required int32 dest = 1;
+            required int32 size = 2;
+        }
+        repeated SubQueue queue = 1;
+    }
+    optional QueueReport queue_report = 3;
+}

@@ -71,7 +71,7 @@ message BluefinExtraData
       required bool all_ok = 4;
   };
 
-  repeated PayloadStatus payload_status = 30;  
+  repeated PayloadStatus payload_status = 30;
 }
 
 
@@ -86,7 +86,6 @@ message BluefinExtraCommands
   {
     UNKNOWN_COMMAND = 0;
     DESIRED_COURSE = 1;
-    GPS_REQUEST = 2;
     TRIM_ADJUST = 3;
     BUOYANCY_ADJUST = 4;
     SILENT_MODE = 5;

@@ -1,6 +1,7 @@
 import "goby/common/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto"; 
-import "goby/common/protobuf/zero_mq_node_config.proto";
+import "goby/acomms/protobuf/modem_message.proto"; 
+import "dccl/protobuf/option_extensions.proto";
 
 message IridiumDriverConfig
 {
@@ -24,4 +25,33 @@ message IridiumDriverConfig
     optional bool use_dtr = 1390 [default = false];
     optional int32 handshake_hangup_seconds = 1392 [default = 5];
   }
+    
+  extend goby.acomms.protobuf.ModemTransmission
+  {
+      optional bool if_no_data_do_mailbox_check = 1381 [default = true];
+  }
+    
+}
+
+// subset of goby.acomms.protobuf.ModemTransmission
+message IridiumHeader
+{
+  option (dccl.msg).id = 0;
+  option (dccl.msg).max_bytes = 7;
+  
+  required int32 src = 1 [(dccl.field).min = 0,
+                          (dccl.field).max = 30]; 
+  
+  required int32 dest = 2 [(dccl.field).min = 0,
+                           (dccl.field).max = 30];
+  
+  optional int32 rate = 3 [(dccl.field).min = 0,
+                           (dccl.field).max = 1];             
+
+  required goby.acomms.protobuf.ModemTransmission.TransmissionType type = 4;     
+                         
+
+  optional bool ack_requested = 5;
+  optional uint32 frame_start = 6 [(dccl.field).min = 0, (dccl.field).max = 0xFFFF];
+  optional int32 acked_frame = 7 [(dccl.field).min = 0, (dccl.field).max = 0xFFFF];
 }

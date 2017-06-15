@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -39,8 +39,8 @@ namespace goby
             { }
         };
             
-        void serialize_rudics_packet(std::string bytes, std::string* rudics_pkt);
-        void parse_rudics_packet(std::string* bytes, std::string rudics_pkt);
+        void serialize_rudics_packet(std::string bytes, std::string* rudics_pkt, const std::string& reserved = std::string("\0\r\n",3) + std::string(1, 0xff), bool include_crc = true);
+        void parse_rudics_packet(std::string* bytes, std::string rudics_pkt, const std::string& reserved = std::string("\0\r\n",3) + std::string(1, 0xff), bool include_crc = true);
         std::string uint32_to_byte_string(uint32_t i);
         uint32_t byte_string_to_uint32(std::string s);
     }

@@ -1,6 +1,6 @@
 find_path(ZeroMQ_INCLUDE_DIR zmq.hpp)
 
-find_library(ZeroMQ_LIBRARY NAMES zmq
+find_library(ZeroMQ_LIBRARY NAMES zmqpp zmq
   DOC "The ZeroMQ message passing library" PATHS /usr/lib)
 
 mark_as_advanced(ZeroMQ_INCLUDE_DIR

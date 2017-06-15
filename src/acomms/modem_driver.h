@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -33,8 +33,16 @@
 // toy example "ABC" driver
 #include "goby/acomms/modemdriver/abc_driver.h"
 
+// Benthos ATM-900 driver
+#include "goby/acomms/modemdriver/benthos_atm900_driver.h"
+
+// Iridium 9532 driver
+#include "goby/acomms/modemdriver/iridium_driver.h"
+
+// Iridium shore-side RUDICS/SBD driver
+#include "goby/acomms/modemdriver/iridium_shore_driver.h"
 
 // User Datagram Protocol (UDP) driver
-//#include "goby/acomms/modemdriver/udp_driver.h"
+#include "goby/acomms/modemdriver/udp_driver.h"
 
 #endif

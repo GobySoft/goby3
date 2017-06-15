@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -295,7 +295,7 @@ void goby::common::hdf5::Writer::write_field_selector(const std::string& group,
                 write_field<std::string>(group, field_desc, messages, hs);
             else
                 // placeholder for users to know that the field exists, even if the data are omitted
-                write_vector(group, field_desc->name(), std::vector<unsigned char>(), std::vector<hsize_t>(1,0));
+                write_vector(group, field_desc->name(), std::vector<unsigned char>(), std::vector<hsize_t>(1,0), (unsigned char)0);
             break;
                 
         case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:                
@@ -344,7 +344,6 @@ void goby::common::hdf5::Writer::write_enum_attributes(const std::string& group,
 }
 
 
-
 void goby::common::hdf5::Writer::write_time(const std::string& group, const goby::common::hdf5::MessageCollection& message_collection)
 {
     std::vector<goby::uint64> utime(message_collection.entries.size(), 0);
@@ -364,19 +363,19 @@ void goby::common::hdf5::Writer::write_time(const std::string& group, const goby
 
     std::vector<hsize_t> hs;
     hs.push_back(message_collection.entries.size());
-    write_vector(group, "_utime_", utime, hs);
-    write_vector(group, "_datenum_", datenum, hs);
+    write_vector(group, "_utime_", utime, hs, (goby::uint64)0);
+    write_vector(group, "_datenum_", datenum, hs, (double)0);
 }
 
 void goby::common::hdf5::Writer::write_vector(const std::string& group,
                                               const std::string dataset_name,
                                               const std::vector<std::string>& data,
-                                              const std::vector<hsize_t>& hs)
+                                              const std::vector<hsize_t>& hs,
+                                              const std::string& default_value)
 {                   
     std::vector<const char*> data_c_str;
     for (unsigned i = 0, n = data.size(); i < n; ++i) 
         data_c_str.push_back(data[i].c_str());
-
                     
     H5::DataSpace dataspace(hs.size(), hs.data(), hs.data());
     H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE);          
@@ -387,5 +386,10 @@ void goby::common::hdf5::Writer::write_vector(const std::string& group,
 
     if(data_c_str.size())
         dataset.write(data_c_str.data(), datatype);
+    
+    const int rank = 1;
+    hsize_t att_hs[] = {1};
+    H5::DataSpace att_space(rank, att_hs, att_hs);
+    H5::Attribute att = dataset.createAttribute("default_value", datatype, att_space);
+    att.write(datatype, default_value.c_str());
 }
-                

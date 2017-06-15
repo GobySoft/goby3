@@ -26,6 +26,8 @@ set(SRC
   modemdriver/iridium_driver.cpp
   modemdriver/iridium_driver_fsm.cpp
   modemdriver/iridium_shore_driver.cpp
+  modemdriver/benthos_atm900_driver.cpp
+  modemdriver/benthos_atm900_driver_fsm.cpp
   route/route.cpp
   ${PROTO_SRCS} ${PROTO_HDRS}
 )

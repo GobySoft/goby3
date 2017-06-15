@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -84,13 +84,11 @@ namespace goby
             struct RemoteNode
             {
                 enum  { DATA_BUFFER_CAPACITY = 30 };
-            RemoteNode() : data_out(DATA_BUFFER_CAPACITY),
-                    last_send_time(0)
+            RemoteNode() : data_out(DATA_BUFFER_CAPACITY)
                     { }
                 
                 boost::shared_ptr<OnCallBase> on_call;
                 boost::circular_buffer<protobuf::ModemTransmission> data_out;
-                double last_send_time;
             };
             
             

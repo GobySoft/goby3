@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -43,7 +43,7 @@ void goby::acomms::ABCDriver::startup(const protobuf::DriverConfig& cfg)
     if(!driver_cfg_.has_serial_baud())
         driver_cfg_.set_serial_baud(DEFAULT_BAUD);
 
-    glog.is(DEBUG1) && glog << group("modem_out") << "ABCDriver configuration good. Starting modem..." << std::endl;
+    glog.is(DEBUG1) && glog << group(glog_out_group()) << "ABCDriver configuration good. Starting modem..." << std::endl;
     ModemDriverBase::modem_start(driver_cfg_);
 
     // set your local modem id (MAC address)
@@ -82,7 +82,7 @@ void goby::acomms::ABCDriver::handle_initiate_transmission(const protobuf::Modem
     
         // rate() can be 0 (lowest), 1, 2, 3, 4, or 5 (lowest). Map these integers onto real bit-rates
         // in a meaningful way (on the WHOI Micro-Modem 0 ~= 80 bps, 5 ~= 5000 bps).
-    glog.is(DEBUG1) && glog <<  group("modem_out") << "We were asked to transmit from "
+    glog.is(DEBUG1) && glog <<  group(glog_out_group()) << "We were asked to transmit from "
                             << msg.src() << " to " << msg.dest()
                             << " at bitrate code " << msg.rate() << std::endl;
     
@@ -93,7 +93,7 @@ void goby::acomms::ABCDriver::handle_initiate_transmission(const protobuf::Modem
     if(msg.frame_size() == 0)
         ModemDriverBase::signal_data_request(&msg);
 
-    glog.is(DEBUG1) && glog <<  group("modem_out") << "Sending these data now: " << msg.frame(0) << std::endl;
+    glog.is(DEBUG1) && glog <<  group(glog_out_group()) << "Sending these data now: " << msg.frame(0) << std::endl;
     
     // let's say we can send at three bitrates with ABC modem: map these onto 0-5
     const unsigned BITRATE [] = { 100, 1000, 10000, 10000, 10000, 10000};
@@ -135,13 +135,13 @@ void goby::acomms::ABCDriver::do_work()
             msg.set_dest(goby::util::as<int32>(parsed["TO"]));
             msg.set_time(goby::common::goby_time<uint64>());
             
-            glog.is(DEBUG1) && glog << group("modem_in") << in << std::endl;
+            glog.is(DEBUG1) && glog << group(glog_in_group()) << in << std::endl;
             
             if(parsed["KEY"] == "RECV")
             {
                 msg.set_type(protobuf::ModemTransmission::DATA);
                 msg.add_frame(hex_decode(parsed["HEX"]));
-                glog.is(DEBUG1) && glog << group("modem_in") << "received: " << msg << std::endl;
+                glog.is(DEBUG1) && glog << group(glog_in_group()) << "received: " << msg << std::endl;
             }
             else if(parsed["KEY"] == "ACKN")
             {
@@ -166,7 +166,7 @@ void goby::acomms::ABCDriver::signal_and_write(const std::string& raw)
     raw_msg.set_raw(raw);
     ModemDriverBase::signal_raw_outgoing(raw_msg);
 
-    glog.is(DEBUG1) && glog << group("modem_out") << boost::trim_copy(raw) << std::endl;
+    glog.is(DEBUG1) && glog << group(glog_out_group()) << boost::trim_copy(raw) << std::endl;
     ModemDriverBase::modem_write(raw); 
 }
 

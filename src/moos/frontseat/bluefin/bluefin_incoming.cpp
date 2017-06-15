@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -193,6 +193,12 @@ void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
         status_.mutable_global_fix()->set_lon(std::numeric_limits<double>::quiet_NaN());
     }
 
+    if(nmea.as<int>(QUALITY_OF_POSITION) == 1)
+    {
+        status_.mutable_global_fix()->set_lat_source(goby::moos::protobuf::GPS);
+        status_.mutable_global_fix()->set_lon_source(goby::moos::protobuf::GPS);
+    }
+    
     status_.mutable_global_fix()->set_altitude(nmea.as<double>(ALTITUDE));
     status_.mutable_global_fix()->set_depth(nmea.as<double>(DEPTH));
     status_.mutable_pose()->set_heading(nmea.as<double>(HEADING));
@@ -345,17 +351,6 @@ void BluefinFrontSeat::bfmbe(const goby::util::NMEASentence& nmea)
 
     glog.is(DEBUG1) && glog << "Bluefin ended frontseat mission: " << behavior_type << std::endl;
     
-    if(behavior_type.find("GPS") != std::string::npos &&
-       outstanding_requests_.count(gpb::BluefinExtraCommands::GPS_REQUEST))
-    {
-        // GPS request done
-        gpb::CommandResponse response;
-        response.set_request_successful(true);
-        response.set_request_id(outstanding_requests_[gpb::BluefinExtraCommands::GPS_REQUEST].request_id());
-        signal_command_response(response);
-        outstanding_requests_.erase(gpb::BluefinExtraCommands::GPS_REQUEST);
-        return;
-    }    
 }
 
 void BluefinFrontSeat::bftop(const goby::util::NMEASentence& nmea)

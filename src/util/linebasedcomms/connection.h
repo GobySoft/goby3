@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -86,31 +86,21 @@ namespace goby
                 }
                 
                 std::istream is(&buffer_);
-
                 std::string& line = *in_datagram_.mutable_data();
-
+                
                 if(!remote_endpoint().empty())
                     in_datagram_.set_src(remote_endpoint());
                 if(!local_endpoint().empty())
                     in_datagram_.set_dest(local_endpoint());
 
                 in_datagram_.set_time(goby::common::goby_time<double>());
-
                 char last = interface_->delimiter().at(interface_->delimiter().length()-1);
-                while(!std::getline(is, line, last).eof())
+                std::getline(is, line, last);
+
                 {
-                    line = extra_ + line + last;
-                    // grab a lock on the in_ deque because the user can modify    
-                    boost::mutex::scoped_lock lock(interface_->in_mutex());
-                    
+                    boost::mutex::scoped_lock lock(interface_->in_mutex());                    
                     interface_->in().push_back(in_datagram_);
-                    
-                    extra_.clear();
-                }
-                
-                // store any remainder for the next round
-                if(!line.empty()) extra_ = line;
-                
+                }                
                 read_start(); // start waiting for another asynchronous read again
             }    
 
@@ -144,7 +134,6 @@ namespace goby
           private:
             LineBasedInterface* interface_;
             boost::asio::streambuf buffer_; 
-            std::string extra_;
             protobuf::Datagram in_datagram_;
             std::deque<protobuf::Datagram> out_; // buffered write data
                 

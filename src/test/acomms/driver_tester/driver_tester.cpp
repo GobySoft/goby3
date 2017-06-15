@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -32,14 +32,16 @@ DriverTester::DriverTester(boost::shared_ptr<goby::acomms::ModemDriverBase> driv
                            boost::shared_ptr<goby::acomms::ModemDriverBase> driver2,
                            const goby::acomms::protobuf::DriverConfig& cfg1,
                            const goby::acomms::protobuf::DriverConfig& cfg2,
-                           const std::vector<int>& tests_to_run)
+                           const std::vector<int>& tests_to_run, 
+                           goby::acomms::protobuf::DriverType driver_type)
     
     :  driver1_(driver1),
        driver2_(driver2),
-       check_count_(0),
-       tests_to_run_(tests_to_run),
-       tests_to_run_index_(0),
-       test_number_(-1)
+    check_count_(0),
+    tests_to_run_(tests_to_run),
+    tests_to_run_index_(0),
+    test_number_(-1),
+    driver_type_(driver_type)
 {
             
     goby::glog.add_group("test", goby::common::Colors::green);
@@ -196,11 +198,22 @@ void DriverTester::handle_data_receive1(const protobuf::ModemTransmission& msg)
     switch(test_number_)
     {
         case 0:
-            assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-                   msg.GetExtension(micromodem::protobuf::type) == micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
-            ++check_count_;
+        {
+            if(driver_type_ == goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM)
+            {
+                assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
+                       msg.GetExtension(micromodem::protobuf::type) == micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
+                ++check_count_;
+            }
+            else if(driver_type_ == goby::acomms::protobuf::DRIVER_BENTHOS_ATM900)
+            {
+                assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
+                       msg.GetExtension(benthos::protobuf::type) == benthos::protobuf::BENTHOS_TWO_WAY_PING);
+                ++check_count_;
+            }
             break;
-
+        }
+        
         case 1:
         {
             assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
@@ -354,9 +367,12 @@ void DriverTester::handle_data_receive2(const protobuf::ModemTransmission& msg)
             break;
 
         case 0:
-            assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-                   msg.GetExtension(micromodem::protobuf::type) == micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
-            ++check_count_;
+            if(driver_type_ == goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM)
+            {
+                assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
+                       msg.GetExtension(micromodem::protobuf::type) == micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
+                ++check_count_;
+            }
             break;
 
         case 4:
@@ -400,7 +416,12 @@ void DriverTester::test0()
     protobuf::ModemTransmission transmit;
     
     transmit.set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    transmit.SetExtension(micromodem::protobuf::type, micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
+
+    if(driver_type_ == goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM)
+        transmit.SetExtension(micromodem::protobuf::type, micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
+    else if(driver_type_ == goby::acomms::protobuf::DRIVER_BENTHOS_ATM900)
+        transmit.SetExtension(benthos::protobuf::type, benthos::protobuf::BENTHOS_TWO_WAY_PING);
+    
     transmit.set_src(1);
     transmit.set_dest(2);
 
@@ -415,7 +436,11 @@ void DriverTester::test0()
         usleep(100000);
         ++i;
     }
-    assert(check_count_ == 2);
+
+    if(driver_type_ == goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM)
+        assert(check_count_ == 2);
+    else if(driver_type_ == goby::acomms::protobuf::DRIVER_BENTHOS_ATM900)
+        assert(check_count_ == 1); // no clear indication of ping on the pinged modem
 }
 
 

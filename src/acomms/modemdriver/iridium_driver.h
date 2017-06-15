@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -74,7 +74,6 @@ namespace goby
             enum { TRIPLE_PLUS_WAIT = 2 };
             
             protobuf::ModemTransmission rudics_mac_msg_;
-            double last_send_time_;
 
 
             int serial_fd_;

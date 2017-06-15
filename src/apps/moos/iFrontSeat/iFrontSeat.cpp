@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -90,8 +90,7 @@ FrontSeatInterfaceBase* load_driver(iFrontSeatConfig* cfg)
 iFrontSeat::iFrontSeat()
     : GobyMOOSApp(&cfg_),
       frontseat_(load_driver(&cfg_)),
-      translator_(this),
-      next_status_time_(goby_time<double>() + cfg_.status_period())
+      translator_(this)
 {
 
     
@@ -120,19 +119,12 @@ iFrontSeat::iFrontSeat()
     // IvP Helm State
     subscribe("IVPHELM_STATE", &iFrontSeat::handle_mail_helm_state, this);
 
+    register_timer(cfg_.status_period(), boost::bind(&iFrontSeat::status_loop, this));
 }
 
 void iFrontSeat::loop()
 {
     frontseat_->do_work();
-
-    if(cfg_.status_period() &&
-       goby_time<double>() > next_status_time_)
-    {
-        glog.is(DEBUG1) && glog << "Status: " << frontseat_->status().ShortDebugString() << std::endl;
-        publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().status(), frontseat_->status());
-        next_status_time_ += cfg_.status_period();
-    }
 
     if(cfg_.exit_on_error() &&
        (frontseat_->state() == gpb::INTERFACE_FS_ERROR ||
@@ -143,6 +135,11 @@ void iFrontSeat::loop()
     
 }
 
+void iFrontSeat::status_loop()
+{
+    glog.is(DEBUG1) && glog << "Status: " << frontseat_->status().ShortDebugString() << std::endl;
+    publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().status(), frontseat_->status());
+}
 
 void iFrontSeat::handle_mail_command_request(const CMOOSMsg& msg)
 {

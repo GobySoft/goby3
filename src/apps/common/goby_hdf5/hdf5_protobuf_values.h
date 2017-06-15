@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -46,7 +46,9 @@ namespace goby
                 const google::protobuf::Message& msg;
             };
 
-            
+
+            template <typename T> void retrieve_default_value(T* val, const google::protobuf::FieldDescriptor* field_desc);
+
             template <typename T> void retrieve_empty_value(T* val);
             template <typename T> T retrieve_empty_value()
             {
@@ -67,6 +69,20 @@ namespace goby
             template <typename T> void retrieve_single_present_value(T* val, PBMeta meta);
             template <typename T> void retrieve_repeated_value(T* val, int index, PBMeta meta);
 
+            template <>
+                void retrieve_default_value(goby::int32* val, const google::protobuf::FieldDescriptor* field_desc)
+            {
+                if(field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_INT32)
+                {
+                    *val = field_desc->default_value_int32();
+                }
+                else if(field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_ENUM)
+                {
+                    const google::protobuf::EnumValueDescriptor* enum_desc =
+                        field_desc->default_value_enum();
+                    *val = enum_desc->number();
+                }                
+            }
             template <>
                 void retrieve_empty_value(goby::int32* val)
             { *val = std::numeric_limits<goby::int32>::max(); }
@@ -100,6 +116,9 @@ namespace goby
             }
 
             template <>
+                void retrieve_default_value(goby::uint32* val, const google::protobuf::FieldDescriptor* field_desc)
+            { *val = field_desc->default_value_uint32(); }
+            template <>
                 void retrieve_empty_value(goby::uint32* val)
             { *val = std::numeric_limits<goby::uint32>::max(); }
             template <>
@@ -109,6 +128,9 @@ namespace goby
                 void retrieve_repeated_value(goby::uint32* val, int index, PBMeta m)
             { *val = m.refl->GetRepeatedUInt32(m.msg, m.field_desc, index); }
 
+            template <>
+                void retrieve_default_value(goby::int64* val, const google::protobuf::FieldDescriptor* field_desc)
+            { *val = field_desc->default_value_int64(); }
             template <>
                 void retrieve_empty_value(goby::int64* val)
             { *val = std::numeric_limits<goby::int64>::max(); }
@@ -121,6 +143,9 @@ namespace goby
 
 
             template <>
+                void retrieve_default_value(goby::uint64* val, const google::protobuf::FieldDescriptor* field_desc)
+            { *val = field_desc->default_value_uint64(); }
+            template <>
                 void retrieve_empty_value(goby::uint64* val)
             { *val = std::numeric_limits<goby::uint64>::max(); }
             template <>
@@ -132,6 +157,9 @@ namespace goby
 
 
             template <>
+                void retrieve_default_value(double* val, const google::protobuf::FieldDescriptor* field_desc)
+            { *val = field_desc->default_value_double(); }
+            template <>
                 void retrieve_empty_value(double* val)
             { *val = std::numeric_limits<double>::quiet_NaN(); }
             template <>
@@ -141,6 +169,9 @@ namespace goby
                 void retrieve_repeated_value(double* val, int index, PBMeta m)
             { *val = m.refl->GetRepeatedDouble(m.msg, m.field_desc, index); }
 
+            template <>
+                void retrieve_default_value(float* val, const google::protobuf::FieldDescriptor* field_desc)
+            { *val = field_desc->default_value_float(); }
             template <>
                 void retrieve_empty_value(float* val)
             { *val = std::numeric_limits<float>::quiet_NaN(); }
@@ -153,6 +184,12 @@ namespace goby
 
 
             // used for bool
+            template <>
+                void retrieve_default_value(unsigned char* val, const google::protobuf::FieldDescriptor* field_desc)
+            {
+                if(field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_BOOL)
+                    *val = field_desc->default_value_bool();
+            }
             template <>
                 void retrieve_empty_value(unsigned char* val)
             { *val = std::numeric_limits<unsigned char>::max(); }
@@ -170,6 +207,13 @@ namespace goby
             }
 
 
+            template <>
+                void retrieve_default_value(std::string* val, const google::protobuf::FieldDescriptor* field_desc)
+            {
+                *val = field_desc->default_value_string();
+                if(field_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES)
+                    *val = goby::util::hex_encode(*val);                
+            }
             template <>
                 void retrieve_empty_value(std::string* val)
             { val->clear(); }

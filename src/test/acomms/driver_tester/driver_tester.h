@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -20,6 +20,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/acomms/modemdriver/mm_driver.h"
+#include "goby/acomms/protobuf/benthos_atm900.pb.h"
 #include "goby/common/logger.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/acomms_helpers.h"
@@ -33,7 +34,8 @@ class DriverTester
                  boost::shared_ptr<goby::acomms::ModemDriverBase> driver2,
                  const goby::acomms::protobuf::DriverConfig& cfg1,
                  const goby::acomms::protobuf::DriverConfig& cfg2,
-                 const std::vector<int>& tests_to_run);
+                 const std::vector<int>& tests_to_run,
+                 goby::acomms::protobuf::DriverType driver_type);
 
     int run();
     
@@ -66,5 +68,5 @@ class DriverTester
     int test_number_;
 
     std::string test_str0_, test_str1_, test_str2_, test_str3_;
-
+    goby::acomms::protobuf::DriverType driver_type_;
 };

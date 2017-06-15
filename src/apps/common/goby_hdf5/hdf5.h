@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -122,12 +122,17 @@ namespace goby
                 void write_embedded_message(const std::string& group, const google::protobuf::FieldDescriptor* field_desc, const std::vector<const google::protobuf::Message*> messages, std::vector<hsize_t>& hs);
                 
                 template<typename T>
-                    void write_vector(const std::string& group, const std::string dataset_name, const std::vector<T>& data, const std::vector<hsize_t>& hs);
+                    void write_vector(const std::string& group,
+                                      const std::string dataset_name,
+                                      const std::vector<T>& data,
+                                      const std::vector<hsize_t>& hs,
+                                      const T& default_value);
                 
                 void write_vector(const std::string& group,
                                   const std::string dataset_name,
                                   const std::vector<std::string>& data,
-                                  const std::vector<hsize_t>& hs);
+                                  const std::vector<hsize_t>& hs,
+                                  const std::string& default_value);
 
                 void iterate() { }
 
@@ -174,7 +179,10 @@ namespace goby
                         }
                     }
 
-                    write_vector(group, field_desc->name(), values, hs);
+                    T default_value;
+                    retrieve_default_value(&default_value, field_desc);
+                    
+                    write_vector(group, field_desc->name(), values, hs, default_value);
 
                     hs.pop_back();
                 }
@@ -190,14 +198,16 @@ namespace goby
                         }
                     }
 
-                    write_vector(group, field_desc->name(), values, hs);
+                    T default_value;
+                    retrieve_default_value(&default_value, field_desc);
+                    
+                    write_vector(group, field_desc->name(), values, hs, default_value);
                 }
             }
 
             template<typename T>
-                void Writer::write_vector(const std::string& group, const std::string dataset_name, const std::vector<T>& data, const std::vector<hsize_t>& hs)
+                void Writer::write_vector(const std::string& group, const std::string dataset_name, const std::vector<T>& data, const std::vector<hsize_t>& hs, const T& default_value)
             {
-                    
                 H5::DataSpace dataspace(hs.size(), hs.data(), hs.data());
                 H5::Group& grp = group_factory_.fetch_group(group);
                 H5::DataSet dataset = grp.createDataSet(dataset_name,
@@ -205,8 +215,13 @@ namespace goby
                                                         dataspace);
                 if(data.size())
                     dataset.write(&data[0], predicate<T>());
-            }                
-
+                
+                const int rank = 1;
+                hsize_t att_hs[] = {1};
+                H5::DataSpace att_space(rank, att_hs, att_hs);
+                H5::Attribute att = dataset.createAttribute("default_value", predicate<T>(), att_space);
+                att.write(predicate<T>(), &default_value);
+            }
         }
     }
 }

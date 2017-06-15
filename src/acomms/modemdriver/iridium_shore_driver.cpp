@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -47,6 +47,7 @@ using goby::acomms::protobuf::DirectIPMTPayload;
 goby::acomms::IridiumShoreDriver::IridiumShoreDriver() :
     next_frame_(0)
 {     
+    init_iridium_dccl();
 }
 
 goby::acomms::IridiumShoreDriver::~IridiumShoreDriver()
@@ -113,31 +114,32 @@ void goby::acomms::IridiumShoreDriver::do_work()
     //    display_state_cfg(&glog);
     double now = goby_time<double>();
     
-    // if we're on a call, keep pushing data at the target rate
-    const double send_interval =
-        driver_cfg_.GetExtension(IridiumDriverConfig::max_frame_size) /
-        (driver_cfg_.GetExtension(IridiumDriverConfig::target_bit_rate) / static_cast<double>(BITS_IN_BYTE));
 
     for(std::map<ModemId, RemoteNode>::iterator it = remote_.begin(), end = remote_.end();
         it != end; ++it)
     {
         RemoteNode& remote = it->second;
-        boost::shared_ptr<OnCallBase> on_call_base = it->second.on_call;
+        boost::shared_ptr<OnCallBase> on_call_base = remote.on_call;
         ModemId id = it->first;
         
-        if(now > (remote.last_send_time + send_interval))
-        {
-            if(on_call_base && !on_call_base->bye_sent())
-            {
-                rudics_mac_msg_.set_dest(it->first);
-                process_transmission(rudics_mac_msg_);
-                remote.last_send_time = now;
-            }
-        }
 
         // if we're on either type of call, see if we need to send the "bye" message or hangup
         if(on_call_base)
         {
+            // if we're on a call, keep pushing data at the target rate
+            const double send_wait =
+                on_call_base->last_bytes_sent() /
+                (driver_cfg_.GetExtension(IridiumDriverConfig::target_bit_rate) / static_cast<double>(BITS_IN_BYTE));
+            
+            if(now > (on_call_base->last_tx_time() + send_wait))
+            {
+                if(!on_call_base->bye_sent())
+                {
+                    rudics_mac_msg_.set_dest(it->first);
+                    process_transmission(rudics_mac_msg_);
+                }
+            }
+
             if(!on_call_base->bye_sent() &&
                now > (on_call_base->last_tx_time() + driver_cfg_.GetExtension(IridiumDriverConfig::handshake_hangup_seconds)))
             {
@@ -197,7 +199,7 @@ void goby::acomms::IridiumShoreDriver::send(const protobuf::ModemTransmission& m
     if(msg.rate() == RATE_RUDICS || remote.on_call)
     {
         std::string bytes;
-        msg.SerializeToString(&bytes);
+        serialize_iridium_modem_message(&bytes, msg);
 
         // frame message
         std::string rudics_packet;
@@ -205,11 +207,12 @@ void goby::acomms::IridiumShoreDriver::send(const protobuf::ModemTransmission& m
         rudics_send(rudics_packet, msg.dest());
         boost::shared_ptr<OnCallBase> on_call_base = remote.on_call;
         on_call_base->set_last_tx_time(goby_time<double>());
+        on_call_base->set_last_bytes_sent(rudics_packet.size());
     }
     else if(msg.rate() == RATE_SBD)
     {
         std::string bytes;
-        msg.SerializeToString(&bytes);
+        serialize_iridium_modem_message(&bytes, msg);
             
         std::string sbd_packet;
         serialize_rudics_packet(bytes, &sbd_packet);
@@ -294,8 +297,9 @@ void goby::acomms::IridiumShoreDriver::rudics_line(const std::string& data, boos
             parse_rudics_packet(&decoded_line, data);
             
             protobuf::ModemTransmission modem_msg;
-            modem_msg.ParseFromString(decoded_line);
+            parse_iridium_modem_message(decoded_line, &modem_msg);
 
+            
             glog.is(DEBUG1) && glog << "Received RUDICS message from: " << modem_msg.src() << " to: " << modem_msg.dest() << " from endpoint: " << connection->remote_endpoint_str() << std::endl;
             if(!clients_.left.count(modem_msg.src()))
             {
@@ -347,8 +351,7 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo()
             try
             {
                 parse_rudics_packet(&bytes, (*it)->message().body().payload());
-
-                modem_msg.ParseFromString(bytes);
+                parse_iridium_modem_message(bytes, &modem_msg);
             
                 glog.is(DEBUG1) && glog << "Rx SBD ModemTransmission: " << modem_msg.ShortDebugString() << std::endl;
 

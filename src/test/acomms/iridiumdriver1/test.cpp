@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -107,6 +107,6 @@ int main(int argc, char* argv[])
     tests_to_run.push_back(4);
     tests_to_run.push_back(5);
     
-    DriverTester tester(driver1, driver2, glider_cfg, shore_cfg, tests_to_run);
+    DriverTester tester(driver1, driver2, glider_cfg, shore_cfg, tests_to_run, goby::acomms::protobuf::DRIVER_IRIDIUM);
     return tester.run();
 }

@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -55,6 +55,13 @@ int main()
         goby::util::NMEASentence nmea("$YXXDR,A,0.3,D,PTCH,A,13.3,D,ROLL*6f ");
         std::cout << nmea.message() << std::endl;
         assert(nmea.at(8) == "ROLL");
+    }
+
+    {
+        goby::util::NMEASentence nmea("!AIVDO,1,1,,,B0000003wk?8mP=18D3Q3wwUkP06,0*7B");
+        std::cout << nmea.message() << std::endl;
+        assert(nmea.as<int>(1) == 1);
+        assert(nmea.as<int>(2) == 1);
     }
     
     std::cout << "all tests passed" << std::endl;

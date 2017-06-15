@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -38,14 +38,16 @@ using goby::common::goby_time;
 using goby::acomms::operator<<;
 
 
+boost::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
+
 goby::acomms::IridiumDriver::IridiumDriver()
     : fsm_(driver_cfg_),
       last_triple_plus_time_(0),
-      last_send_time_(0),
       serial_fd_(-1),
       next_frame_(0)
 {
-     
+    init_iridium_dccl();
+    
 //    assert(byte_string_to_uint32(uint32_to_byte_string(16540)) == 16540);
 }
 
@@ -190,8 +192,10 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
 {
     signal_modify_transmission(&msg);
 
+    const static unsigned frame_max = IridiumHeader::descriptor()->FindFieldByName("frame_start")->options().GetExtension(dccl::field).max();
+    
     if(!msg.has_frame_start())
-        msg.set_frame_start(next_frame_);
+        msg.set_frame_start(next_frame_ % frame_max);
 
     // set the frame size, if not set or if it exceeds the max configured
     if(!msg.has_max_frame_bytes() || msg.max_frame_bytes() > driver_cfg_.GetExtension(IridiumDriverConfig::max_frame_size))
@@ -209,7 +213,8 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
     }
     else if(msg.rate() == RATE_SBD)
     {
-        fsm_.process_event(fsm::EvSBDBeginData()); // mailbox check
+        if(msg.GetExtension(IridiumDriverConfig::if_no_data_do_mailbox_check))
+           fsm_.process_event(fsm::EvSBDBeginData()); // mailbox check
     }
 }
 
@@ -221,26 +226,24 @@ void goby::acomms::IridiumDriver::do_work()
     //    display_state_cfg(&glog);
     double now = goby_time<double>();
     
-    // if we're on a call, keep pushing data at the target rate
-    const double send_interval =
-        driver_cfg_.GetExtension(IridiumDriverConfig::max_frame_size) /
-        (driver_cfg_.GetExtension(IridiumDriverConfig::target_bit_rate) / static_cast<double>(BITS_IN_BYTE));
-
-    
     const fsm::OnCall* on_call = fsm_.state_cast<const fsm::OnCall*>();
-    
-    if(fsm_.data_out().empty() &&
-       (now > (last_send_time_ + send_interval)))
-    {
-        if(on_call && !on_call->bye_sent())
-        {        
-            process_transmission(rudics_mac_msg_, false);
-            last_send_time_ = now;
-        }
-    }
 
     if(on_call)
     {
+        // if we're on a call, keep pushing data at the target rate
+        const double send_wait =
+            on_call->last_bytes_sent() /
+            (driver_cfg_.GetExtension(IridiumDriverConfig::target_bit_rate) / static_cast<double>(BITS_IN_BYTE));
+    
+        if(fsm_.data_out().empty() &&
+           (now > (on_call->last_tx_time() + send_wait)))
+        {
+            if(!on_call->bye_sent())
+            {        
+                process_transmission(rudics_mac_msg_, false);
+            }
+        }
+
         if(!on_call->bye_sent() &&
            now > (on_call->last_tx_time() + driver_cfg_.GetExtension(IridiumDriverConfig::handshake_hangup_seconds)))
         {
@@ -338,8 +341,11 @@ void goby::acomms::IridiumDriver::send(const protobuf::ModemTransmission& msg)
             fsm_.buffer_data_out(msg);
         else
         {
+            std::string iridium_packet;
+            serialize_iridium_modem_message(&iridium_packet, msg);
+            
             std::string rudics_packet;
-            serialize_rudics_packet(msg.SerializeAsString(), &rudics_packet);
+            serialize_rudics_packet(iridium_packet, &rudics_packet);
             fsm_.process_event(fsm::EvSBDBeginData(rudics_packet));
         }
         

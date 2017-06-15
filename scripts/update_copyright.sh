@@ -5,7 +5,7 @@ here=`pwd`
 header_strip()
 {
     endtext='If not, see <http:\/\/www.gnu.org\/licenses\/>.'
-    for i in `grep -lr "$endtext"`
+    for i in `grep -lr "$endtext" | egrep "\.cpp$|\.h$"`
     do 
         echo $i
         l=$(grep -n "$endtext" $i | tail -1 | cut -d ":" -f 1)
@@ -18,13 +18,13 @@ header_strip()
 
 pushd ../src
 header_strip
-for i in `find -regex ".*\.h$\|.*\.cpp$"`; do cat $here/../share/doc/header_lib.txt $i > $i.tmp; mv $i.tmp $i; done
+for i in `find -regex ".*\.h$\|.*\.cpp$"`; do cat $here/../src/share/doc/header_lib.txt $i > $i.tmp; mv $i.tmp $i; done
 popd
 
-for dir in ../src/apps ../src/test ../share/examples; do
+for dir in ../src/apps ../src/test ../src/share/examples; do
 pushd $dir
 header_strip
-for i in `find -regex ".*\.h$\|.*\.cpp$"`; do cat $here/../share/doc/header_bin.txt $i > $i.tmp; mv $i.tmp $i; done
+for i in `find -regex ".*\.h$\|.*\.cpp$"`; do cat $here/../src/share/doc/header_bin.txt $i > $i.tmp; mv $i.tmp $i; done
 popd
 
 done

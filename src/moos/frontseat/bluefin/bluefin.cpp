@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -125,12 +125,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
         {
             case gpb::BluefinExtraCommands::UNKNOWN_COMMAND:
             case gpb::BluefinExtraCommands::DESIRED_COURSE:
-                break;
-                
-            case gpb::BluefinExtraCommands::GPS_REQUEST:
-                glog.is(DEBUG1) && glog << "Bluefin Extra Command: GPS Fix requested by backseat."
-                                        << std::endl;
-                break;
+                break;                
 
             case gpb::BluefinExtraCommands::TRIM_ADJUST:
             {
@@ -219,8 +214,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
         {
             glog.is(WARN) && glog << "Ignoring desired course information in this message, as an extra command was set. Only one command allowed per message." << std::endl;
         }
-        else if(outstanding_requests_.count(gpb::BluefinExtraCommands::GPS_REQUEST) &&
-                static_cast<int>(command.desired_course().depth()) == 0 &&
+        else if(static_cast<int>(command.desired_course().depth()) == 0 &&
                 static_cast<int>(command.desired_course().speed()) == 0)
         {
             type = gpb::BluefinExtraCommands::DESIRED_COURSE;   
@@ -266,10 +260,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
         }
     }
 
-    // we enforce a request outstanding for GPS, because we need to override course requests until this
-    // GPS request is fulfilled
-    if(!bf_config_.disable_ack()
-       && (command.response_requested() || type == gpb::BluefinExtraCommands::GPS_REQUEST))
+    if(!bf_config_.disable_ack() && command.response_requested())
     {
         if(outstanding_requests_.count(type))
         {

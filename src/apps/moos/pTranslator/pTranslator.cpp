@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -31,10 +31,6 @@ using namespace goby::common::logger;
 using goby::moos::operator<<;
 
 
-goby::uint64 microsec_moos_time()
-{ return static_cast<goby::uint64>(MOOSTime() * 1.0e6); }
-
-
 pTranslatorConfig CpTranslator::cfg_;
 CpTranslator* CpTranslator::inst_ = 0;
 
@@ -57,13 +53,7 @@ CpTranslator::CpTranslator()
                   cfg_.common().lon_origin(),
                   cfg_.modem_id_lookup_path()),
       work_(timer_io_service_)
-{ 
-
-    if(cfg_.common().time_warp_multiplier() != 1)
-    {
-        goby::common::goby_time_function = microsec_moos_time;
-        goby::common::goby_time_warp_factor = cfg_.common().time_warp_multiplier();
-    }
+{
 
     goby::util::DynamicProtobufManager::enable_compilation();
 

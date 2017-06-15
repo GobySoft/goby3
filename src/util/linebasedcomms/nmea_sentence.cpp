@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -37,8 +37,8 @@ goby::util::NMEASentence::NMEASentence(std::string s, strategy cs_strat /*= VALI
     // Basic error checks ($, empty)
     if (s.empty())
       throw bad_nmea_sentence("NMEASentence: no message provided.");
-    if (s[0] != '$')
-      throw bad_nmea_sentence("NMEASentence: no $: '" + s + "'.");
+    if (s[0] != '$' && s[0] != '!')
+      throw bad_nmea_sentence("NMEASentence: no $ or !: '" + s + "'.");
     // Check if the checksum exists and is correctly placed, and strip it.
     // If it's not correctly placed, we'll interpret it as part of message.
     // NMEA spec doesn't seem to say that * is forbidden elsewhere? (should be)
@@ -68,11 +68,11 @@ unsigned char goby::util::NMEASentence::checksum(const std::string& s) {
 
     if(s.empty())
       throw bad_nmea_sentence("NMEASentence::checksum: no message provided.");
-    std::string::size_type star = s.find_first_of("*\r\n");
-    std::string::size_type dollar = s.find('$');
+    std::string::size_type star = s.find_first_of("*");
+    std::string::size_type dollar = s.find_first_of("$!");
     
     if(dollar == std::string::npos)
-      throw bad_nmea_sentence("NMEASentence::checksum: no $ found.");
+      throw bad_nmea_sentence("NMEASentence::checksum: no $ or ! found.");
 
     if(star == std::string::npos) star = s.length();
     

@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -26,6 +26,7 @@
 #include "goby/common/logger.h"
 #include "goby/common/time.h"
 #include "goby/util/binary.h"
+#include "goby/acomms/acomms_constants.h"
 
 #include "rudics_packet.h"
 #include "iridium_driver_fsm.h"
@@ -56,6 +57,15 @@ void goby::acomms::fsm::Command::in_state_react(const EvRxSerial& e)
     }
     
     boost::trim(in);
+
+    // deal with echo getting turned back on unintentionally
+    if(!at_out().empty() && at_out().front().second != "E" && (in == std::string("AT" + at_out().front().second)))
+    {
+        glog.is(WARN) && glog << group("iridiumdriver") << "Echo turned on. Disabling" << std::endl;
+        // push to front so we send this before anything else
+        at_out_.insert(at_out_.begin()+1, std::make_pair(ATSentenceMeta(), "E"));
+        return;
+    }
     
     static const std::string connect = "CONNECT";
     static const std::string sbdi = "+SBDI";
@@ -90,7 +100,7 @@ void goby::acomms::fsm::Command::in_state_react(const EvRxSerial& e)
     }
     else if(in == "ERROR")
     {
-        post_event(EvAck(in));
+        post_event(EvReset());
     }
     else if(in == "0" || in == "1" || in == "2" || in == "3")
     {
@@ -144,7 +154,7 @@ void goby::acomms::fsm::Command::handle_sbd_rx(const std::string& in)
             std::string bytes;
             parse_rudics_packet(&bytes, sbd_rx_data);
             protobuf::ModemTransmission msg;
-            msg.ParseFromString(bytes);
+            parse_iridium_modem_message(bytes, &msg);
             context< IridiumDriverFSM >().received().push_back(msg);
             at_out().pop_front();
 
@@ -343,7 +353,7 @@ void goby::acomms::fsm::OnCall::in_state_react(const EvRxOnCallSerial& e)
             parse_rudics_packet(&bytes, in);
             
             protobuf::ModemTransmission msg;
-            msg.ParseFromString(bytes);
+            parse_iridium_modem_message(bytes, &msg);
             context< IridiumDriverFSM >().received().push_back(msg);
             set_last_rx_time(goby_time<double>());
         }
@@ -357,13 +367,18 @@ void goby::acomms::fsm::OnCall::in_state_react(const EvRxOnCallSerial& e)
 
 void goby::acomms::fsm::OnCall::in_state_react( const EvTxOnCallSerial& )
 {
+    const static double target_byte_rate = (context<IridiumDriverFSM>().driver_cfg().GetExtension(IridiumDriverConfig::target_bit_rate) / static_cast<double>(goby::acomms::BITS_IN_BYTE));
+
+    const double send_wait = last_bytes_sent() / target_byte_rate;    
+    
+    double now = goby_time<double>();
     boost::circular_buffer<protobuf::ModemTransmission>& data_out = context<IridiumDriverFSM>().data_out();
-    if(!data_out.empty())
+    if(!data_out.empty() && (now > last_tx_time() + send_wait))
     {
         // serialize the (protobuf) message
         std::string bytes;
-        data_out.front().SerializeToString(&bytes);
-
+        serialize_iridium_modem_message(&bytes, data_out.front());
+        
         // frame message
         std::string rudics_packet;
         serialize_rudics_packet(bytes, &rudics_packet);
@@ -371,7 +386,8 @@ void goby::acomms::fsm::OnCall::in_state_react( const EvTxOnCallSerial& )
         context<IridiumDriverFSM>().serial_tx_buffer().push_back(rudics_packet);
         data_out.pop_front();
 
-        set_last_tx_time(goby_time<double>());
+        set_last_bytes_sent(rudics_packet.size());
+        set_last_tx_time(now);
     }
 }
 

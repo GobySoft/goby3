@@ -1,4 +1,4 @@
-// Copyright 2009-2016 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -41,6 +41,7 @@
 #include "goby/acomms/modemdriver/iridium_driver.h"
 #include "goby/acomms/modemdriver/iridium_shore_driver.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
+#include "goby/acomms/modemdriver/benthos_atm900_driver.h"
 
 
 using namespace goby::common::tcolor;
@@ -52,9 +53,6 @@ using google::protobuf::uint32;
 
 
 using goby::glog;
-
-goby::uint64 microsec_moos_time()
-{ return static_cast<goby::uint64>(MOOSTime() * 1.0e6); }
 
 pAcommsHandlerConfig CpAcommsHandler::cfg_;
 CpAcommsHandler* CpAcommsHandler::inst_ = 0;
@@ -82,12 +80,6 @@ CpAcommsHandler::CpAcommsHandler()
       work_(timer_io_service_),
       router_(0)
 {
-    if(cfg_.common().time_warp_multiplier() != 1)
-    {
-        goby::common::goby_time_function = microsec_moos_time;
-        goby::common::goby_time_warp_factor = cfg_.common().time_warp_multiplier();
-    }
-
 #ifdef ENABLE_GOBY_V1_TRANSITIONAL_SUPPORT
     transitional_dccl_.convert_to_v2_representation(&cfg_);
     glog.is(DEBUG2) && glog << group("pAcommsHandler") << "Configuration after transitional configuration modifications: \n" << cfg_ << std::flush;
@@ -580,6 +572,10 @@ void CpAcommsHandler::create_driver(boost::shared_ptr<goby::acomms::ModemDriverB
         {
             case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
                 driver.reset(new goby::acomms::MMDriver);
+                break;
+
+            case goby::acomms::protobuf::DRIVER_BENTHOS_ATM900:
+                driver.reset(new goby::acomms::BenthosATM900Driver);
                 break;
 
             case goby::acomms::protobuf::DRIVER_ABC_EXAMPLE_MODEM:
