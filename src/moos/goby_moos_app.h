@@ -355,7 +355,10 @@ template <class MOOSAppType>
 
     while(!msg_buffer_.empty() && (connected_ && started_up_))
     {
-        goby::glog << "writing from buffer: " << msg_buffer_.front().GetKey() << ": " << msg_buffer_.front().GetAsString() << std::endl;
+
+        goby::glog.is(goby::common::logger::DEBUG3) &&
+            goby::glog << "writing from buffer: " << msg_buffer_.front().GetKey() << ": " << msg_buffer_.front().GetAsString() << std::endl;
+
         MOOSAppType::m_Comms.Post(msg_buffer_.front());
         msg_buffer_.pop_front();
     }

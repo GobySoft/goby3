@@ -8,6 +8,16 @@ Version 3.0.0~alpha1
 Early look at the new Goby3 nested communications middleware. See examples at https://github.com/GobySoft/goby3-examples.
 
 ****************
+Version 2.1.9
+
+Bug fix release.
+
+- Bug fix for logging (glog) in GobyMOOSApp
+- Improved GPS surface handling in Bluefin driver for iFrontSeat
+- Improved robustness of Iridium driver in the event that echo gets turned back on (ATE1 or modem reboot)
+
+
+****************
 Version 2.1.8
 
 ### Acomms
