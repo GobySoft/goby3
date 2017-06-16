@@ -38,7 +38,7 @@ namespace goby
         using Transporter = goby::InterProcessPortal<>;
         using MainThread = goby::Thread<Transporter>;
         
-        std::shared_ptr<Transporter> portal_;
+        Transporter portal_;
         
     public:
     SingleThreadApplication(double loop_freq_hertz = 0) :
@@ -47,13 +47,13 @@ namespace goby
         
     SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : MainThread(loop_freq),
-            portal_(new goby::InterProcessPortal<>(goby::common::ApplicationBase3<Config>::cfg().interprocess_portal()))
-        { MainThread::set_transporter(portal_); }
+            portal_(goby::common::ApplicationBase3<Config>::cfg().interprocess_portal())
+        { MainThread::set_transporter(&portal_); }
         
         virtual ~SingleThreadApplication() { }
         
     protected:            
-        goby::InterProcessPortal<>& portal() { return *portal_; } 
+        goby::InterProcessPortal<>& portal() { return portal_; } 
         virtual void loop() override {}
 
     private:
