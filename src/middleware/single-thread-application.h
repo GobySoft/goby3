@@ -26,80 +26,44 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/common/application_base3.h"
+#include "goby/middleware/thread.h"
 #include "goby/middleware/transport-interprocess.h"
 
 namespace goby
 {
     template<class Config>
-        class SingleThreadApplication : public goby::common::ApplicationBase3<Config>
-    {        
-        
+        class SingleThreadApplication : public goby::common::ApplicationBase3<Config>, public goby::Thread<goby::InterProcessPortal<>>
+    {
     private:
-        boost::units::quantity<boost::units::si::frequency> loop_frequency_;
-        goby::InterProcessPortal<> portal_;
-        std::chrono::system_clock::time_point loop_time_;
-        unsigned long long loop_count_ {0};
-
+        using Transporter = goby::InterProcessPortal<>;
+        using MainThread = goby::Thread<Transporter>;
+        
+        std::shared_ptr<Transporter> portal_;
+        
     public:
-        // zero or negative frequency means loop() is never called
     SingleThreadApplication(double loop_freq_hertz = 0) :
         SingleThreadApplication(loop_freq_hertz*boost::units::si::hertz)
         { }
         
     SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : loop_frequency_(loop_freq),
-            portal_(goby::common::ApplicationBase3<Config>::cfg().interprocess_portal()),
-            loop_time_(goby::common::ApplicationBase3<Config>::start_time())
-        {
-            unsigned long long ticks_since_epoch =
-                std::chrono::duration_cast<std::chrono::microseconds>(
-                    loop_time_.time_since_epoch()).count() /
-                (1000000ull/loop_frequency_hertz());
-            
-            loop_time_ =
-                std::chrono::system_clock::time_point(
-                    std::chrono::microseconds(
-                        (ticks_since_epoch+1)*
-                        (unsigned long long)(1000000ull/
-                                             loop_frequency_hertz()))); 
-        }
-
+        : MainThread(loop_freq),
+            portal_(new goby::InterProcessPortal<>(goby::common::ApplicationBase3<Config>::cfg().interprocess_portal()))
+        { MainThread::set_transporter(portal_); }
+        
         virtual ~SingleThreadApplication() { }
         
     protected:            
-        goby::InterProcessPortal<>& portal() { return portal_; }        
-        virtual void loop() {}
+        goby::InterProcessPortal<>& portal() { return *portal_; } 
+        virtual void loop() override {}
 
-        double loop_frequency_hertz() { return loop_frequency_/boost::units::si::hertz; }
-        decltype(loop_frequency_) loop_frequency() { return loop_frequency_; }
-        
-            
-        
     private:
-        void run() override;
+        void run() override
+        { MainThread::run_once(); }
         
     };
-}
 
-template<class Config>
-    void goby::SingleThreadApplication<Config>::run()
-{
-    if(loop_frequency_hertz() > 0)
-    {
-        int events = portal_.poll(loop_time_);
-        
-    // timeout
-        if(events == 0)
-        {
-            loop();
-            ++loop_count_;
-            loop_time_ += std::chrono::nanoseconds((unsigned long long)(1000000000ull / loop_frequency_hertz()));
-        }
-    }
-    else
-    {
-        portal_.poll();
-    }
+    
+    
 }
 
 #endif

@@ -63,8 +63,8 @@ namespace goby
             virtual void run() = 0;
 
             /// \brief Requests a clean (return 0) exit.
-            void quit() { alive_ = false; }
-
+            virtual void quit() { alive_ = false; }
+            
             /// \brief Accesses configuration object passed at launch
             const Config& cfg() { return cfg_; }
 

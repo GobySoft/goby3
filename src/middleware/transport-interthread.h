@@ -200,7 +200,8 @@ namespace goby
             void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             check_validity<group>();
-            publish(std::make_shared<group, Data>(data), transport_cfg);
+            std::shared_ptr<Data> data_ptr(new Data(data));
+            publish<group, Data>(data_ptr, transport_cfg);
         }
 
         template<const Group& group, typename Data, int scheme = scheme<Data>()>
