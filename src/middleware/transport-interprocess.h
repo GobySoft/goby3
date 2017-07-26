@@ -77,7 +77,7 @@ namespace goby
         template<const Group& group>
             void check_validity()
         {
-            static_assert((group.c_str()[0] != '\0') || (int(group) != 0), "goby::Group must have non-zero length string or non-zero integer value.");
+            static_assert((int(group) != 0) || (group.c_str()[0] != '\0'), "goby::Group must have non-zero length string or non-zero integer value.");
         }
         
     };    
@@ -268,9 +268,9 @@ namespace goby
                 }
             }
             if(socket_id == SOCKET_SUBSCRIBE)
-            {
+            {                
                 for(auto &sub : subscriptions_)
-                {
+                {                    
                     if(static_cast<unsigned>(size) >= sub.first.size() && memcmp(data, sub.first.data(), sub.first.size()) == 0)
                         sub.second->post(static_cast<const char*>(data) + null_delim_pos + 1,
                                          static_cast<const char*>(data) + size);

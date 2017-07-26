@@ -37,10 +37,10 @@ namespace goby
         : public goby::common::ApplicationBase3<Config>,
         public goby::Thread<goby::InterProcessPortal<goby::InterThreadTransporter>>
     {
+        
     private:
         goby::InterThreadTransporter interthread_;
         goby::InterProcessPortal<decltype(interthread_)> portal_;
-        
         std::vector<std::unique_ptr<std::thread>> threads_;
         
         std::atomic<bool> alive_{ true };
@@ -53,12 +53,15 @@ namespace goby
     MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : Thread(&portal_, loop_freq),
             portal_(goby::common::ApplicationBase3<Config>::cfg().interprocess_portal())
-        { }
+        {
+            goby::glog.set_lock_action(goby::common::logger_lock::lock);
+        }
         virtual ~MultiThreadApplication() { }
 
         using ThreadBase = goby::Thread<goby::InterProcessForwarder<decltype(interthread_)>>;
         
-        void launch_thread(ThreadBase& thread);
+        template<typename ThreadType>
+            void launch_thread();
         
     protected:
         decltype(portal_)& portal() { return portal_; }        
@@ -68,14 +71,21 @@ namespace goby
     private:
         void run() override
         { Thread::run_once(); }
-        
+
     };
 }
 
 template<class Config>
-void goby::MultiThreadApplication<Config>::launch_thread(ThreadBase& thread)
+template<typename ThreadType>
+void goby::MultiThreadApplication<Config>::launch_thread()
 {
-    threads_.push_back(std::unique_ptr<std::thread>(new std::thread([&]() { thread.run(alive_); })));
+    threads_.push_back(std::unique_ptr<std::thread>(
+                           new std::thread([&]()
+                                           {
+                                               goby::InterProcessForwarder<decltype(interthread_)> forwarder(interthread_);
+                                               ThreadType goby_thread(&forwarder);
+                                               goby_thread.run(alive_);
+                                           })));
 }
 
 template<class Config>

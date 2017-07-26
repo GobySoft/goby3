@@ -76,7 +76,7 @@ namespace goby
             SubscriptionStoreBase::insert<SubscriptionStore<Data>>();
         }
 
-        static void publish(std::shared_ptr<const Data> data, const Group& group)
+        static void publish(std::shared_ptr<const Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
             // push new data
             // build up local vector of relevant condition variables while locked
@@ -87,11 +87,16 @@ namespace goby
                 for (auto it = range.first; it != range.second; ++it)
                 {
                     std::thread::id thread_id = it->second->first;
-                    auto queue_it = data_.find(thread_id);
-                    if(queue_it == data_.end())
-                        queue_it = data_.insert(std::make_pair(thread_id, DataQueue())).first;
-                    queue_it->second.insert(group, data);
-                    cv_to_notify.push_back(data_condition_.at(thread_id));
+
+                    // don't store a copy if publisher == subscriber, and echo is false
+                    if(thread_id != std::this_thread::get_id() || transport_cfg.echo())
+                    {
+                        auto queue_it = data_.find(thread_id);
+                        if(queue_it == data_.end())
+                            queue_it = data_.insert(std::make_pair(thread_id, DataQueue())).first;
+                        queue_it->second.insert(group, data);
+                        cv_to_notify.push_back(data_condition_.at(thread_id));
+                    }
                 }
             }
 
@@ -208,7 +213,7 @@ namespace goby
             void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             check_validity<group>();
-            SubscriptionStore<Data>::publish(data, group);
+            SubscriptionStore<Data>::publish(data, group, transport_cfg);
         }
 
         template<const Group& group, typename Data, int scheme = scheme<Data>()>
@@ -256,7 +261,7 @@ namespace goby
         template<const Group& group>
             void check_validity()
         {
-            static_assert((group.c_str()[0] != '\0') || (int(group) != 0), "goby::Group must have non-zero length string or non-zero integer value.");
+            static_assert((int(group) != 0) || (group.c_str()[0] != '\0'), "goby::Group must have non-zero length string or non-zero integer value.");
         }
 
         

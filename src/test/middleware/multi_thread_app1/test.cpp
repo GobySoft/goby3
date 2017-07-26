@@ -7,26 +7,35 @@
 using goby::glog;
 using namespace goby::common::logger;
 
-extern constexpr goby::Group widget1{"Widget1"};
+extern constexpr goby::Group widget1{3};
+extern constexpr goby::Group widget2{"widget2"};
 
-goby::InterThreadTransporter inproc;
+constexpr int num_messages{10};
+
 
 using AppBase = goby::MultiThreadApplication<TestConfig>;
 using ThreadBase = AppBase::ThreadBase;
 
-
-class TestThread : public ThreadBase
+class TestThreadRx : public ThreadBase
 {
 public:
-    TestThread() : ThreadBase(&forwarder_, 10)
+    TestThreadRx(goby::InterProcessForwarder<goby::InterThreadTransporter>* forwarder)
+        : ThreadBase(forwarder, 10),
+          forwarder_(*forwarder)
         {
+            glog.is(VERBOSE) && glog << "Rx Thread: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
+            
+            glog.is(VERBOSE) && glog << std::this_thread::get_id() << std::endl;
+            
             forwarder_.subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
+            forwarder_.subscribe<widget2, Widget>([this](const Widget& w) { post(w); });
         }
 
     void post(const Widget& widget)
         {
             glog.is(VERBOSE) && glog << "Thread Rx: " << widget.DebugString() << std::flush;
-
+            assert(widget.b() == rx_count_);
+            ++rx_count_;
         }
     
     void loop() override
@@ -34,16 +43,42 @@ public:
         }
 
 private:
-    goby::InterProcessForwarder<goby::InterThreadTransporter> forwarder_ { inproc };
+    goby::InterProcessForwarder<goby::InterThreadTransporter>& forwarder_;
+    int rx_count_{0};
 };
 
-class TestApp : public AppBase
+class TestAppRx : public AppBase
 {
 public:
-    TestApp() : AppBase(10)
+    TestAppRx() : AppBase(10)
         {
-            //portal().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
-            launch_thread(test_thread_);
+            glog.is(VERBOSE) && glog << "Rx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
+            portal().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
+            launch_thread<TestThreadRx>();
+        }
+    
+    void loop() override { }
+
+    void post(const Widget& widget)
+        {
+            glog.is(VERBOSE) && glog << "App Rx: " << widget.DebugString() << std::flush;
+            assert(widget.b() == rx_count_);
+            ++rx_count_;
+            if(rx_count_ == num_messages)
+                quit();
+        }    
+    
+private:
+    int rx_count_{0};
+};
+
+
+class TestAppTx : public AppBase
+{
+public:
+    TestAppTx() : AppBase(10)
+        {
+            glog.is(VERBOSE) && glog << "Tx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
         }
 
     void loop() override
@@ -54,37 +89,26 @@ public:
             {
                 return;
             }
-            else if(i > (std::max(5, 2+(int)loop_frequency_hertz())))
-            {
-                quit();
-            }
             else
             {
-                //                assert(rx_count_ == tx_count_);
                 glog.is(VERBOSE) && glog  << goby::common::goby_time() << std::endl;
                 Widget w;
-                w.set_b(++tx_count_);
+                w.set_b(tx_count_++);
                 {
                     glog.is(VERBOSE) && glog << "Tx: " << w.DebugString() << std::flush;
                 }
                 
                 portal().publish<widget1>(w);
+
+                if(tx_count_ == num_messages)
+                    quit();
             }
             
         }
 
-    void post(const Widget& widget)
-        {
-            glog.is(VERBOSE) && glog << "Rx: " << widget.DebugString() << std::flush;
-            assert(widget.b() == tx_count_);
-            ++rx_count_;
-        }
-    
     
 private:
-    int tx_count_ { 0 };
-    int rx_count_ { 0 };
-    TestThread test_thread_;
+    int tx_count_ {0};
 };
 
 
@@ -92,7 +116,6 @@ private:
 int main(int argc, char* argv[])
 {
     int child_pid = fork();
-    
     
     std::unique_ptr<std::thread> t2, t3;
     std::unique_ptr<zmq::context_t> manager_context;
@@ -117,10 +140,17 @@ int main(int argc, char* argv[])
     }
     else
     {
-        sleep(1);
-
+        int child2_pid = fork();
+        if(child2_pid != 0)
+        {
+            return goby::run<TestAppRx>(argc, argv);
+        }
+        else
+        {
+            sleep(1);
+            return goby::run<TestAppTx>(argc, argv);
+        }
         
-        return goby::run<TestApp>(argc, argv);
     }
 }
     

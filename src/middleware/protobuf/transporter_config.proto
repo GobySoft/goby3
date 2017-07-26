@@ -2,5 +2,10 @@ package goby.protobuf;
 
 message TransporterConfig
 {
-    optional int32 ttl = 1;
+    // if the publisher is also subscribed, should it receive a copy?
+    // TODO: implement at the interprocess layer
+    optional bool echo = 1 [default = false];
+
+    
+    optional int32 ttl = 10;
 }

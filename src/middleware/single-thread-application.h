@@ -54,7 +54,6 @@ namespace goby
         
     protected:            
         goby::InterProcessPortal<>& portal() { return portal_; } 
-        virtual void loop() override {}
 
     private:
         void run() override
