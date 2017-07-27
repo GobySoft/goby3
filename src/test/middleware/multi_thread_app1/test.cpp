@@ -19,16 +19,15 @@ using ThreadBase = AppBase::ThreadBase;
 class TestThreadRx : public ThreadBase
 {
 public:
-    TestThreadRx(goby::InterProcessForwarder<goby::InterThreadTransporter>* forwarder)
-        : ThreadBase(forwarder, 10),
-          forwarder_(*forwarder)
+    TestThreadRx(const TestConfig& cfg, ThreadBase::Transporter* forwarder)
+        : ThreadBase(forwarder, 10)
         {
             glog.is(VERBOSE) && glog << "Rx Thread: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             
             glog.is(VERBOSE) && glog << std::this_thread::get_id() << std::endl;
             
-            forwarder_.subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
-            forwarder_.subscribe<widget2, Widget>([this](const Widget& w) { post(w); });
+            transporter().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
+            transporter().subscribe<widget2, Widget>([this](const Widget& w) { post(w); });
         }
 
     void post(const Widget& widget)
@@ -43,7 +42,6 @@ public:
         }
 
 private:
-    goby::InterProcessForwarder<goby::InterThreadTransporter>& forwarder_;
     int rx_count_{0};
 };
 
@@ -53,7 +51,7 @@ public:
     TestAppRx() : AppBase(10)
         {
             glog.is(VERBOSE) && glog << "Rx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
-            portal().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
+            transporter().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
             launch_thread<TestThreadRx>();
         }
     
@@ -98,7 +96,7 @@ public:
                     glog.is(VERBOSE) && glog << "Tx: " << w.DebugString() << std::flush;
                 }
                 
-                portal().publish<widget1>(w);
+                transporter().publish<widget1>(w);
 
                 if(tx_count_ == num_messages)
                     quit();
@@ -131,7 +129,7 @@ int main(int argc, char* argv[])
         goby::ZMQManager manager(*manager_context, cfg, router);
         t3.reset(new std::thread([&] { manager.run(); }));
         int wstatus;
-        wait(&wstatus);
+        wait(&wstatus);        
         router_context.reset();
         manager_context.reset();
         t2->join();

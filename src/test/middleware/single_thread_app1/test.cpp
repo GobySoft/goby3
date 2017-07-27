@@ -15,7 +15,7 @@ class TestApp : public Base
 public:
     TestApp() : Base(10)
         {
-            portal().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
+            transporter().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
         }
 
     void loop() override
@@ -37,7 +37,7 @@ public:
                 Widget w;
                 w.set_b(++tx_count_);
                 std::cout << "Tx: " << w.DebugString() << std::flush;
-                portal().publish<widget1>(w);
+                transporter().publish<widget1>(w);
             }
             
         }

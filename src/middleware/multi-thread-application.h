@@ -41,9 +41,9 @@ namespace goby
     private:
         goby::InterThreadTransporter interthread_;
         goby::InterProcessPortal<decltype(interthread_)> portal_;
-        std::vector<std::unique_ptr<std::thread>> threads_;
         
-        std::atomic<bool> alive_{ true };
+        std::map<std::type_index, std::atomic<bool>> alive_;
+        std::map<std::type_index, std::unique_ptr<std::thread>> threads_;        
         
     public:
     MultiThreadApplication(double loop_freq_hertz = 0) :
@@ -62,10 +62,11 @@ namespace goby
         
         template<typename ThreadType>
             void launch_thread();
+        template<typename ThreadType>
+            void join_thread();
         
     protected:
-        decltype(portal_)& portal() { return portal_; }        
-        virtual void loop() {}
+        decltype(portal_)& transporter() { return portal_; }        
         void quit();
         
     private:
@@ -79,21 +80,48 @@ template<class Config>
 template<typename ThreadType>
 void goby::MultiThreadApplication<Config>::launch_thread()
 {
-    threads_.push_back(std::unique_ptr<std::thread>(
-                           new std::thread([&]()
+    std::type_index type_i = std::type_index(typeid(ThreadType));
+    
+    if(threads_.count(type_i))
+        return;
+
+    
+    alive_[type_i] = true;
+    std::cout << type_i.name() << std::endl;
+    threads_.insert(
+        std::make_pair(type_i,
+                       std::unique_ptr<std::thread>(
+                           new std::thread([this, type_i]()
                                            {
                                                goby::InterProcessForwarder<decltype(interthread_)> forwarder(interthread_);
-                                               ThreadType goby_thread(&forwarder);
-                                               goby_thread.run(alive_);
-                                           })));
+                                               ThreadType goby_thread(goby::common::ApplicationBase3<Config>::cfg(), &forwarder);
+                                               goby_thread.run(alive_[type_i]);
+                                           }))));
 }
+
+template<class Config>
+template<typename ThreadType>
+void goby::MultiThreadApplication<Config>::join_thread()
+{
+    auto type_i = std::type_index(typeid(ThreadType));
+    if(!threads_.count(type_i))
+        return;
+
+    alive_[type_i] = false;
+    threads_[type_i]->join();
+    alive_.erase(type_i);
+    threads_.erase(type_i);
+}
+
 
 template<class Config>
 void goby::MultiThreadApplication<Config>::quit()
 {
-    alive_ = false;
+    for(auto& a : alive_)
+        a.second = false;
+    
     for(auto& t : threads_)
-        t->join();
+        t.second->join();
     goby::common::ApplicationBase3<Config>::quit();
 }
 

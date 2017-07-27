@@ -53,7 +53,7 @@ namespace goby
         virtual ~SingleThreadApplication() { }
         
     protected:            
-        goby::InterProcessPortal<>& portal() { return portal_; } 
+        goby::InterProcessPortal<>& transporter() { return portal_; } 
 
     private:
         void run() override

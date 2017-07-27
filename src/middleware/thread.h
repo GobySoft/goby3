@@ -24,25 +24,28 @@
 #define THREAD20170616H
 
 #include <memory>
+#include <atomic>
 
 namespace goby
 {
-    template<typename Transporter>
+    template<typename TransporterType>
         class Thread
     {
     private:
-        Transporter* transporter_;
+        TransporterType* transporter_;
         
         boost::units::quantity<boost::units::si::frequency> loop_frequency_;
         std::chrono::system_clock::time_point loop_time_;
         unsigned long long loop_count_ {0};
 
     public:
+        using Transporter = TransporterType;
+        
         // zero or negative frequency means loop() is never called
-    Thread(Transporter* transporter, double loop_freq_hertz = 0) :
+    Thread(TransporterType* transporter, double loop_freq_hertz = 0) :
         Thread(transporter, loop_freq_hertz*boost::units::si::hertz) { }
         
-    Thread(Transporter* transporter,
+    Thread(TransporterType* transporter,
            boost::units::quantity<boost::units::si::frequency> loop_freq)
         : Thread(loop_freq)
         {
@@ -72,32 +75,42 @@ namespace goby
                                              loop_frequency_hertz()))); 
           }
 
-        void set_transporter(Transporter* transporter)
+        void set_transporter(TransporterType* transporter)
         { transporter_ = transporter; }
         
-        virtual void loop() {}
+        virtual void loop() { sleep(1); }
 
         double loop_frequency_hertz() { return loop_frequency_/boost::units::si::hertz; }
         decltype(loop_frequency_) loop_frequency() { return loop_frequency_; }
-
+        double loop_max_frequency() { return std::numeric_limits<double>::infinity(); }
+        
         void run_once();
+
+        TransporterType& transporter() { return *transporter_; }
+
     };
 
 
 }
 
 
-template<typename Transporter>
-void goby::Thread<Transporter>::run_once()
+template<typename TransporterType>
+void goby::Thread<TransporterType>::run_once()
 {
     if(!transporter_)
         throw(goby::Exception("Null transporter"));
 
-    if(loop_frequency_hertz() > 0)
+    if(loop_frequency_hertz() == std::numeric_limits<double>::infinity())
+    {
+        // call loop as fast as possible
+        transporter_->poll(std::chrono::seconds(0));
+        loop();
+    }
+    else if(loop_frequency_hertz() > 0)
     {
         int events = transporter_->poll(loop_time_);
         
-    // timeout
+        // timeout
         if(events == 0)
         {
             loop();
@@ -107,6 +120,7 @@ void goby::Thread<Transporter>::run_once()
     }
     else
     {
+        // don't call loop()
         transporter_->poll();
     }
 }
