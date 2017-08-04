@@ -90,14 +90,15 @@ void goby::MultiThreadApplication<Config>::launch_thread()
 
     
     alive_[type_i] = true;
-    std::cout << type_i.name() << std::endl;
+
+    const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
     threads_.insert(
         std::make_pair(type_i,
                        std::unique_ptr<std::thread>(
-                           new std::thread([this, type_i]()
+                           new std::thread([this, type_i, &cfg]()
                                            {
                                                goby::InterProcessForwarder<decltype(interthread_)> forwarder(interthread_);
-                                               ThreadType goby_thread(goby::common::ApplicationBase3<Config>::app_cfg(), &forwarder);
+                                               ThreadType goby_thread(cfg, &forwarder);
                                                goby_thread.run(alive_[type_i]);
                                            }))));
 }
