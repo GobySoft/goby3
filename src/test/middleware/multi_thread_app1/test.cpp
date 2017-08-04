@@ -35,6 +35,8 @@ public:
             glog.is(VERBOSE) && glog << "Thread Rx: " << widget.DebugString() << std::flush;
             assert(widget.b() == rx_count_);
             ++rx_count_;
+
+            transporter().inner().publish<widget2>(widget);
         }
     
     void loop() override
@@ -52,6 +54,7 @@ public:
         {
             glog.is(VERBOSE) && glog << "Rx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             transporter().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
+            transporter().subscribe<widget2, Widget>([this](const Widget& w) { post2(w); });
             launch_thread<TestThreadRx>();
         }
     
@@ -65,6 +68,12 @@ public:
             if(rx_count_ == num_messages)
                 quit();
         }    
+
+    void post2(const Widget& widget)
+        {
+            glog.is(VERBOSE) && glog << "Thread Rx2: " << widget.DebugString() << std::flush;
+        }
+    
     
 private:
     int rx_count_{0};

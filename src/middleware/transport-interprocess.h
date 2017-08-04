@@ -69,6 +69,8 @@ namespace goby
             return static_cast<Derived*>(this)->_poll(wait_for);
         }
 
+        InnerTransporter& inner() { return inner_; }
+        
         std::unique_ptr<InnerTransporter> own_inner_;
         InnerTransporter& inner_;
         static constexpr Group forward_group_ { "goby::InterProcessForwarder" };

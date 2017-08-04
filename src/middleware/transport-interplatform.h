@@ -80,6 +80,8 @@ namespace goby
         {
             return poll(std::chrono::system_clock::now() + wait_for);
         }
+        
+        InnerTransporter& inner() { return inner_; }
 
         std::unique_ptr<InnerTransporter> own_inner_;
         InnerTransporter& inner_;
