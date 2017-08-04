@@ -12,7 +12,8 @@
 
 // tests ZMQTransporter directly without InterThread
 
-int publish_count = 0;
+// initially publish one, then wait for queues to be established
+int publish_count = -1;
 const int max_publish = 100;
 int ipc_receive_count = {0};
 
@@ -46,7 +47,10 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
         zmq.publish<widget>(w1);
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
-        usleep(1e3);
+
+        if(publish_count < 0)
+            usleep(1e5);
+
         ++publish_count;
     }    
 
@@ -85,6 +89,7 @@ void subscriber(const goby::protobuf::InterProcessPortalConfig& cfg)
     zmq.subscribe<widget, Widget>(&handle_widget);
     while(ipc_receive_count < 3*max_publish)
     {
+        glog.is(DEBUG1) && glog << ipc_receive_count << "/" << 3*max_publish << std::endl;
         zmq.poll();
     }
     
@@ -116,7 +121,7 @@ int main(int argc, char* argv[])
     if(!is_child)
     {
         manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(1));
+        router_context.reset(new zmq::context_t(10));
 
         goby::ZMQRouter router(*router_context, cfg);
         t2.reset(new std::thread([&] { router.run(); }));
