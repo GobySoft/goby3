@@ -66,7 +66,7 @@ namespace goby
             virtual void quit() { alive_ = false; }
             
             /// \brief Accesses configuration object passed at launch
-            const Config& cfg() { return cfg_; }
+            const Config& app_cfg() { return cfg_; }
 
             const std::chrono::system_clock::time_point& start_time() const
             { return start_time_; }

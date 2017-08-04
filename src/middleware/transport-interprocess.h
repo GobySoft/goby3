@@ -232,7 +232,7 @@ namespace goby
             
             if(!have_pubsub_sockets_)
             {
-                std::cerr << "No response from manager: " << cfg_.ShortDebugString() << std::endl;
+                std::cerr << "No response from gobyd: " << cfg_.ShortDebugString() << std::endl;
                 exit(EXIT_FAILURE);
             }
             

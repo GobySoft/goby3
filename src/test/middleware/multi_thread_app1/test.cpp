@@ -20,7 +20,7 @@ class TestThreadRx : public ThreadBase
 {
 public:
     TestThreadRx(const TestConfig& cfg, ThreadBase::Transporter* forwarder)
-        : ThreadBase(forwarder, 10)
+        : ThreadBase(cfg, forwarder, 10)
         {
             glog.is(VERBOSE) && glog << "Rx Thread: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             

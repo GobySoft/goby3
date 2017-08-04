@@ -238,7 +238,8 @@ namespace goby
 
             while(poll_items == 0) // no items, so wait
             {
-                //                std::cout << thread_id << ": waiting on condition var" << std::endl;
+                
+                std::cout << thread_id << ": waiting on condition var for seconds: " << std::chrono::duration_cast<std::chrono::seconds>(timeout-std::chrono::system_clock::now()).count() << std::endl;
                 if(cv_->wait_until(lock, timeout) == std::cv_status::no_timeout)
                 {
                     poll_items = SubscriptionStoreBase::poll_all(thread_id, timeout);

@@ -28,7 +28,7 @@
 
 namespace goby
 {
-    template<typename TransporterType>
+    template<typename Config, typename TransporterType>
         class Thread
     {
     private:
@@ -37,17 +37,18 @@ namespace goby
         boost::units::quantity<boost::units::si::frequency> loop_frequency_;
         std::chrono::system_clock::time_point loop_time_;
         unsigned long long loop_count_ {0};
+        const Config& cfg_;
 
     public:
         using Transporter = TransporterType;
         
         // zero or negative frequency means loop() is never called
-    Thread(TransporterType* transporter, double loop_freq_hertz = 0) :
-        Thread(transporter, loop_freq_hertz*boost::units::si::hertz) { }
+    Thread(const Config& cfg, TransporterType* transporter, double loop_freq_hertz = 0) :
+        Thread(cfg, transporter, loop_freq_hertz*boost::units::si::hertz) { }
         
-    Thread(TransporterType* transporter,
+    Thread(const Config& cfg, TransporterType* transporter,
            boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : Thread(loop_freq)
+        : Thread(cfg, loop_freq)
         {
             set_transporter(transporter);
         }
@@ -58,9 +59,11 @@ namespace goby
         { while(alive) run_once(); }
         
     protected:
-    Thread(boost::units::quantity<boost::units::si::frequency> loop_freq)
+    Thread(const Config& cfg,
+           boost::units::quantity<boost::units::si::frequency> loop_freq)
         : loop_frequency_(loop_freq),
-          loop_time_(std::chrono::system_clock::now())
+            loop_time_(std::chrono::system_clock::now()),
+            cfg_(cfg)
           {
               unsigned long long ticks_since_epoch =
                   std::chrono::duration_cast<std::chrono::microseconds>(
@@ -88,14 +91,15 @@ namespace goby
 
         TransporterType& transporter() { return *transporter_; }
 
+        const Config& cfg() { return cfg_; }
     };
 
 
 }
 
 
-template<typename TransporterType>
-void goby::Thread<TransporterType>::run_once()
+template<typename Config, typename TransporterType>
+    void goby::Thread<Config, TransporterType>::run_once()
 {
     if(!transporter_)
         throw(goby::Exception("Null transporter"));

@@ -32,11 +32,11 @@
 namespace goby
 {
     template<class Config>
-        class SingleThreadApplication : public goby::common::ApplicationBase3<Config>, public goby::Thread<goby::InterProcessPortal<>>
+        class SingleThreadApplication : public goby::common::ApplicationBase3<Config>, public goby::Thread<Config, goby::InterProcessPortal<>>
     {
     private:
         using Transporter = goby::InterProcessPortal<>;
-        using MainThread = goby::Thread<Transporter>;
+        using MainThread = goby::Thread<Config, Transporter>;
         
         Transporter portal_;
         
@@ -46,8 +46,8 @@ namespace goby
         { }
         
     SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : MainThread(loop_freq),
-            portal_(goby::common::ApplicationBase3<Config>::cfg().interprocess_portal())
+        : MainThread(goby::common::ApplicationBase3<Config>::app_cfg(), loop_freq),
+            portal_(goby::common::ApplicationBase3<Config>::app_cfg().interprocess_portal())
         { MainThread::set_transporter(&portal_); }
         
         virtual ~SingleThreadApplication() { }

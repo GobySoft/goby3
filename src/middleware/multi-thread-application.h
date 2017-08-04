@@ -35,7 +35,7 @@ namespace goby
     template<class Config>
         class MultiThreadApplication
         : public goby::common::ApplicationBase3<Config>,
-        public goby::Thread<goby::InterProcessPortal<goby::InterThreadTransporter>>
+        public goby::Thread<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>
     {
         
     private:
@@ -46,19 +46,22 @@ namespace goby
         std::map<std::type_index, std::unique_ptr<std::thread>> threads_;        
         
     public:
+        using MainThreadBase = goby::Thread<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>;
+        
+        using ThreadBase = goby::Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>;
+
     MultiThreadApplication(double loop_freq_hertz = 0) :
         MultiThreadApplication(loop_freq_hertz*boost::units::si::hertz)
         { }
         
     MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : Thread(&portal_, loop_freq),
-            portal_(goby::common::ApplicationBase3<Config>::cfg().interprocess_portal())
+        : MainThreadBase(goby::common::ApplicationBase3<Config>::app_cfg(), &portal_, loop_freq),
+            portal_(goby::common::ApplicationBase3<Config>::app_cfg().interprocess_portal())
         {
             goby::glog.set_lock_action(goby::common::logger_lock::lock);
         }
         virtual ~MultiThreadApplication() { }
 
-        using ThreadBase = goby::Thread<goby::InterProcessForwarder<decltype(interthread_)>>;
         
         template<typename ThreadType>
             void launch_thread();
@@ -71,7 +74,7 @@ namespace goby
         
     private:
         void run() override
-        { Thread::run_once(); }
+        { MainThreadBase::run_once(); }
 
     };
 }
@@ -94,7 +97,7 @@ void goby::MultiThreadApplication<Config>::launch_thread()
                            new std::thread([this, type_i]()
                                            {
                                                goby::InterProcessForwarder<decltype(interthread_)> forwarder(interthread_);
-                                               ThreadType goby_thread(goby::common::ApplicationBase3<Config>::cfg(), &forwarder);
+                                               ThreadType goby_thread(goby::common::ApplicationBase3<Config>::app_cfg(), &forwarder);
                                                goby_thread.run(alive_[type_i]);
                                            }))));
 }
