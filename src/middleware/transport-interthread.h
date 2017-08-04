@@ -238,15 +238,21 @@ namespace goby
 
             while(poll_items == 0) // no items, so wait
             {
-                
-                std::cout << thread_id << ": waiting on condition var for seconds: " << std::chrono::duration_cast<std::chrono::seconds>(timeout-std::chrono::system_clock::now()).count() << std::endl;
-                if(cv_->wait_until(lock, timeout) == std::cv_status::no_timeout)
+                if(timeout == std::chrono::system_clock::time_point::max())
                 {
+                    cv_->wait(lock); // wait_until doesn't work well with time_point::max()
                     poll_items = SubscriptionStoreBase::poll_all(thread_id, timeout);
                 }
                 else
                 {
-                    return poll_items;
+                    if(cv_->wait_until(lock, timeout) == std::cv_status::no_timeout)
+                    {
+                        poll_items = SubscriptionStoreBase::poll_all(thread_id, timeout);
+                    }
+                    else
+                    {
+                        return poll_items;
+                    }
                 }
             }
 
@@ -255,7 +261,10 @@ namespace goby
         
         int poll(std::chrono::system_clock::duration wait_for)
         {
-            return poll(std::chrono::system_clock::now() + wait_for);
+            if(wait_for == std::chrono::system_clock::duration::max())
+                return poll();
+            else
+                return poll(std::chrono::system_clock::now() + wait_for);
         }
 
     private:

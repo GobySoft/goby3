@@ -276,7 +276,8 @@ int goby::middleware::ZeroMQService::poll(long timeout /* = -1 */)
     boost::mutex::scoped_lock slock(poll_mutex_);
 
     int had_events = 0;
-    zmq::poll (&poll_items_[0], poll_items_.size(), timeout/ZMQ_POLL_DIVISOR);
+    long zmq_timeout = (timeout == -1) ? -1 : timeout/ZMQ_POLL_DIVISOR;
+    zmq::poll (&poll_items_[0], poll_items_.size(), zmq_timeout);
     for(int i = 0, n = poll_items_.size(); i < n; ++i)
     {
         if (poll_items_[i].revents & ZMQ_POLLIN) 

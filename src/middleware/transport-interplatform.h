@@ -78,7 +78,10 @@ namespace goby
         
         int poll(std::chrono::system_clock::duration wait_for)
         {
-            return poll(std::chrono::system_clock::now() + wait_for);
+            if(wait_for == std::chrono::system_clock::duration::max())
+                return poll();
+            else
+                return poll(std::chrono::system_clock::now() + wait_for);
         }
         
         InnerTransporter& inner() { return inner_; }

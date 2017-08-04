@@ -61,7 +61,10 @@ namespace goby
         
         int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         {
-            return poll(timeout - std::chrono::system_clock::now());
+            if(timeout == std::chrono::system_clock::time_point::max())
+                return poll(std::chrono::system_clock::duration::max());
+            else
+                return poll(timeout - std::chrono::system_clock::now());
         }
         
         int poll(std::chrono::system_clock::duration wait_for)
@@ -188,7 +191,11 @@ namespace goby
         int _poll(std::chrono::system_clock::duration wait_for)
         {
             int items = Base::inner_.poll(std::chrono::seconds(0));
-            return items + zmq_.poll(std::max(0l, (long)std::chrono::duration_cast<std::chrono::microseconds>(wait_for).count()));
+
+            if(wait_for == std::chrono::system_clock::duration::max())
+                return items + zmq_.poll();
+            else
+                return items + zmq_.poll(std::max(0l, (long)std::chrono::duration_cast<std::chrono::microseconds>(wait_for).count()));
         }
         
         void _init()
