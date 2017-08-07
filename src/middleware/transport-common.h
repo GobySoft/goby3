@@ -13,28 +13,59 @@
 #include "goby/middleware/protobuf/interprocess_data.pb.h"
 
 namespace goby
-{    
-    class NoOpTransporter
+{
+    template<typename Derived>
+        class StaticTransporterInterface
     {
     public:
         template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void publish(const Data& data,
-                         const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
-            { }
+            void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            {
+                check_validity<group>();
+                static_cast<Derived*>(this)->template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+            }
 
         template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void publish(std::shared_ptr<Data> data,
-                         const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
-            { }
+            void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            {
+                check_validity<group>();
+                static_cast<Derived*>(this)->template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+            }
 
         template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void subscribe(std::function<void(const Data&)> func)
-            { }
-
+            void subscribe(std::function<void(const Data&)> f)
+            {
+                check_validity<group>();
+                static_cast<Derived*>(this)->template subscribe_dynamic<Data, scheme>(f, group);
+            }
         template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void subscribe(std::function<void(std::shared_ptr<const Data>)> func)
+            void subscribe(std::function<void(std::shared_ptr<const Data>)> f)
+            {
+                check_validity<group>();
+                static_cast<Derived*>(this)->template subscribe_dynamic<Data, scheme>(f, group);
+            }
+    };
+    
+    
+    class NoOpTransporter : public StaticTransporterInterface<NoOpTransporter>
+    {
+    public:
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish_dynamic(const Data& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { }
 
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish_dynamic(std::shared_ptr<Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            { }        
+        
+        template<typename Data, int scheme = scheme<Data>()>
+            void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
+        { }
+        
+        template<typename Data, int scheme = scheme<Data>()>
+            void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
+        { }
+        
         int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         { return 0; }
         

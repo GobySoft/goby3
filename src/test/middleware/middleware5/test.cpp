@@ -34,12 +34,12 @@ void direct_publisher(const goby::protobuf::InterProcessPortalConfig& zmq_cfg, c
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a-10);
         s1->set_group(1);
-        slt.publish(s1, s1->group());
+        slt.publish_dynamic(s1, s1->group());
 
         auto s2 = std::make_shared<Sample>();
         s2->set_a(a++);
         s2->set_group(2);
-        slt.publish(s2, s2->group());
+        slt.publish_dynamic(s2, s2->group());
 
         Widget w;
         w.set_b(a-2);
@@ -67,7 +67,7 @@ void indirect_publisher(const goby::protobuf::InterProcessPortalConfig& zmq_cfg)
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++-10);
         s1->set_group(3);
-        interplatform.publish(s1, s1->group());
+        interplatform.publish_dynamic(s1, s1->group());
             
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
@@ -108,9 +108,9 @@ void direct_subscriber(const goby::protobuf::InterProcessPortalConfig& zmq_cfg, 
 {
     goby::InterProcessPortal<> zmq(zmq_cfg);
     goby::InterPlatformPortal<decltype(zmq)> slt(zmq, slow_cfg);
-
-    slt.subscribe<Sample>(&handle_sample1, 2, [](const Sample& s) { return s.group(); });
-    slt.subscribe<Sample>(&handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
+    
+    slt.subscribe_dynamic<Sample>(&handle_sample1, 2, [](const Sample& s) { return s.group(); });
+    slt.subscribe_dynamic<Sample>(&handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
     slt.subscribe<Widget>(&handle_widget);
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
@@ -138,7 +138,7 @@ void indirect_subscriber(const goby::protobuf::InterProcessPortalConfig& zmq_cfg
 {
     goby::InterProcessPortal<> zmq(zmq_cfg);
     goby::InterPlatformForwarder<decltype(zmq)> interplatform(zmq);
-    interplatform.subscribe<Sample>(&indirect_handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
+    interplatform.subscribe_dynamic<Sample>(&indirect_handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);

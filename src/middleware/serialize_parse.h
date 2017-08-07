@@ -45,7 +45,7 @@ namespace goby
     
     template<typename DataType, int scheme>
         struct SerializerParserHelper 
-    { };
+        { };
 
     
     template<typename DataType>
@@ -62,9 +62,9 @@ namespace goby
         { return "CSTR"; }
 
         template<typename CharIterator>
-        static DataType parse(CharIterator bytes_begin,
-                              CharIterator bytes_end,
-                              CharIterator& actual_end)
+            static DataType parse(CharIterator bytes_begin,
+                                  CharIterator bytes_end,
+                                  CharIterator& actual_end)
         {
             actual_end = bytes_end;
             if(bytes_begin != bytes_end)
@@ -94,9 +94,9 @@ namespace goby
         { return DataType::descriptor()->full_name(); }
 
         template<typename CharIterator>
-        static DataType parse(CharIterator bytes_begin,
-                              CharIterator bytes_end,
-                              CharIterator& actual_end)
+            static DataType parse(CharIterator bytes_begin,
+                                  CharIterator bytes_end,
+                                  CharIterator& actual_end)
         {
             DataType msg;
             msg.ParseFromArray(&*bytes_begin, bytes_end-bytes_begin);
@@ -115,13 +115,13 @@ namespace goby
         
         template<typename DataType>
         struct Loader : public LoaderBase
-        {
-            Loader()
+            {
+                Loader()
                 { codec().load<DataType>(); }
-            ~Loader()
+                ~Loader()
                 { codec().unload<DataType>(); }
-            void check() { }
-        };
+                void check() { }
+            };
         
         static std::unordered_map<std::type_index, std::unique_ptr<LoaderBase>> loader_map_;
 
@@ -137,17 +137,17 @@ namespace goby
                     
     public:
         static dccl::Codec& codec()
-        {
-            if(!codec_) codec_.reset(new dccl::Codec);
-            return *codec_;
-        }
+            {
+                if(!codec_) codec_.reset(new dccl::Codec);
+                return *codec_;
+            }
         
         static dccl::Codec& set_codec(dccl::Codec* new_codec)
-        {
-            codec_.reset(new_codec);
-            loader_map_.clear();
-            return *new_codec;
-        }
+            {
+                codec_.reset(new_codec);
+                loader_map_.clear();
+                return *new_codec;
+            }
     };
     
     
@@ -167,9 +167,9 @@ namespace goby
         { return DataType::descriptor()->full_name(); }
 
         template<typename CharIterator>
-        static DataType parse(CharIterator bytes_begin,
-                              CharIterator bytes_end,
-                              CharIterator& actual_end)
+            static DataType parse(CharIterator bytes_begin,
+                                  CharIterator bytes_end,
+                                  CharIterator& actual_end)
         {
             check_load<DataType>();
             DataType msg;
@@ -189,9 +189,9 @@ namespace goby
     template<typename T,
         typename std::enable_if<std::is_same<T, std::string>::value>::type* = nullptr>
         constexpr int scheme()
-    {
-        return goby::MarshallingScheme::CSTR;
-    }
+        {
+            return goby::MarshallingScheme::CSTR;
+        }
 
     
     namespace protobuf 
@@ -226,9 +226,9 @@ namespace goby
     template<typename T,
         typename std::enable_if<std::is_base_of<google::protobuf::Message, T>::value>::type* = nullptr>
         constexpr int scheme()
-    {
-        return protobuf::detail::scheme_protobuf_or_dccl<T>(protobuf::detail::dccl_selector());
-    }
+        {
+            return protobuf::detail::scheme_protobuf_or_dccl<T>(protobuf::detail::dccl_selector());
+        }
 
 
     class Group
@@ -244,18 +244,33 @@ namespace goby
         }
         
         constexpr operator int() const { return i_; }   
-        constexpr const char* c_str() const { return c_; }        
+        constexpr const char* c_str() const { return c_; }
         
     private:
         int i_{0};
         const char* c_{nullptr};
     };
-
+    
     inline bool operator==(const Group& a, const Group& b)
     { return std::string(a) == std::string(b); }
     
     inline bool operator<(const Group& a, const Group& b)
     { return std::string(a) < std::string(b); }
+    
+    
+    template<const Group& group>
+        void check_validity()
+    {
+        static_assert((int(group) != 0) || (group.c_str()[0] != '\0'), "goby::Group must have non-zero length string or non-zero integer value.");
+    }
+
+    inline void check_validity_runtime(const Group& group)
+    {
+        // currently no-op - InterVehicleTransporterBase allows empty groups
+        // TODO - check if there's anything we can check for here
+    }
+    
+    
 }
 
 namespace std
