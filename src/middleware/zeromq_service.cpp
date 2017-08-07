@@ -201,8 +201,6 @@ void goby::middleware::ZeroMQService::process_cfg(common::protobuf::ZeroMQServic
 
 goby::middleware::ZeroMQService::~ZeroMQService()
 {
-//    std::cout << "ZeroMQService: " << this << ": destroyed" << std::endl;
-//    std::cout << "poll_mutex " << &poll_mutex_ << std::endl;
 }
 
 int goby::middleware::ZeroMQService::socket_type(common::protobuf::ZeroMQServiceConfig::Socket::SocketType type)
@@ -273,8 +271,6 @@ void goby::middleware::ZeroMQService::send(zmq::message_t& msg,
 
 int goby::middleware::ZeroMQService::poll(long timeout /* = -1 */)
 {
-    boost::mutex::scoped_lock slock(poll_mutex_);
-
     int had_events = 0;
     long zmq_timeout = (timeout == -1) ? -1 : timeout/ZMQ_POLL_DIVISOR;
     zmq::poll (&poll_items_[0], poll_items_.size(), zmq_timeout);

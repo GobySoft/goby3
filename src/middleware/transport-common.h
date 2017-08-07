@@ -8,6 +8,7 @@
 #include "goby/util/binary.h"
 
 #include "serialize_parse.h"
+#include "group.h"
 
 #include "goby/middleware/protobuf/transporter_config.pb.h"
 #include "goby/middleware/protobuf/interprocess_data.pb.h"
@@ -138,6 +139,15 @@ namespace goby
         std::function<Group(const Data&)> group_func_;
     };
 
+}
+namespace std
+{
+    template<>
+        struct hash<goby::Group>
+    {
+        size_t operator()(const goby::Group& group) const noexcept
+        { return std::hash<std::string>{}(std::string(group)); }
+    };
 }
  
 #endif

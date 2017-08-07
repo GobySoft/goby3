@@ -27,12 +27,9 @@
 #include <string>
 #include <unordered_map>
 
-#include <boost/thread/mutex.hpp>
-
-#include "goby/common/protobuf/zero_mq_node_config.pb.h"
-
 #include <zmq.hpp>
 
+#include "goby/common/protobuf/zero_mq_node_config.pb.h"
 #include "goby/common/core_constants.h"
 #include "goby/common/logger.h"
 
@@ -149,9 +146,7 @@ namespace goby
             common::protobuf::ZeroMQServiceConfig cfg_;
             
             // maps poll_items_ index to a callback function
-            std::map<size_t, std::function<void (const void* data, int size, int message_part)> > poll_callbacks_;            
-
-            boost::mutex poll_mutex_;
+            std::map<size_t, std::function<void (const void* data, int size, int message_part)> > poll_callbacks_;
         };
     }
 }
