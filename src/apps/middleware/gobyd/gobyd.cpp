@@ -20,7 +20,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/common/application_base3.h"
-#include "goby/middleware/transport-interprocess.h"
+#include "goby/middleware/transport-interprocess-zeromq.h"
 
 #include "config.pb.h"
 
