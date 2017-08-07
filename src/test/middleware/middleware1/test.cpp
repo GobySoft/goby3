@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
     inproc.publish(sp, "CTD3");
 
     
-    goby::protobuf::InterPlatformPortalConfig slow_cfg;
+    goby::protobuf::InterVehiclePortalConfig slow_cfg;
     {
         slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
         goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
     }
     
     
-    goby::InterPlatformPortal<decltype(zmq)> slow(zmq, slow_cfg);
+    goby::InterVehiclePortal<decltype(zmq)> slow(zmq, slow_cfg);
     int slow_group = 0;
     slow.publish(s, slow_group);
 
