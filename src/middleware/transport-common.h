@@ -7,48 +7,15 @@
 
 #include "goby/util/binary.h"
 
-#include "serialize_parse.h"
-#include "group.h"
+#include "transport-interfaces.h"
 
-#include "goby/middleware/protobuf/transporter_config.pb.h"
 #include "goby/middleware/protobuf/interprocess_data.pb.h"
 
 namespace goby
 {
-    template<typename Derived>
-        class StaticTransporterInterface
-    {
-    public:
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
-            {
-                check_validity<group>();
-                static_cast<Derived*>(this)->template publish_dynamic<Data, scheme>(data, group, transport_cfg);
-            }
-
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
-            {
-                check_validity<group>();
-                static_cast<Derived*>(this)->template publish_dynamic<Data, scheme>(data, group, transport_cfg);
-            }
-
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void subscribe(std::function<void(const Data&)> f)
-            {
-                check_validity<group>();
-                static_cast<Derived*>(this)->template subscribe_dynamic<Data, scheme>(f, group);
-            }
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void subscribe(std::function<void(std::shared_ptr<const Data>)> f)
-            {
-                check_validity<group>();
-                static_cast<Derived*>(this)->template subscribe_dynamic<Data, scheme>(f, group);
-            }
-    };
-    
-    
-    class NoOpTransporter : public StaticTransporterInterface<NoOpTransporter>
+    class NoOpTransporter :
+        public StaticTransporterInterface<NoOpTransporter, NoOpTransporter>,
+        public PollRelativeTimeInterface<NoOpTransporter>
     {
     public:
         template<typename Data, int scheme = scheme<Data>()>
@@ -66,11 +33,10 @@ namespace goby
         template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
         { }
-        
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
-        { return 0; }
-        
-        int poll(std::chrono::system_clock::duration wait_for)
+
+        friend PollRelativeTimeInterface<NoOpTransporter>;
+    private:
+        int _poll(std::chrono::system_clock::duration wait_for)
         { return 0; }
         
     };

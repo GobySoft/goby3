@@ -15,7 +15,9 @@
 namespace goby
 {   
     template<typename Derived, typename InnerTransporter>
-        class InterProcessTransporterBase : public StaticTransporterInterface<InterProcessTransporterBase<Derived, InnerTransporter>>
+        class InterProcessTransporterBase :
+        public StaticTransporterInterface<InterProcessTransporterBase<Derived, InnerTransporter>, InnerTransporter>,
+        public PollRelativeTimeInterface<InterProcessTransporterBase<Derived, InnerTransporter>>
     {
     public:        
     InterProcessTransporterBase(InnerTransporter& inner) : inner_(inner) { }
@@ -60,27 +62,16 @@ namespace goby
         // Wildcards
         //void subscribe_wildcard(std::function<void(const std::vector<unsigned char>&)> f, );
         
-        
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
-        {
-            if(timeout == std::chrono::system_clock::time_point::max())
-                return poll(std::chrono::system_clock::duration::max());
-            else
-                return poll(timeout - std::chrono::system_clock::now());
-        }
-        
-        int poll(std::chrono::system_clock::duration wait_for)
-        {
-            return static_cast<Derived*>(this)->_poll(wait_for);
-        }
-
-        InnerTransporter& inner() { return inner_; }
-        
         std::unique_ptr<InnerTransporter> own_inner_;
         InnerTransporter& inner_;
         static constexpr Group forward_group_ { "goby::InterProcessForwarder" };
 
-        
+        friend PollRelativeTimeInterface<InterProcessTransporterBase<Derived, InnerTransporter>>;
+    private:  
+        int _poll(std::chrono::system_clock::duration wait_for)
+        {
+            return static_cast<Derived*>(this)->_poll(wait_for);
+        }
     };    
     
     template<typename Derived, typename InnerTransporter>

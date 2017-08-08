@@ -24,7 +24,9 @@
 namespace goby
 {
    template<typename Derived, typename InnerTransporter>
-       class InterVehicleTransporterBase : public StaticTransporterInterface<InterVehicleTransporterBase<Derived, InnerTransporter>>
+       class InterVehicleTransporterBase :
+       public StaticTransporterInterface<InterVehicleTransporterBase<Derived, InnerTransporter>, InnerTransporter>,
+       public PollAbsoluteTimeInterface<InterVehicleTransporterBase<Derived, InnerTransporter>>
     {
     public:        
     InterVehicleTransporterBase(InnerTransporter& inner) : inner_(inner) { }
@@ -91,26 +93,18 @@ namespace goby
             static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
             inner_.template subscribe_dynamic<Data, scheme<Data>()>(func, group);
             static_cast<Derived*>(this)->template _subscribe<Data>(func, group, group_func);
-        }
-        
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
-        {
-            return static_cast<Derived*>(this)->_poll(timeout);
-        }
-        
-        int poll(std::chrono::system_clock::duration wait_for)
-        {
-            if(wait_for == std::chrono::system_clock::duration::max())
-                return poll();
-            else
-                return poll(std::chrono::system_clock::now() + wait_for);
-        }
-        
-        InnerTransporter& inner() { return inner_; }
+        }        
 
         std::unique_ptr<InnerTransporter> own_inner_;
         InnerTransporter& inner_;
         static constexpr Group forward_group_ { "goby::InterVehicleTransporter" };
+
+        friend PollAbsoluteTimeInterface<InterVehicleTransporterBase<Derived, InnerTransporter>>;
+    private:
+        int _poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
+        {
+            return static_cast<Derived*>(this)->_poll(timeout);
+        }
     };    
 
    template<typename Derived, typename InnerTransporter>

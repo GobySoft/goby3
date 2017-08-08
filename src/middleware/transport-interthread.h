@@ -193,7 +193,9 @@ namespace goby
         std::unordered_map<std::thread::id, std::shared_ptr<std::condition_variable_any>> SubscriptionStore<Data>::data_condition_;
 
 
-    class InterThreadTransporter : public StaticTransporterInterface<InterThreadTransporter>
+    class InterThreadTransporter :
+        public StaticTransporterInterface<InterThreadTransporter, NoOpTransporter>,
+        public PollAbsoluteTimeInterface<InterThreadTransporter>
     {
     public:
     InterThreadTransporter() :
@@ -229,8 +231,10 @@ namespace goby
             SubscriptionStore<Data>::subscribe(f, group, std::this_thread::get_id(), cv_);
         }
 
-        
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
+
+        friend PollAbsoluteTimeInterface<InterThreadTransporter>;
+    private:
+        int _poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         {
             std::thread::id thread_id = std::this_thread::get_id();
             std::unique_lock<decltype(subscription_mutex)> lock(subscription_mutex);
@@ -258,15 +262,6 @@ namespace goby
 
             return poll_items;
         }
-        
-        int poll(std::chrono::system_clock::duration wait_for)
-        {
-            if(wait_for == std::chrono::system_clock::duration::max())
-                return poll();
-            else
-                return poll(std::chrono::system_clock::now() + wait_for);
-        }
-
         
     private:
         std::shared_ptr<std::condition_variable_any> cv_;
