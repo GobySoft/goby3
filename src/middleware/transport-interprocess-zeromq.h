@@ -8,7 +8,7 @@
 
 namespace goby
 {
-        template<typename InnerTransporter = NoOpTransporter>
+        template<typename InnerTransporter = NullTransporter>
         class InterProcessPortal : public InterProcessTransporterBase<InterProcessPortal<InnerTransporter>, InnerTransporter>
         {
         public:

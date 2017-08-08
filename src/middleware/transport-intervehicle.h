@@ -192,7 +192,7 @@ namespace goby
     };
 
     
-    template<typename InnerTransporter = NoOpTransporter>
+    template<typename InnerTransporter = NullTransporter>
     class InterVehiclePortal : public InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>
         {
         public:

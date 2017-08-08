@@ -13,9 +13,10 @@
 
 namespace goby
 {
-    class NoOpTransporter :
-        public StaticTransporterInterface<NoOpTransporter, NoOpTransporter>,
-        public PollRelativeTimeInterface<NoOpTransporter>
+    // a do nothing transporter that is always inside the last real transporter level.
+    class NullTransporter :
+        public StaticTransporterInterface<NullTransporter, NullTransporter>,
+        public PollRelativeTimeInterface<NullTransporter>
     {
     public:
         template<typename Data, int scheme = scheme<Data>()>
@@ -33,8 +34,8 @@ namespace goby
         template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
         { }
-
-        friend PollRelativeTimeInterface<NoOpTransporter>;
+        
+        friend PollRelativeTimeInterface<NullTransporter>;
     private:
         int _poll(std::chrono::system_clock::duration wait_for)
         { return 0; }

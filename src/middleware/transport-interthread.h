@@ -194,7 +194,7 @@ namespace goby
 
 
     class InterThreadTransporter :
-        public StaticTransporterInterface<InterThreadTransporter, NoOpTransporter>,
+        public StaticTransporterInterface<InterThreadTransporter, NullTransporter>,
         public PollAbsoluteTimeInterface<InterThreadTransporter>
     {
     public:

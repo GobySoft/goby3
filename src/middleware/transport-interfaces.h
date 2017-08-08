@@ -10,6 +10,8 @@
 
 namespace goby
 {
+    class NullTransporter;
+    
     template<typename Transporter, typename InnerTransporter>
         class StaticTransporterInterface
     {
@@ -41,7 +43,11 @@ namespace goby
                 static_cast<Transporter*>(this)->template subscribe_dynamic<Data, scheme>(f, group);
             }
         
-        InnerTransporter& inner() { return static_cast<Transporter*>(this)->inner_; }
+        InnerTransporter& inner()
+        {
+            static_assert(!std::is_same<InnerTransporter, NullTransporter>(), "This transporter has no inner() transporter layer");
+            return static_cast<Transporter*>(this)->inner_;
+        }
     };
     
     template<typename Transporter>
