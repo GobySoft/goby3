@@ -1,4 +1,4 @@
-#include "transport-interprocess.h"
+#include "transport-interprocess-zeromq.h"
 
 unsigned goby::ZMQRouter::last_port(zmq::socket_t& socket)
 {

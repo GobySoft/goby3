@@ -7,38 +7,37 @@
 
 #include "goby/util/binary.h"
 
-#include "serialize_parse.h"
+#include "transport-interfaces.h"
 
-#include "goby/middleware/protobuf/transporter_config.pb.h"
 #include "goby/middleware/protobuf/interprocess_data.pb.h"
 
 namespace goby
-{    
-    class NoOpTransporter
+{
+    // a do nothing transporter that is always inside the last real transporter level.
+    class NullTransporter :
+        public StaticTransporterInterface<NullTransporter, NullTransporter>,
+        public PollRelativeTimeInterface<NullTransporter>
     {
     public:
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void publish(const Data& data,
-                         const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish_dynamic(const Data& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { }
 
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void publish(std::shared_ptr<Data> data,
-                         const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
-            { }
-
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void subscribe(std::function<void(const Data&)> func)
-            { }
-
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void subscribe(std::function<void(std::shared_ptr<const Data>)> func)
-            { }
-
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
-        { return 0; }
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish_dynamic(std::shared_ptr<Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            { }        
         
-        int poll(std::chrono::system_clock::duration wait_for)
+        template<typename Data, int scheme = scheme<Data>()>
+            void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
+        { }
+        
+        template<typename Data, int scheme = scheme<Data>()>
+            void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
+        { }
+        
+        friend PollRelativeTimeInterface<NullTransporter>;
+    private:
+        int _poll(std::chrono::system_clock::duration wait_for)
         { return 0; }
         
     };
@@ -107,6 +106,15 @@ namespace goby
         std::function<Group(const Data&)> group_func_;
     };
 
+}
+namespace std
+{
+    template<>
+        struct hash<goby::Group>
+    {
+        size_t operator()(const goby::Group& group) const noexcept
+        { return std::hash<std::string>{}(std::string(group)); }
+    };
 }
  
 #endif

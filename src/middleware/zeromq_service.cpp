@@ -107,17 +107,17 @@ void goby::middleware::ZeroMQService::process_cfg(common::protobuf::ZeroMQServic
                     
                 case common::protobuf::ZeroMQServiceConfig::Socket::TCP:
                     endpoint = "tcp://" + cfg.socket(i).ethernet_address() + ":"
-                        + as<std::string>(cfg.socket(i).ethernet_port());
+                        + std::to_string(cfg.socket(i).ethernet_port());
                     break;
                     
                 case common::protobuf::ZeroMQServiceConfig::Socket::PGM:
                     endpoint = "pgm://" + cfg.socket(i).ethernet_address() + ";"
-                        + cfg.socket(i).multicast_address() + ":" + as<std::string>(cfg.socket(i).ethernet_port());
+                        + cfg.socket(i).multicast_address() + ":" + std::to_string(cfg.socket(i).ethernet_port());
                 break;
                     
                 case common::protobuf::ZeroMQServiceConfig::Socket::EPGM:
                     endpoint = "epgm://" + cfg.socket(i).ethernet_address() + ";"
-                        + cfg.socket(i).multicast_address() + ":" + as<std::string>(cfg.socket(i).ethernet_port());
+                        + cfg.socket(i).multicast_address() + ":" + std::to_string(cfg.socket(i).ethernet_port());
                     break;
             }
 
@@ -151,7 +151,7 @@ void goby::middleware::ZeroMQService::process_cfg(common::protobuf::ZeroMQServic
                     break;
                     
                 case common::protobuf::ZeroMQServiceConfig::Socket::TCP:
-                    endpoint = "tcp://*:" + as<std::string>(cfg.socket(i).ethernet_port());
+                    endpoint = "tcp://*:" + std::to_string(cfg.socket(i).ethernet_port());
                     break;
                     
                 case common::protobuf::ZeroMQServiceConfig::Socket::PGM:
@@ -201,8 +201,6 @@ void goby::middleware::ZeroMQService::process_cfg(common::protobuf::ZeroMQServic
 
 goby::middleware::ZeroMQService::~ZeroMQService()
 {
-//    std::cout << "ZeroMQService: " << this << ": destroyed" << std::endl;
-//    std::cout << "poll_mutex " << &poll_mutex_ << std::endl;
 }
 
 int goby::middleware::ZeroMQService::socket_type(common::protobuf::ZeroMQServiceConfig::Socket::SocketType type)
@@ -227,7 +225,7 @@ goby::middleware::ZeroMQSocket& goby::middleware::ZeroMQService::socket_from_id(
     if(it != sockets_.end())
         return it->second;
     else
-        throw(goby::Exception("Attempted to access socket_id " + as<std::string>(socket_id) + " which does not exist"));
+        throw(goby::Exception("Attempted to access socket_id " + std::to_string(socket_id) + " which does not exist"));
 }
 
 void goby::middleware::ZeroMQService::subscribe_all(int socket_id)
@@ -273,8 +271,6 @@ void goby::middleware::ZeroMQService::send(zmq::message_t& msg,
 
 int goby::middleware::ZeroMQService::poll(long timeout /* = -1 */)
 {
-    boost::mutex::scoped_lock slock(poll_mutex_);
-
     int had_events = 0;
     long zmq_timeout = (timeout == -1) ? -1 : timeout/ZMQ_POLL_DIVISOR;
     zmq::poll (&poll_items_[0], poll_items_.size(), zmq_timeout);

@@ -193,44 +193,48 @@ namespace goby
         std::unordered_map<std::thread::id, std::shared_ptr<std::condition_variable_any>> SubscriptionStore<Data>::data_condition_;
 
 
-    class InterThreadTransporter
+    class InterThreadTransporter :
+        public StaticTransporterInterface<InterThreadTransporter, NullTransporter>,
+        public PollAbsoluteTimeInterface<InterThreadTransporter>
     {
     public:
     InterThreadTransporter() :
         cv_(std::make_shared<std::condition_variable_any>())
         { }
 
-        
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish_dynamic(const Data& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
-            check_validity<group>();
+            check_validity_runtime(group);
             std::shared_ptr<Data> data_ptr(new Data(data));
-            publish<group, Data>(data_ptr, transport_cfg);
+            publish_dynamic<Data>(data_ptr, group, transport_cfg);
         }
 
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish_dynamic(std::shared_ptr<Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
-            check_validity<group>();
+            check_validity_runtime(group);
             SubscriptionStore<Data>::publish(data, group, transport_cfg);
         }
 
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void subscribe(std::function<void(const Data&)> f)
+        template<typename Data, int scheme = scheme<Data>()>
+            void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
         {
-            check_validity<group>();
+            check_validity_runtime(group);
             SubscriptionStore<Data>::subscribe([=](std::shared_ptr<const Data> pd) { f(*pd); }, group, std::this_thread::get_id(), cv_);
         }
         
-        template<const Group& group, typename Data, int scheme = scheme<Data>()>
-            void subscribe(std::function<void(std::shared_ptr<const Data>)> f)
+        template<typename Data, int scheme = scheme<Data>()>
+            void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
         {
-            check_validity<group>();
+            check_validity_runtime(group);
             SubscriptionStore<Data>::subscribe(f, group, std::this_thread::get_id(), cv_);
         }
-        
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
+
+
+        friend PollAbsoluteTimeInterface<InterThreadTransporter>;
+    private:
+        int _poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         {
             std::thread::id thread_id = std::this_thread::get_id();
             std::unique_lock<decltype(subscription_mutex)> lock(subscription_mutex);
@@ -258,22 +262,6 @@ namespace goby
 
             return poll_items;
         }
-        
-        int poll(std::chrono::system_clock::duration wait_for)
-        {
-            if(wait_for == std::chrono::system_clock::duration::max())
-                return poll();
-            else
-                return poll(std::chrono::system_clock::now() + wait_for);
-        }
-
-    private:
-        template<const Group& group>
-            void check_validity()
-        {
-            static_assert((int(group) != 0) || (group.c_str()[0] != '\0'), "goby::Group must have non-zero length string or non-zero integer value.");
-        }
-
         
     private:
         std::shared_ptr<std::condition_variable_any> cv_;

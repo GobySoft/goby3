@@ -27,7 +27,7 @@
 
 #include "goby/common/application_base3.h"
 #include "goby/middleware/thread.h"
-#include "goby/middleware/transport-interprocess.h"
+#include "goby/middleware/transport-interprocess-zeromq.h"
 
 namespace goby
 {
