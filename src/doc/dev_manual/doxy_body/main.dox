@@ -1,16 +1,15 @@
-
+x
 /*! \mainpage Goby Underwater Autonomy Project
  
  \image html gobysoft_logo_image_only_medium.png
 
- The Goby Underwater Autonomy Project aims to create a unified framework for multiple scientific autonomous marine vehicle collaboration, seamlessly incorporating acoustic, ethernet, wifi, and serial communications. Presently the main thrust of the project is developing a set of robust acoustic networking libraries. The Goby libraries are licensed under the GNU Lesser General Public License v3 <http://www.gnu.org/licenses/lgpl.html> and the applications are licensed under the GNU General Public License v3 <http://www.gnu.org/licenses/gpl.html>.
+ The Goby Underwater Autonomy Project aims to create a unified framework for autonomous marine vehicle collaboration, seamlessly incorporating acoustic, ethernet, wifi, and serial communications. The Goby libraries are licensed under the GNU Lesser General Public License v3 <http://www.gnu.org/licenses/lgpl.html> and the applications are licensed under the GNU General Public License v3 <http://www.gnu.org/licenses/gpl.html>.
 
   \section main_resources Resources
   <ul>
-  <li> Home page, code, bug tracking, and answers: <https://launchpad.net/goby>.</li>
-  <li> User Manual: <a href=http://gobysoft.com/dl/goby2-user-manual.pdf>(pdf)</a>.</li>
-  <li> Developers' Manual: <a href=http://gobysoft.com/doc/2.0>(html)</a> <a href=http://gobysoft.com/dl/goby2-dev.pdf>(pdf)</a>.</li>
-  <li> Wiki: <http://gobysoft.com/wiki>.</li>
+  <li> Home page, code, bug tracking, and wiki: <https://github.com/GobySoft/goby3>.</li>
+  <li> User Manual: <a href=http://gobysoft.org/dl/goby3-user-manual.pdf>(pdf)</a>.</li>
+  <li> Developers' Manual: <a href=http://gobysoft.org/doc/3.0>(html)</a> <a href=http://gobysoft.org/dl/goby3-dev.pdf>(pdf)</a>.</li>
   </ul>
 
   \section main_manual Developer manual
@@ -22,22 +21,23 @@
 
   \section main_papers Publications
   <ul>
-    <li> T. Schneider and H. Schmidt, <a href=http://gobysoft.com/dl/dccl_oceans10.pdf>The Dynamic Compact Control Language: A Compact Marshalling Scheme for Acoustic Communications</a>. IEEE OCEANS'10 / Sydney.
-    <li> T. Schneider and H. Schmidt, <a href=http://gobysoft.com/dl/goby-acomms1.pdf>Goby-Acomms: A modular acoustic networking framework for short-range marine vehicle communication</a>. Unpublished working paper.
-    <li> T. Schneider and H. Schmidt, <a href=http://gobysoft.com/dl/mcmc2012_goby2.pdf>Goby-Acomms version 2: extensible marshalling, queuing, and link layer interfacing for acoustic telemetry</a>. 9th IFAC Conference on Manoeuvring and Control of Marine Craft '12 / Arenzano, Italy.
-    <li> T. Schneider, <a href=http://gobysoft.com/dl/schneider-toby-final-phd-thesis-online.pdf>Advances in Integrating Autonomy with Acoustic Communications for Intelligent Networks of Marine Robots</a>. PhD Thesis, MIT/WHOI Joint Program.
+    <li> T. Schneider <a href=http://gobysoft.org/dl/schneider-auv-2016-goby3.pdf>Goby3: A new open-source middleware for nested communication on autonomous marine vehicles</a>. IEEE AUV 2016 / Tokyo.
+    <li> T. Schneider and H. Schmidt, <a href=http://gobysoft.org/dl/dccl_oceans10.pdf>The Dynamic Compact Control Language: A Compact Marshalling Scheme for Acoustic Communications</a>. IEEE OCEANS'10 / Sydney.
+    <li> T. Schneider and H. Schmidt, <a href=http://gobysoft.org/dl/goby-acomms1.pdf>Goby-Acomms: A modular acoustic networking framework for short-range marine vehicle communication</a>. Unpublished working paper.
+    <li> T. Schneider and H. Schmidt, <a href=http://gobysoft.org/dl/mcmc2012_goby2.pdf>Goby-Acomms version 2: extensible marshalling, queuing, and link layer interfacing for acoustic telemetry</a>. 9th IFAC Conference on Manoeuvring and Control of Marine Craft '12 / Arenzano, Italy.
+    <li> T. Schneider, <a href=http://gobysoft.org/dl/schneider-toby-final-phd-thesis-online.pdf>Advances in Integrating Autonomy with Acoustic Communications for Intelligent Networks of Marine Robots</a>. PhD Thesis, MIT/WHOI Joint Program.
   </ul>
 
 \section install Download and Install Goby
 
-Please visit <http://gobysoft.com/wiki/InstallingGoby> for help on obtaining and installing Goby.
+Please visit <http://gobysoft.org/wiki/InstallingGoby> for help on obtaining and installing Goby.
 
 \section build_example Building Examples
 
-Please visit <http://gobysoft.com/wiki/Examples> to learn about the available code examples for Goby.
+Please visit <http://gobysoft.org/wiki/Examples> to learn about the available code examples for Goby.
 
 \section authors Authors
 
-Goby is developed by the Goby Developers group (https://launchpad.net/~goby-dev). The lead developer is Toby Schneider (http://gobysoft.com)
+Goby is developed by GobySoft and a number of external contributers (https://github.com/GobySoft/goby3/graphs/contributors). The lead developer is Toby Schneider (https://github.com/tsaubergine).
 
 */
