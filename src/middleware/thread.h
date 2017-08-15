@@ -36,8 +36,9 @@ namespace goby
         
         boost::units::quantity<boost::units::si::frequency> loop_frequency_;
         std::chrono::system_clock::time_point loop_time_;
-        unsigned long long loop_count_ {0};
+        unsigned long long loop_count_{0};
         const Config& cfg_;
+        unsigned index_{0};
 
     public:
         using Transporter = TransporterType;
@@ -57,6 +58,10 @@ namespace goby
         
         void run(std::atomic<bool>& alive)
         { while(alive) run_once(); }
+
+        void set_index(unsigned index) { index_ = index; }
+        unsigned index() { return index_; }
+        
         
     protected:
     Thread(const Config& cfg,

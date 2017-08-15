@@ -25,6 +25,7 @@
 
 #include <boost/units/systems/si.hpp>
 
+#include "goby/common/exception.h"
 #include "goby/common/application_base3.h"
 #include "goby/middleware/thread.h"
 #include "goby/middleware/transport-interprocess-zeromq.h"
@@ -42,8 +43,8 @@ namespace goby
         goby::InterThreadTransporter interthread_;
         goby::InterProcessPortal<decltype(interthread_)> portal_;
         
-        std::map<std::type_index, std::atomic<bool>> alive_;
-        std::map<std::type_index, std::unique_ptr<std::thread>> threads_;        
+        std::map<std::type_index, std::map<unsigned, std::atomic<bool>>> alive_;
+        std::map<std::type_index, std::map<unsigned, std::unique_ptr<std::thread>>> threads_;        
         
     public:
         using MainThreadBase = goby::Thread<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>;
@@ -64,9 +65,9 @@ namespace goby
 
         
         template<typename ThreadType>
-            void launch_thread();
+            void launch_thread(unsigned index = 0);
         template<typename ThreadType>
-            void join_thread();
+            void join_thread(unsigned index = 0);
         
     protected:
         decltype(portal_)& transporter() { return portal_; }        
@@ -81,51 +82,59 @@ namespace goby
 
 template<class Config>
 template<typename ThreadType>
-void goby::MultiThreadApplication<Config>::launch_thread()
+void goby::MultiThreadApplication<Config>::launch_thread(unsigned index /* = 0 */)
 {
     std::type_index type_i = std::type_index(typeid(ThreadType));
     
-    if(threads_.count(type_i))
-        return;
-
+    if(threads_[type_i].count(index))
+        throw(Exception(std::string("Thread of type: ") + type_i.name() + " and index " + std::to_string(index) + " was already launched."));
     
-    alive_[type_i] = true;
+    alive_[type_i][index] = true;
 
     const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
-    threads_.insert(
-        std::make_pair(type_i,
+    threads_[type_i].insert(
+        std::make_pair(index,
                        std::unique_ptr<std::thread>(
-                           new std::thread([this, type_i, &cfg]()
+                           new std::thread([this, type_i, index, &cfg]()
                                            {
                                                goby::InterProcessForwarder<decltype(interthread_)> forwarder(interthread_);
                                                ThreadType goby_thread(cfg, &forwarder);
-                                               goby_thread.run(alive_[type_i]);
+                                               goby_thread.set_index(index);
+                                               goby_thread.run(alive_[type_i][index]);
                                            }))));
 }
 
 template<class Config>
 template<typename ThreadType>
-void goby::MultiThreadApplication<Config>::join_thread()
+void goby::MultiThreadApplication<Config>::join_thread(unsigned index /* = 0 */)
 {
     auto type_i = std::type_index(typeid(ThreadType));
-    if(!threads_.count(type_i))
-        return;
 
-    alive_[type_i] = false;
-    threads_[type_i]->join();
-    alive_.erase(type_i);
-    threads_.erase(type_i);
+    if(!threads_[type_i].count(index))
+        throw(Exception(std::string("No running thread of type: ") + type_i.name() + " and index " + std::to_string(index) + " to join."));
+
+    alive_[type_i][index] = false;
+    threads_[type_i][index]->join();
+    alive_[type_i].erase(index);
+    threads_[type_i].erase(index);
 }
 
 
 template<class Config>
 void goby::MultiThreadApplication<Config>::quit()
 {
-    for(auto& a : alive_)
-        a.second = false;
+    for(auto& amap : alive_)
+    {
+        for (auto& a : amap.second)
+            a.second = false;
+    }
     
-    for(auto& t : threads_)
-        t.second->join();
+    for(auto& tmap : threads_)
+    {
+        for(auto & t : tmap.second)
+            t.second->join();
+    }
+    
     goby::common::ApplicationBase3<Config>::quit();
 }
 
