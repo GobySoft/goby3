@@ -198,10 +198,18 @@ namespace goby
         public PollAbsoluteTimeInterface<InterThreadTransporter>
     {
     public:
+
+
     InterThreadTransporter() :
         cv_(std::make_shared<std::condition_variable_any>())
         { }
 
+	template<typename Data>
+	    static constexpr int scheme()
+	{
+	    return MarshallingScheme::CXX_OBJECT;
+	}
+	
         template<typename Data, int scheme = scheme<Data>()>
             void publish_dynamic(const Data& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
@@ -232,9 +240,10 @@ namespace goby
         }
 
 
-        friend PollAbsoluteTimeInterface<InterThreadTransporter>;
-    private:
-        int _poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
+	friend PollAbsoluteTimeInterface<InterThreadTransporter>;
+    private:	
+
+	int _poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
         {
             std::thread::id thread_id = std::this_thread::get_id();
             std::unique_lock<decltype(subscription_mutex)> lock(subscription_mutex);

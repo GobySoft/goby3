@@ -32,6 +32,13 @@ namespace goby
     InterVehicleTransporterBase(InnerTransporter& inner) : inner_(inner) { }
     InterVehicleTransporterBase() : own_inner_(new InnerTransporter), inner_(*own_inner_) { }
 
+	template<typename Data>
+	    static constexpr int scheme()
+	{
+	    return goby::scheme<Data>();
+	}
+
+	
         template<typename Data>
             void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { publish_dynamic<Data>(data, Group(), transport_cfg); }

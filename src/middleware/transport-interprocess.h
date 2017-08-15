@@ -22,7 +22,12 @@ namespace goby
     public:        
     InterProcessTransporterBase(InnerTransporter& inner) : inner_(inner) { }
     InterProcessTransporterBase() : own_inner_(new InnerTransporter), inner_(*own_inner_) { }
-        
+
+	template<typename Data>
+	    static constexpr int scheme()
+	{ return goby::scheme<Data>(); }
+
+	
         // RUNTIME groups
         template<typename Data, int scheme = scheme<Data>()>
             void publish_dynamic(const Data& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())

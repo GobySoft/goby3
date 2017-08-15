@@ -21,6 +21,7 @@ namespace goby
     {
         enum MarshallingSchemeEnum
         {
+	    NULL_SCHEME = -1,
             CSTR = 0,
             PROTOBUF = 1,
             DCCL = 2,
@@ -186,6 +187,27 @@ namespace goby
     // scheme
     //
 
+    template<typename T>
+	struct primitive_type
+	{
+	    typedef T type;
+	};
+    
+    template<typename T>
+	struct primitive_type<std::shared_ptr<T>>
+    {
+	typedef T type;
+    };
+    
+    template<typename T, typename Transporter>
+	constexpr int transporter_scheme()
+        {
+            return Transporter::template scheme<typename primitive_type<T>::type>();
+        }
+
+
+    
+    
     template<typename T,
         typename std::enable_if<std::is_same<T, std::string>::value>::type* = nullptr>
         constexpr int scheme()

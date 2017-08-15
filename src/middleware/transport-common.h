@@ -19,6 +19,12 @@ namespace goby
         public PollRelativeTimeInterface<NullTransporter>
     {
     public:
+	template<typename Data>
+	    static constexpr int scheme()
+	{
+	    return MarshallingScheme::NULL_SCHEME;
+	}
+	
         template<typename Data, int scheme = scheme<Data>()>
             void publish_dynamic(const Data& data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { }
