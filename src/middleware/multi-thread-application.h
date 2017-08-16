@@ -43,9 +43,10 @@ namespace goby
         goby::InterThreadTransporter interthread_;
         goby::InterProcessPortal<decltype(interthread_)> portal_;
         
-        std::map<std::type_index, std::map<unsigned, std::atomic<bool>>> alive_;
-        std::map<std::type_index, std::map<unsigned, std::unique_ptr<std::thread>>> threads_;        
-        
+        std::map<std::type_index, std::map<int, std::atomic<bool>>> alive_;
+        std::map<std::type_index, std::map<int, std::unique_ptr<std::thread>>> threads_;        
+
+		
     public:
         using MainThreadBase = goby::Thread<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>;
         
@@ -65,25 +66,61 @@ namespace goby
 
         
         template<typename ThreadType>
-            void launch_thread(unsigned index = 0);
+            void launch_thread();
         template<typename ThreadType>
-            void join_thread(unsigned index = 0);
+            void launch_thread(int index);
+        template<typename ThreadType>
+            void join_thread(int index = -1);
         
     protected:
         decltype(portal_)& transporter() { return portal_; }        
-        void quit();
+        void quit() override;
         
     private:
         void run() override
         { MainThreadBase::run_once(); }
+
+	template<typename ThreadType, typename Lambda>
+            void _launch_thread(int index, Lambda thread_lambda);
 
     };
 }
 
 template<class Config>
 template<typename ThreadType>
-void goby::MultiThreadApplication<Config>::launch_thread(unsigned index /* = 0 */)
+void goby::MultiThreadApplication<Config>::launch_thread()
 {
+    const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
+    int index = -1;
+    std::type_index type_i = std::type_index(typeid(ThreadType));
+    auto thread_lambda = [this, type_i, index, &cfg]()
+	{
+	    goby::InterProcessForwarder<decltype(interthread_)> forwarder(interthread_);
+	    ThreadType goby_thread(cfg, &forwarder);
+	    goby_thread.run(alive_[type_i][index]);
+	};
+    _launch_thread<ThreadType>(index, thread_lambda);
+}
+
+template<class Config>
+template<typename ThreadType>
+void goby::MultiThreadApplication<Config>::launch_thread(int index)
+{
+    const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
+    std::type_index type_i = std::type_index(typeid(ThreadType));
+    auto thread_lambda = [this, type_i, index, &cfg]()
+	{
+	    goby::InterProcessForwarder<decltype(interthread_)> forwarder(interthread_);
+	    ThreadType goby_thread(cfg, &forwarder, index);
+	    goby_thread.run(alive_[type_i][index]);
+	};
+    _launch_thread<ThreadType>(index, thread_lambda);
+}
+
+template<class Config>
+template<typename ThreadType, typename Lambda>
+void goby::MultiThreadApplication<Config>::_launch_thread(int index, Lambda thread_lambda)
+{   
     std::type_index type_i = std::type_index(typeid(ThreadType));
     
     if(threads_[type_i].count(index))
@@ -91,22 +128,15 @@ void goby::MultiThreadApplication<Config>::launch_thread(unsigned index /* = 0 *
     
     alive_[type_i][index] = true;
 
-    const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
     threads_[type_i].insert(
         std::make_pair(index,
-                       std::unique_ptr<std::thread>(
-                           new std::thread([this, type_i, index, &cfg]()
-                                           {
-                                               goby::InterProcessForwarder<decltype(interthread_)> forwarder(interthread_);
-                                               ThreadType goby_thread(cfg, &forwarder);
-                                               goby_thread.set_index(index);
-                                               goby_thread.run(alive_[type_i][index]);
-                                           }))));
+                       std::unique_ptr<std::thread>(new std::thread(thread_lambda))));    
 }
+
 
 template<class Config>
 template<typename ThreadType>
-void goby::MultiThreadApplication<Config>::join_thread(unsigned index /* = 0 */)
+void goby::MultiThreadApplication<Config>::join_thread(int index /* = -1 */)
 {
     auto type_i = std::type_index(typeid(ThreadType));
 

@@ -38,18 +38,21 @@ namespace goby
         std::chrono::system_clock::time_point loop_time_;
         unsigned long long loop_count_{0};
         const Config& cfg_;
-        unsigned index_{0};
+	int index_;
 
     public:
         using Transporter = TransporterType;
         
         // zero or negative frequency means loop() is never called
-    Thread(const Config& cfg, TransporterType* transporter, double loop_freq_hertz = 0) :
-        Thread(cfg, transporter, loop_freq_hertz*boost::units::si::hertz) { }
+    Thread(const Config& cfg, TransporterType* transporter, int index) :
+        Thread(cfg, transporter, 0*boost::units::si::hertz, index) { }
+
+    Thread(const Config& cfg, TransporterType* transporter, double loop_freq_hertz = 0, int index = -1) :
+        Thread(cfg, transporter, loop_freq_hertz*boost::units::si::hertz, index) { }
         
     Thread(const Config& cfg, TransporterType* transporter,
-           boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : Thread(cfg, loop_freq)
+           boost::units::quantity<boost::units::si::frequency> loop_freq, int index = -1)
+        : Thread(cfg, loop_freq, index)
         {
             set_transporter(transporter);
         }
@@ -59,16 +62,17 @@ namespace goby
         void run(std::atomic<bool>& alive)
         { while(alive) run_once(); }
 
-        void set_index(unsigned index) { index_ = index; }
-        unsigned index() { return index_; }
+        int index() { return index_; }
         
         
     protected:
     Thread(const Config& cfg,
-           boost::units::quantity<boost::units::si::frequency> loop_freq)
+           boost::units::quantity<boost::units::si::frequency> loop_freq,
+	   int index = -1)
         : loop_frequency_(loop_freq),
             loop_time_(std::chrono::system_clock::now()),
-            cfg_(cfg)
+            cfg_(cfg),
+	    index_(index)
           {
               unsigned long long ticks_since_epoch =
                   std::chrono::duration_cast<std::chrono::microseconds>(

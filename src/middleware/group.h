@@ -10,16 +10,20 @@ namespace goby
     public:
         constexpr Group(const char* c = "") : c_(c) { }
         constexpr Group(int i) : i_(i) { }
-        
+	
+        constexpr operator int() const { return i_; }   
+        constexpr const char* c_str() const { return c_; }
+
+	
         operator std::string() const
         {   
             if(c_ != nullptr) return std::string(c_);
             else return std::to_string(i_);
         }
         
-        constexpr operator int() const { return i_; }   
-        constexpr const char* c_str() const { return c_; }
-        
+    protected:
+	void set_c_str(const char* c) { c_ = c; }
+		
     private:
         int i_{0};
         const char* c_{nullptr};
@@ -43,6 +47,21 @@ namespace goby
         // currently no-op - InterVehicleTransporterBase allows empty groups
         // TODO - check if there's anything we can check for here
     }
+
+
+    class DynamicGroup : public Group
+    {
+    public:
+    DynamicGroup(const std::string& s) : s_(new std::string(s))
+    {
+	Group::set_c_str(s_->c_str());
+    }
+    DynamicGroup(int i) : Group(i) { }
+
+    private:
+	std::unique_ptr<const std::string> s_;
+    };
+    
 }
 
 
