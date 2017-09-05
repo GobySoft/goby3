@@ -103,7 +103,6 @@ namespace goby
         const Config& cfg() { return cfg_; }
     };
 
-
 }
 
 

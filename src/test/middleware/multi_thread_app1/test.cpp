@@ -14,20 +14,19 @@ constexpr int num_messages{10};
 
 
 using AppBase = goby::MultiThreadApplication<TestConfig>;
-using ThreadBase = AppBase::ThreadBase;
 
-class TestThreadRx : public ThreadBase
+class TestThreadRx : public goby::SimpleThread<TestConfig>
 {
 public:
-    TestThreadRx(const TestConfig& cfg, ThreadBase::Transporter* forwarder)
-        : ThreadBase(cfg, forwarder, 10)
+    TestThreadRx(const TestConfig& cfg)
+        : SimpleThread(cfg, 10)
         {
             glog.is(VERBOSE) && glog << "Rx Thread: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             
             glog.is(VERBOSE) && glog << std::this_thread::get_id() << std::endl;
             
-            transporter().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
-            transporter().subscribe<widget2, Widget>([this](const Widget& w) { post(w); });
+            interprocess().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
+            interprocess().subscribe<widget2, Widget>([this](const Widget& w) { post(w); });
         }
 
     void post(const Widget& widget)
@@ -36,7 +35,7 @@ public:
             assert(widget.b() == rx_count_);
             ++rx_count_;
 
-            transporter().inner().publish<widget2>(widget);
+            interthread().publish<widget2>(widget);
         }
     
     void loop() override
@@ -53,8 +52,8 @@ public:
     TestAppRx() : AppBase(10)
         {
             glog.is(VERBOSE) && glog << "Rx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
-            transporter().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
-            transporter().subscribe<widget2, Widget>([this](const Widget& w) { post2(w); });
+            interprocess().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
+            interprocess().subscribe<widget2, Widget>([this](const Widget& w) { post2(w); });
             launch_thread<TestThreadRx>();
         }
     
@@ -105,7 +104,7 @@ public:
                     glog.is(VERBOSE) && glog << "Tx: " << w.DebugString() << std::flush;
                 }
                 
-                transporter().publish<widget1>(w);
+                interprocess().publish<widget1>(w);
 
                 if(tx_count_ == num_messages)
                     quit();
@@ -159,5 +158,7 @@ int main(int argc, char* argv[])
         }
         
     }
+    std::cout << "All tests passed." << std::endl;
+    
 }
     

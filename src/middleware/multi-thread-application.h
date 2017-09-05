@@ -33,6 +33,39 @@
 
 namespace goby
 {
+
+    template<typename Config>
+        class SimpleThread : public Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>
+    {
+    public:
+    SimpleThread(const Config& cfg, double loop_freq_hertz = 0, int index = -1) :
+        SimpleThread(cfg, loop_freq_hertz*boost::units::si::hertz, index) { }
+        
+    SimpleThread(const Config& cfg, 
+           boost::units::quantity<boost::units::si::frequency> loop_freq, int index = -1)
+        : Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>(cfg, loop_freq, index)
+        {
+            interthread_.reset(new goby::InterThreadTransporter);
+            forwarder_.reset(new goby::InterProcessForwarder<goby::InterThreadTransporter>(*interthread_));
+            Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>::set_transporter(forwarder_.get());
+        }
+
+        goby::InterProcessForwarder<goby::InterThreadTransporter>& interprocess()
+        {
+            return Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>::transporter();
+        }
+
+        goby::InterThreadTransporter& interthread()
+        {
+            return Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>::transporter().inner();
+        }
+        
+    private:
+        std::unique_ptr<goby::InterThreadTransporter> interthread_;
+        std::unique_ptr<goby::InterProcessForwarder<goby::InterThreadTransporter>> forwarder_;
+        
+    };
+    
     template<class Config>
         class MultiThreadApplication
         : public goby::common::ApplicationBase3<Config>,
@@ -48,9 +81,7 @@ namespace goby
 
 		
     public:
-        using MainThreadBase = goby::Thread<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>;
-        
-        using ThreadBase = goby::Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>;
+        using MainThreadBase = goby::Thread<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>;        
 
     MultiThreadApplication(double loop_freq_hertz = 0) :
         MultiThreadApplication(loop_freq_hertz*boost::units::si::hertz)
@@ -73,7 +104,10 @@ namespace goby
             void join_thread(int index = -1);
         
     protected:
-        decltype(portal_)& transporter() { return portal_; }        
+        goby::InterProcessPortal<goby::InterThreadTransporter>& interprocess() { return portal_; }
+        goby::InterThreadTransporter& interthread() { return portal_.inner(); }
+        
+        
         void quit() override;
         
     private:
@@ -95,8 +129,7 @@ void goby::MultiThreadApplication<Config>::launch_thread()
     std::type_index type_i = std::type_index(typeid(ThreadType));
     auto thread_lambda = [this, type_i, index, &cfg]()
 	{
-	    goby::InterProcessForwarder<decltype(interthread_)> forwarder(interthread_);
-	    ThreadType goby_thread(cfg, &forwarder);
+	    ThreadType goby_thread(cfg);
 	    goby_thread.run(alive_[type_i][index]);
 	};
     _launch_thread<ThreadType>(index, thread_lambda);
@@ -110,8 +143,7 @@ void goby::MultiThreadApplication<Config>::launch_thread(int index)
     std::type_index type_i = std::type_index(typeid(ThreadType));
     auto thread_lambda = [this, type_i, index, &cfg]()
 	{
-	    goby::InterProcessForwarder<decltype(interthread_)> forwarder(interthread_);
-	    ThreadType goby_thread(cfg, &forwarder, index);
+	    ThreadType goby_thread(cfg, index);
 	    goby_thread.run(alive_[type_i][index]);
 	};
     _launch_thread<ThreadType>(index, thread_lambda);
