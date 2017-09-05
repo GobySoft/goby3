@@ -12,7 +12,9 @@
 
 // tests InterProcessForwarder
 
-goby::InterThreadTransporter inproc;
+goby::InterThreadTransporter inproc1;
+goby::InterThreadTransporter inproc2;
+goby::InterThreadTransporter inproc3;
 
 int publish_count = 0;
 const int max_publish = 100;
@@ -32,7 +34,7 @@ extern constexpr goby::Group widget{"Widget"};
 // thread 1 - parent process
 void publisher()
 {
-    goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc);
+    goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc1);
     double a = 0;
     while(publish_count < max_publish)
     {
@@ -71,7 +73,7 @@ void handle_widget(std::shared_ptr<const Widget> widget)
 
 void subscriber()
 {
-    goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc);
+    goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc1);
     ipc.subscribe<sample1, Sample>(&handle_sample1);
     ipc.subscribe<sample2, Sample>(&handle_sample2);
     ipc.subscribe<widget, Widget>(&handle_widget);
@@ -96,16 +98,16 @@ class ThreadSubscriber
 public:
     void run()
         {
-            inproc.subscribe<sample1, Sample>([&](const Sample& s) { handle_sample1(s); });
-            inproc.subscribe<sample2, Sample>([&](std::shared_ptr<const Sample> s) { handle_sample2(s); });
-            inproc.subscribe<widget, Widget>([&](std::shared_ptr<const Widget> w) { handle_widget1(w); });
+            inproc2.subscribe<sample1, Sample>([&](const Sample& s) { handle_sample1(s); });
+            inproc2.subscribe<sample2, Sample>([&](std::shared_ptr<const Sample> s) { handle_sample2(s); });
+            inproc2.subscribe<widget, Widget>([&](std::shared_ptr<const Widget> w) { handle_widget1(w); });
             ++ready;
             while(receive_count1 < max_publish || receive_count2 < max_publish || receive_count3 < max_publish)
             {
                 std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
                 std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
 
-                inproc.poll(std::chrono::seconds(1));
+                inproc2.poll(std::chrono::seconds(1));
                 if(std::chrono::system_clock::now() > timeout)
                     glog.is(DIE) && glog <<  "ThreadSubscriber timed out waiting for data" << std::endl;
             }
@@ -145,7 +147,7 @@ private:
 // thread 3
 void zmq_forward(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
-    goby::InterProcessPortal<goby::InterThreadTransporter> zmq(inproc, cfg);
+    goby::InterProcessPortal<goby::InterThreadTransporter> zmq(inproc3, cfg);
     zmq_ready = true;
     while(forward)
     {

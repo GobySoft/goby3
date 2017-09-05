@@ -7,7 +7,8 @@
 
 // tests InterThreadTransporter
 
-goby::InterThreadTransporter inproc;
+goby::InterThreadTransporter inproc1;
+goby::InterThreadTransporter inproc2;
 
 int publish_count = 0;
 const int max_publish = 100;
@@ -27,13 +28,13 @@ void publisher()
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++);
-        inproc.publish<sample1>(s1);
+        inproc1.publish<sample1>(s1);
         auto s2 = std::make_shared<Sample>();
         s2->set_a(s1->a() + 10);
-        inproc.publish<sample2>(s2);
+        inproc1.publish<sample2>(s2);
         auto w1 = std::make_shared<Widget>();
         w1->set_b(s1->a() - 8);
-        inproc.publish<widget>(w1);
+        inproc1.publish<widget>(w1);
         ++publish_count;
     }
 }
@@ -45,13 +46,13 @@ class Subscriber
 public:
     void run()
         {
-            inproc.subscribe<sample1, Sample>([this](std::shared_ptr<const Sample> s) { handle_sample1(s); });
-            inproc.subscribe<sample2, Sample>([this](std::shared_ptr<const Sample> s) { handle_sample2(s); });
-            inproc.subscribe<widget, Widget>([this](std::shared_ptr<const Widget> w) { handle_widget1(w); });
+            inproc2.subscribe<sample1, Sample>([this](std::shared_ptr<const Sample> s) { handle_sample1(s); });
+            inproc2.subscribe<sample2, Sample>([this](std::shared_ptr<const Sample> s) { handle_sample2(s); });
+            inproc2.subscribe<widget, Widget>([this](std::shared_ptr<const Widget> w) { handle_widget1(w); });
             while(receive_count1 < max_publish || receive_count2 < max_publish || receive_count3 < max_publish)
             {
                 ++ready;
-                inproc.poll();
+                inproc2.poll();
                 //  std::cout << "Polled " << items  << " items. " << std::endl;
             }
         }

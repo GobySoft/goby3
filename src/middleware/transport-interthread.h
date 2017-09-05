@@ -7,6 +7,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <set>
+#include <atomic>
 
 #include "transport-common.h"
 
@@ -22,10 +23,18 @@ namespace goby
         {
             if(stores_mutex_.try_lock_until(timeout_time))
             {
+                // multiple readers
+                ++pollers_;
+                stores_mutex_.unlock();
+                
                 int poll_items = 0;
                 for (auto const &s : stores_)
                     poll_items += s.second->poll(thread_id, timeout_time);
-                stores_mutex_.unlock();
+
+                --pollers_;
+                if(pollers_ == 0)
+                    stores_cv_.notify_all();
+                
                 return poll_items;
             }
             else
@@ -39,7 +48,10 @@ namespace goby
             static void insert()
         {
             // check the store, and if there isn't one for this type, create one
-            std::lock_guard<decltype(stores_mutex_)> lock(stores_mutex_);   
+            std::lock_guard<decltype(stores_mutex_)> lock(stores_mutex_);
+            while(pollers_ > 0) // wait for readers
+                stores_cv_.wait(stores_mutex_);
+            
             auto index = std::type_index(typeid(StoreType));
             if(!stores_.count(index))
                 stores_.insert(std::make_pair(index, std::unique_ptr<StoreType>(new StoreType)));
@@ -53,6 +65,8 @@ namespace goby
         // stores a map of Datas to SubscriptionStores so that can call poll() on all the stores
         static std::unordered_map<std::type_index, std::unique_ptr<SubscriptionStoreBase>> stores_;
         static std::timed_mutex stores_mutex_;
+        static std::condition_variable_any stores_cv_;
+        static std::atomic<int> pollers_; // number of active readers
     };
 
     
@@ -65,7 +79,7 @@ namespace goby
             std::lock_guard<decltype(subscription_mutex)> lock(subscription_mutex);
             // insert callback
             auto it = subscription_callbacks_.insert(std::make_pair(thread_id, Callback(group, func)));
-            // insert group with interator to callback
+            // insert group with iterator to callback
             subscription_groups_.insert(std::make_pair(group, it));
 
             // if we don't have a condition variable already for this thread, store it

@@ -19,7 +19,10 @@ int ipc_receive_count = {0};
 std::atomic<bool> forward(true);
 std::atomic<int> zmq_reqs(0);
 int test = 1;
-goby::InterThreadTransporter interthread;
+goby::InterThreadTransporter interthread1;
+goby::InterThreadTransporter interthread2;
+
+std::mutex cout_mutex;
 
 using goby::glog;
 using namespace goby::common::logger;
@@ -46,7 +49,11 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
     if(test == 0)
     {
         sleep(2);
-        std::cout << "Start: " << std::setprecision(15) <<goby::common::goby_time<double>() << std::endl;
+
+        {
+            std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
+            std::cout << "Start: " << std::setprecision(15) <<goby::common::goby_time<double>() << std::endl;
+        }
         
         while(publish_count < max_publish)
         {
@@ -58,16 +65,21 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
             s->set_salinity(30.1);
             s->set_depth(5.2);
 #endif
-            interthread.publish<TestGroups::sample1_group>(s);
+            interthread1.publish<TestGroups::sample1_group>(s);
             ++publish_count;
         }
 
-        std::cout << "Publish end: " << std::setprecision(15) <<goby::common::goby_time<double>() << std::endl;
+        {
+            std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
+            std::cout << "Publish end: " << std::setprecision(15) <<goby::common::goby_time<double>() << std::endl;
+        }
+        
     }
     else if(test == 1)
     {
         goby::InterProcessPortal<> zmq(cfg);
         sleep(1);
+
         std::cout << "Start: " << std::setprecision(15) <<goby::common::goby_time<double>() << std::endl;
         
         while(publish_count < max_publish)
@@ -100,8 +112,11 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
 void handle_sample1(const Type& sample)
 {
     if(ipc_receive_count == 0)
+    {
+        std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
         std::cout << "Receive start: " << std::setprecision(15) <<goby::common::goby_time<double>() << std::endl;
-
+    }
+    
     //std::cout << sample.ShortDebugString() << std::endl;
     ++ipc_receive_count;
     
@@ -109,20 +124,28 @@ void handle_sample1(const Type& sample)
     //    std::cout << ipc_receive_count << std::endl;
     
     if(ipc_receive_count == max_publish)
+    {
+        std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
         std::cout << "End: " << std::setprecision(15) << goby::common::goby_time<double>() << std::endl;
-
+    }
+    
 }
 
 void subscriber(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
     if(test == 0)
     {
-        interthread.subscribe<TestGroups::sample1_group, Type>(&handle_sample1);
-        std::cout << "Subscribed. " << std::endl;
+        interthread2.subscribe<TestGroups::sample1_group, Type>(&handle_sample1);
+
+        {
+            std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
+            std::cout << "Subscribed. " << std::endl;
+        }
+        
 
         while(ipc_receive_count < max_publish)
         {
-            interthread.poll();
+            interthread2.poll();
         }
     }
     else if(test == 1)
