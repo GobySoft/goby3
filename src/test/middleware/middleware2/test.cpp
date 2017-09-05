@@ -31,7 +31,8 @@ void publisher()
         inproc1.publish<sample1>(s1);
         auto s2 = std::make_shared<Sample>();
         s2->set_a(s1->a() + 10);
-        inproc1.publish<sample2>(s2);
+        std::shared_ptr<const Sample> s2_const = s2;
+        inproc1.publish<sample2>(s2_const);
         auto w1 = std::make_shared<Widget>();
         w1->set_b(s1->a() - 8);
         inproc1.publish<widget>(w1);

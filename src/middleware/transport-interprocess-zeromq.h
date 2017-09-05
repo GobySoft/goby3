@@ -43,7 +43,7 @@ namespace goby
         void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f, const Group& group)
         {
             std::string identifier = _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
-            auto subscribe_lambda = [=](std::shared_ptr<Data> d, const goby::protobuf::TransporterConfig& t) { f(d); };
+            auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { f(d); };
             typename SerializationSubscription<Data, scheme>::HandlerType subscribe_function(subscribe_lambda);
 
             auto subscription = std::shared_ptr<SerializationSubscriptionBase>(

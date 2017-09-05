@@ -231,13 +231,18 @@ namespace goby
             std::shared_ptr<Data> data_ptr(new Data(data));
             publish_dynamic<Data>(data_ptr, group, transport_cfg);
         }
-
+        
         template<typename Data, int scheme = scheme<Data>()>
-            void publish_dynamic(std::shared_ptr<Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish_dynamic(std::shared_ptr<const Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             check_validity_runtime(group);
             SubscriptionStore<Data>::publish(data, group, transport_cfg);
         }
+
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish_dynamic(std::shared_ptr<Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            { publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, transport_cfg); }
+
 
         template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)

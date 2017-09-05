@@ -32,6 +32,10 @@ namespace goby
         template<typename Data, int scheme = scheme<Data>()>
             void publish_dynamic(std::shared_ptr<Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { }        
+
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish_dynamic(std::shared_ptr<const Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            { }        
         
         template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
@@ -64,7 +68,7 @@ namespace goby
         class SerializationSubscription : public SerializationSubscriptionBase
     {
     public:
-        typedef std::function<void (std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg)> HandlerType;
+        typedef std::function<void (std::shared_ptr<const Data> data, const goby::protobuf::TransporterConfig& transport_cfg)> HandlerType;
 
     SerializationSubscription(HandlerType& handler,
                               const Group& group,
@@ -98,7 +102,7 @@ namespace goby
                                CharIterator bytes_end) const 
         {
             CharIterator actual_end;
-            auto msg = std::make_shared<Data>(SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
+            auto msg = std::make_shared<const Data>(SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
             if(subscribed_group() == group_func_(*msg))
                 handler_(msg, goby::protobuf::TransporterConfig());
             return actual_end;

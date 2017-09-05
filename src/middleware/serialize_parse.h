@@ -198,6 +198,13 @@ namespace goby
     {
 	typedef T type;
     };
+
+    template<typename T>
+	struct primitive_type<std::shared_ptr<const T>>
+    {
+	typedef T type;
+    };
+
     
     template<typename T, typename Transporter>
 	constexpr int transporter_scheme()

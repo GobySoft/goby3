@@ -38,7 +38,7 @@ namespace goby
             }
 
         template<typename Data, int scheme = scheme<Data>()>
-            void publish_dynamic(std::shared_ptr<Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish_dynamic(std::shared_ptr<const Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             {
                 if(data)
                 {
@@ -46,7 +46,11 @@ namespace goby
                     static_cast<Derived*>(this)->template _publish<Data, scheme>(*data, group, transport_cfg);
                     inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
                 }
-            }        
+            }
+
+        template<typename Data, int scheme = scheme<Data>()>
+            void publish_dynamic(std::shared_ptr<Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            { publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, transport_cfg); }
         
         template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
@@ -115,7 +119,7 @@ namespace goby
             void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f, const Group& group)
         {
             // forward subscription to edge
-            auto inner_publication_lambda = [&](std::shared_ptr<Data> d, const goby::protobuf::TransporterConfig& t) { Base::inner_.template publish_dynamic<Data, scheme>(d, group, t); };
+            auto inner_publication_lambda = [&](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { Base::inner_.template publish_dynamic<Data, scheme>(d, group, t); };
             typename SerializationSubscription<Data, scheme>::HandlerType inner_publication_function(inner_publication_lambda);
 
             auto subscription = std::shared_ptr<SerializationSubscriptionBase>(

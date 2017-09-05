@@ -23,11 +23,18 @@ namespace goby
                 static_cast<Transporter*>(this)->template publish_dynamic<Data, scheme>(data, group, transport_cfg);
             }
 
+        // need both const and non-const shared_ptr overload to ensure that the const& overload isn't preferred to these.
         template<const Group& group, typename Data, int scheme = transporter_scheme<Data, Transporter>()>
-            void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish(std::shared_ptr<const Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             {
                 check_validity<group>();
                 static_cast<Transporter*>(this)->template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+            }
+        
+        template<const Group& group, typename Data, int scheme = transporter_scheme<Data, Transporter>()>
+            void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            {
+                publish<group, Data, scheme>(std::shared_ptr<const Data>(data), transport_cfg);
             }
 
         template<const Group& group, typename Data, int scheme = transporter_scheme<Data, Transporter>()>

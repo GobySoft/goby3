@@ -44,10 +44,13 @@ namespace goby
             { publish_dynamic<Data>(data, Group(), transport_cfg); }
 
         template<typename Data>
-            void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish(std::shared_ptr<const Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { publish_dynamic<Data>(data, Group(), transport_cfg); }
-
-
+        
+        template<typename Data>
+            void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+        { publish<Data>(std::shared_ptr<const Data>(data), transport_cfg); }
+        
         template<typename Data>
             void subscribe(std::function<void(const Data&)> func, std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
@@ -70,7 +73,7 @@ namespace goby
         }
 
         template<typename Data>
-            void publish_dynamic(std::shared_ptr<Data> data, const Group& group = Group(), const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish_dynamic(std::shared_ptr<const Data> data, const Group& group = Group(), const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
             if(data)
@@ -78,6 +81,13 @@ namespace goby
                 static_cast<Derived*>(this)->template _publish<Data>(*data, group, transport_cfg);
                 inner_.template publish_dynamic<Data, scheme<Data>()>(data, group, transport_cfg);
             }
+        }
+
+        
+        template<typename Data>
+            void publish_dynamic(std::shared_ptr<Data> data, const Group& group = Group(), const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+        {
+            publish_dynamic<Data>(std::shared_ptr<const Data>(data), group, transport_cfg);
         }
         
         
@@ -156,7 +166,7 @@ namespace goby
                             std::function<Group(const Data&)> group_func)
         {
             int dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::codec().template id<Data>();
-            auto subscribe_lambda = [=](std::shared_ptr<Data> d, const goby::protobuf::TransporterConfig& t) { func(d); };
+            auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { func(d); };
             typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType subscribe_function(subscribe_lambda);
             auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
                 new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group, [=](const Data&d) { return group_func(d); })); 
@@ -228,7 +238,7 @@ namespace goby
                         std::function<Group(const Data&)> group_func)
         {
             int dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::codec().template id<Data>();
-            auto subscribe_lambda = [=](std::shared_ptr<Data> d, const goby::protobuf::TransporterConfig& t) { func(d); };
+            auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { func(d); };
             typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType subscribe_function(subscribe_lambda);
             auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
                 new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group, [=](const Data&d) { return group_func(d); })); 
