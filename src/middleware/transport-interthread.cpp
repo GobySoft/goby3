@@ -5,4 +5,4 @@ std::timed_mutex goby::SubscriptionStoreBase::stores_mutex_;
 std::condition_variable_any goby::SubscriptionStoreBase::stores_cv_;
 std::atomic<int> goby::SubscriptionStoreBase::pollers_(0);
 
-std::recursive_timed_mutex goby::subscription_mutex;
+std::mutex goby::subscription_mutex;
