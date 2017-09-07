@@ -22,6 +22,9 @@ int test = 1;
 goby::InterThreadTransporter interthread1;
 goby::InterThreadTransporter interthread2;
 
+std::atomic<double> start(0);
+std::atomic<double> end(0);
+
 std::mutex cout_mutex;
 
 using goby::glog;
@@ -52,7 +55,8 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
 
         {
             std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
-            std::cout << "Start: " << std::setprecision(15) <<goby::common::goby_time<double>() << std::endl;
+            start = goby::common::goby_time<double>();
+            std::cout << "Start: " << std::setprecision(15) << start << std::endl;
         }
         
         while(publish_count < max_publish)
@@ -126,7 +130,10 @@ void handle_sample1(const Type& sample)
     if(ipc_receive_count == max_publish)
     {
         std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
-        std::cout << "End: " << std::setprecision(15) << goby::common::goby_time<double>() << std::endl;
+        end = goby::common::goby_time<double>();
+        std::cout << "End: " << std::setprecision(15) << end << std::endl;
+        if(test == 0)
+            std::cout << "Seconds per message: " << std::setprecision(15) << (end-start)/max_publish << std::endl;
     }
     
 }
