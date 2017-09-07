@@ -83,6 +83,12 @@ namespace goby
                 auto it = subscription_callbacks_.insert(std::make_pair(thread_id, Callback(group, func)));
                 // insert group with iterator to callback
                 subscription_groups_.insert(std::make_pair(group, it));
+
+                // if necessary, create a DataQueue for this thread
+                auto queue_it = data_.find(thread_id);
+                if(queue_it == data_.end())
+                    queue_it = data_.insert(std::make_pair(thread_id, DataQueue())).first;
+                queue_it->second.create(group);                
                 
                 // if we don't have a condition variable already for this thread, store it
                 if(!data_condition_.count(thread_id))
@@ -109,8 +115,6 @@ namespace goby
                     if(thread_id != std::this_thread::get_id() || transport_cfg.echo())
                     {
                         auto queue_it = data_.find(thread_id);
-                        if(queue_it == data_.end())
-                            queue_it = data_.insert(std::make_pair(thread_id, DataQueue())).first;
                         queue_it->second.insert(group, data);
                         cv_to_notify.push_back(data_condition_.at(thread_id));
                     }
@@ -189,8 +193,14 @@ namespace goby
         private:
             std::map<Group, std::vector<std::shared_ptr<const Data>>> data_;
         public:
+            void create(const Group& g)
+            {
+                auto it = data_.find(g);
+                if(it == data_.end())
+                    data_.insert(std::make_pair(g, std::vector<std::shared_ptr<const Data>>()));
+            }            
             void insert(const Group& g, std::shared_ptr<const Data> datum)
-            { data_[g].push_back(datum); }
+            { data_.find(g)->second.push_back(datum); }
             void clear()
             { data_.clear(); }
             bool empty()
