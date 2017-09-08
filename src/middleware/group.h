@@ -32,10 +32,6 @@ namespace goby
     inline bool operator==(const Group& a, const Group& b)
     { return std::string(a) == std::string(b); }
     
-    inline bool operator<(const Group& a, const Group& b)
-    { return std::string(a) < std::string(b); }
-    
-    
     template<const Group& group>
         void check_validity()
     {

@@ -7,3 +7,4 @@ add_subdirectory(middleware6)
 
 add_subdirectory(single_thread_app1)
 add_subdirectory(multi_thread_app1)
+add_subdirectory(multi_thread_app2)

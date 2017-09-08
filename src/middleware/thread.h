@@ -39,7 +39,8 @@ namespace goby
         unsigned long long loop_count_{0};
         const Config& cfg_;
 	int index_;
-
+        std::atomic<bool>* alive_{nullptr};
+        
     public:
         using Transporter = TransporterType;
         
@@ -60,7 +61,10 @@ namespace goby
         virtual ~Thread() { }
         
         void run(std::atomic<bool>& alive)
-        { while(alive) run_once(); }
+        {
+            alive_ = &alive;
+            while(alive) run_once();
+        }
 
         int index() { return index_; }
         
@@ -101,6 +105,8 @@ namespace goby
         TransporterType& transporter() { return *transporter_; }
 
         const Config& cfg() { return cfg_; }
+
+        void thread_quit() { (*alive_) = false; }
     };
 
 }

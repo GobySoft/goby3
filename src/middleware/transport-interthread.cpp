@@ -4,5 +4,3 @@ std::unordered_map<std::type_index, std::unique_ptr<goby::SubscriptionStoreBase>
 std::timed_mutex goby::SubscriptionStoreBase::stores_mutex_;
 std::condition_variable_any goby::SubscriptionStoreBase::stores_cv_;
 std::atomic<int> goby::SubscriptionStoreBase::pollers_(0);
-
-std::mutex goby::subscription_mutex;
