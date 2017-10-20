@@ -169,7 +169,9 @@ goby::common::ApplicationBase3<Config>::ApplicationBase3()
            glog.is(DIE) && glog << die << "cannot write glog output to requested file: " << file_name << std::endl;
 
        remove(file_symlink.c_str());
-       symlink(canonicalize_file_name(file_name.c_str()), file_symlink.c_str());
+       int result = symlink(canonicalize_file_name(file_name.c_str()), file_symlink.c_str());
+       if(result != 0)
+           glog.is(WARN) && glog << "Cannot create symlink to latest file. Continuing onwards anyway" << std::endl;
         
        
        glog.add_stream(cfg_.app().glog_config().file_log(i).verbosity(), fout_[i].get());

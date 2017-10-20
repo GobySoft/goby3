@@ -30,7 +30,8 @@ target_link_libraries(goby_moos
   goby_util
   goby_common 
   goby_acomms
-  proj  
+  goby_middleware
+  proj
   ${MOOS_LIBRARIES} ${Boost_LIBRARIES} ${PROTOBUF_LIBRARY}
 )
 
