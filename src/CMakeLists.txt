@@ -141,23 +141,7 @@ if(enable_v1_transitional)
 endif()  
 
 # GMP
-find_package(GMP QUIET)
-set(GMP_DOC_STRING "Enable Gmp3 database components (requires libgmp-dev: http://gmplib.org")
-# find resources directory
-if(GMP_FOUND)
-  option(enable_gmp ${GMP_DOC_STRING} ON)
-else()
-  option(enable_gmp ${GMP_DOC_STRING} OFF)
-  message(">> setting enable_gmp to OFF ... if you need this functionality: 1) install libgmp-dev; 2) run cmake -Denable_gmp=ON")
-endif()
-
-
-## Kernel
-option(disable_epoll "Apply workarounds for kernels that don't support epoll (before Linux 2.6). Leave OFF for newer kernels" OFF)
-if(disable_epoll)
-  add_definitions(-DBOOST_ASIO_DISABLE_EPOLL)
-endif()
-
+goby_find_required_package(GMP)
 
 ## set flags
 option(build_common "Build the Goby Common library" ON)  
