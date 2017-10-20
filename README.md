@@ -5,11 +5,11 @@ The Goby Underwater Autonomy Project aims to create a unified framework for mult
 For Release 2.1.1 and newer, Goby uses the standalone DCCL project: https://github.com/GobySoft/dccl
 
 - Contact Toby (https://github.com/tsaubergine) for information on becoming involved with goby.
-[](- Documentation: http://gobysoft.org/doc/2.1/)
-- Wiki: http://gobysoft.org/wiki
+- Documentation: http://gobysoft.org/doc/3.0/)
+- Wiki: https://github.com/GobySoft/goby3/wiki (also see older wiki: https://github.com/GobySoft/goby/wiki)
 - Mailing list: goby@mit.edu; join: http://mailman.mit.edu/mailman/listinfo/goby.
-[](- Release Ubuntu packages: https://launchpad.net/~goby-dev/+archive/ppa)
-[](- Nightly testing Ubuntu packages: https://code.launchpad.net/~tes/+archive/goby-daily)
+- Release Ubuntu packages: https://launchpad.net/~goby-dev/+archive/ppa)
+- Nightly testing Ubuntu packages: https://code.launchpad.net/~tes/+archive/goby-daily)
 
 ## goby3 middleware
 
