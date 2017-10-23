@@ -23,28 +23,20 @@
 #ifndef MOOS_PLUGIN_TRANSLATOR_20171020H
 #define MOOS_PLUGIN_TRANSLATOR_20171020H
 
-#include "goby/moos/moos_header.h"
+#include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
 #include "goby/middleware/multi-thread-application.h"
 
 namespace goby
 {
     namespace moos
-    {
-        template<typename Derived>
-            class Translator : public goby::SimpleThread<GobyMOOSGatewayConfig>
+    {        
+        bool TranslatorOnConnectCallBack(void* Translator);
+        
+        class Translator : public goby::SimpleThread<GobyMOOSGatewayConfig>
         {
         public:
-        Translator(const GobyMOOSGatewayConfig& config) :
-            goby::SimpleThread<GobyMOOSGatewayConfig>(config, cfg().moos_comms_tick())
-            {
-                moos_comms_.Run(cfg().moos_server(),
-                                cfg().moos_port(),
-                                translator_name(),
-                                cfg().moos_comms_tick());
-            }
-            
-            
+            Translator(const GobyMOOSGatewayConfig& config);
         protected:
 
             virtual std::string translator_name()
@@ -56,7 +48,6 @@ namespace goby
             typename goby::SimpleThread<GobyMOOSGatewayConfig>::Transporter& goby_comms() { return interprocess(); }
             
             // MOOS
-            
             void add_moos_trigger(const std::string& moos_var)
             { moos_trigger_vars_.insert(moos_var); }
             
@@ -70,27 +61,16 @@ namespace goby
 
             std::map<std::string, CMOOSMsg>& moos_buffer()
             { return moos_buffer_; }            
+
+            friend bool TranslatorOnConnectCallBack(void* Translator);
+            void moos_on_connect();
+            
             
         private:
-            void loop() override
-            {
-                MOOSMSG_LIST moos_msgs;
-                moos_comms_.Fetch(moos_msgs);
-                // buffer all then trigger
-                for(const CMOOSMsg& msg : moos_msgs)
-                {
-                    if(moos_buffer_vars_.count(msg.GetKey()))
-                        moos_buffer_[msg.GetKey()] = msg;
-                }
-                for(const CMOOSMsg& msg : moos_msgs)
-                {
-                    if(moos_trigger_vars_.count(msg.GetKey()))
-                        moos_to_goby(msg);
-                }
-            }
+            void loop() override;
             
         private:
-            CMOOSCommClient moos_comms_;
+            MOOS::MOOSAsyncCommClient moos_comms_;
             std::set<std::string> moos_trigger_vars_;
             std::set<std::string> moos_buffer_vars_;
             std::map<std::string, CMOOSMsg> moos_buffer_;

@@ -13,6 +13,7 @@ set(SRC
    transitional/message_algorithms.cpp
    moos_geodesy.cpp
    frontseat/frontseat.cpp
+   middleware/moos_plugin_translator.cpp
 )
 
 if(enable_v1_transitional)

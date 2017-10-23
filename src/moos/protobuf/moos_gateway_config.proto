@@ -8,7 +8,10 @@ message GobyMOOSGatewayConfig
 
     optional string moos_server = 3 [default = "localhost"];
     optional int32 moos_port = 4 [default = 9000];
-    optional int32 moos_comms_tick = 5 [default = 10];
 
     repeated string plugin_library = 10;
+
+    // frequency at which MOOS Fetch() is called - this allows us to interleave with Goby without
+    // thread access management in the user plugins
+    optional float poll_frequency = 20 [default = 10];
 }
