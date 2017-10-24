@@ -23,15 +23,22 @@
 #ifndef ZEROMQSERVICE20160817H
 #define ZEROMQSERVICE20160817H
 
+#include <mutex>
+#include <condition_variable>
+
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <boost/circular_buffer.hpp>
+#include <vector>
 
 #include <zmq.hpp>
 
 #include "goby/common/protobuf/zero_mq_node_config.pb.h"
 #include "goby/common/core_constants.h"
 #include "goby/common/logger.h"
+
+#include "transport-interthread.h" // for ReaderRegister
 
 namespace goby
 {
@@ -40,19 +47,31 @@ namespace goby
         class ZeroMQSocket
         {
           public:
-          ZeroMQSocket() { }
+        ZeroMQSocket(int buffer_size = 100) :
+            buffer_(buffer_size),
+                mutex_(new std::mutex)
+            { }
 
-          ZeroMQSocket(std::shared_ptr<zmq::socket_t> socket)
-              : socket_(socket)  { }
+        ZeroMQSocket(std::shared_ptr<zmq::socket_t> socket, int buffer_size)
+            : socket_(socket),
+                buffer_(buffer_size),
+                mutex_(new std::mutex)
+                { }
 
             void set_socket(std::shared_ptr<zmq::socket_t> socket)
             { socket_ = socket; }
             
             std::shared_ptr<zmq::socket_t>& socket()
             { return socket_; }            
+
+            std::mutex& mutex() { return *mutex_; }
+            boost::circular_buffer<std::vector<char>>& buffer() { return buffer_; }
             
           private:
             std::shared_ptr<zmq::socket_t> socket_;
+            boost::circular_buffer<std::vector<char>> buffer_;
+            // protects socket_ and buffer_
+            std::unique_ptr<std::mutex> mutex_;
         };
 
         
@@ -64,30 +83,8 @@ namespace goby
             virtual ~ZeroMQService();
             
 
-            void set_cfg(common::protobuf::ZeroMQServiceConfig* cfg)
-            {
-                process_cfg(*cfg);
-                cfg_.CopyFrom(*cfg);
-            }
-            
-            void merge_cfg(common::protobuf::ZeroMQServiceConfig* cfg)
-            {
-                process_cfg(*cfg);
-                cfg_.MergeFrom(*cfg);
-            }
+            void merge_cfg(common::protobuf::ZeroMQServiceConfig* cfg);
 
-            void set_cfg(const common::protobuf::ZeroMQServiceConfig& orig_cfg)
-            {
-                common::protobuf::ZeroMQServiceConfig cfg(orig_cfg);
-                set_cfg(&cfg);
-            }
-            
-            void merge_cfg(const common::protobuf::ZeroMQServiceConfig& orig_cfg)
-            {
-                common::protobuf::ZeroMQServiceConfig cfg(orig_cfg);
-                merge_cfg(&cfg);
-            }
-            
             void subscribe_all(int socket_id);
             void unsubscribe_all(int socket_id);            
             
@@ -101,52 +98,37 @@ namespace goby
                              int socket_id);            
             
             int poll(long timeout = -1);
-	    void close_all()
-	    {
-	      sockets_.clear();
-	      poll_items_.clear();
-	      poll_callbacks_.clear();
-	    }
-
 
             ZeroMQSocket& socket_from_id(int socket_id);
             
-
-            void register_poll_item(
-                const zmq::pollitem_t& item,
-                std::function<void (const void* data, int size, int message_part)> callback)
-            {
-                poll_items_.push_back(item);
-                poll_callbacks_.insert(std::make_pair(poll_items_.size()-1, callback));
-            }
-            
+                
             std::shared_ptr<zmq::context_t> zmq_context() { return context_; }
             
             static std::string glog_out_group() { return "goby::common::zmq::out"; }
             static std::string glog_in_group() { return "goby::common::zmq::in"; }
 
-            std::function<void (const void* data, int size, int message_part, int socket_id)> receive_func;
             
             friend class ZeroMQSocket;
           private:
             ZeroMQService(const ZeroMQService&);
             ZeroMQService& operator= (const ZeroMQService&);
             
-            void init();
-            
-            void process_cfg(common::protobuf::ZeroMQServiceConfig& cfg);
-
-            int socket_type(common::protobuf::ZeroMQServiceConfig::Socket::SocketType type);
+            static int socket_type(common::protobuf::ZeroMQServiceConfig::Socket::SocketType type);
 
           private:
             std::shared_ptr<zmq::context_t> context_;
+            
             std::unordered_map<int, ZeroMQSocket > sockets_;
             std::vector<zmq::pollitem_t> poll_items_;
-
-            common::protobuf::ZeroMQServiceConfig cfg_;
+            // maps poll_items_ index to sockets_ index
+            std::map<size_t, int> poll_item_to_socket_;
             
-            // maps poll_items_ index to a callback function
-            std::map<size_t, std::function<void (const void* data, int size, int message_part)> > poll_callbacks_;
+            // protects sockets_, poll_items_ and poll_item_to_socket_
+            std::mutex mutex_;
+            std::condition_variable writer_cv_;
+            std::atomic<int> reader_count_;
+            
+            
         };
     }
 }

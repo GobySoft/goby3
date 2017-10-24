@@ -20,6 +20,15 @@ namespace goby
         InterProcessPortal(InnerTransporter& inner, const protobuf::InterProcessPortalConfig& cfg) : Base(inner), cfg_(cfg)
         { _init(); }
 
+        ~InterProcessPortal()
+        {
+            zmq_alive_ = false;
+            if(zmq_thread_)
+                zmq_thread_->join();
+        }
+        
+        
+        
         friend Base;
         private:
         
@@ -54,14 +63,29 @@ namespace goby
             zmq_.subscribe(identifier, SOCKET_SUBSCRIBE);
         }
         
-        int _poll(std::chrono::system_clock::duration wait_for)
+        int _poll()
         {
-            int items = Base::inner_.poll(std::chrono::seconds(0));
-
-            if(wait_for == std::chrono::system_clock::duration::max())
-                return items + zmq_.poll();
+            int items = 0;
+            if(have_pubsub_sockets_)
+            {
+                auto& buffer = zmq_.socket_from_id(SOCKET_SUBSCRIBE).buffer();
+                items += buffer.size();
+                for(const auto& msg_buffer : buffer)
+                    _process_zmq_message(msg_buffer, SOCKET_SUBSCRIBE);
+                buffer.clear();
+            }
             else
-                return items + zmq_.poll(std::max(0l, (long)std::chrono::duration_cast<std::chrono::microseconds>(wait_for).count()));
+            {
+                auto& buffer = zmq_.socket_from_id(SOCKET_MANAGER).buffer();
+                items += buffer.size();
+                for(const auto& msg_buffer : buffer)
+                    _process_zmq_message(msg_buffer, SOCKET_MANAGER);
+                buffer.clear();
+            }
+
+            goby::glog.is(goby::common::logger::DEBUG1) && goby::glog <<  "Transport Interprocess ZeroMQ::_poll: " << items << std::endl;
+            
+            return items;
         }
         
         void _init()
@@ -70,7 +94,6 @@ namespace goby
             Base::inner_.template subscribe<Base::forward_group_, SerializerTransporterData>([this](std::shared_ptr<const SerializerTransporterData> d) { _receive_publication_forwarded(d);});
             
             Base::inner_.template subscribe<Base::forward_group_, SerializationSubscriptionBase, MarshallingScheme::CXX_OBJECT>([this](std::shared_ptr<const SerializationSubscriptionBase> s) { _receive_subscription_forwarded(s); });
-            zmq_.receive_func = [&](const void* data, int size, int message_part, int socket_id) { _zmq_inbox(data, size, message_part, socket_id); };
 
             goby::common::protobuf::ZeroMQServiceConfig cfg;
 
@@ -92,7 +115,7 @@ namespace goby
             }
             query_socket->set_connect_or_bind(common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
 
-            zmq_.set_cfg(&cfg);
+            zmq_.merge_cfg(&cfg);
             
             protobuf::ZMQManagerRequest req;
             req.set_request(protobuf::PROVIDE_PUB_SUB_SOCKETS);
@@ -101,14 +124,24 @@ namespace goby
             *static_cast<char*>(msg.data()) = '\0';
             req.SerializeToArray(static_cast<char*>(msg.data())+1, req.ByteSize());
             zmq_.send(msg, SOCKET_MANAGER);
-            Base::poll(std::chrono::seconds(cfg_.manager_timeout_seconds()));
+
+
+            // start zmq poll thread
+            zmq_thread_.reset(new std::thread(
+                                  [this](){
+                                      const int zmq_ms_timeout = 100000;
+                                      while (zmq_alive_) {
+                                          if(zmq_.poll(zmq_ms_timeout))
+                                              PollerInterface::cv()->notify_all();
+                                      } }));
+            
+            auto start = std::chrono::system_clock::now();
+            while(!have_pubsub_sockets_ && (start + std::chrono::seconds(cfg_.manager_timeout_seconds()) > std::chrono::system_clock::now()))
+                Base::poll(start + std::chrono::seconds(cfg_.manager_timeout_seconds()));
             
             if(!have_pubsub_sockets_)
-            {
-                std::cerr << "No response from gobyd: " << cfg_.ShortDebugString() << std::endl;
-                exit(EXIT_FAILURE);
-            }
-            
+                goby::glog.is(goby::common::logger::DIE) && goby::glog << "No response from gobyd: " << cfg_.ShortDebugString() << std::endl;
+
         }
         
         void _receive_publication_forwarded(std::shared_ptr<const goby::protobuf::SerializerTransporterData> data)
@@ -131,12 +164,14 @@ namespace goby
             zmq_.subscribe(identifier, SOCKET_SUBSCRIBE);
         }
 
-        void _zmq_inbox(const void* data, int size, int message_part, int socket_id)
+        void _process_zmq_message(const std::vector<char>& data, int socket_id)
         {
+            size_t size = data.size();
+            
             int null_delim_pos = 0;
-            for(int i = 0; i < size; ++i)
+            for(auto i = std::vector<char>::size_type(0), n = data.size(); i < n; ++i)
             {
-                if(*(static_cast<const char*>(data) + i) == '\0')
+                if(data[i] == '\0')
                 {
                     null_delim_pos = i;
                     break;
@@ -146,15 +181,14 @@ namespace goby
             {                
                 for(auto &sub : subscriptions_)
                 {                    
-                    if(static_cast<unsigned>(size) >= sub.first.size() && memcmp(data, sub.first.data(), sub.first.size()) == 0)
-                        sub.second->post(static_cast<const char*>(data) + null_delim_pos + 1,
-                                         static_cast<const char*>(data) + size);
+                    if(static_cast<unsigned>(size) >= sub.first.size() && memcmp(&data[0], sub.first.data(), sub.first.size()) == 0)
+                        sub.second->post(data.begin()+null_delim_pos+1, data.end());
                 }
             }
             else if(socket_id == SOCKET_MANAGER)
             {
                 protobuf::ZMQManagerResponse response;
-                response.ParseFromArray(static_cast<const char*>(data) + null_delim_pos + 1, size - (null_delim_pos + 1));
+                response.ParseFromArray(&data[0] + null_delim_pos + 1, size - (null_delim_pos + 1));
                 if(response.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
                 {
                     goby::common::protobuf::ZeroMQServiceConfig cfg;
@@ -242,6 +276,11 @@ namespace goby
         
         const protobuf::InterProcessPortalConfig& cfg_;
         goby::middleware::ZeroMQService zmq_;
+
+        // runs zmq_.poll()
+        std::unique_ptr<std::thread> zmq_thread_;
+        std::atomic<bool> zmq_alive_{true};
+        
         bool have_pubsub_sockets_{false};
         
         // maps identifier to subscription
