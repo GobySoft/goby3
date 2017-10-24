@@ -47,15 +47,10 @@ namespace goby
         class ZeroMQSocket
         {
           public:
-        ZeroMQSocket(int buffer_size = 100) :
-            buffer_(buffer_size),
-                mutex_(new std::mutex)
-            { }
-
-        ZeroMQSocket(std::shared_ptr<zmq::socket_t> socket, int buffer_size)
+        ZeroMQSocket(std::shared_ptr<zmq::socket_t> socket, int buffer_size, std::mutex& mutex)
             : socket_(socket),
                 buffer_(buffer_size),
-                mutex_(new std::mutex)
+                mutex_(mutex)
                 { }
 
             void set_socket(std::shared_ptr<zmq::socket_t> socket)
@@ -64,14 +59,14 @@ namespace goby
             std::shared_ptr<zmq::socket_t>& socket()
             { return socket_; }            
 
-            std::mutex& mutex() { return *mutex_; }
+            std::mutex& mutex() { return mutex_; }
             boost::circular_buffer<std::vector<char>>& buffer() { return buffer_; }
             
           private:
             std::shared_ptr<zmq::socket_t> socket_;
             boost::circular_buffer<std::vector<char>> buffer_;
             // protects socket_ and buffer_
-            std::unique_ptr<std::mutex> mutex_;
+            std::mutex& mutex_;
         };
 
         
@@ -97,7 +92,7 @@ namespace goby
             void unsubscribe(const std::string& identifier,
                              int socket_id);            
             
-            int poll(long timeout = -1);
+            int poll(long timeout);
 
             ZeroMQSocket& socket_from_id(int socket_id);
             
@@ -127,8 +122,11 @@ namespace goby
             std::mutex mutex_;
             std::condition_variable writer_cv_;
             std::atomic<int> reader_count_;
-            
-            
+
+            // protects writeable sockets
+            std::mutex socket_write_mutex_;
+            // protects readable sockets
+            std::mutex socket_read_mutex_;
         };
     }
 }

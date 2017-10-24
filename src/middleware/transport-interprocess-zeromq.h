@@ -68,7 +68,9 @@ namespace goby
             int items = 0;
             if(have_pubsub_sockets_)
             {
-                auto& buffer = zmq_.socket_from_id(SOCKET_SUBSCRIBE).buffer();
+                auto& socket = zmq_.socket_from_id(SOCKET_SUBSCRIBE);
+                std::lock_guard<std::mutex> lock(socket.mutex());
+                auto& buffer = socket.buffer();
                 items += buffer.size();
                 for(const auto& msg_buffer : buffer)
                     _process_zmq_message(msg_buffer, SOCKET_SUBSCRIBE);
@@ -76,11 +78,15 @@ namespace goby
             }
             else
             {
-                auto& buffer = zmq_.socket_from_id(SOCKET_MANAGER).buffer();
+                auto& socket = zmq_.socket_from_id(SOCKET_MANAGER);
+                socket.mutex().lock();
+                // make copy so we can do merge_cfg();
+                auto buffer = socket.buffer();
+                socket.buffer().clear();
+                socket.mutex().unlock();
                 items += buffer.size();
                 for(const auto& msg_buffer : buffer)
                     _process_zmq_message(msg_buffer, SOCKET_MANAGER);
-                buffer.clear();
             }
 
             goby::glog.is(goby::common::logger::DEBUG1) && goby::glog <<  "Transport Interprocess ZeroMQ::_poll: " << items << std::endl;
@@ -129,7 +135,7 @@ namespace goby
             // start zmq poll thread
             zmq_thread_.reset(new std::thread(
                                   [this](){
-                                      const int zmq_ms_timeout = 100000;
+                                      const int zmq_ms_timeout = 100;
                                       while (zmq_alive_) {
                                           if(zmq_.poll(zmq_ms_timeout))
                                               PollerInterface::cv()->notify_all();

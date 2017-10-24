@@ -33,15 +33,6 @@ using goby::util::hex_encode;
 using namespace goby::common::logger_lock;
 using namespace goby::common::logger;
 
-#if ZMQ_VERSION_MAJOR == 2
-#   define zmq_msg_send(msg,sock,opt) zmq_send (sock, msg, opt)
-#   define zmq_msg_recv(msg,sock,opt) zmq_recv (sock, msg, opt)
-#   define ZMQ_POLL_DIVISOR    1        //  zmq_poll is usec
-#   define more_t int64_t
-#else
-#   define more_t int
-#   define ZMQ_POLL_DIVISOR    1000     //  zmq_poll is msec
-#endif
 
 goby::middleware::ZeroMQService::ZeroMQService(std::shared_ptr<zmq::context_t> context)
     : context_(context)
@@ -75,7 +66,16 @@ void goby::middleware::ZeroMQService::merge_cfg(common::protobuf::ZeroMQServiceC
             std::shared_ptr<zmq::socket_t> new_socket(
                 new zmq::socket_t(*context_, socket_type(cfg->socket(i).socket_type())));
             
-            sockets_.insert(std::make_pair(cfg->socket(i).socket_id(), ZeroMQSocket(new_socket, cfg->socket(i).receive_queue_size())));
+            if(cfg->socket(i).socket_type() == common::protobuf::ZeroMQServiceConfig::Socket::PUBLISH)
+                sockets_.insert(std::make_pair(cfg->socket(i).socket_id(),
+                                               ZeroMQSocket(new_socket,
+                                                            cfg->socket(i).receive_queue_size(),
+                                                            socket_write_mutex_)));
+            else
+                sockets_.insert(std::make_pair(cfg->socket(i).socket_id(),
+                                               ZeroMQSocket(new_socket,
+                                                            cfg->socket(i).receive_queue_size(),
+                                                            socket_read_mutex_)));
             
             //  Initialize poll set
             zmq::pollitem_t item = { (void*)*new_socket, 0, ZMQ_POLLIN, 0 };
@@ -211,7 +211,7 @@ goby::middleware::ZeroMQService::~ZeroMQService()
 goby::middleware::ZeroMQSocket& goby::middleware::ZeroMQService::socket_from_id(int socket_id)
 {
     mutex_.lock();
-    ReaderRegister<decltype(writer_cv_)> r(reader_count_, writer_cv_);
+    ReaderRegister r(reader_count_, writer_cv_);
     mutex_.unlock();
 
     
@@ -273,28 +273,22 @@ void goby::middleware::ZeroMQService::send(zmq::message_t& msg,
 }
 
 
-int goby::middleware::ZeroMQService::poll(long timeout /* = -1 */)
+int goby::middleware::ZeroMQService::poll(long timeout)
 {
-    glog.is(DEBUG1) && glog << "Entering ZeroMQService::poll" << std::endl;
+    glog.is(DEBUG1) && glog << "Entering ZeroMQService::poll (timeout: " << timeout << ")" << std::endl;
     
     mutex_.lock();
-    ReaderRegister<decltype(writer_cv_)> r(reader_count_, writer_cv_);
+    ReaderRegister r(reader_count_, writer_cv_);
     mutex_.unlock();
+
+    std::lock_guard<std::mutex> lock(socket_read_mutex_);        
 
     glog.is(DEBUG1) && glog << "ZeroMQService::poll received read lock" << std::endl;
     
     int had_events = 0;
-    {
-        for(int i = 0, n = poll_items_.size(); i < n; ++i)
-            socket_from_id(poll_item_to_socket_.at(i)).mutex().lock();
-        
-        long zmq_timeout = (timeout == -1) ? -1 : timeout/ZMQ_POLL_DIVISOR;
-        zmq::poll (&poll_items_[0], poll_items_.size(), zmq_timeout);
-        
-        for(int i = 0, n = poll_items_.size(); i < n; ++i)
-            socket_from_id(poll_item_to_socket_.at(i)).mutex().unlock();
-    }
-    
+    glog.is(DEBUG1) && glog << "ZeroMQService::poll received sockets lock" << std::endl;
+    long zmq_timeout = (timeout == -1) ? -1 : timeout;
+    zmq::poll (&poll_items_[0], poll_items_.size(), zmq_timeout);        
     
     for(int i = 0, n = poll_items_.size(); i < n; ++i)
     {
@@ -303,13 +297,13 @@ int goby::middleware::ZeroMQService::poll(long timeout /* = -1 */)
             zmq::message_t zmq_msg;
 
             auto& socket = socket_from_id(poll_item_to_socket_.at(i));
-            std::lock_guard<std::mutex> lock(socket.mutex());
             /* Block until a message is available to be received from socket */
             if(socket.socket()->recv(&zmq_msg))
             {
                 glog.is(DEBUG3) &&
                     glog << group(glog_in_group())
-                         << "Had event for poll item " << i << std::endl ;
+                         << "Had event for poll item " << i << ", buffer size: " << socket.buffer().size()+1 << std::endl;  
+
                 socket.buffer().push_back(std::vector<char>(reinterpret_cast<char*>(zmq_msg.data()), reinterpret_cast<char*>(zmq_msg.data())+zmq_msg.size()));
             }
             else

@@ -15,18 +15,21 @@ namespace goby
 {
     // increments and decrements a reader count using RAII
     // once the reader count goes to zero, notifies a condition variable (for the writer(s) to use)
-    template<typename ConditionVariable>
-        struct ReaderRegister
-        {
-        ReaderRegister(std::atomic<int>& counter, ConditionVariable& cv) : counter_(counter), cv_(cv)
-                { ++counter; }
-            ~ReaderRegister()
-                {
-                    --counter_;
-                    if(counter_ == 0) cv_.notify_all();
-                }
-            std::atomic<int>& counter_;
-            ConditionVariable& cv_;
+    struct ReaderRegister
+    {
+    ReaderRegister(std::atomic<int>& counter, std::condition_variable& cv) : counter_(counter), cv_(cv)
+            {
+                ++counter;
+            }
+        ~ReaderRegister()
+            {
+                --counter_;
+                
+                if(counter_ == 0) cv_.notify_all();
+            }
+        
+        std::atomic<int>& counter_;
+        std::condition_variable& cv_;
         };
     
     
@@ -39,7 +42,7 @@ namespace goby
             if(stores_mutex_.try_lock())
             {
                 // multiple readers
-                ReaderRegister<decltype(stores_cv_)> r(pollers_, stores_cv_);
+                ReaderRegister r(pollers_, stores_cv_);
                 stores_mutex_.unlock();
                 
                 int poll_items = 0;
@@ -123,7 +126,7 @@ namespace goby
             std::vector<std::pair<std::shared_ptr<std::mutex>, std::shared_ptr<std::condition_variable_any>>> cv_to_notify;
             {
                 subscription_mutex_.lock();
-                ReaderRegister<decltype(subscription_cv_)> r(subscription_readers_, subscription_cv_);
+                ReaderRegister r(subscription_readers_, subscription_cv_);
                 subscription_mutex_.unlock();
                 
                 auto range = subscription_groups_.equal_range(group);
@@ -160,7 +163,7 @@ namespace goby
             int poll_items_count = 0;
 
             subscription_mutex_.lock();
-            ReaderRegister<decltype(subscription_cv_)> r(subscription_readers_, subscription_cv_);
+            ReaderRegister r(subscription_readers_, subscription_cv_);
             subscription_mutex_.unlock();
                 
             
