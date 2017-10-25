@@ -121,29 +121,27 @@ namespace goby
             // push new data
             // build up local vector of relevant condition variables while locked
             std::vector<std::pair<std::shared_ptr<std::mutex>, std::shared_ptr<std::condition_variable_any>>> cv_to_notify;
-            {
-                { std::lock_guard<decltype(subscription_mutex_)> lock(subscription_mutex_); }
-
-                {
-                    ReaderRegister<decltype(subscription_cv_)>(subscription_readers_, subscription_cv_);
-                
-                    auto range = subscription_groups_.equal_range(group);
-                    for (auto it = range.first; it != range.second; ++it)
-                    {
-                        std::thread::id thread_id = it->second->first;
+            {	       
+		subscription_mutex_.lock();	       
+		ReaderRegister<decltype(subscription_cv_)> r(subscription_readers_, subscription_cv_);
+                subscription_mutex_.unlock();
+		
+		auto range = subscription_groups_.equal_range(group);
+		for (auto it = range.first; it != range.second; ++it)
+		{
+		    std::thread::id thread_id = it->second->first;
                     
-                        // don't store a copy if publisher == subscriber, and echo is false
-                        if(thread_id != std::this_thread::get_id() || transport_cfg.echo())
-                        {
-                            // protect the DataQueue we are writing to
-                            std::unique_lock<std::mutex> lock(*(data_protection_.find(thread_id)->second.first));
-                            auto queue_it = data_.find(thread_id);
-                            queue_it->second.insert(group, data);
-                            cv_to_notify.push_back(data_protection_.at(thread_id));
-                        }
-                    }
-                }
-            }
+		    // don't store a copy if publisher == subscriber, and echo is false
+		    if(thread_id != std::this_thread::get_id() || transport_cfg.echo())
+		    {
+			// protect the DataQueue we are writing to
+			std::unique_lock<std::mutex> lock(*(data_protection_.find(thread_id)->second.first));
+			auto queue_it = data_.find(thread_id);
+			queue_it->second.insert(group, data);
+			cv_to_notify.push_back(data_protection_.at(thread_id));
+		    }
+		}
+	    }	   
 
             // unlock and notify condition variables from local vector
             for (const auto& cv_mutex_pair : cv_to_notify)
@@ -161,44 +159,43 @@ namespace goby
             std::vector<std::pair<std::function<void(std::shared_ptr<const Data>)>, std::shared_ptr<const Data>>> data_callbacks;
             int poll_items_count = 0;
 
-            { std::lock_guard<decltype(subscription_mutex_)> lock(subscription_mutex_); }
-
-            {
-                ReaderRegister<decltype(subscription_cv_)>(subscription_readers_, subscription_cv_);
+	    subscription_mutex_.lock();	       
+	    ReaderRegister<decltype(subscription_cv_)> r(subscription_readers_, subscription_cv_);
+	    subscription_mutex_.unlock();
 
             
-                auto queue_it = data_.find(thread_id);
-                if(queue_it == data_.end())
-                    return 0; // no subscriptions
+	    auto queue_it = data_.find(thread_id);
+	    if(queue_it == data_.end())
+		return 0; // no subscriptions
             
 
-                {
-                    std::unique_lock<std::mutex> lock(*(data_protection_.find(thread_id)->second.first));
+	    {
+		std::unique_lock<std::mutex> lock(*(data_protection_.find(thread_id)->second.first));
                                 
-                    // loop over all Groups stored in this DataQueue
-                    for (auto data_it = queue_it->second.cbegin(), end = queue_it->second.cend(); data_it != end; ++data_it) 
-                    {
-                        const Group& group = data_it->first;
-                        auto group_range = subscription_groups_.equal_range(group);
-                        // For a given Group, loop over all subscriptions to this Group
-                        for(auto group_it = group_range.first; group_it != group_range.second; ++group_it)
-                        {
-                            if(group_it->second->first != thread_id)
-                                continue;
+		// loop over all Groups stored in this DataQueue
+		for (auto data_it = queue_it->second.cbegin(), end = queue_it->second.cend(); data_it != end; ++data_it) 
+		{
+		    const Group& group = data_it->first;
+		    auto group_range = subscription_groups_.equal_range(group);
+		    // For a given Group, loop over all subscriptions to this Group
+		    for(auto group_it = group_range.first; group_it != group_range.second; ++group_it)
+		    {
+			if(group_it->second->first != thread_id)
+			    continue;
                         
-                            auto& callback = group_it->second->second.callback;
-                            // store the callback function and datum for all the elements queued
-                            for(auto& datum : data_it->second)
-                            {
-                                ++poll_items_count;
-                                data_callbacks.push_back(std::make_pair(callback, datum));
-                            }
-                        }
-                        queue_it->second.clear(group);
-                    }
-                }
-            }
-            
+			auto& callback = group_it->second->second.callback;
+			// store the callback function and datum for all the elements queued
+			for(auto& datum : data_it->second)
+			{
+			    ++poll_items_count;
+			    data_callbacks.push_back(std::make_pair(callback, datum));
+			}
+		    }
+		    queue_it->second.clear(group);
+		}
+	    }
+	
+	
             // now that we're no longer blocking the data mutex, actually run the callbacks
             for (const auto& callback_datum_pair : data_callbacks)
                 callback_datum_pair.first(callback_datum_pair.second);
