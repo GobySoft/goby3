@@ -44,7 +44,7 @@ bool goby::ZMQMainThread::recv(protobuf::InprocControl* control_msg, int flags)
     if(control_socket_.recv(&zmq_msg, flags))
     {
 	control_msg->ParseFromArray((char*)zmq_msg.data(), zmq_msg.size());	
-	glog.is(DEBUG1) && glog << "Main thread received control msg: " << control_msg->DebugString() << std::endl;
+	glog.is(DEBUG3) && glog << "Main thread received control msg: " << control_msg->DebugString() << std::endl;
 	message_received = true;
     }
 
@@ -219,7 +219,7 @@ void goby::ZMQReadThread::control_data(const zmq::message_t& zmq_msg)
 	    auto& zmq_filter = control_msg.subscription_identifier();
 	    subscribe_socket_.setsockopt(ZMQ_SUBSCRIBE, zmq_filter.c_str(), zmq_filter.size());
     
-	    glog.is(DEBUG1) &&
+	    glog.is(DEBUG2) &&
 		glog << "subscribed with identifier: [" << zmq_filter << "]" << std::endl ;
 	    break;
 	}
@@ -228,7 +228,7 @@ void goby::ZMQReadThread::control_data(const zmq::message_t& zmq_msg)
 	    auto& zmq_filter = control_msg.subscription_identifier();
 	    subscribe_socket_.setsockopt(ZMQ_UNSUBSCRIBE, zmq_filter.c_str(), zmq_filter.size());
 	    
-	    glog.is(DEBUG1) &&
+	    glog.is(DEBUG2) &&
 		glog << "unsubscribed with identifier: [" << zmq_filter << "]" << std::endl ;
 	    break;	   
 	}
@@ -269,7 +269,7 @@ void goby::ZMQReadThread::manager_data(const zmq::message_t& zmq_msg)
 
 	have_pubsub_sockets_ = true;
 
-	glog.is(DEBUG1) && glog << "Received manager sockets: " << response.DebugString() << std::endl;
+	glog.is(DEBUG3) && glog << "Received manager sockets: " << response.DebugString() << std::endl;
     }
 }
 
