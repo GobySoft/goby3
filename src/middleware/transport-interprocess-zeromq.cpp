@@ -37,11 +37,11 @@ goby::ZMQMainThread::ZMQMainThread(zmq::context_t& context) :
     
 }
 
-bool goby::ZMQMainThread::non_blocking_recv(protobuf::InprocControl* control_msg)
+bool goby::ZMQMainThread::recv(protobuf::InprocControl* control_msg, int flags)
 {
     zmq::message_t zmq_msg;
     bool message_received = false;
-    if(control_socket_.recv(&zmq_msg, ZMQ_NOBLOCK))
+    if(control_socket_.recv(&zmq_msg, flags))
     {
 	control_msg->ParseFromArray((char*)zmq_msg.data(), zmq_msg.size());	
 	glog.is(DEBUG1) && glog << "Main thread received control msg: " << control_msg->DebugString() << std::endl;
@@ -51,16 +51,67 @@ bool goby::ZMQMainThread::non_blocking_recv(protobuf::InprocControl* control_msg
     return message_received;
 }
 
+void goby::ZMQMainThread::set_publish_cfg(const goby::common::protobuf::ZeroMQServiceConfig::Socket& cfg)   
+{
+    setup_socket(publish_socket_, cfg);
+    publish_socket_configured_ = true;
+
+    // publish any queued up messages
+    for(auto& pub_pair : publish_queue_)
+	publish(pub_pair.first, &pub_pair.second[0], pub_pair.second.size());
+    publish_queue_.clear();
+}
+
+void goby::ZMQMainThread::publish(const std::string& identifier, const char* bytes, int size)
+{
+    if(publish_socket_configured_)
+    {
+	zmq::message_t msg(identifier.size() + size);
+	memcpy(msg.data(), identifier.data(), identifier.size());
+	memcpy(static_cast<char*>(msg.data())+identifier.size(),
+	       bytes, size);
+	publish_socket_.send(msg);
+	
+	glog.is(DEBUG3) && glog << "Published " << size << " bytes to [" << identifier.substr(0, identifier.size()-1) << "]" << std::endl;
+
+    }
+    else
+    {
+	publish_queue_.push_back(std::make_pair(identifier, std::vector<char>(bytes, bytes+size)));
+    }
+}
+
+void goby::ZMQMainThread::subscribe(const std::string& identifier)
+{
+    protobuf::InprocControl control;
+    control.set_type(protobuf::InprocControl::SUBSCRIBE);
+    control.set_subscription_identifier(identifier);
+    zmq::message_t zmq_control_msg(control.ByteSize());
+    control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());            
+    control_socket_.send(zmq_control_msg);
+}
+
+void goby::ZMQMainThread::unsubscribe(const std::string& identifier)
+{
+    protobuf::InprocControl control;
+    control.set_type(protobuf::InprocControl::UNSUBSCRIBE);
+    control.set_subscription_identifier(identifier);
+    zmq::message_t zmq_control_msg(control.ByteSize());
+    control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());            
+    control_socket_.send(zmq_control_msg);
+}
+
 
 //
 // ZMQReadThread
 //
-goby::ZMQReadThread::ZMQReadThread(const protobuf::InterProcessPortalConfig& cfg, zmq::context_t& context, std::atomic<bool>& alive) :
+goby::ZMQReadThread::ZMQReadThread(const protobuf::InterProcessPortalConfig& cfg, zmq::context_t& context, std::atomic<bool>& alive, std::shared_ptr<std::condition_variable_any> poller_cv) :
     cfg_(cfg),
     control_socket_(context, ZMQ_PAIR),
     subscribe_socket_(context, ZMQ_SUB),
     manager_socket_(context, ZMQ_REQ),
-    alive_(alive)
+    alive_(alive),
+    poller_cv_(poller_cv)
 {
     poll_items_.resize(NUMBER_SOCKETS); 
     poll_items_[SOCKET_CONTROL] = { (void*)control_socket_, 0, ZMQ_POLLIN, 0 };
@@ -95,7 +146,7 @@ void goby::ZMQReadThread::run()
     {
 	if(have_pubsub_sockets_)
 	{
-	    poll();
+	    poll(1000); // need timeout to ensure we can quit
 	}
 	else
 	{
@@ -105,8 +156,12 @@ void goby::ZMQReadThread::run()
 	    zmq::message_t msg(req.ByteSize());
 	    req.SerializeToArray(static_cast<char*>(msg.data()), req.ByteSize());
 	    manager_socket_.send(msg);
-	
-	    poll(cfg_.manager_timeout_seconds()*1000);
+	    
+	    
+            
+            auto start = std::chrono::system_clock::now();
+            while(!have_pubsub_sockets_ && (start + std::chrono::seconds(cfg_.manager_timeout_seconds()) > std::chrono::system_clock::now()))
+		poll(cfg_.manager_timeout_seconds()*1000);	    
 	
 	    if(!have_pubsub_sockets_)
 		goby::glog.is(goby::common::logger::DIE) && goby::glog << "No response from gobyd: " << cfg_.ShortDebugString() << std::endl;
@@ -146,11 +201,40 @@ void goby::ZMQReadThread::poll(long timeout_ms)
 void goby::ZMQReadThread::control_data(const zmq::message_t& zmq_msg)
 {
     // command from the main thread
+    protobuf::InprocControl control_msg;
+    control_msg.ParseFromArray((char*)zmq_msg.data(), zmq_msg.size());	
+
+    switch(control_msg.type())
+    {
+        case protobuf::InprocControl::SUBSCRIBE:
+	{
+	    auto& zmq_filter = control_msg.subscription_identifier();
+	    subscribe_socket_.setsockopt(ZMQ_SUBSCRIBE, zmq_filter.c_str(), zmq_filter.size());
+    
+	    glog.is(DEBUG1) &&
+		glog << "subscribed with identifier: [" << zmq_filter << "]" << std::endl ;
+	    break;
+	}
+        case protobuf::InprocControl::UNSUBSCRIBE:
+	{
+	    auto& zmq_filter = control_msg.subscription_identifier();
+	    subscribe_socket_.setsockopt(ZMQ_UNSUBSCRIBE, zmq_filter.c_str(), zmq_filter.size());
+	    
+	    glog.is(DEBUG1) &&
+		glog << "unsubscribed with identifier: [" << zmq_filter << "]" << std::endl ;
+	    break;	   
+	}
+        default: break;
+    }
+    
 }
 void goby::ZMQReadThread::subscribe_data(const zmq::message_t& zmq_msg)
-{
+{   
     // data from goby - forward to the main thread
-
+    protobuf::InprocControl control;
+    control.set_type(protobuf::InprocControl::RECEIVE);
+    control.set_received_data(std::string((char*)zmq_msg.data(), zmq_msg.size()));    
+    send_control_msg(control);
 }
 void goby::ZMQReadThread::manager_data(const zmq::message_t& zmq_msg)
 {
@@ -169,14 +253,20 @@ void goby::ZMQReadThread::manager_data(const zmq::message_t& zmq_msg)
 	protobuf::InprocControl control;
 	control.set_type(protobuf::InprocControl::PUB_CONFIGURATION);
 	*control.mutable_publish_socket() = response.publish_socket();
-	zmq::message_t zmq_control_msg(control.ByteSize());
-	control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());            
-	control_socket_.send(zmq_control_msg);
-	
+	send_control_msg(control);
+
 	have_pubsub_sockets_ = true;
 
 	glog.is(DEBUG1) && glog << "Received manager sockets: " << response.DebugString() << std::endl;
     }
+}
+
+void goby::ZMQReadThread::send_control_msg(const protobuf::InprocControl& control)
+{
+    zmq::message_t zmq_control_msg(control.ByteSize());
+    control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());            
+    control_socket_.send(zmq_control_msg);
+    poller_cv_->notify_all();
 }
 
 //

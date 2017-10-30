@@ -48,7 +48,9 @@ namespace goby
     SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : MainThread(goby::common::ApplicationBase3<Config>::app_cfg(), loop_freq),
             portal_(goby::common::ApplicationBase3<Config>::app_cfg().interprocess_portal())
-        { MainThread::set_transporter(&portal_); }
+        {
+	    MainThread::set_transporter(&portal_);
+	}
         
         virtual ~SingleThreadApplication() { }
         
