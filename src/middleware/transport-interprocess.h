@@ -11,7 +11,6 @@
 #include "transport-common.h"
 #include "goby/middleware/protobuf/interprocess_config.pb.h"
 
-
 namespace goby
 {   
     template<typename Derived, typename InnerTransporter>

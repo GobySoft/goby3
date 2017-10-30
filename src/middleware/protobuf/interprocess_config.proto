@@ -1,5 +1,3 @@
-import "goby/common/protobuf/zero_mq_node_config.proto";
-
 package goby.protobuf;
 
 message InterProcessPortalConfig
@@ -19,24 +17,9 @@ message InterProcessPortalConfig
 
     optional uint32 send_queue_size = 6 [default = 1000];
     optional uint32 receive_queue_size = 7 [default = 1000];
-    
+    optional uint32 zeromq_number_io_threads = 8 [default = 4];
+
     optional uint32 manager_timeout_seconds = 10 [default = 1];
 }
 
 
-enum Request
-{
-    PROVIDE_PUB_SUB_SOCKETS = 1;
-}
-
-message ZMQManagerRequest
-{
-    required Request request = 1;
-}
-
-message ZMQManagerResponse
-{
-    required Request request = 1;
-    optional goby.common.protobuf.ZeroMQServiceConfig.Socket publish_socket = 2;
-    optional goby.common.protobuf.ZeroMQServiceConfig.Socket subscribe_socket = 3;
-}

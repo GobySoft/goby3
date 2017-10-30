@@ -44,6 +44,7 @@ namespace goby
 {
     namespace middleware
     {
+      void setup_socket(zmq::socket_t& socket, const goby::common::protobuf::ZeroMQServiceConfig::Socket& cfg);
         class ZeroMQSocket
         {
           public:
