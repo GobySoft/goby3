@@ -1,4 +1,6 @@
 #include "goby/middleware/single-thread-application.h"
+#include "goby/common/time.h"
+
 #include <boost/units/io.hpp>
 #include <sys/types.h>
 #include <sys/wait.h>
