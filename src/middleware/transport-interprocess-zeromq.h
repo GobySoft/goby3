@@ -22,6 +22,11 @@ namespace goby
 	void publish(const std::string& identifier, const char* bytes, int size);
 	void subscribe(const std::string& identifier);
 	void unsubscribe(const std::string& identifier);
+	void reader_shutdown();
+
+    private:
+	void send_control_msg(const protobuf::InprocControl& control);
+
     private:
 	zmq::socket_t control_socket_;
 	zmq::socket_t publish_socket_;
@@ -77,9 +82,11 @@ namespace goby
 
         ~InterProcessPortal()
         {
-            zmq_alive_ = false;
             if(zmq_thread_)
+	    {
+		zmq_main_.reader_shutdown();
                 zmq_thread_->join();
+	    }
         }
         
         

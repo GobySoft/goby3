@@ -86,9 +86,7 @@ void goby::ZMQMainThread::subscribe(const std::string& identifier)
     protobuf::InprocControl control;
     control.set_type(protobuf::InprocControl::SUBSCRIBE);
     control.set_subscription_identifier(identifier);
-    zmq::message_t zmq_control_msg(control.ByteSize());
-    control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());            
-    control_socket_.send(zmq_control_msg);
+    send_control_msg(control);
 }
 
 void goby::ZMQMainThread::unsubscribe(const std::string& identifier)
@@ -96,11 +94,21 @@ void goby::ZMQMainThread::unsubscribe(const std::string& identifier)
     protobuf::InprocControl control;
     control.set_type(protobuf::InprocControl::UNSUBSCRIBE);
     control.set_subscription_identifier(identifier);
+    send_control_msg(control);
+}
+void goby::ZMQMainThread::reader_shutdown()
+{
+    protobuf::InprocControl control;
+    control.set_type(protobuf::InprocControl::SHUTDOWN);
+    send_control_msg(control);
+}
+
+void goby::ZMQMainThread::send_control_msg(const protobuf::InprocControl& control)
+{
     zmq::message_t zmq_control_msg(control.ByteSize());
     control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());            
     control_socket_.send(zmq_control_msg);
 }
-
 
 //
 // ZMQReadThread
@@ -146,7 +154,7 @@ void goby::ZMQReadThread::run()
     {
 	if(have_pubsub_sockets_)
 	{
-	    poll(1000); // need timeout to ensure we can quit
+	    poll(); 
 	}
 	else
 	{
@@ -223,6 +231,10 @@ void goby::ZMQReadThread::control_data(const zmq::message_t& zmq_msg)
 	    glog.is(DEBUG1) &&
 		glog << "unsubscribed with identifier: [" << zmq_filter << "]" << std::endl ;
 	    break;	   
+	}
+        case protobuf::InprocControl::SHUTDOWN:
+	{
+	    alive_ = false;
 	}
         default: break;
     }

@@ -1,5 +1,4 @@
 import "goby/common/protobuf/zero_mq_node_config.proto";
-import "goby/middleware/protobuf/interprocess_config.proto";
 
 package goby.protobuf;
 
@@ -29,6 +28,7 @@ message InprocControl
 	SUBSCRIBE = 2; // main -> read
 	UNSUBSCRIBE = 3; // main -> read
 	RECEIVE = 4; // read -> main
+	SHUTDOWN = 5; // main -> read
     }
     required InprocControlType type = 1;
     
