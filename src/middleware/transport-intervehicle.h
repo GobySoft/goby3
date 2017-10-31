@@ -26,11 +26,19 @@ namespace goby
    template<typename Derived, typename InnerTransporter>
        class InterVehicleTransporterBase :
        public StaticTransporterInterface<InterVehicleTransporterBase<Derived, InnerTransporter>, InnerTransporter>,
-       public PollAbsoluteTimeInterface<InterVehicleTransporterBase<Derived, InnerTransporter>>
+       public Poller<InterVehicleTransporterBase<Derived, InnerTransporter>>
     {
+        using PollerType = Poller<InterVehicleTransporterBase<Derived, InnerTransporter>>;
+
     public:        
-    InterVehicleTransporterBase(InnerTransporter& inner) : inner_(inner) { }
-    InterVehicleTransporterBase() : own_inner_(new InnerTransporter), inner_(*own_inner_) { }
+    InterVehicleTransporterBase(InnerTransporter& inner) :
+        PollerType(&inner), inner_(inner) { }
+    InterVehicleTransporterBase(InnerTransporter* inner_ptr = new InnerTransporter,
+                                bool base_owns_inner = true) :
+        PollerType(inner_ptr),
+            own_inner_(base_owns_inner ? inner_ptr : nullptr),
+            inner_(*inner_ptr)
+            { }
 
 	template<typename Data>
 	    static constexpr int scheme()
@@ -116,12 +124,10 @@ namespace goby
         InnerTransporter& inner_;
         static constexpr Group forward_group_ { "goby::InterVehicleTransporter" };
 
-        friend PollAbsoluteTimeInterface<InterVehicleTransporterBase<Derived, InnerTransporter>>;
     private:
-        int _poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
-        {
-            return static_cast<Derived*>(this)->_poll(timeout);
-        }
+        friend PollerType;        
+        int _poll()
+        { return static_cast<Derived*>(this)->_poll(); }
     };    
 
    template<typename Derived, typename InnerTransporter>
@@ -165,7 +171,9 @@ namespace goby
                             const Group& group,
                             std::function<Group(const Data&)> group_func)
         {
-            int dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::codec().template id<Data>();
+            auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::template id<Data>();
+        
+            
             auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { func(d); };
             typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType subscribe_function(subscribe_lambda);
             auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
@@ -178,11 +186,9 @@ namespace goby
             dccl_subscription.set_group(group);
             Base::inner_.template publish<Base::forward_group_, goby::protobuf::DCCLSubscription>(dccl_subscription);
         }
-    
-        int _poll(const std::chrono::system_clock::time_point& timeout)
-        {
-            return Base::inner_.poll(timeout);
-        }
+
+        int _poll()
+        { return 0; }
     
         void _receive_dccl_data_forwarded(const goby::protobuf::DCCLForwardedData& d)
         {
@@ -193,7 +199,7 @@ namespace goby
                 std::string::const_iterator frame_it = frame.begin(), frame_end = frame.end();
                 while(frame_it < frame_end)
                 {
-                    auto dccl_id = DCCLSerializerParserHelperBase::codec().id(frame_it, frame_end);
+                    auto dccl_id = DCCLSerializerParserHelperBase::id(frame_it, frame_end);
                     std::string::const_iterator next_frame_it;
                     for(auto p : subscriptions_[dccl_id])
                         next_frame_it = p.second->post(frame_it, frame_end);
@@ -208,6 +214,40 @@ namespace goby
     
     };
 
+    class ModemDriverThread
+    {
+    public:
+        ModemDriverThread(const protobuf::InterVehiclePortalConfig& cfg, std::atomic<bool>& alive, std::shared_ptr<std::condition_variable_any> poller_cv);
+	void run();
+        void publish(const std::string& bytes);
+        bool retrieve_message(goby::acomms::protobuf::ModemTransmission* msg);
+        
+    private:
+        void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
+        void _data_request(goby::acomms::protobuf::ModemTransmission* msg);
+
+    private:
+        std::mutex mutex_;
+        const protobuf::InterVehiclePortalConfig& cfg_;
+        std::atomic<bool>& alive_;
+        std::shared_ptr<std::condition_variable_any> poller_cv_;
+
+        std::deque<std::string> sending_;
+        std::deque<goby::acomms::protobuf::ModemTransmission> received_;
+        
+        // goby::acomms::QueueManager q_manager_;
+
+        // this needs to be a shared ptr to play nice with Boost at destruction...not sure why.
+        std::shared_ptr<goby::acomms::ModemDriverBase> driver_;
+        
+        // for PBDriver
+        std::vector<std::unique_ptr<goby::common::ZeroMQService> > zeromq_service_;
+        // for UDPDriver
+        std::vector<std::unique_ptr<boost::asio::io_service> > asio_service_;
+
+        goby::acomms::MACManager mac_;
+    };
+    
     
     template<typename InnerTransporter = NullTransporter>
     class InterVehiclePortal : public InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>
@@ -215,9 +255,24 @@ namespace goby
         public:
         using Base = InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>;
 
-        InterVehiclePortal(const protobuf::InterVehiclePortalConfig& cfg) : cfg_(cfg) { _init(); }
-        InterVehiclePortal(InnerTransporter& inner, const protobuf::InterVehiclePortalConfig& cfg) : Base(inner), cfg_(cfg) { _init(); }
+        InterVehiclePortal(const protobuf::InterVehiclePortalConfig& cfg) :
+        cfg_(cfg),
+        driver_thread_(cfg, driver_thread_alive_, PollerInterface::cv())
+        { _init(); }
+        InterVehiclePortal(InnerTransporter& inner, const protobuf::InterVehiclePortalConfig& cfg) :
+        Base(inner),
+        cfg_(cfg),
+        driver_thread_(cfg, driver_thread_alive_, PollerInterface::cv())
+        { _init(); }
 
+        ~InterVehiclePortal()
+        {
+            driver_thread_alive_ = false;
+            if(modem_driver_thread_)
+                modem_driver_thread_->join();
+        }
+        
+            
         friend Base;
         private:
         
@@ -228,8 +283,7 @@ namespace goby
         {
             
             std::vector<char> bytes(SerializerParserHelper<Data, MarshallingScheme::DCCL>::serialize(data));
-            // TODO: should be able to push bytes directly
-            q_manager_.push_message(data);
+            driver_thread_.publish(std::string(bytes.begin(), bytes.end()));
         }
 
         template<typename Data>
@@ -237,7 +291,8 @@ namespace goby
                         const Group& group,
                         std::function<Group(const Data&)> group_func)
         {
-            int dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::codec().template id<Data>();
+            auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::template id<Data>();
+            
             auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { func(d); };
             typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType subscribe_function(subscribe_lambda);
             auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
@@ -246,65 +301,24 @@ namespace goby
             subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
         }
     
-        int _poll(const std::chrono::system_clock::time_point& timeout)
+        int _poll()
         {
-            auto now = std::chrono::system_clock::time_point::min();
             int items = 0;
-            received_items_ = 0;
-            while(items == 0 && now < timeout)
+            goby::acomms::protobuf::ModemTransmission msg;
+            while(driver_thread_.retrieve_message(&msg))
             {
-                // run at 10Hz
-                items += Base::inner_.poll(std::chrono::milliseconds(100));
-                driver_->do_work();
-                mac_.do_work();
-                q_manager_.do_work();
-                items += received_items_;
-                now = std::chrono::system_clock::now();
+                _receive(msg);
+                ++items;
             }
             return items;
         }
         
         void _init()
         {
-            switch(cfg_.driver_type())
-            {
-                case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
-                driver_.reset(new goby::acomms::MMDriver);
-                break;
 
-                case goby::acomms::protobuf::DRIVER_IRIDIUM:
-                driver_.reset(new goby::acomms::IridiumDriver);
-                break;
-            
-                case goby::acomms::protobuf::DRIVER_UDP:
-                asio_service_.push_back(std::unique_ptr<boost::asio::io_service>(
-                                            new boost::asio::io_service));
-                driver_.reset(new goby::acomms::UDPDriver(asio_service_.back().get()));
-                break;
-
-                case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
-                driver_.reset(new goby::acomms::IridiumShoreDriver);
-                break;
-            
-                case goby::acomms::protobuf::DRIVER_NONE: break;
-
-                default:
-                throw(std::runtime_error("Unsupported driver type: " + goby::acomms::protobuf::DriverType_Name(cfg_.driver_type())));
-                break;
-            }
-
-            goby::acomms::bind(*driver_, q_manager_, mac_);
-    
-            driver_->signal_receive.connect([&](const goby::acomms::protobuf::ModemTransmission& rx_msg) { this->_receive(rx_msg); });
-
-            Base::inner_.template subscribe<Base::forward_group_, goby::protobuf::SerializerTransporterData>([this](const goby::protobuf::SerializerTransporterData& d) { _receive_publication_forwarded(d); });
-
-            
+            Base::inner_.template subscribe<Base::forward_group_, goby::protobuf::SerializerTransporterData>([this](const goby::protobuf::SerializerTransporterData& d) { _receive_publication_forwarded(d); });         
             Base::inner_.template subscribe<Base::forward_group_, goby::protobuf::DCCLSubscription>([this](const goby::protobuf::DCCLSubscription& d) { _receive_subscription_forwarded(d); });
-
-            q_manager_.set_cfg(cfg_.queue_cfg());
-            mac_.startup(cfg_.mac_cfg());
-            driver_->startup(cfg_.driver_cfg());
+            modem_driver_thread_.reset(new std::thread([this]() { driver_thread_.run(); }));
 
         }
         
@@ -315,7 +329,7 @@ namespace goby
                 std::string::const_iterator frame_it = frame.begin(), frame_end = frame.end();
                 while(frame_it < frame_end)
                 {
-                    auto dccl_id = DCCLSerializerParserHelperBase::codec().id(frame_it, frame_end);
+                    auto dccl_id = DCCLSerializerParserHelperBase::id(frame_it, frame_end);
                     std::string::const_iterator next_frame_it;
                     for(auto p : subscriptions_[dccl_id])
                         next_frame_it = p.second->post(frame_it, frame_end);
@@ -333,16 +347,12 @@ namespace goby
                 for(auto& frame: rx_msg.frame())
                     *data.add_frame() = frame;
                 Base::inner_.template publish<Base::forward_group_>(data);
-            }
-                    
-            std::cout << "Received: " << rx_msg.ShortDebugString() << std::endl;
+            }                    
         }        
         
         void _receive_publication_forwarded(const goby::protobuf::SerializerTransporterData& data)
         {
-            // TODO: should be able to push bytes directly
-            std::unique_ptr<google::protobuf::Message> new_msg = DCCLSerializerParserHelperBase::codec().decode<std::unique_ptr<google::protobuf::Message>>(data.data());
-            q_manager_.push_message(*new_msg);
+            driver_thread_.publish(data.data());
         }
 
         void _receive_subscription_forwarded(const goby::protobuf::DCCLSubscription& dccl_subscription)
@@ -354,22 +364,14 @@ namespace goby
         }        
         
         const goby::protobuf::InterVehiclePortalConfig& cfg_;
+        std::unique_ptr<std::thread> modem_driver_thread_;
+        std::atomic<bool> driver_thread_alive_{true};
+        ModemDriverThread driver_thread_;
         
         // maps DCCL ID to map of Group->subscription
         std::unordered_map<int, std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase>>> subscriptions_;
         std::unordered_map<int, std::unordered_multimap<Group, goby::protobuf::DCCLSubscription>> forwarded_subscriptions_;
 
-        goby::acomms::QueueManager q_manager_;
-
-        // this needs to be a shared ptr to play nice with Boost at destruction...not sure why.
-        std::shared_ptr<goby::acomms::ModemDriverBase> driver_;
-        
-        // for PBDriver
-        std::vector<std::unique_ptr<goby::common::ZeroMQService> > zeromq_service_;
-        // for UDPDriver
-        std::vector<std::unique_ptr<boost::asio::io_service> > asio_service_;
-
-        goby::acomms::MACManager mac_;
 
         int received_items_{0};
         };

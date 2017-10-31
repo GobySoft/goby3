@@ -6,7 +6,7 @@ set(SRC
   transport-interthread.cpp
   transport-interprocess-zeromq.cpp
   zeromq_service.cpp
-
+  transport-intervehicle.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 

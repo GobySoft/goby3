@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <typeindex>
+#include <mutex>
 
 #include <google/protobuf/message.h>
 
@@ -110,8 +111,10 @@ namespace goby
     {
     private:
         static std::unique_ptr<dccl::Codec> codec_;
-
+        
     protected:
+        static std::mutex dccl_mutex_;
+
         struct LoaderBase { };
         
         template<typename DataType>
@@ -136,7 +139,6 @@ namespace goby
                 }
             }
                     
-    public:
         static dccl::Codec& codec()
             {
                 if(!codec_) codec_.reset(new dccl::Codec);
@@ -149,6 +151,21 @@ namespace goby
                 loader_map_.clear();
                 return *new_codec;
             }
+    public:
+        template <typename ProtobufMessage>
+        static unsigned id()
+            {
+                std::lock_guard<std::mutex> lock(dccl_mutex_);
+                return codec().id<ProtobufMessage>();
+            }
+        template<typename CharIterator>
+        static unsigned id(CharIterator begin, CharIterator end)
+            {
+                std::lock_guard<std::mutex> lock(dccl_mutex_);
+                return codec().id(begin, end);
+            }
+        
+
     };
     
     
@@ -158,6 +175,7 @@ namespace goby
     public:
         static std::vector<char> serialize(const DataType& msg)
         {
+            std::lock_guard<std::mutex> lock(dccl_mutex_);
             check_load<DataType>();
             std::vector<char> bytes(codec().size(msg), 0);
             codec().encode(bytes.data(), bytes.size(), msg);
@@ -172,6 +190,7 @@ namespace goby
                                   CharIterator bytes_end,
                                   CharIterator& actual_end)
         {
+            std::lock_guard<std::mutex> lock(dccl_mutex_);
             check_load<DataType>();
             DataType msg;
             actual_end = codec().decode(bytes_begin, bytes_end, &msg);

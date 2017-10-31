@@ -9,3 +9,4 @@ std::map<int, std::string> goby::MarshallingScheme::e2s =
 
 std::unique_ptr<dccl::Codec> goby::DCCLSerializerParserHelperBase::codec_(nullptr);
 std::unordered_map<std::type_index, std::unique_ptr<goby::DCCLSerializerParserHelperBase::LoaderBase>> goby::DCCLSerializerParserHelperBase::loader_map_;
+std::mutex goby::DCCLSerializerParserHelperBase::dccl_mutex_;
