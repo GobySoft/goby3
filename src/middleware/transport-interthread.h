@@ -39,21 +39,15 @@ namespace goby
         // returns number of data items posted to callbacks 
         static int poll_all(std::thread::id thread_id)
         {
-            if(stores_mutex_.try_lock())
-            {
-                // multiple readers
-                ReaderRegister r(pollers_, stores_cv_);
-                stores_mutex_.unlock();
-                
-                int poll_items = 0;
-                for (auto const &s : stores_)
-                    poll_items += s.second->poll(thread_id);
-                return poll_items;
-            }
-            else
-            {
-                return 0;
-            }
+            stores_mutex_.lock();
+            // multiple readers
+            ReaderRegister r(pollers_, stores_cv_);
+            stores_mutex_.unlock();
+            
+            int poll_items = 0;
+            for (auto const &s : stores_)
+                poll_items += s.second->poll(thread_id);
+            return poll_items;
         }
 
     protected:

@@ -105,6 +105,10 @@ namespace goby
                 {
                     cv_->wait(lock); // wait_until doesn't work well with time_point::max()
                     poll_items = _transporter_poll();
+
+                    if(poll_items == 0)
+                        goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << "Spurious wakeup" << std::endl;            
+                    
                 }
                 else
                 {

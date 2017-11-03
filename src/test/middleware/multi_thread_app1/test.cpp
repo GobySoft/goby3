@@ -21,7 +21,7 @@ class TestThreadRx : public goby::SimpleThread<TestConfig>
 {
 public:
     TestThreadRx(const TestConfig& cfg)
-        : SimpleThread(cfg, 10)
+        : SimpleThread(cfg)
         {
             glog.is(VERBOSE) && glog << "Rx Thread: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             
@@ -51,7 +51,7 @@ private:
 class TestAppRx : public AppBase
 {
 public:
-    TestAppRx() : AppBase(10)
+    TestAppRx()
         {
             glog.is(VERBOSE) && glog << "Rx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             interprocess().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
