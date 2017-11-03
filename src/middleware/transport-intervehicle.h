@@ -237,13 +237,10 @@ namespace goby
         
         // goby::acomms::QueueManager q_manager_;
 
-        // this needs to be a shared ptr to play nice with Boost at destruction...not sure why.
-        std::shared_ptr<goby::acomms::ModemDriverBase> driver_;
-        
-        // for PBDriver
-        std::vector<std::unique_ptr<goby::common::ZeroMQService> > zeromq_service_;
         // for UDPDriver
         std::vector<std::unique_ptr<boost::asio::io_service> > asio_service_;
+        std::unique_ptr<goby::acomms::ModemDriverBase> driver_;
+        
 
         goby::acomms::MACManager mac_;
     };

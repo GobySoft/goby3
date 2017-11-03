@@ -13,7 +13,7 @@
 // tests InterVehiclePortal with InterProcessPortal
 
 int publish_count = 0;
-const int max_publish = 100;
+const int max_publish = 10;
 std::array<int, 3> ipc_receive_count = {0, 0, 0};
 
 std::atomic<bool> forward(true);
@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
     goby::glog.add_stream(goby::common::logger::DEBUG3, &os);
     //    dccl::dlog.connect(dccl::logger::ALL, &os, true);
     goby::glog.set_name(std::string(argv[0])  + process_suffix);
-    goby::glog.set_lock_action(goby::common::logger_lock::lock);                        
+    goby::glog.set_lock_action(goby::common::logger_lock::lock);
 
     std::unique_ptr<std::thread> t10, t11;
     std::unique_ptr<zmq::context_t> manager_context;
