@@ -205,7 +205,7 @@ namespace goby
         template<typename Data, int scheme>
         std::string _make_identifier(const Group& group, IdentifierWildcard wildcard)
         {
-            return _make_identifier(SerializerParserHelper<Data, scheme>::type_name(Data()), scheme, group, wildcard);
+            return _make_identifier(SerializerParserHelper<Data, scheme>::type_name(), scheme, group, wildcard);
         }
 
         std::string _make_identifier(const std::string& type_name, int scheme, const std::string& group, IdentifierWildcard wildcard)

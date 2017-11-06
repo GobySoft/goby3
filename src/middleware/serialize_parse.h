@@ -60,7 +60,7 @@ namespace goby
             return bytes;
         }
 
-        static std::string type_name(const DataType& msg)
+        static std::string type_name()
         { return "CSTR"; }
 
         template<typename CharIterator>
@@ -92,7 +92,7 @@ namespace goby
             return bytes;
         }
 
-        static std::string type_name(const DataType& msg)
+        static std::string type_name()
         { return DataType::descriptor()->full_name(); }
 
         template<typename CharIterator>
@@ -107,6 +107,7 @@ namespace goby
         }
     };
 
+    namespace protobuf { class DCCLSubscription; }
     struct DCCLSerializerParserHelperBase
     {
     private:
@@ -164,8 +165,9 @@ namespace goby
                 std::lock_guard<std::mutex> lock(dccl_mutex_);
                 return codec().id(begin, end);
             }
-        
 
+        static void load_forwarded_subscription(const goby::protobuf::DCCLSubscription& sub);
+        
     };
     
     
@@ -182,8 +184,10 @@ namespace goby
             return bytes;
         }
 
-        static std::string type_name(const DataType& msg)
-        { return DataType::descriptor()->full_name(); }
+        static std::string type_name()
+        {
+            return DataType::descriptor()->full_name();
+        }
 
         template<typename CharIterator>
             static DataType parse(CharIterator bytes_begin,

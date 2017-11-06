@@ -107,7 +107,7 @@ namespace goby
                     poll_items = _transporter_poll();
 
                     if(poll_items == 0)
-                        goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << "Spurious wakeup" << std::endl;            
+                        goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << "PollerInterface condition_variable: spurious wakeup" << std::endl;            
                     
                 }
                 else
@@ -152,7 +152,7 @@ namespace goby
             if(!inner_poll_items)
                 poll_items += static_cast<Transporter*>(this)->template _poll();
 
-            goby::glog.is(goby::common::logger::DEBUG3) && goby::glog << "Poller::transporter_poll(): " << typeid(*this).name() << " this: " << this << " (" << poll_items << " items) "<< " inner_poller_: " << inner_poller_ << " (" << inner_poll_items << " items) " << std::endl;            
+            //            goby::glog.is(goby::common::logger::DEBUG3) && goby::glog << "Poller::transporter_poll(): " << typeid(*this).name() << " this: " << this << " (" << poll_items << " items) "<< " inner_poller_: " << inner_poller_ << " (" << inner_poll_items << " items) " << std::endl;            
 
             return inner_poll_items + poll_items;
         }
@@ -161,43 +161,6 @@ namespace goby
         PollerInterface* inner_poller_;
 
     };
-    
-    template<typename Transporter>
-        class PollAbsoluteTimeInterface
-    {
-    public:
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
-        {
-            return static_cast<Transporter*>(this)->template _poll(timeout);
-        }
-        
-        int poll(std::chrono::system_clock::duration wait_for)
-        {
-            if(wait_for == std::chrono::system_clock::duration::max())
-                return poll();
-            else
-                return poll(std::chrono::system_clock::now() + wait_for);
-        }
-    };
-
-    template<typename Transporter>
-        class PollRelativeTimeInterface
-    {
-    public:
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
-        {
-            if(timeout == std::chrono::system_clock::time_point::max())
-                return poll(std::chrono::system_clock::duration::max());
-            else
-                return poll(timeout - std::chrono::system_clock::now());
-        }
-        
-        int poll(std::chrono::system_clock::duration wait_for)
-        {
-            return static_cast<Transporter*>(this)->template _poll(wait_for);
-        }
-
-    };    
 }
 
 

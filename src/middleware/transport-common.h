@@ -73,7 +73,7 @@ namespace goby
                               const Group& group,
                               std::function<Group(const Data&)> group_func)
         : handler_(handler),
-            type_name_(SerializerParserHelper<Data, scheme_id>::type_name(Data())),
+            type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
             group_(group),
             group_func_(group_func)
             { }
@@ -102,6 +102,7 @@ namespace goby
         {
             CharIterator actual_end;
             auto msg = std::make_shared<const Data>(SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
+
             if(subscribed_group() == group_func_(*msg))
                 handler_(msg, goby::protobuf::TransporterConfig());
             return actual_end;

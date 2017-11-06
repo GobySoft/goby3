@@ -35,7 +35,6 @@ goby::ModemDriverThread::ModemDriverThread(const protobuf::InterVehiclePortalCon
             throw(std::runtime_error("Unsupported driver type: " + goby::acomms::protobuf::DriverType_Name(cfg_.driver_type())));
             break;
     }
-    
             
     driver_->signal_receive.connect([&](const goby::acomms::protobuf::ModemTransmission& rx_msg) { this->_receive(rx_msg); });
     driver_->signal_data_request.connect([&](goby::acomms::protobuf::ModemTransmission* msg) { this->_data_request(msg); });    
@@ -100,13 +99,12 @@ void goby::ModemDriverThread::_data_request(goby::acomms::protobuf::ModemTransmi
         frame_number < total_frames; ++frame_number)
     {
         if(sending_.empty())
-        {
             break;
-        }
-        else
+
+        std::string* frame = msg->add_frame();
+        while(!sending_.empty() && (frame->size() + sending_.front().size() <= msg->max_frame_bytes()))
         {
-            // todo check sizes
-            *msg->add_frame() = sending_.front();
+            *frame += sending_.front();
             sending_.pop_front();
         }
     }

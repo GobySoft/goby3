@@ -13,7 +13,7 @@
 // tests InterVehiclePortal with InterProcessPortal
 
 int publish_count = 0;
-const int max_publish = 10;
+const int max_publish = 100;
 std::array<int, 3> ipc_receive_count = {0, 0, 0};
 
 std::atomic<bool> forward(true);
@@ -238,6 +238,7 @@ int main(int argc, char* argv[])
         manager_context.reset();
         t10->join();
         t11->join();
+        glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
         for(int ws : wstatus)
         {
             if(ws != 0)
@@ -258,6 +259,7 @@ int main(int argc, char* argv[])
         std::thread t1([&] { indirect_publisher(zmq_cfg); });
         forward = false;
         t1.join();
+        glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
     }
     else if(process_index == 2)
     {
@@ -287,6 +289,7 @@ int main(int argc, char* argv[])
         manager_context.reset();
         t10->join();
         t11->join();
+        glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
     }
     else if(process_index == 3)
     {
@@ -295,8 +298,8 @@ int main(int argc, char* argv[])
         zmq_cfg.set_platform("test5-vehicle2");
         std::thread t1([&] { indirect_subscriber(zmq_cfg); });
         t1.join();
+        glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
     }    
 
-    glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
     std::cout << process_suffix << ": all tests passed" << std::endl;
 }

@@ -156,7 +156,7 @@ namespace goby
             std::shared_ptr<goby::protobuf::SerializerTransporterData> data = std::make_shared<goby::protobuf::SerializerTransporterData>();
 
             data->set_marshalling_scheme(MarshallingScheme::DCCL);
-            data->set_type(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name(d));
+            data->set_type(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
             data->set_group(std::string(group));
             data->set_allocated_data(sbytes);
         
@@ -177,8 +177,8 @@ namespace goby
             auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { func(d); };
             typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType subscribe_function(subscribe_lambda);
             auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
-                new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group, [=](const Data&d) { return group_func(d); })); 
-            
+                new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group, group_func)); 
+
             subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
                     
             goby::protobuf::DCCLSubscription dccl_subscription;
@@ -192,8 +192,6 @@ namespace goby
     
         void _receive_dccl_data_forwarded(const goby::protobuf::DCCLForwardedData& d)
         {
-            std::cout << "InterVehicleForwarder received forwarded data: " << d.DebugString() << std::endl;
-
             for(auto& frame: d.frame())
             {
                 std::string::const_iterator frame_it = frame.begin(), frame_end = frame.end();
@@ -201,6 +199,10 @@ namespace goby
                 {
                     auto dccl_id = DCCLSerializerParserHelperBase::id(frame_it, frame_end);
                     std::string::const_iterator next_frame_it;
+
+                    if(subscriptions_[dccl_id].size() == 0)
+                        break; // no subscriptions for this ID, so we don't know how to decode it
+                    
                     for(auto p : subscriptions_[dccl_id])
                         next_frame_it = p.second->post(frame_it, frame_end);
                     
@@ -293,7 +295,7 @@ namespace goby
             auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { func(d); };
             typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType subscribe_function(subscribe_lambda);
             auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
-                new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group, [=](const Data&d) { return group_func(d); })); 
+                new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group, group_func));
             
             subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
         }
@@ -338,13 +340,15 @@ namespace goby
 
             // unless we want to require the edge to have all the DCCL messages loaded,
             // all we can do is forwarded the entire data to the InterVehicleForwarders to parse
-            if(forwarded_subscriptions_.size() > 0)
-            {
-                goby::protobuf::DCCLForwardedData data;
-                for(auto& frame: rx_msg.frame())
-                    *data.add_frame() = frame;
-                Base::inner_.template publish<Base::forward_group_>(data);
-            }                    
+
+            // TODO - perhaps we need the edge to have the DCCL messages loaded - otherwise we can't concatenate them
+            /* if(forwarded_subscriptions_.size() > 0) */
+            /* { */
+            /*     goby::protobuf::DCCLForwardedData data; */
+            /*     for(auto& frame: rx_msg.frame()) */
+            /*         *data.add_frame() = frame; */
+            /*     Base::inner_.template publish<Base::forward_group_>(data); */
+            /* }                     */
         }        
         
         void _receive_publication_forwarded(const goby::protobuf::SerializerTransporterData& data)
@@ -353,11 +357,23 @@ namespace goby
         }
 
         void _receive_subscription_forwarded(const goby::protobuf::DCCLSubscription& dccl_subscription)
-        {
-            std::cout << "InterVehiclePortal received forwarded subscription: " << dccl_subscription.DebugString() << std::endl;
-            
+        {            
             auto group = dccl_subscription.group();          
-            forwarded_subscriptions_[dccl_subscription.dccl_id()].insert(std::make_pair(group, dccl_subscription));            
+            //forwarded_subscriptions_[dccl_subscription.dccl_id()].insert(std::make_pair(group, dccl_subscription));
+            DCCLSerializerParserHelperBase::load_forwarded_subscription(dccl_subscription);
+
+            //            auto inner_publication_lambda = [&](std::shared_ptr<const google::protobuf::Message> d, const goby::protobuf::TransporterConfig& t) { Base::inner_.template publish_dynamic<Data, scheme>(d, group, t); };
+            //            auto inner_publication_lambda = [&](std::shared_ptr<const google::protobuf::Message> d, const goby::protobuf::TransporterConfig& t) { Base::inner_.template publish_dynamic<google::protobuf::Message, MarshallingScheme::DCCL>(d, group, t); };
+            
+            //            typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType inner_publication_function(inner_publication_lambda);
+
+            /* auto subscription = std::shared_ptr<SerializationSubscriptionBase>( */
+            /*     new SerializationSubscription<Data, MarshallingScheme::DCCL>( */
+            /*         inner_publication_function, */
+            /*         group, */
+            /*         [=](const Data&d) { return group; })); */
+
+            /* subscriptions_[dccl_id].insert(std::make_pair(group, subscription)); */
         }        
         
         const goby::protobuf::InterVehiclePortalConfig& cfg_;
