@@ -2,11 +2,14 @@
 #define TransportInterfaces20170808H
 
 #include <memory>
+#include <mutex>
+#include <condition_variable>
 
 #include "serialize_parse.h"
 #include "group.h"
 
 #include "goby/middleware/protobuf/transporter_config.pb.h"
+#include "goby/common/logger.h"
 
 namespace goby
 {
@@ -56,43 +59,37 @@ namespace goby
             return static_cast<Transporter*>(this)->inner_;
         }
     };
-    
-    template<typename Transporter>
-        class PollAbsoluteTimeInterface
+
+
+    class PollerInterface
     {
     public:
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
-        {
-            return static_cast<Transporter*>(this)->template _poll(timeout);
-        }
+    PollerInterface(std::shared_ptr<std::timed_mutex> poll_mutex,
+                    std::shared_ptr<std::condition_variable_any> cv) :
+        poll_mutex_(poll_mutex),
+            cv_(cv)
+            { }
         
-        int poll(std::chrono::system_clock::duration wait_for)
-        {
-            if(wait_for == std::chrono::system_clock::duration::max())
-                return poll();
-            else
-                return poll(std::chrono::system_clock::now() + wait_for);
-        }
+        
+        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max());
+        int poll(std::chrono::system_clock::duration wait_for);
+
+        std::shared_ptr<std::timed_mutex> poll_mutex() { return poll_mutex_; }
+        std::shared_ptr<std::condition_variable_any> cv() { return cv_; }
+        
+    private:
+        template<typename Transporter> friend class Poller;
+        // poll the transporter for data
+        virtual int _transporter_poll() = 0;
+
+    private:
+        // poll all the transporters for data, including a timeout (only called by the outside-most Poller)
+        int _poll_all(const std::chrono::system_clock::time_point& timeout);
+        
+        std::shared_ptr<std::timed_mutex> poll_mutex_;
+        // signaled when there's no data for this thread to read during _poll()
+        std::shared_ptr<std::condition_variable_any> cv_;
     };
-
-    template<typename Transporter>
-        class PollRelativeTimeInterface
-    {
-    public:
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
-        {
-            if(timeout == std::chrono::system_clock::time_point::max())
-                return poll(std::chrono::system_clock::duration::max());
-            else
-                return poll(timeout - std::chrono::system_clock::now());
-        }
-        
-        int poll(std::chrono::system_clock::duration wait_for)
-        {
-            return static_cast<Transporter*>(this)->template _poll(wait_for);
-        }
-
-    };    
 }
 
 

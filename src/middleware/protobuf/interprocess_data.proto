@@ -1,4 +1,5 @@
 import "goby/middleware/protobuf/transporter_config.proto";
+import "google/protobuf/descriptor.proto";
 
 package goby.protobuf;
 
@@ -15,10 +16,20 @@ message DCCLSubscription
 {
     required int32 dccl_id = 1;
     required int32 group = 2;
-    optional TransporterConfig cfg = 3;    
+    // defines the DCCL message for the Portal (edge)
+    required string protobuf_name = 3;
+    repeated google.protobuf.FileDescriptorProto file_descriptor = 4;
+
+    optional TransporterConfig cfg = 5;
+}
+
+message DCCLPacket
+{
+    required int32 dccl_id = 1;
+    required bytes data = 2;
 }
 
 message DCCLForwardedData
 {
-    repeated bytes frame = 1;
+    repeated DCCLPacket frame = 1;
 }

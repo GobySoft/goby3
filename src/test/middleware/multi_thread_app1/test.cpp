@@ -1,4 +1,6 @@
 #include "goby/middleware/multi-thread-application.h"
+#include "goby/common/time.h"
+
 #include <boost/units/io.hpp>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -9,6 +11,7 @@ using namespace goby::common::logger;
 
 extern constexpr goby::Group widget1{3};
 extern constexpr goby::Group widget2{"widget2"};
+extern constexpr goby::Group ready{"ready"};
 
 constexpr int num_messages{10};
 
@@ -19,7 +22,7 @@ class TestThreadRx : public goby::SimpleThread<TestConfig>
 {
 public:
     TestThreadRx(const TestConfig& cfg)
-        : SimpleThread(cfg, 10)
+        : SimpleThread(cfg)
         {
             glog.is(VERBOSE) && glog << "Rx Thread: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             
@@ -57,7 +60,15 @@ public:
             launch_thread<TestThreadRx>();
         }
     
-    void loop() override { }
+    void loop() override
+        {
+            if(rx_count_ == 0)
+            {
+                Ready r;
+                r.set_b(true);
+                interprocess().publish<ready>(r);
+            }
+        }
 
     void post(const Widget& widget)
         {
@@ -82,20 +93,18 @@ private:
 class TestAppTx : public AppBase
 {
 public:
-    TestAppTx() : AppBase(10)
+    TestAppTx() : AppBase(100)
         {
             glog.is(VERBOSE) && glog << "Tx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
+            interprocess().subscribe<ready, Ready>([this](const Ready& r) { rx_ready_ = r.b(); });
+
         }
 
     void loop() override
         {
             static int i = 0;
             ++i;
-            if(i < 2)
-            {
-                return;
-            }
-            else
+            if(rx_ready_)
             {
                 glog.is(VERBOSE) && glog  << goby::common::goby_time() << std::endl;
                 Widget w;
@@ -106,7 +115,7 @@ public:
                 
                 interprocess().publish<widget1>(w);
 
-                if(tx_count_ == num_messages)
+                if(tx_count_ == (num_messages+5))
                     quit();
             }
             
@@ -115,6 +124,8 @@ public:
     
 private:
     int tx_count_ {0};
+    bool rx_ready_ {false};
+    
 };
 
 
@@ -149,11 +160,15 @@ int main(int argc, char* argv[])
         int child2_pid = fork();
         if(child2_pid != 0)
         {
-            return goby::run<TestAppRx>(argc, argv);
+            int wstatus;
+            int rc = goby::run<TestAppRx>(argc, argv);
+            wait(&wstatus);        
+            if(wstatus != 0) exit(EXIT_FAILURE);
+            return rc;
         }
         else
         {
-            sleep(1);
+            usleep(100000);
             return goby::run<TestAppTx>(argc, argv);
         }
         

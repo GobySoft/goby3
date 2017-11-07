@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <typeindex>
+#include <mutex>
 
 #include <google/protobuf/message.h>
 
@@ -59,7 +60,7 @@ namespace goby
             return bytes;
         }
 
-        static std::string type_name(const DataType& msg)
+        static std::string type_name()
         { return "CSTR"; }
 
         template<typename CharIterator>
@@ -91,7 +92,7 @@ namespace goby
             return bytes;
         }
 
-        static std::string type_name(const DataType& msg)
+        static std::string type_name()
         { return DataType::descriptor()->full_name(); }
 
         template<typename CharIterator>
@@ -106,12 +107,18 @@ namespace goby
         }
     };
 
+    namespace protobuf {
+        class DCCLSubscription;
+        class DCCLForwardedData;
+    }
     struct DCCLSerializerParserHelperBase
     {
     private:
         static std::unique_ptr<dccl::Codec> codec_;
-
+        
     protected:
+        static std::mutex dccl_mutex_;
+
         struct LoaderBase { };
         
         template<typename DataType>
@@ -121,22 +128,36 @@ namespace goby
                 { codec().load<DataType>(); }
                 ~Loader()
                 { codec().unload<DataType>(); }
-                void check() { }
             };
         
-        static std::unordered_map<std::type_index, std::unique_ptr<LoaderBase>> loader_map_;
+        struct LoaderDynamic : public LoaderBase
+            {
+            LoaderDynamic(const google::protobuf::Descriptor* desc) : desc_(desc)
+                { codec().load(desc_); }
+                ~LoaderDynamic()
+                { codec().unload(desc_); }
+            private:
+                const google::protobuf::Descriptor* desc_;
+            };
+        
+        
+        static std::unordered_map<const google::protobuf::Descriptor*, std::unique_ptr<LoaderBase>> loader_map_;
 
         template<typename DataType>
         static void check_load()
             {
-                auto index = std::type_index(typeid(DataType));
-                if(!loader_map_.count(index))
-                {
-                    loader_map_.insert(std::make_pair(index, std::unique_ptr<LoaderBase>(new Loader<DataType>())));
-                }
+                const auto* desc = DataType::descriptor();
+                if(!loader_map_.count(desc))
+                    loader_map_.insert(std::make_pair(desc, std::unique_ptr<LoaderBase>(new Loader<DataType>())));
             }
-                    
-    public:
+        
+        static void check_load(const google::protobuf::Descriptor* desc)
+            {
+                if(!loader_map_.count(desc))
+                    loader_map_.insert(std::make_pair(desc, std::unique_ptr<LoaderBase>(new LoaderDynamic(desc))));
+            }
+        
+        
         static dccl::Codec& codec()
             {
                 if(!codec_) codec_.reset(new dccl::Codec);
@@ -149,6 +170,16 @@ namespace goby
                 loader_map_.clear();
                 return *new_codec;
             }
+    public:
+        template<typename CharIterator>
+        static unsigned id(CharIterator begin, CharIterator end)
+            {
+                std::lock_guard<std::mutex> lock(dccl_mutex_);
+                return codec().id(begin, end);
+            }
+
+        static void load_forwarded_subscription(const goby::protobuf::DCCLSubscription& sub);
+        static goby::protobuf::DCCLForwardedData unpack(const std::string& bytes);
     };
     
     
@@ -158,26 +189,36 @@ namespace goby
     public:
         static std::vector<char> serialize(const DataType& msg)
         {
+            std::lock_guard<std::mutex> lock(dccl_mutex_);
             check_load<DataType>();
             std::vector<char> bytes(codec().size(msg), 0);
             codec().encode(bytes.data(), bytes.size(), msg);
             return bytes;
         }
 
-        static std::string type_name(const DataType& msg)
-        { return DataType::descriptor()->full_name(); }
+        static std::string type_name()
+        {
+            return DataType::descriptor()->full_name();
+        }
 
         template<typename CharIterator>
             static DataType parse(CharIterator bytes_begin,
                                   CharIterator bytes_end,
                                   CharIterator& actual_end)
         {
+            std::lock_guard<std::mutex> lock(dccl_mutex_);
             check_load<DataType>();
             DataType msg;
             actual_end = codec().decode(bytes_begin, bytes_end, &msg);
             return msg;
         }
 
+        static unsigned id()
+        {
+            std::lock_guard<std::mutex> lock(dccl_mutex_);
+            check_load<DataType>();
+            return codec().template id<DataType>();
+        }
 
     private:
     };

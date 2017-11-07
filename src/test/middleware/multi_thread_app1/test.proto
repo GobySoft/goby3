@@ -8,7 +8,11 @@ message TestConfig
   optional goby.protobuf.InterProcessPortalConfig interprocess_portal = 2;
   
 }
-        
+
+message Ready
+{
+    optional bool b = 1;
+}
 
 message Widget
 {
