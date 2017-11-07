@@ -23,7 +23,13 @@ message DCCLSubscription
     optional TransporterConfig cfg = 5;
 }
 
+message DCCLPacket
+{
+    required int32 dccl_id = 1;
+    required bytes data = 2;
+}
+
 message DCCLForwardedData
 {
-    repeated bytes frame = 1;
+    repeated DCCLPacket frame = 1;
 }

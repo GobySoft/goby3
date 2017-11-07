@@ -171,7 +171,7 @@ namespace goby
                             const Group& group,
                             std::function<Group(const Data&)> group_func)
         {
-            auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::template id<Data>();
+            auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
         
             
             auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { func(d); };
@@ -184,30 +184,33 @@ namespace goby
             goby::protobuf::DCCLSubscription dccl_subscription;
             dccl_subscription.set_dccl_id(dccl_id);
             dccl_subscription.set_group(group);
+            dccl_subscription.set_protobuf_name(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
+            _insert_file_desc_with_dependencies(Data::descriptor()->file(), &dccl_subscription);
             Base::inner_.template publish<Base::forward_group_, goby::protobuf::DCCLSubscription>(dccl_subscription);
         }
+
+
+        // used to populated DCCLSubscription file_descriptor fields
+        void _insert_file_desc_with_dependencies(const google::protobuf::FileDescriptor* file_desc, protobuf::DCCLSubscription* subscription)
+        {
+            for(int i = 0, n = file_desc->dependency_count(); i < n; ++i)
+                _insert_file_desc_with_dependencies(file_desc->dependency(i), subscription);
+
+            google::protobuf::FileDescriptorProto* file_desc_proto = subscription->add_file_descriptor();
+            file_desc->CopyTo(file_desc_proto);
+        }
+
+        
 
         int _poll()
         { return 0; }
     
-        void _receive_dccl_data_forwarded(const goby::protobuf::DCCLForwardedData& d)
+        void _receive_dccl_data_forwarded(const goby::protobuf::DCCLForwardedData& packets)
         {
-            for(auto& frame: d.frame())
+            for(const auto& packet : packets.frame())
             {
-                std::string::const_iterator frame_it = frame.begin(), frame_end = frame.end();
-                while(frame_it < frame_end)
-                {
-                    auto dccl_id = DCCLSerializerParserHelperBase::id(frame_it, frame_end);
-                    std::string::const_iterator next_frame_it;
-
-                    if(subscriptions_[dccl_id].size() == 0)
-                        break; // no subscriptions for this ID, so we don't know how to decode it
-                    
-                    for(auto p : subscriptions_[dccl_id])
-                        next_frame_it = p.second->post(frame_it, frame_end);
-                    
-                    frame_it = next_frame_it;
-                }
+                for(auto p : subscriptions_[packet.dccl_id()])
+                    p.second->post(packet.data().begin(), packet.data().end());
             }
         }
     
@@ -290,7 +293,7 @@ namespace goby
                         const Group& group,
                         std::function<Group(const Data&)> group_func)
         {
-            auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::template id<Data>();
+            auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
             
             auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { func(d); };
             typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType subscribe_function(subscribe_lambda);
@@ -322,33 +325,20 @@ namespace goby
         }
         
         void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg)
-        {            
+        {
+            
             for(auto& frame: rx_msg.frame())
             {
-                std::string::const_iterator frame_it = frame.begin(), frame_end = frame.end();
-                while(frame_it < frame_end)
+                const protobuf::DCCLForwardedData packets(DCCLSerializerParserHelperBase::unpack(frame));
+                for(const auto& packet : packets.frame())
                 {
-                    auto dccl_id = DCCLSerializerParserHelperBase::id(frame_it, frame_end);
-                    std::string::const_iterator next_frame_it;
-                    for(auto p : subscriptions_[dccl_id])
-                        next_frame_it = p.second->post(frame_it, frame_end);
-
-                    frame_it = next_frame_it;
-                    ++received_items_;
+                    for(auto p : subscriptions_[packet.dccl_id()])
+                        p.second->post(packet.data().begin(), packet.data().end());
                 }
+
+                // forward to edges
+                Base::inner_.template publish<Base::forward_group_>(packets);
             }
-
-            // unless we want to require the edge to have all the DCCL messages loaded,
-            // all we can do is forwarded the entire data to the InterVehicleForwarders to parse
-
-            // TODO - perhaps we need the edge to have the DCCL messages loaded - otherwise we can't concatenate them
-            /* if(forwarded_subscriptions_.size() > 0) */
-            /* { */
-            /*     goby::protobuf::DCCLForwardedData data; */
-            /*     for(auto& frame: rx_msg.frame()) */
-            /*         *data.add_frame() = frame; */
-            /*     Base::inner_.template publish<Base::forward_group_>(data); */
-            /* }                     */
         }        
         
         void _receive_publication_forwarded(const goby::protobuf::SerializerTransporterData& data)
@@ -358,22 +348,9 @@ namespace goby
 
         void _receive_subscription_forwarded(const goby::protobuf::DCCLSubscription& dccl_subscription)
         {            
-            auto group = dccl_subscription.group();          
-            //forwarded_subscriptions_[dccl_subscription.dccl_id()].insert(std::make_pair(group, dccl_subscription));
+            auto group = dccl_subscription.group();
+            forwarded_subscriptions_[dccl_subscription.dccl_id()].insert(std::make_pair(group, dccl_subscription));
             DCCLSerializerParserHelperBase::load_forwarded_subscription(dccl_subscription);
-
-            //            auto inner_publication_lambda = [&](std::shared_ptr<const google::protobuf::Message> d, const goby::protobuf::TransporterConfig& t) { Base::inner_.template publish_dynamic<Data, scheme>(d, group, t); };
-            //            auto inner_publication_lambda = [&](std::shared_ptr<const google::protobuf::Message> d, const goby::protobuf::TransporterConfig& t) { Base::inner_.template publish_dynamic<google::protobuf::Message, MarshallingScheme::DCCL>(d, group, t); };
-            
-            //            typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType inner_publication_function(inner_publication_lambda);
-
-            /* auto subscription = std::shared_ptr<SerializationSubscriptionBase>( */
-            /*     new SerializationSubscription<Data, MarshallingScheme::DCCL>( */
-            /*         inner_publication_function, */
-            /*         group, */
-            /*         [=](const Data&d) { return group; })); */
-
-            /* subscriptions_[dccl_id].insert(std::make_pair(group, subscription)); */
         }        
         
         const goby::protobuf::InterVehiclePortalConfig& cfg_;
@@ -386,7 +363,6 @@ namespace goby
         std::unordered_map<int, std::unordered_multimap<Group, goby::protobuf::DCCLSubscription>> forwarded_subscriptions_;
 
 
-        int received_items_{0};
         };
 }
 

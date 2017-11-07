@@ -107,7 +107,10 @@ namespace goby
         }
     };
 
-    namespace protobuf { class DCCLSubscription; }
+    namespace protobuf {
+        class DCCLSubscription;
+        class DCCLForwardedData;
+    }
     struct DCCLSerializerParserHelperBase
     {
     private:
@@ -125,21 +128,36 @@ namespace goby
                 { codec().load<DataType>(); }
                 ~Loader()
                 { codec().unload<DataType>(); }
-                void check() { }
             };
         
-        static std::unordered_map<std::type_index, std::unique_ptr<LoaderBase>> loader_map_;
+        struct LoaderDynamic : public LoaderBase
+            {
+            LoaderDynamic(const google::protobuf::Descriptor* desc) : desc_(desc)
+                { codec().load(desc_); }
+                ~LoaderDynamic()
+                { codec().unload(desc_); }
+            private:
+                const google::protobuf::Descriptor* desc_;
+            };
+        
+        
+        static std::unordered_map<const google::protobuf::Descriptor*, std::unique_ptr<LoaderBase>> loader_map_;
 
         template<typename DataType>
         static void check_load()
             {
-                auto index = std::type_index(typeid(DataType));
-                if(!loader_map_.count(index))
-                {
-                    loader_map_.insert(std::make_pair(index, std::unique_ptr<LoaderBase>(new Loader<DataType>())));
-                }
+                const auto* desc = DataType::descriptor();
+                if(!loader_map_.count(desc))
+                    loader_map_.insert(std::make_pair(desc, std::unique_ptr<LoaderBase>(new Loader<DataType>())));
             }
-                    
+        
+        static void check_load(const google::protobuf::Descriptor* desc)
+            {
+                if(!loader_map_.count(desc))
+                    loader_map_.insert(std::make_pair(desc, std::unique_ptr<LoaderBase>(new LoaderDynamic(desc))));
+            }
+        
+        
         static dccl::Codec& codec()
             {
                 if(!codec_) codec_.reset(new dccl::Codec);
@@ -153,12 +171,6 @@ namespace goby
                 return *new_codec;
             }
     public:
-        template <typename ProtobufMessage>
-        static unsigned id()
-            {
-                std::lock_guard<std::mutex> lock(dccl_mutex_);
-                return codec().id<ProtobufMessage>();
-            }
         template<typename CharIterator>
         static unsigned id(CharIterator begin, CharIterator end)
             {
@@ -167,7 +179,7 @@ namespace goby
             }
 
         static void load_forwarded_subscription(const goby::protobuf::DCCLSubscription& sub);
-        
+        static goby::protobuf::DCCLForwardedData unpack(const std::string& bytes);
     };
     
     
@@ -201,6 +213,12 @@ namespace goby
             return msg;
         }
 
+        static unsigned id()
+        {
+            std::lock_guard<std::mutex> lock(dccl_mutex_);
+            check_load<DataType>();
+            return codec().template id<DataType>();
+        }
 
     private:
     };
