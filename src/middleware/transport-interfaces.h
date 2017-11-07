@@ -71,18 +71,8 @@ namespace goby
             { }
         
         
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max())
-        {
-            return _poll_all(timeout);
-        }
-        
-        int poll(std::chrono::system_clock::duration wait_for)
-        {
-            if(wait_for == std::chrono::system_clock::duration::max())
-                return poll();
-            else
-                return poll(std::chrono::system_clock::now() + wait_for);
-        }
+        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max());
+        int poll(std::chrono::system_clock::duration wait_for);
 
         std::shared_ptr<std::timed_mutex> poll_mutex() { return poll_mutex_; }
         std::shared_ptr<std::condition_variable_any> cv() { return cv_; }
@@ -94,72 +84,11 @@ namespace goby
 
     private:
         // poll all the transporters for data, including a timeout (only called by the outside-most Poller)
-        int _poll_all(const std::chrono::system_clock::time_point& timeout)
-        {
-            std::unique_lock<std::timed_mutex> lock(*poll_mutex_);
-            int poll_items = _transporter_poll();
-            
-            while(poll_items == 0) // no items, so wait
-            {                
-                if(timeout == std::chrono::system_clock::time_point::max())
-                {
-                    cv_->wait(lock); // wait_until doesn't work well with time_point::max()
-                    poll_items = _transporter_poll();
-
-                    if(poll_items == 0)
-                        goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << "PollerInterface condition_variable: spurious wakeup" << std::endl;            
-                    
-                }
-                else
-                {
-                    if(cv_->wait_until(lock, timeout) == std::cv_status::no_timeout)
-                        poll_items = _transporter_poll();
-                    else
-                        return poll_items;
-                }
-            }
-
-            return poll_items;
-        }
+        int _poll_all(const std::chrono::system_clock::time_point& timeout);
         
         std::shared_ptr<std::timed_mutex> poll_mutex_;
         // signaled when there's no data for this thread to read during _poll()
         std::shared_ptr<std::condition_variable_any> cv_;
-    };
-
-    template<typename Transporter>
-        class Poller : public PollerInterface
-    {
-    protected:
-        Poller(PollerInterface* inner_poller = nullptr) :
-        // we want the same mutex and cv all the way up
-        PollerInterface(inner_poller ? inner_poller->poll_mutex() : std::make_shared<std::timed_mutex>(),
-                        inner_poller ? inner_poller->cv() : std::make_shared<std::condition_variable_any>()),
-            inner_poller_(inner_poller)
-        { }
-
-        PollerInterface* inner_poller() { return inner_poller_; }
-        
-    private:
-        int _transporter_poll()
-        {
-            // work from the inside out
-            int inner_poll_items = 0;
-            if(inner_poller_) // recursively call inner poll
-                inner_poll_items += static_cast<PollerInterface*>(inner_poller_)->_transporter_poll();    
-
-            int poll_items = 0;
-            if(!inner_poll_items)
-                poll_items += static_cast<Transporter*>(this)->template _poll();
-
-            //            goby::glog.is(goby::common::logger::DEBUG3) && goby::glog << "Poller::transporter_poll(): " << typeid(*this).name() << " this: " << this << " (" << poll_items << " items) "<< " inner_poller_: " << inner_poller_ << " (" << inner_poll_items << " items) " << std::endl;            
-
-            return inner_poll_items + poll_items;
-        }
-
-    private:
-        PollerInterface* inner_poller_;
-
     };
 }
 

@@ -8,6 +8,7 @@
 #include "goby/util/binary.h"
 
 #include "transport-interfaces.h"
+#include "poller.h"
 
 #include "goby/middleware/protobuf/interprocess_data.pb.h"
 

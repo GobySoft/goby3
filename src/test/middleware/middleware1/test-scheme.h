@@ -20,7 +20,7 @@ namespace goby
             return bytes;
         }
         
-        static std::string type_name(const DataType& msg)
+        static std::string type_name()
         { return "DEQUECHAR"; }
 
         static DataType parse(const std::vector<char>& bytes)

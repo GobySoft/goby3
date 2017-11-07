@@ -7,6 +7,10 @@
 #include "goby/middleware/transport.h"
 #include "test.pb.h"
 
+extern constexpr goby::Group ctd{"CTD"};
+extern constexpr goby::Group ctd2{"CTD2"};
+extern constexpr goby::Group temp{"TEMP"};
+
 int main(int argc, char* argv[])
 {
     goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
@@ -33,27 +37,27 @@ int main(int argc, char* argv[])
     s.set_salinity(38.5);
 
     std::cout << "Should be DCCL" << std::endl;
-    zmq_blank.publish(s, "CTD");
+    zmq_blank.publish<ctd>(s);
 
     std::shared_ptr<CTDSample> sp(new CTDSample);
     sp->set_salinity(40.1);
 
     std::cout << "Should NOT be DCCL" << std::endl;
-    zmq.publish<CTDSample, goby::MarshallingScheme::PROTOBUF>(sp, "CTD2");
+    zmq.publish<ctd2, CTDSample, goby::MarshallingScheme::PROTOBUF>(sp);
 
     std::cout << "Should NOT be DCCL" << std::endl;
     TempSample t;
     t.set_temperature(15);
-    zmq.publish(t, "TEMP");
+    zmq.publish<temp>(t);
  
     std::string value("HI");
-    zmq.publish(value, "GroupHi");
+    zmq.publish_dynamic(value, "GroupHi");
 
     std::deque<char> dc = { 'H', 'E', 'L', 'L', 'O' };
 
-    zmq.publish(dc, "GroupChar");
+    zmq.publish_dynamic(dc, "GroupChar");
     
-    inproc.publish(sp, "CTD3");
+    inproc.publish_dynamic(sp, "CTD3");
 
     
     goby::protobuf::InterVehiclePortalConfig slow_cfg;
@@ -80,7 +84,7 @@ int main(int argc, char* argv[])
     
     goby::InterVehiclePortal<decltype(zmq)> slow(zmq, slow_cfg);
     int slow_group = 0;
-    slow.publish(s, slow_group);
+    slow.publish_dynamic(s, slow_group);
 
 
     router_context.reset();
