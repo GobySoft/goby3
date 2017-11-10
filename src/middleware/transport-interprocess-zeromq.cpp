@@ -56,6 +56,9 @@ void goby::ZMQMainThread::set_publish_cfg(const goby::common::protobuf::ZeroMQSe
     setup_socket(publish_socket_, cfg);
     publish_socket_configured_ = true;
 
+    // TODO: remove in favor of more explicit synchronization, if possible    
+    usleep(100000); // avoids "slow joiner" on initial publications
+    
     // publish any queued up messages
     for(auto& pub_pair : publish_queue_)
 	publish(pub_pair.first, &pub_pair.second[0], pub_pair.second.size());
