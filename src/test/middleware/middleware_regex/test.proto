@@ -1,0 +1,11 @@
+import "dccl/protobuf/option_extensions.proto";
+
+message Sample
+{
+    optional int32 a = 1;
+}
+
+message Widget
+{
+    optional int32 b = 1;
+}

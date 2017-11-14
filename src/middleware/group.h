@@ -44,6 +44,8 @@ namespace goby
         // TODO - check if there's anything we can check for here
     }
 
+    inline std::ostream& operator<<(std::ostream& os, const Group& g)  
+    { return(os << std::string(g)); }  
 
     class DynamicGroup : public Group
     {

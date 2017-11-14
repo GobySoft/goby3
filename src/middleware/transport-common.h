@@ -4,6 +4,7 @@
 #include <memory>
 #include <unordered_map>
 #include <chrono>
+#include <regex>
 
 #include "goby/util/binary.h"
 
@@ -117,6 +118,50 @@ namespace goby
         std::function<Group(const Data&)> group_func_;
     };
 
+
+
+    class SerializationSubscriptionRegex 
+    {
+    public:
+        typedef std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> HandlerType;
+        
+        SerializationSubscriptionRegex(HandlerType& handler,
+                                       const std::set<int>& schemes,
+                                       const std::string& type_regex = ".*",
+                                       const std::string& group_regex = ".*")
+            : handler_(handler),
+            schemes_(schemes),
+            type_regex_(type_regex),
+            group_regex_(group_regex)
+            { }
+        
+        
+        // handle an incoming message
+        template<typename CharIterator>
+            void post(CharIterator bytes_begin,
+                      CharIterator bytes_end,
+                      int scheme,
+                      const std::string& type,
+                      const std::string& group) const 
+        {
+            if((schemes_.count(goby::MarshallingScheme::ALL_SCHEMES) || schemes_.count(scheme))&&
+               std::regex_match(type, type_regex_) &&
+               std::regex_match(group, group_regex_))
+            {                
+                std::vector<unsigned char> data(bytes_begin, bytes_end);
+                handler_(data, scheme, type, goby::DynamicGroup(group));
+            }
+        }
+
+        
+    private:
+        HandlerType handler_;
+        const std::set<int> schemes_;
+        std::regex type_regex_;
+        std::regex group_regex_;
+    };
+
+    
 }
 namespace std
 {
