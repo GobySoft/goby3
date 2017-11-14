@@ -22,6 +22,7 @@ namespace goby
     {
         enum MarshallingSchemeEnum
         {
+            ALL_SCHEMES = -2,
 	    NULL_SCHEME = -1,
             CSTR = 0,
             PROTOBUF = 1,

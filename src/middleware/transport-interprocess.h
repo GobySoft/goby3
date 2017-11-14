@@ -65,7 +65,6 @@ namespace goby
             void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
         {
             check_validity_runtime(group);
-            inner_.template subscribe_dynamic<Data, scheme>(f, group);
             static_cast<Derived*>(this)->template _subscribe<Data, scheme>([=](std::shared_ptr<const Data> d) { f(*d); }, group);
         }
         
@@ -73,12 +72,18 @@ namespace goby
             void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
         {
             check_validity_runtime(group);
-            inner_.template subscribe_dynamic<Data, scheme>(f, group);
             static_cast<Derived*>(this)->template _subscribe<Data, scheme>(f, group);
         }
 
         // Wildcards
-        //void subscribe_wildcard(std::function<void(const std::vector<unsigned char>&)> f, );
+        //        void subscribe_regex(std::function<void(const std::vector<unsigned char>&)> f,
+        //                             const std::set<MarshallingScheme::MarshallingSchemeEnum>& schemes,
+        //                             const std::string& type_regex = ".*",
+        //                             const std::string& group_regex = ".*")
+        //        {
+        //            static_cast<Derived*>(this)->template _subscribe_regex(f, schemes, type_regex, group_regex);
+        //        }
+        
         
         std::unique_ptr<InnerTransporter> own_inner_;
         InnerTransporter& inner_;
@@ -125,6 +130,8 @@ namespace goby
         template<typename Data, int scheme>
             void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f, const Group& group)
         {
+            Base::inner_.template subscribe_dynamic<Data, scheme>(f, group);
+
             // forward subscription to edge
             auto inner_publication_lambda = [&](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { Base::inner_.template publish_dynamic<Data, scheme>(d, group, t); };
             typename SerializationSubscription<Data, scheme>::HandlerType inner_publication_function(inner_publication_lambda);
@@ -135,6 +142,7 @@ namespace goby
                                                             [=](const Data&d) { return group; }));
                     
             Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase, MarshallingScheme::CXX_OBJECT>(subscription);
+
         }
         
         int _poll()
