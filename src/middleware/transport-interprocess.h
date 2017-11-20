@@ -11,17 +11,26 @@
 #include "transport-common.h"
 #include "goby/middleware/protobuf/interprocess_config.pb.h"
 
-
 namespace goby
 {   
     template<typename Derived, typename InnerTransporter>
         class InterProcessTransporterBase :
         public StaticTransporterInterface<InterProcessTransporterBase<Derived, InnerTransporter>, InnerTransporter>,
-        public PollRelativeTimeInterface<InterProcessTransporterBase<Derived, InnerTransporter>>
+        public Poller<InterProcessTransporterBase<Derived, InnerTransporter>>
     {
-    public:        
-    InterProcessTransporterBase(InnerTransporter& inner) : inner_(inner) { }
-    InterProcessTransporterBase() : own_inner_(new InnerTransporter), inner_(*own_inner_) { }
+        using PollerType = Poller<InterProcessTransporterBase<Derived, InnerTransporter>>;
+        
+    public:
+    InterProcessTransporterBase(InnerTransporter& inner) :
+        PollerType(&inner), inner_(inner)
+            { }
+        
+    InterProcessTransporterBase(InnerTransporter* inner_ptr = new InnerTransporter,
+                                bool base_owns_inner = true) :
+        PollerType(inner_ptr),
+            own_inner_(base_owns_inner ? inner_ptr : nullptr),
+            inner_(*inner_ptr)
+            { }
 
 	template<typename Data>
 	    static constexpr int scheme()
@@ -75,12 +84,10 @@ namespace goby
         InnerTransporter& inner_;
         static constexpr Group forward_group_ { "goby::InterProcessForwarder" };
 
-        friend PollRelativeTimeInterface<InterProcessTransporterBase<Derived, InnerTransporter>>;
     private:  
-        int _poll(std::chrono::system_clock::duration wait_for)
-        {
-            return static_cast<Derived*>(this)->_poll(wait_for);
-        }
+        friend PollerType;
+        int _poll()
+        { return static_cast<Derived*>(this)->_poll(); }
     };    
     
     template<typename Derived, typename InnerTransporter>
@@ -106,7 +113,7 @@ namespace goby
             std::shared_ptr<goby::protobuf::SerializerTransporterData> data = std::make_shared<goby::protobuf::SerializerTransporterData>();
 
             data->set_marshalling_scheme(scheme);
-            data->set_type(SerializerParserHelper<Data, scheme>::type_name(d));
+            data->set_type(SerializerParserHelper<Data, scheme>::type_name());
             data->set_group(std::string(group));
             data->set_allocated_data(sbytes);
         
@@ -130,10 +137,8 @@ namespace goby
             Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase, MarshallingScheme::CXX_OBJECT>(subscription);
         }
         
-        int _poll(std::chrono::system_clock::duration wait_for)
-        {
-            return Base::inner_.poll(wait_for);
-        }
+        int _poll()
+        { return 0; } // A forwarder is a shell, only the inner Transporter has data
     };    
 
 }

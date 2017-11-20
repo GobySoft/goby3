@@ -49,14 +49,14 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
 
         if(publish_count < 0)
-            usleep(1e5);
+            usleep(1e6);
 
         ++publish_count;
     }    
 
     while(forward)
     {
-        zmq.poll(std::chrono::milliseconds(100));
+	usleep(10000);
     }
 
 }
@@ -92,7 +92,7 @@ void subscriber(const goby::protobuf::InterProcessPortalConfig& cfg)
         glog.is(DEBUG1) && glog << ipc_receive_count << "/" << 3*max_publish << std::endl;
         zmq.poll();
     }
-    
+    glog.is(DEBUG1) && glog << "Subscriber complete." << std::endl;
 }
 
 int main(int argc, char* argv[])
@@ -127,7 +127,6 @@ int main(int argc, char* argv[])
         t2.reset(new std::thread([&] { router.run(); }));
         goby::ZMQManager manager(*manager_context, cfg, router);
         t3.reset(new std::thread([&] { manager.run(); }));
-        sleep(1);
         std::thread t1([&] { publisher(cfg); });
         int wstatus;
         wait(&wstatus);

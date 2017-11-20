@@ -1,43 +1,137 @@
 #ifndef TransportInterProcessZeroMQ20170807H
 #define TransportInterProcessZeroMQ20170807H
 
-#include "zeromq_service.h"
+#include <zmq.hpp>
 
 #include "transport-interprocess.h"
+#include "goby/middleware/protobuf/interprocess_zeromq.pb.h"
+#include "goby/common/protobuf/zero_mq_node_config.pb.h"
 
 
 namespace goby
 {
-        template<typename InnerTransporter = NullTransporter>
+    void setup_socket(zmq::socket_t& socket, const goby::common::protobuf::ZeroMQServiceConfig::Socket& cfg);
+    // run in the same thread as InterProcessPortal
+    class ZMQMainThread
+    {
+    public:
+	ZMQMainThread(zmq::context_t& context);
+	bool ready() { return publish_socket_configured_; }
+	bool recv(protobuf::InprocControl* control_msg, int flags = 0);
+	void set_publish_cfg(const goby::common::protobuf::ZeroMQServiceConfig::Socket& cfg);
+	void publish(const std::string& identifier, const char* bytes, int size);
+	void subscribe(const std::string& identifier);
+	void unsubscribe(const std::string& identifier);
+	void reader_shutdown();
+
+    private:
+	void send_control_msg(const protobuf::InprocControl& control);
+
+    private:
+	zmq::socket_t control_socket_;
+	zmq::socket_t publish_socket_;
+	bool publish_socket_configured_{false};
+	std::deque<std::pair<std::string, std::vector<char>>> publish_queue_; //used before publish_socket_configured_ == true
+    };
+
+    // run in a separate thread to allow zmq_.poll() to block without interrupting the main thread
+    class ZMQReadThread
+    {
+    public:
+	ZMQReadThread(const protobuf::InterProcessPortalConfig& cfg, zmq::context_t& context, std::atomic<bool>& alive, std::shared_ptr<std::condition_variable_any> poller_cv);
+	void run();
+    private:
+	void poll(long timeout_ms = -1);
+	void control_data(const zmq::message_t& zmq_msg);
+	void subscribe_data(const zmq::message_t& zmq_msg);
+	void manager_data(const zmq::message_t& zmq_msg);
+	void send_control_msg(const protobuf::InprocControl& control);
+    private:
+	const protobuf::InterProcessPortalConfig& cfg_;
+	zmq::socket_t control_socket_;
+	zmq::socket_t subscribe_socket_;
+	zmq::socket_t manager_socket_;
+	std::atomic<bool>& alive_;
+	std::shared_ptr<std::condition_variable_any> poller_cv_;
+	std::vector<zmq::pollitem_t> poll_items_;     
+	enum { SOCKET_CONTROL = 0, SOCKET_MANAGER = 1, SOCKET_SUBSCRIBE = 2};
+	enum { NUMBER_SOCKETS = 3 };
+	bool have_pubsub_sockets_{false};
+    };
+    
+    template<typename InnerTransporter = NullTransporter>
         class InterProcessPortal : public InterProcessTransporterBase<InterProcessPortal<InnerTransporter>, InnerTransporter>
         {
         public:
         using Base = InterProcessTransporterBase<InterProcessPortal<InnerTransporter>, InnerTransporter>;
 
-        InterProcessPortal(const protobuf::InterProcessPortalConfig& cfg) : cfg_(cfg)
+        InterProcessPortal(const protobuf::InterProcessPortalConfig& cfg) :
+	cfg_(cfg),
+	zmq_context_(cfg.zeromq_number_io_threads()),
+	zmq_main_(zmq_context_),
+	zmq_read_thread_(cfg_, zmq_context_, zmq_alive_, PollerInterface::cv())
         { _init(); }
 
-        InterProcessPortal(InnerTransporter& inner, const protobuf::InterProcessPortalConfig& cfg) : Base(inner), cfg_(cfg)
+        InterProcessPortal(InnerTransporter& inner, const protobuf::InterProcessPortalConfig& cfg) :
+	Base(inner),
+	cfg_(cfg),
+	zmq_context_(cfg.zeromq_number_io_threads()),
+	zmq_main_(zmq_context_),
+	zmq_read_thread_(cfg_, zmq_context_, zmq_alive_, PollerInterface::cv())
         { _init(); }
 
+        ~InterProcessPortal()
+        {
+            if(zmq_thread_)
+	    {
+		zmq_main_.reader_shutdown();
+                zmq_thread_->join();
+	    }
+        }
+        
+        
+        
         friend Base;
         private:
+	void _init()
+	{
+	    goby::glog.set_lock_action(goby::common::logger_lock::lock);
+
+            using goby::protobuf::SerializerTransporterData;
+            Base::inner_.template subscribe<Base::forward_group_, SerializerTransporterData>([this](std::shared_ptr<const SerializerTransporterData> d) { _receive_publication_forwarded(d);});
+            
+            Base::inner_.template subscribe<Base::forward_group_, SerializationSubscriptionBase, MarshallingScheme::CXX_OBJECT>([this](std::shared_ptr<const SerializationSubscriptionBase> s) { _receive_subscription_forwarded(s); });
+
+
+            // start zmq read thread
+	    zmq_thread_.reset(new std::thread([this](){ zmq_read_thread_.run(); }));
+
+	    while(!zmq_main_.ready())
+	    {
+		protobuf::InprocControl control_msg;
+		if(zmq_main_.recv(&control_msg))
+		{
+		    switch(control_msg.type())
+		    {
+		    case protobuf::InprocControl::PUB_CONFIGURATION:
+			zmq_main_.set_publish_cfg(control_msg.publish_socket());
+			break;
+		    default: break;
+		    }
+		}
+	    } 
+	}
+
         
         template<typename Data, int scheme>
         void _publish(const Data& d, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
             std::vector<char> bytes(SerializerParserHelper<Data, scheme>::serialize(d));
-            std::string identifier = _make_fully_qualified_identifier<Data, scheme>(group);
-            
-            zmq::message_t msg(identifier.size() + 1 + bytes.size());
-            memcpy(msg.data(), identifier.data(), identifier.size());
-            *(static_cast<char*>(msg.data())+identifier.size()) = '\0';
-            memcpy(static_cast<char*>(msg.data())+identifier.size() + 1,
-                   &bytes[0], bytes.size());            
-
-            zmq_.send(msg, SOCKET_PUBLISH);
+            std::string identifier = _make_fully_qualified_identifier<Data, scheme>(group) + '\0';
+	    zmq_main_.publish(identifier, &bytes[0], bytes.size());
         }
-        
+
+	
 
         template<typename Data, int scheme>
         void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f, const Group& group)
@@ -51,76 +145,39 @@ namespace goby
                                                             group,
                                                             [=](const Data&d) { return group; })); 
             subscriptions_.insert(std::make_pair(identifier, subscription));
-            zmq_.subscribe(identifier, SOCKET_SUBSCRIBE);
+	    zmq_main_.subscribe(identifier);
         }
-        
-        int _poll(std::chrono::system_clock::duration wait_for)
+
+        int _poll()
         {
-            int items = Base::inner_.poll(std::chrono::seconds(0));
-
-            if(wait_for == std::chrono::system_clock::duration::max())
-                return items + zmq_.poll();
-            else
-                return items + zmq_.poll(std::max(0l, (long)std::chrono::duration_cast<std::chrono::microseconds>(wait_for).count()));
+            int items = 0;
+	    protobuf::InprocControl control_msg;
+	    while(zmq_main_.recv(&control_msg, ZMQ_NOBLOCK))
+	    {
+		switch(control_msg.type())
+		{
+		case protobuf::InprocControl::RECEIVE:
+		    ++items;
+		    for(auto &sub : subscriptions_)
+		    {
+			auto& data = control_msg.received_data();
+			auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
+			if(data.size() >= sub.first.size() && memcmp(&data[0], sub.first.data(), sub.first.size()) == 0)
+			    sub.second->post(null_delim_it+1, data.end());
+		    }	       	
+		    break;
+		default: break;
+		}
+	    }		
+            return items;
         }
         
-        void _init()
-        {
-            using goby::protobuf::SerializerTransporterData;
-            Base::inner_.template subscribe<Base::forward_group_, SerializerTransporterData>([this](std::shared_ptr<const SerializerTransporterData> d) { _receive_publication_forwarded(d);});
-            
-            Base::inner_.template subscribe<Base::forward_group_, SerializationSubscriptionBase, MarshallingScheme::CXX_OBJECT>([this](std::shared_ptr<const SerializationSubscriptionBase> s) { _receive_subscription_forwarded(s); });
-            zmq_.receive_func = [&](const void* data, int size, int message_part, int socket_id) { _zmq_inbox(data, size, message_part, socket_id); };
-
-            goby::common::protobuf::ZeroMQServiceConfig cfg;
-
-            goby::common::protobuf::ZeroMQServiceConfig::Socket* query_socket = cfg.add_socket();
-            query_socket->set_socket_type(common::protobuf::ZeroMQServiceConfig::Socket::REQUEST);
-            query_socket->set_socket_id(SOCKET_MANAGER);
-
-            switch(cfg_.transport())
-            {
-                case protobuf::InterProcessPortalConfig::IPC:
-                    query_socket->set_transport(common::protobuf::ZeroMQServiceConfig::Socket::IPC);
-                    query_socket->set_socket_name((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) + ".manager");
-                    break;
-                case protobuf::InterProcessPortalConfig::TCP:
-                    query_socket->set_transport(common::protobuf::ZeroMQServiceConfig::Socket::TCP);
-                    query_socket->set_ethernet_address(cfg_.ipv4_address());
-                    query_socket->set_ethernet_port(cfg_.tcp_port());
-                    break;
-            }
-            query_socket->set_connect_or_bind(common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
-
-            zmq_.set_cfg(&cfg);
-            
-            protobuf::ZMQManagerRequest req;
-            req.set_request(protobuf::PROVIDE_PUB_SUB_SOCKETS);
-
-            zmq::message_t msg(1 + req.ByteSize());
-            *static_cast<char*>(msg.data()) = '\0';
-            req.SerializeToArray(static_cast<char*>(msg.data())+1, req.ByteSize());
-            zmq_.send(msg, SOCKET_MANAGER);
-            Base::poll(std::chrono::seconds(cfg_.manager_timeout_seconds()));
-            
-            if(!have_pubsub_sockets_)
-            {
-                std::cerr << "No response from gobyd: " << cfg_.ShortDebugString() << std::endl;
-                exit(EXIT_FAILURE);
-            }
-            
-        }
-        
+       
         void _receive_publication_forwarded(std::shared_ptr<const goby::protobuf::SerializerTransporterData> data)
         {
             std::string identifier = _make_identifier(data->type(), data->marshalling_scheme(), data->group(), IdentifierWildcard::NO_WILDCARDS) + '\0';
-            const auto& bytes = data->data();
-            zmq::message_t msg(identifier.size() + bytes.size());
-            memcpy(msg.data(), identifier.data(), identifier.size());
-            memcpy(static_cast<char*>(msg.data())+identifier.size(),
-                   bytes.data(), bytes.size());
-                        
-            zmq_.send(msg, SOCKET_PUBLISH);
+	    auto& bytes = data->data();
+	    zmq_main_.publish(identifier, &bytes[0], bytes.size());
         }
 
         void _receive_subscription_forwarded(std::shared_ptr<const SerializationSubscriptionBase> subscription)
@@ -128,51 +185,7 @@ namespace goby
             std::string identifier = _make_identifier(subscription->type_name(), subscription->scheme(), subscription->subscribed_group(), IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
             subscriptions_.insert(std::make_pair(identifier, subscription));
-            zmq_.subscribe(identifier, SOCKET_SUBSCRIBE);
-        }
-
-        void _zmq_inbox(const void* data, int size, int message_part, int socket_id)
-        {
-            int null_delim_pos = 0;
-            for(int i = 0; i < size; ++i)
-            {
-                if(*(static_cast<const char*>(data) + i) == '\0')
-                {
-                    null_delim_pos = i;
-                    break;
-                }
-            }
-            if(socket_id == SOCKET_SUBSCRIBE)
-            {                
-                for(auto &sub : subscriptions_)
-                {                    
-                    if(static_cast<unsigned>(size) >= sub.first.size() && memcmp(data, sub.first.data(), sub.first.size()) == 0)
-                        sub.second->post(static_cast<const char*>(data) + null_delim_pos + 1,
-                                         static_cast<const char*>(data) + size);
-                }
-            }
-            else if(socket_id == SOCKET_MANAGER)
-            {
-                protobuf::ZMQManagerResponse response;
-                response.ParseFromArray(static_cast<const char*>(data) + null_delim_pos + 1, size - (null_delim_pos + 1));
-                if(response.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
-                {
-                    goby::common::protobuf::ZeroMQServiceConfig cfg;
-
-                    response.mutable_subscribe_socket()->set_socket_id(SOCKET_SUBSCRIBE);
-                    response.mutable_publish_socket()->set_socket_id(SOCKET_PUBLISH);
-
-                    if(response.subscribe_socket().transport() == common::protobuf::ZeroMQServiceConfig::Socket::TCP)
-                        response.mutable_subscribe_socket()->set_ethernet_address(cfg_.ipv4_address());
-                    if(response.publish_socket().transport() == common::protobuf::ZeroMQServiceConfig::Socket::TCP)
-                        response.mutable_publish_socket()->set_ethernet_address(cfg_.ipv4_address());
-                    
-                    *cfg.add_socket() = response.publish_socket();
-                    *cfg.add_socket() = response.subscribe_socket();
-                    zmq_.merge_cfg(&cfg);
-                    have_pubsub_sockets_ = true;
-                }
-            }
+	    zmq_main_.subscribe(identifier);
         }
 
         enum class IdentifierWildcard { NO_WILDCARDS,
@@ -192,32 +205,32 @@ namespace goby
         template<typename Data, int scheme>
         std::string _make_identifier(const Group& group, IdentifierWildcard wildcard)
         {
-            return _make_identifier(SerializerParserHelper<Data, scheme>::type_name(Data()), scheme, group, wildcard);
+            return _make_identifier(SerializerParserHelper<Data, scheme>::type_name(), scheme, group, wildcard);
         }
 
         std::string _make_identifier(const std::string& type_name, int scheme, const std::string& group, IdentifierWildcard wildcard)
         {
             switch(wildcard)
             {
-                default:
-                case IdentifierWildcard::NO_WILDCARDS:
-                return ("/" +
-                        group + "/" +
-                        id_component(scheme, schemes_) +
-                        type_name + "/" +
-                        process_ + "/" +
-                        id_component(std::this_thread::get_id(), threads_));
-                case IdentifierWildcard::THREAD_WILDCARD:
-                return ("/" +
-                        group +  "/" +
-                        id_component(scheme, schemes_) +
-                        type_name + "/" +
-                        process_ + "/");
-                case IdentifierWildcard::PROCESS_THREAD_WILDCARD:
-                   return ("/" +
-                           group + "/" +
-                           id_component(scheme, schemes_) +
-                           type_name + "/");
+	    default:
+	    case IdentifierWildcard::NO_WILDCARDS:
+	    return ("/" +
+		    group + "/" +
+		    id_component(scheme, schemes_) +
+		    type_name + "/" +
+		    process_ + "/" +
+		    id_component(std::this_thread::get_id(), threads_));
+	    case IdentifierWildcard::THREAD_WILDCARD:
+	    return ("/" +
+		    group +  "/" +
+		    id_component(scheme, schemes_) +
+		    type_name + "/" +
+		    process_ + "/");
+	    case IdentifierWildcard::PROCESS_THREAD_WILDCARD:
+	    return ("/" +
+		    group + "/" +
+		    id_component(scheme, schemes_) +
+		    type_name + "/");
             }
         }        
 
@@ -237,20 +250,23 @@ namespace goby
         
         
         private:
-
-        enum { SOCKET_MANAGER = 0, SOCKET_SUBSCRIBE = 1, SOCKET_PUBLISH = 2 };
-        
         const protobuf::InterProcessPortalConfig& cfg_;
-        goby::middleware::ZeroMQService zmq_;
-        bool have_pubsub_sockets_{false};
-        
+
+	std::unique_ptr<std::thread> zmq_thread_;
+        std::atomic<bool> zmq_alive_{true};
+	zmq::context_t zmq_context_;
+	ZMQMainThread zmq_main_;
+	ZMQReadThread zmq_read_thread_;       
+                
         // maps identifier to subscription
         std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase>> subscriptions_;
         std::string process_ {std::to_string(getpid())};
         std::unordered_map<int, std::string> schemes_;
         std::unordered_map<std::thread::id, std::string> threads_;
-    };
-    
+	};
+
+
+	
     class ZMQRouter
     {
     public:

@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
     goby::glog.add_stream(goby::common::logger::DEBUG3, &os);
     //    dccl::dlog.connect(dccl::logger::ALL, &os, true);
     goby::glog.set_name(std::string(argv[0])  + process_suffix);
-    goby::glog.set_lock_action(goby::common::logger_lock::lock);                        
+    goby::glog.set_lock_action(goby::common::logger_lock::lock);
 
     std::unique_ptr<std::thread> t10, t11;
     std::unique_ptr<zmq::context_t> manager_context;
@@ -238,6 +238,7 @@ int main(int argc, char* argv[])
         manager_context.reset();
         t10->join();
         t11->join();
+        glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
         for(int ws : wstatus)
         {
             if(ws != 0)
@@ -258,6 +259,7 @@ int main(int argc, char* argv[])
         std::thread t1([&] { indirect_publisher(zmq_cfg); });
         forward = false;
         t1.join();
+        glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
     }
     else if(process_index == 2)
     {
@@ -287,6 +289,7 @@ int main(int argc, char* argv[])
         manager_context.reset();
         t10->join();
         t11->join();
+        glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
     }
     else if(process_index == 3)
     {
@@ -295,8 +298,8 @@ int main(int argc, char* argv[])
         zmq_cfg.set_platform("test5-vehicle2");
         std::thread t1([&] { indirect_subscriber(zmq_cfg); });
         t1.join();
+        glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
     }    
 
-    glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;
     std::cout << process_suffix << ": all tests passed" << std::endl;
 }

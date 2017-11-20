@@ -8,6 +8,7 @@
 #include "goby/util/binary.h"
 
 #include "transport-interfaces.h"
+#include "poller.h"
 
 #include "goby/middleware/protobuf/interprocess_data.pb.h"
 
@@ -16,7 +17,7 @@ namespace goby
     // a do nothing transporter that is always inside the last real transporter level.
     class NullTransporter :
         public StaticTransporterInterface<NullTransporter, NullTransporter>,
-        public PollRelativeTimeInterface<NullTransporter>
+        public Poller<NullTransporter>
     {
     public:
 	template<typename Data>
@@ -44,12 +45,11 @@ namespace goby
         template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
         { }
-        
-        friend PollRelativeTimeInterface<NullTransporter>;
+
     private:
-        int _poll(std::chrono::system_clock::duration wait_for)
+        friend Poller<NullTransporter>;
+        int _poll()
         { return 0; }
-        
     };
     
     class SerializationSubscriptionBase
@@ -74,7 +74,7 @@ namespace goby
                               const Group& group,
                               std::function<Group(const Data&)> group_func)
         : handler_(handler),
-            type_name_(SerializerParserHelper<Data, scheme_id>::type_name(Data())),
+            type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
             group_(group),
             group_func_(group_func)
             { }
@@ -103,6 +103,7 @@ namespace goby
         {
             CharIterator actual_end;
             auto msg = std::make_shared<const Data>(SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
+
             if(subscribed_group() == group_func_(*msg))
                 handler_(msg, goby::protobuf::TransporterConfig());
             return actual_end;

@@ -148,6 +148,10 @@ private:
 void zmq_forward(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
     goby::InterProcessPortal<goby::InterThreadTransporter> zmq(inproc3, cfg);
+    zmq.subscribe<sample1, Sample>([&](const Sample& s) { glog.is(DEBUG1) && glog << "Portal Received1: " << s.DebugString() << std::endl; });
+    zmq.subscribe<sample2, Sample>([&](std::shared_ptr<const Sample> s) { glog.is(DEBUG1) && glog << "Portal Received2: " << s->DebugString()  << std::endl; });
+    zmq.subscribe<widget, Widget>([&](std::shared_ptr<const Widget> w) {  glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString()  << std::endl;  });
+
     zmq_ready = true;
     while(forward)
     {
