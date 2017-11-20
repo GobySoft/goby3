@@ -144,8 +144,7 @@ template<typename Config, typename TransporterType>
     else
     {
         // don't call loop()
-        // TODO should be transporter_->poll() when we fix issue allowing all levels to be polled simultaneously
-        transporter_->poll(std::chrono::milliseconds(10));
+        transporter_->poll();
     }
 }
 
