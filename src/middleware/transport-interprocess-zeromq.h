@@ -212,8 +212,13 @@ namespace goby
         {
             std::string identifier = _make_identifier(subscription->type_name(), subscription->scheme(), subscription->subscribed_group(), IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
-            subscriptions_.insert(std::make_pair(identifier, subscription));
-	    zmq_main_.subscribe(identifier);
+            // only insert once or each thread that subscribes will add another copy for everyone
+            if(forwarded_subscription_identifiers_.count(identifier) == 0)
+            {
+                forwarded_subscription_identifiers_.insert(identifier);
+                subscriptions_.insert(std::make_pair(identifier, subscription));
+                zmq_main_.subscribe(identifier);
+            }
         }
 
         void _receive_regex_subscription_forwarded(std::shared_ptr<const SerializationSubscriptionRegex> subscription)
@@ -309,6 +314,8 @@ namespace goby
                 
         // maps identifier to subscription
         std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase>> subscriptions_;
+        std::set<std::string> forwarded_subscription_identifiers_;
+        
         std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
         std::string process_ {std::to_string(getpid())};
         std::unordered_map<int, std::string> schemes_;
