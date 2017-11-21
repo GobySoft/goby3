@@ -16,7 +16,10 @@ void goby::setup_socket(zmq::socket_t& socket, const goby::common::protobuf::Zer
     switch(cfg.transport())
     {
         case common::protobuf::ZeroMQServiceConfig::Socket::IPC: endpoint = "ipc://" + cfg.socket_name(); break;                    
-        case common::protobuf::ZeroMQServiceConfig::Socket::TCP: endpoint = "tcp://" + (bind ? std::string("*") : cfg.ethernet_address()) + ":" + std::to_string(cfg.ethernet_port()); break;                 
+        case common::protobuf::ZeroMQServiceConfig::Socket::TCP: endpoint = "tcp://" + (bind ? std::string("*") : cfg.ethernet_address()) + ":" + std::to_string(cfg.ethernet_port()); break;
+        default:
+            throw(std::runtime_error("Unsupported transport type: " +  common::protobuf::ZeroMQServiceConfig::Socket::Transport_Name(cfg.transport())));
+            break;
     }
     
     if(bind)

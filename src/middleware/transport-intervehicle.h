@@ -105,7 +105,6 @@ namespace goby
                                    std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
             static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
-            inner_.template subscribe_dynamic<Data, scheme<Data>()>(func, group);
             auto pointer_ref_lambda = [=](std::shared_ptr<const Data> d) { func(*d); };
             static_cast<Derived*>(this)->template _subscribe<Data>(pointer_ref_lambda, group, group_func);
         }
@@ -116,7 +115,6 @@ namespace goby
                                    std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
             static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
-            inner_.template subscribe_dynamic<Data, scheme<Data>()>(func, group);
             static_cast<Derived*>(this)->template _subscribe<Data>(func, group, group_func);
         }        
 

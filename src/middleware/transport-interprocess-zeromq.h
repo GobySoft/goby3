@@ -1,6 +1,7 @@
 #ifndef TransportInterProcessZeroMQ20170807H
 #define TransportInterProcessZeroMQ20170807H
 
+#include <tuple>
 #include <zmq.hpp>
 
 #include "transport-interprocess.h"
@@ -100,8 +101,10 @@ namespace goby
             using goby::protobuf::SerializerTransporterData;
             Base::inner_.template subscribe<Base::forward_group_, SerializerTransporterData>([this](std::shared_ptr<const SerializerTransporterData> d) { _receive_publication_forwarded(d);});
             
-            Base::inner_.template subscribe<Base::forward_group_, SerializationSubscriptionBase, MarshallingScheme::CXX_OBJECT>([this](std::shared_ptr<const SerializationSubscriptionBase> s) { _receive_subscription_forwarded(s); });
+            Base::inner_.template subscribe<Base::forward_group_, SerializationSubscriptionBase>([this](std::shared_ptr<const SerializationSubscriptionBase> s) { _receive_subscription_forwarded(s); });
 
+            Base::inner_.template subscribe<Base::forward_group_, SerializationSubscriptionRegex>([this](std::shared_ptr<const SerializationSubscriptionRegex> s) { _receive_regex_subscription_forwarded(s); });
+            
 
             // start zmq read thread
 	    zmq_thread_.reset(new std::thread([this](){ zmq_read_thread_.run(); }));
@@ -148,6 +151,16 @@ namespace goby
 	    zmq_main_.subscribe(identifier);
         }
 
+        void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> f,
+                              const std::set<int>& schemes,
+                              const std::string& type_regex = ".*",
+                              const std::string& group_regex = ".*")
+        {
+            regex_subscriptions_.insert(std::shared_ptr<SerializationSubscriptionRegex>(new SerializationSubscriptionRegex(f, schemes, type_regex, group_regex)));
+            zmq_main_.subscribe("/");
+        }
+        
+        
         int _poll()
         {
             int items = 0;
@@ -160,11 +173,26 @@ namespace goby
 		    ++items;
 		    for(auto &sub : subscriptions_)
 		    {
-			auto& data = control_msg.received_data();
+			const auto& data = control_msg.received_data();
 			auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
 			if(data.size() >= sub.first.size() && memcmp(&data[0], sub.first.data(), sub.first.size()) == 0)
 			    sub.second->post(null_delim_it+1, data.end());
-		    }	       	
+		    }
+                    if(!regex_subscriptions_.empty())
+                    {
+			const auto& data = control_msg.received_data();
+                        
+                        std::string group;
+                        int scheme;
+                        std::string type;
+                        int process;
+                        std::size_t thread;
+                        std::tie(group, scheme, type, process, thread) = parse_identifier(data);
+                        auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
+                        
+                        for(auto& sub : regex_subscriptions_)
+                            sub->post(null_delim_it+1, data.end(), scheme, type, group);
+                    }
 		    break;
 		default: break;
 		}
@@ -188,6 +216,12 @@ namespace goby
 	    zmq_main_.subscribe(identifier);
         }
 
+        void _receive_regex_subscription_forwarded(std::shared_ptr<const SerializationSubscriptionRegex> subscription)
+        {
+            regex_subscriptions_.insert(subscription);
+            zmq_main_.subscribe("/");
+        }
+        
         enum class IdentifierWildcard { NO_WILDCARDS,
                                         THREAD_WILDCARD,
                                         PROCESS_THREAD_WILDCARD };
@@ -232,8 +266,23 @@ namespace goby
 		    id_component(scheme, schemes_) +
 		    type_name + "/");
             }
-        }        
+        }
 
+        // group, scheme, type, process, thread
+        std::tuple<std::string, int, std::string, int, std::size_t> parse_identifier(const std::string& identifier)
+        {
+            const int number_elements = 5;
+            std::string::size_type previous_slash = 0;
+            std::vector<std::string> elem;
+            for(auto i = 0; i < number_elements; ++i)
+            {
+                auto slash_pos = identifier.find('/', previous_slash+1);
+                elem.push_back(identifier.substr(previous_slash+1, slash_pos-(previous_slash+1)));
+                previous_slash = slash_pos;
+            }
+            return std::make_tuple(elem[0], std::stoi(elem[1]), elem[2], std::stoi(elem[3]), std::stoull(elem[4]));
+        }
+        
         template<typename Key>
         const std::string& id_component(const Key& k, std::unordered_map<Key, std::string>& map)
         {
@@ -260,6 +309,7 @@ namespace goby
                 
         // maps identifier to subscription
         std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase>> subscriptions_;
+        std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
         std::string process_ {std::to_string(getpid())};
         std::unordered_map<int, std::string> schemes_;
         std::unordered_map<std::thread::id, std::string> threads_;
