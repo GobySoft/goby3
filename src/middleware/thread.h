@@ -25,6 +25,11 @@
 
 #include <memory>
 #include <atomic>
+#include <chrono>
+
+#include <boost/units/systems/si.hpp>
+
+#include "goby/common/exception.h"
 
 namespace goby
 {

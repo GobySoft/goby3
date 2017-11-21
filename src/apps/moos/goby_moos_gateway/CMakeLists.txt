@@ -1,0 +1,3 @@
+add_executable(goby_moos_gateway goby_moos_gateway.cpp)
+target_link_libraries(goby_moos_gateway goby_common goby_moos goby_middleware)
+

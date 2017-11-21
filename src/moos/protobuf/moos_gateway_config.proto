@@ -1,0 +1,17 @@
+import "goby/common/protobuf/app3.proto";
+import "goby/middleware/protobuf/interprocess_config.proto";
+
+message GobyMOOSGatewayConfig
+{
+    optional goby.protobuf.App3Config app = 1;
+    optional goby.protobuf.InterProcessPortalConfig interprocess_portal = 2;
+
+    optional string moos_server = 3 [default = "localhost"];
+    optional int32 moos_port = 4 [default = 9000];
+
+    repeated string plugin_library = 10;
+
+    // frequency at which MOOS Fetch() is called - this allows us to interleave with Goby without
+    // thread access management in the user plugins
+    optional float poll_frequency = 20 [default = 10];
+}
