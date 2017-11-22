@@ -6,6 +6,4 @@ add_subdirectory(dynamic_protobuf)
 add_subdirectory(nmea)
 add_subdirectory(salinity)
 
-if(enable_gmp)
-  add_subdirectory(base255)
-endif()
+add_subdirectory(base255)

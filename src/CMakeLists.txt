@@ -189,7 +189,7 @@ if(build_common)
         add_subdirectory(middleware)
       endif()
       
-      if(enable_zeromq AND enable_gmp)
+      if(enable_zeromq)
         option(build_pb "Build the Goby implementation in Protobuf/C++ (PB) (requires goby-acomms)" ON)
         if(build_pb)
           add_subdirectory(pb)
