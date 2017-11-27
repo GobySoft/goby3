@@ -40,12 +40,11 @@
 
 namespace goby
 {
-    /// \brief Run a Goby application derived from MinimalApplicationBase.
-    /// blocks caller until MinimalApplicationBase::__run() returns
-    /// \param argc same as int main(int argc, char* argv)
-    /// \param argv same as int main(int argc, char* argv)
-    /// \return same as int main(int argc, char* argv)
-
+    /// \brief Run a Goby application 
+    /// blocks caller until ```__run()``` returns
+    /// \param argc same as ```int main(int argc, char* argv)```
+    /// \param argv same as ```int main(int argc, char* argv)```
+    /// \return same as ```int main(int argc, char* argv)```
     template<typename App>
         int run(int argc, char* argv[]);
     

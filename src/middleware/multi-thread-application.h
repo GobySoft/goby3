@@ -89,7 +89,7 @@ namespace goby
         
     MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : MainThreadBase(goby::common::ApplicationBase3<Config>::app_cfg(), &portal_, loop_freq),
-            portal_(goby::common::ApplicationBase3<Config>::app_cfg().interprocess_portal())
+            portal_(goby::common::ApplicationBase3<Config>::app_cfg().interprocess())
         {
             goby::glog.set_lock_action(goby::common::logger_lock::lock);
         }
