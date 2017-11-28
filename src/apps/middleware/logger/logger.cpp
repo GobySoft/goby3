@@ -1,4 +1,6 @@
 #include <fstream>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "goby/middleware/single-thread-application.h"
 #include "goby/middleware/log.h"
@@ -19,7 +21,8 @@ namespace goby
     public:
         Logger() :
             goby::SingleThreadApplication<protobuf::LoggerConfig>(1*boost::units::si::hertz),
-            log_(std::string(cfg().log_dir() + "/" + cfg().interprocess().platform() + "_" + goby::common::goby_file_timestamp() + ".goby").c_str(), std::ofstream::binary)
+            log_file_path_(std::string(cfg().log_dir() + "/" + cfg().interprocess().platform() + "_" + goby::common::goby_file_timestamp() + ".goby")),
+            log_(log_file_path_.c_str(), std::ofstream::binary)
             {
                 if(!log_.is_open())
                     glog.is(DIE) && glog << "Failed to open log in directory: " << cfg().log_dir() << std::endl;
@@ -31,6 +34,13 @@ namespace goby
                                                cfg().group_regex());
             }
 
+        ~Logger()
+            {
+                log_.close();
+                // set read only
+                chmod(log_file_path_.c_str(), S_IRUSR | S_IRGRP);
+            }        
+                
         void log(const std::vector<unsigned char>& data, int scheme, const std::string& type, const Group& group);
         void loop() override
             {
@@ -41,6 +51,7 @@ namespace goby
         static std::atomic<bool> do_quit;
 
     private:
+        std::string log_file_path_;
         std::ofstream log_;
     };
 }
