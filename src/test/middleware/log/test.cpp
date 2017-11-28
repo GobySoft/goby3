@@ -33,6 +33,7 @@ void read_log(int test)
         goby::LogEntry entry;
         entry.parse(&in_log_file);
         assert(entry.scheme() == goby::MarshallingScheme::PROTOBUF);
+        // corrupted index
         assert(entry.group() == "_unknown1_");
         assert(entry.type() == TempSample::descriptor()->full_name());
     }

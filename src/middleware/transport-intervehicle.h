@@ -181,7 +181,7 @@ namespace goby
                     
             goby::protobuf::DCCLSubscription dccl_subscription;
             dccl_subscription.set_dccl_id(dccl_id);
-            dccl_subscription.set_group(group);
+            dccl_subscription.set_group(group.numeric());
             dccl_subscription.set_protobuf_name(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
             _insert_file_desc_with_dependencies(Data::descriptor()->file(), &dccl_subscription);
             Base::inner_.template publish<Base::forward_group_, goby::protobuf::DCCLSubscription>(dccl_subscription);

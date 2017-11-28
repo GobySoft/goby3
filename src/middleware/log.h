@@ -34,17 +34,17 @@ namespace goby
         : data_(data),
             scheme_(scheme),
             type_(type),
-            group_(group)
+            group_(std::string(group))
             { }
             
-        LogEntry() { }
+    LogEntry() : group_("") { }
 
         template <typename Stream>
             void parse(Stream* s)
         {
             using namespace goby::common::logger;
             using goby::glog;
-
+            
             auto old_except_mask = s->exceptions();
             s->exceptions(std::ios::failbit | std::ios::badbit | std::ios::eofbit);
 
@@ -266,7 +266,7 @@ namespace goby
         std::vector<unsigned char> data_;
         int scheme_;
         std::string type_;
-        Group group_;
+        DynamicGroup group_;
 
         
         
