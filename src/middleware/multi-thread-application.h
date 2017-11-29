@@ -65,35 +65,33 @@ namespace goby
         std::unique_ptr<goby::InterProcessForwarder<goby::InterThreadTransporter>> forwarder_;
         
     };
-    
-    template<class Config>
-        class MultiThreadApplication
+
+    template<class Config, class Transporter>
+        class MultiThreadApplicationBase
         : public goby::common::ApplicationBase3<Config>,
-        public goby::Thread<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>
+        public goby::Thread<Config, Transporter>
     {
         
     private:
-        goby::InterThreadTransporter interthread_;
-        goby::InterProcessPortal<decltype(interthread_)> portal_;
-        
         std::map<std::type_index, std::map<int, std::atomic<bool>>> alive_;
         std::map<std::type_index, std::map<int, std::unique_ptr<std::thread>>> threads_;        
 
 		
     public:
-        using MainThreadBase = goby::Thread<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>;        
-
-    MultiThreadApplication(double loop_freq_hertz = 0) :
-        MultiThreadApplication(loop_freq_hertz*boost::units::si::hertz)
-        { }
+        using MainThreadBase = goby::Thread<Config, Transporter>;
         
-    MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : MainThreadBase(goby::common::ApplicationBase3<Config>::app_cfg(), &portal_, loop_freq),
-            portal_(goby::common::ApplicationBase3<Config>::app_cfg().interprocess())
-        {
-            goby::glog.set_lock_action(goby::common::logger_lock::lock);
-        }
-        virtual ~MultiThreadApplication() { }
+    MultiThreadApplicationBase(double loop_freq_hertz = 0) :
+        MultiThreadApplicationBase(loop_freq_hertz*boost::units::si::hertz)
+        { }
+
+
+        MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq, Transporter* portal)
+    : MainThreadBase(goby::common::ApplicationBase3<Config>::app_cfg(), portal, loop_freq)
+    {
+
+        goby::glog.set_lock_action(goby::common::logger_lock::lock);
+    }
+        virtual ~MultiThreadApplicationBase() { }
 
         
         template<typename ThreadType>
@@ -103,26 +101,101 @@ namespace goby
         template<typename ThreadType>
             void join_thread(int index = -1);
         
-    protected:
-        goby::InterProcessPortal<goby::InterThreadTransporter>& interprocess() { return portal_; }
-        goby::InterThreadTransporter& interthread() { return portal_.inner(); }
-        
-        
+    protected:        
         void quit() override;
         
     private:
-        void run() override
+
+    void run() override
         { MainThreadBase::run_once(); }
 
 	template<typename ThreadType, typename Lambda>
             void _launch_thread(int index, Lambda thread_lambda);
 
     };
+
+    
+    template<class Config>
+        class MultiThreadApplication
+        : public MultiThreadApplicationBase<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>
+    {
+        
+    private:
+        goby::InterThreadTransporter interthread_;        
+        goby::InterProcessPortal<goby::InterThreadTransporter> portal_;
+        using Base = MultiThreadApplicationBase<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>;
+        
+    public:
+    MultiThreadApplication(double loop_freq_hertz = 0) :
+        MultiThreadApplication(loop_freq_hertz*boost::units::si::hertz)
+        { }
+        
+    MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
+        : Base(loop_freq, &portal_),
+            portal_(interthread_, goby::common::ApplicationBase3<Config>::app_cfg().interprocess())
+        { }
+        virtual ~MultiThreadApplication() { }
+
+    protected:
+        goby::InterThreadTransporter& interthread() { return portal_.inner(); }
+        goby::InterProcessPortal<goby::InterThreadTransporter>& interprocess() { return portal_; }
+
+    };
+
+    template<class Config>
+        class MultiThreadStandaloneApplication
+        : public MultiThreadApplicationBase<Config, goby::InterThreadTransporter>
+    {
+        
+    private:
+        using Base = MultiThreadApplicationBase<Config, goby::InterThreadTransporter>;
+        goby::InterThreadTransporter interthread_;        
+        
+    public:
+    MultiThreadStandaloneApplication(double loop_freq_hertz = 0) :
+        MultiThreadStandaloneApplication(loop_freq_hertz*boost::units::si::hertz)
+        { }
+        
+    MultiThreadStandaloneApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
+        : Base(loop_freq, &interthread_)
+        {
+            
+        }
+        virtual ~MultiThreadStandaloneApplication() { }
+
+    protected:
+        goby::InterThreadTransporter& interthread() { return interthread_; }
+
+    };
+
+    template<class Config>
+        class MultiThreadTest
+        : public MultiThreadStandaloneApplication<Config>
+    {
+        
+    private:
+        using Base = MultiThreadStandaloneApplication<Config>;
+        
+    public:
+    MultiThreadTest(boost::units::quantity<boost::units::si::frequency> loop_freq = 0*boost::units::si::hertz)
+        : Base(loop_freq)
+        {
+            
+        }
+        virtual ~MultiThreadTest() { }
+
+    protected:
+        // so we can add on threads that publish to the outside for testing
+        goby::InterThreadTransporter& interprocess() { return Base::interthread(); }
+
+    };
+
+    
 }
 
-template<class Config>
+template<class Config, class Transporter>
 template<typename ThreadType>
-void goby::MultiThreadApplication<Config>::launch_thread()
+void goby::MultiThreadApplicationBase<Config, Transporter>::launch_thread()
 {
     const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
     int index = -1;
@@ -135,9 +208,9 @@ void goby::MultiThreadApplication<Config>::launch_thread()
     _launch_thread<ThreadType>(index, thread_lambda);
 }
 
-template<class Config>
+template<class Config, class Transporter>
 template<typename ThreadType>
-void goby::MultiThreadApplication<Config>::launch_thread(int index)
+void goby::MultiThreadApplicationBase<Config, Transporter>::launch_thread(int index)
 {
     const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
     std::type_index type_i = std::type_index(typeid(ThreadType));
@@ -149,9 +222,9 @@ void goby::MultiThreadApplication<Config>::launch_thread(int index)
     _launch_thread<ThreadType>(index, thread_lambda);
 }
 
-template<class Config>
+template<class Config, class Transporter>
 template<typename ThreadType, typename Lambda>
-void goby::MultiThreadApplication<Config>::_launch_thread(int index, Lambda thread_lambda)
+    void goby::MultiThreadApplicationBase<Config, Transporter>::_launch_thread(int index, Lambda thread_lambda)
 {   
     std::type_index type_i = std::type_index(typeid(ThreadType));
     
@@ -166,9 +239,9 @@ void goby::MultiThreadApplication<Config>::_launch_thread(int index, Lambda thre
 }
 
 
-template<class Config>
+template<class Config, class Transporter>
 template<typename ThreadType>
-void goby::MultiThreadApplication<Config>::join_thread(int index /* = -1 */)
+void goby::MultiThreadApplicationBase<Config, Transporter>::join_thread(int index /* = -1 */)
 {
     auto type_i = std::type_index(typeid(ThreadType));
 
@@ -182,8 +255,8 @@ void goby::MultiThreadApplication<Config>::join_thread(int index /* = -1 */)
 }
 
 
-template<class Config>
-void goby::MultiThreadApplication<Config>::quit()
+template<class Config, class Transporter>
+void goby::MultiThreadApplicationBase<Config, Transporter>::quit()
 {
     for(auto& amap : alive_)
     {
