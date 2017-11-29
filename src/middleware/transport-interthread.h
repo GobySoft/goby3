@@ -5,6 +5,7 @@
 #include <typeindex>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <condition_variable>
 #include <set>
 #include <atomic>
@@ -12,41 +13,17 @@
 #include "transport-common.h"
 
 namespace goby
-{
-    // increments and decrements a reader count using RAII
-    // once the reader count goes to zero, notifies a condition variable (for the writer(s) to use)
-    struct ReaderRegister
-    {
-    ReaderRegister(std::atomic<int>& counter, std::condition_variable& cv) : counter_(counter), cv_(cv)
-            {
-                ++counter;
-            }
-        ~ReaderRegister()
-            {
-                --counter_;
-                
-                if(counter_ == 0) cv_.notify_all();
-            }
-        
-        std::atomic<int>& counter_;
-        std::condition_variable& cv_;
-        };
-    
-    
+{   
     class SubscriptionStoreBase
     {
     public:
         // returns number of data items posted to callbacks 
-        static int poll_all(std::thread::id thread_id)
+        static int poll_all(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         {
-            stores_mutex_.lock();
-            // multiple readers
-            ReaderRegister r(pollers_, stores_cv_);
-            stores_mutex_.unlock();
-            
+	    std::shared_lock<std::shared_timed_mutex> stores_lock(stores_mutex_);           
             int poll_items = 0;
             for (auto const &s : stores_)
-                poll_items += s.second->poll(thread_id);
+                poll_items += s.second->poll(thread_id, lock);
             return poll_items;
         }
 
@@ -54,41 +31,45 @@ namespace goby
         template<typename StoreType> 
             static void insert()
         {
-
             // check the store, and if there isn't one for this type, create one
-            std::unique_lock<decltype(stores_mutex_)> lock(stores_mutex_);
-            while(pollers_ > 0) // wait for readers
-                stores_cv_.wait(lock);
-            
+            std::lock_guard<decltype(stores_mutex_)> lock(stores_mutex_);	   
             auto index = std::type_index(typeid(StoreType));
             if(!stores_.count(index))
                 stores_.insert(std::make_pair(index, std::unique_ptr<StoreType>(new StoreType)));
         }
         
     protected:
-        virtual int poll(std::thread::id thread_id) = 0;
+        virtual int poll(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) = 0;
         
 
     private:
         // stores a map of Datas to SubscriptionStores so that can call poll() on all the stores
         static std::unordered_map<std::type_index, std::unique_ptr<SubscriptionStoreBase>> stores_;
-        static std::mutex stores_mutex_;
-        static std::condition_variable stores_cv_;
-        static std::atomic<int> pollers_; // number of active readers on stores_mutex_
+        static std::shared_timed_mutex stores_mutex_;
     };
 
+
+    struct DataProtection
+    {
+	DataProtection(std::shared_ptr<std::mutex> dm,
+		       std::shared_ptr<std::condition_variable_any> pcv,
+		       std::shared_ptr<std::timed_mutex> pm)
+	: data_mutex(dm), poller_cv(pcv), poller_mutex(pm) {}
+	
+	std::shared_ptr<std::mutex> data_mutex;
+	std::shared_ptr<std::condition_variable_any> poller_cv;
+	std::shared_ptr<std::timed_mutex> poller_mutex;
+    };
     
     template<typename Data>
         class SubscriptionStore : public SubscriptionStoreBase
     {
     public:
-        static void subscribe(std::function<void(std::shared_ptr<const Data>)> func, const Group& group, std::thread::id thread_id, std::shared_ptr<std::mutex> mutex, std::shared_ptr<std::condition_variable_any> cv)
+        static void subscribe(std::function<void(std::shared_ptr<const Data>)> func, const Group& group, std::thread::id thread_id, std::shared_ptr<std::mutex> data_mutex, std::shared_ptr<std::condition_variable_any> cv, std::shared_ptr<std::timed_mutex> poller_mutex)
         {
             {
-                std::unique_lock<std::mutex> lock(subscription_mutex_);
-                while(subscription_readers_ > 0)
-                    subscription_cv_.wait(lock);
-                
+                std::lock_guard<std::shared_timed_mutex> lock(subscription_mutex_);
+		
                 // insert callback
                 auto it = subscription_callbacks_.insert(std::make_pair(thread_id, Callback(group, func)));
                 // insert group with iterator to callback
@@ -106,7 +87,7 @@ namespace goby
                 
                 // if we don't have a condition variable already for this thread, store it
                 if(!data_protection_.count(thread_id))
-                    data_protection_.insert(std::make_pair(thread_id, std::make_pair(mutex, cv)));
+                    data_protection_.insert(std::make_pair(thread_id, DataProtection(data_mutex, cv, poller_mutex)));
             }
             
             // try inserting a copy of this templated class via the base class for SubscriptionStoreBase::poll_all to use
@@ -115,13 +96,13 @@ namespace goby
 
         static void publish(std::shared_ptr<const Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
+//	    std::cout << std::this_thread::get_id() << "publishing to : " << group << std::endl;
+
             // push new data
             // build up local vector of relevant condition variables while locked
-            std::vector<std::pair<std::shared_ptr<std::mutex>, std::shared_ptr<std::condition_variable_any>>> cv_to_notify;
+            std::vector<DataProtection> cv_to_notify;
             {
-                subscription_mutex_.lock();
-                ReaderRegister r(subscription_readers_, subscription_cv_);
-                subscription_mutex_.unlock();
+		std::shared_lock<std::shared_timed_mutex> lock(subscription_mutex_);
                 
                 auto range = subscription_groups_.equal_range(group);
                 for (auto it = range.first; it != range.second; ++it)
@@ -132,7 +113,7 @@ namespace goby
                     if(thread_id != std::this_thread::get_id() || transport_cfg.echo())
                     {
                         // protect the DataQueue we are writing to
-                        std::unique_lock<std::mutex> lock(*(data_protection_.find(thread_id)->second.first));
+                        std::unique_lock<std::mutex> lock(*(data_protection_.find(thread_id)->second.data_mutex));
                         auto queue_it = data_.find(thread_id);
                         queue_it->second.insert(group, data);
                         cv_to_notify.push_back(data_protection_.at(thread_id));
@@ -141,25 +122,30 @@ namespace goby
             }
 
             // unlock and notify condition variables from local vector
-            for (const auto& cv_mutex_pair : cv_to_notify)
+            for (const auto& data_protection : cv_to_notify)
             {
-                cv_mutex_pair.second->notify_all();
+		{
+		    // lock to ensure the other thread isn't in the limbo region
+		    // between _poll_all() and wait(), where the condition variable
+		    // signal would be lost
+		    
+//		    std::cout << std::this_thread::get_id() << "publish notify locking: " << data_protection.poller_mutex.get() << std::endl;
+		    std::lock_guard<std::timed_mutex>(*data_protection.poller_mutex);
+		}
+                data_protection.poller_cv->notify_all();
             }
         }
         
         
 
     private:
-        int poll(std::thread::id thread_id)
+        int poll(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         {
 
             std::vector<std::pair<std::function<void(std::shared_ptr<const Data>)>, std::shared_ptr<const Data>>> data_callbacks;
             int poll_items_count = 0;
 
-            subscription_mutex_.lock();
-            ReaderRegister r(subscription_readers_, subscription_cv_);
-            subscription_mutex_.unlock();
-                
+	    std::shared_lock<std::shared_timed_mutex> sub_lock(subscription_mutex_);
             
             auto queue_it = data_.find(thread_id);
             if(queue_it == data_.end())
@@ -167,7 +153,7 @@ namespace goby
             
 
             {
-                std::unique_lock<std::mutex> lock(*(data_protection_.find(thread_id)->second.first));
+                std::unique_lock<std::mutex> data_lock(*(data_protection_.find(thread_id)->second.data_mutex));
                                 
                 // loop over all Groups stored in this DataQueue
                 for (auto data_it = queue_it->second.cbegin(), end = queue_it->second.cend(); data_it != end; ++data_it) 
@@ -185,6 +171,8 @@ namespace goby
                         for(auto& datum : data_it->second)
                         {
                             ++poll_items_count;
+			    // we have data, no need to keep this lock any longer
+			    if(lock) lock.reset();
                             data_callbacks.push_back(std::make_pair(callback, datum));
                         }
                     }
@@ -239,11 +227,9 @@ namespace goby
         // threads that are subscribed to a given group
         static std::unordered_multimap<Group, typename decltype(subscription_callbacks_)::const_iterator> subscription_groups_;
         // condition variable to use for data
-        static std::unordered_map<std::thread::id, std::pair<std::shared_ptr<std::mutex>, std::shared_ptr<std::condition_variable_any>>> data_protection_;
+        static std::unordered_map<std::thread::id, DataProtection> data_protection_;
 
-        static std::mutex subscription_mutex_; // protects subscription_callbacks, subscription_groups, data_protection, and the overarching data_ map (but not the DataQueues within it, which are protected by the mutexes stored in data_protection_))
-        static std::condition_variable subscription_cv_;
-        static std::atomic<int> subscription_readers_; // number of active readers on subscription_mutex_
+        static std::shared_timed_mutex subscription_mutex_; // protects subscription_callbacks, subscription_groups, data_protection, and the overarching data_ map (but not the DataQueues within it, which are protected by the mutexes stored in data_protection_))
 
         
         // data for a given thread
@@ -259,14 +245,10 @@ namespace goby
     template<typename Data>
         std::unordered_multimap<goby::Group, typename decltype(SubscriptionStore<Data>::subscription_callbacks_)::const_iterator> SubscriptionStore<Data>::subscription_groups_;
     template<typename Data>
-        std::unordered_map<std::thread::id, std::pair<std::shared_ptr<std::mutex>, std::shared_ptr<std::condition_variable_any>>> SubscriptionStore<Data>::data_protection_;
+        std::unordered_map<std::thread::id, DataProtection> SubscriptionStore<Data>::data_protection_;
 
     template<typename Data>
-        std::mutex SubscriptionStore<Data>::subscription_mutex_;
-    template<typename Data>
-        std::condition_variable SubscriptionStore<Data>::subscription_cv_;
-    template<typename Data>
-        std::atomic<int> SubscriptionStore<Data>::subscription_readers_;  
+        std::shared_timed_mutex SubscriptionStore<Data>::subscription_mutex_;
 
     class InterThreadTransporter :
         public StaticTransporterInterface<InterThreadTransporter, NullTransporter>,
@@ -309,21 +291,21 @@ namespace goby
             void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
         {
             check_validity_runtime(group);
-            SubscriptionStore<Data>::subscribe([=](std::shared_ptr<const Data> pd) { f(*pd); }, group, std::this_thread::get_id(), data_mutex_, Poller<InterThreadTransporter>::cv());
+            SubscriptionStore<Data>::subscribe([=](std::shared_ptr<const Data> pd) { f(*pd); }, group, std::this_thread::get_id(), data_mutex_, Poller<InterThreadTransporter>::cv(), Poller<InterThreadTransporter>::poll_mutex());
         }
         
         template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
         {
             check_validity_runtime(group);
-            SubscriptionStore<Data>::subscribe(f, group, std::this_thread::get_id(), data_mutex_, Poller<InterThreadTransporter>::cv());
+            SubscriptionStore<Data>::subscribe(f, group, std::this_thread::get_id(), data_mutex_, Poller<InterThreadTransporter>::cv(), Poller<InterThreadTransporter>::poll_mutex());
         }
 
 
     private:
 	friend Poller<InterThreadTransporter>;
-	int _poll()
-        { return SubscriptionStoreBase::poll_all(std::this_thread::get_id()); }
+	int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+        { return SubscriptionStoreBase::poll_all(std::this_thread::get_id(), lock); }
         
     private:
         // protects this thread's DataQueue

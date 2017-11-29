@@ -37,6 +37,7 @@ namespace goby
     template<typename Config>
         class SimpleThread : public Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>
     {
+	using SimpleThreadBase = Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>;
     public:
     SimpleThread(const Config& cfg, double loop_freq_hertz = 0, int index = -1) :
         SimpleThread(cfg, loop_freq_hertz*boost::units::si::hertz, index) { }
@@ -48,6 +49,11 @@ namespace goby
             interthread_.reset(new goby::InterThreadTransporter);
             forwarder_.reset(new goby::InterProcessForwarder<goby::InterThreadTransporter>(*interthread_));
             Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>::set_transporter(forwarder_.get());
+
+	    interthread_->template subscribe<SimpleThreadBase::shutdown_group_, bool>(
+		[this](const bool& shutdown)
+		{ if(shutdown) SimpleThreadBase::thread_quit(); }
+		);	   
         }
 
         goby::InterProcessForwarder<goby::InterThreadTransporter>& interprocess()
@@ -84,7 +90,8 @@ namespace goby
             
         std::map<std::type_index, std::map<int, ThreadManagement>> threads_;
 
-		
+	goby::InterThreadTransporter interthread_;
+
     public:
         using MainThreadBase = goby::Thread<Config, Transporter>;
         
@@ -111,7 +118,9 @@ namespace goby
         template<typename ThreadType>
             void join_thread(int index = -1);
         
-    protected:        
+    protected:
+	goby::InterThreadTransporter& interthread() { return interthread_; }
+
         void quit() override;
         
     private:
@@ -132,7 +141,6 @@ namespace goby
     {
         
     private:
-        goby::InterThreadTransporter interthread_;        
         goby::InterProcessPortal<goby::InterThreadTransporter> portal_;
         using Base = MultiThreadApplicationBase<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>;
         
@@ -143,7 +151,7 @@ namespace goby
         
     MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : Base(loop_freq, &portal_),
-            portal_(interthread_, goby::common::ApplicationBase3<Config>::app_cfg().interprocess())
+            portal_(Base::interthread(), goby::common::ApplicationBase3<Config>::app_cfg().interprocess())
         { }
         virtual ~MultiThreadApplication() { }
 
@@ -160,7 +168,6 @@ namespace goby
         
     private:
         using Base = MultiThreadApplicationBase<Config, goby::InterThreadTransporter>;
-        goby::InterThreadTransporter interthread_;        
         
     public:
     MultiThreadStandaloneApplication(double loop_freq_hertz = 0) :
@@ -168,14 +175,13 @@ namespace goby
         { }
         
     MultiThreadStandaloneApplication(boost::units::quantity<boost::units::si::frequency> loop_freq, bool check_required_configuration = true)
-        : Base(loop_freq, &interthread_, check_required_configuration)
+        : Base(loop_freq, &Base::interthread(), check_required_configuration)
         {
             
         }
         virtual ~MultiThreadStandaloneApplication() { }
 
     protected:
-        goby::InterThreadTransporter& interthread() { return interthread_; }
 
     };
 
@@ -233,6 +239,7 @@ template<typename ThreadType, bool has_index>
     // copy configuration 
     auto thread_lambda = [this, type_i, index, cfg, &thread_manager]()
 	{
+//	    std::cout << std::this_thread::get_id() << ": thread " << index << std::endl;
              std::shared_ptr<ThreadType> goby_thread(ThreadTypeSelector<Config, ThreadType, has_index>::thread(cfg, index));
              thread_manager.poll_cv = goby_thread->interthread().cv();
              thread_manager.poll_mutex = goby_thread->interthread().poll_mutex();
@@ -263,17 +270,12 @@ void goby::MultiThreadApplicationBase<Config, Transporter>::join_thread(int inde
 template<class Config, class Transporter>
 void goby::MultiThreadApplicationBase<Config, Transporter>::quit()
 {
+    interthread_.publish<MainThreadBase::shutdown_group_>(true);
     // join the threads
     for(auto& tmap : threads_)
     {
         for(auto & t : tmap.second)
         {
-            {                
-                std::unique_lock<std::timed_mutex> lock(*t.second.poll_mutex);
-                t.second.alive = false;
-            }
-            // notify condition variables
-            t.second.poll_cv->notify_all();
             t.second.thread->join();
         }
     }

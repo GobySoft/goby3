@@ -49,7 +49,7 @@ namespace goby
 
     private:
         friend Poller<NullTransporter>;
-        int _poll()
+        int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         { return 0; }
     };
     

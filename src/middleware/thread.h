@@ -33,6 +33,8 @@
 
 #include "goby/common/exception.h"
 
+#include "group.h"
+
 namespace goby
 {
     template<typename Config, typename TransporterType>
@@ -72,9 +74,7 @@ namespace goby
             alive_ = &alive;
             while(alive)
             {
-                std::unique_lock<std::timed_mutex> lock(*transporter_->poll_mutex());
-
-                run_once(&lock);
+                run_once();
             }
             
         }
@@ -113,20 +113,26 @@ namespace goby
         decltype(loop_frequency_) loop_frequency() { return loop_frequency_; }
         double loop_max_frequency() { return std::numeric_limits<double>::infinity(); }
         
-        void run_once(std::unique_lock<std::timed_mutex>* lock = nullptr);
+        void run_once();
 
         TransporterType& transporter() { return *transporter_; }
 
         const Config& cfg() { return cfg_; }
 
-        void thread_quit() { (*alive_) = false; }
+	void thread_quit() { (*alive_) = false; }
+
+	static constexpr goby::Group shutdown_group_ { "goby::ThreadShutdown" };
+
     };
 
+    
 }
 
-
 template<typename Config, typename TransporterType>
-    void goby::Thread<Config, TransporterType>::run_once(std::unique_lock<std::timed_mutex>* lock)
+    constexpr goby::Group goby::Thread<Config, TransporterType>::shutdown_group_;
+    
+template<typename Config, typename TransporterType>
+    void goby::Thread<Config, TransporterType>::run_once()
 {
     if(!transporter_)
         throw(goby::Exception("Null transporter"));
@@ -134,12 +140,12 @@ template<typename Config, typename TransporterType>
     if(loop_frequency_hertz() == std::numeric_limits<double>::infinity())
     {
         // call loop as fast as possible
-        transporter_->poll(std::chrono::seconds(0), lock);
+        transporter_->poll(std::chrono::seconds(0));
         loop();
     }
     else if(loop_frequency_hertz() > 0)
     {
-        int events = transporter_->poll(loop_time_, lock);
+        int events = transporter_->poll(loop_time_);
         
         // timeout
         if(events == 0)
@@ -152,9 +158,8 @@ template<typename Config, typename TransporterType>
     else
     {
         // don't call loop()
-        transporter_->poll(std::chrono::system_clock::time_point::max(), lock);
+        transporter_->poll();
     }
 }
-
 
 #endif
