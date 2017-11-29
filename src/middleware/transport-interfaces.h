@@ -71,8 +71,8 @@ namespace goby
             { }
         
         
-        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max());
-        int poll(std::chrono::system_clock::duration wait_for);
+        int poll(const std::chrono::system_clock::time_point& timeout = std::chrono::system_clock::time_point::max(), std::unique_lock<std::timed_mutex>* lock = nullptr);
+        int poll(std::chrono::system_clock::duration wait_for, std::unique_lock<std::timed_mutex>* lock = nullptr);
 
         std::shared_ptr<std::timed_mutex> poll_mutex() { return poll_mutex_; }
         std::shared_ptr<std::condition_variable_any> cv() { return cv_; }
@@ -84,7 +84,8 @@ namespace goby
 
     private:
         // poll all the transporters for data, including a timeout (only called by the outside-most Poller)
-        int _poll_all(const std::chrono::system_clock::time_point& timeout);
+        int _poll_all(const std::chrono::system_clock::time_point& timeout,
+                      std::unique_lock<std::timed_mutex>* lock = nullptr);
         
         std::shared_ptr<std::timed_mutex> poll_mutex_;
         // signaled when there's no data for this thread to read during _poll()

@@ -41,7 +41,8 @@ void goby::common::ConfigReader::read_cfg(int argc,
                                         google::protobuf::Message* message,
                                         std::string* application_name,
                                         boost::program_options::options_description* od_all,
-                                        boost::program_options::variables_map* var_map)
+                                        boost::program_options::variables_map* var_map,
+                                          bool check_required_configuration /*= true*/)
 {
     if(!argv) return;
 
@@ -170,7 +171,7 @@ void goby::common::ConfigReader::read_cfg(int argc,
         }
         
         // now the proto message must have all required fields
-        if(!message->IsInitialized())
+        if(check_required_configuration && !message->IsInitialized())
         {
             std::vector< std::string > errors;
             message->FindInitializationErrors(&errors);

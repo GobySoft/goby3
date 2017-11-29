@@ -26,6 +26,8 @@
 #include <memory>
 #include <atomic>
 #include <chrono>
+#include <mutex>
+
 
 #include <boost/units/systems/si.hpp>
 
@@ -68,7 +70,13 @@ namespace goby
         void run(std::atomic<bool>& alive)
         {
             alive_ = &alive;
-            while(alive) run_once();
+            while(alive)
+            {
+                std::unique_lock<std::timed_mutex> lock(*transporter_->poll_mutex());
+
+                run_once(&lock);
+            }
+            
         }
 
         int index() { return index_; }
@@ -105,7 +113,7 @@ namespace goby
         decltype(loop_frequency_) loop_frequency() { return loop_frequency_; }
         double loop_max_frequency() { return std::numeric_limits<double>::infinity(); }
         
-        void run_once();
+        void run_once(std::unique_lock<std::timed_mutex>* lock = nullptr);
 
         TransporterType& transporter() { return *transporter_; }
 
@@ -118,7 +126,7 @@ namespace goby
 
 
 template<typename Config, typename TransporterType>
-    void goby::Thread<Config, TransporterType>::run_once()
+    void goby::Thread<Config, TransporterType>::run_once(std::unique_lock<std::timed_mutex>* lock)
 {
     if(!transporter_)
         throw(goby::Exception("Null transporter"));
@@ -126,12 +134,12 @@ template<typename Config, typename TransporterType>
     if(loop_frequency_hertz() == std::numeric_limits<double>::infinity())
     {
         // call loop as fast as possible
-        transporter_->poll(std::chrono::seconds(0));
+        transporter_->poll(std::chrono::seconds(0), lock);
         loop();
     }
     else if(loop_frequency_hertz() > 0)
     {
-        int events = transporter_->poll(loop_time_);
+        int events = transporter_->poll(loop_time_, lock);
         
         // timeout
         if(events == 0)
@@ -144,7 +152,7 @@ template<typename Config, typename TransporterType>
     else
     {
         // don't call loop()
-        transporter_->poll();
+        transporter_->poll(std::chrono::system_clock::time_point::max(), lock);
     }
 }
 

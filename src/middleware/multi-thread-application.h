@@ -73,8 +73,16 @@ namespace goby
     {
         
     private:
-        std::map<std::type_index, std::map<int, std::atomic<bool>>> alive_;
-        std::map<std::type_index, std::map<int, std::unique_ptr<std::thread>>> threads_;        
+        struct ThreadManagement
+        {
+            std::atomic<bool> alive{true};
+            std::unique_ptr<std::thread> thread;
+            std::shared_ptr<std::condition_variable_any> poll_cv;
+            std::shared_ptr<std::timed_mutex> poll_mutex;
+        };
+        
+            
+        std::map<std::type_index, std::map<int, ThreadManagement>> threads_;
 
 		
     public:
@@ -85,19 +93,21 @@ namespace goby
         { }
 
 
-        MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq, Transporter* portal)
-    : MainThreadBase(goby::common::ApplicationBase3<Config>::app_cfg(), portal, loop_freq)
-    {
-
-        goby::glog.set_lock_action(goby::common::logger_lock::lock);
-    }
+    MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq, Transporter* portal, bool check_required_configuration = true)
+        : goby::common::ApplicationBase3<Config>(check_required_configuration),
+            MainThreadBase(goby::common::ApplicationBase3<Config>::app_cfg(), portal, loop_freq)
+            {   
+                goby::glog.set_lock_action(goby::common::logger_lock::lock);
+            }
         virtual ~MultiThreadApplicationBase() { }
 
         
         template<typename ThreadType>
-            void launch_thread();
+            void launch_thread()
+        { _launch_thread<ThreadType, false>(-1); }
         template<typename ThreadType>
-            void launch_thread(int index);
+            void launch_thread(int index)
+        { _launch_thread<ThreadType, true>(index); }
         template<typename ThreadType>
             void join_thread(int index = -1);
         
@@ -109,8 +119,9 @@ namespace goby
     void run() override
         { MainThreadBase::run_once(); }
 
-	template<typename ThreadType, typename Lambda>
-            void _launch_thread(int index, Lambda thread_lambda);
+    template<typename ThreadType, bool has_index>
+            void _launch_thread(int index);
+        
 
     };
 
@@ -156,8 +167,8 @@ namespace goby
         MultiThreadStandaloneApplication(loop_freq_hertz*boost::units::si::hertz)
         { }
         
-    MultiThreadStandaloneApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : Base(loop_freq, &interthread_)
+    MultiThreadStandaloneApplication(boost::units::quantity<boost::units::si::frequency> loop_freq, bool check_required_configuration = true)
+        : Base(loop_freq, &interthread_, check_required_configuration)
         {
             
         }
@@ -178,7 +189,7 @@ namespace goby
         
     public:
     MultiThreadTest(boost::units::quantity<boost::units::si::frequency> loop_freq = 0*boost::units::si::hertz)
-        : Base(loop_freq)
+        : Base(loop_freq, false)
         {
             
         }
@@ -190,52 +201,46 @@ namespace goby
 
     };
 
-    
+    // selects which constructor to use based on whether the thread is launched with an index or not
+    template<class Config, typename ThreadType, bool has_index>
+        struct ThreadTypeSelector { };
+    template<class Config, typename ThreadType>
+        struct ThreadTypeSelector<Config, ThreadType, false>
+    {
+        static std::shared_ptr<ThreadType> thread(const Config& cfg, int index = -1)
+        { return std::make_shared<ThreadType>(cfg); };
+    };
+    template<class Config, typename ThreadType>
+        struct ThreadTypeSelector<Config, ThreadType, true>
+    {
+        static std::shared_ptr<ThreadType> thread(const Config& cfg, int index)
+        { return std::make_shared<ThreadType>(cfg, index); };
+    };    
 }
 
 template<class Config, class Transporter>
-template<typename ThreadType>
-void goby::MultiThreadApplicationBase<Config, Transporter>::launch_thread()
-{
-    const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
-    int index = -1;
-    std::type_index type_i = std::type_index(typeid(ThreadType));
-    auto thread_lambda = [this, type_i, index, &cfg]()
-	{
-	    ThreadType goby_thread(cfg);
-	    goby_thread.run(alive_[type_i][index]);
-	};
-    _launch_thread<ThreadType>(index, thread_lambda);
-}
-
-template<class Config, class Transporter>
-template<typename ThreadType>
-void goby::MultiThreadApplicationBase<Config, Transporter>::launch_thread(int index)
-{
-    const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
-    std::type_index type_i = std::type_index(typeid(ThreadType));
-    auto thread_lambda = [this, type_i, index, &cfg]()
-	{
-	    ThreadType goby_thread(cfg, index);
-	    goby_thread.run(alive_[type_i][index]);
-	};
-    _launch_thread<ThreadType>(index, thread_lambda);
-}
-
-template<class Config, class Transporter>
-template<typename ThreadType, typename Lambda>
-    void goby::MultiThreadApplicationBase<Config, Transporter>::_launch_thread(int index, Lambda thread_lambda)
+template<typename ThreadType, bool has_index>
+    void goby::MultiThreadApplicationBase<Config, Transporter>::_launch_thread(int index)
 {   
+    const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
     std::type_index type_i = std::type_index(typeid(ThreadType));
-    
-    if(threads_[type_i].count(index))
-        throw(Exception(std::string("Thread of type: ") + type_i.name() + " and index " + std::to_string(index) + " was already launched."));
-    
-    alive_[type_i][index] = true;
 
-    threads_[type_i].insert(
-        std::make_pair(index,
-                       std::unique_ptr<std::thread>(new std::thread(thread_lambda))));    
+    if(threads_[type_i].count(index))
+        throw(Exception(std::string("Thread of type: ") + type_i.name() + " and index " + std::to_string(index) + " was already launched."));    
+
+    auto& thread_manager = threads_[type_i][index];
+    
+    // copy configuration 
+    auto thread_lambda = [this, type_i, index, cfg, &thread_manager]()
+	{
+             std::shared_ptr<ThreadType> goby_thread(ThreadTypeSelector<Config, ThreadType, has_index>::thread(cfg, index));
+             thread_manager.poll_cv = goby_thread->interthread().cv();
+             thread_manager.poll_mutex = goby_thread->interthread().poll_mutex();
+             goby_thread->run(thread_manager.alive);
+	};
+
+    
+    thread_manager.thread = std::unique_ptr<std::thread>(new std::thread(thread_lambda));
 }
 
 
@@ -248,9 +253,9 @@ void goby::MultiThreadApplicationBase<Config, Transporter>::join_thread(int inde
     if(!threads_[type_i].count(index))
         throw(Exception(std::string("No running thread of type: ") + type_i.name() + " and index " + std::to_string(index) + " to join."));
 
-    alive_[type_i][index] = false;
-    threads_[type_i][index]->join();
-    alive_[type_i].erase(index);
+    
+    threads_[type_i][index].alive = false;
+    threads_[type_i][index].thread->join();
     threads_[type_i].erase(index);
 }
 
@@ -258,16 +263,19 @@ void goby::MultiThreadApplicationBase<Config, Transporter>::join_thread(int inde
 template<class Config, class Transporter>
 void goby::MultiThreadApplicationBase<Config, Transporter>::quit()
 {
-    for(auto& amap : alive_)
-    {
-        for (auto& a : amap.second)
-            a.second = false;
-    }
-    
+    // join the threads
     for(auto& tmap : threads_)
     {
         for(auto & t : tmap.second)
-            t.second->join();
+        {
+            {                
+                std::unique_lock<std::timed_mutex> lock(*t.second.poll_mutex);
+                t.second.alive = false;
+            }
+            // notify condition variables
+            t.second.poll_cv->notify_all();
+            t.second.thread->join();
+        }
     }
     
     goby::common::ApplicationBase3<Config>::quit();
