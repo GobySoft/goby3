@@ -111,10 +111,18 @@ namespace goby
         
         template<typename ThreadType>
             void launch_thread()
-        { _launch_thread<ThreadType, false>(-1); }
+        { _launch_thread<ThreadType, Config, false>(-1, goby::common::ApplicationBase3<Config>::app_cfg()); }
         template<typename ThreadType>
             void launch_thread(int index)
-        { _launch_thread<ThreadType, true>(index); }
+        { _launch_thread<ThreadType, Config, true>(index, goby::common::ApplicationBase3<Config>::app_cfg()); }
+	
+	template<typename ThreadType, typename ThreadConfig>
+            void launch_thread(const ThreadConfig& cfg)
+        { _launch_thread<ThreadType, ThreadConfig, false>(-1, cfg); }
+        template<typename ThreadType, typename ThreadConfig>
+            void launch_thread(int index, const ThreadConfig& cfg)	   
+        { _launch_thread<ThreadType, ThreadConfig, true>(index, cfg); }
+	
         template<typename ThreadType>
             void join_thread(int index = -1);
         
@@ -128,8 +136,8 @@ namespace goby
     void run() override
         { MainThreadBase::run_once(); }
 
-    template<typename ThreadType, bool has_index>
-            void _launch_thread(int index);
+    template<typename ThreadType, typename ThreadConfig, bool has_index>
+	void _launch_thread(int index, const ThreadConfig& cfg);
         
 
     };
@@ -208,27 +216,26 @@ namespace goby
     };
 
     // selects which constructor to use based on whether the thread is launched with an index or not
-    template<class Config, typename ThreadType, bool has_index>
+    template<typename ThreadType, typename ThreadConfig, bool has_index>
         struct ThreadTypeSelector { };
-    template<class Config, typename ThreadType>
-        struct ThreadTypeSelector<Config, ThreadType, false>
+    template<typename ThreadType, typename ThreadConfig>
+        struct ThreadTypeSelector<ThreadType, ThreadConfig, false>
     {
-        static std::shared_ptr<ThreadType> thread(const Config& cfg, int index = -1)
+        static std::shared_ptr<ThreadType> thread(const ThreadConfig& cfg, int index = -1)
         { return std::make_shared<ThreadType>(cfg); };
     };
-    template<class Config, typename ThreadType>
-        struct ThreadTypeSelector<Config, ThreadType, true>
+    template<typename ThreadType, typename ThreadConfig>
+        struct ThreadTypeSelector<ThreadType, ThreadConfig, true>
     {
-        static std::shared_ptr<ThreadType> thread(const Config& cfg, int index)
+        static std::shared_ptr<ThreadType> thread(const ThreadConfig& cfg, int index)
         { return std::make_shared<ThreadType>(cfg, index); };
     };    
 }
 
 template<class Config, class Transporter>
-template<typename ThreadType, bool has_index>
-    void goby::MultiThreadApplicationBase<Config, Transporter>::_launch_thread(int index)
+    template<typename ThreadType, typename ThreadConfig, bool has_index>
+    void goby::MultiThreadApplicationBase<Config, Transporter>::_launch_thread(int index, const ThreadConfig& cfg)
 {   
-    const Config& cfg = goby::common::ApplicationBase3<Config>::app_cfg();
     std::type_index type_i = std::type_index(typeid(ThreadType));
 
     if(threads_[type_i].count(index))
@@ -240,7 +247,7 @@ template<typename ThreadType, bool has_index>
     auto thread_lambda = [this, type_i, index, cfg, &thread_manager]()
 	{
 //	    std::cout << std::this_thread::get_id() << ": thread " << index << std::endl;
-             std::shared_ptr<ThreadType> goby_thread(ThreadTypeSelector<Config, ThreadType, has_index>::thread(cfg, index));
+	    std::shared_ptr<ThreadType> goby_thread(ThreadTypeSelector<ThreadType, ThreadConfig, has_index>::thread(cfg, index));
              thread_manager.poll_cv = goby_thread->interthread().cv();
              thread_manager.poll_mutex = goby_thread->interthread().poll_mutex();
              goby_thread->run(thread_manager.alive);
