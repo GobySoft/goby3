@@ -8,5 +8,5 @@ message GobyDaemonConfig
 {
   optional App3Config app = 1;
   optional int32 router_threads = 2 [default = 10];
-  optional InterProcessPortalConfig interprocess_portal = 3;
+  optional InterProcessPortalConfig interprocess = 3;
 }

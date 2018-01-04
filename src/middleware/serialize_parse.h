@@ -13,7 +13,6 @@
 
 namespace goby 
 {
-
     //
     // MarshallingScheme
     //

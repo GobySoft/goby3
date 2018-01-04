@@ -40,12 +40,11 @@
 
 namespace goby
 {
-    /// \brief Run a Goby application derived from MinimalApplicationBase.
-    /// blocks caller until MinimalApplicationBase::__run() returns
-    /// \param argc same as int main(int argc, char* argv)
-    /// \param argv same as int main(int argc, char* argv)
-    /// \return same as int main(int argc, char* argv)
-
+    /// \brief Run a Goby application 
+    /// blocks caller until ```__run()``` returns
+    /// \param argc same as ```int main(int argc, char* argv)```
+    /// \param argv same as ```int main(int argc, char* argv)```
+    /// \return same as ```int main(int argc, char* argv)```
     template<typename App>
         int run(int argc, char* argv[]);
     
@@ -55,7 +54,7 @@ namespace goby
             class ApplicationBase3
         {
         public:
-            ApplicationBase3();
+            ApplicationBase3(bool check_required_configuration = true);
             virtual ~ApplicationBase3() { }
             
         protected:
@@ -66,7 +65,7 @@ namespace goby
             virtual void quit() { alive_ = false; }
             
             /// \brief Accesses configuration object passed at launch
-            const Config& app_cfg() { return cfg_; }
+            Config& app_cfg() { return cfg_; }
 
             const std::chrono::system_clock::time_point& start_time() const
             { return start_time_; }
@@ -108,7 +107,7 @@ template<typename Config>
 char** goby::common::ApplicationBase3<Config>::argv_ = 0;
 
 template<typename Config>
-goby::common::ApplicationBase3<Config>::ApplicationBase3()
+goby::common::ApplicationBase3<Config>::ApplicationBase3(bool check_required_configuration)
 : alive_(true)
 {
     using goby::glog;
@@ -122,7 +121,7 @@ goby::common::ApplicationBase3<Config>::ApplicationBase3()
     try
     {
         std::string application_name;
-        common::ConfigReader::read_cfg(argc_, argv_, &cfg_, &application_name, &od, &var_map);
+        common::ConfigReader::read_cfg(argc_, argv_, &cfg_, &application_name, &od, &var_map, check_required_configuration);
         
         __set_application_name(application_name);
         // incorporate some parts of the AppBaseConfig that are common

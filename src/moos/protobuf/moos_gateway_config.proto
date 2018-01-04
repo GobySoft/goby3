@@ -4,7 +4,7 @@ import "goby/middleware/protobuf/interprocess_config.proto";
 message GobyMOOSGatewayConfig
 {
     optional goby.protobuf.App3Config app = 1;
-    optional goby.protobuf.InterProcessPortalConfig interprocess_portal = 2;
+    optional goby.protobuf.InterProcessPortalConfig interprocess = 2;
 
     optional string moos_server = 3 [default = "localhost"];
     optional int32 moos_port = 4 [default = 9000];

@@ -26,10 +26,14 @@
 #include <memory>
 #include <atomic>
 #include <chrono>
+#include <mutex>
+
 
 #include <boost/units/systems/si.hpp>
 
 #include "goby/common/exception.h"
+
+#include "group.h"
 
 namespace goby
 {
@@ -68,7 +72,11 @@ namespace goby
         void run(std::atomic<bool>& alive)
         {
             alive_ = &alive;
-            while(alive) run_once();
+            while(alive)
+            {
+                run_once();
+            }
+            
         }
 
         int index() { return index_; }
@@ -111,12 +119,18 @@ namespace goby
 
         const Config& cfg() { return cfg_; }
 
-        void thread_quit() { (*alive_) = false; }
+	void thread_quit() { (*alive_) = false; }
+
+	static constexpr goby::Group shutdown_group_ { "goby::ThreadShutdown" };
+
     };
 
+    
 }
 
-
+template<typename Config, typename TransporterType>
+    constexpr goby::Group goby::Thread<Config, TransporterType>::shutdown_group_;
+    
 template<typename Config, typename TransporterType>
     void goby::Thread<Config, TransporterType>::run_once()
 {
@@ -147,6 +161,5 @@ template<typename Config, typename TransporterType>
         transporter_->poll();
     }
 }
-
 
 #endif

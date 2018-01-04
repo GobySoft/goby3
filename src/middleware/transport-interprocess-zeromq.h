@@ -161,7 +161,7 @@ namespace goby
         }
         
         
-        int _poll()
+        int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         {
             int items = 0;
 	    protobuf::InprocControl control_msg;
@@ -171,6 +171,7 @@ namespace goby
 		{
 		case protobuf::InprocControl::RECEIVE:
 		    ++items;
+		    if(lock) lock.reset();
 		    for(auto &sub : subscriptions_)
 		    {
 			const auto& data = control_msg.received_data();

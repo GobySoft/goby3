@@ -80,7 +80,7 @@ namespace goby
     private:
         template<typename Transporter> friend class Poller;
         // poll the transporter for data
-        virtual int _transporter_poll() = 0;
+        virtual int _transporter_poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) = 0;
 
     private:
         // poll all the transporters for data, including a timeout (only called by the outside-most Poller)

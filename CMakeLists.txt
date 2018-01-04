@@ -11,9 +11,9 @@ cmake_policy(SET CMP0009 NEW)
 project(goby)
 
 if(CMAKE_VERSION VERSION_LESS 3.1)
-  add_definitions(-std=c++11)
+  add_definitions(-std=c++14)
 else()
-  set(CMAKE_CXX_STANDARD 11)
+  set(CMAKE_CXX_STANDARD 14)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 

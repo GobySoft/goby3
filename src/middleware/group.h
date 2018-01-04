@@ -10,11 +10,11 @@ namespace goby
     public:
         constexpr Group(const char* c = "") : c_(c) { }
         constexpr Group(int i) : i_(i) { }
-	
-        constexpr operator int() const { return i_; }   
+
+        constexpr int numeric() const { return i_; }
         constexpr const char* c_str() const { return c_; }
 
-	
+
         operator std::string() const
         {   
             if(c_ != nullptr) return std::string(c_);
@@ -35,7 +35,7 @@ namespace goby
     template<const Group& group>
         void check_validity()
     {
-        static_assert((int(group) != 0) || (group.c_str()[0] != '\0'), "goby::Group must have non-zero length string or non-zero integer value.");
+        static_assert((group.numeric() != 0) || (group.c_str()[0] != '\0'), "goby::Group must have non-zero length string or non-zero integer value.");
     }
 
     inline void check_validity_runtime(const Group& group)
@@ -51,11 +51,12 @@ namespace goby
     {
     public:
     DynamicGroup(const std::string& s) : s_(new std::string(s))
-    {
-	Group::set_c_str(s_->c_str());
-    }
-    DynamicGroup(int i) : Group(i) { }
+        {
+            Group::set_c_str(s_->c_str());
+        }
 
+    DynamicGroup(int i) : Group(i) { }
+        
     private:
 	std::unique_ptr<const std::string> s_;
     };

@@ -5,7 +5,7 @@ import "goby/middleware/protobuf/interprocess_config.proto";
 message TestConfig
 {
   optional goby.protobuf.App3Config app = 1;
-  optional goby.protobuf.InterProcessPortalConfig interprocess_portal = 2;
+  optional goby.protobuf.InterProcessPortalConfig interprocess = 2;
   
 }
         

@@ -124,8 +124,8 @@ namespace goby
 
     private:
         friend PollerType;        
-        int _poll()
-        { return static_cast<Derived*>(this)->_poll(); }
+        int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+        { return static_cast<Derived*>(this)->_poll(lock); }
     };    
 
    template<typename Derived, typename InnerTransporter>
@@ -181,7 +181,7 @@ namespace goby
                     
             goby::protobuf::DCCLSubscription dccl_subscription;
             dccl_subscription.set_dccl_id(dccl_id);
-            dccl_subscription.set_group(group);
+            dccl_subscription.set_group(group.numeric());
             dccl_subscription.set_protobuf_name(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
             _insert_file_desc_with_dependencies(Data::descriptor()->file(), &dccl_subscription);
             Base::inner_.template publish<Base::forward_group_, goby::protobuf::DCCLSubscription>(dccl_subscription);
@@ -200,7 +200,7 @@ namespace goby
 
         
 
-        int _poll()
+        int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         { return 0; }
     
         void _receive_dccl_data_forwarded(const goby::protobuf::DCCLForwardedData& packets)
@@ -301,7 +301,7 @@ namespace goby
             subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
         }
     
-        int _poll()
+        int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         {
             int items = 0;
             goby::acomms::protobuf::ModemTransmission msg;
@@ -309,6 +309,7 @@ namespace goby
             {
                 _receive(msg);
                 ++items;
+		if(lock) lock.reset();
             }
             return items;
         }

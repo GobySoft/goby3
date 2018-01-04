@@ -55,14 +55,14 @@ int main(int argc, char* argv[])
 goby::Daemon::Daemon()
     : router_context_(new zmq::context_t(app_cfg().router_threads())),
       manager_context_(new zmq::context_t(1)),
-      router_(*router_context_, app_cfg().interprocess_portal()),
-      manager_(*manager_context_, app_cfg().interprocess_portal(), router_),
+      router_(*router_context_, app_cfg().interprocess()),
+      manager_(*manager_context_, app_cfg().interprocess(), router_),
       router_thread_(new std::thread([&] { router_.run(); })),
       manager_thread_(new std::thread([&] { manager_.run(); }))
 {
-    if(!app_cfg().interprocess_portal().has_platform())
+    if(!app_cfg().interprocess().has_platform())
     {
-        glog.is(WARN) && glog << "Using default platform name of " << app_cfg().interprocess_portal().platform() << std::endl;
+        glog.is(WARN) && glog << "Using default platform name of " << app_cfg().interprocess().platform() << std::endl;
     }
 }
 

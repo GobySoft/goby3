@@ -1,0 +1,16 @@
+import "goby/common/protobuf/app3.proto";
+import "goby/middleware/protobuf/interprocess_config.proto";
+
+package goby.protobuf;
+
+message LoggerConfig
+{
+    optional goby.protobuf.App3Config app = 1;
+    optional goby.protobuf.InterProcessPortalConfig interprocess = 2;
+
+    required string log_dir = 3;
+    
+    optional string type_regex = 4 [default = ".*"];
+    optional string group_regex = 5 [default = ".*"];
+}
+        

@@ -92,8 +92,8 @@ namespace goby
 
     private:  
         friend PollerType;
-        int _poll()
-        { return static_cast<Derived*>(this)->_poll(); }
+        int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+        { return static_cast<Derived*>(this)->_poll(lock); }
     };    
     
     template<typename Derived, typename InnerTransporter>
@@ -190,7 +190,7 @@ namespace goby
                 sub->post(bytes.begin(), bytes.end(), data->marshalling_scheme(), data->type(), data->group());
         }
         
-        int _poll()
+        int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         { return 0; } // A forwarder is a shell, only the inner Transporter has data
 
     private:

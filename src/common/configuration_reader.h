@@ -75,7 +75,8 @@ namespace goby
                                  google::protobuf::Message* message,
                                  std::string* application_name,
                                  boost::program_options::options_description* od_all,
-                                 boost::program_options::variables_map* var_map);            
+                                 boost::program_options::variables_map* var_map,
+                                 bool check_required_configuration = true);            
             
             static void get_protobuf_program_options(
                 boost::program_options::options_description& po_desc,
