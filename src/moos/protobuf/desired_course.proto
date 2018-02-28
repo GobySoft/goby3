@@ -9,6 +9,7 @@ message DesiredCourse
   optional double pitch = 5 [default = 0];
   optional double roll = 6 [default = 0];
   optional double z_rate = 7 [default = 0];
-
+  optional double altitude = 8 [default = 10];
+    
   extensions 1000 to max;
 }

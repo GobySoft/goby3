@@ -1,4 +1,4 @@
-// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -37,8 +37,7 @@ namespace goby
                 // copy because Serialize wants to modify the CMOOSMsg
                 CMOOSMsg msg(const_msg);
                 // adapted from MOOSCommPkt.cpp
-                const unsigned PKT_TMP_BUFFER_SIZE = 40000;
-                int serialized_size = PKT_TMP_BUFFER_SIZE;
+                int serialized_size = msg.GetSizeInBytesWhenSerialised();
                 data->resize(serialized_size);
                 serialized_size = msg.Serialize(reinterpret_cast<unsigned char*>(&(*data)[0]), serialized_size);
                 data->resize(serialized_size);

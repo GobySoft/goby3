@@ -13,7 +13,9 @@ message iFrontSeatConfig
 
   optional uint32 status_period = 13 [default = 5, (goby.field).description="Seconds between publishing the status of iFrontseat. The special value 0 disables posting of the status message."];
   
-  
+  optional uint32 modem_id = 14 [(goby.field).moos_global = "modem_id",
+                                 (goby.field).description="Acoustic modem identification number"];
+				 
   message MOOSVariables
   {
     optional string prefix = 1 [default="IFS_",
@@ -29,6 +31,8 @@ message iFrontSeatConfig
     optional string data_to_frontseat = 15 [default="DATA_OUT"];
 
     optional string status = 16 [default="STATUS"];
+
+    optional string node_status = 17 [default = "NODE_STATUS"];
   }
   optional MOOSVariables moos_var = 20;
 
@@ -61,5 +65,6 @@ message iFrontSeatConfig
   // Bluefin: 1000
   // ABC: 1001
   // Nemo: 1002
+  // Iver3: 1003
   extensions 1000 to max;
 }

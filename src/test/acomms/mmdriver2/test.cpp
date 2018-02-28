@@ -1,4 +1,4 @@
-// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -103,12 +103,17 @@ void MMDriverTest2::iterate()
         int o = cfg_.transmission_size();
         for(last_transmission_index = 0; last_transmission_index < o; ++last_transmission_index)
         {
-                {        
-                    boost::mutex::scoped_lock lock(driver_mutex);    
-                    driver1.handle_initiate_transmission(cfg_.transmission(last_transmission_index));
-                }
-                
-                sleep(cfg_.transmission(last_transmission_index).slot_seconds());
+	    if(cfg_.transmission(last_transmission_index).src() == 1)
+	    {        
+		boost::mutex::scoped_lock lock(driver_mutex);    
+		driver1.handle_initiate_transmission(cfg_.transmission(last_transmission_index));
+	    }
+	    else if(cfg_.transmission(last_transmission_index).src() == 2)
+	    {
+		boost::mutex::scoped_lock lock(driver_mutex);    
+		driver2.handle_initiate_transmission(cfg_.transmission(last_transmission_index)); 
+	    }               
+	    sleep(cfg_.transmission(last_transmission_index).slot_seconds());
         }
     }
     

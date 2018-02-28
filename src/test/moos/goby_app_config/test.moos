@@ -1,0 +1,9 @@
+LatOrigin=41.5
+LongOrigin=-70.6
+log=true
+log_dir=/tmp
+
+ProcessConfig=goby_test_moos_app_config
+{
+    common { verbosity: DEBUG2 } 
+}

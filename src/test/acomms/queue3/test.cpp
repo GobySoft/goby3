@@ -1,4 +1,4 @@
-// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -40,7 +40,7 @@ boost::posix_time::ptime current_time = boost::posix_time::second_clock::univers
 
 int goby_message_qsize = 0;
 
-bool handle_ack_count = 0;
+int handle_ack_count = 0;
 
 
 void handle_receive(const google::protobuf::Message &msg);

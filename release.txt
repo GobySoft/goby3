@@ -8,6 +8,18 @@ Version 3.0.0~alpha1
 Early look at the new Goby3 nested communications middleware. See examples at https://github.com/GobySoft/goby3-examples.
 
 ****************
+Version 2.1.10
+
+### MOOS
+- Started iFrontSeat driver for OceanServer Iver3 vehicles (listen-mode only)
+
+### Bug fixes
+- Can build with C++11
+- Fixed bug with GobyMOOSApp configuration reader when submessage fields were empty
+
+See https://github.com/GobySoft/goby/compare/2.1.9...2.1.10
+
+****************
 Version 2.1.9
 
 Bug fix release.
@@ -15,6 +27,8 @@ Bug fix release.
 - Bug fix for logging (glog) in GobyMOOSApp
 - Improved GPS surface handling in Bluefin driver for iFrontSeat
 - Improved robustness of Iridium driver in the event that echo gets turned back on (ATE1 or modem reboot)
+
+See https://github.com/GobySoft/goby/compare/2.1.8...2.1.9
 
 
 ****************

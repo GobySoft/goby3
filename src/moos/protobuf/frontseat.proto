@@ -62,6 +62,8 @@ message CommandRequest
   optional int32 cancel_request_id = 20; // if possible, tell the driver to stop trying to process this command
   
   extensions 1000 to max;
+  // 1000 - Bluefin
+  // 1001 - Iver
 }
 
 message CommandResponse

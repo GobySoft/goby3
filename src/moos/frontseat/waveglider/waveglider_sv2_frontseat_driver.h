@@ -1,4 +1,4 @@
-// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -21,7 +21,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef WavegliderSV2FrontSeat20150909H
-#define WavegliderSV2FrontSeat20130909H
+#define WavegliderSV2FrontSeat20150909H
 
 #include <boost/bimap.hpp>
 #include <boost/circular_buffer.hpp>

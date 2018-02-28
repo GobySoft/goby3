@@ -1,0 +1,11 @@
+import "goby/moos/protobuf/goby_moos_app.proto";
+
+message AppConfig
+{
+  optional GobyMOOSAppConfig common = 1; 
+  optional SubMessageType submessage = 12;
+}
+message SubMessageType
+{
+  optional int32 foo = 1;
+}

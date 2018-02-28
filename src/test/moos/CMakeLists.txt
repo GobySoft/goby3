@@ -7,3 +7,4 @@ if(enable_v1_transitional)
 endif()
 
 add_subdirectory(translator1)
+add_subdirectory(goby_app_config)

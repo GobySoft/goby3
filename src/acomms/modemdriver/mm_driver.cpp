@@ -1,4 +1,4 @@
-// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -994,11 +994,15 @@ void goby::acomms::MMDriver::process_receive(const NMEASentence& nmea)
         {
             pop_out();
         }
+	else if(out_.front().sentence_id() == "MSC" && (nmea.sentence_id() == "REV" || nmea.sentence_id() == "MSC"))
+	{
+	    pop_out();
+	}
         else if(out_.front().sentence_id() == nmea.sentence_id()) // general matching sentence id
         {
             pop_out();
         }
-}
+    }
 
 }
 

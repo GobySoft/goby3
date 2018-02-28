@@ -1,4 +1,4 @@
-// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //
@@ -211,6 +211,8 @@ void iFrontSeat::handle_driver_command_response(const goby::moos::protobuf::Comm
 void iFrontSeat::handle_driver_data_from_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data)
 {
     publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().data_from_frontseat(), data);
+    if(data.has_node_status())
+	publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().node_status(), data.node_status());
 }
 
 void iFrontSeat::handle_driver_raw_in(const goby::moos::protobuf::FrontSeatRaw& data)

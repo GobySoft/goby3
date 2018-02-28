@@ -1,4 +1,4 @@
-// Copyright 2009-2017 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
@@ -103,7 +103,7 @@ void FrontSeatInterfaceBase::check_change_state()
             
         case gpb::INTERFACE_LISTEN:
             if(frontseat_state() == gpb::FRONTSEAT_ACCEPTING_COMMANDS &&
-               helm_state() == gpb::HELM_DRIVE)
+               (helm_state() == gpb::HELM_DRIVE || !cfg_.require_helm()))
                 state_ = gpb::INTERFACE_COMMAND;
             else
                 check_error_states();
@@ -153,14 +153,13 @@ void FrontSeatInterfaceBase::check_error_states()
     // helm in park is always an error
     if(helm_state() == gpb::HELM_PARK)
         throw(FrontSeatException(gpb::ERROR_HELM_PARKED));
-    // while in command, if the helm is not running, this is an error
-    // otherwise, this is only an error if the helm is required and after
-    // a configurable timeout
-    else if(helm_state() == gpb::HELM_NOT_RUNNING &&
+    // while in command, if the helm is not running, this is an error after
+    // a configurable timeout, unless require_helm is false
+    else if(cfg_.require_helm() &&
+	    (helm_state() == gpb::HELM_NOT_RUNNING &&
             (state_ == gpb::INTERFACE_COMMAND ||
-             (cfg_.require_helm() && 
-              start_time_ + cfg_.helm_running_timeout() <
-              goby_time<double>())))
+             (start_time_ + cfg_.helm_running_timeout() <
+              goby_time<double>()))))
         throw(FrontSeatException(gpb::ERROR_HELM_NOT_RUNNING));
 
     // frontseat not connected is an error except in standby, it's only
@@ -240,6 +239,8 @@ void FrontSeatInterfaceBase::compute_missing(gpb::NodeStatus* status)
 {
     if(!status->has_name())
         status->set_name(cfg_.common().community());
+    if(!status->has_modem_id())
+	status->set_modem_id(cfg_.modem_id());
     
     if(!status->has_global_fix() && !status->has_local_fix())
     {
