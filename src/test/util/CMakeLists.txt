@@ -7,3 +7,4 @@ add_subdirectory(nmea)
 add_subdirectory(salinity)
 
 add_subdirectory(base255)
+add_subdirectory(geodesy)
