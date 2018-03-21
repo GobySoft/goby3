@@ -29,7 +29,6 @@ namespace goby
 {
     namespace util
     {
-
         /// \name Science
         //@{
     
@@ -93,7 +92,9 @@ namespace goby
             static double log_2 = log(2);
             return log(d)/log_2;
         }
-        
+
+        template<class T>
+            constexpr T pi = T(3.1415926535897932385L);
     }
 
     //@}
