@@ -72,9 +72,9 @@ namespace goby
         
     };
 
-    template<class Config, class Transporter>
+    template<class Config, class Transporter, class StateMachine>
         class MultiThreadApplicationBase
-        : public goby::common::ApplicationBase3<Config>,
+        : public goby::common::ApplicationBase3<Config, StateMachine>,
         public goby::Thread<Config, Transporter>
     {
         
@@ -101,8 +101,8 @@ namespace goby
 
 
     MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq, Transporter* portal, bool check_required_configuration = true)
-        : goby::common::ApplicationBase3<Config>(check_required_configuration),
-            MainThreadBase(goby::common::ApplicationBase3<Config>::app_cfg(), portal, loop_freq)
+         : goby::common::ApplicationBase3<Config, StateMachine>(check_required_configuration),
+            MainThreadBase(this->app_cfg(), portal, loop_freq)
             {   
                 goby::glog.set_lock_action(goby::common::logger_lock::lock);
             }
@@ -111,10 +111,10 @@ namespace goby
         
         template<typename ThreadType>
             void launch_thread()
-        { _launch_thread<ThreadType, Config, false>(-1, goby::common::ApplicationBase3<Config>::app_cfg()); }
+        { _launch_thread<ThreadType, Config, false>(-1, this->app_cfg()); }
         template<typename ThreadType>
             void launch_thread(int index)
-        { _launch_thread<ThreadType, Config, true>(index, goby::common::ApplicationBase3<Config>::app_cfg()); }
+        { _launch_thread<ThreadType, Config, true>(index, this->app_cfg()); }
 	
 	template<typename ThreadType, typename ThreadConfig>
             void launch_thread(const ThreadConfig& cfg)
@@ -143,14 +143,14 @@ namespace goby
     };
 
     
-    template<class Config>
+    template<class Config, class StateMachine = goby::common::NullStateMachine >
         class MultiThreadApplication
-        : public MultiThreadApplicationBase<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>
+        : public MultiThreadApplicationBase<Config, goby::InterProcessPortal<goby::InterThreadTransporter>, StateMachine>
     {
         
     private:
         goby::InterProcessPortal<goby::InterThreadTransporter> portal_;
-        using Base = MultiThreadApplicationBase<Config, goby::InterProcessPortal<goby::InterThreadTransporter>>;
+        using Base = MultiThreadApplicationBase<Config, goby::InterProcessPortal<goby::InterThreadTransporter>, StateMachine>;
         
     public:
     MultiThreadApplication(double loop_freq_hertz = 0) :
@@ -169,13 +169,13 @@ namespace goby
 
     };
 
-    template<class Config>
+    template<class Config, class StateMachine = goby::common::NullStateMachine>
         class MultiThreadStandaloneApplication
-        : public MultiThreadApplicationBase<Config, goby::InterThreadTransporter>
+        : public MultiThreadApplicationBase<Config, goby::InterThreadTransporter, StateMachine>
     {
         
     private:
-        using Base = MultiThreadApplicationBase<Config, goby::InterThreadTransporter>;
+    using Base = MultiThreadApplicationBase<Config, goby::InterThreadTransporter, StateMachine>;
         
     public:
     MultiThreadStandaloneApplication(double loop_freq_hertz = 0) :
@@ -232,9 +232,9 @@ namespace goby
     };    
 }
 
-template<class Config, class Transporter>
+template<class Config, class Transporter, class StateMachine>
     template<typename ThreadType, typename ThreadConfig, bool has_index>
-    void goby::MultiThreadApplicationBase<Config, Transporter>::_launch_thread(int index, const ThreadConfig& cfg)
+    void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::_launch_thread(int index, const ThreadConfig& cfg)
 {   
     std::type_index type_i = std::type_index(typeid(ThreadType));
 
@@ -258,9 +258,9 @@ template<class Config, class Transporter>
 }
 
 
-template<class Config, class Transporter>
+template<class Config, class Transporter, class StateMachine>
 template<typename ThreadType>
-void goby::MultiThreadApplicationBase<Config, Transporter>::join_thread(int index /* = -1 */)
+void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::join_thread(int index /* = -1 */)
 {
     auto type_i = std::type_index(typeid(ThreadType));
 
@@ -274,8 +274,8 @@ void goby::MultiThreadApplicationBase<Config, Transporter>::join_thread(int inde
 }
 
 
-template<class Config, class Transporter>
-void goby::MultiThreadApplicationBase<Config, Transporter>::quit()
+template<class Config, class Transporter, class StateMachine>
+void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::quit()
 {
     interthread_.publish<MainThreadBase::shutdown_group_>(true);
     // join the threads

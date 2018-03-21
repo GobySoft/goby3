@@ -39,24 +39,45 @@
 #include "core_helpers.h"
 
 namespace goby
-{
+{        
     /// \brief Run a Goby application 
     /// blocks caller until ```__run()``` returns
     /// \param argc same as ```int main(int argc, char* argv)```
     /// \param argv same as ```int main(int argc, char* argv)```
+    /// \tparam App ApplicationBase3 subclass
+    /// \tparam StateMachine boost::statechart::state_machine to pass a copy of App to and then initiate. If omitted, no state machine is used.
     /// \return same as ```int main(int argc, char* argv)```
     template<typename App>
-        int run(int argc, char* argv[]);
+	int run(int argc, char* argv[]);
+
+    namespace common
+    {
+	using NullStateMachine = int;
+
+	namespace internal
+	{
+	    // no state machine
+	    template<typename App>
+		void __run_core(App& app,
+				typename std::enable_if<std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type* = 0)
+	    {}
+	    
+	    // state machine
+	    template<typename App>
+		void __run_core(App& app, typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type* = 0);
+	}
+    }
     
     namespace common
     {
-        template<typename Config>
+	template<typename Config, typename StateMachine = NullStateMachine>
             class ApplicationBase3
         {
         public:
             ApplicationBase3(bool check_required_configuration = true);
             virtual ~ApplicationBase3() { }
-            
+
+            using StateMachineType = StateMachine;	
         protected:
             /// \brief Runs continously until quit() is called
             virtual void run() = 0;
@@ -67,20 +88,30 @@ namespace goby
             /// \brief Accesses configuration object passed at launch
             Config& app_cfg() { return cfg_; }
 
+	    /// \brief Access the state machine if available (cannot be accessed from the constructor)
+	    StateMachine& state_machine()
+	    {
+		static_assert(!std::is_same<StateMachine, NullStateMachine>(), "No state machine defined for this Goby application");
+		if(state_machine_)
+		    return *state_machine_;
+		else
+		    throw(goby::Exception("State machine not available in the constructor."));
+	    }
+	    
             const std::chrono::system_clock::time_point& start_time() const
             { return start_time_; }
             
           private:
             template<typename App>
             friend int ::goby::run(int argc, char* argv[]);
-            
+
             // main loop that exits on disconnect. called by goby::run()
             void __run();
             
             void __set_application_name(const std::string& s)
             { cfg_.mutable_app()->set_name(s); }
             
-            
+	    
           private:
                 
             // copies of the "real" argc, argv that are used
@@ -96,18 +127,27 @@ namespace goby
 
             const std::chrono::system_clock::time_point start_time_ { std::chrono::system_clock::now() };
 
+            // set state machine after construction
+            template<typename App>
+            friend void ::goby::common::internal::__run_core(App& app,
+							     typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type*);            
+            std::unique_ptr<StateMachine> state_machine_;
+	    
         };
     }
+    
 }
 
-template<typename Config>
-int goby::common::ApplicationBase3<Config>::argc_ = 0;
+template<typename Config, typename StateMachine>
+    int goby::common::ApplicationBase3<Config, StateMachine>::argc_ = 0;
 
-template<typename Config>
-char** goby::common::ApplicationBase3<Config>::argv_ = 0;
+template<typename Config, typename StateMachine>
+    char** goby::common::ApplicationBase3<Config, StateMachine>::argv_ = 0;
 
-template<typename Config>
-goby::common::ApplicationBase3<Config>::ApplicationBase3(bool check_required_configuration)
+
+    
+template<typename Config, typename StateMachine>
+    goby::common::ApplicationBase3<Config, StateMachine>::ApplicationBase3(bool check_required_configuration)
 : alive_(true)
 {
     using goby::glog;
@@ -143,7 +183,7 @@ goby::common::ApplicationBase3<Config>::ApplicationBase3(bool check_required_con
     
     // set up the logger
     glog.set_name(cfg_.app().name());
-   glog.add_stream(static_cast<common::logger::Verbosity>(cfg_.app().glog_config().tty_verbosity()), &std::cout);
+    glog.add_stream(static_cast<common::logger::Verbosity>(cfg_.app().glog_config().tty_verbosity()), &std::cout);
 
    if(cfg_.app().glog_config().show_gui())
        glog.enable_gui();
@@ -184,8 +224,8 @@ goby::common::ApplicationBase3<Config>::ApplicationBase3(bool check_required_con
    glog.is(DEBUG2) && glog << "Configuration is: " << cfg_.DebugString() << std::endl;
 }
 
-template<typename Config>
-void goby::common::ApplicationBase3<Config>::__run()
+template<typename Config, typename StateMachine>
+    void goby::common::ApplicationBase3<Config, StateMachine>::__run()
 {
     // block SIGWINCH (change window size) in all threads
     sigset_t signal_mask;
@@ -200,8 +240,18 @@ void goby::common::ApplicationBase3<Config>::__run()
     }
 }
 
+
 template<typename App>
-int goby::run(int argc, char* argv[])
+void goby::common::internal::__run_core(App& app,
+					typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type*)
+{
+    app.state_machine_.reset(new typename App::StateMachineType(app));
+    app.state_machine_->initiate();
+}    
+
+
+template<typename App>
+    int goby::run(int argc, char* argv[])
 {    
     // avoid making the user pass these through their Ctor...
     App::argc_ = argc;
@@ -209,8 +259,9 @@ int goby::run(int argc, char* argv[])
     
     try
     {
-        App app;
-        app.__run();
+	App app;
+	goby::common::internal::__run_core<App>(app);
+	app.__run();
     }
     catch(goby::common::ConfigException& e)
     {
@@ -226,5 +277,6 @@ int goby::run(int argc, char* argv[])
 
     return 0;
 }
+
 
 #endif
