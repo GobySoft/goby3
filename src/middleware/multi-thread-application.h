@@ -159,7 +159,7 @@ namespace goby
         
     MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : Base(loop_freq, &portal_),
-            portal_(Base::interthread(), goby::common::ApplicationBase3<Config>::app_cfg().interprocess())
+            portal_(Base::interthread(), this->app_cfg().interprocess())
         { }
         virtual ~MultiThreadApplication() { }
 
@@ -287,7 +287,7 @@ void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::quit()
         }
     }
     
-    goby::common::ApplicationBase3<Config>::quit();
+    goby::common::ApplicationBase3<Config, StateMachine>::quit();
 }
 
 #endif
