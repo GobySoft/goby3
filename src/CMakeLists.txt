@@ -43,6 +43,8 @@ if(DCCL_INCLUDE_DIR)
 endif()
 
 
+goby_find_required_package(Proj)
+
 # shared library suffix
 add_definitions(-DSHARED_LIBRARY_SUFFIX="${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
@@ -211,8 +213,7 @@ if(build_common)
         set(MOOS_LIBRARY_HEADER "MOOSLIB/MOOSLib.h" PARENT_SCOPE)
       endif()
 
-      find_package(Proj QUIET)
-      if(MOOS_FOUND AND PROJ_FOUND)
+      if(MOOS_FOUND)
         include_directories(${MOOS_INCLUDE_DIRS})
         option(build_moos ${MOOS_DOC_STRING} ON)
       else()
