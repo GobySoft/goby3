@@ -20,17 +20,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef PrimitiveTypes20110721H
-#define PrimitiveTypes20110721H
+#include "goby/common/time3.h"
 
-#include <cstdint>
+int goby::common::goby_time_warp_factor = 1;
 
-namespace goby
-{
-    [[deprecated("use <cstdint>")]] typedef std::uint32_t uint32;
-    [[deprecated("use <cstdint>")]] typedef std::int32_t int32;
-    [[deprecated("use <cstdint>")]] typedef std::uint64_t uint64;
-    [[deprecated("use <cstdint>")]] typedef std::int64_t int64;
-}
-
-#endif
