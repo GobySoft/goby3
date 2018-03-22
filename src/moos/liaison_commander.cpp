@@ -883,7 +883,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::genera
             if(field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddUInt64(message, field_desc, field_desc->default_value_uint64());
             
-            uint64 value = field_desc->is_repeated() ?
+            std::uint64_t value = field_desc->is_repeated() ?
                 refl->GetRepeatedUInt64(*message, field_desc, index) :
                 refl->GetUInt64(*message, field_desc);
             
@@ -1133,7 +1133,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
                 field_desc->is_repeated() ?
                     refl->SetRepeatedUInt64(message, field_desc, index, goby::util::as<uint64>(value)) :
-                    refl->SetUInt64(message, field_desc, goby::util::as<uint64>(value));
+                    refl->SetUInt64(message, field_desc, goby::util::as<std::uint64_t>(value));
                 break;
                     
             case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
@@ -1322,7 +1322,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::set_ti
         }
 
         const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
-        latest_time_ = goby::util::as<uint64>(now);
+        latest_time_ = goby::util::as<std::uint64_t>(now);
         enum { MICROSEC_ORDER_MAG = 6 };
         
         
@@ -1334,7 +1334,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::set_ti
 
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
             case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-                line_edit->setText(goby::util::as<std::string>(goby::util::as<uint64>(now)));
+                line_edit->setText(goby::util::as<std::string>(goby::util::as<std::uint64_t>(now)));
                 if(!options.has_precision())
                     latest_time_ = dccl::round(latest_time_, -MICROSEC_ORDER_MAG);
                 else

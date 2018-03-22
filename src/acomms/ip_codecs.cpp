@@ -25,24 +25,24 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-dccl::uint32 goby::acomms::IPv4AddressCodec::pre_encode(const std::string& field_value)
+std::uint32_t goby::acomms::IPv4AddressCodec::pre_encode(const std::string& field_value)
 {
     in_addr addr;
     int ret = inet_aton(field_value.c_str(), &addr);
     return (ret == 0) ? -1 : addr.s_addr;
 }
-std::string goby::acomms::IPv4AddressCodec::post_decode(const dccl::uint32& wire_value)
+std::string goby::acomms::IPv4AddressCodec::post_decode(const std::uint32_t& wire_value)
 {
     in_addr addr;
     addr.s_addr = wire_value;
     return std::string(inet_ntoa(addr));
 }
 
-uint16_t goby::acomms::net_checksum(const std::string& data)
+std::uint16_t goby::acomms::net_checksum(const std::string& data)
 {
-    uint32_t sum = 0;  
+    std::uint32_t sum = 0;  
     int len = data.size();
-    uint16_t* p = (uint16_t*) &data[0];
+    std::uint16_t* p = (std::uint16_t*) &data[0];
 
     while(len > 1)
     {

@@ -93,7 +93,7 @@ bool goby::acomms::Queue::push_message(boost::shared_ptr<google::protobuf::Messa
            queue_message_options().ack())
         {
             protobuf::ModemTransmission ack_msg;
-            ack_msg.set_time(goby::common::goby_time<uint64>());
+            ack_msg.set_time(goby::common::goby_time<std::uint64_t>());
             ack_msg.set_src(meta.dest());
             ack_msg.set_dest(meta.dest());
             ack_msg.set_type(protobuf::ModemTransmission::ACK);
@@ -104,7 +104,7 @@ bool goby::acomms::Queue::push_message(boost::shared_ptr<google::protobuf::Messa
     }
 
     if(!meta.has_time())
-        meta.set_time(goby::common::goby_time<uint64>());
+        meta.set_time(goby::common::goby_time<std::uint64_t>());
     
     if(meta.non_repeated_size() == 0)
     {
@@ -159,14 +159,14 @@ goby::acomms::protobuf::QueuedMessageMeta goby::acomms::Queue::meta_from_msg(con
         boost::any field_value = find_queue_field(roles_[protobuf::QueuedMessageEntry::DESTINATION_ID], dccl_msg);
         
         int dest = BROADCAST_ID;
-        if(field_value.type() == typeid(int32))
-            dest = boost::any_cast<int32>(field_value);
-        else if(field_value.type() == typeid(int64))
-            dest = boost::any_cast<int64>(field_value);
-        else if(field_value.type() == typeid(uint32))
-            dest = boost::any_cast<uint32>(field_value);
-        else if(field_value.type() == typeid(uint64))
-            dest = boost::any_cast<uint64>(field_value);
+        if(field_value.type() == typeid(std::int32_t))
+            dest = boost::any_cast<std::int32_t>(field_value);
+        else if(field_value.type() == typeid(std::int64_t))
+            dest = boost::any_cast<std::int64_t>(field_value);
+        else if(field_value.type() == typeid(std::uint32_t))
+            dest = boost::any_cast<std::uint32_t>(field_value);
+        else if(field_value.type() == typeid(std::uint64_t))
+            dest = boost::any_cast<std::uint64_t>(field_value);
         else if(!field_value.empty())
             throw(QueueException("Invalid type " + std::string(field_value.type().name()) + " given for (queue_field).is_dest. Expected integer type"));
                     
@@ -181,14 +181,14 @@ goby::acomms::protobuf::QueuedMessageMeta goby::acomms::Queue::meta_from_msg(con
         boost::any field_value = find_queue_field(roles_[protobuf::QueuedMessageEntry::SOURCE_ID], dccl_msg);
         
         int src = BROADCAST_ID;
-        if(field_value.type() == typeid(int32))
-            src = boost::any_cast<int32>(field_value);
-        else if(field_value.type() == typeid(int64))
-            src = boost::any_cast<int64>(field_value);
-        else if(field_value.type() == typeid(uint32))
-            src = boost::any_cast<uint32>(field_value);
-        else if(field_value.type() == typeid(uint64))
-            src = boost::any_cast<uint64>(field_value);
+        if(field_value.type() == typeid(std::int32_t))
+            src = boost::any_cast<std::int32_t>(field_value);
+        else if(field_value.type() == typeid(std::int64_t))
+            src = boost::any_cast<std::int64_t>(field_value);
+        else if(field_value.type() == typeid(std::uint32_t))
+            src = boost::any_cast<std::uint32_t>(field_value);
+        else if(field_value.type() == typeid(std::uint64_t))
+            src = boost::any_cast<std::uint64_t>(field_value);
         else if(!field_value.empty())
             throw(QueueException("Invalid type " + std::string(field_value.type().name()) + " given for (queue_field).is_src. Expected integer type"));
 
@@ -203,14 +203,14 @@ goby::acomms::protobuf::QueuedMessageMeta goby::acomms::Queue::meta_from_msg(con
     {
         boost::any field_value = find_queue_field(roles_[protobuf::QueuedMessageEntry::TIMESTAMP], dccl_msg);
 
-        if(field_value.type() == typeid(uint64)) 
-            meta.set_time(boost::any_cast<uint64>(field_value));
+        if(field_value.type() == typeid(std::uint64_t)) 
+            meta.set_time(boost::any_cast<std::uint64_t>(field_value));
         else if(field_value.type() == typeid(double))
-            meta.set_time(static_cast<uint64>(boost::any_cast<double>(field_value))*1e6);
+            meta.set_time(static_cast<std::uint64_t>(boost::any_cast<double>(field_value))*1e6);
         else if(field_value.type() == typeid(std::string))
-            meta.set_time(goby::util::as<uint64>(goby::util::as<boost::posix_time::ptime>(boost::any_cast<std::string>(field_value))));
+            meta.set_time(goby::util::as<std::uint64_t>(goby::util::as<boost::posix_time::ptime>(boost::any_cast<std::string>(field_value))));
         else if(!field_value.empty())
-            throw(QueueException("Invalid type " + std::string(field_value.type().name()) + " given for (goby.field).queue.is_time. Expected uint64 contained microseconds since UNIX, double containing seconds since UNIX or std::string containing as<std::string>(boost::posix_time::ptime)"));
+            throw(QueueException("Invalid type " + std::string(field_value.type().name()) + " given for (goby.field).queue.is_time. Expected std::uint64_t contained microseconds since UNIX, double containing seconds since UNIX or std::string containing as<std::string>(boost::posix_time::ptime)"));
 
         goby::glog.is(DEBUG2) &&
             goby::glog << group(parent_->glog_push_group_) <<  "setting time to " << as<boost::posix_time::ptime>(meta.time()) << std::endl;
@@ -299,7 +299,7 @@ goby::acomms::QueuedMessage goby::acomms::Queue::give_data(unsigned frame)
         waiting_for_ack_.insert(std::pair<unsigned, messages_it>(frame, it_to_give));
 
     last_send_time_ = goby_time();
-    it_to_give->meta.set_last_sent_time(util::as<goby::uint64>(last_send_time_));
+    it_to_give->meta.set_last_sent_time(util::as<std::uint64_t>(last_send_time_));
     
     return *it_to_give;
 }
@@ -496,7 +496,7 @@ bool goby::acomms::Queue::clear_ack_queue(unsigned start_frame)
             waiting_for_ack_.erase(it++);
         }
 	else if(it->second->meta.last_sent_time() +
-            parent_->cfg_.minimum_ack_wait_seconds()*1e6 < goby_time<uint64>())
+            parent_->cfg_.minimum_ack_wait_seconds()*1e6 < goby_time<std::uint64_t>())
         {
 	  glog.is(DEBUG1) && glog  << group(parent_->glog_pop_group()) << name() << ": Clearing ack for queue because " << parent_->cfg_.minimum_ack_wait_seconds() << " seconds has elapsed since last send. Last send:" << it->second->meta.last_sent_time() << std::endl;
             waiting_for_ack_.erase(it++);

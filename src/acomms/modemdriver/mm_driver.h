@@ -130,7 +130,7 @@ namespace goby
             void camsg(const util::NMEASentence& nmea, protobuf::ModemTransmission* m);
 
             void caack(const util::NMEASentence& nmea, protobuf::ModemTransmission* msg); // $CAACK
-            void handle_ack(uint32 src, uint32 dest, uint32 frame, protobuf::ModemTransmission* m);
+            void handle_ack(std::uint32_t src, std::uint32_t dest, std::uint32_t frame, protobuf::ModemTransmission* m);
             
             // mini packet
             void camua(const util::NMEASentence& nmea, protobuf::ModemTransmission* msg); // $CAMUA

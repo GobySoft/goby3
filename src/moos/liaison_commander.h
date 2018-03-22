@@ -259,7 +259,7 @@ namespace goby
                     boost::shared_ptr<google::protobuf::Message> message_;
                     
                     std::map<Wt::WFormWidget*, const google::protobuf::FieldDescriptor*> time_fields_;
-                    goby::uint64 latest_time_;
+                    std::uint64_t latest_time_;
                     
                     Wt::WGroupBox* tree_box_;
                     Wt::WTreeTable* tree_table_;

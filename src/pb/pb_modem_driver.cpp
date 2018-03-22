@@ -37,7 +37,7 @@ using goby::common::goby_time;
 goby::pb::PBDriver::PBDriver(goby::common::ZeroMQService* zeromq_service) :
     StaticProtobufNode(zeromq_service),
     zeromq_service_(zeromq_service),
-    last_send_time_(goby_time<uint64>()),
+    last_send_time_(goby_time<std::uint64_t>()),
     request_socket_id_(0),
     query_interval_seconds_(1),
     reset_interval_seconds_(120),
@@ -144,19 +144,19 @@ void goby::pb::PBDriver::do_work()
     // call in with our outbox
     if(!waiting_for_reply_ &&
        request_.IsInitialized() &&
-       goby_time<uint64>() > last_send_time_ + 1000000*static_cast<uint64>(query_interval_seconds_))
+       goby_time<std::uint64_t>() > last_send_time_ + 1000000*static_cast<std::uint64_t>(query_interval_seconds_))
     {
         static int request_id = 0;
         request_.set_request_id(request_id++);
         glog.is(DEBUG1) && glog << group(glog_out_group()) << "Sending to server." << std::endl;
         glog.is(DEBUG2) && glog << group(glog_out_group()) << "Outbox: " << request_.DebugString() << std::flush;
         send(request_, request_socket_id_);
-        last_send_time_ = goby_time<uint64>();
+        last_send_time_ = goby_time<std::uint64_t>();
 	request_.clear_outbox();
         waiting_for_reply_ = true;
     }
     else if(waiting_for_reply_ &&
-	    goby_time<uint64>() > last_send_time_ + 1e6*reset_interval_seconds_)
+	    goby_time<std::uint64_t>() > last_send_time_ + 1e6*reset_interval_seconds_)
     {
         glog.is(DEBUG1) && glog << group(glog_out_group()) << warn 
 				<< "No response in " << reset_interval_seconds_ << " seconds, resetting socket." << std::endl;
@@ -168,7 +168,7 @@ void goby::pb::PBDriver::do_work()
 
 void goby::pb::PBDriver::handle_response(const acomms::protobuf::StoreServerResponse& response)
 {
-    glog.is(DEBUG1) && glog << group(glog_in_group()) << "Received response in " << (goby_time<uint64_t>() - last_send_time_)/1.0e6 << " seconds." << std::endl;
+    glog.is(DEBUG1) && glog << group(glog_in_group()) << "Received response in " << (goby_time<std::uint64_t>() - last_send_time_)/1.0e6 << " seconds." << std::endl;
 
     glog.is(DEBUG2) && glog << group(glog_in_group()) << "Inbox: " << response.DebugString() << std::flush;
 

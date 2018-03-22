@@ -42,7 +42,6 @@ using goby::util::hex_decode;
 using goby::common::ptime2unix_double;
 using goby::util::as;
 using goby::glog;
-using google::protobuf::uint32;
 using namespace goby::common::tcolor;
 using namespace goby::common::logger;
 using namespace goby::common::logger_lock;
@@ -739,7 +738,7 @@ void goby::acomms::MMDriver::ccpdt(const protobuf::ModemTransmission& msg)
     // merge (overwriting any duplicates) the parameters given in the request
     params.MergeFrom(msg.GetExtension(micromodem::protobuf::remus_lbl));
     
-    uint32 tat = params.turnaround_ms();
+    std::uint32_t tat = params.turnaround_ms();
     if(static_cast<unsigned>(nvram_cfg_["TAT"]) != tat)
         write_single_cfg("TAT," + as<std::string>(tat));
 
@@ -770,7 +769,7 @@ void goby::acomms::MMDriver::ccpnt(const protobuf::ModemTransmission& msg)
     // merge (overwriting any duplicates) the parameters given in the request
     params.MergeFrom(msg.GetExtension(micromodem::protobuf::narrowband_lbl));
 
-    uint32 tat = params.turnaround_ms();
+    std::uint32_t tat = params.turnaround_ms();
     if(static_cast<unsigned>(nvram_cfg_["TAT"]) != tat)
         write_single_cfg("TAT," + as<std::string>(tat));
 
@@ -1009,26 +1008,26 @@ void goby::acomms::MMDriver::process_receive(const NMEASentence& nmea)
 void goby::acomms::MMDriver::caack(const NMEASentence& nmea, protobuf::ModemTransmission* m)
 {
     // ACK has nothing to do with us!
-    if(as<int32>(nmea[2]) != driver_cfg_.modem_id())
+    if(as<std::int32_t>(nmea[2]) != driver_cfg_.modem_id())
         return;
     if(as<unsigned>(nmea[1]) != expected_ack_destination_)
         return;
     
     // WHOI counts starting at 1, Goby counts starting at 0
-    uint32 frame = as<uint32>(nmea[3])-1;
+    std::uint32_t frame = as<std::uint32_t>(nmea[3])-1;
 
-    handle_ack(as<uint32>(nmea[1]), as<uint32>(nmea[2]), frame, m);
+    handle_ack(as<std::uint32_t>(nmea[1]), as<std::uint32_t>(nmea[2]), frame, m);
     
     // if enabled cacst will signal_receive
     if(!nvram_cfg_["CST"])
         signal_receive_and_clear(m);
 }
 
-void goby::acomms::MMDriver::handle_ack(uint32 src, uint32 dest, uint32 frame, protobuf::ModemTransmission* m)
+void goby::acomms::MMDriver::handle_ack(std::uint32_t src, std::uint32_t dest, std::uint32_t frame, protobuf::ModemTransmission* m)
 {
     if(frames_waiting_for_ack_.count(frame))
     {
-        m->set_time(goby_time<uint64>());
+        m->set_time(goby_time<std::uint64_t>());
         m->set_src(src);
         m->set_dest(dest);
         m->set_type(protobuf::ModemTransmission::ACK);       
@@ -1058,13 +1057,13 @@ void goby::acomms::MMDriver::camer(const NMEASentence& nmea, protobuf::ModemTran
         dest_field = 1;
     }
 
-    if(as<int32>(nmea[dest_field]) != driver_cfg_.modem_id())
+    if(as<std::int32_t>(nmea[dest_field]) != driver_cfg_.modem_id())
         return;
 
-    m->set_time(goby_time<uint64>());
+    m->set_time(goby_time<std::uint64_t>());
     // I think these are reversed from what the manual states
-    m->set_src(as<uint32>(nmea[src_field]));
-    m->set_dest(as<uint32>(nmea[dest_field]));
+    m->set_src(as<std::uint32_t>(nmea[src_field]));
+    m->set_dest(as<std::uint32_t>(nmea[dest_field]));
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
     m->SetExtension(micromodem::protobuf::type, micromodem::protobuf::MICROMODEM_HARDWARE_CONTROL_REPLY);    
     
@@ -1141,12 +1140,12 @@ void goby::acomms::MMDriver::camsg(const NMEASentence& nmea, protobuf::ModemTran
 void goby::acomms::MMDriver::carxd(const NMEASentence& nmea, protobuf::ModemTransmission* m)
 {
     // WHOI counts from 1, we count from 0
-    unsigned frame = as<uint32>(nmea[4])-1;
+    unsigned frame = as<std::uint32_t>(nmea[4])-1;
     if(frame == 0)
     {
-        m->set_time(goby_time<uint64>());
-        m->set_src(as<uint32>(nmea[1]));
-        m->set_dest(as<uint32>(nmea[2]));
+        m->set_time(goby_time<std::uint64_t>());
+        m->set_src(as<std::uint32_t>(nmea[1]));
+        m->set_dest(as<std::uint32_t>(nmea[2]));
         m->set_type(protobuf::ModemTransmission::DATA);
         m->set_ack_requested(as<bool>(nmea[3]));
     }
@@ -1176,9 +1175,9 @@ void goby::acomms::MMDriver::camua(const NMEASentence& nmea, protobuf::ModemTran
 {
 //    m->Clear();
 
-    m->set_time(goby_time<uint64>());
-    m->set_src(as<uint32>(nmea[1]));
-    m->set_dest(as<uint32>(nmea[2]));
+    m->set_time(goby_time<std::uint64_t>());
+    m->set_src(as<std::uint32_t>(nmea[1]));
+    m->set_dest(as<std::uint32_t>(nmea[2]));
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
     m->SetExtension(micromodem::protobuf::type, micromodem::protobuf::MICROMODEM_MINI_DATA);
     
@@ -1201,10 +1200,10 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
            DATA_MINI = 6,
            DATA = 7};
     
-    m->set_time(goby_time<uint64>());
-    m->set_src(as<uint32>(nmea[SRC]));
-    m->set_dest(as<uint32>(nmea[DEST]));
-    m->set_rate(as<uint32>(nmea[RATE]));
+    m->set_time(goby_time<std::uint64_t>());
+    m->set_src(as<std::uint32_t>(nmea[SRC]));
+    m->set_dest(as<std::uint32_t>(nmea[DEST]));
+    m->set_rate(as<std::uint32_t>(nmea[RATE]));
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
     m->SetExtension(micromodem::protobuf::type, micromodem::protobuf::MICROMODEM_FLEXIBLE_DATA);
 
@@ -1391,15 +1390,15 @@ void goby::acomms::MMDriver::caxst(const NMEASentence& nmea, protobuf::ModemTran
         
         xst->set_mode(transmit_mode);
         
-        xst->set_probe_length(nmea.as<int32>(5 + version_offset));
-        xst->set_bandwidth(nmea.as<int32>(6 + version_offset));
-        xst->set_carrier_freq(nmea.as<int32>(7 + version_offset));
-        xst->set_rate(nmea.as<int32>(8 + version_offset));
-        xst->set_source(nmea.as<int32>(9 + version_offset));
-        xst->set_dest(nmea.as<int32>(10 + version_offset));
+        xst->set_probe_length(nmea.as<std::int32_t>(5 + version_offset));
+        xst->set_bandwidth(nmea.as<std::int32_t>(6 + version_offset));
+        xst->set_carrier_freq(nmea.as<std::int32_t>(7 + version_offset));
+        xst->set_rate(nmea.as<std::int32_t>(8 + version_offset));
+        xst->set_source(nmea.as<std::int32_t>(9 + version_offset));
+        xst->set_dest(nmea.as<std::int32_t>(10 + version_offset));
         xst->set_ack_requested(nmea.as<bool>(11 + version_offset));
-        xst->set_number_frames_expected(nmea.as<int32>(12 + version_offset));
-        xst->set_number_frames_sent(nmea.as<int32>(13 + version_offset));
+        xst->set_number_frames_expected(nmea.as<std::int32_t>(12 + version_offset));
+        xst->set_number_frames_sent(nmea.as<std::int32_t>(13 + version_offset));
 
         micromodem::protobuf::PacketType packet_type =
             micromodem::protobuf::PacketType_IsValid(nmea.as<int>(14+version_offset)) ?
@@ -1407,7 +1406,7 @@ void goby::acomms::MMDriver::caxst(const NMEASentence& nmea, protobuf::ModemTran
             micromodem::protobuf::PACKET_TYPE_UNKNOWN;
 
         xst->set_packet_type(packet_type);
-        xst->set_number_bytes(nmea.as<int32>(15 + version_offset));
+        xst->set_number_bytes(nmea.as<std::int32_t>(15 + version_offset));
     
         clk_mode_ = xst->clock_mode();
     }
@@ -1430,12 +1429,12 @@ void goby::acomms::MMDriver::caxst(const NMEASentence& nmea, protobuf::ModemTran
 
 void goby::acomms::MMDriver::campr(const NMEASentence& nmea, protobuf::ModemTransmission* m)
 {
-    m->set_time(goby_time<uint64>());
+    m->set_time(goby_time<std::uint64_t>());
     
     // $CAMPR,SRC,DEST,TRAVELTIME*CS
     // reverse src and dest so they match the original request
-    m->set_src(as<uint32>(nmea[1]));
-    m->set_dest(as<uint32>(nmea[2]));
+    m->set_src(as<std::uint32_t>(nmea[1]));
+    m->set_dest(as<std::uint32_t>(nmea[2]));
 
     micromodem::protobuf::RangingReply* ranging_reply = m->MutableExtension(micromodem::protobuf::ranging_reply);
     
@@ -1454,11 +1453,11 @@ void goby::acomms::MMDriver::campr(const NMEASentence& nmea, protobuf::ModemTran
 
 void goby::acomms::MMDriver::campa(const NMEASentence& nmea, protobuf::ModemTransmission* m)
 {
-    m->set_time(goby_time<uint64>());
+    m->set_time(goby_time<std::uint64_t>());
     
     // $CAMPR,SRC,DEST*CS
-    m->set_src(as<uint32>(nmea[1]));
-    m->set_dest(as<uint32>(nmea[2]));
+    m->set_src(as<std::uint32_t>(nmea[1]));
+    m->set_dest(as<std::uint32_t>(nmea[2]));
 
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
     m->SetExtension(micromodem::protobuf::type, micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
@@ -1485,7 +1484,7 @@ void goby::acomms::MMDriver::sntta(const NMEASentence& nmea, protobuf::ModemTran
 
     
     m->set_src(driver_cfg_.modem_id());
-    m->set_time(as<uint64>(nmea_time2ptime(nmea[5])));
+    m->set_time(as<std::uint64_t>(nmea_time2ptime(nmea[5])));
     m->set_time_source(protobuf::ModemTransmission::MODEM_TIME);
 
     if(last_lbl_type_ == micromodem::protobuf::MICROMODEM_REMUS_LBL_RANGING)
@@ -1557,7 +1556,7 @@ void goby::acomms::MMDriver::caerr(const NMEASentence& nmea)
 void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTransmission* msg)
 {
     // we're sending
-    if(as<int32>(nmea[2]) == driver_cfg_.modem_id())
+    if(as<std::int32_t>(nmea[2]) == driver_cfg_.modem_id())
     {
         // handle a third-party CYC
         if(!local_cccyc_)
@@ -1567,12 +1566,12 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
             if(!nvram_cfg_["XST"])
                 msg->Clear();
             
-            msg->set_time(goby_time<uint64>());
+            msg->set_time(goby_time<std::uint64_t>());
 
-            msg->set_src(as<uint32>(nmea[2])); // ADR1
-            msg->set_dest(as<uint32>(nmea[3])); // ADR2
-            msg->set_rate(as<uint32>(nmea[4])); // Rate
-            msg->set_max_num_frames(as<uint32>(nmea[6])); // Npkts, number of packets
+            msg->set_src(as<std::uint32_t>(nmea[2])); // ADR1
+            msg->set_dest(as<std::uint32_t>(nmea[3])); // ADR2
+            msg->set_rate(as<std::uint32_t>(nmea[4])); // Rate
+            msg->set_max_num_frames(as<std::uint32_t>(nmea[6])); // Npkts, number of packets
             msg->set_max_frame_bytes(PACKET_SIZE[msg->rate()]);
 
             cache_outgoing_data(msg);
@@ -1585,7 +1584,7 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
     // we're receiving
     else
     {
-        unsigned rate = as<uint32>(nmea[4]);
+        unsigned rate = as<std::uint32_t>(nmea[4]);
         if(local_cccyc_ && rate != 0) // clear flag for next cycle
         {            
             // if we poll for rates > 0, we get *two* CACYC - the one from the poll and the one from the message
@@ -1594,7 +1593,7 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
             return;
         }       
         
-        unsigned num_frames = as<uint32>(nmea[6]);
+        unsigned num_frames = as<std::uint32_t>(nmea[6]);
         if(!frames_waiting_to_receive_.empty())
         {
             glog.is(DEBUG1) && glog << group(glog_out_group()) << warn << "flushing " << frames_waiting_to_receive_.size() << " expected frames that were never received." << std::endl;
@@ -1606,7 +1605,7 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
         
         // if rate 0 and we didn't send the CCCYC, we have two cacsts (one for the cacyc and one for the carxd)
         // otherwise, we have one
-        expected_remaining_cacst_ = (as<int32>(nmea[4]) == 0 && !local_cccyc_) ? 1 : 0;
+        expected_remaining_cacst_ = (as<std::int32_t>(nmea[4]) == 0 && !local_cccyc_) ? 1 : 0;
 
         local_cccyc_ = false;
     }
@@ -1653,7 +1652,7 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
             micromodem::protobuf::MMApplicationAck::AckPart& acks_part = *acks.add_part();
             acks_part.set_ack_dest(it->first);
                     
-            goby::uint32 acked_frames = 0;
+            std::uint32_t acked_frames = 0;
             for(std::set<unsigned>::const_iterator jt = it->second.begin(), jend = it->second.end();
                 jt != jend; ++jt)
                 acked_frames |= (1ul << *jt);
@@ -1728,7 +1727,7 @@ void goby::acomms::MMDriver::cacst(const NMEASentence& nmea, protobuf::ModemTran
             micromodem::protobuf::INVALID_RECEIVE_MODE;
         
         cst->set_mode(mode);
-        cst->set_time(as<uint64>(nmea_time2ptime(nmea.as<std::string>(2+version_offset))));
+        cst->set_time(as<std::uint64_t>(nmea_time2ptime(nmea.as<std::string>(2+version_offset))));
 
         micromodem::protobuf::ClockMode clock_mode =
             micromodem::protobuf::ClockMode_IsValid(nmea.as<int>(3+version_offset)) ?
@@ -1745,9 +1744,9 @@ void goby::acomms::MMDriver::cacst(const NMEASentence& nmea, protobuf::ModemTran
         cst->set_shf_ainshift(nmea.as<double>(10+version_offset)); 
         cst->set_shf_mfdshift(nmea.as<double>(11+version_offset));
         cst->set_shf_p2bshift(nmea.as<double>(12+version_offset));
-        cst->set_rate(nmea.as<int32>(13+version_offset));
-        cst->set_source(nmea.as<int32>(14+version_offset));
-        cst->set_dest(nmea.as<int32>(15+version_offset));
+        cst->set_rate(nmea.as<std::int32_t>(13+version_offset));
+        cst->set_source(nmea.as<std::int32_t>(14+version_offset));
+        cst->set_dest(nmea.as<std::int32_t>(15+version_offset));
 
         micromodem::protobuf::PSKErrorCode psk_error_code =
             micromodem::protobuf::PSKErrorCode_IsValid(nmea.as<int>(16+version_offset)) ?
@@ -1763,14 +1762,14 @@ void goby::acomms::MMDriver::cacst(const NMEASentence& nmea, protobuf::ModemTran
 
         
         cst->set_packet_type(packet_type);
-        cst->set_number_frames(nmea.as<int32>(18+version_offset));
-        cst->set_number_bad_frames(nmea.as<int32>(19+version_offset));
+        cst->set_number_frames(nmea.as<std::int32_t>(18+version_offset));
+        cst->set_number_bad_frames(nmea.as<std::int32_t>(19+version_offset));
         cst->set_snr_rss(nmea.as<double>(20+version_offset));
         cst->set_snr_in(nmea.as<double>(21+version_offset));
         cst->set_snr_out(nmea.as<double>(22+version_offset));
         cst->set_snr_symbols(nmea.as<double>(23+version_offset));
         cst->set_mse_equalizer(nmea.as<double>(24+version_offset));
-        cst->set_data_quality_factor(nmea.as<int32>(25+version_offset));
+        cst->set_data_quality_factor(nmea.as<std::int32_t>(25+version_offset));
         cst->set_doppler(nmea.as<double>(26+version_offset));
         cst->set_stddev_noise(nmea.as<double>(27+version_offset));
         cst->set_carrier_freq(nmea.as<double>(28+version_offset));

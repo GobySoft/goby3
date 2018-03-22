@@ -48,8 +48,7 @@ namespace goby
     namespace time
     {
         /// \brief microsecond unit
-        using MicroTimeUnit = boost::units::make_scaled_unit<boost::units::si::time,
-            boost::units::scale<10, boost::units::static_rational<-6> > >::type;
+        using MicroTimeUnit = decltype(boost::units::si::micro*boost::units::si::seconds);
         /// \brief quantity of microseconds (using int64)
         using MicroTime = boost::units::quantity<MicroTimeUnit, std::int64_t>;
         /// \brief quantity of seconds (using double)

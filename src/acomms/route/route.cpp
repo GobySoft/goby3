@@ -63,7 +63,7 @@ void goby::acomms::RouteManager::handle_in(
 
     if(next_hop != -1)
     {
-        uint32 subnet = next_hop & cfg_.subnet_mask();
+        std::uint32_t subnet = next_hop & cfg_.subnet_mask();
         glog.is(DEBUG1) && glog << group("goby::acomms::route")
                                 << "Requeuing to proper subnet: "
                                 << subnet << " (" << std::hex
@@ -177,8 +177,8 @@ void goby::acomms::RouteManager::add_subnet_queue(QueueManager* manager)
         return;
     }    
 
-    uint32 modem_id = manager->modem_id();
-    uint32 subnet = modem_id & cfg_.subnet_mask();
+    std::uint32_t modem_id = manager->modem_id();
+    std::uint32_t subnet = modem_id & cfg_.subnet_mask();
     
     if(subnet_map_.count(subnet))
         glog.is(DEBUG1) && glog << warn << group("goby::acomms::route")

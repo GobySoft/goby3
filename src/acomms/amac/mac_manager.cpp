@@ -146,7 +146,7 @@ void goby::acomms::MACManager::begin_slot(const boost::system::error_code& e)
     
     
     protobuf::ModemTransmission s = *current_slot_;
-    s.set_time(goby::util::as<uint64>(next_slot_t_));
+    s.set_time(goby::util::as<std::uint64_t>(next_slot_t_));
     
     bool we_are_transmitting = true;    
     switch(cfg_.type())
@@ -242,7 +242,7 @@ boost::posix_time::ptime goby::acomms::MACManager::next_cycle_time()
     }
 
     time_duration duration_since_ref = now-reference;
-    goby::int64 microsec_since_reference = duration_since_ref.total_seconds()*1000000ll
+    std::int64_t microsec_since_reference = duration_since_ref.total_seconds()*1000000ll
                 + (duration_since_ref-seconds(duration_since_ref.total_seconds())).total_microseconds();
     
     glog.is(DEBUG2) && glog << group(glog_mac_group_) << "reference: "
