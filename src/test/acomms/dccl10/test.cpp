@@ -321,13 +321,13 @@ int main(int argc, char* argv[])
         
 
         // pick some endpoints
-        goby::int32 low = -(rand() % std::numeric_limits<goby::int32>::max());
-        goby::int32 high = rand() % std::numeric_limits<goby::int32>::max();
+        std::int32_t low = -(rand() % std::numeric_limits<std::int32_t>::max());
+        std::int32_t high = rand() % std::numeric_limits<std::int32_t>::max();
 
         std::cout << "low: " << low << ", high: " << high << std::endl;
 
         // number of symbols
-        goby::int32 symbols = rand() % 1000 + 10;
+        std::int32_t symbols = rand() % 1000 + 10;
         
         std::cout << "symbols: " << symbols << std::endl;
         
@@ -344,7 +344,7 @@ int main(int argc, char* argv[])
         {
 //            std::cout << "j: " << j << std::endl;
 
-            goby::int32 remaining_range = high-model.value_bound(j-1);
+            std::int32_t remaining_range = high-model.value_bound(j-1);
             model.add_value_bound(model.value_bound(j-1) + rand() % (remaining_range/symbols-j) +1);
             model.add_frequency(rand() % each_max_freq + 1);            
         }

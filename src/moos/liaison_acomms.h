@@ -82,7 +82,7 @@ namespace goby
 
             void mac_info(const Wt::WMouseEvent& event, int id);
 
-            class DriverStats;
+            struct DriverStats;
             void update_driver_stats(int now, DriverStats* driver_stats);
             void handle_modem_message(DriverStats* driver_stats, bool good, goby::acomms::protobuf::ModemTransmission& msg);
 

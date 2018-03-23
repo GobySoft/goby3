@@ -34,15 +34,15 @@
 
 using goby::acomms::operator<<;
 
-class MicroModemMiniPacketDCCLIDCodec : public goby::acomms::DCCLTypedFixedFieldCodec<goby::uint32>
+class MicroModemMiniPacketDCCLIDCodec : public goby::acomms::DCCLTypedFixedFieldCodec<std::uint32_t>
 {
 private:
-    goby::acomms::Bitset encode(const goby::uint32& wire_value);
+    goby::acomms::Bitset encode(const std::uint32_t& wire_value);
     
     goby::acomms::Bitset encode()
         { return encode(MINI_ID_OFFSET); }
     
-    goby::uint32 decode(goby::acomms::Bitset* bits)
+    std::uint32_t decode(goby::acomms::Bitset* bits)
         { return bits->to_ulong() + MINI_ID_OFFSET; }
     
     unsigned size()
@@ -70,7 +70,7 @@ bool double_cmp(double a, double b, int precision)
     return (a_whole == b_whole) && (a_part == b_part);
 }
 
-goby::acomms::Bitset MicroModemMiniPacketDCCLIDCodec::encode(const goby::uint32& wire_value)
+goby::acomms::Bitset MicroModemMiniPacketDCCLIDCodec::encode(const std::uint32_t& wire_value)
 {
     // 16 bits, only 13 are useable, so
     // 3 "blank bits" + 3 bits for us
@@ -164,7 +164,7 @@ int main(int argc, char* argv[])
                                boost::date_time::Mar, 04), 
         boost::posix_time::time_duration(17,1,44));
 
-    state_in.set_time_date(goby::util::as<goby::uint64>(time_date));
+    state_in.set_time_date(goby::util::as<std::uint64_t>(time_date));
     state_in.set_heading(270);
     state_in.set_depth(2323);
     state_in.set_mission_mode(dccl::legacyccl::protobuf::CCLMDATState::NORMAL);

@@ -33,10 +33,10 @@ namespace goby
         namespace hdf5
         {
             template <typename T> H5::PredType predicate();
-            template<> H5::PredType predicate<goby::int32>() { return H5::PredType::NATIVE_INT32; }
-            template<> H5::PredType predicate<goby::int64>() { return H5::PredType::NATIVE_INT64; }
-            template<> H5::PredType predicate<goby::uint32>() { return H5::PredType::NATIVE_UINT32; }
-            template<> H5::PredType predicate<goby::uint64>() { return H5::PredType::NATIVE_UINT64; }
+            template<> H5::PredType predicate<std::int32_t>() { return H5::PredType::NATIVE_INT32; }
+            template<> H5::PredType predicate<std::int64_t>() { return H5::PredType::NATIVE_INT64; }
+            template<> H5::PredType predicate<std::uint32_t>() { return H5::PredType::NATIVE_UINT32; }
+            template<> H5::PredType predicate<std::uint64_t>() { return H5::PredType::NATIVE_UINT64; }
             template<> H5::PredType predicate<float>() { return H5::PredType::NATIVE_FLOAT; }
             template<> H5::PredType predicate<double>() { return H5::PredType::NATIVE_DOUBLE; }
             template<> H5::PredType predicate<unsigned char>() { return H5::PredType::NATIVE_UCHAR; }

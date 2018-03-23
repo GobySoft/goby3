@@ -174,7 +174,7 @@ void goby::common::hdf5::Writer::write_message_collection(const std::string& gro
         const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
 
         std::vector<const google::protobuf::Message* > messages;
-        for(std::multimap<goby::uint64, boost::shared_ptr<google::protobuf::Message> >::const_iterator it = message_collection.entries.begin(), end = message_collection.entries.end(); it != end; ++it)
+        for(std::multimap<std::uint64_t, boost::shared_ptr<google::protobuf::Message> >::const_iterator it = message_collection.entries.begin(), end = message_collection.entries.end(); it != end; ++it)
         {
             messages.push_back(it->second.get());
         }
@@ -265,25 +265,25 @@ void goby::common::hdf5::Writer::write_field_selector(const std::string& group,
         case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
         {
             // google uses int for the enum value type, we'll assume that's an int32 here
-            write_field<goby::int32>(group, field_desc, messages, hs);
+            write_field<std::int32_t>(group, field_desc, messages, hs);
             write_enum_attributes(group, field_desc);
             break;
         }
         
         case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
-            write_field<goby::int32>(group, field_desc, messages, hs);
+            write_field<std::int32_t>(group, field_desc, messages, hs);
             break;
                             
         case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-            write_field<goby::int64>(group, field_desc, messages, hs);
+            write_field<std::int64_t>(group, field_desc, messages, hs);
             break;
                             
         case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
-            write_field<goby::uint32>(group, field_desc, messages, hs);
+            write_field<std::uint32_t>(group, field_desc, messages, hs);
             break;
                             
         case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-            write_field<goby::uint64>(group, field_desc, messages, hs);
+            write_field<std::uint64_t>(group, field_desc, messages, hs);
             break;
                             
         case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
@@ -317,7 +317,7 @@ void goby::common::hdf5::Writer::write_enum_attributes(const std::string& group,
     const google::protobuf::EnumDescriptor * enum_desc = field_desc->enum_type();
 
     std::vector<const char*> names(enum_desc->value_count(), (const char*)(0));
-    std::vector<goby::int32> values(enum_desc->value_count(), 0);
+    std::vector<std::int32_t> values(enum_desc->value_count(), 0);
 
     for(int i = 0, n = enum_desc->value_count(); i < n; ++i)
     {
@@ -337,7 +337,7 @@ void goby::common::hdf5::Writer::write_enum_attributes(const std::string& group,
         const int rank = 1;
         hsize_t hs[] = {values.size()}; 
         H5::DataSpace att_space(rank, hs, hs);
-        H5::IntType att_type(predicate<goby::int32>());          
+        H5::IntType att_type(predicate<std::int32_t>());          
         H5::Attribute att = ds.createAttribute("enum_values", att_type, att_space);
         att.write(att_type, &values[0]);
     }
@@ -346,24 +346,24 @@ void goby::common::hdf5::Writer::write_enum_attributes(const std::string& group,
 
 void goby::common::hdf5::Writer::write_time(const std::string& group, const goby::common::hdf5::MessageCollection& message_collection)
 {
-    std::vector<goby::uint64> utime(message_collection.entries.size(), 0);
+    std::vector<std::uint64_t> utime(message_collection.entries.size(), 0);
     std::vector<double> datenum(message_collection.entries.size(), 0);
     int i = 0;
-    for(std::multimap<goby::uint64, boost::shared_ptr<google::protobuf::Message> >::const_iterator it = message_collection.entries.begin(), end = message_collection.entries.end(); it != end; ++it)
+    for(std::multimap<std::uint64_t, boost::shared_ptr<google::protobuf::Message> >::const_iterator it = message_collection.entries.begin(), end = message_collection.entries.end(); it != end; ++it)
     {
         utime[i] = it->first;
         // datenum(1970, 1, 1, 0, 0, 0)
         const double datenum_unix_epoch = 719529;
         const double seconds_in_day = 86400;
-        goby::uint64 utime_sec = utime[i]/1000000;
-        goby::uint64 utime_frac = utime[i] - utime_sec*1000000;
+        std::uint64_t utime_sec = utime[i]/1000000;
+        std::uint64_t utime_frac = utime[i] - utime_sec*1000000;
         datenum[i] = datenum_unix_epoch + static_cast<double>(utime_sec)/seconds_in_day + static_cast<double>(utime_frac)/1000000/seconds_in_day;
         ++i;
     }
 
     std::vector<hsize_t> hs;
     hs.push_back(message_collection.entries.size());
-    write_vector(group, "_utime_", utime, hs, (goby::uint64)0);
+    write_vector(group, "_utime_", utime, hs, (std::uint64_t)0);
     write_vector(group, "_datenum_", datenum, hs, (double)0);
 }
 
