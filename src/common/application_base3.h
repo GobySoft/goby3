@@ -35,6 +35,7 @@
 #include "goby/common/protobuf/app3.pb.h"
 
 #include "goby/common/logger.h"
+#include "goby/common/time3.h"
 
 #include "core_helpers.h"
 
@@ -221,7 +222,16 @@ template<typename Config, typename StateMachine>
         throw(common::ConfigException("Invalid base configuration"));
     
     glog.is(DEBUG1) && glog << "App name is " << cfg_.app().name() << std::endl;
-   glog.is(DEBUG2) && glog << "Configuration is: " << cfg_.DebugString() << std::endl;
+    glog.is(DEBUG2) && glog << "Configuration is: " << cfg_.DebugString() << std::endl;
+
+    // set up simulation time
+    if(cfg_.app().simulation().time().use_sim_time())
+    {
+        goby::time::SimulatorSettings::using_sim_time = true;
+        goby::time::SimulatorSettings::warp_factor = cfg_.app().simulation().time().warp_factor();
+        if(cfg_.app().simulation().time().has_reference_microtime())
+            goby::time::SimulatorSettings::reference_time = cfg_.app().simulation().time().reference_microtime()*boost::units::si::micro*boost::units::si::seconds;
+    }
 }
 
 template<typename Config, typename StateMachine>
