@@ -40,13 +40,8 @@ namespace goby
     ///\name Time
     //@{
 
-    namespace common
-    {
-        extern int goby_time_warp_factor;
-    }
-
     namespace time
-    {
+    {        
         /// \brief microsecond unit
         using MicroTimeUnit = decltype(boost::units::si::micro*boost::units::si::seconds);
         /// \brief quantity of microseconds (using int64)
@@ -54,6 +49,13 @@ namespace goby
         /// \brief quantity of seconds (using double)
         using SITime = boost::units::quantity<boost::units::si::time>;
 
+        struct SimulatorSettings
+        {                    
+            static bool using_sim_time;
+            static int warp_factor;
+            static MicroTime reference_time;
+        };
+        
         /// \brief return the current time since 1970-01-01 00:00 UTC ("UNIX Time")
         template<typename TimeType>
             inline TimeType now()
@@ -63,12 +65,22 @@ namespace goby
                 std::chrono::system_clock::now().time_since_epoch() /
                 std::chrono::microseconds(1);
 
-            // warp time by factor
-            microsecs_since_epoch *= common::goby_time_warp_factor;
-
-            // convert to boost::units type
-            return TimeType(microsecs_since_epoch*
-                            boost::units::si::micro*boost::units::si::seconds);
+            auto time_since_epoch = microsecs_since_epoch*
+                boost::units::si::micro*boost::units::si::seconds;
+            
+            // warp time (t) by warp factor (w), relative to reference_time (t0)
+            // so t_sim = (t-t0)*w+t0
+            if(SimulatorSettings::using_sim_time)
+            {
+                auto time_since_reference = time_since_epoch - SimulatorSettings::reference_time;
+                time_since_reference *= decltype(time_since_reference)::value_type(SimulatorSettings::warp_factor);
+                return TimeType(SimulatorSettings::reference_time + time_since_reference);
+            }
+            else
+            {
+                return TimeType(time_since_epoch);
+            }
+            
         }
 
         /// \brief return the current time as the number of microseconds since 1970-01-01 00:00 UTC (same as now<goby::time::MicroTime>())
@@ -77,12 +89,12 @@ namespace goby
 
         /// \brief Convert from boost::posix_time::ptime to boost::units::quantity<...> of time
         template<typename Quantity>
-            Quantity from_ptime(boost::posix_time::ptime t_in)
+            Quantity from_ptime(boost::posix_time::ptime time_in)
         {
             using namespace boost::posix_time;
             using namespace boost::gregorian;
         
-            if (t_in == not_a_date_time)
+            if (time_in == not_a_date_time)
             {
                 return Quantity::from_value(-1);
             }
@@ -90,8 +102,8 @@ namespace goby
             {
                 const int MICROSEC_IN_SEC = 1000000;
                 
-                date_duration date_diff = t_in.date() - date(1970,1,1);
-                time_duration time_diff = t_in.time_of_day();
+                date_duration date_diff = time_in.date() - date(1970,1,1);
+                time_duration time_diff = time_in.time_of_day();
                 
                 return Quantity(
                     MicroTime::from_value(
@@ -105,22 +117,22 @@ namespace goby
 
         /// \brief Convert from boost::posix_time::ptime to boost::units::quantity<...> of time
         template<typename Quantity>
-            boost::posix_time::ptime to_ptime(Quantity t_in)
+            boost::posix_time::ptime to_ptime(Quantity time_in)
         {
-            std::int64_t t_in_value = MicroTime(t_in)/MicroTimeUnit();
+            std::int64_t time_in_value = MicroTime(time_in)/MicroTimeUnit();
             
             using namespace boost::posix_time;
             using namespace boost::gregorian;
     
-            if (t_in_value == -1)
+            if (time_in_value == -1)
                 return boost::posix_time::ptime(not_a_date_time);
             else
             {
                 const int MICROSEC_IN_SEC = 1000000;
                 ptime time_t_epoch(date(1970,1,1));
-                std::int64_t m = t_in_value / MICROSEC_IN_SEC / 60;
-                std::int64_t s = (t_in_value / MICROSEC_IN_SEC) - m*60;
-                std::int64_t micro_s = (t_in_value - (s + m*60) * MICROSEC_IN_SEC);
+                std::int64_t m = time_in_value / MICROSEC_IN_SEC / 60;
+                std::int64_t s = (time_in_value / MICROSEC_IN_SEC) - m*60;
+                std::int64_t micro_s = (time_in_value - (s + m*60) * MICROSEC_IN_SEC);
                 return time_t_epoch + minutes(m) + seconds(s) + microseconds(micro_s);
             }
         }

@@ -240,7 +240,7 @@ namespace boost
             static boost::posix_time::time_duration to_posix_duration(
                 const duration_type& d)
             {
-                return d/goby::common::goby_time_warp_factor;
+                return d/goby::time::SimulatorSettings::warp_factor;
             }
         };
     }

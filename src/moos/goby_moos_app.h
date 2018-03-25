@@ -970,7 +970,8 @@ template <class MOOSAppType>
     if(common_cfg_.time_warp_multiplier() != 1)
     {
         goby::common::goby_time_function = GobyMOOSAppSelector<MOOSAppType>::microsec_moos_time;
-        goby::common::goby_time_warp_factor = common_cfg_.time_warp_multiplier();
+        goby::time::SimulatorSettings::warp_factor = common_cfg_.time_warp_multiplier();
+        goby::time::SimulatorSettings::using_sim_time = true;
     }
 }
 

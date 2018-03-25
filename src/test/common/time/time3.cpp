@@ -80,12 +80,25 @@ int main()
 
     
     
-    goby::common::goby_time_warp_factor = 10;
+    goby::time::SimulatorSettings::warp_factor = 10;
+    goby::time::SimulatorSettings::using_sim_time= true;
+
+    std::cout << "warp reference: " << goby::time::SimulatorSettings::reference_time << std::endl;
+    auto ref_ptime = goby::time::to_ptime(goby::time::SimulatorSettings::reference_time);
+    std::cout << "\tas ptime: " << ref_ptime << std::endl;
+
+    assert(ref_ptime.date().day() == 1);
+    assert(ref_ptime.date().month() == 1);
+    assert(ref_ptime.date().year() == boost::posix_time::second_clock::universal_time().date().year());
+    
     
     auto now_warped_microseconds = goby::time::now();
     std::cout << "now (warped 10):\t\t" << now_warped_microseconds << std::endl;
+    auto now_warped_ptime = goby::time::to_ptime(now_warped_microseconds);
     
-    assert(now_warped_microseconds > goby::time::MicroTime::value_type(10)*now_microseconds);
+    std::cout << "\tas ptime: " << now_warped_ptime << std::endl;
+    
+    assert(now_warped_microseconds > now_microseconds);
 
     std::cout << "all tests passed" << std::endl;
     
