@@ -251,7 +251,7 @@ void goby::moos::UFldDriver::do_work()
                     }
                     else
                     {
-                        m.set_time(static_cast<uint64>(time)*1000000);
+                        m.set_time(static_cast<std::uint64_t>(time)*1000000);
                     
                         m.set_src(driver_cfg_.modem_id());
                         m.set_dest(last_ccmpc_dest_);

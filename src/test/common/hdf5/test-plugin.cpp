@@ -82,7 +82,7 @@ bool TestHDF5Plugin::provide_entry(goby::common::HDF5ProtobufEntry* entry)
     else
         entry->channel = " test/group2/"; // add some whitespace and trailing "/" - will become "test/group2"
     
-    entry->time = goby::common::goby_time<goby::uint64>();
+    entry->time = goby::common::goby_time<std::uint64_t>();
 
     std::cout << *entry << std::endl;
     

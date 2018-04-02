@@ -871,26 +871,26 @@ namespace goby
                                     case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
                                         out_repeated << ((j < refl->FieldSize(in, field_desc)) ?
                                                          refl->GetRepeatedInt32(in, field_desc, j) :
-                                                         std::numeric_limits<int32>::max());
+                                                         std::numeric_limits<std::int32_t>::max());
                                         
                                         break;
                             
                                     case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
                                         out_repeated << ((j < refl->FieldSize(in, field_desc)) ?
                                                          refl->GetRepeatedInt64(in, field_desc, j) :
-                                                         std::numeric_limits<int64>::max());
+                                                         std::numeric_limits<std::int64_t>::max());
                                         break;
                             
                                     case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
                                         out_repeated << ((j < refl->FieldSize(in, field_desc)) ?
                                                          refl->GetRepeatedUInt32(in, field_desc, j) :
-                                                         std::numeric_limits<uint32>::max());
+                                                         std::numeric_limits<std::uint32_t>::max());
                                         break;
                             
                                     case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
                                         out_repeated << ((j < refl->FieldSize(in, field_desc)) ?
                                                          refl->GetRepeatedUInt64(in, field_desc, j) :
-                                                         std::numeric_limits<uint64>::max());
+                                                         std::numeric_limits<std::uint64_t>::max());
                                         break;
                             
                                     case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:

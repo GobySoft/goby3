@@ -38,7 +38,7 @@ namespace goby
         struct HDF5ProtobufEntry
         {
             std::string channel;
-            goby::uint64 time;
+            std::uint64_t time;
             boost::shared_ptr<google::protobuf::Message> msg;
 
         HDF5ProtobufEntry() : time(0) { }

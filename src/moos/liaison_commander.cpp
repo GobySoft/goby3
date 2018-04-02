@@ -819,7 +819,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::genera
             if(field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddInt32(message, field_desc, field_desc->default_value_int32());
             
-            int32 value = field_desc->is_repeated() ?
+            std::int32_t value = field_desc->is_repeated() ?
                 refl->GetRepeatedInt32(*message, field_desc, index) :
                 refl->GetInt32(*message, field_desc);
             
@@ -840,7 +840,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::genera
             if(field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddInt64(message, field_desc, field_desc->default_value_int64());
             
-            int64 value = field_desc->is_repeated() ?
+            std::int64_t value = field_desc->is_repeated() ?
                 refl->GetRepeatedInt64(*message, field_desc, index) :
                 refl->GetInt64(*message, field_desc);
             
@@ -862,7 +862,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::genera
             if(field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddUInt32(message, field_desc, field_desc->default_value_uint32());
             
-            uint32 value = field_desc->is_repeated() ?
+            std::uint32_t value = field_desc->is_repeated() ?
                 refl->GetRepeatedUInt32(*message, field_desc, index) :
                 refl->GetUInt32(*message, field_desc);
             
@@ -883,7 +883,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::genera
             if(field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddUInt64(message, field_desc, field_desc->default_value_uint64());
             
-            uint64 value = field_desc->is_repeated() ?
+            std::uint64_t value = field_desc->is_repeated() ?
                 refl->GetRepeatedUInt64(*message, field_desc, index) :
                 refl->GetUInt64(*message, field_desc);
             
@@ -1114,26 +1114,26 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle
         {
             case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
                 field_desc->is_repeated() ?
-                    refl->SetRepeatedInt32(message, field_desc, index, goby::util::as<int32>(value)) :
-                    refl->SetInt32(message, field_desc, goby::util::as<int32>(value));
+                    refl->SetRepeatedInt32(message, field_desc, index, goby::util::as<std::int32_t>(value)) :
+                    refl->SetInt32(message, field_desc, goby::util::as<std::int32_t>(value));
                 break;
                     
             case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
                 field_desc->is_repeated() ?
-                    refl->SetRepeatedInt64(message, field_desc, index, goby::util::as<int64>(value)) :
-                    refl->SetInt64(message, field_desc, goby::util::as<int64>(value));
+                    refl->SetRepeatedInt64(message, field_desc, index, goby::util::as<std::int64_t>(value)) :
+                    refl->SetInt64(message, field_desc, goby::util::as<std::int64_t>(value));
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
                 field_desc->is_repeated() ?
-                    refl->SetRepeatedUInt32(message, field_desc, index, goby::util::as<uint32>(value)) :
-                    refl->SetUInt32(message, field_desc, goby::util::as<uint32>(value));
+                    refl->SetRepeatedUInt32(message, field_desc, index, goby::util::as<std::uint32_t>(value)) :
+                    refl->SetUInt32(message, field_desc, goby::util::as<std::uint32_t>(value));
                 break;
                     
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
                 field_desc->is_repeated() ?
-                    refl->SetRepeatedUInt64(message, field_desc, index, goby::util::as<uint64>(value)) :
-                    refl->SetUInt64(message, field_desc, goby::util::as<uint64>(value));
+                    refl->SetRepeatedUInt64(message, field_desc, index, goby::util::as<std::uint64_t>(value)) :
+                    refl->SetUInt64(message, field_desc, goby::util::as<std::uint64_t>(value));
                 break;
                     
             case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
@@ -1322,7 +1322,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::set_ti
         }
 
         const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
-        latest_time_ = goby::util::as<uint64>(now);
+        latest_time_ = goby::util::as<std::uint64_t>(now);
         enum { MICROSEC_ORDER_MAG = 6 };
         
         
@@ -1334,7 +1334,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::set_ti
 
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
             case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-                line_edit->setText(goby::util::as<std::string>(goby::util::as<uint64>(now)));
+                line_edit->setText(goby::util::as<std::string>(goby::util::as<std::uint64_t>(now)));
                 if(!options.has_precision())
                     latest_time_ = dccl::round(latest_time_, -MICROSEC_ORDER_MAG);
                 else

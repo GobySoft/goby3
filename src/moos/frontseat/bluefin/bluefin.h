@@ -131,7 +131,7 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
 
 
     // maps status expire time to payload status
-    std::multimap<goby::uint64, goby::moos::protobuf::BluefinExtraData::PayloadStatus>
+    std::multimap<std::uint64_t, goby::moos::protobuf::BluefinExtraData::PayloadStatus>
         payload_status_;
 };
 

@@ -54,12 +54,12 @@ namespace goby
             acomms::protobuf::DriverConfig driver_cfg_;
 	    common::protobuf::ZeroMQServiceConfig service_cfg_;
             acomms::protobuf::StoreServerRequest request_;
-            uint64 last_send_time_;
+            std::uint64_t last_send_time_;
             int request_socket_id_;
             double query_interval_seconds_;
             double reset_interval_seconds_;
             bool waiting_for_reply_;
-            goby::uint32 next_frame_;
+            std::uint32_t next_frame_;
         };
     }
 }

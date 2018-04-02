@@ -152,7 +152,9 @@ template<typename Config, typename TransporterType>
         {
             loop();
             ++loop_count_;
-            loop_time_ += std::chrono::nanoseconds((unsigned long long)(1000000000ull / loop_frequency_hertz()));
+            loop_time_ += std::chrono::nanoseconds(
+                (unsigned long long)(1000000000ull /
+                                     (loop_frequency_hertz()*time::SimulatorSettings::warp_factor)));
         }
     }
     else

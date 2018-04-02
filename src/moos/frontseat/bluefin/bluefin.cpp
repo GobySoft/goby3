@@ -368,9 +368,9 @@ void BluefinFrontSeat::check_send_heartbeat()
         {
             std::map<int, std::string> seen_ids;            
             status += goby::common::goby_time_as_string();
-            payload_status_.erase(payload_status_.begin(), payload_status_.upper_bound(goby::common::goby_time<goby::uint64>()));
+            payload_status_.erase(payload_status_.begin(), payload_status_.upper_bound(goby::common::goby_time<std::uint64_t>()));
 
-            for(std::multimap<goby::uint64, goby::moos::protobuf::BluefinExtraData::PayloadStatus>::const_iterator it = payload_status_.begin(), end = payload_status_.end(); it != end; ++it)
+            for(std::multimap<std::uint64_t, goby::moos::protobuf::BluefinExtraData::PayloadStatus>::const_iterator it = payload_status_.begin(), end = payload_status_.end(); it != end; ++it)
             {
                 // only display the newest from a given ID
                 if(!seen_ids.count(it->second.id()))

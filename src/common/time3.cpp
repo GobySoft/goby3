@@ -20,42 +20,22 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "ip_codecs.h"
+#include "goby/common/time3.h"
 
-#include <netinet/in.h>
-#include <arpa/inet.h>
+bool goby::time::SimulatorSettings::using_sim_time = false;
+int goby::time::SimulatorSettings::warp_factor = 1;
 
-std::uint32_t goby::acomms::IPv4AddressCodec::pre_encode(const std::string& field_value)
+// creates the default reference time, which is Jan 1 of the next year
+goby::time::MicroTime create_reference_time()
 {
-    in_addr addr;
-    int ret = inet_aton(field_value.c_str(), &addr);
-    return (ret == 0) ? -1 : addr.s_addr;
-}
-std::string goby::acomms::IPv4AddressCodec::post_decode(const std::uint32_t& wire_value)
-{
-    in_addr addr;
-    addr.s_addr = wire_value;
-    return std::string(inet_ntoa(addr));
+    boost::posix_time::ptime now =
+        goby::time::to_ptime(goby::time::now());
+
+    boost::posix_time::ptime last_year_start(
+        boost::gregorian::date(now.date().year(), 1, 1));
+    
+    return goby::time::from_ptime<goby::time::MicroTime>(last_year_start);
 }
 
-std::uint16_t goby::acomms::net_checksum(const std::string& data)
-{
-    std::uint32_t sum = 0;  
-    int len = data.size();
-    std::uint16_t* p = (std::uint16_t*) &data[0];
+goby::time::MicroTime goby::time::SimulatorSettings::reference_time(create_reference_time());
 
-    while(len > 1)
-    {
-        sum += ntohs(*(p++));
-        len -= 2;
-    }
-
-    // last byte is large byte (LSB is padded with zeros)
-    if(len)
-        sum += (*(uint8_t*)p << 8) & 0xFF00;
-            
-    while(sum >> 16)
-        sum = (sum & 0xFFFF) + (sum >> 16);
-            
-    return ~sum;
-}

@@ -105,7 +105,7 @@ public:
             for(int i = 0; i < cfg().num_tx_threads(); ++i)
                 launch_thread<TestThreadTx>(i);
 
-            start_ = goby::common::goby_time<goby::uint64>();
+            start_ = goby::common::goby_time<std::uint64_t>();
             glog.is(VERBOSE) && glog << "Start: " << start_ << std::endl;
         }
     
@@ -113,7 +113,7 @@ public:
         {
             if(complete == cfg().num_rx_threads())
             {
-                goby::uint64 end = goby::common::goby_time<goby::uint64>();
+                std::uint64_t end = goby::common::goby_time<std::uint64_t>();
                 glog.is(VERBOSE) && glog << "End: " << end << std::endl;
                 glog.is(VERBOSE) && glog << "Microseconds per message: " << (end-start_)/cfg().num_messages() << std::endl;
 
@@ -128,7 +128,7 @@ public:
         }
     
 private:
-    goby::uint64 start_{0};
+    std::uint64_t start_{0};
     
 };
 

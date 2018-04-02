@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
 
     msg_in1.set_telegram("hello!");
     msg_in1.mutable_header()->set_time(
-        goby::util::as<goby::uint64>(boost::posix_time::second_clock::universal_time()));
+        goby::util::as<std::uint64_t>(boost::posix_time::second_clock::universal_time()));
     msg_in1.mutable_header()->set_source_platform(MY_MODEM_ID);
     msg_in1.mutable_header()->set_dest_platform(UNICORN_MODEM_ID);
     msg_in1.mutable_header()->set_dest_type(Header::PUBLISH_OTHER);

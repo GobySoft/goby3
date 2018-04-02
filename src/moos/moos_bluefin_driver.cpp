@@ -287,7 +287,7 @@ void goby::moos::BluefinCommsDriver::bfcps(const goby::util::NMEASentence& nmea)
     if(nmea.as<int>(REQUEST_ID) == last_request_id_)
     {
         goby::acomms::protobuf::ModemTransmission msg;
-        msg.set_time(goby_time<uint64>());
+        msg.set_time(goby_time<std::uint64_t>());
         msg.set_src(last_data_msg_.dest()); // ack came from last data's destination, presumably
         msg.set_dest(last_data_msg_.src());
         msg.set_type(goby::acomms::protobuf::ModemTransmission::ACK);
@@ -335,7 +335,7 @@ void goby::moos::BluefinCommsDriver::bfcpr(const goby::util::NMEASentence& nmea)
     };
 
     goby::acomms::protobuf::ModemTransmission msg;
-    msg.set_time(goby::util::as<uint64>(nmea_time2ptime(nmea.at(ARRIVAL_TIME))));
+    msg.set_time(goby::util::as<std::uint64_t>(nmea_time2ptime(nmea.at(ARRIVAL_TIME))));
     msg.set_time_source(goby::acomms::protobuf::ModemTransmission::MODEM_TIME);
 
     int goby_src = goby_to_bluefin_id_.right.count(nmea.as<int>(SOURCE)) ?

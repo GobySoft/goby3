@@ -70,7 +70,7 @@ namespace goby
             template <typename T> void retrieve_repeated_value(T* val, int index, PBMeta meta);
 
             template <>
-                void retrieve_default_value(goby::int32* val, const google::protobuf::FieldDescriptor* field_desc)
+                void retrieve_default_value(std::int32_t* val, const google::protobuf::FieldDescriptor* field_desc)
             {
                 if(field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_INT32)
                 {
@@ -84,10 +84,10 @@ namespace goby
                 }                
             }
             template <>
-                void retrieve_empty_value(goby::int32* val)
-            { *val = std::numeric_limits<goby::int32>::max(); }
+                void retrieve_empty_value(std::int32_t* val)
+            { *val = std::numeric_limits<std::int32_t>::max(); }
             template <>
-                void retrieve_single_present_value(goby::int32* val, PBMeta m)
+                void retrieve_single_present_value(std::int32_t* val, PBMeta m)
             {
                 if(m.field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_INT32)
                 {
@@ -101,7 +101,7 @@ namespace goby
                 }
             }
             template <>
-                void retrieve_repeated_value(goby::int32* val, int index, PBMeta m)
+                void retrieve_repeated_value(std::int32_t* val, int index, PBMeta m)
             {
                 if(m.field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_INT32)
                 {
@@ -116,43 +116,43 @@ namespace goby
             }
 
             template <>
-                void retrieve_default_value(goby::uint32* val, const google::protobuf::FieldDescriptor* field_desc)
+                void retrieve_default_value(std::uint32_t* val, const google::protobuf::FieldDescriptor* field_desc)
             { *val = field_desc->default_value_uint32(); }
             template <>
-                void retrieve_empty_value(goby::uint32* val)
-            { *val = std::numeric_limits<goby::uint32>::max(); }
+                void retrieve_empty_value(std::uint32_t* val)
+            { *val = std::numeric_limits<std::uint32_t>::max(); }
             template <>
-                void retrieve_single_present_value(goby::uint32* val, PBMeta m)
+                void retrieve_single_present_value(std::uint32_t* val, PBMeta m)
             { *val = m.refl->GetUInt32(m.msg, m.field_desc); }
             template <>
-                void retrieve_repeated_value(goby::uint32* val, int index, PBMeta m)
+                void retrieve_repeated_value(std::uint32_t* val, int index, PBMeta m)
             { *val = m.refl->GetRepeatedUInt32(m.msg, m.field_desc, index); }
 
             template <>
-                void retrieve_default_value(goby::int64* val, const google::protobuf::FieldDescriptor* field_desc)
+                void retrieve_default_value(std::int64_t* val, const google::protobuf::FieldDescriptor* field_desc)
             { *val = field_desc->default_value_int64(); }
             template <>
-                void retrieve_empty_value(goby::int64* val)
-            { *val = std::numeric_limits<goby::int64>::max(); }
+                void retrieve_empty_value(std::int64_t* val)
+            { *val = std::numeric_limits<std::int64_t>::max(); }
             template <>
-                void retrieve_single_present_value(goby::int64* val, PBMeta m)
+                void retrieve_single_present_value(std::int64_t* val, PBMeta m)
             { *val = m.refl->GetInt64(m.msg, m.field_desc); }
             template <>
-                void retrieve_repeated_value(goby::int64* val, int index, PBMeta m)
+                void retrieve_repeated_value(std::int64_t* val, int index, PBMeta m)
             { *val = m.refl->GetRepeatedInt64(m.msg, m.field_desc, index); }
 
 
             template <>
-                void retrieve_default_value(goby::uint64* val, const google::protobuf::FieldDescriptor* field_desc)
+                void retrieve_default_value(std::uint64_t* val, const google::protobuf::FieldDescriptor* field_desc)
             { *val = field_desc->default_value_uint64(); }
             template <>
-                void retrieve_empty_value(goby::uint64* val)
-            { *val = std::numeric_limits<goby::uint64>::max(); }
+                void retrieve_empty_value(std::uint64_t* val)
+            { *val = std::numeric_limits<std::uint64_t>::max(); }
             template <>
-                void retrieve_single_present_value(goby::uint64* val, PBMeta m)
+                void retrieve_single_present_value(std::uint64_t* val, PBMeta m)
             { *val = m.refl->GetUInt64(m.msg, m.field_desc); }
             template <>
-                void retrieve_repeated_value(goby::uint64* val, int index, PBMeta m)
+                void retrieve_repeated_value(std::uint64_t* val, int index, PBMeta m)
             { *val = m.refl->GetRepeatedUInt64(m.msg, m.field_desc, index); }
 
 

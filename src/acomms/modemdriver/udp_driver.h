@@ -59,7 +59,7 @@ namespace goby
             boost::asio::ip::udp::endpoint receiver_;
             boost::asio::ip::udp::endpoint sender_;            
             std::vector<char> receive_buffer_;
-            goby::uint32 next_frame_;
+            std::uint32_t next_frame_;
             
         };
     }

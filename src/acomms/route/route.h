@@ -73,7 +73,7 @@ namespace goby
             protobuf::RouteManagerConfig cfg_;
 
             // maps (modem_id & subnet_mask) onto QueueManager
-            std::map<uint32, QueueManager*> subnet_map_;
+            std::map<std::uint32_t, QueueManager*> subnet_map_;
         };
     }
 }

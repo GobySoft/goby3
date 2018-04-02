@@ -59,7 +59,7 @@ namespace goby
             sqlite3* db_;
 
             // maps modem_id to time (microsecs since UNIX)
-            std::map<int, uint64> last_request_time_;
+            std::map<int, std::uint64_t> last_request_time_;
         };
     }
 }
@@ -124,7 +124,7 @@ void goby::acomms::GobyStoreServer::handle_request(const protobuf::StoreServerRe
 {
     glog.is(DEBUG1) && glog << "Got request: " << request.DebugString() << std::endl;
 
-    uint64 request_time = goby_time<uint64>();
+    std::uint64_t request_time = goby_time<std::uint64_t>();
     
     protobuf::StoreServerResponse response;
     response.set_modem_id(request.modem_id());
@@ -142,7 +142,7 @@ void goby::acomms::GobyStoreServer::handle_request(const protobuf::StoreServerRe
               "Insert `src` binding failed");
         check(sqlite3_bind_int(insert, 2, request.outbox(i).dest()),
               "Insert `dest` binding failed");
-        check(sqlite3_bind_int64(insert, 3, goby_time<uint64>()),
+        check(sqlite3_bind_int64(insert, 3, goby_time<std::uint64_t>()),
               "Insert `microtime` binding failed");
 
         std::string bytes;

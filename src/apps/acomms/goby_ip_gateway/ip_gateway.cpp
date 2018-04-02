@@ -99,9 +99,9 @@ namespace goby
             dccl::Codec dccl_goby_nh_, dccl_ip_, dccl_udp_, dccl_icmp_;
             int tun_fd_;
             int total_addresses_;
-            goby::uint32 local_address_; // in host byte order
+            std::uint32_t local_address_; // in host byte order
             int local_modem_id_;
-            goby::uint32 netmask_; // in host byte order
+            std::uint32_t netmask_; // in host byte order
 
             goby::acomms::MACManager mac_;
 
@@ -768,7 +768,7 @@ int goby::acomms::IPGateway::ipv4_to_goby_address(const std::string& ipv4_addres
 {
     in_addr remote_addr;
     inet_aton(ipv4_address.c_str(), &remote_addr);
-    goby::uint32 remote_address = ntohl(remote_addr.s_addr);
+    std::uint32_t remote_address = ntohl(remote_addr.s_addr);
     int modem_id = remote_address & ~netmask_;
 
     // broadcast conventions differ
@@ -779,7 +779,7 @@ int goby::acomms::IPGateway::ipv4_to_goby_address(const std::string& ipv4_addres
 
 std::string goby::acomms::IPGateway::goby_address_to_ipv4(int modem_id)
 {
-    goby::uint32 address = 0;
+    std::uint32_t address = 0;
     if(modem_id == goby::acomms::BROADCAST_ID)
         address = (local_address_ & netmask_) + ~netmask_;
     else

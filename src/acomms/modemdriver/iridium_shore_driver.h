@@ -79,7 +79,7 @@ namespace goby
             protobuf::ModemTransmission rudics_mac_msg_;
             
 
-            goby::uint32 next_frame_;
+            std::uint32_t next_frame_;
             
             struct RemoteNode
             {

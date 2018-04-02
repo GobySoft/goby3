@@ -662,7 +662,7 @@ void goby::acomms::QueueManager::handle_modem_receive(const protobuf::ModemTrans
                 {
                     const protobuf::QueuedMessageMeta& meta_msg = decoded_message.meta;
                     
-                    int32 dest = meta_msg.dest();
+                    std::int32_t dest = meta_msg.dest();
                     
                     const google::protobuf::Descriptor* desc = decoded_message.dccl_msg->GetDescriptor();
                     

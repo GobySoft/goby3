@@ -106,7 +106,7 @@ namespace goby
             
             boost::shared_ptr<micromodem::protobuf::HardwareControlCommand> pending_hw_ctl_;
             boost::shared_ptr<goby::acomms::protobuf::TimeUpdateResponse> pending_time_update_;
-            goby::uint64 time_update_request_time_;
+            std::uint64_t time_update_request_time_;
             
         };
     }
@@ -230,7 +230,7 @@ void goby::acomms::Bridge::loop()
         (*it)->do_work();
     }
 
-    goby::uint64 now = goby::common::goby_time<goby::uint64>();
+    std::uint64_t now = goby::common::goby_time<std::uint64_t>();
     if(pending_hw_ctl_ && 
        (pending_hw_ctl_->time() + cfg_.special_command_ttl()*1000000 < now))
     {
@@ -443,7 +443,7 @@ void goby::acomms::Bridge::handle_initiate_transmission(const protobuf::ModemTra
             new_transmission.set_ack_requested(true);
             new_transmission.set_dest(pending_time_update_->dest());
             
-	    pending_time_update_->set_time(goby::common::goby_time<uint64>());
+	    pending_time_update_->set_time(goby::common::goby_time<std::uint64_t>());
 
             goby::acomms::DCCLCodec::get()->encode(new_transmission.add_frame(), *pending_time_update_);
         }

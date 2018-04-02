@@ -80,11 +80,11 @@ namespace goby
 
 
         // placeholder id codec that uses no bits, since we're always sending just this message on the wire
-        class IridiumHeaderIdentifierCodec : public dccl::TypedFixedFieldCodec<dccl::uint32>
+        class IridiumHeaderIdentifierCodec : public dccl::TypedFixedFieldCodec<std::uint32_t>
         {
             dccl::Bitset encode() { return dccl::Bitset(); }
-            dccl::Bitset encode(const uint32& wire_value) { return dccl::Bitset(); }
-            dccl::uint32 decode(dccl::Bitset* bits) { return 0; }
+            dccl::Bitset encode(const std::uint32_t& wire_value) { return dccl::Bitset(); }
+            std::uint32_t decode(dccl::Bitset* bits) { return 0; }
             virtual unsigned size() { return 0; }
 
         };
