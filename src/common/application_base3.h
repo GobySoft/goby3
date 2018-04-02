@@ -99,9 +99,6 @@ namespace goby
 		    throw(goby::Exception("State machine not available in the constructor."));
 	    }
 	    
-            const std::chrono::system_clock::time_point& start_time() const
-            { return start_time_; }
-            
           private:
             template<typename App>
             friend int ::goby::run(int argc, char* argv[]);
@@ -125,8 +122,6 @@ namespace goby
             
             bool alive_;            
             std::vector<std::unique_ptr<std::ofstream> > fout_;
-
-            const std::chrono::system_clock::time_point start_time_ { std::chrono::system_clock::now() };
 
             // set state machine after construction
             template<typename App>
