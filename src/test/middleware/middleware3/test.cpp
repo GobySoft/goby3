@@ -73,37 +73,67 @@ void publisher()
 }
 
 // thread 1 - child process
+goby::InterProcessForwarder<goby::InterThreadTransporter> ipc_child(inproc1);
+
 void handle_sample1(const Sample& sample)
 {
-    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << sample.ShortDebugString() << std::endl;
+    static int receive_count1 = 0;
+    glog.is(DEBUG1) && glog <<  "InterProcess sample1 received publication: " << sample.ShortDebugString() << ", receive_count1: " << receive_count1 << std::endl;
+
+    if(receive_count1 < max_publish / 2)
+        assert(sample.a() == receive_count1);
+    else // skip 10
+        assert(sample.a() == receive_count1 + 10);
+    
+    
     ++ipc_receive_count;
+    ++receive_count1;
+
+    if(receive_count1 == max_publish / 2)
+    {
+        glog.is(DEBUG1) && glog << "Sample 1 unsubscribe" << std::endl;
+        ipc_child.unsubscribe<sample1, Sample>();
+    }
+    
 }
 
 void handle_sample2(const Sample& sample)
 {
-    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << sample.ShortDebugString() << std::endl;
+    static int receive_count2 = 0;
+    glog.is(DEBUG1) && glog <<  "InterProcess sample2 received publication: " << sample.ShortDebugString() << std::endl;
+    assert(sample.a() == receive_count2+10);
     ++ipc_receive_count;
+    ++receive_count2;
+
+    if(receive_count2 == max_publish / 2 + 10)
+    {
+       glog.is(DEBUG1) && glog << "Sample 1 resubscribe" << std::endl;
+       ipc_child.subscribe<sample1, Sample>(&handle_sample1);
+    }
 }
 
 
 void handle_widget(std::shared_ptr<const Widget> widget)
 {
-    glog.is(DEBUG1) && glog <<  "InterProcess received publication: " << widget->ShortDebugString() << std::endl;
+    static int receive_count3 = 0;
+    glog.is(DEBUG1) && glog <<  "InterProcess widget received publication: " << widget->ShortDebugString() << std::endl;
+    assert(widget->b() == receive_count3-8);
     ++ipc_receive_count;
+    ++receive_count3;
 }
 
 void subscriber()
 {
-    goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc1);
-    ipc.subscribe<sample1, Sample>(&handle_sample1);
-    ipc.subscribe<sample2, Sample>(&handle_sample2);
-    ipc.subscribe<widget, Widget>(&handle_widget);
+    ipc_child.subscribe_dynamic<Sample>([] (std::shared_ptr<const Sample> s) { handle_sample1(*s); }, sample1);
+    ipc_child.subscribe<sample2, Sample>(&handle_sample2);
+    ipc_child.subscribe<widget, Widget>(&handle_widget);
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
-    while(ipc_receive_count < 3*max_publish)
+    // -10 since we unsubscribe for 10 counts for sample1
+    while(ipc_receive_count < 3*max_publish - 10)
     {
-        ipc.poll(std::chrono::seconds(1));
+        ipc_child.poll(std::chrono::seconds(1));
         if(std::chrono::system_clock::now() > timeout)
             glog.is(DIE) && glog <<  "InterProcessForwarder timed out waiting for data" << std::endl;
     }

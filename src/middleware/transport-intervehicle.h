@@ -65,10 +65,12 @@ namespace goby
 	template<typename Data>
 	    static constexpr int scheme()
 	{
-	    return goby::scheme<Data>();
+            static_assert(goby::scheme<typename primitive_type<Data>::type>() == MarshallingScheme::DCCL,
+                          "Can only use DCCL messages with InterVehicleTransporters");
+	    return MarshallingScheme::DCCL;
 	}
 
-	
+	// publish without a group
         template<typename Data>
             void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { publish_dynamic<Data>(data, Group(), transport_cfg); }
@@ -80,7 +82,8 @@ namespace goby
         template<typename Data>
             void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         { publish<Data>(std::shared_ptr<const Data>(data), transport_cfg); }
-        
+
+        // subscribe without a group
         template<typename Data>
             void subscribe(std::function<void(const Data&)> func, std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
@@ -93,53 +96,52 @@ namespace goby
         {
             subscribe_dynamic<Data>(func, Group(), group_func);
         }
-        
-        template<typename Data>
+
+        // implements StaticTransporterInteface
+        template<typename Data, int scheme = scheme<Data>()>
             void publish_dynamic(const Data& data, const Group& group = Group(), const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
-            static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
+            static_assert(scheme == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
             static_cast<Derived*>(this)->template _publish<Data>(data, group, transport_cfg);
-            inner_.template publish_dynamic<Data, scheme<Data>()>(data, group, transport_cfg);
+            inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
         }
 
-        template<typename Data>
+        template<typename Data, int scheme = scheme<Data>()>
             void publish_dynamic(std::shared_ptr<const Data> data, const Group& group = Group(), const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
-            static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
+            static_assert(scheme == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
             if(data)
             {
                 static_cast<Derived*>(this)->template _publish<Data>(*data, group, transport_cfg);
-                inner_.template publish_dynamic<Data, scheme<Data>()>(data, group, transport_cfg);
+                inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
             }
         }
 
-        
-        template<typename Data>
+        template<typename Data, int scheme = scheme<Data>()>
             void publish_dynamic(std::shared_ptr<Data> data, const Group& group = Group(), const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
         {
             publish_dynamic<Data>(std::shared_ptr<const Data>(data), group, transport_cfg);
         }
         
-        
-        template<typename Data>
+        template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(const Data&)> func,
                                    const Group& group = Group(),
                                    std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
-            static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
+            static_assert(scheme == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
             auto pointer_ref_lambda = [=](std::shared_ptr<const Data> d) { func(*d); };
             static_cast<Derived*>(this)->template _subscribe<Data>(pointer_ref_lambda, group, group_func);
         }
         
-        template<typename Data>
+        template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> func,
                                    const Group& group = Group(),
                                    std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
-            static_assert(scheme<Data>() == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
+            static_assert(scheme == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
             static_cast<Derived*>(this)->template _subscribe<Data>(func, group, group_func);
         }        
-
+        
         std::unique_ptr<InnerTransporter> own_inner_;
         InnerTransporter& inner_;
         static constexpr Group forward_group_ { "goby::InterVehicleTransporter" };

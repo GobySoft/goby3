@@ -29,6 +29,7 @@
 #include <regex>
 
 #include "goby/util/binary.h"
+#include "goby/common/exception.h"
 
 #include "transport-interfaces.h"
 #include "poller.h"
@@ -63,12 +64,16 @@ namespace goby
         
         template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
-        { }
+            { }
         
         template<typename Data, int scheme = scheme<Data>()>
             void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
-        { }
+            { }
 
+        template<typename Data, int scheme = scheme<Data>()>
+            void unsubscribe_dynamic(const Group& group)
+            { }
+        
     private:
         friend Poller<NullTransporter>;
         int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
@@ -85,6 +90,9 @@ namespace goby
         virtual const Group& subscribed_group() const = 0;
 
         virtual int scheme() const = 0;
+
+        enum class SubscriptionAction {SUBSCRIBE, UNSUBSCRIBE};
+        virtual SubscriptionAction action() const = 0;
     };
 
     template<typename Data, int scheme_id>
@@ -113,6 +121,8 @@ namespace goby
         const char* post(const char* b, const char* e) const override
         { return _post(b, e); }
 
+        SerializationSubscriptionBase::SubscriptionAction action() const override
+        { return SerializationSubscriptionBase::SubscriptionAction::SUBSCRIBE; }        
         
         // getters
         const std::string& type_name() const override { return type_name_; }
@@ -140,7 +150,38 @@ namespace goby
         std::function<Group(const Data&)> group_func_;
     };
 
+   template<typename Data, int scheme_id>
+        class SerializationUnSubscription : public SerializationSubscriptionBase
+    {
+    public:
+    SerializationUnSubscription(const Group& group)
+        : type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
+          group_(group)
+          { }            
+        
+        std::string::const_iterator post(std::string::const_iterator b, std::string::const_iterator e) const override
+        { throw(goby::Exception("Cannot call post on an UnSubscription")); }
+        
+        std::vector<char>::const_iterator post(std::vector<char>::const_iterator b, std::vector<char>::const_iterator e) const override
+        { throw(goby::Exception("Cannot call post on an UnSubscription")); }
 
+        const char* post(const char* b, const char* e) const override
+        { throw(goby::Exception("Cannot call post on an UnSubscription")); }
+
+        SerializationSubscriptionBase::SubscriptionAction action() const override
+        { return SerializationSubscriptionBase::SubscriptionAction::UNSUBSCRIBE; }
+        
+        // getters
+        const std::string& type_name() const override { return type_name_; }
+        const Group& subscribed_group() const override { return group_; }
+        int scheme() const override { return scheme_id; }
+
+        
+    private:
+        const std::string type_name_;
+        const Group group_;
+    };
+    
 
     class SerializationSubscriptionRegex 
     {
