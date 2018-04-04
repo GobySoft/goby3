@@ -33,8 +33,13 @@
 
 // tests InterProcessForwarder
 
-goby::InterThreadTransporter inproc1;
-goby::InterThreadTransporter inproc3;
+// avoid static initialization order problem
+goby::InterProcessForwarder<goby::InterThreadTransporter>& ipc_child()
+{
+    static std::unique_ptr<goby::InterThreadTransporter> inner(new goby::InterThreadTransporter);
+    static std::unique_ptr<goby::InterProcessForwarder<goby::InterThreadTransporter>> p(new goby::InterProcessForwarder<goby::InterThreadTransporter>(*inner));
+    return *p;
+}
 
 int publish_count = 0;
 const int max_publish = 100;
@@ -54,6 +59,7 @@ extern constexpr goby::Group widget{"Widget"};
 // thread 1 - parent process
 void publisher()
 {
+    goby::InterThreadTransporter inproc1;
     goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc1);
     double a = 0;
     while(publish_count < max_publish)
@@ -72,7 +78,6 @@ void publisher()
 }
 
 // thread 1 - child process
-goby::InterProcessForwarder<goby::InterThreadTransporter> ipc_child(inproc1);
 
 void handle_sample1(const Sample& sample)
 {
@@ -91,7 +96,7 @@ void handle_sample1(const Sample& sample)
     if(receive_count1 == max_publish / 2)
     {
         glog.is(DEBUG1) && glog << "Sample 1 unsubscribe" << std::endl;
-        ipc_child.unsubscribe<sample1, Sample>();
+        ipc_child().unsubscribe<sample1, Sample>();
     }
     
 }
@@ -107,7 +112,7 @@ void handle_sample2(const Sample& sample)
     if(receive_count2 == max_publish / 2 + 10)
     {
        glog.is(DEBUG1) && glog << "Sample 1 resubscribe" << std::endl;
-       ipc_child.subscribe<sample1, Sample>(&handle_sample1);
+       ipc_child().subscribe<sample1, Sample>(&handle_sample1);
     }
 }
 
@@ -123,16 +128,16 @@ void handle_widget(std::shared_ptr<const Widget> widget)
 
 void subscriber()
 {
-    ipc_child.subscribe_dynamic<Sample>([] (std::shared_ptr<const Sample> s) { handle_sample1(*s); }, sample1);
-    ipc_child.subscribe<sample2, Sample>(&handle_sample2);
-    ipc_child.subscribe<widget, Widget>(&handle_widget);
+    ipc_child().subscribe_dynamic<Sample>([] (std::shared_ptr<const Sample> s) { handle_sample1(*s); }, sample1);
+    ipc_child().subscribe<sample2, Sample>(&handle_sample2);
+    ipc_child().subscribe<widget, Widget>(&handle_widget);
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
     // -10 since we unsubscribe for 10 counts for sample1
     while(ipc_receive_count < 3*max_publish - 10)
     {
-        ipc_child.poll(std::chrono::seconds(1));
+        ipc_child().poll(std::chrono::seconds(1));
         if(std::chrono::system_clock::now() > timeout)
             glog.is(DIE) && glog <<  "InterProcessForwarder timed out waiting for data" << std::endl;
     }
@@ -206,6 +211,7 @@ private:
 // thread 3
 void zmq_forward(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
+    goby::InterThreadTransporter inproc3;
     goby::InterProcessPortal<goby::InterThreadTransporter> zmq(inproc3, cfg);
     zmq.subscribe<sample1, Sample>([&](const Sample& s) {
             glog.is(DEBUG1) && glog << "Portal Received1: " << s.DebugString() << std::endl;
