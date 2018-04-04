@@ -169,9 +169,32 @@ namespace goby
                 new SerializationSubscription<Data, scheme>(subscribe_function,
                                                             group,
                                                             [=](const Data&d) { return group; })); 
-            subscriptions_.insert(std::make_pair(identifier, subscription));
+
+            auto sub_it = subscriptions_.insert(std::make_pair(identifier, subscription));
+            local_subscription_identifiers_.insert(std::make_pair(identifier, sub_it));
 	    zmq_main_.subscribe(identifier);
         }
+
+
+        template<typename Data, int scheme>
+            void _unsubscribe(const Group& group)
+        {
+            std::string identifier = _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+            
+            auto range = local_subscription_identifiers_.equal_range(identifier);
+            for (auto it = range.first; it != range.second;)
+            {
+                subscriptions_.erase(it->second);
+                it = local_subscription_identifiers_.erase(it);
+            }
+
+            if(forwarded_subscription_identifiers_.count(identifier) == 0)
+            {
+                zmq_main_.unsubscribe(identifier);
+            }
+            
+        }
+        
 
         void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> f,
                               const std::set<int>& schemes,
@@ -192,15 +215,26 @@ namespace goby
 		switch(control_msg.type())
 		{
 		case protobuf::InprocControl::RECEIVE:
+                {
 		    ++items;
 		    if(lock) lock.reset();
+                    // build a set so if any of the handlers unsubscribes, we still have a pointer to the SerializationSubscriptionBase
+                    std::set<std::shared_ptr<const SerializationSubscriptionBase>> subs_to_post;
 		    for(auto &sub : subscriptions_)
 		    {
 			const auto& data = control_msg.received_data();
-			auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
 			if(data.size() >= sub.first.size() && memcmp(&data[0], sub.first.data(), sub.first.size()) == 0)
-			    sub.second->post(null_delim_it+1, data.end());
+                            subs_to_post.insert(sub.second);
 		    }
+
+                    // actually post the data
+                    {
+                        const auto& data = control_msg.received_data();
+                        auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
+                        for(auto& sub : subs_to_post)
+                            sub->post(null_delim_it+1, data.end());
+                    }
+                    
                     if(!regex_subscriptions_.empty())
                     {
 			const auto& data = control_msg.received_data();
@@ -216,7 +250,9 @@ namespace goby
                         for(auto& sub : regex_subscriptions_)
                             sub->post(null_delim_it+1, data.end(), scheme, type, group);
                     }
-		    break;
+                }
+                break;
+                
 		default: break;
 		}
 	    }		
@@ -235,12 +271,34 @@ namespace goby
         {
             std::string identifier = _make_identifier(subscription->type_name(), subscription->scheme(), subscription->subscribed_group(), IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
-            // only insert once or each thread that subscribes will add another copy for everyone
-            if(forwarded_subscription_identifiers_.count(identifier) == 0)
+            switch(subscription->action())
             {
-                forwarded_subscription_identifiers_.insert(identifier);
-                subscriptions_.insert(std::make_pair(identifier, subscription));
-                zmq_main_.subscribe(identifier);
+                case SerializationSubscriptionBase::SubscriptionAction::SUBSCRIBE:
+                {
+                    // only insert once or each thread that subscribes will add another copy for everyone
+                    if(forwarded_subscription_identifiers_.count(identifier) == 0)
+                    {
+                        auto sub_it = subscriptions_.insert(std::make_pair(identifier, subscription));
+                        forwarded_subscription_identifiers_.insert(std::make_pair(identifier, sub_it));
+                        zmq_main_.subscribe(identifier);
+                    }
+                }
+                break;
+
+                case SerializationSubscriptionBase::SubscriptionAction::UNSUBSCRIBE:
+                {
+                    auto it = forwarded_subscription_identifiers_.find(identifier);
+                    if(it != forwarded_subscription_identifiers_.end())
+                    {
+                        subscriptions_.erase(it->second);
+                        forwarded_subscription_identifiers_.erase(it);
+
+                        // do the actual unsubscribe if we aren't subscribe locally
+                        if(local_subscription_identifiers_.count(identifier) == 0)
+                            zmq_main_.unsubscribe(identifier);
+                    }
+                }
+                break;
             }
         }
 
@@ -337,8 +395,9 @@ namespace goby
                 
         // maps identifier to subscription
         std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase>> subscriptions_;
-        std::set<std::string> forwarded_subscription_identifiers_;
-        
+        std::unordered_map<std::string, typename decltype(subscriptions_)::const_iterator> forwarded_subscription_identifiers_;
+        std::unordered_multimap<std::string, typename decltype(subscriptions_)::const_iterator> local_subscription_identifiers_;
+
         std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
         std::string process_ {std::to_string(getpid())};
         std::unordered_map<int, std::string> schemes_;

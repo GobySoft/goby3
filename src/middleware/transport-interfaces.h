@@ -74,6 +74,13 @@ namespace goby
                 check_validity<group>();
                 static_cast<Transporter*>(this)->template subscribe_dynamic<Data, scheme>(f, group);
             }
+
+        template<const Group& group, typename Data, int scheme = transporter_scheme<Data, Transporter>()>
+            void unsubscribe()
+            {
+                check_validity<group>();
+                static_cast<Transporter*>(this)->template unsubscribe_dynamic<Data, scheme>(group);
+            }
         
         InnerTransporter& inner()
         {

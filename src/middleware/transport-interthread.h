@@ -42,9 +42,16 @@ namespace goby
         // returns number of data items posted to callbacks 
         static int poll_all(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         {
-	    std::shared_lock<std::shared_timed_mutex> stores_lock(stores_mutex_);           
+            // make a copy so that other threads can subscribe if
+            // necessary in their callbacks
+            decltype(stores_) stores;
+            {
+                std::shared_lock<std::shared_timed_mutex> stores_lock(stores_mutex_);
+                stores = stores_;
+            }
+                
             int poll_items = 0;
-            for (auto const &s : stores_)
+            for (auto const &s : stores)
                 poll_items += s.second->poll(thread_id, lock);
             return poll_items;
         }
@@ -57,7 +64,7 @@ namespace goby
             std::lock_guard<decltype(stores_mutex_)> lock(stores_mutex_);	   
             auto index = std::type_index(typeid(StoreType));
             if(!stores_.count(index))
-                stores_.insert(std::make_pair(index, std::unique_ptr<StoreType>(new StoreType)));
+                stores_.insert(std::make_pair(index, std::shared_ptr<StoreType>(new StoreType)));
         }
         
     protected:
@@ -66,7 +73,7 @@ namespace goby
 
     private:
         // stores a map of Datas to SubscriptionStores so that can call poll() on all the stores
-        static std::unordered_map<std::type_index, std::unique_ptr<SubscriptionStoreBase>> stores_;
+        static std::unordered_map<std::type_index, std::shared_ptr<SubscriptionStoreBase>> stores_;
         static std::shared_timed_mutex stores_mutex_;
     };
 
@@ -116,10 +123,37 @@ namespace goby
             SubscriptionStoreBase::insert<SubscriptionStore<Data>>();
         }
 
+        static void unsubscribe(const Group& group, std::thread::id thread_id)
+        {
+            {
+                std::lock_guard<std::shared_timed_mutex> lock(subscription_mutex_);
+
+                // iterate over subscriptions for this group, and erase the ones belonging to this thread_id
+                auto range = subscription_groups_.equal_range(group);
+                for (auto it = range.first; it != range.second;)
+                {                    
+                    auto sub_thread_id = it->second->first;
+
+                    if(sub_thread_id == thread_id)
+                    {
+                        subscription_callbacks_.erase(it->second);
+                        it = subscription_groups_.erase(it);
+                    }
+                    else
+                    {
+                        ++it;
+                    }
+                }
+
+                // remove the dataqueue for this group
+                auto queue_it = data_.find(thread_id);
+                queue_it->second.remove(group);
+            }            
+        }
+
+        
         static void publish(std::shared_ptr<const Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
-//	    std::cout << std::this_thread::get_id() << "publishing to : " << group << std::endl;
-
             // push new data
             // build up local vector of relevant condition variables while locked
             std::vector<DataProtection> cv_to_notify;
@@ -151,7 +185,6 @@ namespace goby
 		    // between _poll_all() and wait(), where the condition variable
 		    // signal would be lost
 		    
-//		    std::cout << std::this_thread::get_id() << "publish notify locking: " << data_protection.poller_mutex.get() << std::endl;
 		    std::lock_guard<std::timed_mutex>(*data_protection.poller_mutex);
 		}
                 data_protection.poller_cv->notify_all();
@@ -164,17 +197,17 @@ namespace goby
         int poll(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         {
 
-            std::vector<std::pair<std::function<void(std::shared_ptr<const Data>)>, std::shared_ptr<const Data>>> data_callbacks;
+            std::vector<std::pair<std::shared_ptr<typename Callback::CallbackType>, std::shared_ptr<const Data>>> data_callbacks;
             int poll_items_count = 0;
 
-	    std::shared_lock<std::shared_timed_mutex> sub_lock(subscription_mutex_);
             
-            auto queue_it = data_.find(thread_id);
-            if(queue_it == data_.end())
-                return 0; // no subscriptions
-            
-
             {
+                std::shared_lock<std::shared_timed_mutex> sub_lock(subscription_mutex_);
+            
+                auto queue_it = data_.find(thread_id);
+                if(queue_it == data_.end())
+                    return 0; // no subscriptions
+                
                 std::unique_lock<std::mutex> data_lock(*(data_protection_.find(thread_id)->second.data_mutex));
                                 
                 // loop over all Groups stored in this DataQueue
@@ -188,23 +221,22 @@ namespace goby
                         if(group_it->second->first != thread_id)
                             continue;
                         
-                        auto& callback = group_it->second->second.callback;
                         // store the callback function and datum for all the elements queued
                         for(auto& datum : data_it->second)
                         {
                             ++poll_items_count;
 			    // we have data, no need to keep this lock any longer
 			    if(lock) lock.reset();
-                            data_callbacks.push_back(std::make_pair(callback, datum));
+                            data_callbacks.push_back(std::make_pair(group_it->second->second.callback, datum));
                         }
                     }
                     queue_it->second.clear(group);
                 }
             }
             
-            // now that we're no longer blocking the data mutex, actually run the callbacks
+            // now that we're no longer blocking the subscription or data mutex, actually run the callbacks
             for (const auto& callback_datum_pair : data_callbacks)
-                callback_datum_pair.first(callback_datum_pair.second);
+                (*callback_datum_pair.first)(std::move(callback_datum_pair.second));
             
             return poll_items_count;
         }
@@ -212,9 +244,10 @@ namespace goby
     private:
         struct Callback
         {
-        Callback(const Group& g, const std::function<void(std::shared_ptr<const Data>)>& c) : group(g), callback(c) {}
+            using CallbackType = std::function<void(std::shared_ptr<const Data>)>;
+        Callback(const Group& g, const std::function<void(std::shared_ptr<const Data>)>& c) : group(g), callback(new CallbackType(c)) {}
             Group group;
-            std::function<void(std::shared_ptr<const Data>)> callback;
+            std::shared_ptr<CallbackType> callback;
         };
         
         class DataQueue
@@ -227,7 +260,12 @@ namespace goby
                 auto it = data_.find(g);
                 if(it == data_.end())
                     data_.insert(std::make_pair(g, std::vector<std::shared_ptr<const Data>>()));
-            }            
+            }
+            void remove(const Group& g)
+            {
+                data_.erase(g);
+            }
+            
             void insert(const Group& g, std::shared_ptr<const Data> datum)
             {
                 data_.find(g)->second.push_back(datum);
@@ -323,7 +361,14 @@ namespace goby
             SubscriptionStore<Data>::subscribe(f, group, std::this_thread::get_id(), data_mutex_, Poller<InterThreadTransporter>::cv(), Poller<InterThreadTransporter>::poll_mutex());
         }
 
+        template<typename Data, int scheme = scheme<Data>()>
+            void unsubscribe_dynamic(const Group& group)
+        {
+            check_validity_runtime(group);
+            SubscriptionStore<Data>::unsubscribe(group, std::this_thread::get_id());
+        }
 
+        
     private:
 	friend Poller<InterThreadTransporter>;
 	int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)

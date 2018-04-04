@@ -96,7 +96,15 @@ namespace goby
             check_validity_runtime(group);
             static_cast<Derived*>(this)->template _subscribe<Data, scheme>(f, group);
         }
+        
+        template<typename Data, int scheme = scheme<Data>()>
+            void unsubscribe_dynamic(const Group& group)
+        {
+            check_validity_runtime(group);
+            static_cast<Derived*>(this)->template _unsubscribe<Data, scheme>(group);
+        }
 
+        
         // Wildcards
         void subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> f,
                              const std::set<int>& schemes,
@@ -172,6 +180,18 @@ namespace goby
             Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase>(subscription);
 
         }
+
+        template<typename Data, int scheme>
+            void _unsubscribe(const Group& group)
+        {
+            Base::inner_.template unsubscribe_dynamic<Data, scheme>(group);
+            
+            auto unsubscription = std::shared_ptr<SerializationSubscriptionBase>(
+                new SerializationUnSubscription<Data, scheme>(group));
+
+            Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase>(unsubscription);
+        }
+        
         
         void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> f,
                               const std::set<int>& schemes,

@@ -35,7 +35,7 @@
 
 int publish_count = 0;
 const int max_publish = 100;
-std::array<int, 3> ipc_receive_count = {0, 0, 0};
+std::array<int, 3> ipc_receive_count = {{0, 0, 0}};
 
 std::atomic<bool> forward(true);
 std::atomic<int> zmq_reqs(0);
