@@ -180,19 +180,16 @@ namespace goby
             void _unsubscribe(const Group& group)
         {
             std::string identifier = _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
-            std::cout << "Beginning local unsubscribe to " << identifier << std::endl;
             
             auto range = local_subscription_identifiers_.equal_range(identifier);
             for (auto it = range.first; it != range.second;)
             {
-                std::cout << "Erasing subscription to " << it->second->first << std::endl;
                 subscriptions_.erase(it->second);
                 it = local_subscription_identifiers_.erase(it);
             }
 
             if(forwarded_subscription_identifiers_.count(identifier) == 0)
             {
-                std::cout << "ZMQ unsubscribing to " << identifier << std::endl;
                 zmq_main_.unsubscribe(identifier);
             }
             
@@ -218,15 +215,26 @@ namespace goby
 		switch(control_msg.type())
 		{
 		case protobuf::InprocControl::RECEIVE:
+                {
 		    ++items;
 		    if(lock) lock.reset();
+                    // build a set so if any of the handlers unsubscribes, we still have a pointer to the SerializationSubscriptionBase
+                    std::set<std::shared_ptr<const SerializationSubscriptionBase>> subs_to_post;
 		    for(auto &sub : subscriptions_)
 		    {
 			const auto& data = control_msg.received_data();
-			auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
 			if(data.size() >= sub.first.size() && memcmp(&data[0], sub.first.data(), sub.first.size()) == 0)
-			    sub.second->post(null_delim_it+1, data.end());
+                            subs_to_post.insert(sub.second);
 		    }
+
+                    // actually post the data
+                    {
+                        const auto& data = control_msg.received_data();
+                        auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
+                        for(auto& sub : subs_to_post)
+                            sub->post(null_delim_it+1, data.end());
+                    }
+                    
                     if(!regex_subscriptions_.empty())
                     {
 			const auto& data = control_msg.received_data();
@@ -242,7 +250,9 @@ namespace goby
                         for(auto& sub : regex_subscriptions_)
                             sub->post(null_delim_it+1, data.end(), scheme, type, group);
                     }
-		    break;
+                }
+                break;
+                
 		default: break;
 		}
 	    }		
@@ -266,9 +276,6 @@ namespace goby
                 case SerializationSubscriptionBase::SubscriptionAction::SUBSCRIBE:
                 {
                     // only insert once or each thread that subscribes will add another copy for everyone
-                    std::cout << "Beginning forwarded subscribe to " << identifier << std::endl;
-
-                    
                     if(forwarded_subscription_identifiers_.count(identifier) == 0)
                     {
                         auto sub_it = subscriptions_.insert(std::make_pair(identifier, subscription));
@@ -280,12 +287,9 @@ namespace goby
 
                 case SerializationSubscriptionBase::SubscriptionAction::UNSUBSCRIBE:
                 {
-                    std::cout << "Beginning forwarded unsubscribe to " << identifier << std::endl;
-
                     auto it = forwarded_subscription_identifiers_.find(identifier);
                     if(it != forwarded_subscription_identifiers_.end())
                     {
-                        std::cout << "Removing subscription: " << it->second->first << std::endl;
                         subscriptions_.erase(it->second);
                         forwarded_subscription_identifiers_.erase(it);
 

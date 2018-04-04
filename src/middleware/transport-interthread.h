@@ -120,52 +120,40 @@ namespace goby
             }
             
             // try inserting a copy of this templated class via the base class for SubscriptionStoreBase::poll_all to use
-
-            std::cout << "Try inserting new subscriptionstore" << std::endl;
             SubscriptionStoreBase::insert<SubscriptionStore<Data>>();
-            std::cout << "Done inserting new subscriptionstore" << std::endl;
         }
 
         static void unsubscribe(const Group& group, std::thread::id thread_id)
         {
             {
-                std::cout << "Begin thread unsubscribe" << std::endl;
                 std::lock_guard<std::shared_timed_mutex> lock(subscription_mutex_);
-                std::cout << "Got lock" << std::endl;
 
                 // iterate over subscriptions for this group, and erase the ones belonging to this thread_id
                 auto range = subscription_groups_.equal_range(group);
                 for (auto it = range.first; it != range.second;)
                 {                    
                     auto sub_thread_id = it->second->first;
-                    std::cout << "group: " << group << ", sub_thread_id: " << sub_thread_id << ", thread_id: " << thread_id << std::endl;
 
                     if(sub_thread_id == thread_id)
                     {
-                        std::cout << "erasing" << std::endl;
                         subscription_callbacks_.erase(it->second);
                         it = subscription_groups_.erase(it);
                     }
                     else
                     {
-                        std::cout << "incrementing" << std::endl;
                         ++it;
                     }
                 }
 
-                std::cout << "Begin remove data queue" << std::endl;
                 // remove the dataqueue for this group
                 auto queue_it = data_.find(thread_id);
                 queue_it->second.remove(group);
-                std::cout << "End remove data queue" << std::endl;
             }            
         }
 
         
         static void publish(std::shared_ptr<const Data> data, const Group& group, const goby::protobuf::TransporterConfig& transport_cfg)
         {
-//	    std::cout << std::this_thread::get_id() << "publishing to : " << group << std::endl;
-
             // push new data
             // build up local vector of relevant condition variables while locked
             std::vector<DataProtection> cv_to_notify;
@@ -197,7 +185,6 @@ namespace goby
 		    // between _poll_all() and wait(), where the condition variable
 		    // signal would be lost
 		    
-//		    std::cout << std::this_thread::get_id() << "publish notify locking: " << data_protection.poller_mutex.get() << std::endl;
 		    std::lock_guard<std::timed_mutex>(*data_protection.poller_mutex);
 		}
                 data_protection.poller_cv->notify_all();

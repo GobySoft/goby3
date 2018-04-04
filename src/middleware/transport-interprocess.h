@@ -184,21 +184,12 @@ namespace goby
         template<typename Data, int scheme>
             void _unsubscribe(const Group& group)
         {
-            std::cout << "Publishing forwarded unsubscribe to " << group << std::endl;
-
             Base::inner_.template unsubscribe_dynamic<Data, scheme>(group);
-
-            std::cout << "Finished inner unsubscribe. " << std::endl;
-
             
             auto unsubscription = std::shared_ptr<SerializationSubscriptionBase>(
                 new SerializationUnSubscription<Data, scheme>(group));
 
-            std::cout << "Created unsubscription." << std::endl;
-            
             Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase>(unsubscription);
-            
-            std::cout << "Published unsubscription." << std::endl;
         }
         
         

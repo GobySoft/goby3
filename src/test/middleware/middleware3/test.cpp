@@ -34,7 +34,6 @@
 // tests InterProcessForwarder
 
 goby::InterThreadTransporter inproc1;
-goby::InterThreadTransporter inproc2;
 goby::InterThreadTransporter inproc3;
 
 int publish_count = 0;
@@ -149,16 +148,16 @@ class ThreadSubscriber
 public:
     void run()
         {
-            inproc2.subscribe<sample1, Sample>([&](const Sample& s) { handle_sample1(s); });
-            inproc2.subscribe<sample2, Sample>([&](std::shared_ptr<const Sample> s) { handle_sample2(s); });
-            inproc2.subscribe<widget, Widget>([&](std::shared_ptr<const Widget> w) { handle_widget1(w); });
+            inproc2_.subscribe<sample1, Sample>([&](const Sample& s) { handle_sample1(s); });
+            inproc2_.subscribe<sample2, Sample>([&](std::shared_ptr<const Sample> s) { handle_sample2(s); });
+            inproc2_.subscribe<widget, Widget>([&](std::shared_ptr<const Widget> w) { handle_widget1(w); });
             ++ready;
-            while(receive_count1 < max_publish || receive_count2 < max_publish || receive_count3 < max_publish)
+            while(receive_count1 < max_publish || receive_count2 < (max_publish/2) || receive_count3 < max_publish)
             {
                 std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
                 std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
 
-                inproc2.poll(std::chrono::seconds(1));
+                inproc2_.poll(std::chrono::seconds(1));
                 if(std::chrono::system_clock::now() > timeout)
                     glog.is(DIE) && glog <<  "ThreadSubscriber timed out waiting for data" << std::endl;
             }
@@ -176,8 +175,16 @@ private:
         {
             std::thread::id this_id = std::this_thread::get_id();
             glog.is(DEBUG1) && glog << this_id << ": Received2: " << sample->DebugString() << std::endl;
+
             assert(sample->a() == receive_count2+10);
+            
             ++receive_count2;
+
+            if(receive_count2 == max_publish / 2)
+            {
+                glog.is(DEBUG1) && glog << this_id <<  ": Sample 2 unsubscribe" << std::endl;
+                inproc2_.unsubscribe<sample2, Sample>();
+            }
         }
 
     void handle_widget1(std::shared_ptr<const Widget> widget)
@@ -185,13 +192,14 @@ private:
             std::thread::id this_id = std::this_thread::get_id();
             glog.is(DEBUG1) && glog << this_id << ": Received3: " << widget->DebugString() << std::endl;
             assert(widget->b() == receive_count3-8);
-            ++receive_count3;
+            ++receive_count3;            
         }
 
 private:
     int receive_count1 = {0};
     int receive_count2 = {0};
     int receive_count3 = {0};
+    goby::InterThreadTransporter inproc2_;
 };
 
 
@@ -199,7 +207,13 @@ private:
 void zmq_forward(const goby::protobuf::InterProcessPortalConfig& cfg)
 {
     goby::InterProcessPortal<goby::InterThreadTransporter> zmq(inproc3, cfg);
-    zmq.subscribe<sample1, Sample>([&](const Sample& s) { glog.is(DEBUG1) && glog << "Portal Received1: " << s.DebugString() << std::endl; });
+    zmq.subscribe<sample1, Sample>([&](const Sample& s) {
+            glog.is(DEBUG1) && glog << "Portal Received1: " << s.DebugString() << std::endl;
+            if(s.a() == 3*max_publish/4)
+                zmq.unsubscribe<sample1, Sample>();
+
+            assert(s.a() <= 3*max_publish/4);
+        });
     zmq.subscribe<sample2, Sample>([&](std::shared_ptr<const Sample> s) { glog.is(DEBUG1) && glog << "Portal Received2: " << s->DebugString()  << std::endl; });
     zmq.subscribe<widget, Widget>([&](std::shared_ptr<const Widget> w) {  glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString()  << std::endl;  });
 
