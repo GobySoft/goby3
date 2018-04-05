@@ -66,7 +66,18 @@ namespace goby
 	    // state machine
 	    template<typename App>
 		void __run_core(App& app, typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type* = 0);
-	}
+
+	    // no state machine
+	    template<typename App>
+		void __quit_core(App& app,
+				typename std::enable_if<std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type* = 0)
+	    {}
+	    
+	    // state machine
+	    template<typename App>
+		void __quit_core(App& app, typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type* = 0);
+
+        }
     }
     
     namespace common
@@ -126,6 +137,9 @@ namespace goby
             // set state machine after construction
             template<typename App>
             friend void ::goby::common::internal::__run_core(App& app,
+							     typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type*);            
+            template<typename App>
+            friend void ::goby::common::internal::__quit_core(App& app,
 							     typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type*);            
             std::unique_ptr<StateMachine> state_machine_;
 	    
@@ -254,6 +268,13 @@ void goby::common::internal::__run_core(App& app,
     app.state_machine_->initiate();
 }    
 
+template<typename App>
+void goby::common::internal::__quit_core(App& app,
+					typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type*)
+{
+    app.state_machine_->terminate();
+}    
+
 
 template<typename App>
     int goby::run(int argc, char* argv[])
@@ -267,6 +288,7 @@ template<typename App>
 	App app;
 	goby::common::internal::__run_core<App>(app);
 	app.__run();
+	goby::common::internal::__quit_core<App>(app);
     }
     catch(goby::common::ConfigException& e)
     {
