@@ -40,6 +40,7 @@ namespace goby
     ///\name Time
     //@{
 
+    /// Functions and objects related to timekeeping.
     namespace time
     {        
         /// \brief microsecond unit
