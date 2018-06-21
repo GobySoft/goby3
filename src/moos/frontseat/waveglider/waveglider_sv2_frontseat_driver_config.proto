@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 import "goby/moos/protobuf/frontseat_config.proto";
 import "goby/common/protobuf/option_extensions.proto";
 

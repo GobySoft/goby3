@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 import "goby/moos/protobuf/frontseat.proto";
 
 package goby.moos.protobuf;

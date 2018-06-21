@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 import "goby/moos/protobuf/goby_moos_app.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/queue.proto";

@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 message TestHDF5Message
 {
     repeated double a = 1;

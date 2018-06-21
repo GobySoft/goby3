@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 package goby.protobuf;
 
 message TransporterConfig

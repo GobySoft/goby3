@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 // include the DCCL extensions to Google Protobuf
 import "dccl/protobuf/option_extensions.proto";
 

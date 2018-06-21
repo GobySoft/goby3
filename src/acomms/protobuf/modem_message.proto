@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 import "dccl/protobuf/option_extensions.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
