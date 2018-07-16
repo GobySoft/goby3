@@ -79,26 +79,18 @@ namespace goby
             {
                 boost::recursive_mutex::scoped_lock l(goby::common::logger::mutex);
                 sb_.enable_gui();
-            }
+            }            
             
+            
+            bool is(goby::common::logger::Verbosity verbosity);
 
-            bool is(goby::common::logger::Verbosity verbosity); 
-            
-            /* void add_stream(const std::string& verbosity, std::ostream* os = 0) */
-            /* { */
-            /*     if(verbosity == "scope" || verbosity == "gui") */
-            /*         add_stream(goby::common::logger::GUI, os); */
-            /*     else if(verbosity == "quiet")         */
-            /*         add_stream(goby::common::logger::QUIET, os); */
-            /*     else if(verbosity == "terse" || verbosity == "warn")         */
-            /*         add_stream(goby::common::logger::WARN, os); */
-            /*     else if(verbosity == "debug")         */
-            /*         add_stream(goby::common::logger::DEBUG1, os); */
-            /*     else */
-            /*         add_stream(goby::common::logger::VERBOSE, os); */
-            /* } */
-            
-            
+            bool is_die() { return is(goby::common::logger::DIE); }
+            bool is_warn() { return is(goby::common::logger::WARN); }
+            bool is_verbose() { return is(goby::common::logger::VERBOSE); }
+            bool is_debug1() { return is(goby::common::logger::DEBUG1); }
+            bool is_debug2() { return is(goby::common::logger::DEBUG2); }
+            bool is_debug3() { return is(goby::common::logger::DEBUG3); }          
+
             /// Attach a stream object (e.g. std::cout, std::ofstream, ...) to the logger with desired verbosity
             void add_stream(logger::Verbosity verbosity = logger::VERBOSE, std::ostream* os = 0)
             {
