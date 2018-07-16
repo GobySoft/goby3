@@ -95,6 +95,15 @@ namespace goby
         virtual SubscriptionAction action() const = 0;
     };
 
+    inline bool operator==(const SerializationSubscriptionBase& s1, const SerializationSubscriptionBase& s2)
+    {
+        return s1.scheme() == s2.scheme() &&
+        s1.type_name() == s2.type_name() &&
+        s1.subscribed_group() == s2.subscribed_group() &&
+        s1.action() == s2.action();
+    }
+    
+    
     template<typename Data, int scheme_id>
         class SerializationSubscription : public SerializationSubscriptionBase
     {

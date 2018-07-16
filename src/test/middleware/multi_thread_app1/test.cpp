@@ -43,7 +43,7 @@ class TestThreadRx : public goby::SimpleThread<TestConfig>
 {
 public:
     TestThreadRx(const TestConfig& cfg)
-        : SimpleThread(cfg)
+        : SimpleThread(cfg, .1)
         {
             glog.is(VERBOSE) && glog << "Rx Thread: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             
@@ -53,6 +53,11 @@ public:
             interprocess().subscribe<widget2, Widget>([this](const Widget& w) { post(w); });
         }
 
+    ~TestThreadRx()
+        {            
+        }
+        
+    
     void post(const Widget& widget)
         {
             glog.is(VERBOSE) && glog << "Thread Rx: " << widget.DebugString() << std::flush;
@@ -60,10 +65,13 @@ public:
             ++rx_count_;
 
             interthread().publish<widget2>(widget);
+
+
+            throw(std::runtime_error("test"));
         }
     
     void loop() override
-        {
+        {            
         }
 
 private:
@@ -102,7 +110,7 @@ public:
 
     void post2(const Widget& widget)
         {
-            glog.is(VERBOSE) && glog << "Thread Rx2: " << widget.DebugString() << std::flush;
+            glog.is(VERBOSE) && glog << "App Rx2: " << widget.DebugString() << std::flush;
         }
     
     

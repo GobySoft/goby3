@@ -67,7 +67,9 @@ namespace goby
             set_transporter(transporter);
         }
 
-        virtual ~Thread() { }
+        virtual ~Thread()
+        {
+        }
         
         void run(std::atomic<bool>& alive)
         {
@@ -122,6 +124,7 @@ namespace goby
 	void thread_quit() { (*alive_) = false; }
 
 	static constexpr goby::Group shutdown_group_ { "goby::ThreadShutdown" };
+	static constexpr goby::Group joinable_group_ { "goby::ThreadJoinable" };
 
     };
 
@@ -130,6 +133,9 @@ namespace goby
 
 template<typename Config, typename TransporterType>
     constexpr goby::Group goby::Thread<Config, TransporterType>::shutdown_group_;
+
+template<typename Config, typename TransporterType>
+    constexpr goby::Group goby::Thread<Config, TransporterType>::joinable_group_;
     
 template<typename Config, typename TransporterType>
     void goby::Thread<Config, TransporterType>::run_once()

@@ -117,7 +117,7 @@ namespace goby
         
         std::unique_ptr<InnerTransporter> own_inner_;
         InnerTransporter& inner_;
-        static constexpr Group forward_group_ { "goby::InterProcessForwarder" };
+        static constexpr Group forward_group_ { "goby::InterProcessForwarder" }; 
         static constexpr Group regex_group_ { "goby::InterProcessRegexData" };
 
     private:  
@@ -141,7 +141,11 @@ namespace goby
         {
             Base::inner_.template subscribe<Base::regex_group_, goby::protobuf::SerializerTransporterData>(
                 [this](std::shared_ptr<const goby::protobuf::SerializerTransporterData> d) { _receive_regex_data_forwarded(d);});
+
         }
+        ~InterProcessForwarder()
+        { }
+        
 
         friend Base;
     private:
@@ -169,7 +173,7 @@ namespace goby
             Base::inner_.template subscribe_dynamic<Data, scheme>(f, group);
 
             // forward subscription to edge
-            auto inner_publication_lambda = [&](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { Base::inner_.template publish_dynamic<Data, scheme>(d, group, t); };
+            auto inner_publication_lambda = [=](std::shared_ptr<const Data> d, const goby::protobuf::TransporterConfig& t) { Base::inner_.template publish_dynamic<Data, scheme>(d, group, t); };
             typename SerializationSubscription<Data, scheme>::HandlerType inner_publication_function(inner_publication_lambda);
 
             auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
@@ -178,7 +182,7 @@ namespace goby
                                                             [=](const Data&d) { return group; }));
                     
             Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase>(subscription);
-
+            
         }
 
         template<typename Data, int scheme>
@@ -198,7 +202,7 @@ namespace goby
                               const std::string& type_regex = ".*",
                               const std::string& group_regex = ".*")
         {
-            auto inner_publication_lambda = [&](const std::vector<unsigned char>& data, int scheme, const std::string& type, const Group& group)
+            auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme, const std::string& type, const Group& group)
                 {
                     std::shared_ptr<goby::protobuf::SerializerTransporterData> forwarded_data(new goby::protobuf::SerializerTransporterData);
                     forwarded_data->set_marshalling_scheme(scheme);
@@ -237,6 +241,7 @@ namespace goby
 
     private:
         std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
+
     };    
 
 }
