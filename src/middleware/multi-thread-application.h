@@ -72,6 +72,7 @@ namespace goby
         
     };
 
+
     template<class Config, class Transporter, class StateMachine>
         class MultiThreadApplicationBase
         : public goby::common::ApplicationBase3<Config, StateMachine>,
@@ -86,9 +87,12 @@ namespace goby
             std::shared_ptr<std::condition_variable_any> poll_cv;
             std::shared_ptr<std::timed_mutex> poll_mutex;
         };
+
+        static std::exception_ptr thread_exception_;
         
             
         std::map<std::type_index, std::map<int, ThreadManagement>> threads_;
+        int running_thread_count_{0};
 
 	goby::InterThreadTransporter interthread_;
 
@@ -105,6 +109,14 @@ namespace goby
             MainThreadBase(this->app_cfg(), portal, loop_freq)
             {   
                 goby::glog.set_lock_action(goby::common::logger_lock::lock);
+
+                interthread_.template subscribe<MainThreadBase::joinable_group_, std::pair<std::type_index, int>>(
+                    [this](const std::pair<std::type_index, int>& joinable)
+                    {
+                        _join_thread(joinable.first, joinable.second);
+                    } );	   
+
+                
             }
         virtual ~MultiThreadApplicationBase() { }
 
@@ -124,8 +136,15 @@ namespace goby
         { _launch_thread<ThreadType, ThreadConfig, true>(index, cfg); }
 	
         template<typename ThreadType>
-            void join_thread(int index = -1);
+            void join_thread(int index = -1)
+        {
+            auto type_i = std::type_index(typeid(ThreadType));
+            _join_thread(type_i, index);
+        }
         
+        int running_thread_count() { return running_thread_count_; }
+        
+
     protected:
 	goby::InterThreadTransporter& interthread() { return interthread_; }
 
@@ -134,11 +153,23 @@ namespace goby
     private:
 
     void run() override
-        { MainThreadBase::run_once(); }
+    {
+        try
+        {
+            MainThreadBase::run_once();
+        }
+        catch(std::exception& e)
+        {
+            goby::glog.is(goby::common::logger::WARN) && goby::glog << "MultiThreadApplicationBase:: uncaught exception: " << e.what() << std::endl;
+            throw;
+        }
+    }
 
     template<typename ThreadType, typename ThreadConfig, bool has_index>
 	void _launch_thread(int index, const ThreadConfig& cfg);
-        
+
+    void _join_thread(const std::type_index& type_i, int index);
+    
 
     };
 
@@ -232,60 +263,90 @@ namespace goby
     };    
 }
 
+
+template<class Config, class Transporter, class StateMachine>
+    std::exception_ptr goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::thread_exception_(nullptr);
+
 template<class Config, class Transporter, class StateMachine>
     template<typename ThreadType, typename ThreadConfig, bool has_index>
     void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::_launch_thread(int index, const ThreadConfig& cfg)
 {   
     std::type_index type_i = std::type_index(typeid(ThreadType));
 
-    if(threads_[type_i].count(index))
-        throw(Exception(std::string("Thread of type: ") + type_i.name() + " and index " + std::to_string(index) + " was already launched."));    
+    if(threads_[type_i].count(index) && threads_[type_i][index].alive)
+        throw(Exception(std::string("Thread of type: ") + type_i.name() + " and index " + std::to_string(index) + " is already launched and running."));
 
     auto& thread_manager = threads_[type_i][index];
+    thread_manager.alive = true;
     
     // copy configuration 
     auto thread_lambda = [this, type_i, index, cfg, &thread_manager]()
 	{
-//	    std::cout << std::this_thread::get_id() << ": thread " << index << std::endl;
 	    std::shared_ptr<ThreadType> goby_thread(ThreadTypeSelector<ThreadType, ThreadConfig, has_index>::thread(cfg, index));
-             thread_manager.poll_cv = goby_thread->interthread().cv();
-             thread_manager.poll_mutex = goby_thread->interthread().poll_mutex();
-             goby_thread->run(thread_manager.alive);
-	};
+            thread_manager.poll_cv = goby_thread->interthread().cv();
+            thread_manager.poll_mutex = goby_thread->interthread().poll_mutex();
+
+            try
+            {
+                goby_thread->run(thread_manager.alive);
+            }
+            catch(...)
+            {
+                thread_exception_ = std::current_exception();
+            }
+
+            interthread_.publish<MainThreadBase::joinable_group_>(std::make_pair(type_i, index));
+        };
 
     
     thread_manager.thread = std::unique_ptr<std::thread>(new std::thread(thread_lambda));
+    ++running_thread_count_;
 }
 
 
 template<class Config, class Transporter, class StateMachine>
-template<typename ThreadType>
-void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::join_thread(int index /* = -1 */)
-{
-    auto type_i = std::type_index(typeid(ThreadType));
+    void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::_join_thread(const std::type_index& type_i, int index)
+{    
+    if(!threads_.count(type_i) || !threads_[type_i].count(index))
+        throw(Exception(std::string("No thread of type: ") + type_i.name() + " and index " + std::to_string(index) + " to join."));
 
-    if(!threads_[type_i].count(index))
-        throw(Exception(std::string("No running thread of type: ") + type_i.name() + " and index " + std::to_string(index) + " to join."));
-
-    
-    threads_[type_i][index].alive = false;
-    threads_[type_i][index].thread->join();
-    threads_[type_i].erase(index);
+    if(threads_[type_i][index].thread)
+    {
+        goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << "Joining thread: " << type_i.name() << " index " << index << std::endl;
+        
+        threads_[type_i][index].alive = false;
+        threads_[type_i][index].thread->join();
+        threads_[type_i][index].thread.reset();
+        --running_thread_count_;
+        
+        if(thread_exception_)
+        {
+            goby::glog.is(goby::common::logger::WARN) && goby::glog << "Thread type: " << type_i.name() << ", index: " << index << " had an uncaught exception" << std::endl;
+            std::rethrow_exception(thread_exception_);
+        }
+    }
+    else
+    {
+        goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << "Already joined thread: " << type_i.name() << " index " << index << std::endl;
+    }    
 }
 
 
 template<class Config, class Transporter, class StateMachine>
 void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::quit()
 {
+    goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << "Requesting all threads shutdown cleanly..." << std::endl;
+    
     interthread_.publish<MainThreadBase::shutdown_group_>(true);
-    // join the threads
-    for(auto& tmap : threads_)
+    
+    // allow the threads to self-join
+    while(running_thread_count_ > 0)
     {
-        for(auto & t : tmap.second)
-        {
-            t.second.thread->join();
-        }
+        goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << "Waiting for " << running_thread_count_ << " threads." << std::endl;
+
+        MainThreadBase::transporter().poll();
     }
+    
     
     goby::common::ApplicationBase3<Config, StateMachine>::quit();
 }

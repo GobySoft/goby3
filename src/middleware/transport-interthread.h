@@ -56,6 +56,13 @@ namespace goby
             return poll_items;
         }
 
+        static void unsubscribe_all(std::thread::id thread_id)
+        {
+            std::shared_lock<std::shared_timed_mutex> stores_lock(stores_mutex_);
+            for (auto const &s : stores_)
+                s.second->unsubscribe_all_groups(thread_id);
+        }
+        
     protected:
         template<typename StoreType> 
             static void insert()
@@ -69,7 +76,7 @@ namespace goby
         
     protected:
         virtual int poll(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) = 0;
-        
+        virtual void unsubscribe_all_groups(std::thread::id thread_id) = 0;
 
     private:
         // stores a map of Datas to SubscriptionStores so that can call poll() on all the stores
@@ -194,7 +201,7 @@ namespace goby
         
 
     private:
-        int poll(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+        int poll(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) override
         {
 
             std::vector<std::pair<std::shared_ptr<typename Callback::CallbackType>, std::shared_ptr<const Data>>> data_callbacks;
@@ -240,7 +247,31 @@ namespace goby
             
             return poll_items_count;
         }
-            
+
+        void unsubscribe_all_groups(std::thread::id thread_id) override
+        {
+            {
+                std::lock_guard<std::shared_timed_mutex> lock(subscription_mutex_);
+
+                for (auto it = subscription_groups_.begin(); it != subscription_groups_.end();)
+                {                    
+                    auto sub_thread_id = it->second->first;
+
+                    if(sub_thread_id == thread_id)
+                    {
+                        subscription_callbacks_.erase(it->second);
+                        it = subscription_groups_.erase(it);
+                    }
+                    else
+                    {
+                        ++it;
+                    }
+                }
+
+                data_.erase(thread_id);
+            }            
+        }
+        
     private:
         struct Callback
         {
@@ -321,6 +352,12 @@ namespace goby
         data_mutex_(std::make_shared<std::mutex>())
         { }
 
+        ~InterThreadTransporter()
+        {
+           SubscriptionStoreBase::unsubscribe_all(std::this_thread::get_id());
+        }
+        
+        
 	template<typename Data>
 	    static constexpr int scheme()
 	{

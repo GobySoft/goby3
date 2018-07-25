@@ -219,12 +219,15 @@ namespace goby
 		    ++items;
 		    if(lock) lock.reset();
                     // build a set so if any of the handlers unsubscribes, we still have a pointer to the SerializationSubscriptionBase
-                    std::set<std::shared_ptr<const SerializationSubscriptionBase>> subs_to_post;
+                    std::vector<std::weak_ptr<const SerializationSubscriptionBase>> subs_to_post;
 		    for(auto &sub : subscriptions_)
 		    {
 			const auto& data = control_msg.received_data();
 			if(data.size() >= sub.first.size() && memcmp(&data[0], sub.first.data(), sub.first.size()) == 0)
-                            subs_to_post.insert(sub.second);
+                        {
+                            subs_to_post.push_back(sub.second);
+                        }
+                        
 		    }
 
                     // actually post the data
@@ -232,7 +235,11 @@ namespace goby
                         const auto& data = control_msg.received_data();
                         auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
                         for(auto& sub : subs_to_post)
-                            sub->post(null_delim_it+1, data.end());
+                        {
+                            if(auto sub_sp = sub.lock())
+                                sub_sp->post(null_delim_it+1, data.end());
+                        }
+                        
                     }
                     
                     if(!regex_subscriptions_.empty())
@@ -296,6 +303,8 @@ namespace goby
                         // do the actual unsubscribe if we aren't subscribe locally
                         if(local_subscription_identifiers_.count(identifier) == 0)
                             zmq_main_.unsubscribe(identifier);
+
+                        
                     }
                 }
                 break;

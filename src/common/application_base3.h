@@ -298,7 +298,7 @@ template<typename App>
     catch(std::exception& e)
     {
         // some other exception
-        std::cerr << "uncaught exception: " << e.what() << std::endl;
+        std::cerr << "ApplicationBase3:: uncaught exception: " << e.what() << std::endl;
         return 2;
     }
 

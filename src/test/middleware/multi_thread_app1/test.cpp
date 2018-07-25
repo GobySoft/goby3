@@ -28,7 +28,6 @@
 
 #include "test.pb.h"
 using goby::glog;
-using namespace goby::common::logger;
 
 extern constexpr goby::Group widget1{3};
 extern constexpr goby::Group widget2{"widget2"};
@@ -45,25 +44,26 @@ public:
     TestThreadRx(const TestConfig& cfg)
         : SimpleThread(cfg)
         {
-            glog.is(VERBOSE) && glog << "Rx Thread: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
+            glog.is_verbose() && glog << "Rx Thread: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             
-            glog.is(VERBOSE) && glog << std::this_thread::get_id() << std::endl;
+            glog.is_verbose() && glog << std::this_thread::get_id() << std::endl;
             
             interprocess().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
             interprocess().subscribe<widget2, Widget>([this](const Widget& w) { post(w); });
         }
 
+    ~TestThreadRx()
+        {            
+        }
+        
+    
     void post(const Widget& widget)
         {
-            glog.is(VERBOSE) && glog << "Thread Rx: " << widget.DebugString() << std::flush;
+            glog.is_verbose() && glog << "Thread Rx: " << widget.DebugString() << std::flush;
             assert(widget.b() == rx_count_);
             ++rx_count_;
 
             interthread().publish<widget2>(widget);
-        }
-    
-    void loop() override
-        {
         }
 
 private:
@@ -75,7 +75,7 @@ class TestAppRx : public AppBase
 public:
     TestAppRx() : AppBase(10)
         {
-            glog.is(VERBOSE) && glog << "Rx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
+            glog.is_verbose() && glog << "Rx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             interprocess().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
             interprocess().subscribe<widget2, Widget>([this](const Widget& w) { post2(w); });
             launch_thread<TestThreadRx>();
@@ -93,7 +93,7 @@ public:
 
     void post(const Widget& widget)
         {
-            glog.is(VERBOSE) && glog << "App Rx: " << widget.DebugString() << std::flush;
+            glog.is_verbose() && glog << "App Rx: " << widget.DebugString() << std::flush;
             assert(widget.b() == rx_count_);
             ++rx_count_;
             if(rx_count_ == num_messages)
@@ -102,7 +102,7 @@ public:
 
     void post2(const Widget& widget)
         {
-            glog.is(VERBOSE) && glog << "Thread Rx2: " << widget.DebugString() << std::flush;
+            glog.is_verbose() && glog << "App Rx2: " << widget.DebugString() << std::flush;
         }
     
     
@@ -116,7 +116,7 @@ class TestAppTx : public AppBase
 public:
     TestAppTx() : AppBase(100)
         {
-            glog.is(VERBOSE) && glog << "Tx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
+            glog.is_verbose() && glog << "Tx App: pid: " << getpid() << ", thread: " << std::this_thread::get_id() << std::endl;
             interprocess().subscribe<ready, Ready>([this](const Ready& r) { rx_ready_ = r.b(); });
 
         }
@@ -127,11 +127,11 @@ public:
             ++i;
             if(rx_ready_)
             {
-                glog.is(VERBOSE) && glog  << goby::common::goby_time() << std::endl;
+                glog.is_verbose() && glog  << goby::common::goby_time() << std::endl;
                 Widget w;
                 w.set_b(tx_count_++);
                 {
-                    glog.is(VERBOSE) && glog << "Tx: " << w.DebugString() << std::flush;
+                    glog.is_verbose() && glog << "Tx: " << w.DebugString() << std::flush;
                 }
                 
                 interprocess().publish<widget1>(w);

@@ -55,7 +55,7 @@ int goby::PollerInterface::_poll_all(const std::chrono::system_clock::time_point
             poll_items = _transporter_poll(lock);
             
             if(poll_items == 0)
-                goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << "PollerInterface condition_variable: spurious wakeup" << std::endl;            
+                goby::glog.is(goby::common::logger::DEBUG3) && goby::glog << "PollerInterface condition_variable: spurious wakeup" << std::endl;            
             
         }
         else
