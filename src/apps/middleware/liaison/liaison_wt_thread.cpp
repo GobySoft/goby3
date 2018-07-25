@@ -34,19 +34,16 @@
 #include "liaison_wt_thread.h"
 #include "liaison_home.h"
 
-#include "goby/moos/moos_liaison_load.h"
-
 
 using goby::glog;
 using namespace Wt;    
 using namespace goby::common::logger;
 
-goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env)
-    : Wt::WApplication(env)
-{    
-//    zeromq_service_.connect_inbox_slot(&LiaisonWtThread::inbox, this);
-
-    Wt::WString title_text("goby liaison: " + liaison_cfg_.base().platform_name());
+goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, const protobuf::LiaisonConfig& app_cfg)
+    : Wt::WApplication(env),
+      goby::SimpleThread<protobuf::LiaisonConfig>(app_cfg, 10*boost::units::si::hertz)
+{
+    Wt::WString title_text("goby liaison: " + cfg().interprocess().platform());
     setTitle(title_text);
 
     useStyleSheet(std::string("css/fonts.css?" + common::goby_file_timestamp()));
@@ -71,7 +68,7 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env)
     goby_logo_a->setStyleClass("no_ul");
     goby_logo_a->setTarget(TargetNewWindow);
 
-    if(!liaison_cfg_.has_upper_right_logo())
+    if(!cfg().has_upper_right_logo())
     {
         WImage* goby_lp_image = new WImage("images/mit-logo.gif");
         WAnchor* goby_lp_image_a = new WAnchor("http://lamss.mit.edu", goby_lp_image, header_div);
@@ -81,9 +78,9 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env)
     }
     else
     {
-        WImage* goby_lp_image = new WImage(liaison_cfg_.upper_right_logo());
-        WAnchor* goby_lp_image_a = new WAnchor(liaison_cfg_.has_upper_right_logo_link() ?
-                                               liaison_cfg_.upper_right_logo_link() : "", goby_lp_image, header_div);
+        WImage* goby_lp_image = new WImage(cfg().upper_right_logo());
+        WAnchor* goby_lp_image_a = new WAnchor(cfg().has_upper_right_logo_link() ?
+                                               cfg().upper_right_logo_link() : "", goby_lp_image, header_div);
         goby_lp_image_a->setId("lp_logo");
         goby_lp_image_a->setStyleClass("no_ul");
         goby_lp_image_a->setTarget(TargetNewWindow);
@@ -113,7 +110,7 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env)
     add_to_menu(menu_, new LiaisonHome);
 
 
-    typedef std::vector<goby::common::LiaisonContainer*> (*liaison_load_func)(const goby::common::protobuf::LiaisonConfig& cfg, boost::shared_ptr<zmq::context_t> zmq_context);
+    typedef std::vector<goby::common::LiaisonContainer*> (*liaison_load_func)(const goby::common::protobuf::LiaisonConfig& cfg);
 
     for(int i = 0, n = Liaison::plugin_handles_.size(); i < n; ++i)
     {
@@ -121,7 +118,7 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env)
             
         if(liaison_load_ptr)
         {
-            std::vector<goby::common::LiaisonContainer*> containers = (*liaison_load_ptr)(liaison_cfg_, Liaison::zmq_context());
+            std::vector<goby::common::LiaisonContainer*> containers = (*liaison_load_ptr)(cfg());
             for(int j = 0, m = containers.size(); j< m; ++j)
                 add_to_menu(menu_, containers[j]);
         }
@@ -191,13 +188,4 @@ void goby::common::LiaisonWtThread::handle_menu_selection(Wt::WMenuItem * item)
     }    
 }
 
-
-void goby::common::LiaisonWtThread::inbox(MarshallingScheme marshalling_scheme,
-                                                      const std::string& identifier,
-                                                      const void* data,
-                                                      int size,
-                                                      int socket_id)
-{
-    glog.is(DEBUG1) && glog << "LiaisonWtThread: got message with identifier: " << identifier << std::endl;
-}
 

@@ -45,4 +45,5 @@ target_link_libraries(goby_liaison
   pthread
   goby_common
   goby_util
+  goby_middleware
   )

@@ -27,7 +27,7 @@
 #include <Wt/WText>
 #include <Wt/WColor>
 
-#include "goby/common/protobuf/liaison_config.pb.h"
+#include "goby/middleware/protobuf/liaison_config.pb.h"
 
 namespace goby
 {
@@ -50,7 +50,7 @@ namespace goby
         inline std::string liaison_internal_publish_socket_name() { return "liaison_internal_publish_socket"; }
         inline std::string liaison_internal_subscribe_socket_name() { return "liaison_internal_subscribe_socket"; }
         
-        class LiaisonContainer : public  Wt::WContainerWidget
+        class LiaisonContainer : public Wt::WContainerWidget
         {
           public:
           LiaisonContainer(Wt::WContainerWidget* parent)
