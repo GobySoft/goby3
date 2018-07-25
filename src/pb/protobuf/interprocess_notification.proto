@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 import "google/protobuf/descriptor.proto";
 
 package goby.common.protobuf;

@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 // provides MessageFile
 import "goby/common/protobuf/option_extensions.proto";
 

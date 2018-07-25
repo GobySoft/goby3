@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/moos/protobuf/modem_id_lookup.proto";
 import "goby/acomms/protobuf/modem_message.proto";

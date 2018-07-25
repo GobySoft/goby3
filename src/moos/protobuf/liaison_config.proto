@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/liaison_config.proto";
 import "goby/acomms/protobuf/network_ack.proto";
 import "goby/moos/protobuf/translator.proto";

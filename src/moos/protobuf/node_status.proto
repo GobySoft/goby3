@@ -1,3 +1,4 @@
+@PROTOBUF_SYNTAX_VERSION@
 import "dccl/protobuf/option_extensions.proto";
 
 package goby.moos.protobuf;
