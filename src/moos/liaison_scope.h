@@ -39,7 +39,7 @@
 #include <Wt/WTimer>
 
 #include "goby/moos/moos_node.h"
-#include "goby/common/liaison_container.h"
+#include "goby/middleware/liaison_container.h"
 #include "goby/moos/protobuf/liaison_config.pb.h"
 
 namespace Wt

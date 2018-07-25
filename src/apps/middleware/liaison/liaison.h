@@ -32,7 +32,7 @@
 #include <Wt/WContainerWidget>
 #include <Wt/WTimer>
 
-#include "goby/common/liaison_container.h"
+#include "goby/middleware/liaison_container.h"
 #include "goby/middleware/protobuf/liaison_config.pb.h"
 
 #include "goby/middleware/multi-thread-application.h"

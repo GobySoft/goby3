@@ -58,7 +58,7 @@
 #include <Wt/Dbo/WtSqlTraits>
 
 
-#include "goby/common/liaison_container.h"
+#include "goby/middleware/liaison_container.h"
 #include "goby/moos/moos_node.h"
 #include "goby/moos/protobuf/liaison_config.pb.h"
 
@@ -107,11 +107,10 @@ namespace goby
         };
         
         
-        class LiaisonCommander : public LiaisonContainer, public goby::moos::MOOSNode
+        class LiaisonCommander : public LiaisonContainer
         {
           public:
-            LiaisonCommander(ZeroMQService* zeromq_service, const protobuf::LiaisonConfig& cfg, Wt::WContainerWidget* parent = 0);
-            void moos_inbox(CMOOSMsg& msg);
+            LiaisonCommander(const protobuf::LiaisonConfig& cfg, Wt::WContainerWidget* parent = 0);
             void loop();
             
           private:

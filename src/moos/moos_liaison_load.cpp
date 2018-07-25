@@ -27,27 +27,18 @@
 
 #include "moos_liaison_load.h"
 
-std::vector<boost::shared_ptr<goby::common::ZeroMQService> > services_;
-
 extern "C"
 {    
-    std::vector<goby::common::LiaisonContainer*> goby_liaison_load(const goby::common::protobuf::LiaisonConfig& cfg,
-                                                                   boost::shared_ptr<zmq::context_t> zmq_context)
+    std::vector<goby::common::LiaisonContainer*> goby_liaison_load(const goby::common::protobuf::LiaisonConfig& cfg)
     {
         
-        std::vector<goby::common::LiaisonContainer*> containers;
-
-        services_.push_back(boost::shared_ptr<goby::common::ZeroMQService>(new goby::common::ZeroMQService(zmq_context)));
-        containers.push_back(new goby::common::LiaisonCommander(services_.back().get(), cfg));
-
-        services_.push_back(boost::shared_ptr<goby::common::ZeroMQService>(new goby::common::ZeroMQService(zmq_context)));
-        containers.push_back(new goby::common::LiaisonScope(services_.back().get(), cfg));
-
-        containers.push_back(new goby::common::LiaisonGeodesy(cfg));
+        std::vector<goby::common::LiaisonContainer*> containers
+            ({ new goby::common::LiaisonCommander(cfg)//,
+                    //               new goby::common::LiaisonScope(cfg),
+                    //               new goby::common::LiaisonGeodesy(cfg),
+                    //               new goby::common::LiaisonAcomms(cfg)
+                    });
         
-        services_.push_back(boost::shared_ptr<goby::common::ZeroMQService>(new goby::common::ZeroMQService(zmq_context)));
-        containers.push_back(new goby::common::LiaisonAcomms(services_.back().get(), cfg));
-
         return containers;
     }
 }
