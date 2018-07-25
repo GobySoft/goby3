@@ -62,7 +62,8 @@ ubuntu|debian)
             libprotoc-dev
             protobuf-compiler
             libgmp3-dev
-            libzmq3-dev"
+            libzmq3-dev
+            libproj-dev"
         if [ $install_all -ne 0 ]; then 
             packages="${packages}
             libcrypto++-dev
@@ -79,7 +80,8 @@ ubuntu|debian)
             apt-get update -qq
             set +x
             packages="${packages} 
-            libdccl3-dev"
+            libdccl3-dev
+            dccl3-compiler"
         fi
         
         if [ $install_doc -ne 0 ]; then 
@@ -112,8 +114,7 @@ ubuntu|debian)
                 packages="libgoby2"
             else
                 packages="${packages} 
-            libmoos10-dev
-            libproj-dev"
+            libmoos10-dev"
             fi
         fi
         ;;
