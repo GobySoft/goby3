@@ -64,7 +64,7 @@ goby::common::LiaisonCommander::LiaisonCommander(goby::SimpleThread<protobuf::Li
                                                  const protobuf::LiaisonConfig& cfg,
                                                  WContainerWidget* parent)
     : LiaisonContainer(parent),
-      pb_commander_config_(cfg.GetExtension(protobuf::pb_commander_config)),
+      pb_commander_config_(cfg.pb_commander_config()),
       commands_div_(new WStackedWidget),
       controls_div_(new ControlsContainer(goby_thread, pb_commander_config_, commands_div_, this))
 {

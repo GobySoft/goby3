@@ -28,15 +28,12 @@ message LiaisonConfig
     optional string upper_right_logo = 19 [(goby.field).description="Image for upper right, relative to docroot"];
     optional string upper_right_logo_link = 20 [(goby.field).description="Hyperlink for upper right image"];
 
-    // Middleware - 900 to 1000
-    // MOOS - 1000 to 1099
-    // DRC -  1100 
-    extensions 900 to max;
-}
+    optional ProtobufCommanderConfig pb_commander_config = 900;
 
-extend goby.common.protobuf.LiaisonConfig
-{
-  optional ProtobufCommanderConfig pb_commander_config = 900;
+    // MOOS - 1000 to 1099
+    // DRC -  1100
+    // WIP -  1200 to 1299
+    extensions 1000 to max;
 }
 
 message ProtobufCommanderConfig
@@ -78,11 +75,11 @@ message ProtobufCommanderConfig
   }
   optional ModalDialogDimensions modal_dimensions = 23;
   
-  repeated string subscription = 30;
+  // repeated string subscription = 30;
 
-  optional string time_source_var = 40;
+  // optional string time_source_var = 40;
 
-  optional string network_ack_var = 41 [default = "ACOMMS_NETWORK_ACK"];
+  // optional string network_ack_var = 41 [default = "ACOMMS_NETWORK_ACK"];
 
 }
 message NetworkAckSet
