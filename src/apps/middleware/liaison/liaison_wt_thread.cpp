@@ -33,6 +33,7 @@
 
 #include "liaison_wt_thread.h"
 #include "liaison_home.h"
+#include "liaison_commander.h"
 
 
 using goby::glog;
@@ -108,6 +109,7 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, cons
     menu_->setInternalBasePath("/");
     
     add_to_menu(menu_, new LiaisonHome(this));
+    add_to_menu(menu_, new LiaisonCommander(this, cfg()));
 
 
     typedef std::vector<goby::common::LiaisonContainer*> (*liaison_load_func)(const goby::common::protobuf::LiaisonConfig& cfg);

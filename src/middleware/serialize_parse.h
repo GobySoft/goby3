@@ -67,7 +67,7 @@ namespace goby
     // SerializerParserHelper
     //
     
-    template<typename DataType, int scheme>
+    template<typename DataType, int scheme, class Enable = void>
         struct SerializerParserHelper 
         { };
 
@@ -81,9 +81,11 @@ namespace goby
             bytes.push_back('\0');
             return bytes;
         }
-
+        
         static std::string type_name()
         { return "CSTR"; }
+
+        static std::string type_name(const DataType& d) { return type_name(); }
 
         template<typename CharIterator>
             static DataType parse(CharIterator bytes_begin,
@@ -103,9 +105,11 @@ namespace goby
             
         }
     };
-    
+
+    // user protobuf (static), e.g. DataType == Foo for "message Foo"
     template<typename DataType>
-        struct SerializerParserHelper<DataType, MarshallingScheme::PROTOBUF>
+        struct SerializerParserHelper<DataType, MarshallingScheme::PROTOBUF,
+        std::enable_if_t<!std::is_same<DataType, google::protobuf::Message>::value>>
     {
         static std::vector<char> serialize(const DataType& msg)
         {
@@ -114,8 +118,8 @@ namespace goby
             return bytes;
         }
 
-        static std::string type_name()
-        { return DataType::descriptor()->full_name(); }
+        static std::string type_name() { return DataType::descriptor()->full_name(); }
+        static std::string type_name(const DataType& d) { return type_name(); }
 
         template<typename CharIterator>
             static DataType parse(CharIterator bytes_begin,
@@ -127,8 +131,38 @@ namespace goby
             actual_end = bytes_begin + msg.ByteSize();
             return msg;
         }
-    };
+    };    
 
+    // runtime introspection google::protobuf::Message (publish only)
+    template<>
+        struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::PROTOBUF>
+    {
+        static std::vector<char> serialize(const google::protobuf::Message& msg)
+        {
+            std::vector<char> bytes(msg.ByteSize(), 0);
+            msg.SerializeToArray(bytes.data(), bytes.size());
+            return bytes;
+        }
+
+        static std::string type_name(const google::protobuf::Message& d) { return d.GetDescriptor()->full_name(); }
+
+        // Must subscribe to the actual type (or use subscribe_regex())
+        
+        // static std::string type_name() { return google::protobuf::Message::descriptor()->full_name(); }
+        
+        //template<typename CharIterator>
+        // static google::protobuf::Message parse(CharIterator bytes_begin,
+        // CharIterator bytes_end,
+        // CharIterator& actual_end)
+        // {
+        // google::protobuf::Message msg;
+        // msg.ParseFromArray(&*bytes_begin, bytes_end-bytes_begin);
+        // actual_end = bytes_begin + msg.ByteSize();
+        // return msg;
+        // }
+    };    
+
+    
     namespace protobuf {
         class DCCLSubscription;
         class DCCLForwardedData;
@@ -219,10 +253,10 @@ namespace goby
         }
 
         static std::string type_name()
-        {
-            return DataType::descriptor()->full_name();
-        }
+        { return DataType::descriptor()->full_name(); }
+        static std::string type_name(const DataType& d) { return type_name(); }
 
+        
         template<typename CharIterator>
             static DataType parse(CharIterator bytes_begin,
                                   CharIterator bytes_end,

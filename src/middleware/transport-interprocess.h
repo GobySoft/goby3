@@ -158,7 +158,7 @@ namespace goby
             std::shared_ptr<goby::protobuf::SerializerTransporterData> data = std::make_shared<goby::protobuf::SerializerTransporterData>();
 
             data->set_marshalling_scheme(scheme);
-            data->set_type(SerializerParserHelper<Data, scheme>::type_name());
+            data->set_type(SerializerParserHelper<Data, scheme>::type_name(d));
             data->set_group(std::string(group));
             data->set_allocated_data(sbytes);
         

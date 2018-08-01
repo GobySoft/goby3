@@ -24,7 +24,7 @@
 using namespace Wt;
 
 
-goby::common::LiaisonHome::LiaisonHome(Wt::WContainerWidget* parent)
+goby::common::LiaisonHome::LiaisonHome(goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread, Wt::WContainerWidget* parent)
     : LiaisonContainer(parent),
       main_layout_(new Wt::WVBoxLayout(this))
 {

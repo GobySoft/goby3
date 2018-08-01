@@ -48,8 +48,8 @@ using goby::common::logger_lock::lock;
 using goby::glog;
 
 boost::mutex goby::common::LiaisonCommander::dbo_mutex_;
-boost::shared_ptr<Dbo::backend::Sqlite3> goby::common::LiaisonCommander::sqlite3_;
-boost::shared_ptr<Dbo::FixedSqlConnectionPool> goby::common::LiaisonCommander::connection_pool_;
+std::shared_ptr<Dbo::backend::Sqlite3> goby::common::LiaisonCommander::sqlite3_;
+std::shared_ptr<Dbo::FixedSqlConnectionPool> goby::common::LiaisonCommander::connection_pool_;
 boost::posix_time::ptime goby::common::LiaisonCommander::last_db_update_time_(goby::common::goby_time());
 
 
@@ -65,7 +65,6 @@ goby::common::LiaisonCommander::LiaisonCommander(goby::SimpleThread<protobuf::Li
                                                  WContainerWidget* parent)
     : LiaisonContainer(parent),
       pb_commander_config_(cfg.GetExtension(protobuf::pb_commander_config)),
-//      main_layout_(new WVBoxLayout(this)),
       commands_div_(new WStackedWidget),
       controls_div_(new ControlsContainer(goby_thread, pb_commander_config_, commands_div_, this))
 {
@@ -147,7 +146,7 @@ goby::common::LiaisonCommander::LiaisonCommander(goby::SimpleThread<protobuf::Li
 
 //         std::string value = msg.GetAsString();
     
-//         boost::shared_ptr<google::protobuf::Message> pb_msg =
+//         std::shared_ptr<google::protobuf::Message> pb_msg =
 //             dynamic_parse_for_moos(value);
 
 //         if(pb_msg)
@@ -427,7 +426,9 @@ void goby::common::LiaisonCommander::ControlsContainer::send_message()
 
     if (dialog.exec() == WDialog::Accepted)
     {
-        //        goby_thread_->interprocess().publish<liaison::groups::commander_out>(*current_command->message_);
+        goby_thread_->interprocess().publish<liaison::groups::commander_out,
+                                             google::protobuf::Message,
+                                             MarshallingScheme::PROTOBUF>(current_command->message_);
         
         CommandEntry* command_entry = new CommandEntry;
         command_entry->protobuf_name = current_command->message_->GetDescriptor()->full_name();
@@ -467,7 +468,7 @@ goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandCont
 //    WStackedWidget* master_field_info_stack)
     : WGroupBox(protobuf_name),
       goby_thread_(goby_thread),
-      message_(goby::util::DynamicProtobufManager::new_protobuf_message(protobuf_name)),
+      message_(goby::util::DynamicProtobufManager::new_protobuf_message<std::shared_ptr<google::protobuf::Message>>(protobuf_name)),
       latest_time_(0),
       tree_box_(new WGroupBox("Contents", this)),
       tree_table_(new WTreeTable(tree_box_)),
@@ -550,7 +551,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle
 
      const Dbo::ptr<CommandEntry>& entry = query_model_->resultRow(index.row());
      
-     boost::shared_ptr<google::protobuf::Message> message(message_->New());
+     std::shared_ptr<google::protobuf::Message> message(message_->New());
      message->ParseFromArray(&entry->bytes[0], entry->bytes.size());
 
      if(!message)
@@ -610,7 +611,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle
 
 void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle_database_dialog(
     DatabaseDialogResponse response,
-    boost::shared_ptr<google::protobuf::Message> message)
+    std::shared_ptr<google::protobuf::Message> message)
 {
     switch(response)
     {
@@ -1377,7 +1378,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::dccl_d
         }
     }
 
-    if(options.codec() == "_time")
+    if(options.codec() == "_time" || options.codec() == "dccl.time2")
     {
         value_field->setDisabled(true);
         set_time_field(value_field, field_desc);

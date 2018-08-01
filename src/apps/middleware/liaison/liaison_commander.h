@@ -135,7 +135,6 @@ namespace goby
             std::set<std::string> display_subscriptions_;
             
             
-            Wt::WVBoxLayout* main_layout_;
 
             struct ControlsContainer : Wt::WGroupBox
             {
@@ -255,10 +254,10 @@ namespace goby
                     
                     
                     void handle_database_dialog(DatabaseDialogResponse response,
-                                                boost::shared_ptr<google::protobuf::Message> message);
+                                                std::shared_ptr<google::protobuf::Message> message);
                     
                     goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread_;
-                    boost::shared_ptr<google::protobuf::Message> message_;
+                    std::shared_ptr<google::protobuf::Message> message_;
                     
                     std::map<Wt::WFormWidget*, const google::protobuf::FieldDescriptor*> time_fields_;
                     std::uint64_t latest_time_;
@@ -277,7 +276,7 @@ namespace goby
 
                     boost::posix_time::ptime last_reload_time_;
 
-                    boost::shared_ptr<Wt::WDialog> database_dialog_;
+                    std::shared_ptr<Wt::WDialog> database_dialog_;
 
                     const protobuf::ProtobufCommanderConfig& pb_commander_config_;
                     
@@ -317,8 +316,8 @@ namespace goby
             // static database objects
             static boost::posix_time::ptime last_db_update_time_;
             static boost::mutex dbo_mutex_;
-            static boost::shared_ptr<Wt::Dbo::backend::Sqlite3> sqlite3_;
-            static boost::shared_ptr<Wt::Dbo::FixedSqlConnectionPool> connection_pool_;
+            static std::shared_ptr<Wt::Dbo::backend::Sqlite3> sqlite3_;
+            static std::shared_ptr<Wt::Dbo::FixedSqlConnectionPool> connection_pool_;
             
             
         };
