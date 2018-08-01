@@ -107,7 +107,7 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, cons
     menu_->setInternalPathEnabled();
     menu_->setInternalBasePath("/");
     
-    add_to_menu(menu_, new LiaisonHome);
+    add_to_menu(menu_, new LiaisonHome(this));
 
 
     typedef std::vector<goby::common::LiaisonContainer*> (*liaison_load_func)(const goby::common::protobuf::LiaisonConfig& cfg);

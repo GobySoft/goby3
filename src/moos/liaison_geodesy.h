@@ -28,7 +28,7 @@
 #include <Wt/WVBoxLayout>
 #include <Wt/WTimer>
 
-#include "goby/middleware/liaison_container.h"
+#include "goby/middleware/liaison/liaison_container.h"
 #include "goby/moos/protobuf/liaison_config.pb.h"
 #include "goby/moos/moos_geodesy.h"
 

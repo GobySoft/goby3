@@ -36,7 +36,9 @@
 #include "goby/acomms/protobuf/network_ack.pb.h"
 #include "goby/util/dynamic_protobuf_manager.h"
 #include "goby/util/sci.h"
-#include "goby/moos/moos_protobuf_helpers.h"
+#include "goby/middleware/liaison/groups.h"
+#include "goby/util/binary.h"
+#include "dccl/common.h"
 
 #include "liaison_commander.h"
 
@@ -44,7 +46,6 @@ using namespace Wt;
 using namespace goby::common::logger;
 using goby::common::logger_lock::lock;
 using goby::glog;
-using goby::moos::operator<<;
 
 boost::mutex goby::common::LiaisonCommander::dbo_mutex_;
 boost::shared_ptr<Dbo::backend::Sqlite3> goby::common::LiaisonCommander::sqlite3_;
@@ -59,141 +60,116 @@ const std::string STRIPE_ODD_CLASS = "odd";
 const std::string STRIPE_EVEN_CLASS = "even";
 
 
-goby::common::LiaisonCommander::LiaisonCommander(ZeroMQService* zeromq_service,
+goby::common::LiaisonCommander::LiaisonCommander(goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
                                                  const protobuf::LiaisonConfig& cfg,
                                                  WContainerWidget* parent)
     : LiaisonContainer(parent),
-      MOOSNode(zeromq_service),
-      zeromq_service_(zeromq_service),
       pb_commander_config_(cfg.GetExtension(protobuf::pb_commander_config)),
 //      main_layout_(new WVBoxLayout(this)),
       commands_div_(new WStackedWidget),
-      controls_div_(new ControlsContainer(this, pb_commander_config_, commands_div_, this))
+      controls_div_(new ControlsContainer(goby_thread, pb_commander_config_, commands_div_, this))
 {
-    addWidget(commands_div_);
+    addWidget(commands_div_);    
     
-    protobuf::ZeroMQServiceConfig ipc_sockets;
-    protobuf::ZeroMQServiceConfig::Socket* internal_subscribe_socket = ipc_sockets.add_socket();
-    internal_subscribe_socket->set_socket_type(protobuf::ZeroMQServiceConfig::Socket::SUBSCRIBE);
-    internal_subscribe_socket->set_socket_id(LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
-    internal_subscribe_socket->set_transport(protobuf::ZeroMQServiceConfig::Socket::INPROC);
-    internal_subscribe_socket->set_connect_or_bind(protobuf::ZeroMQServiceConfig::Socket::CONNECT);
-    internal_subscribe_socket->set_socket_name(liaison_internal_publish_socket_name());
-
-    protobuf::ZeroMQServiceConfig::Socket* internal_publish_socket = ipc_sockets.add_socket();
-    internal_publish_socket->set_socket_type(protobuf::ZeroMQServiceConfig::Socket::PUBLISH);
-    internal_publish_socket->set_socket_id(LIAISON_INTERNAL_PUBLISH_SOCKET);
-    internal_publish_socket->set_transport(protobuf::ZeroMQServiceConfig::Socket::INPROC);
-    internal_publish_socket->set_connect_or_bind(protobuf::ZeroMQServiceConfig::Socket::CONNECT);
-    internal_publish_socket->set_socket_name(liaison_internal_subscribe_socket_name());
-
-    zeromq_service_->merge_cfg(ipc_sockets);    
-
-//    main_layout_->addWidget(controls_div_);
-//    main_layout_->addWidget(commands_div_);
-//    main_layout_->addStretch(1);
-
-    goby::moos::moos_technique = pb_commander_config_.moos_parser_technique();
+    //for(int i = 0, n = pb_commander_config_.subscription_size(); i < n; ++i)
+    //{
+    //    display_subscriptions_.insert(pb_commander_config_.subscription(i));
+    //    subscribe(pb_commander_config_.subscription(i), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
+        //    }
     
-    for(int i = 0, n = pb_commander_config_.subscription_size(); i < n; ++i)
-    {
-        display_subscriptions_.insert(pb_commander_config_.subscription(i));
-        subscribe(pb_commander_config_.subscription(i), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
-    }
-    
-    if(pb_commander_config_.has_time_source_var())
-        subscribe(pb_commander_config_.time_source_var(), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
+    //    if(pb_commander_config_.has_time_source_var())
+    //    subscribe(pb_commander_config_.time_source_var(), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
 
-    subscribe(pb_commander_config_.network_ack_var(), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
+    // subscribe(pb_commander_config_.network_ack_var(), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
     
     commander_timer_.setInterval(1/cfg.update_freq()*1.0e3);
     commander_timer_.timeout().connect(this, &LiaisonCommander::loop);
 
-    set_name("MOOSCommander");
+    set_name("Commander");
 }
 
-void goby::common::LiaisonCommander::moos_inbox(CMOOSMsg& msg)
-{
-    glog.is(DEBUG1) && glog << "LiaisonCommander: Got message: " << msg <<  std::endl;
+// void goby::common::LiaisonCommander::moos_inbox(CMOOSMsg& msg)
+// {
+//     glog.is(DEBUG1) && glog << "LiaisonCommander: Got message: " << msg <<  std::endl;
 
-    if(msg.GetKey() == pb_commander_config_.network_ack_var())
-    {
-        std::string value = msg.GetAsString();
-        goby::acomms::protobuf::NetworkAck ack;
-        parse_for_moos(value, &ack);
+//     if(msg.GetKey() == pb_commander_config_.network_ack_var())
+//     {
+//         std::string value = msg.GetAsString();
+//         goby::acomms::protobuf::NetworkAck ack;
+//         parse_for_moos(value, &ack);
 
-        Dbo::ptr<CommandEntry> acked_command(static_cast<goby::common::CommandEntry*>(0));
-        {        
-            boost::mutex::scoped_lock slock(dbo_mutex_);
-            Dbo::Transaction transaction(controls_div_->session_);            
-            acked_command = controls_div_->session_.find<CommandEntry>().where("utime = ?").bind((long long)ack.message_time());
-            if(acked_command)
-            {
-               glog.is(DEBUG1) && glog << "ACKED command was of type: " << acked_command->protobuf_name << std::endl;
-               protobuf::NetworkAckSet ack_set;
-               if(acked_command->acks.size())
-                   ack_set.ParseFromArray(&acked_command->acks[0], acked_command->acks.size());
+//         Dbo::ptr<CommandEntry> acked_command(static_cast<goby::common::CommandEntry*>(0));
+//         {        
+//             boost::mutex::scoped_lock slock(dbo_mutex_);
+//             Dbo::Transaction transaction(controls_div_->session_);            
+//             acked_command = controls_div_->session_.find<CommandEntry>().where("utime = ?").bind((long long)ack.message_time());
+//             if(acked_command)
+//             {
+//                glog.is(DEBUG1) && glog << "ACKED command was of type: " << acked_command->protobuf_name << std::endl;
+//                protobuf::NetworkAckSet ack_set;
+//                if(acked_command->acks.size())
+//                    ack_set.ParseFromArray(&acked_command->acks[0], acked_command->acks.size());
 
-               if(ack.ack_type() == goby::acomms::protobuf::NetworkAck::ACK)
-                   acked_command.modify()->last_ack = ack.ack_src();
+//                if(ack.ack_type() == goby::acomms::protobuf::NetworkAck::ACK)
+//                    acked_command.modify()->last_ack = ack.ack_src();
 
-               bool seen_ack = false;
-               for(int i = 0, n = ack_set.ack_size(); i < n; ++i)
-               {
-                   if(ack_set.ack(i).ack_src() == ack.ack_src())
-                       seen_ack = true;
-               }
-               if(!seen_ack)
-                   ack_set.add_ack()->CopyFrom(ack);
+//                bool seen_ack = false;
+//                for(int i = 0, n = ack_set.ack_size(); i < n; ++i)
+//                {
+//                    if(ack_set.ack(i).ack_src() == ack.ack_src())
+//                        seen_ack = true;
+//                }
+//                if(!seen_ack)
+//                    ack_set.add_ack()->CopyFrom(ack);
 
-               acked_command.modify()->acks.resize(ack_set.ByteSize());
-               ack_set.SerializeToArray(&acked_command.modify()->acks[0], acked_command->acks.size());
-               transaction.commit();
-               last_db_update_time_ = goby::common::goby_time();
-            }
-        }
-    }
+//                acked_command.modify()->acks.resize(ack_set.ByteSize());
+//                ack_set.SerializeToArray(&acked_command.modify()->acks[0], acked_command->acks.size());
+//                transaction.commit();
+//                last_db_update_time_ = goby::common::goby_time();
+//             }
+//         }
+//     }
     
     
-    if(display_subscriptions_.count(msg.GetKey()))
-    {
+//     if(display_subscriptions_.count(msg.GetKey()))
+//     {
     
-        WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
+//         WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
     
-        new WText("Message: " + goby::util::as<std::string>(controls_div_->incoming_message_stack_->children().size()), new_div);
+//         new WText("Message: " + goby::util::as<std::string>(controls_div_->incoming_message_stack_->children().size()), new_div);
 
-        WGroupBox* box = new WGroupBox(msg.GetKey() + " @ " +
-                                       boost::posix_time::to_simple_string(
-                                           goby::util::as<boost::posix_time::ptime>(
-                                               msg.GetTime())),
-                                       new_div);
+//         WGroupBox* box = new WGroupBox(msg.GetKey() + " @ " +
+//                                        boost::posix_time::to_simple_string(
+//                                            goby::util::as<boost::posix_time::ptime>(
+//                                                msg.GetTime())),
+//                                        new_div);
 
 
-        std::string value = msg.GetAsString();
+//         std::string value = msg.GetAsString();
     
-        boost::shared_ptr<google::protobuf::Message> pb_msg =
-            dynamic_parse_for_moos(value);
+//         boost::shared_ptr<google::protobuf::Message> pb_msg =
+//             dynamic_parse_for_moos(value);
 
-        if(pb_msg)
-            new WText("<pre>" + pb_msg->DebugString() + "</pre>", box);
-        else
-            new WText(value, PlainText, box);
+//         if(pb_msg)
+//             new WText("<pre>" + pb_msg->DebugString() + "</pre>", box);
+//         else
+//             new WText(value, PlainText, box);
         
     
-        WPushButton* minus = new WPushButton("-", new_div);
-        WPushButton* plus = new WPushButton("+", new_div);
+//         WPushButton* minus = new WPushButton("-", new_div);
+//         WPushButton* plus = new WPushButton("+", new_div);
 
-        WPushButton* remove = new WPushButton("x", new_div);
-        remove->setFloatSide(Wt::Right);
+//         WPushButton* remove = new WPushButton("x", new_div);
+//         remove->setFloatSide(Wt::Right);
 
-        plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
-        minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);    
-        remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
+//         plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
+//         minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);    
+//         remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
     
 
-        controls_div_->incoming_message_stack_->setCurrentIndex(controls_div_->incoming_message_stack_->children().size()-1);
-    }
-}
+//         controls_div_->incoming_message_stack_->setCurrentIndex(controls_div_->incoming_message_stack_->children().size()-1);
+//     }
+// }
 
 void goby::common::LiaisonCommander::ControlsContainer::increment_incoming_messages(const WMouseEvent& event)
 {
@@ -230,9 +206,6 @@ void goby::common::LiaisonCommander::loop()
         dynamic_cast<ControlsContainer::CommandContainer*>(
             controls_div_->commands_div_->currentWidget());
 
-    while(zeromq_service_->poll(0))
-    { }
-
     if(current_command && current_command->time_fields_.size())
     {
         for(std::map<Wt::WFormWidget*, const google::protobuf::FieldDescriptor*>::iterator it = current_command->time_fields_.begin(), end = current_command->time_fields_.end(); it != end; ++it)
@@ -252,12 +225,12 @@ void goby::common::LiaisonCommander::loop()
 }
 
 goby::common::LiaisonCommander::ControlsContainer::ControlsContainer(
-    MOOSNode* moos_node,
+    goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
     const protobuf::ProtobufCommanderConfig& pb_commander_config,
     WStackedWidget* commands_div,
     WContainerWidget* parent /*=0*/)
     : WGroupBox("Controls", parent),
-      moos_node_(moos_node),
+      goby_thread_(goby_thread),
       pb_commander_config_(pb_commander_config),
       command_label_(new WLabel("Message: ", this)),
       command_selection_(new WComboBox(this)),
@@ -387,7 +360,7 @@ void goby::common::LiaisonCommander::ControlsContainer::switch_command(int selec
 
     if(!commands_.count(protobuf_name))
     {
-        CommandContainer* new_command = new CommandContainer(moos_node_,
+        CommandContainer* new_command = new CommandContainer(goby_thread_,
                                                              pb_commander_config_,
                                                              protobuf_name,
                                                              &session_);
@@ -454,12 +427,8 @@ void goby::common::LiaisonCommander::ControlsContainer::send_message()
 
     if (dialog.exec() == WDialog::Accepted)
     {
-        std::string serialized; 
-        serialize_for_moos(&serialized, *current_command->message_);
-        moos_node_->send(CMOOSMsg(MOOS_NOTIFY, "LIAISON_COMMANDER_OUT", serialized),
-             LIAISON_INTERNAL_PUBLISH_SOCKET);
+        //        goby_thread_->interprocess().publish<liaison::groups::commander_out>(*current_command->message_);
         
-            
         CommandEntry* command_entry = new CommandEntry;
         command_entry->protobuf_name = current_command->message_->GetDescriptor()->full_name();
         command_entry->bytes.resize(current_command->message_->ByteSize());
@@ -491,13 +460,13 @@ void goby::common::LiaisonCommander::ControlsContainer::send_message()
 
 
 goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandContainer(
-    MOOSNode* moos_node,
+    goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
     const protobuf::ProtobufCommanderConfig& pb_commander_config,
     const std::string& protobuf_name,
     Dbo::Session* session)
 //    WStackedWidget* master_field_info_stack)
     : WGroupBox(protobuf_name),
-      moos_node_(moos_node),
+      goby_thread_(goby_thread),
       message_(goby::util::DynamicProtobufManager::new_protobuf_message(protobuf_name)),
       latest_time_(0),
       tree_box_(new WGroupBox("Contents", this)),
@@ -541,7 +510,7 @@ goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandCont
                                  pb_commander_config.database_width().ip_width()+
                                  pb_commander_config.database_width().time_width()+
         			 pb_commander_config.database_width().last_ack_width()+
-                                 7*(protobuf::MOOSScopeConfig::COLUMN_MAX+1),
+                                 7*(protobuf::ProtobufCommanderConfig::COLUMN_MAX+1),
                                  WLength::Auto);    
 
     
@@ -1309,17 +1278,17 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::set_ti
     if(WLineEdit* line_edit = dynamic_cast<WLineEdit*>(value_field))
     {
         boost::posix_time::ptime now;
-        if(pb_commander_config_.has_time_source_var())
-        {
-            CMOOSMsg& newest = moos_node_->newest(pb_commander_config_.time_source_var());
-            now = newest.IsDouble() ?
-                unix_double2ptime(newest.GetDouble()) :
-                unix_double2ptime(goby::util::as<double>(newest.GetString()));
-        }
-        else
-        {
+        // if(pb_commander_config_.has_time_source_var())
+        // {
+        //     CMOOSMsg& newest = moos_node_->newest(pb_commander_config_.time_source_var());
+        //     now = newest.IsDouble() ?
+        //         unix_double2ptime(newest.GetDouble()) :
+        //         unix_double2ptime(goby::util::as<double>(newest.GetString()));
+        // }
+        // else
+        //        {
             now = goby_time();
-        }
+            //}
 
         const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
         latest_time_ = goby::util::as<std::uint64_t>(now);

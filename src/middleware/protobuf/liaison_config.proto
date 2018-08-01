@@ -2,6 +2,7 @@
 import "goby/common/protobuf/option_extensions.proto";
 import "goby/common/protobuf/app3.proto";
 import "goby/middleware/protobuf/interprocess_config.proto";
+import "goby/acomms/protobuf/network_ack.proto";
 
 package goby.common.protobuf;
 
@@ -26,8 +27,66 @@ message LiaisonConfig
 
     optional string upper_right_logo = 19 [(goby.field).description="Image for upper right, relative to docroot"];
     optional string upper_right_logo_link = 20 [(goby.field).description="Hyperlink for upper right image"];
-    
+
+    // Middleware - 900 to 1000
     // MOOS - 1000 to 1099
     // DRC -  1100 
-    extensions 1000 to max;
+    extensions 900 to max;
+}
+
+extend goby.common.protobuf.LiaisonConfig
+{
+  optional ProtobufCommanderConfig pb_commander_config = 900;
+}
+
+message ProtobufCommanderConfig
+{
+  repeated string load_protobuf_name = 1;
+  
+  optional int32 value_width_pixels = 10 [default = 500];
+  optional int32 modify_width_pixels = 11 [default = 100];
+
+  optional string sqlite3_database = 20 [default = "/tmp/liaison_commander_autosave.db"];  
+  optional int32 database_pool_size = 21 [default=10];
+  optional int32 database_view_height = 5  [default=400];
+
+  enum Column
+  {
+    @PROTOBUF_ALLOW_ALIAS@
+    COLUMN_COMMENT = 0;
+    COLUMN_NAME = 1;
+    COLUMN_IP = 2;
+    COLUMN_TIME = 3;
+    COLUMN_LAST_ACK = 4;
+    COLUMN_MAX = 4;
+  }
+  
+  message DatabaseColumnWidthPixels
+  {
+    optional int32 comment_width = 1 [default=180];
+    optional int32 name_width = 2 [default=180];
+    optional int32 ip_width = 3 [default=120];
+    optional int32 time_width = 4 [default=120];
+    optional int32 last_ack_width = 5 [default=120];
+  }
+  optional DatabaseColumnWidthPixels database_width = 22;
+
+  message ModalDialogDimensions
+  {
+    optional int32 width = 1 [default = 800];
+    optional int32 height = 2 [default = 200];
+  }
+  optional ModalDialogDimensions modal_dimensions = 23;
+  
+  repeated string subscription = 30;
+
+  optional string time_source_var = 40;
+
+  optional string network_ack_var = 41 [default = "ACOMMS_NETWORK_ACK"];
+
+}
+message NetworkAckSet
+{
+  optional uint64 newest_ack_time = 1;
+  repeated goby.acomms.protobuf.NetworkAck ack = 2;
 }

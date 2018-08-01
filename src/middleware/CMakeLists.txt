@@ -14,6 +14,7 @@ set(SRC
   transport-intervehicle.cpp
   transport-interfaces.cpp
   log.cpp
+  liaison/liaison_commander.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 

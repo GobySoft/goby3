@@ -20,7 +20,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/moos/liaison_commander.h"
 #include "goby/moos/liaison_scope.h"
 #include "goby/moos/liaison_geodesy.h"
 #include "goby/moos/liaison_acomms.h"
@@ -32,12 +31,12 @@ extern "C"
     std::vector<goby::common::LiaisonContainer*> goby_liaison_load(const goby::common::protobuf::LiaisonConfig& cfg)
     {
         
-        std::vector<goby::common::LiaisonContainer*> containers
-            ({ new goby::common::LiaisonCommander(cfg)//,
+        std::vector<goby::common::LiaisonContainer*> containers;        
+        //    ({ new goby::common::LiaisonCommander(cfg)//,
                     //               new goby::common::LiaisonScope(cfg),
                     //               new goby::common::LiaisonGeodesy(cfg),
                     //               new goby::common::LiaisonAcomms(cfg)
-                    });
+        //            });
         
         return containers;
     }

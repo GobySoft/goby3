@@ -57,10 +57,12 @@
 #include <Wt/Dbo/SqlTraits>
 #include <Wt/Dbo/WtSqlTraits>
 
-
-#include "goby/middleware/liaison_container.h"
-#include "goby/moos/moos_node.h"
-#include "goby/moos/protobuf/liaison_config.pb.h"
+#include "goby/util/as.h"
+#include "goby/common/logger.h"
+#include "goby/common/time.h"
+#include "goby/middleware/liaison/liaison_container.h"
+#include "goby/middleware/protobuf/liaison_config.pb.h"
+#include "goby/middleware/multi-thread-application.h"
 
 namespace goby
 {
@@ -110,7 +112,9 @@ namespace goby
         class LiaisonCommander : public LiaisonContainer
         {
           public:
-            LiaisonCommander(const protobuf::LiaisonConfig& cfg, Wt::WContainerWidget* parent = 0);
+            LiaisonCommander(goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
+                             const protobuf::LiaisonConfig& cfg,
+                             Wt::WContainerWidget* parent = 0);
             void loop();
             
           private:
@@ -127,7 +131,6 @@ namespace goby
 
             
           private:
-            ZeroMQService* zeromq_service_;
             const protobuf::ProtobufCommanderConfig& pb_commander_config_;
             std::set<std::string> display_subscriptions_;
             
@@ -137,7 +140,7 @@ namespace goby
             struct ControlsContainer : Wt::WGroupBox
             {
                 ControlsContainer(
-                    MOOSNode* moos_node,
+                    goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
                     const protobuf::ProtobufCommanderConfig& pb_commander_config,
                     Wt::WStackedWidget* commands_div,
                     Wt::WContainerWidget* parent = 0);
@@ -153,7 +156,7 @@ namespace goby
                 struct CommandContainer : Wt::WGroupBox
                 {
                     CommandContainer(
-                        MOOSNode* moos_node,
+                        goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
                         const protobuf::ProtobufCommanderConfig& pb_commander_config,
                         const std::string& protobuf_name,
                         Wt::Dbo::Session* session);
@@ -254,7 +257,7 @@ namespace goby
                     void handle_database_dialog(DatabaseDialogResponse response,
                                                 boost::shared_ptr<google::protobuf::Message> message);
                     
-                    MOOSNode* moos_node_;
+                    goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread_;
                     boost::shared_ptr<google::protobuf::Message> message_;
                     
                     std::map<Wt::WFormWidget*, const google::protobuf::FieldDescriptor*> time_fields_;
@@ -280,7 +283,7 @@ namespace goby
                     
                 };
                 
-                MOOSNode* moos_node_;
+                goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread_;
                 const protobuf::ProtobufCommanderConfig& pb_commander_config_;
                 std::map<std::string, int> commands_;
                 Wt::WLabel* command_label_;
