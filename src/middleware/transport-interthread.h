@@ -38,16 +38,24 @@ namespace goby
 {   
     class SubscriptionStoreBase
     {
+    private:
+        // for each thread, stores a map of Datas to SubscriptionStores so that can call poll() on all the stores
+	using StoresMap = std::unordered_map<std::type_index, std::shared_ptr<SubscriptionStoreBase>>;
+	static std::unordered_map<std::thread::id, StoresMap> stores_;
+        static std::shared_timed_mutex stores_mutex_;
+
     public:
+
         // returns number of data items posted to callbacks 
         static int poll_all(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         {
             // make a copy so that other threads can subscribe if
             // necessary in their callbacks
-            decltype(stores_) stores;
+            StoresMap stores;
             {
                 std::shared_lock<std::shared_timed_mutex> stores_lock(stores_mutex_);
-                stores = stores_;
+		if(stores_.count(thread_id))
+		    stores = stores_.at(thread_id);
             }
                 
             int poll_items = 0;
@@ -59,29 +67,32 @@ namespace goby
         static void unsubscribe_all(std::thread::id thread_id)
         {
             std::shared_lock<std::shared_timed_mutex> stores_lock(stores_mutex_);
-            for (auto const &s : stores_)
-                s.second->unsubscribe_all_groups(thread_id);
+	    if(stores_.count(thread_id))
+	    {
+		for (auto const &s : stores_.at(thread_id))
+		    s.second->unsubscribe_all_groups(thread_id);
+	    }
         }
         
     protected:
         template<typename StoreType> 
-            static void insert()
+            static void insert(std::thread::id thread_id)
         {
             // check the store, and if there isn't one for this type, create one
-            std::lock_guard<decltype(stores_mutex_)> lock(stores_mutex_);	   
+            std::lock_guard<decltype(stores_mutex_)> lock(stores_mutex_);
+
+	    if(!stores_.count(thread_id))
+		stores_.insert(std::make_pair(thread_id, StoresMap()));
+	    
             auto index = std::type_index(typeid(StoreType));
-            if(!stores_.count(index))
-                stores_.insert(std::make_pair(index, std::shared_ptr<StoreType>(new StoreType)));
+            if(!stores_.at(thread_id).count(index))
+                stores_.at(thread_id).insert(std::make_pair(index, std::shared_ptr<StoreType>(new StoreType)));
         }
         
     protected:
         virtual int poll(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) = 0;
         virtual void unsubscribe_all_groups(std::thread::id thread_id) = 0;
 
-    private:
-        // stores a map of Datas to SubscriptionStores so that can call poll() on all the stores
-        static std::unordered_map<std::type_index, std::shared_ptr<SubscriptionStoreBase>> stores_;
-        static std::shared_timed_mutex stores_mutex_;
     };
 
 
@@ -127,7 +138,7 @@ namespace goby
             }
             
             // try inserting a copy of this templated class via the base class for SubscriptionStoreBase::poll_all to use
-            SubscriptionStoreBase::insert<SubscriptionStore<Data>>();
+            SubscriptionStoreBase::insert<SubscriptionStore<Data>>(thread_id);
         }
 
         static void unsubscribe(const Group& group, std::thread::id thread_id)
