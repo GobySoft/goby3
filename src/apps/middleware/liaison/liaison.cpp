@@ -74,8 +74,8 @@ int main(int argc, char* argv[])
     return return_value;
 }
 
-goby::common::Liaison::Liaison() :
-    MultiThreadApplication<protobuf::LiaisonConfig>(10*boost::units::si::hertz)
+goby::common::Liaison::Liaison()
+    //    : MultiThreadApplication<protobuf::LiaisonConfig>(10*boost::units::si::hertz)
 {
     // load all shared libraries
     for(int i = 0, n = cfg().load_shared_library_size(); i < n; ++i)

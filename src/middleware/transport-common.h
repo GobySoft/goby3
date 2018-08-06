@@ -27,6 +27,7 @@
 #include <unordered_map>
 #include <chrono>
 #include <regex>
+#include <thread>
 
 #include "goby/util/binary.h"
 #include "goby/common/exception.h"
@@ -93,6 +94,11 @@ namespace goby
 
         enum class SubscriptionAction {SUBSCRIBE, UNSUBSCRIBE};
         virtual SubscriptionAction action() const = 0;
+
+        std::thread::id thread_id() const { return thread_id_; }
+        
+    private:
+        const std::thread::id thread_id_ { std::this_thread::get_id() };
     };
 
     inline bool operator==(const SerializationSubscriptionBase& s1, const SerializationSubscriptionBase& s2)
@@ -190,13 +196,12 @@ namespace goby
         const std::string type_name_;
         const Group group_;
     };
-    
 
     class SerializationSubscriptionRegex 
     {
     public:
         typedef std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> HandlerType;
-        
+
         SerializationSubscriptionRegex(HandlerType& handler,
                                        const std::set<int>& schemes,
                                        const std::string& type_regex = ".*",
@@ -225,14 +230,25 @@ namespace goby
             }
         }
 
+        std::thread::id thread_id() const { return thread_id_; }
         
     private:
         HandlerType handler_;
         const std::set<int> schemes_;
         std::regex type_regex_;
         std::regex group_regex_;
+        const std::thread::id thread_id_ { std::this_thread::get_id() };
     };
 
+    class SerializationUnSubscribeAll
+    {
+    public:
+        std::thread::id thread_id() const { return thread_id_; }
+        
+    private:
+        const std::thread::id thread_id_ { std::this_thread::get_id() };
+    };
+    
     
 }
 namespace std

@@ -105,6 +105,9 @@ namespace goby
 
         ~InterProcessPortal()
         {
+            // unsubscribe all before shutting down ZMQ so that when this is called from ~InterProcessTransporterBase, we don't call ZMQ
+            _unsubscribe_all();
+            
             if(zmq_thread_)
 	    {
 		zmq_main_.reader_shutdown();
@@ -122,11 +125,13 @@ namespace goby
 
             using goby::protobuf::SerializerTransporterData;
             Base::inner_.template subscribe<Base::forward_group_, SerializerTransporterData>([this](std::shared_ptr<const SerializerTransporterData> d) { _receive_publication_forwarded(d);});
-            
+
             Base::inner_.template subscribe<Base::forward_group_, SerializationSubscriptionBase>([this](std::shared_ptr<const SerializationSubscriptionBase> s) { _receive_subscription_forwarded(s); });
 
             Base::inner_.template subscribe<Base::forward_group_, SerializationSubscriptionRegex>([this](std::shared_ptr<const SerializationSubscriptionRegex> s) { _receive_regex_subscription_forwarded(s); });
             
+            Base::inner_.template subscribe<Base::forward_group_, SerializationUnSubscribeAll>([this](std::shared_ptr<const SerializationUnSubscribeAll> s) { _unsubscribe_all(s->thread_id()); });
+
 
             // start zmq read thread
 	    zmq_thread_.reset(new std::thread([this](){ zmq_read_thread_.run(); }));
@@ -170,9 +175,9 @@ namespace goby
                                                             group,
                                                             [=](const Data&d) { return group; })); 
 
-            auto sub_it = subscriptions_.insert(std::make_pair(identifier, subscription));
-            local_subscription_identifiers_.insert(std::make_pair(identifier, sub_it));
-	    zmq_main_.subscribe(identifier);
+            if(forwarder_subscriptions_.count(identifier) == 0 && portal_subscriptions_.count(identifier) == 0)
+                zmq_main_.subscribe(identifier);
+            portal_subscriptions_.insert(std::make_pair(identifier, subscription));
         }
 
 
@@ -180,29 +185,59 @@ namespace goby
             void _unsubscribe(const Group& group)
         {
             std::string identifier = _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+
+            portal_subscriptions_.erase(identifier);
+
+            // If no forwarded subscriptions, do the actual unsubscribe
+            if(forwarder_subscriptions_.count(identifier) == 0)
+                zmq_main_.unsubscribe(identifier);
             
-            auto range = local_subscription_identifiers_.equal_range(identifier);
-            for (auto it = range.first; it != range.second;)
+        }
+
+        void _unsubscribe_all(const std::thread::id thread_id = std::this_thread::get_id())
+        {
+            // portal unsubscribe
+            if(thread_id == std::this_thread::get_id())
             {
-                subscriptions_.erase(it->second);
-                it = local_subscription_identifiers_.erase(it);
+                for(const auto& p : portal_subscriptions_)
+                {
+                    const auto& identifier = p.first;
+                    if(forwarder_subscriptions_.count(identifier) == 0)
+                        zmq_main_.unsubscribe(identifier);
+                }
+                portal_subscriptions_.clear();
+            }
+            else // forwarder unsubscribe
+            {
+                while(forwarder_subscription_identifiers_[thread_id].size() > 0)
+                    _forwarder_unsubscribe(thread_id, forwarder_subscription_identifiers_[thread_id].begin()->first);
             }
 
-            if(forwarded_subscription_identifiers_.count(identifier) == 0)
+            // regex
+            if(regex_subscriptions_.size() > 0)
             {
-                zmq_main_.unsubscribe(identifier);
+                regex_subscriptions_.erase(thread_id);
+                if(regex_subscriptions_.empty())
+                    zmq_main_.unsubscribe("/");
             }
-            
         }
         
 
         void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> f,
                               const std::set<int>& schemes,
-                              const std::string& type_regex = ".*",
-                              const std::string& group_regex = ".*")
+                              const std::string& type_regex,
+                              const std::string& group_regex)
         {
-            regex_subscriptions_.insert(std::shared_ptr<SerializationSubscriptionRegex>(new SerializationSubscriptionRegex(f, schemes, type_regex, group_regex)));
-            zmq_main_.subscribe("/");
+            auto new_sub = std::make_shared<SerializationSubscriptionRegex>(f, schemes, type_regex, group_regex);
+            _subscribe_regex(new_sub);
+        }
+
+        void _subscribe_regex(std::shared_ptr<const SerializationSubscriptionRegex> new_sub)
+        {
+            if(regex_subscriptions_.empty())
+                zmq_main_.subscribe("/");
+
+            regex_subscriptions_.insert(std::make_pair(new_sub->thread_id(), new_sub));
         }
         
         
@@ -218,17 +253,25 @@ namespace goby
                 {
 		    ++items;
 		    if(lock) lock.reset();
+
+                    const auto& data = control_msg.received_data();
+                        
+                    std::string group;
+                    int scheme;
+                    std::string type;
+                    int process;
+                    std::size_t thread;
+                    std::tie(group, scheme, type, process, thread) = parse_identifier(data);
+                    std::string identifier = _make_identifier(type, scheme, group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+
                     // build a set so if any of the handlers unsubscribes, we still have a pointer to the SerializationSubscriptionBase
                     std::vector<std::weak_ptr<const SerializationSubscriptionBase>> subs_to_post;
-		    for(auto &sub : subscriptions_)
-		    {
-			const auto& data = control_msg.received_data();
-			if(data.size() >= sub.first.size() && memcmp(&data[0], sub.first.data(), sub.first.size()) == 0)
-                        {
-                            subs_to_post.push_back(sub.second);
-                        }
-                        
-		    }
+                    auto portal_range = portal_subscriptions_.equal_range(identifier);
+                    for(auto it = portal_range.first; it != portal_range.second; ++it)
+                        subs_to_post.push_back(it->second);
+                    auto forwarder_it = forwarder_subscriptions_.find(identifier);
+                    if(forwarder_it != forwarder_subscriptions_.end())
+                        subs_to_post.push_back(forwarder_it->second);                    
 
                     // actually post the data
                     {
@@ -244,19 +287,9 @@ namespace goby
                     
                     if(!regex_subscriptions_.empty())
                     {
-			const auto& data = control_msg.received_data();
-                        
-                        std::string group;
-                        int scheme;
-                        std::string type;
-                        int process;
-                        std::size_t thread;
-                        std::tie(group, scheme, type, process, thread) = parse_identifier(data);
                         auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
-                        
                         for(auto& sub : regex_subscriptions_)
-                            sub->post(null_delim_it+1, data.end(), scheme, type, group);
-                        
+                            sub.second->post(null_delim_it+1, data.end(), scheme, type, group);
                     }
                 }
                 break;
@@ -283,39 +316,67 @@ namespace goby
             {
                 case SerializationSubscriptionBase::SubscriptionAction::SUBSCRIBE:
                 {
-                    // only insert once or each thread that subscribes will add another copy for everyone
-                    if(forwarded_subscription_identifiers_.count(identifier) == 0)
+                    // insert if this thread hasn't already subscribed
+                    if(forwarder_subscription_identifiers_[subscription->thread_id()].count(identifier) == 0)
                     {
-                        auto sub_it = subscriptions_.insert(std::make_pair(identifier, subscription));
-                        forwarded_subscription_identifiers_.insert(std::make_pair(identifier, sub_it));
-                        zmq_main_.subscribe(identifier);
+                        // first to subscribe from a Forwarder
+                        if(forwarder_subscriptions_.count(identifier) == 0)
+                        {
+                            // first to subscribe (locally or forwarded)
+                            if(portal_subscriptions_.count(identifier) == 0)
+                                zmq_main_.subscribe(identifier);
+
+                            // create Forwarder subscription
+                            forwarder_subscriptions_.insert(std::make_pair(identifier, subscription));
+                        }
+                        forwarder_subscription_identifiers_[subscription->thread_id()].insert(std::make_pair(identifier, forwarder_subscriptions_.find(identifier)));
                     }
                 }
                 break;
 
                 case SerializationSubscriptionBase::SubscriptionAction::UNSUBSCRIBE:
                 {
-                    auto it = forwarded_subscription_identifiers_.find(identifier);
-                    if(it != forwarded_subscription_identifiers_.end())
-                    {
-                        subscriptions_.erase(it->second);
-                        forwarded_subscription_identifiers_.erase(it);
-
-                        // do the actual unsubscribe if we aren't subscribe locally
-                        if(local_subscription_identifiers_.count(identifier) == 0)
-                            zmq_main_.unsubscribe(identifier);
-
-                        
-                    }
+                    _forwarder_unsubscribe(subscription->thread_id(), identifier);
                 }
                 break;
             }
         }
 
+        void _forwarder_unsubscribe(std::thread::id thread_id, const std::string& identifier)
+        {
+            auto it = forwarder_subscription_identifiers_[thread_id].find(identifier);
+            if(it != forwarder_subscription_identifiers_[thread_id].end())
+            {
+                forwarder_subscription_identifiers_[thread_id].erase(it);
+
+                bool no_forwarder_subscribers = true;
+                for(const auto& p : forwarder_subscription_identifiers_)
+                {
+                    if(p.second.count(identifier) != 0)
+                    {
+                        no_forwarder_subscribers = false;
+                        break;
+                    }
+                }
+
+                // if no Forwarder subscriptions left
+                if(no_forwarder_subscribers)
+                {
+                    // erase the Forwarder subscription
+                    forwarder_subscriptions_.erase(it->second);
+
+                    // do the actual unsubscribe if we aren't subscribe locally as well
+                    if(portal_subscriptions_.count(identifier) == 0)
+                        zmq_main_.unsubscribe(identifier);
+                }
+            }
+        }
+        
+
+        
         void _receive_regex_subscription_forwarded(std::shared_ptr<const SerializationSubscriptionRegex> subscription)
         {
-            regex_subscriptions_.insert(subscription);
-            zmq_main_.subscribe("/");
+            _subscribe_regex(subscription);
         }
         
         enum class IdentifierWildcard { NO_WILDCARDS,
@@ -404,11 +465,12 @@ namespace goby
 	ZMQReadThread zmq_read_thread_;       
                 
         // maps identifier to subscription
-        std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase>> subscriptions_;
-        std::unordered_map<std::string, typename decltype(subscriptions_)::const_iterator> forwarded_subscription_identifiers_;
-        std::unordered_multimap<std::string, typename decltype(subscriptions_)::const_iterator> local_subscription_identifiers_;
+        std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase>> portal_subscriptions_;
+        // only one subscription for each forwarded identifier
+        std::unordered_map<std::string, std::shared_ptr<const SerializationSubscriptionBase>> forwarder_subscriptions_;
+        std::unordered_map<std::thread::id, std::unordered_map<std::string, typename decltype(forwarder_subscriptions_)::const_iterator>> forwarder_subscription_identifiers_;
 
-        std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
+        std::unordered_multimap<std::thread::id, std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
         std::string process_ {std::to_string(getpid())};
         std::unordered_map<int, std::string> schemes_;
         std::unordered_map<std::thread::id, std::string> threads_;

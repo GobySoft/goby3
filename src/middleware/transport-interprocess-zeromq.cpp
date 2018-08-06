@@ -254,10 +254,11 @@ void goby::ZMQReadThread::control_data(const zmq::message_t& zmq_msg)
         case protobuf::InprocControl::UNSUBSCRIBE:
 	{
 	    auto& zmq_filter = control_msg.subscription_identifier();
+	    glog.is(DEBUG2) &&
+		glog << "unsubscribing with identifier: [" << zmq_filter << "]" << std::endl ;
+
 	    subscribe_socket_.setsockopt(ZMQ_UNSUBSCRIBE, zmq_filter.c_str(), zmq_filter.size());
 	    
-	    glog.is(DEBUG2) &&
-		glog << "unsubscribed with identifier: [" << zmq_filter << "]" << std::endl ;
 	    break;	   
 	}
         case protobuf::InprocControl::SHUTDOWN:

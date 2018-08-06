@@ -81,6 +81,12 @@ namespace goby
                 check_validity<group>();
                 static_cast<Transporter*>(this)->template unsubscribe_dynamic<Data, scheme>(group);
             }
+
+        void unsubscribe_all()
+        {
+            static_cast<Transporter*>(this)->template unsubscribe_all();
+        }
+        
         
         InnerTransporter& inner()
         {

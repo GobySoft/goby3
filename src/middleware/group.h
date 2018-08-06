@@ -42,6 +42,7 @@ namespace goby
             if(c_ != nullptr) return std::string(c_);
             else return std::to_string(i_);
         }
+
         
     protected:
 	void set_c_str(const char* c) { c_ = c; }

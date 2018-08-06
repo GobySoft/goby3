@@ -54,6 +54,11 @@ namespace goby
             inner_(*inner_ptr)
             { }
 
+        virtual ~InterProcessTransporterBase()
+        {
+            unsubscribe_all();
+        }
+        
 	template<typename Data>
 	    static constexpr int scheme()
 	{ return goby::scheme<Data>(); }
@@ -104,6 +109,10 @@ namespace goby
             static_cast<Derived*>(this)->template _unsubscribe<Data, scheme>(group);
         }
 
+        void unsubscribe_all()
+        {
+            static_cast<Derived*>(this)->template _unsubscribe_all();
+        }
         
         // Wildcards
         void subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> f,
@@ -195,6 +204,12 @@ namespace goby
 
             Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase>(unsubscription);
         }
+
+        void _unsubscribe_all()
+        {
+            SerializationUnSubscribeAll all;
+            Base::inner_.template publish<Base::forward_group_, SerializationUnSubscribeAll>(all);
+        }
         
         
         void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> f,
@@ -211,6 +226,7 @@ namespace goby
                     forwarded_data->set_data(std::string(data.begin(), data.end()));
                     Base::inner_.template publish<Base::regex_group_, goby::protobuf::SerializerTransporterData>(forwarded_data);
                 };
+            
             typename SerializationSubscriptionRegex::HandlerType inner_publication_function(inner_publication_lambda);
 
             auto portal_subscription = std::shared_ptr<SerializationSubscriptionRegex>(

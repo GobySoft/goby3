@@ -83,16 +83,19 @@ void goby::common::LiaisonCommander::display_notify_subscription(
     const std::vector<unsigned char>& data,
     int scheme,
     const std::string& type,
-    const Group& group)
+    const std::string& group)
 {      
-    //    WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
-    
-    //    new WText("Message: " + goby::util::as<std::string>(controls_div_->incoming_message_stack_->children().size()), new_div);
+    WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
 
-    //    WGroupBox* box = new WGroupBox(type + "/" + group + " @ " +
-    //                                   boost::posix_time::to_simple_string(
-    //                                       goby::time::to_ptime(goby::time::now())),
-    //                                   new_div);
+    goby::glog.is_debug1() && goby::glog << "wt group: " << group << std::endl;
+
+    
+    new WText("Message: " + goby::util::as<std::string>(controls_div_->incoming_message_stack_->children().size()), new_div);
+
+    WGroupBox* box = new WGroupBox(type + "/" + group + " @ " +
+                                   boost::posix_time::to_simple_string(
+                                       goby::time::to_ptime(goby::time::now())),
+                                   new_div);
 
     try
     {
@@ -101,18 +104,18 @@ void goby::common::LiaisonCommander::display_notify_subscription(
 
         glog.is(DEBUG1) && glog << "Received notify msg: " << pb_msg->ShortDebugString() << std::endl;
         
-    //     new WText("<pre>" + pb_msg->DebugString() + "</pre>", box);
+        new WText("<pre>" + pb_msg->DebugString() + "</pre>", box);
         
-    //     WPushButton* minus = new WPushButton("-", new_div);
-    //     WPushButton* plus = new WPushButton("+", new_div);
+        WPushButton* minus = new WPushButton("-", new_div);
+        WPushButton* plus = new WPushButton("+", new_div);
 
-    //     WPushButton* remove = new WPushButton("x", new_div);
-    //     remove->setFloatSide(Wt::Right);
+        WPushButton* remove = new WPushButton("x", new_div);
+        remove->setFloatSide(Wt::Right);
 
-    //     plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
-    //     minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);    
-    //     remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
-    //     controls_div_->incoming_message_stack_->setCurrentIndex(controls_div_->incoming_message_stack_->children().size()-1);
+        plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
+        minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);    
+        remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
+        controls_div_->incoming_message_stack_->setCurrentIndex(controls_div_->incoming_message_stack_->children().size()-1);
 
     }
     catch(const std::exception& e)
