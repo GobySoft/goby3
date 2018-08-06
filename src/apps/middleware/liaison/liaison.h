@@ -60,6 +60,8 @@ namespace goby
             friend class LiaisonWtThread;
           private:
             Wt::WServer wt_server_;
+            bool terminating_ {false};
+            std::function<void()> expire_sessions_;
         };
 
     }

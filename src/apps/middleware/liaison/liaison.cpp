@@ -28,6 +28,7 @@
 #include <Wt/WStackedWidget>
 #include <Wt/WImage>
 #include <Wt/WAnchor>
+#include <Wt/WIOService>
 
 #include "goby/common/time.h"
 #include "goby/util/dynamic_protobuf_manager.h"
@@ -170,6 +171,22 @@ goby::common::Liaison::Liaison()
     {
         glog.is(DIE) && glog << "Could not start Wt HTTP server. Exception: " << e.what() << std::endl;
     }
+
+
+    // clean up sessions if there are none
+    // see https://redmine.webtoolkit.eu/boards/2/topics/5614?r=5615#message-5615
+    expire_sessions_= [=]()
+        {
+            int seconds = 10;
+            if(!terminating_)
+            {
+                Wt::WServer::instance()->ioService().schedule(
+                    seconds * 1000, expire_sessions_);
+            }
+            wt_server_.expireSessions();
+        };
+    
+    expire_sessions_();
 }
 
 void goby::common::Liaison::load_proto_file(const std::string& path)
