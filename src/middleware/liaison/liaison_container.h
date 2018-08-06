@@ -28,6 +28,9 @@
 #include <Wt/WColor>
 
 #include "goby/middleware/protobuf/liaison_config.pb.h"
+#include "goby/middleware/group.h"
+#include "goby/middleware/multi-thread-application.h"
+
 
 namespace goby
 {
@@ -52,9 +55,8 @@ namespace goby
         
         class LiaisonContainer : public Wt::WContainerWidget
         {
-          public:
-          LiaisonContainer(Wt::WContainerWidget* parent)
-              : Wt::WContainerWidget(parent)
+        public:
+            LiaisonContainer()
             {
                 setStyleClass("fill");
                 /* addWidget(new Wt::WText("<hr/>")); */
@@ -63,7 +65,7 @@ namespace goby
             }
             
             virtual ~LiaisonContainer()
-            { }            
+            { }  
             
             void set_name(const Wt::WString& name)
             {
@@ -81,6 +83,109 @@ namespace goby
             Wt::WText name_;
         };        
 
+        template<typename Derived, typename GobyThread>
+            class LiaisonContainerWithComms : public LiaisonContainer
+        {
+        public:
+        LiaisonContainerWithComms(const protobuf::LiaisonConfig& cfg)
+            {
+                static std::atomic<int> index(0);
+                index_ = index++;
+                
+                // copy configuration 
+                auto thread_lambda = [this, cfg]()
+                    {
+                        {
+                            std::lock_guard<std::mutex> l(goby_thread_mutex);        
+                            goby_thread_ = std::make_unique<GobyThread>(static_cast<Derived*>(this), cfg, index_);
+                        }
+                        
+                        try { goby_thread_->run(thread_alive_); }
+                        catch(...) { thread_exception_ = std::current_exception(); }
+                    };
+
+                thread_ = std::unique_ptr<std::thread>(new std::thread(thread_lambda));
+
+                // wait for thread to be created
+                while(goby_thread() == nullptr)
+                    usleep(1000);
+            }
+            
+            virtual ~LiaisonContainerWithComms()
+            {
+                thread_alive_ = false;
+                thread_->join();
+                
+                if(thread_exception_)
+                {
+                    goby::glog.is_warn() && goby::glog << "Comms thread had an uncaught exception" << std::endl;
+                    std::rethrow_exception(thread_exception_);
+                }
+                
+            }
+
+            void post_to_wt(std::function<void()> func)
+            {
+                std::lock_guard<std::mutex> l(comms_to_wt_mutex);
+                comms_to_wt_queue.push(func);
+            }
+
+            void process_from_wt()
+            {
+                std::lock_guard<std::mutex> l(wt_to_comms_mutex);                
+                while(!wt_to_comms_queue.empty())
+                {
+                    wt_to_comms_queue.front()();
+                    wt_to_comms_queue.pop();
+                }
+            }
+            
+            
+        protected:
+            GobyThread* goby_thread() 
+            {
+                std::lock_guard<std::mutex> l(goby_thread_mutex);
+                return goby_thread_.get();
+            }
+
+            void post_to_comms(std::function<void()> func)
+            {
+                std::lock_guard<std::mutex> l(wt_to_comms_mutex);                
+                wt_to_comms_queue.push(func);
+            }
+            
+            void process_from_comms()
+            {
+                std::lock_guard<std::mutex> l(comms_to_wt_mutex);                
+                while(!comms_to_wt_queue.empty())
+                {
+                    comms_to_wt_queue.front()();
+                    comms_to_wt_queue.pop();
+                }
+            }
+
+            
+          private:
+
+            // for comms
+            std::mutex comms_to_wt_mutex;
+            std::queue<std::function<void ()>> comms_to_wt_queue;
+            std::mutex wt_to_comms_mutex;
+            std::queue<std::function<void ()>> wt_to_comms_queue;
+
+            // only protects the unique_ptr, not the underlying thread
+            std::mutex goby_thread_mutex;
+            std::unique_ptr<GobyThread> goby_thread_ { nullptr };
+
+            int index_;
+            std::unique_ptr<std::thread> thread_;
+            std::atomic<bool> thread_alive_ {true};
+            std::exception_ptr thread_exception_;
+
+            
+        };        
+
+        
     }
 }
 #endif

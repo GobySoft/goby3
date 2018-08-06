@@ -74,7 +74,8 @@ int main(int argc, char* argv[])
     return return_value;
 }
 
-goby::common::Liaison::Liaison()
+goby::common::Liaison::Liaison() :
+    MultiThreadApplication<protobuf::LiaisonConfig>(10*boost::units::si::hertz)
 {
     // load all shared libraries
     for(int i = 0, n = cfg().load_shared_library_size(); i < n; ++i)
@@ -169,7 +170,6 @@ goby::common::Liaison::Liaison()
     {
         glog.is(DIE) && glog << "Could not start Wt HTTP server. Exception: " << e.what() << std::endl;
     }
-
 }
 
 void goby::common::Liaison::load_proto_file(const std::string& path)
@@ -193,7 +193,10 @@ void goby::common::Liaison::load_proto_file(const std::string& path)
 
 
 void goby::common::Liaison::loop()
-{
+{    
+
+    glog.is(DEBUG1) && glog << "Liaison loop()" << std::endl;
+    
     // static int i = 0;
     // i++;
     // if(i > (20 * this->loop_frequency_hertz()))

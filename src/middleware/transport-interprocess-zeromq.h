@@ -256,6 +256,7 @@ namespace goby
                         
                         for(auto& sub : regex_subscriptions_)
                             sub->post(null_delim_it+1, data.end(), scheme, type, group);
+                        
                     }
                 }
                 break;

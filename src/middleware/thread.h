@@ -114,7 +114,6 @@ namespace goby
         double loop_frequency_hertz() { return loop_frequency_/boost::units::si::hertz; }
         decltype(loop_frequency_) loop_frequency() { return loop_frequency_; }
         double loop_max_frequency() { return std::numeric_limits<double>::infinity(); }
-        
         void run_once();
 
         TransporterType& transporter() { return *transporter_; }

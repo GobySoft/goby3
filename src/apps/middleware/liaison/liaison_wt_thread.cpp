@@ -40,11 +40,11 @@ using goby::glog;
 using namespace Wt;    
 using namespace goby::common::logger;
 
-goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, const protobuf::LiaisonConfig& app_cfg)
+goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, protobuf::LiaisonConfig app_cfg)
     : Wt::WApplication(env),
-      goby::SimpleThread<protobuf::LiaisonConfig>(app_cfg, 10*boost::units::si::hertz)
+      app_cfg_(app_cfg)
 {
-    Wt::WString title_text("goby liaison: " + cfg().interprocess().platform());
+    Wt::WString title_text("goby liaison: " + app_cfg_.interprocess().platform());
     setTitle(title_text);
 
     useStyleSheet(std::string("css/fonts.css?" + common::goby_file_timestamp()));
@@ -69,7 +69,7 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, cons
     goby_logo_a->setStyleClass("no_ul");
     goby_logo_a->setTarget(TargetNewWindow);
 
-    if(!cfg().has_upper_right_logo())
+    if(!app_cfg_.has_upper_right_logo())
     {
         WImage* goby_lp_image = new WImage("images/mit-logo.gif");
         WAnchor* goby_lp_image_a = new WAnchor("http://lamss.mit.edu", goby_lp_image, header_div);
@@ -79,9 +79,9 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, cons
     }
     else
     {
-        WImage* goby_lp_image = new WImage(cfg().upper_right_logo());
-        WAnchor* goby_lp_image_a = new WAnchor(cfg().has_upper_right_logo_link() ?
-                                               cfg().upper_right_logo_link() : "", goby_lp_image, header_div);
+        WImage* goby_lp_image = new WImage(app_cfg_.upper_right_logo());
+        WAnchor* goby_lp_image_a = new WAnchor(app_cfg_.has_upper_right_logo_link() ?
+                                               app_cfg_.upper_right_logo_link() : "", goby_lp_image, header_div);
         goby_lp_image_a->setId("lp_logo");
         goby_lp_image_a->setStyleClass("no_ul");
         goby_lp_image_a->setTarget(TargetNewWindow);
@@ -108,11 +108,11 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, cons
     menu_->setInternalPathEnabled();
     menu_->setInternalBasePath("/");
     
-    add_to_menu(menu_, new LiaisonHome(this));
-    add_to_menu(menu_, new LiaisonCommander(this, cfg()));
+    add_to_menu(menu_, new LiaisonHome);
+    add_to_menu(menu_, new LiaisonCommander(app_cfg_));
 
 
-    using liaison_load_func = std::vector<goby::common::LiaisonContainer*> (*)(goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread, const goby::common::protobuf::LiaisonConfig& cfg);
+    using liaison_load_func = std::vector<goby::common::LiaisonContainer*> (*)(const goby::common::protobuf::LiaisonConfig& cfg);
 
     for(int i = 0, n = Liaison::plugin_handles_.size(); i < n; ++i)
     {
@@ -120,7 +120,7 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, cons
             
         if(liaison_load_ptr)
         {
-            std::vector<goby::common::LiaisonContainer*> containers = (*liaison_load_ptr)(this, cfg());
+            std::vector<goby::common::LiaisonContainer*> containers = (*liaison_load_ptr)(app_cfg_);
             for(int j = 0, m = containers.size(); j< m; ++j)
                 add_to_menu(menu_, containers[j]);
         }

@@ -23,6 +23,7 @@
 #define LIAISON20110609H
 
 #include <google/protobuf/descriptor.h>
+#include <mutex>
 
 #include <Wt/WEnvironment>
 #include <Wt/WApplication>
@@ -41,6 +42,7 @@ namespace goby
 {
     namespace common
     {
+
         class Liaison : public MultiThreadApplication<protobuf::LiaisonConfig>
         {
           public:
@@ -51,6 +53,7 @@ namespace goby
 
             static std::vector<void *> plugin_handles_;
 
+            
           private:
             void load_proto_file(const std::string& path);
             

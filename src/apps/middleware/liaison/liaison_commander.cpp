@@ -60,22 +60,14 @@ const std::string STRIPE_ODD_CLASS = "odd";
 const std::string STRIPE_EVEN_CLASS = "even";
 
 
-goby::common::LiaisonCommander::LiaisonCommander(goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
-                                                 const protobuf::LiaisonConfig& cfg,
-                                                 WContainerWidget* parent)
-    : LiaisonContainer(parent),
-      pb_commander_config_(cfg.pb_commander_config()),
+goby::common::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonConfig& cfg)
+    : LiaisonContainerWithComms<LiaisonCommander, CommanderCommsThread>(cfg),
+    pb_commander_config_(cfg.pb_commander_config()),
       commands_div_(new WStackedWidget),
-      controls_div_(new ControlsContainer(goby_thread, pb_commander_config_, commands_div_, this))
+    controls_div_(new ControlsContainer(pb_commander_config_, commands_div_, this))
 {
     addWidget(commands_div_);    
-    
-    //for(int i = 0, n = pb_commander_config_.subscription_size(); i < n; ++i)
-    //{
-    //    display_subscriptions_.insert(pb_commander_config_.subscription(i));
-    //    subscribe(pb_commander_config_.subscription(i), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
-        //    }
-    
+
     //    if(pb_commander_config_.has_time_source_var())
     //    subscribe(pb_commander_config_.time_source_var(), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
 
@@ -86,6 +78,51 @@ goby::common::LiaisonCommander::LiaisonCommander(goby::SimpleThread<protobuf::Li
 
     set_name("Commander");
 }
+
+void goby::common::LiaisonCommander::display_notify_subscription(
+    const std::vector<unsigned char>& data,
+    int scheme,
+    const std::string& type,
+    const Group& group)
+{      
+    //    WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
+    
+    //    new WText("Message: " + goby::util::as<std::string>(controls_div_->incoming_message_stack_->children().size()), new_div);
+
+    //    WGroupBox* box = new WGroupBox(type + "/" + group + " @ " +
+    //                                   boost::posix_time::to_simple_string(
+    //                                       goby::time::to_ptime(goby::time::now())),
+    //                                   new_div);
+
+    try
+    {
+        auto pb_msg = dccl::DynamicProtobufManager::new_protobuf_message<std::unique_ptr<google::protobuf::Message>>(type);
+        pb_msg->ParseFromArray(&data[0], data.size());
+
+        glog.is(DEBUG1) && glog << "Received notify msg: " << pb_msg->ShortDebugString() << std::endl;
+        
+    //     new WText("<pre>" + pb_msg->DebugString() + "</pre>", box);
+        
+    //     WPushButton* minus = new WPushButton("-", new_div);
+    //     WPushButton* plus = new WPushButton("+", new_div);
+
+    //     WPushButton* remove = new WPushButton("x", new_div);
+    //     remove->setFloatSide(Wt::Right);
+
+    //     plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
+    //     minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);    
+    //     remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
+    //     controls_div_->incoming_message_stack_->setCurrentIndex(controls_div_->incoming_message_stack_->children().size()-1);
+
+    }
+    catch(const std::exception& e)
+    {
+        glog.is(WARN) && glog << "Unhandled notify subscription: " << e.what() << std::endl;
+    }      
+       
+}
+
+
 
 // void goby::common::LiaisonCommander::moos_inbox(CMOOSMsg& msg)
 // {
@@ -130,46 +167,6 @@ goby::common::LiaisonCommander::LiaisonCommander(goby::SimpleThread<protobuf::Li
 //     }
     
     
-//     if(display_subscriptions_.count(msg.GetKey()))
-//     {
-    
-//         WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
-    
-//         new WText("Message: " + goby::util::as<std::string>(controls_div_->incoming_message_stack_->children().size()), new_div);
-
-//         WGroupBox* box = new WGroupBox(msg.GetKey() + " @ " +
-//                                        boost::posix_time::to_simple_string(
-//                                            goby::util::as<boost::posix_time::ptime>(
-//                                                msg.GetTime())),
-//                                        new_div);
-
-
-//         std::string value = msg.GetAsString();
-    
-//         std::shared_ptr<google::protobuf::Message> pb_msg =
-//             dynamic_parse_for_moos(value);
-
-//         if(pb_msg)
-//             new WText("<pre>" + pb_msg->DebugString() + "</pre>", box);
-//         else
-//             new WText(value, PlainText, box);
-        
-    
-//         WPushButton* minus = new WPushButton("-", new_div);
-//         WPushButton* plus = new WPushButton("+", new_div);
-
-//         WPushButton* remove = new WPushButton("x", new_div);
-//         remove->setFloatSide(Wt::Right);
-
-//         plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
-//         minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);    
-//         remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
-    
-
-//         controls_div_->incoming_message_stack_->setCurrentIndex(controls_div_->incoming_message_stack_->children().size()-1);
-//     }
-// }
-
 void goby::common::LiaisonCommander::ControlsContainer::increment_incoming_messages(const WMouseEvent& event)
 {
     int new_index = incoming_message_stack_->currentIndex()+1;
@@ -201,6 +198,8 @@ void goby::common::LiaisonCommander::ControlsContainer::remove_incoming_message(
 
 void goby::common::LiaisonCommander::loop()
 {
+    this->process_from_comms();
+    
     ControlsContainer::CommandContainer* current_command =
         dynamic_cast<ControlsContainer::CommandContainer*>(
             controls_div_->commands_div_->currentWidget());
@@ -224,12 +223,10 @@ void goby::common::LiaisonCommander::loop()
 }
 
 goby::common::LiaisonCommander::ControlsContainer::ControlsContainer(
-    goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
     const protobuf::ProtobufCommanderConfig& pb_commander_config,
     WStackedWidget* commands_div,
-    WContainerWidget* parent /*=0*/)
+    LiaisonCommander* parent)
     : WGroupBox("Controls", parent),
-      goby_thread_(goby_thread),
       pb_commander_config_(pb_commander_config),
       command_label_(new WLabel("Message: ", this)),
       command_selection_(new WComboBox(this)),
@@ -240,9 +237,10 @@ goby::common::LiaisonCommander::ControlsContainer::ControlsContainer(
       clear_button_(new WPushButton("Clear", buttons_div_)),
       commands_div_(commands_div),
 //      incoming_message_panel_(new Wt::WPanel(this)),
-      incoming_message_stack_(new Wt::WStackedWidget(this))
+      incoming_message_stack_(new Wt::WStackedWidget(this)),
 //      master_field_info_panel_(new Wt::WPanel(this)),
-//      master_field_info_stack_(new Wt::WStackedWidget(this))
+//      master_field_info_stack_(new Wt::WStackedWidget(this)),
+      commander_(parent)
 {
     // if we're the first thread, make the database connection
     if(!sqlite3_)
@@ -359,8 +357,7 @@ void goby::common::LiaisonCommander::ControlsContainer::switch_command(int selec
 
     if(!commands_.count(protobuf_name))
     {
-        CommandContainer* new_command = new CommandContainer(goby_thread_,
-                                                             pb_commander_config_,
+        CommandContainer* new_command = new CommandContainer(pb_commander_config_,
                                                              protobuf_name,
                                                              &session_);
         
@@ -426,9 +423,11 @@ void goby::common::LiaisonCommander::ControlsContainer::send_message()
 
     if (dialog.exec() == WDialog::Accepted)
     {
-        goby_thread_->interprocess().publish<liaison::groups::commander_out,
-                                             google::protobuf::Message,
-                                             MarshallingScheme::PROTOBUF>(current_command->message_);
+
+        commander_->post_to_comms([=]() {
+                commander_->goby_thread()->interprocess().publish<liaison::groups::commander_out,
+                                                            google::protobuf::Message,
+                                                                  MarshallingScheme::PROTOBUF>(current_command->message_); });
         
         CommandEntry* command_entry = new CommandEntry;
         command_entry->protobuf_name = current_command->message_->GetDescriptor()->full_name();
@@ -461,13 +460,11 @@ void goby::common::LiaisonCommander::ControlsContainer::send_message()
 
 
 goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandContainer(
-    goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
     const protobuf::ProtobufCommanderConfig& pb_commander_config,
     const std::string& protobuf_name,
     Dbo::Session* session)
 //    WStackedWidget* master_field_info_stack)
     : WGroupBox(protobuf_name),
-      goby_thread_(goby_thread),
       message_(goby::util::DynamicProtobufManager::new_protobuf_message<std::shared_ptr<google::protobuf::Message>>(protobuf_name)),
       latest_time_(0),
       tree_box_(new WGroupBox("Contents", this)),

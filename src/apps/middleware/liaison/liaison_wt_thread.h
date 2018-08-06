@@ -37,10 +37,10 @@ namespace goby
 {
     namespace common
     {
-        class LiaisonWtThread : public Wt::WApplication, public goby::SimpleThread<protobuf::LiaisonConfig>
+        class LiaisonWtThread : public Wt::WApplication
         {
           public:
-            LiaisonWtThread(const Wt::WEnvironment& env, const protobuf::LiaisonConfig& cfg);
+            LiaisonWtThread(const Wt::WEnvironment& env, protobuf::LiaisonConfig app_cfg);
             ~LiaisonWtThread();
                 
             LiaisonWtThread(const LiaisonWtThread&) = delete;
@@ -53,6 +53,7 @@ namespace goby
             Wt::WMenu* menu_;
             Wt::WStackedWidget* contents_stack_;
             std::map<Wt::WMenuItem*, LiaisonContainer*> menu_contents_;
+            protobuf::LiaisonConfig app_cfg_;
         };        
     }
 }

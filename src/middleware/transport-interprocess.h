@@ -230,7 +230,7 @@ namespace goby
         }
         
         void _receive_regex_data_forwarded(std::shared_ptr<const goby::protobuf::SerializerTransporterData> data)
-        {
+        {            
             const auto& bytes = data->data();
             for(auto& sub: regex_subscriptions_)
                 sub->post(bytes.begin(), bytes.end(), data->marshalling_scheme(), data->type(), data->group());

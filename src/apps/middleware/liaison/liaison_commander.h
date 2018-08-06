@@ -64,6 +64,8 @@
 #include "goby/middleware/protobuf/liaison_config.pb.h"
 #include "goby/middleware/multi-thread-application.h"
 
+#include "liaison.h"
+
 namespace goby
 {
     namespace common
@@ -107,14 +109,13 @@ namespace goby
                     Wt::Dbo::field(a, acks, "acks"); 
                }
         };
+
+        class CommanderCommsThread;
         
-        
-        class LiaisonCommander : public LiaisonContainer
+        class LiaisonCommander : public LiaisonContainerWithComms<LiaisonCommander, CommanderCommsThread>
         {
           public:
-            LiaisonCommander(goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
-                             const protobuf::LiaisonConfig& cfg,
-                             Wt::WContainerWidget* parent = 0);
+            LiaisonCommander(const protobuf::LiaisonConfig& cfg);
             void loop();
             
           private:
@@ -124,11 +125,18 @@ namespace goby
                 commander_timer_.start();
             }
 
-             void unfocus()
+            void unfocus()
             {
                 commander_timer_.stop();
             }
 
+            friend class CommanderCommsThread;
+            void display_notify_subscription(const std::vector<unsigned char>& data,
+                                             int scheme,
+                                             const std::string& type,
+                                             const Group& group);
+            
+            
             
           private:
             const protobuf::ProtobufCommanderConfig& pb_commander_config_;
@@ -139,10 +147,9 @@ namespace goby
             struct ControlsContainer : Wt::WGroupBox
             {
                 ControlsContainer(
-                    goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
                     const protobuf::ProtobufCommanderConfig& pb_commander_config,
                     Wt::WStackedWidget* commands_div,
-                    Wt::WContainerWidget* parent = 0);
+                    LiaisonCommander* parent);
                 void switch_command(int selection_index);
 
                 void clear_message();
@@ -155,7 +162,6 @@ namespace goby
                 struct CommandContainer : Wt::WGroupBox
                 {
                     CommandContainer(
-                        goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread,
                         const protobuf::ProtobufCommanderConfig& pb_commander_config,
                         const std::string& protobuf_name,
                         Wt::Dbo::Session* session);
@@ -256,7 +262,6 @@ namespace goby
                     void handle_database_dialog(DatabaseDialogResponse response,
                                                 std::shared_ptr<google::protobuf::Message> message);
                     
-                    goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread_;
                     std::shared_ptr<google::protobuf::Message> message_;
                     
                     std::map<Wt::WFormWidget*, const google::protobuf::FieldDescriptor*> time_fields_;
@@ -282,7 +287,6 @@ namespace goby
                     
                 };
                 
-                goby::SimpleThread<protobuf::LiaisonConfig>* goby_thread_;
                 const protobuf::ProtobufCommanderConfig& pb_commander_config_;
                 std::map<std::string, int> commands_;
                 Wt::WLabel* command_label_;
@@ -301,7 +305,8 @@ namespace goby
                 //               Wt::WStackedWidget* master_field_info_stack_;
 
                 Wt::Dbo::Session session_;
-                
+                LiaisonCommander* commander_;
+
             };
             
 
@@ -319,8 +324,45 @@ namespace goby
             static std::shared_ptr<Wt::Dbo::backend::Sqlite3> sqlite3_;
             static std::shared_ptr<Wt::Dbo::FixedSqlConnectionPool> connection_pool_;
             
+        };
+        
+        class CommanderCommsThread : public goby::SimpleThread<protobuf::LiaisonConfig>
+        {
+        public:
+        CommanderCommsThread(LiaisonCommander* commander, const protobuf::LiaisonConfig& config, int index) :
+            goby::SimpleThread<protobuf::LiaisonConfig>(config, 10*boost::units::si::hertz, index),
+                commander_(commander)
+            {
+                for(const auto& notify : cfg().pb_commander_config().notify_subscribe())
+                {
+                    interprocess().subscribe_regex(
+                        [this](const std::vector<unsigned char>& data, int scheme, const std::string& type, const Group& group) {
+                            commander_->post_to_wt(
+                                [=]() { commander_->display_notify_subscription(data, scheme, type, group); });
+                        },
+                        { goby::MarshallingScheme::PROTOBUF },
+                        notify.type_regex(),
+                        notify.group_regex());
+                }
+            }
+            ~CommanderCommsThread()
+            {
+            };
+
+            friend class LiaisonCommander;
+        private:
+            void loop() override
+            {
+                goby::glog.is_debug1() && goby::glog << "CommanderCommsThread " << this->index() << " loop()" << std::endl;
+                commander_->process_from_wt();
+            }
+
+        private:
+            LiaisonCommander* commander_;
             
         };
+
+        
     }
 }
 
