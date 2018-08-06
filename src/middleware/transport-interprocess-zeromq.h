@@ -180,6 +180,16 @@ namespace goby
             portal_subscriptions_.insert(std::make_pair(identifier, subscription));
         }
 
+        void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> f,
+                              const std::set<int>& schemes,
+                              const std::string& type_regex,
+                              const std::string& group_regex)
+        {
+            auto new_sub = std::make_shared<SerializationSubscriptionRegex>(f, schemes, type_regex, group_regex);
+            _subscribe_regex(new_sub);
+        }
+
+
 
         template<typename Data, int scheme>
             void _unsubscribe(const Group& group)
@@ -223,24 +233,6 @@ namespace goby
         }
         
 
-        void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type, const Group& group)> f,
-                              const std::set<int>& schemes,
-                              const std::string& type_regex,
-                              const std::string& group_regex)
-        {
-            auto new_sub = std::make_shared<SerializationSubscriptionRegex>(f, schemes, type_regex, group_regex);
-            _subscribe_regex(new_sub);
-        }
-
-        void _subscribe_regex(std::shared_ptr<const SerializationSubscriptionRegex> new_sub)
-        {
-            if(regex_subscriptions_.empty())
-                zmq_main_.subscribe("/");
-
-            regex_subscriptions_.insert(std::make_pair(new_sub->thread_id(), new_sub));
-        }
-        
-        
         int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         {
             int items = 0;
@@ -256,11 +248,8 @@ namespace goby
 
                     const auto& data = control_msg.received_data();
                         
-                    std::string group;
-                    int scheme;
-                    std::string type;
-                    int process;
-                    std::size_t thread;
+                    std::string group, type, thread;
+                    int scheme, process;
                     std::tie(group, scheme, type, process, thread) = parse_identifier(data);
                     std::string identifier = _make_identifier(type, scheme, group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
@@ -289,7 +278,11 @@ namespace goby
                     {
                         auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
                         for(auto& sub : regex_subscriptions_)
-                            sub.second->post(null_delim_it+1, data.end(), scheme, type, group);
+                        {
+                            // only post at most once, the threads will filter
+                            if(sub.second->post(null_delim_it+1, data.end(), scheme, type, group))
+                                break;
+                        }
                     }
                 }
                 break;
@@ -372,11 +365,17 @@ namespace goby
             }
         }
         
-
-        
         void _receive_regex_subscription_forwarded(std::shared_ptr<const SerializationSubscriptionRegex> subscription)
         {
             _subscribe_regex(subscription);
+        }
+        
+        void _subscribe_regex(std::shared_ptr<const SerializationSubscriptionRegex> new_sub)
+        {
+            if(regex_subscriptions_.empty())
+                zmq_main_.subscribe("/");
+
+            regex_subscriptions_.insert(std::make_pair(new_sub->thread_id(), new_sub));
         }
         
         enum class IdentifierWildcard { NO_WILDCARDS,
@@ -451,10 +450,9 @@ namespace goby
             return it_pair.first->second;
         }
 
-        std::string to_string(int i) { return std::to_string(i); }
         std::string to_string(std::thread::id i) { return std::to_string(std::hash<std::thread::id>{}(i)); }
-        
-        
+        std::string to_string(int i) { return std::to_string(i); }
+
         private:
         const protobuf::InterProcessPortalConfig& cfg_;
 

@@ -102,6 +102,11 @@ namespace goby
                         
                         try { goby_thread_->run(thread_alive_); }
                         catch(...) { thread_exception_ = std::current_exception(); }
+
+                        {
+                            std::lock_guard<std::mutex> l(goby_thread_mutex);        
+                            goby_thread_.reset();
+                        }
                     };
 
                 thread_ = std::unique_ptr<std::thread>(new std::thread(thread_lambda));

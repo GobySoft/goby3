@@ -128,7 +128,7 @@ namespace goby
         InnerTransporter& inner_;
         static constexpr Group forward_group_ { "goby::InterProcessForwarder" }; 
         static constexpr Group regex_group_ { "goby::InterProcessRegexData" };
-
+        
     private:  
         friend PollerType;
         int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
@@ -216,7 +216,7 @@ namespace goby
                               const std::set<int>& schemes,
                               const std::string& type_regex = ".*",
                               const std::string& group_regex = ".*")
-        {
+        {            
             auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme, const std::string& type, const Group& group)
                 {
                     std::shared_ptr<goby::protobuf::SerializerTransporterData> forwarded_data(new goby::protobuf::SerializerTransporterData);
@@ -246,7 +246,7 @@ namespace goby
         }
         
         void _receive_regex_data_forwarded(std::shared_ptr<const goby::protobuf::SerializerTransporterData> data)
-        {            
+        {
             const auto& bytes = data->data();
             for(auto& sub: regex_subscriptions_)
                 sub->post(bytes.begin(), bytes.end(), data->marshalling_scheme(), data->type(), data->group());

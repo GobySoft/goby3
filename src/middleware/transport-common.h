@@ -214,8 +214,9 @@ namespace goby
         
         
         // handle an incoming message
+        // return true if posted
         template<typename CharIterator>
-            void post(CharIterator bytes_begin,
+            bool post(CharIterator bytes_begin,
                       CharIterator bytes_end,
                       int scheme,
                       const std::string& type,
@@ -227,6 +228,11 @@ namespace goby
             {                
                 std::vector<unsigned char> data(bytes_begin, bytes_end);
                 handler_(data, scheme, type, goby::DynamicGroup(group));
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
 
