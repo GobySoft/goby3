@@ -203,8 +203,6 @@ namespace goby
             WtContainer* container_;
 
         };
-        
-        
     }
 }
 #endif

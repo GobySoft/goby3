@@ -34,6 +34,7 @@
 #include "liaison_wt_thread.h"
 #include "liaison_home.h"
 #include "liaison_commander.h"
+#include "liaison_scope.h"
 
 
 using goby::glog;
@@ -109,6 +110,7 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, prot
     menu_->setInternalBasePath("/");
     
     add_to_menu(menu_, new LiaisonHome);
+    add_to_menu(menu_, new LiaisonScope(app_cfg_));
     add_to_menu(menu_, new LiaisonCommander(app_cfg_));
 
 

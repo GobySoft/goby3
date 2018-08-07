@@ -29,6 +29,7 @@ message LiaisonConfig
     optional string upper_right_logo_link = 20 [(goby.field).description="Hyperlink for upper right image"];
 
     optional ProtobufCommanderConfig pb_commander_config = 900;
+    optional ProtobufScopeConfig pb_scope_config = 901;
 
     // MOOS - 1000 to 1099
     // DRC -  1100
@@ -88,6 +89,54 @@ message ProtobufCommanderConfig
     // optional string network_ack_var = 41 [default = "ACOMMS_NETWORK_ACK"];
 
 }
+
+message ProtobufScopeConfig
+{
+  repeated string subscription = 1;
+
+  enum Column
+  {
+    @PROTOBUF_ALLOW_ALIAS@
+    COLUMN_KEY = 0;
+    COLUMN_TYPE = 1;
+    COLUMN_VALUE = 2;
+    COLUMN_TIME = 3;
+    COLUMN_MAX = 3;
+    
+  }
+  
+  message ColumnWidthPixels
+  {
+    optional int32 key_width = 1 [default=150];
+    optional int32 type_width = 2 [default=150];
+    optional int32 value_width = 3 [default=400];
+    optional int32 time_width = 4 [default=150];
+  }
+  optional ColumnWidthPixels column_width = 2;
+  optional Column sort_by_column = 3 [default=COLUMN_KEY];
+  optional bool sort_ascending = 4 [default = true];
+  optional int32 scope_height = 5  [default=400];
+
+  optional Column regex_filter_column = 6 [default=COLUMN_KEY];
+  optional string regex_filter_expression = 7 [default=".*"];
+
+  
+  message HistoryConfig
+  {
+    required string key = 1;
+    optional bool show_plot = 2 [default = false];
+    optional int32 plot_width = 3 [default = 800];
+    optional int32 plot_height = 4 [default = 300];
+
+  } 
+  
+  repeated HistoryConfig history = 8;
+
+  optional int32 max_history_items = 10 [default = 100];
+
+
+}
+
 message NetworkAckSet
 {
     optional uint64 newest_ack_time = 1;

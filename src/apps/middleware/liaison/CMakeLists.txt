@@ -36,6 +36,7 @@ add_executable(goby_liaison
   liaison_home.cpp  
   liaison_wt_thread.cpp
   liaison_commander.cpp
+  liaison_scope.cpp
   )
 
 goby_find_required_package(Boost 1.40.0 COMPONENTS signals)
