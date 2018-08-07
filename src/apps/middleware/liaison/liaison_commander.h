@@ -267,6 +267,11 @@ namespace goby
                     std::map<Wt::WFormWidget*, const google::protobuf::FieldDescriptor*> time_fields_;
                     std::uint64_t latest_time_;
                     
+                    Wt::WContainerWidget* group_div_;
+                    Wt::WLabel* group_label_;
+                    Wt::WLineEdit* group_line_;
+      
+                    
                     Wt::WGroupBox* tree_box_;
                     Wt::WTreeTable* tree_table_;
 
@@ -289,8 +294,11 @@ namespace goby
                 
                 const protobuf::ProtobufCommanderConfig& pb_commander_config_;
                 std::map<std::string, int> commands_;
+
+                Wt::WContainerWidget* command_div_;
                 Wt::WLabel* command_label_;
                 Wt::WComboBox* command_selection_;
+                
                 Wt::WContainerWidget* buttons_div_;
                 Wt::WLabel* comment_label_;
                 Wt::WLineEdit* comment_line_;

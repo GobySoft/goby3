@@ -229,8 +229,9 @@ goby::common::LiaisonCommander::ControlsContainer::ControlsContainer(
     LiaisonCommander* parent)
     : WGroupBox("Controls", parent),
       pb_commander_config_(pb_commander_config),
-      command_label_(new WLabel("Message: ", this)),
-      command_selection_(new WComboBox(this)),
+      command_div_(new WContainerWidget(this)),
+      command_label_(new WLabel("Message: ", command_div_)),
+      command_selection_(new WComboBox(command_div_)),
       buttons_div_(new WContainerWidget(this)),
       comment_label_(new WLabel("Log comment: ", buttons_div_)),
       comment_line_(new WLineEdit(buttons_div_)),
@@ -294,6 +295,7 @@ goby::common::LiaisonCommander::ControlsContainer::ControlsContainer(
     comment_line_->setDisabled(true);
     
     comment_label_->setBuddy(comment_line_);
+    
     
     command_selection_->addItem("(Select a command message)");
     send_button_->clicked().connect(this, &ControlsContainer::send_message);
@@ -426,7 +428,8 @@ void goby::common::LiaisonCommander::ControlsContainer::send_message()
     {
 
         commander_->post_to_comms([=]() {
-                commander_->goby_thread()->interprocess().publish<liaison::groups::commander_out>(current_command->message_); });
+                commander_->goby_thread()->interprocess().publish_dynamic<google::protobuf::Message>(current_command->message_,
+                                                                                                     goby::DynamicGroup(current_command->group_line_->text().narrow())); });
         
         CommandEntry* command_entry = new CommandEntry;
         command_entry->protobuf_name = current_command->message_->GetDescriptor()->full_name();
@@ -466,6 +469,9 @@ goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandCont
     : WGroupBox(protobuf_name),
       message_(goby::util::DynamicProtobufManager::new_protobuf_message<std::shared_ptr<google::protobuf::Message>>(protobuf_name)),
       latest_time_(0),
+      group_div_(new WContainerWidget(this)),
+      group_label_(new WLabel("Group: ", group_div_)),
+      group_line_(new WLineEdit(group_div_)),
       tree_box_(new WGroupBox("Contents", this)),
       tree_table_(new WTreeTable(tree_box_)),
 //      field_info_stack_(new WStackedWidget(master_field_info_stack)),
