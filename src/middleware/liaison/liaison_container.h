@@ -26,6 +26,7 @@
 #include <Wt/WContainerWidget>
 #include <Wt/WText>
 #include <Wt/WColor>
+#include <Wt/WTimer>
 
 #include "goby/middleware/protobuf/liaison_config.pb.h"
 #include "goby/middleware/group.h"
@@ -183,6 +184,26 @@ namespace goby
             Wt::WTimer comms_timer_;
         };
 
+        template<typename WtContainer>
+            class LiaisonCommsThread : public goby::SimpleThread<protobuf::LiaisonConfig>
+        {
+        public:
+        LiaisonCommsThread(WtContainer* container, const protobuf::LiaisonConfig& config, int index) :
+            goby::SimpleThread<protobuf::LiaisonConfig>(config, config.update_freq()*boost::units::si::hertz, index),
+                container_(container)
+            {
+            }
+            
+            void loop() override
+            {
+                goby::glog.is_debug3() && goby::glog << "LiaisonCommsThread " << this->index() << " loop()" << std::endl;
+                container_->process_from_wt();
+            }
+        private:
+            WtContainer* container_;
+
+        };
+        
         
     }
 }

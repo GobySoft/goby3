@@ -326,11 +326,11 @@ namespace goby
             
         };
         
-        class CommanderCommsThread : public goby::SimpleThread<protobuf::LiaisonConfig>
+        class CommanderCommsThread : public LiaisonCommsThread<LiaisonCommander>
         {
         public:
         CommanderCommsThread(LiaisonCommander* commander, const protobuf::LiaisonConfig& config, int index) :
-            goby::SimpleThread<protobuf::LiaisonConfig>(config, 10*boost::units::si::hertz, index),
+            LiaisonCommsThread<LiaisonCommander>(commander, config, index),
                 commander_(commander)
             {
                 for(const auto& notify : cfg().pb_commander_config().notify_subscribe())
@@ -348,17 +348,10 @@ namespace goby
             }
             ~CommanderCommsThread()
             {
-            };
-
-            friend class LiaisonCommander;
-        private:
-            void loop() override
-            {
-                goby::glog.is_debug3() && goby::glog << "CommanderCommsThread " << this->index() << " loop()" << std::endl;
-                commander_->process_from_wt();
             }
-
+            
         private:
+            friend class LiaisonCommander;
             LiaisonCommander* commander_;
             
         };

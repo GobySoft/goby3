@@ -426,9 +426,7 @@ void goby::common::LiaisonCommander::ControlsContainer::send_message()
     {
 
         commander_->post_to_comms([=]() {
-                commander_->goby_thread()->interprocess().publish<liaison::groups::commander_out,
-                                                            google::protobuf::Message,
-                                                                  MarshallingScheme::PROTOBUF>(current_command->message_); });
+                commander_->goby_thread()->interprocess().publish<liaison::groups::commander_out>(current_command->message_); });
         
         CommandEntry* command_entry = new CommandEntry;
         command_entry->protobuf_name = current_command->message_->GetDescriptor()->full_name();
