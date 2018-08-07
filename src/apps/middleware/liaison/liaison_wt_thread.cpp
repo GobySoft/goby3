@@ -70,15 +70,7 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env, prot
     goby_logo_a->setStyleClass("no_ul");
     goby_logo_a->setTarget(TargetNewWindow);
 
-    if(!app_cfg_.has_upper_right_logo())
-    {
-        WImage* goby_lp_image = new WImage("images/mit-logo.gif");
-        WAnchor* goby_lp_image_a = new WAnchor("http://lamss.mit.edu", goby_lp_image, header_div);
-        goby_lp_image_a->setId("lp_logo");
-        goby_lp_image_a->setStyleClass("no_ul");
-        goby_lp_image_a->setTarget(TargetNewWindow);
-    }
-    else
+    if(app_cfg_.has_upper_right_logo())
     {
         WImage* goby_lp_image = new WImage(app_cfg_.upper_right_logo());
         WAnchor* goby_lp_image_a = new WAnchor(app_cfg_.has_upper_right_logo_link() ?
