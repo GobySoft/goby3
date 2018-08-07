@@ -97,7 +97,7 @@ message ProtobufScopeConfig
   enum Column
   {
     @PROTOBUF_ALLOW_ALIAS@
-    COLUMN_KEY = 0;
+    COLUMN_GROUP = 0;
     COLUMN_TYPE = 1;
     COLUMN_VALUE = 2;
     COLUMN_TIME = 3;
@@ -107,26 +107,27 @@ message ProtobufScopeConfig
   
   message ColumnWidthPixels
   {
-    optional int32 key_width = 1 [default=150];
+    optional int32 group_width = 1 [default=150];
     optional int32 type_width = 2 [default=150];
     optional int32 value_width = 3 [default=400];
     optional int32 time_width = 4 [default=150];
   }
   optional ColumnWidthPixels column_width = 2;
-  optional Column sort_by_column = 3 [default=COLUMN_KEY];
+  optional Column sort_by_column = 3 [default=COLUMN_GROUP];
   optional bool sort_ascending = 4 [default = true];
-  optional int32 scope_height = 5  [default=400];
-
-  optional Column regex_filter_column = 6 [default=COLUMN_KEY];
+  optional int32 scope_height = 5  [default=500];
+  optional int32 history_height = 9  [default=300];
+    
+  optional Column regex_filter_column = 6 [default=COLUMN_GROUP];
   optional string regex_filter_expression = 7 [default=".*"];
 
   
   message HistoryConfig
   {
-    required string key = 1;
+    required string group = 1;
     optional bool show_plot = 2 [default = false];
-    optional int32 plot_width = 3 [default = 800];
-    optional int32 plot_height = 4 [default = 300];
+      //    optional int32 plot_width = 3 [default = 800];
+      //    optional int32 plot_height = 4 [default = 300];
 
   } 
   

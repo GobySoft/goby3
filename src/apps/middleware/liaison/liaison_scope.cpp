@@ -37,6 +37,7 @@
 #include <Wt/Chart/WCartesianChart>
 #include <Wt/WDateTime>
 #include <Wt/WApplication>
+#include <Wt/WGroupBox>
 
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/regex.hpp>
@@ -55,17 +56,18 @@ goby::common::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cfg)
       proxy_(new Wt::WSortFilterProxyModel(this)),
       main_layout_(new Wt::WVBoxLayout(this)),
       last_scope_state_(UNKNOWN),
-      subscriptions_div_(new SubscriptionsContainer(this, model_, history_model_, msg_map_)),
-      history_header_div_(new HistoryContainer(main_layout_, history_model_, pb_scope_config_)),
+      main_box_(new WGroupBox("Interprocess Messages")),
+      subscriptions_div_(new SubscriptionsContainer(model_, history_model_, msg_map_, main_box_)),
       controls_div_(new ControlsContainer(&scope_timer_, cfg.start_paused(),
-                                          this, subscriptions_div_, history_header_div_)),
-      regex_filter_div_(new RegexFilterContainer(model_, proxy_, pb_scope_config_)),
-      scope_tree_view_(new LiaisonScopeProtobufTreeView(pb_scope_config_)),
+                                          this, subscriptions_div_,  main_box_)),
+      history_header_div_(new HistoryContainer(main_layout_, history_model_, pb_scope_config_, this, main_box_)),
+      regex_filter_div_(new RegexFilterContainer(model_, proxy_, pb_scope_config_, main_box_)),
+      scope_tree_view_(new LiaisonScopeProtobufTreeView(pb_scope_config_, pb_scope_config_.scope_height(), main_box_)),
       bottom_fill_(new WContainerWidget)
 {
 
 
-    this->resize(WLength::Auto, WLength(100, WLength::Percentage));
+    //    this->resize(WLength::Auto, WLength(100, WLength::Percentage));
     
 
     setStyleClass("scope");
@@ -77,18 +79,11 @@ goby::common::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cfg)
                                    AscendingOrder : DescendingOrder);
 
     
-    main_layout_->addWidget(controls_div_);
-    main_layout_->addWidget(subscriptions_div_);
-    main_layout_->addWidget(history_header_div_);
-    main_layout_->addWidget(regex_filter_div_);
-    main_layout_->addWidget(scope_tree_view_);
-    main_layout_->setResizable(main_layout_->count()-1);    
-    main_layout_->addWidget(bottom_fill_, -1, AlignTop);
-    main_layout_->addStretch(1);
-    bottom_fill_->resize(WLength::Auto, 100);
-    
-    for(int i = 0, n = pb_scope_config_.subscription_size(); i < n; ++i)
-        subscriptions_div_->add_subscription(pb_scope_config_.subscription(i));
+    main_layout_->addWidget(main_box_);
+    //    main_layout_->setResizable(main_layout_->count()-1);    
+    //    main_layout_->addWidget(bottom_fill_, -1, AlignTop);
+    //    main_layout_->addStretch(1);
+    //    bottom_fill_->resize(WLength::Auto, 100);    
 
     for(int i = 0, n = pb_scope_config_.history_size(); i < n; ++i)
         history_header_div_->add_history(pb_scope_config_.history(i));
@@ -113,7 +108,7 @@ void goby::common::LiaisonScope::attach_pb_rows(const std::vector<Wt::WStandardI
                                                 const google::protobuf::Message& pb_msg)
 {
 
-    Wt::WStandardItem* key_item = items[protobuf::ProtobufScopeConfig::COLUMN_KEY];
+    Wt::WStandardItem* key_item = items[protobuf::ProtobufScopeConfig::COLUMN_GROUP];
     
     
     std::vector<std::string> result;
@@ -160,7 +155,7 @@ std::vector<Wt::WStandardItem *> goby::common::LiaisonScope::create_row(const st
 
 void goby::common::LiaisonScope::update_row(const std::string& group, const google::protobuf::Message& msg, const std::vector<WStandardItem *>& items)
 {
-    items[protobuf::ProtobufScopeConfig::COLUMN_KEY]->setText(group);
+    items[protobuf::ProtobufScopeConfig::COLUMN_GROUP]->setText(group);
 
     items[protobuf::ProtobufScopeConfig::COLUMN_TYPE]->setText(msg.GetDescriptor()->full_name());
         
@@ -177,14 +172,16 @@ void goby::common::LiaisonScope::handle_global_key(Wt::WKeyEvent event)
     switch(event.key())
     {
         // pull single update to display
-        case Key_Enter:
-            subscriptions_div_->refresh_with_newest();
+        case Key_R:
+            for(const auto& p : paused_buffer_)
+                handle_message(p.first, *p.second, false);
             history_header_div_->flush_buffer();
             break;
 
             // toggle play/pause
         case Key_P:
             controls_div_->handle_play_pause(true);
+            break;
             
         default:
             break;
@@ -201,6 +198,8 @@ void goby::common::LiaisonScope::pause()
 void goby::common::LiaisonScope::resume()
 {
     controls_div_->resume();
+    // update with changes since the last we were playing
+    history_header_div_->flush_buffer();
 }
 
 void goby::common::LiaisonScope::inbox(const std::string& group, std::shared_ptr<const google::protobuf::Message> msg)
@@ -214,6 +213,8 @@ void goby::common::LiaisonScope::inbox(const std::string& group, std::shared_ptr
             // buffer for later display
             history_header_div_->buffer_.push_back(std::make_pair(group, msg));
         }
+
+        paused_buffer_[group] = msg;
     }
     else
     {
@@ -232,7 +233,7 @@ void goby::common::LiaisonScope::handle_message(const std::string& group,
     if(it != msg_map_.end())
     {
         std::vector<WStandardItem*> items;
-        items.push_back(model_->item(it->second, protobuf::ProtobufScopeConfig::COLUMN_KEY));
+        items.push_back(model_->item(it->second, protobuf::ProtobufScopeConfig::COLUMN_GROUP));
         items.push_back(model_->item(it->second, protobuf::ProtobufScopeConfig::COLUMN_TYPE));
         items.push_back(model_->item(it->second, protobuf::ProtobufScopeConfig::COLUMN_VALUE));
         items.push_back(model_->item(it->second, protobuf::ProtobufScopeConfig::COLUMN_TIME));
@@ -257,20 +258,20 @@ void goby::common::LiaisonScope::handle_message(const std::string& group,
 
 
 
-goby::common::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(const protobuf::ProtobufScopeConfig& pb_scope_config , Wt::WContainerWidget* parent /*= 0*/)
+goby::common::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(const protobuf::ProtobufScopeConfig& pb_scope_config , int scope_height, Wt::WContainerWidget* parent /*= 0*/)
     : WTreeView(parent)
 {
     this->setAlternatingRowColors(true);
 
-    this->setColumnWidth(protobuf::ProtobufScopeConfig::COLUMN_KEY, pb_scope_config.column_width().key_width());
+    this->setColumnWidth(protobuf::ProtobufScopeConfig::COLUMN_GROUP, pb_scope_config.column_width().group_width());
     this->setColumnWidth(protobuf::ProtobufScopeConfig::COLUMN_TYPE, pb_scope_config.column_width().type_width());
     this->setColumnWidth(protobuf::ProtobufScopeConfig::COLUMN_VALUE, pb_scope_config.column_width().value_width());
     this->setColumnWidth(protobuf::ProtobufScopeConfig::COLUMN_TIME, pb_scope_config.column_width().time_width());
 
     this->resize(Wt::WLength::Auto,
-                 pb_scope_config.scope_height());
+                scope_height);
 
-    this->setMinimumSize(pb_scope_config.column_width().key_width()+
+    this->setMinimumSize(pb_scope_config.column_width().group_width()+
                          pb_scope_config.column_width().type_width()+
                          pb_scope_config.column_width().value_width()+
                          pb_scope_config.column_width().time_width()+
@@ -290,7 +291,7 @@ goby::common::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(const p
 
 //     glog.is(DEBUG1) && glog << "clicked: " << model_index.row() << "," << model_index.column() << std::endl;    
     
-//     attach_pb_rows(model->item(model_index.row(), protobuf::ProtobufScopeConfig::COLUMN_KEY),
+//     attach_pb_rows(model->item(model_index.row(), protobuf::ProtobufScopeConfig::COLUMN_GROUP),
 //                    model->item(model_index.row(), protobuf::ProtobufScopeConfig::COLUMN_VALUE)->text().narrow());
 
 //     this->setExpanded(proxy_index, true);
@@ -303,7 +304,7 @@ goby::common::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(const p
 goby::common::LiaisonScopeProtobufModel::LiaisonScopeProtobufModel(const protobuf::ProtobufScopeConfig& pb_scope_config, Wt::WContainerWidget* parent /*= 0*/)
     : WStandardItemModel(0, protobuf::ProtobufScopeConfig::COLUMN_MAX+1, parent)
 {
-    this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_KEY, Horizontal, std::string("Group"));
+    this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_GROUP, Horizontal, std::string("Group"));
     this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_TYPE, Horizontal, std::string("Protobuf Type"));
     this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_VALUE, Horizontal, std::string("Value"));
     this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_TIME, Horizontal, std::string("Time"));
@@ -315,17 +316,15 @@ goby::common::LiaisonScope::ControlsContainer::ControlsContainer(Wt::WTimer* tim
                                                                  bool start_paused,
                                                                  LiaisonScope* scope,
                                                                  SubscriptionsContainer* subscriptions_div,
-                                                                 HistoryContainer* history_header_div,
-                                                                 Wt::WContainerWidget* parent /*= 0*/)
+                                                                 Wt::WContainerWidget* parent)
     : Wt::WContainerWidget(parent),
       timer_(timer),
-      play_pause_button_(new WPushButton("Play/Pause [p]", this)),
+      play_pause_button_(new WPushButton("Play", this)),
       spacer_(new Wt::WText(" ", this)),
       play_state_(new Wt::WText(this)),
       is_paused_(start_paused),
       scope_(scope),
-      subscriptions_div_(subscriptions_div),
-      history_header_div_(history_header_div)
+      subscriptions_div_(subscriptions_div)
 {
     play_pause_button_->clicked().connect(boost::bind(&ControlsContainer::handle_play_pause, this, true));
 
@@ -346,7 +345,11 @@ void goby::common::LiaisonScope::ControlsContainer::handle_play_pause(bool toggl
         is_paused_ = !(is_paused_);
 
     is_paused_ ? pause() : resume();
-    play_state_->setText(is_paused_ ? "Paused ([enter] refreshes). " : "Playing... ");
+
+    play_pause_button_->setText(is_paused_? "Play" : "Pause");
+
+    
+    play_state_->setText(is_paused_ ? "Paused ([r] for a single refresh / [p] to resume). " : "Playing... [p] to pause");
 }
 
 void goby::common::LiaisonScope::ControlsContainer::pause()
@@ -360,153 +363,40 @@ void goby::common::LiaisonScope::ControlsContainer::pause()
 
 void goby::common::LiaisonScope::ControlsContainer::resume()
 {
-    // stop the local thread and pass control over to a Wt
     is_paused_ = false;
-    //    if(paused_mail_thread_ && paused_mail_thread_->joinable())
-    //        paused_mail_thread_->join();
     timer_->start();
 
-    // update with changes since the last we were playing
-    subscriptions_div_->refresh_with_newest();
-    history_header_div_->flush_buffer();
 }
 
-void goby::common::LiaisonScope::ControlsContainer::run_paused_mail()
-{
-    while(is_paused_)
-    {
-        // while(scope_->zeromq_service_->poll(10000))
-        // { }
-    }
-}
 
 goby::common::LiaisonScope::SubscriptionsContainer::SubscriptionsContainer(
-    LiaisonScope* node,
     Wt::WStandardItemModel* model,
     Wt::WStringListModel* history_model,
     std::map<std::string, int>& msg_map,
     Wt::WContainerWidget* parent /*= 0*/)
     : WContainerWidget(parent),
-      node_(node),
       model_(model),
       history_model_(history_model),
-      msg_map_(msg_map),
-      add_text_(new WText("Add subscription (e.g. NAV* or NAV_X): ", this)),
-      subscribe_filter_text_(new WLineEdit(this)),
-      subscribe_filter_button_(new WPushButton("Apply", this)),
-      subscribe_break_(new WBreak(this)),
-      remove_text_(new WText("Subscriptions (click to remove): ", this))
+      msg_map_(msg_map)
 {
-    subscribe_filter_button_->clicked().connect(this, &SubscriptionsContainer::handle_add_subscription);
-    subscribe_filter_text_->enterPressed().connect(this, &SubscriptionsContainer::handle_add_subscription);
+
 }
 
-
-void goby::common::LiaisonScope::SubscriptionsContainer::handle_add_subscription()
-{    
-    add_subscription(subscribe_filter_text_->text().narrow());
-    subscribe_filter_text_->setText("");
-}
-
-void goby::common::LiaisonScope::SubscriptionsContainer::add_subscription(std::string type)
-{
-    boost::trim(type);
-    if(type.empty() || subscriptions_.count(type))
-        return;
-    
-    WPushButton* new_button = new WPushButton(this);
-
-    new_button->setText(type + " ");
-    // node_->subscribe(type, LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
-    
-    new_button->clicked().connect(boost::bind(&SubscriptionsContainer::handle_remove_subscription, this, new_button));
-
-    subscriptions_.insert(type);
-
-    refresh_with_newest(type);
-}
-
-
-void goby::common::LiaisonScope::SubscriptionsContainer::refresh_with_newest()
-{   
-    for(std::set<std::string>::const_iterator it = subscriptions_.begin(),
-            end = subscriptions_.end(); it != end; ++it)
-        refresh_with_newest(*it);
-}
-
-void goby::common::LiaisonScope::SubscriptionsContainer::refresh_with_newest(const std::string& type)
-{   
-    //    std::vector<CMOOSMsg> newest = node_->newest_substr(type);
-    //    for(std::vector<CMOOSMsg>::iterator it = newest.begin(), end = newest.end();
-    //        it != end; ++it)
-    //    {
-    //        node_->handle_message(*it, false);
-    //    }
-}
-
-
-
-void goby::common::LiaisonScope::SubscriptionsContainer::handle_remove_subscription(WPushButton* clicked_button)
-{
-    std::string type_name = clicked_button->text().narrow();
-    boost::trim(type_name);
-    unsigned type_name_size = type_name.size();
-    
-    //    node_->unsubscribe(clicked_button->text().narrow(), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
-    subscriptions_.erase(type_name);
-
-    
-    bool has_wildcard_ending = (type_name[type_name_size - 1] == '*');
-    if(has_wildcard_ending)
-        type_name = type_name.substr(0, type_name_size-1);
-
-    for(int i = model_->rowCount()-1, n = 0; i >= n; --i)
-    {
-        std::string text_to_match = model_->item(i, 0)->text().narrow();
-        boost::trim(text_to_match);
-        
-        bool remove = false;
-        if(has_wildcard_ending && boost::starts_with(text_to_match, type_name))
-            remove = true;
-        else if(!has_wildcard_ending && boost::equals(text_to_match, type_name))
-            remove = true;
-
-        if(remove)
-        {            
-            history_model_->removeRows(msg_map_[text_to_match], 1);
-            msg_map_.erase(text_to_match);
-            glog.is(DEBUG1) && glog << "LiaisonScope: removed " << text_to_match << std::endl;            
-            model_->removeRow(i);
-            
-            // shift down the remaining indices
-            for(std::map<std::string, int>::iterator it = msg_map_.begin(),
-                    n = msg_map_.end();
-                it != n; ++it)
-            {
-                if(it->second > i)
-                    --it->second;
-            }            
-        }
-    }
-
-
-    this->removeWidget(clicked_button);
-    delete clicked_button; // removeWidget does not delete
-}
 
 goby::common::LiaisonScope::HistoryContainer::HistoryContainer(Wt::WVBoxLayout* main_layout,
                                                                Wt::WAbstractItemModel* model,
                                                                const protobuf::ProtobufScopeConfig& pb_scope_config,
-                                                               Wt::WContainerWidget* parent /* = 0 */)
-    : Wt::WContainerWidget(parent),
+                                                               LiaisonScope* scope,
+                                                               WContainerWidget* parent)
+    : WContainerWidget(parent),
       main_layout_(main_layout),
       pb_scope_config_(pb_scope_config),
       hr_(new WText("<hr />", this)),
-      add_text_(new WText(("Add history for key: "), this)),
+      add_text_(new WText(("Add history for group: "), this)),
       history_box_(new WComboBox(this)),
       history_button_(new WPushButton("Add", this)),
-      buffer_(pb_scope_config.max_history_items())
-
+      buffer_(pb_scope_config.max_history_items()),
+      scope_(scope)
 {
     history_box_->setModel(model);
     history_button_->clicked().connect(this, &HistoryContainer::handle_add_history);
@@ -516,20 +406,19 @@ void goby::common::LiaisonScope::HistoryContainer::handle_add_history()
 {
     std::string selected_key = history_box_->currentText().narrow();
     goby::common::protobuf::ProtobufScopeConfig::HistoryConfig config;
-    config.set_key(selected_key);
+    config.set_group(selected_key);
     add_history(config);
 }
 
 void goby::common::LiaisonScope::HistoryContainer::add_history(const goby::common::protobuf::ProtobufScopeConfig::HistoryConfig& config)
 {
-    const std::string& selected_key = config.key();
+    const std::string& selected_key = config.group();
     
     if(!history_models_.count(selected_key))
     {
-        Wt::WContainerWidget* new_container = new WContainerWidget;
+        Wt::WGroupBox* new_container = new WGroupBox("History");
 
         Wt::WContainerWidget* text_container = new WContainerWidget(new_container);
-        new WText("History for  ", text_container);
         WPushButton* remove_history_button = new WPushButton(selected_key, text_container);
 
         remove_history_button->clicked().connect(
@@ -578,10 +467,11 @@ void goby::common::LiaisonScope::HistoryContainer::add_history(const goby::commo
         // if(!config.show_plot())
         //     chart->hide();
         
-        Wt::WTreeView* new_tree = new LiaisonScopeProtobufTreeView(pb_scope_config_, new_container);        
-        main_layout_->insertWidget(main_layout_->count()-2, new_container);
+        Wt::WTreeView* new_tree = new LiaisonScopeProtobufTreeView(pb_scope_config_, pb_scope_config_.history_height(), new_container);
+        auto new_index = main_layout_->count();
+        main_layout_->insertWidget(new_index, new_container);
+        //        main_layout_->setResizable(new_index);
         // set the widget *before* the one we just inserted to be resizable
-        main_layout_->setResizable(main_layout_->count()-3);
 
         //main_layout_->insertWidget(main_layout_->count()-2, new_tree);
         // set the widget *before* the one we just inserted to be resizable
@@ -608,8 +498,10 @@ void goby::common::LiaisonScope::HistoryContainer::handle_remove_history(std::st
     glog.is(DEBUG2) && glog << "LiaisonScope: removing history for: " << key << std::endl;    
     
     main_layout_->removeWidget(history_models_[key].container);    
-    main_layout_->removeWidget(history_models_[key].tree);
+    // main_layout_->removeWidget(history_models_[key].tree);
 
+    delete history_models_[key].container;
+    
     history_models_.erase(key);
 }
 
@@ -627,7 +519,7 @@ void goby::common::LiaisonScope::HistoryContainer::display_message(const std::st
         history_models_.find(group);
     if(hist_it != history_models_.end())
     {
-        hist_it->second.model->appendRow(create_row(group, msg));
+        hist_it->second.model->appendRow(scope_->create_row(group, msg));
         while(hist_it->second.model->rowCount() > pb_scope_config_.max_history_items())
             hist_it->second.model->removeRow(0);
         

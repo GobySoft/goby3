@@ -62,11 +62,11 @@ namespace goby
                 
             void handle_message(const std::string& group, const google::protobuf::Message& msg, bool fresh_message);            
             
-            static std::vector<Wt::WStandardItem *> create_row(const std::string& group, const google::protobuf::Message& msg);
-            static void attach_pb_rows(const std::vector<Wt::WStandardItem *>& items,
+            std::vector<Wt::WStandardItem *> create_row(const std::string& group, const google::protobuf::Message& msg);
+            void attach_pb_rows(const std::vector<Wt::WStandardItem *>& items,
                                        const google::protobuf::Message& msg);
 
-            static void update_row(const std::string& group, const google::protobuf::Message& msg, const std::vector<Wt::WStandardItem *>& items);
+            void update_row(const std::string& group, const google::protobuf::Message& msg, const std::vector<Wt::WStandardItem *>& items);
             
             void loop();
             
@@ -123,42 +123,28 @@ namespace goby
 
             struct SubscriptionsContainer : Wt::WContainerWidget
             {
-                SubscriptionsContainer(LiaisonScope* node,
-                                       Wt::WStandardItemModel* model,
+                SubscriptionsContainer(Wt::WStandardItemModel* model,
                                        Wt::WStringListModel* history_model,
                                        std::map<std::string, int>& msg_map,
                                        Wt::WContainerWidget* parent = 0);
 
-                void handle_add_subscription();
-                void handle_remove_subscription(Wt::WPushButton* clicked_anchor);
-                void add_subscription(std::string type);
                 
-                void refresh_with_newest();
-                void refresh_with_newest(const std::string& type);
                 
-                LiaisonScope* node_;
                 
                 Wt::WStandardItemModel* model_;
                 Wt::WStringListModel* history_model_;
                 std::map<std::string, int>& msg_map_;
             
-                Wt::WText* add_text_;
-                Wt::WLineEdit* subscribe_filter_text_;
-                Wt::WPushButton* subscribe_filter_button_;
-                Wt::WBreak* subscribe_break_;
-                Wt::WText* remove_text_;
-
-                std::set<std::string> subscriptions_;
             };
 
-            SubscriptionsContainer* subscriptions_div_;
             
             struct HistoryContainer : Wt::WContainerWidget
             {
                 HistoryContainer(Wt::WVBoxLayout* main_layout,
                                  Wt::WAbstractItemModel* model,
                                  const protobuf::ProtobufScopeConfig& pb_scope_config,
-                                 Wt::WContainerWidget* parent = 0);
+                                 LiaisonScope* scope,
+                                 Wt::WContainerWidget* parent);
 
                 void handle_add_history();
                 void handle_remove_history(std::string type);
@@ -186,9 +172,9 @@ namespace goby
                 Wt::WPushButton* history_button_;
                 
                 boost::circular_buffer<std::pair<std::string, std::shared_ptr<const google::protobuf::Message>>> buffer_;
+                LiaisonScope* scope_;
             };
             
-            HistoryContainer* history_header_div_;
 
 
             struct ControlsContainer : Wt::WContainerWidget
@@ -197,7 +183,6 @@ namespace goby
                                   bool start_paused,
                                   LiaisonScope* scope,
                                   SubscriptionsContainer* subscriptions_div,
-                                  HistoryContainer* history_header_div,
                                   Wt::WContainerWidget* parent = 0);
                 ~ControlsContainer();
                 
@@ -206,9 +191,6 @@ namespace goby
                 void pause();
                 void resume();
 
-                void run_paused_mail();
-                boost::shared_ptr<boost::thread> paused_mail_thread_;
-                
                 Wt::WTimer* timer_;
 
 
@@ -219,10 +201,8 @@ namespace goby
                 bool is_paused_;
                 LiaisonScope* scope_;
                 SubscriptionsContainer* subscriptions_div_;
-                HistoryContainer* history_header_div_;
             };
             
-            ControlsContainer* controls_div_;
             
             struct RegexFilterContainer : Wt::WContainerWidget
             {
@@ -247,26 +227,26 @@ namespace goby
                 Wt::WPushButton* regex_filter_clear_;
 
             };
-            
+
+            Wt::WGroupBox* main_box_;
+            SubscriptionsContainer* subscriptions_div_;
+            ControlsContainer* controls_div_;
+            HistoryContainer* history_header_div_;
             RegexFilterContainer* regex_filter_div_;
-
-
             Wt::WTreeView* scope_tree_view_;
-
-            // maps CMOOSMsg::GetKey into row
+            WContainerWidget* bottom_fill_;
+            
+            // maps group into row
             std::map<std::string, int> msg_map_;
 
-            WContainerWidget* bottom_fill_;
-
-            
-            
+            std::map<std::string, std::shared_ptr<const google::protobuf::Message>> paused_buffer_;
         
         };
 
       class LiaisonScopeProtobufTreeView : public Wt::WTreeView
         {
           public:
-            LiaisonScopeProtobufTreeView(const protobuf::ProtobufScopeConfig& pb_scope_config, Wt::WContainerWidget* parent = 0);
+            LiaisonScopeProtobufTreeView(const protobuf::ProtobufScopeConfig& pb_scope_config, int scope_height, Wt::WContainerWidget* parent = 0);
 
           private:
             
