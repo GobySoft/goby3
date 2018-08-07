@@ -36,17 +36,6 @@ namespace goby
 {
     namespace common
     {
-            
-        enum 
-        {
-            LIAISON_INTERNAL_PUBLISH_SOCKET = 1,
-            LIAISON_INTERNAL_SUBSCRIBE_SOCKET = 2
-//            LIAISON_INTERNAL_COMMANDER_SUBSCRIBE_SOCKET = 3,
-//            LIAISON_INTERNAL_COMMANDER_PUBLISH_SOCKET = 4,
-//            LIAISON_INTERNAL_SCOPE_SUBSCRIBE_SOCKET = 5,
-//            LIAISON_INTERNAL_SCOPE_PUBLISH_SOCKET = 6,  
-        };
-
         const Wt::WColor goby_blue(28,159,203);
         const Wt::WColor goby_orange(227,96,52);
         
@@ -114,6 +103,10 @@ namespace goby
                 // wait for thread to be created
                 while(goby_thread() == nullptr)
                     usleep(1000);
+
+                comms_timer_.setInterval(1/cfg.update_freq()*1.0e3);
+                comms_timer_.timeout().connect([this](const Wt::WMouseEvent&) { this->process_from_comms(); });
+                comms_timer_.start();
             }
             
             virtual ~LiaisonContainerWithComms()
@@ -187,8 +180,8 @@ namespace goby
             std::atomic<bool> thread_alive_ {true};
             std::exception_ptr thread_exception_;
 
-            
-        };        
+            Wt::WTimer comms_timer_;
+        };
 
         
     }

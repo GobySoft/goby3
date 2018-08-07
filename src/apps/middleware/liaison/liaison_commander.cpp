@@ -201,8 +201,6 @@ void goby::common::LiaisonCommander::ControlsContainer::remove_incoming_message(
 
 void goby::common::LiaisonCommander::loop()
 {
-    this->process_from_comms();
-    
     ControlsContainer::CommandContainer* current_command =
         dynamic_cast<ControlsContainer::CommandContainer*>(
             controls_div_->commands_div_->currentWidget());
