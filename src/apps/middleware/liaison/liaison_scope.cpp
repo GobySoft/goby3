@@ -199,6 +199,10 @@ void goby::common::LiaisonScope::resume()
 {
     controls_div_->resume();
     // update with changes since the last we were playing
+
+    for(const auto& p : paused_buffer_)
+        handle_message(p.first, *p.second, false);
+
     history_header_div_->flush_buffer();
 }
 

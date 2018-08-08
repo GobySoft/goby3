@@ -53,19 +53,21 @@ message ProtobufCommanderConfig
         @PROTOBUF_ALLOW_ALIAS@
         COLUMN_COMMENT = 0;
         COLUMN_NAME = 1;
-        COLUMN_IP = 2;
-        COLUMN_TIME = 3;
-        COLUMN_LAST_ACK = 4;
-        COLUMN_MAX = 4;
+        COLUMN_GROUP = 2;
+        COLUMN_IP = 3;
+        COLUMN_TIME = 4;
+        COLUMN_LAST_ACK = 5;
+        COLUMN_MAX = 5;
     }
   
     message DatabaseColumnWidthPixels
     {
         optional int32 comment_width = 1 [default=180];
         optional int32 name_width = 2 [default=180];
-        optional int32 ip_width = 3 [default=120];
-        optional int32 time_width = 4 [default=120];
-        optional int32 last_ack_width = 5 [default=120];
+        optional int32 group_width = 3 [default=180];
+        optional int32 ip_width = 4 [default=120];
+        optional int32 time_width = 5 [default=120];
+        optional int32 last_ack_width = 6 [default=120];
     }
     optional DatabaseColumnWidthPixels database_width = 22;
 
