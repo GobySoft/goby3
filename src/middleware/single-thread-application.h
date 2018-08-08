@@ -28,17 +28,18 @@
 #include "goby/common/application_base3.h"
 #include "goby/middleware/thread.h"
 #include "goby/middleware/transport-interprocess-zeromq.h"
+#include "goby/middleware/transport-intervehicle.h"
 
 namespace goby
 {
     template<class Config, class StateMachine = goby::common::NullStateMachine> 
-        class SingleThreadApplication : public goby::common::ApplicationBase3<Config, StateMachine>, public goby::Thread<Config, goby::InterProcessPortal<>>
+        class SingleThreadApplication : public goby::common::ApplicationBase3<Config, StateMachine>, public Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>
     {
     private:
-        using Transporter = goby::InterProcessPortal<>;
-        using MainThread = goby::Thread<Config, Transporter>;
+        using MainThread = Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>;
         
-        Transporter portal_;
+        InterProcessPortal<> interprocess_;
+        InterVehicleForwarder<InterProcessPortal<>> intervehicle_;
         
     public:
     SingleThreadApplication(double loop_freq_hertz = 0) :
@@ -47,16 +48,18 @@ namespace goby
         
     SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : MainThread(this->app_cfg(), loop_freq),
-            portal_(this->app_cfg().interprocess())
+          interprocess_(this->app_cfg().interprocess()),
+          intervehicle_(interprocess_)
         {
-	    MainThread::set_transporter(&portal_);
+	    this->set_transporter(&intervehicle_);
 	}
         
         virtual ~SingleThreadApplication() { }
         
     protected:            
-        goby::InterProcessPortal<>& interprocess() { return portal_; } 
-
+        InterProcessPortal<>& interprocess() { return interprocess_; } 
+        InterVehicleForwarder<InterProcessPortal<>>& intervehicle() { return intervehicle_; }
+    
     private:
         void run() override
         { MainThread::run_once(); }
