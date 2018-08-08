@@ -222,18 +222,3 @@ void goby::common::Liaison::loop()
     //     quit();
     // }
 }
-
-// void goby::common::Liaison::inbox(int marshalling_scheme,
-//                                   const std::string& identifier,
-//                                   const std::string& data,
-//                                   int socket_id)
-// {
-//     glog.is(DEBUG2) && glog << "Liaison: got message with identifier: " << identifier << " from socket: " << socket_id << std::endl;
-//     zeromq_service_.send(marshalling_scheme, identifier, data, LIAISON_INTERNAL_PUBLISH_SOCKET);
-    
-//     if(socket_id == LIAISON_INTERNAL_SUBSCRIBE_SOCKET)
-//     {
-//         glog.is(DEBUG2) && glog << "Sending to pubsub node: " << identifier << std::endl;
-//         pubsub_node_.publish(marshalling_scheme, identifier, data);
-//     }
-// }

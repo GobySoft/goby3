@@ -84,8 +84,6 @@ namespace goby
         {
             std::atomic<bool> alive{true};
             std::unique_ptr<std::thread> thread;
-            //  std::shared_ptr<std::condition_variable_any> poll_cv;
-            //            std::shared_ptr<std::timed_mutex> poll_mutex;
         };
 
         static std::exception_ptr thread_exception_;
@@ -283,8 +281,6 @@ template<class Config, class Transporter, class StateMachine>
     auto thread_lambda = [this, type_i, index, cfg, &thread_manager]()
 	{
 	    std::shared_ptr<ThreadType> goby_thread(ThreadTypeSelector<ThreadType, ThreadConfig, has_index>::thread(cfg, index));
-            //            thread_manager.poll_cv = goby_thread->interthread().cv();
-            // thread_manager.poll_mutex = goby_thread->interthread().poll_mutex();
 
             try
             {
