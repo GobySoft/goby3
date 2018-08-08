@@ -64,7 +64,7 @@ void direct_publisher(const goby::protobuf::InterProcessPortalConfig& zmq_cfg, c
 
         Widget w;
         w.set_b(a-2);
-        slt.publish(w);
+        slt.publish_no_group(w);
             
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
@@ -132,7 +132,7 @@ void direct_subscriber(const goby::protobuf::InterProcessPortalConfig& zmq_cfg, 
     
     slt.subscribe_dynamic<Sample>(&handle_sample1, 2, [](const Sample& s) { return s.group(); });
     slt.subscribe_dynamic<Sample>(&handle_sample_indirect, 3, [](const Sample& s) { return s.group(); });
-    slt.subscribe<Widget>(&handle_widget);
+    slt.subscribe_no_group<Widget>(&handle_widget);
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -213,16 +213,16 @@ int main(int argc, char* argv[])
     mac_cfg.set_type(goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED);
     goby::acomms::protobuf::ModemTransmission& slot = *mac_cfg.add_slot();
     slot.set_slot_seconds(0.2);
-    goby::acomms::protobuf::QueueManagerConfig& queue_cfg = *slow_cfg.mutable_queue_cfg();
-    goby::acomms::protobuf::QueuedMessageEntry& sample_entry = *queue_cfg.add_message_entry();
-    sample_entry.set_protobuf_name("Sample");
-    sample_entry.set_newest_first(false);
-    sample_entry.set_max_queue(2*max_publish + 1);
+    //    goby::acomms::protobuf::QueueManagerConfig& queue_cfg = *slow_cfg.mutable_queue_cfg();
+    //    goby::acomms::protobuf::QueuedMessageEntry& sample_entry = *queue_cfg.add_message_entry();
+    //sample_entry.set_protobuf_name("Sample");
+    //sample_entry.set_newest_first(false);
+    //sample_entry.set_max_queue(2*max_publish + 1);
 
-    goby::acomms::protobuf::QueuedMessageEntry& widget_entry = *queue_cfg.add_message_entry();
-    widget_entry.set_protobuf_name("Widget");
-    widget_entry.set_newest_first(false);
-    widget_entry.set_max_queue(max_publish + 1);
+    // goby::acomms::protobuf::QueuedMessageEntry& widget_entry = *queue_cfg.add_message_entry();
+    // widget_entry.set_protobuf_name("Widget");
+    // widget_entry.set_newest_first(false);
+    // widget_entry.set_max_queue(max_publish + 1);
     
     if(process_index == 0)
     {
@@ -230,7 +230,7 @@ int main(int argc, char* argv[])
         local_endpoint->set_port(60011);
         mac_cfg.set_modem_id(1);
         slot.set_src(1);
-        queue_cfg.set_modem_id(1);
+        //queue_cfg.set_modem_id(1);
         remote_endpoint->set_ip("127.0.0.1");
         remote_endpoint->set_port(60012);
     
@@ -288,7 +288,7 @@ int main(int argc, char* argv[])
         local_endpoint->set_port(60012);
         mac_cfg.set_modem_id(2);
         slot.set_src(2);
-        queue_cfg.set_modem_id(2);
+        //queue_cfg.set_modem_id(2);
         remote_endpoint->set_ip("127.0.0.1");
         remote_endpoint->set_port(60011);
 

@@ -1,5 +1,5 @@
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
-  protobuf/interplatform_config.proto
+  protobuf/intervehicle_config.proto
   protobuf/interprocess_config.proto
   protobuf/interprocess_data.proto
   protobuf/interprocess_zeromq.proto

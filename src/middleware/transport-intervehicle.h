@@ -41,7 +41,7 @@
 #include "goby/acomms/modemdriver/udp_driver.h"
 
 #include "transport-common.h"
-#include "goby/middleware/protobuf/interplatform_config.pb.h"
+#include "goby/middleware/protobuf/intervehicle_config.pb.h"
 
 namespace goby
 {
@@ -52,7 +52,7 @@ namespace goby
     {
         using PollerType = Poller<InterVehicleTransporterBase<Derived, InnerTransporter>>;
 
-    public:        
+    public:
     InterVehicleTransporterBase(InnerTransporter& inner) :
         PollerType(&inner), inner_(inner) { }
     InterVehicleTransporterBase(InnerTransporter* inner_ptr = new InnerTransporter,
@@ -72,26 +72,26 @@ namespace goby
 
 	// publish without a group
         template<typename Data>
-            void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish_no_group(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { publish_dynamic<Data>(data, Group(), transport_cfg); }
 
         template<typename Data>
-            void publish(std::shared_ptr<const Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish_no_group(std::shared_ptr<const Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { publish_dynamic<Data>(data, Group(), transport_cfg); }
         
         template<typename Data>
-            void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
-        { publish<Data>(std::shared_ptr<const Data>(data), transport_cfg); }
+            void publish_no_group(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+        { publish_no_group<Data>(std::shared_ptr<const Data>(data), transport_cfg); }
 
-        // subscribe without a group
+        //subscribe without a group
         template<typename Data>
-            void subscribe(std::function<void(const Data&)> func, std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
+            void subscribe_no_group(std::function<void(const Data&)> func, std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
             subscribe_dynamic<Data>(func, Group(), group_func);
         }
         
         template<typename Data>
-            void subscribe(std::function<void(std::shared_ptr<const Data>)> func,
+            void subscribe_no_group(std::function<void(std::shared_ptr<const Data>)> func,
                            std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
             subscribe_dynamic<Data>(func, Group(), group_func);
