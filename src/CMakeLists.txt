@@ -129,22 +129,6 @@ if(enable_wt)
   add_definitions(-DBOOST_SIGNALS_NO_DEPRECATION_WARNING)
 endif()  
 
-# Xerces
-find_package(Xerces QUIET)
-set(TRANSITIONAL_DOC_STRING "Compile in MOOS support for Goby version 1 XML files (requires libxerces-c-dev")
-if(Xerces_FOUND)
-  option(enable_v1_transitional ${TRANSITIONAL_DOC_STRING} ON)
-else()
-  option(enable_v1_transitional ${TRANSITIONAL_DOC_STRING} OFF)
-  message(">> setting enable_v1_transitional to OFF ... if you need this functionality: 1) install libxerces-c-dev; 2) run cmake -Denable_v1_transitional=ON")
-endif()
-
-if(enable_v1_transitional)
-  goby_find_required_package(Xerces)
-  include_directories(${Xerces_INCLUDE_DIRS})
-  add_definitions(-DENABLE_GOBY_V1_TRANSITIONAL_SUPPORT)
-endif()  
-
 # GMP
 goby_find_required_package(GMP)
 
