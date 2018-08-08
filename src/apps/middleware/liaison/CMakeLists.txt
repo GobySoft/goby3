@@ -34,8 +34,10 @@ add_definitions(-DGOBY_LIAISON_INSTALLED_DOCROOT="${CMAKE_INSTALL_PREFIX}/share/
 add_executable(goby_liaison
   liaison.cpp
   liaison_home.cpp  
-  liaison_wt_thread.cpp)
-#  ${PROTO_SRCS} ${PROTO_HDRS})
+  liaison_wt_thread.cpp
+  liaison_commander.cpp
+  liaison_scope.cpp
+  )
 
 goby_find_required_package(Boost 1.40.0 COMPONENTS signals)
 
@@ -45,4 +47,5 @@ target_link_libraries(goby_liaison
   pthread
   goby_common
   goby_util
+  goby_middleware
   )

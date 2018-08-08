@@ -416,6 +416,10 @@ namespace goby
             SubscriptionStore<Data>::unsubscribe(group, std::this_thread::get_id());
         }
 
+        void unsubscribe_all()
+        {
+            SubscriptionStoreBase::unsubscribe_all(std::this_thread::get_id());
+        }
         
     private:
 	friend Poller<InterThreadTransporter>;

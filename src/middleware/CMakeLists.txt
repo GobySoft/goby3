@@ -1,5 +1,11 @@
-file(GLOB PROTOS protobuf/*.proto)
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
+  protobuf/interplatform_config.proto
+  protobuf/interprocess_config.proto
+  protobuf/interprocess_data.proto
+  protobuf/interprocess_zeromq.proto
+  protobuf/liaison_config.proto
+  protobuf/transporter_config.proto
+  )
 
 set(SRC
   serialize_parse.cpp

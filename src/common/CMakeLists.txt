@@ -1,6 +1,11 @@
-file(GLOB PROTOS protobuf/*.proto)
-
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
+  protobuf/app3.proto
+  protobuf/app_base_config.proto
+  protobuf/hdf5.proto
+  protobuf/logger.proto
+  protobuf/option_extensions.proto
+  protobuf/pubsub_node_config.proto
+  protobuf/zero_mq_node_config.proto)
 
 set(SRC
   time.cpp

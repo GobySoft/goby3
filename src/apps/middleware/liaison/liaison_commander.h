@@ -57,10 +57,14 @@
 #include <Wt/Dbo/SqlTraits>
 #include <Wt/Dbo/WtSqlTraits>
 
+#include "goby/util/as.h"
+#include "goby/common/logger.h"
+#include "goby/common/time.h"
+#include "goby/middleware/liaison/liaison_container.h"
+#include "goby/middleware/protobuf/liaison_config.pb.h"
+#include "goby/middleware/multi-thread-application.h"
 
-#include "goby/common/liaison_container.h"
-#include "goby/moos/moos_node.h"
-#include "goby/moos/protobuf/liaison_config.pb.h"
+#include "liaison.h"
 
 namespace goby
 {
@@ -105,13 +109,13 @@ namespace goby
                     Wt::Dbo::field(a, acks, "acks"); 
                }
         };
+
+        class CommanderCommsThread;
         
-        
-        class LiaisonCommander : public LiaisonContainer, public goby::moos::MOOSNode
+        class LiaisonCommander : public LiaisonContainerWithComms<LiaisonCommander, CommanderCommsThread>
         {
           public:
-            LiaisonCommander(ZeroMQService* zeromq_service, const protobuf::LiaisonConfig& cfg, Wt::WContainerWidget* parent = 0);
-            void moos_inbox(CMOOSMsg& msg);
+            LiaisonCommander(const protobuf::LiaisonConfig& cfg);
             void loop();
             
           private:
@@ -121,27 +125,31 @@ namespace goby
                 commander_timer_.start();
             }
 
-             void unfocus()
+            void unfocus()
             {
                 commander_timer_.stop();
             }
 
+            friend class CommanderCommsThread;
+            void display_notify_subscription(const std::vector<unsigned char>& data,
+                                             int scheme,
+                                             const std::string& type,
+                                             const std::string& group);
+            
+            
             
           private:
-            ZeroMQService* zeromq_service_;
             const protobuf::ProtobufCommanderConfig& pb_commander_config_;
             std::set<std::string> display_subscriptions_;
             
             
-            Wt::WVBoxLayout* main_layout_;
 
             struct ControlsContainer : Wt::WGroupBox
             {
                 ControlsContainer(
-                    MOOSNode* moos_node,
                     const protobuf::ProtobufCommanderConfig& pb_commander_config,
                     Wt::WStackedWidget* commands_div,
-                    Wt::WContainerWidget* parent = 0);
+                    LiaisonCommander* parent);
                 void switch_command(int selection_index);
 
                 void clear_message();
@@ -154,7 +162,6 @@ namespace goby
                 struct CommandContainer : Wt::WGroupBox
                 {
                     CommandContainer(
-                        MOOSNode* moos_node,
                         const protobuf::ProtobufCommanderConfig& pb_commander_config,
                         const std::string& protobuf_name,
                         Wt::Dbo::Session* session);
@@ -253,13 +260,17 @@ namespace goby
                     
                     
                     void handle_database_dialog(DatabaseDialogResponse response,
-                                                boost::shared_ptr<google::protobuf::Message> message);
+                                                std::shared_ptr<google::protobuf::Message> message);
                     
-                    MOOSNode* moos_node_;
-                    boost::shared_ptr<google::protobuf::Message> message_;
+                    std::shared_ptr<google::protobuf::Message> message_;
                     
                     std::map<Wt::WFormWidget*, const google::protobuf::FieldDescriptor*> time_fields_;
                     std::uint64_t latest_time_;
+                    
+                    Wt::WContainerWidget* group_div_;
+                    Wt::WLabel* group_label_;
+                    Wt::WLineEdit* group_line_;
+      
                     
                     Wt::WGroupBox* tree_box_;
                     Wt::WTreeTable* tree_table_;
@@ -275,17 +286,19 @@ namespace goby
 
                     boost::posix_time::ptime last_reload_time_;
 
-                    boost::shared_ptr<Wt::WDialog> database_dialog_;
+                    std::shared_ptr<Wt::WDialog> database_dialog_;
 
                     const protobuf::ProtobufCommanderConfig& pb_commander_config_;
                     
                 };
                 
-                MOOSNode* moos_node_;
                 const protobuf::ProtobufCommanderConfig& pb_commander_config_;
                 std::map<std::string, int> commands_;
+
+                Wt::WContainerWidget* command_div_;
                 Wt::WLabel* command_label_;
                 Wt::WComboBox* command_selection_;
+                
                 Wt::WContainerWidget* buttons_div_;
                 Wt::WLabel* comment_label_;
                 Wt::WLineEdit* comment_line_;
@@ -300,7 +313,8 @@ namespace goby
                 //               Wt::WStackedWidget* master_field_info_stack_;
 
                 Wt::Dbo::Session session_;
-                
+                LiaisonCommander* commander_;
+
             };
             
 
@@ -315,11 +329,42 @@ namespace goby
             // static database objects
             static boost::posix_time::ptime last_db_update_time_;
             static boost::mutex dbo_mutex_;
-            static boost::shared_ptr<Wt::Dbo::backend::Sqlite3> sqlite3_;
-            static boost::shared_ptr<Wt::Dbo::FixedSqlConnectionPool> connection_pool_;
-            
+            static std::shared_ptr<Wt::Dbo::backend::Sqlite3> sqlite3_;
+            static std::shared_ptr<Wt::Dbo::FixedSqlConnectionPool> connection_pool_;
             
         };
+        
+        class CommanderCommsThread : public LiaisonCommsThread<LiaisonCommander>
+        {
+        public:
+        CommanderCommsThread(LiaisonCommander* commander, const protobuf::LiaisonConfig& config, int index) :
+            LiaisonCommsThread<LiaisonCommander>(commander, config, index),
+                commander_(commander)
+            {
+                for(const auto& notify : cfg().pb_commander_config().notify_subscribe())
+                {
+                    interprocess().subscribe_regex(
+                        [this](const std::vector<unsigned char>& data, int scheme, const std::string& type, const Group& group) {
+                            std::string gr = group;
+                            commander_->post_to_wt(
+                                [=]() { commander_->display_notify_subscription(data, scheme, type, gr); });
+                        },
+                        { goby::MarshallingScheme::PROTOBUF },
+                        notify.type_regex(),
+                        notify.group_regex());
+                }
+            }
+            ~CommanderCommsThread()
+            {
+            }
+            
+        private:
+            friend class LiaisonCommander;
+            LiaisonCommander* commander_;
+            
+        };
+
+        
     }
 }
 

@@ -1,0 +1,145 @@
+@PROTOBUF_SYNTAX_VERSION@
+import "goby/common/protobuf/option_extensions.proto";
+import "goby/common/protobuf/app3.proto";
+import "goby/middleware/protobuf/interprocess_config.proto";
+import "goby/acomms/protobuf/network_ack.proto";
+
+package goby.common.protobuf;
+
+message LiaisonConfig
+{
+    optional goby.protobuf.App3Config app = 1;
+    optional goby.protobuf.InterProcessPortalConfig interprocess = 2;
+
+    optional string http_address = 10 [default="localhost", (goby.field).description="address to bind on; same as Wt --http-address"];
+    optional uint32 http_port = 11 [default=54321, (goby.field).description="address to bind on; same as Wt --http-port"];
+
+    optional string docroot = 12 [default="/usr/share/goby/liaison", (goby.field).description="path to static objects (e.g. images) root; same as Wt --docroot"];
+  
+    optional string additional_wt_http_params = 13 [(goby.field).example="--accesslog=/tmp/access.log"];
+    optional float update_freq = 14 [default=5];
+
+    repeated string load_shared_library = 15 [(goby.field).description="Path to a shared library containing compiled Protobuf files. Preferred over load_proto_file."];
+    repeated string load_proto_file = 16 [(goby.field).description="Path to a .proto file. Use load_shared_library when possible."];
+    repeated string load_proto_dir = 17 [(goby.field).description="Directory containing .proto files to load. Use load_shared_library when possible."];
+  
+    optional bool start_paused = 18 [default = false];
+
+    optional string upper_right_logo = 19 [(goby.field).description="Image for upper right, relative to docroot"];
+    optional string upper_right_logo_link = 20 [(goby.field).description="Hyperlink for upper right image"];
+
+    optional ProtobufCommanderConfig pb_commander_config = 900;
+    optional ProtobufScopeConfig pb_scope_config = 901;
+
+    // MOOS - 1000 to 1099
+    // DRC -  1100
+    // WIP -  1200 to 1299
+    extensions 1000 to max;
+}
+
+message ProtobufCommanderConfig
+{
+    repeated string load_protobuf_name = 1;
+  
+    optional int32 value_width_pixels = 10 [default = 500];
+    optional int32 modify_width_pixels = 11 [default = 100];
+
+    optional string sqlite3_database = 20 [default = "/tmp/liaison_commander_autosave.db"];  
+    optional int32 database_pool_size = 21 [default=10];
+    optional int32 database_view_height = 5  [default=400];
+
+    enum Column
+    {
+        @PROTOBUF_ALLOW_ALIAS@
+        COLUMN_COMMENT = 0;
+        COLUMN_NAME = 1;
+        COLUMN_IP = 2;
+        COLUMN_TIME = 3;
+        COLUMN_LAST_ACK = 4;
+        COLUMN_MAX = 4;
+    }
+  
+    message DatabaseColumnWidthPixels
+    {
+        optional int32 comment_width = 1 [default=180];
+        optional int32 name_width = 2 [default=180];
+        optional int32 ip_width = 3 [default=120];
+        optional int32 time_width = 4 [default=120];
+        optional int32 last_ack_width = 5 [default=120];
+    }
+    optional DatabaseColumnWidthPixels database_width = 22;
+
+    message ModalDialogDimensions
+    {
+        optional int32 width = 1 [default = 800];
+        optional int32 height = 2 [default = 200];
+    }
+    optional ModalDialogDimensions modal_dimensions = 23;
+  
+    message NotificationSubscription
+    {
+        required string type_regex = 1;
+        required string group_regex = 2;
+    }
+    
+    repeated NotificationSubscription notify_subscribe = 30;
+
+    // optional string time_source_var = 40;
+
+    // optional string network_ack_var = 41 [default = "ACOMMS_NETWORK_ACK"];
+
+}
+
+message ProtobufScopeConfig
+{
+  repeated string subscription = 1;
+
+  enum Column
+  {
+    @PROTOBUF_ALLOW_ALIAS@
+    COLUMN_GROUP = 0;
+    COLUMN_TYPE = 1;
+    COLUMN_VALUE = 2;
+    COLUMN_TIME = 3;
+    COLUMN_MAX = 3;
+    
+  }
+  
+  message ColumnWidthPixels
+  {
+    optional int32 group_width = 1 [default=150];
+    optional int32 type_width = 2 [default=150];
+    optional int32 value_width = 3 [default=400];
+    optional int32 time_width = 4 [default=150];
+  }
+  optional ColumnWidthPixels column_width = 2;
+  optional Column sort_by_column = 3 [default=COLUMN_GROUP];
+  optional bool sort_ascending = 4 [default = true];
+  optional int32 scope_height = 5  [default=500];
+  optional int32 history_height = 9  [default=300];
+    
+  optional Column regex_filter_column = 6 [default=COLUMN_GROUP];
+  optional string regex_filter_expression = 7 [default=".*"];
+
+  
+  message HistoryConfig
+  {
+    required string group = 1;
+    optional bool show_plot = 2 [default = false];
+      //    optional int32 plot_width = 3 [default = 800];
+      //    optional int32 plot_height = 4 [default = 300];
+
+  } 
+  
+  repeated HistoryConfig history = 8;
+
+  optional int32 max_history_items = 10 [default = 100];
+
+
+}
+
+message NetworkAckSet
+{
+    optional uint64 newest_ack_time = 1;
+    repeated goby.acomms.protobuf.NetworkAck ack = 2;
+}

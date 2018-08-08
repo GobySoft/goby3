@@ -46,8 +46,6 @@ set_target_properties(goby_moos PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "
 if(enable_wt AND enable_zeromq)
   add_library(liaison_plugins_goby_moos
     moos_liaison_load.cpp
-    liaison_scope.cpp 
-    liaison_commander.cpp
     liaison_geodesy.cpp
     liaison_acomms.cpp)
 

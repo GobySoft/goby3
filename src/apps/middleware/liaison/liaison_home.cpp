@@ -24,9 +24,8 @@
 using namespace Wt;
 
 
-goby::common::LiaisonHome::LiaisonHome(Wt::WContainerWidget* parent)
-    : LiaisonContainer(parent),
-      main_layout_(new Wt::WVBoxLayout(this))
+goby::common::LiaisonHome::LiaisonHome()
+    : main_layout_(new Wt::WVBoxLayout(this))
 {
     Wt::WContainerWidget* top_text = new Wt::WContainerWidget(this);
     main_layout_->addWidget(top_text);

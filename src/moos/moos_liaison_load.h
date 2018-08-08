@@ -26,14 +26,11 @@
 #include <vector>
 
 #include "goby/common/zeromq_service.h"
-#include "goby/common/protobuf/liaison_config.pb.h"
+#include "goby/middleware/protobuf/liaison_config.pb.h"
 
-extern std::vector<boost::shared_ptr<goby::common::ZeroMQService> > services_;
-    
 extern "C"
 {
-    std::vector<goby::common::LiaisonContainer*> goby_liaison_load(const goby::common::protobuf::LiaisonConfig& cfg,
-                                                                   boost::shared_ptr<zmq::context_t> zmq_context);
+    std::vector<goby::common::LiaisonContainer*> goby_liaison_load(const goby::common::protobuf::LiaisonConfig& cfg);
 }
 
     

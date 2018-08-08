@@ -37,7 +37,7 @@ namespace goby
         class LiaisonHome : public LiaisonContainer
         {
           public:
-            LiaisonHome(Wt::WContainerWidget* parent = 0);
+            LiaisonHome();
 
           private:
             Wt::WVBoxLayout* main_layout_;

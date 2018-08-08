@@ -28,6 +28,7 @@
 #include <Wt/WStackedWidget>
 #include <Wt/WImage>
 #include <Wt/WAnchor>
+#include <Wt/WIOService>
 
 #include "goby/common/time.h"
 #include "goby/util/dynamic_protobuf_manager.h"
@@ -40,15 +41,10 @@ using namespace Wt;
 using namespace goby::common::logger;
 
 
-boost::shared_ptr<zmq::context_t> goby::common::Liaison::zmq_context_(new zmq::context_t(1));
 std::vector<void *> goby::common::Liaison::plugin_handles_;
 
-goby::common::protobuf::LiaisonConfig goby::common::liaison_cfg_;
-
 int main(int argc, char* argv[])
-{
-    glog.set_lock_action(goby::common::logger_lock::lock);
-    
+{    
     // load plugins from environmental variable GOBY_LIAISON_PLUGINS
     char * plugins = getenv ("GOBY_LIAISON_PLUGINS");
     if (plugins)
@@ -69,8 +65,8 @@ int main(int argc, char* argv[])
         }        
     }
     
-    int return_value = goby::run<goby::common::Liaison>(argc, argv, &goby::common::liaison_cfg_);
-    goby::util::DynamicProtobufManager::protobuf_shutdown();    
+    int return_value = goby::run<goby::common::Liaison>(argc, argv);
+    goby::util::DynamicProtobufManager::protobuf_shutdown();
 
     for(int i = 0, n = goby::common::Liaison::plugin_handles_.size();
         i < n; ++i)
@@ -79,21 +75,17 @@ int main(int argc, char* argv[])
     return return_value;
 }
 
-goby::common::Liaison::Liaison(protobuf::LiaisonConfig* cfg)
-    : ZeroMQApplicationBase(&zeromq_service_, cfg),
-      zeromq_service_(zmq_context_),
-      pubsub_node_(&zeromq_service_, cfg->base().pubsub_config())
+goby::common::Liaison::Liaison()
+    //    : MultiThreadApplication<protobuf::LiaisonConfig>(10*boost::units::si::hertz)
 {
-
-
     // load all shared libraries
-    for(int i = 0, n = cfg->load_shared_library_size(); i < n; ++i)
+    for(int i = 0, n = cfg().load_shared_library_size(); i < n; ++i)
     {
         glog.is(VERBOSE) &&
-            glog << "Loading shared library: " << cfg->load_shared_library(i) << std::endl;
+            glog << "Loading shared library: " << cfg().load_shared_library(i) << std::endl;
         
         void* handle = goby::util::DynamicProtobufManager::load_from_shared_lib(
-            cfg->load_shared_library(i));
+            cfg().load_shared_library(i));
         
         if(!handle)
         {
@@ -105,13 +97,13 @@ goby::common::Liaison::Liaison(protobuf::LiaisonConfig* cfg)
     
     // load all .proto files
     goby::util::DynamicProtobufManager::enable_compilation();
-    for(int i = 0, n = cfg->load_proto_file_size(); i < n; ++i)
-        load_proto_file(cfg->load_proto_file(i));
+    for(int i = 0, n = cfg().load_proto_file_size(); i < n; ++i)
+        load_proto_file(cfg().load_proto_file(i));
 
     // load all .proto file directories
-    for(int i = 0, n = cfg->load_proto_dir_size(); i < n; ++i)
+    for(int i = 0, n = cfg().load_proto_dir_size(); i < n; ++i)
     {
-        boost::filesystem::path current_dir(cfg->load_proto_dir(i));
+        boost::filesystem::path current_dir(cfg().load_proto_dir(i));
 
         for (boost::filesystem::directory_iterator iter(current_dir), end;
              iter != end;
@@ -128,34 +120,12 @@ goby::common::Liaison::Liaison(protobuf::LiaisonConfig* cfg)
     }
     
 
-    pubsub_node_.subscribe_all();
-    zeromq_service_.connect_inbox_slot(&Liaison::inbox, this);
-
-    protobuf::ZeroMQServiceConfig ipc_sockets;
-    protobuf::ZeroMQServiceConfig::Socket* internal_publish_socket = ipc_sockets.add_socket();
-    internal_publish_socket->set_socket_type(protobuf::ZeroMQServiceConfig::Socket::PUBLISH);
-    internal_publish_socket->set_socket_id(LIAISON_INTERNAL_PUBLISH_SOCKET);
-    internal_publish_socket->set_transport(protobuf::ZeroMQServiceConfig::Socket::INPROC);
-    internal_publish_socket->set_connect_or_bind(protobuf::ZeroMQServiceConfig::Socket::BIND);
-    internal_publish_socket->set_socket_name(liaison_internal_publish_socket_name());
-
-
-    protobuf::ZeroMQServiceConfig::Socket* internal_subscribe_socket = ipc_sockets.add_socket();
-    internal_subscribe_socket->set_socket_type(protobuf::ZeroMQServiceConfig::Socket::SUBSCRIBE);
-    internal_subscribe_socket->set_socket_id(LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
-    internal_subscribe_socket->set_transport(protobuf::ZeroMQServiceConfig::Socket::INPROC);
-    internal_subscribe_socket->set_connect_or_bind(protobuf::ZeroMQServiceConfig::Socket::BIND);
-    internal_subscribe_socket->set_socket_name(liaison_internal_subscribe_socket_name());
-    
-    zeromq_service_.merge_cfg(ipc_sockets);
-    zeromq_service_.subscribe_all(LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
-    
     try
     {   
         std::string doc_root;
         
-        if(cfg->has_docroot())
-            doc_root = cfg->docroot();
+        if(cfg().has_docroot())
+            doc_root = cfg().docroot();
         else if(boost::filesystem::exists(boost::filesystem::path(GOBY_LIAISON_COMPILED_DOCROOT)))
             doc_root = GOBY_LIAISON_COMPILED_DOCROOT;            
         else if(boost::filesystem::exists(boost::filesystem::path(GOBY_LIAISON_INSTALLED_DOCROOT)))
@@ -165,7 +135,7 @@ goby::common::Liaison::Liaison(protobuf::LiaisonConfig* cfg)
         
         // create a set of fake argc / argv for Wt::WServer
         std::vector<std::string> wt_argv_vec;  
-        std::string str = cfg->base().app_name() + " --docroot " + doc_root + " --http-port " + goby::util::as<std::string>(cfg->http_port()) + " --http-address " + cfg->http_address() + " " + cfg->additional_wt_http_params();
+        std::string str = cfg().app().name() + " --docroot " + doc_root + " --http-port " + goby::util::as<std::string>(cfg().http_port()) + " --http-address " + cfg().http_address() + " " + cfg().additional_wt_http_params();
         boost::split(wt_argv_vec, str, boost::is_any_of(" "));
         
         char* wt_argv[wt_argv_vec.size()];
@@ -187,8 +157,11 @@ goby::common::Liaison::Liaison(protobuf::LiaisonConfig* cfg)
 
         
         wt_server_.addEntryPoint(Wt::Application,
-                                 goby::common::create_wt_application);
-
+                                 [this](const Wt::WEnvironment& env)->Wt::WApplication*
+                                 {
+                                     return new LiaisonWtThread(env, this->cfg());
+                                 });
+        
         if (!wt_server_.start())
         {
             glog.is(DIE) && glog << "Could not start Wt HTTP server." << std::endl;
@@ -199,6 +172,21 @@ goby::common::Liaison::Liaison(protobuf::LiaisonConfig* cfg)
         glog.is(DIE) && glog << "Could not start Wt HTTP server. Exception: " << e.what() << std::endl;
     }
 
+
+    // clean up sessions if there are none
+    // see https://redmine.webtoolkit.eu/boards/2/topics/5614?r=5615#message-5615
+    expire_sessions_= [=]()
+        {
+            int seconds = 10;
+            if(!terminating_)
+            {
+                Wt::WServer::instance()->ioService().schedule(
+                    seconds * 1000, expire_sessions_);
+            }
+            wt_server_.expireSessions();
+        };
+    
+    expire_sessions_();
 }
 
 void goby::common::Liaison::load_proto_file(const std::string& path)
@@ -222,28 +210,30 @@ void goby::common::Liaison::load_proto_file(const std::string& path)
 
 
 void goby::common::Liaison::loop()
-{
+{    
+
+    glog.is(DEBUG1) && glog << "Liaison loop()" << std::endl;
+    
     // static int i = 0;
     // i++;
-    // if(i > (20 * cfg_.base().loop_freq()))
+    // if(i > (20 * this->loop_frequency_hertz()))
     // {
     //     wt_server_.stop();
     //     quit();
     // }
-
 }
 
-void goby::common::Liaison::inbox(int marshalling_scheme,
-                                  const std::string& identifier,
-                                  const std::string& data,
-                                  int socket_id)
-{
-    glog.is(DEBUG2) && glog << "Liaison: got message with identifier: " << identifier << " from socket: " << socket_id << std::endl;
-    zeromq_service_.send(marshalling_scheme, identifier, data, LIAISON_INTERNAL_PUBLISH_SOCKET);
+// void goby::common::Liaison::inbox(int marshalling_scheme,
+//                                   const std::string& identifier,
+//                                   const std::string& data,
+//                                   int socket_id)
+// {
+//     glog.is(DEBUG2) && glog << "Liaison: got message with identifier: " << identifier << " from socket: " << socket_id << std::endl;
+//     zeromq_service_.send(marshalling_scheme, identifier, data, LIAISON_INTERNAL_PUBLISH_SOCKET);
     
-    if(socket_id == LIAISON_INTERNAL_SUBSCRIBE_SOCKET)
-    {
-        glog.is(DEBUG2) && glog << "Sending to pubsub node: " << identifier << std::endl;
-        pubsub_node_.publish(marshalling_scheme, identifier, data);
-    }
-}
+//     if(socket_id == LIAISON_INTERNAL_SUBSCRIBE_SOCKET)
+//     {
+//         glog.is(DEBUG2) && glog << "Sending to pubsub node: " << identifier << std::endl;
+//         pubsub_node_.publish(marshalling_scheme, identifier, data);
+//     }
+// }

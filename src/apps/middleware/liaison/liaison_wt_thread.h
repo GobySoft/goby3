@@ -19,10 +19,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISON20110609H
-#define LIAISON20110609H
-
-#include <google/protobuf/descriptor.h>
+#ifndef LIAISONWTTHREAD20110609H
+#define LIAISONWTTHREAD20110609H
 
 #include <Wt/WEnvironment>
 #include <Wt/WApplication>
@@ -32,47 +30,31 @@
 #include <Wt/WContainerWidget>
 #include <Wt/WTimer>
 
-#include "goby/common/zeromq_application_base.h"
-#include "goby/common/pubsub_node_wrapper.h"
-#include "goby/common/liaison_container.h"
-#include "goby/common/protobuf/liaison_config.pb.h"
+#include "goby/middleware/protobuf/liaison_config.pb.h"
+#include "liaison.h"
 
 namespace goby
 {
     namespace common
-    {   
-        extern protobuf::LiaisonConfig liaison_cfg_;
-
-        class Liaison : public ZeroMQApplicationBase
+    {
+        class LiaisonWtThread : public Wt::WApplication
         {
           public:
-            Liaison(protobuf::LiaisonConfig* cfg);
-            ~Liaison() { }
-
-            void inbox(int marshalling_scheme,
-                       const std::string& identifier,
-                       const std::string& data,
-                       int socket_id);
-
-            void loop();
-
-            static boost::shared_ptr<zmq::context_t> zmq_context() { return zmq_context_; }
-
-            static std::vector<void *> plugin_handles_;
-
-          private:
-            void load_proto_file(const std::string& path);
+            LiaisonWtThread(const Wt::WEnvironment& env, protobuf::LiaisonConfig app_cfg);
+            ~LiaisonWtThread();
+                
+            LiaisonWtThread(const LiaisonWtThread&) = delete;
+            LiaisonWtThread& operator=(const LiaisonWtThread&) = delete;
             
-            friend class LiaisonWtThread;
+            void add_to_menu(Wt::WMenu* menu, LiaisonContainer* container);
+            void handle_menu_selection(Wt::WMenuItem * item);
+            
           private:
-            Wt::WServer wt_server_;
-            static boost::shared_ptr<zmq::context_t> zmq_context_;
-            ZeroMQService zeromq_service_;
-            PubSubNodeWrapperBase pubsub_node_;
-
-            // add a database client
-        };
-
+            Wt::WMenu* menu_;
+            Wt::WStackedWidget* contents_stack_;
+            std::map<Wt::WMenuItem*, LiaisonContainer*> menu_contents_;
+            protobuf::LiaisonConfig app_cfg_;
+        };        
     }
 }
 

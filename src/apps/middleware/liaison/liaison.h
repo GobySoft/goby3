@@ -19,11 +19,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISONWTTHREAD20110609H
-#define LIAISONWTTHREAD20110609H
+#ifndef LIAISON20110609H
+#define LIAISON20110609H
 
-#include <google/protobuf/compiler/importer.h>
 #include <google/protobuf/descriptor.h>
+#include <mutex>
 
 #include <Wt/WEnvironment>
 #include <Wt/WApplication>
@@ -33,48 +33,36 @@
 #include <Wt/WContainerWidget>
 #include <Wt/WTimer>
 
-#include "goby/common/zeromq_application_base.h"
-#include "goby/common/pubsub_node_wrapper.h"
+#include "goby/middleware/liaison/liaison_container.h"
+#include "goby/middleware/protobuf/liaison_config.pb.h"
 
-#include "goby/common/protobuf/liaison_config.pb.h"
-#include "liaison.h"
+#include "goby/middleware/multi-thread-application.h"
 
 namespace goby
 {
     namespace common
     {
-        class LiaisonWtThread : public Wt::WApplication
+
+        class Liaison : public MultiThreadApplication<protobuf::LiaisonConfig>
         {
           public:
-            LiaisonWtThread(const Wt::WEnvironment& env);
-            ~LiaisonWtThread();
+            Liaison();
+            ~Liaison() { }
             
-            
-            void inbox(MarshallingScheme marshalling_scheme,
-                       const std::string& identifier,
-                       const void* data,
-                       int size,
-                       int socket_id);
-                
-                
-          private:
-            LiaisonWtThread(const LiaisonWtThread&);
-            LiaisonWtThread& operator=(const LiaisonWtThread&);
-            
-            void add_to_menu(Wt::WMenu* menu, LiaisonContainer* container);
-            void handle_menu_selection(Wt::WMenuItem * item);
-            
-          private:
-            Wt::WMenu* menu_;
-            Wt::WStackedWidget* contents_stack_;
-            std::map<Wt::WMenuItem*, LiaisonContainer*> menu_contents_;
-        };
+            void loop() override;
 
-        
-        inline Wt::WApplication* create_wt_application(const Wt::WEnvironment& env)
-        {
-            return new LiaisonWtThread(env);
-        }
+            static std::vector<void *> plugin_handles_;
+
+            
+          private:
+            void load_proto_file(const std::string& path);
+            
+            friend class LiaisonWtThread;
+          private:
+            Wt::WServer wt_server_;
+            bool terminating_ {false};
+            std::function<void()> expire_sessions_;
+        };
 
     }
 }

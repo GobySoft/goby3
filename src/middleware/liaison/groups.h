@@ -20,23 +20,37 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/moos/liaison_geodesy.h"
-#include "goby/moos/liaison_acomms.h"
+#ifndef LIAISON_GROUPS_20180725H
+#define LIAISON_GROUPS_20180725H
 
-#include "moos_liaison_load.h"
+#include "goby/middleware/group.h"
 
-extern "C"
-{    
-    std::vector<goby::common::LiaisonContainer*> goby_liaison_load(const goby::common::protobuf::LiaisonConfig& cfg)
+namespace goby
+{
+    namespace liaison
     {
-        
-        std::vector<goby::common::LiaisonContainer*> containers;        
-        //    ({ new goby::common::LiaisonCommander(cfg)//,
-                    //               new goby::common::LiaisonScope(cfg),
-                    //               new goby::common::LiaisonGeodesy(cfg),
-                    //               new goby::common::LiaisonAcomms(cfg)
-        //            });
-        
-        return containers;
+        namespace groups
+        {
+#ifdef __clang__
+            constexpr goby::Group commander_out {"goby::liaison::commander_out"};
+#else
+            extern constexpr goby::Group commander_out {"goby::liaison::commander_out"};           
+#endif
+
+        }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif

@@ -32,7 +32,7 @@
 #include <dccl.h>
 
 #include "goby/moos/moos_node.h"
-#include "goby/common/liaison_container.h"
+#include "goby/middleware/liaison/liaison_container.h"
 #include "goby/moos/protobuf/liaison_config.pb.h"
 #include "goby/moos/protobuf/pAcommsHandler_config.pb.h"
 
