@@ -437,7 +437,8 @@ void goby::common::LiaisonCommander::ControlsContainer::send_message()
         current_command->message_->SerializeToArray(
             &command_entry->bytes[0], command_entry->bytes.size());
         command_entry->address = wApp->environment().clientAddress();
-        
+        command_entry->group = current_command->group_line_->text().narrow();
+            
         boost::posix_time::ptime now = goby::common::goby_time();
         command_entry->time.setPosixTime(now);
         command_entry->utime = current_command->latest_time_;
@@ -498,6 +499,7 @@ goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandCont
     
     query_model_->addColumn("comment", "Comment");
     query_model_->addColumn("protobuf_name", "Name");
+    query_model_->addColumn("group", "Group");
     query_model_->addColumn("address", "Network Address");
     query_model_->addColumn("time", "Time");
     query_model_->addColumn("last_ack", "Latest Ack");
@@ -510,6 +512,7 @@ goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandCont
                                DescendingOrder);
     query_table_->setMinimumSize(pb_commander_config.database_width().comment_width()+
                                  pb_commander_config.database_width().name_width()+
+                                 pb_commander_config.database_width().group_width()+
                                  pb_commander_config.database_width().ip_width()+
                                  pb_commander_config.database_width().time_width()+
         			 pb_commander_config.database_width().last_ack_width()+
@@ -521,7 +524,8 @@ goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandCont
                                  pb_commander_config.database_width().comment_width());
     query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_NAME,
                                  pb_commander_config.database_width().name_width());
-    
+    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_GROUP,
+                                 pb_commander_config.database_width().group_width());    
     query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_IP,
                                  pb_commander_config.database_width().ip_width());
     
@@ -539,6 +543,8 @@ goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandCont
     {
         const Dbo::ptr<CommandEntry>& entry = query_model_->resultRow(0);
         message_->ParseFromArray(&entry->bytes[0], entry->bytes.size());
+        group_line_->setText(entry->group);
+        
     }
     
     glog.is(DEBUG1) && glog << "Model has "<< query_model_->rowCount() << " rows" <<  std::endl;
@@ -555,7 +561,8 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle
      
      std::shared_ptr<google::protobuf::Message> message(message_->New());
      message->ParseFromArray(&entry->bytes[0], entry->bytes.size());
-
+     std::string group = entry->group;
+     
      if(!message)
      {
          glog.is(WARN) && glog << "Invalid message!" <<  std::endl;
@@ -568,7 +575,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle
      new WText(entry->comment, comment_box);
 
      WContainerWidget* contents_div = new WContainerWidget(database_dialog_->contents());
-     WGroupBox* message_box = new WGroupBox("Message posted", contents_div);
+     WGroupBox* message_box = new WGroupBox("Message posted to " + group, contents_div);
 
      WContainerWidget* message_div = new WContainerWidget(message_box);
      
@@ -596,11 +603,11 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle
      database_dialog_->rejectWhenEscapePressed();
 
      edit->clicked().connect(boost::bind(&CommandContainer::handle_database_dialog,
-                                        this, RESPONSE_EDIT, message));
+                                         this, RESPONSE_EDIT, message, group));
      merge->clicked().connect(boost::bind(&CommandContainer::handle_database_dialog,
-                                         this, RESPONSE_MERGE, message));
+                                         this, RESPONSE_MERGE, message, group));
      cancel->clicked().connect(boost::bind(&CommandContainer::handle_database_dialog,
-                                          this, RESPONSE_CANCEL, message));
+                                          this, RESPONSE_CANCEL, message, group));
      
      
      database_dialog_->show();
@@ -613,12 +620,14 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle
 
 void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle_database_dialog(
     DatabaseDialogResponse response,
-    std::shared_ptr<google::protobuf::Message> message)
+    std::shared_ptr<google::protobuf::Message> message,
+    std::string group)
 {
     switch(response)
     {
         case RESPONSE_EDIT:
             message_->CopyFrom(*message);
+            group_line_->setText(group);
             generate_root();
             database_dialog_->accept();
             break;
@@ -626,6 +635,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::handle
         case RESPONSE_MERGE:
             message->MergeFrom(*message_);
             message_->CopyFrom(*message);
+            group_line_->setText(group);
             generate_root();    
             database_dialog_->accept();
             break;

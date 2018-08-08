@@ -87,6 +87,7 @@ namespace goby
         struct CommandEntry
         {
             std::string protobuf_name;
+            std::string group;
             std::vector<unsigned char> bytes;
             long long utime;
             Wt::WDateTime time;
@@ -100,6 +101,7 @@ namespace goby
             void persist(Action& a)
                 {
                     Wt::Dbo::field(a, protobuf_name, "protobuf_name");
+                    Wt::Dbo::field(a, group, "group");
                     Wt::Dbo::field(a, bytes, "bytes");
                     Wt::Dbo::field(a, utime, "utime");
                     Wt::Dbo::field(a, time, "time");
@@ -260,7 +262,7 @@ namespace goby
                     
                     
                     void handle_database_dialog(DatabaseDialogResponse response,
-                                                std::shared_ptr<google::protobuf::Message> message);
+                                                std::shared_ptr<google::protobuf::Message> message, std::string group);
                     
                     std::shared_ptr<google::protobuf::Message> message_;
                     
