@@ -236,6 +236,13 @@ namespace goby
 
         static void load_forwarded_subscription(const goby::protobuf::DCCLSubscription& sub);
         static goby::protobuf::DCCLForwardedData unpack(const std::string& bytes);
+
+        static void load_library(const std::string& library)
+            {
+                std::lock_guard<std::mutex> lock(dccl_mutex_);
+                codec().load_library(library);
+            }
+        
     };
     
     

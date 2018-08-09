@@ -22,6 +22,8 @@
 #include "goby/common/application_base3.h"
 #include "goby/middleware/transport-interprocess-zeromq.h"
 #include "goby/middleware/transport-intervehicle.h"
+#include "goby/middleware/gobyd/groups.h"
+#include "goby/middleware/protobuf/intervehicle_status.pb.h"
 
 #include "config.pb.h"
 
@@ -51,6 +53,7 @@ namespace goby
         // For hosting an InterVehiclePortal
         std::unique_ptr<InterProcessPortal<>> interprocess_;
         std::unique_ptr<InterVehiclePortal<InterProcessPortal<>>> intervehicle_;
+
     };
 }
 
@@ -90,7 +93,16 @@ goby::Daemon::~Daemon()
 void goby::Daemon::run()
 {
     if(intervehicle_)
-        intervehicle_->poll();
+    {
+        intervehicle_->poll(std::chrono::milliseconds(200));
+
+        protobuf::InterVehicleStatus status;
+        status.set_tx_queue_size(intervehicle_->tx_queue_size());
+        
+        interprocess_->publish<groups::intervehicle_outbound>(status);
+    }
     else
+    {
         sleep(1);
+    }
 }

@@ -103,7 +103,7 @@ namespace goby
         {
             static_assert(scheme == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
             static_cast<Derived*>(this)->template _publish<Data>(data, group, transport_cfg);
-            inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+            inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data, group, transport_cfg);
         }
 
         template<typename Data, int scheme = scheme<Data>()>
@@ -113,7 +113,7 @@ namespace goby
             if(data)
             {
                 static_cast<Derived*>(this)->template _publish<Data>(*data, group, transport_cfg);
-                inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+                inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data, group, transport_cfg);
             }
         }
 
@@ -248,6 +248,12 @@ namespace goby
 	void run();
         void publish(const std::string& bytes);
         bool retrieve_message(goby::acomms::protobuf::ModemTransmission* msg);
+        int tx_queue_size()
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return sending_.size();
+        }
+        
         
     private:
         void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
@@ -270,6 +276,8 @@ namespace goby
         
 
         goby::acomms::MACManager mac_;
+        
+
     };
     
     
@@ -296,7 +304,9 @@ namespace goby
                 modem_driver_thread_->join();
         }
         
-            
+        int tx_queue_size() { return driver_thread_.tx_queue_size(); }
+
+        
         friend Base;
         private:
         

@@ -62,11 +62,11 @@ namespace goby
                 
             void handle_message(const std::string& group, const google::protobuf::Message& msg, bool fresh_message);            
             
-            std::vector<Wt::WStandardItem *> create_row(const std::string& group, const google::protobuf::Message& msg);
+            std::vector<Wt::WStandardItem *> create_row(const std::string& group, const google::protobuf::Message& msg, bool do_attach_pb_rows = true);
             void attach_pb_rows(const std::vector<Wt::WStandardItem *>& items,
                                        const google::protobuf::Message& msg);
 
-            void update_row(const std::string& group, const google::protobuf::Message& msg, const std::vector<Wt::WStandardItem *>& items);
+            void update_row(const std::string& group, const google::protobuf::Message& msg, const std::vector<Wt::WStandardItem *>& items, bool do_attach_pb_rows = true);
             
             void loop();
             
@@ -285,7 +285,7 @@ namespace goby
                 };
                 
                 interprocess().subscribe_regex(subscription_handler,
-                    { goby::MarshallingScheme::PROTOBUF },
+                                               { goby::MarshallingScheme::PROTOBUF },
                     ".*",
                     ".*");
             }

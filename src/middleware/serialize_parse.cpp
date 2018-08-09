@@ -72,13 +72,21 @@ goby::protobuf::DCCLForwardedData goby::DCCLSerializerParserHelperBase::unpack(c
         packet.set_dccl_id(dccl_id);
         
         std::string::const_iterator next_frame_it;
+
+        if(codec().loaded().count(dccl_id) == 0)
+        {
+            goby::glog.is_debug1() && goby::glog << "DCCL ID " << dccl_id << " is not loaded. Discarding remainder of the message." << std::endl;
+            packets.mutable_frame()->RemoveLast();
+            return packets;
+        }
+        
         const auto* desc = codec().loaded().at(dccl_id);
         auto msg = dccl::DynamicProtobufManager::new_protobuf_message<std::unique_ptr<google::protobuf::Message>>(desc);
-        
+            
         next_frame_it = codec().decode(frame_it, frame_end, msg.get());
         packet.set_data(std::string(frame_it, next_frame_it));
 
-        frame_it = next_frame_it;
+        frame_it = next_frame_it;        
     }
     
     return packets;
