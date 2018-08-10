@@ -56,7 +56,6 @@ namespace goby
 
         virtual ~InterProcessTransporterBase()
         {
-            unsubscribe_all();
         }
         
 	template<typename Data>
@@ -153,7 +152,9 @@ namespace goby
 
         }
         ~InterProcessForwarder()
-        { }
+        {
+            this->unsubscribe_all();
+        }
         
 
         friend Base;
@@ -207,7 +208,7 @@ namespace goby
 
         void _unsubscribe_all()
         {
-            SerializationUnSubscribeAll all;
+            auto all = std::make_shared<SerializationUnSubscribeAll>();
             Base::inner_.template publish<Base::forward_group_, SerializationUnSubscribeAll>(all);
         }
         

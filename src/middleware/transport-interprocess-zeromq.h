@@ -104,10 +104,7 @@ namespace goby
         { _init(); }
 
         ~InterProcessPortal()
-        {
-            // unsubscribe all before shutting down ZMQ so that when this is called from ~InterProcessTransporterBase, we don't call ZMQ
-            _unsubscribe_all();
-            
+        {            
             if(zmq_thread_)
 	    {
 		zmq_main_.reader_shutdown();
@@ -335,7 +332,7 @@ namespace goby
             }
         }
 
-        void _forwarder_unsubscribe(std::thread::id thread_id, const std::string& identifier)
+        void _forwarder_unsubscribe(std::thread::id thread_id, std::string identifier)
         {
             auto it = forwarder_subscription_identifiers_[thread_id].find(identifier);
             if(it != forwarder_subscription_identifiers_[thread_id].end())
