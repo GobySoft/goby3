@@ -178,13 +178,14 @@ int goby::common::FlexOStreamBuf::sync()
 
     current_verbosity_ = logger::UNKNOWN;
     
-    if(die_flag_) exit(EXIT_FAILURE);
 
 
     if(lock_action_ == logger_lock::lock)
     {
         logger::mutex.unlock();
     }
+
+    if(die_flag_) exit(EXIT_FAILURE);
     
     return 0;
 }
