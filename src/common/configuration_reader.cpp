@@ -54,21 +54,21 @@ void goby::common::ConfigReader::read_cfg(int argc,
     *application_name = launch_path.filename();
 #endif
     
-    std::string cfg_path;    
+    std::string cfg_path, exec_cfg_path;    
 
     boost::program_options::options_description od_cli_only("Given on command line only");
 
-    std::string cfg_path_desc = "path to " + *application_name + " configuration file (typically " + *application_name + ".cfg)";
+    std::string cfg_path_desc = "path to " + *application_name + " configuration file (typically " + *application_name + ".pb.cfg).";
     
     std::string app_name_desc = "name to use while communicating in goby (default: " + std::string(argv[0]) + ")";
     od_cli_only.add_options()
         ("cfg_path,c", boost::program_options::value<std::string>(&cfg_path), cfg_path_desc.c_str())
+        ("exec_cfg_path,C", boost::program_options::value<std::string>(&exec_cfg_path), "File (script) to execute to create the configuration for this app. Output of application must be an encoded Protobuf message for this application's configuration.")
         ("help,h", "writes this help message")
         ("app_name,a", boost::program_options::value<std::string>(), app_name_desc.c_str())
         ("example_config,e", "writes an example .pb.cfg file")
         ("verbose,v", boost::program_options::value<std::string>()->implicit_value("")->multitoken(), "output useful information to std::cout. -v is verbosity: verbose, -vv is verbosity: debug1, -vvv is verbosity: debug2, -vvvv is verbosity: debug3")
         ("ncurses,n", "output useful information to an NCurses GUI instead of stdout. If set, this parameter overrides --verbose settings.")
-//        ("no_db,d", "disables the check for goby_database before publishing. You must set this if not running the goby_database.")
         ("version,V", "writes the current version");
     
     std::string od_both_desc = "Typically given in " + *application_name + " configuration file, but may be specified on the command line";
@@ -129,41 +129,58 @@ void goby::common::ConfigReader::read_cfg(int argc,
     {
         if(!cfg_path.empty())
         {
-                
             // try to read file
-            std::ifstream fin;
-            fin.open(cfg_path.c_str(), std::ifstream::in);
+            std::ifstream fin(cfg_path.c_str(), std::ifstream::in);
             if(!fin.is_open())
-                throw(ConfigException(std::string("could not open '" + cfg_path + "' for reading. check value of --cfg_path")));   
-
-            
-//            google::protobuf::io::IstreamInputStream is(&fin);
+                throw(ConfigException(std::string("could not open '" + cfg_path + "' for reading. check value of --cfg_path")));
+                
             std::string protobuf_text((std::istreambuf_iterator<char>(fin)),
                                       std::istreambuf_iterator<char>());
-            
             google::protobuf::TextFormat::Parser parser;
-            // maybe the command line will fill in the missing pieces
+            
             glog.set_name(*application_name);
             glog.add_stream(protobuf::GLogConfig::VERBOSE, &std::cout);
             FlexOStreamErrorCollector error_collector(protobuf_text);
             parser.RecordErrorsTo(&error_collector);
+            // maybe the command line will fill in the missing pieces
             parser.AllowPartialMessage(true);
             parser.ParseFromString(protobuf_text, message);
-
-            //parser.Parse(&is, message);
 
             if(error_collector.has_errors())
             {
                 glog.is(goby::common::logger::DIE) && 
                     glog << "fatal configuration errors (see above)" << std::endl;    
-            }            
-
-            
+            }
         }
+        else if(!exec_cfg_path.empty())
+        {
+            FILE* pipe = popen(exec_cfg_path.c_str(), "r");
+            if(!pipe)
+            {
+                throw(ConfigException(std::string("could not execute '" + exec_cfg_path + "' for retrieving the configuration. check --exec_cfg_path and make sure it is executable.")));
+            }
+            else
+            {
+                std::string value;
+                std::array<char, 256> buffer;
+                while(auto bytes_read = fread(buffer.data(), sizeof(char), buffer.size(), pipe))
+                    value.append(buffer.begin(), buffer.begin()+bytes_read);
+
+                if(!feof(pipe))
+                {
+                    pclose(pipe);
+                    throw(ConfigException(std::string("error reading output while executing '" + exec_cfg_path + "'")));
+                }
+
+                pclose(pipe);
+                message->ParsePartialFromString(value);
+            }
+        }
+        
+        
          
         // add / overwrite any options that are specified in the cfg file with those given on the command line
-        typedef std::pair<std::string, boost::program_options::variable_value> P;
-        BOOST_FOREACH(const P&p, *var_map)
+        for(const auto&p: *var_map)
         {
             // let protobuf deal with the defaults
             if(!p.second.defaulted())
@@ -178,7 +195,7 @@ void goby::common::ConfigReader::read_cfg(int argc,
                 
             std::stringstream err_msg;
             err_msg << "Configuration is missing required parameters: \n";
-            BOOST_FOREACH(const std::string& s, errors)
+            for(const std::string& s: errors)
                 err_msg << common::esc_red << s << "\n" << common::esc_nocolor;
                 
             err_msg << "Make sure you specified a proper `cfg_path` to the configuration file.";
@@ -205,7 +222,7 @@ void goby::common::ConfigReader::set_protobuf_program_option(const boost::progra
         switch(field_desc->cpp_type())
         {
             case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-                BOOST_FOREACH(std::string v,value.as<std::vector<std::string> >())
+                for(std::string v: value.as<std::vector<std::string> >())
                 {
                     google::protobuf::TextFormat::Parser parser;
                     parser.AllowPartialMessage(true);   
@@ -215,53 +232,47 @@ void goby::common::ConfigReader::set_protobuf_program_option(const boost::progra
                 break;    
                     
             case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
-                BOOST_FOREACH(google::protobuf::int32 v,
-                              value.as<std::vector<google::protobuf::int32> >())
+                for(google::protobuf::int32 v: value.as<std::vector<google::protobuf::int32> >())
                     refl->AddInt32(&message, field_desc, v);
                 break;
                     
             case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-                BOOST_FOREACH(google::protobuf::int64 v,
-                              value.as<std::vector<google::protobuf::int64> >())
+                for(google::protobuf::int64 v: value.as<std::vector<google::protobuf::int64> >())
                     refl->AddInt64(&message, field_desc, v);
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
-                BOOST_FOREACH(google::protobuf::uint32 v,
-                              value.as<std::vector<google::protobuf::uint32> >())
+                for(google::protobuf::uint32 v: value.as<std::vector<google::protobuf::uint32> >())
                     refl->AddUInt32(&message, field_desc, v);
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-                BOOST_FOREACH(google::protobuf::uint64 v,
-                              value.as<std::vector<google::protobuf::uint64> >())
+                for(google::protobuf::uint64 v: value.as<std::vector<google::protobuf::uint64> >())
                     refl->AddUInt64(&message, field_desc, v);
                 break;
                         
             case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-                BOOST_FOREACH(bool v, value.as<std::vector<bool> >())
+                for(bool v: value.as<std::vector<bool> >())
                     refl->AddBool(&message, field_desc, v);
                 break;
                     
             case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-                BOOST_FOREACH(const std::string& v,
-                              value.as<std::vector<std::string> >())
+                for(const std::string& v: value.as<std::vector<std::string> >())
                     refl->AddString(&message, field_desc, v);
                 break;                    
                 
             case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-                BOOST_FOREACH(float v, value.as<std::vector<float> >())
+                for(float v: value.as<std::vector<float> >())
                     refl->AddFloat(&message, field_desc, v);
                 break;
                 
             case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-                BOOST_FOREACH(double v, value.as<std::vector<double> >())
+                for(double v: value.as<std::vector<double> >())
                     refl->AddDouble(&message, field_desc, v);
                 break;
                 
             case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
-                BOOST_FOREACH(std::string v,
-                              value.as<std::vector<std::string> >())
+                for(std::string v: value.as<std::vector<std::string> >())
                 {
                     const google::protobuf::EnumValueDescriptor* enum_desc =
                         field_desc->enum_type()->FindValueByName(v);
