@@ -41,7 +41,7 @@ namespace goby
         ss << "This is Version " << goby::VERSION_STRING
            << " of the Goby Underwater Autonomy Project released on "
            << goby::VERSION_DATE
-           <<".\n See https://launchpad.net/goby to search for updates.";
+           <<".\n See https://github.com/GobySoft/goby3 to search for updates.";
         return ss.str();
     }
 }
