@@ -21,6 +21,9 @@
 
 #include "goby/common/application_base3.h"
 #include "goby/middleware/transport-interprocess-zeromq.h"
+#include "goby/middleware/transport-intervehicle.h"
+#include "goby/middleware/gobyd/groups.h"
+#include "goby/middleware/protobuf/intervehicle_status.pb.h"
 
 #include "config.pb.h"
 
@@ -46,6 +49,11 @@ namespace goby
         goby::ZMQManager manager_;
         std::unique_ptr<std::thread> router_thread_;
         std::unique_ptr<std::thread> manager_thread_;
+
+        // For hosting an InterVehiclePortal
+        std::unique_ptr<InterProcessPortal<>> interprocess_;
+        std::unique_ptr<InterVehiclePortal<InterProcessPortal<>>> intervehicle_;
+
     };
 }
 
@@ -64,6 +72,13 @@ goby::Daemon::Daemon()
     {
         glog.is(WARN) && glog << "Using default platform name of " << app_cfg().interprocess().platform() << std::endl;
     }
+
+    if(app_cfg().has_intervehicle())
+    {
+        interprocess_.reset(new InterProcessPortal<>(app_cfg().interprocess()));
+        intervehicle_.reset(new InterVehiclePortal<InterProcessPortal<>>(*interprocess_, app_cfg().intervehicle()));
+    }
+    
 }
 
 goby::Daemon::~Daemon()
@@ -77,5 +92,17 @@ goby::Daemon::~Daemon()
 
 void goby::Daemon::run()
 {
-    sleep(1);
+    if(intervehicle_)
+    {
+        intervehicle_->poll(std::chrono::milliseconds(200));
+
+        protobuf::InterVehicleStatus status;
+        status.set_tx_queue_size(intervehicle_->tx_queue_size());
+        
+        interprocess_->publish<groups::intervehicle_outbound>(status);
+    }
+    else
+    {
+        sleep(1);
+    }
 }

@@ -1,10 +1,11 @@
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
-  protobuf/interplatform_config.proto
+  protobuf/intervehicle_config.proto
   protobuf/interprocess_config.proto
   protobuf/interprocess_data.proto
   protobuf/interprocess_zeromq.proto
   protobuf/liaison_config.proto
   protobuf/transporter_config.proto
+  protobuf/intervehicle_status.proto
   )
 
 set(SRC

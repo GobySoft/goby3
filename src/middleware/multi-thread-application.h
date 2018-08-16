@@ -28,27 +28,29 @@
 #include "goby/common/exception.h"
 #include "goby/common/application_base3.h"
 #include "goby/middleware/thread.h"
+#include "goby/middleware/transport-intervehicle.h"
 #include "goby/middleware/transport-interprocess-zeromq.h"
 #include "goby/middleware/transport-interthread.h"
 
 namespace goby
 {
-
     template<typename Config>
-        class SimpleThread : public Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>
-    {
-	using SimpleThreadBase = Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>;
+        class SimpleThread : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
+    {        
+	using SimpleThreadBase = Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>;
     public:
     SimpleThread(const Config& cfg, double loop_freq_hertz = 0, int index = -1) :
         SimpleThread(cfg, loop_freq_hertz*boost::units::si::hertz, index) { }
         
     SimpleThread(const Config& cfg, 
            boost::units::quantity<boost::units::si::frequency> loop_freq, int index = -1)
-        : Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>(cfg, loop_freq, index)
+        : SimpleThreadBase(cfg, loop_freq, index)
         {
-            interthread_.reset(new goby::InterThreadTransporter);
-            forwarder_.reset(new goby::InterProcessForwarder<goby::InterThreadTransporter>(*interthread_));
-            Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>::set_transporter(forwarder_.get());
+            interthread_.reset(new InterThreadTransporter);
+            interprocess_.reset(new InterProcessForwarder<InterThreadTransporter>(*interthread_));
+            intervehicle_.reset(new InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>(*interprocess_));
+            
+            this->set_transporter(intervehicle_.get());
 
 	    interthread_->template subscribe<SimpleThreadBase::shutdown_group_, bool>(
 		[this](const bool& shutdown)
@@ -56,22 +58,20 @@ namespace goby
 		);	   
         }
 
-        goby::InterProcessForwarder<goby::InterThreadTransporter>& interprocess()
-        {
-            return Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>::transporter();
-        }
+        InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>& intervehicle()
+        { return this->transporter(); }
 
-        goby::InterThreadTransporter& interthread()
-        {
-            return Thread<Config, goby::InterProcessForwarder<goby::InterThreadTransporter>>::transporter().inner();
-        }
+        InterProcessForwarder<InterThreadTransporter>& interprocess()
+        { return this->transporter().inner(); }
+
+        InterThreadTransporter& interthread()
+        { return this->transporter().inner().inner(); }
         
     private:
-        std::unique_ptr<goby::InterThreadTransporter> interthread_;
-        std::unique_ptr<goby::InterProcessForwarder<goby::InterThreadTransporter>> forwarder_;
-        
+        std::unique_ptr<InterThreadTransporter> interthread_;
+        std::unique_ptr<InterProcessForwarder<InterThreadTransporter>> interprocess_; 
+        std::unique_ptr<InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>> intervehicle_;       
     };
-
 
     template<class Config, class Transporter, class StateMachine>
         class MultiThreadApplicationBase
@@ -102,12 +102,12 @@ namespace goby
         { }
 
 
-    MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq, Transporter* portal, bool check_required_configuration = true)
+    MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq, Transporter* transporter, bool check_required_configuration = true)
          : goby::common::ApplicationBase3<Config, StateMachine>(check_required_configuration),
-            MainThreadBase(this->app_cfg(), portal, loop_freq)
-            {   
+            MainThreadBase(this->app_cfg(), transporter, loop_freq)
+            {
                 goby::glog.set_lock_action(goby::common::logger_lock::lock);
-
+                
                 interthread_.template subscribe<MainThreadBase::joinable_group_, std::pair<std::type_index, int>>(
                     [this](const std::pair<std::type_index, int>& joinable)
                     {
@@ -174,12 +174,13 @@ namespace goby
     
     template<class Config, class StateMachine = goby::common::NullStateMachine >
         class MultiThreadApplication
-        : public MultiThreadApplicationBase<Config, goby::InterProcessPortal<goby::InterThreadTransporter>, StateMachine>
+        : public MultiThreadApplicationBase<Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>, StateMachine>
     {
         
     private:
-        goby::InterProcessPortal<goby::InterThreadTransporter> portal_;
-        using Base = MultiThreadApplicationBase<Config, goby::InterProcessPortal<goby::InterThreadTransporter>, StateMachine>;
+        InterProcessPortal<InterThreadTransporter> interprocess_;
+        InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>> intervehicle_;
+        using Base = MultiThreadApplicationBase<Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>, StateMachine>;
         
     public:
     MultiThreadApplication(double loop_freq_hertz = 0) :
@@ -187,24 +188,26 @@ namespace goby
         { }
         
     MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : Base(loop_freq, &portal_),
-            portal_(Base::interthread(), this->app_cfg().interprocess())
-        { }
+        : Base(loop_freq, &intervehicle_),
+          interprocess_(Base::interthread(), this->app_cfg().interprocess()),
+          intervehicle_(interprocess_)
+        {
+        }
         virtual ~MultiThreadApplication() { }
 
     protected:
-        goby::InterThreadTransporter& interthread() { return portal_.inner(); }
-        goby::InterProcessPortal<goby::InterThreadTransporter>& interprocess() { return portal_; }
-
+        InterThreadTransporter& interthread() { return interprocess_.inner(); }
+        InterProcessPortal<InterThreadTransporter>& interprocess() { return interprocess_; }
+        InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>& intervehicle() { return intervehicle_; }
     };
 
     template<class Config, class StateMachine = goby::common::NullStateMachine>
         class MultiThreadStandaloneApplication
-        : public MultiThreadApplicationBase<Config, goby::InterThreadTransporter, StateMachine>
+        : public MultiThreadApplicationBase<Config, InterThreadTransporter, StateMachine>
     {
         
     private:
-    using Base = MultiThreadApplicationBase<Config, goby::InterThreadTransporter, StateMachine>;
+    using Base = MultiThreadApplicationBase<Config, InterThreadTransporter, StateMachine>;
         
     public:
     MultiThreadStandaloneApplication(double loop_freq_hertz = 0) :
@@ -214,7 +217,6 @@ namespace goby
     MultiThreadStandaloneApplication(boost::units::quantity<boost::units::si::frequency> loop_freq, bool check_required_configuration = true)
         : Base(loop_freq, &Base::interthread(), check_required_configuration)
         {
-            
         }
         virtual ~MultiThreadStandaloneApplication() { }
 
@@ -240,7 +242,8 @@ namespace goby
 
     protected:
         // so we can add on threads that publish to the outside for testing
-        goby::InterThreadTransporter& interprocess() { return Base::interthread(); }
+        InterThreadTransporter& interprocess() { return Base::interthread(); }
+        InterThreadTransporter& intervehicle() { return Base::interthread(); }
 
     };
 

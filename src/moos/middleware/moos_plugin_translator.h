@@ -26,6 +26,8 @@
 #include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
 #include "goby/middleware/multi-thread-application.h"
+#include "goby/middleware/transport-interprocess-zeromq.h"
+#include "goby/middleware/transport-interthread.h"
 
 namespace goby
 {
@@ -45,7 +47,7 @@ namespace goby
             }
 
             // Goby
-            typename goby::SimpleThread<GobyMOOSGatewayConfig>::Transporter& goby_comms() { return interprocess(); }
+            goby::SimpleThread<GobyMOOSGatewayConfig>& goby_comms() { return *this; }
             
             // MOOS
             void add_moos_trigger(const std::string& moos_var)

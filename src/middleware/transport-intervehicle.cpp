@@ -67,6 +67,10 @@ goby::ModemDriverThread::ModemDriverThread(const protobuf::InterVehiclePortalCon
     //q_manager_.set_cfg(cfg_.queue_cfg());
     mac_.startup(cfg_.mac_cfg());
     driver_->startup(cfg_.driver_cfg());
+
+    for(const auto& lib_path : cfg_.dccl_load_library())
+        DCCLSerializerParserHelperBase::load_library(lib_path);
+    
 }
 
 void goby::ModemDriverThread::run()

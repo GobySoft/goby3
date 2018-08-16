@@ -95,10 +95,10 @@ int main(int argc, char* argv[])
         goby::acomms::protobuf::ModemTransmission& slot = *mac_cfg.add_slot();
         slot.set_src(1);
         slot.set_slot_seconds(1);
-        goby::acomms::protobuf::QueueManagerConfig& queue_cfg = *slow_cfg.mutable_queue_cfg();
-        queue_cfg.set_modem_id(1);
-        goby::acomms::protobuf::QueuedMessageEntry& ctd_entry = *queue_cfg.add_message_entry();
-        ctd_entry.set_protobuf_name("CTDSample");
+        //        goby::acomms::protobuf::QueueManagerConfig& queue_cfg = *slow_cfg.mutable_queue_cfg();
+        //        queue_cfg.set_modem_id(1);
+        //        goby::acomms::protobuf::QueuedMessageEntry& ctd_entry = *queue_cfg.add_message_entry();
+        //ctd_entry.set_protobuf_name("CTDSample");
         
     }
     

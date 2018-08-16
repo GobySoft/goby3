@@ -107,7 +107,7 @@ void goby::common::LiaisonScope::loop()
 void goby::common::LiaisonScope::attach_pb_rows(const std::vector<Wt::WStandardItem *>& items,
                                                 const google::protobuf::Message& pb_msg)
 {
-
+    
     Wt::WStandardItem* key_item = items[protobuf::ProtobufScopeConfig::COLUMN_GROUP];
     
     
@@ -141,19 +141,19 @@ void goby::common::LiaisonScope::attach_pb_rows(const std::vector<Wt::WStandardI
     }
 }
 
-std::vector<Wt::WStandardItem *> goby::common::LiaisonScope::create_row(const std::string& group, const google::protobuf::Message& msg)
+std::vector<Wt::WStandardItem *> goby::common::LiaisonScope::create_row(const std::string& group, const google::protobuf::Message& msg, bool do_attach_pb_rows)
 {
     std::vector<Wt::WStandardItem *> items;
     for(int i = 0; i <= protobuf::ProtobufScopeConfig::COLUMN_MAX; ++i)
         items.push_back(new WStandardItem);
-    update_row(group, msg, items);
+    update_row(group, msg, items, do_attach_pb_rows);
 
     return items;
 }
 
 
 
-void goby::common::LiaisonScope::update_row(const std::string& group, const google::protobuf::Message& msg, const std::vector<WStandardItem *>& items)
+void goby::common::LiaisonScope::update_row(const std::string& group, const google::protobuf::Message& msg, const std::vector<WStandardItem *>& items, bool do_attach_pb_rows)
 {
     items[protobuf::ProtobufScopeConfig::COLUMN_GROUP]->setText(group);
 
@@ -163,8 +163,9 @@ void goby::common::LiaisonScope::update_row(const std::string& group, const goog
 
     
     items[protobuf::ProtobufScopeConfig::COLUMN_TIME]->setData(WDateTime::fromPosixTime(goby::time::to_ptime(goby::time::now())), DisplayRole);
-    
-    attach_pb_rows(items, msg);
+
+    if(do_attach_pb_rows)
+        attach_pb_rows(items, msg);
 }
 
 void goby::common::LiaisonScope::handle_global_key(Wt::WKeyEvent event)
@@ -523,9 +524,13 @@ void goby::common::LiaisonScope::HistoryContainer::display_message(const std::st
         history_models_.find(group);
     if(hist_it != history_models_.end())
     {
-        hist_it->second.model->appendRow(scope_->create_row(group, msg));
+        // when the pb_row children exist, Wt segfaults when removing the parent... for now don't attach pb_rows for history items
+        hist_it->second.model->appendRow(scope_->create_row(group, msg, false));
         while(hist_it->second.model->rowCount() > pb_scope_config_.max_history_items())
-            hist_it->second.model->removeRow(0);
+        {
+            int row_to_remove = 0;
+            hist_it->second.model->removeRow(row_to_remove);
+        }        
         
         hist_it->second.proxy->setFilterRegExp(".*");
     }

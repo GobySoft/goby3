@@ -41,7 +41,7 @@
 #include "goby/acomms/modemdriver/udp_driver.h"
 
 #include "transport-common.h"
-#include "goby/middleware/protobuf/interplatform_config.pb.h"
+#include "goby/middleware/protobuf/intervehicle_config.pb.h"
 
 namespace goby
 {
@@ -52,7 +52,7 @@ namespace goby
     {
         using PollerType = Poller<InterVehicleTransporterBase<Derived, InnerTransporter>>;
 
-    public:        
+    public:
     InterVehicleTransporterBase(InnerTransporter& inner) :
         PollerType(&inner), inner_(inner) { }
     InterVehicleTransporterBase(InnerTransporter* inner_ptr = new InnerTransporter,
@@ -72,26 +72,26 @@ namespace goby
 
 	// publish without a group
         template<typename Data>
-            void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish_no_group(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { publish_dynamic<Data>(data, Group(), transport_cfg); }
 
         template<typename Data>
-            void publish(std::shared_ptr<const Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+            void publish_no_group(std::shared_ptr<const Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
             { publish_dynamic<Data>(data, Group(), transport_cfg); }
         
         template<typename Data>
-            void publish(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
-        { publish<Data>(std::shared_ptr<const Data>(data), transport_cfg); }
+            void publish_no_group(std::shared_ptr<Data> data, const goby::protobuf::TransporterConfig& transport_cfg = goby::protobuf::TransporterConfig())
+        { publish_no_group<Data>(std::shared_ptr<const Data>(data), transport_cfg); }
 
-        // subscribe without a group
+        //subscribe without a group
         template<typename Data>
-            void subscribe(std::function<void(const Data&)> func, std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
+            void subscribe_no_group(std::function<void(const Data&)> func, std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
             subscribe_dynamic<Data>(func, Group(), group_func);
         }
         
         template<typename Data>
-            void subscribe(std::function<void(std::shared_ptr<const Data>)> func,
+            void subscribe_no_group(std::function<void(std::shared_ptr<const Data>)> func,
                            std::function<Group(const Data&)> group_func = [](const Data&) { return Group(); })
         {
             subscribe_dynamic<Data>(func, Group(), group_func);
@@ -103,7 +103,7 @@ namespace goby
         {
             static_assert(scheme == MarshallingScheme::DCCL, "Can only use DCCL messages with InterVehicleTransporters");
             static_cast<Derived*>(this)->template _publish<Data>(data, group, transport_cfg);
-            inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+            inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data, group, transport_cfg);
         }
 
         template<typename Data, int scheme = scheme<Data>()>
@@ -113,7 +113,7 @@ namespace goby
             if(data)
             {
                 static_cast<Derived*>(this)->template _publish<Data>(*data, group, transport_cfg);
-                inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+                inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data, group, transport_cfg);
             }
         }
 
@@ -248,6 +248,12 @@ namespace goby
 	void run();
         void publish(const std::string& bytes);
         bool retrieve_message(goby::acomms::protobuf::ModemTransmission* msg);
+        int tx_queue_size()
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return sending_.size();
+        }
+        
         
     private:
         void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
@@ -270,6 +276,8 @@ namespace goby
         
 
         goby::acomms::MACManager mac_;
+        
+
     };
     
     
@@ -296,7 +304,9 @@ namespace goby
                 modem_driver_thread_->join();
         }
         
-            
+        int tx_queue_size() { return driver_thread_.tx_queue_size(); }
+
+        
         friend Base;
         private:
         
