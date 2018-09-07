@@ -6,6 +6,8 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/liaison_config.proto
   protobuf/transporter_config.proto
   protobuf/intervehicle_status.proto
+  protobuf/gobyd_config.proto
+  protobuf/logger_config.proto
   )
 
 set(SRC

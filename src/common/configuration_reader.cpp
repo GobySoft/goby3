@@ -173,6 +173,10 @@ void goby::common::ConfigReader::read_cfg(int argc,
                 }
 
                 pclose(pipe);
+
+                if(value.empty())
+                    throw(ConfigException("No data passed from -C script"));
+                
                 message->ParsePartialFromString(value);
             }
         }
