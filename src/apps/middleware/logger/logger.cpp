@@ -27,7 +27,7 @@
 #include "goby/middleware/log.h"
 #include "goby/common/time.h"
 
-#include "config.pb.h"
+#include "goby/middleware/protobuf/logger_config.pb.h"
 
 using goby::glog;
 using namespace goby::common::logger;

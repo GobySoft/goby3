@@ -25,7 +25,7 @@
 #include "goby/middleware/gobyd/groups.h"
 #include "goby/middleware/protobuf/intervehicle_status.pb.h"
 
-#include "config.pb.h"
+#include "goby/middleware/protobuf/gobyd_config.pb.h"
 
 using namespace goby::common::logger;
 using goby::glog;
