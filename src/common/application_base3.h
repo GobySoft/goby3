@@ -206,8 +206,8 @@ template<typename Config, typename StateMachine>
        boost::format file_format(cfg_.app().glog_config().file_log(i).file_name());
        file_format.exceptions( boost::io::all_error_bits ^ ( boost::io::too_many_args_bit | boost::io::too_few_args_bit)); 
 
-       std::string file_name = (file_format % to_iso_string(second_clock::universal_time())).str();
-       std::string file_symlink = (file_format % "latest").str();
+       std::string file_name = (file_format % to_iso_string(second_clock::universal_time()) % cfg_.app().name()).str();
+       std::string file_symlink = (file_format % "latest" % cfg_.app().name()).str();
 
        glog.is(VERBOSE) &&
            glog << "logging output to file: " << file_name << std::endl;

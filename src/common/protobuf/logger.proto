@@ -22,10 +22,10 @@ message GLogConfig
     
   message FileLog
   {
-    required string file_name = 1;
-    optional Verbosity verbosity = 2 [default = VERBOSE,
-                                      (goby.field).description="Verbosity for this file log"];
+      required string file_name = 1 [(goby.field).description="Full path to the debug file to write. If present, the string '%1%' will be replaced by the current UTC date and time, and '%2%' will be replaced by the application name."];
+      optional Verbosity verbosity = 2 [default = VERBOSE,
+                                        (goby.field).description="Verbosity for this file log"];
   }
-  repeated FileLog file_log = 3 [(goby.field).description="Open one or more files for (debug) logging, the symbol '%1%' will be replaced by the current UTC date and time."];
+  repeated FileLog file_log = 3 [(goby.field).description="Open one or more files for (debug) logging."];
   
 }
