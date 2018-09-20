@@ -386,7 +386,7 @@ void goby::common::ConfigReader::get_protobuf_program_options(boost::program_opt
         {
             case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
             {
-                build_description(field_desc->message_type(), human_desc_ss, "  ");
+                build_description(field_desc->message_type(), human_desc_ss, "");
                 
                 set_single_option(po_desc,
                                   field_desc,
