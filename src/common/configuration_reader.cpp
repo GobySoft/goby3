@@ -366,9 +366,22 @@ void goby::common::ConfigReader::get_protobuf_program_options(boost::program_opt
         std::string cli_name = field_name;
         std::stringstream human_desc_ss;
         human_desc_ss << common::esc_lt_blue << field_desc->options().GetExtension(goby::field).description();
+
+        if(field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_ENUM)
+        {
+            human_desc_ss << " (";
+            for(int i = 0, n = field_desc->enum_type()->value_count(); i < n; ++i)
+            {
+                if(i) human_desc_ss <<  ", ";
+                human_desc_ss << field_desc->enum_type()->value(i)->name();
+            }
+                
+            human_desc_ss << ")";
+        }
+
         human_desc_ss << label(field_desc);
-        human_desc_ss << common::esc_nocolor;
-        
+        human_desc_ss << " " << common::esc_nocolor;        
+
         switch(field_desc->cpp_type())
         {
             case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
@@ -470,6 +483,7 @@ void goby::common::ConfigReader::get_protobuf_program_options(boost::program_opt
                                   field_desc->default_value_enum()->name(),
                                   cli_name,
                                   human_desc_ss.str());
+                
             }
             break;
         }
@@ -546,7 +560,7 @@ void goby::common::ConfigReader::build_description_field(
             + label(field_desc);
             
         if(use_color)
-            description += common::esc_nocolor;
+            description += " " + common::esc_nocolor;
 
         if(!use_color)
             wrap_description(&description, before_description.size());
@@ -631,7 +645,7 @@ void goby::common::ConfigReader::build_description_field(
         stream << description;            
             
         if(use_color)
-            stream << common::esc_nocolor;
+            stream << " " << common::esc_nocolor;
         
     }
 }
