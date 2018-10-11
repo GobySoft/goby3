@@ -62,6 +62,8 @@ namespace goby
             inner_(*inner_ptr)
             { }
 
+        virtual ~InterVehicleTransporterBase() = default;
+            
 	template<typename Data>
 	    static constexpr int scheme()
 	{
@@ -166,6 +168,9 @@ namespace goby
         {
             Base::inner_.template subscribe<Base::forward_group_, goby::protobuf::DCCLForwardedData>([this](const goby::protobuf::DCCLForwardedData& d) { _receive_dccl_data_forwarded(d); });
         }
+
+        virtual ~InterVehicleForwarder() = default;
+
 
     friend Base;
     private:

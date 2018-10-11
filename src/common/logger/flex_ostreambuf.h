@@ -28,6 +28,7 @@
 #include <vector>
 #include <deque>
 #include <cstdio>
+#include <atomic>
 
 #include <boost/thread.hpp>
 
@@ -167,7 +168,7 @@ namespace goby
             std::map<std::string, Group> groups_;
 
             bool die_flag_;
-            logger::Verbosity current_verbosity_;
+            std::atomic<logger::Verbosity> current_verbosity_;
             
             FlexNCurses* curses_;
             boost::shared_ptr<boost::thread> input_thread_;
@@ -178,9 +179,9 @@ namespace goby
 
             bool is_gui_;
 
-            logger::Verbosity highest_verbosity_;
+            std::atomic<logger::Verbosity> highest_verbosity_;
 
-            logger_lock::LockAction lock_action_;
+            std::atomic<logger_lock::LockAction> lock_action_;
             FlexOstream* parent_;
         };
     }

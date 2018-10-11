@@ -151,7 +151,7 @@ namespace goby
                 [this](std::shared_ptr<const goby::protobuf::SerializerTransporterData> d) { _receive_regex_data_forwarded(d);});
 
         }
-        ~InterProcessForwarder()
+        virtual ~InterProcessForwarder()
         {
             this->unsubscribe_all();
         }
