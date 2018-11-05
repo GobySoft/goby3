@@ -25,7 +25,7 @@
 
 #include <cstdint>
 #include <boost/bimap.hpp>
-#include <boost/crc.hpp>     
+#include <boost/crc.hpp>
 
 #include "goby/common/logger.h"
 #include "goby/common/exception.h"
@@ -38,11 +38,11 @@ namespace goby
     template<> struct uint<2> { typedef std::uint16_t type; };
     template<> struct uint<4> { typedef std::uint32_t type; };
     template<> struct uint<8> { typedef std::uint64_t type; };
-    
+
     class LogEntry
     {
     private:
-        
+
         static constexpr int size_bytes_{4};
         static constexpr int scheme_bytes_{2};
         static constexpr int group_bytes_{2};
@@ -50,7 +50,7 @@ namespace goby
         static constexpr int crc_bytes_ {4};
         static constexpr uint<scheme_bytes_>::type scheme_group_index_ { 0xFFFF };
         static constexpr uint<scheme_bytes_>::type scheme_type_index_ { 0xFFFE };
-        
+
     public:
     LogEntry(const std::vector<unsigned char>& data, int scheme, const std::string& type, const Group& group)
         : data_(data),
@@ -58,7 +58,7 @@ namespace goby
             type_(type),
             group_(std::string(group))
             { }
-            
+
     LogEntry() : group_("") { }
 
         template <typename Stream>
@@ -66,14 +66,14 @@ namespace goby
         {
             using namespace goby::common::logger;
             using goby::glog;
-            
+
             auto old_except_mask = s->exceptions();
             s->exceptions(std::ios::failbit | std::ios::badbit | std::ios::eofbit);
 
             uint<scheme_bytes_>::type scheme(0);
             do
             {
-            
+
                 char next_char = s->peek();
                 if(next_char != magic_[0])
                 {
@@ -98,26 +98,26 @@ namespace goby
 
                 boost::crc_32_type crc;
                 crc.process_bytes(&magic_read[0], magic_.size());
-                
-                auto size(read_one<uint<size_bytes_>::type>(s, &crc));         
+
+                auto size(read_one<uint<size_bytes_>::type>(s, &crc));
                 auto fixed_field_size = scheme_bytes_ + group_bytes_ + type_bytes_ + crc_bytes_;
 
                 if(size < fixed_field_size)
                     throw(goby::Exception("Invalid size read: " + std::to_string(size) + " as message must be at least " + std::to_string(fixed_field_size) + " bytes long"));
-                
+
                 auto data_size = size - fixed_field_size;
                 glog.is(DEBUG2) && glog << "Reading entry of " << size << " bytes (" << data_size << " bytes data)" << std::endl;
-            
+
                 scheme = read_one<uint<scheme_bytes_>::type>(s, &crc);
                 auto group_index(read_one<uint<group_bytes_>::type>(s, &crc));
                 auto type_index(read_one<uint<type_bytes_>::type>(s, &crc));
-                
+
                 data_.resize(data_size);
                 s->read(reinterpret_cast<char*>(&data_[0]), data_size);
                 crc.process_bytes(&data_[0], data_.size());
-                
+
                 auto calculated_crc = crc.checksum();
-                
+
                 auto given_crc(read_one<uint<crc_bytes_>::type>(s));
 
                 if(calculated_crc != given_crc)
@@ -144,33 +144,33 @@ namespace goby
                 {
                     scheme_ = scheme;
 
-                    std::string type = "_unknown" + std::to_string(type_index) + "_";  
+                    std::string type = "_unknown" + std::to_string(type_index) + "_";
                     auto type_it = types_.right.find(type_index);
                     if(type_it != types_.right.end())
                         type = type_it->second;
                     else
-                        glog.is(WARN) && glog << "No type entry in file for type index: " << type_index << std::endl;                    
+                        glog.is(WARN) && glog << "No type entry in file for type index: " << type_index << std::endl;
                     type_ = type;
 
-                    std::string group = "_unknown" + std::to_string(group_index) + "_";  
+                    std::string group = "_unknown" + std::to_string(group_index) + "_";
                     auto group_it = groups_.right.find(group_index);
                     if(group_it != groups_.right.end())
                         group = group_it->second;
                     else
-                        glog.is(WARN) && glog << "No group entry in file for group index: " << group_index << std::endl;                    
+                        glog.is(WARN) && glog << "No group entry in file for group index: " << group_index << std::endl;
                     group_ = goby::DynamicGroup(group);
-                }   
+                }
             }
             while(scheme == scheme_group_index_ || scheme == scheme_type_index_);
 
             s->exceptions(old_except_mask);
         }
-        
+
         // [GBY3][size: 4][scheme: 2][group: 2][type: 2][data][crc32: 4]
         // if scheme == 0xFFFF what follows is not data, but the string value for the group index
         // if scheme == 0xFFFE what follows is not data, but the string value for the group index
         template <typename Stream>
-            void serialize(Stream* s)
+            void serialize(Stream* s) const
         {
             auto old_except_mask = s->exceptions();
             s->exceptions(std::ios::failbit | std::ios::badbit | std::ios::eofbit);
@@ -184,7 +184,7 @@ namespace goby
                 groups_.left.insert({ group, index });
                 _serialize(s, scheme_group_index_,
                            index, 0, group.data(), group.size());
-            }            
+            }
             if(types_.left.count(type_) == 0)
             {
                 auto index = type_index_++;
@@ -192,7 +192,7 @@ namespace goby
                 _serialize(s, scheme_type_index_,
                            0, index, type_.data(), type_.size());
             }
-            
+
             auto group_index = groups_.left.at(group);
             auto type_index = types_.left.at(type_);
 
@@ -202,21 +202,21 @@ namespace goby
 
             s->exceptions(old_except_mask);
         }
-        
-        const std::vector<unsigned char>& data() { return data_; }
-        int scheme() { return scheme_; }
-        const std::string& type() { return type_; }
-        const Group& group() { return group_; }
 
-        static void reset() 
+        const std::vector<unsigned char>& data() const { return data_; }
+        int scheme() const { return scheme_; }
+        const std::string& type() const { return type_; }
+        const Group& group() const { return group_; }
+
+        static void reset()
         {
             groups_.clear();
             types_.clear();
             group_index_ = 1;
             type_index_ = 1;
         }
-        
-        
+
+
     private:
 
         template <typename Stream>
@@ -225,7 +225,7 @@ namespace goby
                             uint<group_bytes_>::type group_index,
                             uint<type_bytes_>::type type_index,
                             const char* data,
-                            int data_size)
+                            int data_size) const
         {
             std::string group_str(netint_to_string(group_index));
             std::string type_str(netint_to_string(type_index));
@@ -241,12 +241,12 @@ namespace goby
             boost::crc_32_type crc;
             crc.process_bytes(header.data(), header.size());
             crc.process_bytes(data, data_size);
-            
+
             uint<crc_bytes_>::type cs(crc.checksum());
             std::string cs_str(netint_to_string(cs));
             s->write(cs_str.data(), cs_str.size());
         }
-                          
+
         template <typename Unsigned, typename Stream>
             Unsigned read_one(Stream* s, boost::crc_32_type* crc = 0)
         {
@@ -257,9 +257,9 @@ namespace goby
             return string_to_netint<Unsigned>(str);
         }
 
-        
+
         template<typename Unsigned>
-            std::string netint_to_string(Unsigned u)
+            std::string netint_to_string(Unsigned u) const
         {
             auto size = std::numeric_limits<Unsigned>::digits/8;
             std::string s(size, '\0');
@@ -267,9 +267,9 @@ namespace goby
                 s[i] = (u >> (size-(i+1))*8) & 0xff;
             return s;
         }
-        
+
         template<typename Unsigned>
-            Unsigned string_to_netint(std::string s)
+            Unsigned string_to_netint(std::string s) const
         {
             Unsigned u(0);
             auto size = std::numeric_limits<Unsigned>::digits/8;
@@ -278,29 +278,29 @@ namespace goby
             if(s.size() < size)
                 s.insert(0, size - s.size(), '\0');
 
-            
+
             for(int i = 0; i < size; ++i)
                 u |= (s[i] & 0xff) << ((size-(i+1))*8);
             return u;
         }
-        
+
     private:
         std::vector<unsigned char> data_;
         int scheme_;
         std::string type_;
         DynamicGroup group_;
 
-        
-        
+
+
         static boost::bimap<std::string, uint<group_bytes_>::type> groups_;
         static uint<group_bytes_>::type group_index_;
-        
+
         static boost::bimap<std::string, uint<type_bytes_>::type> types_;
         static uint<type_bytes_>::type type_index_;
-        
+
         const std::string magic_ { "GBY3" };
     };
-    
+
 
 }
 
