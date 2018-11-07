@@ -38,23 +38,26 @@ namespace goby
 
 
         operator std::string() const
-        {   
+        {
             if(c_ != nullptr) return std::string(c_);
             else return std::to_string(i_);
         }
 
-        
+
     protected:
 	void set_c_str(const char* c) { c_ = c; }
-		
+
     private:
         int i_{0};
         const char* c_{nullptr};
     };
-    
+
     inline bool operator==(const Group& a, const Group& b)
     { return std::string(a) == std::string(b); }
-    
+
+    inline bool operator!=(const Group& a, const Group& b)
+    { return !(a == b); }
+
     template<const Group& group>
         void check_validity()
     {
@@ -67,8 +70,8 @@ namespace goby
         // TODO - check if there's anything we can check for here
     }
 
-    inline std::ostream& operator<<(std::ostream& os, const Group& g)  
-    { return(os << std::string(g)); }  
+    inline std::ostream& operator<<(std::ostream& os, const Group& g)
+    { return(os << std::string(g)); }
 
     class DynamicGroup : public Group
     {
@@ -79,11 +82,11 @@ namespace goby
         }
 
     DynamicGroup(int i) : Group(i) { }
-        
+
     private:
 	std::unique_ptr<const std::string> s_;
     };
-    
+
 }
 
 
