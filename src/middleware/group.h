@@ -24,6 +24,7 @@
 #define Group20170807H
 
 #include <string>
+#include <memory>
 
 namespace goby
 {
