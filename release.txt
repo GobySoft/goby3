@@ -7,6 +7,22 @@ Version 3.0.0~alpha*
 
 Early look at the new Goby3 nested communications middleware. See examples at https://github.com/GobySoft/goby3-examples.
 
+Goby Release Notes (Major version 2)
+
+****************
+Version 2.1.11
+
+### MOOS
+- Working iFrontSeat driver for OceanServer Iver3 vehicles (listen-mode only)
+
+### Acomms
+- Support for generic LBL message for MicroModem driver ($CCPGT)
+
+### Bug fixes
+- Resolved segfault with `goby_hdf5` when outputting string fields
+
+See https://github.com/GobySoft/goby/compare/2.1.10...2.1.11
+
 ****************
 Version 2.1.10
 

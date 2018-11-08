@@ -33,6 +33,21 @@ message REMUSLBLParams
   optional uint32 lbl_max_range = 3 [default = 1000]; 
 }
 
+message GenericLBLParams
+{
+  // for MICROMODEM_GENERIC_LBL_RANGING
+  optional uint32 transmit_freq = 1; // in hertz
+  optional uint32 n_bits = 2; // number of bits to use from the signal sequence, same for outgoing as well as incoming pings
+  optional uint64 tranmit_seq_code = 3; // outgoing sequence bits, packed into a 64 bit int
+  optional uint32 receive_freq = 4; // in hertz, first element (0) == beacon A, etc.
+  repeated uint64 receive_seq_code = 5; // signals to receive
+  optional uint32 bandwidth = 6; // chiprate/bandwidth, of outgoing and receive signals
+    
+  optional uint32 turnaround_ms = 7;
+  // meters
+  optional uint32 lbl_max_range = 8 [default = 2000]; 
+}
+
 message Config
 {
   extend goby.acomms.protobuf.DriverConfig 
@@ -60,6 +75,8 @@ message Config
     optional int32 allowed_skew_ms = 1008 [default = 1000];
 
     optional bool use_application_acks = 1009 [default = false];
+    
+    optional GenericLBLParams generic_lbl = 1010;
   }
 }
 
@@ -231,6 +248,7 @@ enum TransmissionType
   MICROMODEM_FLEXIBLE_DATA = 5; // Flexible Data Protocol in Micro-Modem 2: Up to 100 bytes
   MICROMODEM_HARDWARE_CONTROL = 6; // $CCMEC for writing hardware lines
   MICROMODEM_HARDWARE_CONTROL_REPLY = 7; // $CAMER response to writing hardware lines
+  MICROMODEM_GENERIC_LBL_RANGING = 8; // $CCPGT Ping Generic Transponder from host to modem
 }
 
 enum HardwareLine
@@ -319,6 +337,8 @@ extend goby.acomms.protobuf.ModemTransmission
                                             (goby.field).cfg.action = NEVER];
 
   optional HardwareControl hw_ctl = 1007  [(dccl.field).omit = true];
+  
+  optional GenericLBLParams generic_lbl = 1008 [(dccl.field).omit = true];
 }
 
 

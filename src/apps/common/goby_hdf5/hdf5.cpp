@@ -390,6 +390,8 @@ void goby::common::hdf5::Writer::write_vector(const std::string& group,
     const int rank = 1;
     hsize_t att_hs[] = {1};
     H5::DataSpace att_space(rank, att_hs, att_hs);
-    H5::Attribute att = dataset.createAttribute("default_value", datatype, att_space);
-    att.write(datatype, default_value.c_str());
+    H5::StrType att_datatype(H5::PredType::C_S1, default_value.size() + 1);
+    H5::Attribute att = dataset.createAttribute("default_value", att_datatype, att_space);
+    const H5std_string strbuf(default_value);
+    att.write(att_datatype, strbuf);
 }

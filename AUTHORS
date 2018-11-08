@@ -27,10 +27,21 @@ Entities:
 
 ** Please note **: This CLA does not take away your copyright, it merely gives us a license to use your open source contribution.
 
+For contributions that include dependencies on code that was not authored by you, please see the "Third-party Dependencies" section below.  
+
 To accept this CLA, please add your name, email, and date to the list below, and commit the change using your name and email. Committing your name electronically with your SSH key will be considered a substitute for your physical signature:
 
 Toby Schneider <toby@gobysoft.org> 2016-05-13
 Zac Berkowitz <zberkowitz@whoi.edu> 2016-05-19
 Stephanie Kemna <stephaniekemna@gmail.com> 2016-10-11
 Tommaso Fabbri <t.fabbri@yahoo.com> 2017-03-02
+Michael Godin <mikegodin@yahoo.com> 2018-05-30
 Ryan Govostes <rgovostes@whoi.edu> 2018-11-07
+
+If you prefer, you may email the signed CLA to toby@gobysoft.org
+
+== Third-party Dependencies ==
+
+Third-party contributions (works not authored by GobySoft or those who have signed GobySoft's CLA) must be publicly available with an open source license that is compatible with the GPL (see https://www.gnu.org/licenses/license-list.html#GPLCompatibleLicenses). For example, most projects available in Debian APT repositories fulfill this requirement. 
+
+If portions of a contribution are not licensed under a GPL-compatible license, the original author(s) must also sign the GobySoft CLA for the contribution to be accepted.

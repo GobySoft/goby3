@@ -136,17 +136,42 @@ void IverFrontSeat::process_receive(const std::string& s)
 	    if(nmea.size() < RMC_SIZE)
 		throw(goby::util::bad_nmea_sentence("Message too short"));
 
-	    status_.Clear(); // $GPRMC clears the message, $C sends it	   
-	    
-	    status_.set_time_with_units(nmea_time_to_seconds(nmea.as<double>(UTC), nmea.as<int>(UT_DATE)));
-	    status_.mutable_global_fix()->set_lat_with_units(nmea_geo_to_degrees(nmea.as<double>(LAT), nmea.as<char>(LAT_HEMI)));
-	    status_.mutable_global_fix()->set_lon_with_units(nmea_geo_to_degrees(nmea.as<double>(LON), nmea.as<char>(LON_HEMI)));
-
-	    static const boost::units::metric::knot_base_unit::unit_type knots;
-	    status_.set_speed_with_units(nmea.as<double>(SOG_KNOTS)*knots);
 	    if(ntp_serial_)
 	      ntp_serial_->write(nmea.message_cr_nl());
 	}
+        else if(nmea.at(0) == "$OSI")
+        {
+            status_.Clear(); // $OSI clears the message, $C sends it	   
+	    
+            status_.set_time(goby::common::goby_time<double>());
+
+            enum OSIFields 
+            {
+                TALKER = 0,
+                FINMOTOR = 1,
+                MODE = 2,
+                NEXTWP = 3,
+                LATITUDE = 4,
+                LONGITUDE = 5,
+                SPEED = 6,
+                DISTANCETONEXT = 7,
+                ERROR = 8,
+                ALTIMETER = 9,
+                PARKTIME = 10,
+                MAGNETICDECLINATION = 11,
+                CURRENTMISSIONNAME = 12,
+                REMAININGMISSIONTIME = 13,
+                TRUEHEADING = 14,
+                COR_DFS = 15,
+                SRP_ACTIVE = 16
+            };            
+
+            status_.mutable_global_fix()->set_lat_with_units(nmea.as<double>(LATITUDE)*boost::units::degree::degrees);
+	    status_.mutable_global_fix()->set_lon_with_units(nmea.as<double>(LONGITUDE)*boost::units::degree::degrees);
+            
+	    static const boost::units::metric::knot_base_unit::unit_type knots;
+	    status_.set_speed_with_units(nmea.as<double>(SPEED)*knots);            
+        }
 	else if(nmea.at(0).substr(0,2) == "$C")
 	{
 	    // $C82.8P-3.89R-2.63T20.3D3.2*78

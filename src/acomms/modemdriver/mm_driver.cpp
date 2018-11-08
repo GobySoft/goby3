@@ -564,6 +564,7 @@ void goby::acomms::MMDriver::handle_initiate_transmission(const protobuf::ModemT
                     case micromodem::protobuf::MICROMODEM_REMUS_LBL_RANGING: ccpdt(transmit_msg_); break;
                     case micromodem::protobuf::MICROMODEM_NARROWBAND_LBL_RANGING: ccpnt(transmit_msg_); break;
                     case micromodem::protobuf::MICROMODEM_HARDWARE_CONTROL: ccmec(transmit_msg_); break;
+                    case micromodem::protobuf::MICROMODEM_GENERIC_LBL_RANGING: ccpgt(transmit_msg_); break;
                     default:
                         glog.is(DEBUG1) && glog << group(glog_out_group()) << warn << "Not initiating transmission because we were given an invalid DRIVER_SPECIFIC transmission type for the Micro-Modem:" << transmit_msg_ << std::endl;
                         break;
@@ -814,6 +815,47 @@ void goby::acomms::MMDriver::ccmec(const protobuf::ModemTransmission& msg)
     append_to_write_queue(nmea);
 }
 
+void goby::acomms::MMDriver::ccpgt(const protobuf::ModemTransmission& msg)
+{
+    glog.is(DEBUG1) && glog << group(glog_out_group()) << "\tthis is a MICROMODEM_GENERIC_LBL_RANGING transmission" << std::endl;
+
+    last_lbl_type_ = micromodem::protobuf::MICROMODEM_GENERIC_LBL_RANGING;
+
+    // start with configuration parameters
+    micromodem::protobuf::GenericLBLParams params =
+        driver_cfg_.GetExtension(micromodem::protobuf::Config::generic_lbl);
+    // merge (overwriting any duplicates) the parameters given in the request
+    params.MergeFrom(msg.GetExtension(micromodem::protobuf::generic_lbl));
+
+    uint32 tat = params.turnaround_ms();
+    if(static_cast<unsigned>(nvram_cfg_["TAT"]) != tat)
+        write_single_cfg("TAT," + as<std::string>(tat));
+
+    // $CCPDT,GRP,CHANNEL,SF,STO,Timeout,AF,BF,CF,DF*CS
+    // $CCPGT,Ftx,nbits,tx_seq_code,timeout,Frx,rx_code1,rx_code2,rx_code3,rx_code4,bandwidth,reserved*CS
+    NMEASentence nmea("$CCPGT", NMEASentence::IGNORE);
+    nmea.push_back(params.transmit_freq());
+    nmea.push_back(params.n_bits());
+    nmea.push_back(params.tranmit_seq_code());
+    // REMUS LBL is 50 ms turn-around time, assume 1500 m/s speed of sound
+    nmea.push_back(int((params.lbl_max_range()*2.0 / ROUGH_SPEED_OF_SOUND)*1000 + tat));
+    nmea.push_back(params.receive_freq());
+
+    // up to four receive_seq_codes
+    const int MAX_NUMBER_RX_BEACONS = 4;
+    int number_rx_seq_codes_provided = params.receive_seq_code_size();
+    for(int i = 0; i < MAX_NUMBER_RX_BEACONS; ++i)
+    {
+        if(i < number_rx_seq_codes_provided)
+            nmea.push_back(params.receive_seq_code(i));
+        else
+            nmea.push_back(0);
+    }
+
+    nmea.push_back(params.bandwidth());
+    nmea.push_back(0); // reserved
+    append_to_write_queue(nmea);
+}
 
 
 //

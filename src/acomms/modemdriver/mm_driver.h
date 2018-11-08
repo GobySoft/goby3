@@ -111,6 +111,7 @@ namespace goby
             void ccpdt(const protobuf::ModemTransmission& msg);
             void ccpnt(const protobuf::ModemTransmission& msg);
             void ccmec(const protobuf::ModemTransmission& msg);
+            void ccpgt(const protobuf::ModemTransmission& msg);
 
             void try_send(); // try to send another NMEA message to the modem
             void pop_out(); // pop the NMEA send deque upon successful NMEA acknowledgment
