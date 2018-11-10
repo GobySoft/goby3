@@ -127,6 +127,9 @@ void goby::common::ConfigReader::read_cfg(int argc,
         
     if(message)
     {
+        if(cfg_path == "-")
+            cfg_path = "/dev/stdin";
+        
         if(!cfg_path.empty())
         {
             // try to read file
