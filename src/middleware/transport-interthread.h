@@ -45,7 +45,9 @@ namespace goby
         static std::shared_timed_mutex stores_mutex_;
 
     public:
-
+        SubscriptionStoreBase() = default;
+        virtual ~SubscriptionStoreBase() = default;
+    
         // returns number of data items posted to callbacks 
         static int poll_all(std::thread::id thread_id, std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
         {
@@ -363,7 +365,7 @@ namespace goby
         data_mutex_(std::make_shared<std::mutex>())
         { }
 
-        ~InterThreadTransporter()
+        virtual ~InterThreadTransporter()
         {
            SubscriptionStoreBase::unsubscribe_all(std::this_thread::get_id());
         }

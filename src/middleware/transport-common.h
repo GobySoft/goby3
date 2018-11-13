@@ -45,6 +45,9 @@ namespace goby
         public Poller<NullTransporter>
     {
     public:
+        NullTransporter() = default;
+        virtual ~NullTransporter() = default;
+        
 	template<typename Data>
 	    static constexpr int scheme()
 	{
@@ -84,6 +87,9 @@ namespace goby
     class SerializationSubscriptionBase
     {
     public:
+        SerializationSubscriptionBase() = default;
+        virtual ~SerializationSubscriptionBase() = default;
+        
         virtual std::string::const_iterator post(std::string::const_iterator b, std::string::const_iterator e) const = 0;
         virtual std::vector<char>::const_iterator post(std::vector<char>::const_iterator b, std::vector<char>::const_iterator e) const = 0;
         virtual const char* post(const char* b, const char* e) const = 0;
