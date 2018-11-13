@@ -1,0 +1,191 @@
+#!/bin/bash
+
+usage()
+{
+    echo -e "Usage: goby_launch"    
+    echo -e "\t$0 [options] <launchfile>"
+    echo -e ""
+    echo -e "Example:"
+    echo -e "\t$0 -p vehicle1 -s /opt/goby/vehicle1.launch"
+    echo -e ""
+    echo -e "<launchfile>:"
+    echo -e "\tThe <launchfile> is a newline separate list of applications to launch, in the order given. For example, this <launchfile> would launch gobyd followed by goby_logger:"
+    echo -e "----------------"
+    echo -e "gobyd"
+    echo -e "goby_logger --log_dir /media/data/logs"   
+    echo -e "----------------"
+    echo -e "" 
+    echo -e "Options:"
+    echo -e "\t-h\t\tShow help."    
+    echo -e "\t-s\t\tLaunch applications in a detached GNU 'screen' session (requires 'apt install screen')"
+    echo -e "\t-t\t\tLaunch applications in their own gnome-terminal tab"
+    echo -e "\t-n\t\tLaunch applications detached using 'nohup' (implies -b)"
+    echo -e "\t-d 10\t\tDelay in milliseconds between launching applications"
+    echo -e "\t-b\t\tDo not wait for processes to exit before exiting this script"
+    echo -e "\t-p=vehicle1\t\t Platform name"
+    echo -e "\t-k 10\t\tDelay in seconds after sending SIGTERM before escalating to SIGKILL"
+}
+
+launch_delay=10
+launch=normal
+launch_time=$(date -u +%Y%m%dT%H%M%S)
+platform=$launch_time
+background=false
+# in ms
+sigkill_delay=10000
+
+while getopts ":hsntd:bp:k:" opt; do
+    case $opt in
+        h)
+            usage
+            ;;
+        s)
+            [ "$launch" != normal ] && echo "Error: -n, -t, and -s are mutually exclusive. For help use -h." && exit 1
+            launch=screen
+            ;;
+        n)
+            [ "$launch" != normal ] && echo "Error: -n, -t, and -s are mutually exclusive. For help use -h." && exit 1
+            launch=nohup
+            background=true
+            ;;
+        t)
+            [ "$launch" != normal ] && echo "Error: -n, -t, and -s are mutually exclusive. For help use -h." && exit 1
+            launch=gnometerm
+            ;;
+        d)
+            launch_delay=$OPTARG
+            ;;
+        p)
+            platform=$OPTARG
+            ;;
+        b)
+            background=true
+            ;;
+        k)
+            sigkill_delay=$(($OPTARG*1000))
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG. For help use -h."
+            exit  1
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument. For help use -h."
+            exit 1
+    esac
+done
+
+echo $sigkill_delay
+                            
+if [ "$background" = false ]; then
+    # send SIGTERM to all background process when we get signaled
+    trap "trap - SIGTERM && do_kill" SIGTERM SIGINT
+fi
+
+# parent PIDs
+ppid=()
+# PIDs to signal (child of screen)
+spid=()
+
+launchfile=${@:$OPTIND:1}
+
+if [ ! -f "$launchfile" ]; then
+    echo "Error: must provide a valid launchfile: \"$launchfile\" does not exist or is not a regular file. For help use -h."
+    exit 1
+fi
+
+gnterm=()
+while IFS= read -r line
+do
+    bin=$(echo $line | cut -d " " -f 1)
+    name=$platform.${bin##*/}
+    case $launch in
+        normal)            
+            bash -c "$line"&
+            pid=$!
+            echo "Launched ($pid) $line"
+            ppid+=($pid)
+            spid+=($pid)
+            ;;
+        nohup)
+            nohup bash -c "$line"&
+            pid=$!
+            echo "Launched ($pid) $line"
+            ppid+=($pid)
+            spid+=($pid)
+            ;;
+        gnometerm)
+            gnterm+=(--tab -e "bash -c \"echo -ne \\\"\\033]0;${name}\\007\\\"; $line\"")
+            ;;       
+        screen)
+            screen -DmS $name /bin/bash -c "exec $line"&
+            # pid of screen
+            parent_pid=$!
+            # pid of process in screen
+            child_pid=
+            # wait until the child launched in screen
+            while [ -z "$child_pid" ]; do
+                  child_pid=$(ps --ppid $parent_pid -o pid=)
+                  sleep 0.01
+            done
+            echo "Launched (screen: $parent_pid, child: $child_pid) $line"
+            ppid+=($parent_pid)
+            spid+=($child_pid)
+            ;;       
+    esac
+    sleep ${launch_delay}E-3
+done < <(sed 's/#.*//' "$launchfile" | sed '/^\s*$/d')
+
+if [ $launch = "gnometerm" ]; then 
+    gnome-terminal --maximize "${gnterm[@]}"
+    pid=$!
+    echo "Launched ($pid) $line"
+    ppid+=($pid)
+    spid+=($pid)
+fi
+
+case $launch in
+    screen)
+        (set -x; screen -ls)
+    ;;
+esac
+
+do_kill()
+{
+    # clear out ^C symbol
+    echo ""
+
+    # send SIGTERM to all the child processes
+    for p in "${spid[@]}"
+    do
+        # avoid Terminated message
+        disown $p
+        cmd=$(ps --pid $p -o cmd=)
+        echo "SIGTERM: $p ($cmd)"
+        kill -SIGTERM $p
+
+        elapsed_ms=0
+        while $(kill -0 $p 2>/dev/null); do 
+            sleep 0.1
+            elapsed_ms=$(($elapsed_ms + 100))
+            # if necessary, escalate to SIGKILL
+            if (($elapsed_ms > $sigkill_delay)); then
+                echo "WARNING: Process $p did not respond to SIGTERM after $sigkill_delay ms, sending SIGKILL";
+                echo "SIGKILL: $p ($cmd)"
+                kill -SIGKILL $p
+                break;
+            fi
+        done
+    done
+}
+
+if [ "$background" = false ]; then    
+    echo "Use <CTRL+C> to exit"
+    for p in "${ppid[@]}"
+    do
+        wait $p
+    done
+    echo "All processes exited"
+else
+    echo -e "Backgrounding as requested. To kill use\nkill ${spid[@]}"
+fi
+
