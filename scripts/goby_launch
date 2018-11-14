@@ -55,7 +55,7 @@ do_kill()
     echo "Cleaning up..."
 
     # send SIGTERM to all the child processes
-    for ((i=0; i<${#spid[@]}; ++i)); do 
+    for ((i=$((${#spid[@]}-1)); i>=0; --i)); do 
         p=${spid[i]}
         cmd=${spid_cmd[i]}
         kill -0 $p >& /dev/null || continue
@@ -155,7 +155,7 @@ do
                 kill -0 $parent_pid >& /dev/null || launch_fail $line;
                 sleep 0.01
             done
-            echo "Launched (xterm: $parent_pid, child: $child_pid) $escline"
+            echo "Launched (xterm: $parent_pid, child: $child_pid) $line"
             ppid+=($parent_pid)
             spid+=($child_pid)
             ;;
