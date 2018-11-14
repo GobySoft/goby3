@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 usage()
 {
     echo -e "Usage: goby_launch"    
@@ -36,6 +37,12 @@ num_running_proc()
     return $num_proc
 }
 
+launch_fail()
+{
+    echo "Failed to launch $@"
+    exit 1;
+}
+
 check_launch_type_unset()
 {
     [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
@@ -45,6 +52,7 @@ do_kill()
 {    
     # clear out ^C symbol
     echo ""
+    echo "Cleaning up..."
 
     # send SIGTERM to all the child processes
     for ((i=0; i<${#spid[@]}; ++i)); do 
@@ -68,6 +76,9 @@ do_kill()
             fi
         done
     done
+
+    spid=()
+    exit 0;
 }
 
 launch_delay=10
@@ -101,7 +112,7 @@ done
 
 if [ "$background" = false ]; then
     # send SIGTERM to all background process when we get signaled
-    trap "trap - SIGTERM && do_kill" SIGTERM SIGINT
+    trap "trap - SIGTERM && do_kill" SIGTERM SIGINT EXIT
 fi
 
 # parent PIDs
@@ -121,40 +132,42 @@ fi
 gnterm=()
 while IFS= read -r line
 do
+    escline=$(echo $line | sed 's/"/\\"/g')
     bin=$(echo $line | cut -d " " -f 1)
     name=$platform.${bin##*/}
     case $launch in
         normal)            
-            bash -c "$line"&
+            bash -c "$escline"&
             pid=$!
             echo "Launched ($pid) $line"
             ppid+=($pid)
             spid+=($pid)
             ;;
-        xterm)            
-            setsid xterm  -T $name -e "bash -c \"$line\""&
+        xterm)
+            setsid xterm  -T $name -e "bash -c \"$escline\""&
             # pid of xterm
             parent_pid=$!
             # pid of process in xterm
             child_pid=
             # wait until the child launched in screen
-            while [ -z "$child_pid" ]; do
-                  child_pid=$(ps --ppid $parent_pid -o pid=)
-                  sleep 0.01
+            while [[ -z "$child_pid" ]]; do
+                child_pid=$(ps --ppid $parent_pid -o pid=)
+                kill -0 $parent_pid >& /dev/null || launch_fail $line;
+                sleep 0.01
             done
-            echo "Launched (xterm: $parent_pid, child: $child_pid) $line"
+            echo "Launched (xterm: $parent_pid, child: $child_pid) $escline"
             ppid+=($parent_pid)
             spid+=($child_pid)
             ;;
         nohup)
-            nohup bash -c "$line"&
+            nohup bash -c "$escline"&
             pid=$!
             echo "Launched ($pid) $line"
             ppid+=($pid)
             spid+=($pid)
             ;;
         gnometerm)
-            gnterm+=(--tab -e "bash -c \"echo -ne \\\"\\033]0;${name}\\007\\\"; $line\"")
+            gnterm+=(--tab -e "bash -c \"echo -ne \\\"\\033]0;${name}\\007\\\"; $escline\"")
             ;;       
         screen)
             screen -DmS $name /bin/bash -c "exec $line"&
@@ -164,16 +177,24 @@ do
             child_pid=
             # wait until the child launched in screen
             while [ -z "$child_pid" ]; do
-                  child_pid=$(ps --ppid $parent_pid -o pid=)
-                  sleep 0.01
+                child_pid=$(ps --ppid $parent_pid -o pid=)
+                kill -0 $parent_pid >& /dev/null || launch_fail $line;
+                sleep 0.01
             done
             echo "Launched (screen: $parent_pid, child: $child_pid) $line"
             ppid+=($parent_pid)
             spid+=($child_pid)
             ;;       
     esac
-    [ $launch != gnometerm ] && sleep ${launch_delay}E-3
-    
+    if [ $launch != gnometerm ]; then
+        i=$((${#ppid[@]}-1))
+        spid_cmd[i]=$(ps --pid ${spid[i]} -o cmd=)
+
+        # avoid association with this shell so we can kill them later without "Terminated" warning
+        disown ${ppid[i]} >& /dev/null
+        disown ${spid[i]} >& /dev/null
+        sleep ${launch_delay}E-3
+    fi    
 done < <(sed 's/#.*//' "$launchfile" | sed '/^\s*$/d')
 
 if [ $launch = gnometerm ]; then 
@@ -182,14 +203,6 @@ if [ $launch = gnometerm ]; then
     ppid+=($pid)
     spid+=($pid)
 fi
-
-for ((i=0; i<${#spid[@]}; ++i)); do 
-    spid_cmd[i]=$(ps --pid ${spid[i]} -o cmd=)
-
-    # avoid association with this shell so we can kill them later without "Terminated" warning
-    disown ${ppid[i]} >& /dev/null
-    disown ${spid[i]} >& /dev/null
-done    
 
 case $launch in
     screen)
