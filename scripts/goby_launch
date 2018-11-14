@@ -18,8 +18,9 @@ usage()
     echo -e "Options:"
     echo -e "\t-h\t\tShow help."    
     echo -e "\t-s\t\tLaunch applications in a detached GNU 'screen' session (requires 'apt install screen')"
-    echo -e "\t-t\t\tLaunch applications in their own gnome-terminal tab"
+    echo -e "\t-t\t\tLaunch applications in their own gnome-terminal tab (implies -b)" 
     echo -e "\t-n\t\tLaunch applications detached using 'nohup' (implies -b)"
+    echo -e "\t-x\t\tLaunch applications in their own xterm"
     echo -e "\t-d 10\t\tDelay in milliseconds between launching applications"
     echo -e "\t-b\t\tDo not wait for processes to exit before exiting this script"
     echo -e "\t-p=vehicle1\t\t Platform name"
@@ -34,24 +35,29 @@ background=false
 # in ms
 sigkill_delay=10000
 
-while getopts ":hsntd:bp:k:" opt; do
+while getopts ":hsntxd:bp:k:" opt; do
     case $opt in
         h)
             usage
             ;;
         s)
-            [ "$launch" != normal ] && echo "Error: -n, -t, and -s are mutually exclusive. For help use -h." && exit 1
+            [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
             launch=screen
             ;;
         n)
-            [ "$launch" != normal ] && echo "Error: -n, -t, and -s are mutually exclusive. For help use -h." && exit 1
+            [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
             launch=nohup
             background=true
             ;;
         t)
-            [ "$launch" != normal ] && echo "Error: -n, -t, and -s are mutually exclusive. For help use -h." && exit 1
+            [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
             launch=gnometerm
+            background=true
             ;;
+        x)
+            [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
+            launch=xterm
+            ;;        
         d)
             launch_delay=$OPTARG
             ;;
@@ -74,8 +80,38 @@ while getopts ":hsntd:bp:k:" opt; do
     esac
 done
 
-echo $sigkill_delay
-                            
+
+do_kill()
+{    
+    # clear out ^C symbol
+    echo ""
+
+    # send SIGTERM to all the child processes
+    for p in "${spid[@]}"
+    do
+        # avoid Terminated message
+        if [[ "$launch" != screen && "$launch" != xterm ]]; then
+            disown $p
+        fi
+        cmd=$(ps --pid $p -o cmd=)
+        echo "SIGTERM: $p ($cmd)"
+        kill -SIGTERM $p
+
+        elapsed_ms=0
+        while $(kill -0 $p 2>/dev/null); do 
+            sleep 0.1
+            elapsed_ms=$(($elapsed_ms + 100))
+            # if necessary, escalate to SIGKILL
+            if (($elapsed_ms > $sigkill_delay)); then
+                echo "WARNING: Process $p did not respond to SIGTERM after $sigkill_delay ms, sending SIGKILL";
+                echo "SIGKILL: $p ($cmd)"
+                kill -SIGKILL $p
+                break;
+            fi
+        done
+    done
+}
+
 if [ "$background" = false ]; then
     # send SIGTERM to all background process when we get signaled
     trap "trap - SIGTERM && do_kill" SIGTERM SIGINT
@@ -105,6 +141,22 @@ do
             echo "Launched ($pid) $line"
             ppid+=($pid)
             spid+=($pid)
+            ;;
+        xterm)            
+            xterm -T $name -e "bash -c \"$line\""&
+            # pid of xterm
+            parent_pid=$!
+            # pid of process in xterm
+            child_pid=
+            # wait until the child launched in screen
+            while [ -z "$child_pid" ]; do
+                  child_pid=$(ps --ppid $parent_pid -o pid=)
+                  sleep 0.01
+            done
+            echo "Launched (xterm: $parent_pid, child: $child_pid) $line"
+            ppid+=($parent_pid)
+            spid+=($child_pid)
+            disown $parent_pid
             ;;
         nohup)
             nohup bash -c "$line"&
@@ -150,42 +202,12 @@ case $launch in
     ;;
 esac
 
-do_kill()
-{
-    # clear out ^C symbol
-    echo ""
-
-    # send SIGTERM to all the child processes
-    for p in "${spid[@]}"
-    do
-        # avoid Terminated message
-        if [ "$launch" != screen ]; then
-            disown $p
-        fi
-        cmd=$(ps --pid $p -o cmd=)
-        echo "SIGTERM: $p ($cmd)"
-        kill -SIGTERM $p
-
-        elapsed_ms=0
-        while $(kill -0 $p 2>/dev/null); do 
-            sleep 0.1
-            elapsed_ms=$(($elapsed_ms + 100))
-            # if necessary, escalate to SIGKILL
-            if (($elapsed_ms > $sigkill_delay)); then
-                echo "WARNING: Process $p did not respond to SIGTERM after $sigkill_delay ms, sending SIGKILL";
-                echo "SIGKILL: $p ($cmd)"
-                kill -SIGKILL $p
-                break;
-            fi
-        done
-    done
-}
 
 if [ "$background" = false ]; then    
     echo "Use <CTRL+C> to exit"
-    for p in "${ppid[@]}"
+    while ps --pid "${spid[@]}"
     do
-        wait $p
+        sleep 1
     done
     echo "All processes exited"
 else
