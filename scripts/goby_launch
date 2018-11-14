@@ -23,63 +23,23 @@ usage()
     echo -e "\t-x\t\tLaunch applications in their own xterm"
     echo -e "\t-d 10\t\tDelay in milliseconds between launching applications"
     echo -e "\t-b\t\tDo not wait for processes to exit before exiting this script"
-    echo -e "\t-p=vehicle1\t\t Platform name"
+    echo -e "\t-p=vehicle1\tPlatform name"
     echo -e "\t-k 10\t\tDelay in seconds after sending SIGTERM before escalating to SIGKILL"
 }
 
-launch_delay=10
-launch=normal
-launch_time=$(date -u +%Y%m%dT%H%M%S)
-platform=$launch_time
-background=false
-# in ms
-sigkill_delay=10000
 
-while getopts ":hsntxd:bp:k:" opt; do
-    case $opt in
-        h)
-            usage
-            ;;
-        s)
-            [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
-            launch=screen
-            ;;
-        n)
-            [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
-            launch=nohup
-            background=true
-            ;;
-        t)
-            [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
-            launch=gnometerm
-            background=true
-            ;;
-        x)
-            [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
-            launch=xterm
-            ;;        
-        d)
-            launch_delay=$OPTARG
-            ;;
-        p)
-            platform=$OPTARG
-            ;;
-        b)
-            background=true
-            ;;
-        k)
-            sigkill_delay=$(($OPTARG*1000))
-            ;;
-        \?)
-            echo "Invalid option: -$OPTARG. For help use -h."
-            exit  1
-            ;;
-        :)
-            echo "Option -$OPTARG requires an argument. For help use -h."
-            exit 1
-    esac
-done
+num_running_proc()
+{
+    pid_list=$(echo ${spid[@]} | sed 's/ /,/g')
+    num_proc=$(ps --pid "$pid_list" -o pid= | wc -l)
+    echo $num_proc
+    return $num_proc
+}
 
+check_launch_type_unset()
+{
+    [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
+}
 
 do_kill()
 {    
@@ -87,13 +47,11 @@ do_kill()
     echo ""
 
     # send SIGTERM to all the child processes
-    for p in "${spid[@]}"
-    do
-        # avoid Terminated message
-        if [[ "$launch" != screen && "$launch" != xterm ]]; then
-            disown $p
-        fi
-        cmd=$(ps --pid $p -o cmd=)
+    for ((i=0; i<${#spid[@]}; ++i)); do 
+        p=${spid[i]}
+        cmd=${spid_cmd[i]}
+        kill -0 $p >& /dev/null || continue
+
         echo "SIGTERM: $p ($cmd)"
         kill -SIGTERM $p
 
@@ -112,6 +70,35 @@ do_kill()
     done
 }
 
+launch_delay=10
+launch=normal
+launch_time=$(date -u +%Y%m%dT%H%M%S)
+platform=$launch_time
+background=false
+# in ms
+sigkill_delay=10000
+
+while getopts ":hsntxd:bp:k:" opt; do
+    case $opt in
+        h) usage; exit 1 ;;
+        s) check_launch_type_unset; launch=screen ;;
+        n) check_launch_type_unset; launch=nohup; background=true ;;
+        t) check_launch_type_unset; launch=gnometerm; background=true ;;
+        x) check_launch_type_unset; launch=xterm ;;        
+        d) launch_delay=$OPTARG ;;
+        p) platform=$OPTARG ;;
+        b) background=true ;;
+        k) sigkill_delay=$(($OPTARG*1000)) ;;
+        \?)
+            echo "Invalid option: -$OPTARG. For help use -h."
+            exit  1
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument. For help use -h."
+            exit 1
+    esac
+done
+
 if [ "$background" = false ]; then
     # send SIGTERM to all background process when we get signaled
     trap "trap - SIGTERM && do_kill" SIGTERM SIGINT
@@ -121,6 +108,8 @@ fi
 ppid=()
 # PIDs to signal (child of screen)
 spid=()
+# spid to command
+spid_cmd=()
 
 launchfile=${@:$OPTIND:1}
 
@@ -143,7 +132,7 @@ do
             spid+=($pid)
             ;;
         xterm)            
-            xterm -T $name -e "bash -c \"$line\""&
+            setsid xterm  -T $name -e "bash -c \"$line\""&
             # pid of xterm
             parent_pid=$!
             # pid of process in xterm
@@ -156,7 +145,6 @@ do
             echo "Launched (xterm: $parent_pid, child: $child_pid) $line"
             ppid+=($parent_pid)
             spid+=($child_pid)
-            disown $parent_pid
             ;;
         nohup)
             nohup bash -c "$line"&
@@ -184,16 +172,24 @@ do
             spid+=($child_pid)
             ;;       
     esac
-    sleep ${launch_delay}E-3
+    [ $launch != gnometerm ] && sleep ${launch_delay}E-3
+    
 done < <(sed 's/#.*//' "$launchfile" | sed '/^\s*$/d')
 
-if [ $launch = "gnometerm" ]; then 
+if [ $launch = gnometerm ]; then 
     gnome-terminal --maximize "${gnterm[@]}"
     pid=$!
-    echo "Launched ($pid) $line"
     ppid+=($pid)
     spid+=($pid)
 fi
+
+for ((i=0; i<${#spid[@]}; ++i)); do 
+    spid_cmd[i]=$(ps --pid ${spid[i]} -o cmd=)
+
+    # avoid association with this shell so we can kill them later without "Terminated" warning
+    disown ${ppid[i]} >& /dev/null
+    disown ${spid[i]} >& /dev/null
+done    
 
 case $launch in
     screen)
@@ -202,15 +198,27 @@ case $launch in
     ;;
 esac
 
-
 if [ "$background" = false ]; then    
-    echo "Use <CTRL+C> to exit"
-    while ps --pid "${spid[@]}"
+    echo "Use <CTRL+C> to exit"    
+    while (($(num_running_proc) > 0))
     do
-        sleep 1
+        if (($(num_running_proc) == ${#spid[@]})); then
+            echo "All processes running"
+        else
+            for ((i=0; i<${#spid[@]}; ++i)); do 
+                p=${spid[i]}
+                cmd=${spid_cmd[i]}
+                [ $(ps --pid $p -o pid=) ] || echo "Missing PID: $p (was: $cmd)"
+            done
+        fi
+        sleep 5            
     done
     echo "All processes exited"
 else
-    echo -e "Backgrounding as requested. To kill use\nkill ${spid[@]}"
+    if [ $launch = "gnometerm" ]; then 
+        echo -e "To quit, close the gnome-terminal window(s)"
+    else       
+        echo -e "Backgrounding as requested. To kill use\nkill ${spid[@]}"
+    fi
 fi
 
