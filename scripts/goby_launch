@@ -146,6 +146,7 @@ fi
 case $launch in
     screen)
         (set -x; screen -ls)
+        echo "Use 'screen -r <name>' to (re)attach session"
     ;;
 esac
 
@@ -158,7 +159,9 @@ do_kill()
     for p in "${spid[@]}"
     do
         # avoid Terminated message
-        disown $p
+        if [ "$launch" != screen ]; then
+            disown $p
+        fi
         cmd=$(ps --pid $p -o cmd=)
         echo "SIGTERM: $p ($cmd)"
         kill -SIGTERM $p
