@@ -28,7 +28,6 @@ usage()
     echo -e "\t-k 10\t\tDelay in seconds after sending SIGTERM before escalating to SIGKILL"
 }
 
-
 num_running_proc()
 {
     pid_list=$(echo ${spid[@]} | sed 's/ /,/g')
@@ -124,7 +123,7 @@ spid_cmd=()
 
 launchfile=${@:$OPTIND:1}
 
-if [ ! -f "$launchfile" ]; then
+if [ ! -e "$launchfile" ]; then
     echo "Error: must provide a valid launchfile: \"$launchfile\" does not exist or is not a regular file. For help use -h."
     exit 1
 fi
