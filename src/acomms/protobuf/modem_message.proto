@@ -48,7 +48,7 @@ message ModemTransmission
   optional uint32 max_frame_bytes = 12 [(dccl.field).omit = true]; // set by the modem driver for the given rate, omitted means no maximum
   optional bool ack_requested = 13 [default = true]; // acoustic acknowledgment requested
   repeated bytes frame = 14 [(dccl.field).omit = true,
-                             (goby.field).description="Data to transmit, represented as ASCII or octal bytes preceeded by a '\' (e.g. \000 is 0x00)"]; // if omitted, you will be queried for data on signal_data_request. You can also set some frames here and the rest will be filled by signalling a data request
+                             (goby.field).description="Data to transmit, represented as ASCII or octal bytes preceeded by a '\\' (e.g. \\000 is 0x00)"]; // if omitted, you will be queried for data on signal_data_request. You can also set some frames here and the rest will be filled by signalling a data request
 
   optional uint32 frame_start = 15 [(dccl.field).omit = true, default = 0];
   
