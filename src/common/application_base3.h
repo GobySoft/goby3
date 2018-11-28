@@ -187,6 +187,11 @@ template<typename Config, typename StateMachine>
             // with gobyd (e.g. Verbosity)
             merge_app_base_cfg(cfg_.mutable_app(), var_map);
 
+            if(cfg_.app().debug_cfg())
+            {
+                std::cout << cfg_.DebugString() << std::endl;
+                exit(EXIT_SUCCESS);
+            }
         }
         catch(common::ConfigException& e)
         {

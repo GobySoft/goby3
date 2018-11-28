@@ -25,6 +25,7 @@ usage()
     echo -e "\t-d 10\t\tDelay in milliseconds between launching applications"
     echo -e "\t-b\t\tDo not wait for processes to exit before exiting this script"
     echo -e "\t-p=vehicle1\tPlatform name"
+    echo -e "\t-m 10\t\tDelay in seconds after sending goby_terminate before escalating to SIGTERM"
     echo -e "\t-k 10\t\tDelay in seconds after sending SIGTERM before escalating to SIGKILL"
 }
 
@@ -48,17 +49,35 @@ check_launch_type_unset()
 }
 
 do_kill()
-{    
+{
+    # nothing to kill
+    [ ${#spid[@]} == "0" ] && exit 0;
+    
     # clear out ^C symbol
     echo ""
     echo "Cleaning up..."
-
+    if [ ! -z "$not_goby_regex" ];
+    then
+        echo "Not using goby_terminate to close commands matching regex: $not_goby_regex"
+    else
+        not_goby_regex="^$"
+    fi
+        
     # send SIGTERM to all the child processes
     for ((i=$((${#spid[@]}-1)); i>=0; --i)); do 
         p=${spid[i]}
         cmd=${spid_cmd[i]}
         kill -0 $p >& /dev/null || continue
 
+        if ! echo "$cmd" | egrep -q $not_goby_regex; then
+            # run goby_terminate to cleanly shutdown processes
+            echo "goby_terminate: $p ($cmd)"
+            goby_terminate --response_timeout ${sigterm_delay} --target_pid $p <(echo ${gobyd_interprocess}) && continue
+            
+            # if goby_terminate failed, use SIGTERM, then SIGKELL
+            echo "WARNING: Process $p did not respond to goby_terminate, sending SIGTERM"
+        fi
+        
         echo "SIGTERM: $p ($cmd)"
         kill -SIGTERM $p
 
@@ -68,7 +87,7 @@ do_kill()
             elapsed_ms=$(($elapsed_ms + 100))
             # if necessary, escalate to SIGKILL
             if (($elapsed_ms > $sigkill_delay)); then
-                echo "WARNING: Process $p did not respond to SIGTERM after $sigkill_delay ms, sending SIGKILL";
+                echo "WARNING: Process $p did not respond to SIGTERM after $sigkill_delay ms, sending SIGKILL"
                 echo "SIGKILL: $p ($cmd)"
                 kill -SIGKILL $p
                 break;
@@ -87,8 +106,10 @@ platform=$launch_time
 background=false
 # in ms
 sigkill_delay=10000
+# in s
+sigterm_delay=10
 
-while getopts ":hsntxd:bp:k:" opt; do
+while getopts ":hsntxd:bp:k:m:" opt; do
     case $opt in
         h) usage; exit 1 ;;
         s) check_launch_type_unset; launch=screen ;;
@@ -99,6 +120,7 @@ while getopts ":hsntxd:bp:k:" opt; do
         p) platform=$OPTARG ;;
         b) background=true ;;
         k) sigkill_delay=$(($OPTARG*1000)) ;;
+        m) sigterm_delay=$OPTARG ;;
         \?)
             echo "Invalid option: -$OPTARG. For help use -h."
             exit  1
@@ -121,13 +143,48 @@ spid=()
 # spid to command
 spid_cmd=()
 
-launchfile=${@:$OPTIND:1}
+# copy launchfile to allow multiple reads
+origlaunchfile=${@:$OPTIND:1}
+launchfile="/tmp/goby_$$.launch"
+cat ${origlaunchfile} > ${launchfile}
 
 if [ ! -e "$launchfile" ]; then
-    echo "Error: must provide a valid launchfile: \"$launchfile\" does not exist or is not a regular file. For help use -h."
+    echo "Error: must provide a valid launchfile: \"$launchfile\" does not exist. For help use -h."
     exit 1
 fi
+          
+# extract [goby_launch] variables
+launch_vars_regex="# *\[goby_launch\]: *"
+while IFS= read -r line
+do
+    key=$(echo $line | cut -d "=" -f 1)
+    value=$(echo $line | cut -d "=" -f 2)
+    case $key in
+        not_goby)
+            # read values into "not_goby" array: commands matching this will not use goby_terminate to quit them
+            IFS=';, ' read -r -a not_goby <<< "$value" 
+            for ((i=0; i<${#not_goby[@]}; i++))
+            do not_goby[$i]="^${not_goby[$i]}"
+            done
+            not_goby_regex=$(IFS="|"; echo "${not_goby[*]}")
+            ;;
+        *)
+            echo "Invalid [goby_launch]: directive key: " $key
+            exit 1
+            ;;
+    esac                
+done < <(egrep "$launch_vars_regex" "$launchfile" | sed "s/$launch_vars_regex//")
 
+# search for gobyd so we can use the same interprocess { } configuration for goby_terminate
+gobyd_line=$(cat "$launchfile" | egrep "^ *[/a-zA-Z0-9_]*gobyd")
+if [ -z "$gobyd_line" ]; then
+    echo "Failed to find line for launching 'gobyd'"
+    exit 1;
+fi
+gobyd_escline=$(echo $gobyd_line | sed 's/"/\\"/g')
+gobyd_interprocess=$(bash -c "$gobyd_escline --app 'debug_cfg: true'" | sed -n "/^ *interprocess/,/}/p;")
+
+# actually launch the lines
 gnterm=()
 while IFS= read -r line
 do

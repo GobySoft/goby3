@@ -22,5 +22,7 @@ message App3Config
         optional Time time = 1;
     }
     optional SimulatorSettings simulation = 20 [(goby.field).description = "Simulation related settings"];
+
+    optional bool debug_cfg = 100 [default = false, (goby.field).description = "If true, rather than launch the application, simply write the parsed configuration to stdout and exit" ];
 }
 
