@@ -32,6 +32,9 @@
 #include "goby/middleware/transport-interprocess-zeromq.h"
 #include "goby/middleware/transport-interthread.h"
 
+#include "goby/middleware/protobuf/terminate.pb.h"
+#include "goby/middleware/terminate/groups.h"
+
 namespace goby
 {
     template<typename Config>
@@ -112,9 +115,7 @@ namespace goby
                     [this](const std::pair<std::type_index, int>& joinable)
                     {
                         _join_thread(joinable.first, joinable.second);
-                    } );	   
-
-                
+                    } );                    
             }
         virtual ~MultiThreadApplicationBase() { }
 
@@ -192,8 +193,25 @@ namespace goby
           interprocess_(Base::interthread(), this->app_cfg().interprocess()),
           intervehicle_(interprocess_)
         {
+            // handle goby_terminate request
+            this->interprocess().template subscribe<groups::terminate_request,
+                protobuf::TerminateRequest>(
+                    [this](const protobuf::TerminateRequest& request)
+                    {
+                        if(request.target_name() == this->app_cfg().app().name())
+                        {
+                            goby::glog.is_debug2() && goby::glog << "Received request to cleanly quit() from goby_terminate" << std::endl;
+                                
+                            protobuf::TerminateResponse resp;
+                            resp.set_target_name(this->app_cfg().app().name());
+                            this->interprocess().template publish<groups::terminate_response>(resp);
+                            this->quit();
+                        }
+                    }
+                    );
         }
-        virtual ~MultiThreadApplication() { }
+    
+    virtual ~MultiThreadApplication() { }
 
     protected:
         InterThreadTransporter& interthread() { return interprocess_.inner(); }

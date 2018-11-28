@@ -1,0 +1,12 @@
+package goby.protobuf;
+
+message TerminateRequest
+{
+    required string target_name = 1;
+}
+
+message TerminateResponse
+{
+    required string target_name = 1;
+}
+
