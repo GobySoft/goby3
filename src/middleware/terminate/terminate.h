@@ -35,21 +35,28 @@ namespace goby
 {
     namespace terminate
     {
-        /// return pair: first is a boolean: does this request match us? second is the response if so
+        /// \brief Checks if the terminate request is for this application, either by target_name or PID
+        ///
+        /// \param request Request message from goby_terminate
+        /// \param app_name The current application name (typically cfg().app().name())
+        /// \return pair: first is a boolean: does this request match us? second is the response if so
         inline std::pair<bool, protobuf::TerminateResponse> check_terminate(const protobuf::TerminateRequest& request, const std::string& app_name)
         {
             protobuf::TerminateResponse resp;
+            resp.set_target_name(app_name);
+            auto pid = getpid();
+            resp.set_target_pid(pid);
+
             bool match = false;
+
             if(request.has_target_name() && request.target_name() == app_name)
             {
                 goby::glog.is_debug2() && goby::glog << "Received request matching our app name to cleanly quit() from goby_terminate" << std::endl;
-                resp.set_target_name(app_name);
                 match = true;
             }
-            else if(request.has_target_pid() && request.target_pid() == getpid())
+            else if(request.has_target_pid() && request.target_pid() == pid)
             {
                 goby::glog.is_debug2() && goby::glog << "Received request matching our PID to cleanly quit() from goby_terminate" << std::endl;
-                resp.set_target_pid(request.target_pid());
                 match = true;
             }
             return std::make_pair(match, resp);

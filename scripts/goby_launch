@@ -71,14 +71,18 @@ do_kill()
 
         if ! echo "$cmd" | egrep -q $not_goby_regex; then
             # run goby_terminate to cleanly shutdown processes
-            echo "goby_terminate: $p ($cmd)"
-            goby_terminate --response_timeout ${sigterm_delay} --target_pid $p <(echo ${gobyd_interprocess}) && continue
-            
-            # if goby_terminate failed, use SIGTERM, then SIGKELL
-            echo "WARNING: Process $p did not respond to goby_terminate, sending SIGTERM"
+            printf "goby_terminate: $p (was $cmd)"
+            if goby_terminate --response_timeout ${sigterm_delay} --target_pid $p <(echo ${gobyd_interprocess});
+            then
+                echo -e " .... success"
+                continue
+            fi
+
+            # if goby_terminate failed, use SIGTERM, then SIGKILL
+            echo -e "\n=== WARNING ===: Process $p did not respond to goby_terminate, sending SIGTERM"
         fi
         
-        echo "SIGTERM: $p ($cmd)"
+        printf "SIGTERM: $p (was $cmd)"
         kill -SIGTERM $p
 
         elapsed_ms=0
@@ -87,12 +91,13 @@ do_kill()
             elapsed_ms=$(($elapsed_ms + 100))
             # if necessary, escalate to SIGKILL
             if (($elapsed_ms > $sigkill_delay)); then
-                echo "WARNING: Process $p did not respond to SIGTERM after $sigkill_delay ms, sending SIGKILL"
-                echo "SIGKILL: $p ($cmd)"
+                echo -e "\n====== WARNING ======: Process $p did not respond to SIGTERM after $sigkill_delay ms, sending SIGKILL"
+                printf "SIGKILL: $p (was $cmd)"
                 kill -SIGKILL $p
                 break;
             fi
         done
+        echo -e " .... success"
     done
 
     spid=()
@@ -287,7 +292,7 @@ else
     if [ $launch = "gnometerm" ]; then 
         echo -e "To quit, close the gnome-terminal window(s)"
     else       
-        echo -e "Backgrounding as requested. To kill use\nkill ${spid[@]}"
+        echo -e "Backgrounding as requested. To kill use goby_terminate and/or\nkill ${spid[@]}"
     fi
 fi
 
