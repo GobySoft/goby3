@@ -35,18 +35,19 @@ namespace goby
         Terminate() :
             goby::SingleThreadApplication<goby::protobuf::TerminateConfig>(10*boost::units::si::hertz)
             {
-                if(cfg().target_name_size() == 0)
-                    glog.is_die() && glog << "Error, must specify at least one --target_name" << std::endl;
-                
+                if(cfg().target_name_size() == 0 && cfg().target_pid_size() == 0)
+                    glog.is_die() && glog << "Error, must specify at least one --target_name or --target_pid" << std::endl;
                 
                 interprocess().subscribe<
                     groups::terminate_response, protobuf::TerminateResponse>(
                         [this](const protobuf::TerminateResponse& response)
                         {
-                            auto it = waiting_for_targets_.find(response.target_name());
+                            std::string target_name = response.has_target_name() ? response.target_name() : pid_to_string(response.target_pid());
+                            
+                            auto it = waiting_for_targets_.find(target_name);
                             if(it != waiting_for_targets_.end())
                             {
-                                glog.is_debug2() && glog << "Received terminate response from our target: " << response.target_name() << std::endl;
+                                glog.is_debug2() && glog << "Received terminate response from our target: " << target_name << std::endl;
                             
                                 waiting_for_targets_.erase(it);
                             
@@ -71,6 +72,16 @@ namespace goby
                     glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString() << std::endl;
                     interprocess().publish<groups::terminate_request>(req);
                 }
+
+                for(const auto& target_pid : cfg().target_pid())
+                {
+                    protobuf::TerminateRequest req;
+                    req.set_target_pid(target_pid);
+                    waiting_for_targets_.insert(pid_to_string(target_pid));
+                    glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString() << std::endl;
+                    interprocess().publish<groups::terminate_request>(req);
+                }
+
             }
         
         ~Terminate() { }
@@ -92,6 +103,10 @@ namespace goby
                     quit();
                 }
             }
+
+        std::string pid_to_string(unsigned pid) 
+            { return "PID:" + std::to_string(pid); }
+        
                 
     private:
         goby::time::MicroTime start_time_{ goby::time::now() };

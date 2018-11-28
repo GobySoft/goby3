@@ -2,11 +2,13 @@ package goby.protobuf;
 
 message TerminateRequest
 {
-    required string target_name = 1;
+    optional string target_name = 1;
+    optional uint32 target_pid = 2;
 }
 
 message TerminateResponse
 {
-    required string target_name = 1;
+    optional string target_name = 1;
+    optional uint32 target_pid = 2;
 }
 

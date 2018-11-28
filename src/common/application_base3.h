@@ -23,6 +23,8 @@
 #ifndef APPLICATIONBASE320161120H
 #define APPLICATIONBASE320161120H
 
+#include <sys/types.h>
+#include <unistd.h>
 #include <iostream>
 #include <csignal>
 #include <chrono>
@@ -232,7 +234,8 @@ template<typename Config, typename StateMachine>
     
     glog.is(DEBUG1) && glog << "App name is " << cfg_.app().name() << std::endl;
     glog.is(DEBUG2) && glog << "Configuration is: " << cfg_.DebugString() << std::endl;
-
+    glog.is(DEBUG2) && glog << "PID: " << getpid() << std::endl;
+    
     // set up simulation time
     if(cfg_.app().simulation().time().use_sim_time())
     {

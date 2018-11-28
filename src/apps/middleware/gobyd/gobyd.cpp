@@ -27,6 +27,8 @@
 
 #include "goby/middleware/protobuf/gobyd_config.pb.h"
 
+#include "goby/middleware/terminate/terminate.h"
+
 using namespace goby::common::logger;
 using goby::glog;
 
@@ -73,11 +75,27 @@ goby::Daemon::Daemon()
         glog.is(WARN) && glog << "Using default platform name of " << app_cfg().interprocess().platform() << std::endl;
     }
 
+    interprocess_.reset(new InterProcessPortal<>(app_cfg().interprocess()));
     if(app_cfg().has_intervehicle())
-    {
-        interprocess_.reset(new InterProcessPortal<>(app_cfg().interprocess()));
         intervehicle_.reset(new InterVehiclePortal<InterProcessPortal<>>(*interprocess_, app_cfg().intervehicle()));
-    }
+
+    // handle goby_terminate request
+    interprocess_->subscribe<groups::terminate_request, protobuf::TerminateRequest>(
+        [this](const protobuf::TerminateRequest& request)
+        {
+            bool match = false;
+            protobuf::TerminateResponse resp;
+            std::tie(match, resp) = goby::terminate::check_terminate(request, app_cfg().app().name());
+            if(match)
+            {
+                interprocess_->publish<groups::terminate_response>(resp);
+                // as gobyd mediates all interprocess() comms; wait for a bit to hopefully get our response out before shutting down
+                sleep(1);                
+                quit();
+            }
+        }
+        );
+
     
 }
 
@@ -103,6 +121,6 @@ void goby::Daemon::run()
     }
     else
     {
-        sleep(1);
+        interprocess_->poll();
     }
 }

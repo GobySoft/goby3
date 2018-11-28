@@ -30,8 +30,7 @@
 #include "goby/middleware/transport-interprocess-zeromq.h"
 #include "goby/middleware/transport-intervehicle.h"
 
-#include "goby/middleware/protobuf/terminate.pb.h"
-#include "goby/middleware/terminate/groups.h"
+#include "goby/middleware/terminate/terminate.h"
 
 namespace goby
 {
@@ -59,12 +58,11 @@ namespace goby
             // handle goby_terminate request
             this->interprocess().template subscribe<groups::terminate_request, protobuf::TerminateRequest>(
                 [this](const protobuf::TerminateRequest& request) {
-                    if(request.target_name() == this->app_cfg().app().name())
+                    bool match = false;
+                    protobuf::TerminateResponse resp;
+                    std::tie(match, resp) = goby::terminate::check_terminate(request, this->app_cfg().app().name());
+                    if(match)
                     {
-                        goby::glog.is_debug2() && goby::glog << "Received request to cleanly quit() from goby_terminate" << std::endl;
-                        
-                        protobuf::TerminateResponse resp;
-                        resp.set_target_name(this->app_cfg().app().name());
                         this->interprocess().template publish<groups::terminate_response>(resp);
                         this->quit();
                     }
