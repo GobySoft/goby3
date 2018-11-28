@@ -146,7 +146,7 @@ namespace goby
     protected:
 	goby::InterThreadTransporter& interthread() { return interthread_; }
 
-        void quit() override;
+        void quit(int return_value = 0) override;
         
     private:
 
@@ -346,7 +346,7 @@ template<class Config, class Transporter, class StateMachine>
 
 
 template<class Config, class Transporter, class StateMachine>
-void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::quit()
+void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::quit(int return_value)
 {
     goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << "Requesting all threads shutdown cleanly..." << std::endl;
     
@@ -361,7 +361,7 @@ void goby::MultiThreadApplicationBase<Config, Transporter, StateMachine>::quit()
     }
     
     
-    goby::common::ApplicationBase3<Config, StateMachine>::quit();
+    goby::common::ApplicationBase3<Config, StateMachine>::quit(return_value);
 }
 
 #endif

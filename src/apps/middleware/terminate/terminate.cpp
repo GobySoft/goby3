@@ -100,7 +100,7 @@ namespace goby
                             glog << target_name << ", ";
                         glog << std::endl;
                     }
-                    quit();
+                    quit(EXIT_FAILURE);
                 }
             }
 

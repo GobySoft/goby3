@@ -72,7 +72,7 @@ namespace goby
 	    // no state machine
 	    template<typename App>
 		void __quit_core(App& app,
-				typename std::enable_if<std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type* = 0)
+                                 typename std::enable_if<std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type* = 0)
 	    {}
 	    
 	    // state machine
@@ -86,18 +86,24 @@ namespace goby
     {
 	template<typename Config, typename StateMachine = NullStateMachine>
             class ApplicationBase3
-        {
-        public:
+            {
+            public:
             ApplicationBase3(bool check_required_configuration = true);
             virtual ~ApplicationBase3() { }
 
             using StateMachineType = StateMachine;	
-        protected:
+            protected:
             /// \brief Runs continously until quit() is called
             virtual void run() = 0;
 
-            /// \brief Requests a clean (return 0) exit.
-            virtual void quit() { alive_ = false; }
+            /// \brief Requests a clean exit.
+            ///
+            /// \param return_value The request return value
+            virtual void quit(int return_value = 0)
+            {
+                alive_ = false;
+                return_value_ = return_value;
+            }
             
             /// \brief Accesses configuration object passed at launch
             Config& app_cfg() { return cfg_; }
@@ -112,7 +118,7 @@ namespace goby
 		    throw(goby::Exception("State machine not available in the constructor."));
 	    }
 	    
-          private:
+            private:
             template<typename App>
             friend int ::goby::run(int argc, char* argv[]);
 
@@ -123,7 +129,7 @@ namespace goby
             { cfg_.mutable_app()->set_name(s); }
             
 	    
-          private:
+            private:
                 
             // copies of the "real" argc, argv that are used
             // to give ApplicationBase3 access without requiring the subclasses of
@@ -133,7 +139,8 @@ namespace goby
 
             Config cfg_;
             
-            bool alive_;            
+            bool alive_;
+            int return_value_ {0};
             std::vector<std::unique_ptr<std::ofstream> > fout_;
 
             // set state machine after construction
@@ -142,10 +149,10 @@ namespace goby
 							     typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type*);            
             template<typename App>
             friend void ::goby::common::internal::__quit_core(App& app,
-							     typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type*);            
+                                                              typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type*);            
             std::unique_ptr<StateMachine> state_machine_;
 	    
-        };
+            };
     }
     
 }
@@ -160,91 +167,91 @@ template<typename Config, typename StateMachine>
     
 template<typename Config, typename StateMachine>
     goby::common::ApplicationBase3<Config, StateMachine>::ApplicationBase3(bool check_required_configuration)
-: alive_(true)
-{
-    using goby::glog;
-    using namespace goby::common::logger;
+    : alive_(true)
+    {
+        using goby::glog;
+        using namespace goby::common::logger;
     
-    //
-    // read the configuration
-    //
-    boost::program_options::options_description od("Allowed options");
-    boost::program_options::variables_map var_map;
-    try
-    {
-        std::string application_name;
-        common::ConfigReader::read_cfg(argc_, argv_, &cfg_, &application_name, &od, &var_map, check_required_configuration);
-        
-        __set_application_name(application_name);
-        // incorporate some parts of the AppBaseConfig that are common
-        // with gobyd (e.g. Verbosity)
-        merge_app_base_cfg(cfg_.mutable_app(), var_map);
-
-    }
-    catch(common::ConfigException& e)
-    {
-        // output all the available command line options
-        if(e.error())
+        //
+        // read the configuration
+        //
+        boost::program_options::options_description od("Allowed options");
+        boost::program_options::variables_map var_map;
+        try
         {
-            std::cerr << od << "\n";
-            std::cerr << "Problem parsing command-line configuration: \n"
-                      << e.what() << "\n";
+            std::string application_name;
+            common::ConfigReader::read_cfg(argc_, argv_, &cfg_, &application_name, &od, &var_map, check_required_configuration);
+        
+            __set_application_name(application_name);
+            // incorporate some parts of the AppBaseConfig that are common
+            // with gobyd (e.g. Verbosity)
+            merge_app_base_cfg(cfg_.mutable_app(), var_map);
+
         }
-        throw;
-    }
+        catch(common::ConfigException& e)
+        {
+            // output all the available command line options
+            if(e.error())
+            {
+                std::cerr << od << "\n";
+                std::cerr << "Problem parsing command-line configuration: \n"
+                          << e.what() << "\n";
+            }
+            throw;
+        }
     
-    // set up the logger
-    glog.set_name(cfg_.app().name());
-    glog.add_stream(static_cast<common::logger::Verbosity>(cfg_.app().glog_config().tty_verbosity()), &std::cout);
+        // set up the logger
+        glog.set_name(cfg_.app().name());
+        glog.add_stream(static_cast<common::logger::Verbosity>(cfg_.app().glog_config().tty_verbosity()), &std::cout);
 
-   if(cfg_.app().glog_config().show_gui())
-       glog.enable_gui();
+        if(cfg_.app().glog_config().show_gui())
+            glog.enable_gui();
 
-   fout_.resize(cfg_.app().glog_config().file_log_size());
-   for(int i = 0, n = cfg_.app().glog_config().file_log_size(); i < n; ++i)
-   {
-       using namespace boost::posix_time;
+        fout_.resize(cfg_.app().glog_config().file_log_size());
+        for(int i = 0, n = cfg_.app().glog_config().file_log_size(); i < n; ++i)
+        {
+            using namespace boost::posix_time;
 
-       boost::format file_format(cfg_.app().glog_config().file_log(i).file_name());
-       file_format.exceptions( boost::io::all_error_bits ^ ( boost::io::too_many_args_bit | boost::io::too_few_args_bit)); 
+            boost::format file_format(cfg_.app().glog_config().file_log(i).file_name());
+            file_format.exceptions( boost::io::all_error_bits ^ ( boost::io::too_many_args_bit | boost::io::too_few_args_bit)); 
 
-       std::string file_name = (file_format % to_iso_string(second_clock::universal_time()) % cfg_.app().name()).str();
-       std::string file_symlink = (file_format % "latest" % cfg_.app().name()).str();
+            std::string file_name = (file_format % to_iso_string(second_clock::universal_time()) % cfg_.app().name()).str();
+            std::string file_symlink = (file_format % "latest" % cfg_.app().name()).str();
 
-       glog.is(VERBOSE) &&
-           glog << "logging output to file: " << file_name << std::endl;
+            glog.is(VERBOSE) &&
+                glog << "logging output to file: " << file_name << std::endl;
 
-       fout_[i].reset(new std::ofstream(file_name.c_str()));
+            fout_[i].reset(new std::ofstream(file_name.c_str()));
        
-       if(!fout_[i]->is_open())           
-           glog.is(DIE) && glog << die << "cannot write glog output to requested file: " << file_name << std::endl;
+            if(!fout_[i]->is_open())           
+                glog.is(DIE) && glog << die << "cannot write glog output to requested file: " << file_name << std::endl;
 
-       remove(file_symlink.c_str());
-       int result = symlink(canonicalize_file_name(file_name.c_str()), file_symlink.c_str());
-       if(result != 0)
-           glog.is(WARN) && glog << "Cannot create symlink to latest file. Continuing onwards anyway" << std::endl;
+            remove(file_symlink.c_str());
+            int result = symlink(canonicalize_file_name(file_name.c_str()), file_symlink.c_str());
+            if(result != 0)
+                glog.is(WARN) && glog << "Cannot create symlink to latest file. Continuing onwards anyway" << std::endl;
         
        
-       glog.add_stream(cfg_.app().glog_config().file_log(i).verbosity(), fout_[i].get());
-   } 
+            glog.add_stream(cfg_.app().glog_config().file_log(i).verbosity(), fout_[i].get());
+        } 
    
    
-    if(!cfg_.app().IsInitialized())
-        throw(common::ConfigException("Invalid base configuration"));
+        if(!cfg_.app().IsInitialized())
+            throw(common::ConfigException("Invalid base configuration"));
     
-    glog.is(DEBUG1) && glog << "App name is " << cfg_.app().name() << std::endl;
-    glog.is(DEBUG2) && glog << "Configuration is: " << cfg_.DebugString() << std::endl;
-    glog.is(DEBUG2) && glog << "PID: " << getpid() << std::endl;
+        glog.is(DEBUG1) && glog << "App name is " << cfg_.app().name() << std::endl;
+        glog.is(DEBUG2) && glog << "Configuration is: " << cfg_.DebugString() << std::endl;
+        glog.is(DEBUG2) && glog << "PID: " << getpid() << std::endl;
     
-    // set up simulation time
-    if(cfg_.app().simulation().time().use_sim_time())
-    {
-        goby::time::SimulatorSettings::using_sim_time = true;
-        goby::time::SimulatorSettings::warp_factor = cfg_.app().simulation().time().warp_factor();
-        if(cfg_.app().simulation().time().has_reference_microtime())
-            goby::time::SimulatorSettings::reference_time = cfg_.app().simulation().time().reference_microtime()*boost::units::si::micro*boost::units::si::seconds;
+        // set up simulation time
+        if(cfg_.app().simulation().time().use_sim_time())
+        {
+            goby::time::SimulatorSettings::using_sim_time = true;
+            goby::time::SimulatorSettings::warp_factor = cfg_.app().simulation().time().warp_factor();
+            if(cfg_.app().simulation().time().has_reference_microtime())
+                goby::time::SimulatorSettings::reference_time = cfg_.app().simulation().time().reference_microtime()*boost::units::si::micro*boost::units::si::seconds;
+        }
     }
-}
 
 template<typename Config, typename StateMachine>
     void goby::common::ApplicationBase3<Config, StateMachine>::__run()
@@ -273,25 +280,27 @@ void goby::common::internal::__run_core(App& app,
 
 template<typename App>
 void goby::common::internal::__quit_core(App& app,
-					typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type*)
+                                         typename std::enable_if<!std::is_same<typename App::StateMachineType, goby::common::NullStateMachine>::value>::type*)
 {
     app.state_machine_->terminate();
 }    
 
 
 template<typename App>
-    int goby::run(int argc, char* argv[])
+int goby::run(int argc, char* argv[])
 {    
     // avoid making the user pass these through their Ctor...
     App::argc_ = argc;
     App::argv_ = argv;
-    
+
+    int return_value = 0;
     try
     {
 	App app;
 	goby::common::internal::__run_core<App>(app);
 	app.__run();
 	goby::common::internal::__quit_core<App>(app);
+        return_value = app.return_value_;
     }
     catch(goby::common::ConfigException& e)
     {
@@ -305,7 +314,7 @@ template<typename App>
         return 2;
     }
 
-    return 0;
+    return return_value;
 }
 
 
