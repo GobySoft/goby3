@@ -30,6 +30,8 @@
 #include "goby/middleware/transport-interprocess-zeromq.h"
 #include "goby/middleware/transport-intervehicle.h"
 
+#include "goby/middleware/terminate/terminate.h"
+
 namespace goby
 {
     template<class Config, class StateMachine = goby::common::NullStateMachine> 
@@ -52,7 +54,21 @@ namespace goby
           intervehicle_(interprocess_)
         {
 	    this->set_transporter(&intervehicle_);
-	}
+
+            // handle goby_terminate request
+            this->interprocess().template subscribe<groups::terminate_request, protobuf::TerminateRequest>(
+                [this](const protobuf::TerminateRequest& request) {
+                    bool match = false;
+                    protobuf::TerminateResponse resp;
+                    std::tie(match, resp) = goby::terminate::check_terminate(request, this->app_cfg().app().name());
+                    if(match)
+                    {
+                        this->interprocess().template publish<groups::terminate_response>(resp);
+                        this->quit();
+                    }
+                }
+                );
+        }
         
         virtual ~SingleThreadApplication() { }
         

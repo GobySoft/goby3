@@ -115,6 +115,12 @@ void goby::ZMQMainThread::subscribe(const std::string& identifier)
     control.set_type(protobuf::InprocControl::SUBSCRIBE);
     control.set_subscription_identifier(identifier);
     send_control_msg(control);
+
+    // wait for ack
+    protobuf::InprocControl control_ack;
+    recv(&control_ack);
+    if(control_ack.type() != protobuf::InprocControl::SUBSCRIBE_ACK)
+        glog.is(WARN) && glog << "Received invalid ack from ZMQReadThread: " << control_ack.ShortDebugString() << std::endl;
 }
 
 void goby::ZMQMainThread::unsubscribe(const std::string& identifier)
@@ -123,6 +129,12 @@ void goby::ZMQMainThread::unsubscribe(const std::string& identifier)
     control.set_type(protobuf::InprocControl::UNSUBSCRIBE);
     control.set_subscription_identifier(identifier);
     send_control_msg(control);
+
+    // wait for ack
+    protobuf::InprocControl control_ack;
+    recv(&control_ack);
+    if(control_ack.type() != protobuf::InprocControl::UNSUBSCRIBE_ACK)
+        glog.is(WARN) && glog << "Received invalid ack from ZMQReadThread: " << control_ack.ShortDebugString() << std::endl;
 }
 void goby::ZMQMainThread::reader_shutdown()
 {
@@ -249,7 +261,13 @@ void goby::ZMQReadThread::control_data(const zmq::message_t& zmq_msg)
     
 	    glog.is(DEBUG2) &&
 		glog << "subscribed with identifier: [" << zmq_filter << "]" << std::endl ;
-	    break;
+
+            
+            protobuf::InprocControl control_ack;
+            control_ack.set_type(protobuf::InprocControl::SUBSCRIBE_ACK);
+	    send_control_msg(control_ack);
+            
+            break;
 	}
         case protobuf::InprocControl::UNSUBSCRIBE:
 	{
@@ -258,7 +276,11 @@ void goby::ZMQReadThread::control_data(const zmq::message_t& zmq_msg)
 		glog << "unsubscribing with identifier: [" << zmq_filter << "]" << std::endl ;
 
 	    subscribe_socket_.setsockopt(ZMQ_UNSUBSCRIBE, zmq_filter.c_str(), zmq_filter.size());
-	    
+
+            protobuf::InprocControl control_ack;
+            control_ack.set_type(protobuf::InprocControl::UNSUBSCRIBE_ACK);
+	    send_control_msg(control_ack);
+            
 	    break;	   
 	}
         case protobuf::InprocControl::SHUTDOWN:
@@ -294,7 +316,7 @@ void goby::ZMQReadThread::manager_data(const zmq::message_t& zmq_msg)
 	protobuf::InprocControl control;
 	control.set_type(protobuf::InprocControl::PUB_CONFIGURATION);
 	*control.mutable_publish_socket() = response.publish_socket();
-	send_control_msg(control);
+        send_control_msg(control);
 
 	have_pubsub_sockets_ = true;
 

@@ -55,6 +55,7 @@ namespace goby
 	zmq::socket_t publish_socket_;
 	bool publish_socket_configured_{false};
 	std::deque<std::pair<std::string, std::vector<char>>> publish_queue_; //used before publish_socket_configured_ == true
+
     };
 
     // run in a separate thread to allow zmq_.poll() to block without interrupting the main thread

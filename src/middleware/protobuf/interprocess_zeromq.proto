@@ -27,9 +27,11 @@ message InprocControl
     {
     	PUB_CONFIGURATION = 1; // read->main
 	SUBSCRIBE = 2; // main -> read
-	UNSUBSCRIBE = 3; // main -> read
-	RECEIVE = 4; // read -> main
-	SHUTDOWN = 5; // main -> read
+        SUBSCRIBE_ACK = 3; // read -> main
+	UNSUBSCRIBE = 4; // main -> read
+        UNSUBSCRIBE_ACK = 5; // read -> main
+	RECEIVE = 6; // read -> main
+	SHUTDOWN = 7; // main -> read
     }
     required InprocControlType type = 1;
     
