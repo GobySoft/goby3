@@ -324,7 +324,7 @@ int goby::run(int argc, char* argv[])
         return 2;
     }
 
-    goby::glog.is_debug2() && goby::glog << "goby::run: exiting cleaning with code: " << App::return_value_ << std::endl;
+    goby::glog.is_debug2() && goby::glog << "goby::run: exiting cleanly with code: " << App::return_value_ << std::endl;
     return App::return_value_;
 }
 

@@ -25,17 +25,11 @@
 
 #include "goby/middleware/group.h"
 
-#ifdef __clang__
-#define GROUP_EXTERN
-#else
-#define GROUP_EXTERN extern
-#endif
-
 namespace goby
 {
     namespace groups
     {
-        GROUP_EXTERN constexpr goby::Group intervehicle_outbound {"goby::intervehicle::outbound"};        
+        constexpr goby::Group intervehicle_outbound {"goby::intervehicle::outbound"};        
     }
 }
 

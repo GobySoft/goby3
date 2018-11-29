@@ -44,7 +44,7 @@ namespace goby
         {
             protobuf::TerminateResponse resp;
             resp.set_target_name(app_name);
-            auto pid = getpid();
+            unsigned pid = getpid();
             resp.set_target_pid(pid);
 
             bool match = false;

@@ -20,23 +20,18 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#pragma once
 #ifndef TERMINATE_GROUPS_20181128H
 #define TERMINATE_GROUPS_20181128H
 
 #include "goby/middleware/group.h"
 
-#ifdef __clang__
-#define GROUP_EXTERN
-#else
-#define GROUP_EXTERN extern
-#endif
-
 namespace goby
 {
     namespace groups
     {
-        GROUP_EXTERN constexpr goby::Group terminate_request {"goby::terminate::request" };        
-        GROUP_EXTERN constexpr goby::Group terminate_response {"goby::terminate::response" };
+        constexpr goby::Group terminate_request {"goby::terminate::request" };        
+        constexpr goby::Group terminate_response {"goby::terminate::response" };
     }
 }
 
