@@ -89,7 +89,10 @@ namespace goby
             {
             public:
             ApplicationBase3(bool check_required_configuration = true);
-            virtual ~ApplicationBase3() { }
+            virtual ~ApplicationBase3()
+            {
+                goby::glog.is_debug2() && goby::glog << "ApplicationBase3: destructing cleanly" << std::endl;
+            }
 
             using StateMachineType = StateMachine;	
             protected:
@@ -140,8 +143,8 @@ namespace goby
             Config cfg_;
             
             bool alive_;
-            int return_value_ {0};
-            std::vector<std::unique_ptr<std::ofstream> > fout_;
+            static int return_value_;
+            static std::vector<std::unique_ptr<std::ofstream> > fout_;
 
             // set state machine after construction
             template<typename App>
@@ -163,8 +166,12 @@ template<typename Config, typename StateMachine>
 template<typename Config, typename StateMachine>
     char** goby::common::ApplicationBase3<Config, StateMachine>::argv_ = 0;
 
+template<typename Config, typename StateMachine>
+    std::vector<std::unique_ptr<std::ofstream> > goby::common::ApplicationBase3<Config, StateMachine>::fout_;
 
-    
+template<typename Config, typename StateMachine>
+    int goby::common::ApplicationBase3<Config, StateMachine>::return_value_ = 0;
+
 template<typename Config, typename StateMachine>
     goby::common::ApplicationBase3<Config, StateMachine>::ApplicationBase3(bool check_required_configuration)
     : alive_(true)
@@ -243,10 +250,10 @@ template<typename Config, typename StateMachine>
    
         if(!cfg_.app().IsInitialized())
             throw(common::ConfigException("Invalid base configuration"));
-    
+
+        glog.is(DEBUG2) && glog << "ApplicationBase3: constructed with PID: " << getpid() << std::endl;
         glog.is(DEBUG1) && glog << "App name is " << cfg_.app().name() << std::endl;
         glog.is(DEBUG2) && glog << "Configuration is: " << cfg_.DebugString() << std::endl;
-        glog.is(DEBUG2) && glog << "PID: " << getpid() << std::endl;
     
         // set up simulation time
         if(cfg_.app().simulation().time().use_sim_time())
@@ -298,14 +305,12 @@ int goby::run(int argc, char* argv[])
     App::argc_ = argc;
     App::argv_ = argv;
 
-    int return_value = 0;
     try
     {
 	App app;
 	goby::common::internal::__run_core<App>(app);
 	app.__run();
 	goby::common::internal::__quit_core<App>(app);
-        return_value = app.return_value_;
     }
     catch(goby::common::ConfigException& e)
     {
@@ -319,7 +324,8 @@ int goby::run(int argc, char* argv[])
         return 2;
     }
 
-    return return_value;
+    goby::glog.is_debug2() && goby::glog << "goby::run: exiting cleaning with code: " << App::return_value_ << std::endl;
+    return App::return_value_;
 }
 
 
