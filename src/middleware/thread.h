@@ -81,7 +81,7 @@ namespace goby
             
         }
 
-        int index() { return index_; }
+        int index() const { return index_; }
         
         
     protected:
@@ -111,14 +111,14 @@ namespace goby
         
         virtual void loop() { sleep(1); }
 
-        double loop_frequency_hertz() { return loop_frequency_/boost::units::si::hertz; }
-        decltype(loop_frequency_) loop_frequency() { return loop_frequency_; }
-        double loop_max_frequency() { return std::numeric_limits<double>::infinity(); }
+        double loop_frequency_hertz() const { return loop_frequency_/boost::units::si::hertz; }
+        decltype(loop_frequency_) loop_frequency() const { return loop_frequency_; }
+        double loop_max_frequency() const { return std::numeric_limits<double>::infinity(); }
         void run_once();
 
-        TransporterType& transporter() { return *transporter_; }
+        TransporterType& transporter() const { return *transporter_; }
 
-        const Config& cfg() { return cfg_; }
+        const Config& cfg() const { return cfg_; }
 
 	void thread_quit() { (*alive_) = false; }
 
