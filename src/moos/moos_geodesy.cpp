@@ -65,7 +65,7 @@ bool CMOOSGeodesy::Initialise(double lat, double lon)
     double tempNorth = lat * DEG_TO_RAD, tempEast = lon * DEG_TO_RAD;
 
     int err;
-    if (err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &tempEast, &tempNorth, NULL))
+    if ((err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &tempEast, &tempNorth, NULL)))
     {
         std::cerr << "Failed to transform datum, reason: " << pj_strerrno(err) << std::endl;
         return false;
@@ -98,7 +98,6 @@ int CMOOSGeodesy::GetUTMZone() { return m_sUTMZone; }
 
 bool CMOOSGeodesy::LatLong2LocalUTM(double lat, double lon, double& MetersNorth, double& MetersEast)
 {
-    double dN, dE;
     double tmpEast = lon * DEG_TO_RAD;
     double tmpNorth = lat * DEG_TO_RAD;
     MetersNorth = std::numeric_limits<double>::quiet_NaN();
@@ -111,7 +110,7 @@ bool CMOOSGeodesy::LatLong2LocalUTM(double lat, double lon, double& MetersNorth,
     }
 
     int err;
-    if (err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &tmpEast, &tmpNorth, NULL))
+    if ((err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &tmpEast, &tmpNorth, NULL)))
     {
         std::cerr << "Failed to transform (lat,lon) = (" << lat << "," << lon
                   << "), reason: " << pj_strerrno(err) << std::endl;
@@ -142,7 +141,7 @@ bool CMOOSGeodesy::UTM2LatLong(double dfX, double dfY, double& dfLat, double& df
     }
 
     int err;
-    if (err = pj_transform(pj_utm_, pj_latlong_, 1, 1, &x, &y, NULL))
+    if ((err = pj_transform(pj_utm_, pj_latlong_, 1, 1, &x, &y, NULL)))
     {
         std::cerr << "Failed to transform (x,y) = (" << dfX << "," << dfY
                   << "), reason: " << pj_strerrno(err) << std::endl;
