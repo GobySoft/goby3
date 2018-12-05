@@ -34,56 +34,54 @@
 
 namespace goby
 {
-    template<class Config, class StateMachine = goby::common::NullStateMachine> 
-        class SingleThreadApplication : public goby::common::ApplicationBase3<Config, StateMachine>, public Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>
-    {
-    private:
-        using MainThread = Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>;
-        
-        InterProcessPortal<> interprocess_;
-        InterVehicleForwarder<InterProcessPortal<>> intervehicle_;
-        
-    public:
-    SingleThreadApplication(double loop_freq_hertz = 0) :
-        SingleThreadApplication(loop_freq_hertz*boost::units::si::hertz)
-        { }
-        
-    SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : MainThread(this->app_cfg(), loop_freq),
-          interprocess_(this->app_cfg().interprocess()),
-          intervehicle_(interprocess_)
-        {
-	    this->set_transporter(&intervehicle_);
+template <class Config, class StateMachine = goby::common::NullStateMachine>
+class SingleThreadApplication : public goby::common::ApplicationBase3<Config, StateMachine>,
+                                public Thread<Config, InterVehicleForwarder<InterProcessPortal<> > >
+{
+  private:
+    using MainThread = Thread<Config, InterVehicleForwarder<InterProcessPortal<> > >;
 
-            // handle goby_terminate request
-            this->interprocess().template subscribe<groups::terminate_request, protobuf::TerminateRequest>(
+    InterProcessPortal<> interprocess_;
+    InterVehicleForwarder<InterProcessPortal<> > intervehicle_;
+
+  public:
+    SingleThreadApplication(double loop_freq_hertz = 0)
+        : SingleThreadApplication(loop_freq_hertz * boost::units::si::hertz)
+    {
+    }
+
+    SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
+        : MainThread(this->app_cfg(), loop_freq), interprocess_(this->app_cfg().interprocess()),
+          intervehicle_(interprocess_)
+    {
+        this->set_transporter(&intervehicle_);
+
+        // handle goby_terminate request
+        this->interprocess()
+            .template subscribe<groups::terminate_request, protobuf::TerminateRequest>(
                 [this](const protobuf::TerminateRequest& request) {
                     bool match = false;
                     protobuf::TerminateResponse resp;
-                    std::tie(match, resp) = goby::terminate::check_terminate(request, this->app_cfg().app().name());
-                    if(match)
+                    std::tie(match, resp) =
+                        goby::terminate::check_terminate(request, this->app_cfg().app().name());
+                    if (match)
                     {
                         this->interprocess().template publish<groups::terminate_response>(resp);
                         this->quit();
                     }
-                }
-                );
-        }
-        
-        virtual ~SingleThreadApplication() { }
-        
-    protected:            
-        InterProcessPortal<>& interprocess() { return interprocess_; } 
-        InterVehicleForwarder<InterProcessPortal<>>& intervehicle() { return intervehicle_; }
-    
-    private:
-        void run() override
-        { MainThread::run_once(); }
-        
-    };
+                });
+    }
 
-    
-    
-}
+    virtual ~SingleThreadApplication() {}
+
+  protected:
+    InterProcessPortal<>& interprocess() { return interprocess_; }
+    InterVehicleForwarder<InterProcessPortal<> >& intervehicle() { return intervehicle_; }
+
+  private:
+    void run() override { MainThread::run_once(); }
+};
+
+} // namespace goby
 
 #endif

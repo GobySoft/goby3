@@ -1,31 +1,37 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/common/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
 import "dccl/protobuf/option_extensions.proto";
 
 package goby.acomms.protobuf;
 
 message MoshPacket
 {
-  option (dccl.msg).id = 0x0200;
-  option (dccl.msg).max_bytes = 64;
-  
-  required int32 src = 1 [(dccl.field).min = 1,
-                          (dccl.field).max = 32,
-                          (dccl.field).in_head = true]; 
-  required int32 dest = 2 [(dccl.field).min = 1,
-                           (dccl.field).max = 32,
-                           (dccl.field).in_head = true];
+    option (dccl.msg).id = 0x0200;
+    option (dccl.msg).max_bytes = 64;
 
-  required int32 frag_num = 3 [(dccl.field).min = 0,
-                               (dccl.field).max = 21,
-                               (dccl.field).in_head = true];
-  
-  required int32 frag_len = 4 [(dccl.field).min = 1,
-                               (dccl.field).max = 59,
-                               (dccl.field).in_head = true];
+    required int32 src = 1 [
+        (dccl.field).min = 1,
+        (dccl.field).max = 32,
+        (dccl.field).in_head = true
+    ];
+    required int32 dest = 2 [
+        (dccl.field).min = 1,
+        (dccl.field).max = 32,
+        (dccl.field).in_head = true
+    ];
 
-  required bool is_last_frag = 5 [(dccl.field).in_head = true];
-  
-  required bytes fragment = 6 [(dccl.field).max_length = 59];
+    required int32 frag_num = 3 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 21,
+        (dccl.field).in_head = true
+    ];
+
+    required int32 frag_len = 4 [
+        (dccl.field).min = 1,
+        (dccl.field).max = 59,
+        (dccl.field).in_head = true
+    ];
+
+    required bool is_last_frag = 5 [(dccl.field).in_head = true];
+
+    required bytes fragment = 6 [(dccl.field).max_length = 59];
 }
-

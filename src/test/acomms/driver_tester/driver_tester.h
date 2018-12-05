@@ -19,13 +19,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "goby/acomms/acomms_helpers.h"
+#include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
 #include "goby/acomms/protobuf/benthos_atm900.pb.h"
 #include "goby/common/logger.h"
-#include "goby/acomms/connect.h"
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/util/binary.h"
-
 
 class DriverTester
 {
@@ -38,7 +37,7 @@ class DriverTester
                  goby::acomms::protobuf::DriverType driver_type);
 
     int run();
-    
+
   private:
     void handle_data_request1(goby::acomms::protobuf::ModemTransmission* msg);
     void handle_modify_transmission1(goby::acomms::protobuf::ModemTransmission* msg);
@@ -57,7 +56,7 @@ class DriverTester
     void test4();
     void test5();
     void test6();
-    
+
   private:
     boost::shared_ptr<goby::acomms::ModemDriverBase> driver1_, driver2_;
 

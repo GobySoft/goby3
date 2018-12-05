@@ -1,21 +1,20 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/moos/protobuf/frontseat.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/moos/protobuf/frontseat.proto";
 
 package goby.moos.protobuf;
 
 message IverExtraCommands
 {
-   enum IverCommand
-   {
-     UNKNOWN_COMMAND = 0;
-     START_MISSION = 1;
-     STOP_MISSION = 2;
-   }
-   optional IverCommand command = 1 [default = UNKNOWN_COMMAND];
-   optional string mission = 2;
+    enum IverCommand
+    {
+        UNKNOWN_COMMAND = 0;
+        START_MISSION = 1;
+        STOP_MISSION = 2;
+    }
+    optional IverCommand command = 1 [default = UNKNOWN_COMMAND];
+    optional string mission = 2;
 }
 
 extend CommandRequest
 {
-   optional IverExtraCommands iver_command = 1001;
+    optional IverExtraCommands iver_command = 1001;
 }

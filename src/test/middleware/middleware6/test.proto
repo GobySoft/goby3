@@ -1,5 +1,4 @@
-@PROTOBUF_SYNTAX_VERSION@
-message Sample
+@PROTOBUF_SYNTAX_VERSION @message Sample
 {
     required double temperature = 1;
     required double salinity = 2;

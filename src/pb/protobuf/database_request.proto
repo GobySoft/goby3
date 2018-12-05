@@ -1,5 +1,4 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "google/protobuf/descriptor.proto";
+@PROTOBUF_SYNTAX_VERSION @import "google/protobuf/descriptor.proto";
 import "goby/pb/protobuf/interprocess_notification.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
@@ -7,40 +6,50 @@ package goby.common.protobuf;
 
 message DatabaseRequest
 {
-  enum RequestType
-  { 
-    NEW_PUBLISH = 1;
-    SQL_QUERY = 2; 
-  }
-  required RequestType request_type = 1;
+    enum RequestType
+    {
+        NEW_PUBLISH = 1;
+        SQL_QUERY = 2;
+    }
+    required RequestType request_type = 1;
 
-  // used to inform gobyd of the google protobuf type used for a 
-  // given publish request
-  optional string publish_protobuf_full_name = 2;
-  repeated .google.protobuf.FileDescriptorProto file_descriptor_proto = 3;
+    // used to inform gobyd of the google protobuf type used for a
+    // given publish request
+    optional string publish_protobuf_full_name = 2;
+    repeated .google.protobuf.FileDescriptorProto file_descriptor_proto = 3;
 }
 
 message DatabaseResponse
 {
-  enum ResponseType
-  { 
-    NEW_PUBLISH_ACCEPTED = 1;
-    NEW_PUBLISH_DENIED = 2;
-    SQL_QUERY_RESULT = 3; 
-    SQL_QUERY_INVALID = 4; 
-  }
-  required ResponseType response_type = 1;
-  
-  repeated EmbeddedMessage sql_result = 2;
-}
+    enum ResponseType
+    {
+        NEW_PUBLISH_ACCEPTED = 1;
+        NEW_PUBLISH_DENIED = 2;
+        SQL_QUERY_RESULT = 3;
+        SQL_QUERY_INVALID = 4;
+    }
+    required ResponseType response_type = 1;
 
+    repeated EmbeddedMessage sql_result = 2;
+}
 
 message DatabaseClientConfig
 {
-  optional bool using_database = 10 [default = true, (goby.field).description="True if using goby_database, false if no database is to be run"];
-  optional string database_address = 11 [(goby.field).example="127.0.0.1",
-                                         (goby.field).description="TCP address to send database requests on. If omitted and using_database==true, `ethernet_address` is used"];
-  optional uint32 database_port = 12 [(goby.field).example="11142",
-                                      (goby.field).description="TCP port to send database requests on. If omitted and using_database==true, `ethernet_port` is used"];  
+    optional bool using_database = 10 [
+        default = true,
+        (goby.field).description =
+            "True if using goby_database, false if no database is to be run"
+    ];
+    optional string database_address = 11 [
+        (goby.field).example = "127.0.0.1",
+        (goby.field).description =
+            "TCP address to send database requests on. If omitted and "
+            "using_database==true, `ethernet_address` is used"
+    ];
+    optional uint32 database_port = 12 [
+        (goby.field).example = "11142",
+        (goby.field).description =
+            "TCP port to send database requests on. If omitted and "
+            "using_database==true, `ethernet_port` is used"
+    ];
 }
-

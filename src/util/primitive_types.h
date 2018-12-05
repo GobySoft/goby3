@@ -27,10 +27,10 @@
 
 namespace goby
 {
-    [[deprecated("use <cstdint>")]] typedef std::uint32_t uint32;
-    [[deprecated("use <cstdint>")]] typedef std::int32_t int32;
-    [[deprecated("use <cstdint>")]] typedef std::uint64_t uint64;
-    [[deprecated("use <cstdint>")]] typedef std::int64_t int64;
-}
+[[deprecated("use <cstdint>")]] typedef std::uint32_t uint32;
+[[deprecated("use <cstdint>")]] typedef std::int32_t int32;
+[[deprecated("use <cstdint>")]] typedef std::uint64_t uint64;
+[[deprecated("use <cstdint>")]] typedef std::int64_t int64;
+} // namespace goby
 
 #endif

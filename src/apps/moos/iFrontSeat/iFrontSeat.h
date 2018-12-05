@@ -38,35 +38,37 @@ class iFrontSeat : public GobyMOOSApp
     static iFrontSeat* get_instance();
 
     friend class FrontSeatLegacyTranslator;
+
   private:
     iFrontSeat();
-    ~iFrontSeat() { }
+    ~iFrontSeat() {}
     iFrontSeat(const iFrontSeat&);
     iFrontSeat& operator=(const iFrontSeat&);
 
     // synchronous event
     void loop();
     void status_loop();
-    
+
     // mail handlers
     void handle_mail_command_request(const CMOOSMsg& msg);
     void handle_mail_data_to_frontseat(const CMOOSMsg& msg);
     void handle_mail_raw_out(const CMOOSMsg& msg);
     void handle_mail_helm_state(const CMOOSMsg& msg);
-    
+
     // frontseat driver signal handlers
     void handle_driver_command_response(const goby::moos::protobuf::CommandResponse& response);
-    void handle_driver_data_from_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data) ;
+    void
+    handle_driver_data_from_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data);
     void handle_driver_raw_in(const goby::moos::protobuf::FrontSeatRaw& data);
     void handle_driver_raw_out(const goby::moos::protobuf::FrontSeatRaw& data);
-    
+
   private:
     boost::shared_ptr<FrontSeatInterfaceBase> frontseat_;
 
     FrontSeatLegacyTranslator translator_;
 
     static iFrontSeatConfig cfg_;
-    static iFrontSeat* inst_;    
+    static iFrontSeat* inst_;
 };
 
 #endif

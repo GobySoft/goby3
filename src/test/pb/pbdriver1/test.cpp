@@ -21,17 +21,17 @@
 
 // tests functionality of the Goby PBDriver, using goby_store_server
 
-#include "goby/pb/pb_modem_driver.h"
-#include "goby/common/logger.h"
-#include "goby/util/binary.h"
-#include "goby/acomms/connect.h"
-#include "goby/acomms/acomms_helpers.h"
 #include "../../acomms/driver_tester/driver_tester.h"
+#include "goby/acomms/acomms_helpers.h"
+#include "goby/acomms/connect.h"
+#include "goby/common/logger.h"
+#include "goby/pb/pb_modem_driver.h"
+#include "goby/util/binary.h"
 
 using namespace goby::common::logger;
 using namespace goby::acomms;
-using goby::util::as;
 using goby::common::goby_time;
+using goby::util::as;
 using namespace boost::posix_time;
 
 int main(int argc, char* argv[])
@@ -40,30 +40,30 @@ int main(int argc, char* argv[])
     goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);
     std::ofstream fout;
 
-    if(argc == 2)
+    if (argc == 2)
     {
         fout.open(argv[1]);
-        goby::glog.add_stream(goby::common::logger::DEBUG3, &fout);        
+        goby::glog.add_stream(goby::common::logger::DEBUG3, &fout);
     }
-    
-    goby::glog.set_name(argv[0]);    
+
+    goby::glog.set_name(argv[0]);
 
     goby::glog.add_group("test", goby::common::Colors::green);
     goby::glog.add_group("driver1", goby::common::Colors::green);
     goby::glog.add_group("driver2", goby::common::Colors::yellow);
 
     goby::common::ZeroMQService zeromq_service1, zeromq_service2;
-    
+
     driver1.reset(new goby::pb::PBDriver(&zeromq_service1));
     driver2.reset(new goby::pb::PBDriver(&zeromq_service2));
-    
+
     goby::acomms::protobuf::DriverConfig cfg1, cfg2;
-        
+
     cfg1.set_modem_id(1);
 
     goby::common::protobuf::ZeroMQServiceConfig::Socket* socket1 =
         cfg1.MutableExtension(PBDriverConfig::request_socket);
-        
+
     socket1->set_socket_type(goby::common::protobuf::ZeroMQServiceConfig::Socket::REQUEST);
     socket1->set_transport(goby::common::protobuf::ZeroMQServiceConfig::Socket::TCP);
     socket1->set_connect_or_bind(goby::common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
@@ -77,15 +77,15 @@ int main(int argc, char* argv[])
     cfg1.AddExtension(PBDriverConfig::rate_to_bytes, 32);
     cfg1.AddExtension(PBDriverConfig::rate_to_bytes, 64);
     cfg1.AddExtension(PBDriverConfig::rate_to_bytes, 64);
-        
+
     cfg2.set_modem_id(2);
     cfg2.MutableExtension(PBDriverConfig::request_socket)->CopyFrom(*socket1);
-        
+
     std::vector<int> tests_to_run;
     tests_to_run.push_back(4);
     tests_to_run.push_back(5);
-    
-    DriverTester tester(driver1, driver2, cfg1, cfg2, tests_to_run, goby::acomms::protobuf::DRIVER_PB_STORE_SERVER);
-    return tester.run();    
-}
 
+    DriverTester tester(driver1, driver2, cfg1, cfg2, tests_to_run,
+                        goby::acomms::protobuf::DRIVER_PB_STORE_SERVER);
+    return tester.run();
+}

@@ -31,19 +31,18 @@ class GobyMOOSAppTemplate : public GobyMOOSApp
   public:
     static GobyMOOSAppTemplate* get_instance();
     static void delete_instance();
-    
+
   private:
     GobyMOOSAppTemplate(GobyMOOSAppTemplateConfig& cfg);
     ~GobyMOOSAppTemplate();
-    
-    void loop();     // from GobyMOOSApp
+
+    void loop(); // from GobyMOOSApp
 
     void handle_db_time(const CMOOSMsg& msg);
-    
+
   private:
-    GobyMOOSAppTemplateConfig& cfg_;  
-    static GobyMOOSAppTemplate* inst_;    
+    GobyMOOSAppTemplateConfig& cfg_;
+    static GobyMOOSAppTemplate* inst_;
 };
 
-
-#endif 
+#endif

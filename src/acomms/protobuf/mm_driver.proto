@@ -1,5 +1,4 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/acomms/protobuf/driver_base.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/modem_message.proto";
 import "goby/common/protobuf/option_extensions.proto";
 import "dccl/protobuf/option_extensions.proto";
@@ -8,253 +7,268 @@ package micromodem.protobuf;
 
 message NarrowBandLBLParams
 {
-  // for MICROMODEM_NARROWBAND_LBL_RANGING
-  optional uint32 transmit_freq = 1; // in hertz
-  optional uint32 transmit_ping_ms = 2; // length of tx ping
-  repeated uint32 receive_freq = 3; // in hertz, first element (0) == beacon A, etc.
-  optional uint32 receive_ping_ms = 4; // length of rx ping
-    
-  optional uint32 turnaround_ms = 5;
-  optional bool transmit_flag = 6 [default = true]; //Flag to indicate whether the transmit signal is actually sent (1), or whether the ping is initiated with an external synchronization pulse (0).
-  
-  // meters
-  optional uint32 lbl_max_range = 7 [default = 2000]; 
+    // for MICROMODEM_NARROWBAND_LBL_RANGING
+    optional uint32 transmit_freq = 1;     // in hertz
+    optional uint32 transmit_ping_ms = 2;  // length of tx ping
+    repeated uint32 receive_freq =
+        3;  // in hertz, first element (0) == beacon A, etc.
+    optional uint32 receive_ping_ms = 4;  // length of rx ping
+
+    optional uint32 turnaround_ms = 5;
+    optional bool transmit_flag = 6
+        [default = true];  // Flag to indicate whether the transmit signal is
+                           // actually sent (1), or whether the ping is initiated
+                           // with an external synchronization pulse (0).
+
+    // meters
+    optional uint32 lbl_max_range = 7 [default = 2000];
 }
 
 message REMUSLBLParams
 {
-  // for MICROMODEM_REMUS_LBL_RANGING
-  // LSB->MSB is LBL beacons 1,2,3,... true is enabled, false is disabled
-  // enable four beacons is b1111 == d15 
-  optional uint32 enable_beacons = 1 [default = 15];
-  optional uint32 turnaround_ms = 2 [default = 50];
-  
-  // meters
-  optional uint32 lbl_max_range = 3 [default = 1000]; 
+    // for MICROMODEM_REMUS_LBL_RANGING
+    // LSB->MSB is LBL beacons 1,2,3,... true is enabled, false is disabled
+    // enable four beacons is b1111 == d15
+    optional uint32 enable_beacons = 1 [default = 15];
+    optional uint32 turnaround_ms = 2 [default = 50];
+
+    // meters
+    optional uint32 lbl_max_range = 3 [default = 1000];
 }
 
 message GenericLBLParams
 {
-  // for MICROMODEM_GENERIC_LBL_RANGING
-  optional uint32 transmit_freq = 1; // in hertz
-  optional uint32 n_bits = 2; // number of bits to use from the signal sequence, same for outgoing as well as incoming pings
-  optional uint64 tranmit_seq_code = 3; // outgoing sequence bits, packed into a 64 bit int
-  optional uint32 receive_freq = 4; // in hertz, first element (0) == beacon A, etc.
-  repeated uint64 receive_seq_code = 5; // signals to receive
-  optional uint32 bandwidth = 6; // chiprate/bandwidth, of outgoing and receive signals
-    
-  optional uint32 turnaround_ms = 7;
-  // meters
-  optional uint32 lbl_max_range = 8 [default = 2000]; 
+    // for MICROMODEM_GENERIC_LBL_RANGING
+    optional uint32 transmit_freq = 1;  // in hertz
+    optional uint32 n_bits =
+        2;  // number of bits to use from the signal sequence, same for outgoing
+            // as well as incoming pings
+    optional uint64 tranmit_seq_code =
+        3;  // outgoing sequence bits, packed into a 64 bit int
+    optional uint32 receive_freq =
+        4;  // in hertz, first element (0) == beacon A, etc.
+    repeated uint64 receive_seq_code = 5;  // signals to receive
+    optional uint32 bandwidth =
+        6;  // chiprate/bandwidth, of outgoing and receive signals
+
+    optional uint32 turnaround_ms = 7;
+    // meters
+    optional uint32 lbl_max_range = 8 [default = 2000];
 }
 
 message Config
 {
-  extend goby.acomms.protobuf.DriverConfig 
-  {
-    // reset all NVRAM settings to factory before
-    // setting ours ($CCCFG,ALL,0)
-    optional bool reset_nvram = 1000 [default = false]; 
-    
-    // add NVRAM configuration sentences to send to the modem
-    // on startup (e.g. "$CACFG,SRC,1"). Omit the "$CACFG," here.
-    // To reinitialize all values to factory settings, send "ALL,0"
-    repeated string nvram_cfg = 1001; // e.g. "SRC,3"
-    
-    // set to a non-zero value to indicate that we are using the hydroid gateway
-    // buoy which has a non-standard sentence structure (#M / !M prefixes)
-    // *do not set for the normal WHOI Micro-Modem*
-    optional uint32 hydroid_gateway_id = 1002 [default = 0]; 
+    extend goby.acomms.protobuf.DriverConfig
+    {
+        // reset all NVRAM settings to factory before
+        // setting ours ($CCCFG,ALL,0)
+        optional bool reset_nvram = 1000 [default = false];
 
-    // LBL parameters can be set globally here or on a per-transmission basis
-    optional NarrowBandLBLParams narrowband_lbl = 1003;
-    optional REMUSLBLParams remus_lbl = 1004;
+        // add NVRAM configuration sentences to send to the modem
+        // on startup (e.g. "$CACFG,SRC,1"). Omit the "$CACFG," here.
+        // To reinitialize all values to factory settings, send "ALL,0"
+        repeated string nvram_cfg = 1001;  // e.g. "SRC,3"
 
-    optional int32 keep_alive_seconds = 1006 [default = 10];
+        // set to a non-zero value to indicate that we are using the hydroid
+        // gateway buoy which has a non-standard sentence structure (#M / !M
+        // prefixes) *do not set for the normal WHOI Micro-Modem*
+        optional uint32 hydroid_gateway_id = 1002 [default = 0];
 
-    optional int32 allowed_skew_ms = 1008 [default = 1000];
+        // LBL parameters can be set globally here or on a per-transmission
+        // basis
+        optional NarrowBandLBLParams narrowband_lbl = 1003;
+        optional REMUSLBLParams remus_lbl = 1004;
 
-    optional bool use_application_acks = 1009 [default = false];
-    
-    optional GenericLBLParams generic_lbl = 1010;
-  }
+        optional int32 keep_alive_seconds = 1006 [default = 10];
+
+        optional int32 allowed_skew_ms = 1008 [default = 1000];
+
+        optional bool use_application_acks = 1009 [default = false];
+
+        optional GenericLBLParams generic_lbl = 1010;
+    }
 }
 
 enum ClockMode
 {
-  INVALID_CLOCK_MODE = -1;
-  NO_SYNC_TO_PPS_AND_CCCLK_BAD = 0;
-  NO_SYNC_TO_PPS_AND_CCCLK_GOOD = 1;
-  SYNC_TO_PPS_AND_CCCLK_BAD = 2;
-  SYNC_TO_PPS_AND_CCCLK_GOOD = 3;
+    INVALID_CLOCK_MODE = -1;
+    NO_SYNC_TO_PPS_AND_CCCLK_BAD = 0;
+    NO_SYNC_TO_PPS_AND_CCCLK_GOOD = 1;
+    SYNC_TO_PPS_AND_CCCLK_BAD = 2;
+    SYNC_TO_PPS_AND_CCCLK_GOOD = 3;
 }
 
 message RangingReply
 {
-  option (dccl.msg).id = 128;
-  option (dccl.msg).max_bytes = 32;
-  
-  // seconds
-  repeated double one_way_travel_time = 1 [(dccl.field).min = 0,
-                                           (dccl.field).max = 30,
-                                           (dccl.field).precision = 3,
-                                           (dccl.field).max_repeat = 4];
-  enum OWTTAmbiguity
-  {
-    OWTT_EXACT = 1; // one_way_travel_time reported is correct and known
-    OWTT_SECOND_AMBIGUOUS = 2; // one way travel time fractional second is correct, but second is unknown
-  }
-  optional OWTTAmbiguity ambiguity = 2 [default = OWTT_EXACT];
-  optional bool is_one_way_synchronous = 3 [default = false]; // if false, type given by ModemTransmission.type
-  optional ClockMode receiver_clk_mode = 4 [default = NO_SYNC_TO_PPS_AND_CCCLK_BAD];
-  optional ClockMode sender_clk_mode = 5 [default = NO_SYNC_TO_PPS_AND_CCCLK_BAD];
+    option (dccl.msg).id = 128;
+    option (dccl.msg).max_bytes = 32;
+
+    // seconds
+    repeated double one_way_travel_time = 1 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 30,
+        (dccl.field).precision = 3,
+        (dccl.field).max_repeat = 4
+    ];
+    enum OWTTAmbiguity
+    {
+        OWTT_EXACT = 1;  // one_way_travel_time reported is correct and known
+        OWTT_SECOND_AMBIGUOUS = 2;  // one way travel time fractional second is
+                                    // correct, but second is unknown
+    }
+    optional OWTTAmbiguity ambiguity = 2 [default = OWTT_EXACT];
+    optional bool is_one_way_synchronous = 3
+        [default = false];  // if false, type given by ModemTransmission.type
+    optional ClockMode receiver_clk_mode = 4
+        [default = NO_SYNC_TO_PPS_AND_CCCLK_BAD];
+    optional ClockMode sender_clk_mode = 5
+        [default = NO_SYNC_TO_PPS_AND_CCCLK_BAD];
 }
 
 enum PacketType
 {
-  PACKET_TYPE_UNKNOWN = -1;
-  FSK = 1;
-  FSK_MINI = 2;
-  PSK = 3;
-  PSK_MINI = 4;
-  FLEXIBLE_DATA_PACKET = 5;
+    PACKET_TYPE_UNKNOWN = -1;
+    FSK = 1;
+    FSK_MINI = 2;
+    PSK = 3;
+    PSK_MINI = 4;
+    FLEXIBLE_DATA_PACKET = 5;
 }
 
 enum ReceiveMode
 {
-  INVALID_RECEIVE_MODE = -1;
-  RECEIVE_GOOD = 0;
-  BAD_CRC = 1;
-  PACKET_TIMEOUT = 2;
+    INVALID_RECEIVE_MODE = -1;
+    RECEIVE_GOOD = 0;
+    BAD_CRC = 1;
+    PACKET_TIMEOUT = 2;
 }
 
 enum PSKErrorCode
 {
-  INVALID_PSK_ERROR_CODE = -1;
-  NO_ERROR = 0;
-  BAD_MODULATION_HEADER = 1;
-  BAD_CRC_DATA_HEADER = 2;
-  BAD_CRC_AT_LEAST_ONE_FRAME = 3;
-  ERROR_ACCESSING_COPROC = 4;
-  EQUALIZER_TIMEOUT = 5;
-  MISSED_START_OF_PSK_PACKET = 6;
+    INVALID_PSK_ERROR_CODE = -1;
+    NO_ERROR = 0;
+    BAD_MODULATION_HEADER = 1;
+    BAD_CRC_DATA_HEADER = 2;
+    BAD_CRC_AT_LEAST_ONE_FRAME = 3;
+    ERROR_ACCESSING_COPROC = 4;
+    EQUALIZER_TIMEOUT = 5;
+    MISSED_START_OF_PSK_PACKET = 6;
 }
-
 
 // $CACST,0,223413.0000,0,1440,25,0175,0166,75,01,01,01,03,1,007,006,0,3,3,0,146,03,04,-100,-1,000,-1.2,45,10000,2000
 message ReceiveStatistics
 {
-  option (dccl.msg).id = 129;
-  option (dccl.msg).max_bytes = 32;
-  
-  // including in "version 0", or the original CACST
-  required ReceiveMode mode = 1;
-  required uint64 time = 2 [(dccl.field).codec="_time"];
-  required ClockMode clock_mode = 3;
-  optional int32 mfd_peak = 4 [(dccl.field).omit=true];
-  required int32 mfd_power = 5 [(dccl.field).min = -30,
-                                (dccl.field).max = 40];
-  required int32 mfd_ratio = 6 [(dccl.field).min = 0,
-                                (dccl.field).max = 16383];
-  optional int32 spl = 7 [(dccl.field).omit=true];
-  optional int32 shf_agn = 8 [(dccl.field).omit=true];
-  optional int32 shf_ainpshift = 9 [(dccl.field).omit=true];
-  optional int32 shf_ainshift = 10 [(dccl.field).omit=true];
-  optional int32 shf_mfdshift = 11 [(dccl.field).omit=true];
-  optional int32 shf_p2bshift = 12 [(dccl.field).omit=true];
-  required int32 rate = 13 [(dccl.field).min = -1,
-                            (dccl.field).max = 6];
-  required int32 source = 14 [(dccl.field).min = 0,
-                              (dccl.field).max = 127];
-  required int32 dest = 15 [(dccl.field).min = 0,
-                            (dccl.field).max = 127];
-  required PSKErrorCode psk_error_code = 16;
-  required PacketType packet_type = 17;
-  required int32 number_frames = 18 [(dccl.field).min = 0,
-                                     (dccl.field).max = 8];
-  required int32 number_bad_frames = 19 [(dccl.field).min = 0,
-                                         (dccl.field).max = 8];
-  required int32 snr_rss = 20 [(dccl.field).min = 0,
-                               (dccl.field).max = 255];
-  required int32 snr_in = 21 [(dccl.field).min = -10,
-                               (dccl.field).max = 30];
-  required int32 snr_out = 22 [(dccl.field).min = 0,
-                               (dccl.field).max = 25];
-  required int32 snr_symbols = 23 [(dccl.field).min = 0,
-                                   (dccl.field).max = 30];
-  required int32 mse_equalizer = 24 [(dccl.field).min = -30,
-                                     (dccl.field).max = 5];
-  required int32 data_quality_factor = 25 [(dccl.field).min = 0,
-                                           (dccl.field).max = 255];
-  required double doppler = 26 [(dccl.field).min = -3,
-                                (dccl.field).max = 3,
-                                (dccl.field).precision = 1];
-  required int32 stddev_noise = 27 [(dccl.field).min = 0,
-                                    (dccl.field).max = 255];
-  required int32 carrier_freq = 28 [(dccl.field).min = 100,
-                                    (dccl.field).max = 30000];
-  required int32 bandwidth = 29 [(dccl.field).min = 1000,
-                                 (dccl.field).max = 5000];
+    option (dccl.msg).id = 129;
+    option (dccl.msg).max_bytes = 32;
 
-  // new for "version 6+", firmware 0.93.0.52+
-  optional int32 version = 30 [default=0, (dccl.field).omit = true];
-  optional string date = 31 [(dccl.field).omit = true];
-  optional int32 pcm = 32 [(dccl.field).omit = true];
+    // including in "version 0", or the original CACST
+    required ReceiveMode mode = 1;
+    required uint64 time = 2 [(dccl.field).codec = "_time"];
+    required ClockMode clock_mode = 3;
+    optional int32 mfd_peak = 4 [(dccl.field).omit = true];
+    required int32 mfd_power = 5
+        [(dccl.field).min = -30, (dccl.field).max = 40];
+    required int32 mfd_ratio = 6
+        [(dccl.field).min = 0, (dccl.field).max = 16383];
+    optional int32 spl = 7 [(dccl.field).omit = true];
+    optional int32 shf_agn = 8 [(dccl.field).omit = true];
+    optional int32 shf_ainpshift = 9 [(dccl.field).omit = true];
+    optional int32 shf_ainshift = 10 [(dccl.field).omit = true];
+    optional int32 shf_mfdshift = 11 [(dccl.field).omit = true];
+    optional int32 shf_p2bshift = 12 [(dccl.field).omit = true];
+    required int32 rate = 13 [(dccl.field).min = -1, (dccl.field).max = 6];
+    required int32 source = 14 [(dccl.field).min = 0, (dccl.field).max = 127];
+    required int32 dest = 15 [(dccl.field).min = 0, (dccl.field).max = 127];
+    required PSKErrorCode psk_error_code = 16;
+    required PacketType packet_type = 17;
+    required int32 number_frames = 18
+        [(dccl.field).min = 0, (dccl.field).max = 8];
+    required int32 number_bad_frames = 19
+        [(dccl.field).min = 0, (dccl.field).max = 8];
+    required int32 snr_rss = 20 [(dccl.field).min = 0, (dccl.field).max = 255];
+    required int32 snr_in = 21 [(dccl.field).min = -10, (dccl.field).max = 30];
+    required int32 snr_out = 22 [(dccl.field).min = 0, (dccl.field).max = 25];
+    required int32 snr_symbols = 23
+        [(dccl.field).min = 0, (dccl.field).max = 30];
+    required int32 mse_equalizer = 24
+        [(dccl.field).min = -30, (dccl.field).max = 5];
+    required int32 data_quality_factor = 25
+        [(dccl.field).min = 0, (dccl.field).max = 255];
+    required double doppler = 26 [
+        (dccl.field).min = -3,
+        (dccl.field).max = 3,
+        (dccl.field).precision = 1
+    ];
+    required int32 stddev_noise = 27
+        [(dccl.field).min = 0, (dccl.field).max = 255];
+    required int32 carrier_freq = 28
+        [(dccl.field).min = 100, (dccl.field).max = 30000];
+    required int32 bandwidth = 29
+        [(dccl.field).min = 1000, (dccl.field).max = 5000];
 
-
-  
+    // new for "version 6+", firmware 0.93.0.52+
+    optional int32 version = 30 [default = 0, (dccl.field).omit = true];
+    optional string date = 31 [(dccl.field).omit = true];
+    optional int32 pcm = 32 [(dccl.field).omit = true];
 }
 
 enum TransmitMode
 {
-  INVALID_TRANSMIT_MODE = -1;
-  TRANSMIT_SUCCESSFUL = 0;
-  FETS_TOO_HOT = 1;
-  EXTSYNC_TIMEOUT = 2;
-  TX_INHIBITED = 3;
-  DATA_TIMEOUT = 4;
+    INVALID_TRANSMIT_MODE = -1;
+    TRANSMIT_SUCCESSFUL = 0;
+    FETS_TOO_HOT = 1;
+    EXTSYNC_TIMEOUT = 2;
+    TX_INHIBITED = 3;
+    DATA_TIMEOUT = 4;
 }
-  
-  
+
 message TransmitStatistics
 {
-  optional string date = 1;
-  optional string time = 2;
-  optional ClockMode clock_mode = 3;
-  optional TransmitMode mode = 4;
-  optional int32 probe_length = 5;
-  optional int32 bandwidth = 6;
-  optional int32 carrier_freq = 7;
-  optional int32 rate = 8;
-  optional int32 source = 9;
-  optional int32 dest = 10;
-  optional bool ack_requested = 11;
-  optional int32 number_frames_expected = 12;
-  optional int32 number_frames_sent = 13;
-  optional PacketType packet_type = 14;
-  optional int32 number_bytes = 15;
+    optional string date = 1;
+    optional string time = 2;
+    optional ClockMode clock_mode = 3;
+    optional TransmitMode mode = 4;
+    optional int32 probe_length = 5;
+    optional int32 bandwidth = 6;
+    optional int32 carrier_freq = 7;
+    optional int32 rate = 8;
+    optional int32 source = 9;
+    optional int32 dest = 10;
+    optional bool ack_requested = 11;
+    optional int32 number_frames_expected = 12;
+    optional int32 number_frames_sent = 13;
+    optional PacketType packet_type = 14;
+    optional int32 number_bytes = 15;
 
-  optional int32 version = 100 [default=0];
+    optional int32 version = 100 [default = 0];
 }
 
 enum TransmissionType
 {
-  BASE_TYPE = 0;
-    
-  MICROMODEM_TWO_WAY_PING = 1;   // modem 1 interrogates modem 2; modem 2 replies and modem 1 computes one way travel time: $CCMPC
-  MICROMODEM_REMUS_LBL_RANGING = 2;     // modem 1 pings a REMUS network of long baseline (LBL) beacons: $CCPDT
-  MICROMODEM_NARROWBAND_LBL_RANGING = 3;    // modem 1 pings up to four transponders: $CCPNT
-  MICROMODEM_MINI_DATA = 4; // 13 bits (represented as a 1 frame, 2 byte data transmission where data is AND'd with 0x1ff) mini data transmission
-  MICROMODEM_FLEXIBLE_DATA = 5; // Flexible Data Protocol in Micro-Modem 2: Up to 100 bytes
-  MICROMODEM_HARDWARE_CONTROL = 6; // $CCMEC for writing hardware lines
-  MICROMODEM_HARDWARE_CONTROL_REPLY = 7; // $CAMER response to writing hardware lines
-  MICROMODEM_GENERIC_LBL_RANGING = 8; // $CCPGT Ping Generic Transponder from host to modem
+    BASE_TYPE = 0;
+
+    MICROMODEM_TWO_WAY_PING =
+        1;  // modem 1 interrogates modem 2; modem 2 replies and modem 1
+            // computes one way travel time: $CCMPC
+    MICROMODEM_REMUS_LBL_RANGING = 2;  // modem 1 pings a REMUS network of long
+                                       // baseline (LBL) beacons: $CCPDT
+    MICROMODEM_NARROWBAND_LBL_RANGING =
+        3;  // modem 1 pings up to four transponders: $CCPNT
+    MICROMODEM_MINI_DATA =
+        4;  // 13 bits (represented as a 1 frame, 2 byte data transmission where
+            // data is AND'd with 0x1ff) mini data transmission
+    MICROMODEM_FLEXIBLE_DATA =
+        5;  // Flexible Data Protocol in Micro-Modem 2: Up to 100 bytes
+    MICROMODEM_HARDWARE_CONTROL = 6;  // $CCMEC for writing hardware lines
+    MICROMODEM_HARDWARE_CONTROL_REPLY =
+        7;  // $CAMER response to writing hardware lines
+    MICROMODEM_GENERIC_LBL_RANGING =
+        8;  // $CCPGT Ping Generic Transponder from host to modem
 }
 
 enum HardwareLine
 {
-    @PROTOBUF_ALLOW_ALIAS@
-    MM2_GPIO1 = 5;
+    @PROTOBUF_ALLOW_ALIAS @MM2_GPIO1 = 5;
     MM2_GPIO2 = 6;
     MM2_GPIO3 = 3;
     MM2_GPIO4 = 2;
@@ -277,10 +291,9 @@ enum HardwareControlMode
 
 enum HardwareControlArgument
 {
-    @PROTOBUF_ALLOW_ALIAS@
-    MODE1_OFF = 0;
+    @PROTOBUF_ALLOW_ALIAS @MODE1_OFF = 0;
     MODE1_ON = 1;
-    
+
     TOGGLE_1MS = 0;
     TOGGLE_HALF_SEC = 1;
     TOGGLE_1_SEC = 2;
@@ -295,52 +308,66 @@ enum HardwareControlArgument
 
 message HardwareControl
 {
-   required HardwareLine line = 1;
-   required HardwareControlMode mode = 2;
-   optional HardwareControlArgument arg = 3 [default = MODE0_ARG];
+    required HardwareLine line = 1;
+    required HardwareControlMode mode = 2;
+    optional HardwareControlArgument arg = 3 [default = MODE0_ARG];
 }
 
 message HardwareControlCommand
 {
-  option (dccl.msg).id = 515;
-  option (dccl.msg).max_bytes = 32;  
-  option (dccl.msg).codec_version = 3;
-  
-  required int32 command_src = 1 [(dccl.field).min = 0, (dccl.field).max = 31, (dccl.field).in_head = true];
-  required int32 command_dest = 2 [(dccl.field).min = 0, (dccl.field).max = 31, (dccl.field).in_head = true];
-  optional uint64 time = 3 [(dccl.field).in_head = true, (dccl.field).codec="_time"];
+    option (dccl.msg).id = 515;
+    option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).codec_version = 3;
 
-  // destination of $CCMEC command (defaults to same as command_dest)
-  optional int32 hw_ctl_dest = 4 [(dccl.field).min = 0, (dccl.field).max = 31];
+    required int32 command_src = 1 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 31,
+        (dccl.field).in_head = true
+    ];
+    required int32 command_dest = 2 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 31,
+        (dccl.field).in_head = true
+    ];
+    optional uint64 time = 3
+        [(dccl.field).in_head = true, (dccl.field).codec = "_time"];
 
-  optional HardwareControl control = 5;
+    // destination of $CCMEC command (defaults to same as command_dest)
+    optional int32 hw_ctl_dest = 4
+        [(dccl.field).min = 0, (dccl.field).max = 31];
+
+    optional HardwareControl control = 5;
 }
 
-
-extend goby.acomms.protobuf.ModemTransmission 
+extend goby.acomms.protobuf.ModemTransmission
 {
-  optional TransmissionType type = 1000 [(goby.field).description="Type of transmission if base `type` == DRIVER_SPECIFIC",
-                                         default=BASE_TYPE];
-  
-  // LBL parameters will be merged with configuration parameters. If a parameter
-  // is set in both places, the ones set here take precedence.
-  optional NarrowBandLBLParams narrowband_lbl = 1001 [(dccl.field).omit = true];
-  optional REMUSLBLParams remus_lbl = 1002 [(dccl.field).omit = true];
+    optional TransmissionType type = 1000 [
+        (goby.field).description =
+            "Type of transmission if base `type` == DRIVER_SPECIFIC",
+        default = BASE_TYPE
+    ];
 
-  optional RangingReply ranging_reply = 1003 [(dccl.field).omit = true,
-                                              (goby.field).cfg.action = NEVER];
-  repeated ReceiveStatistics receive_stat = 1004 [(dccl.field).omit = true,
-                                                  (goby.field).cfg.action = NEVER]; // $CACST
-  repeated TransmitStatistics transmit_stat = 1005 [(dccl.field).omit = true,
-                                                    (goby.field).cfg.action = NEVER]; // $CAXST
-  repeated int32 frame_with_bad_crc = 1006 [(dccl.field).omit = true,
-                                            (goby.field).cfg.action = NEVER];
+    // LBL parameters will be merged with configuration parameters. If a
+    // parameter is set in both places, the ones set here take precedence.
+    optional NarrowBandLBLParams narrowband_lbl = 1001
+        [(dccl.field).omit = true];
+    optional REMUSLBLParams remus_lbl = 1002 [(dccl.field).omit = true];
 
-  optional HardwareControl hw_ctl = 1007  [(dccl.field).omit = true];
-  
-  optional GenericLBLParams generic_lbl = 1008 [(dccl.field).omit = true];
+    optional RangingReply ranging_reply = 1003
+        [(dccl.field).omit = true, (goby.field).cfg.action = NEVER];
+    repeated ReceiveStatistics receive_stat = 1004
+        [(dccl.field).omit = true,
+         (goby.field).cfg.action = NEVER];  // $CACST
+    repeated TransmitStatistics transmit_stat = 1005
+        [(dccl.field).omit = true,
+         (goby.field).cfg.action = NEVER];  // $CAXST
+    repeated int32 frame_with_bad_crc = 1006
+        [(dccl.field).omit = true, (goby.field).cfg.action = NEVER];
+
+    optional HardwareControl hw_ctl = 1007 [(dccl.field).omit = true];
+
+    optional GenericLBLParams generic_lbl = 1008 [(dccl.field).omit = true];
 }
-
 
 message MMApplicationAck
 {
@@ -351,16 +378,14 @@ message MMApplicationAck
     repeated AckPart part = 1 [(dccl.field).max_repeat = 4];
     message AckPart
     {
-        required int32 ack_dest = 1 [(dccl.field).min = 0, (dccl.field).max = 31];
-        
-        required uint32 acked_frames = 2 [(dccl.field).min = 0,
-                                          (dccl.field).max = 0xFFFFFFFF];
-        
+        required int32 ack_dest = 1
+            [(dccl.field).min = 0, (dccl.field).max = 31];
+
+        required uint32 acked_frames = 2
+            [(dccl.field).min = 0, (dccl.field).max = 0xFFFFFFFF];
     }
 
     required bool ack_requested = 3;
-    required uint32 frame_start = 4 [(dccl.field).min = 0,
-                                     (dccl.field).max = 31];
-    
+    required uint32 frame_start = 4
+        [(dccl.field).min = 0, (dccl.field).max = 31];
 }
-

@@ -1,14 +1,12 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "dccl/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "dccl/protobuf/option_extensions.proto";
 
 message Sample
 {
     option (dccl.msg).id = 127;
     option (dccl.msg).max_bytes = 32;
     option (dccl.msg).codec_version = 3;
-    
-    optional int32 a = 1;
 
+    optional int32 a = 1;
 }
 
 message Widget

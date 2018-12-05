@@ -26,41 +26,39 @@
 #include "goby/common/time.h"
 
 #include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/pb/protobuf_node.h"
-#include "goby/common/zeromq_service.h"
 #include "goby/acomms/protobuf/store_server.pb.h"
+#include "goby/common/zeromq_service.h"
 #include "goby/pb/protobuf/pb_modem_driver.pb.h"
-
+#include "goby/pb/protobuf_node.h"
 
 namespace goby
 {
-    namespace pb
-    {
-        class PBDriver : public acomms::ModemDriverBase,
-            public goby::pb::StaticProtobufNode
-        {
-          public:
-            PBDriver(goby::common::ZeroMQService* zeromq_service);
-            void startup(const acomms::protobuf::DriverConfig& cfg);
-            void shutdown();            
-            void do_work();
-            void handle_initiate_transmission(const acomms::protobuf::ModemTransmission& m);
+namespace pb
+{
+class PBDriver : public acomms::ModemDriverBase, public goby::pb::StaticProtobufNode
+{
+  public:
+    PBDriver(goby::common::ZeroMQService* zeromq_service);
+    void startup(const acomms::protobuf::DriverConfig& cfg);
+    void shutdown();
+    void do_work();
+    void handle_initiate_transmission(const acomms::protobuf::ModemTransmission& m);
 
-          private:
-            void handle_response(const acomms::protobuf::StoreServerResponse& response);
-            
-          private:            
-            goby::common::ZeroMQService* zeromq_service_;
-            acomms::protobuf::DriverConfig driver_cfg_;
-	    common::protobuf::ZeroMQServiceConfig service_cfg_;
-            acomms::protobuf::StoreServerRequest request_;
-            std::uint64_t last_send_time_;
-            int request_socket_id_;
-            double query_interval_seconds_;
-            double reset_interval_seconds_;
-            bool waiting_for_reply_;
-            std::uint32_t next_frame_;
-        };
-    }
-}
+  private:
+    void handle_response(const acomms::protobuf::StoreServerResponse& response);
+
+  private:
+    goby::common::ZeroMQService* zeromq_service_;
+    acomms::protobuf::DriverConfig driver_cfg_;
+    common::protobuf::ZeroMQServiceConfig service_cfg_;
+    acomms::protobuf::StoreServerRequest request_;
+    std::uint64_t last_send_time_;
+    int request_socket_id_;
+    double query_interval_seconds_;
+    double reset_interval_seconds_;
+    bool waiting_for_reply_;
+    std::uint32_t next_frame_;
+};
+} // namespace pb
+} // namespace goby
 #endif

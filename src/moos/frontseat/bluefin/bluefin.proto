@@ -1,5 +1,4 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/moos/protobuf/frontseat.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/moos/protobuf/frontseat.proto";
 
 import "goby/acomms/protobuf/modem_message.proto";
 
@@ -7,121 +6,117 @@ package goby.moos.protobuf;
 
 message BuoyancyStatus
 {
-  enum Status
-  {
-    BUOYANCY_IDLE = 0;
-    BUOYANCY_IN_PROGRESS = 1;
-    BUOYANCY_COMPLETED_SUCCESSFULLY = 2;
-    BUOYANCY_COMPLETED_UNSUCCESSFULLY = 3;
-  }
-  
-  optional Status status = 1 [default = BUOYANCY_IDLE];
+    enum Status
+    {
+        BUOYANCY_IDLE = 0;
+        BUOYANCY_IN_PROGRESS = 1;
+        BUOYANCY_COMPLETED_SUCCESSFULLY = 2;
+        BUOYANCY_COMPLETED_UNSUCCESSFULLY = 3;
+    }
 
-  enum Error
-  {
-    ERROR_NONE = 0;
-    ERROR_BUOYANCY_OPERATION_FAILED = 1;
-    ERROR_OPERATION_CANCELLED = 2;
-    ERROR_ZERO_FLOW = 3;
-  }
+    optional Status status = 1 [default = BUOYANCY_IDLE];
 
-  optional Error error = 2 [default = ERROR_NONE];
-  optional string debug_string = 3;
-  optional double buoyancy_newtons = 4;
+    enum Error
+    {
+        ERROR_NONE = 0;
+        ERROR_BUOYANCY_OPERATION_FAILED = 1;
+        ERROR_OPERATION_CANCELLED = 2;
+        ERROR_ZERO_FLOW = 3;
+    }
+
+    optional Error error = 2 [default = ERROR_NONE];
+    optional string debug_string = 3;
+    optional double buoyancy_newtons = 4;
 }
 
 message TrimStatus
 {
-  enum Status
-  {
-    TRIM_IDLE = 0;
-    TRIM_IN_PROGRESS = 1;
-    TRIM_COMPLETED_SUCCESSFULLY = 2;
-    TRIM_COMPLETED_UNSUCCESSFULLY = 3;
-  }
-  
-  optional Status status = 1 [default = TRIM_IDLE];
+    enum Status
+    {
+        TRIM_IDLE = 0;
+        TRIM_IN_PROGRESS = 1;
+        TRIM_COMPLETED_SUCCESSFULLY = 2;
+        TRIM_COMPLETED_UNSUCCESSFULLY = 3;
+    }
 
-  enum Error
-  {
-    ERROR_NONE = 0;
-    ERROR_TRIM_OPERATION_FAILED = 1;
-    ERROR_CANNOT_TRIM_WHILE_SILENT = 2;
-  }
+    optional Status status = 1 [default = TRIM_IDLE];
 
-  optional Error error = 2 [default = ERROR_NONE];
-  optional string debug_string = 3;
-  optional double pitch_trim_degrees = 4;
-  optional double roll_trim_degrees = 5;
+    enum Error
+    {
+        ERROR_NONE = 0;
+        ERROR_TRIM_OPERATION_FAILED = 1;
+        ERROR_CANNOT_TRIM_WHILE_SILENT = 2;
+    }
+
+    optional Error error = 2 [default = ERROR_NONE];
+    optional string debug_string = 3;
+    optional double pitch_trim_degrees = 4;
+    optional double roll_trim_degrees = 5;
 }
-
-
 
 message BluefinExtraData
 {
-  optional goby.acomms.protobuf.ModemRaw micro_modem_raw_out = 1;
-  optional goby.acomms.protobuf.ModemRaw micro_modem_raw_in = 2;
-  optional BuoyancyStatus buoyancy_status = 10;
-  optional TrimStatus trim_status = 20;
-    
-  message PayloadStatus
-  {
-      required int32 id = 1;
-      required uint64 expire_time = 2;
-      required string msg = 3;
-      required bool all_ok = 4;
-  };
+    optional goby.acomms.protobuf.ModemRaw micro_modem_raw_out = 1;
+    optional goby.acomms.protobuf.ModemRaw micro_modem_raw_in = 2;
+    optional BuoyancyStatus buoyancy_status = 10;
+    optional TrimStatus trim_status = 20;
 
-  repeated PayloadStatus payload_status = 30;
+    message PayloadStatus
+    {
+        required int32 id = 1;
+        required uint64 expire_time = 2;
+        required string msg = 3;
+        required bool all_ok = 4;
+    };
+
+    repeated PayloadStatus payload_status = 30;
 }
-
 
 extend FrontSeatInterfaceData
 {
-  optional BluefinExtraData bluefin_data = 1000;
+    optional BluefinExtraData bluefin_data = 1000;
 }
 
 message BluefinExtraCommands
 {
-  enum BluefinCommand
-  {
-    UNKNOWN_COMMAND = 0;
-    DESIRED_COURSE = 1;
-    TRIM_ADJUST = 3;
-    BUOYANCY_ADJUST = 4;
-    SILENT_MODE = 5;
-    CANCEL_CURRENT_BEHAVIOR = 6;
-    ABORT_MISSION = 7;
-    MISSION_START_CONFIRM = 8;
-    MISSION_END_CONFIRM = 9;
-  }
-  optional BluefinCommand command = 1 [default = UNKNOWN_COMMAND];
+    enum BluefinCommand
+    {
+        UNKNOWN_COMMAND = 0;
+        DESIRED_COURSE = 1;
+        TRIM_ADJUST = 3;
+        BUOYANCY_ADJUST = 4;
+        SILENT_MODE = 5;
+        CANCEL_CURRENT_BEHAVIOR = 6;
+        ABORT_MISSION = 7;
+        MISSION_START_CONFIRM = 8;
+        MISSION_END_CONFIRM = 9;
+    }
+    optional BluefinCommand command = 1 [default = UNKNOWN_COMMAND];
 
-  enum SilentMode
-  {
-    NORMAL = 0;
-    SILENT = 1;
-  }
-  optional SilentMode silent_mode = 10 [default = NORMAL];
+    enum SilentMode
+    {
+        NORMAL = 0;
+        SILENT = 1;
+    }
+    optional SilentMode silent_mode = 10 [default = NORMAL];
 
-  enum AbortReason
-  {
-    SUCCESSFUL_MISSION = 0;
-    ABORT_WITH_ERRORS =  1;
-  }
+    enum AbortReason
+    {
+        SUCCESSFUL_MISSION = 0;
+        ABORT_WITH_ERRORS = 1;
+    }
 
-  optional AbortReason abort_reason = 11 [default = ABORT_WITH_ERRORS];
+    optional AbortReason abort_reason = 11 [default = ABORT_WITH_ERRORS];
 
-  enum StartConfirm
-  {
-    SUCCESS  = 1;
-    FAIL     = 0;
-  }
-  optional StartConfirm start_confirm = 12 [default = SUCCESS];
+    enum StartConfirm
+    {
+        SUCCESS = 1;
+        FAIL = 0;
+    }
+    optional StartConfirm start_confirm = 12 [default = SUCCESS];
 }
 
 extend CommandRequest
 {
-  optional BluefinExtraCommands bluefin_command = 1000;  
+    optional BluefinExtraCommands bluefin_command = 1000;
 }
-

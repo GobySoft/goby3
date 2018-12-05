@@ -1,15 +1,13 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "dccl/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "dccl/protobuf/option_extensions.proto";
 
 message Sample
 {
     option (dccl.msg).id = 127;
     option (dccl.msg).max_bytes = 32;
     option (dccl.msg).codec_version = 3;
-    
-    optional int32 a = 1 [(dccl.field) = { min: -100 max: 10000 }];
-    optional int32 group = 2 [(dccl.field) = { min: 1 max: 10 }];
-    
+
+    optional int32 a = 1 [(dccl.field) = {min: -100 max: 10000}];
+    optional int32 group = 2 [(dccl.field) = {min: 1 max: 10}];
 }
 
 message Widget
@@ -17,6 +15,6 @@ message Widget
     option (dccl.msg).id = 126;
     option (dccl.msg).max_bytes = 32;
     option (dccl.msg).codec_version = 3;
-    
-    optional int32 b = 1 [(dccl.field) = { min: -10 max: 1000} ];
+
+    optional int32 b = 1 [(dccl.field) = {min: -10 max: 1000}];
 }

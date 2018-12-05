@@ -1,160 +1,195 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "dccl/protobuf/option_extensions.proto";
-
+@PROTOBUF_SYNTAX_VERSION @import "dccl/protobuf/option_extensions.proto";
 
 enum Enum1
 {
-  ENUM_A = 1;
-  ENUM_B = 2;
-  ENUM_C = 3;
+    ENUM_A = 1;
+    ENUM_B = 2;
+    ENUM_C = 3;
 }
 
 message EmbeddedMsg1
 {
-  optional double val = 1 [(dccl.field).min=0,
-                           (dccl.field).max=126,
-                           (dccl.field).precision=3];
-  optional EmbeddedMsg2 msg = 2;
+    optional double val = 1 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 126,
+        (dccl.field).precision = 3
+    ];
+    optional EmbeddedMsg2 msg = 2;
 }
 
 message EmbeddedMsg2
 {
-  optional double val = 1 [(dccl.field).min=0,
-                           (dccl.field).max=126,
-                           (dccl.field).precision=2];
-  optional string sval = 2 [(dccl.field).max_length=10];
-  optional Enum1 enum_default = 3;  
+    optional double val = 1 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 126,
+        (dccl.field).precision = 2
+    ];
+    optional string sval = 2 [(dccl.field).max_length = 10];
+    optional Enum1 enum_default = 3;
 }
 
 message TestMsg
 {
-  option (dccl.msg).id = 2;
-  option (dccl.msg).max_bytes = 512;
+    option (dccl.msg).id = 2;
+    option (dccl.msg).max_bytes = 512;
 
-  // test default enc/dec
-  optional double double_default_optional = 1 [(dccl.field).min=-100,
-                                      (dccl.field).max=126,
-                                      (dccl.field).precision=2,
-                                      (dccl.field).in_head=true];
-  optional float float_default_optional = 2 [(dccl.field).min=-20,
-                                      (dccl.field).max=150,
-                                      (dccl.field).precision=3];
-  optional int32 int32_default_optional = 3 [(dccl.field).min=-20,
-                                      (dccl.field).max=3000];
-  optional int64 int64_default_optional = 4 [(dccl.field).min=-710,
-                                      (dccl.field).max=3000];
-  optional uint32 uint32_default_optional = 5 [(dccl.field).min=0,
-                                      (dccl.field).max=3000];
-  optional uint64 uint64_default_optional = 6 [(dccl.field).min=5,
-                                      (dccl.field).max=3000];
-  optional sint32 sint32_default_optional = 7 [(dccl.field).min=-60,
-                                      (dccl.field).max=3000];
-  optional sint64 sint64_default_optional = 8 [(dccl.field).min=-70,
-                                      (dccl.field).max=3000];
-  optional fixed32 fixed32_default_optional = 9 [(dccl.field).min=0, 
-                                      (dccl.field).max=400];
-  optional fixed64 fixed64_default_optional = 10 [(dccl.field).min=0,
-                                      (dccl.field).max=3000];
-  optional sfixed32 sfixed32_default_optional = 11 [(dccl.field).min=11,
-                                      (dccl.field).max=3000]; 
-  optional sfixed64 sfixed64_default_optional = 12 [(dccl.field).min=-12,
-                                      (dccl.field).max=3000]; 
+    // test default enc/dec
+    optional double double_default_optional = 1 [
+        (dccl.field).min = -100,
+        (dccl.field).max = 126,
+        (dccl.field).precision = 2,
+        (dccl.field).in_head = true
+    ];
+    optional float float_default_optional = 2 [
+        (dccl.field).min = -20,
+        (dccl.field).max = 150,
+        (dccl.field).precision = 3
+    ];
+    optional int32 int32_default_optional = 3
+        [(dccl.field).min = -20, (dccl.field).max = 3000];
+    optional int64 int64_default_optional = 4
+        [(dccl.field).min = -710, (dccl.field).max = 3000];
+    optional uint32 uint32_default_optional = 5
+        [(dccl.field).min = 0, (dccl.field).max = 3000];
+    optional uint64 uint64_default_optional = 6
+        [(dccl.field).min = 5, (dccl.field).max = 3000];
+    optional sint32 sint32_default_optional = 7
+        [(dccl.field).min = -60, (dccl.field).max = 3000];
+    optional sint64 sint64_default_optional = 8
+        [(dccl.field).min = -70, (dccl.field).max = 3000];
+    optional fixed32 fixed32_default_optional = 9
+        [(dccl.field).min = 0, (dccl.field).max = 400];
+    optional fixed64 fixed64_default_optional = 10
+        [(dccl.field).min = 0, (dccl.field).max = 3000];
+    optional sfixed32 sfixed32_default_optional = 11
+        [(dccl.field).min = 11, (dccl.field).max = 3000];
+    optional sfixed64 sfixed64_default_optional = 12
+        [(dccl.field).min = -12, (dccl.field).max = 3000];
 
-  optional bool bool_default_optional = 13;
+    optional bool bool_default_optional = 13;
 
-  optional string string_default_optional = 14 [(dccl.field).max_length=8];
-  optional bytes bytes_default_optional = 15 [(dccl.field).max_length=9];
+    optional string string_default_optional = 14 [(dccl.field).max_length = 8];
+    optional bytes bytes_default_optional = 15 [(dccl.field).max_length = 9];
 
-  optional Enum1 enum_default_optional = 16;
+    optional Enum1 enum_default_optional = 16;
 
-  optional EmbeddedMsg1 msg_default_optional = 17;
+    optional EmbeddedMsg1 msg_default_optional = 17;
 
+    required double double_default_required = 21 [
+        (dccl.field).min = -100,
+        (dccl.field).max = 126,
+        (dccl.field).precision = 2,
+        (dccl.field).in_head = true
+    ];
+    required float float_default_required = 22 [
+        (dccl.field).min = -20,
+        (dccl.field).max = 150,
+        (dccl.field).precision = 3
+    ];
+    required int32 int32_default_required = 23
+        [(dccl.field).min = -20, (dccl.field).max = 3000];
+    required int64 int64_default_required = 24
+        [(dccl.field).min = -710, (dccl.field).max = 3000];
+    required uint32 uint32_default_required = 25
+        [(dccl.field).min = 0, (dccl.field).max = 3000];
+    required uint64 uint64_default_required = 26
+        [(dccl.field).min = 5, (dccl.field).max = 3000];
+    required sint32 sint32_default_required = 27
+        [(dccl.field).min = -60, (dccl.field).max = 3000];
+    required sint64 sint64_default_required = 28
+        [(dccl.field).min = -70, (dccl.field).max = 3000];
+    required fixed32 fixed32_default_required = 29
+        [(dccl.field).min = 0, (dccl.field).max = 400];
+    required fixed64 fixed64_default_required = 30
+        [(dccl.field).min = 0, (dccl.field).max = 3000];
+    required sfixed32 sfixed32_default_required = 31
+        [(dccl.field).min = 11, (dccl.field).max = 3000];
+    required sfixed64 sfixed64_default_required = 32
+        [(dccl.field).min = -120, (dccl.field).max = 3000];
 
-  required double double_default_required = 21 [(dccl.field).min=-100,
-                                      (dccl.field).max=126,
-                                      (dccl.field).precision=2,
-                                      (dccl.field).in_head=true];
-  required float float_default_required = 22 [(dccl.field).min=-20,
-                                      (dccl.field).max=150,
-                                      (dccl.field).precision=3];
-  required int32 int32_default_required = 23 [(dccl.field).min=-20,
-                                      (dccl.field).max=3000];
-  required int64 int64_default_required = 24 [(dccl.field).min=-710,
-                                      (dccl.field).max=3000];
-  required uint32 uint32_default_required = 25 [(dccl.field).min=0,
-                                      (dccl.field).max=3000];
-  required uint64 uint64_default_required = 26 [(dccl.field).min=5,
-                                      (dccl.field).max=3000];
-  required sint32 sint32_default_required = 27 [(dccl.field).min=-60,
-                                      (dccl.field).max=3000];
-  required sint64 sint64_default_required = 28 [(dccl.field).min=-70,
-                                      (dccl.field).max=3000];
-  required fixed32 fixed32_default_required = 29 [(dccl.field).min=0, 
-                                      (dccl.field).max=400];
-  required fixed64 fixed64_default_required = 30 [(dccl.field).min=0,
-                                      (dccl.field).max=3000];
-  required sfixed32 sfixed32_default_required = 31 [(dccl.field).min=11,
-                                      (dccl.field).max=3000]; 
-  required sfixed64 sfixed64_default_required = 32 [(dccl.field).min=-120,
-                                      (dccl.field).max=3000]; 
+    required bool bool_default_required = 33;
 
-  required bool bool_default_required = 33;
+    required string string_default_required = 34 [(dccl.field).max_length = 8];
+    required bytes bytes_default_required = 35 [(dccl.field).max_length = 9];
 
-  required string string_default_required = 34 [(dccl.field).max_length=8];
-  required bytes bytes_default_required = 35 [(dccl.field).max_length=9];
+    required Enum1 enum_default_required = 36;
 
-  required Enum1 enum_default_required = 36;
+    required EmbeddedMsg1 msg_default_required = 37;
 
-  required EmbeddedMsg1 msg_default_required = 37;
+    repeated double double_default_repeat = 101 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 100,
+        (dccl.field).precision = 3,
+        (dccl.field).max_repeat = 4
+    ];
+    repeated float float_default_repeat = 102 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 100,
+        (dccl.field).precision = 3,
+        (dccl.field).max_repeat = 4
+    ];
 
-  repeated double double_default_repeat = 101 [(dccl.field).min=0,
-                                               (dccl.field).max=100,
-                                               (dccl.field).precision=3,
-                                               (dccl.field).max_repeat=4];
-  repeated float float_default_repeat = 102 [(dccl.field).min=0,
-                                               (dccl.field).max=100,
-                                               (dccl.field).precision=3,
-                                               (dccl.field).max_repeat=4];
+    repeated int32 int32_default_repeat = 103 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 100,
+        (dccl.field).max_repeat = 4
+    ];
+    repeated int64 int64_default_repeat = 104 [
+        (dccl.field).min = -100,
+        (dccl.field).max = 100,
+        (dccl.field).max_repeat = 4
+    ];
+    repeated uint32 uint32_default_repeat = 105 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 100,
+        (dccl.field).max_repeat = 4,
+        (dccl.field).in_head = true
+    ];
+    repeated uint64 uint64_default_repeat = 106 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 100,
+        (dccl.field).max_repeat = 4
+    ];
+    repeated sint32 sint32_default_repeat = 107 [
+        (dccl.field).min = -60,
+        (dccl.field).max = 100,
+        (dccl.field).max_repeat = 4
+    ];
+    repeated sint64 sint64_default_repeat = 108 [
+        (dccl.field).min = -600,
+        (dccl.field).max = 100,
+        (dccl.field).max_repeat = 4
+    ];
+    repeated fixed32 fixed32_default_repeat = 109 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 100,
+        (dccl.field).max_repeat = 4
+    ];
+    repeated fixed64 fixed64_default_repeat = 110 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 100,
+        (dccl.field).max_repeat = 4
+    ];
+    repeated sfixed32 sfixed32_default_repeat = 111 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 100,
+        (dccl.field).max_repeat = 4
+    ];
+    repeated sfixed64 sfixed64_default_repeat = 112 [
+        (dccl.field).min = -500,
+        (dccl.field).max = 100,
+        (dccl.field).max_repeat = 4
+    ];
 
-  repeated int32 int32_default_repeat = 103 [(dccl.field).min=0,
-                                             (dccl.field).max=100,
-                                             (dccl.field).max_repeat=4];
-  repeated int64 int64_default_repeat = 104 [(dccl.field).min=-100,
-                                             (dccl.field).max=100,
-                                             (dccl.field).max_repeat=4];
-  repeated uint32 uint32_default_repeat = 105 [(dccl.field).min=0,
-                                               (dccl.field).max=100,
-                                               (dccl.field).max_repeat=4,
-                                               (dccl.field).in_head=true];
-  repeated uint64 uint64_default_repeat = 106 [(dccl.field).min=0,
-                                               (dccl.field).max=100,
-                                               (dccl.field).max_repeat=4];
-  repeated sint32 sint32_default_repeat = 107 [(dccl.field).min=-60,
-                                               (dccl.field).max=100,
-                                               (dccl.field).max_repeat=4];
-  repeated sint64 sint64_default_repeat = 108 [(dccl.field).min=-600,
-                                               (dccl.field).max=100,
-                                               (dccl.field).max_repeat=4];
-  repeated fixed32 fixed32_default_repeat = 109 [(dccl.field).min=0,
-                                                 (dccl.field).max=100,
-                                                 (dccl.field).max_repeat=4];
-  repeated fixed64 fixed64_default_repeat = 110 [(dccl.field).min=0,
-                                                 (dccl.field).max=100,
-                                                 (dccl.field).max_repeat=4];
-  repeated sfixed32 sfixed32_default_repeat = 111 [(dccl.field).min=0,
-                                                   (dccl.field).max=100,
-                                                   (dccl.field).max_repeat=4];
-  repeated sfixed64 sfixed64_default_repeat = 112 [(dccl.field).min=-500,
-                                                   (dccl.field).max=100,
-                                                   (dccl.field).max_repeat=4];
-  
-  repeated bool bool_default_repeat = 113 [(dccl.field).max_repeat=4];
+    repeated bool bool_default_repeat = 113 [(dccl.field).max_repeat = 4];
 
-  repeated string string_default_repeat = 114 [(dccl.field).max_length=4, (dccl.field).max_repeat=4];
-  repeated bytes bytes_default_repeat = 115 [(dccl.field).max_length=4, (dccl.field).max_repeat=4];
-  
-  repeated Enum1 enum_default_repeat = 116 [(dccl.field).max_repeat=4];
+    repeated string string_default_repeat = 114
+        [(dccl.field).max_length = 4, (dccl.field).max_repeat = 4];
+    repeated bytes bytes_default_repeat = 115
+        [(dccl.field).max_length = 4, (dccl.field).max_repeat = 4];
 
-  repeated EmbeddedMsg1 msg_default_repeat = 117 [(dccl.field).max_repeat=4];
+    repeated Enum1 enum_default_repeat = 116 [(dccl.field).max_repeat = 4];
+
+    repeated EmbeddedMsg1 msg_default_repeat = 117
+        [(dccl.field).max_repeat = 4];
 }
-

@@ -1,41 +1,53 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "dccl/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "dccl/protobuf/option_extensions.proto";
 message GoToCommand
 {
-  option (dccl.msg).id = 125;
-  option (dccl.msg).max_bytes = 32;
-  required int32 destination = 1 [(dccl.field).max=31,
-                                  (dccl.field).min=0,
-                                  (dccl.field).precision=0];
-  optional string type = 2 [(dccl.field).static_value="goto",
-                            (dccl.field).codec="_static"];
-  required int32 goto_x = 3 [(dccl.field).max=10000,
-                             (dccl.field).min=0,
-                             (dccl.field).precision=0];
-  required int32 goto_y = 4 [(dccl.field).max=10000,
-                             (dccl.field).min=0,
-                             (dccl.field).precision=0];
-  required bool lights_on = 5;
-  required string new_instructions = 6 [(dccl.field).max_length=10];
-  required double goto_speed = 7 [(dccl.field).max=3,
-                                  (dccl.field).min=0,
-                                  (dccl.field).precision=2];
+    option (dccl.msg).id = 125;
+    option (dccl.msg).max_bytes = 32;
+    required int32 destination = 1 [
+        (dccl.field).max = 31,
+        (dccl.field).min = 0,
+        (dccl.field).precision = 0
+    ];
+    optional string type = 2
+        [(dccl.field).static_value = "goto", (dccl.field).codec = "_static"];
+    required int32 goto_x = 3 [
+        (dccl.field).max = 10000,
+        (dccl.field).min = 0,
+        (dccl.field).precision = 0
+    ];
+    required int32 goto_y = 4 [
+        (dccl.field).max = 10000,
+        (dccl.field).min = 0,
+        (dccl.field).precision = 0
+    ];
+    required bool lights_on = 5;
+    required string new_instructions = 6 [(dccl.field).max_length = 10];
+    required double goto_speed = 7 [
+        (dccl.field).max = 3,
+        (dccl.field).min = 0,
+        (dccl.field).precision = 2
+    ];
 }
 
 message VehicleStatus
-{ 
-  option (dccl.msg).id = 126;
-  option (dccl.msg).max_bytes = 32;
-  required double nav_x = 1 [(dccl.field).max=10000,
-                             (dccl.field).min=0,
-                             (dccl.field).precision=1];
-  required double nav_y = 2 [(dccl.field).max=10000,
-                             (dccl.field).min=0,
-                             (dccl.field).precision=1];
-  required HealthEnum health = 3;
-  enum HealthEnum { 
-    HEALTH_GOOD = 0; 
-    HEALTH_LOW_BATTERY = 1; 
-    HEALTH_ABORT = 2; 
-  } 
-} 
+{
+    option (dccl.msg).id = 126;
+    option (dccl.msg).max_bytes = 32;
+    required double nav_x = 1 [
+        (dccl.field).max = 10000,
+        (dccl.field).min = 0,
+        (dccl.field).precision = 1
+    ];
+    required double nav_y = 2 [
+        (dccl.field).max = 10000,
+        (dccl.field).min = 0,
+        (dccl.field).precision = 1
+    ];
+    required HealthEnum health = 3;
+    enum HealthEnum
+    {
+        HEALTH_GOOD = 0;
+        HEALTH_LOW_BATTERY = 1;
+        HEALTH_ABORT = 2;
+    }
+}

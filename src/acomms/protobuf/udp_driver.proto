@@ -1,19 +1,22 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/common/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto"; // load up message DriverBaseConfig
 
 message UDPDriverConfig
 {
-  message EndPoint
-  {
-    optional string ip = 1 [default = "127.0.0.1"];
-    required uint32 port = 2;
-  }
+    message EndPoint
+    {
+        optional string ip = 1 [default = "127.0.0.1"];
+        required uint32 port = 2;
+    }
 
-  extend goby.acomms.protobuf.DriverConfig
-  {
-    optional EndPoint local = 1341 [(goby.field).description="The endpoint of the local machine (IP address can be omitted)"];
-    optional EndPoint remote = 1342 [(goby.field).description="The endpoint of the receiving machine."];
-    optional int32 max_frame_size = 1343 [default = 65536];
-  }
+    extend goby.acomms.protobuf.DriverConfig
+    {
+        optional EndPoint local = 1341 [(goby.field).description =
+                                            "The endpoint of the local machine "
+                                            "(IP address can be omitted)"];
+        optional EndPoint remote = 1342
+            [(goby.field).description =
+                 "The endpoint of the receiving machine."];
+        optional int32 max_frame_size = 1343 [default = 65536];
+    }
 }

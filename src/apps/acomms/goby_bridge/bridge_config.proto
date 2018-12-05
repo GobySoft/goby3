@@ -1,5 +1,4 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/common/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
 import "goby/common/protobuf/app_base_config.proto";
 import "goby/acomms/protobuf/queue.proto";
 import "goby/acomms/protobuf/route.proto";
@@ -10,27 +9,32 @@ package goby.acomms.protobuf;
 
 message BridgeConfig
 {
-  optional AppBaseConfig base = 1;
+    optional AppBaseConfig base = 1;
 
-  message Subnet
-  {
-    required QueueManagerConfig queue_cfg = 1;
-    required MACConfig mac_cfg = 2;
-  }
-  
-  repeated Subnet subnet = 2;  
-  
-  optional RouteManagerConfig route_cfg = 3;
+    message Subnet
+    {
+        required QueueManagerConfig queue_cfg = 1;
+        required MACConfig mac_cfg = 2;
+    }
 
-  repeated string load_shared_library = 10 [(goby.field).description="Path to a shared library containing compiled DCCL protobuf files. Preferred over load_proto_file."];
-  
-  repeated string load_proto_file = 11 [(goby.field).description="Path to a DCCL protobuf file. Use load_shared_library when possible."];
+    repeated Subnet subnet = 2;
 
-  optional DCCLConfig dccl_cfg = 12;
- 
-  optional bool forward_cacst = 100 [default = true];
-  optional bool forward_ranging_reply = 101 [default = true];
+    optional RouteManagerConfig route_cfg = 3;
 
-  optional int32 special_command_ttl = 200 [default = 1800]; 
- 
+    repeated string load_shared_library = 10
+        [(goby.field).description =
+             "Path to a shared library containing compiled DCCL protobuf "
+             "files. Preferred over load_proto_file."];
+
+    repeated string load_proto_file = 11
+        [(goby.field).description =
+             "Path to a DCCL protobuf file. Use load_shared_library when "
+             "possible."];
+
+    optional DCCLConfig dccl_cfg = 12;
+
+    optional bool forward_cacst = 100 [default = true];
+    optional bool forward_ranging_reply = 101 [default = true];
+
+    optional int32 special_command_ttl = 200 [default = 1800];
 }

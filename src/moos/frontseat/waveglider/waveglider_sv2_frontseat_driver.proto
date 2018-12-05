@@ -1,5 +1,4 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "dccl/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "dccl/protobuf/option_extensions.proto";
 
 package goby.moos.protobuf;
 
@@ -18,14 +17,22 @@ enum MessageTypes
 
 message SV2Header
 {
-    required uint32 start_of_frame = 1 [(dccl.field).max = 0xFF]; // always 0x7e
-    required uint32 message_size = 2 [(dccl.field).max = 0xFFFF]; // (2 bytes)
-    required uint32 dest = 3 [(dccl.field).max = 0xFFFF]; // (2 bytes - LSB = Task ID, MSB = Board ID)
-    required uint32 src = 4 [(dccl.field).max = 0xFFFF]; // (2 bytes - LSB = Task ID, MSB = Board ID)
-    required uint32 transaction_id = 5 [(dccl.field).max = 0xFFFF]; // (2 bytes)
-    required uint32 message_type = 6 [(dccl.field).max = 0xFFFF]; // (16 bits) - top bit is ack (if 0), no ack (if 1) requested
-    
-    enum BoardId 
+    required uint32 start_of_frame = 1
+        [(dccl.field).max = 0xFF];  // always 0x7e
+    required uint32 message_size = 2 [(dccl.field).max = 0xFFFF];  // (2 bytes)
+    required uint32 dest = 3
+        [(dccl.field).max =
+             0xFFFF];  // (2 bytes - LSB = Task ID, MSB = Board ID)
+    required uint32 src = 4
+        [(dccl.field).max =
+             0xFFFF];  // (2 bytes - LSB = Task ID, MSB = Board ID)
+    required uint32 transaction_id = 5
+        [(dccl.field).max = 0xFFFF];  // (2 bytes)
+    required uint32 message_type = 6 [
+        (dccl.field).max = 0xFFFF
+    ];  // (16 bits) - top bit is ack (if 0), no ack (if 1) requested
+
+    enum BoardId
     {
         BOARD_ID_CC = 0x00;
         BOARD_ID_BROADCAST = 0xFF;
@@ -40,15 +47,13 @@ message SV2Header
         CCTASK_ID_FILE_TRANSFER = 0x05;
         CCTASK_ID_DEFAULT_HOST = 0x06;
         CCTASK_ID_FORWARD_FULL_MESSAGE = 0x20;
-    }    
+    }
 }
 
 message SV2Footer
 {
-    required uint32 crc16 = 1 [(dccl.field).max = 0xFFFF]; // (2 bytes)
+    required uint32 crc16 = 1 [(dccl.field).max = 0xFFFF];  // (2 bytes)
 }
-
-
 
 message SV2RequestEnumerate
 {
@@ -56,13 +61,14 @@ message SV2RequestEnumerate
     option (dccl.msg).max_bytes = 557;
     option (dccl.msg).codec_version = 3;
     option (dccl.msg).codec_group = "SV2";
-    
+
     required SV2Header header = 1;
-    required uint32 protocols_supported = 2 [(dccl.field).max = 0xFFFF]; // (2 bytes - always 0x0001)
-    required uint32 commands_supported = 3 [(dccl.field).max = 0xFFFF]; // (2 bytes - always 0x0001)    
+    required uint32 protocols_supported = 2
+        [(dccl.field).max = 0xFFFF];  // (2 bytes - always 0x0001)
+    required uint32 commands_supported = 3
+        [(dccl.field).max = 0xFFFF];  // (2 bytes - always 0x0001)
     required SV2Footer footer = 100;
 }
-
 
 message SV2ReplyEnumerate
 {
@@ -73,21 +79,35 @@ message SV2ReplyEnumerate
 
     required SV2Header header = 1;
 
-    required uint32 original_msg_type = 2 [(dccl.field).max = 0xFFFF]; // (2 bytes)
-    required uint32 number_of_devices_responding = 3 [(dccl.field).max = 0xFFFF]; // (2 bytes), always 1 for us
-    required uint32 number_of_devices_in_message = 4 [(dccl.field).max = 0xFFFF]; // (2 bytes), always 1 for us
-    
-    required uint32 version = 10 [(dccl.field).max = 0xFFFF]; // (2 bytes, 0x0001)
-    required uint32 device_type = 11 [(dccl.field).max = 0xFFFF]; // (2 bytes, 0x1001 to 0x7FFF for customer use)
-    required uint32 board_addr = 12 [(dccl.field).max = 0xFFFF]; // (2 bytes)
-    required bytes serial_number = 13 [(dccl.field).max_length = 6]; // (6 bytes - ASCII string)
-    required uint32 location = 14 [(dccl.field).max = 0xFF]; // (1 byte - always 0)
-    required uint32 polling_frequency = 15 [(dccl.field).max = 0xFFFFFFFF]; // (4 bytes - seconds between polls)
-    required uint32 extra_info = 16 [(dccl.field).max = 0xFF]; // (1 byte - bit mask 0x01 = telemetry, 0x02 = power, 0x04 = event; 0x08 = command ack/nak desired. Upper 4 bits should be zero)
-    required uint32 firmware_major = 17 [(dccl.field).max = 0xFF]; // (1 byte)
-    required uint32 firmware_minor = 18 [(dccl.field).max = 0xFF]; // (1 byte)
-    required uint32 firmware_revision = 19 [(dccl.field).max = 0xFFFF]; // (2 bytes)
-    required bytes description = 20 [(dccl.field).max_length = 20]; // (20 byte description of device)
+    required uint32 original_msg_type = 2
+        [(dccl.field).max = 0xFFFF];  // (2 bytes)
+    required uint32 number_of_devices_responding = 3
+        [(dccl.field).max = 0xFFFF];  // (2 bytes), always 1 for us
+    required uint32 number_of_devices_in_message = 4
+        [(dccl.field).max = 0xFFFF];  // (2 bytes), always 1 for us
+
+    required uint32 version = 10
+        [(dccl.field).max = 0xFFFF];  // (2 bytes, 0x0001)
+    required uint32 device_type = 11
+        [(dccl.field).max =
+             0xFFFF];  // (2 bytes, 0x1001 to 0x7FFF for customer use)
+    required uint32 board_addr = 12 [(dccl.field).max = 0xFFFF];  // (2 bytes)
+    required bytes serial_number = 13
+        [(dccl.field).max_length = 6];  // (6 bytes - ASCII string)
+    required uint32 location = 14
+        [(dccl.field).max = 0xFF];  // (1 byte - always 0)
+    required uint32 polling_frequency = 15
+        [(dccl.field).max = 0xFFFFFFFF];  // (4 bytes - seconds between polls)
+    required uint32 extra_info = 16 [
+        (dccl.field).max = 0xFF
+    ];  // (1 byte - bit mask 0x01 = telemetry, 0x02 = power, 0x04 = event; 0x08
+        // = command ack/nak desired. Upper 4 bits should be zero)
+    required uint32 firmware_major = 17 [(dccl.field).max = 0xFF];  // (1 byte)
+    required uint32 firmware_minor = 18 [(dccl.field).max = 0xFF];  // (1 byte)
+    required uint32 firmware_revision = 19
+        [(dccl.field).max = 0xFFFF];  // (2 bytes)
+    required bytes description = 20
+        [(dccl.field).max_length = 20];  // (20 byte description of device)
     required SV2Footer footer = 100;
 }
 
@@ -103,9 +123,9 @@ message SV2RequestStatus
     required bytes time = 2 [(dccl.field).max_length = 6];
     required uint32 latitude = 3 [(dccl.field).max = 0xFFFFFFFF];
     required uint32 longitude = 4 [(dccl.field).max = 0xFFFFFFFF];
-    required uint32 fix_valid = 5 [(dccl.field).max = 0xFF];    
-    
-    required SV2Footer footer = 100;    
+    required uint32 fix_valid = 5 [(dccl.field).max = 0xFF];
+
+    required SV2Footer footer = 100;
 }
 
 message SV2ReplyStatus
@@ -117,12 +137,16 @@ message SV2ReplyStatus
 
     required SV2Header header = 1;
 
-    required uint32 original_msg_type = 2 [(dccl.field).max = 0xFFFF]; // (2 bytes)
-    required uint32 number_of_devices_responding = 3 [(dccl.field).max = 0xFFFF]; // (2 bytes), always 1 for us
-    required uint32 number_of_devices_in_message = 4 [(dccl.field).max = 0xFFFF]; // (2 bytes), always 1 for us
-    
-    required uint32 version = 10 [(dccl.field).max = 0xFFFF]; // (2 bytes, 0x0001)
-    required uint32 board_addr = 11 [(dccl.field).max = 0xFFFF]; // (2 bytes)
+    required uint32 original_msg_type = 2
+        [(dccl.field).max = 0xFFFF];  // (2 bytes)
+    required uint32 number_of_devices_responding = 3
+        [(dccl.field).max = 0xFFFF];  // (2 bytes), always 1 for us
+    required uint32 number_of_devices_in_message = 4
+        [(dccl.field).max = 0xFFFF];  // (2 bytes), always 1 for us
+
+    required uint32 version = 10
+        [(dccl.field).max = 0xFFFF];  // (2 bytes, 0x0001)
+    required uint32 board_addr = 11 [(dccl.field).max = 0xFFFF];  // (2 bytes)
 
     required uint32 alarms = 12 [(dccl.field).max = 0xFFFF];
     required uint32 leak_sensor_1 = 13 [(dccl.field).max = 0xFF];
@@ -131,10 +155,9 @@ message SV2ReplyStatus
     required uint32 relative_humidity = 16 [(dccl.field).max = 0xFF];
     required uint32 pressure_temp = 17 [(dccl.field).max = 0xFF];
     required uint32 pressure = 18 [(dccl.field).max = 0xFF];
-    
+
     required SV2Footer footer = 100;
 }
-
 
 message SV2RequestQueuedMessage
 {
@@ -144,7 +167,7 @@ message SV2RequestQueuedMessage
     option (dccl.msg).codec_group = "SV2";
 
     required SV2Header header = 1;
-    required SV2Footer footer = 100;    
+    required SV2Footer footer = 100;
 }
 
 message SV2ReplyQueuedMessage
@@ -155,8 +178,9 @@ message SV2ReplyQueuedMessage
     option (dccl.msg).codec_group = "SV2";
 
     required SV2Header header = 1;
-    required uint32 original_msg_type = 2 [(dccl.field).max = 0xFFFF]; // (2 bytes)
-    required SV2Footer footer = 100;    
+    required uint32 original_msg_type = 2
+        [(dccl.field).max = 0xFFFF];  // (2 bytes)
+    required SV2Footer footer = 100;
 }
 
 message SV2ACKNAKQueuedMessage
@@ -168,11 +192,12 @@ message SV2ACKNAKQueuedMessage
 
     required SV2Header header = 1;
 
-    required uint32 command_format = 2 [(dccl.field).max = 0xFFFF]; // always 0x0001
-    required uint32 response_code = 3 [(dccl.field).max = 0xFF]; 
-    required uint32 response_message_length = 4 [(dccl.field).max = 0xFFFF]; 
+    required uint32 command_format = 2
+        [(dccl.field).max = 0xFFFF];  // always 0x0001
+    required uint32 response_code = 3 [(dccl.field).max = 0xFF];
+    required uint32 response_message_length = 4 [(dccl.field).max = 0xFFFF];
     // required bytes response_message = 5;
-    
+
     required SV2Footer footer = 100;
 }
 
@@ -185,10 +210,11 @@ message SV2GenericNAK
 
     required SV2Header header = 1;
 
-    required uint32 original_msg_type = 2 [(dccl.field).max = 0xFFFF]; // always 0x0001
-    required uint32 response_code = 3 [(dccl.field).max = 0xFF]; 
+    required uint32 original_msg_type = 2
+        [(dccl.field).max = 0xFFFF];  // always 0x0001
+    required uint32 response_code = 3 [(dccl.field).max = 0xFF];
     // required bytes nak_details = 5;
-    
+
     required SV2Footer footer = 100;
 }
 
@@ -201,9 +227,10 @@ message SV2GenericACK
 
     required SV2Header header = 1;
 
-    required uint32 original_msg_type = 2 [(dccl.field).max = 0xFFFF]; // always 0x0001
+    required uint32 original_msg_type = 2
+        [(dccl.field).max = 0xFFFF];  // always 0x0001
     // required bytes ack_details = 5;
-    
+
     required SV2Footer footer = 100;
 }
 
@@ -215,7 +242,8 @@ message SV2SendToConsole
     option (dccl.msg).codec_group = "SV2";
 
     required SV2Header header = 1;
-    required uint32 original_msg_type = 2 [(dccl.field).max = 0xFFFF];  // 0x0040
+    required uint32 original_msg_type = 2
+        [(dccl.field).max = 0xFFFF];  // 0x0040
     required bytes text = 5 [(dccl.field).max_length = 14];
     required SV2Footer footer = 100;
 }
@@ -228,7 +256,8 @@ message SV2CommandFollowFixedHeading
     option (dccl.msg).codec_group = "SV2";
 
     required SV2Header header = 1;
-    required uint32 original_msg_type = 2 [(dccl.field).max = 0xFFFF];  // 0x0040
+    required uint32 original_msg_type = 2
+        [(dccl.field).max = 0xFFFF];  // 0x0040
 
     required uint32 command_format = 3 [(dccl.field).max = 0xFFFF];  // 0x0001
 
@@ -242,20 +271,23 @@ message SV2CommandFollowFixedHeading
 
         // level2
         required uint32 level2id = 4 [(dccl.field).max = 0xFF];  // 0x0A
-        required uint32 wgmsid = 5 [(dccl.field).max = 0xFFFFFFFF];  // 0xFFFFFFFF
+        required uint32 wgmsid = 5
+            [(dccl.field).max = 0xFFFFFFFF];  // 0xFFFFFFFF
         required uint32 data_size = 6 [(dccl.field).max = 0xFFFF];
 
-
         // level1
-        required uint32 structure_id = 7 [(dccl.field).max = 0xFF]; // 0x10
-        required uint32 command_value = 8 [(dccl.field).max = 0xFFFF]; // 0x0008
+        required uint32 structure_id = 7 [(dccl.field).max = 0xFF];  // 0x10
+        required uint32 command_value = 8
+            [(dccl.field).max = 0xFFFF];                             // 0x0008
         required uint32 reserved = 9 [(dccl.field).max = 0xFFFFFF];  // unused
-        required uint32 heading_degrees = 10 [(dccl.field).max = 0xFFFF]; // 0 to 359
-        required uint32 latitude = 11 [(dccl.field).max = 0xFFFFFFFF];  // unused (0)
-        required uint32 longitude = 12 [(dccl.field).max = 0xFFFFFFFF];  // unused (0)
-        required uint32 crc16 = 100 [(dccl.field).max = 0xFFFF]; // (2 bytes)
+        required uint32 heading_degrees = 10
+            [(dccl.field).max = 0xFFFF];  // 0 to 359
+        required uint32 latitude = 11
+            [(dccl.field).max = 0xFFFFFFFF];  // unused (0)
+        required uint32 longitude = 12
+            [(dccl.field).max = 0xFFFFFFFF];                      // unused (0)
+        required uint32 crc16 = 100 [(dccl.field).max = 0xFFFF];  // (2 bytes)
     }
-    
-    required SV2Footer footer = 100;
 
+    required SV2Footer footer = 100;
 }

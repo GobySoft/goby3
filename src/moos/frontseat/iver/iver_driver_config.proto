@@ -1,15 +1,14 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/moos/protobuf/frontseat_config.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/moos/protobuf/frontseat_config.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
 message IverFrontSeatConfig
 {
-  required string serial_port = 1;
-  optional uint32 serial_baud = 2 [default = 19200];
-  optional string ntp_serial_port = 3;
+    required string serial_port = 1;
+    optional uint32 serial_baud = 2 [default = 19200];
+    optional string ntp_serial_port = 3;
 }
 
 extend iFrontSeatConfig
 {
-  optional IverFrontSeatConfig iver_config = 1003;
+    optional IverFrontSeatConfig iver_config = 1003;
 }

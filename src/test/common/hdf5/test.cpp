@@ -31,16 +31,16 @@ int main(int argc, char* argv[])
     goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
 
-    std::string sys_cmd("LD_LIBRARY_PATH=" GOBY_LIB_DIR ":$LD_LIBRARY_PATH GOBY_HDF5_PLUGIN=libgoby_hdf5test.so goby_hdf5 --output_file /tmp/test.h5 --include_string_fields=true");
+    std::string sys_cmd("LD_LIBRARY_PATH=" GOBY_LIB_DIR
+                        ":$LD_LIBRARY_PATH GOBY_HDF5_PLUGIN=libgoby_hdf5test.so goby_hdf5 "
+                        "--output_file /tmp/test.h5 --include_string_fields=true");
     std::cout << "Running: [" << sys_cmd << "]" << std::endl;
     int rc = system(sys_cmd.c_str());
 
-    if(rc == 0)
+    if (rc == 0)
     {
         std::cout << "All tests passed." << std::endl;
     }
-    
+
     return rc;
 }
-
-

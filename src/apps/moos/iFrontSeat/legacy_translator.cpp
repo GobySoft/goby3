@@ -23,8 +23,8 @@
 
 #include "goby/acomms/connect.h"
 
-#include "legacy_translator.h"
 #include "iFrontSeat.h"
+#include "legacy_translator.h"
 
 #include "goby/moos/frontseat/bluefin/bluefin.pb.h"
 
@@ -32,22 +32,18 @@ namespace gpb = goby::moos::protobuf;
 using goby::glog;
 using namespace goby::common::logger;
 
-FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs)
-    : ifs_(fs),
-      request_id_(0)
+FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs) : ifs_(fs), request_id_(0)
 {
-
     using boost::assign::operator+=;
 
-    if(ifs_->cfg_.legacy_cfg().subscribe_ctd())
+    if (ifs_->cfg_.legacy_cfg().subscribe_ctd())
     {
         std::vector<std::string> ctd_params;
         ctd_params += "CONDUCTIVITY", "TEMPERATURE", "PRESSURE", "SALINITY";
-        for(std::vector<std::string>::const_iterator it = ctd_params.begin(), end = ctd_params.end();
-            it != end; ++it)
-        {
-            ifs_->subscribe("CTD_" + *it, &FrontSeatLegacyTranslator::handle_mail_ctd, this, 1);
-        }
+        for (std::vector<std::string>::const_iterator it = ctd_params.begin(),
+                                                      end = ctd_params.end();
+             it != end; ++it)
+        { ifs_->subscribe("CTD_" + *it, &FrontSeatLegacyTranslator::handle_mail_ctd, this, 1); }
 
         ctd_sample_.set_temperature(std::numeric_limits<double>::quiet_NaN());
         ctd_sample_.set_pressure(std::numeric_limits<double>::quiet_NaN());
@@ -56,53 +52,59 @@ FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs)
         ctd_sample_.set_lon(std::numeric_limits<double>::quiet_NaN());
         // we'll let FrontSeatInterfaceBase::compute_missing() give us density, sound speed & depth
     }
-    
-    if(ifs_->cfg_.legacy_cfg().subscribe_desired())
+
+    if (ifs_->cfg_.legacy_cfg().subscribe_desired())
     {
         std::vector<std::string> desired_params;
         desired_params += "HEADING", "SPEED", "DEPTH", "PITCH", "ROLL", "Z_RATE", "ALTITUDE";
-        for(std::vector<std::string>::const_iterator it = desired_params.begin(), end = desired_params.end();
-            it != end; ++it)
+        for (std::vector<std::string>::const_iterator it = desired_params.begin(),
+                                                      end = desired_params.end();
+             it != end; ++it)
         {
-            ifs_->subscribe("DESIRED_" + *it, &FrontSeatLegacyTranslator::handle_mail_desired_course, this, 1);
+            ifs_->subscribe("DESIRED_" + *it,
+                            &FrontSeatLegacyTranslator::handle_mail_desired_course, this, 1);
         }
     }
 
-    
-    if(ifs_->cfg_.legacy_cfg().subscribe_acomms_raw())
-    {    
-        ifs_->subscribe("ACOMMS_RAW_INCOMING", boost::bind(&FrontSeatLegacyTranslator::handle_mail_modem_raw, this,
-                                                           _1, INCOMING));
-        ifs_->subscribe("ACOMMS_RAW_OUTGOING", boost::bind(&FrontSeatLegacyTranslator::handle_mail_modem_raw, this,
-                                                           _1, OUTGOING));
-    }
-    
-    if(ifs_->cfg_.legacy_cfg().pub_sub_bf_commands())
+    if (ifs_->cfg_.legacy_cfg().subscribe_acomms_raw())
     {
-        ifs_->subscribe("BUOYANCY_CONTROL", &FrontSeatLegacyTranslator::handle_mail_buoyancy_control, this);
-        ifs_->subscribe("TRIM_CONTROL", &FrontSeatLegacyTranslator::handle_mail_trim_control, this);
-        ifs_->subscribe("FRONTSEAT_BHVOFF", &FrontSeatLegacyTranslator::handle_mail_frontseat_bhvoff, this);
-        ifs_->subscribe("FRONTSEAT_SILENT", &FrontSeatLegacyTranslator::handle_mail_frontseat_silent, this);
-        ifs_->subscribe("BACKSEAT_ABORT", &FrontSeatLegacyTranslator::handle_mail_backseat_abort, this);
+        ifs_->subscribe(
+            "ACOMMS_RAW_INCOMING",
+            boost::bind(&FrontSeatLegacyTranslator::handle_mail_modem_raw, this, _1, INCOMING));
+        ifs_->subscribe(
+            "ACOMMS_RAW_OUTGOING",
+            boost::bind(&FrontSeatLegacyTranslator::handle_mail_modem_raw, this, _1, OUTGOING));
     }
-    
-    
-    goby::acomms::connect(&ifs_->frontseat_->signal_data_from_frontseat,
-                          this, &FrontSeatLegacyTranslator::handle_driver_data_from_frontseat);
 
-    if(ifs_->cfg_.legacy_cfg().publish_fs_bs_ready())
+    if (ifs_->cfg_.legacy_cfg().pub_sub_bf_commands())
     {
-        goby::acomms::connect(&ifs_->frontseat_->signal_state_change,
-                              this, &FrontSeatLegacyTranslator::set_fs_bs_ready_flags);
+        ifs_->subscribe("BUOYANCY_CONTROL",
+                        &FrontSeatLegacyTranslator::handle_mail_buoyancy_control, this);
+        ifs_->subscribe("TRIM_CONTROL", &FrontSeatLegacyTranslator::handle_mail_trim_control, this);
+        ifs_->subscribe("FRONTSEAT_BHVOFF",
+                        &FrontSeatLegacyTranslator::handle_mail_frontseat_bhvoff, this);
+        ifs_->subscribe("FRONTSEAT_SILENT",
+                        &FrontSeatLegacyTranslator::handle_mail_frontseat_silent, this);
+        ifs_->subscribe("BACKSEAT_ABORT", &FrontSeatLegacyTranslator::handle_mail_backseat_abort,
+                        this);
     }
-    
+
+    goby::acomms::connect(&ifs_->frontseat_->signal_data_from_frontseat, this,
+                          &FrontSeatLegacyTranslator::handle_driver_data_from_frontseat);
+
+    if (ifs_->cfg_.legacy_cfg().publish_fs_bs_ready())
+    {
+        goby::acomms::connect(&ifs_->frontseat_->signal_state_change, this,
+                              &FrontSeatLegacyTranslator::set_fs_bs_ready_flags);
+    }
 }
-void FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data)
+void FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(
+    const goby::moos::protobuf::FrontSeatInterfaceData& data)
 {
-    if(data.has_node_status() && ifs_->cfg_.legacy_cfg().publish_nav())
+    if (data.has_node_status() && ifs_->cfg_.legacy_cfg().publish_nav())
     {
         const goby::moos::protobuf::NodeStatus& status = data.node_status();
-        
+
         ctd_sample_.set_lat(status.global_fix().lat());
         ctd_sample_.set_lon(status.global_fix().lon());
 
@@ -112,46 +114,45 @@ void FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(const goby::mo
         ifs_->publish("NAV_LAT", status.global_fix().lat());
         ifs_->publish("NAV_LONG", status.global_fix().lon());
 
-        if(status.local_fix().has_z())
+        if (status.local_fix().has_z())
             ifs_->publish("NAV_Z", status.local_fix().z());
-        if(status.global_fix().has_depth())
+        if (status.global_fix().has_depth())
             ifs_->publish("NAV_DEPTH", status.global_fix().depth());
 
         const double pi = 3.14159;
-        if(status.pose().has_heading())
+        if (status.pose().has_heading())
         {
-            double yaw = -status.pose().heading() * pi/180.0;
-            while(yaw < -pi) yaw += 2*pi;
-            while(yaw >= pi) yaw -= 2*pi;
+            double yaw = -status.pose().heading() * pi / 180.0;
+            while (yaw < -pi) yaw += 2 * pi;
+            while (yaw >= pi) yaw -= 2 * pi;
             ifs_->publish("NAV_YAW", yaw);
             ifs_->publish("NAV_HEADING", status.pose().heading());
         }
-        
+
         ifs_->publish("NAV_SPEED", status.speed());
 
-        if(status.pose().has_pitch())
-            ifs_->publish("NAV_PITCH", status.pose().pitch()*pi/180.0);
-        if(status.pose().has_roll())
-            ifs_->publish("NAV_ROLL", status.pose().roll()*pi/180.0);
+        if (status.pose().has_pitch())
+            ifs_->publish("NAV_PITCH", status.pose().pitch() * pi / 180.0);
+        if (status.pose().has_roll())
+            ifs_->publish("NAV_ROLL", status.pose().roll() * pi / 180.0);
 
-        if(status.global_fix().has_altitude()) 
+        if (status.global_fix().has_altitude())
             ifs_->publish("NAV_ALTITUDE", status.global_fix().altitude());
 
         // surface for GPS variable
-        if(status.global_fix().lat_source() == goby::moos::protobuf::GPS &&
-           status.global_fix().lon_source() == goby::moos::protobuf::GPS)
+        if (status.global_fix().lat_source() == goby::moos::protobuf::GPS &&
+            status.global_fix().lon_source() == goby::moos::protobuf::GPS)
         {
             std::stringstream ss;
             ss << "Timestamp=" << std::setprecision(15) << status.time();
             ifs_->publish("GPS_UPDATE_RECEIVED", ss.str());
         }
-    }    
+    }
 
-
-    if(data.HasExtension(gpb::bluefin_data) && ifs_->cfg_.legacy_cfg().pub_sub_bf_commands())
+    if (data.HasExtension(gpb::bluefin_data) && ifs_->cfg_.legacy_cfg().pub_sub_bf_commands())
     {
         const gpb::BluefinExtraData& bf_data = data.GetExtension(gpb::bluefin_data);
-        if(bf_data.has_trim_status())
+        if (bf_data.has_trim_status())
         {
             std::stringstream trim_report;
             const gpb::TrimStatus& trim = bf_data.trim_status();
@@ -160,14 +161,14 @@ void FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(const goby::mo
                         << ",error=" << static_cast<int>(trim.error())
                         << ",trim_pitch=" << trim.pitch_trim_degrees()
                         << ",trim_roll=" << trim.roll_trim_degrees();
-            
+
             ifs_->publish("TRIM_REPORT", trim_report.str());
         }
 
-        if(bf_data.has_buoyancy_status())
+        if (bf_data.has_buoyancy_status())
         {
             std::stringstream buoyancy_report;
-            const gpb::BuoyancyStatus& buoyancy = bf_data.buoyancy_status();            
+            const gpb::BuoyancyStatus& buoyancy = bf_data.buoyancy_status();
             buoyancy_report << "status=" << static_cast<int>(buoyancy.status())
                             << ",error=" << static_cast<int>(buoyancy.error())
                             << ",buoyancy=" << buoyancy.buoyancy_newtons();
@@ -176,19 +177,18 @@ void FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(const goby::mo
     }
 }
 
-
 void FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg& msg)
 {
     const std::string& key = msg.GetKey();
-    if(key == "CTD_CONDUCTIVITY")
+    if (key == "CTD_CONDUCTIVITY")
     {
         // - should be in siemens/meter, assuming it's a SeaBird 49 SBE
         // using iCTD. Thus, no conversion needed (see ctd_sample.proto)
         // - we need to clean up this units conversion
-        
+
         ctd_sample_.set_conductivity(msg.GetDouble());
     }
-    else if(key == "CTD_TEMPERATURE")
+    else if (key == "CTD_TEMPERATURE")
     {
         // - degrees C is a safe assumption
         ctd_sample_.set_temperature(msg.GetDouble());
@@ -200,12 +200,10 @@ void FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg& msg)
         *data.mutable_ctd_sample() = ctd_sample_;
         ifs_->frontseat_->compute_missing(data.mutable_ctd_sample());
 
-        ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() +
-                         ifs_->cfg_.moos_var().data_to_frontseat(),
+        ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() + ifs_->cfg_.moos_var().data_to_frontseat(),
                          data);
-        
     }
-    else if(key == "CTD_PRESSURE")
+    else if (key == "CTD_PRESSURE")
     {
         // - MOOS var is decibars assuming it's a SeaBird 49 SBE using iCTD.
         // - GLINT10 data supports this assumption
@@ -214,18 +212,17 @@ void FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg& msg)
         const double dBar_TO_Pascal = 1e4; // 1 dBar == 10000 Pascals
         ctd_sample_.set_pressure(msg.GetDouble() * dBar_TO_Pascal);
     }
-    else if(key == "CTD_SALINITY")
+    else if (key == "CTD_SALINITY")
     {
         // salinity is standardized to practical salinity scale
         ctd_sample_.set_salinity(msg.GetDouble());
     }
 }
 
-
 void FrontSeatLegacyTranslator::handle_mail_desired_course(const CMOOSMsg& msg)
 {
     const std::string& key = msg.GetKey();
-    if(key == "DESIRED_SPEED")
+    if (key == "DESIRED_SPEED")
     {
         desired_course_.set_speed(msg.GetDouble());
         desired_course_.set_time(msg.GetTime());
@@ -234,44 +231,43 @@ void FrontSeatLegacyTranslator::handle_mail_desired_course(const CMOOSMsg& msg)
         command.set_response_requested(true);
         command.set_request_id(LEGACY_REQUEST_IDENTIFIER + request_id_++);
 
-        ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() +
-                         ifs_->cfg_.moos_var().command_request(),
+        ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() + ifs_->cfg_.moos_var().command_request(),
                          command);
     }
-    else if(key == "DESIRED_HEADING")
+    else if (key == "DESIRED_HEADING")
     {
         desired_course_.set_heading(msg.GetDouble());
     }
-    else if(key == "DESIRED_DEPTH")
+    else if (key == "DESIRED_DEPTH")
     {
         desired_course_.set_depth(msg.GetDouble());
     }
-    else if(key == "DESIRED_PITCH")
+    else if (key == "DESIRED_PITCH")
     {
         desired_course_.set_pitch(msg.GetDouble());
     }
-    else if(key == "DESIRED_ROLL")
+    else if (key == "DESIRED_ROLL")
     {
         desired_course_.set_roll(msg.GetDouble());
     }
-    else if(key == "DESIRED_Z_RATE")
+    else if (key == "DESIRED_Z_RATE")
     {
         desired_course_.set_z_rate(msg.GetDouble());
     }
-    else if(key == "DESIRED_ALTITUDE")
+    else if (key == "DESIRED_ALTITUDE")
     {
         desired_course_.set_altitude(msg.GetDouble());
     }
 }
 
-
-void FrontSeatLegacyTranslator::handle_mail_modem_raw(const CMOOSMsg& msg, ModemRawDirection direction)
+void FrontSeatLegacyTranslator::handle_mail_modem_raw(const CMOOSMsg& msg,
+                                                      ModemRawDirection direction)
 {
     goby::acomms::protobuf::ModemRaw raw;
     parse_for_moos(msg.GetString(), &raw);
     gpb::FrontSeatInterfaceData data;
 
-    switch(direction)
+    switch (direction)
     {
         case OUTGOING:
             *data.MutableExtension(gpb::bluefin_data)->mutable_micro_modem_raw_out() = raw;
@@ -279,23 +275,21 @@ void FrontSeatLegacyTranslator::handle_mail_modem_raw(const CMOOSMsg& msg, Modem
         case INCOMING:
             *data.MutableExtension(gpb::bluefin_data)->mutable_micro_modem_raw_in() = raw;
             break;
-    }            
+    }
 
-    ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() +
-                     ifs_->cfg_.moos_var().data_to_frontseat(),
+    ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() + ifs_->cfg_.moos_var().data_to_frontseat(),
                      data);
 }
-
 
 void FrontSeatLegacyTranslator::set_fs_bs_ready_flags(goby::moos::protobuf::InterfaceState state)
 {
     goby::moos::protobuf::FrontSeatInterfaceStatus status = ifs_->frontseat_->status();
-    if(status.frontseat_state() == gpb::FRONTSEAT_ACCEPTING_COMMANDS)
+    if (status.frontseat_state() == gpb::FRONTSEAT_ACCEPTING_COMMANDS)
         ifs_->publish("FRONTSEAT_READY", 1);
     else
         ifs_->publish("FRONTSEAT_READY", 0);
 
-    if(status.helm_state() == gpb::HELM_DRIVE)
+    if (status.helm_state() == gpb::HELM_DRIVE)
         ifs_->publish("BACKSEAT_READY", 1);
     else
         ifs_->publish("BACKSEAT_READY", 0);
@@ -303,44 +297,42 @@ void FrontSeatLegacyTranslator::set_fs_bs_ready_flags(goby::moos::protobuf::Inte
 
 void FrontSeatLegacyTranslator::handle_mail_buoyancy_control(const CMOOSMsg& msg)
 {
-    
-    if(goby::util::as<bool>(boost::trim_copy(msg.GetString())))
+    if (goby::util::as<bool>(boost::trim_copy(msg.GetString())))
     {
         gpb::CommandRequest command;
         command.set_response_requested(true);
         command.set_request_id(LEGACY_REQUEST_IDENTIFIER + request_id_++);
         gpb::BluefinExtraCommands* bluefin_command = command.MutableExtension(gpb::bluefin_command);
         bluefin_command->set_command(gpb::BluefinExtraCommands::BUOYANCY_ADJUST);
-        
+
         publish_command(command);
     }
 }
 
-
 void FrontSeatLegacyTranslator::handle_mail_trim_control(const CMOOSMsg& msg)
 {
-    if(goby::util::as<bool>(boost::trim_copy(msg.GetString())))
+    if (goby::util::as<bool>(boost::trim_copy(msg.GetString())))
     {
         gpb::CommandRequest command;
         command.set_response_requested(true);
         command.set_request_id(LEGACY_REQUEST_IDENTIFIER + request_id_++);
         gpb::BluefinExtraCommands* bluefin_command = command.MutableExtension(gpb::bluefin_command);
         bluefin_command->set_command(gpb::BluefinExtraCommands::TRIM_ADJUST);
-        
+
         publish_command(command);
     }
 }
 
 void FrontSeatLegacyTranslator::handle_mail_frontseat_bhvoff(const CMOOSMsg& msg)
 {
-    if(goby::util::as<bool>(boost::trim_copy(msg.GetString())))
+    if (goby::util::as<bool>(boost::trim_copy(msg.GetString())))
     {
         gpb::CommandRequest command;
         command.set_response_requested(true);
         command.set_request_id(LEGACY_REQUEST_IDENTIFIER + request_id_++);
         gpb::BluefinExtraCommands* bluefin_command = command.MutableExtension(gpb::bluefin_command);
         bluefin_command->set_command(gpb::BluefinExtraCommands::CANCEL_CURRENT_BEHAVIOR);
-        
+
         publish_command(command);
     }
 }
@@ -352,12 +344,12 @@ void FrontSeatLegacyTranslator::handle_mail_frontseat_silent(const CMOOSMsg& msg
     command.set_request_id(LEGACY_REQUEST_IDENTIFIER + request_id_++);
     gpb::BluefinExtraCommands* bluefin_command = command.MutableExtension(gpb::bluefin_command);
     bluefin_command->set_command(gpb::BluefinExtraCommands::SILENT_MODE);
-    
-    if(goby::util::as<bool>(boost::trim_copy(msg.GetString())))
+
+    if (goby::util::as<bool>(boost::trim_copy(msg.GetString())))
         bluefin_command->set_silent_mode(gpb::BluefinExtraCommands::SILENT);
     else
         bluefin_command->set_silent_mode(gpb::BluefinExtraCommands::NORMAL);
-        
+
     publish_command(command);
 }
 
@@ -368,21 +360,17 @@ void FrontSeatLegacyTranslator::handle_mail_backseat_abort(const CMOOSMsg& msg)
     command.set_request_id(LEGACY_REQUEST_IDENTIFIER + request_id_++);
     gpb::BluefinExtraCommands* bluefin_command = command.MutableExtension(gpb::bluefin_command);
     bluefin_command->set_command(gpb::BluefinExtraCommands::ABORT_MISSION);
-    
-    if(goby::util::as<int>(msg.GetDouble()) == 0)
+
+    if (goby::util::as<int>(msg.GetDouble()) == 0)
         bluefin_command->set_abort_reason(gpb::BluefinExtraCommands::SUCCESSFUL_MISSION);
     else
         bluefin_command->set_abort_reason(gpb::BluefinExtraCommands::ABORT_WITH_ERRORS);
-        
+
     publish_command(command);
 }
 
-
-
 void FrontSeatLegacyTranslator::publish_command(const gpb::CommandRequest& command)
 {
-    ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() +
-                     ifs_->cfg_.moos_var().command_request(),
+    ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() + ifs_->cfg_.moos_var().command_request(),
                      command);
 }
-

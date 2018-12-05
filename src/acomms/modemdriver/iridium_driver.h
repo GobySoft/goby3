@@ -33,54 +33,54 @@
 
 #include "iridium_driver_fsm.h"
 
-
 namespace goby
 {
-    namespace acomms
+namespace acomms
+{
+class IridiumDriver : public ModemDriverBase
+{
+  public:
+    IridiumDriver();
+    ~IridiumDriver();
+    void startup(const protobuf::DriverConfig& cfg);
+
+    void modem_init();
+
+    void shutdown();
+    void do_work();
+
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void process_transmission(protobuf::ModemTransmission msg, bool dial);
+
+  private:
+    void receive(const protobuf::ModemTransmission& msg);
+    void send(const protobuf::ModemTransmission& msg);
+
+    void try_serial_tx();
+    void display_state_cfg(std::ostream* os);
+
+    void hangup();
+    void set_dtr(bool state);
+    bool query_dtr();
+
+  private:
+    fsm::IridiumDriverFSM fsm_;
+    protobuf::DriverConfig driver_cfg_;
+
+    boost::shared_ptr<goby::util::TCPClient> debug_client_;
+
+    double last_triple_plus_time_;
+    enum
     {
-        class IridiumDriver : public ModemDriverBase
-        {
-          public:
-            IridiumDriver();
-            ~IridiumDriver();
-            void startup(const protobuf::DriverConfig& cfg);
+        TRIPLE_PLUS_WAIT = 2
+    };
 
-            void modem_init();
-            
-            void shutdown();            
-            void do_work();
-            
-            void handle_initiate_transmission(const protobuf::ModemTransmission& m);
-            void process_transmission(protobuf::ModemTransmission msg, bool dial);
+    protobuf::ModemTransmission rudics_mac_msg_;
 
-          private:
-            void receive(const protobuf::ModemTransmission& msg);
-            void send(const protobuf::ModemTransmission& msg);
+    int serial_fd_;
 
-            void try_serial_tx();
-            void display_state_cfg(std::ostream* os);
-
-            void hangup();
-            void set_dtr(bool state);
-            bool query_dtr();
-            
-          private:
-            fsm::IridiumDriverFSM fsm_;
-            protobuf::DriverConfig driver_cfg_;
-
-            boost::shared_ptr<goby::util::TCPClient> debug_client_;
-            
-            double last_triple_plus_time_;
-            enum { TRIPLE_PLUS_WAIT = 2 };
-            
-            protobuf::ModemTransmission rudics_mac_msg_;
-
-
-            int serial_fd_;
-            
-            std::uint32_t next_frame_;
-
-        };
-    }
-}
+    std::uint32_t next_frame_;
+};
+} // namespace acomms
+} // namespace goby
 #endif

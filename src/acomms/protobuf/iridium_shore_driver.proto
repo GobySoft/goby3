@@ -1,23 +1,21 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/common/protobuf/option_extensions.proto";
-import "goby/acomms/protobuf/driver_base.proto"; 
+@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
+import "goby/acomms/protobuf/driver_base.proto";
 import "goby/common/protobuf/zero_mq_node_config.proto";
 
 message IridiumShoreDriverConfig
 {
+    message ModemIDIMEIPair
+    {
+        required int32 modem_id = 1;
+        required string imei = 2;
+    }
 
-  message ModemIDIMEIPair
-  { 
-     required int32 modem_id = 1;
-     required string imei = 2;
-  }
-  
-  extend goby.acomms.protobuf.DriverConfig
-  {
-    optional uint32 rudics_server_port = 1421;
-    optional uint32 mo_sbd_server_port = 1422 [default = 40001];
-    optional string mt_sbd_server_address = 1423;
-    optional uint32 mt_sbd_server_port = 1424;
-    repeated ModemIDIMEIPair modem_id_to_imei = 1425;
-  }
+    extend goby.acomms.protobuf.DriverConfig
+    {
+        optional uint32 rudics_server_port = 1421;
+        optional uint32 mo_sbd_server_port = 1422 [default = 40001];
+        optional string mt_sbd_server_address = 1423;
+        optional uint32 mt_sbd_server_port = 1424;
+        repeated ModemIDIMEIPair modem_id_to_imei = 1425;
+    }
 }

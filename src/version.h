@@ -23,27 +23,26 @@
 #ifndef VERSION20110304H
 #define VERSION20110304H
 
-#include <string>
 #include <sstream>
+#include <string>
 
-#define GOBY_VERSION_MAJOR @GOBY_VERSION_MAJOR@
-#define GOBY_VERSION_MINOR @GOBY_VERSION_MINOR@
-#define GOBY_VERSION_PATCH @GOBY_VERSION_PATCH@
+#define GOBY_VERSION_MAJOR @GOBY_VERSION_MAJOR @
+#define GOBY_VERSION_MINOR @GOBY_VERSION_MINOR @
+#define GOBY_VERSION_PATCH @GOBY_VERSION_PATCH @
 
 namespace goby
 {
-    const std::string VERSION_STRING = "@GOBY_VERSION@";
-    const std::string VERSION_DATE = "@GOBY_VERSION_DATE@";
+const std::string VERSION_STRING = "@GOBY_VERSION@";
+const std::string VERSION_DATE = "@GOBY_VERSION_DATE@";
 
-    inline std::string version_message()
-    {
-        std::stringstream ss;
-        ss << "This is Version " << goby::VERSION_STRING
-           << " of the Goby Underwater Autonomy Project released on "
-           << goby::VERSION_DATE
-           <<".\n See https://github.com/GobySoft/goby3 to search for updates.";
-        return ss.str();
-    }
+inline std::string version_message()
+{
+    std::stringstream ss;
+    ss << "This is Version " << goby::VERSION_STRING
+       << " of the Goby Underwater Autonomy Project released on " << goby::VERSION_DATE
+       << ".\n See https://github.com/GobySoft/goby3 to search for updates.";
+    return ss.str();
 }
+} // namespace goby
 
 #endif

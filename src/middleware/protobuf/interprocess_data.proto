@@ -1,5 +1,5 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/middleware/protobuf/transporter_config.proto";
+@PROTOBUF_SYNTAX_VERSION @import
+    "goby/middleware/protobuf/transporter_config.proto";
 import "google/protobuf/descriptor.proto";
 
 package goby.protobuf;

@@ -22,29 +22,26 @@
 
 #include "moos_plugin_translator.h"
 
-goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config) :
-    goby::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
+goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
+    : goby::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
 {
     moos_comms_.SetOnConnectCallBack(TranslatorOnConnectCallBack, this);
-    moos_comms_.Run(cfg().moos_server(),
-                    cfg().moos_port(),
-                    translator_name(),
+    moos_comms_.Run(cfg().moos_server(), cfg().moos_port(), translator_name(),
                     cfg().poll_frequency());
 }
-            
 
 void goby::moos::Translator::moos_on_connect()
 {
     using goby::glog;
     using namespace goby::common::logger;
-                
-    for(const std::string& moos_var : moos_trigger_vars_)
+
+    for (const std::string& moos_var : moos_trigger_vars_)
     {
         moos_comms_.Register(moos_var);
         glog.is(DEBUG1) && glog << "Subscribed for MOOS variable: " << moos_var << std::endl;
     }
-                
-    for(const std::string& moos_var : moos_buffer_vars_)
+
+    for (const std::string& moos_var : moos_buffer_vars_)
     {
         moos_comms_.Register(moos_var);
         glog.is(DEBUG1) && glog << "Subscribed for MOOS variable: " << moos_var << std::endl;
@@ -55,21 +52,21 @@ void goby::moos::Translator::loop()
 {
     using goby::glog;
     using namespace goby::common::logger;
-                
+
     MOOSMSG_LIST moos_msgs;
     moos_comms_.Fetch(moos_msgs);
     // buffer all then trigger
-    for(const CMOOSMsg& msg : moos_msgs)
+    for (const CMOOSMsg& msg : moos_msgs)
     {
-        if(moos_buffer_vars_.count(msg.GetKey()))
+        if (moos_buffer_vars_.count(msg.GetKey()))
         {
             const auto& key = msg.GetKey();
             moos_buffer_[key] = msg;
         }
     }
-    for(const CMOOSMsg& msg : moos_msgs)
+    for (const CMOOSMsg& msg : moos_msgs)
     {
-        if(moos_trigger_vars_.count(msg.GetKey()))
+        if (moos_trigger_vars_.count(msg.GetKey()))
             moos_to_goby(msg);
     }
 }

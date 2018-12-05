@@ -23,26 +23,26 @@
 #ifndef DriverException20100812H
 #define DriverException20100812H
 
-#include "goby/common/exception.h"
 #include "goby/acomms/protobuf/modem_driver_status.pb.h"
+#include "goby/common/exception.h"
 
 namespace goby
 {
-    namespace acomms
+namespace acomms
+{
+class ModemDriverException : public goby::Exception
+{
+  public:
+    ModemDriverException(const std::string& s, protobuf::ModemDriverStatus::Status stat)
+        : Exception(s), stat_(stat)
     {
-        class ModemDriverException : public goby::Exception
-        {
-          public:
-          ModemDriverException(const std::string& s, protobuf::ModemDriverStatus::Status stat)
-              : Exception(s),
-                stat_(stat)
-            { }
-            protobuf::ModemDriverStatus::Status status() const { return stat_; }
-            
-          private:
-            protobuf::ModemDriverStatus::Status stat_;
-        };
     }
-}
+    protobuf::ModemDriverStatus::Status status() const { return stat_; }
+
+  private:
+    protobuf::ModemDriverStatus::Status stat_;
+};
+} // namespace acomms
+} // namespace goby
 
 #endif

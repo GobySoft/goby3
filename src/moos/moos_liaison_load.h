@@ -30,8 +30,8 @@
 
 extern "C"
 {
-    std::vector<goby::common::LiaisonContainer*> goby_liaison_load(const goby::common::protobuf::LiaisonConfig& cfg);
+    std::vector<goby::common::LiaisonContainer*>
+    goby_liaison_load(const goby::common::protobuf::LiaisonConfig& cfg);
 }
 
-    
 #endif

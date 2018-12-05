@@ -1,24 +1,43 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/moos/protobuf/goby_moos_app.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/moos/protobuf/goby_moos_app.proto";
 import "goby/moos/protobuf/translator.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
-
 message pTranslatorConfig
 {
-  optional GobyMOOSAppConfig common = 1 [(goby.field).description="Configuration common to all Goby MOOS applications"]; // see goby_moos_app.proto
+    optional GobyMOOSAppConfig common = 1 [
+        (goby.field).description =
+            "Configuration common to all Goby MOOS applications"
+    ];  // see goby_moos_app.proto
 
+    repeated string load_shared_library = 2
+        [(goby.field).description =
+             "Path to a shared library containing compiled Protobuf files. "
+             "Preferred over load_dccl_proto_file."];
 
-  repeated string load_shared_library = 2 [(goby.field).description="Path to a shared library containing compiled Protobuf files. Preferred over load_dccl_proto_file."];
+    repeated string load_proto_file = 3
+        [(goby.field).description =
+             "Path to a Protobuf file. Use load_shared_library when possible."];
 
-  repeated string load_proto_file = 3 [(goby.field).description="Path to a Protobuf file. Use load_shared_library when possible."];
+    repeated goby.moos.protobuf.TranslatorEntry translator_entry = 4
+        [(goby.field).description =
+             "Describes how to trigger (generate) a Protobuf message from a "
+             "MOOS event and how to re-publish the result"];
 
-  repeated goby.moos.protobuf.TranslatorEntry translator_entry = 4 [(goby.field).description="Describes how to trigger (generate) a Protobuf message from a MOOS event and how to re-publish the result"];  
+    optional string modem_id_lookup_path = 5 [
+        (goby.field).description =
+            "Path to file containing mapping between modem_id and vehicle name "
+            "& type",
+        (goby.field).moos_global = "modem_id_lookup_path"
+    ];
 
-  optional string modem_id_lookup_path = 5 [(goby.field).description="Path to file containing mapping between modem_id and vehicle name & type",(goby.field).moos_global = "modem_id_lookup_path"];
-
-  repeated string multiplex_create_moos_var = 6 [(goby.field).description="Specify a MOOS variable that contains one of many TextFormat protobuf messages which are distinguished by including the Protobuf name before the message contents. e.g. \"DSOP_DEPLOY DestinationPlatformId: 3 Deploy_Mode: DEPLOY_MODE_RETURN Depth_Mode: DEPTH_MODE_SINGLE Sonar_Control: SONAR_CONTROL_OFF Sonar_Process: SONAR_PROCESS_ON Deploy_Duration: 1800 Deploy_X: 2600 Deploy_Y: 1500 Deploy_Speed: 1.5 Deploy_Depth: 10 Alternate_Depth: 20\""];
-
-
-  
+    repeated string multiplex_create_moos_var = 6
+        [(goby.field).description =
+             "Specify a MOOS variable that contains one of many TextFormat "
+             "protobuf messages which are distinguished by including the "
+             "Protobuf name before the message contents. e.g. \"DSOP_DEPLOY "
+             "DestinationPlatformId: 3 Deploy_Mode: DEPLOY_MODE_RETURN "
+             "Depth_Mode: DEPTH_MODE_SINGLE Sonar_Control: SONAR_CONTROL_OFF "
+             "Sonar_Process: SONAR_PROCESS_ON Deploy_Duration: 1800 Deploy_X: "
+             "2600 Deploy_Y: 1500 Deploy_Speed: 1.5 Deploy_Depth: 10 "
+             "Alternate_Depth: 20\""];
 }

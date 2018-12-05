@@ -1,15 +1,14 @@
-@PROTOBUF_SYNTAX_VERSION@
-message BasicNodeReport
+@PROTOBUF_SYNTAX_VERSION @message BasicNodeReport
 {
-  optional string Name = 1;
-  optional double x = 202;
-  optional double y = 3;
-  optional double speed = 4;
-  optional double heading = 201;
-  optional double depth = 6;
-  optional double altitude = 7;
-  optional double lat = 8;
-  optional double lon = 9;
-  optional double time = 200;
-  repeated int32 repeat = 10;
+    optional string Name = 1;
+    optional double x = 202;
+    optional double y = 3;
+    optional double speed = 4;
+    optional double heading = 201;
+    optional double depth = 6;
+    optional double altitude = 7;
+    optional double lat = 8;
+    optional double lon = 9;
+    optional double time = 200;
+    repeated int32 repeat = 10;
 }

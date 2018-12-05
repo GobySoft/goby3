@@ -24,37 +24,34 @@
 
 namespace goby
 {
-    struct MyMarshallingScheme
+struct MyMarshallingScheme
+{
+    enum MyMarshallingSchemeEnum
     {
-        enum MyMarshallingSchemeEnum
-        {
-            DEQUECHAR = 1000
-        };
+        DEQUECHAR = 1000
     };
-    
-    template<typename DataType>
-        struct SerializerParserHelper<DataType, MyMarshallingScheme::DEQUECHAR>
+};
+
+template <typename DataType> struct SerializerParserHelper<DataType, MyMarshallingScheme::DEQUECHAR>
+{
+    static std::vector<char> serialize(const DataType& msg)
     {
-        static std::vector<char> serialize(const DataType& msg)
-        {
-            std::vector<char> bytes(msg.begin(), msg.end());
-            return bytes;
-        }
-        
-        static std::string type_name()
-        { return "DEQUECHAR"; }
-
-        static DataType parse(const std::vector<char>& bytes)
-        {
-            if(bytes.size())
-                DataType msg(bytes.begin(), bytes.end()-1);
-        }
-    };
-
-
-    template<typename T>
-        constexpr int scheme(typename std::enable_if<std::is_same<T, std::deque<char>>::value>::type* = 0)
-    {
-        return MyMarshallingScheme::DEQUECHAR;
+        std::vector<char> bytes(msg.begin(), msg.end());
+        return bytes;
     }
+
+    static std::string type_name() { return "DEQUECHAR"; }
+
+    static DataType parse(const std::vector<char>& bytes)
+    {
+        if (bytes.size())
+            DataType msg(bytes.begin(), bytes.end() - 1);
+    }
+};
+
+template <typename T>
+constexpr int scheme(typename std::enable_if<std::is_same<T, std::deque<char> >::value>::type* = 0)
+{
+    return MyMarshallingScheme::DEQUECHAR;
 }
+} // namespace goby

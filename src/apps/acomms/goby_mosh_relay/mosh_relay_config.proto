@@ -1,5 +1,4 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/common/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
 import "goby/common/protobuf/app_base_config.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 
@@ -7,15 +6,12 @@ package goby.acomms.protobuf;
 
 message MoshRelayConfig
 {
-  optional AppBaseConfig base = 1;
+    optional AppBaseConfig base = 1;
 
-  optional string ip_address = 2 [default="127.0.0.1"];
-  optional uint32 udp_port = 3;
-  optional bool bind = 4;
+    optional string ip_address = 2 [default = "127.0.0.1"];
+    optional uint32 udp_port = 3;
+    optional bool bind = 4;
 
-
-  required uint32 src_modem_id = 5;
-  required uint32 dest_modem_id = 6;
-  
+    required uint32 src_modem_id = 5;
+    required uint32 dest_modem_id = 6;
 }
-

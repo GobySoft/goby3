@@ -25,26 +25,24 @@
 
 #include <boost/bimap.hpp>
 
-#include "goby/util/linebasedcomms/tcp_client.h"
 #include "goby/util/linebasedcomms/nmea_sentence.h"
+#include "goby/util/linebasedcomms/tcp_client.h"
 
 #include "goby/moos/frontseat/frontseat.h"
 
 #include "goby/moos/frontseat/bluefin/bluefin.pb.h"
 #include "goby/moos/frontseat/bluefin/bluefin_config.pb.h"
 
-
 extern "C"
 {
     FrontSeatInterfaceBase* frontseat_driver_load(iFrontSeatConfig*);
 }
 
-
 class BluefinFrontSeat : public FrontSeatInterfaceBase
 {
   public:
     BluefinFrontSeat(const iFrontSeatConfig& cfg);
-    
+
   private: // virtual methods from FrontSeatInterfaceBase
     void loop();
 
@@ -52,18 +50,16 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
     void send_data_to_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data);
     void send_raw_to_frontseat(const goby::moos::protobuf::FrontSeatRaw& data);
 
+    goby::moos::protobuf::FrontSeatState frontseat_state() const { return frontseat_state_; }
 
-    goby::moos::protobuf::FrontSeatState frontseat_state() const
-    { return frontseat_state_; }
-    
     bool frontseat_providing_data() const { return frontseat_providing_data_; }
-    
+
   private: // internal non-virtual methods
     void load_nmea_mappings();
     void initialize_huxley();
     void append_to_write_queue(const goby::util::NMEASentence& nmea);
     void remove_from_write_queue();
-    
+
     void check_send_heartbeat();
     void try_send();
     void try_receive();
@@ -88,7 +84,7 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
     void bfctl(const goby::util::NMEASentence& nmea);
 
     std::string unix_time2nmea_time(double time);
-        
+
   private:
     const BluefinFrontSeatConfig bf_config_;
     goby::util::TCPClient tcp_;
@@ -96,7 +92,7 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
     double last_frontseat_data_time_;
     goby::moos::protobuf::FrontSeatState frontseat_state_;
     double next_connect_attempt_time_;
-    
+
     double last_write_time_;
     std::deque<goby::util::NMEASentence> out_;
     std::deque<goby::util::NMEASentence> pending_;
@@ -105,19 +101,83 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
     unsigned nmea_present_fail_count_;
 
     double last_heartbeat_time_;
-    
-    enum TalkerIDs { TALKER_NOT_DEFINED = 0,BF,BP};
-    
-    enum SentenceIDs  { SENTENCE_NOT_DEFINED = 0,
-                        MSC,SHT,BDL,SDL,TOP,DVT,VER,NVG,
-                        SVS,RCM,RDP,RVL,RBS,MBS,MBE,MIS,
-                        ERC,DVL,DV2,IMU,CTD,RNV,PIT,CNV,
-                        PLN,ACK,TRM,LOG,STS,DVR,CPS,CPR,
-                        TRK,RTC,RGP,RCN,RCA,RCB,RMB,EMB,
-                        TMR,ABT,KIL,MSG,RMP,SEM,NPU,CPD,
-                        SIL,BOY,SUS,CON,RES,SPD,SAN,GHP,
-                        GBP,RNS,RBO,CMA,NVR,TEL,CTL,DCL };
-    
+
+    enum TalkerIDs
+    {
+        TALKER_NOT_DEFINED = 0,
+        BF,
+        BP
+    };
+
+    enum SentenceIDs
+    {
+        SENTENCE_NOT_DEFINED = 0,
+        MSC,
+        SHT,
+        BDL,
+        SDL,
+        TOP,
+        DVT,
+        VER,
+        NVG,
+        SVS,
+        RCM,
+        RDP,
+        RVL,
+        RBS,
+        MBS,
+        MBE,
+        MIS,
+        ERC,
+        DVL,
+        DV2,
+        IMU,
+        CTD,
+        RNV,
+        PIT,
+        CNV,
+        PLN,
+        ACK,
+        TRM,
+        LOG,
+        STS,
+        DVR,
+        CPS,
+        CPR,
+        TRK,
+        RTC,
+        RGP,
+        RCN,
+        RCA,
+        RCB,
+        RMB,
+        EMB,
+        TMR,
+        ABT,
+        KIL,
+        MSG,
+        RMP,
+        SEM,
+        NPU,
+        CPD,
+        SIL,
+        BOY,
+        SUS,
+        CON,
+        RES,
+        SPD,
+        SAN,
+        GHP,
+        GBP,
+        RNS,
+        RBO,
+        CMA,
+        NVR,
+        TEL,
+        CTL,
+        DCL
+    };
+
     std::map<std::string, TalkerIDs> talker_id_map_;
     boost::bimap<std::string, SentenceIDs> sentence_id_map_;
     std::map<std::string, std::string> description_map_;
@@ -127,8 +187,8 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
 
     // maps command type to outstanding request, if response is requested
     std::map<goby::moos::protobuf::BluefinExtraCommands::BluefinCommand,
-        goby::moos::protobuf::CommandRequest> outstanding_requests_;
-
+             goby::moos::protobuf::CommandRequest>
+        outstanding_requests_;
 
     // maps status expire time to payload status
     std::multimap<std::uint64_t, goby::moos::protobuf::BluefinExtraData::PayloadStatus>

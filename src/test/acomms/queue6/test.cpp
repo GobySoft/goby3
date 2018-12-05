@@ -19,11 +19,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "test.pb.h"
-#include "goby/acomms/queue.h"
 #include "goby/acomms/connect.h"
-#include "goby/util/binary.h"
+#include "goby/acomms/queue.h"
 #include "goby/common/logger.h"
+#include "goby/util/binary.h"
+#include "test.pb.h"
 
 // tests various manipulators' functionality
 
@@ -35,29 +35,28 @@ const unsigned TEST_MESSAGE_SIZE = 3;
 
 int receive_count = 0;
 
-
 void qsize(goby::acomms::protobuf::QueueSize size);
 
-void handle_receive(const google::protobuf::Message &msg);
+void handle_receive(const google::protobuf::Message& msg);
 
 int main(int argc, char* argv[])
-{    
+{
     goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
-    
+
     goby::acomms::protobuf::QueueManagerConfig cfg;
     cfg.set_modem_id(MY_MODEM_ID);
     goby::acomms::protobuf::QueuedMessageEntry* q_entry = cfg.add_message_entry();
     q_entry->set_protobuf_name("GobyMessage");
     goby::acomms::protobuf::QueuedMessageEntry::Role* dest_role = q_entry->add_role();
     dest_role->set_type(goby::acomms::protobuf::QueuedMessageEntry::DESTINATION_ID);
-    dest_role->set_field("dest");    
+    dest_role->set_field("dest");
 
     q_entry->set_ack(false);
     q_manager.set_cfg(cfg);
 
     goby::glog << q_manager << std::endl;
-    
+
     goby::acomms::connect(&q_manager.signal_queue_size_change, &qsize);
     goby::acomms::connect(&q_manager.signal_receive, &handle_receive);
 
@@ -83,7 +82,7 @@ int main(int argc, char* argv[])
         cfg.mutable_message_entry(0)->clear_manipulator();
         cfg.mutable_message_entry(0)->add_manipulator(goby::acomms::protobuf::NO_DECODE);
         q_manager.set_cfg(cfg);
-    
+
         q_manager.push_message(test_msg1);
         msg.Clear();
         msg.set_max_frame_bytes(32);
@@ -94,14 +93,13 @@ int main(int argc, char* argv[])
         // message was not decoded
         assert(receive_count == 0);
     }
-    
 
     {
         receive_count = 0;
         cfg.mutable_message_entry(0)->clear_manipulator();
         cfg.mutable_message_entry(0)->add_manipulator(goby::acomms::protobuf::NO_QUEUE);
         q_manager.set_cfg(cfg);
-    
+
         q_manager.push_message(test_msg1);
         msg.Clear();
         msg.set_max_frame_bytes(32);
@@ -118,7 +116,7 @@ int main(int argc, char* argv[])
         cfg.mutable_message_entry(0)->clear_manipulator();
         cfg.mutable_message_entry(0)->add_manipulator(goby::acomms::protobuf::LOOPBACK);
         q_manager.set_cfg(cfg);
-        
+
         q_manager.push_message(test_msg1);
         // loop'd back
         assert(receive_count == 1);
@@ -129,17 +127,16 @@ int main(int argc, char* argv[])
         // message was queued
         assert(msg.frame(0).size() == TEST_MESSAGE_SIZE);
         q_manager.handle_modem_receive(msg);
-        // message was decoded 
+        // message was decoded
         assert(receive_count == 2);
     }
-
 
     {
         receive_count = 0;
         cfg.mutable_message_entry(0)->clear_manipulator();
         cfg.mutable_message_entry(0)->add_manipulator(goby::acomms::protobuf::LOOPBACK_AS_SENT);
         q_manager.set_cfg(cfg);
-        
+
         q_manager.push_message(test_msg1);
         // not loop'd back (yet)
         assert(receive_count == 0);
@@ -154,7 +151,7 @@ int main(int argc, char* argv[])
         // message was queued
         assert(msg.frame(0).size() == TEST_MESSAGE_SIZE);
         q_manager.handle_modem_receive(msg);
-        // message was decoded 
+        // message was decoded
         assert(receive_count == 2);
     }
 
@@ -164,7 +161,7 @@ int main(int argc, char* argv[])
         receive_count = 0;
         cfg.mutable_message_entry(0)->clear_manipulator();
         q_manager.set_cfg(cfg);
-        
+
         q_manager.push_message(test_msg1);
 
         msg.Clear();
@@ -176,13 +173,12 @@ int main(int argc, char* argv[])
         q_manager.handle_modem_receive(msg);
         // message was decoded (due to wrong destination)
         assert(receive_count == 0);
-        
 
         receive_count = 0;
         cfg.mutable_message_entry(0)->clear_manipulator();
         cfg.mutable_message_entry(0)->add_manipulator(goby::acomms::protobuf::PROMISCUOUS);
         q_manager.set_cfg(cfg);
-        
+
         q_manager.push_message(test_msg1);
 
         msg.Clear();
@@ -194,21 +190,15 @@ int main(int argc, char* argv[])
         q_manager.handle_modem_receive(msg);
         // message was decoded (due to promiscuous)
         assert(receive_count == 1);
-
     }
-    
-    
-    std::cout << "all tests passed" << std::endl;    
+
+    std::cout << "all tests passed" << std::endl;
 }
 
-void qsize(goby::acomms::protobuf::QueueSize size)
-{
-}
-
+void qsize(goby::acomms::protobuf::QueueSize size) {}
 
 void handle_receive(const google::protobuf::Message& in_msg)
 {
     std::cout << "Received: " << in_msg << std::endl;
     ++receive_count;
 }
-

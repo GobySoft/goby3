@@ -23,28 +23,31 @@
 #ifndef IridiumModemDriver20130903H
 #define IridiumModemDriver20130903H
 
-#include <string>
-#include <stdint.h>
 #include <stdexcept>
+#include <stdint.h>
+#include <string>
 
 namespace goby
 {
-    namespace acomms
-    {
-        class RudicsPacketException : public std::runtime_error
-        {
-          public:
-          RudicsPacketException(const std::string& what)
-              : std::runtime_error(what)
-            { }
-        };
-            
-        void serialize_rudics_packet(std::string bytes, std::string* rudics_pkt, const std::string& reserved = std::string("\0\r\n",3) + std::string(1, 0xff), bool include_crc = true);
-        void parse_rudics_packet(std::string* bytes, std::string rudics_pkt, const std::string& reserved = std::string("\0\r\n",3) + std::string(1, 0xff), bool include_crc = true);
-        std::string uint32_to_byte_string(uint32_t i);
-        uint32_t byte_string_to_uint32(std::string s);
-    }
-}
+namespace acomms
+{
+class RudicsPacketException : public std::runtime_error
+{
+  public:
+    RudicsPacketException(const std::string& what) : std::runtime_error(what) {}
+};
 
+void serialize_rudics_packet(std::string bytes, std::string* rudics_pkt,
+                             const std::string& reserved = std::string("\0\r\n", 3) +
+                                                           std::string(1, 0xff),
+                             bool include_crc = true);
+void parse_rudics_packet(std::string* bytes, std::string rudics_pkt,
+                         const std::string& reserved = std::string("\0\r\n", 3) +
+                                                       std::string(1, 0xff),
+                         bool include_crc = true);
+std::string uint32_to_byte_string(uint32_t i);
+uint32_t byte_string_to_uint32(std::string s);
+} // namespace acomms
+} // namespace goby
 
 #endif

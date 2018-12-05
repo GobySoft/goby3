@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
     //
     // 2. Configure with a few slots
     //
-    goby::acomms::protobuf::MACConfig cfg;    
+    goby::acomms::protobuf::MACConfig cfg;
     cfg.set_modem_id(1);
     cfg.set_type(goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED);
     goby::acomms::protobuf::ModemTransmission* slot = cfg.add_slot();
@@ -50,8 +50,7 @@ int main(int argc, char* argv[])
     slot->set_rate(0);
     slot->set_type(goby::acomms::protobuf::ModemTransmission::DATA);
     slot->set_slot_seconds(5);
-    
-    
+
     //
     // 3. Set up the callback
     //
@@ -63,12 +62,12 @@ int main(int argc, char* argv[])
     // 4. Let it run for a bit alone in the world
     //
     mac.startup(cfg);
-    for(unsigned i = 1; i < 150; ++i)
+    for (unsigned i = 1; i < 150; ++i)
     {
         mac.do_work();
         usleep(100000);
     }
-    
+
     //
     // 5. Add some slots (modem ids 2 & 3, and LBL ping from 1): remember MACManager is a std::list<goby::acomms::protobuf::ModemTransmission> at heart
     //
@@ -79,15 +78,15 @@ int main(int argc, char* argv[])
     new_slot.set_rate(0);
     new_slot.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
     new_slot.set_slot_seconds(5);
-    
+
     mac.push_back(new_slot);
 
     // another way
-    mac.resize(mac.size()+1);
+    mac.resize(mac.size() + 1);
     mac.back().CopyFrom(mac.front());
     mac.back().set_src(3);
 
-    mac.resize(mac.size()+1);
+    mac.resize(mac.size() + 1);
     mac.back().CopyFrom(mac.front());
     mac.back().set_type(goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC);
     mac.back().SetExtension(micromodem::protobuf::type,
@@ -95,18 +94,17 @@ int main(int argc, char* argv[])
 
     // must call update after manipulating MACManager before calling do_work again.
     mac.update();
-    
-    
+
     //
     // 6. Run it
     //
-    
-    for(;;)
+
+    for (;;)
     {
         mac.do_work();
         usleep(100000);
     }
-    
+
     return 0;
 }
 

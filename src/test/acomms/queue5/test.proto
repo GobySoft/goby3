@@ -1,13 +1,10 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "dccl/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "dccl/protobuf/option_extensions.proto";
 
 message GobyMessage
 {
-  option (dccl.msg).id = 4;
-  option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).id = 4;
+    option (dccl.msg).max_bytes = 32;
 
-  // one byte
-  required int32 telegram = 1 [(dccl.field).min=0,
-                               (dccl.field).max=255];
+    // one byte
+    required int32 telegram = 1 [(dccl.field).min = 0, (dccl.field).max = 255];
 }
-

@@ -1,55 +1,52 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/acomms/protobuf/driver_base.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/acomms/protobuf/driver_base.proto";
 import "goby/moos/protobuf/modem_id_lookup.proto";
 import "goby/acomms/protobuf/modem_message.proto";
 import "dccl/protobuf/option_extensions.proto";
-
 
 package goby.moos.protobuf;
 
 message MicroModemMimic
 {
-  optional string range_request_var = 1 [default = "CRS_RANGE_REQUEST"];
-  optional string range_report_var = 2 [default = "CRS_RANGE_REPORT"];
+    optional string range_request_var = 1 [default = "CRS_RANGE_REQUEST"];
+    optional string range_report_var = 2 [default = "CRS_RANGE_REPORT"];
 }
 
 message Config
 {
-  extend goby.acomms.protobuf.DriverConfig 
-  {
-    optional string moos_server = 1300 [default="localhost"];
-    optional int32 moos_port = 1301 [default=9000];
+    extend goby.acomms.protobuf.DriverConfig
+    {
+        optional string moos_server = 1300 [default = "localhost"];
+        optional int32 moos_port = 1301 [default = 9000];
 
-    optional string incoming_moos_var = 1302 [default="ACOMMS_UFIELD_DRIVER_IN"];
-    optional string outgoing_moos_var = 1303 [default="ACOMMS_UFIELD_DRIVER_OUT"];
+        optional string incoming_moos_var = 1302
+            [default = "ACOMMS_UFIELD_DRIVER_IN"];
+        optional string outgoing_moos_var = 1303
+            [default = "ACOMMS_UFIELD_DRIVER_OUT"];
 
-    optional string ufield_outgoing_moos_var = 1304 [default="NODE_MESSAGE_LOCAL"];
+        optional string ufield_outgoing_moos_var = 1304
+            [default = "NODE_MESSAGE_LOCAL"];
 
-    repeated int32 rate_to_bytes = 1305;
+        repeated int32 rate_to_bytes = 1305;
 
-    optional string modem_id_lookup_path = 1306;
-    
-    optional MicroModemMimic micromodem_mimic = 1307;
-    
-    //repeated ModemIdEntry id_entry = 1306;
-    
-  }
+        optional string modem_id_lookup_path = 1306;
+
+        optional MicroModemMimic micromodem_mimic = 1307;
+
+        // repeated ModemIdEntry id_entry = 1306;
+    }
 }
 
 enum TransmissionType
 {
-  BASE_TYPE = 0;
-  UFIELD_DRIVER_POLL = 1;
+    BASE_TYPE = 0;
+    UFIELD_DRIVER_POLL = 1;
 }
 
-extend goby.acomms.protobuf.ModemTransmission 
+extend goby.acomms.protobuf.ModemTransmission
 {
-  optional TransmissionType type = 1300 [default=BASE_TYPE];
-  
-  // used in UFIELD_DRIVER_POLL message
-  optional int32 poll_src = 1301 [(dccl.field).omit = true];
-  optional int32 poll_dest = 1302 [(dccl.field).omit = true];
+    optional TransmissionType type = 1300 [default = BASE_TYPE];
 
-
-  
+    // used in UFIELD_DRIVER_POLL message
+    optional int32 poll_src = 1301 [(dccl.field).omit = true];
+    optional int32 poll_dest = 1302 [(dccl.field).omit = true];
 };

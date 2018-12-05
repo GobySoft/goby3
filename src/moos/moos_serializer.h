@@ -26,28 +26,27 @@
 
 namespace goby
 {
-    namespace moos
+namespace moos
+{
+class MOOSSerializer
+{
+  public:
+    static void serialize(const CMOOSMsg& const_msg, std::string* data)
     {
- 
-        class MOOSSerializer
-        {
-          public:
-            static void serialize(const CMOOSMsg& const_msg, std::string* data)
-            {
-                // copy because Serialize wants to modify the CMOOSMsg
-                CMOOSMsg msg(const_msg);
-                // adapted from MOOSCommPkt.cpp
-                int serialized_size = msg.GetSizeInBytesWhenSerialised();
-                data->resize(serialized_size);
-                serialized_size = msg.Serialize(reinterpret_cast<unsigned char*>(&(*data)[0]), serialized_size);
-                data->resize(serialized_size);
-            }
-            
-            static void parse(CMOOSMsg* msg, std::string data)
-            {
-                msg->Serialize(reinterpret_cast<unsigned char*>(&data[0]), data.size(), false);
-            }
-            
-        };
+        // copy because Serialize wants to modify the CMOOSMsg
+        CMOOSMsg msg(const_msg);
+        // adapted from MOOSCommPkt.cpp
+        int serialized_size = msg.GetSizeInBytesWhenSerialised();
+        data->resize(serialized_size);
+        serialized_size =
+            msg.Serialize(reinterpret_cast<unsigned char*>(&(*data)[0]), serialized_size);
+        data->resize(serialized_size);
     }
-}
+
+    static void parse(CMOOSMsg* msg, std::string data)
+    {
+        msg->Serialize(reinterpret_cast<unsigned char*>(&data[0]), data.size(), false);
+    }
+};
+} // namespace moos
+} // namespace goby

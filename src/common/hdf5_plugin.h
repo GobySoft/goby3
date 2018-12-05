@@ -23,58 +23,55 @@
 #ifndef HDF5_PLUGIN20160523H
 #define HDF5_PLUGIN20160523H
 
-#include <google/protobuf/message.h>
 #include <google/protobuf/descriptor.h>
+#include <google/protobuf/message.h>
 
 #include <boost/shared_ptr.hpp>
 
-#include "goby/util/primitive_types.h"
 #include "goby/common/protobuf/hdf5.pb.h"
+#include "goby/util/primitive_types.h"
 
 namespace goby
 {
-    namespace common
-    {
-        struct HDF5ProtobufEntry
-        {
-            std::string channel;
-            std::uint64_t time;
-            boost::shared_ptr<google::protobuf::Message> msg;
+namespace common
+{
+struct HDF5ProtobufEntry
+{
+    std::string channel;
+    std::uint64_t time;
+    boost::shared_ptr<google::protobuf::Message> msg;
 
-        HDF5ProtobufEntry() : time(0) { }
-            
-            void clear()
-                {
-                    channel.clear();
-                    time = 0;
-                    msg.reset();
-                }
-        };
-        
-        inline std::ostream& operator<<(std::ostream& os, const HDF5ProtobufEntry& entry)
-        {
-            os << "@" << entry.time << ": ";
-            os << "/" << entry.channel;
-            if(entry.msg)
-            {
-                os << "/" << entry.msg->GetDescriptor()->full_name();
-                os << " " << entry.msg->ShortDebugString();
-            }
-            return os;
-            
-        }
-        
-        class HDF5Plugin
-        {
-        public:
-            HDF5Plugin(goby::common::protobuf::HDF5Config* cfg) { }
-            virtual ~HDF5Plugin() { }
-            
-            virtual bool provide_entry(HDF5ProtobufEntry* entry) = 0;            
-        };
+    HDF5ProtobufEntry() : time(0) {}
+
+    void clear()
+    {
+        channel.clear();
+        time = 0;
+        msg.reset();
     }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const HDF5ProtobufEntry& entry)
+{
+    os << "@" << entry.time << ": ";
+    os << "/" << entry.channel;
+    if (entry.msg)
+    {
+        os << "/" << entry.msg->GetDescriptor()->full_name();
+        os << " " << entry.msg->ShortDebugString();
+    }
+    return os;
 }
 
+class HDF5Plugin
+{
+  public:
+    HDF5Plugin(goby::common::protobuf::HDF5Config* cfg) {}
+    virtual ~HDF5Plugin() {}
 
+    virtual bool provide_entry(HDF5ProtobufEntry* entry) = 0;
+};
+} // namespace common
+} // namespace goby
 
 #endif

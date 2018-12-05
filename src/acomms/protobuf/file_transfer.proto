@@ -1,79 +1,90 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/common/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
 import "dccl/protobuf/option_extensions.proto";
 
 package goby.acomms.protobuf;
 
 message FileFragment
 {
-  option (dccl.msg).id = 7;
-  option (dccl.msg).max_bytes = 64;
-  
-  required int32 src = 1 [(dccl.field).min = -1,
-                          (dccl.field).max = 62,
-                          (dccl.field).in_head = true]; 
-  required int32 dest = 2 [(dccl.field).min = -1,
-                           (dccl.field).max = 62,
-                           (dccl.field).in_head = true];
+    option (dccl.msg).id = 7;
+    option (dccl.msg).max_bytes = 64;
 
-  required int32 fragment = 3 [(dccl.field).min = 0,
-                               (dccl.field).max = 18079]; // max file: 1048576 / data length: 58
+    required int32 src = 1 [
+        (dccl.field).min = -1,
+        (dccl.field).max = 62,
+        (dccl.field).in_head = true
+    ];
+    required int32 dest = 2 [
+        (dccl.field).min = -1,
+        (dccl.field).max = 62,
+        (dccl.field).in_head = true
+    ];
 
-  required bool is_last_fragment = 4;
+    required int32 fragment = 3 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 18079
+    ];  // max file: 1048576 / data length: 58
 
-  required int32 num_bytes = 5 [(dccl.field).min = 1, (dccl.field).max = 58];
-  required bytes data = 6 [(dccl.field).max_length = 58];
-  
+    required bool is_last_fragment = 4;
+
+    required int32 num_bytes = 5 [(dccl.field).min = 1, (dccl.field).max = 58];
+    required bytes data = 6 [(dccl.field).max_length = 58];
 }
 
 message TransferRequest
 {
-  option (dccl.msg).id = 8;
-  option (dccl.msg).max_bytes = 64;
-  required int32 src = 1 [(dccl.field).min = -1,
-                          (dccl.field).max = 62,
-                          (dccl.field).in_head = true]; 
-  required int32 dest = 2 [(dccl.field).min = -1,
-                           (dccl.field).max = 62,
-                           (dccl.field).in_head = true];
+    option (dccl.msg).id = 8;
+    option (dccl.msg).max_bytes = 64;
+    required int32 src = 1 [
+        (dccl.field).min = -1,
+        (dccl.field).max = 62,
+        (dccl.field).in_head = true
+    ];
+    required int32 dest = 2 [
+        (dccl.field).min = -1,
+        (dccl.field).max = 62,
+        (dccl.field).in_head = true
+    ];
 
-  enum PushPull
-  {
-    PUSH = 1;
-    PULL = 2;
-  }
-  required PushPull push_or_pull = 3 [(dccl.field).in_head = true];
-  required string file = 10 [(dccl.field).max_length = 60];
+    enum PushPull
+    {
+        PUSH = 1;
+        PULL = 2;
+    }
+    required PushPull push_or_pull = 3 [(dccl.field).in_head = true];
+    required string file = 10 [(dccl.field).max_length = 60];
 }
 
 message TransferResponse
 {
-  option (dccl.msg).id = 9;
-  option (dccl.msg).max_bytes =64;
+    option (dccl.msg).id = 9;
+    option (dccl.msg).max_bytes = 64;
 
-  required int32 src = 1 [(dccl.field).min = -1,
-                          (dccl.field).max = 62,
-                          (dccl.field).in_head = true]; 
-  required int32 dest = 2 [(dccl.field).min = -1,
-                           (dccl.field).max = 62,
-                           (dccl.field).in_head = true];
+    required int32 src = 1 [
+        (dccl.field).min = -1,
+        (dccl.field).max = 62,
+        (dccl.field).in_head = true
+    ];
+    required int32 dest = 2 [
+        (dccl.field).min = -1,
+        (dccl.field).max = 62,
+        (dccl.field).in_head = true
+    ];
 
-  
-  required bool transfer_successful = 3;
+    required bool transfer_successful = 3;
 
-  enum ErrorCode
-  {
-    COULD_NOT_READ_FILE = 1;
-    FILE_TOO_LARGE = 2;
-    TIMEOUT = 3;
-    COULD_NOT_WRITE_FILE = 4;
-    ERROR_WHILE_READING = 5;
-    OTHER_ERROR = 6;    
-  }
-  optional ErrorCode error = 4;
+    enum ErrorCode
+    {
+        COULD_NOT_READ_FILE = 1;
+        FILE_TOO_LARGE = 2;
+        TIMEOUT = 3;
+        COULD_NOT_WRITE_FILE = 4;
+        ERROR_WHILE_READING = 5;
+        OTHER_ERROR = 6;
+    }
+    optional ErrorCode error = 4;
 
-
-  optional int32 num_fragments = 5 [(dccl.field).min = 0,
-                                    (dccl.field).max = 18079]; // max file: 1048576 / data length: 58  
-  
+    optional int32 num_fragments = 5 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 18079
+    ];  // max file: 1048576 / data length: 58
 }

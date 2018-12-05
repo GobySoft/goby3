@@ -20,7 +20,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-// modified for C++ by s. petillo spetillo@mit.edu 
+// modified for C++ by s. petillo spetillo@mit.edu
 // ocean engineering graduate student - mit / whoi joint program
 // massachusetts institute of technology (mit)
 // laboratory for autonomous marine sensing systems (lamss)
@@ -30,14 +30,13 @@
 
 #include <cmath>
 
-
 // Calculates Depth given the Pressure at some Latitude.
 // Taken directly from MATLAB OceansToolbox depth.m
 
 inline double pressure2depth(double P, double LAT)
 {
-  // function DEPTH=depth(P,LAT);
-  /*
+    // function DEPTH=depth(P,LAT);
+    /*
     DEPTH   Computes depth given the pressure at some latitude
     D=DEPTH(P,LAT) gives the depth D (m) for a pressure P (dbars)
     at some latitude LAT (degrees).
@@ -53,15 +52,15 @@ inline double pressure2depth(double P, double LAT)
     CHECKVALUE: DEPTH = 9712.653 M FOR P=10000 DECIBARS, LATITUDE=30 DEG
     ABOVE FOR STANDARD OCEAN: T=0 DEG. CELSUIS ; S=35 (IPSS-78)
   */
-    
+
     using namespace std; // for math functions
-        
-    double X = sin(LAT/57.29578);
-    X = X*X;
+
+    double X = sin(LAT / 57.29578);
+    X = X * X;
     // GR= GRAVITY VARIATION WITH LATITUDE: ANON (1970) BULLETIN GEODESIQUE
-    double GR = 9.780318*(1.0+(5.2788E-3+2.36E-5*X)*X) + 1.092E-6*P;
-    double DEPTH = (((-1.82E-15*P+2.279E-10)*P-2.2512E-5)*P+9.72659)*P;
-    DEPTH=DEPTH/GR;
+    double GR = 9.780318 * (1.0 + (5.2788E-3 + 2.36E-5 * X) * X) + 1.092E-6 * P;
+    double DEPTH = (((-1.82E-15 * P + 2.279E-10) * P - 2.2512E-5) * P + 9.72659) * P;
+    DEPTH = DEPTH / GR;
 
     return DEPTH;
 }

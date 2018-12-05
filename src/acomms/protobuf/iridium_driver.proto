@@ -1,58 +1,54 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/common/protobuf/option_extensions.proto";
-import "goby/acomms/protobuf/driver_base.proto"; 
-import "goby/acomms/protobuf/modem_message.proto"; 
+@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
+import "goby/acomms/protobuf/driver_base.proto";
+import "goby/acomms/protobuf/modem_message.proto";
 import "dccl/protobuf/option_extensions.proto";
 
 message IridiumDriverConfig
 {
-  message Remote
-  {
-    required string iridium_number = 1;
-    required int32 modem_id = 2;
-  }
-  
-  extend goby.acomms.protobuf.DriverConfig
-  {
-    optional Remote remote = 1381;
-    optional uint32 max_frame_size = 1382 [default = 1500];
-    optional int32 target_bit_rate = 1383 [default = 2400];
-    repeated string config = 1384;
-    optional int32 dial_attempts = 1385 [default = 3];
-    optional int32 debug_client_port = 1386;
+    message Remote
+    {
+        required string iridium_number = 1;
+        required int32 modem_id = 2;
+    }
 
-    optional int32 hangup_seconds_after_empty = 1388 [default = 30];
-    optional int32 start_timeout = 1389 [default = 20];
-    optional bool use_dtr = 1390 [default = false];
-    optional int32 handshake_hangup_seconds = 1392 [default = 5];
-  }
-    
-  extend goby.acomms.protobuf.ModemTransmission
-  {
-      optional bool if_no_data_do_mailbox_check = 1381 [default = true];
-  }
-    
+    extend goby.acomms.protobuf.DriverConfig
+    {
+        optional Remote remote = 1381;
+        optional uint32 max_frame_size = 1382 [default = 1500];
+        optional int32 target_bit_rate = 1383 [default = 2400];
+        repeated string config = 1384;
+        optional int32 dial_attempts = 1385 [default = 3];
+        optional int32 debug_client_port = 1386;
+
+        optional int32 hangup_seconds_after_empty = 1388 [default = 30];
+        optional int32 start_timeout = 1389 [default = 20];
+        optional bool use_dtr = 1390 [default = false];
+        optional int32 handshake_hangup_seconds = 1392 [default = 5];
+    }
+
+    extend goby.acomms.protobuf.ModemTransmission
+    {
+        optional bool if_no_data_do_mailbox_check = 1381 [default = true];
+    }
 }
 
 // subset of goby.acomms.protobuf.ModemTransmission
 message IridiumHeader
 {
-  option (dccl.msg).id = 0;
-  option (dccl.msg).max_bytes = 7;
-  
-  required int32 src = 1 [(dccl.field).min = 0,
-                          (dccl.field).max = 30]; 
-  
-  required int32 dest = 2 [(dccl.field).min = 0,
-                           (dccl.field).max = 30];
-  
-  optional int32 rate = 3 [(dccl.field).min = 0,
-                           (dccl.field).max = 1];             
+    option (dccl.msg).id = 0;
+    option (dccl.msg).max_bytes = 7;
 
-  required goby.acomms.protobuf.ModemTransmission.TransmissionType type = 4;     
-                         
+    required int32 src = 1 [(dccl.field).min = 0, (dccl.field).max = 30];
 
-  optional bool ack_requested = 5;
-  optional uint32 frame_start = 6 [(dccl.field).min = 0, (dccl.field).max = 0xFFFF];
-  optional int32 acked_frame = 7 [(dccl.field).min = 0, (dccl.field).max = 0xFFFF];
+    required int32 dest = 2 [(dccl.field).min = 0, (dccl.field).max = 30];
+
+    optional int32 rate = 3 [(dccl.field).min = 0, (dccl.field).max = 1];
+
+    required goby.acomms.protobuf.ModemTransmission.TransmissionType type = 4;
+
+    optional bool ack_requested = 5;
+    optional uint32 frame_start = 6
+        [(dccl.field).min = 0, (dccl.field).max = 0xFFFF];
+    optional int32 acked_frame = 7
+        [(dccl.field).min = 0, (dccl.field).max = 0xFFFF];
 }

@@ -21,7 +21,6 @@
 
 #include "pGobyMOOSAppTemplate.h"
 
-
 using goby::glog;
 using namespace goby::common::logger;
 using goby::moos::operator<<;
@@ -29,17 +28,11 @@ using goby::moos::operator<<;
 boost::shared_ptr<GobyMOOSAppTemplateConfig> master_config;
 GobyMOOSAppTemplate* GobyMOOSAppTemplate::inst_ = 0;
 
-
- 
-int main(int argc, char* argv[])
-{
-    return goby::moos::run<GobyMOOSAppTemplate>(argc, argv);
-}
-
+int main(int argc, char* argv[]) { return goby::moos::run<GobyMOOSAppTemplate>(argc, argv); }
 
 GobyMOOSAppTemplate* GobyMOOSAppTemplate::get_instance()
 {
-    if(!inst_)
+    if (!inst_)
     {
         master_config.reset(new GobyMOOSAppTemplateConfig);
         inst_ = new GobyMOOSAppTemplate(*master_config);
@@ -47,28 +40,17 @@ GobyMOOSAppTemplate* GobyMOOSAppTemplate::get_instance()
     return inst_;
 }
 
-void GobyMOOSAppTemplate::delete_instance()
-{
-    delete inst_;
-}
-
+void GobyMOOSAppTemplate::delete_instance() { delete inst_; }
 
 GobyMOOSAppTemplate::GobyMOOSAppTemplate(GobyMOOSAppTemplateConfig& cfg)
-    : GobyMOOSApp(&cfg),
-    cfg_(cfg)
+    : GobyMOOSApp(&cfg), cfg_(cfg)
 {
     // example subscription -
     //    handle_db_time called each time mail from DB_TIME is received
     subscribe("DB_TIME", &GobyMOOSAppTemplate::handle_db_time, this);
 }
 
-
-GobyMOOSAppTemplate::~GobyMOOSAppTemplate()
-{
-    
-}
-
-
+GobyMOOSAppTemplate::~GobyMOOSAppTemplate() {}
 
 void GobyMOOSAppTemplate::loop()
 {
@@ -78,7 +60,6 @@ void GobyMOOSAppTemplate::loop()
 
 void GobyMOOSAppTemplate::handle_db_time(const CMOOSMsg& msg)
 {
-    glog.is(VERBOSE) && glog << "Time is: " << std::setprecision(15) << msg.GetDouble() << std::endl;
+    glog.is(VERBOSE) && glog << "Time is: " << std::setprecision(15) << msg.GetDouble()
+                             << std::endl;
 }
-
-    

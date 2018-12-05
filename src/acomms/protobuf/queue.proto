@@ -1,92 +1,108 @@
-@PROTOBUF_SYNTAX_VERSION@
-// provides MessageFile
-import "goby/common/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @
+    // provides MessageFile
+    import "goby/common/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/manipulator.proto";
 
 package goby.acomms.protobuf;
 
-
 message QueuedMessageEntry
 {
-  required string protobuf_name = 1;
-  optional bool ack = 2 [default = true];  
-  optional uint32 blackout_time = 3 [default = 0];
-  optional uint32 max_queue = 4 [default = 100];
-  optional bool newest_first = 5 [default = true];
-  optional int32 ttl = 6 [default = 1800];
-  optional double value_base = 7 [default = 1];
-    
-  repeated Manipulator manipulator = 10 [(goby.field).description="manipulators to modify the encoding and queuing behavior of the specified message"];
+    required string protobuf_name = 1;
+    optional bool ack = 2 [default = true];
+    optional uint32 blackout_time = 3 [default = 0];
+    optional uint32 max_queue = 4 [default = 100];
+    optional bool newest_first = 5 [default = true];
+    optional int32 ttl = 6 [default = 1800];
+    optional double value_base = 7 [default = 1];
 
-  enum RoleType
-  {
-    SOURCE_ID = 1;
-    DESTINATION_ID = 2;
-    TIMESTAMP = 3;
-  }  
-  
-  message Role
-  {
-    required RoleType type = 1;
-    enum RoleSetting
+    repeated Manipulator manipulator = 10
+        [(goby.field).description =
+             "manipulators to modify the encoding and queuing behavior of the "
+             "specified message"];
+
+    enum RoleType
     {
-      STATIC = 1;
-      FIELD_VALUE = 2;
+        SOURCE_ID = 1;
+        DESTINATION_ID = 2;
+        TIMESTAMP = 3;
     }
-    optional RoleSetting setting = 2 [default = FIELD_VALUE];
-    optional string field = 3;
-    optional int32 static_value = 4;
-  }
-  repeated Role role = 20 [(goby.field).description="Set a message field or static value to various roles (source address, destination address, etc.)"];
+
+    message Role
+    {
+        required RoleType type = 1;
+        enum RoleSetting
+        {
+            STATIC = 1;
+            FIELD_VALUE = 2;
+        }
+        optional RoleSetting setting = 2 [default = FIELD_VALUE];
+        optional string field = 3;
+        optional int32 static_value = 4;
+    }
+    repeated Role role = 20
+        [(goby.field).description =
+             "Set a message field or static value to various roles (source "
+             "address, destination address, etc.)"];
 }
 
 message QueueManagerConfig
 {
-  optional int32 modem_id = 1 [(goby.field).description="Unique number 1-31 to identify this node", (goby.field).example="1"];
+    optional int32 modem_id = 1 [
+        (goby.field).description = "Unique number 1-31 to identify this node",
+        (goby.field).example = "1"
+    ];
 
+    repeated QueuedMessageEntry message_entry = 10;
+    optional double on_demand_skew_seconds = 11 [default = 1];
 
-  repeated QueuedMessageEntry message_entry = 10;
-  optional double on_demand_skew_seconds = 11 [default = 1];
-  
-  optional double minimum_ack_wait_seconds = 20 [default = 0];
+    optional double minimum_ack_wait_seconds = 20 [default = 0];
 
-  optional bool skip_decoding = 21 [default = false, (goby.field).description="Skip decoding of the message body upon receipt, just decode the header (for use with the goby route module to pass messages on without decrypting the body)"];
-  
-  repeated int32 make_network_ack_for_src_id = 30;
+    optional bool skip_decoding = 21 [
+        default = false,
+        (goby.field).description =
+            "Skip decoding of the message body upon receipt, just decode the "
+            "header (for use with the goby route module to pass messages on "
+            "without decrypting the body)"
+    ];
 
-  repeated int32 route_for_additional_modem_id = 40 [(goby.field).description="Try to route packets addressed to these modem_ids (in addition to those addressed to this modem's actual modem_id)"];
+    repeated int32 make_network_ack_for_src_id = 30;
 
-  message DCCLEncryptRule
-  {
-     // if encoding - dest id
-     // if decoding - source id
-     optional int32 id = 1;
-     required string crypto_passphrase = 2;
-  }
-  repeated DCCLEncryptRule encrypt_rule = 50;  
+    repeated int32 route_for_additional_modem_id = 40
+        [(goby.field).description =
+             "Try to route packets addressed to these modem_ids (in addition "
+             "to those addressed to this modem's actual modem_id)"];
+
+    message DCCLEncryptRule
+    {
+        // if encoding - dest id
+        // if decoding - source id
+        optional int32 id = 1;
+        required string crypto_passphrase = 2;
+    }
+    repeated DCCLEncryptRule encrypt_rule = 50;
 }
 
 message QueueSize
 {
-  required uint32 dccl_id = 1;
-  required uint32 size = 2;
+    required uint32 dccl_id = 1;
+    required uint32 size = 2;
 }
 
 message QueueFlush
 {
-  required uint32 dccl_id = 1;
+    required uint32 dccl_id = 1;
 }
 
 message QueuedMessageMeta
 {
-  optional uint32 non_repeated_size = 1;
-  optional bool ack_requested = 2;
-  optional int32 src = 3;
-  optional int32 dest = 4;
-  optional uint64 time = 5;
+    optional uint32 non_repeated_size = 1;
+    optional bool ack_requested = 2;
+    optional int32 src = 3;
+    optional int32 dest = 4;
+    optional uint64 time = 5;
 
-  // last time we tried to send this
-  optional uint64 last_sent_time = 10;  
+    // last time we tried to send this
+    optional uint64 last_sent_time = 10;
 
-  optional bytes encoded_message = 20;
+    optional bytes encoded_message = 20;
 }

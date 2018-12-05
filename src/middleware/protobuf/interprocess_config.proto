@@ -1,10 +1,9 @@
-@PROTOBUF_SYNTAX_VERSION@
-package goby.protobuf;
+@PROTOBUF_SYNTAX_VERSION @package goby.protobuf;
 
 message InterProcessPortalConfig
 {
     optional string platform = 1 [default = "default_goby_platform"];
-    
+
     enum Transport
     {
         IPC = 2;
@@ -13,7 +12,7 @@ message InterProcessPortalConfig
 
     optional Transport transport = 2 [default = IPC];
     optional string socket_name = 3;
-    optional string ipv4_address = 4 [default="127.0.0.1"];
+    optional string ipv4_address = 4 [default = "127.0.0.1"];
     optional uint32 tcp_port = 5 [default = 11144];
 
     optional uint32 send_queue_size = 6 [default = 1000];
@@ -22,5 +21,3 @@ message InterProcessPortalConfig
 
     optional uint32 manager_timeout_seconds = 10 [default = 1];
 }
-
-

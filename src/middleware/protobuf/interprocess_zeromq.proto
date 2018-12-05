@@ -1,5 +1,5 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/common/protobuf/zero_mq_node_config.proto";
+@PROTOBUF_SYNTAX_VERSION @import
+    "goby/common/protobuf/zero_mq_node_config.proto";
 
 package goby.protobuf;
 
@@ -17,25 +17,25 @@ message ZMQManagerResponse
 {
     required Request request = 1;
     optional goby.common.protobuf.ZeroMQServiceConfig.Socket publish_socket = 2;
-    optional goby.common.protobuf.ZeroMQServiceConfig.Socket subscribe_socket = 3;
+    optional goby.common.protobuf.ZeroMQServiceConfig.Socket subscribe_socket =
+        3;
 }
-
 
 message InprocControl
 {
     enum InprocControlType
     {
-    	PUB_CONFIGURATION = 1; // read->main
-	SUBSCRIBE = 2; // main -> read
-        SUBSCRIBE_ACK = 3; // read -> main
-	UNSUBSCRIBE = 4; // main -> read
-        UNSUBSCRIBE_ACK = 5; // read -> main
-	RECEIVE = 6; // read -> main
-	SHUTDOWN = 7; // main -> read
+        PUB_CONFIGURATION = 1;  // read->main
+        SUBSCRIBE = 2;          // main -> read
+        SUBSCRIBE_ACK = 3;      // read -> main
+        UNSUBSCRIBE = 4;        // main -> read
+        UNSUBSCRIBE_ACK = 5;    // read -> main
+        RECEIVE = 6;            // read -> main
+        SHUTDOWN = 7;           // main -> read
     }
     required InprocControlType type = 1;
-    
+
     optional goby.common.protobuf.ZeroMQServiceConfig.Socket publish_socket = 2;
     optional bytes subscription_identifier = 3;
-    optional bytes received_data = 4; 
+    optional bytes received_data = 4;
 }

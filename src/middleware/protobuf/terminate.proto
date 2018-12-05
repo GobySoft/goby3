@@ -11,4 +11,3 @@ message TerminateResponse
     optional string target_name = 1;
     optional uint32 target_pid = 2;
 }
-

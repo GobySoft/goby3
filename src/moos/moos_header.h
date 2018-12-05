@@ -23,4 +23,3 @@
 // cmake will configure the correct MOOS header to use based on version of MOOS
 
 #include "@MOOS_LIBRARY_HEADER@"
-

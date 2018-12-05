@@ -1,5 +1,4 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/common/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
 import "goby/common/protobuf/app_base_config.proto";
 import "goby/acomms/protobuf/amac_config.proto";
 import "goby/acomms/protobuf/modem_message.proto";
@@ -14,21 +13,26 @@ message IPGatewayConfig
     required uint32 cidr_netmask_prefix = 3;
     optional int32 tun_number = 4;
 
-    optional bool enable_broadcast_address = 10 [default = true]; // use all ones address as broadcast (e.g. 192.168.1.255 in /24 subnet
-    optional uint32 dynamic_address_count = 11 [default = 0]; // number of dynamic addresses for use as reverse-NAT (starting at one less than broadcast and counting down).
+    optional bool enable_broadcast_address = 10 [
+        default = true
+    ];  // use all ones address as broadcast (e.g. 192.168.1.255 in /24 subnet
+    optional uint32 dynamic_address_count = 11
+        [default =
+             0];  // number of dynamic addresses for use as reverse-NAT
+                  // (starting at one less than broadcast and counting down).
 
     enum ModelType
     {
         UNIFORM = 1;
         AUTONOMY_COLLABORATION = 2;
     }
-    
+
     optional ModelType model_type = 12 [default = UNIFORM];
-    
+
     optional double gamma_autonomy = 13 [default = 0.75];
     optional double gamma_collaboration = 14 [default = 0.25];
     optional int32 gateway_id = 15 [default = 1];
-    
+
     optional int32 total_ports = 20 [default = 1];
     repeated uint32 static_udp_port = 21;
 

@@ -36,7 +36,4 @@
 // do not use `using namespace std`
 using namespace nspace;
 
-bool nspace::Class::push_message(micromodem::Message& new_message)
-{
-    return true;
-}
+bool nspace::Class::push_message(micromodem::Message& new_message) { return true; }

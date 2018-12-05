@@ -1,5 +1,4 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/common/protobuf/option_extensions.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
 
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/queue.proto";
@@ -10,13 +9,24 @@ package goby.protobuf;
 
 message InterVehiclePortalConfig
 {
-    optional goby.acomms.protobuf.DriverType driver_type = 10 [default = DRIVER_NONE, (goby.field).description="Corresponding primary driver for the type of physical acoustic modem used (used for sending and receiving)"];
-    optional goby.acomms.protobuf.DriverConfig driver_cfg = 11 [(goby.field).description="Configure the primary acoustic modem driver (used for sending and receiving)"]; 
+    optional goby.acomms.protobuf.DriverType driver_type = 10 [
+        default = DRIVER_NONE,
+        (goby.field).description =
+            "Corresponding primary driver for the type of physical acoustic "
+            "modem used (used for sending and receiving)"
+    ];
+    optional goby.acomms.protobuf.DriverConfig driver_cfg = 11
+        [(goby.field).description =
+             "Configure the primary acoustic modem driver (used for sending "
+             "and receiving)"];
 
-    optional goby.acomms.protobuf.MACConfig mac_cfg = 12 [(goby.field).description="Configure the acoustic Medium Access Control"];
-  
-    //    optional goby.acomms.protobuf.QueueManagerConfig queue_cfg = 13 [(goby.field).description="Configure the Priority Queuing layer"];
+    optional goby.acomms.protobuf.MACConfig mac_cfg = 12
+        [(goby.field).description =
+             "Configure the acoustic Medium Access Control"];
 
-    repeated string dccl_load_library = 20 [(goby.field).description="Load DCCL libraries"];
-    
+    //    optional goby.acomms.protobuf.QueueManagerConfig queue_cfg = 13
+    //    [(goby.field).description="Configure the Priority Queuing layer"];
+
+    repeated string dccl_load_library = 20
+        [(goby.field).description = "Load DCCL libraries"];
 }

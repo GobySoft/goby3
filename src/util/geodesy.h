@@ -26,51 +26,49 @@
 #include <limits>
 
 #include <boost/units/quantity.hpp>
-#include <boost/units/systems/si/length.hpp>
 #include <boost/units/systems/angle/degrees.hpp>
+#include <boost/units/systems/si/length.hpp>
 
 #include <proj_api.h>
 
 #include "goby/util/sci.h"
 
-
 namespace goby
 {
-    namespace util
+namespace util
+{
+class UTMGeodesy
+{
+  public:
+    struct LatLonPoint
     {
-        class UTMGeodesy
-        {
-        public:
-            struct LatLonPoint
-            {
-                boost::units::quantity<boost::units::degree::plane_angle> lat;
-                boost::units::quantity<boost::units::degree::plane_angle> lon;
-            };
+        boost::units::quantity<boost::units::degree::plane_angle> lat;
+        boost::units::quantity<boost::units::degree::plane_angle> lon;
+    };
 
-            struct XYPoint
-            {
-                boost::units::quantity<boost::units::si::length> x;
-                boost::units::quantity<boost::units::si::length> y;
-            };
-            
-            UTMGeodesy(LatLonPoint origin);
-            virtual ~UTMGeodesy();
-            
-            LatLonPoint origin_geo() { return origin_geo_; }
-            XYPoint origin_utm() { return origin_utm_; }
-            int origin_utm_zone() { return origin_zone_; }
-            
+    struct XYPoint
+    {
+        boost::units::quantity<boost::units::si::length> x;
+        boost::units::quantity<boost::units::si::length> y;
+    };
 
-            LatLonPoint convert(XYPoint utm);
-            XYPoint convert(LatLonPoint geo);
-            
-        private:
-            LatLonPoint origin_geo_;
-            int origin_zone_;
-            XYPoint origin_utm_;
-            projPJ pj_utm_, pj_latlong_;
-        };
-    }
-}
+    UTMGeodesy(LatLonPoint origin);
+    virtual ~UTMGeodesy();
+
+    LatLonPoint origin_geo() { return origin_geo_; }
+    XYPoint origin_utm() { return origin_utm_; }
+    int origin_utm_zone() { return origin_zone_; }
+
+    LatLonPoint convert(XYPoint utm);
+    XYPoint convert(LatLonPoint geo);
+
+  private:
+    LatLonPoint origin_geo_;
+    int origin_zone_;
+    XYPoint origin_utm_;
+    projPJ pj_utm_, pj_latlong_;
+};
+} // namespace util
+} // namespace goby
 
 #endif

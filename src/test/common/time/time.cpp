@@ -19,31 +19,26 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "stdint.h"
 #include "goby/common/time.h"
+#include "stdint.h"
 
-using goby::util::as;
 using goby::common::goby_time;
+using goby::util::as;
 using namespace boost::posix_time;
 using namespace boost::gregorian;
 
 // 2011-08-16 19:36:57.523456 UTC
 const double TEST_DOUBLE_TIME = 1313523417.523456;
 const std::uint64_t TEST_MICROSEC_TIME = TEST_DOUBLE_TIME * 1e6;
-const boost::posix_time::ptime TEST_PTIME(date(2011,8,16),
-                                          time_duration(19,36,57) +
-                                          microseconds(523456));
+const boost::posix_time::ptime TEST_PTIME(date(2011, 8, 16),
+                                          time_duration(19, 36, 57) + microseconds(523456));
 
 bool double_cmp(double a, double b, double precision)
 {
-    return(std::abs(a-b) < std::pow(10.0, -precision));
+    return (std::abs(a - b) < std::pow(10.0, -precision));
 }
 
-std::uint64_t fake_time()
-{
-    return TEST_MICROSEC_TIME;
-}
-
+std::uint64_t fake_time() { return TEST_MICROSEC_TIME; }
 
 int main()
 {
@@ -51,70 +46,76 @@ int main()
     std::cout << "current uint64: " << goby_time<std::uint64_t>() << std::endl;
     std::cout << "current ptime: " << goby_time() << std::endl;
 
-
     std::cout << "double: " << std::setprecision(16) << TEST_DOUBLE_TIME << std::endl;
     std::cout << "uint64: " << TEST_MICROSEC_TIME << std::endl;
     std::cout << "ptime: " << TEST_PTIME << std::endl;
 
     assert(!double_cmp(5.4, 2.3, 1));
 
-    std::cout << "goby::common::ptime2unix_double(TEST_PTIME): " << goby::common::ptime2unix_double(TEST_PTIME) << std::endl;
-    
+    std::cout << "goby::common::ptime2unix_double(TEST_PTIME): "
+              << goby::common::ptime2unix_double(TEST_PTIME) << std::endl;
+
     assert(double_cmp(goby::common::ptime2unix_double(TEST_PTIME), TEST_DOUBLE_TIME, 6));
     assert(double_cmp(as<double>(TEST_PTIME), TEST_DOUBLE_TIME, 6)); // same as previous line
-    
-    std::cout << "goby::common::unix_double2ptime(TEST_DOUBLE_TIME) " << goby::common::unix_double2ptime(TEST_DOUBLE_TIME) << std::endl;
-    
-    assert(goby::common::unix_double2ptime(TEST_DOUBLE_TIME) == TEST_PTIME);
-    assert(as<ptime>(TEST_DOUBLE_TIME) == TEST_PTIME);  // same as previous line
 
-    std::cout << "goby::common::ptime2unix_microsec(TEST_PTIME) " << goby::common::ptime2unix_microsec(TEST_PTIME) << std::endl;
+    std::cout << "goby::common::unix_double2ptime(TEST_DOUBLE_TIME) "
+              << goby::common::unix_double2ptime(TEST_DOUBLE_TIME) << std::endl;
+
+    assert(goby::common::unix_double2ptime(TEST_DOUBLE_TIME) == TEST_PTIME);
+    assert(as<ptime>(TEST_DOUBLE_TIME) == TEST_PTIME); // same as previous line
+
+    std::cout << "goby::common::ptime2unix_microsec(TEST_PTIME) "
+              << goby::common::ptime2unix_microsec(TEST_PTIME) << std::endl;
 
     assert(goby::common::ptime2unix_microsec(TEST_PTIME) == TEST_MICROSEC_TIME);
-    assert(as<std::uint64_t>(TEST_PTIME) == TEST_MICROSEC_TIME);  // same as previous line    
-    
+    assert(as<std::uint64_t>(TEST_PTIME) == TEST_MICROSEC_TIME); // same as previous line
+
     assert(goby::common::unix_microsec2ptime(TEST_MICROSEC_TIME) == TEST_PTIME);
     assert(as<ptime>(TEST_MICROSEC_TIME) == TEST_PTIME); // same as previous line
 
-    std::cout << "as<string>(as<std::uint64_t>(ptime): " << goby::util::as<std::string>(goby::util::as<std::uint64_t>(TEST_PTIME)) << std::endl;
-    
-    
+    std::cout << "as<string>(as<std::uint64_t>(ptime): "
+              << goby::util::as<std::string>(goby::util::as<std::uint64_t>(TEST_PTIME))
+              << std::endl;
+
     assert(as<ptime>(std::numeric_limits<std::uint64_t>::max()) == ptime(not_a_date_time));
 
     std::cout << goby_time() << std::endl;
-    assert(goby_time() - boost::posix_time::microsec_clock::universal_time() < boost::posix_time::milliseconds(10));
+    assert(goby_time() - boost::posix_time::microsec_clock::universal_time() <
+           boost::posix_time::milliseconds(10));
     std::cout << goby_time<double>() << std::endl;
-    assert(as<ptime>(goby_time<double>()) - boost::posix_time::microsec_clock::universal_time() < boost::posix_time::milliseconds(10));
+    assert(as<ptime>(goby_time<double>()) - boost::posix_time::microsec_clock::universal_time() <
+           boost::posix_time::milliseconds(10));
     std::cout << goby_time<std::uint64_t>() << std::endl;
-    assert(as<ptime>(goby_time<std::uint64_t>()) - boost::posix_time::microsec_clock::universal_time() < boost::posix_time::milliseconds(10));
+    assert(as<ptime>(goby_time<std::uint64_t>()) -
+               boost::posix_time::microsec_clock::universal_time() <
+           boost::posix_time::milliseconds(10));
 
     goby::common::goby_time_function = &fake_time;
-    
+
     std::cout << goby_time() << std::endl;
     std::cout << goby_time<double>() << std::endl;
     std::cout << goby_time<std::uint64_t>() << std::endl;
-    assert(goby_time<std::uint64_t>() == TEST_MICROSEC_TIME); 
+    assert(goby_time<std::uint64_t>() == TEST_MICROSEC_TIME);
     assert(double_cmp(goby_time<double>(), TEST_DOUBLE_TIME, 6));
-    assert(goby_time<ptime>() == TEST_PTIME); 
-    
+    assert(goby_time<ptime>() == TEST_PTIME);
 
-    const ptime FAR_FUTURE_COMPARISON_PTIME(date(2391,10,8),
-                                            time_duration(9,50,9) +
-                                            microseconds(399860));
-    
+    const ptime FAR_FUTURE_COMPARISON_PTIME(date(2391, 10, 8),
+                                            time_duration(9, 50, 9) + microseconds(399860));
+
     // test dates in the next century
     const double FAR_FUTURE_COMPARISON = 13309696209.39986;
     ptime far_future_ptime = goby::common::unix_double2ptime(FAR_FUTURE_COMPARISON);
     double far_future_time = goby::common::ptime2unix_double(far_future_ptime);
-    std::cout << FAR_FUTURE_COMPARISON_PTIME << "=?" << far_future_ptime << "=?" << far_future_time << "=?" << FAR_FUTURE_COMPARISON << std::endl;
-    
-    assert(double_cmp(far_future_time,FAR_FUTURE_COMPARISON, 5));
+    std::cout << FAR_FUTURE_COMPARISON_PTIME << "=?" << far_future_ptime << "=?" << far_future_time
+              << "=?" << FAR_FUTURE_COMPARISON << std::endl;
+
+    assert(double_cmp(far_future_time, FAR_FUTURE_COMPARISON, 5));
 
     const std::uint64_t FAR_FUTURE_COMPARISON_UINT64 = FAR_FUTURE_COMPARISON * 1e6;
-    assert(goby::common::ptime2unix_microsec(goby::common::unix_microsec2ptime(FAR_FUTURE_COMPARISON_UINT64)) == FAR_FUTURE_COMPARISON_UINT64);
+    assert(goby::common::ptime2unix_microsec(goby::common::unix_microsec2ptime(
+               FAR_FUTURE_COMPARISON_UINT64)) == FAR_FUTURE_COMPARISON_UINT64);
 
-    
     std::cout << "all tests passed" << std::endl;
-    
+
     return 0;
 }

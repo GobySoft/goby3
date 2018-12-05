@@ -1,5 +1,4 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/moos/protobuf/goby_moos_app.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/moos/protobuf/goby_moos_app.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/queue.proto";
 import "goby/acomms/protobuf/amac_config.proto";
@@ -10,100 +9,170 @@ import "goby/moos/protobuf/transitional.proto";
 import "goby/moos/protobuf/translator.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
-
 message pAcommsHandlerConfig
 {
-  optional GobyMOOSAppConfig common = 1 [(goby.field).description="Configuration common to all Goby MOOS applications"]; // see goby_moos_app.proto
+    optional GobyMOOSAppConfig common = 1 [
+        (goby.field).description =
+            "Configuration common to all Goby MOOS applications"
+    ];  // see goby_moos_app.proto
 
-  // unique identifying integer (1-31) for this vehicle's modem
-  // setting this will set the modem_id for all the components of goby-acomms
-  required int32 modem_id = 2 [(goby.field).description="Unique number 1-31 to identify this node", (goby.field).example="1"];
+    // unique identifying integer (1-31) for this vehicle's modem
+    // setting this will set the modem_id for all the components of goby-acomms
+    required int32 modem_id = 2 [
+        (goby.field).description = "Unique number 1-31 to identify this node",
+        (goby.field).example = "1"
+    ];
 
-  optional goby.acomms.protobuf.DriverType driver_type = 3 [default = DRIVER_NONE, (goby.field).description="Corresponding primary driver for the type of physical acoustic modem used (used for sending and receiving)"];
-  optional goby.acomms.protobuf.DriverConfig driver_cfg = 4 [(goby.field).description="Configure the primary acoustic modem driver (used for sending and receiving)"]; 
+    optional goby.acomms.protobuf.DriverType driver_type = 3 [
+        default = DRIVER_NONE,
+        (goby.field).description =
+            "Corresponding primary driver for the type of physical acoustic "
+            "modem used (used for sending and receiving)"
+    ];
+    optional goby.acomms.protobuf.DriverConfig driver_cfg = 4
+        [(goby.field).description =
+             "Configure the primary acoustic modem driver (used for sending "
+             "and receiving)"];
 
-  repeated goby.acomms.protobuf.DriverType listen_driver_type = 30 [(goby.field).description="Optionally, add one or more additional drivers for listening (receiving) only."];
-  repeated goby.acomms.protobuf.DriverConfig listen_driver_cfg = 31 [(goby.field).description="Configuration for the additional drivers."]; 
-  
-  message DriverFailureApproach
-  {
-     enum DriverFailureTechnique 
-     { CONTINUALLY_RESTART_DRIVER = 1;
-       MOVE_LISTEN_DRIVER_TO_PRIMARY = 2;
-       DISABLE_AND_MOVE_LISTEN_DRIVER_TO_PRIMARY = 3;
-     }
-     optional DriverFailureTechnique technique = 1 [default = CONTINUALLY_RESTART_DRIVER];
-     optional int32 driver_backoff_sec = 2 [(goby.field).description="Seconds to wait until restarting a failed driver.", default = 60];
-  }
-  optional DriverFailureApproach driver_failure_approach = 32 [(goby.field).description="How to try to deal with a failed driver"];
+    repeated goby.acomms.protobuf.DriverType listen_driver_type = 30
+        [(goby.field).description =
+             "Optionally, add one or more additional drivers for listening "
+             "(receiving) only."];
+    repeated goby.acomms.protobuf.DriverConfig listen_driver_cfg = 31
+        [(goby.field).description =
+             "Configuration for the additional drivers."];
 
-  // amac
-  optional goby.acomms.protobuf.MACConfig mac_cfg = 5 [(goby.field).description="Configure the acoustic Medium Access Control"];
-  
-  // for queue
-  optional goby.acomms.protobuf.QueueManagerConfig queue_cfg = 6 [(goby.field).description="Configure the Priority Queuing layer"]; 
+    message DriverFailureApproach
+    {
+        enum DriverFailureTechnique
+        {
+            CONTINUALLY_RESTART_DRIVER = 1;
+            MOVE_LISTEN_DRIVER_TO_PRIMARY = 2;
+            DISABLE_AND_MOVE_LISTEN_DRIVER_TO_PRIMARY = 3;
+        }
+        optional DriverFailureTechnique technique = 1
+            [default = CONTINUALLY_RESTART_DRIVER];
+        optional int32 driver_backoff_sec = 2 [
+            (goby.field).description =
+                "Seconds to wait until restarting a failed driver.",
+            default = 60
+        ];
+    }
+    optional DriverFailureApproach driver_failure_approach = 32
+        [(goby.field).description = "How to try to deal with a failed driver"];
 
-  // for dccl
-  optional goby.acomms.protobuf.DCCLConfig dccl_cfg = 7 [(goby.field).description="Configure the Dynamic Compact Control Language Encoding/Decoding unit"];  
+    // amac
+    optional goby.acomms.protobuf.MACConfig mac_cfg = 5
+        [(goby.field).description =
+             "Configure the acoustic Medium Access Control"];
 
-  optional goby.acomms.protobuf.RouteManagerConfig route_cfg = 8 [(goby.field).description="Configure the Goby Routing unit"];  
+    // for queue
+    optional goby.acomms.protobuf.QueueManagerConfig queue_cfg = 6
+        [(goby.field).description = "Configure the Priority Queuing layer"];
 
-  
-  message MOOSVariables
-  {
-    optional string prefix = 1 [default="ACOMMS_",
-                                (goby.field).description="Prefix all MOOS variable names with this string"];
-    
-    // serial feed
-    optional string driver_raw_in = 10 [default="NMEA_IN"];
-    optional string driver_raw_out = 11 [default="NMEA_OUT"];
+    // for dccl
+    optional goby.acomms.protobuf.DCCLConfig dccl_cfg = 7
+        [(goby.field).description =
+             "Configure the Dynamic Compact Control Language Encoding/Decoding "
+             "unit"];
 
-    optional string driver_raw_msg_in = 12 [default="RAW_INCOMING"];
-    optional string driver_raw_msg_out = 13 [default="RAW_OUTGOING"];
-    
-    optional string driver_receive = 14 [default="MODEM_RECEIVE"];
-    optional string driver_transmit = 15 [default="MODEM_TRANSMIT"];
+    optional goby.acomms.protobuf.RouteManagerConfig route_cfg = 8
+        [(goby.field).description = "Configure the Goby Routing unit"];
 
-    optional string driver_cfg_update = 16 [default="DRIVER_CONFIG_UPDATE"];
-      
-    optional string queue_receive = 100 [default="QUEUE_RECEIVE"];
-    optional string queue_transmit = 101 [default="QUEUE_TRANSMIT"];
-    // acoustic acknowledgments get written here
-    optional string queue_ack_transmission = 102 [default="ACK"];
-    optional string queue_ack_original_msg = 103 [default="ACK_ORIGINAL"];
-    // expired messages (ttl ends)
-    optional string queue_expire = 104 [default="EXPIRE"];
-    optional string queue_size = 105 [default="QSIZE"];
-    optional string queue_flush = 106 [default="FLUSH_QUEUE"];
+    message MOOSVariables
+    {
+        optional string prefix = 1 [
+            default = "ACOMMS_",
+            (goby.field).description =
+                "Prefix all MOOS variable names with this string"
+        ];
 
-    optional string mac_cycle_update = 200 [default="MAC_CYCLE_UPDATE"];
-    optional string mac_initiate_transmission = 201 [default="MAC_INITIATE_TRANSMISSION"];
-    optional string mac_slot_start = 202 [default="MAC_SLOT_START"];
+        // serial feed
+        optional string driver_raw_in = 10 [default = "NMEA_IN"];
+        optional string driver_raw_out = 11 [default = "NMEA_OUT"];
 
-    optional string config_file = 300 [default="CONFIG"];
-    optional string config_file_request = 301 [default="CONFIG_REQUEST"];
-      
-    optional string driver_reset = 400 [default="DRIVER_RESET"];
+        optional string driver_raw_msg_in = 12 [default = "RAW_INCOMING"];
+        optional string driver_raw_msg_out = 13 [default = "RAW_OUTGOING"];
 
-    optional string ifrontseat_data_out = 500 [default="IFS_DATA_OUT"];
-  }
-  optional MOOSVariables moos_var = 10;
-  
-  repeated string load_shared_library = 20 [(goby.field).description="Path to a shared library containing compiled DCCL protobuf files. Preferred over load_dccl_proto_file.", (goby.field).example="/usr/lib/libmy_dccl_messages.so"];
+        optional string driver_receive = 14 [default = "MODEM_RECEIVE"];
+        optional string driver_transmit = 15 [default = "MODEM_TRANSMIT"];
 
-  repeated string load_proto_file = 21 [(goby.field).description="Path to a DCCL protobuf file. Use load_shared_library when possible.", (goby.field).example="/usr/include/mylib/message.proto"];
+        optional string driver_cfg_update = 16
+            [default = "DRIVER_CONFIG_UPDATE"];
 
-  repeated goby.moos.protobuf.TranslatorEntry translator_entry = 22 [(goby.field).description="Describes how to trigger (generate) a DCCL message from a MOOS event and how to publish the contents of the message upon receipt"];
+        optional string queue_receive = 100 [default = "QUEUE_RECEIVE"];
+        optional string queue_transmit = 101 [default = "QUEUE_TRANSMIT"];
+        // acoustic acknowledgments get written here
+        optional string queue_ack_transmission = 102 [default = "ACK"];
+        optional string queue_ack_original_msg = 103 [default = "ACK_ORIGINAL"];
+        // expired messages (ttl ends)
+        optional string queue_expire = 104 [default = "EXPIRE"];
+        optional string queue_size = 105 [default = "QSIZE"];
+        optional string queue_flush = 106 [default = "FLUSH_QUEUE"];
 
-  repeated string multiplex_create_moos_var = 23 [(goby.field).description="Used primarily by goby_liaison. Specify a MOOS variable that contains one of many TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT encoded protobuf messages. Upon receipt of a message, the `create` directives for this type are *published* (inverse of normal behavior), which triggers the creation of the message (if `trigger` is set to one of the `create` MOOS variables).",  (goby.field).example="LIAISON_COMMANDER_OUT"];
+        optional string mac_cycle_update = 200 [default = "MAC_CYCLE_UPDATE"];
+        optional string mac_initiate_transmission = 201
+            [default = "MAC_INITIATE_TRANSMISSION"];
+        optional string mac_slot_start = 202 [default = "MAC_SLOT_START"];
 
-  repeated string dccl_frontseat_forward_name = 24 [(goby.field).description="Full name of DCCL Protobuf message to foward to iFrontSeat"];
-    
-  // path to text file with entries:
-  //   modem_id,name,type
-  // for example
-  //   3,unicorn,auv
-  optional string modem_id_lookup_path = 101 [(goby.field).description="Path to file containing mapping between modem_id and vehicle name & type",(goby.field).moos_global = "modem_id_lookup_path"];
+        optional string config_file = 300 [default = "CONFIG"];
+        optional string config_file_request = 301 [default = "CONFIG_REQUEST"];
 
-  optional goby.transitional.protobuf.DCCLTransitionalConfig transitional_cfg = 200 [(goby.field).description="Backwards compatibility for DCCLv1 XML file"]; // see transitional.proto  
+        optional string driver_reset = 400 [default = "DRIVER_RESET"];
+
+        optional string ifrontseat_data_out = 500 [default = "IFS_DATA_OUT"];
+    }
+    optional MOOSVariables moos_var = 10;
+
+    repeated string load_shared_library = 20 [
+        (goby.field).description =
+            "Path to a shared library containing compiled DCCL protobuf files. "
+            "Preferred over load_dccl_proto_file.",
+        (goby.field).example = "/usr/lib/libmy_dccl_messages.so"
+    ];
+
+    repeated string load_proto_file = 21 [
+        (goby.field).description =
+            "Path to a DCCL protobuf file. Use load_shared_library when "
+            "possible.",
+        (goby.field).example = "/usr/include/mylib/message.proto"
+    ];
+
+    repeated goby.moos.protobuf.TranslatorEntry translator_entry = 22
+        [(goby.field).description =
+             "Describes how to trigger (generate) a DCCL message from a MOOS "
+             "event and how to publish the contents of the message upon "
+             "receipt"];
+
+    repeated string multiplex_create_moos_var = 23 [
+        (goby.field).description =
+            "Used primarily by goby_liaison. Specify a MOOS variable that "
+            "contains one of many TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT "
+            "encoded protobuf messages. Upon receipt of a message, the "
+            "`create` directives for this type are *published* (inverse of "
+            "normal behavior), which triggers the creation of the message (if "
+            "`trigger` is set to one of the `create` MOOS variables).",
+        (goby.field).example = "LIAISON_COMMANDER_OUT"
+    ];
+
+    repeated string dccl_frontseat_forward_name = 24
+        [(goby.field).description =
+             "Full name of DCCL Protobuf message to foward to iFrontSeat"];
+
+    // path to text file with entries:
+    //   modem_id,name,type
+    // for example
+    //   3,unicorn,auv
+    optional string modem_id_lookup_path = 101 [
+        (goby.field).description =
+            "Path to file containing mapping between modem_id and vehicle name "
+            "& type",
+        (goby.field).moos_global = "modem_id_lookup_path"
+    ];
+
+    optional goby.transitional.protobuf.DCCLTransitionalConfig
+        transitional_cfg = 200 [
+        (goby.field).description =
+            "Backwards compatibility for DCCLv1 XML file"
+    ];  // see transitional.proto
 }

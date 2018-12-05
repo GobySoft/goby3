@@ -20,7 +20,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-// modified for C++ by s. petillo spetillo@mit.edu 
+// modified for C++ by s. petillo spetillo@mit.edu
 // ocean engineering graduate student - mit / whoi joint program
 // massachusetts institute of technology (mit)
 // laboratory for autonomous marine sensing systems (lamss)
@@ -29,7 +29,6 @@
 #define PRESSUREH
 
 #include <cmath>
-
 
 // Calculate water density anomaly at a given Salinity, Temperature, Pressure using the seawater Equation of State.
 // Taken directly from MATLAB OceansToolbox pressure.m
@@ -54,14 +53,13 @@ inline double depth2pressure(double DPTH, double XLAT)
     */
 
     using namespace std; // for math functions
-    
-    
+
     const double pi = 3.14159;
-    
-    double PLAT=abs(XLAT*pi/180);
-    double D=sin(PLAT);
-    double C1=(5.92E-3)+(D*D)*(5.25E-3);
-    double P80=((1-C1)-sqrt(((1-C1)*(1-C1))-((8.84E-6)*DPTH)))/4.42E-6;
+
+    double PLAT = abs(XLAT * pi / 180);
+    double D = sin(PLAT);
+    double C1 = (5.92E-3) + (D * D) * (5.25E-3);
+    double P80 = ((1 - C1) - sqrt(((1 - C1) * (1 - C1)) - ((8.84E-6) * DPTH))) / 4.42E-6;
 
     return P80;
 }

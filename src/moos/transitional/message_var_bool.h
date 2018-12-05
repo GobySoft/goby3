@@ -28,22 +28,18 @@
 namespace goby
 {
 namespace transitional
-{   
-    class DCCLMessageVarBool : public DCCLMessageVar
-    {
-      public:
-        DCCLType type() const { return dccl_bool; }
-        
-      private:
-        void initialize_specific()
-        { }
-        
+{
+class DCCLMessageVarBool : public DCCLMessageVar
+{
+  public:
+    DCCLType type() const { return dccl_bool; }
 
-        void get_display_specific(std::stringstream& ss) const
-        { }        
+  private:
+    void initialize_specific() {}
 
-    };
-}
-}
+    void get_display_specific(std::stringstream& ss) const {}
+};
+} // namespace transitional
+} // namespace goby
 
 #endif

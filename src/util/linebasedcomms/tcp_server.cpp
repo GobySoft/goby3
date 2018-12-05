@@ -22,72 +22,81 @@
 
 #include "tcp_server.h"
 
-boost::shared_ptr<goby::util::TCPConnection> goby::util::TCPConnection::create(LineBasedInterface* interface)
+boost::shared_ptr<goby::util::TCPConnection>
+goby::util::TCPConnection::create(LineBasedInterface* interface)
 {
     return boost::shared_ptr<TCPConnection>(new TCPConnection(interface));
-}        
+}
 
 void goby::util::TCPConnection::socket_write(const protobuf::Datagram& line) // give it a string
 {
     bool write_in_progress = !out().empty(); // is there anything currently being written?
-    out().push_back(line); // store in write buffer
-    if (!write_in_progress) // if nothing is currently being written, then start
+    out().push_back(line);                   // store in write buffer
+    if (!write_in_progress)                  // if nothing is currently being written, then start
         write_start();
 }
 
 void goby::util::TCPConnection::socket_close(const boost::system::error_code& error)
 { // something has gone wrong, so close the socket & make this object inactive
-    if (error == boost::asio::error::operation_aborted) // if this call is thex result of a timer cancel()
+    if (error ==
+        boost::asio::error::operation_aborted) // if this call is thex result of a timer cancel()
         return; // ignore it because the connection cancelled the timer
-    
-    if(error)
+
+    if (error)
         socket_.close();
 }
 
-    
 void goby::util::TCPServer::do_write(const protobuf::Datagram& line)
 {
-    if(line.has_dest())
+    if (line.has_dest())
     {
-        std::map< Endpoint, boost::shared_ptr<TCPConnection> >::iterator it = connections_.find(line.dest());
-        if(it != connections_.end())
+        std::map<Endpoint, boost::shared_ptr<TCPConnection> >::iterator it =
+            connections_.find(line.dest());
+        if (it != connections_.end())
             (it->second)->write(line);
     }
     else
     {
-        for(std::map< Endpoint, boost::shared_ptr<TCPConnection> >::iterator it = connections_.begin(),
-                end = connections_.end(); it != end; ++it)
+        for (std::map<Endpoint, boost::shared_ptr<TCPConnection> >::iterator
+                 it = connections_.begin(),
+                 end = connections_.end();
+             it != end; ++it)
             (it->second)->write(line);
-    }    
+    }
 }
 
 // close all the connections, it's up to the clients to try to reconnect
-void goby::util::TCPServer::do_close(const boost::system::error_code& error, goby::util::TCPServer::Endpoint endpt /* = ""*/)
+void goby::util::TCPServer::do_close(const boost::system::error_code& error,
+                                     goby::util::TCPServer::Endpoint endpt /* = ""*/)
 {
-    if(!endpt.empty())
+    if (!endpt.empty())
     {
-        std::map< Endpoint, boost::shared_ptr<TCPConnection> >::iterator it = connections_.find(endpt);
-        if(it != connections_.end())
+        std::map<Endpoint, boost::shared_ptr<TCPConnection> >::iterator it =
+            connections_.find(endpt);
+        if (it != connections_.end())
             (it->second)->close(error);
     }
     else
     {
-        for(std::map< Endpoint, boost::shared_ptr<TCPConnection> >::iterator it = connections_.begin(),
-                end = connections_.end(); it != end; ++it)
+        for (std::map<Endpoint, boost::shared_ptr<TCPConnection> >::iterator
+                 it = connections_.begin(),
+                 end = connections_.end();
+             it != end; ++it)
             (it->second)->close(error);
     }
-}    
+}
 
-const std::map< goby::util::TCPServer::Endpoint, boost::shared_ptr<goby::util::TCPConnection> >& goby::util::TCPServer::connections()
+const std::map<goby::util::TCPServer::Endpoint, boost::shared_ptr<goby::util::TCPConnection> >&
+goby::util::TCPServer::connections()
 {
-    typedef std::map< Endpoint, boost::shared_ptr<TCPConnection> >::iterator It;
+    typedef std::map<Endpoint, boost::shared_ptr<TCPConnection> >::iterator It;
     It it = connections_.begin(), it_end = connections_.end();
-    while(it != it_end)
+    while (it != it_end)
     {
-        if(!(it->second)->socket().is_open())
+        if (!(it->second)->socket().is_open())
         {
             It to_delete = it;
-            ++it;   // increment before erasing!
+            ++it; // increment before erasing!
             connections_.erase(to_delete);
         }
         else
@@ -96,17 +105,18 @@ const std::map< goby::util::TCPServer::Endpoint, boost::shared_ptr<goby::util::T
         }
     }
     return connections_;
-}   
-
+}
 
 void goby::util::TCPServer::start_accept()
 {
     new_connection_ = TCPConnection::create(this);
     acceptor_.async_accept(new_connection_->socket(),
-                           boost::bind(&TCPServer::handle_accept, this, new_connection_, boost::asio::placeholders::error));
+                           boost::bind(&TCPServer::handle_accept, this, new_connection_,
+                                       boost::asio::placeholders::error));
 }
 
-void goby::util::TCPServer::handle_accept(boost::shared_ptr<TCPConnection> new_connection, const boost::system::error_code& error)
+void goby::util::TCPServer::handle_accept(boost::shared_ptr<TCPConnection> new_connection,
+                                          const boost::system::error_code& error)
 {
     if (!error)
     {

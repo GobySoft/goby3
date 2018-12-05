@@ -21,21 +21,19 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "modem_id_convert.h"
-#include <string>
-#include <vector>
 #include "goby/util/as.h"
 #include <boost/algorithm/string.hpp>
+#include <string>
+#include <vector>
 
 using namespace std;
 using goby::util::as;
 
 std::string goby::moos::ModemIdConvert::read_lookup_file(string path)
 {
-        
     stringstream ss;
     ss << "***********************************" << endl;
     ss << "modem_id_convert trying to read modem id lookup file" << endl;
-        
 
     ifstream fin;
 
@@ -49,107 +47,104 @@ std::string goby::moos::ModemIdConvert::read_lookup_file(string path)
     }
 
     ss << "reading in modem id lookup table:" << endl;
-      
-    while(fin)
+
+    while (fin)
     {
         string sline;
         getline(fin, sline);
-            
+
         // strip the spaces and comments out
         string::size_type pos = sline.find(' ');
-        while(pos != string::npos)
+        while (pos != string::npos)
         {
             sline.erase(pos, 1);
             pos = sline.find(' ');
         }
         pos = sline.find('#');
-        while(pos != string::npos)
+        while (pos != string::npos)
         {
             sline.erase(pos);
             pos = sline.find('#');
         }
         pos = sline.find("//");
-        while(pos != string::npos)
+        while (pos != string::npos)
         {
             sline.erase(pos);
             pos = sline.find("//");
         }
 
         // ignore blank lines
-        if(sline != "")
+        if (sline != "")
         {
             vector<string> line_parsed;
             boost::algorithm::split(line_parsed, sline, boost::is_any_of(","));
-                
-            if(line_parsed.size() < 3)
-                ss << "invalid line: " <<  sline << endl;
+
+            if (line_parsed.size() < 3)
+                ss << "invalid line: " << sline << endl;
             else
             {
                 string location_name;
-                if(line_parsed.size() < 4)
+                if (line_parsed.size() < 4)
                     location_name = line_parsed[1];
                 else
                     location_name = line_parsed[3];
-                    
-                    
-                ss << "modem id [" << line_parsed[0] << "], name [" << line_parsed[1] << "], type [" << line_parsed[2] << "]" << ", location name [" << location_name << "]" << endl;
+
+                ss << "modem id [" << line_parsed[0] << "], name [" << line_parsed[1] << "], type ["
+                   << line_parsed[2] << "]"
+                   << ", location name [" << location_name << "]" << endl;
 
                 int id = atoi(line_parsed[0].c_str());
 
                 //add the entry to our lookup vectors
 
-                names_[id] =  line_parsed[1];
+                names_[id] = line_parsed[1];
 
                 max_name_length_ = max(names_[id].length(), max_name_length_);
                 max_id_ = max(id, max_id_);
-                    
-                    
-                types_[id] =  line_parsed[2];
+
+                types_[id] = line_parsed[2];
                 locations_[id] = location_name;
             }
         }
     }
 
     fin.close();
-        
+
     ss << "***********************************" << endl;
     return ss.str();
-}    
-        
+}
+
 string goby::moos::ModemIdConvert::get_name_from_id(int id)
 {
-    if(names_.count(id))
+    if (names_.count(id))
         return names_[id]; // return the found name
     else
         return as<string>(id); // if not in the lookup table, just give the number back as a string
 }
-    
-    
+
 string goby::moos::ModemIdConvert::get_type_from_id(int id)
 {
-    if(types_.count(id))
+    if (types_.count(id))
         return types_[id];
     else
-        return "unknown_type";    
+        return "unknown_type";
 }
-    
+
 string goby::moos::ModemIdConvert::get_location_from_id(int id)
 {
-    if(locations_.count(id))
+    if (locations_.count(id))
         return locations_[id];
     else
         return as<string>(id);
 }
-    
+
 int goby::moos::ModemIdConvert::get_id_from_name(string name)
 {
-    for (map<int,string>::iterator it = names_.begin(); it != names_.end(); ++it)
+    for (map<int, string>::iterator it = names_.begin(); it != names_.end(); ++it)
     {
-        if(boost::iequals(it->second, name))
+        if (boost::iequals(it->second, name))
             return it->first;
     }
-        
-        
+
     return int(as<double>(name));
 }
-

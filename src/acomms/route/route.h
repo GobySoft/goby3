@@ -23,74 +23,51 @@
 #ifndef ROUTE20120410
 #define ROUTE20120410
 
-#include "goby/acomms/protobuf/route.pb.h"
 #include "goby/acomms/protobuf/queue.pb.h"
+#include "goby/acomms/protobuf/route.pb.h"
 #include "goby/acomms/queue/queue_manager.h"
 
 namespace goby
 {
-    namespace acomms
-    {
-        class RouteManager
-        {
-          public:
-            RouteManager()
-            {
-                glog.add_group("goby::acomms::route", common::Colors::yellow);
-            }
-            ~RouteManager() { }
-            
+namespace acomms
+{
+class RouteManager
+{
+  public:
+    RouteManager() { glog.add_group("goby::acomms::route", common::Colors::yellow); }
+    ~RouteManager() {}
 
-            void set_cfg(const protobuf::RouteManagerConfig& cfg);
-            void merge_cfg(const protobuf::RouteManagerConfig& cfg);
+    void set_cfg(const protobuf::RouteManagerConfig& cfg);
+    void merge_cfg(const protobuf::RouteManagerConfig& cfg);
 
-            void handle_in(const protobuf::QueuedMessageMeta& meta,
-                           const google::protobuf::Message& data_msg,
-                           int modem_id);
-            
-            void handle_out(protobuf::QueuedMessageMeta* meta,
-                            const google::protobuf::Message& data_msg,
-                            int modem_id);
-            
-            void add_subnet_queue(QueueManager* manager);
+    void handle_in(const protobuf::QueuedMessageMeta& meta,
+                   const google::protobuf::Message& data_msg, int modem_id);
 
-            bool is_in_route(int modem_id)
-            { return route_index(modem_id) != -1; }
-            
-            int route_index(int modem_id);
+    void handle_out(protobuf::QueuedMessageMeta* meta, const google::protobuf::Message& data_msg,
+                    int modem_id);
 
-            int find_next_hop(int us, int dest);
-            int find_next_route_hop(int us, int dest);
-            
-            
-          private:
-            RouteManager(const RouteManager&);
-            RouteManager& operator= (const RouteManager&);
+    void add_subnet_queue(QueueManager* manager);
 
-            void process_cfg();
+    bool is_in_route(int modem_id) { return route_index(modem_id) != -1; }
 
-          private:
-            protobuf::RouteManagerConfig cfg_;
+    int route_index(int modem_id);
 
-            // maps (modem_id & subnet_mask) onto QueueManager
-            std::map<std::uint32_t, QueueManager*> subnet_map_;
-        };
-    }
-}
+    int find_next_hop(int us, int dest);
+    int find_next_route_hop(int us, int dest);
 
+  private:
+    RouteManager(const RouteManager&);
+    RouteManager& operator=(const RouteManager&);
 
+    void process_cfg();
 
+  private:
+    protobuf::RouteManagerConfig cfg_;
 
-
-
-
-
-
-
-
-
-
-
-
+    // maps (modem_id & subnet_mask) onto QueueManager
+    std::map<std::uint32_t, QueueManager*> subnet_map_;
+};
+} // namespace acomms
+} // namespace goby
 
 #endif

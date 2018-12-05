@@ -1,33 +1,32 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/acomms/protobuf/modem_message.proto";
+@PROTOBUF_SYNTAX_VERSION @import "goby/acomms/protobuf/modem_message.proto";
 
 package goby.acomms.protobuf;
 
 message MTDataRequest
 {
-  repeated goby.acomms.protobuf.ModemTransmission outbox = 2;
-  optional uint64 request_id = 3;
+    repeated goby.acomms.protobuf.ModemTransmission outbox = 2;
+    optional uint64 request_id = 3;
 
-  message Command
-  {
-      required int32 modem_id = 1;
-      enum CommandType
-      { 
-          SEND_BYE = 1;
-          HANGUP = 2;
-      }
-      required CommandType type = 2;
-  }
-  repeated Command command = 4;
+    message Command
+    {
+        required int32 modem_id = 1;
+        enum CommandType
+        {
+            SEND_BYE = 1;
+            HANGUP = 2;
+        }
+        required CommandType type = 2;
+    }
+    repeated Command command = 4;
 }
 
 message MTDataResponse
 {
-  repeated int32 modem_id_connected = 1;
-  optional uint64 request_id = 4;
+    repeated int32 modem_id_connected = 1;
+    optional uint64 request_id = 4;
 }
 
 message MODataAsyncReceive
 {
-  required goby.acomms.protobuf.ModemTransmission inbox = 2;
+    required goby.acomms.protobuf.ModemTransmission inbox = 2;
 }

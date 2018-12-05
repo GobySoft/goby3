@@ -23,9 +23,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
 
-
-#include "goby/util/sci.h"
 #include "goby/acomms/dccl.h"
+#include "goby/util/sci.h"
 
 #include "moos_translator.h"
 
@@ -35,7 +34,7 @@ void goby::moos::MOOSTranslator::initialize(double lat_origin, double lon_origin
                                             const std::string& modem_id_lookup_path)
 {
     transitional::DCCLAlgorithmPerformer* ap = transitional::DCCLAlgorithmPerformer::getInstance();
-                
+
     // set up algorithms
     ap->add_algorithm("power_to_dB", &alg_power_to_dB);
     ap->add_algorithm("dB_to_power", &alg_dB_to_power);
@@ -57,47 +56,48 @@ void goby::moos::MOOSTranslator::initialize(double lat_origin, double lon_origin
     ap->add_adv_algorithm("add", &alg_add);
     ap->add_adv_algorithm("subtract", &alg_subtract);
 
-    
-    if(!modem_id_lookup_path.empty())
+    if (!modem_id_lookup_path.empty())
     {
         std::string id_lookup_output = modem_lookup_.read_lookup_file(modem_id_lookup_path);
-        goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << id_lookup_output  << std::flush;
-        
-        ap->add_algorithm("modem_id2name", boost::bind(&MOOSTranslator::alg_modem_id2name, this, _1));
-        ap->add_algorithm("modem_id2type", boost::bind(&MOOSTranslator::alg_modem_id2type, this, _1));
-        ap->add_algorithm("name2modem_id", boost::bind(&MOOSTranslator::alg_name2modem_id, this, _1));
+        goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << id_lookup_output << std::flush;
+
+        ap->add_algorithm("modem_id2name",
+                          boost::bind(&MOOSTranslator::alg_modem_id2name, this, _1));
+        ap->add_algorithm("modem_id2type",
+                          boost::bind(&MOOSTranslator::alg_modem_id2type, this, _1));
+        ap->add_algorithm("name2modem_id",
+                          boost::bind(&MOOSTranslator::alg_name2modem_id, this, _1));
 
         // set up conversion for DCCLModemIdConverterCodec
         //for(std::map<int, std::string>::const_iterator it = modem_lookup_.names().begin(),
         //        end = modem_lookup_.names().end(); it != end; ++it)
         //    goby::acomms::DCCLModemIdConverterCodec::add(it->second, it->first);
-            
     }
-    
-    if(!(boost::math::isnan)(lat_origin) && !(boost::math::isnan)(lon_origin))
+
+    if (!(boost::math::isnan)(lat_origin) && !(boost::math::isnan)(lon_origin))
     {
-        if(geodesy_.Initialise(lat_origin, lon_origin))
+        if (geodesy_.Initialise(lat_origin, lon_origin))
         {
-            ap->add_adv_algorithm("lat2utm_y", boost::bind(&MOOSTranslator::alg_lat2utm_y, this, _1, _2));
-            ap->add_adv_algorithm("lon2utm_x", boost::bind(&MOOSTranslator::alg_lon2utm_x, this, _1, _2));
-            ap->add_adv_algorithm("utm_x2lon", boost::bind(&MOOSTranslator::alg_utm_x2lon, this, _1, _2));
-            ap->add_adv_algorithm("utm_y2lat", boost::bind(&MOOSTranslator::alg_utm_y2lat, this, _1, _2));
+            ap->add_adv_algorithm("lat2utm_y",
+                                  boost::bind(&MOOSTranslator::alg_lat2utm_y, this, _1, _2));
+            ap->add_adv_algorithm("lon2utm_x",
+                                  boost::bind(&MOOSTranslator::alg_lon2utm_x, this, _1, _2));
+            ap->add_adv_algorithm("utm_x2lon",
+                                  boost::bind(&MOOSTranslator::alg_utm_x2lon, this, _1, _2));
+            ap->add_adv_algorithm("utm_y2lat",
+                                  boost::bind(&MOOSTranslator::alg_utm_y2lat, this, _1, _2));
         }
     }
-
-
-    
 }
-
 
 void goby::moos::alg_power_to_dB(transitional::DCCLMessageVal& val_to_mod)
 {
-    val_to_mod = 10*log10(double(val_to_mod));
+    val_to_mod = 10 * log10(double(val_to_mod));
 }
 
 void goby::moos::alg_dB_to_power(transitional::DCCLMessageVal& val_to_mod)
 {
-    val_to_mod = pow(10.0, double(val_to_mod)/10.0);
+    val_to_mod = pow(10.0, double(val_to_mod) / 10.0);
 }
 
 // applied to "T" (temperature), references are "S" (salinity), then "D" (depth)
@@ -107,113 +107,112 @@ void goby::moos::alg_TSD_to_soundspeed(transitional::DCCLMessageVal& val,
     val.set(goby::util::mackenzie_soundspeed(val, ref_vals[0], ref_vals[1]), 3);
 }
 
-
 void goby::moos::alg_angle_0_360(transitional::DCCLMessageVal& angle)
 {
     double a = angle;
-    while (a < 0)
-        a += 360;
-    while (a >=360)
-        a -= 360;
+    while (a < 0) a += 360;
+    while (a >= 360) a -= 360;
     angle = a;
 }
 
 void goby::moos::alg_angle_n180_180(transitional::DCCLMessageVal& angle)
 {
     double a = angle;
-    while (a < -180)
-        a += 360;
-    while (a >=180)
-        a -= 360;
+    while (a < -180) a += 360;
+    while (a >= 180) a -= 360;
     angle = a;
 }
 
-void goby::moos::MOOSTranslator::alg_lat2utm_y(transitional::DCCLMessageVal& mv,
-                               const std::vector<transitional::DCCLMessageVal>& ref_vals)
+void goby::moos::MOOSTranslator::alg_lat2utm_y(
+    transitional::DCCLMessageVal& mv, const std::vector<transitional::DCCLMessageVal>& ref_vals)
 {
     double lat = mv;
     double lon = ref_vals[0];
     double x = NaN;
     double y = NaN;
-        
-    if(!(boost::math::isnan)(lat) && !(boost::math::isnan)(lon)) geodesy_.LatLong2LocalUTM(lat, lon, y, x);        
+
+    if (!(boost::math::isnan)(lat) && !(boost::math::isnan)(lon))
+        geodesy_.LatLong2LocalUTM(lat, lon, y, x);
     mv = y;
 }
 
-void goby::moos::MOOSTranslator::alg_lon2utm_x(transitional::DCCLMessageVal& mv,
-                               const std::vector<transitional::DCCLMessageVal>& ref_vals)
+void goby::moos::MOOSTranslator::alg_lon2utm_x(
+    transitional::DCCLMessageVal& mv, const std::vector<transitional::DCCLMessageVal>& ref_vals)
 {
     double lon = mv;
     double lat = ref_vals[0];
     double x = NaN;
     double y = NaN;
 
-    if(!(boost::math::isnan)(lat) && !(boost::math::isnan)(lon)) geodesy_.LatLong2LocalUTM(lat, lon, y, x);
+    if (!(boost::math::isnan)(lat) && !(boost::math::isnan)(lon))
+        geodesy_.LatLong2LocalUTM(lat, lon, y, x);
     mv = x;
 }
 
-
-void goby::moos::MOOSTranslator::alg_utm_x2lon(transitional::DCCLMessageVal& mv,
-                               const std::vector<transitional::DCCLMessageVal>& ref_vals)
+void goby::moos::MOOSTranslator::alg_utm_x2lon(
+    transitional::DCCLMessageVal& mv, const std::vector<transitional::DCCLMessageVal>& ref_vals)
 {
     double x = mv;
     double y = ref_vals[0];
 
     double lat = NaN;
     double lon = NaN;
-    if(!(boost::math::isnan)(y) && !(boost::math::isnan)(x)) geodesy_.UTM2LatLong(x, y, lat, lon);    
+    if (!(boost::math::isnan)(y) && !(boost::math::isnan)(x))
+        geodesy_.UTM2LatLong(x, y, lat, lon);
 
     const int LON_INT_DIGITS = 3;
-    lon = goby::util::unbiased_round(lon, std::numeric_limits<double>::digits10 - LON_INT_DIGITS-1);   
+    lon =
+        goby::util::unbiased_round(lon, std::numeric_limits<double>::digits10 - LON_INT_DIGITS - 1);
     mv = lon;
 }
 
-void goby::moos::MOOSTranslator::alg_utm_y2lat(transitional::DCCLMessageVal& mv,
-                                               const std::vector<transitional::DCCLMessageVal>& ref_vals)
+void goby::moos::MOOSTranslator::alg_utm_y2lat(
+    transitional::DCCLMessageVal& mv, const std::vector<transitional::DCCLMessageVal>& ref_vals)
 {
     double y = mv;
     double x = ref_vals[0];
-    
+
     double lat = NaN;
     double lon = NaN;
-    if(!(boost::math::isnan)(x) && !(boost::math::isnan)(y)) geodesy_.UTM2LatLong(x, y, lat, lon);
-    
+    if (!(boost::math::isnan)(x) && !(boost::math::isnan)(y))
+        geodesy_.UTM2LatLong(x, y, lat, lon);
+
     const int LAT_INT_DIGITS = 2;
-    lat = goby::util::unbiased_round(lat, std::numeric_limits<double>::digits10 - LAT_INT_DIGITS-1);   
+    lat =
+        goby::util::unbiased_round(lat, std::numeric_limits<double>::digits10 - LAT_INT_DIGITS - 1);
     mv = lat;
 }
 
-
-
-
- void goby::moos::MOOSTranslator::alg_modem_id2name(transitional::DCCLMessageVal& in)
- {
+void goby::moos::MOOSTranslator::alg_modem_id2name(transitional::DCCLMessageVal& in)
+{
     bool is_numeric = true;
-    BOOST_FOREACH(const char c, std::string(in))
+    BOOST_FOREACH (const char c, std::string(in))
     {
-        if(!isdigit(c))
+        if (!isdigit(c))
         {
             is_numeric = false;
             break;
         }
     }
-    if(is_numeric) in = modem_lookup_.get_name_from_id(boost::lexical_cast<unsigned>(std::string(in)));
- }
- 
- void goby::moos::MOOSTranslator::alg_modem_id2type(transitional::DCCLMessageVal& in)
- {
+    if (is_numeric)
+        in = modem_lookup_.get_name_from_id(boost::lexical_cast<unsigned>(std::string(in)));
+}
+
+void goby::moos::MOOSTranslator::alg_modem_id2type(transitional::DCCLMessageVal& in)
+{
     bool is_numeric = true;
-    BOOST_FOREACH(const char c, std::string(in))
+    BOOST_FOREACH (const char c, std::string(in))
     {
-        if(!isdigit(c))
+        if (!isdigit(c))
         {
             is_numeric = false;
             break;
-        }    
+        }
     }
 
-    if(is_numeric) in = modem_lookup_.get_type_from_id(boost::lexical_cast<unsigned>(std::string(in)));
- }
+    if (is_numeric)
+        in = modem_lookup_.get_type_from_id(boost::lexical_cast<unsigned>(std::string(in)));
+}
 
 void goby::moos::MOOSTranslator::alg_name2modem_id(transitional::DCCLMessageVal& in)
 {
@@ -221,9 +220,6 @@ void goby::moos::MOOSTranslator::alg_name2modem_id(transitional::DCCLMessageVal&
     ss << modem_lookup_.get_id_from_name(std::string(in));
     in = ss.str();
 }
-
-
-
 
 void goby::moos::alg_to_upper(transitional::DCCLMessageVal& val_to_mod)
 {
@@ -238,16 +234,16 @@ void goby::moos::alg_to_lower(transitional::DCCLMessageVal& val_to_mod)
 void goby::moos::alg_lat2hemisphere_initial(transitional::DCCLMessageVal& val_to_mod)
 {
     double lat = val_to_mod;
-    if(lat < 0)
+    if (lat < 0)
         val_to_mod = "S";
     else
-        val_to_mod = "N";        
+        val_to_mod = "N";
 }
 
 void goby::moos::alg_lon2hemisphere_initial(transitional::DCCLMessageVal& val_to_mod)
 {
     double lon = val_to_mod;
-    if(lon < 0)
+    if (lon < 0)
         val_to_mod = "W";
     else
         val_to_mod = "E";
@@ -265,11 +261,13 @@ void goby::moos::alg_unix_time2nmea_time(transitional::DCCLMessageVal& val_to_mo
 
     // HHMMSS.SSSSSS
     boost::format f("%02d%02d%02d.%06d");
-    f % ptime.time_of_day().hours() % ptime.time_of_day().minutes() % ptime.time_of_day().seconds() % (ptime.time_of_day().fractional_seconds() * 1000000 / boost::posix_time::time_duration::ticks_per_second());
-    
+    f % ptime.time_of_day().hours() % ptime.time_of_day().minutes() %
+        ptime.time_of_day().seconds() %
+        (ptime.time_of_day().fractional_seconds() * 1000000 /
+         boost::posix_time::time_duration::ticks_per_second());
+
     val_to_mod = f.str();
 }
-
 
 void goby::moos::alg_lat2nmea_lat(transitional::DCCLMessageVal& val_to_mod)
 {
@@ -283,12 +281,10 @@ void goby::moos::alg_lat2nmea_lat(transitional::DCCLMessageVal& val_to_mod)
     int ten_thousandth_minutes = std::floor(((lat - degrees) * 60 - minutes) * 10000);
 
     f % degrees % minutes % ten_thousandth_minutes;
-    
+
     val_to_mod = f.str();
 }
 
-
-    
 void goby::moos::alg_lon2nmea_lon(transitional::DCCLMessageVal& val_to_mod)
 {
     double lon = val_to_mod;
@@ -305,14 +301,14 @@ void goby::moos::alg_lon2nmea_lon(transitional::DCCLMessageVal& val_to_mod)
     val_to_mod = f.str();
 }
 
-
 void goby::moos::alg_subtract(transitional::DCCLMessageVal& val_to_mod,
                               const std::vector<transitional::DCCLMessageVal>& ref_vals)
 {
     double diff = val_to_mod;
 
-    for(std::vector<transitional::DCCLMessageVal>::const_iterator it = ref_vals.begin(),
-            end = ref_vals.end(); it != end; ++it)
+    for (std::vector<transitional::DCCLMessageVal>::const_iterator it = ref_vals.begin(),
+                                                                   end = ref_vals.end();
+         it != end; ++it)
         diff -= static_cast<double>(*it);
 
     val_to_mod = diff;
@@ -323,10 +319,10 @@ void goby::moos::alg_add(transitional::DCCLMessageVal& val_to_mod,
 {
     double sum = val_to_mod;
 
-    for(std::vector<transitional::DCCLMessageVal>::const_iterator it = ref_vals.begin(),
-            end = ref_vals.end(); it != end; ++it)
+    for (std::vector<transitional::DCCLMessageVal>::const_iterator it = ref_vals.begin(),
+                                                                   end = ref_vals.end();
+         it != end; ++it)
         sum += static_cast<double>(*it);
 
     val_to_mod = sum;
 }
-

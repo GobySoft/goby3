@@ -29,13 +29,12 @@
 #include <boost/units/systems/si.hpp>
 #include <boost/units/systems/si/prefixes.hpp>
 
-#include "goby/util/primitive_types.h"
 #include "goby/util/linebasedcomms/serial_client.h"
+#include "goby/util/primitive_types.h"
 
 #include "goby/moos/frontseat/frontseat.h"
 
 #include "iver_driver_config.pb.h"
-
 
 extern "C"
 {
@@ -46,7 +45,7 @@ class IverFrontSeat : public FrontSeatInterfaceBase
 {
   public:
     IverFrontSeat(const iFrontSeatConfig& cfg);
-    
+
   private: // virtual methods from FrontSeatInterfaceBase
     void loop();
 
@@ -55,21 +54,23 @@ class IverFrontSeat : public FrontSeatInterfaceBase
     void send_raw_to_frontseat(const goby::moos::protobuf::FrontSeatRaw& data);
     goby::moos::protobuf::FrontSeatState frontseat_state() const;
     bool frontseat_providing_data() const;
-    
+
   private: // internal non-virtual methods
     void check_connection_state();
     void try_receive();
     void process_receive(const std::string& s);
     void write(const std::string& s);
-    
+
     // given a time and date in "NMEA form", returns the value as seconds since the start of the epoch (1970-01-01 00:00:00Z)
     // NMEA form for time is HHMMSS where "H" is hours, "M" is minutes, "S" is seconds or fractional seconds
-    // NMEA form for date is DDMMYY where "D" is day, "M" is month, "Y" is year               
-    boost::units::quantity<boost::units::si::time> nmea_time_to_seconds(double nmea_time, int nmea_date);   
+    // NMEA form for date is DDMMYY where "D" is day, "M" is month, "Y" is year
+    boost::units::quantity<boost::units::si::time> nmea_time_to_seconds(double nmea_time,
+                                                                        int nmea_date);
 
     // given a latitude or longitude in "NMEA form" and the hemisphere character ('N', 'S', 'E' or 'W'), returns the value as decimal degrees
     // NMEA form is DDDMM.MMMM or DDMM.MMMM where "D" is degrees, and "M" is minutes
-    boost::units::quantity<boost::units::degree::plane_angle> nmea_geo_to_degrees(double nmea_geo, char hemi);
+    boost::units::quantity<boost::units::degree::plane_angle> nmea_geo_to_degrees(double nmea_geo,
+                                                                                  char hemi);
 
   private:
     const IverFrontSeatConfig iver_config_;
@@ -77,12 +78,11 @@ class IverFrontSeat : public FrontSeatInterfaceBase
 
     boost::shared_ptr<goby::util::SerialClient> ntp_serial_;
 
-    
     bool frontseat_providing_data_;
     double last_frontseat_data_time_;
     goby::moos::protobuf::FrontSeatState frontseat_state_;
 
-    goby::moos::protobuf::CommandRequest last_request_;    
+    goby::moos::protobuf::CommandRequest last_request_;
 
     goby::moos::protobuf::NodeStatus status_;
 };

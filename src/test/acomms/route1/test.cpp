@@ -21,7 +21,6 @@
 
 // tests 0.1 --> route_manager --> 1.1 --> 2.1 route
 
-
 // id     1.1                 2.1                3.1
 //
 //         ------->Router-------                 out
@@ -32,24 +31,23 @@
 //         |                   v                  |
 //        in                 Driver  ------>    Driver
 
+#include "goby/acomms/acomms_helpers.h"
+#include "goby/acomms/amac/mac_manager.h"
+#include "goby/acomms/bind.h"
+#include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
 #include "goby/acomms/route/route.h"
 #include "goby/common/logger.h"
-#include "goby/util/binary.h"
-#include "goby/acomms/connect.h"
-#include "goby/acomms/acomms_helpers.h"
-#include "goby/util/as.h"
-#include "goby/acomms/bind.h"
 #include "goby/common/time.h"
-#include "goby/acomms/amac/mac_manager.h"
+#include "goby/util/as.h"
+#include "goby/util/binary.h"
 #include "test.pb.h"
-#include  <cstdlib>
-
+#include <cstdlib>
 
 using namespace goby::common::logger;
 using namespace goby::acomms;
-using goby::util::as;
 using goby::common::goby_time;
+using goby::util::as;
 using namespace boost::posix_time;
 
 const int ID_0_1 = 1;
@@ -57,9 +55,9 @@ const int ID_1_1 = (1 << 8) + 1;
 const int ID_2_1 = (2 << 8) + 1;
 const int ID_3_1 = (3 << 8) + 1;
 
-void handle_receive1(const google::protobuf::Message &msg);
-void handle_receive2(const google::protobuf::Message &msg);
-void handle_receive3(const google::protobuf::Message &msg);
+void handle_receive1(const google::protobuf::Message& msg);
+void handle_receive2(const google::protobuf::Message& msg);
+void handle_receive3(const google::protobuf::Message& msg);
 
 void handle_modem_receive3(const protobuf::ModemTransmission& message);
 
@@ -70,12 +68,10 @@ bool received_message = false;
 
 RouteMessage in_msg;
 
-
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);    
-    goby::glog.set_name(argv[0]);    
-
+    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);
+    goby::glog.set_name(argv[0]);
 
     // set up queues
     goby::acomms::QueueManager q_manager1, q_manager2, q_manager3;
@@ -87,22 +83,22 @@ int main(int argc, char* argv[])
     goby::acomms::protobuf::QueuedMessageEntry::Role* src_role = q_entry->add_role();
     src_role->set_type(goby::acomms::protobuf::QueuedMessageEntry::SOURCE_ID);
     src_role->set_field("src");
-    
+
     goby::acomms::protobuf::QueuedMessageEntry::Role* dest_role = q_entry->add_role();
     dest_role->set_type(goby::acomms::protobuf::QueuedMessageEntry::DESTINATION_ID);
-    dest_role->set_field("dest");    
+    dest_role->set_field("dest");
 
     goby::acomms::protobuf::QueuedMessageEntry::Role* time_role = q_entry->add_role();
     time_role->set_type(goby::acomms::protobuf::QueuedMessageEntry::TIMESTAMP);
     time_role->set_field("time");
-    
+
     q_cfg2.add_message_entry()->CopyFrom(*q_entry);
     q_cfg3.add_message_entry()->CopyFrom(*q_entry);
 
     q_cfg1.set_skip_decoding(true);
     q_cfg2.set_skip_decoding(true);
     q_cfg3.set_skip_decoding(false);
-    
+
     q_cfg1.set_modem_id(ID_1_1);
     q_manager1.set_cfg(q_cfg1);
 
@@ -126,7 +122,7 @@ int main(int argc, char* argv[])
     r_cfg.mutable_route()->add_hop(ID_3_1);
     r_cfg.set_subnet_mask(0xFFFFFF00);
     r_manager.set_cfg(r_cfg);
-    
+
     // set up drivers
     driver2.reset(new goby::acomms::UDPDriver(&io2));
     driver3.reset(new goby::acomms::UDPDriver(&io3));
@@ -135,18 +131,18 @@ int main(int argc, char* argv[])
     d_cfg2.set_modem_id(ID_2_1);
     d_cfg3.set_modem_id(ID_3_1);
 
-    srand (time(NULL));
+    srand(time(NULL));
     int port1 = rand() % 1000 + 50020;
     int port2 = port1 + 1;
 
     d_cfg2.MutableExtension(UDPDriverConfig::local)->set_port(port1);
     d_cfg3.MutableExtension(UDPDriverConfig::local)->set_port(port2);
-    d_cfg2.MutableExtension(UDPDriverConfig::remote)->CopyFrom(
-        d_cfg3.GetExtension(UDPDriverConfig::local));
-    d_cfg3.MutableExtension(UDPDriverConfig::remote)->CopyFrom(
-        d_cfg2.GetExtension(UDPDriverConfig::local));
+    d_cfg2.MutableExtension(UDPDriverConfig::remote)
+        ->CopyFrom(d_cfg3.GetExtension(UDPDriverConfig::local));
+    d_cfg3.MutableExtension(UDPDriverConfig::remote)
+        ->CopyFrom(d_cfg2.GetExtension(UDPDriverConfig::local));
 
-    driver2->startup(d_cfg2); 
+    driver2->startup(d_cfg2);
     driver3->startup(d_cfg3);
 
     // set up two MACManagers to handle the drivers
@@ -174,53 +170,50 @@ int main(int argc, char* argv[])
     mac2.startup(m_cfg2);
     mac3.startup(m_cfg3);
 
-
     // renable crypto when we receive on driver3
     goby::acomms::connect(&driver3->signal_receive, &handle_modem_receive3);
-    
+
     // bind them all together
     goby::acomms::bind(*driver2, q_manager2, mac2);
     goby::acomms::bind(*driver3, q_manager3, mac3);
 
     goby::acomms::bind(q_manager1, r_manager);
     goby::acomms::bind(q_manager2, r_manager);
-    
+
     // create a message
     in_msg.set_src(ID_0_1);
     in_msg.set_dest(ID_3_1);
-    in_msg.set_time(goby_time<std::uint64_t>() / 1000000 * 1000000); // integer second for _time codec
+    in_msg.set_time(goby_time<std::uint64_t>() / 1000000 *
+                    1000000); // integer second for _time codec
     in_msg.set_telegram("0-->3");
 
-    // create transmission from message 
+    // create transmission from message
     goby::acomms::protobuf::ModemTransmission initial_transmit;
     initial_transmit.set_src(ID_0_1);
     initial_transmit.set_dest(ID_1_1);
     initial_transmit.set_time(goby_time<std::uint64_t>());
     initial_transmit.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
-    
+
     goby::acomms::DCCLCodec* dccl = goby::acomms::DCCLCodec::get();
 
     goby::acomms::protobuf::DCCLConfig dccl_cfg;
     dccl_cfg.set_crypto_passphrase("my_passphrase2!");
     dccl->set_cfg(dccl_cfg);
 
-
     dccl->validate<RouteMessage>();
     dccl->encode(initial_transmit.add_frame(), in_msg);
 
     // remove crypto
     dccl_cfg.clear_crypto_passphrase();
-    dccl->set_cfg(dccl_cfg);    
-    
-    
+    dccl->set_cfg(dccl_cfg);
+
     // unleash the message
     std::cout << "Modem receive on q1: " << initial_transmit.DebugString() << std::endl;
     q_manager1.handle_modem_receive(initial_transmit);
-    
 
     int i = 0;
-    
-    while(((i / 10) < 10))
+
+    while (((i / 10) < 10))
     {
         driver2->do_work();
         driver3->do_work();
@@ -228,50 +221,41 @@ int main(int argc, char* argv[])
         q_manager1.do_work();
         q_manager2.do_work();
         q_manager3.do_work();
-        
+
         mac2.do_work();
         mac3.do_work();
 
         usleep(100000);
 
-        if(received_message)
+        if (received_message)
             break;
 
         ++i;
     }
 
-    if(received_message)
+    if (received_message)
     {
         std::cout << "all tests passed" << std::endl;
         return 0;
     }
     else
     {
-        std::cout << "never received message" << std::endl;        
+        std::cout << "never received message" << std::endl;
         return 1;
     }
 }
 
+void handle_receive1(const google::protobuf::Message& msg) { assert(false); }
 
-void handle_receive1(const google::protobuf::Message &msg)
-{
-    assert(false);
-}
+void handle_receive2(const google::protobuf::Message& msg) { assert(false); }
 
-void handle_receive2(const google::protobuf::Message &msg)
-{
-    assert(false);
-}
-
-void handle_receive3(const google::protobuf::Message &msg)
+void handle_receive3(const google::protobuf::Message& msg)
 {
     std::cout << "Received at 3.1: " << msg.DebugString() << std::endl;
     std::cout << "Original: " << in_msg.DebugString() << std::endl;
     received_message = true;
     assert(in_msg.SerializeAsString() == msg.SerializeAsString());
 }
-
-
 
 void handle_modem_receive3(const protobuf::ModemTransmission& message)
 {

@@ -26,26 +26,23 @@
 #include "message_var.h"
 namespace goby
 {
+namespace transitional
+{
+class DCCLMessageVarEnum : public DCCLMessageVar
+{
+  public:
+    void add_enum(std::string senum) { enums_.push_back(senum); }
 
-    namespace transitional
-    {   
-        class DCCLMessageVarEnum : public DCCLMessageVar
-        {
-          public:
-        
-            void add_enum(std::string senum) {enums_.push_back(senum);}
+    std::vector<std::string>* enums() { return &enums_; }
 
-            std::vector<std::string>* enums() { return &enums_; }
+    DCCLType type() const { return dccl_enum; }
 
-            DCCLType type()  const { return dccl_enum; }
-        
-          private:
-            void initialize_specific()
-            { }
-        
-          private:
-            std::vector<std::string> enums_;
-        };
-    }
-}
+  private:
+    void initialize_specific() {}
+
+  private:
+    std::vector<std::string> enums_;
+};
+} // namespace transitional
+} // namespace goby
 #endif

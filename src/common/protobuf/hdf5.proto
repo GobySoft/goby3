@@ -1,6 +1,6 @@
-@PROTOBUF_SYNTAX_VERSION@
+@PROTOBUF_SYNTAX_VERSION @
 
-package goby.common.protobuf;
+    package goby.common.protobuf;
 
 message HDF5Config
 {
@@ -9,6 +9,6 @@ message HDF5Config
 
     // for use by plugins, if desired
     repeated string input_file = 30;
-    
+
     extensions 1000 to max;
 }

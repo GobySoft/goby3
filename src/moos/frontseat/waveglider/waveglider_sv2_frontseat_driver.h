@@ -31,10 +31,9 @@
 
 #include "goby/moos/frontseat/frontseat.h"
 
+#include "waveglider_sv2_frontseat_driver.pb.h"
 #include "waveglider_sv2_frontseat_driver_config.pb.h"
 #include "waveglider_sv2_serial_client.h"
-#include "waveglider_sv2_frontseat_driver.pb.h"
-
 
 extern "C"
 {
@@ -45,7 +44,7 @@ class WavegliderSV2FrontSeat : public FrontSeatInterfaceBase
 {
   public:
     WavegliderSV2FrontSeat(const iFrontSeatConfig& cfg);
-    
+
   private: // virtual methods from FrontSeatInterfaceBase
     void loop();
 
@@ -57,17 +56,16 @@ class WavegliderSV2FrontSeat : public FrontSeatInterfaceBase
     void handle_sv2_message(const std::string& message);
     void handle_enumeration_request(const goby::moos::protobuf::SV2RequestEnumerate& msg);
     void handle_request_status(const goby::moos::protobuf::SV2RequestStatus& request);
-    void handle_request_queued_message(const goby::moos::protobuf::SV2RequestQueuedMessage& request);
-
+    void
+    handle_request_queued_message(const goby::moos::protobuf::SV2RequestQueuedMessage& request);
 
     void check_crc(const std::string& message, uint16_t expected);
     void add_crc(std::string* message);
     void encode_and_write(const google::protobuf::Message& message);
-    
 
   private: // internal non-virtual methods
     void check_connection_state();
-    
+
   private:
     const WavegliderSV2FrontSeatConfig waveglider_sv2_config_;
 
@@ -78,10 +76,10 @@ class WavegliderSV2FrontSeat : public FrontSeatInterfaceBase
     boost::asio::io_service io_;
     boost::shared_ptr<goby::moos::SV2SerialConnection> serial_;
 
-    boost::circular_buffer<boost::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> > queued_messages_;
-    
+    boost::circular_buffer<boost::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> >
+        queued_messages_;
+
     dccl::Codec dccl_;
-    
 };
 
 #endif

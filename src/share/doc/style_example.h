@@ -44,35 +44,32 @@ class FlexCout;
 
 namespace nspace
 {
-    class Class
-    {
-      public:
-        // "FlexCout* os", not "FlexCout *os:
-        // in C++ we emphasize objects
-        // (read: "os" is a FlexCout pointer)
-        Class(FlexCout* os = NULL,
-              unsigned int modem_id = 0,
-              bool is_ccl = false);
-        
-        // definitions
-        bool push_message(micromodem::Message& new_message);
-            
-        // inlines
-        void clear_ack_queue() { waiting_for_ack_.clear(); }
-        
-        // only if class is intended to be derived
-      protected: //methods    
-        
-      private: // methods
-        messages_it next_message_it();    
-        
-      private: // data, no public data
-        std::string name_;
-        FlexCout* os_;
-    };
+class Class
+{
+  public:
+    // "FlexCout* os", not "FlexCout *os:
+    // in C++ we emphasize objects
+    // (read: "os" is a FlexCout pointer)
+    Class(FlexCout* os = NULL, unsigned int modem_id = 0, bool is_ccl = false);
 
-    // related non class functions
-    std::ostream & operator<< (std::ostream& os, const Class& oq);
-}
+    // definitions
+    bool push_message(micromodem::Message& new_message);
+
+    // inlines
+    void clear_ack_queue() { waiting_for_ack_.clear(); }
+
+    // only if class is intended to be derived
+  protected: //methods
+  private:   // methods
+    messages_it next_message_it();
+
+  private: // data, no public data
+    std::string name_;
+    FlexCout* os_;
+};
+
+// related non class functions
+std::ostream& operator<<(std::ostream& os, const Class& oq);
+} // namespace nspace
 
 #endif
