@@ -164,7 +164,6 @@ add_subdirectory(src)
 ## configure to build/include
 file(GLOB BASE_INCLUDE_FILES RELATIVE ${goby_SRC_DIR} src/*.h)
 file(GLOB_RECURSE INCLUDE_FILES RELATIVE ${goby_SRC_DIR} 
-  src/*.proto
   src/acomms/*.h
   src/common/*.h 
   src/middleware/*.h
@@ -172,9 +171,20 @@ file(GLOB_RECURSE INCLUDE_FILES RELATIVE ${goby_SRC_DIR}
   src/moos/*.h 
   src/pb/*.h 
   )
-foreach(I ${BASE_INCLUDE_FILES} ${INCLUDE_FILES})
+
+file(GLOB_RECURSE PROTOBUF_FILES RELATIVE ${goby_SRC_DIR}
+  src/*.proto
+  )
+
+foreach(I ${BASE_INCLUDE_FILES} ${INCLUDE_FILES} ${PROTOBUF_FILES})
   configure_file(${goby_SRC_DIR}/${I} ${goby_INC_DIR}/goby/${I} @ONLY)
 endforeach()
+
+# write the proto syntax version if required 
+foreach(I ${PROTOBUF_FILES})
+  file(APPEND ${goby_INC_DIR}/goby/${I} "${PROTOBUF_SYNTAX_VERSION}\n")
+endforeach()
+
 
 ## copy to build/share
 file(GLOB SHARE_FILES RELATIVE ${goby_SRC_DIR} src/share/*)
