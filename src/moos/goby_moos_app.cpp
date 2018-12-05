@@ -21,5 +21,3 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby_moos_app.h"
-
-

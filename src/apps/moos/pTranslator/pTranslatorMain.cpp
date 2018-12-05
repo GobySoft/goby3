@@ -21,7 +21,6 @@
 
 #include "pTranslator.h"
 
- 
 int main(int argc, char* argv[])
 {
     int return_value = goby::moos::run<CpTranslator>(argc, argv);
@@ -29,6 +28,6 @@ int main(int argc, char* argv[])
     goby::transitional::DCCLAlgorithmPerformer::deleteInstance();
     CpTranslator::delete_instance();
     goby::util::DynamicProtobufManager::protobuf_shutdown();
-    
+
     return return_value;
 }

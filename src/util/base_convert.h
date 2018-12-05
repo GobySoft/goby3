@@ -26,42 +26,43 @@
 
 namespace goby
 {
-    namespace util
+namespace util
+{
+inline void base_convert(const std::string& source, std::string* sink, int source_base,
+                         int sink_base)
+{
+    mpz_t base10;
+    mpz_init(base10);
+
+    // record number of most significant zeros, e.g. 0023 has two
+    int ms_zeros = 0;
+    // false until a non-zero byte is encountered
+    bool non_zero_byte = false;
+
+    for (int i = source.size() - 1; i >= 0; --i)
     {
-        inline void base_convert(const std::string& source, std::string* sink, int source_base, int sink_base)
-        {
-            
-            mpz_t base10;
-            mpz_init(base10);
+        int byte = 0xFF & source[i];
+        mpz_add_ui(base10, base10, byte);
+        if (i)
+            mpz_mul_ui(base10, base10, source_base);
 
-            // record number of most significant zeros, e.g. 0023 has two
-            int ms_zeros = 0;
-            // false until a non-zero byte is encountered
-            bool non_zero_byte = false;
-            
-            for (int i = source.size()-1; i >= 0; --i)
-            {
-                int byte = 0xFF & source[i];
-                mpz_add_ui(base10, base10, byte);
-                if(i)
-                    mpz_mul_ui(base10, base10, source_base);
-
-                if(byte == 0 && !non_zero_byte) ++ms_zeros;
-                else non_zero_byte = true;
-            }            
-            sink->clear();
-
-            while(mpz_cmp_ui(base10, 0) != 0)
-            {
-                unsigned long int remainder =  mpz_fdiv_q_ui (base10, base10, sink_base);
-                sink->push_back(0xFF & remainder);
-            }
-
-            // preserve MS zeros by adding that number to the most significant end
-            for(int i = 0; i < ms_zeros; ++i)
-                sink->push_back(0);
-            
-            mpz_clear(base10);
-        }
+        if (byte == 0 && !non_zero_byte)
+            ++ms_zeros;
+        else
+            non_zero_byte = true;
     }
+    sink->clear();
+
+    while (mpz_cmp_ui(base10, 0) != 0)
+    {
+        unsigned long int remainder = mpz_fdiv_q_ui(base10, base10, sink_base);
+        sink->push_back(0xFF & remainder);
+    }
+
+    // preserve MS zeros by adding that number to the most significant end
+    for (int i = 0; i < ms_zeros; ++i) sink->push_back(0);
+
+    mpz_clear(base10);
 }
+} // namespace util
+} // namespace goby

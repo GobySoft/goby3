@@ -30,7 +30,6 @@
 
 #include "abc_frontseat_driver_config.pb.h"
 
-
 extern "C"
 {
     FrontSeatInterfaceBase* frontseat_driver_load(iFrontSeatConfig*);
@@ -40,7 +39,7 @@ class AbcFrontSeat : public FrontSeatInterfaceBase
 {
   public:
     AbcFrontSeat(const iFrontSeatConfig& cfg);
-    
+
   private: // virtual methods from FrontSeatInterfaceBase
     void loop();
 
@@ -49,7 +48,7 @@ class AbcFrontSeat : public FrontSeatInterfaceBase
     void send_raw_to_frontseat(const goby::moos::protobuf::FrontSeatRaw& data);
     goby::moos::protobuf::FrontSeatState frontseat_state() const;
     bool frontseat_providing_data() const;
-    
+
   private: // internal non-virtual methods
     void check_connection_state();
 
@@ -58,7 +57,7 @@ class AbcFrontSeat : public FrontSeatInterfaceBase
     void parse_in(const std::string& in, std::map<std::string, std::string>* out);
 
     void write(const std::string& s);
-    
+
   private:
     const ABCFrontSeatConfig abc_config_;
     goby::util::TCPClient tcp_;
@@ -67,7 +66,7 @@ class AbcFrontSeat : public FrontSeatInterfaceBase
     double last_frontseat_data_time_;
     goby::moos::protobuf::FrontSeatState frontseat_state_;
 
-    goby::moos::protobuf::CommandRequest last_request_;    
+    goby::moos::protobuf::CommandRequest last_request_;
 };
 
 #endif

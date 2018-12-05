@@ -19,8 +19,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/util/linebasedcomms.h"
 #include "goby/util/binary.h"
+#include "goby/util/linebasedcomms.h"
 
 int main()
 {
@@ -34,7 +34,7 @@ int main()
         std::cout << nmea.message() << std::endl;
         assert(nmea.message() == "$FOOBA,1,2,3,*75");
     }
-    
+
     {
         goby::util::NMEASentence nmea;
         nmea.push_back("$CCTXD");
@@ -50,7 +50,7 @@ int main()
         assert(nmea.as<int>(3) == 1);
         assert(nmea.at(3) == "1");
     }
-    
+
     {
         goby::util::NMEASentence nmea("$YXXDR,A,0.3,D,PTCH,A,13.3,D,ROLL*6f ");
         std::cout << nmea.message() << std::endl;
@@ -63,8 +63,8 @@ int main()
         assert(nmea.as<int>(1) == 1);
         assert(nmea.as<int>(2) == 1);
     }
-    
+
     std::cout << "all tests passed" << std::endl;
-    
+
     return 0;
 }

@@ -27,210 +27,180 @@
 #include <boost/function.hpp>
 #include <boost/unordered_map.hpp>
 
+#include "goby/common/core_helpers.h"
 #include "goby/common/logger.h"
 #include "goby/util/dynamic_protobuf_manager.h"
-#include "goby/common/core_helpers.h"
 
 #include "goby/common/node_interface.h"
 #include "subscription.h"
 
 namespace goby
 {
-    namespace pb
+namespace pb
+{
+class ProtobufNode : public goby::common::NodeInterface<google::protobuf::Message>
+{
+  protected:
+    ProtobufNode(common::ZeroMQService* service)
+        : common::NodeInterface<google::protobuf::Message>(service)
     {
-        class ProtobufNode : public goby::common::NodeInterface<google::protobuf::Message>
-        {
+    }
 
-          protected:
-          ProtobufNode(common::ZeroMQService* service)
-              : common::NodeInterface<google::protobuf::Message>(service)
-            { }
-            
-            virtual ~ProtobufNode()
-            { }
+    virtual ~ProtobufNode() {}
 
+    virtual void protobuf_inbox(const std::string& protobuf_type_name, const std::string& body,
+                                int socket_id, const std::string& group) = 0;
 
-            virtual void protobuf_inbox(const std::string& protobuf_type_name,
-                                        const std::string& body,
-                                        int socket_id,
-                                        const std::string& group) = 0;
+    void send(const google::protobuf::Message& msg, int socket_id, const std::string& group = "");
+    void subscribe(const std::string& identifier, int socket_id);
+    void subscribe(const std::string& protobuf_type_name, int socket_id, const std::string& group);
 
-            void send(const google::protobuf::Message& msg, int socket_id, const std::string& group = "");
-            void subscribe(const std::string& identifier, int socket_id);
-            void subscribe(const std::string& protobuf_type_name, int socket_id, const std::string& group);
+  private:
+    void inbox(int marshalling_scheme, const std::string& identifier, const std::string& body,
+               int socket_id);
+};
 
-            
-          private:
-            void inbox(int marshalling_scheme,
-                       const std::string& identifier,
-                       const std::string& body,
-                       int socket_id);
-            
+class StaticProtobufNode : public ProtobufNode
+{
+  public:
+    StaticProtobufNode(common::ZeroMQService* service) : ProtobufNode(service) {}
 
-        };
+    virtual ~StaticProtobufNode() {}
 
-        class StaticProtobufNode : public ProtobufNode
-        {
-          public:
-          StaticProtobufNode(common::ZeroMQService* service)
-                : ProtobufNode(service)
-            { }
-                        
-            virtual ~StaticProtobufNode()
-            { }
-            
-            
-            /// \brief Subscribe to a message (of any type derived from google::protobuf::Message)            
-            ///
-            /// \param socket_id Unique id assigned to the SUBSCRIBE socket that you want to subscribe to
-            /// \param handler Function object to be called as soon as possible upon receipt of a message of this type. The signature of `handler` must match: void handler(const ProtoBufMessage& msg). if `handler` is omitted, no handler is called and only the newest message buffer is updated upon message receipt (for calls to newest<ProtoBufMessage>())
-             template<typename ProtoBufMessage>
-                void subscribe(
-                    int socket_id,
-                    boost::function<void (const ProtoBufMessage&)> handler =
-                    boost::function<void (const ProtoBufMessage&)>(),
-                    const std::string& group = ""
-                    );
+    /// \brief Subscribe to a message (of any type derived from google::protobuf::Message)
+    ///
+    /// \param socket_id Unique id assigned to the SUBSCRIBE socket that you want to subscribe to
+    /// \param handler Function object to be called as soon as possible upon receipt of a message of this type. The signature of `handler` must match: void handler(const ProtoBufMessage& msg). if `handler` is omitted, no handler is called and only the newest message buffer is updated upon message receipt (for calls to newest<ProtoBufMessage>())
+    template <typename ProtoBufMessage>
+    void subscribe(int socket_id,
+                   boost::function<void(const ProtoBufMessage&)> handler =
+                       boost::function<void(const ProtoBufMessage&)>(),
+                   const std::string& group = "");
 
-            template<typename ProtoBufMessage, class C>
-                void subscribe(int socket_id,
-                               void(C::*mem_func)(const ProtoBufMessage&),
-                               C* obj,
-                               const std::string& group = "")
-            { subscribe<ProtoBufMessage>(socket_id, boost::bind(mem_func, obj, _1), group); }
+    template <typename ProtoBufMessage, class C>
+    void subscribe(int socket_id, void (C::*mem_func)(const ProtoBufMessage&), C* obj,
+                   const std::string& group = "")
+    {
+        subscribe<ProtoBufMessage>(socket_id, boost::bind(mem_func, obj, _1), group);
+    }
 
-             
-             template<typename ProtoBufMessage>
-                 void on_receipt(
-                     int socket_id,
-                     boost::function<void (const ProtoBufMessage&)> handler =
-                     boost::function<void (const ProtoBufMessage&)>(),
-                     const std::string& group = ""
-                     );
+    template <typename ProtoBufMessage>
+    void on_receipt(int socket_id,
+                    boost::function<void(const ProtoBufMessage&)> handler =
+                        boost::function<void(const ProtoBufMessage&)>(),
+                    const std::string& group = "");
 
-            template<typename ProtoBufMessage, class C>
-                void on_receipt(int socket_id,
-                                void(C::*mem_func)(const ProtoBufMessage&),
-                                C* obj,
-                                const std::string& group = "")
-            { on_receipt<ProtoBufMessage>(socket_id, boost::bind(mem_func, obj, _1), group); }
+    template <typename ProtoBufMessage, class C>
+    void on_receipt(int socket_id, void (C::*mem_func)(const ProtoBufMessage&), C* obj,
+                    const std::string& group = "")
+    {
+        on_receipt<ProtoBufMessage>(socket_id, boost::bind(mem_func, obj, _1), group);
+    }
 
+    void send(const google::protobuf::Message& msg, int socket_id, const std::string& group = "")
+    {
+        ProtobufNode::send(msg, socket_id, group);
+    }
 
-            void send(const google::protobuf::Message& msg, int socket_id, const std::string& group = "")
-            {
-                ProtobufNode::send(msg, socket_id, group);
-            }
-             
-            
-            /// \name Message Accessors
-            //@{
-            /// \brief Fetchs the newest received message of this type 
-            ///
-            /// You must subscribe() for this type before using this method
-//            template<typename ProtoBufMessage>
-//                const ProtoBufMessage& newest() const;
-            
-            //@}
-            
+    /// \name Message Accessors
+    //@{
+    /// \brief Fetchs the newest received message of this type
+    ///
+    /// You must subscribe() for this type before using this method
+    //            template<typename ProtoBufMessage>
+    //                const ProtoBufMessage& newest() const;
 
-            
-          private:
-            void protobuf_inbox(const std::string& protobuf_type_name,
-                                const std::string& body,
-                                int socket_id,
-                                const std::string& group);
-            
+    //@}
 
-          private:
-            // key = type of var
-            // value = Subscription object for all the subscriptions,  handler, newest message, etc.
-            boost::unordered_multimap<std::string, boost::shared_ptr<SubscriptionBase> > subscriptions_;  
-            
-        };
+  private:
+    void protobuf_inbox(const std::string& protobuf_type_name, const std::string& body,
+                        int socket_id, const std::string& group);
 
-        class DynamicProtobufNode : public ProtobufNode
-        {
-          protected:  
-          DynamicProtobufNode(common::ZeroMQService* service)
-                : ProtobufNode(service)
-            { }
-            
-            virtual ~DynamicProtobufNode()
-            { }
+  private:
+    // key = type of var
+    // value = Subscription object for all the subscriptions,  handler, newest message, etc.
+    boost::unordered_multimap<std::string, boost::shared_ptr<SubscriptionBase> > subscriptions_;
+};
 
-            void subscribe(int socket_id,
-                           boost::function<void (boost::shared_ptr<google::protobuf::Message> msg)> handler,
-                           const std::string& group);
+class DynamicProtobufNode : public ProtobufNode
+{
+  protected:
+    DynamicProtobufNode(common::ZeroMQService* service) : ProtobufNode(service) {}
 
-            template<class C>
-                void subscribe(int socket_id,
-                               void(C::*mem_func)(boost::shared_ptr<google::protobuf::Message> msg),
-                               C* obj,
-                               const std::string& group)
-            { subscribe(socket_id, boost::bind(mem_func, obj, _1), group); }
-             
-            void on_receipt(
-                int socket_id,
-                boost::function<void (boost::shared_ptr<google::protobuf::Message> msg)> handler,
-                const std::string& group);
-            
-            template<class C>
-                void on_receipt(int socket_id,
-                                void(C::*mem_func)(boost::shared_ptr<google::protobuf::Message> msg),
-                                C* obj,
-                                const std::string& group)
-            { on_receipt(socket_id, boost::bind(mem_func, obj, _1), group); }
-            
-            // virtual void dynamic_protobuf_inbox(boost::shared_ptr<google::protobuf::Message> msg, int socket_id, const std::string& group) = 0;
-            
-          private:
-            void protobuf_inbox(const std::string& protobuf_type_name,
-                                const std::string& body,
-                                int socket_id,
-                                const std::string& group);
-          private:
-            // key = type of var
-            // value = Subscription object for all the subscriptions,  handler, newest message, etc.
-            boost::unordered_multimap<std::string, boost::function<void (boost::shared_ptr<google::protobuf::Message> msg)> > subscriptions_;
-        };
-        
-        
-    }    
-}
+    virtual ~DynamicProtobufNode() {}
 
+    void subscribe(int socket_id,
+                   boost::function<void(boost::shared_ptr<google::protobuf::Message> msg)> handler,
+                   const std::string& group);
 
-template<typename ProtoBufMessage>
+    template <class C>
+    void subscribe(int socket_id,
+                   void (C::*mem_func)(boost::shared_ptr<google::protobuf::Message> msg), C* obj,
+                   const std::string& group)
+    {
+        subscribe(socket_id, boost::bind(mem_func, obj, _1), group);
+    }
+
+    void on_receipt(int socket_id,
+                    boost::function<void(boost::shared_ptr<google::protobuf::Message> msg)> handler,
+                    const std::string& group);
+
+    template <class C>
+    void on_receipt(int socket_id,
+                    void (C::*mem_func)(boost::shared_ptr<google::protobuf::Message> msg), C* obj,
+                    const std::string& group)
+    {
+        on_receipt(socket_id, boost::bind(mem_func, obj, _1), group);
+    }
+
+    // virtual void dynamic_protobuf_inbox(boost::shared_ptr<google::protobuf::Message> msg, int socket_id, const std::string& group) = 0;
+
+  private:
+    void protobuf_inbox(const std::string& protobuf_type_name, const std::string& body,
+                        int socket_id, const std::string& group);
+
+  private:
+    // key = type of var
+    // value = Subscription object for all the subscriptions,  handler, newest message, etc.
+    boost::unordered_multimap<
+        std::string, boost::function<void(boost::shared_ptr<google::protobuf::Message> msg)> >
+        subscriptions_;
+};
+
+} // namespace pb
+} // namespace goby
+
+template <typename ProtoBufMessage>
 void goby::pb::StaticProtobufNode::on_receipt(
     int socket_id,
-    boost::function<void (const ProtoBufMessage&)> handler
+    boost::function<void(const ProtoBufMessage&)> handler
     /*= boost::function<void (const ProtoBufMessage&)>()*/,
     const std::string& group)
-{    
+{
     using goby::glog;
-    
+
     const std::string& protobuf_type_name = ProtoBufMessage::descriptor()->full_name();
 
-    glog.is(goby::common::logger::DEBUG1) && 
-        glog << "registering on_receipt handler for " << protobuf_type_name  << std::endl;
-    
+    glog.is(goby::common::logger::DEBUG1) && glog << "registering on_receipt handler for "
+                                                  << protobuf_type_name << std::endl;
+
     // machinery so we can call the proper handler upon receipt of this type
     boost::shared_ptr<SubscriptionBase> subscription(
         new Subscription<ProtoBufMessage>(handler, protobuf_type_name, group));
     subscriptions_.insert(std::make_pair(protobuf_type_name, subscription));
 }
 
-template<typename ProtoBufMessage>
-void goby::pb::StaticProtobufNode::subscribe(
-    int socket_id,
-    boost::function<void (const ProtoBufMessage&)> handler
-    /*= boost::function<void (const ProtoBufMessage&)>()*/,
-    const std::string& group)
+template <typename ProtoBufMessage>
+void goby::pb::StaticProtobufNode::subscribe(int socket_id,
+                                             boost::function<void(const ProtoBufMessage&)> handler
+                                             /*= boost::function<void (const ProtoBufMessage&)>()*/,
+                                             const std::string& group)
 {
     const std::string& protobuf_type_name = ProtoBufMessage::descriptor()->full_name();
     on_receipt(socket_id, handler, group);
 
-    glog.is(goby::common::logger::DEBUG1) && 
-        glog << "subscribing for " << protobuf_type_name  << std::endl;
+    glog.is(goby::common::logger::DEBUG1) && glog << "subscribing for " << protobuf_type_name
+                                                  << std::endl;
 
     ProtobufNode::subscribe(protobuf_type_name, socket_id, group);
 }
@@ -254,6 +224,5 @@ void goby::pb::StaticProtobufNode::subscribe(
 /*     // this shouldn't happen if we properly create our Subscriptions */
 /*     throw(std::runtime_error("Invalid message given for call to newest()")); */
 /* } */
-
 
 #endif

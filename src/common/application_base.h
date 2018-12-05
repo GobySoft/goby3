@@ -27,8 +27,8 @@
 
 #include <boost/shared_ptr.hpp>
 
-#include "goby/common/exception.h"
 #include "goby/common/configuration_reader.h"
+#include "goby/common/exception.h"
 
 #include "goby/common/protobuf/app_base_config.pb.h"
 
@@ -36,78 +36,65 @@
 
 namespace goby
 {
-    /// \brief Run a Goby application derived from MinimalApplicationBase.
-    /// blocks caller until MinimalApplicationBase::__run() returns
-    /// \param argc same as int main(int argc, char* argv)
-    /// \param argv same as int main(int argc, char* argv)
-    /// \return same as int main(int argc, char* argv)
+/// \brief Run a Goby application derived from MinimalApplicationBase.
+/// blocks caller until MinimalApplicationBase::__run() returns
+/// \param argc same as int main(int argc, char* argv)
+/// \param argv same as int main(int argc, char* argv)
+/// \return same as int main(int argc, char* argv)
 
-    template<typename App, typename Config>
-        int run(int argc, char* argv[], Config* cfg);
-    
-    namespace common
-    {
-        class ApplicationBase
-        {
-          public:
-            ApplicationBase(google::protobuf::Message* cfg = 0);
-            virtual ~ApplicationBase();
+template <typename App, typename Config> int run(int argc, char* argv[], Config* cfg);
 
-            /// \brief Requests a clean (return 0) exit.
-            void quit() { alive_ = false; }
+namespace common
+{
+class ApplicationBase
+{
+  public:
+    ApplicationBase(google::protobuf::Message* cfg = 0);
+    virtual ~ApplicationBase();
 
-            virtual void iterate() = 0;
+    /// \brief Requests a clean (return 0) exit.
+    void quit() { alive_ = false; }
 
-            /// name of this application (from AppBaseConfig::app_name). E.g. "garmin_gps_g"
-            std::string application_name()
-            { return base_cfg_->app_name(); }
-            /// name of this platform (from AppBaseConfig::platform_name). E.g. "AUV-23" or "unicorn"
-            std::string platform_name()
-            { return base_cfg_->platform_name(); }
+    virtual void iterate() = 0;
 
-            
-            template<typename App, typename Config>
-                friend int ::goby::run(int argc, char* argv[], Config* cfg);
+    /// name of this application (from AppBaseConfig::app_name). E.g. "garmin_gps_g"
+    std::string application_name() { return base_cfg_->app_name(); }
+    /// name of this platform (from AppBaseConfig::platform_name). E.g. "AUV-23" or "unicorn"
+    std::string platform_name() { return base_cfg_->platform_name(); }
 
-            const AppBaseConfig& base_cfg()
-            { return *base_cfg_; }
+    template <typename App, typename Config>
+    friend int ::goby::run(int argc, char* argv[], Config* cfg);
 
+    const AppBaseConfig& base_cfg() { return *base_cfg_; }
 
-          private:
-            
-            // main loop that exits on disconnect. called by goby::run()
-            void __run();
-            
-            void __set_application_name(const std::string& s)
-            { base_cfg_->set_app_name(s); }
-            void __set_platform_name(const std::string& s)
-            { base_cfg_->set_platform_name(s); }
-            
-            
-          private:
-                
-            // copies of the "real" argc, argv that are used
-            // to give ApplicationBase access without requiring the subclasses of
-            // ApplicationBase to pass them through their constructors
-            static int argc_;
-            static char** argv_;
-            google::protobuf::Message* all_cfg_;
+  private:
+    // main loop that exits on disconnect. called by goby::run()
+    void __run();
 
-            // configuration relevant to all applications (loop frequency, for example)
-            // defined in #include "proto/app_base_config.pb.h"
-            AppBaseConfig* base_cfg_;
-            bool own_base_cfg_;
-            
-            bool alive_;            
-            std::vector<boost::shared_ptr<std::ofstream> > fout_;
-        };
-    }
-}
+    void __set_application_name(const std::string& s) { base_cfg_->set_app_name(s); }
+    void __set_platform_name(const std::string& s) { base_cfg_->set_platform_name(s); }
 
+  private:
+    // copies of the "real" argc, argv that are used
+    // to give ApplicationBase access without requiring the subclasses of
+    // ApplicationBase to pass them through their constructors
+    static int argc_;
+    static char** argv_;
+    google::protobuf::Message* all_cfg_;
 
-template<typename App, typename Config>
-    int goby::run(int argc, char* argv[], Config* cfg)
-{    
+    // configuration relevant to all applications (loop frequency, for example)
+    // defined in #include "proto/app_base_config.pb.h"
+    AppBaseConfig* base_cfg_;
+    bool own_base_cfg_;
+
+    bool alive_;
+    std::vector<boost::shared_ptr<std::ofstream> > fout_;
+};
+} // namespace common
+} // namespace goby
+
+template <typename App, typename Config> int goby::run(int argc, char* argv[], Config* cfg)
+{
     // avoid making the user pass these through their Ctor...
     App::argc_ = argc;
     App::argv_ = argv;
@@ -117,12 +104,12 @@ template<typename App, typename Config>
         App app(cfg);
         app.__run();
     }
-    catch(goby::common::ConfigException& e)
+    catch (goby::common::ConfigException& e)
     {
         // no further warning as the ApplicationBase Ctor handles this
         return 1;
     }
-    catch(std::exception& e)
+    catch (std::exception& e)
     {
         // some other exception
         std::cerr << "uncaught exception: " << e.what() << std::endl;

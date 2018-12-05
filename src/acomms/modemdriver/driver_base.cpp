@@ -20,8 +20,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/thread/mutex.hpp>
 #include <boost/format.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include "goby/acomms/connect.h"
 #include "goby/common/logger.h"
@@ -32,145 +32,150 @@
 using namespace goby::common::logger;
 using namespace goby::common::logger_lock;
 
-
 int goby::acomms::ModemDriverBase::count_ = 0;
 
-
-
-goby::acomms::ModemDriverBase::ModemDriverBase() :
-    raw_fs_connections_made_(false),
-    order_(++count_)
+goby::acomms::ModemDriverBase::ModemDriverBase() : raw_fs_connections_made_(false), order_(++count_)
 {
-    
     glog_out_group_ = "goby::acomms::modemdriver::out::" + goby::util::as<std::string>(order_);
     glog_in_group_ = "goby::acomms::modemdriver::in::" + goby::util::as<std::string>(order_);
-    
+
     goby::glog.add_group(glog_out_group_, common::Colors::lt_magenta);
     goby::glog.add_group(glog_in_group_, common::Colors::lt_blue);
-
 }
 
-goby::acomms::ModemDriverBase::~ModemDriverBase()
-{
-    modem_close();
-}
+goby::acomms::ModemDriverBase::~ModemDriverBase() { modem_close(); }
 
 void goby::acomms::ModemDriverBase::modem_write(const std::string& out)
 {
-    if(modem_->active())
+    if (modem_->active())
         modem_->write(out);
     else
-        throw(ModemDriverException("Modem physical connection failed.", protobuf::ModemDriverStatus::CONNECTION_TO_MODEM_FAILED));
+        throw(ModemDriverException("Modem physical connection failed.",
+                                   protobuf::ModemDriverStatus::CONNECTION_TO_MODEM_FAILED));
 }
 
 bool goby::acomms::ModemDriverBase::modem_read(std::string* in)
 {
-    if(modem_->active())
+    if (modem_->active())
         return modem_->readline(in);
     else
-        throw(ModemDriverException("Modem physical connection failed.", protobuf::ModemDriverStatus::CONNECTION_TO_MODEM_FAILED));
+        throw(ModemDriverException("Modem physical connection failed.",
+                                   protobuf::ModemDriverStatus::CONNECTION_TO_MODEM_FAILED));
 }
 
-void goby::acomms::ModemDriverBase::modem_close()
-{
-    modem_.reset();
-}
-
-
+void goby::acomms::ModemDriverBase::modem_close() { modem_.reset(); }
 
 void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cfg)
-{        
-    if(!cfg.has_modem_id())
-        throw(ModemDriverException("missing modem_id in configuration", protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
-    
-    switch(cfg.connection_type())
+{
+    if (!cfg.has_modem_id())
+        throw(ModemDriverException("missing modem_id in configuration",
+                                   protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
+
+    switch (cfg.connection_type())
     {
         case protobuf::DriverConfig::CONNECTION_SERIAL:
-            goby::glog.is(DEBUG1) && goby::glog << group(glog_out_group_) << "opening serial port " << cfg.serial_port() << " @ " << cfg.serial_baud() << std::endl;
+            goby::glog.is(DEBUG1) && goby::glog << group(glog_out_group_) << "opening serial port "
+                                                << cfg.serial_port() << " @ " << cfg.serial_baud()
+                                                << std::endl;
 
-            if(!cfg.has_serial_port())
-                throw(ModemDriverException("missing serial port in configuration",protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
-            if(!cfg.has_serial_baud())
-                throw(ModemDriverException("missing serial baud in configuration",protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
-            
-            modem_.reset(new util::SerialClient(cfg.serial_port(), cfg.serial_baud(), cfg.line_delimiter()));
+            if (!cfg.has_serial_port())
+                throw(ModemDriverException("missing serial port in configuration",
+                                           protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
+            if (!cfg.has_serial_baud())
+                throw(ModemDriverException("missing serial baud in configuration",
+                                           protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
+
+            modem_.reset(
+                new util::SerialClient(cfg.serial_port(), cfg.serial_baud(), cfg.line_delimiter()));
             break;
-            
+
         case protobuf::DriverConfig::CONNECTION_TCP_AS_CLIENT:
-            goby::glog.is(DEBUG1) && goby::glog << group(glog_out_group_) << "opening tcp client: " << cfg.tcp_server() << ":" << cfg.tcp_port() << std::endl;
-            if(!cfg.has_tcp_server())
-                throw(ModemDriverException("missing tcp server address in configuration",protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
-            if(!cfg.has_tcp_port())
-                throw(ModemDriverException("missing tcp port in configuration",protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
+            goby::glog.is(DEBUG1) && goby::glog << group(glog_out_group_)
+                                                << "opening tcp client: " << cfg.tcp_server() << ":"
+                                                << cfg.tcp_port() << std::endl;
+            if (!cfg.has_tcp_server())
+                throw(ModemDriverException("missing tcp server address in configuration",
+                                           protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
+            if (!cfg.has_tcp_port())
+                throw(ModemDriverException("missing tcp port in configuration",
+                                           protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
 
-            modem_.reset(new util::TCPClient(cfg.tcp_server(), cfg.tcp_port(), cfg.line_delimiter(), cfg.reconnect_interval()));
+            modem_.reset(new util::TCPClient(cfg.tcp_server(), cfg.tcp_port(), cfg.line_delimiter(),
+                                             cfg.reconnect_interval()));
             break;
-            
-        case protobuf::DriverConfig::CONNECTION_TCP_AS_SERVER:
-            goby::glog.is(DEBUG1) && goby::glog << group(glog_out_group_) << "opening tcp server on port" << cfg.tcp_port() << std::endl;
 
-            if(!cfg.has_tcp_port())
-                throw(ModemDriverException("missing tcp port in configuration",protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
+        case protobuf::DriverConfig::CONNECTION_TCP_AS_SERVER:
+            goby::glog.is(DEBUG1) && goby::glog << group(glog_out_group_)
+                                                << "opening tcp server on port" << cfg.tcp_port()
+                                                << std::endl;
+
+            if (!cfg.has_tcp_port())
+                throw(ModemDriverException("missing tcp port in configuration",
+                                           protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
 
             modem_.reset(new util::TCPServer(cfg.tcp_port(), cfg.line_delimiter()));
-    }    
+    }
 
-
-    if(cfg.has_raw_log())
+    if (cfg.has_raw_log())
     {
         using namespace boost::posix_time;
         boost::format file_format(cfg.raw_log());
-        file_format.exceptions( boost::io::all_error_bits ^ ( boost::io::too_many_args_bit | boost::io::too_few_args_bit)); 
-        
+        file_format.exceptions(boost::io::all_error_bits ^
+                               (boost::io::too_many_args_bit | boost::io::too_few_args_bit));
+
         std::string file_name = (file_format % to_iso_string(second_clock::universal_time())).str();
 
-        glog.is(DEBUG1) && glog << group(glog_out_group_) << "logging raw output to file: " << file_name << std::endl;
+        glog.is(DEBUG1) && glog << group(glog_out_group_)
+                                << "logging raw output to file: " << file_name << std::endl;
 
         raw_fs_.reset(new std::ofstream(file_name.c_str()));
 
-        
-        if(raw_fs_->is_open())
+        if (raw_fs_->is_open())
         {
-            if(!raw_fs_connections_made_)
+            if (!raw_fs_connections_made_)
             {
-                connect(&signal_raw_incoming, boost::bind(&ModemDriverBase::write_raw, this, _1, true));
-                connect(&signal_raw_outgoing, boost::bind(&ModemDriverBase::write_raw, this, _1, false));
+                connect(&signal_raw_incoming,
+                        boost::bind(&ModemDriverBase::write_raw, this, _1, true));
+                connect(&signal_raw_outgoing,
+                        boost::bind(&ModemDriverBase::write_raw, this, _1, false));
                 raw_fs_connections_made_ = true;
             }
-            
         }
         else
         {
-            glog.is(DEBUG1) && glog << group(glog_out_group_) << warn << "Failed to open log file" << std::endl;
+            glog.is(DEBUG1) && glog << group(glog_out_group_) << warn << "Failed to open log file"
+                                    << std::endl;
             raw_fs_.reset();
         }
     }
 
-
-    
     modem_->start();
 
     // give it this much startup time
     const int max_startup_ms = 10000;
     int startup_elapsed_ms = 0;
-    while(!modem_->active())
+    while (!modem_->active())
     {
         usleep(100000); // 100 ms
         startup_elapsed_ms += 100;
-        if(startup_elapsed_ms >= max_startup_ms)
-            throw(ModemDriverException("Modem physical connection failed to startup.",protobuf::ModemDriverStatus::STARTUP_FAILED));
+        if (startup_elapsed_ms >= max_startup_ms)
+            throw(ModemDriverException("Modem physical connection failed to startup.",
+                                       protobuf::ModemDriverStatus::STARTUP_FAILED));
     }
 }
 
 void goby::acomms::ModemDriverBase::write_raw(const protobuf::ModemRaw& msg, bool rx)
 {
-    if(rx) *raw_fs_ << "[rx] ";
-    else   *raw_fs_ << "[tx] ";
+    if (rx)
+        *raw_fs_ << "[rx] ";
+    else
+        *raw_fs_ << "[tx] ";
     *raw_fs_ << msg.raw() << std::endl;
 }
 
 void goby::acomms::ModemDriverBase::update_cfg(const protobuf::DriverConfig& cfg)
 {
-    goby::glog.is(WARN) && goby::glog << group(glog_out_group_) << "Updating configuration is not implemented in this driver." << std::endl;
+    goby::glog.is(WARN) && goby::glog << group(glog_out_group_)
+                                      << "Updating configuration is not implemented in this driver."
+                                      << std::endl;
 }
-

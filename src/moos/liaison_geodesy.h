@@ -23,91 +23,91 @@
 #ifndef LIAISONGEODESY20131115H
 #define LIAISONGEODESY20131115H
 
-#include <Wt/WText>
 #include <Wt/WBoxLayout>
-#include <Wt/WVBoxLayout>
+#include <Wt/WText>
 #include <Wt/WTimer>
+#include <Wt/WVBoxLayout>
 
 #include "goby/middleware/liaison/liaison_container.h"
-#include "goby/moos/protobuf/liaison_config.pb.h"
 #include "goby/moos/moos_geodesy.h"
+#include "goby/moos/protobuf/liaison_config.pb.h"
 
 namespace goby
 {
-    namespace common
+namespace common
+{
+class LiaisonGeodesy : public LiaisonContainer
+{
+  public:
+    LiaisonGeodesy(const protobuf::LiaisonConfig& cfg, Wt::WContainerWidget* parent = 0);
+
+  private:
+    enum LatLonMode
     {
-        class LiaisonGeodesy : public LiaisonContainer
-        {
-            
-          public:
-            LiaisonGeodesy(const protobuf::LiaisonConfig& cfg, Wt::WContainerWidget* parent = 0);
-            
-          private:
+        DECIMAL_DEGREES = 0,
+        DEGREES_MINUTES = 1,
+        DEGREES_MINUTES_SECONDS = 2
+    };
 
-            enum LatLonMode
-            {
-                DECIMAL_DEGREES = 0,
-                DEGREES_MINUTES = 1,
-                DEGREES_MINUTES_SECONDS = 2
-            };
+    void loop();
+    void convert_local_to_geo();
+    void convert_geo_to_local();
 
-            void loop();
-            void convert_local_to_geo();
-            void convert_geo_to_local();
+    void reformat();
 
-            void reformat();
+    enum LatLon
+    {
+        LAT,
+        LON
+    };
 
-            enum LatLon { LAT, LON };
-            
-            std::wstring format(double angle, LatLonMode mode, LatLon type);
+    std::wstring format(double angle, LatLonMode mode, LatLon type);
 
-            void change_mode();
-            
-          private:
-            
-            const protobuf::GeodesyConfig& geodesy_config_;
+    void change_mode();
 
-            Wt::WText* datum_lat_;
-            Wt::WText* datum_lon_;
-            
-            Wt::WPushButton* local_to_geo_button_;
-            Wt::WLineEdit* local_to_geo_x_;
-            Wt::WLineEdit* local_to_geo_y_;
-            Wt::WText* local_to_geo_lat_;
-            Wt::WText* local_to_geo_lon_;
-            
-            
-            Wt::WPushButton* geo_to_local_button_;
-            Wt::WText* geo_to_local_x_;
-            Wt::WText* geo_to_local_y_;
+  private:
+    const protobuf::GeodesyConfig& geodesy_config_;
 
-            Wt::WLineEdit* geo_to_local_lat_deg_;
-            Wt::WLineEdit* geo_to_local_lon_deg_;
+    Wt::WText* datum_lat_;
+    Wt::WText* datum_lon_;
 
-            Wt::WContainerWidget* lat_min_box_;
-            Wt::WLineEdit* geo_to_local_lat_min_;
-            Wt::WContainerWidget* lon_min_box_;
-            Wt::WLineEdit* geo_to_local_lon_min_;
-            Wt::WContainerWidget* lat_hemi_box_;
-            Wt::WComboBox* geo_to_local_lat_hemi_;
-            Wt::WContainerWidget* lon_hemi_box_;
-            Wt::WComboBox* geo_to_local_lon_hemi_;            
+    Wt::WPushButton* local_to_geo_button_;
+    Wt::WLineEdit* local_to_geo_x_;
+    Wt::WLineEdit* local_to_geo_y_;
+    Wt::WText* local_to_geo_lat_;
+    Wt::WText* local_to_geo_lon_;
 
-            Wt::WContainerWidget* lat_sec_box_;
-            Wt::WLineEdit* geo_to_local_lat_sec_;
-            Wt::WContainerWidget* lon_sec_box_;
-            Wt::WLineEdit* geo_to_local_lon_sec_;
+    Wt::WPushButton* geo_to_local_button_;
+    Wt::WText* geo_to_local_x_;
+    Wt::WText* geo_to_local_y_;
 
-            Wt::WComboBox* latlon_format_;
-            
-            CMOOSGeodesy geodesy_;
+    Wt::WLineEdit* geo_to_local_lat_deg_;
+    Wt::WLineEdit* geo_to_local_lon_deg_;
 
-            LatLonMode mode_;
+    Wt::WContainerWidget* lat_min_box_;
+    Wt::WLineEdit* geo_to_local_lat_min_;
+    Wt::WContainerWidget* lon_min_box_;
+    Wt::WLineEdit* geo_to_local_lon_min_;
+    Wt::WContainerWidget* lat_hemi_box_;
+    Wt::WComboBox* geo_to_local_lat_hemi_;
+    Wt::WContainerWidget* lon_hemi_box_;
+    Wt::WComboBox* geo_to_local_lon_hemi_;
 
-            double last_lat_, last_lon_, last_x_, last_y_;
-        };
+    Wt::WContainerWidget* lat_sec_box_;
+    Wt::WLineEdit* geo_to_local_lat_sec_;
+    Wt::WContainerWidget* lon_sec_box_;
+    Wt::WLineEdit* geo_to_local_lon_sec_;
 
-    }
-}
+    Wt::WComboBox* latlon_format_;
+
+    CMOOSGeodesy geodesy_;
+
+    LatLonMode mode_;
+
+    double last_lat_, last_lon_, last_x_, last_y_;
+};
+
+} // namespace common
+} // namespace goby
 
 #endif

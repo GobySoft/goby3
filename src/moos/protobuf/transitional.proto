@@ -1,51 +1,111 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/acomms/protobuf/manipulator.proto"; 
+import "goby/acomms/protobuf/manipulator.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
 package goby.transitional.protobuf;
 
 message DCCLTransitionalConfig
 {
-  optional int32 modem_id = 1 [(goby.field).description="Unique number 1-31 to identify this node", (goby.field).example="1"];
-  repeated MessageFile message_file = 2 [(goby.field).description="XML message file containing one or more DCCL message descriptions"];
-  
-  optional string generated_proto_dir = 4 [(goby.field).description="Directory to store auto-generated .proto files from deprecated XML files", default="/tmp"];
-}
+    optional int32 modem_id = 1 [
+        (goby.field).description = "Unique number 1-31 to identify this node",
+        (goby.field).example = "1"
+    ];
+    repeated MessageFile message_file = 2
+        [(goby.field).description =
+             "XML message file containing one or more DCCL message "
+             "descriptions"];
 
+    optional string generated_proto_dir = 4 [
+        (goby.field).description =
+            "Directory to store auto-generated .proto files from deprecated "
+            "XML files",
+        default = "/tmp"
+    ];
+}
 
 message MessageFile
 {
-  required string path = 1 [(goby.field).description="path to the message XML file", (goby.field).example="/home/toby/goby/src/acomms/examples/chat/chat.xml"];
+    required string path = 1 [
+        (goby.field).description = "path to the message XML file",
+        (goby.field).example =
+            "/home/toby/goby/src/acomms/examples/chat/chat.xml"
+    ];
 
-  repeated goby.acomms.protobuf.Manipulator manipulator = 2 [(goby.field).description="manipulators to modify the encoding and queuing behavior of the messages in this file", (goby.field).example="NO_MANIP"];
+    repeated goby.acomms.protobuf.Manipulator manipulator = 2 [
+        (goby.field).description =
+            "manipulators to modify the encoding and queuing behavior of the "
+            "messages in this file",
+        (goby.field).example = "NO_MANIP"
+    ];
 }
-
 
 enum QueueType
 {
-  QUEUE_DCCL = 1;
-  QUEUE_CCL = 2;
+    QUEUE_DCCL = 1;
+    QUEUE_CCL = 2;
 };
-
 
 message QueueKey
 {
-  required QueueType type = 1 [default = QUEUE_DCCL, (goby.field).description="Type of messages in this queue"];
-  required uint32 id = 2 [(goby.field).description="DCCL ID for QUEUE_DCCL, CCL Identifier (first) byte for QUEUE_CCL", (goby.field).example="14"];
+    required QueueType type = 1 [
+        default = QUEUE_DCCL,
+        (goby.field).description = "Type of messages in this queue"
+    ];
+    required uint32 id = 2 [
+        (goby.field).description =
+            "DCCL ID for QUEUE_DCCL, CCL Identifier (first) byte for QUEUE_CCL",
+        (goby.field).example = "14"
+    ];
 }
-
 
 message QueueConfig
 {
-  optional bool ack = 1 [default = true, (goby.field).description="Require acoustic acknowledgments of messages sent from this queue"];
-  optional uint32 blackout_time = 2 [default = 0, (goby.field).description="Time in seconds to ignore this queue after the last send from it."];
-  optional uint32 max_queue = 3 [default = 0, (goby.field).description="Maximum allowed messages in this queue (0 means infinity)."];
-  optional bool newest_first = 4 [default = true, (goby.field).description="true = FILO queue, false = FIFO queue"];
-  optional double value_base = 5 [default = 1, (goby.field).description="Base value (general importance) of the messages in this queue"];
-  optional uint32 ttl = 6 [default = 1800, (goby.field).description="Time to live in seconds; messages exceeding this time are discarded. Also factors into priority equation"];
-  optional QueueKey key = 7;
-  required string name = 8 [(goby.field).description="Human readable name for this queue", (goby.field).example="Remus_State"];
-  optional string in_pubsub_var = 9 [(goby.field).description="Publish subscribe architecture variable for posting incoming data to", (goby.field).example="REMUS_STATE_RAW_IN"];
-  optional string out_pubsub_var = 10 [(goby.field).description="Publish subscribe architecture variable for fetching outgoing data from", (goby.field).example="REMUS_STATE_RAW_OUT"];
-  
+    optional bool ack = 1 [
+        default = true,
+        (goby.field).description =
+            "Require acoustic acknowledgments of messages sent from this "
+            "queue"
+    ];
+    optional uint32 blackout_time = 2 [
+        default = 0,
+        (goby.field).description =
+            "Time in seconds to ignore this queue after the last send from "
+            "it."
+    ];
+    optional uint32 max_queue = 3 [
+        default = 0,
+        (goby.field).description =
+            "Maximum allowed messages in this queue (0 means infinity)."
+    ];
+    optional bool newest_first = 4 [
+        default = true,
+        (goby.field).description = "true = FILO queue, false = FIFO queue"
+    ];
+    optional double value_base = 5 [
+        default = 1,
+        (goby.field).description =
+            "Base value (general importance) of the messages in this queue"
+    ];
+    optional uint32 ttl = 6 [
+        default = 1800,
+        (goby.field).description =
+            "Time to live in seconds; messages exceeding this time are "
+            "discarded. Also factors into priority equation"
+    ];
+    optional QueueKey key = 7;
+    required string name = 8 [
+        (goby.field).description = "Human readable name for this queue",
+        (goby.field).example = "Remus_State"
+    ];
+    optional string in_pubsub_var = 9 [
+        (goby.field).description =
+            "Publish subscribe architecture variable for posting incoming data "
+            "to",
+        (goby.field).example = "REMUS_STATE_RAW_IN"
+    ];
+    optional string out_pubsub_var = 10 [
+        (goby.field).description =
+            "Publish subscribe architecture variable for fetching outgoing "
+            "data from",
+        (goby.field).example = "REMUS_STATE_RAW_OUT"
+    ];
 }

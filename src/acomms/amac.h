@@ -28,4 +28,3 @@
 #include "goby/acomms/amac/mac_manager.h"
 
 #endif
-

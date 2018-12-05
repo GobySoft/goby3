@@ -1,4 +1,3 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/middleware/protobuf/liaison_config.proto";
 import "goby/moos/protobuf/translator.proto";
 
@@ -6,23 +5,20 @@ package goby.common.protobuf;
 
 extend goby.common.protobuf.LiaisonConfig
 {
-  optional GeodesyConfig geodesy_config = 1002;
-  optional AcommsConfig acomms_config = 1003;
+    optional GeodesyConfig geodesy_config = 1002;
+    optional AcommsConfig acomms_config = 1003;
 }
-
 
 message GeodesyConfig
 {
-  required double lat_origin = 1;
-  required double lon_origin = 2;
+    required double lat_origin = 1;
+    required double lon_origin = 2;
 }
-
 
 message AcommsConfig
 {
-  optional bool minimize_dccl = 1 [default = false];
-  optional bool minimize_queue = 2 [default = false];
-  optional bool minimize_amac = 3 [default = false];
-  optional bool minimize_driver = 4 [default = false];
-  
+    optional bool minimize_dccl = 1 [default = false];
+    optional bool minimize_queue = 2 [default = false];
+    optional bool minimize_amac = 3 [default = false];
+    optional bool minimize_driver = 4 [default = false];
 }

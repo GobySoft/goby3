@@ -26,9 +26,9 @@
 
 #include <boost/asio/deadline_timer.hpp>
 
-#include "goby/util/dynamic_protobuf_manager.h"
 #include "goby/moos/goby_moos_app.h"
 #include "goby/moos/moos_translator.h"
+#include "goby/util/dynamic_protobuf_manager.h"
 
 #include "pTranslator_config.pb.h"
 
@@ -37,41 +37,39 @@ class CpTranslator : public GobyMOOSApp
   public:
     static CpTranslator* get_instance();
     static void delete_instance();
-    
+
   private:
     typedef boost::asio::basic_deadline_timer<goby::common::GobyTime> Timer;
     CpTranslator();
     ~CpTranslator();
-    
-    void loop();     // from GobyMOOSApp
 
-    void create_on_publish(const CMOOSMsg& trigger_msg, const goby::moos::protobuf::TranslatorEntry& entry);
+    void loop(); // from GobyMOOSApp
+
+    void create_on_publish(const CMOOSMsg& trigger_msg,
+                           const goby::moos::protobuf::TranslatorEntry& entry);
     void create_on_multiplex_publish(const CMOOSMsg& moos_msg);
-    
-    
+
     void create_on_timer(const boost::system::error_code& error,
-                         const goby::moos::protobuf::TranslatorEntry& entry,
-                         Timer* timer);
-    
+                         const goby::moos::protobuf::TranslatorEntry& entry, Timer* timer);
+
     void do_translation(const goby::moos::protobuf::TranslatorEntry& entry);
     void do_publish(boost::shared_ptr<google::protobuf::Message> created_message);
 
-    
   private:
-    enum { ALLOWED_TIMER_SKEW_SECONDS = 1 };
+    enum
+    {
+        ALLOWED_TIMER_SKEW_SECONDS = 1
+    };
 
     goby::moos::MOOSTranslator translator_;
-    
-    
+
     boost::asio::io_service timer_io_service_;
     boost::asio::io_service::work work_;
 
-    
-    std::vector<boost::shared_ptr<Timer > > timers_;
-    
-    static pTranslatorConfig cfg_;    
-    static CpTranslator* inst_;    
+    std::vector<boost::shared_ptr<Timer> > timers_;
+
+    static pTranslatorConfig cfg_;
+    static CpTranslator* inst_;
 };
 
-
-#endif 
+#endif

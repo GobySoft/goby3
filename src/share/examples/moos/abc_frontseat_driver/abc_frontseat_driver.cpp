@@ -25,8 +25,8 @@
 #include "abc_frontseat_driver.h"
 
 namespace gpb = goby::moos::protobuf;
-using goby::common::goby_time;
 using goby::glog;
+using goby::common::goby_time;
 using namespace goby::common::logger;
 using namespace goby::common::tcolor;
 
@@ -42,20 +42,16 @@ extern "C"
 }
 
 AbcFrontSeat::AbcFrontSeat(const iFrontSeatConfig& cfg)
-    : FrontSeatInterfaceBase(cfg),
-      abc_config_(cfg.GetExtension(abc_config)),
-      tcp_(abc_config_.tcp_address(),
-           abc_config_.tcp_port()),
-      frontseat_providing_data_(false),
-      last_frontseat_data_time_(0),
-      frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED)
+    : FrontSeatInterfaceBase(cfg), abc_config_(cfg.GetExtension(abc_config)),
+      tcp_(abc_config_.tcp_address(), abc_config_.tcp_port()), frontseat_providing_data_(false),
+      last_frontseat_data_time_(0), frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED)
 {
     tcp_.start();
 
     // wait for up to 10 seconds for a connection
     // in a real driver, should keep trying to reconnect (maybe with a backoff).
     int timeout = 10, i = 0;
-    while(!tcp_.active() && i < timeout)
+    while (!tcp_.active() && i < timeout)
     {
         ++i;
         sleep(1);
@@ -66,25 +62,26 @@ void AbcFrontSeat::loop()
 {
     check_connection_state();
     try_receive();
-    
+
     // if we haven't gotten data for a while, set this boolean so that the
     // FrontSeatInterfaceBase class knows
-    if(goby_time<double>() > last_frontseat_data_time_ + allowed_skew)
+    if (goby_time<double>() > last_frontseat_data_time_ + allowed_skew)
         frontseat_providing_data_ = false;
 } // loop
 
 void AbcFrontSeat::check_connection_state()
 {
     // check the connection state
-    if(!tcp_.active())
+    if (!tcp_.active())
     {
         // in a real driver, change this to try to reconnect (see Bluefin driver example)
-        glog.is(DIE) && glog << "Connection to FrontSeat failed: " << abc_config_.tcp_address() << ":" << abc_config_.tcp_port() << std::endl;
+        glog.is(DIE) && glog << "Connection to FrontSeat failed: " << abc_config_.tcp_address()
+                             << ":" << abc_config_.tcp_port() << std::endl;
     }
     else
     {
         // on connection, send the START command to initialize the simulator
-        if(frontseat_state_ == gpb::FRONTSEAT_NOT_CONNECTED)
+        if (frontseat_state_ == gpb::FRONTSEAT_NOT_CONNECTED)
         {
             glog.is(VERBOSE) && glog << "Connected to ABC Simulator." << std::endl;
             frontseat_state_ = gpb::FRONTSEAT_IDLE;
@@ -98,24 +95,23 @@ void AbcFrontSeat::check_connection_state()
     }
 }
 
-
 void AbcFrontSeat::try_receive()
 {
     std::string in;
-    while(tcp_.readline(&in))
+    while (tcp_.readline(&in))
     {
         boost::trim(in);
         try
         {
             process_receive(in);
         }
-        catch(std::exception& e)
+        catch (std::exception& e)
         {
-            glog.is(DEBUG1) && glog << warn << "Failed to handle message: " << e.what() << std::endl;
-        }            
+            glog.is(DEBUG1) && glog << warn << "Failed to handle message: " << e.what()
+                                    << std::endl;
+        }
     }
-}    
-
+}
 
 void AbcFrontSeat::process_receive(const std::string& s)
 {
@@ -127,21 +123,21 @@ void AbcFrontSeat::process_receive(const std::string& s)
     parse_in(s, &parsed);
 
     // frontseat state message
-    if(parsed["KEY"] == "CTRL")
+    if (parsed["KEY"] == "CTRL")
     {
-        if(parsed["STATE"] == "PAYLOAD")
+        if (parsed["STATE"] == "PAYLOAD")
             frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
-        else if(parsed["STATE"] == "AUV")
+        else if (parsed["STATE"] == "AUV")
             frontseat_state_ = gpb::FRONTSEAT_IN_CONTROL;
-        else 
+        else
             frontseat_state_ = gpb::FRONTSEAT_IDLE;
     }
     // frontseat navigation message
-    else if(parsed["KEY"] == "NAV")
+    else if (parsed["KEY"] == "NAV")
     {
         gpb::FrontSeatInterfaceData data;
         goby::moos::protobuf::NodeStatus& status = *data.mutable_node_status();
-        
+
         glog.is(VERBOSE) && glog << "Got NAV update: " << s << std::endl;
         status.mutable_pose()->set_heading(goby::util::as<double>(parsed["HEADING"]));
         status.set_speed(goby::util::as<double>(parsed["SPEED"]));
@@ -149,18 +145,18 @@ void AbcFrontSeat::process_receive(const std::string& s)
         status.mutable_global_fix()->set_lon(goby::util::as<double>(parsed["LON"]));
         status.mutable_global_fix()->set_lat(goby::util::as<double>(parsed["LAT"]));
 
-        // calculates the local fix (X, Y, Z) from global fix 
+        // calculates the local fix (X, Y, Z) from global fix
         compute_missing(&status);
-    
+
         signal_data_from_frontseat(data);
 
         frontseat_providing_data_ = true;
         last_frontseat_data_time_ = goby_time<double>();
     }
     // frontseat response to our command message
-    else if(parsed["KEY"] == "CMD")
+    else if (parsed["KEY"] == "CMD")
     {
-        if(last_request_.response_requested())
+        if (last_request_.response_requested())
         {
             gpb::CommandResponse response;
             response.set_request_successful(parsed["RESULT"] == "OK");
@@ -175,26 +171,27 @@ void AbcFrontSeat::process_receive(const std::string& s)
 }
 
 void AbcFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& command)
-{    
-    if(command.has_desired_course())
+{
+    if (command.has_desired_course())
     {
         std::stringstream cmd_ss;
         const goby::moos::protobuf::DesiredCourse& desired_course = command.desired_course();
-        cmd_ss << "CMD," 
+        cmd_ss << "CMD,"
                << "HEADING:" << desired_course.heading() << ","
                << "SPEED:" << desired_course.speed() << ","
                << "DEPTH:" << desired_course.depth();
-        
+
         write(cmd_ss.str());
         last_request_ = command;
     }
     else
     {
-        glog.is(VERBOSE) && glog << "Unhandled command: " << command.ShortDebugString() << std::endl;
+        glog.is(VERBOSE) && glog << "Unhandled command: " << command.ShortDebugString()
+                                 << std::endl;
     }
-    
+
 } // send_command_to_frontseat
-    
+
 void AbcFrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData& data)
 {
     // ABC driver doesn't have any data to sent to the frontseat
@@ -205,7 +202,6 @@ void AbcFrontSeat::send_raw_to_frontseat(const gpb::FrontSeatRaw& data)
     write(data.raw());
 } // send_raw_to_frontseat
 
-    
 bool AbcFrontSeat::frontseat_providing_data() const
 {
     return frontseat_providing_data_;
@@ -221,7 +217,7 @@ void AbcFrontSeat::write(const std::string& s)
     gpb::FrontSeatRaw raw_msg;
     raw_msg.set_raw(s);
     signal_raw_to_frontseat(raw_msg);
-    
+
     tcp_.write(s + "\r\n");
 }
 
@@ -234,14 +230,10 @@ void AbcFrontSeat::parse_in(const std::string& in, std::map<std::string, std::st
     std::vector<std::string> comma_split;
     boost::split(comma_split, in, boost::is_any_of(","));
     out->insert(std::make_pair("KEY", comma_split.at(0)));
-    for(int i = 1, n = comma_split.size(); i < n; ++i)
+    for (int i = 1, n = comma_split.size(); i < n; ++i)
     {
         std::vector<std::string> colon_split;
-        boost::split(colon_split, comma_split[i],
-                     boost::is_any_of(":"));
-        out->insert(std::make_pair(colon_split.at(0),
-                                   colon_split.at(1)));
+        boost::split(colon_split, comma_split[i], boost::is_any_of(":"));
+        out->insert(std::make_pair(colon_split.at(0), colon_split.at(1)));
     }
 }
-
-

@@ -1,5 +1,5 @@
-@PROTOBUF_SYNTAX_VERSION@
-import "goby/acomms/protobuf/driver_base.proto"; // load up message DriverBaseConfig
+import "goby/acomms/protobuf/driver_base.proto"; // load up message
+                                                 // DriverBaseConfig
 import "goby/acomms/protobuf/modem_message.proto"; // load up message ModemTransmission
 
 import "goby/common/protobuf/zero_mq_node_config.proto";
@@ -7,31 +7,31 @@ import "dccl/protobuf/option_extensions.proto";
 
 message PBDriverConfig
 {
-  extend goby.acomms.protobuf.DriverConfig
-  {
-    optional goby.common.protobuf.ZeroMQServiceConfig.Socket request_socket = 1321;
-    optional double query_interval_seconds = 1322 [default = 1];
-    optional int32 max_frame_size = 1323 [default = 65536];
-    optional double reset_interval_seconds = 1324 [default = 120];
-    repeated int32 rate_to_bytes = 1325;
-    repeated int32 rate_to_frames = 1326;
-  }
-
+    extend goby.acomms.protobuf.DriverConfig
+    {
+        optional goby.common.protobuf.ZeroMQServiceConfig.Socket
+            request_socket = 1321;
+        optional double query_interval_seconds = 1322 [default = 1];
+        optional int32 max_frame_size = 1323 [default = 65536];
+        optional double reset_interval_seconds = 1324 [default = 120];
+        repeated int32 rate_to_bytes = 1325;
+        repeated int32 rate_to_frames = 1326;
+    }
 }
 
 message PBDriverTransmission
 {
-  enum TransmissionType
-  {
-    BASE_TYPE = 0;
-    PB_DRIVER_POLL = 1;
-  }
-  extend goby.acomms.protobuf.ModemTransmission 
-  {
-    optional TransmissionType type = 1321 [default=BASE_TYPE];
-  
-    // used in PB_DRIVER_POLL message
-    optional int32 poll_src = 1322 [(dccl.field).omit = true];
-    optional int32 poll_dest = 1323 [(dccl.field).omit = true];
-  }
+    enum TransmissionType
+    {
+        BASE_TYPE = 0;
+        PB_DRIVER_POLL = 1;
+    }
+    extend goby.acomms.protobuf.ModemTransmission
+    {
+        optional TransmissionType type = 1321 [default = BASE_TYPE];
+
+        // used in PB_DRIVER_POLL message
+        optional int32 poll_src = 1322 [(dccl.field).omit = true];
+        optional int32 poll_dest = 1323 [(dccl.field).omit = true];
+    }
 }

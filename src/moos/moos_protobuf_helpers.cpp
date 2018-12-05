@@ -22,5 +22,5 @@
 
 #include "moos_protobuf_helpers.h"
 
-goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique goby::moos::moos_technique = goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT;
-
+goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique goby::moos::moos_technique =
+    goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT;

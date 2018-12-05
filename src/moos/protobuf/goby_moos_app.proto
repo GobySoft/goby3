@@ -1,72 +1,136 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 import "goby/common/protobuf/logger.proto";
 import "goby/moos/protobuf/translator.proto";
 
 message GobyMOOSAppConfig
 {
-  // Global moos variables (Specified outside "ProcessConfig" blocks)
-  optional bool log = 100 [default = true, (goby.field).moos_global = "log",
-                           (goby.field).description="Should we write a text log of the terminal output?"];
-  optional string log_path = 101 [default = "./",
-                                  (goby.field).moos_global = "log_path",
-                                  (goby.field).description="Directory path to write the text log of the terminal output (if log=true)"];
+    // Global moos variables (Specified outside "ProcessConfig" blocks)
+    optional bool log = 100 [
+        default = true,
+        (goby.field).moos_global = "log",
+        (goby.field).description =
+            "Should we write a text log of the terminal output?"
+    ];
+    optional string log_path = 101 [
+        default = "./",
+        (goby.field).moos_global = "log_path",
+        (goby.field).description =
+            "Directory path to write the text log of the terminal output (if "
+            "log=true)"
+    ];
 
-  optional goby.common.protobuf.GLogConfig.Verbosity log_verbosity = 105 [default = DEBUG2, (goby.field).description="Verbosity of the log file"];
+    optional goby.common.protobuf.GLogConfig.Verbosity log_verbosity = 105 [
+        default = DEBUG2,
+        (goby.field).description = "Verbosity of the log file"
+    ];
 
-  optional string community = 102 [(goby.field).moos_global = "Community",
-                                   (goby.field).description="The vehicle's name", (goby.field).example="AUV23"];
-  optional double lat_origin = 103 [(goby.field).moos_global = "LatOrigin",
-                                    (goby.field).description="Latitude in decimal degrees of the local cartesian datum",
-                                    (goby.field).example="42.5"];
-  optional double lon_origin = 104 [(goby.field).moos_global = "LongOrigin",
-                                    (goby.field).description="Longitude in decimal degrees of the local cartesian datum",
-                                    (goby.field).example="10.9"];
+    optional string community = 102 [
+        (goby.field).moos_global = "Community",
+        (goby.field).description = "The vehicle's name",
+        (goby.field).example = "AUV23"
+    ];
+    optional double lat_origin = 103 [
+        (goby.field).moos_global = "LatOrigin",
+        (goby.field).description =
+            "Latitude in decimal degrees of the local cartesian datum",
+        (goby.field).example = "42.5"
+    ];
+    optional double lon_origin = 104 [
+        (goby.field).moos_global = "LongOrigin",
+        (goby.field).description =
+            "Longitude in decimal degrees of the local cartesian datum",
+        (goby.field).example = "10.9"
+    ];
 
-  optional uint32 time_warp_multiplier = 106 [default = 1, (goby.field).moos_global = "MOOSTimeWarp",
-                                            (goby.field).description="Factor by which to make the clock run faster."];
+    optional uint32 time_warp_multiplier = 106 [
+        default = 1,
+        (goby.field).moos_global = "MOOSTimeWarp",
+        (goby.field).description =
+            "Factor by which to make the clock run faster."
+    ];
 
+    optional string server_host = 107 [
+        (goby.field).moos_global = "ServerHost",
+        (goby.field).description = "MOOSDB Server Host name"
+    ];
+    optional int32 server_port = 108 [
+        (goby.field).moos_global = "ServerPort",
+        (goby.field).description = "MOOSDB Server Port"
+    ];
 
-  optional string server_host = 107 [(goby.field).moos_global = "ServerHost",
-                                    (goby.field).description="MOOSDB Server Host name"];
-  optional int32 server_port = 108 [(goby.field).moos_global = "ServerPort",
-                                    (goby.field).description="MOOSDB Server Port"];
+    optional uint32 app_tick = 1 [
+        default = 10,
+        (goby.field).description = "Frequency at which to run Iterate()."
+    ];
 
-  optional uint32 app_tick = 1 [default = 10,
-                                (goby.field).description="Frequency at which to run Iterate()."];
-  
-  optional uint32 comm_tick = 2 [default = 10,
-                                 (goby.field).description="Frequency at which to call into the MOOSDB for mail."];
+    optional uint32 comm_tick = 2 [
+        default = 10,
+        (goby.field).description =
+            "Frequency at which to call into the MOOSDB for mail."
+    ];
 
-  optional goby.common.protobuf.GLogConfig.Verbosity verbosity = 3 [default = VERBOSE,
-                                    (goby.field).description="Verbosity of the terminal window output"];
-  optional bool show_gui  = 4 [default = false, (goby.field).description="Set to true to display windowed NCurses GUI for terminal output."];
+    optional goby.common.protobuf.GLogConfig.Verbosity verbosity = 3 [
+        default = VERBOSE,
+        (goby.field).description = "Verbosity of the terminal window output"
+    ];
+    optional bool show_gui = 4 [
+        default = false,
+        (goby.field).description =
+            "Set to true to display windowed NCurses GUI for terminal output."
+    ];
 
+    optional bool use_binary_protobuf = 109 [
+        default = false,
+        (goby.field).moos_global = "use_binary_protobuf",
+        (goby.field).description =
+            "Use TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED for parse_for_moos "
+            "and serialize_for_moos"
+    ];
 
-  optional bool use_binary_protobuf = 109 [default = false,
-                                           (goby.field).moos_global = "use_binary_protobuf",
-                                           (goby.field).description="Use TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED for parse_for_moos and serialize_for_moos"];
+    optional goby.moos.protobuf.TranslatorEntry.ParserSerializerTechnique
+        moos_parser_technique = 110 [
+        default = TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT,
+        (goby.field).moos_global = "moos_parser_technique"
+    ];
 
-    optional goby.moos.protobuf.TranslatorEntry.ParserSerializerTechnique moos_parser_technique = 110 [default = TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT, (goby.field).moos_global = "moos_parser_technique" ];
-    
-  // post various configuration values to the MOOSDB on startup
-  message Initializer
-  {
-    enum Type
+    // post various configuration values to the MOOSDB on startup
+    message Initializer
     {
-      INI_DOUBLE = 1;
-      INI_STRING = 2;
+        enum Type
+        {
+            INI_DOUBLE = 1;
+            INI_STRING = 2;
+        }
+        required Type type = 1 [
+            (goby.field).description = "type of MOOS variable to publish",
+            (goby.field).example = "INI_DOUBLE"
+        ];
+        required string moos_var = 2 [
+            (goby.field).description = "name of MOOS variable to publish to",
+            (goby.field).example = "SOME_MOOS_VAR"
+        ];
+        optional string global_cfg_var = 3 [
+            (goby.field).description =
+                "Optionally, instead of giving `sval` or `dval`, give a name "
+                "here of a global MOOS variable (one at the top of the file) "
+                "whose contents should be written to `moos_var`",
+            (goby.field).example = "LatOrigin"
+        ];  // pull from globals at top of MOOS file
+        optional double dval = 4 [
+            (goby.field).description = "Value to write for type==INI_DOUBLE",
+            (goby.field).example = "3.454"
+        ];  // required if type == MOOS_DOUBLE
+        optional string sval = 5 [
+            (goby.field).description = "Value to write for type==INI_STRING",
+            (goby.field).example = "a string"
+        ];  // required if type == MOOS_STRING
+        optional bool trim = 6 [
+            (goby.field).description =
+                "Trim whitespace from front and back of string",
+            default = true
+        ];
     }
-    required Type type = 1 [(goby.field).description="type of MOOS variable to publish",
-                            (goby.field).example="INI_DOUBLE"];
-    required string moos_var = 2 [(goby.field).description="name of MOOS variable to publish to",
-                                  (goby.field).example="SOME_MOOS_VAR"];
-    optional string global_cfg_var = 3 [(goby.field).description="Optionally, instead of giving `sval` or `dval`, give a name here of a global MOOS variable (one at the top of the file) whose contents should be written to `moos_var`", (goby.field).example="LatOrigin"]; // pull from globals at top of MOOS file
-    optional double dval = 4 [(goby.field).description="Value to write for type==INI_DOUBLE",
-                              (goby.field).example="3.454"]; // required if type == MOOS_DOUBLE
-    optional string sval = 5 [(goby.field).description="Value to write for type==INI_STRING",
-                              (goby.field).example="a string"]; // required if type == MOOS_STRING
-    optional bool trim = 6 [(goby.field).description="Trim whitespace from front and back of string", default= true];
-  }  
-  repeated Initializer initializer = 10 [(goby.field).description="Publish a constant value to the MOOSDB at startup"];
-}    
+    repeated Initializer initializer = 10
+        [(goby.field).description =
+             "Publish a constant value to the MOOSDB at startup"];
+}

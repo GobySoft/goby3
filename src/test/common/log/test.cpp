@@ -27,61 +27,52 @@
 using goby::glog;
 
 /// asserts false if called - used for testing proper short-circuiting of logger calls
-inline std::ostream& stream_assert(std::ostream & os)
-{ assert(false); }
+inline std::ostream& stream_assert(std::ostream& os) { assert(false); }
 
 using namespace goby::common::logger;
 
 struct A
 {
-    A() : i(0) { }
-    A(int i) : i(i) { }
-    
+    A() : i(0) {}
+    A(int i) : i(i) {}
+
     int i;
 };
 
-std::ostream& operator<<(std::ostream& out, const A& a)
-{
-    return out << a.i;
-}    
+std::ostream& operator<<(std::ostream& out, const A& a) { return out << a.i; }
 
 void spew(int n, int m, int run)
 {
-    switch(run)
+    switch (run)
     {
         case 0:
             glog.is(VERBOSE) && glog << "Spew 1: " << std::endl;
-            for(int i = 0; i < n; i++)
-                glog.is(VERBOSE) && glog << m << " " << i << std::endl;        
+            for (int i = 0; i < n; i++) glog.is(VERBOSE) && glog << m << " " << i << std::endl;
             break;
 
         case 1:
             glog.is(VERBOSE) && glog << "Spew 2: " << std::endl;
-            for(int i = 0; i < n; i++)
-                glog.is(VERBOSE) && glog << m << " " << A(i) << std::endl;        
+            for (int i = 0; i < n; i++) glog.is(VERBOSE) && glog << m << " " << A(i) << std::endl;
             break;
-            
+
         case 2:
             glog.is(VERBOSE) && glog << "Spew 3: " << std::endl;
-            for(int i = 0; i < n; i++)
-                glog << m << " " << i << std::endl;
+            for (int i = 0; i < n; i++) glog << m << " " << i << std::endl;
             break;
 
         case 3:
             glog.is(VERBOSE) && glog << "Spew 4: " << std::endl;
-            for(int i = 0; i < n; i++)
-                glog<< m << " " << i;
+            for (int i = 0; i < n; i++) glog << m << " " << i;
             glog << std::endl;
             break;
 
         case 4:
             glog.is(VERBOSE) && glog << "Spew 5: " << std::endl;
-            for(int i = 0; i < n; i++)
+            for (int i = 0; i < n; i++)
                 glog.is(VERBOSE) && glog << m << " " << i << std::endl << i << std::endl;
             break;
     }
 }
-
 
 int main()
 {
@@ -111,7 +102,6 @@ int main()
     glog.is(VERBOSE) && glog << "verbose ok" << std::endl;
     glog.is(WARN) && glog << "warn ok" << std::endl;
 
-    
     std::cout << "checking locking ... " << std::endl;
     glog.set_lock_action(goby::common::logger_lock::lock);
     glog.is(VERBOSE) && glog << "lock ok" << std::endl;
@@ -123,20 +113,19 @@ int main()
     // a.i = 10;
     // glog << "Testing overloaded operator<<" << std::endl;
     // glog << a << std::endl;
-    
+
     glog.is(DEBUG3) && glog << stream_assert << std::endl;
 
-    for(int i = 0; i < 2; ++i)
+    for (int i = 0; i < 2; ++i)
     {
         boost::thread t1(boost::bind(spew, 1000, 1, i));
         boost::thread t2(boost::bind(spew, 1000, 2, i));
         t1.join();
-        t2.join();    
+        t2.join();
     }
-    
+
     glog.set_lock_action(goby::common::logger_lock::none);
 
-    
     std::cout << "attaching std::cout to DEBUG1" << std::endl;
     glog.add_stream(DEBUG1, &std::cout);
     glog.is(DEBUG3) && glog << stream_assert << std::endl;
@@ -169,18 +158,15 @@ int main()
     glog.is(DEBUG1) && glog << "debug1 ok" << std::endl;
     glog.is(VERBOSE) && glog << "verbose ok" << std::endl;
     glog.is(WARN) && glog << "warn ok" << std::endl;
-    
-    std::cout << "ss1: \n" << ss1.rdbuf();
 
+    std::cout << "ss1: \n" << ss1.rdbuf();
 
     glog.add_group("test1", goby::common::Colors::lt_green, "Test 1");
     glog.add_group("test2", goby::common::Colors::lt_green, "Test 2");
 
     glog << group("test1") << "test1 group ok" << std::endl;
     glog.is(WARN) && glog << group("test2") << "test2 group warning ok" << std::endl;
-    
+
     std::cout << "All tests passed." << std::endl;
     return 0;
 }
-
-

@@ -1,48 +1,62 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 import "dccl/protobuf/option_extensions.proto";
 
 package goby.acomms.protobuf;
 
-
 message TimeUpdateRequest
 {
-  option (dccl.msg).id = 0x0204;
-  option (dccl.msg).max_bytes = 32;
-  
-  required int32 src = 1 [(dccl.field).min = 1,
-                          (dccl.field).max = 32,
-                          (dccl.field).in_head = true]; 
-  optional int32 dest = 2 [(dccl.field).min = 1,
-                           (dccl.field).max = 32,
-                           (dccl.field).in_head = true];
+    option (dccl.msg).id = 0x0204;
+    option (dccl.msg).max_bytes = 32;
 
-  required uint64 time = 3 [(dccl.field).codec="_time", (dccl.field).in_head = true];
+    required int32 src = 1 [
+        (dccl.field).min = 1,
+        (dccl.field).max = 32,
+        (dccl.field).in_head = true
+    ];
+    optional int32 dest = 2 [
+        (dccl.field).min = 1,
+        (dccl.field).max = 32,
+        (dccl.field).in_head = true
+    ];
 
-  required int32 update_time_for_id = 4 [(dccl.field).min = 1,
-                                         (dccl.field).max = 32,
-                                         (dccl.field).in_head = true];
+    required uint64 time = 3
+        [(dccl.field).codec = "_time", (dccl.field).in_head = true];
 
- 
+    required int32 update_time_for_id = 4 [
+        (dccl.field).min = 1,
+        (dccl.field).max = 32,
+        (dccl.field).in_head = true
+    ];
 }
 
 message TimeUpdateResponse
 {
-  option (dccl.msg).id = 0x0205;
-  option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).id = 0x0205;
+    option (dccl.msg).max_bytes = 32;
 
+    required int32 src = 1 [
+        (dccl.field).min = 1,
+        (dccl.field).max = 32,
+        (dccl.field).in_head = true
+    ];
+    optional int32 dest = 2 [
+        (dccl.field).min = 1,
+        (dccl.field).max = 32,
+        (dccl.field).in_head = true
+    ];
 
-  required int32 src = 1 [(dccl.field).min = 1,
-                          (dccl.field).max = 32,
-                          (dccl.field).in_head = true]; 
-  optional int32 dest = 2 [(dccl.field).min = 1,
-                           (dccl.field).max = 32,
-                           (dccl.field).in_head = true];
+    required uint64 time = 3 [
+        (dccl.field).codec = "_time",
+        (dccl.field).in_head = true,
+        (dccl.field).precision = -3
+    ];
 
-  required uint64 time = 3 [(dccl.field).codec="_time", (dccl.field).in_head = true, (dccl.field).precision = -3];
- 
-  required uint64 time_of_flight_microsec = 4 [(dccl.field).min = 0, (dccl.field).max = 20000000, (dccl.field).precision = -3]; // microsec correction applied to `time` field - good for 20 sec (about 30km)
- 
-  optional int32 request_src = 5 [(dccl.field).omit = true];
+    required uint64 time_of_flight_microsec = 4 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 20000000,
+        (dccl.field).precision = -3
+    ];  // microsec correction applied to `time` field - good for 20 sec (about
+        // 30km)
 
+    optional int32 request_src = 5 [(dccl.field).omit = true];
 }

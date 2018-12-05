@@ -1,31 +1,41 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 
 package goby.common.protobuf;
 
 message GLogConfig
 {
-  enum Verbosity
-  {
-    QUIET = 1;
-    WARN = 2;
-    VERBOSE = 3;
-    DEBUG1 = 5;
-    DEBUG2 = 6;
-    DEBUG3 = 7;
-  }
-  
-  optional Verbosity tty_verbosity = 1 [default = QUIET,
-                                        (goby.field).description="Terminal verbosity"];
+    enum Verbosity
+    {
+        QUIET = 1;
+        WARN = 2;
+        VERBOSE = 3;
+        DEBUG1 = 5;
+        DEBUG2 = 6;
+        DEBUG3 = 7;
+    }
 
-  optional bool show_gui = 2 [default = false, (goby.field).description="Set to true to display windowed NCurses GUI for terminal output."];
-    
-  message FileLog
-  {
-      required string file_name = 1 [(goby.field).description="Full path to the debug file to write. If present, the string '%1%' will be replaced by the current UTC date and time, and '%2%' will be replaced by the application name."];
-      optional Verbosity verbosity = 2 [default = VERBOSE,
-                                        (goby.field).description="Verbosity for this file log"];
-  }
-  repeated FileLog file_log = 3 [(goby.field).description="Open one or more files for (debug) logging."];
-  
+    optional Verbosity tty_verbosity = 1
+        [default = QUIET, (goby.field).description = "Terminal verbosity"];
+
+    optional bool show_gui = 2 [
+        default = false,
+        (goby.field).description =
+            "Set to true to display windowed NCurses GUI for terminal output."
+    ];
+
+    message FileLog
+    {
+        required string file_name = 1
+            [(goby.field).description =
+                 "Full path to the debug file to write. If present, the string "
+                 "'%1%' will be replaced by the current UTC date and time, and "
+                 "'%2%' will be replaced by the application name."];
+        optional Verbosity verbosity = 2 [
+            default = VERBOSE,
+            (goby.field).description = "Verbosity for this file log"
+        ];
+    }
+    repeated FileLog file_log = 3
+        [(goby.field).description =
+             "Open one or more files for (debug) logging."];
 }

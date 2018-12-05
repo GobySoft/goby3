@@ -1,4 +1,3 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 import "goby/common/protobuf/app_base_config.proto";
 
@@ -6,25 +5,24 @@ package goby.acomms.protobuf;
 
 message FileTransferConfig
 {
-  optional AppBaseConfig base = 1;
+    optional AppBaseConfig base = 1;
 
-  optional bool daemon = 2 [default = false];
-  
-  required int32 local_id = 3;
-  
-  
-  optional int32 remote_id = 4;
-  optional string local_file = 5;
-  optional string remote_file = 6;
+    optional bool daemon = 2 [default = false];
 
-  enum Action
-  {
-    WAIT = 0;
-    PUSH = 1;
-    PULL = 2;
-  }
-  
-  optional Action action = 10 [default = WAIT];
+    required int32 local_id = 3;
 
-  optional double request_timeout = 11 [default = 600];
+    optional int32 remote_id = 4;
+    optional string local_file = 5;
+    optional string remote_file = 6;
+
+    enum Action
+    {
+        WAIT = 0;
+        PUSH = 1;
+        PULL = 2;
+    }
+
+    optional Action action = 10 [default = WAIT];
+
+    optional double request_timeout = 11 [default = 600];
 }

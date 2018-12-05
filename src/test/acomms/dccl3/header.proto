@@ -1,4 +1,3 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 import "dccl/protobuf/option_extensions.proto";
 
@@ -6,30 +5,39 @@ import "dccl/protobuf/option_extensions.proto";
 // if you choose not to do so yourself
 message Header
 {
-  //
-  // time
-  //
+    //
+    // time
+    //
 
-  // micro-seconds since unix
-  required uint64 time = 10 [(dccl.field).codec="_time",
-                             (dccl.field).in_head=true];
+    // micro-seconds since unix
+    required uint64 time = 10
+        [(dccl.field).codec = "_time", (dccl.field).in_head = true];
 
-  //
-  // source
-  //
-  required uint32 source_platform = 11 [(dccl.field).min = 0,
-                                        (dccl.field).max = 31,
-                                        (dccl.field).in_head=true];
-  optional string source_app = 12 [(dccl.field).omit=true];
-  
-  //
-  // destination
-  //
-  enum PublishDestination { PUBLISH_SELF = 1; PUBLISH_OTHER = 2; PUBLISH_ALL = 3; }
-  optional PublishDestination dest_type = 13 [default = PUBLISH_SELF, (dccl.field).in_head=true];
-  
-  optional uint32 dest_platform = 14 [(dccl.field).min = 0,
-                                      (dccl.field).max = 31,
-                                      (dccl.field).in_head=true]; // required if dest_type == other
+    //
+    // source
+    //
+    required uint32 source_platform = 11 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 31,
+        (dccl.field).in_head = true
+    ];
+    optional string source_app = 12 [(dccl.field).omit = true];
 
+    //
+    // destination
+    //
+    enum PublishDestination
+    {
+        PUBLISH_SELF = 1;
+        PUBLISH_OTHER = 2;
+        PUBLISH_ALL = 3;
+    }
+    optional PublishDestination dest_type = 13
+        [default = PUBLISH_SELF, (dccl.field).in_head = true];
+
+    optional uint32 dest_platform = 14 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 31,
+        (dccl.field).in_head = true
+    ];  // required if dest_type == other
 }

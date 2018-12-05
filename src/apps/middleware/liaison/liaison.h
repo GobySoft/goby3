@@ -25,12 +25,12 @@
 #include <google/protobuf/descriptor.h>
 #include <mutex>
 
-#include <Wt/WEnvironment>
 #include <Wt/WApplication>
-#include <Wt/WString>
+#include <Wt/WContainerWidget>
+#include <Wt/WEnvironment>
 #include <Wt/WMenu>
 #include <Wt/WServer>
-#include <Wt/WContainerWidget>
+#include <Wt/WString>
 #include <Wt/WTimer>
 
 #include "goby/middleware/liaison/liaison_container.h"
@@ -40,33 +40,30 @@
 
 namespace goby
 {
-    namespace common
-    {
+namespace common
+{
+class Liaison : public MultiThreadApplication<protobuf::LiaisonConfig>
+{
+  public:
+    Liaison();
+    ~Liaison() {}
 
-        class Liaison : public MultiThreadApplication<protobuf::LiaisonConfig>
-        {
-          public:
-            Liaison();
-            ~Liaison() { }
-            
-            void loop() override;
+    void loop() override;
 
-            static std::vector<void *> plugin_handles_;
+    static std::vector<void*> plugin_handles_;
 
-            
-          private:
-            void load_proto_file(const std::string& path);
-            
-            friend class LiaisonWtThread;
-          private:
-            Wt::WServer wt_server_;
-            bool terminating_ {false};
-            std::function<void()> expire_sessions_;
-        };
+  private:
+    void load_proto_file(const std::string& path);
 
-    }
-}
+    friend class LiaisonWtThread;
 
+  private:
+    Wt::WServer wt_server_;
+    bool terminating_{false};
+    std::function<void()> expire_sessions_;
+};
 
+} // namespace common
+} // namespace goby
 
 #endif

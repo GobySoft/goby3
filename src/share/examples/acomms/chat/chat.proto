@@ -1,17 +1,15 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 import "dccl/protobuf/option_extensions.proto";
 
 message ChatMessage
 {
-  option (dccl.msg).id = 2;
-  option (dccl.msg).max_bytes = 32;
-  
-  required int32 destination = 1 [(dccl.field).max=30,
-                                  (dccl.field).min=0];
+    option (dccl.msg).id = 2;
+    option (dccl.msg).max_bytes = 32;
 
-  required int32 source = 2 [(dccl.field).max=30,
-                             (dccl.field).min=0];
+    required int32 destination = 1
+        [(dccl.field).max = 30, (dccl.field).min = 0];
 
-  required string telegram = 3 [(dccl.field).max_length=26];
+    required int32 source = 2 [(dccl.field).max = 30, (dccl.field).min = 0];
+
+    required string telegram = 3 [(dccl.field).max_length = 26];
 }

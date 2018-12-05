@@ -21,33 +21,31 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/common/logger/flex_ostream.h"
-#include "logger_manipulators.h"
 #include "goby/common/exception.h"
+#include "logger_manipulators.h"
 
 using namespace goby::common::logger;
-
 
 // boost::shared_ptr<goby::common::FlexOstream> goby::common::FlexOstream::inst_;
 
 // goby::common::FlexOstream& goby::common::glogger()
-// {    
-//     if(!FlexOstream::inst_) FlexOstream::inst_.reset(new FlexOstream());    
+// {
+//     if(!FlexOstream::inst_) FlexOstream::inst_.reset(new FlexOstream());
 //     return(*FlexOstream::inst_);
 // }
 
-int goby::common::FlexOstream::instances_ = 0 ;
+int goby::common::FlexOstream::instances_ = 0;
 
 goby::common::FlexOstream goby::glog;
 
 void goby::common::FlexOstream::add_group(const std::string& name,
-                                        Colors::Color color /*= Colors::nocolor*/,
-                                        const std::string& description /*= ""*/)
+                                          Colors::Color color /*= Colors::nocolor*/,
+                                          const std::string& description /*= ""*/)
 {
     {
-
         boost::recursive_mutex::scoped_lock l(goby::common::logger::mutex);
-        
-        if(description.empty())
+
+        if (description.empty())
         {
             Group ng(name, name, color);
             sb_.add_group(name, ng);
@@ -58,38 +56,37 @@ void goby::common::FlexOstream::add_group(const std::string& name,
             sb_.add_group(name, ng);
         }
     }
-    
-    
+
     this->is(VERBOSE) &&
-        *this << "Adding FlexOstream group: "
-              << TermColor::esc_code_from_col(color) << name
-              << TermColor::esc_code_from_col(Colors::nocolor) << " (" << description << ")" << std::endl;
+        *this << "Adding FlexOstream group: " << TermColor::esc_code_from_col(color) << name
+              << TermColor::esc_code_from_col(Colors::nocolor) << " (" << description << ")"
+              << std::endl;
 }
 
-
-std::ostream& goby::common::FlexOstream::operator<<(std::ostream& (*pf) (std::ostream&))
+std::ostream& goby::common::FlexOstream::operator<<(std::ostream& (*pf)(std::ostream&))
 {
-    if(pf == die)   sb_.set_die_flag(true);
+    if (pf == die)
+        sb_.set_die_flag(true);
     set_unset_verbosity();
     return std::ostream::operator<<(pf);
-}            
+}
 
 bool goby::common::FlexOstream::is(logger::Verbosity verbosity)
 {
     assert(sb_.verbosity_depth() == logger::UNKNOWN || lock_action_ != logger_lock::lock);
-    
+
     bool display = (sb_.highest_verbosity() >= verbosity) || (verbosity == logger::DIE);
 
-    if(display)
+    if (display)
     {
-        if(sb_.lock_action() == logger_lock::lock)
+        if (sb_.lock_action() == logger_lock::lock)
         {
-            goby::common::logger::mutex.lock(); 
+            goby::common::logger::mutex.lock();
         }
-            
+
         sb_.set_verbosity_depth(verbosity);
 
-        switch(verbosity)
+        switch (verbosity)
         {
             case QUIET: break;
             case WARN: *this << warn; break;
@@ -100,8 +97,7 @@ bool goby::common::FlexOstream::is(logger::Verbosity verbosity)
             case DEBUG3: *this << debug3; break;
             case DIE: *this << die; break;
         }
-
     }
-                
+
     return display;
 }

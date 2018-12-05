@@ -22,12 +22,12 @@
 #ifndef LIAISONWTTHREAD20110609H
 #define LIAISONWTTHREAD20110609H
 
-#include <Wt/WEnvironment>
 #include <Wt/WApplication>
-#include <Wt/WString>
+#include <Wt/WContainerWidget>
+#include <Wt/WEnvironment>
 #include <Wt/WMenu>
 #include <Wt/WServer>
-#include <Wt/WContainerWidget>
+#include <Wt/WString>
 #include <Wt/WTimer>
 
 #include "goby/middleware/protobuf/liaison_config.pb.h"
@@ -35,29 +35,27 @@
 
 namespace goby
 {
-    namespace common
-    {
-        class LiaisonWtThread : public Wt::WApplication
-        {
-          public:
-            LiaisonWtThread(const Wt::WEnvironment& env, protobuf::LiaisonConfig app_cfg);
-            ~LiaisonWtThread();
-                
-            LiaisonWtThread(const LiaisonWtThread&) = delete;
-            LiaisonWtThread& operator=(const LiaisonWtThread&) = delete;
-            
-            void add_to_menu(Wt::WMenu* menu, LiaisonContainer* container);
-            void handle_menu_selection(Wt::WMenuItem * item);
-            
-          private:
-            Wt::WMenu* menu_;
-            Wt::WStackedWidget* contents_stack_;
-            std::map<Wt::WMenuItem*, LiaisonContainer*> menu_contents_;
-            protobuf::LiaisonConfig app_cfg_;
-        };        
-    }
-}
+namespace common
+{
+class LiaisonWtThread : public Wt::WApplication
+{
+  public:
+    LiaisonWtThread(const Wt::WEnvironment& env, protobuf::LiaisonConfig app_cfg);
+    ~LiaisonWtThread();
 
+    LiaisonWtThread(const LiaisonWtThread&) = delete;
+    LiaisonWtThread& operator=(const LiaisonWtThread&) = delete;
 
+    void add_to_menu(Wt::WMenu* menu, LiaisonContainer* container);
+    void handle_menu_selection(Wt::WMenuItem* item);
+
+  private:
+    Wt::WMenu* menu_;
+    Wt::WStackedWidget* contents_stack_;
+    std::map<Wt::WMenuItem*, LiaisonContainer*> menu_contents_;
+    protobuf::LiaisonConfig app_cfg_;
+};
+} // namespace common
+} // namespace goby
 
 #endif

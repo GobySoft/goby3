@@ -31,43 +31,41 @@ int main(int argc, char* argv[])
     goby::glog.add_group("pAcommsHandler", goby::common::Colors::yellow);
 
     // load plugins from environmental variable
-    char* plugins = getenv ("PACOMMSHANDLER_PLUGINS");
+    char* plugins = getenv("PACOMMSHANDLER_PLUGINS");
     if (plugins)
     {
         std::string s_plugins(plugins);
         std::vector<std::string> plugin_vec;
         boost::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
 
-        for(int i = 0, n = plugin_vec.size(); i < n; ++i)
+        for (int i = 0, n = plugin_vec.size(); i < n; ++i)
         {
-            std::cout  << "Loading pAcommsHandler plugin library: " << plugin_vec[i] << std::endl;
+            std::cout << "Loading pAcommsHandler plugin library: " << plugin_vec[i] << std::endl;
             void* handle = dlopen(plugin_vec[i].c_str(), RTLD_LAZY);
 
-            if(handle)
+            if (handle)
                 plugin_handles_.push_back(handle);
             else
             {
                 std::cerr << "Failed to open library: " << plugin_vec[i] << std::endl;
                 exit(EXIT_FAILURE);
             }
-            
 
-            const char* (*name_function)(void) = (const char* (*)(void)) dlsym(handle, "goby_driver_name");
-            if(name_function)
-                CpAcommsHandler::driver_plugins_.insert(std::make_pair(std::string((*name_function)()), handle));    
-        }        
+            const char* (*name_function)(void) =
+                (const char* (*)(void))dlsym(handle, "goby_driver_name");
+            if (name_function)
+                CpAcommsHandler::driver_plugins_.insert(
+                    std::make_pair(std::string((*name_function)()), handle));
+        }
     }
 
-    
     int return_value = goby::moos::run<CpAcommsHandler>(argc, argv);
 
     goby::transitional::DCCLAlgorithmPerformer::deleteInstance();
     CpAcommsHandler::delete_instance();
     goby::util::DynamicProtobufManager::protobuf_shutdown();
 
+    for (int i = 0, n = plugin_handles_.size(); i < n; ++i) dlclose(plugin_handles_[i]);
 
-    for(int i = 0, n = plugin_handles_.size(); i < n; ++i)
-        dlclose(plugin_handles_[i]);
-    
     return return_value;
 }

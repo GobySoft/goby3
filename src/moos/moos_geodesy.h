@@ -30,35 +30,34 @@
 
 class CMOOSGeodesy
 {
-public:
+  public:
     CMOOSGeodesy();
     virtual ~CMOOSGeodesy();
-    
+
     double GetOriginLatitude();
     double GetOriginLongitude();
     double GetOriginNorthing();
     double GetOriginEasting();
     int GetUTMZone();
-    
-    bool LatLong2LocalUTM(double lat, double lon, double & MetersNorth, double & MetersEast);
-    bool UTM2LatLong(double dfX, double dfY, double& dfLat, double& dfLong);    
-    
+
+    bool LatLong2LocalUTM(double lat, double lon, double& MetersNorth, double& MetersEast);
+    bool UTM2LatLong(double dfX, double dfY, double& dfLat, double& dfLong);
+
     bool Initialise(double lat, double lon);
 
-private:
+  private:
     int m_sUTMZone;
     double m_dOriginEasting;
     double m_dOriginNorthing;
     double m_dOriginLongitude;
     double m_dOriginLatitude;
     projPJ pj_utm_, pj_latlong_;
-    
+
     void SetOriginLatitude(double lat);
     void SetOriginLongitude(double lon);
     void SetOriginEasting(double East);
     void SetOriginNorthing(double North);
     void SetUTMZone(int zone);
-
 };
 
 #endif

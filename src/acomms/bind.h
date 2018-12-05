@@ -27,93 +27,93 @@
 
 #include <boost/bind.hpp>
 
+#include "goby/acomms/amac.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/dccl.h"
-#include "goby/acomms/queue.h"
 #include "goby/acomms/modem_driver.h"
-#include "goby/acomms/amac.h"
+#include "goby/acomms/queue.h"
 #include "goby/acomms/route.h"
 #include "goby/common/logger.h"
 
 namespace goby
 {
-    namespace acomms
-    {   
-        
-        /// binds the driver link-layer callbacks to the QueueManager
-        inline void bind(ModemDriverBase& driver, QueueManager& queue_manager)
-        {
-            goby::acomms::connect(&driver.signal_receive,
-                    &queue_manager, &QueueManager::handle_modem_receive);
-            
-            goby::acomms::connect(&driver.signal_data_request,
-                    &queue_manager, &QueueManager::handle_modem_data_request);
-        }
-        
-        /// binds the MAC initiate transmission callback to the driver and the driver parsed message callback to the MAC
-        inline void bind(MACManager& mac, ModemDriverBase& driver)
-        {
-            goby::acomms::connect(&mac.signal_initiate_transmission,
-                    &driver, &ModemDriverBase::handle_initiate_transmission);
-        }
+namespace acomms
+{
+/// binds the driver link-layer callbacks to the QueueManager
+inline void bind(ModemDriverBase& driver, QueueManager& queue_manager)
+{
+    goby::acomms::connect(&driver.signal_receive, &queue_manager,
+                          &QueueManager::handle_modem_receive);
 
-        /// creates bindings for a RouteManager to control a particular queue (QueueManager)
-        inline void bind(QueueManager& queue_manager, RouteManager& route_manager)
-        {
-            route_manager.add_subnet_queue(&queue_manager);
-            goby::acomms::connect(&queue_manager.signal_in_route, &route_manager, &RouteManager::handle_in);
-            goby::acomms::connect(&queue_manager.signal_out_route, &route_manager, &RouteManager::handle_out);
-        }        
+    goby::acomms::connect(&driver.signal_data_request, &queue_manager,
+                          &QueueManager::handle_modem_data_request);
+}
 
-        /// bind all three (shortcut to calling the other three bind functions)
-        inline void bind(ModemDriverBase& driver, QueueManager& queue_manager, MACManager& mac)
-        {
-            goby::acomms::bind(driver, queue_manager);
-            goby::acomms::bind(mac, driver);
-        }
-        
+/// binds the MAC initiate transmission callback to the driver and the driver parsed message callback to the MAC
+inline void bind(MACManager& mac, ModemDriverBase& driver)
+{
+    goby::acomms::connect(&mac.signal_initiate_transmission, &driver,
+                          &ModemDriverBase::handle_initiate_transmission);
+}
 
-        
-        /// unbinds the driver link-layer callbacks to the QueueManager
-        inline void unbind(ModemDriverBase& driver, QueueManager& queue_manager)
-        {
-            goby::acomms::disconnect(&driver.signal_receive,
-                    &queue_manager, &QueueManager::handle_modem_receive);
-            
-            goby::acomms::disconnect(&driver.signal_data_request,
-                    &queue_manager, &QueueManager::handle_modem_data_request);
-        }
-        
-        /// unbinds the MAC initiate transmission callback to the driver and the driver parsed message callback to the MAC
-        inline void unbind(MACManager& mac, ModemDriverBase& driver)
-        {
-            goby::acomms::disconnect(&mac.signal_initiate_transmission,
-                    &driver, &ModemDriverBase::handle_initiate_transmission);
-        }
+/// creates bindings for a RouteManager to control a particular queue (QueueManager)
+inline void bind(QueueManager& queue_manager, RouteManager& route_manager)
+{
+    route_manager.add_subnet_queue(&queue_manager);
+    goby::acomms::connect(&queue_manager.signal_in_route, &route_manager, &RouteManager::handle_in);
+    goby::acomms::connect(&queue_manager.signal_out_route, &route_manager,
+                          &RouteManager::handle_out);
+}
 
-        /// creates unbindings for a RouteManager to control a particular queue (QueueManager)
-        inline void unbind(QueueManager& queue_manager, RouteManager& route_manager)
-        {
-            route_manager.add_subnet_queue(&queue_manager);
-            goby::acomms::disconnect(&queue_manager.signal_in_route, &route_manager, &RouteManager::handle_in);
-            goby::acomms::disconnect(&queue_manager.signal_out_route, &route_manager, &RouteManager::handle_out);
-        }        
+/// bind all three (shortcut to calling the other three bind functions)
+inline void bind(ModemDriverBase& driver, QueueManager& queue_manager, MACManager& mac)
+{
+    goby::acomms::bind(driver, queue_manager);
+    goby::acomms::bind(mac, driver);
+}
 
-        /// unbind all three (shortcut to calling the other three unbind functions)
-        inline void unbind(ModemDriverBase& driver, QueueManager& queue_manager, MACManager& mac)
-        {
-            goby::acomms::unbind(driver, queue_manager);
-            goby::acomms::unbind(mac, driver);
-        }
+/// unbinds the driver link-layer callbacks to the QueueManager
+inline void unbind(ModemDriverBase& driver, QueueManager& queue_manager)
+{
+    goby::acomms::disconnect(&driver.signal_receive, &queue_manager,
+                             &QueueManager::handle_modem_receive);
+
+    goby::acomms::disconnect(&driver.signal_data_request, &queue_manager,
+                             &QueueManager::handle_modem_data_request);
+}
+
+/// unbinds the MAC initiate transmission callback to the driver and the driver parsed message callback to the MAC
+inline void unbind(MACManager& mac, ModemDriverBase& driver)
+{
+    goby::acomms::disconnect(&mac.signal_initiate_transmission, &driver,
+                             &ModemDriverBase::handle_initiate_transmission);
+}
+
+/// creates unbindings for a RouteManager to control a particular queue (QueueManager)
+inline void unbind(QueueManager& queue_manager, RouteManager& route_manager)
+{
+    route_manager.add_subnet_queue(&queue_manager);
+    goby::acomms::disconnect(&queue_manager.signal_in_route, &route_manager,
+                             &RouteManager::handle_in);
+    goby::acomms::disconnect(&queue_manager.signal_out_route, &route_manager,
+                             &RouteManager::handle_out);
+}
+
+/// unbind all three (shortcut to calling the other three unbind functions)
+inline void unbind(ModemDriverBase& driver, QueueManager& queue_manager, MACManager& mac)
+{
+    goby::acomms::unbind(driver, queue_manager);
+    goby::acomms::unbind(mac, driver);
+}
 
 // examples
-        /// \example acomms/chat/chat.cpp
-        /// chat.proo
-        /// \verbinclude chat.proto
-        /// chat.cpp
+/// \example acomms/chat/chat.cpp
+/// chat.proo
+/// \verbinclude chat.proto
+/// chat.cpp
 
-    }
+} // namespace acomms
 
-}
+} // namespace goby
 
 #endif

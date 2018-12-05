@@ -28,40 +28,39 @@
 #include "goby/acomms/modemdriver/driver_base.h"
 #include "goby/acomms/protobuf/udp_driver.pb.h"
 
-#include <boost/bind.hpp>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
 namespace goby
 {
-    namespace acomms
-    {
-        class UDPDriver : public ModemDriverBase
-        {
-          public:
-            UDPDriver(boost::asio::io_service* io_service);
-            ~UDPDriver();
-            void startup(const protobuf::DriverConfig& cfg);
-            void shutdown();            
-            void do_work();
-            void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+namespace acomms
+{
+class UDPDriver : public ModemDriverBase
+{
+  public:
+    UDPDriver(boost::asio::io_service* io_service);
+    ~UDPDriver();
+    void startup(const protobuf::DriverConfig& cfg);
+    void shutdown();
+    void do_work();
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
 
-          private:
-            void start_send(const google::protobuf::Message& msg);
-            void send_complete(const boost::system::error_code& error, std::size_t bytes_transferred);
-            void start_receive();
-            void receive_complete(const boost::system::error_code& error, std::size_t bytes_transferred);
-            void receive_message(const protobuf::ModemTransmission& m);
+  private:
+    void start_send(const google::protobuf::Message& msg);
+    void send_complete(const boost::system::error_code& error, std::size_t bytes_transferred);
+    void start_receive();
+    void receive_complete(const boost::system::error_code& error, std::size_t bytes_transferred);
+    void receive_message(const protobuf::ModemTransmission& m);
 
-          private:            
-            protobuf::DriverConfig driver_cfg_;
-            boost::asio::io_service* io_service_;
-            boost::asio::ip::udp::socket socket_;
-            boost::asio::ip::udp::endpoint receiver_;
-            boost::asio::ip::udp::endpoint sender_;            
-            std::vector<char> receive_buffer_;
-            std::uint32_t next_frame_;
-            
-        };
-    }
-}
+  private:
+    protobuf::DriverConfig driver_cfg_;
+    boost::asio::io_service* io_service_;
+    boost::asio::ip::udp::socket socket_;
+    boost::asio::ip::udp::endpoint receiver_;
+    boost::asio::ip::udp::endpoint sender_;
+    std::vector<char> receive_buffer_;
+    std::uint32_t next_frame_;
+};
+} // namespace acomms
+} // namespace goby
 #endif

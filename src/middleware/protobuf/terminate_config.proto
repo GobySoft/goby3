@@ -1,4 +1,3 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 import "goby/common/protobuf/app3.proto";
 import "goby/middleware/protobuf/interprocess_config.proto";
@@ -13,8 +12,7 @@ message TerminateConfig
     optional InterProcessPortalConfig interprocess = 2;
     repeated string target_name = 3;
     repeated uint32 target_pid = 4;
-    
-    optional float response_timeout =5  [default = 10,
-                                         (dccl.field).units.base_dimensions="T"];
-    
+
+    optional float response_timeout = 5
+        [default = 10, (dccl.field).units.base_dimensions = "T"];
 }

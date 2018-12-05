@@ -28,13 +28,11 @@
 
 namespace goby
 {
-    namespace groups
-    {
-        constexpr goby::Group terminate_request {"goby::terminate::request" };        
-        constexpr goby::Group terminate_response {"goby::terminate::response" };
-    }
-}
-
-
+namespace groups
+{
+constexpr goby::Group terminate_request{"goby::terminate::request"};
+constexpr goby::Group terminate_response{"goby::terminate::response"};
+} // namespace groups
+} // namespace goby
 
 #endif

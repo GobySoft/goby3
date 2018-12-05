@@ -1,19 +1,17 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/acomms/protobuf/modem_message.proto";
 
 package goby.acomms.protobuf;
 
 message StoreServerRequest
 {
-  required int32 modem_id = 1;
-  repeated goby.acomms.protobuf.ModemTransmission outbox = 2;
-  optional uint64 request_id = 3;
+    required int32 modem_id = 1;
+    repeated goby.acomms.protobuf.ModemTransmission outbox = 2;
+    optional uint64 request_id = 3;
 }
 
 message StoreServerResponse
 {
-  required int32 modem_id = 1;
-  repeated goby.acomms.protobuf.ModemTransmission inbox = 2;
-  optional uint64 request_id = 3;
+    required int32 modem_id = 1;
+    repeated goby.acomms.protobuf.ModemTransmission inbox = 2;
+    optional uint64 request_id = 3;
 }
-

@@ -1,34 +1,49 @@
-@PROTOBUF_SYNTAX_VERSION@
+
 // include the DCCL extensions to Google Protobuf
 import "dccl/protobuf/option_extensions.proto";
 
 package goby.example;
 
-message SimpleStatus { 
-  option (dccl.msg).id = 20;
-  option (dccl.msg).max_bytes = 32;
-  optional double timestamp = 1 [(dccl.field).codec="_time",
-                                 (dccl.field).in_head=true];  
-  optional int32 src = 2 [(dccl.field).max=31,
-                          (dccl.field).min=0,
-                          (dccl.field).in_head=true];
-  optional int32 dest = 3 [(dccl.field).max=31,
-                           (dccl.field).min=0,
-                           (dccl.field).in_head=true];
+message SimpleStatus
+{
+    option (dccl.msg).id = 20;
+    option (dccl.msg).max_bytes = 32;
+    optional double timestamp = 1
+        [(dccl.field).codec = "_time", (dccl.field).in_head = true];
+    optional int32 src = 2 [
+        (dccl.field).max = 31,
+        (dccl.field).min = 0,
+        (dccl.field).in_head = true
+    ];
+    optional int32 dest = 3 [
+        (dccl.field).max = 31,
+        (dccl.field).min = 0,
+        (dccl.field).in_head = true
+    ];
 
-  optional double x = 10 [(dccl.field).max=100000,
-                          (dccl.field).min=-100000,
-                          (dccl.field).precision=0];
-  optional double y = 11 [(dccl.field).max=100000,
-                          (dccl.field).min=-100000,
-                          (dccl.field).precision=0];
-  optional double speed = 12 [(dccl.field).max=20.0,
-                              (dccl.field).min=-2.0,
-                              (dccl.field).precision=1];
-  optional double heading = 13 [(dccl.field).max=360.00,
-                                (dccl.field).min=0.00,
-                                (dccl.field).precision=2];
-  optional double depth = 14 [(dccl.field).max=6400.0,
-                              (dccl.field).min=0.0,
-                              (dccl.field).precision=1];
-} 
+    optional double x = 10 [
+        (dccl.field).max = 100000,
+        (dccl.field).min = -100000,
+        (dccl.field).precision = 0
+    ];
+    optional double y = 11 [
+        (dccl.field).max = 100000,
+        (dccl.field).min = -100000,
+        (dccl.field).precision = 0
+    ];
+    optional double speed = 12 [
+        (dccl.field).max = 20.0,
+        (dccl.field).min = -2.0,
+        (dccl.field).precision = 1
+    ];
+    optional double heading = 13 [
+        (dccl.field).max = 360.00,
+        (dccl.field).min = 0.00,
+        (dccl.field).precision = 2
+    ];
+    optional double depth = 14 [
+        (dccl.field).max = 6400.0,
+        (dccl.field).min = 0.0,
+        (dccl.field).precision = 1
+    ];
+}

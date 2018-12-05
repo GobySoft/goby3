@@ -1,4 +1,3 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/moos/protobuf/desired_course.proto";
 import "goby/moos/protobuf/ctd_sample.proto";
 import "goby/moos/protobuf/node_status.proto";
@@ -7,94 +6,94 @@ package goby.moos.protobuf;
 
 enum InterfaceState
 {
-  INTERFACE_STANDBY = 1;
-  INTERFACE_LISTEN = 2;
-  INTERFACE_COMMAND = 3;
-  INTERFACE_HELM_ERROR = 4;
-  INTERFACE_FS_ERROR = 5;
+    INTERFACE_STANDBY = 1;
+    INTERFACE_LISTEN = 2;
+    INTERFACE_COMMAND = 3;
+    INTERFACE_HELM_ERROR = 4;
+    INTERFACE_FS_ERROR = 5;
 }
 
 enum FrontSeatState
 {
-  FRONTSEAT_NOT_CONNECTED = 0;
-  FRONTSEAT_IDLE = 1;
-  FRONTSEAT_ACCEPTING_COMMANDS = 2;
-  FRONTSEAT_IN_CONTROL = 3;
+    FRONTSEAT_NOT_CONNECTED = 0;
+    FRONTSEAT_IDLE = 1;
+    FRONTSEAT_ACCEPTING_COMMANDS = 2;
+    FRONTSEAT_IN_CONTROL = 3;
 }
 
 enum HelmState
 {
-  HELM_NOT_RUNNING = 0;
-  HELM_DRIVE = 1;
-  HELM_PARK = 2;
+    HELM_NOT_RUNNING = 0;
+    HELM_DRIVE = 1;
+    HELM_PARK = 2;
 }
 
 enum HelmError
 {
-  ERROR_HELM_NONE = 0;
-  ERROR_HELM_NOT_RUNNING = 1;
-  ERROR_HELM_PARKED = 2;
+    ERROR_HELM_NONE = 0;
+    ERROR_HELM_NOT_RUNNING = 1;
+    ERROR_HELM_PARKED = 2;
 }
 
 enum FrontSeatError
 {
-  ERROR_FRONTSEAT_NONE = 0;
-  ERROR_FRONTSEAT_NOT_CONNECTED = 1;
-  ERROR_FRONTSEAT_NOT_PROVIDING_DATA = 2;
-  ERROR_FRONTSEAT_IGNORING_COMMANDS = 3;
+    ERROR_FRONTSEAT_NONE = 0;
+    ERROR_FRONTSEAT_NOT_CONNECTED = 1;
+    ERROR_FRONTSEAT_NOT_PROVIDING_DATA = 2;
+    ERROR_FRONTSEAT_IGNORING_COMMANDS = 3;
 }
 
 message FrontSeatInterfaceStatus
 {
-  optional InterfaceState state = 1;
-  optional FrontSeatState frontseat_state = 2;
-  optional HelmState helm_state = 3;
-  optional HelmError helm_error = 4;
-  optional FrontSeatError frontseat_error = 5;
+    optional InterfaceState state = 1;
+    optional FrontSeatState frontseat_state = 2;
+    optional HelmState helm_state = 3;
+    optional HelmError helm_error = 4;
+    optional FrontSeatError frontseat_error = 5;
 }
-
 
 message CommandRequest
 {
-  optional DesiredCourse desired_course = 1;
-  optional bool response_requested = 10 [default = false];
-  optional int32 request_id = 11;
+    optional DesiredCourse desired_course = 1;
+    optional bool response_requested = 10 [default = false];
+    optional int32 request_id = 11;
 
-  optional int32 cancel_request_id = 20; // if possible, tell the driver to stop trying to process this command
-  
-  extensions 1000 to max;
-  // 1000 - Bluefin
-  // 1001 - Iver
+    optional int32 cancel_request_id =
+        20;  // if possible, tell the driver to stop trying to process this
+             // command
+
+    extensions 1000 to max;
+    // 1000 - Bluefin
+    // 1001 - Iver
 }
 
 message CommandResponse
 {
-  optional bool request_successful = 10;
-  optional int32 request_id = 11;
-  optional int32 error_code = 20 [default = 0];
-  optional string error_string = 21;
-  
-  extensions 1000 to max;
+    optional bool request_successful = 10;
+    optional int32 request_id = 11;
+    optional int32 error_code = 20 [default = 0];
+    optional string error_string = 21;
+
+    extensions 1000 to max;
 }
 
 message FrontSeatInterfaceData
 {
-  optional NodeStatus node_status = 1;
-  optional CTDSample ctd_sample = 2;
-  optional bytes dccl_message = 3;
-    
-  extensions 1000 to max;
+    optional NodeStatus node_status = 1;
+    optional CTDSample ctd_sample = 2;
+    optional bytes dccl_message = 3;
+
+    extensions 1000 to max;
 }
 
 message FrontSeatRaw
 {
-  optional bytes raw = 1;
-  enum RawType
-  {
-    RAW_ASCII = 1;
-    RAW_BINARY = 2;
-  }
-  optional RawType type = 2 [default = RAW_ASCII];
-  optional string description = 3;
-  
+    optional bytes raw = 1;
+    enum RawType
+    {
+        RAW_ASCII = 1;
+        RAW_BINARY = 2;
+    }
+    optional RawType type = 2 [default = RAW_ASCII];
+    optional string description = 3;
 }

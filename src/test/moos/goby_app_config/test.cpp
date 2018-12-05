@@ -19,8 +19,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/moos/goby_moos_app.h"
 #include "config.pb.h"
+#include "goby/moos/goby_moos_app.h"
 
 class GobyMOOSAppTest : public GobyMOOSApp
 {
@@ -34,20 +34,18 @@ class GobyMOOSAppTest : public GobyMOOSApp
         RequestQuit();
         std::cout << "All tests passed. " << std::endl;
     }
-    
-    ~GobyMOOSAppTest() { }
-    void loop() {}
-    static GobyMOOSAppTest* inst_;    
 
+    ~GobyMOOSAppTest() {}
+    void loop() {}
+    static GobyMOOSAppTest* inst_;
 };
 
 boost::shared_ptr<AppConfig> master_config;
 GobyMOOSAppTest* GobyMOOSAppTest::inst_ = 0;
 
-
 GobyMOOSAppTest* GobyMOOSAppTest::get_instance()
 {
-    if(!inst_)
+    if (!inst_)
     {
         master_config.reset(new AppConfig);
         inst_ = new GobyMOOSAppTest(*master_config);
@@ -55,8 +53,4 @@ GobyMOOSAppTest* GobyMOOSAppTest::get_instance()
     return inst_;
 }
 
-int main(int argc, char * argv[])
-{
-    return goby::moos::run<GobyMOOSAppTest>(argc, argv);
-}
-
+int main(int argc, char* argv[]) { return goby::moos::run<GobyMOOSAppTest>(argc, argv); }

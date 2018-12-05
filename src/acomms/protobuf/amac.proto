@@ -1,4 +1,3 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 import "dccl/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/modem_message.proto";
@@ -7,35 +6,50 @@ package goby.acomms.protobuf;
 
 message MACUpdate
 {
-  option (dccl.msg).id = 5;
-  option (dccl.msg).max_bytes = 64;  
-  
-  enum UpdateType // this are basically the std::list functions
-  {
-    NO_CHANGE = 0;
-    ASSIGN = 1;
-    PUSH_BACK = 2;
-    PUSH_FRONT = 3;
-    POP_BACK = 4;
-    POP_FRONT = 5;
-    INSERT = 6;
-    ERASE = 7;
-    CLEAR = 8;
-  }
+    option (dccl.msg).id = 5;
+    option (dccl.msg).max_bytes = 64;
 
-  required int32 src = 1 [(dccl.field).min = 1, (dccl.field).max = 30, (dccl.field).in_head = true]; 
-  required int32 dest = 2 [(dccl.field).min = 1, (dccl.field).max = 30, (dccl.field).in_head = true]; // modem_id that this update is for
-  optional UpdateType update_type = 3 [default = NO_CHANGE];
-  repeated ModemTransmission slot = 4 [(dccl.field).max_repeat=10];
-  optional int32 first_iterator = 5 [(dccl.field).min = 0, (dccl.field).max = 60, default = 0]; // integer offset from begin()
-  optional int32 second_iterator = 6 [(dccl.field).min = -1, (dccl.field).max = 60, default = -1]; // integer offset from begin()
+    enum UpdateType  // this are basically the std::list functions
+    {
+        NO_CHANGE = 0;
+        ASSIGN = 1;
+        PUSH_BACK = 2;
+        PUSH_FRONT = 3;
+        POP_BACK = 4;
+        POP_FRONT = 5;
+        INSERT = 6;
+        ERASE = 7;
+        CLEAR = 8;
+    }
 
-  enum CycleState
-  {
-    STOPPED = 1;
-    STARTED = 2;
-  }
-  optional CycleState cycle_state = 7 [default=STARTED, (dccl.field).in_head=true];
+    required int32 src = 1 [
+        (dccl.field).min = 1,
+        (dccl.field).max = 30,
+        (dccl.field).in_head = true
+    ];
+    required int32 dest = 2 [
+        (dccl.field).min = 1,
+        (dccl.field).max = 30,
+        (dccl.field).in_head = true
+    ];  // modem_id that this update is for
+    optional UpdateType update_type = 3 [default = NO_CHANGE];
+    repeated ModemTransmission slot = 4 [(dccl.field).max_repeat = 10];
+    optional int32 first_iterator = 5 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 60,
+        default = 0
+    ];  // integer offset from begin()
+    optional int32 second_iterator = 6 [
+        (dccl.field).min = -1,
+        (dccl.field).max = 60,
+        default = -1
+    ];  // integer offset from begin()
+
+    enum CycleState
+    {
+        STOPPED = 1;
+        STARTED = 2;
+    }
+    optional CycleState cycle_state = 7
+        [default = STARTED, (dccl.field).in_head = true];
 }
-
-

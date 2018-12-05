@@ -1,25 +1,23 @@
-@PROTOBUF_SYNTAX_VERSION@
 package goby.acomms.protobuf;
 
-enum Manipulator 
+enum Manipulator
 {
-  @PROTOBUF_ALLOW_ALIAS@
-  NO_MANIP = 1; // blank "empty" manipulator
+    option allow_alias = true;
 
-  // (QueueManager)
-  
-  NO_QUEUE = 4;
-  NO_DEQUEUE = 11;
-  LOOPBACK = 5;
-  ON_DEMAND = 6;
-  LOOPBACK_AS_SENT = 9;
-  PROMISCUOUS = 10;
-  
-  // for backwards compatibility with v1
-  // NO_ENCODE is the same as NO_QUEUE
-  // NO_DECODE is the same as NO_DEQUEUE
-  NO_ENCODE = 4;
-  NO_DECODE = 11;
-  
+    NO_MANIP = 1;  // blank "empty" manipulator
+
+    // (QueueManager)
+
+    NO_QUEUE = 4;
+    NO_DEQUEUE = 11;
+    LOOPBACK = 5;
+    ON_DEMAND = 6;
+    LOOPBACK_AS_SENT = 9;
+    PROMISCUOUS = 10;
+
+    // for backwards compatibility with v1
+    // NO_ENCODE is the same as NO_QUEUE
+    // NO_DECODE is the same as NO_DEQUEUE
+    NO_ENCODE = 4;
+    NO_DECODE = 11;
 }
-

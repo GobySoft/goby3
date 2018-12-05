@@ -23,94 +23,95 @@
 #ifndef ClientBase20100628H
 #define ClientBase20100628H
 
-#include "interface.h"
 #include "connection.h"
+#include "interface.h"
 
 namespace goby
 {
-    namespace util
+namespace util
+{
+// template for type of client socket (asio::serial_port, asio::ip::tcp::socket)
+// LineBasedInterface runs in a one thread (same as user program)
+// LineBasedClient and LineBasedConnection run in another thread (spawned by LineBasedInterface's constructor)
+template <typename ASIOAsyncReadStream>
+class LineBasedClient : public LineBasedInterface, public LineBasedConnection<ASIOAsyncReadStream>
+{
+  protected:
+    LineBasedClient(const std::string& delimiter, int retry_interval = 10)
+        : LineBasedInterface(delimiter), LineBasedConnection<ASIOAsyncReadStream>(this),
+          retry_interval_(retry_interval)
     {
-        // template for type of client socket (asio::serial_port, asio::ip::tcp::socket)
-        // LineBasedInterface runs in a one thread (same as user program)
-        // LineBasedClient and LineBasedConnection run in another thread (spawned by LineBasedInterface's constructor)
-        template<typename ASIOAsyncReadStream>
-            class LineBasedClient : public LineBasedInterface, public LineBasedConnection<ASIOAsyncReadStream>
-        {
-            
-          protected:
-          LineBasedClient(const std::string& delimiter, int retry_interval = 10)
-              : LineBasedInterface(delimiter),
-                LineBasedConnection<ASIOAsyncReadStream>(this),
-                retry_interval_(retry_interval)
-                { }            
-
-            virtual ~LineBasedClient() { }
-
-            virtual ASIOAsyncReadStream& socket () = 0;
-            virtual std::string local_endpoint() = 0;
-            virtual std::string remote_endpoint() = 0;
-            
-            // from LineBasedInterface
-            void do_start()                     
-            {
-                last_start_time_ = common::goby_time();
-                
-                set_active(start_specific());
-
-                LineBasedInterface::io_service().post(boost::bind(&LineBasedConnection<ASIOAsyncReadStream>::read_start, this));
-                if(!LineBasedConnection<ASIOAsyncReadStream>::out().empty())
-                    LineBasedInterface::io_service().post(boost::bind(&LineBasedConnection<ASIOAsyncReadStream>::write_start, this));
-            }
-            
-            virtual bool start_specific() = 0;
-
-            // from LineBasedInterface
-            void do_write(const protobuf::Datagram& line)
-            { 
-                bool write_in_progress = !LineBasedConnection<ASIOAsyncReadStream>::out().empty();
-                LineBasedConnection<ASIOAsyncReadStream>::out().push_back(line);
-                if (!write_in_progress) LineBasedInterface::io_service().post(boost::bind(&LineBasedConnection<ASIOAsyncReadStream>::write_start, this));
-            }
-
-            // from LineBasedInterface
-            void do_close(const boost::system::error_code& error)
-            { 
-                if (error == boost::asio::error::operation_aborted) // if this call is the result of a timer cancel()
-                    return; // ignore it because the connection cancelled the timer
-                
-                set_active(false);
-                socket().close();
-
-                // try to restart if we had a real error
-                if(error != boost::system::error_code())
-                {
-                    using namespace boost::posix_time;
-                    ptime now  = common::goby_time();
-                    if(now - seconds(retry_interval_) < last_start_time_)
-                        LineBasedInterface::sleep(retry_interval_ - (now-last_start_time_).total_seconds());
-
-                    // add this to the io_service jobs
-                    LineBasedInterface::start();
-                }
-                
-            }
-
-            // same as do_close in this case
-            void socket_close(const boost::system::error_code& error)
-            { do_close(error); }
-
-          private:        
-            boost::posix_time::ptime last_start_time_;
-           
-            LineBasedClient(const LineBasedClient&);
-            LineBasedClient& operator= (const LineBasedClient&);
-
-            int retry_interval_;
-            
-        }; 
-
     }
-}
 
+    virtual ~LineBasedClient() {}
+
+    virtual ASIOAsyncReadStream& socket() = 0;
+    virtual std::string local_endpoint() = 0;
+    virtual std::string remote_endpoint() = 0;
+
+    // from LineBasedInterface
+    void do_start()
+    {
+        last_start_time_ = common::goby_time();
+
+        set_active(start_specific());
+
+        LineBasedInterface::io_service().post(
+            boost::bind(&LineBasedConnection<ASIOAsyncReadStream>::read_start, this));
+        if (!LineBasedConnection<ASIOAsyncReadStream>::out().empty())
+            LineBasedInterface::io_service().post(
+                boost::bind(&LineBasedConnection<ASIOAsyncReadStream>::write_start, this));
+    }
+
+    virtual bool start_specific() = 0;
+
+    // from LineBasedInterface
+    void do_write(const protobuf::Datagram& line)
+    {
+        bool write_in_progress = !LineBasedConnection<ASIOAsyncReadStream>::out().empty();
+        LineBasedConnection<ASIOAsyncReadStream>::out().push_back(line);
+        if (!write_in_progress)
+            LineBasedInterface::io_service().post(
+                boost::bind(&LineBasedConnection<ASIOAsyncReadStream>::write_start, this));
+    }
+
+    // from LineBasedInterface
+    void do_close(const boost::system::error_code& error)
+    {
+        if (error ==
+            boost::asio::error::operation_aborted) // if this call is the result of a timer cancel()
+            return; // ignore it because the connection cancelled the timer
+
+        set_active(false);
+        socket().close();
+
+        // try to restart if we had a real error
+        if (error != boost::system::error_code())
+        {
+            using namespace boost::posix_time;
+            ptime now = common::goby_time();
+            if (now - seconds(retry_interval_) < last_start_time_)
+                LineBasedInterface::sleep(retry_interval_ -
+                                          (now - last_start_time_).total_seconds());
+
+            // add this to the io_service jobs
+            LineBasedInterface::start();
+        }
+    }
+
+    // same as do_close in this case
+    void socket_close(const boost::system::error_code& error) { do_close(error); }
+
+  private:
+    boost::posix_time::ptime last_start_time_;
+
+    LineBasedClient(const LineBasedClient&);
+    LineBasedClient& operator=(const LineBasedClient&);
+
+    int retry_interval_;
+};
+
+} // namespace util
+} // namespace goby
 
 #endif

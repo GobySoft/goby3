@@ -23,4 +23,3 @@
 #include "goby/common/time.h"
 
 boost::function0<std::uint64_t> goby::common::goby_time_function;
-

@@ -1,14 +1,12 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "dccl/protobuf/option_extensions.proto";
 
 message Simple
 {
-  // see http://gobysoft.org/wiki/DcclIdTable
-  option (dccl.msg).id = 124;
+    // see http://gobysoft.org/wiki/DcclIdTable
+    option (dccl.msg).id = 124;
 
-  // if, for example, we want to use on the WHOI Micro-Modem rate 0
-  option (dccl.msg).max_bytes = 32;
-  
-  required string telegram = 1 [(dccl.field).max_length=30];
+    // if, for example, we want to use on the WHOI Micro-Modem rate 0
+    option (dccl.msg).max_bytes = 32;
+
+    required string telegram = 1 [(dccl.field).max_length = 30];
 }
-

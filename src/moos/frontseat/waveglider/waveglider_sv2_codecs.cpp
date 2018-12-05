@@ -25,20 +25,19 @@
 #include "waveglider_sv2_codecs.h"
 #include "waveglider_sv2_frontseat_driver.pb.h"
 
-
 extern "C"
 {
     void dccl3_load(dccl::Codec* dccl)
     {
         using namespace dccl;
-        
+
         FieldCodecManager::add<goby::moos::SV2IdentifierCodec>("SV2.id");
         FieldCodecManager::add<dccl::v3::DefaultMessageCodec,
                                google::protobuf::FieldDescriptor::TYPE_MESSAGE>("SV2");
         FieldCodecManager::add<dccl::v3::DefaultBytesCodec,
                                google::protobuf::FieldDescriptor::TYPE_BYTES>("SV2");
         FieldCodecManager::add<goby::moos::SV2NumericCodec<dccl::uint32> >("SV2");
-        
+
         dccl->load<goby::moos::protobuf::SV2RequestEnumerate>();
         dccl->load<goby::moos::protobuf::SV2ReplyEnumerate>();
         dccl->load<goby::moos::protobuf::SV2RequestStatus>();
@@ -50,10 +49,10 @@ extern "C"
         dccl->load<goby::moos::protobuf::SV2GenericACK>();
         dccl->load<goby::moos::protobuf::SV2SendToConsole>();
         dccl->load<goby::moos::protobuf::SV2CommandFollowFixedHeading>();
-        dccl->load<goby::moos::protobuf::SV2CommandFollowFixedHeading::CommandFollowFixedHeadingBody>();
-
+        dccl->load<
+            goby::moos::protobuf::SV2CommandFollowFixedHeading::CommandFollowFixedHeadingBody>();
     }
-    
+
     void dccl3_unload(dccl::Codec* dccl)
     {
         using namespace dccl;
@@ -69,7 +68,8 @@ extern "C"
         dccl->unload<goby::moos::protobuf::SV2GenericACK>();
         dccl->unload<goby::moos::protobuf::SV2SendToConsole>();
         dccl->unload<goby::moos::protobuf::SV2CommandFollowFixedHeading>();
-        dccl->unload<goby::moos::protobuf::SV2CommandFollowFixedHeading::CommandFollowFixedHeadingBody>();
+        dccl->unload<
+            goby::moos::protobuf::SV2CommandFollowFixedHeading::CommandFollowFixedHeadingBody>();
 
         FieldCodecManager::remove<goby::moos::SV2IdentifierCodec>("SV2.id");
         FieldCodecManager::remove<dccl::v3::DefaultMessageCodec,
@@ -77,7 +77,5 @@ extern "C"
         FieldCodecManager::remove<dccl::v3::DefaultBytesCodec,
                                   google::protobuf::FieldDescriptor::TYPE_BYTES>("SV2");
         FieldCodecManager::remove<goby::moos::SV2NumericCodec<dccl::uint32> >("SV2");
-                
     }
-
 }

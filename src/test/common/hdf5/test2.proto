@@ -1,4 +1,3 @@
-@PROTOBUF_SYNTAX_VERSION@
 message TestHDF5Message
 {
     repeated double a = 1;
@@ -6,10 +5,10 @@ message TestHDF5Message
 }
 
 message B
-{ 
+{
     repeated double c = 2;
     repeated double d = 3;
-    repeated int32  e = 4;
+    repeated int32 e = 4;
     repeated F f = 5;
 }
 

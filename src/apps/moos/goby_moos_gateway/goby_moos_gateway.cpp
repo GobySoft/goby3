@@ -21,8 +21,8 @@
 
 #include <dlfcn.h>
 
-#include "goby/moos/middleware/moos_plugin_translator.h"
 #include "goby/middleware/multi-thread-application.h"
+#include "goby/moos/middleware/moos_plugin_translator.h"
 
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
 
@@ -34,51 +34,59 @@ using namespace goby::common::logger;
 
 class GobyMOOSGateway : public AppBase
 {
-public:
+  public:
     GobyMOOSGateway()
+    {
+        for (const std::string& lib_path : cfg().plugin_library())
         {
-            for(const std::string& lib_path : cfg().plugin_library())
-            {
-                glog.is(VERBOSE) &&
-                    glog << "Loading shared library: " << lib_path << std::endl;
-        
-                void* handle = dlopen(lib_path.c_str(), RTLD_LAZY);
-                    
-                if(!handle)
-                {
-                    glog.is(DIE) && glog << "Failed loading shared library: " << lib_path << ". Check path provided or add to /etc/ld.so.conf or LD_LIBRARY_PATH" << std::endl;
-                }
-                else
-                {   
-                    dl_handles_.push_back(handle);
-                    using plugin_load_func = void(*)(goby::MultiThreadApplication<GobyMOOSGatewayConfig>*);
-                    plugin_load_func load_ptr = (plugin_load_func) dlsym(handle, "goby3_moos_gateway_load");
-                        
-                    if(!load_ptr)
-                        glog.is(DIE) && glog << "Function goby3_moos_gateway_load in library: " << lib_path << " does not exist." << std::endl;
+            glog.is(VERBOSE) && glog << "Loading shared library: " << lib_path << std::endl;
 
-                    (*load_ptr)(static_cast<goby::MultiThreadApplication<GobyMOOSGatewayConfig>*>(this));
-                }
+            void* handle = dlopen(lib_path.c_str(), RTLD_LAZY);
+
+            if (!handle)
+            {
+                glog.is(DIE) &&
+                    glog << "Failed loading shared library: " << lib_path
+                         << ". Check path provided or add to /etc/ld.so.conf or LD_LIBRARY_PATH"
+                         << std::endl;
             }
-        }            
-
-    ~GobyMOOSGateway()
-        {
-            for(void* handle : dl_handles_)
+            else
             {
-                using plugin_unload_func = void(*)(goby::MultiThreadApplication<GobyMOOSGatewayConfig>*);
-                plugin_unload_func unload_ptr = (plugin_unload_func) dlsym(handle, "goby3_moos_gateway_unload");
-                
-                if(unload_ptr)
-                    (*unload_ptr)(static_cast<goby::MultiThreadApplication<GobyMOOSGatewayConfig>*>(this));
-                
-                dlclose(handle);
+                dl_handles_.push_back(handle);
+                using plugin_load_func =
+                    void (*)(goby::MultiThreadApplication<GobyMOOSGatewayConfig>*);
+                plugin_load_func load_ptr =
+                    (plugin_load_func)dlsym(handle, "goby3_moos_gateway_load");
+
+                if (!load_ptr)
+                    glog.is(DIE) && glog << "Function goby3_moos_gateway_load in library: "
+                                         << lib_path << " does not exist." << std::endl;
+
+                (*load_ptr)(
+                    static_cast<goby::MultiThreadApplication<GobyMOOSGatewayConfig>*>(this));
             }
         }
-private:
+    }
+
+    ~GobyMOOSGateway()
+    {
+        for (void* handle : dl_handles_)
+        {
+            using plugin_unload_func =
+                void (*)(goby::MultiThreadApplication<GobyMOOSGatewayConfig>*);
+            plugin_unload_func unload_ptr =
+                (plugin_unload_func)dlsym(handle, "goby3_moos_gateway_unload");
+
+            if (unload_ptr)
+                (*unload_ptr)(
+                    static_cast<goby::MultiThreadApplication<GobyMOOSGatewayConfig>*>(this));
+
+            dlclose(handle);
+        }
+    }
+
+  private:
     std::vector<void*> dl_handles_;
-    
 };
 
-int main(int argc, char* argv[])
-{ return goby::run<GobyMOOSGateway>(argc, argv); }
+int main(int argc, char* argv[]) { return goby::run<GobyMOOSGateway>(argc, argv); }

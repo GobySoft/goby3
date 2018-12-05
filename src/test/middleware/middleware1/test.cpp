@@ -46,14 +46,13 @@ int main(int argc, char* argv[])
     std::thread t1([&] { router.run(); });
     goby::ZMQManager manager(*manager_context, zmq_cfg, router);
     std::thread t2([&] { manager.run(); });
-    
+
     //    goby::ProtobufMarshaller pb;
     goby::InterThreadTransporter inproc;
     goby::InterProcessPortal<> zmq_blank(zmq_cfg);
     goby::InterProcessForwarder<decltype(inproc)> interprocess_default(inproc);
     goby::InterProcessPortal<decltype(inproc)> zmq(inproc, zmq_cfg);
 
-    
     CTDSample s;
     s.set_salinity(38.5);
 
@@ -70,17 +69,16 @@ int main(int argc, char* argv[])
     TempSample t;
     t.set_temperature(15);
     zmq.publish<temp>(t);
- 
+
     std::string value("HI");
     zmq.publish_dynamic(value, "GroupHi");
 
-    std::deque<char> dc = { 'H', 'E', 'L', 'L', 'O' };
+    std::deque<char> dc = {'H', 'E', 'L', 'L', 'O'};
 
     zmq.publish_dynamic(dc, "GroupChar");
-    
+
     inproc.publish_dynamic(sp, "CTD3");
 
-    
     goby::protobuf::InterVehiclePortalConfig slow_cfg;
     {
         slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
@@ -99,14 +97,11 @@ int main(int argc, char* argv[])
         //        queue_cfg.set_modem_id(1);
         //        goby::acomms::protobuf::QueuedMessageEntry& ctd_entry = *queue_cfg.add_message_entry();
         //ctd_entry.set_protobuf_name("CTDSample");
-        
     }
-    
-    
+
     goby::InterVehiclePortal<decltype(zmq)> slow(zmq, slow_cfg);
     int slow_group = 0;
     slow.publish_dynamic(s, slow_group);
-
 
     router_context.reset();
     manager_context.reset();
@@ -115,4 +110,3 @@ int main(int argc, char* argv[])
 
     std::cout << "all tests passed" << std::endl;
 }
-

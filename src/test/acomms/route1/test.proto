@@ -1,17 +1,22 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "dccl/protobuf/option_extensions.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
 message RouteMessage
 {
-  option (dccl.msg).id = 1;
-  option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).id = 1;
+    option (dccl.msg).max_bytes = 32;
 
-  required uint64 time = 1 [(dccl.field).codec="_time", (dccl.field).in_head=true];
-  required int32 src = 2 [(dccl.field).min = 0,
-                          (dccl.field).max=65535, (dccl.field).in_head=true];
-  required int32 dest = 3 [(dccl.field).min = 0,
-                           (dccl.field).max=65535, (dccl.field).in_head=true];
-  required string telegram = 4 [(dccl.field).max_length=10];
+    required uint64 time = 1
+        [(dccl.field).codec = "_time", (dccl.field).in_head = true];
+    required int32 src = 2 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 65535,
+        (dccl.field).in_head = true
+    ];
+    required int32 dest = 3 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 65535,
+        (dccl.field).in_head = true
+    ];
+    required string telegram = 4 [(dccl.field).max_length = 10];
 }
-

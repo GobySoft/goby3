@@ -20,10 +20,10 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/util/seawater/salinity.h"
-#include <cassert>
-#include <iostream>
-#include <iomanip>
 #include "goby/util/sci.h"
+#include <cassert>
+#include <iomanip>
+#include <iostream>
 
 int main()
 {
@@ -36,14 +36,14 @@ int main()
 
     double test_temperature_deg_C = 40;
     double test_pressure_dbar = 10000;
-    
-    double calculated_salinity = SalinityCalculator::salinity(test_conductivity_mSiemens_cm, test_temperature_deg_C, test_pressure_dbar);
 
-    std::cout << "calculated salinity: "
-              << std::fixed <<  std::setprecision(5) << calculated_salinity
-              << " for T = " << test_temperature_deg_C << " deg C,"
-              << " P = " << test_pressure_dbar << " dbar," 
+    double calculated_salinity = SalinityCalculator::salinity(
+        test_conductivity_mSiemens_cm, test_temperature_deg_C, test_pressure_dbar);
+
+    std::cout << "calculated salinity: " << std::fixed << std::setprecision(5)
+              << calculated_salinity << " for T = " << test_temperature_deg_C << " deg C,"
+              << " P = " << test_pressure_dbar << " dbar,"
               << " C = " << test_conductivity_mSiemens_cm << " mSiemens / cm" << std::endl;
-    
-    assert(goby::util::unbiased_round(calculated_salinity, 5) == 40.00000);    
+
+    assert(goby::util::unbiased_round(calculated_salinity, 5) == 40.00000);
 }

@@ -19,9 +19,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <string>
 #include <cctype>
 #include <sstream>
+#include <string>
 
 #include <boost/lexical_cast.hpp>
 
@@ -30,8 +30,8 @@
 void ChatCurses::startup()
 {
     initscr();
-    start_color();    
-    
+    start_color();
+
     refresh();
     update_size();
     keypad(stdscr, TRUE);
@@ -51,40 +51,40 @@ void ChatCurses::update_size()
     delwin(upper_win_);
     delwin(lower_win_);
     delwin(divider_win_);
-    
-    upper_win_ = newwin(ymax_*UPPER_WIN_FRAC-1, xmax_, 0, 0);
-    divider_win_ = newwin(1, xmax_, ymax_*UPPER_WIN_FRAC-1, 0);
-    lower_win_ = newwin(ymax_*LOWER_WIN_FRAC, xmax_, ymax_*UPPER_WIN_FRAC, 0);
+
+    upper_win_ = newwin(ymax_ * UPPER_WIN_FRAC - 1, xmax_, 0, 0);
+    divider_win_ = newwin(1, xmax_, ymax_ * UPPER_WIN_FRAC - 1, 0);
+    lower_win_ = newwin(ymax_ * LOWER_WIN_FRAC, xmax_, ymax_ * UPPER_WIN_FRAC, 0);
 
     scrollok(upper_win_, true);
-    
-    mvwhline(divider_win_,0,0,0,xmax_);
+
+    mvwhline(divider_win_, 0, 0, 0, xmax_);
     wrefresh(divider_win_);
 }
 
 void ChatCurses::run_input(std::string& line)
-{    
+{
     chtype k = getch();
 
-    if(k == KEY_DC || k == KEY_BACKSPACE)
+    if (k == KEY_DC || k == KEY_BACKSPACE)
     {
-        if(!line_buffer_.empty())
-            line_buffer_.resize(line_buffer_.size()-1);
+        if (!line_buffer_.empty())
+            line_buffer_.resize(line_buffer_.size() - 1);
         wclear(lower_win_);
         waddstr(lower_win_, line_buffer_.c_str());
     }
-    else if((k == KEY_ENTER || k == '\n') && !line_buffer_.empty())
+    else if ((k == KEY_ENTER || k == '\n') && !line_buffer_.empty())
     {
         line = line_buffer_;
         wclear(lower_win_);
         post_message(id_, line_buffer_);
         line_buffer_.clear();
     }
-    else if(k == KEY_RESIZE)
+    else if (k == KEY_RESIZE)
     {
         update_size();
     }
-    else if(isprint(k) && line_buffer_.length() < MAX_LINE)
+    else if (isprint(k) && line_buffer_.length() < MAX_LINE)
     {
         waddch(lower_win_, k);
         line_buffer_ += k;
@@ -93,10 +93,7 @@ void ChatCurses::run_input(std::string& line)
     wrefresh(lower_win_);
 }
 
-void ChatCurses::cleanup()
-{
-    endwin();
-}
+void ChatCurses::cleanup() { endwin(); }
 
 void ChatCurses::post_message(unsigned id, const std::string& line)
 {

@@ -1,19 +1,20 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "dccl/protobuf/option_extensions.proto";
-
 
 message TestMsg
 {
-  option (dccl.msg).id = 2;
-  option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).id = 2;
+    option (dccl.msg).max_bytes = 32;
 
-  // test default enc/dec
-  optional double double_default_optional = 1 [(dccl.field).min=-100,
-                                               (dccl.field).max=126,
-                                               (dccl.field).precision=2,
-                                               (dccl.field).in_head=true];
-  optional float float_default_optional = 2 [(dccl.field).min=-20,
-                                             (dccl.field).max=150,
-                                             (dccl.field).precision=3];
+    // test default enc/dec
+    optional double double_default_optional = 1 [
+        (dccl.field).min = -100,
+        (dccl.field).max = 126,
+        (dccl.field).precision = 2,
+        (dccl.field).in_head = true
+    ];
+    optional float float_default_optional = 2 [
+        (dccl.field).min = -20,
+        (dccl.field).max = 150,
+        (dccl.field).precision = 3
+    ];
 }
-

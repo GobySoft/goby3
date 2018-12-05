@@ -1,36 +1,83 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/moos/protobuf/frontseat_config.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
 message BluefinFrontSeatConfig
 {
-  required string huxley_tcp_address = 1;
-  optional uint32 huxley_tcp_port = 2 [default = 29500];
-  optional uint32 reconnect_interval = 3 [default = 10, (goby.field).description="How many seconds to wait between reconnects if the Huxley server disconnects."];
-  optional uint32 nmea_resend_attempts = 4 [default = 3, (goby.field).description="Number of resend attempts for a given NMEA message"];
-  optional uint32 nmea_resend_interval = 5 [default = 5, (goby.field).description="How many seconds to wait between resend attempts"];
-  optional uint32 allowed_nmea_demerits = 6 [default = 3, (goby.field).description="Number of times Huxley can fail to acknowledge a NMEA message before we close the connection."];
-  optional uint32 allow_missing_nav_interval = 7 [default = 5, (goby.field).description="How many seconds to allow without $BFNVG before declaring frontseat not providing us data."];
-  optional uint32 heartbeat_interval = 8 [default = 1, (goby.field).description="How many seconds between heartbeats (BPSTS)."];
+    required string huxley_tcp_address = 1;
+    optional uint32 huxley_tcp_port = 2 [default = 29500];
+    optional uint32 reconnect_interval = 3 [
+        default = 10,
+        (goby.field).description =
+            "How many seconds to wait between reconnects if the Huxley server "
+            "disconnects."
+    ];
+    optional uint32 nmea_resend_attempts = 4 [
+        default = 3,
+        (goby.field).description =
+            "Number of resend attempts for a given NMEA message"
+    ];
+    optional uint32 nmea_resend_interval = 5 [
+        default = 5,
+        (goby.field).description =
+            "How many seconds to wait between resend attempts"
+    ];
+    optional uint32 allowed_nmea_demerits = 6 [
+        default = 3,
+        (goby.field).description =
+            "Number of times Huxley can fail to acknowledge a NMEA message "
+            "before we close the connection."
+    ];
+    optional uint32 allow_missing_nav_interval = 7 [
+        default = 5,
+        (goby.field).description =
+            "How many seconds to allow without $BFNVG before declaring "
+            "frontseat not providing us data."
+    ];
+    optional uint32 heartbeat_interval = 8 [
+        default = 1,
+        (goby.field).description =
+            "How many seconds between heartbeats (BPSTS)."
+    ];
 
-  repeated string extra_bplog = 9 [(goby.field).description="Additional Bluefin messages to enable logging for (e.g. for to send '$BPLOG,CMA,ON', set this field to 'CMA'"];
+    repeated string extra_bplog = 9
+        [(goby.field).description =
+             "Additional Bluefin messages to enable logging for (e.g. for to "
+             "send '$BPLOG,CMA,ON', set this field to 'CMA'"];
 
-  optional bool send_tmr_messages = 10 [default = true, (goby.field).description = "Send the BPTMR message with acoustic comms contents."];
+    optional bool send_tmr_messages = 10 [
+        default = true,
+        (goby.field).description =
+            "Send the BPTMR message with acoustic comms contents."
+    ];
 
-  optional bool disable_ack = 11 [default = false, (goby.field).description = "(Advanced) if true, do not use the BFACK message. Set to true for vehicles without the BFACK support. Note that if this field is set, IFS_COMMAND_RESPONSE messages will not be posted."];
+    optional bool disable_ack = 11 [
+        default = false,
+        (goby.field).description =
+            "(Advanced) if true, do not use the BFACK message. Set to true for "
+            "vehicles without the BFACK support. Note that if this field is "
+            "set, IFS_COMMAND_RESPONSE messages will not be posted."
+    ];
 
-  enum AcceptingCommandsHook
-  {
-    BFMSC_TRIGGER = 0;
-    BFMIS_RUNNING_TRIGGER = 1;
-    BFCTL_TRIGGER = 2;
-  }
+    enum AcceptingCommandsHook
+    {
+        BFMSC_TRIGGER = 0;
+        BFMIS_RUNNING_TRIGGER = 1;
+        BFCTL_TRIGGER = 2;
+    }
 
-  optional AcceptingCommandsHook accepting_commands_hook = 12 [default = BFMSC_TRIGGER, (goby.field).description = "How this driver determines if the Bluefin Huxley is accepting commands. BFMSC_TRIGGER means the $BFMSC message receipt indicates that Huxley is receiving our commands. BFMIS_RUNNING_TRIGGER indicates that any $BFMIS (start of mission) that contains the word 'Running' indicates that Huxley is receiving our commands."];
-  
+    optional AcceptingCommandsHook accepting_commands_hook = 12 [
+        default = BFMSC_TRIGGER,
+        (goby.field).description =
+            "How this driver determines if the Bluefin Huxley is accepting "
+            "commands. BFMSC_TRIGGER means the $BFMSC message receipt "
+            "indicates that Huxley is receiving our commands. "
+            "BFMIS_RUNNING_TRIGGER indicates that any $BFMIS (start of "
+            "mission) that contains the word 'Running' indicates that Huxley "
+            "is receiving our commands."
+    ];
 }
 
 extend iFrontSeatConfig
 {
-  optional BluefinFrontSeatConfig bluefin_config = 1000;
+    optional BluefinFrontSeatConfig bluefin_config = 1000;
 }

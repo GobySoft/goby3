@@ -37,7 +37,11 @@ class FrontSeatLegacyTranslator
   private:
     void handle_mail_ctd(const CMOOSMsg& msg);
     void handle_mail_desired_course(const CMOOSMsg& msg);
-    enum ModemRawDirection { OUTGOING, INCOMING };
+    enum ModemRawDirection
+    {
+        OUTGOING,
+        INCOMING
+    };
     void handle_mail_modem_raw(const CMOOSMsg& msg, ModemRawDirection direction);
 
     // all for buoyancy, trim, silent
@@ -46,22 +50,24 @@ class FrontSeatLegacyTranslator
     void handle_mail_frontseat_bhvoff(const CMOOSMsg& msg);
     void handle_mail_frontseat_silent(const CMOOSMsg& msg);
     void handle_mail_backseat_abort(const CMOOSMsg& msg);
-    
-    void handle_driver_data_from_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data);
+
+    void
+    handle_driver_data_from_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data);
     void set_fs_bs_ready_flags(goby::moos::protobuf::InterfaceState state);
-    
+
     void publish_command(const goby::moos::protobuf::CommandRequest& command);
-    
+
   private:
     iFrontSeat* ifs_;
     goby::moos::protobuf::CTDSample ctd_sample_;
     goby::moos::protobuf::DesiredCourse desired_course_;
 
     // added to each request we send so as not to conflict with other requestors
-    enum { LEGACY_REQUEST_IDENTIFIER = 1 << 16 };
+    enum
+    {
+        LEGACY_REQUEST_IDENTIFIER = 1 << 16
+    };
     int request_id_;
-    
 };
-
 
 #endif

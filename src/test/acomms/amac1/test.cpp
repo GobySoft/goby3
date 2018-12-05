@@ -22,9 +22,9 @@
 // tests fixed TDMA
 
 #include "goby/acomms/amac.h"
+#include "goby/acomms/connect.h"
 #include "goby/common/logger.h"
 #include "goby/util/sci.h"
-#include "goby/acomms/connect.h"
 
 goby::acomms::MACManager mac;
 const int num_cycles_check = 3;
@@ -38,21 +38,23 @@ void initiate_transmission(const goby::acomms::protobuf::ModemTransmission& msg)
 {
     std::cout << "We were told to start transmission of " << msg << std::endl;
     assert(msg.src() == me);
-    double cycles_since_day = (goby::common::goby_time().time_of_day().total_milliseconds() / 1000.0) / mac.cycle_duration();
-    
+    double cycles_since_day =
+        (goby::common::goby_time().time_of_day().total_milliseconds() / 1000.0) /
+        mac.cycle_duration();
+
     std::cout << std::setprecision(15) << cycles_since_day << std::endl;
-    std::cout << std::setprecision(15) << goby::util::unbiased_round(cycles_since_day,0)
+    std::cout << std::setprecision(15) << goby::util::unbiased_round(cycles_since_day, 0)
               << std::endl;
 
     current_cycle = cycles_since_day;
-    if(first_cycle == -1)
+    if (first_cycle == -1)
         first_cycle = current_cycle;
 
     assert(mac.cycle_count() == 3);
-    
-    assert(goby::util::unbiased_round(cycles_since_day - goby::util::unbiased_round(cycles_since_day,0), 1) == 0);
-}
 
+    assert(goby::util::unbiased_round(
+               cycles_since_day - goby::util::unbiased_round(cycles_since_day, 0), 1) == 0);
+}
 
 int main(int argc, char* argv[])
 {
@@ -78,7 +80,6 @@ int main(int argc, char* argv[])
     uplink3_slot.set_slot_seconds(0.1);
     cfg.add_slot()->CopyFrom(uplink3_slot);
 
-
     goby::acomms::protobuf::ModemTransmission uplink4_slot;
     uplink4_slot.set_src(4);
     uplink4_slot.set_rate(0);
@@ -86,49 +87,41 @@ int main(int argc, char* argv[])
     uplink4_slot.set_slot_seconds(0.1);
     cfg.add_slot()->CopyFrom(uplink4_slot);
 
-    goby::acomms::connect(&mac.signal_initiate_transmission,
-                          &initiate_transmission);
-    
-    
+    goby::acomms::connect(&mac.signal_initiate_transmission, &initiate_transmission);
+
     mac.startup(cfg);
-    
-    
-    while(first_cycle == -1 || (current_cycle < first_cycle + num_cycles_check))
+
+    while (first_cycle == -1 || (current_cycle < first_cycle + num_cycles_check))
     {
         mac.do_work();
         usleep(1e2);
     }
-    
+
     first_cycle = -1;
     current_cycle = -1;
-    
+
     mac.shutdown();
 
     cfg.Clear();
     me = 3;
-    
+
     cfg.set_modem_id(me);
     cfg.set_type(goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED);
     mac.startup(cfg);
-
 
     // add slots not through cfg
     mac.clear();
     mac.push_back(downlink_slot);
     mac.push_back(uplink3_slot);
     mac.update();
-    
+
     mac.push_back(uplink4_slot);
     mac.remove(downlink_slot);
-    mac.push_back(downlink_slot);    
+    mac.push_back(downlink_slot);
     mac.update();
 
-    
-    
-    while(first_cycle == -1 || (current_cycle < first_cycle + num_cycles_check))
+    while (first_cycle == -1 || (current_cycle < first_cycle + num_cycles_check))
         mac.get_io_service().run_one();
-        
-    
+
     std::cout << "all tests passed" << std::endl;
 }
-

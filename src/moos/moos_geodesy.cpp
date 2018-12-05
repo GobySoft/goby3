@@ -21,20 +21,17 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cmath>
-#include <sstream>
 #include <iostream>
 #include <limits>
+#include <sstream>
 
 #include "moos_geodesy.h"
 
-CMOOSGeodesy::CMOOSGeodesy() : m_sUTMZone(0),
-                               m_dOriginEasting(0),
-                               m_dOriginNorthing(0),
-                               m_dOriginLongitude(0),
-                               m_dOriginLatitude(0),
-                               pj_utm_(0),
-                               pj_latlong_(0)
-{ }
+CMOOSGeodesy::CMOOSGeodesy()
+    : m_sUTMZone(0), m_dOriginEasting(0), m_dOriginNorthing(0), m_dOriginLongitude(0),
+      m_dOriginLatitude(0), pj_utm_(0), pj_latlong_(0)
+{
+}
 
 CMOOSGeodesy::~CMOOSGeodesy()
 {
@@ -48,7 +45,7 @@ bool CMOOSGeodesy::Initialise(double lat, double lon)
     SetOriginLatitude(lat);
     SetOriginLongitude(lon);
 
-    int zone = (static_cast<int>(std::floor((lon + 180)/6)) + 1) % 60;
+    int zone = (static_cast<int>(std::floor((lon + 180) / 6)) + 1) % 60;
 
     std::stringstream proj_utm;
     proj_utm << "+proj=utm +ellps=WGS84 +zone=" << zone;
@@ -58,18 +55,17 @@ bool CMOOSGeodesy::Initialise(double lat, double lon)
         std::cerr << "Failed to initiate utm proj" << std::endl;
         return false;
     }
-    if (!(pj_latlong_ = pj_init_plus("+proj=latlong +ellps=WGS84")) )
+    if (!(pj_latlong_ = pj_init_plus("+proj=latlong +ellps=WGS84")))
     {
         std::cerr << "Failed to initiate latlong proj" << std::endl;
         return false;
     }
 
-    //Translate the Origin coordinates into Northings and Eastings 
-    double tempNorth = lat*DEG_TO_RAD,
-        tempEast = lon*DEG_TO_RAD;
+    //Translate the Origin coordinates into Northings and Eastings
+    double tempNorth = lat * DEG_TO_RAD, tempEast = lon * DEG_TO_RAD;
 
     int err;
-    if(err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &tempEast, &tempNorth, NULL))
+    if (err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &tempEast, &tempNorth, NULL))
     {
         std::cerr << "Failed to transform datum, reason: " << pj_strerrno(err) << std::endl;
         return false;
@@ -84,68 +80,41 @@ bool CMOOSGeodesy::Initialise(double lat, double lon)
     return true;
 }
 
-double CMOOSGeodesy::GetOriginLongitude()
-{
-    return m_dOriginLongitude;
-}
+double CMOOSGeodesy::GetOriginLongitude() { return m_dOriginLongitude; }
 
-double CMOOSGeodesy::GetOriginLatitude()
-{
-    return m_dOriginLatitude;    
-}
+double CMOOSGeodesy::GetOriginLatitude() { return m_dOriginLatitude; }
 
-void CMOOSGeodesy::SetOriginLongitude(double lon)
-{
-    m_dOriginLongitude = lon;
-}
+void CMOOSGeodesy::SetOriginLongitude(double lon) { m_dOriginLongitude = lon; }
 
-void CMOOSGeodesy::SetOriginLatitude(double lat)
-{
-    m_dOriginLatitude = lat;
-}
+void CMOOSGeodesy::SetOriginLatitude(double lat) { m_dOriginLatitude = lat; }
 
-void CMOOSGeodesy::SetOriginNorthing(double North)
-{
-    m_dOriginNorthing = North;
-}
+void CMOOSGeodesy::SetOriginNorthing(double North) { m_dOriginNorthing = North; }
 
-void CMOOSGeodesy::SetOriginEasting(double East)
-{
-    m_dOriginEasting = East;
-}
+void CMOOSGeodesy::SetOriginEasting(double East) { m_dOriginEasting = East; }
 
-void CMOOSGeodesy::SetUTMZone(int zone)
-{
-    m_sUTMZone = zone;
-}
+void CMOOSGeodesy::SetUTMZone(int zone) { m_sUTMZone = zone; }
 
-int CMOOSGeodesy::GetUTMZone()
-{
-    return m_sUTMZone;
-}
+int CMOOSGeodesy::GetUTMZone() { return m_sUTMZone; }
 
-
-bool CMOOSGeodesy::LatLong2LocalUTM(double lat,
-                                    double lon, 
-                                    double &MetersNorth,
-                                    double &MetersEast)
+bool CMOOSGeodesy::LatLong2LocalUTM(double lat, double lon, double& MetersNorth, double& MetersEast)
 {
     double dN, dE;
     double tmpEast = lon * DEG_TO_RAD;
     double tmpNorth = lat * DEG_TO_RAD;
     MetersNorth = std::numeric_limits<double>::quiet_NaN();
-    MetersEast =  std::numeric_limits<double>::quiet_NaN();
+    MetersEast = std::numeric_limits<double>::quiet_NaN();
 
-    if(!pj_latlong_ || !pj_utm_)
+    if (!pj_latlong_ || !pj_utm_)
     {
         std::cerr << "Must call Initialise before calling LatLong2LocalUTM" << std::endl;
         return false;
     }
 
     int err;
-    if(err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &tmpEast, &tmpNorth, NULL ))
+    if (err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &tmpEast, &tmpNorth, NULL))
     {
-        std::cerr << "Failed to transform (lat,lon) = (" << lat << "," << lon << "), reason: " << pj_strerrno(err) << std::endl;
+        std::cerr << "Failed to transform (lat,lon) = (" << lat << "," << lon
+                  << "), reason: " << pj_strerrno(err) << std::endl;
         return false;
     }
 
@@ -154,15 +123,9 @@ bool CMOOSGeodesy::LatLong2LocalUTM(double lat,
     return true;
 }
 
-double CMOOSGeodesy::GetOriginEasting()
-{
-    return m_dOriginEasting;
-}
+double CMOOSGeodesy::GetOriginEasting() { return m_dOriginEasting; }
 
-double CMOOSGeodesy::GetOriginNorthing()
-{
-    return m_dOriginNorthing;
-}
+double CMOOSGeodesy::GetOriginNorthing() { return m_dOriginNorthing; }
 
 bool CMOOSGeodesy::UTM2LatLong(double dfX, double dfY, double& dfLat, double& dfLong)
 {
@@ -172,16 +135,17 @@ bool CMOOSGeodesy::UTM2LatLong(double dfX, double dfY, double& dfLat, double& df
     dfLat = std::numeric_limits<double>::quiet_NaN();
     dfLong = std::numeric_limits<double>::quiet_NaN();
 
-    if(!pj_latlong_ || !pj_utm_)
+    if (!pj_latlong_ || !pj_utm_)
     {
         std::cerr << "Must call Initialise before calling UTM2LatLong" << std::endl;
         return false;
     }
-    
+
     int err;
-    if(err = pj_transform(pj_utm_, pj_latlong_, 1, 1, &x, &y, NULL))
+    if (err = pj_transform(pj_utm_, pj_latlong_, 1, 1, &x, &y, NULL))
     {
-        std::cerr << "Failed to transform (x,y) = (" << dfX << "," << dfY << "), reason: " << pj_strerrno(err) << std::endl;
+        std::cerr << "Failed to transform (x,y) = (" << dfX << "," << dfY
+                  << "), reason: " << pj_strerrno(err) << std::endl;
         return false;
     }
 
@@ -189,4 +153,3 @@ bool CMOOSGeodesy::UTM2LatLong(double dfX, double dfY, double& dfLat, double& df
     dfLong = x * RAD_TO_DEG;
     return true;
 }
-

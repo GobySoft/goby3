@@ -28,20 +28,13 @@
 
 namespace goby
 {
-    
-    /// \brief simple exception class for goby applications
-    class Exception : public std::runtime_error
-    {
-      public:
-      Exception(const std::string& s)
-          : std::runtime_error(s)
-        { }
-        
-    };
-    
-    
-}
+/// \brief simple exception class for goby applications
+class Exception : public std::runtime_error
+{
+  public:
+    Exception(const std::string& s) : std::runtime_error(s) {}
+};
 
+} // namespace goby
 
 #endif
-

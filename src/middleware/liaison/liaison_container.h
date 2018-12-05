@@ -23,186 +23,191 @@
 #ifndef LIAISONCONTAINER20130128H
 #define LIAISONCONTAINER20130128H
 
+#include <Wt/WColor>
 #include <Wt/WContainerWidget>
 #include <Wt/WText>
-#include <Wt/WColor>
 #include <Wt/WTimer>
 
-#include "goby/middleware/protobuf/liaison_config.pb.h"
 #include "goby/middleware/group.h"
 #include "goby/middleware/multi-thread-application.h"
-
+#include "goby/middleware/protobuf/liaison_config.pb.h"
 
 namespace goby
 {
-    namespace common
+namespace common
+{
+const Wt::WColor goby_blue(28, 159, 203);
+const Wt::WColor goby_orange(227, 96, 52);
+
+inline std::string liaison_internal_publish_socket_name()
+{
+    return "liaison_internal_publish_socket";
+}
+inline std::string liaison_internal_subscribe_socket_name()
+{
+    return "liaison_internal_subscribe_socket";
+}
+
+class LiaisonContainer : public Wt::WContainerWidget
+{
+  public:
+    LiaisonContainer()
     {
-        const Wt::WColor goby_blue(28,159,203);
-        const Wt::WColor goby_orange(227,96,52);
-        
-        inline std::string liaison_internal_publish_socket_name() { return "liaison_internal_publish_socket"; }
-        inline std::string liaison_internal_subscribe_socket_name() { return "liaison_internal_subscribe_socket"; }
-        
-        class LiaisonContainer : public Wt::WContainerWidget
-        {
-        public:
-            LiaisonContainer()
-            {
-                setStyleClass("fill");
-                /* addWidget(new Wt::WText("<hr/>")); */
-                /* addWidget(name_); */
-                /* addWidget(new Wt::WText("<hr/>")); */
-            }
-            
-            virtual ~LiaisonContainer()
-            { }  
-            
-            void set_name(const Wt::WString& name)
-            {
-                name_.setText(name);
-            }
+        setStyleClass("fill");
+        /* addWidget(new Wt::WText("<hr/>")); */
+        /* addWidget(name_); */
+        /* addWidget(new Wt::WText("<hr/>")); */
+    }
 
-            const Wt::WString& name() { return name_.text(); }
-            
-            virtual void focus() { }
-            virtual void unfocus() { }
-            virtual void cleanup() { }            
+    virtual ~LiaisonContainer() {}
 
-            
-          private:
-            Wt::WText name_;
-        };        
+    void set_name(const Wt::WString& name) { name_.setText(name); }
 
-        template<typename Derived, typename GobyThread>
-            class LiaisonContainerWithComms : public LiaisonContainer
-        {
-        public:
-        LiaisonContainerWithComms(const protobuf::LiaisonConfig& cfg)
-            {
-                static std::atomic<int> index(0);
-                index_ = index++;
-                
-                // copy configuration 
-                auto thread_lambda = [this, cfg]()
-                    {
-                        {
-                            std::lock_guard<std::mutex> l(goby_thread_mutex);        
-                            goby_thread_ = std::make_unique<GobyThread>(static_cast<Derived*>(this), cfg, index_);
-                        }
-                        
-                        try { goby_thread_->run(thread_alive_); }
-                        catch(...) { thread_exception_ = std::current_exception(); }
+    const Wt::WString& name() { return name_.text(); }
 
-                        {
-                            std::lock_guard<std::mutex> l(goby_thread_mutex);        
-                            goby_thread_.reset();
-                        }
-                    };
+    virtual void focus() {}
+    virtual void unfocus() {}
+    virtual void cleanup() {}
 
-                thread_ = std::unique_ptr<std::thread>(new std::thread(thread_lambda));
+  private:
+    Wt::WText name_;
+};
 
-                // wait for thread to be created
-                while(goby_thread() == nullptr)
-                    usleep(1000);
+template <typename Derived, typename GobyThread>
+class LiaisonContainerWithComms : public LiaisonContainer
+{
+  public:
+    LiaisonContainerWithComms(const protobuf::LiaisonConfig& cfg)
+    {
+        static std::atomic<int> index(0);
+        index_ = index++;
 
-                comms_timer_.setInterval(1/cfg.update_freq()*1.0e3);
-                comms_timer_.timeout().connect([this](const Wt::WMouseEvent&) { this->process_from_comms(); });
-                comms_timer_.start();
-            }
-            
-            virtual ~LiaisonContainerWithComms()
-            {
-                thread_alive_ = false;
-                thread_->join();
-                
-                if(thread_exception_)
-                {
-                    goby::glog.is_warn() && goby::glog << "Comms thread had an uncaught exception" << std::endl;
-                    std::rethrow_exception(thread_exception_);
-                }
-                
-            }
-
-            void post_to_wt(std::function<void()> func)
-            {
-                std::lock_guard<std::mutex> l(comms_to_wt_mutex);
-                comms_to_wt_queue.push(func);
-            }
-
-            void process_from_wt()
-            {
-                std::lock_guard<std::mutex> l(wt_to_comms_mutex);                
-                while(!wt_to_comms_queue.empty())
-                {
-                    wt_to_comms_queue.front()();
-                    wt_to_comms_queue.pop();
-                }
-            }
-            
-            
-        protected:
-            GobyThread* goby_thread() 
+        // copy configuration
+        auto thread_lambda = [this, cfg]() {
             {
                 std::lock_guard<std::mutex> l(goby_thread_mutex);
-                return goby_thread_.get();
+                goby_thread_ =
+                    std::make_unique<GobyThread>(static_cast<Derived*>(this), cfg, index_);
             }
 
-            void post_to_comms(std::function<void()> func)
+            try
             {
-                std::lock_guard<std::mutex> l(wt_to_comms_mutex);                
-                wt_to_comms_queue.push(func);
+                goby_thread_->run(thread_alive_);
             }
-            
-            void process_from_comms()
+            catch (...)
             {
-                std::lock_guard<std::mutex> l(comms_to_wt_mutex);                
-                while(!comms_to_wt_queue.empty())
-                {
-                    comms_to_wt_queue.front()();
-                    comms_to_wt_queue.pop();
-                }
+                thread_exception_ = std::current_exception();
             }
 
-            
-          private:
-
-            // for comms
-            std::mutex comms_to_wt_mutex;
-            std::queue<std::function<void ()>> comms_to_wt_queue;
-            std::mutex wt_to_comms_mutex;
-            std::queue<std::function<void ()>> wt_to_comms_queue;
-
-            // only protects the unique_ptr, not the underlying thread
-            std::mutex goby_thread_mutex;
-            std::unique_ptr<GobyThread> goby_thread_ { nullptr };
-
-            int index_;
-            std::unique_ptr<std::thread> thread_;
-            std::atomic<bool> thread_alive_ {true};
-            std::exception_ptr thread_exception_;
-
-            Wt::WTimer comms_timer_;
+            {
+                std::lock_guard<std::mutex> l(goby_thread_mutex);
+                goby_thread_.reset();
+            }
         };
 
-        template<typename WtContainer>
-            class LiaisonCommsThread : public goby::SimpleThread<protobuf::LiaisonConfig>
-        {
-        public:
-        LiaisonCommsThread(WtContainer* container, const protobuf::LiaisonConfig& config, int index) :
-            goby::SimpleThread<protobuf::LiaisonConfig>(config, config.update_freq()*boost::units::si::hertz, index),
-                container_(container)
-            {
-            }
-            
-            void loop() override
-            {
-                goby::glog.is_debug3() && goby::glog << "LiaisonCommsThread " << this->index() << " loop()" << std::endl;
-                container_->process_from_wt();
-            }
-        private:
-            WtContainer* container_;
+        thread_ = std::unique_ptr<std::thread>(new std::thread(thread_lambda));
 
-        };
+        // wait for thread to be created
+        while (goby_thread() == nullptr) usleep(1000);
+
+        comms_timer_.setInterval(1 / cfg.update_freq() * 1.0e3);
+        comms_timer_.timeout().connect(
+            [this](const Wt::WMouseEvent&) { this->process_from_comms(); });
+        comms_timer_.start();
     }
-}
+
+    virtual ~LiaisonContainerWithComms()
+    {
+        thread_alive_ = false;
+        thread_->join();
+
+        if (thread_exception_)
+        {
+            goby::glog.is_warn() && goby::glog << "Comms thread had an uncaught exception"
+                                               << std::endl;
+            std::rethrow_exception(thread_exception_);
+        }
+    }
+
+    void post_to_wt(std::function<void()> func)
+    {
+        std::lock_guard<std::mutex> l(comms_to_wt_mutex);
+        comms_to_wt_queue.push(func);
+    }
+
+    void process_from_wt()
+    {
+        std::lock_guard<std::mutex> l(wt_to_comms_mutex);
+        while (!wt_to_comms_queue.empty())
+        {
+            wt_to_comms_queue.front()();
+            wt_to_comms_queue.pop();
+        }
+    }
+
+  protected:
+    GobyThread* goby_thread()
+    {
+        std::lock_guard<std::mutex> l(goby_thread_mutex);
+        return goby_thread_.get();
+    }
+
+    void post_to_comms(std::function<void()> func)
+    {
+        std::lock_guard<std::mutex> l(wt_to_comms_mutex);
+        wt_to_comms_queue.push(func);
+    }
+
+    void process_from_comms()
+    {
+        std::lock_guard<std::mutex> l(comms_to_wt_mutex);
+        while (!comms_to_wt_queue.empty())
+        {
+            comms_to_wt_queue.front()();
+            comms_to_wt_queue.pop();
+        }
+    }
+
+  private:
+    // for comms
+    std::mutex comms_to_wt_mutex;
+    std::queue<std::function<void()> > comms_to_wt_queue;
+    std::mutex wt_to_comms_mutex;
+    std::queue<std::function<void()> > wt_to_comms_queue;
+
+    // only protects the unique_ptr, not the underlying thread
+    std::mutex goby_thread_mutex;
+    std::unique_ptr<GobyThread> goby_thread_{nullptr};
+
+    int index_;
+    std::unique_ptr<std::thread> thread_;
+    std::atomic<bool> thread_alive_{true};
+    std::exception_ptr thread_exception_;
+
+    Wt::WTimer comms_timer_;
+};
+
+template <typename WtContainer>
+class LiaisonCommsThread : public goby::SimpleThread<protobuf::LiaisonConfig>
+{
+  public:
+    LiaisonCommsThread(WtContainer* container, const protobuf::LiaisonConfig& config, int index)
+        : goby::SimpleThread<protobuf::LiaisonConfig>(
+              config, config.update_freq() * boost::units::si::hertz, index),
+          container_(container)
+    {
+    }
+
+    void loop() override
+    {
+        goby::glog.is_debug3() && goby::glog << "LiaisonCommsThread " << this->index() << " loop()"
+                                             << std::endl;
+        container_->process_from_wt();
+    }
+
+  private:
+    WtContainer* container_;
+};
+} // namespace common
+} // namespace goby
 #endif

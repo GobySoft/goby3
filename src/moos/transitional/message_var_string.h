@@ -29,34 +29,28 @@
 
 namespace goby
 {
-    namespace transitional
-    {   
-        class DCCLMessageVarString : public DCCLMessageVar
-        {
-          public:
-          DCCLMessageVarString()
-              : DCCLMessageVar(),
-                max_length_(0)
-                { }
+namespace transitional
+{
+class DCCLMessageVarString : public DCCLMessageVar
+{
+  public:
+    DCCLMessageVarString() : DCCLMessageVar(), max_length_(0) {}
 
-            void set_max_length(unsigned max_length) {max_length_ = max_length;}
-            void set_max_length(const std::string& s) { set_max_length(util::as<unsigned>(s)); }
+    void set_max_length(unsigned max_length) { max_length_ = max_length; }
+    void set_max_length(const std::string& s) { set_max_length(util::as<unsigned>(s)); }
 
-            unsigned max_length() const {return max_length_;}        
+    unsigned max_length() const { return max_length_; }
 
-            DCCLType type() const  { return dccl_string; }
-        
-          private:
-            void initialize_specific()
-            { }
-        
-            void get_display_specific(std::stringstream& ss) const
-            { }        
+    DCCLType type() const { return dccl_string; }
 
-          private:
-            unsigned max_length_;
+  private:
+    void initialize_specific() {}
 
-        };
-    }
-}
+    void get_display_specific(std::stringstream& ss) const {}
+
+  private:
+    unsigned max_length_;
+};
+} // namespace transitional
+} // namespace goby
 #endif

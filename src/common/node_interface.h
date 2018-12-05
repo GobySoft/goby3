@@ -27,33 +27,28 @@
 
 namespace goby
 {
-    namespace common
+namespace common
+{
+template <typename NodeTypeBase> class NodeInterface
+{
+  public:
+    ZeroMQService* zeromq_service() { return zeromq_service_; }
+    virtual void send(const NodeTypeBase& msg, int socket_id, const std::string& group = "") = 0;
+    virtual void subscribe(const std::string& identifier, int socket_id) = 0;
+
+  protected:
+    NodeInterface(ZeroMQService* service) : zeromq_service_(service)
     {
-        template<typename NodeTypeBase>
-            class NodeInterface
-        {
-          public:
-            ZeroMQService* zeromq_service() { return zeromq_service_; }
-            virtual void send(const NodeTypeBase& msg, int socket_id, const std::string& group = "") = 0;
-            virtual void subscribe(const std::string& identifier, int socket_id) = 0;
-
-          protected:
-          NodeInterface(ZeroMQService* service)
-              : zeromq_service_(service)
-            {
-                zeromq_service_->connect_inbox_slot(&NodeInterface<NodeTypeBase>::inbox, this);
-            }            
-            
-            virtual void inbox(int marshalling_scheme,
-                               const std::string& identifier,
-                               const std::string& body,
-                               int socket_id) = 0;
-          private:
-            ZeroMQService* zeromq_service_;
-            
-        };
+        zeromq_service_->connect_inbox_slot(&NodeInterface<NodeTypeBase>::inbox, this);
     }
-}
 
+    virtual void inbox(int marshalling_scheme, const std::string& identifier,
+                       const std::string& body, int socket_id) = 0;
+
+  private:
+    ZeroMQService* zeromq_service_;
+};
+} // namespace common
+} // namespace goby
 
 #endif

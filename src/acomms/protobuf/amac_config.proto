@@ -1,34 +1,49 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 
 import "goby/acomms/protobuf/modem_message.proto";
 
 package goby.acomms.protobuf;
 
-enum MACType {
-  MAC_NONE = 1; // no MAC 
-  MAC_FIXED_DECENTRALIZED = 2; // decentralized time division multiple access
-  MAC_POLLED = 4; // centralized polling
+enum MACType
+{
+    MAC_NONE = 1;                 // no MAC
+    MAC_FIXED_DECENTRALIZED = 2;  // decentralized time division multiple access
+    MAC_POLLED = 4;               // centralized polling
 };
 
 message MACConfig
 {
-  optional int32 modem_id = 1 [(goby.field).description="Unique number 1-31 to identify this node",
-                               (goby.field).example="1"];
-  
-  optional MACType type = 2 [default = MAC_NONE,
-                             (goby.field).description="The type of TDMA MAC scheme to use"];
+    optional int32 modem_id = 1 [
+        (goby.field).description = "Unique number 1-31 to identify this node",
+        (goby.field).example = "1"
+    ];
 
-  repeated ModemTransmission slot = 3 [(goby.field).description="Configure a slot in the communications cycle. Slots are run in the order they are declared."];
-  
-  optional bool start_cycle_in_middle = 4 [default = true,
-                                           (goby.field).description="If true, cycle will start / restart at the next slot, even if its the middle of the cycle. If false, any changes to the cycle will reset it to the first slot."];
+    optional MACType type = 2 [
+        default = MAC_NONE,
+        (goby.field).description = "The type of TDMA MAC scheme to use"
+    ];
 
-    enum MACRefTime 
+    repeated ModemTransmission slot = 3
+        [(goby.field).description =
+             "Configure a slot in the communications cycle. Slots are run in "
+             "the order they are declared."];
+
+    optional bool start_cycle_in_middle = 4 [
+        default = true,
+        (goby.field).description =
+            "If true, cycle will start / restart at the next slot, even if its "
+            "the middle of the cycle. If false, any changes to the cycle will "
+            "reset it to the first slot."
+    ];
+
+    enum MACRefTime
     {
         REFERENCE_START_OF_DAY = 1;
         REFERENCE_FIXED = 2;
     }
     optional MACRefTime ref_time_type = 5 [default = REFERENCE_START_OF_DAY];
-    optional int32 fixed_ref_time = 6 [(goby.field).description="Seconds since UNIX 1970-01-01T00:00:00 to use as reference time if ref_time_type == REFERENCE_FIXED"];
+    optional int32 fixed_ref_time = 6
+        [(goby.field).description =
+             "Seconds since UNIX 1970-01-01T00:00:00 to use as reference time "
+             "if ref_time_type == REFERENCE_FIXED"];
 }

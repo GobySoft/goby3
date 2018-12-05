@@ -24,10 +24,9 @@
 
 #include "bluefin.h"
 
-
 namespace gpb = goby::moos::protobuf;
-using goby::common::goby_time;
 using goby::glog;
+using goby::common::goby_time;
 using goby::util::NMEASentence;
 using namespace goby::common::logger;
 using namespace goby::common::tcolor;
@@ -37,8 +36,7 @@ void BluefinFrontSeat::bfack(const goby::util::NMEASentence& nmea)
     frontseat_providing_data_ = true;
     last_frontseat_data_time_ = goby_time<double>();
 
-    
-    enum 
+    enum
     {
         TIMESTAMP = 1,
         COMMAND_NAME = 2,
@@ -48,64 +46,66 @@ void BluefinFrontSeat::bfack(const goby::util::NMEASentence& nmea)
         FUTURE_USE = 6,
         DESCRIPTION = 7,
     };
-    
-    enum AckStatus 
+
+    enum AckStatus
     {
         INVALID_REQUEST = 0,
         REQUEST_UNSUCCESSFULLY_PROCESSED = 1,
         REQUEST_SUCCESSFULLY_PROCESSED = 2,
         REQUEST_PENDING = 3
     };
-    
+
     AckStatus status = static_cast<AckStatus>(nmea.as<int>(ACK_STATUS));
 
-    
     std::string acked_sentence = nmea.at(COMMAND_NAME);
 
-    switch(status)
+    switch (status)
     {
         case INVALID_REQUEST:
-            glog.is(DEBUG1) && glog << warn << "Huxley reports that we sent an invalid " << acked_sentence << " request." << std::endl;
+            glog.is(DEBUG1) && glog << warn << "Huxley reports that we sent an invalid "
+                                    << acked_sentence << " request." << std::endl;
             break;
         case REQUEST_UNSUCCESSFULLY_PROCESSED:
-            glog.is(DEBUG1) && glog <<  warn << "Huxley reports that it unsuccessfully processed our " << acked_sentence << " request: "
+            glog.is(DEBUG1) && glog << warn
+                                    << "Huxley reports that it unsuccessfully processed our "
+                                    << acked_sentence << " request: "
                                     << "\"" << nmea.at(DESCRIPTION) << "\"" << std::endl;
             break;
-        case REQUEST_SUCCESSFULLY_PROCESSED:
-            break;
+        case REQUEST_SUCCESSFULLY_PROCESSED: break;
         case REQUEST_PENDING:
-            glog.is(DEBUG1) && glog << "Huxley reports that our " << acked_sentence << " request is pending." << std::endl;
-            if(!out_.empty())
+            glog.is(DEBUG1) && glog << "Huxley reports that our " << acked_sentence
+                                    << " request is pending." << std::endl;
+            if (!out_.empty())
                 pending_.push_back(out_.front().message());
-            break;            
+            break;
     }
 
     boost::to_upper(acked_sentence);
     // we expect it to be the front of either the out_ or pending_ queues
-    if(!out_.empty() && boost::iequals(out_.front().sentence_id(), acked_sentence))
+    if (!out_.empty() && boost::iequals(out_.front().sentence_id(), acked_sentence))
     {
         out_.pop_front();
     }
-    else if(!pending_.empty() && boost::iequals(pending_.front().sentence_id(), acked_sentence))
+    else if (!pending_.empty() && boost::iequals(pending_.front().sentence_id(), acked_sentence))
     {
         pending_.pop_front();
     }
     else
     {
         glog.is(DEBUG1) && glog << warn << "Received NMEA Ack for message that was the front "
-                                << "of neither the outgoing or pending queue. Clearing our queues and attempting to carry on ..." << std::endl;
+                                << "of neither the outgoing or pending queue. Clearing our queues "
+                                   "and attempting to carry on ..."
+                                << std::endl;
         out_.clear();
         pending_.clear();
         return;
     }
 
-
-
     // handle response to outstanding requests
-    if(status != REQUEST_PENDING)
+    if (status != REQUEST_PENDING)
     {
         gpb::BluefinExtraCommands::BluefinCommand type = gpb::BluefinExtraCommands::UNKNOWN_COMMAND;
-        switch(sentence_id_map_.left.at(acked_sentence))
+        switch (sentence_id_map_.left.at(acked_sentence))
         {
             case RMB: type = gpb::BluefinExtraCommands::DESIRED_COURSE; break;
             case BOY: type = gpb::BluefinExtraCommands::BUOYANCY_ADJUST; break;
@@ -115,12 +115,12 @@ void BluefinFrontSeat::bfack(const goby::util::NMEASentence& nmea)
             default: break;
         }
 
-        if(outstanding_requests_.count(type))
+        if (outstanding_requests_.count(type))
         {
             gpb::CommandResponse response;
             response.set_request_successful(status == REQUEST_SUCCESSFULLY_PROCESSED);
             response.set_request_id(outstanding_requests_[type].request_id());
-            if(!response.request_successful())
+            if (!response.request_successful())
             {
                 response.set_error_code(status);
                 response.set_error_string(nmea.at(DESCRIPTION));
@@ -129,25 +129,23 @@ void BluefinFrontSeat::bfack(const goby::util::NMEASentence& nmea)
             signal_command_response(response);
         }
     }
-    waiting_for_huxley_ = false;    
+    waiting_for_huxley_ = false;
 }
-
 
 void BluefinFrontSeat::bfmsc(const goby::util::NMEASentence& nmea)
 {
     // TODO: See if there is something to the message contents
     // BF manual says: Arbitrary textual message. Semantics determined by the payload.
-    if(bf_config_.accepting_commands_hook() == BluefinFrontSeatConfig::BFMSC_TRIGGER)
-    frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
+    if (bf_config_.accepting_commands_hook() == BluefinFrontSeatConfig::BFMSC_TRIGGER)
+        frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
 }
-
 
 void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
 {
     frontseat_providing_data_ = true;
     last_frontseat_data_time_ = goby_time<double>();
 
-    enum 
+    enum
     {
         TIMESTAMP = 1,
         LATITUDE = 2,
@@ -162,13 +160,14 @@ void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
         PITCH = 11,
         COMPUTED_TIMESTAMP = 12
     };
-    
+
     // parse out the message
     status_.Clear(); // NVG clears the message, NVR sends it
-    status_.set_time(goby::util::as<double>(goby::common::nmea_time2ptime(nmea.at(COMPUTED_TIMESTAMP))));
-    
+    status_.set_time(
+        goby::util::as<double>(goby::common::nmea_time2ptime(nmea.at(COMPUTED_TIMESTAMP))));
+
     const std::string& lat_string = nmea.at(LATITUDE);
-    if(lat_string.length() > 2)
+    if (lat_string.length() > 2)
     {
         double lat_deg = goby::util::as<double>(lat_string.substr(0, 2));
         double lat_min = goby::util::as<double>(lat_string.substr(2, lat_string.size()));
@@ -179,9 +178,9 @@ void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
     {
         status_.mutable_global_fix()->set_lat(std::numeric_limits<double>::quiet_NaN());
     }
-                
+
     const std::string& lon_string = nmea.at(LONGITUDE);
-    if(lon_string.length() > 2)
+    if (lon_string.length() > 2)
     {
         double lon_deg = goby::util::as<double>(lon_string.substr(0, 3));
         double lon_min = goby::util::as<double>(lon_string.substr(3, nmea.at(4).size()));
@@ -193,12 +192,12 @@ void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
         status_.mutable_global_fix()->set_lon(std::numeric_limits<double>::quiet_NaN());
     }
 
-    if(nmea.as<int>(QUALITY_OF_POSITION) == 1)
+    if (nmea.as<int>(QUALITY_OF_POSITION) == 1)
     {
         status_.mutable_global_fix()->set_lat_source(goby::moos::protobuf::GPS);
         status_.mutable_global_fix()->set_lon_source(goby::moos::protobuf::GPS);
     }
-    
+
     status_.mutable_global_fix()->set_altitude(nmea.as<double>(ALTITUDE));
     status_.mutable_global_fix()->set_depth(nmea.as<double>(DEPTH));
     status_.mutable_pose()->set_heading(nmea.as<double>(HEADING));
@@ -206,10 +205,9 @@ void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
     status_.mutable_pose()->set_pitch(nmea.as<double>(PITCH));
 }
 
-
 void BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
 {
-    enum 
+    enum
     {
         TIMESTAMP = 1,
         EAST_VELOCITY = 2,
@@ -219,15 +217,16 @@ void BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
         ROLL_RATE = 6,
         YAW_RATE = 7,
     };
-    
-    double dt = goby::util::as<double>(goby::common::nmea_time2ptime(nmea.at(TIMESTAMP))) - status_.time();
+
+    double dt =
+        goby::util::as<double>(goby::common::nmea_time2ptime(nmea.at(TIMESTAMP))) - status_.time();
     double east_speed = nmea.as<double>(EAST_VELOCITY);
     double north_speed = nmea.as<double>(NORTH_VELOCITY);
-    
+
     status_.mutable_pose()->set_pitch_rate(nmea.as<double>(PITCH_RATE));
     status_.mutable_pose()->set_roll_rate(nmea.as<double>(ROLL_RATE));
     status_.mutable_pose()->set_heading_rate(nmea.as<double>(YAW_RATE));
-    status_.set_speed(std::sqrt(north_speed*north_speed+east_speed*east_speed));
+    status_.set_speed(std::sqrt(north_speed * north_speed + east_speed * east_speed));
 
     status_.mutable_pose()->set_roll_rate_time_lag(dt);
     status_.mutable_pose()->set_pitch_rate_time_lag(dt);
@@ -236,7 +235,7 @@ void BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
 
     // fill in the local X, Y
     compute_missing(&status_);
-    
+
     gpb::FrontSeatInterfaceData data;
     data.mutable_node_status()->CopyFrom(status_);
     signal_data_from_frontseat(data);
@@ -252,19 +251,19 @@ void BluefinFrontSeat::bfsvs(const goby::util::NMEASentence& nmea)
 void BluefinFrontSeat::bfrvl(const goby::util::NMEASentence& nmea)
 {
     // Vehicle velocity through water as estimated from thruster RPM, may be empty if no lookup table is implemented (m/s)
-
 }
 
 void BluefinFrontSeat::bfsht(const goby::util::NMEASentence& nmea)
 {
-    glog.is(WARN) && glog << "Bluefin sent us the SHT message: they are shutting down!" << std::endl;
+    glog.is(WARN) && glog << "Bluefin sent us the SHT message: they are shutting down!"
+                          << std::endl;
 }
 
 void BluefinFrontSeat::bfmbs(const goby::util::NMEASentence& nmea)
 {
     // This message is sent when the Bluefin vehicle is just beginning a new behavior in the current mission. It can be used by payloads for record-keeping or to synchronize actions with the current mission. Use of the (d--d) dive file field is considered deprecated in favor of getting the same information from BFMIS. See also the BFPLN message below.
 
-    enum 
+    enum
     {
         TIMESTAMP = 1,
         CURRENT_DIVE_FILE = 2,
@@ -275,7 +274,6 @@ void BluefinFrontSeat::bfmbs(const goby::util::NMEASentence& nmea)
 
     std::string behavior_type = nmea.at(BEHAVIOR_TYPE);
     glog.is(DEBUG1) && glog << "Bluefin began frontseat mission: " << behavior_type << std::endl;
-    
 }
 
 void BluefinFrontSeat::bfboy(const goby::util::NMEASentence& nmea)
@@ -288,16 +286,17 @@ void BluefinFrontSeat::bfboy(const goby::util::NMEASentence& nmea)
         DEBUG_STRING = 4,
         BUOYANCY_ESTIMATE_NEWTONS = 5
     };
-    
+
     gpb::FrontSeatInterfaceData data;
-    gpb::BuoyancyStatus* buoy_status = data.MutableExtension(gpb::bluefin_data)->mutable_buoyancy_status();
+    gpb::BuoyancyStatus* buoy_status =
+        data.MutableExtension(gpb::bluefin_data)->mutable_buoyancy_status();
 
     int status = nmea.as<int>(STATUS);
-    if(gpb::BuoyancyStatus::Status_IsValid(status))
+    if (gpb::BuoyancyStatus::Status_IsValid(status))
         buoy_status->set_status(static_cast<gpb::BuoyancyStatus::Status>(status));
 
     int error = nmea.as<int>(ERROR_CODE);
-    if(gpb::BuoyancyStatus::Error_IsValid(error))
+    if (gpb::BuoyancyStatus::Error_IsValid(error))
         buoy_status->set_error(static_cast<gpb::BuoyancyStatus::Error>(error));
     buoy_status->set_debug_string(nmea.at(DEBUG_STRING));
     buoy_status->set_buoyancy_newtons(nmea.as<double>(BUOYANCY_ESTIMATE_NEWTONS));
@@ -315,17 +314,16 @@ void BluefinFrontSeat::bftrm(const goby::util::NMEASentence& nmea)
         PITCH_DEGREES = 5,
         ROLL_DEGREES = 6
     };
-    
-    
+
     gpb::FrontSeatInterfaceData data;
     gpb::TrimStatus* trim_status = data.MutableExtension(gpb::bluefin_data)->mutable_trim_status();
 
     int status = nmea.as<int>(STATUS);
     int error = nmea.as<int>(ERROR_CODE);
 
-    if(gpb::TrimStatus::Status_IsValid(status))
+    if (gpb::TrimStatus::Status_IsValid(status))
         trim_status->set_status(static_cast<gpb::TrimStatus::Status>(status));
-    if(gpb::TrimStatus::Error_IsValid(error))
+    if (gpb::TrimStatus::Error_IsValid(error))
         trim_status->set_error(static_cast<gpb::TrimStatus::Error>(error));
     trim_status->set_debug_string(nmea.at(DEBUG_STRING));
     trim_status->set_pitch_trim_degrees(nmea.as<double>(PITCH_DEGREES));
@@ -334,11 +332,9 @@ void BluefinFrontSeat::bftrm(const goby::util::NMEASentence& nmea)
     signal_data_from_frontseat(data);
 }
 
-
 void BluefinFrontSeat::bfmbe(const goby::util::NMEASentence& nmea)
 {
-    
-    enum 
+    enum
     {
         TIMESTAMP = 1,
         CURRENT_DIVE_FILE = 2,
@@ -350,15 +346,13 @@ void BluefinFrontSeat::bfmbe(const goby::util::NMEASentence& nmea)
     std::string behavior_type = nmea.at(BEHAVIOR_TYPE);
 
     glog.is(DEBUG1) && glog << "Bluefin ended frontseat mission: " << behavior_type << std::endl;
-    
 }
 
 void BluefinFrontSeat::bftop(const goby::util::NMEASentence& nmea)
 {
-   // Topside Message (Not Implemented)
-   // Delivery of a message sent from the topside.
+    // Topside Message (Not Implemented)
+    // Delivery of a message sent from the topside.
 }
-
 
 void BluefinFrontSeat::bfdvl(const goby::util::NMEASentence& nmea)
 {
@@ -368,17 +362,17 @@ void BluefinFrontSeat::bfdvl(const goby::util::NMEASentence& nmea)
 void BluefinFrontSeat::bfmis(const goby::util::NMEASentence& nmea)
 {
     std::string running = nmea.at(3);
-    if(running.find("Running") != std::string::npos)
+    if (running.find("Running") != std::string::npos)
     {
-        switch(bf_config_.accepting_commands_hook())
+        switch (bf_config_.accepting_commands_hook())
         {
             case BluefinFrontSeatConfig::BFMIS_RUNNING_TRIGGER:
                 frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
                 break;
-                
+
             case BluefinFrontSeatConfig::BFCTL_TRIGGER:
             case BluefinFrontSeatConfig::BFMSC_TRIGGER:
-                if(frontseat_state_ != gpb::FRONTSEAT_ACCEPTING_COMMANDS)
+                if (frontseat_state_ != gpb::FRONTSEAT_ACCEPTING_COMMANDS)
                     frontseat_state_ = gpb::FRONTSEAT_IN_CONTROL;
                 break;
 
@@ -396,7 +390,7 @@ void BluefinFrontSeat::bfctd(const goby::util::NMEASentence& nmea)
     gpb::FrontSeatInterfaceData data;
     goby::moos::protobuf::CTDSample* ctd_sample = data.mutable_ctd_sample();
 
-    enum 
+    enum
     {
         TIMESTAMP_SENT = 1,
         CONDUCTIVITY = 2,
@@ -405,30 +399,32 @@ void BluefinFrontSeat::bfctd(const goby::util::NMEASentence& nmea)
         TIMESTAMP_DATA = 5
     };
 
-    
     // Conductivity (uSiemens/cm -> Siemens/meter)
-    ctd_sample->set_conductivity(nmea.as<double>(CONDUCTIVITY)/1e4);
-	
-    // Temperature (degrees Celsius) 
+    ctd_sample->set_conductivity(nmea.as<double>(CONDUCTIVITY) / 1e4);
+
+    // Temperature (degrees Celsius)
     ctd_sample->set_temperature(nmea.as<double>(TEMPERATURE));
 
-    // Pressure (kPa -> Pascals) 
-    ctd_sample->set_pressure(nmea.as<double>(PRESSURE)*1e3);
+    // Pressure (kPa -> Pascals)
+    ctd_sample->set_pressure(nmea.as<double>(PRESSURE) * 1e3);
     compute_missing(ctd_sample);
     signal_data_from_frontseat(data);
 }
 
 void BluefinFrontSeat::bfctl(const goby::util::NMEASentence& nmea)
 {
-    if(bf_config_.accepting_commands_hook() == BluefinFrontSeatConfig::BFCTL_TRIGGER)
+    if (bf_config_.accepting_commands_hook() == BluefinFrontSeatConfig::BFCTL_TRIGGER)
     {
-        enum { TIMESTAMP = 1,
-               CONTROL = 2 };
-        
+        enum
+        {
+            TIMESTAMP = 1,
+            CONTROL = 2
+        };
+
         bool control = nmea.as<bool>(CONTROL);
-        if(control)
+        if (control)
             frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
-        else if(frontseat_state_ == gpb::FRONTSEAT_ACCEPTING_COMMANDS)
+        else if (frontseat_state_ == gpb::FRONTSEAT_ACCEPTING_COMMANDS)
             frontseat_state_ = gpb::FRONTSEAT_IN_CONTROL;
     }
 }

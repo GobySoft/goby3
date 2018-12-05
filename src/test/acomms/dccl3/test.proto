@@ -1,14 +1,12 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 import "dccl/protobuf/option_extensions.proto";
 import "goby/test/acomms/dccl3/header.proto";
 
 message GobyMessage
 {
-  option (dccl.msg).id = 4;
-  option (dccl.msg).max_bytes = 32;
-  
-  required string telegram = 1 [(dccl.field).max_length=10]; 
-  required Header header = 2;
-}
+    option (dccl.msg).id = 4;
+    option (dccl.msg).max_bytes = 32;
 
+    required string telegram = 1 [(dccl.field).max_length = 10];
+    required Header header = 2;
+}

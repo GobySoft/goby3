@@ -1,13 +1,15 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/moos/protobuf/goby_moos_app.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
-
 message GobyMOOSAppTemplateConfig
 {
-  optional GobyMOOSAppConfig common = 1 [(goby.field).description="Configuration common to all Goby MOOS applications"]; // see goby_moos_app.proto
+    optional GobyMOOSAppConfig common = 1 [
+        (goby.field).description =
+            "Configuration common to all Goby MOOS applications"
+    ];  // see goby_moos_app.proto
 
-  optional int32 config_a = 2 [(goby.field).description="Example integer config parameter"];
-  optional double config_b = 3 [(goby.field).description="Example double config parameter"];
-
+    optional int32 config_a = 2
+        [(goby.field).description = "Example integer config parameter"];
+    optional double config_b = 3
+        [(goby.field).description = "Example double config parameter"];
 }

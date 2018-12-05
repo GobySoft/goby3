@@ -1,22 +1,42 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
-import "goby/acomms/protobuf/driver_base.proto"; 
-import "goby/acomms/protobuf/modem_message.proto"; 
+import "goby/acomms/protobuf/driver_base.proto";
+import "goby/acomms/protobuf/modem_message.proto";
 import "dccl/protobuf/option_extensions.proto";
 
 package benthos.protobuf;
 
 message BenthosATM900DriverConfig
-{    
+{
     // 1441-1460
     extend goby.acomms.protobuf.DriverConfig
-        {
-            optional bool factory_reset = 1441 [default = false, (goby.field).description="Reset modem to factory defaults prior to applying configuration values specified in 'config' (i.e. load values from ffs/factcfg.ini)"];
-            optional string config_load = 1442 [(goby.field).description="Path to config file to load on the modem, e.g. 'ffs/standard.ini'"];
-            repeated string config = 1443 [(goby.field).description="Strings of configuration values to set in CLAM format, for example \"@AcRspTmOut=10.0\""];
-            optional int32 start_timeout = 1445 [default = 20, (goby.field).description="Number of seconds to initialize the modem before giving up"];
-            optional uint32 max_frame_size = 1446 [default = 64, (goby.field).description="Enforce maximum packet size for all rates (also used if max_frame_bytes not set in ModemTransmission)"];
-        }
+    {
+        optional bool factory_reset = 1441 [
+            default = false,
+            (goby.field).description =
+                "Reset modem to factory defaults prior to applying "
+                "configuration values specified in 'config' (i.e. load values "
+                "from ffs/factcfg.ini)"
+        ];
+        optional string config_load = 1442
+            [(goby.field).description =
+                 "Path to config file to load on the modem, e.g. "
+                 "'ffs/standard.ini'"];
+        repeated string config = 1443
+            [(goby.field).description =
+                 "Strings of configuration values to set in CLAM format, for "
+                 "example \"@AcRspTmOut=10.0\""];
+        optional int32 start_timeout = 1445 [
+            default = 20,
+            (goby.field).description =
+                "Number of seconds to initialize the modem before giving up"
+        ];
+        optional uint32 max_frame_size = 1446 [
+            default = 64,
+            (goby.field).description =
+                "Enforce maximum packet size for all rates (also used if "
+                "max_frame_bytes not set in ModemTransmission)"
+        ];
+    }
 }
 
 // subset of goby.acomms.protobuf.ModemTransmission
@@ -25,53 +45,57 @@ message BenthosHeader
     option (dccl.msg).id = 0;
     option (dccl.msg).max_bytes = 5;
     option (dccl.msg).codec_version = 3;
-    
-    required goby.acomms.protobuf.ModemTransmission.TransmissionType type = 1;
-    
-    optional bool ack_requested = 3;
-    repeated int32 acked_frame = 4 [(dccl.field).min = 0,
-                                    (dccl.field).max = 0x7,
-                                    (dccl.field).max_repeat=8];
-    
-}
 
+    required goby.acomms.protobuf.ModemTransmission.TransmissionType type = 1;
+
+    optional bool ack_requested = 3;
+    repeated int32 acked_frame = 4 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 0x7,
+        (dccl.field).max_repeat = 8
+    ];
+}
 
 enum TransmissionType
 {
-  BASE_TYPE = 0;    
-  BENTHOS_TWO_WAY_PING = 1;   // modem 1 interrogates modem 2; modem 2 replies and modem 1 computes one way travel time
+    BASE_TYPE = 0;
+    BENTHOS_TWO_WAY_PING = 1;  // modem 1 interrogates modem 2; modem 2 replies
+                               // and modem 1 computes one way travel time
 }
 
 message ReceiveStatistics
 {
     option (dccl.msg).unit_system = "si";
-    
+
     enum CRCState
     {
         CRC_PASS = 1;
         CRC_FAIL = 2;
     }
-    
+
     required CRCState crc = 1;
-    optional float multipath_delay = 2 [(dccl.field).units.base_dimensions="T"];
+    optional float multipath_delay = 2
+        [(dccl.field).units.base_dimensions = "T"];
     optional float snr = 3;
-    optional float relative_speed = 4 [(dccl.field).units.base_dimensions="LT^-1"];
+    optional float relative_speed = 4
+        [(dccl.field).units.base_dimensions = "LT^-1"];
     optional float auto_gain_control = 5;
-    optional int32 corrected_channel_error = 6;    
+    optional int32 corrected_channel_error = 6;
 }
 
 message RangingReply
 {
-    required double one_way_travel_time = 1 [(dccl.field).units.unit="si::second"];
+    required double one_way_travel_time = 1
+        [(dccl.field).units.unit = "si::second"];
 }
 
-
-extend goby.acomms.protobuf.ModemTransmission 
+extend goby.acomms.protobuf.ModemTransmission
 {
-  optional TransmissionType type = 1401 [(goby.field).description="Type of transmission if base `type` == DRIVER_SPECIFIC",
-                                         default=BASE_TYPE];
-  optional ReceiveStatistics receive_stat = 1402;
-  optional RangingReply ranging_reply = 1403;
+    optional TransmissionType type = 1401 [
+        (goby.field).description =
+            "Type of transmission if base `type` == DRIVER_SPECIFIC",
+        default = BASE_TYPE
+    ];
+    optional ReceiveStatistics receive_stat = 1402;
+    optional RangingReply ranging_reply = 1403;
 }
-
-  

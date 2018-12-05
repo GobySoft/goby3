@@ -1,76 +1,93 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "dccl/protobuf/option_extensions.proto";
 
 package goby.moos.protobuf;
 message CTDSample
 {
-  option (dccl.msg).id = 200;
-  option (dccl.msg).max_bytes = 32;
-  
-  optional int32 source_id = 1 [(dccl.field).max=31, (dccl.field).min=0, (dccl.field).in_head=true];
-  required double time = 2 [(dccl.field).codec="_time", (dccl.field).in_head=true];
+    option (dccl.msg).id = 200;
+    option (dccl.msg).max_bytes = 32;
 
-  // required "primary" measurements
-  optional double conductivity = 10  [(dccl.field).omit=true];
-  required double temperature = 11 [(dccl.field).min=0,
-                                   (dccl.field).max=30,
-                                   (dccl.field).precision=1];
-  
-  required double pressure = 12 [(dccl.field).min=0,
-                                (dccl.field).max=100000000,
-                                (dccl.field).precision=-4];
+    optional int32 source_id = 1 [
+        (dccl.field).max = 31,
+        (dccl.field).min = 0,
+        (dccl.field).in_head = true
+    ];
+    required double time = 2
+        [(dccl.field).codec = "_time", (dccl.field).in_head = true];
 
-  // required "secondary" or calculated quantities (can be calculated
-  // from "primary" measurements alone using empirical formulas).
-  required double salinity = 20 [(dccl.field).min=0,
-                                 (dccl.field).max=42,
-                                 (dccl.field).precision=1];
-  required double sound_speed = 21 [(dccl.field).min=1400,
-                                    (dccl.field).max=1600,
-                                    (dccl.field).precision=0];
-  required double density = 22 [(dccl.field).min=900,
-                                (dccl.field).max=1200,
-                                (dccl.field).precision=0];
-  
-  required double depth = 23 [(dccl.field).min=0,
-                              (dccl.field).max=10000,
-                              (dccl.field).precision=0];
-  
-  required double lat = 24 [(dccl.field).min=-90,
-                            (dccl.field).max=90,
-                            (dccl.field).precision=6];
-  
-  required double lon = 25 [(dccl.field).min=-180,
-                            (dccl.field).max=180,
-                            (dccl.field).precision=6];
-  
+    // required "primary" measurements
+    optional double conductivity = 10 [(dccl.field).omit = true];
+    required double temperature = 11 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 30,
+        (dccl.field).precision = 1
+    ];
 
-  
-  // algorithm used for secondary quantities
-  enum SalinityAlgorithm
-  {
-    SAL_ALGORITHM_UNKNOWN = 0;
-    UNESCO_44_PREKIN_AND_LEWIS_1980 = 1;
-  }
-  optional SalinityAlgorithm salinity_algorithm = 30 [default = SAL_ALGORITHM_UNKNOWN,
-                                                      (dccl.field).omit=true];
-  
-  enum SoundSpeedAlgorithm
-  {
-    SS_ALGORITHM_UNKNOWN = 0;
-    UNESCO_44_CHEN_AND_MILLERO_1977 = 1;
-    MACKENZIE_1981 = 2;
-    DEL_GROSSO_1974 = 3;
-  }
-  optional SoundSpeedAlgorithm sound_speed_algorithm = 31 [ default = SS_ALGORITHM_UNKNOWN,
-                                                            (dccl.field).omit=true];
+    required double pressure = 12 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 100000000,
+        (dccl.field).precision = -4
+    ];
 
-  enum DensityAlgorithm
-  {
-    DENSITY_ALGORITHM_UNKNOWN = 0;
-    UNESCO_38_MILLERO_AND_POISSON_1981 = 1;
-  }
-  optional DensityAlgorithm density_algorithm = 32 [ default = DENSITY_ALGORITHM_UNKNOWN,
-                                                     (dccl.field).omit=true];
+    // required "secondary" or calculated quantities (can be calculated
+    // from "primary" measurements alone using empirical formulas).
+    required double salinity = 20 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 42,
+        (dccl.field).precision = 1
+    ];
+    required double sound_speed = 21 [
+        (dccl.field).min = 1400,
+        (dccl.field).max = 1600,
+        (dccl.field).precision = 0
+    ];
+    required double density = 22 [
+        (dccl.field).min = 900,
+        (dccl.field).max = 1200,
+        (dccl.field).precision = 0
+    ];
 
+    required double depth = 23 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 10000,
+        (dccl.field).precision = 0
+    ];
+
+    required double lat = 24 [
+        (dccl.field).min = -90,
+        (dccl.field).max = 90,
+        (dccl.field).precision = 6
+    ];
+
+    required double lon = 25 [
+        (dccl.field).min = -180,
+        (dccl.field).max = 180,
+        (dccl.field).precision = 6
+    ];
+
+    // algorithm used for secondary quantities
+    enum SalinityAlgorithm
+    {
+        SAL_ALGORITHM_UNKNOWN = 0;
+        UNESCO_44_PREKIN_AND_LEWIS_1980 = 1;
+    }
+    optional SalinityAlgorithm salinity_algorithm = 30
+        [default = SAL_ALGORITHM_UNKNOWN, (dccl.field).omit = true];
+
+    enum SoundSpeedAlgorithm
+    {
+        SS_ALGORITHM_UNKNOWN = 0;
+        UNESCO_44_CHEN_AND_MILLERO_1977 = 1;
+        MACKENZIE_1981 = 2;
+        DEL_GROSSO_1974 = 3;
+    }
+    optional SoundSpeedAlgorithm sound_speed_algorithm = 31
+        [default = SS_ALGORITHM_UNKNOWN, (dccl.field).omit = true];
+
+    enum DensityAlgorithm
+    {
+        DENSITY_ALGORITHM_UNKNOWN = 0;
+        UNESCO_38_MILLERO_AND_POISSON_1981 = 1;
+    }
+    optional DensityAlgorithm density_algorithm = 32
+        [default = DENSITY_ALGORITHM_UNKNOWN, (dccl.field).omit = true];
 }

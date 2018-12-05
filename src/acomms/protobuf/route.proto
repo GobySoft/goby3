@@ -1,30 +1,41 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 import "dccl/protobuf/option_extensions.proto";
 
 package goby.acomms.protobuf;
 
-
 message StaticRoute
 {
-   repeated int32 hop = 1 [(dccl.field).min = 0, (dccl.field).max = 31, (dccl.field).max_repeat = 31];
+    repeated int32 hop = 1 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 31,
+        (dccl.field).max_repeat = 31
+    ];
 }
 
 message RouteManagerConfig
-{  
-  optional StaticRoute route = 1;
-  optional uint32 subnet_mask = 2 [default = 0xFFFFFF00]; // 255.255.255.0
-  optional uint32 default_gateway = 3;
+{
+    optional StaticRoute route = 1;
+    optional uint32 subnet_mask = 2 [default = 0xFFFFFF00];  // 255.255.255.0
+    optional uint32 default_gateway = 3;
 }
 
 message RouteCommand
 {
-  option (dccl.msg).id = 514;
-  option (dccl.msg).max_bytes = 64;  
-  option (dccl.msg).codec_version = 3;
+    option (dccl.msg).id = 514;
+    option (dccl.msg).max_bytes = 64;
+    option (dccl.msg).codec_version = 3;
 
-   optional int32 src = 1 [(dccl.field).min = 0, (dccl.field).max = 31, (dccl.field).in_head = true];
-   optional int32 dest = 2 [(dccl.field).min = 0, (dccl.field).max = 31, (dccl.field).in_head = true];
-   optional uint64 time = 3 [(dccl.field).in_head = true, (dccl.field).codec="_time"];
-   optional StaticRoute new_route = 4;
+    optional int32 src = 1 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 31,
+        (dccl.field).in_head = true
+    ];
+    optional int32 dest = 2 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 31,
+        (dccl.field).in_head = true
+    ];
+    optional uint64 time = 3
+        [(dccl.field).in_head = true, (dccl.field).codec = "_time"];
+    optional StaticRoute new_route = 4;
 }

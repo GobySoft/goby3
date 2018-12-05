@@ -27,10 +27,10 @@
 
 namespace goby
 {
-    namespace util
-    {
-        typedef dccl::DynamicProtobufManager DynamicProtobufManager;
-    }
+namespace util
+{
+typedef dccl::DynamicProtobufManager DynamicProtobufManager;
 }
+} // namespace goby
 
 #endif

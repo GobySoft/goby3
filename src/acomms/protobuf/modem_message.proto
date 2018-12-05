@@ -1,81 +1,124 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "dccl/protobuf/option_extensions.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
-
 package goby.acomms.protobuf;
-
 
 message ModemTransmission
 {
-  optional int32 src = 1 [(dccl.field).min = -1,
-                          (dccl.field).max = 30,
-                          (goby.field).description = "modem ID of message source. 0 indicates BROADCAST.",
-                          default = -1]; // 0 (BROADCAST), 1-30
-  
-  optional int32 dest = 2 [(dccl.field).min = -1,
-                           (dccl.field).max = 30,
-                           (goby.field).description = "modem ID of message destination. 0 indicates BROADCAST, -1 indicates QUERY_DESTINATION_ID (i.e., destination is set to the destination of the next available packet",
-                           default = -1]; //  0 (BROADCAST), 1-30, -1 (QUERY_DESTINATION_ID)
-  optional uint64 time = 3 [(dccl.field).omit = true,
-                            (goby.field).description = "timestamp (microseconds since UNIX (1970-01-01 00:00:00 UTC) of this transmission",
-                            (goby.field).cfg.action = NEVER];
-  enum TimeSource { MODEM_TIME = 1; GOBY_TIME = 2; } 
-  optional TimeSource time_source = 5 [(dccl.field).omit = true,
-                                       default = GOBY_TIME,
-                                       (goby.field).description = "source of the timestamp given",
-                                       (goby.field).cfg.action = NEVER];
-  optional int32 rate = 6 [(dccl.field).min = -1,
-                           (dccl.field).max = 14,
-                           (goby.field).description = "0 (lowest) - 14 (highest), -1 (QUERY_RATE). QUERY_RATE is currently unsupported by Goby-Queue",
-                           default = 0];
-  
-  enum TransmissionType
-  {
-    // General (DriverBase) types
-    UNKNOWN = 0;
-    DATA = 1;
-    ACK = 2;
-    DRIVER_SPECIFIC = 10;
-  }
+    optional int32 src = 1 [
+        (dccl.field).min = -1,
+        (dccl.field).max = 30,
+        (goby.field).description =
+            "modem ID of message source. 0 indicates BROADCAST.",
+        default = -1
+    ];  // 0 (BROADCAST), 1-30
 
-  optional TransmissionType type = 7 [default = UNKNOWN,
-                                      (goby.field).description="Type of this transmission. DRIVER_SPECIFIC types are enumerated in the extensions for the selected driver."];
-  
-  // for type == DATA
-  optional uint32 max_num_frames = 11 [(dccl.field).omit = true,
-                                       default = 1]; // set by the modem driver for the given rate
-  optional uint32 max_frame_bytes = 12 [(dccl.field).omit = true]; // set by the modem driver for the given rate, omitted means no maximum
-  optional bool ack_requested = 13 [default = true]; // acoustic acknowledgment requested
-  repeated bytes frame = 14 [(dccl.field).omit = true,
-                             (goby.field).description="Data to transmit, represented as ASCII or octal bytes preceeded by a '\\' (e.g. \\000 is 0x00)"]; // if omitted, you will be queried for data on signal_data_request. You can also set some frames here and the rest will be filled by signalling a data request
+    optional int32 dest = 2 [
+        (dccl.field).min = -1,
+        (dccl.field).max = 30,
+        (goby.field).description =
+            "modem ID of message destination. 0 indicates BROADCAST, -1 "
+            "indicates QUERY_DESTINATION_ID (i.e., destination is set to the "
+            "destination of the next available packet",
+        default = -1
+    ];  //  0 (BROADCAST), 1-30, -1 (QUERY_DESTINATION_ID)
+    optional uint64 time = 3 [
+        (dccl.field).omit = true,
+        (goby.field).description =
+            "timestamp (microseconds since UNIX (1970-01-01 00:00:00 UTC) of "
+            "this transmission",
+        (goby.field).cfg.action = NEVER
+    ];
+    enum TimeSource
+    {
+        MODEM_TIME = 1;
+        GOBY_TIME = 2;
+    }
+    optional TimeSource time_source = 5 [
+        (dccl.field).omit = true,
+        default = GOBY_TIME,
+        (goby.field).description = "source of the timestamp given",
+        (goby.field).cfg.action = NEVER
+    ];
+    optional int32 rate = 6 [
+        (dccl.field).min = -1,
+        (dccl.field).max = 14,
+        (goby.field).description =
+            "0 (lowest) - 14 (highest), -1 (QUERY_RATE). QUERY_RATE is "
+            "currently unsupported by Goby-Queue",
+        default = 0
+    ];
 
-  optional uint32 frame_start = 15 [(dccl.field).omit = true, default = 0];
-  
-  // for type == ACK
-  repeated int32 acked_frame = 20 [(dccl.field).omit = true,
-                                   (goby.field).cfg.action = NEVER];
-  
+    enum TransmissionType
+    {
+        // General (DriverBase) types
+        UNKNOWN = 0;
+        DATA = 1;
+        ACK = 2;
+        DRIVER_SPECIFIC = 10;
+    }
 
-  // for AMAC
-  optional double slot_seconds = 30 [(dccl.field).min = 0, (dccl.field).max = 3600, (dccl.field).precision=1, default = 10]; // length of slot (in seconds) if this transmission is part of a TDMA cycle
-  optional uint32 unique_id = 31 [(dccl.field).min = 0, (dccl.field).max = 100, (goby.field).example="0"]; // used to assign an ID to this slot
-  optional bool always_initiate = 32 [default = false];
-  optional int32 slot_index = 33 [(dccl.field).omit = true];
-  
-  // extensions 1000-1100 used by mm_driver.proto
-  // extensions 1201-1202 used by abc_driver.proto (example driver)
-  // extensions 1300-1320 used by ufield_sim_driver.proto
-  // extensions 1321-1340 used by pb_modem_driver.proto
-  // extensions 1341-1360 used by udp_driver.proto
-  // extensions 1361-1380 used by bluefin_driver.proto
-  // extensions 1381-1400 used by iridium_driver.proto
-  // extensions 1401-1420 used by benthos_atm900.proto
-  extensions 1000 to max;
+    optional TransmissionType type = 7 [
+        default = UNKNOWN,
+        (goby.field).description =
+            "Type of this transmission. DRIVER_SPECIFIC types are enumerated "
+            "in the extensions for the selected driver."
+    ];
+
+    // for type == DATA
+    optional uint32 max_num_frames = 11 [
+        (dccl.field).omit = true,
+        default = 1
+    ];  // set by the modem driver for the given rate
+    optional uint32 max_frame_bytes = 12 [
+        (dccl.field).omit = true
+    ];  // set by the modem driver for the given rate, omitted means no maximum
+    optional bool ack_requested = 13
+        [default = true];  // acoustic acknowledgment requested
+    repeated bytes frame = 14 [
+        (dccl.field).omit = true,
+        (goby.field).description =
+            "Data to transmit, represented as ASCII or octal bytes preceeded "
+            "by a '\\' (e.g. \\000 is 0x00)"
+    ];  // if omitted, you will be queried for data on signal_data_request. You
+        // can also set some frames here and the rest will be filled by
+        // signalling a data request
+
+    optional uint32 frame_start = 15 [(dccl.field).omit = true, default = 0];
+
+    // for type == ACK
+    repeated int32 acked_frame = 20
+        [(dccl.field).omit = true, (goby.field).cfg.action = NEVER];
+
+    // for AMAC
+    optional double slot_seconds = 30 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 3600,
+        (dccl.field).precision = 1,
+        default = 10
+    ];  // length of slot (in seconds) if this transmission is part of a TDMA
+        // cycle
+    optional uint32 unique_id = 31 [
+        (dccl.field).min = 0,
+        (dccl.field).max = 100,
+        (goby.field).example = "0"
+    ];  // used to assign an ID to this slot
+    optional bool always_initiate = 32 [default = false];
+    optional int32 slot_index = 33 [(dccl.field).omit = true];
+
+    // extensions 1000-1100 used by mm_driver.proto
+    // extensions 1201-1202 used by abc_driver.proto (example driver)
+    // extensions 1300-1320 used by ufield_sim_driver.proto
+    // extensions 1321-1340 used by pb_modem_driver.proto
+    // extensions 1341-1360 used by udp_driver.proto
+    // extensions 1361-1380 used by bluefin_driver.proto
+    // extensions 1381-1400 used by iridium_driver.proto
+    // extensions 1401-1420 used by benthos_atm900.proto
+    extensions 1000 to max;
 }
 
 message ModemRaw
 {
-  required string raw = 7; // "$CARXD,..."
-  optional string description = 8; // "Incoming hexadecimal data"
+    required string raw = 7;          // "$CARXD,..."
+    optional string description = 8;  // "Incoming hexadecimal data"
 }

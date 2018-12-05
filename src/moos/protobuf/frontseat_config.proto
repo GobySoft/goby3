@@ -1,71 +1,145 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/moos/protobuf/goby_moos_app.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
 message iFrontSeatConfig
 {
-  optional GobyMOOSAppConfig common = 1;
+    optional GobyMOOSAppConfig common = 1;
 
-  optional bool require_helm = 10 [default = true, (goby.field).description="Require the IvP Helm even for listening mission where the frontseat is in control."];
+    optional bool require_helm = 10 [
+        default = true,
+        (goby.field).description =
+            "Require the IvP Helm even for listening mission where the "
+            "frontseat is in control."
+    ];
 
-  optional double helm_running_timeout = 11 [default = 10, (goby.field).description="If `require_helm`, how long (in seconds) to wait for the IvP Helm to start before moving to the Helm Error state."];
-  
-  optional double frontseat_connected_timeout = 12 [default = 10, (goby.field).description="How long (in seconds) to wait for the Frontseat to be connected before moving to the Frontseat Error state."];
+    optional double helm_running_timeout = 11 [
+        default = 10,
+        (goby.field).description =
+            "If `require_helm`, how long (in seconds) to wait for the IvP Helm "
+            "to start before moving to the Helm Error state."
+    ];
 
-  optional uint32 status_period = 13 [default = 5, (goby.field).description="Seconds between publishing the status of iFrontseat. The special value 0 disables posting of the status message."];
-  
-  optional uint32 modem_id = 14 [(goby.field).moos_global = "modem_id",
-                                 (goby.field).description="Acoustic modem identification number"];
-				 
-  message MOOSVariables
-  {
-    optional string prefix = 1 [default="IFS_",
-                                (goby.field).description="Prefix all MOOS variable names with this string"];
-    
-    optional string raw_out = 10 [default="RAW_OUT"];
-    optional string raw_in = 11 [default="RAW_IN"];
- 
-    optional string command_request = 12 [default="COMMAND_REQUEST"];
-    optional string command_response = 13 [default="COMMAND_RESPONSE"];
+    optional double frontseat_connected_timeout = 12 [
+        default = 10,
+        (goby.field).description =
+            "How long (in seconds) to wait for the Frontseat to be connected "
+            "before moving to the Frontseat Error state."
+    ];
 
-    optional string data_from_frontseat = 14 [default="DATA_IN"];
-    optional string data_to_frontseat = 15 [default="DATA_OUT"];
+    optional uint32 status_period = 13 [
+        default = 5,
+        (goby.field).description =
+            "Seconds between publishing the status of iFrontseat. The special "
+            "value 0 disables posting of the status message."
+    ];
 
-    optional string status = 16 [default="STATUS"];
+    optional uint32 modem_id = 14 [
+        (goby.field).moos_global = "modem_id",
+        (goby.field).description = "Acoustic modem identification number"
+    ];
 
-    optional string node_status = 17 [default = "NODE_STATUS"];
-  }
-  optional MOOSVariables moos_var = 20;
+    message MOOSVariables
+    {
+        optional string prefix = 1 [
+            default = "IFS_",
+            (goby.field).description =
+                "Prefix all MOOS variable names with this string"
+        ];
 
-  optional bool exit_on_error = 21 [ default = false,
-                                     (goby.field).description="If true, exit the application if it enters one of the error states."];
+        optional string raw_out = 10 [default = "RAW_OUT"];
+        optional string raw_in = 11 [default = "RAW_IN"];
 
+        optional string command_request = 12 [default = "COMMAND_REQUEST"];
+        optional string command_response = 13 [default = "COMMAND_RESPONSE"];
 
-  message LegacyOperations
-  {
-    optional bool subscribe_desired = 1 [default = true,
-                                         (goby.field).description="Convert the IvP Helm DESIRED_HEADING, DESIRED_SPEED, DESIRED_DEPTH variables into a CommandRequest::desired_course message."];
+        optional string data_from_frontseat = 14 [default = "DATA_IN"];
+        optional string data_to_frontseat = 15 [default = "DATA_OUT"];
 
-    optional bool subscribe_ctd = 2 [default = false,
-                                     (goby.field).description="Convert the individual CTD_CONDUCTIVITY, CTD_TEMPERATURE, CTD_PRESSURE, CTD_SALINITY variables into a FrontSeatInterfaceData::ctd_sample message."];
+        optional string status = 16 [default = "STATUS"];
 
-    optional bool subscribe_acomms_raw = 3 [default = false,
-                                           (goby.field).description="Convert the individual ACOMMS_RAW_INCOMING, ACOMMS_RAW_OUTGOING variables into a FrontSeatInterfaceData message with extensions BluefinExtraData::micro_modem_raw_out and BluefinExtraData::micro_mdoem_raw_in set."];
+        optional string node_status = 17 [default = "NODE_STATUS"];
+    }
+    optional MOOSVariables moos_var = 20;
 
-    optional bool pub_sub_bf_commands = 4 [default = false,
-                                                       (goby.field).description="Convert all of the following MOOS variables into corresponding enumerations of the BluefinExtraCommands extension of the CommandRequest message: BUOYANCY_CONTROL to BluefinExtraCommands::BUOYANCY_ADJUST, TRIM_CONTROL to BluefinExtraCommands::TRIM_ADJUST, FRONTSEAT_BHVOFF to BluefinExtraCommands::CANCEL_CURRENT_BEHAVIOR, FRONTSEAT_SILENT to BluefinExtraCommands::SILENT_MODE, BACKSEAT_ABORT to BluefinExtraCommands::ABORT_MISSION. Also, use the MOOS variable PENDING_SURFACE to trigger the BluefinExtraCommands::GPS_REQUEST."];
+    optional bool exit_on_error = 21 [
+        default = false,
+        (goby.field).description =
+            "If true, exit the application if it enters one of the error "
+            "states."
+    ];
 
-    optional bool publish_nav = 12 [default = true, (goby.field).description="Publish NAV_X, NAV_Y, NAV_LAT, NAV_LONG, NAV_Z, NAV_DEPTH, NAV_YAW, NAV_HEADING, NAV_SPEED, NAV_PITCH, NAV_ROLL and NAV_ALTITUDE from the NodeStatus message within FrontSeatInterfaceData"];
-    
-    optional bool publish_fs_bs_ready = 11 [default = false,
-                                            (goby.field).description="Publish the MOOS variable FRONTSEAT_READY=1 when the frontseat state is FRONTSEAT_ACCEPTING_COMMANDS, and FRONTSEAT_READY=0 otherwise. Publish BACKSEAT_READY=1 when the helm state is HELM_DRIVE, and BACKSEAT_READY=0 otherwise."];
-  }
+    message LegacyOperations
+    {
+        optional bool subscribe_desired = 1 [
+            default = true,
+            (goby.field).description =
+                "Convert the IvP Helm DESIRED_HEADING, DESIRED_SPEED, "
+                "DESIRED_DEPTH variables into a CommandRequest::desired_course "
+                "message."
+        ];
 
-  optional LegacyOperations legacy_cfg = 30 [(goby.field).description="Numerous options to automatically convert legacy variables (e.g., from iHuxley) into the iFrontSeat messages. Generally new projects will not use any of these options and thus this configuration block can be omitted."];
+        optional bool subscribe_ctd = 2 [
+            default = false,
+            (goby.field).description =
+                "Convert the individual CTD_CONDUCTIVITY, CTD_TEMPERATURE, "
+                "CTD_PRESSURE, CTD_SALINITY variables into a "
+                "FrontSeatInterfaceData::ctd_sample message."
+        ];
 
-  // Bluefin: 1000
-  // ABC: 1001
-  // Nemo: 1002
-  // Iver3: 1003
-  extensions 1000 to max;
+        optional bool subscribe_acomms_raw = 3 [
+            default = false,
+            (goby.field).description =
+                "Convert the individual ACOMMS_RAW_INCOMING, "
+                "ACOMMS_RAW_OUTGOING variables into a FrontSeatInterfaceData "
+                "message with extensions BluefinExtraData::micro_modem_raw_out "
+                "and BluefinExtraData::micro_mdoem_raw_in set."
+        ];
+
+        optional bool pub_sub_bf_commands = 4 [
+            default = false,
+            (goby.field).description =
+                "Convert all of the following MOOS variables into "
+                "corresponding enumerations of the BluefinExtraCommands "
+                "extension of the CommandRequest message: BUOYANCY_CONTROL to "
+                "BluefinExtraCommands::BUOYANCY_ADJUST, TRIM_CONTROL to "
+                "BluefinExtraCommands::TRIM_ADJUST, FRONTSEAT_BHVOFF to "
+                "BluefinExtraCommands::CANCEL_CURRENT_BEHAVIOR, "
+                "FRONTSEAT_SILENT to BluefinExtraCommands::SILENT_MODE, "
+                "BACKSEAT_ABORT to BluefinExtraCommands::ABORT_MISSION. Also, "
+                "use the MOOS variable PENDING_SURFACE to trigger the "
+                "BluefinExtraCommands::GPS_REQUEST."
+        ];
+
+        optional bool publish_nav = 12 [
+            default = true,
+            (goby.field).description =
+                "Publish NAV_X, NAV_Y, NAV_LAT, NAV_LONG, NAV_Z, NAV_DEPTH, "
+                "NAV_YAW, NAV_HEADING, NAV_SPEED, NAV_PITCH, NAV_ROLL and "
+                "NAV_ALTITUDE from the NodeStatus message within "
+                "FrontSeatInterfaceData"
+        ];
+
+        optional bool publish_fs_bs_ready = 11 [
+            default = false,
+            (goby.field).description =
+                "Publish the MOOS variable FRONTSEAT_READY=1 when the "
+                "frontseat state is FRONTSEAT_ACCEPTING_COMMANDS, and "
+                "FRONTSEAT_READY=0 otherwise. Publish BACKSEAT_READY=1 when "
+                "the helm state is HELM_DRIVE, and BACKSEAT_READY=0 "
+                "otherwise."
+        ];
+    }
+
+    optional LegacyOperations legacy_cfg = 30
+        [(goby.field).description =
+             "Numerous options to automatically convert legacy variables "
+             "(e.g., from iHuxley) into the iFrontSeat messages. Generally new "
+             "projects will not use any of these options and thus this "
+             "configuration block can be omitted."];
+
+    // Bluefin: 1000
+    // ABC: 1001
+    // Nemo: 1002
+    // Iver3: 1003
+    extensions 1000 to max;
 }

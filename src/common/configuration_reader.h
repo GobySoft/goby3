@@ -23,149 +23,130 @@
 #ifndef CONFIGURATIONREADER20100929H
 #define CONFIGURATIONREADER20100929H
 
-#include <sstream>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <sstream>
 #include <vector>
 
-
+#include <boost/cstdint.hpp>
 #include <boost/foreach.hpp>
 #include <boost/program_options.hpp>
-#include <boost/cstdint.hpp>
 
-#include <google/protobuf/message.h>
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/descriptor.pb.h>
 #include <google/protobuf/io/zero_copy_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
 
-#include "goby/util/as.h"
 #include "goby/common/exception.h"
+#include "goby/util/as.h"
 
 class AppBaseConfig;
 
 namespace goby
 {
-    namespace common
-    {                
-        ///  \brief  indicates a problem with the runtime command line
-        /// or .cfg file configuration (or --help was given)
-        class ConfigException : public Exception
+namespace common
+{
+///  \brief  indicates a problem with the runtime command line
+/// or .cfg file configuration (or --help was given)
+class ConfigException : public Exception
+{
+  public:
+    ConfigException(const std::string& s) : Exception(s), error_(true) {}
+
+    void set_error(bool b) { error_ = b; }
+    bool error() { return error_; }
+
+  private:
+    bool error_;
+};
+
+class ConfigReader
+{
+  public:
+    static void read_cfg(int argc, char* argv[], google::protobuf::Message* message,
+                         std::string* application_name,
+                         boost::program_options::options_description* od_all,
+                         boost::program_options::variables_map* var_map,
+                         bool check_required_configuration = true);
+
+    static void get_protobuf_program_options(boost::program_options::options_description& po_desc,
+                                             const google::protobuf::Descriptor* desc);
+
+    static void set_protobuf_program_option(const boost::program_options::variables_map& vm,
+                                            google::protobuf::Message& message,
+                                            const std::string& full_name,
+                                            const boost::program_options::variable_value& value);
+
+    static void get_example_cfg_file(google::protobuf::Message* message,
+                                     std::ostream* human_desc_ss, const std::string& indent = "");
+
+  private:
+    enum
+    {
+        MAX_CHAR_PER_LINE = 66
+    };
+    enum
+    {
+        MIN_CHAR = 20
+    };
+
+    static void build_description(const google::protobuf::Descriptor* desc,
+                                  std::ostream& human_desc, const std::string& indent = "",
+                                  bool use_color = true);
+
+    static void build_description_field(const google::protobuf::FieldDescriptor* desc,
+                                        std::ostream& human_desc, const std::string& indent,
+                                        bool use_color);
+
+    static void wrap_description(std::string* description, int num_blanks);
+
+    static std::string label(const google::protobuf::FieldDescriptor* field_desc);
+
+    static std::string word_wrap(std::string s, unsigned width, const std::string& delim);
+
+    template <typename T>
+    static void set_single_option(boost::program_options::options_description& po_desc,
+                                  const google::protobuf::FieldDescriptor* field_desc,
+                                  const T& default_value, const std::string& name,
+                                  const std::string& description)
+    {
+        if (!field_desc->is_repeated())
         {
-          public:
-          ConfigException(const std::string& s)
-              : Exception(s),
-                error_(true)
-                { }
-
-            void set_error(bool b) { error_ = b; }
-            bool error() { return error_; }
-        
-          private:
-            bool error_;
-        };
-
-        
-        class ConfigReader
-        {
-          public:
-            static void read_cfg(int argc,
-                                 char* argv[],
-                                 google::protobuf::Message* message,
-                                 std::string* application_name,
-                                 boost::program_options::options_description* od_all,
-                                 boost::program_options::variables_map* var_map,
-                                 bool check_required_configuration = true);            
-            
-            static void get_protobuf_program_options(
-                boost::program_options::options_description& po_desc,
-                const google::protobuf::Descriptor* desc);
-            
-            static void set_protobuf_program_option(
-                const boost::program_options::variables_map& vm,
-                google::protobuf::Message& message,
-                const std::string& full_name,
-                const boost::program_options::variable_value& value);
-
-            static void get_example_cfg_file(google::protobuf::Message* message,
-                                             std::ostream* human_desc_ss,
-                                             const std::string& indent = "");
-
-            
-          private:
-
-            enum { MAX_CHAR_PER_LINE = 66 };
-            enum { MIN_CHAR = 20 };
-            
-            static void build_description(const google::protobuf::Descriptor* desc,
-                                          std::ostream& human_desc,
-                                          const std::string& indent = "",
-                                          bool use_color = true);
-
-            static void build_description_field(const google::protobuf::FieldDescriptor* desc,
-                                                std::ostream& human_desc,
-                                                const std::string& indent,
-                                                bool use_color);
-
-            static void wrap_description(std::string* description,
-                                         int num_blanks);
-
-            
-            static std::string label(const google::protobuf::FieldDescriptor* field_desc);
-
-
-            static std::string word_wrap(std::string s, unsigned width,
-                                         const std::string & delim);
-            
-            template<typename T>
-                static void set_single_option(
-                    boost::program_options::options_description& po_desc,
-                    const google::protobuf::FieldDescriptor* field_desc,
-                    const T& default_value,
-                    const std::string& name,
-                    const std::string& description)
+            if (field_desc->has_default_value())
             {
-                if(!field_desc->is_repeated())
-                {
-                    if(field_desc->has_default_value())
-                    {
-                        po_desc.add_options()
-                            (name.c_str(),
-                             boost::program_options::value<T>()->default_value(default_value),
-                             description.c_str());
-                    }
-                    else
-                    {
-                        po_desc.add_options()
-                            (name.c_str(),
-                             boost::program_options::value<T>(),
-                             description.c_str());
-                    }
-                }
-                else
-                {                    
-                    if(field_desc->has_default_value())
-                    {
-                        po_desc.add_options()
-                            (name.c_str(),
-                             boost::program_options::value<std::vector<T> >()->default_value(
-                                 std::vector<T>(1, default_value),
-                                 goby::util::as<std::string>(default_value)),
-                             description.c_str());
-                    }
-                    else
-                    {
-                        po_desc.add_options()
-                            (name.c_str(),
-                             boost::program_options::value<std::vector<T> >(),
-                             description.c_str());
-                    }
-                }
-                
+                po_desc.add_options()(
+                    name.c_str(), boost::program_options::value<T>()->default_value(default_value),
+                    description.c_str());
             }
-        };        
+            else
+            {
+                po_desc.add_options()(name.c_str(), boost::program_options::value<T>(),
+                                      description.c_str());
+            }
+        }
+        else
+        {
+            if (field_desc->has_default_value())
+            {
+                po_desc.add_options()(
+                    name.c_str(),
+                    boost::program_options::value<std::vector<T> >()->default_value(
+                        std::vector<T>(1, default_value),
+                        goby::util::as<std::string>(default_value)),
+                    description.c_str());
+            }
+            else
+            {
+                po_desc.add_options()(name.c_str(),
+                                      boost::program_options::value<std::vector<T> >(),
+                                      description.c_str());
+            }
+        }
     }
-}
+};
+} // namespace common
+} // namespace goby
 
 #endif

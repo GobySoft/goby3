@@ -1,18 +1,16 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "dccl/protobuf/option_extensions.proto";
 import "goby/common/protobuf/app3.proto";
 import "goby/middleware/protobuf/interprocess_config.proto";
 
 message TestConfig
 {
-  optional goby.protobuf.App3Config app = 1;
-  optional goby.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.protobuf.App3Config app = 1;
+    optional goby.protobuf.InterProcessPortalConfig interprocess = 2;
 
-  optional int32 num_messages = 3 [default = 10000];
-  optional int32 num_rx_threads = 4 [default = 10];
-  optional int32 num_tx_threads = 5 [default = 2];
+    optional int32 num_messages = 3 [default = 10000];
+    optional int32 num_rx_threads = 4 [default = 10];
+    optional int32 num_tx_threads = 5 [default = 2];
 }
-        
 
 message Widget
 {

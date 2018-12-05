@@ -28,4 +28,3 @@
 #include "goby/acomms/queue/queue_manager.h"
 
 #endif
-

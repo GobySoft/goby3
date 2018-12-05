@@ -1,4 +1,3 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "dccl/protobuf/option_extensions.proto";
 import "dccl/arithmetic/protobuf/arithmetic_extensions.proto";
 
@@ -8,7 +7,7 @@ message NetworkHeader
 {
     option (dccl.msg).id = 0xF000;
     option (dccl.msg).max_bytes = 8;
-    option (dccl.msg).codec_version = 3;    
+    option (dccl.msg).codec_version = 3;
 
     enum Protocol
     {
@@ -18,18 +17,24 @@ message NetworkHeader
     }
     required Protocol protocol = 1;
 
-    required uint32 srcdest_addr = 10 [(dccl.field).codec = "dccl.arithmetic",
-                                       (dccl.field).(arithmetic).model = "goby.acomms.NetworkHeader.AddrModel"];
-    
+    required uint32 srcdest_addr = 10 [
+        (dccl.field).codec = "dccl.arithmetic",
+        (dccl.field).(arithmetic).model =
+            "goby.acomms.NetworkHeader.AddrModel"
+    ];
+
     // if Protocol == UDP
     message UDPHeader
     {
-        repeated uint32 srcdest_port = 1 [(dccl.field).codec = "dccl.arithmetic",
-                                           (dccl.field).max_repeat = 2,
-                                           (dccl.field).(arithmetic).model = "goby.acomms.NetworkHeader.PortModel"];
+        repeated uint32 srcdest_port = 1 [
+            (dccl.field).codec = "dccl.arithmetic",
+            (dccl.field).max_repeat = 2,
+            (dccl.field).(arithmetic).model =
+                "goby.acomms.NetworkHeader.PortModel"
+        ];
     }
     required UDPHeader udp = 20;
-    
+
     // if Protocol == ICMP
     message ICMPHeader
     {
@@ -43,7 +48,6 @@ message NetworkHeader
 
     // total length of packet, if not supported by link layer
     // optional int32 total_length = 100;
-    
 }
 
 // the real IP header
@@ -53,13 +57,13 @@ message IPv4Header
     option (dccl.msg).max_bytes = 60;
     option (dccl.msg).codec_version = 3;
 
-    // DCCL is little-endian - so multi-field bytes are written in "reverse" order
-    
+    // DCCL is little-endian - so multi-field bytes are written in "reverse"
+    // order
+
     // Internet Header Length (IHL) in 32-bit words
     required uint32 ihl = 2 [(dccl.field).min = 0, (dccl.field).max = 15];
     // Version, always 4 for IPv4
     required uint32 version = 1 [(dccl.field).min = 0, (dccl.field).max = 15];
-
 
     // Explicit Congestion Notification (ECN)
     required uint32 ecn = 4 [(dccl.field).min = 0, (dccl.field).max = 63];
@@ -75,16 +79,16 @@ message IPv4Header
         required bool more_fragments = 2;
         required uint32 fragment_offset = 3;
     }
-    required FlagsFragOffset flags_frag_offset = 7 [(dccl.field).codec = "ip.v4.flagsfragoffset"];
+    required FlagsFragOffset flags_frag_offset = 7
+        [(dccl.field).codec = "ip.v4.flagsfragoffset"];
 
-    
     required uint32 ttl = 8 [(dccl.field).min = 0, (dccl.field).max = 255];
     required uint32 protocol = 9 [(dccl.field).min = 0, (dccl.field).max = 255];
     required uint32 header_checksum = 10 [(dccl.field).codec = "net.short"];
 
-    required string source_ip_address = 11 [(dccl.field).codec = "ip.v4.address"];
+    required string source_ip_address = 11
+        [(dccl.field).codec = "ip.v4.address"];
     required string dest_ip_address = 12 [(dccl.field).codec = "ip.v4.address"];
-    
 }
 
 message UDPHeader
@@ -97,9 +101,7 @@ message UDPHeader
     required uint32 dest_port = 2 [(dccl.field).codec = "net.short"];
     required uint32 length = 3 [(dccl.field).codec = "net.short"];
     required uint32 checksum = 4 [(dccl.field).codec = "net.short"];
-    
 }
-
 
 message ICMPHeader
 {
@@ -111,7 +113,7 @@ message ICMPHeader
     required uint32 code = 2 [(dccl.field).min = 0, (dccl.field).max = 255];
     required uint32 checksum = 3 [(dccl.field).codec = "net.short"];
     required uint32 short1 = 4 [(dccl.field).codec = "net.short"];
-    required uint32 short2 = 5 [(dccl.field).codec = "net.short"];    
+    required uint32 short2 = 5 [(dccl.field).codec = "net.short"];
 }
 
 message IPGatewayICMPControl
@@ -122,7 +124,7 @@ message IPGatewayICMPControl
     }
     required MessageType type = 1;
     required string address = 2;
-    
+
     message QueueReport
     {
         message SubQueue

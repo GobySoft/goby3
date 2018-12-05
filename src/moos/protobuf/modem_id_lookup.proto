@@ -1,21 +1,19 @@
-@PROTOBUF_SYNTAX_VERSION@
 package goby.moos.protobuf;
 
 message ModemIdEntry
 {
-  required uint32 modem_id = 1; 
-  required string name = 2;
+    required uint32 modem_id = 1;
+    required string name = 2;
 
+    enum VehicleType
+    {
+        UNKNOWN = 0;
+        AUV = 1;
+        BUOY = 2;
+        SHIP = 3;
+        GLIDER = 4;
+        ASC = 5;
+    }
 
-  enum VehicleType
-  {
-    UNKNOWN = 0;
-    AUV = 1;
-    BUOY = 2;
-    SHIP = 3;
-    GLIDER = 4;
-    ASC = 5;
-  }
-  
-  optional VehicleType type = 3 [default = UNKNOWN];
+    optional VehicleType type = 3 [default = UNKNOWN];
 }

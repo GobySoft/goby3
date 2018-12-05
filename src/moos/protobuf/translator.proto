@@ -1,76 +1,85 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/option_extensions.proto";
 
 package goby.moos.protobuf;
 
 message TranslatorEntry
 {
-  required string protobuf_name = 1 [(goby.field).description="Fully qualified name (including package, if any) of a DCCL protobuf message to tag this parser to."];    
-    
-  message Trigger
-  {
-    enum Type 
+    required string protobuf_name = 1
+        [(goby.field).description =
+             "Fully qualified name (including package, if any) of a DCCL "
+             "protobuf message to tag this parser to."];
+
+    message Trigger
     {
-      TRIGGER_PUBLISH = 1;
-      TRIGGER_TIME = 2;
+        enum Type
+        {
+            TRIGGER_PUBLISH = 1;
+            TRIGGER_TIME = 2;
+        }
+        optional Type type = 1 [default = TRIGGER_PUBLISH];
+        optional string moos_var = 2;
+        optional uint32 period = 3;
+        optional string mandatory_content = 4;
     }
-    optional Type type = 1 [default = TRIGGER_PUBLISH];
-    optional string moos_var = 2;
-    optional uint32 period = 3;
-    optional string mandatory_content = 4;
+    optional Trigger trigger = 2;
 
-  }
-  optional Trigger trigger = 2;
-
-
-  enum ParserSerializerTechnique
-  {
-    TECHNIQUE_PROTOBUF_TEXT_FORMAT = 1;
-    TECHNIQUE_PROTOBUF_NATIVE_ENCODED = 2;
-    TECHNIQUE_COMMA_SEPARATED_KEY_EQUALS_VALUE_PAIRS = 3;
-    TECHNIQUE_FORMAT = 4;
-    TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT = 5;
-    TECHNIQUE_PROTOBUF_NATIVE_HEX = 6;
-    TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_HEX = 7;
-    TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED = 8;
-  }
-  
-  message CreateParser
-  {
-    optional ParserSerializerTechnique technique = 1 [default = TECHNIQUE_PROTOBUF_TEXT_FORMAT];
-    required string moos_var = 2;
-    optional string format = 3; // only for TECHNIQUE_FORMAT
-    optional string repeated_delimiter = 4 [default = ","];  // only for TECHNIQUE_FORMAT
-    
-    message Algorithm
+    enum ParserSerializerTechnique
     {
-      required string name = 1;
-      required int32 primary_field = 2;
+        TECHNIQUE_PROTOBUF_TEXT_FORMAT = 1;
+        TECHNIQUE_PROTOBUF_NATIVE_ENCODED = 2;
+        TECHNIQUE_COMMA_SEPARATED_KEY_EQUALS_VALUE_PAIRS = 3;
+        TECHNIQUE_FORMAT = 4;
+        TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT = 5;
+        TECHNIQUE_PROTOBUF_NATIVE_HEX = 6;
+        TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_HEX = 7;
+        TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED = 8;
     }
-    repeated Algorithm algorithm = 5; // only for TECHNIQUE_FORMAT and TECHNIQUE_COMMA_SEPARATED_KEY_EQUALS_VALUE_PAIRS
-  }
 
-  repeated CreateParser create = 3;
-
-  message PublishSerializer
-  {
-    optional ParserSerializerTechnique technique = 1 [default = TECHNIQUE_PROTOBUF_TEXT_FORMAT];
-    required string moos_var = 2;
-    optional string format = 3;  // only for TECHNIQUE_FORMAT
-    optional string repeated_delimiter = 4 [default = ","];  // only for TECHNIQUE_FORMAT
-    
-    message Algorithm
+    message CreateParser
     {
-      required string name = 1;
-      required int32 output_virtual_field = 2; // provide a field number that's not actually in the message but can be used for format strings
-      required int32 primary_field = 3;
-      repeated int32 reference_field = 4;
-    }
-    
-    repeated Algorithm algorithm = 5; // only for TECHNIQUE_FORMAT and TECHNIQUE_COMMA_SEPARATED_KEY_EQUALS_VALUE_PAIRS
-  }
-  repeated PublishSerializer publish = 4;
+        optional ParserSerializerTechnique technique = 1
+            [default = TECHNIQUE_PROTOBUF_TEXT_FORMAT];
+        required string moos_var = 2;
+        optional string format = 3;  // only for TECHNIQUE_FORMAT
+        optional string repeated_delimiter = 4
+            [default = ","];  // only for TECHNIQUE_FORMAT
 
-  optional bool use_short_enum = 5 [default = false];
+        message Algorithm
+        {
+            required string name = 1;
+            required int32 primary_field = 2;
+        }
+        repeated Algorithm algorithm =
+            5;  // only for TECHNIQUE_FORMAT and
+                // TECHNIQUE_COMMA_SEPARATED_KEY_EQUALS_VALUE_PAIRS
+    }
+
+    repeated CreateParser create = 3;
+
+    message PublishSerializer
+    {
+        optional ParserSerializerTechnique technique = 1
+            [default = TECHNIQUE_PROTOBUF_TEXT_FORMAT];
+        required string moos_var = 2;
+        optional string format = 3;  // only for TECHNIQUE_FORMAT
+        optional string repeated_delimiter = 4
+            [default = ","];  // only for TECHNIQUE_FORMAT
+
+        message Algorithm
+        {
+            required string name = 1;
+            required int32 output_virtual_field =
+                2;  // provide a field number that's not actually in the message
+                    // but can be used for format strings
+            required int32 primary_field = 3;
+            repeated int32 reference_field = 4;
+        }
+
+        repeated Algorithm algorithm =
+            5;  // only for TECHNIQUE_FORMAT and
+                // TECHNIQUE_COMMA_SEPARATED_KEY_EQUALS_VALUE_PAIRS
+    }
+    repeated PublishSerializer publish = 4;
+
+    optional bool use_short_enum = 5 [default = false];
 }
-

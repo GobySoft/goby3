@@ -1,4 +1,3 @@
-@PROTOBUF_SYNTAX_VERSION@
 import "goby/common/protobuf/app3.proto";
 import "goby/middleware/protobuf/interprocess_config.proto";
 
@@ -12,7 +11,7 @@ message GobyMOOSGatewayConfig
 
     repeated string plugin_library = 10;
 
-    // frequency at which MOOS Fetch() is called - this allows us to interleave with Goby without
-    // thread access management in the user plugins
+    // frequency at which MOOS Fetch() is called - this allows us to interleave
+    // with Goby without thread access management in the user plugins
     optional float poll_frequency = 20 [default = 10];
 }

@@ -1,4 +1,3 @@
-@PROTOBUF_SYNTAX_VERSION@
 // provides MessageFile
 import "goby/common/protobuf/option_extensions.proto";
 
@@ -6,24 +5,41 @@ package goby.acomms.protobuf;
 
 message DCCLConfig
 {
-  //  optional int32 modem_id = 1 [(goby.field).description="Unique number 1-31 to identify this node", (goby.field).example="1"];
-  optional string crypto_passphrase = 2 [(goby.field).description="If given, encrypt all communications with this passphrase using AES. Omit for unencrypted communications.", (goby.field).example="twinkletoes%24"];
-  repeated uint32 skip_crypto_for_id = 3 [(goby.field).description="Skip encrypting and decrypting these DCCL IDs"];
-  optional string id_codec = 4;
+    //  optional int32 modem_id = 1 [(goby.field).description="Unique number
+    //  1-31 to identify this node", (goby.field).example="1"];
+    optional string crypto_passphrase = 2 [
+        (goby.field).description =
+            "If given, encrypt all communications with this passphrase using "
+            "AES. Omit for unencrypted communications.",
+        (goby.field).example = "twinkletoes%24"
+    ];
+    repeated uint32 skip_crypto_for_id = 3
+        [(goby.field).description =
+             "Skip encrypting and decrypting these DCCL IDs"];
+    optional string id_codec = 4;
 }
-
 
 message ArithmeticModel
 {
-  required string name = 1;
-  
-  repeated uint32 frequency = 10; // frequency of the symbol given by the repeated field index
-                                 // probability is (frequency / sum(frequency)) 
-  optional uint32 eof_frequency = 11 [default = 1]; // frequency of EOF symbol
-  optional uint32 out_of_range_frequency = 12 [default = 0]; // frequency of the out-of-range value, that is, the value not within the range defined by [symbol_to_value(0), maximum_value). This *may* be zero, in this case, out of range values end encoding and return EOF there.
-  
-  repeated double value_bound = 20; // set of bounds of value in double space that maps to symbol given by repeated field index; upper bound is given by lower bound of the next symbol. Size must be size(frequency) + 1 (number of symbols + 1).
+    required string name = 1;
 
-  optional bool is_adaptive = 30 [default = false];
-  
+    repeated uint32 frequency =
+        10;  // frequency of the symbol given by the repeated field index
+             // probability is (frequency / sum(frequency))
+    optional uint32 eof_frequency = 11
+        [default = 1];  // frequency of EOF symbol
+    optional uint32 out_of_range_frequency = 12
+        [default =
+             0];  // frequency of the out-of-range value, that is, the value not
+                  // within the range defined by [symbol_to_value(0),
+                  // maximum_value). This *may* be zero, in this case, out of
+                  // range values end encoding and return EOF there.
+
+    repeated double value_bound =
+        20;  // set of bounds of value in double space that maps to symbol given
+             // by repeated field index; upper bound is given by lower bound of
+             // the next symbol. Size must be size(frequency) + 1 (number of
+             // symbols + 1).
+
+    optional bool is_adaptive = 30 [default = false];
 }

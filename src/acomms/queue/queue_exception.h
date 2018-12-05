@@ -28,17 +28,15 @@
 
 namespace goby
 {
-    namespace acomms
-    {
-        /// \brief Exception class for libdccl
-        class QueueException : public goby::Exception
-        {
-          public:
-          QueueException(const std::string& s)
-              : Exception(s)
-            { }
-        };
-    }
-}
+namespace acomms
+{
+/// \brief Exception class for libdccl
+class QueueException : public goby::Exception
+{
+  public:
+    QueueException(const std::string& s) : Exception(s) {}
+};
+} // namespace acomms
+} // namespace goby
 
 #endif

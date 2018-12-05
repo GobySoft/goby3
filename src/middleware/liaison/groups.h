@@ -27,30 +27,18 @@
 
 namespace goby
 {
-    namespace liaison
-    {
-        namespace groups
-        {
+namespace liaison
+{
+namespace groups
+{
 #ifdef __clang__
-            constexpr goby::Group commander_out {"goby::liaison::commander_out"};
+constexpr goby::Group commander_out{"goby::liaison::commander_out"};
 #else
-            extern constexpr goby::Group commander_out {"goby::liaison::commander_out"};           
+extern constexpr goby::Group commander_out{"goby::liaison::commander_out"};
 #endif
 
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
+} // namespace groups
+} // namespace liaison
+} // namespace goby
 
 #endif
