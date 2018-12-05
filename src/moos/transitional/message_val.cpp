@@ -137,7 +137,7 @@ bool goby::transitional::DCCLMessageVal::get(std::string& s) const
         case cpp_string: s = sval_; return true;
 
         case cpp_double:
-            if ((log10(abs(dval_)) + precision_) <= MAX_DBL_PRECISION)
+            if ((std::log10(std::abs(dval_)) + precision_) <= MAX_DBL_PRECISION)
                 ss << std::fixed << std::setprecision(precision_) << dval_;
             else
                 ss << std::setprecision(precision_) << dval_;

@@ -836,7 +836,7 @@ void goby::acomms::MMDriver::ccpgt(const protobuf::ModemTransmission& msg)
     // merge (overwriting any duplicates) the parameters given in the request
     params.MergeFrom(msg.GetExtension(micromodem::protobuf::generic_lbl));
 
-    uint32 tat = params.turnaround_ms();
+    std::uint32_t tat = params.turnaround_ms();
     if (static_cast<unsigned>(nvram_cfg_["TAT"]) != tat)
         write_single_cfg("TAT," + as<std::string>(tat));
 
