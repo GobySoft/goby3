@@ -262,7 +262,7 @@ template <class Config> class MultiThreadTest : public MultiThreadStandaloneAppl
   public:
     MultiThreadTest(
         boost::units::quantity<boost::units::si::frequency> loop_freq = 0 * boost::units::si::hertz)
-        : Base(loop_freq, false)
+        : Base(loop_freq)
     {
     }
     virtual ~MultiThreadTest() {}

@@ -40,9 +40,23 @@ template <typename Config> class ProtobufConfigurator
     {
         if (!config_finalized_)
         {
-            finalize_configuration(cfg_);
-            common::ConfigReader::check_required_cfg(cfg_);
+            try
+            {
+                finalize_configuration(cfg_);
+                common::ConfigReader::check_required_cfg(cfg_);
+            }
+            catch (common::ConfigException& e)
+            {
+                handle_config_error(e);
+                throw;
+            }
             config_finalized_ = true;
+        }
+
+        if (cfg_.app().debug_cfg())
+        {
+            std::cout << cfg_.DebugString() << std::endl;
+            exit(EXIT_SUCCESS);
         }
 
         return cfg_;
@@ -54,8 +68,20 @@ template <typename Config> class ProtobufConfigurator
     virtual void finalize_configuration(Config& cfg) {}
 
   private:
+    void handle_config_error(common::ConfigException& e)
+    {
+        // output all the available command line options
+        if (e.error())
+        {
+            std::cerr << od_ << "\n";
+            std::cerr << "Problem parsing command-line configuration: \n" << e.what() << "\n";
+        }
+    }
+
+  private:
     bool config_finalized_{false};
     Config cfg_;
+    boost::program_options::options_description od_{"Allowed options"};
 };
 
 template <typename Config>
@@ -64,7 +90,6 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
     //
     // read the configuration
     //
-    boost::program_options::options_description od("Allowed options");
     boost::program_options::variables_map var_map;
     try
     {
@@ -72,28 +97,17 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
 
         // we will check it later
         bool check_required_cfg = false;
-        common::ConfigReader::read_cfg(argc, argv, &cfg_, &application_name, &od, &var_map,
+        common::ConfigReader::read_cfg(argc, argv, &cfg_, &application_name, &od_, &var_map,
                                        check_required_cfg);
 
         cfg_.mutable_app()->set_name(application_name);
         // incorporate some parts of the AppBaseConfig that are common
         // with gobyd (e.g. Verbosity)
         merge_app_base_cfg(cfg_.mutable_app(), var_map);
-
-        if (cfg_.app().debug_cfg())
-        {
-            std::cout << cfg_.DebugString() << std::endl;
-            exit(EXIT_SUCCESS);
-        }
     }
     catch (common::ConfigException& e)
     {
-        // output all the available command line options
-        if (e.error())
-        {
-            std::cerr << od << "\n";
-            std::cerr << "Problem parsing command-line configuration: \n" << e.what() << "\n";
-        }
+        handle_config_error(e);
         throw;
     }
 }
