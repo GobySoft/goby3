@@ -1,7 +1,3 @@
-// clang-format off
-@PROTOBUF_SYNTAX_VERSION@
-// clang-format on
-
 import "google/protobuf/descriptor.proto";
 
 package goby;

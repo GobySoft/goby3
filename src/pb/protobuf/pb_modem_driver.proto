@@ -1,7 +1,3 @@
-// clang-format off
-@PROTOBUF_SYNTAX_VERSION@
-// clang-format on
-
 import "goby/acomms/protobuf/driver_base.proto";  // load up message
                                                // DriverBaseConfig
 import "goby/acomms/protobuf/modem_message.proto"; // load up message ModemTransmission

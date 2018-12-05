@@ -1,7 +1,3 @@
-// clang-format off
-@PROTOBUF_SYNTAX_VERSION@
-// clang-format on
-
 package goby.moos.protobuf;
 
 message ModemIdEntry
