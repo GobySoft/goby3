@@ -1,4 +1,8 @@
-@PROTOBUF_SYNTAX_VERSION @message BasicNodeReport
+// clang-format off
+@PROTOBUF_SYNTAX_VERSION@
+// clang-format on
+
+message BasicNodeReport
 {
     optional string Name = 1;
     optional double x = 202;

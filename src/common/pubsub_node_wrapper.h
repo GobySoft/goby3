@@ -23,8 +23,11 @@
 #ifndef PUBSUBNODE20110506H
 #define PUBSUBNODE20110506H
 
-#include "goby/common/node_interface.h"
 #include <google/protobuf/message.h>
+
+#include "goby/common/node_interface.h"
+#include "goby/common/protobuf/pubsub_node_config.pb.h"
+
 
 namespace goby
 {

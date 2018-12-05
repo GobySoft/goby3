@@ -1,4 +1,8 @@
-@PROTOBUF_SYNTAX_VERSION @message Sample
+// clang-format off
+@PROTOBUF_SYNTAX_VERSION@
+// clang-format on
+
+message Sample
 {
     required double temperature = 1;
     required double salinity = 2;

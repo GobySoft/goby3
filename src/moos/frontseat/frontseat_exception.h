@@ -23,6 +23,8 @@
 #ifndef FrontSeatException20130221H
 #define FrontSeatException20130221H
 
+#include "goby/moos/protobuf/frontseat.pb.h"
+
 class FrontSeatException : std::runtime_error
 {
   public:

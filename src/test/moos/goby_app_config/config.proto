@@ -1,4 +1,8 @@
-@PROTOBUF_SYNTAX_VERSION @import "goby/moos/protobuf/goby_moos_app.proto";
+// clang-format off
+@PROTOBUF_SYNTAX_VERSION@
+// clang-format on
+
+import "goby/moos/protobuf/goby_moos_app.proto";
 
 message AppConfig
 {

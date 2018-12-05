@@ -1,4 +1,8 @@
-@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
+// clang-format off
+@PROTOBUF_SYNTAX_VERSION@
+// clang-format on
+
+import "goby/common/protobuf/option_extensions.proto";
 import "goby/common/protobuf/zero_mq_node_config.proto";
 import "goby/common/protobuf/pubsub_node_config.proto";
 // import "protobuf/database_request.proto";

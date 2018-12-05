@@ -1,4 +1,8 @@
-@PROTOBUF_SYNTAX_VERSION @message A
+// clang-format off
+@PROTOBUF_SYNTAX_VERSION@
+// clang-format on
+
+message A
 {
     required double a1 = 1;
 }

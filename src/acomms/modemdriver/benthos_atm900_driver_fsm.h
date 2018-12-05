@@ -38,6 +38,7 @@
 #include <iostream>
 
 #include "goby/acomms/acomms_constants.h"
+#include "goby/common/logger.h"
 #include "goby/common/time.h"
 #include "goby/util/binary.h"
 

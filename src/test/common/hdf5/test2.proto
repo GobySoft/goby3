@@ -1,4 +1,9 @@
-@PROTOBUF_SYNTAX_VERSION @message TestHDF5Message
+// clang-format off
+@PROTOBUF_SYNTAX_VERSION@
+// clang-format on
+
+
+message TestHDF5Message
 {
     repeated double a = 1;
     repeated B b = 2;

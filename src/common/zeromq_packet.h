@@ -23,6 +23,8 @@
 #ifndef ZeroMQPacket20160413H
 #define ZeroMQPacket20160413H
 
+#include "goby/common/core_constants.h"
+
 #include <sstream>
 
 namespace goby

@@ -26,6 +26,8 @@
 #include "goby/common/logger.h"
 #include "goby/common/time.h"
 
+#include "interface.h"
+
 namespace goby
 {
 namespace util

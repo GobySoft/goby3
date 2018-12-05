@@ -24,6 +24,7 @@
 #define MESSAGE_VAR_HEAD20100317H
 
 #include "message_var.h"
+#include "message_var_int.h"
 
 #include "goby/common/time.h"
 #include "goby/util/sci.h"

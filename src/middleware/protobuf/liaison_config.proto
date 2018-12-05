@@ -1,4 +1,8 @@
-@PROTOBUF_SYNTAX_VERSION @import "goby/common/protobuf/option_extensions.proto";
+// clang-format off
+@PROTOBUF_SYNTAX_VERSION@
+// clang-format on
+
+import "goby/common/protobuf/option_extensions.proto";
 import "goby/common/protobuf/app3.proto";
 import "goby/middleware/protobuf/interprocess_config.proto";
 import "goby/acomms/protobuf/network_ack.proto";
@@ -74,7 +78,11 @@ message ProtobufCommanderConfig
 
     enum Column
     {
-        @PROTOBUF_ALLOW_ALIAS @COLUMN_COMMENT = 0;
+        // clang-format off
+        @PROTOBUF_ALLOW_ALIAS@
+        // clang-format on
+        
+        COLUMN_COMMENT = 0;
         COLUMN_NAME = 1;
         COLUMN_GROUP = 2;
         COLUMN_IP = 3;
@@ -120,7 +128,10 @@ message ProtobufScopeConfig
 
     enum Column
     {
-        @PROTOBUF_ALLOW_ALIAS @COLUMN_GROUP = 0;
+        // clang-format off
+        @PROTOBUF_ALLOW_ALIAS@
+        // clang-format on
+        COLUMN_GROUP = 0;
         COLUMN_TYPE = 1;
         COLUMN_VALUE = 2;
         COLUMN_TIME = 3;

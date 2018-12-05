@@ -1,5 +1,8 @@
-@PROTOBUF_SYNTAX_VERSION @import
-    "goby/middleware/protobuf/transporter_config.proto";
+// clang-format off
+@PROTOBUF_SYNTAX_VERSION@
+// clang-format on
+
+import "goby/middleware/protobuf/transporter_config.proto";
 import "google/protobuf/descriptor.proto";
 
 package goby.protobuf;
