@@ -96,6 +96,8 @@ namespace goby
 
             using StateMachineType = StateMachine;	
             protected:
+                
+                
             /// \brief Runs continously until quit() is called
             virtual void run() = 0;
 
@@ -111,14 +113,14 @@ namespace goby
             /// \brief Accesses configuration object passed at launch
             Config& app_cfg() { return cfg_; }
 
-	    /// \brief Access the state machine if available (cannot be accessed from the constructor)
+	    /// \brief Access the state machine if available
 	    StateMachine& state_machine()
 	    {
 		static_assert(!std::is_same<StateMachine, NullStateMachine>(), "No state machine defined for this Goby application");
 		if(state_machine_)
 		    return *state_machine_;
 		else
-		    throw(goby::Exception("State machine not available in the constructor."));
+		    throw(goby::Exception("State machine not available yet."));
 	    }
 	    
             private:
