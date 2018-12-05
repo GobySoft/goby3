@@ -1,5 +1,5 @@
-import "goby/acomms/protobuf/driver_base.proto";  // load up message
-                                               // DriverBaseConfig
+import "goby/acomms/protobuf/driver_base.proto"; // load up message
+                                                 // DriverBaseConfig
 import "goby/acomms/protobuf/modem_message.proto"; // load up message ModemTransmission
 
 import "goby/common/protobuf/zero_mq_node_config.proto";

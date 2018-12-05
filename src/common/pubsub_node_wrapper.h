@@ -28,7 +28,6 @@
 #include "goby/common/node_interface.h"
 #include "goby/common/protobuf/pubsub_node_config.pb.h"
 
-
 namespace goby
 {
 namespace common

@@ -74,9 +74,9 @@ void goby::common::ConfigReader::read_cfg(int argc, char* argv[],
         "verbose,v", boost::program_options::value<std::string>()->implicit_value("")->multitoken(),
         "output useful information to std::cout. -v is verbosity: verbose, -vv is verbosity: "
         "debug1, -vvv is verbosity: debug2, -vvvv is verbosity: debug3")(
-        "ncurses,n", "output useful information to an NCurses GUI instead of stdout. If set, this "
-                     "parameter overrides --verbose settings.")("version,V",
-                                                                "writes the current version");
+        "ncurses,n",
+        "output useful information to an NCurses GUI instead of stdout. If set, this "
+        "parameter overrides --verbose settings.")("version,V", "writes the current version");
 
     std::string od_both_desc = "Typically given in " + *application_name +
                                " configuration file, but may be specified on the command line";

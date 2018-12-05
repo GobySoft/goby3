@@ -74,10 +74,8 @@ message ProtobufCommanderConfig
 
     enum Column
     {
-        // clang-format off
-        @PROTOBUF_ALLOW_ALIAS@
-        // clang-format on
-        
+        option allow_alias = true;
+
         COLUMN_COMMENT = 0;
         COLUMN_NAME = 1;
         COLUMN_GROUP = 2;
@@ -124,9 +122,8 @@ message ProtobufScopeConfig
 
     enum Column
     {
-        // clang-format off
-        @PROTOBUF_ALLOW_ALIAS@
-        // clang-format on
+        option allow_alias = true;
+
         COLUMN_GROUP = 0;
         COLUMN_TYPE = 1;
         COLUMN_VALUE = 2;

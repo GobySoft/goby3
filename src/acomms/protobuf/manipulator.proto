@@ -2,10 +2,7 @@ package goby.acomms.protobuf;
 
 enum Manipulator
 {
-//clang-format off
-    @PROTOBUF_ALLOW_ALIAS@
-//clang-format on
-
+    option allow_alias = true;
 
     NO_MANIP = 1;  // blank "empty" manipulator
 

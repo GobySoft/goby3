@@ -16,9 +16,10 @@ message NarrowBandLBLParams
 
     optional uint32 turnaround_ms = 5;
     optional bool transmit_flag = 6
-        [default = true];  // Flag to indicate whether the transmit signal is
-                           // actually sent (1), or whether the ping is initiated
-                           // with an external synchronization pulse (0).
+        [default =
+             true];  // Flag to indicate whether the transmit signal is
+                     // actually sent (1), or whether the ping is initiated
+                     // with an external synchronization pulse (0).
 
     // meters
     optional uint32 lbl_max_range = 7 [default = 2000];
@@ -268,9 +269,7 @@ enum TransmissionType
 
 enum HardwareLine
 {
-//clang-format off
-    @PROTOBUF_ALLOW_ALIAS@
-//clang-format on
+    option allow_alias = true;
 
     MM2_GPIO1 = 5;
     MM2_GPIO2 = 6;
@@ -295,9 +294,7 @@ enum HardwareControlMode
 
 enum HardwareControlArgument
 {
-//clang-format off
-    @PROTOBUF_ALLOW_ALIAS@
-//clang-format on
+    option allow_alias = true;
 
     MODE1_OFF = 0;
     MODE1_ON = 1;
