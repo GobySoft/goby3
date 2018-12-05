@@ -3,7 +3,7 @@ import "goby/acomms/protobuf/driver_base.proto"; // load up message
 import "goby/acomms/protobuf/modem_message.proto"; // load up message ModemTransmission
 
 import "goby/common/protobuf/zero_mq_node_config.proto";
-import "dccl/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
 
 message PBDriverConfig
 {

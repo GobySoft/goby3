@@ -1,6 +1,6 @@
 
 // include the DCCL extensions to Google Protobuf
-import "dccl/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
 
 package goby.example;
 

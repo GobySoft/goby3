@@ -1,4 +1,4 @@
-import "dccl/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
 import "dccl/arithmetic/protobuf/arithmetic_extensions.proto";
 
 package goby.acomms.protobuf;
