@@ -1,5 +1,5 @@
 import "goby/common/protobuf/option_extensions.proto";
-import "dccl/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
 import "goby/acomms/protobuf/modem_message.proto";
 
 package goby.acomms.protobuf;

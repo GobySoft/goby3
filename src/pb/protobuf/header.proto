@@ -1,5 +1,5 @@
 import "goby/common/protobuf/option_extensions.proto";
-import "dccl/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
 
 // required fields will be filled in for you by ApplicationBase
 // if you choose not to do so yourself

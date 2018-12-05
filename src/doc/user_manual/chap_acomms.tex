@@ -80,7 +80,7 @@ Integer (!(u)int32!, !(u)int64!) fields take a !max! and !min! value\footnote{th
 Booleans (!bool!) and enumerations (!enum!) are automatically bounded their nature, and require no additional configuration. Strings (!string!) (which are generally discouraged on an acoustic link since they tend to be sparse) are bounded by a maximum length. Similarly, !bytes! are pre-encoded data that are passed through unmodified in DCCL. Applying these bounds to the example message above (along with the required .proto file imports) yields:
 
 \begin{boxedverbatim}
-import "dccl/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
 
 package example;
 
