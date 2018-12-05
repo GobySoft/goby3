@@ -1,8 +1,18 @@
-@PROTOBUF_SYNTAX_VERSION @package goby.acomms.protobuf;
+//clang-format off
+@PROTOBUF_SYNTAX_VERSION@
+//clang-format on
+
+
+package goby.acomms.protobuf;
 
 enum Manipulator
 {
-    @PROTOBUF_ALLOW_ALIAS @NO_MANIP = 1;  // blank "empty" manipulator
+//clang-format off
+    @PROTOBUF_ALLOW_ALIAS@
+//clang-format on
+
+
+    NO_MANIP = 1;  // blank "empty" manipulator
 
     // (QueueManager)
 

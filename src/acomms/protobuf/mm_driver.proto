@@ -1,4 +1,8 @@
-@PROTOBUF_SYNTAX_VERSION @import "goby/acomms/protobuf/driver_base.proto";
+//clang-format off
+@PROTOBUF_SYNTAX_VERSION@
+//clang-format on
+
+import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/modem_message.proto";
 import "goby/common/protobuf/option_extensions.proto";
 import "dccl/protobuf/option_extensions.proto";
@@ -268,7 +272,11 @@ enum TransmissionType
 
 enum HardwareLine
 {
-    @PROTOBUF_ALLOW_ALIAS @MM2_GPIO1 = 5;
+//clang-format off
+    @PROTOBUF_ALLOW_ALIAS@
+//clang-format on
+
+    MM2_GPIO1 = 5;
     MM2_GPIO2 = 6;
     MM2_GPIO3 = 3;
     MM2_GPIO4 = 2;
@@ -291,7 +299,11 @@ enum HardwareControlMode
 
 enum HardwareControlArgument
 {
-    @PROTOBUF_ALLOW_ALIAS @MODE1_OFF = 0;
+//clang-format off
+    @PROTOBUF_ALLOW_ALIAS@
+//clang-format on
+
+    MODE1_OFF = 0;
     MODE1_ON = 1;
 
     TOGGLE_1MS = 0;
