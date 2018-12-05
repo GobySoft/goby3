@@ -71,6 +71,8 @@ class ConfigReader
                          boost::program_options::variables_map* var_map,
                          bool check_required_configuration = true);
 
+    static void check_required_cfg(const google::protobuf::Message& message);
+
     static void get_protobuf_program_options(boost::program_options::options_description& po_desc,
                                              const google::protobuf::Descriptor* desc);
 

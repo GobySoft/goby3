@@ -59,7 +59,8 @@ void merge_app_base_cfg(AppBaseConfig* base_cfg,
     {
         base_cfg->mutable_glog_config()->set_show_gui(true);
     }
-    else if (var_map.count("verbose"))
+
+    if (var_map.count("verbose"))
     {
         switch (var_map["verbose"].as<std::string>().size())
         {
@@ -83,8 +84,6 @@ void merge_app_base_cfg(AppBaseConfig* base_cfg,
         }
     }
 
-    //            if(var_map.count("no_db"))
-    //                base_cfg->mutable_database_config()->set_using_database(false);
 }
 
 } // namespace common

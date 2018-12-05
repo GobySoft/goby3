@@ -48,6 +48,7 @@ namespace goby
 /// \param argc same as ```int main(int argc, char* argv)```
 /// \param argv same as ```int main(int argc, char* argv)```
 /// \tparam App ApplicationBase3 subclass
+/// \tparam Configurator Configurator used to configure the App
 /// \return same as ```int main(int argc, char* argv)```
 template <typename App,
           typename Configurator = common::ProtobufConfigurator<typename App::ConfigType> >
@@ -118,8 +119,16 @@ template <typename Config, typename StateMachine = NullStateMachine> class Appli
     using StateMachineType = StateMachine;
 
   protected:
+    /// \brief Perform any initialize tasks that couldn't be done in the constructor
+    ///
+    /// For example, you now have access to the state machine
+    virtual void initialize(){};
+
     /// \brief Runs continously until quit() is called
     virtual void run() = 0;
+
+    /// \brief Perform any final actions before the destructor is called
+    virtual void finalize(){};
 
     /// \brief Requests a clean exit.
     ///
@@ -131,7 +140,7 @@ template <typename Config, typename StateMachine = NullStateMachine> class Appli
     }
 
     /// \brief Accesses configuration object passed at launch
-    Config& app_cfg() { return app_cfg_; }
+    const Config& app_cfg() const { return app_cfg_; }
 
     /// \brief Access the state machine if available (not in the constructor)
     StateMachine& state_machine()
@@ -264,7 +273,10 @@ int goby::common::ApplicationBase3<Config, StateMachine>::__run()
     pthread_sigmask(SIG_BLOCK, &signal_mask, NULL);
 
     // continue to run while we are alive (quit() has not been called)
+
+    this->initialize();
     while (alive_) { this->run(); }
+    this->finalize();
     return return_value_;
 }
 
@@ -283,6 +295,7 @@ void goby::common::internal::__terminate_state_machine(
                                                     goby::common::NullStateMachine>::value>::type*)
 {
     app.state_machine_->terminate();
+    app.state_machine_.reset();
 }
 
 template <typename App, typename Configurator> int goby::run(int argc, char* argv[])
@@ -301,6 +314,7 @@ template <typename App, typename Configurator> int goby::run(int argc, char* arg
         goby::common::internal::__initialize_state_machine<App>(app);
         // run the application
         return_value = goby::common::internal::__run_application<App>(app);
+        // terminate the state machine (if any)
         goby::common::internal::__terminate_state_machine<App>(app);
     }
     catch (goby::common::ConfigException& e)
