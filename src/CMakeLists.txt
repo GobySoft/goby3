@@ -23,7 +23,7 @@ if(${PROTOC_VERSION} VERSION_LESS 3.0.0})
   message("libprotobuf < 3.0.0")
 else()
   message("libprotobuf >= 3.0.0")
-  set(PROTOBUF_ALLOW_ALIAS "option allow_alias = true;" PARENT_SCOPE)
+  set(PROTOBUF_SYNTAX_VERSION "syntax = \"proto2\";" PARENT_SCOPE)
 endif()
 
 # dccl

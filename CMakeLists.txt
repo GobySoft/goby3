@@ -182,7 +182,8 @@ endforeach()
 
 # write the proto syntax version if required 
 foreach(I ${PROTOBUF_FILES})
-  file(APPEND ${goby_INC_DIR}/goby/${I} "${PROTOBUF_SYNTAX_VERSION}\n")
+  file(READ ${goby_INC_DIR}/goby/${I} CONTENTS)
+  file(WRITE ${goby_INC_DIR}/goby/${I} "${PROTOBUF_SYNTAX_VERSION}\n${CONTENTS}")
 endforeach()
 
 
