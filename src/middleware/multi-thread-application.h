@@ -114,8 +114,8 @@ class MultiThreadApplicationBase : public goby::common::ApplicationBase3<Config,
     }
 
     MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq,
-                               Transporter* transporter, bool check_required_configuration = true)
-        : goby::common::ApplicationBase3<Config, StateMachine>(check_required_configuration),
+                               Transporter* transporter)
+        : goby::common::ApplicationBase3<Config, StateMachine>(),
           MainThreadBase(this->app_cfg(), transporter, loop_freq)
     {
         goby::glog.set_lock_action(goby::common::logger_lock::lock);
@@ -245,9 +245,8 @@ class MultiThreadStandaloneApplication
     {
     }
 
-    MultiThreadStandaloneApplication(boost::units::quantity<boost::units::si::frequency> loop_freq,
-                                     bool check_required_configuration = true)
-        : Base(loop_freq, &Base::interthread(), check_required_configuration)
+    MultiThreadStandaloneApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
+        : Base(loop_freq, &Base::interthread())
     {
     }
     virtual ~MultiThreadStandaloneApplication() {}
