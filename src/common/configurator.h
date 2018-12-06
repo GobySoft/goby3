@@ -31,19 +31,16 @@ namespace goby
 {
 namespace common
 {
-template <typename Config> class ProtobufConfigurator
+template <typename Config> class ConfiguratorInterface
 {
   public:
-    ProtobufConfigurator(int argc, char* argv[]);
-
-    const Config& cfg()
+    void finalize()
     {
         if (!config_finalized_)
         {
             try
             {
-                finalize_configuration(cfg_);
-                common::ConfigReader::check_required_cfg(cfg_);
+                finalize_cfg();
             }
             catch (common::ConfigException& e)
             {
@@ -53,33 +50,76 @@ template <typename Config> class ProtobufConfigurator
             config_finalized_ = true;
         }
 
-        if (cfg_.app().debug_cfg())
+        if (app3_configuration().debug_cfg())
         {
-            std::cout << cfg_.DebugString() << std::endl;
+            std::cout << cfg().DebugString() << std::endl;
             exit(EXIT_SUCCESS);
         }
-
-        return cfg_;
     }
-    const goby::protobuf::App3Config& app3_config() { return cfg().app(); }
 
-  protected:
-    // override to finalize the configuration at runtime
-    virtual void finalize_configuration(Config& cfg) {}
+    const Config& cfg() const
+    {
+        check_finalized();
+        return const_cfg();
+    }
+
+    const goby::protobuf::App3Config& app3_configuration() const
+    {
+        check_finalized();
+        return const_app3_configuration();
+    }
 
   private:
-    void handle_config_error(common::ConfigException& e)
+    void check_finalized() const
     {
-        // output all the available command line options
-        if (e.error())
-        {
-            std::cerr << od_ << "\n";
-            std::cerr << "Problem parsing command-line configuration: \n" << e.what() << "\n";
-        }
+        if (!config_finalized_)
+            throw(
+                common::ConfigException("Configuration is not finalized (call finalize() first)"));
     }
+
+    virtual void finalize_cfg() {}
+    virtual const Config& const_cfg() const = 0;
+    virtual const goby::protobuf::App3Config& const_app3_configuration() const = 0;
+
+    virtual void handle_config_error(common::ConfigException& e) {}
 
   private:
     bool config_finalized_{false};
+};
+
+/// Implementation of ConfiguratorInterface for Google Protocol buffers
+template <typename Config> class ProtobufConfigurator : public ConfiguratorInterface<Config>
+{
+  public:
+    ProtobufConfigurator(int argc, char* argv[]);
+
+  protected:
+    // subclass can override to finalize the configuration at runtime
+    virtual void finalize_configuration(Config& cfg) {}
+
+  private:
+    void finalize_cfg() override
+    {
+        finalize_configuration(cfg_);
+        common::ConfigReader::check_required_cfg(cfg_);
+    }
+
+    const Config& const_cfg() const override { return cfg_; }
+    const goby::protobuf::App3Config& const_app3_configuration() const override
+    {
+        return cfg_.app();
+    }
+
+    void handle_config_error(common::ConfigException& e) override
+    {
+        // output all the available command line options
+        if (e.error())
+            std::cerr
+                << "Problem parsing configuration: use --help or --example_config for more help."
+                << std::endl;
+    }
+
+  private:
     Config cfg_;
     boost::program_options::options_description od_{"Allowed options"};
 };

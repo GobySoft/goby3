@@ -111,21 +111,21 @@ void goby::common::ConfigReader::read_cfg(int argc, char* argv[],
         ConfigException e("");
         e.set_error(false);
         std::cerr << *od_all << "\n";
-        throw(e);
+        exit(EXIT_SUCCESS);
     }
     else if (var_map->count("example_config"))
     {
         ConfigException e("");
         e.set_error(false);
         get_example_cfg_file(message, &std::cout);
-        throw(e);
+        exit(EXIT_SUCCESS);
     }
     else if (var_map->count("version"))
     {
         ConfigException e("");
         e.set_error(false);
         std::cout << goby::version_message() << std::endl;
-        throw(e);
+        exit(EXIT_SUCCESS);
     }
 
     if (var_map->count("app_name"))

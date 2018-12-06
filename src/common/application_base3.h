@@ -43,16 +43,28 @@
 
 namespace goby
 {
-/// \brief Run a Goby application
+/// \brief Run a Goby application using the provided Configurator
 /// blocks caller until ```__run()``` returns
-/// \param argc same as ```int main(int argc, char* argv)```
-/// \param argv same as ```int main(int argc, char* argv)```
+/// \param cfgtor Subclass of ConfiguratorInterface used to configure the App
 /// \tparam App ApplicationBase3 subclass
-/// \tparam Configurator Configurator used to configure the App
+/// \return same as ```int main(int argc, char* argv)```
+template <typename App>
+int run(const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfgtor);
+
+/// \brief Shorthand for goby::run for Configurators that have a constructor that simply takes argc, argv, e.g. MyConfigurator(int argc, char* argv[]). Allows for backwards-compatibility pre-Configurator.
+/// \param argc same as argc in ```int main(int argc, char* argv)```
+/// \param argv same as argv in ```int main(int argc, char* argv)```
+/// \tparam App ApplicationBase3 subclass
+/// \tparam Configurator Configurator object that has a constructor such as ```Configurator(int argc, char* argv)```
 /// \return same as ```int main(int argc, char* argv)```
 template <typename App,
           typename Configurator = common::ProtobufConfigurator<typename App::ConfigType> >
-int run(int argc, char* argv[]);
+int run(int argc, char* argv[])
+{
+    Configurator cfgtor(argc, argv);
+    cfgtor.finalize();
+    return run<App>(cfgtor);
+}
 
 namespace common
 {
@@ -60,9 +72,12 @@ using NullStateMachine = int;
 
 namespace internal
 {
-template <typename App, typename Config> void __set_configuration(const Config& app_cfg)
+template <typename App, typename Config>
+void __set_configuration(
+    const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfgtor)
 {
-    App::app_cfg_ = app_cfg;
+    App::app_cfg_ = cfgtor.cfg();
+    App::app3_base_configuration_ = cfgtor.app3_configuration();
 }
 
 // runs the application; returns the return value from App::__run()
@@ -161,8 +176,10 @@ template <typename Config, typename StateMachine = NullStateMachine> class Appli
   private:
     // sets configuration (before Application construction)
     template <typename App, typename ConfigType>
-    friend void ::goby::common::internal::__set_configuration(const ConfigType& app_cfg);
+    friend void ::goby::common::internal::__set_configuration(
+        const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfgtor);
     static Config app_cfg_;
+    static goby::protobuf::App3Config app3_base_configuration_;
 
     bool alive_;
     int return_value_;
@@ -196,33 +213,37 @@ template <typename Config, typename StateMachine>
 Config goby::common::ApplicationBase3<Config, StateMachine>::app_cfg_;
 
 template <typename Config, typename StateMachine>
+goby::protobuf::App3Config
+    goby::common::ApplicationBase3<Config, StateMachine>::app3_base_configuration_;
+
+template <typename Config, typename StateMachine>
 goby::common::ApplicationBase3<Config, StateMachine>::ApplicationBase3() : alive_(true)
 {
     using goby::glog;
     using namespace goby::common::logger;
 
     // set up the logger
-    glog.set_name(app_cfg_.app().name());
-    glog.add_stream(
-        static_cast<common::logger::Verbosity>(app_cfg_.app().glog_config().tty_verbosity()),
-        &std::cout);
+    glog.set_name(app3_base_configuration_.name());
+    glog.add_stream(static_cast<common::logger::Verbosity>(
+                        app3_base_configuration_.glog_config().tty_verbosity()),
+                    &std::cout);
 
-    if (app_cfg_.app().glog_config().show_gui())
+    if (app3_base_configuration_.glog_config().show_gui())
         glog.enable_gui();
 
-    fout_.resize(app_cfg_.app().glog_config().file_log_size());
-    for (int i = 0, n = app_cfg_.app().glog_config().file_log_size(); i < n; ++i)
+    fout_.resize(app3_base_configuration_.glog_config().file_log_size());
+    for (int i = 0, n = app3_base_configuration_.glog_config().file_log_size(); i < n; ++i)
     {
         using namespace boost::posix_time;
 
-        boost::format file_format(app_cfg_.app().glog_config().file_log(i).file_name());
+        boost::format file_format(app3_base_configuration_.glog_config().file_log(i).file_name());
         file_format.exceptions(boost::io::all_error_bits ^
                                (boost::io::too_many_args_bit | boost::io::too_few_args_bit));
 
-        std::string file_name =
-            (file_format % to_iso_string(second_clock::universal_time()) % app_cfg_.app().name())
-                .str();
-        std::string file_symlink = (file_format % "latest" % app_cfg_.app().name()).str();
+        std::string file_name = (file_format % to_iso_string(second_clock::universal_time()) %
+                                 app3_base_configuration_.name())
+                                    .str();
+        std::string file_symlink = (file_format % "latest" % app3_base_configuration_.name()).str();
 
         glog.is(VERBOSE) && glog << "logging output to file: " << file_name << std::endl;
 
@@ -240,26 +261,27 @@ goby::common::ApplicationBase3<Config, StateMachine>::ApplicationBase3() : alive
                 glog << "Cannot create symlink to latest file. Continuing onwards anyway"
                      << std::endl;
 
-        glog.add_stream(app_cfg_.app().glog_config().file_log(i).verbosity(), fout_[i].get());
+        glog.add_stream(app3_base_configuration_.glog_config().file_log(i).verbosity(),
+                        fout_[i].get());
     }
 
-    if (!app_cfg_.app().IsInitialized())
+    if (!app3_base_configuration_.IsInitialized())
         throw(common::ConfigException("Invalid base configuration"));
 
     glog.is(DEBUG2) && glog << "ApplicationBase3: constructed with PID: " << getpid() << std::endl;
-    glog.is(DEBUG1) && glog << "App name is " << app_cfg_.app().name() << std::endl;
+    glog.is(DEBUG1) && glog << "App name is " << app3_base_configuration_.name() << std::endl;
     glog.is(DEBUG2) && glog << "Configuration is: " << app_cfg_.DebugString() << std::endl;
 
     // set up simulation time
-    if (app_cfg_.app().simulation().time().use_sim_time())
+    if (app3_base_configuration_.simulation().time().use_sim_time())
     {
         goby::time::SimulatorSettings::using_sim_time = true;
         goby::time::SimulatorSettings::warp_factor =
-            app_cfg_.app().simulation().time().warp_factor();
-        if (app_cfg_.app().simulation().time().has_reference_microtime())
+            app3_base_configuration_.simulation().time().warp_factor();
+        if (app3_base_configuration_.simulation().time().has_reference_microtime())
             goby::time::SimulatorSettings::reference_time =
-                app_cfg_.app().simulation().time().reference_microtime() * boost::units::si::micro *
-                boost::units::si::seconds;
+                app3_base_configuration_.simulation().time().reference_microtime() *
+                boost::units::si::micro * boost::units::si::seconds;
     }
 }
 
@@ -298,15 +320,14 @@ void goby::common::internal::__terminate_state_machine(
     app.state_machine_.reset();
 }
 
-template <typename App, typename Configurator> int goby::run(int argc, char* argv[])
+template <typename App>
+int goby::run(const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfgtor)
 {
     int return_value = 0;
     try
     {
-        // create and set configuration
-        Configurator cfgtor(argc, argv);
-        typename App::ConfigType app_cfg = cfgtor.cfg();
-        goby::common::internal::__set_configuration<App, typename App::ConfigType>(app_cfg);
+        // set configuration
+        goby::common::internal::__set_configuration<App, typename App::ConfigType>(cfgtor);
 
         // instantiate the application (with the configuration already set)
         App app;
@@ -316,11 +337,6 @@ template <typename App, typename Configurator> int goby::run(int argc, char* arg
         return_value = goby::common::internal::__run_application<App>(app);
         // terminate the state machine (if any)
         goby::common::internal::__terminate_state_machine<App>(app);
-    }
-    catch (goby::common::ConfigException& e)
-    {
-        // no further warning as the ApplicationBase3 Ctor handles this
-        return 1;
     }
     catch (std::exception& e)
     {

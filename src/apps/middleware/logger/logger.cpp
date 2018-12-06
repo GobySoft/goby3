@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
     sigset_t old_mask;
     pthread_sigmask(SIG_BLOCK, &new_mask, &old_mask);
 
-    std::thread t(std::bind(goby::run<goby::Logger>, argc, argv));
+    std::thread t([&argc, &argv]() { goby::run<goby::Logger>(argc, argv); });
 
     // unblock signals
     sigset_t empty_mask;
