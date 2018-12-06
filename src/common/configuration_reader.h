@@ -53,13 +53,9 @@ namespace common
 class ConfigException : public Exception
 {
   public:
-    ConfigException(const std::string& s) : Exception(s), error_(true) {}
-
-    void set_error(bool b) { error_ = b; }
-    bool error() { return error_; }
+    ConfigException(const std::string& s) : Exception(s) {}
 
   private:
-    bool error_;
 };
 
 class ConfigReader

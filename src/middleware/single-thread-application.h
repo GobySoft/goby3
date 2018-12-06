@@ -34,8 +34,8 @@
 
 namespace goby
 {
-template <class Config, class StateMachine = goby::common::NullStateMachine>
-class SingleThreadApplication : public goby::common::ApplicationBase3<Config, StateMachine>,
+template <class Config>
+class SingleThreadApplication : public goby::common::ApplicationBase3<Config>,
                                 public Thread<Config, InterVehicleForwarder<InterProcessPortal<> > >
 {
   private:

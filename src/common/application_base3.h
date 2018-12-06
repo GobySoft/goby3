@@ -61,66 +61,12 @@ template <typename App,
           typename Configurator = common::ProtobufConfigurator<typename App::ConfigType> >
 int run(int argc, char* argv[])
 {
-    Configurator cfgtor(argc, argv);
-    cfgtor.finalize();
-    return run<App>(cfgtor);
+    return run<App>(Configurator(argc, argv));
 }
 
 namespace common
 {
-using NullStateMachine = int;
-
-namespace internal
-{
-template <typename App, typename Config>
-void __set_configuration(
-    const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfgtor)
-{
-    App::app_cfg_ = cfgtor.cfg();
-    App::app3_base_configuration_ = cfgtor.app3_configuration();
-}
-
-// runs the application; returns the return value from App::__run()
-template <typename App> int __run_application(App& app) { return app.__run(); }
-
-// no state machine
-template <typename App>
-void __initialize_state_machine(
-    App& app,
-    typename std::enable_if<std::is_same<typename App::StateMachineType,
-                                         goby::common::NullStateMachine>::value>::type* = 0)
-{
-}
-
-// state machine
-template <typename App>
-void __initialize_state_machine(
-    App& app,
-    typename std::enable_if<!std::is_same<typename App::StateMachineType,
-                                          goby::common::NullStateMachine>::value>::type* = 0);
-
-// no state machine
-template <typename App>
-void __terminate_state_machine(
-    App& app,
-    typename std::enable_if<std::is_same<typename App::StateMachineType,
-                                         goby::common::NullStateMachine>::value>::type* = 0)
-{
-}
-
-// state machine
-template <typename App>
-void __terminate_state_machine(
-    App& app,
-    typename std::enable_if<!std::is_same<typename App::StateMachineType,
-                                          goby::common::NullStateMachine>::value>::type* = 0);
-
-} // namespace internal
-} // namespace common
-
-namespace common
-{
-template <typename Config, typename StateMachine = NullStateMachine> class ApplicationBase3
+template <typename Config> class ApplicationBase3
 {
   public:
     ApplicationBase3();
@@ -131,7 +77,6 @@ template <typename Config, typename StateMachine = NullStateMachine> class Appli
     }
 
     using ConfigType = Config;
-    using StateMachineType = StateMachine;
 
   protected:
     /// \brief Perform any initialize tasks that couldn't be done in the constructor
@@ -157,27 +102,14 @@ template <typename Config, typename StateMachine = NullStateMachine> class Appli
     /// \brief Accesses configuration object passed at launch
     const Config& app_cfg() const { return app_cfg_; }
 
-    /// \brief Access the state machine if available (not in the constructor)
-    StateMachine& state_machine()
-    {
-        static_assert(!std::is_same<StateMachine, NullStateMachine>(),
-                      "No state machine defined for this Goby application");
-        if (state_machine_)
-            return *state_machine_;
-        else
-            throw(goby::Exception("State machine not available in the constructor."));
-    }
-
   private:
-    template <typename App> friend int ::goby::common::internal::__run_application(App& app);
+    template <typename App>
+    friend int ::goby::run(const goby::common::ConfiguratorInterface<typename App::ConfigType>&);
     // main loop that exits on quit(); returns the desired return value
     int __run();
 
   private:
     // sets configuration (before Application construction)
-    template <typename App, typename ConfigType>
-    friend void ::goby::common::internal::__set_configuration(
-        const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfgtor);
     static Config app_cfg_;
     static goby::protobuf::App3Config app3_base_configuration_;
 
@@ -186,38 +118,20 @@ template <typename Config, typename StateMachine = NullStateMachine> class Appli
 
     // static here allows fout_ to live until program exit to log glog output
     static std::vector<std::unique_ptr<std::ofstream> > fout_;
-
-    // set state machine after construction
-    template <typename App>
-    friend void ::goby::common::internal::__initialize_state_machine(
-        App& app,
-        typename std::enable_if<!std::is_same<typename App::StateMachineType,
-                                              goby::common::NullStateMachine>::value>::type*);
-    template <typename App>
-    friend void ::goby::common::internal::__terminate_state_machine(
-        App& app,
-        typename std::enable_if<!std::is_same<typename App::StateMachineType,
-                                              goby::common::NullStateMachine>::value>::type*);
-
-    std::unique_ptr<StateMachine> state_machine_;
 };
 } // namespace common
 
 } // namespace goby
 
-template <typename Config, typename StateMachine>
-std::vector<std::unique_ptr<std::ofstream> >
-    goby::common::ApplicationBase3<Config, StateMachine>::fout_;
+template <typename Config>
+std::vector<std::unique_ptr<std::ofstream> > goby::common::ApplicationBase3<Config>::fout_;
 
-template <typename Config, typename StateMachine>
-Config goby::common::ApplicationBase3<Config, StateMachine>::app_cfg_;
+template <typename Config> Config goby::common::ApplicationBase3<Config>::app_cfg_;
 
-template <typename Config, typename StateMachine>
-goby::protobuf::App3Config
-    goby::common::ApplicationBase3<Config, StateMachine>::app3_base_configuration_;
+template <typename Config>
+goby::protobuf::App3Config goby::common::ApplicationBase3<Config>::app3_base_configuration_;
 
-template <typename Config, typename StateMachine>
-goby::common::ApplicationBase3<Config, StateMachine>::ApplicationBase3() : alive_(true)
+template <typename Config> goby::common::ApplicationBase3<Config>::ApplicationBase3() : alive_(true)
 {
     using goby::glog;
     using namespace goby::common::logger;
@@ -285,8 +199,7 @@ goby::common::ApplicationBase3<Config, StateMachine>::ApplicationBase3() : alive
     }
 }
 
-template <typename Config, typename StateMachine>
-int goby::common::ApplicationBase3<Config, StateMachine>::__run()
+template <typename Config> int goby::common::ApplicationBase3<Config>::__run()
 {
     // block SIGWINCH (change window size) in all threads
     sigset_t signal_mask;
@@ -303,40 +216,35 @@ int goby::common::ApplicationBase3<Config, StateMachine>::__run()
 }
 
 template <typename App>
-void goby::common::internal::__initialize_state_machine(
-    App& app, typename std::enable_if<!std::is_same<typename App::StateMachineType,
-                                                    goby::common::NullStateMachine>::value>::type*)
-{
-    app.state_machine_.reset(new typename App::StateMachineType(app));
-    app.state_machine_->initiate();
-}
-
-template <typename App>
-void goby::common::internal::__terminate_state_machine(
-    App& app, typename std::enable_if<!std::is_same<typename App::StateMachineType,
-                                                    goby::common::NullStateMachine>::value>::type*)
-{
-    app.state_machine_->terminate();
-    app.state_machine_.reset();
-}
-
-template <typename App>
 int goby::run(const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfgtor)
 {
     int return_value = 0;
     try
     {
+        try
+        {
+            cfgtor.validate();
+        }
+        catch (common::ConfigException& e)
+        {
+            cfgtor.handle_config_error(e);
+            return 1;
+        }
+
+        // simply print the configuration and exit
+        if (cfgtor.app3_configuration().debug_cfg())
+        {
+            std::cout << cfgtor.str() << std::endl;
+            exit(EXIT_SUCCESS);
+        }
+
         // set configuration
-        goby::common::internal::__set_configuration<App, typename App::ConfigType>(cfgtor);
+        App::app_cfg_ = cfgtor.cfg();
+        App::app3_base_configuration_ = cfgtor.app3_configuration();
 
         // instantiate the application (with the configuration already set)
         App app;
-        // initialize the state machine (if any)
-        goby::common::internal::__initialize_state_machine<App>(app);
-        // run the application
-        return_value = goby::common::internal::__run_application<App>(app);
-        // terminate the state machine (if any)
-        goby::common::internal::__terminate_state_machine<App>(app);
+        return_value = app.__run();
     }
     catch (std::exception& e)
     {

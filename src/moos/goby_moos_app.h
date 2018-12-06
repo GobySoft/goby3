@@ -762,9 +762,8 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
 
         if (var_map.count("help"))
         {
-            goby::common::ConfigException e("");
-            e.set_error(false);
-            throw(e);
+            std::cerr << od_all << "\n";
+            exit(EXIT_SUCCESS);
         }
         else if (var_map.count("example_config"))
         {
@@ -873,8 +872,7 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
     {
         // output all the available command line options
         std::cerr << od_all << "\n";
-        if (e.error())
-            std::cerr << "Problem parsing command-line configuration: \n" << e.what() << "\n";
+        std::cerr << "Problem parsing command-line configuration: \n" << e.what() << "\n";
 
         throw;
     }

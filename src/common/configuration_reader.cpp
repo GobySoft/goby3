@@ -108,22 +108,16 @@ void goby::common::ConfigReader::read_cfg(int argc, char* argv[],
 
     if (var_map->count("help"))
     {
-        ConfigException e("");
-        e.set_error(false);
         std::cerr << *od_all << "\n";
         exit(EXIT_SUCCESS);
     }
     else if (var_map->count("example_config"))
     {
-        ConfigException e("");
-        e.set_error(false);
         get_example_cfg_file(message, &std::cout);
         exit(EXIT_SUCCESS);
     }
     else if (var_map->count("version"))
     {
-        ConfigException e("");
-        e.set_error(false);
         std::cout << goby::version_message() << std::endl;
         exit(EXIT_SUCCESS);
     }

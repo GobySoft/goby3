@@ -34,57 +34,26 @@ namespace common
 template <typename Config> class ConfiguratorInterface
 {
   public:
-    void finalize()
-    {
-        if (!config_finalized_)
-        {
-            try
-            {
-                finalize_cfg();
-            }
-            catch (common::ConfigException& e)
-            {
-                handle_config_error(e);
-                throw;
-            }
-            config_finalized_ = true;
-        }
+    const Config& cfg() const { return cfg_; }
 
-        if (app3_configuration().debug_cfg())
-        {
-            std::cout << cfg().DebugString() << std::endl;
-            exit(EXIT_SUCCESS);
-        }
+    // TODO: App3Config will eventually not be a Protobuf Message, just a C++ struct
+    const goby::protobuf::App3Config& app3_configuration() const { return app3_configuration_; }
+    virtual void validate() const {}
+    virtual void handle_config_error(common::ConfigException& e) const
+    {
+        std::cerr << "Invalid configuration: " << e.what() << std::endl;
     }
 
-    const Config& cfg() const
-    {
-        check_finalized();
-        return const_cfg();
-    }
+    virtual std::string str() const = 0;
 
-    const goby::protobuf::App3Config& app3_configuration() const
-    {
-        check_finalized();
-        return const_app3_configuration();
-    }
+  protected:
+    // Derived classes can modify these as needed in their constructor
+    Config& mutable_cfg() { return cfg_; }
+    goby::protobuf::App3Config& mutable_app3_configuration() { return app3_configuration_; }
 
   private:
-    void check_finalized() const
-    {
-        if (!config_finalized_)
-            throw(
-                common::ConfigException("Configuration is not finalized (call finalize() first)"));
-    }
-
-    virtual void finalize_cfg() {}
-    virtual const Config& const_cfg() const = 0;
-    virtual const goby::protobuf::App3Config& const_app3_configuration() const = 0;
-
-    virtual void handle_config_error(common::ConfigException& e) {}
-
-  private:
-    bool config_finalized_{false};
+    Config cfg_;
+    goby::protobuf::App3Config app3_configuration_;
 };
 
 /// Implementation of ConfiguratorInterface for Google Protocol buffers
@@ -94,34 +63,20 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
     ProtobufConfigurator(int argc, char* argv[]);
 
   protected:
-    // subclass can override to finalize the configuration at runtime
-    virtual void finalize_configuration(Config& cfg) {}
-
-  private:
-    void finalize_cfg() override
+    // subclass should call to verify all required fields have been set
+    virtual void validate() const override
     {
-        finalize_configuration(cfg_);
-        common::ConfigReader::check_required_cfg(cfg_);
-    }
-
-    const Config& const_cfg() const override { return cfg_; }
-    const goby::protobuf::App3Config& const_app3_configuration() const override
-    {
-        return cfg_.app();
-    }
-
-    void handle_config_error(common::ConfigException& e) override
-    {
-        // output all the available command line options
-        if (e.error())
-            std::cerr
-                << "Problem parsing configuration: use --help or --example_config for more help."
-                << std::endl;
+        common::ConfigReader::check_required_cfg(this->cfg());
     }
 
   private:
-    Config cfg_;
-    boost::program_options::options_description od_{"Allowed options"};
+    virtual std::string str() const override { return this->cfg().DebugString(); }
+
+    void handle_config_error(common::ConfigException& e) const override
+    {
+        std::cerr << "Invalid configuration: use --help and/or --example_config for more help: "
+                  << e.what() << std::endl;
+    }
 };
 
 template <typename Config>
@@ -130,26 +85,32 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
     //
     // read the configuration
     //
+    Config& cfg = this->mutable_cfg();
+
     boost::program_options::variables_map var_map;
     try
     {
         std::string application_name;
 
-        // we will check it later
+        // we will check it later in validate()
         bool check_required_cfg = false;
-        common::ConfigReader::read_cfg(argc, argv, &cfg_, &application_name, &od_, &var_map,
+        boost::program_options::options_description od{"Allowed options"};
+        common::ConfigReader::read_cfg(argc, argv, &cfg, &application_name, &od, &var_map,
                                        check_required_cfg);
 
-        cfg_.mutable_app()->set_name(application_name);
+        cfg.mutable_app()->set_name(application_name);
         // incorporate some parts of the AppBaseConfig that are common
         // with gobyd (e.g. Verbosity)
-        merge_app_base_cfg(cfg_.mutable_app(), var_map);
+        merge_app_base_cfg(cfg.mutable_app(), var_map);
     }
     catch (common::ConfigException& e)
     {
         handle_config_error(e);
         throw;
     }
+
+    // TODO: convert to C++ struct app3 configuration format
+    this->mutable_app3_configuration() = *cfg.mutable_app();
 }
 
 } // namespace common
