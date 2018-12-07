@@ -51,7 +51,7 @@ check_launch_type_unset()
 do_kill()
 {
     # nothing to kill
-    [ ${#spid[@]} == "0" ] && exit 0;
+    [ ${#spid[@]} = "0" ] && exit 0;
     
     # clear out ^C symbol
     echo ""
@@ -65,7 +65,7 @@ do_kill()
 
         kill -0 $p >& /dev/null || continue
 
-        if [ "$sig" == "goby_terminate" ]; then
+        if [ "$sig" = "goby_terminate" ]; then
             # run goby_terminate to cleanly shutdown processes
             printf "goby_terminate: $p (was $cmd)"
             if goby_terminate --response_timeout ${sigterm_delay} --target_pid $p <(echo ${gobyd_interprocess});
@@ -163,17 +163,17 @@ if [ -z "$gobyd_line" ]; then
     echo "Failed to find line for launching 'gobyd'"
     exit 1;
 fi
-gobyd_escline=$(echo $gobyd_line | sed 's/"/\\"/g')
+gobyd_escline=$(echo "$gobyd_line" | sed 's/"/\\"/g')
 gobyd_interprocess=$(bash -c "$gobyd_escline --app 'debug_cfg: true'" | sed -n "/^ *interprocess/,/}/p;")
 
 # actually launch the lines
 gnterm=()
 while IFS= read -r line
 do
-    cmd=$(echo $line | sed 's/^ *\[.*\]//')
+    cmd=$(echo "$line" | sed 's/^ *\[.*\]//')
     directive_str=
-    echo $line | egrep -q '\[.*\]'  &&
-        directive_str=$(echo $line | sed 's/^ *\[\(.*\)\].*$/\1/')
+    echo "$line" | egrep -q '\[.*\]'  &&
+        directive_str=$(echo "$line" | sed 's/^ *\[\(.*\)\].*$/\1/')
 
     kill_signal="goby_terminate"
     if [ ! -z "$directive_str" ]; then
@@ -182,8 +182,8 @@ do
         for ((i=0; i<${#directives[@]}; i++))
         do
             directive=${directives[$i]}
-            key=$(echo $directive | cut -d "=" -f 1)
-            value=$(echo $directive | cut -d "=" -f 2)
+            key=$(echo "$directive" | cut -d "=" -f 1)
+            value=$(echo "$directive" | cut -d "=" -f 2)
             case $key in
                 kill)
                     kill_signal=$value
