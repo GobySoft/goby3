@@ -80,11 +80,8 @@ goby::common::ApplicationBase::ApplicationBase(google::protobuf::Message* cfg /*
     catch (common::ConfigException& e)
     {
         // output all the available command line options
-        if (e.error())
-        {
-            std::cerr << od << "\n";
-            std::cerr << "Problem parsing command-line configuration: \n" << e.what() << "\n";
-        }
+        std::cerr << od << "\n";
+        std::cerr << "Problem parsing command-line configuration: \n" << e.what() << "\n";
         throw;
     }
 

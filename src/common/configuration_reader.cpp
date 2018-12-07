@@ -108,24 +108,18 @@ void goby::common::ConfigReader::read_cfg(int argc, char* argv[],
 
     if (var_map->count("help"))
     {
-        ConfigException e("");
-        e.set_error(false);
         std::cerr << *od_all << "\n";
-        throw(e);
+        exit(EXIT_SUCCESS);
     }
     else if (var_map->count("example_config"))
     {
-        ConfigException e("");
-        e.set_error(false);
         get_example_cfg_file(message, &std::cout);
-        throw(e);
+        exit(EXIT_SUCCESS);
     }
     else if (var_map->count("version"))
     {
-        ConfigException e("");
-        e.set_error(false);
         std::cout << goby::version_message() << std::endl;
-        throw(e);
+        exit(EXIT_SUCCESS);
     }
 
     if (var_map->count("app_name"))
@@ -208,19 +202,8 @@ void goby::common::ConfigReader::read_cfg(int argc, char* argv[],
         }
 
         // now the proto message must have all required fields
-        if (check_required_configuration && !message->IsInitialized())
-        {
-            std::vector<std::string> errors;
-            message->FindInitializationErrors(&errors);
-
-            std::stringstream err_msg;
-            err_msg << "Configuration is missing required parameters: \n";
-            for (const std::string& s : errors)
-                err_msg << common::esc_red << s << "\n" << common::esc_nocolor;
-
-            err_msg << "Make sure you specified a proper `cfg_path` to the configuration file.";
-            throw(ConfigException(err_msg.str()));
-        }
+        if (check_required_configuration)
+            check_required_cfg(*message);
     }
 }
 
@@ -700,4 +683,21 @@ void goby::common::ConfigReader::wrap_description(std::string* description, int 
     std::string spaces(num_blanks, ' ');
     spaces += "# ";
     boost::replace_all(*description, "\n", "\n" + spaces);
+}
+
+void goby::common::ConfigReader::check_required_cfg(const google::protobuf::Message& message)
+{
+    if (!message.IsInitialized())
+    {
+        std::vector<std::string> errors;
+        message.FindInitializationErrors(&errors);
+
+        std::stringstream err_msg;
+        err_msg << "Configuration is missing required parameters: \n";
+        for (const std::string& s : errors)
+            err_msg << common::esc_red << s << "\n" << common::esc_nocolor;
+
+        err_msg << "Make sure you specified a proper `cfg_path` to the configuration file.";
+        throw(ConfigException(err_msg.str()));
+    }
 }

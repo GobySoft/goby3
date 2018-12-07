@@ -53,13 +53,9 @@ namespace common
 class ConfigException : public Exception
 {
   public:
-    ConfigException(const std::string& s) : Exception(s), error_(true) {}
-
-    void set_error(bool b) { error_ = b; }
-    bool error() { return error_; }
+    ConfigException(const std::string& s) : Exception(s) {}
 
   private:
-    bool error_;
 };
 
 class ConfigReader
@@ -70,6 +66,8 @@ class ConfigReader
                          boost::program_options::options_description* od_all,
                          boost::program_options::variables_map* var_map,
                          bool check_required_configuration = true);
+
+    static void check_required_cfg(const google::protobuf::Message& message);
 
     static void get_protobuf_program_options(boost::program_options::options_description& po_desc,
                                              const google::protobuf::Descriptor* desc);
@@ -143,6 +141,25 @@ class ConfigReader
                                       boost::program_options::value<std::vector<T> >(),
                                       description.c_str());
             }
+        }
+    }
+
+    // special case for bool presence/absence when default is false
+    // for example, for the bool field "foo", "--foo" is true and omitting "--foo" is false, rather than --foo=true/false
+    static void set_single_option(boost::program_options::options_description& po_desc,
+                                  const google::protobuf::FieldDescriptor* field_desc,
+                                  bool default_value, const std::string& name,
+                                  const std::string& description)
+    {
+        if (!field_desc->is_repeated() && field_desc->has_default_value() && default_value == false)
+        {
+            po_desc.add_options()(
+                name.c_str(), boost::program_options::bool_switch()->default_value(default_value),
+                description.c_str());
+        }
+        else
+        {
+            set_single_option<bool>(po_desc, field_desc, default_value, name, description);
         }
     }
 };
