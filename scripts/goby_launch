@@ -24,7 +24,7 @@ usage()
     echo -e "\t-x\t\tLaunch applications in their own xterm"
     echo -e "\t-d 10\t\tDelay in milliseconds between launching applications"
     echo -e "\t-b\t\tDo not wait for processes to exit before exiting this script"
-    echo -e "\t-p=vehicle1\tPlatform name"
+    echo -e "\t-p vehicle1\tPlatform name"
     echo -e "\t-m 10\t\tDelay in seconds after sending goby_terminate before escalating to SIGTERM"
     echo -e "\t-k 10\t\tDelay in seconds after sending SIGTERM before escalating to SIGKILL"
 }
@@ -51,25 +51,21 @@ check_launch_type_unset()
 do_kill()
 {
     # nothing to kill
-    [ ${#spid[@]} == "0" ] && exit 0;
+    [ ${#spid[@]} = "0" ] && exit 0;
     
     # clear out ^C symbol
     echo ""
     echo "Cleaning up..."
-    if [ ! -z "$not_goby_regex" ];
-    then
-        echo "Not using goby_terminate to close commands matching regex: $not_goby_regex"
-    else
-        not_goby_regex="^$"
-    fi
-        
+
     # send SIGTERM to all the child processes
     for ((i=$((${#spid[@]}-1)); i>=0; --i)); do 
         p=${spid[i]}
         cmd=${spid_cmd[i]}
+        sig=${spid_sig[i]}
+
         kill -0 $p >& /dev/null || continue
 
-        if ! echo "$cmd" | egrep -q $not_goby_regex; then
+        if [ "$sig" = "goby_terminate" ]; then
             # run goby_terminate to cleanly shutdown processes
             printf "goby_terminate: $p (was $cmd)"
             if goby_terminate --response_timeout ${sigterm_delay} --target_pid $p <(echo ${gobyd_interprocess});
@@ -78,12 +74,13 @@ do_kill()
                 continue
             fi
 
+            sig=SIGTERM
             # if goby_terminate failed, use SIGTERM, then SIGKILL
-            echo -e "\n=== WARNING ===: Process $p did not respond to goby_terminate, sending SIGTERM"
+            echo -e "\n=== WARNING ===: Process $p did not respond to goby_terminate, sending $sig"
         fi
         
-        printf "SIGTERM: $p (was $cmd)"
-        kill -SIGTERM $p
+        printf "$sig: $p (was $cmd)"
+        kill -$sig $p
 
         elapsed_ms=0
         while $(kill -0 $p 2>/dev/null); do 
@@ -147,6 +144,8 @@ ppid=()
 spid=()
 # spid to command
 spid_cmd=()
+# initial signal to use
+spid_sig=()
 
 # copy launchfile to allow multiple reads
 origlaunchfile=${@:$OPTIND:1}
@@ -157,28 +156,6 @@ if [ ! -e "$launchfile" ]; then
     echo "Error: must provide a valid launchfile: \"$launchfile\" does not exist. For help use -h."
     exit 1
 fi
-          
-# extract [goby_launch] variables
-launch_vars_regex="# *\[goby_launch\]: *"
-while IFS= read -r line
-do
-    key=$(echo $line | cut -d "=" -f 1)
-    value=$(echo $line | cut -d "=" -f 2)
-    case $key in
-        not_goby)
-            # read values into "not_goby" array: commands matching this will not use goby_terminate to quit them
-            IFS=';, ' read -r -a not_goby <<< "$value" 
-            for ((i=0; i<${#not_goby[@]}; i++))
-            do not_goby[$i]="^${not_goby[$i]}"
-            done
-            not_goby_regex=$(IFS="|"; echo "${not_goby[*]}")
-            ;;
-        *)
-            echo "Invalid [goby_launch]: directive key: " $key
-            exit 1
-            ;;
-    esac                
-done < <(egrep "$launch_vars_regex" "$launchfile" | sed "s/$launch_vars_regex//")
 
 # search for gobyd so we can use the same interprocess { } configuration for goby_terminate
 gobyd_line=$(cat "$launchfile" | egrep "^ *[/a-zA-Z0-9_]*gobyd")
@@ -186,26 +163,58 @@ if [ -z "$gobyd_line" ]; then
     echo "Failed to find line for launching 'gobyd'"
     exit 1;
 fi
-gobyd_escline=$(echo $gobyd_line | sed 's/"/\\"/g')
+gobyd_escline=$(echo "$gobyd_line" | sed 's/"/\\"/g')
 gobyd_interprocess=$(bash -c "$gobyd_escline --app 'debug_cfg: true'" | sed -n "/^ *interprocess/,/}/p;")
 
 # actually launch the lines
 gnterm=()
 while IFS= read -r line
 do
-    escline=$(echo $line | sed 's/"/\\"/g')
-    bin=$(echo $line | cut -d " " -f 1)
+    cmd=$(echo "$line" | sed 's/^ *\[.*\]//')
+    directive_str=
+    echo "$line" | egrep -q '\[.*\]'  &&
+        directive_str=$(echo "$line" | sed 's/^ *\[\(.*\)\].*$/\1/')
+
+    kill_signal="goby_terminate"
+    if [ ! -z "$directive_str" ]; then
+
+        IFS=';, ' read -r -a directives <<< "$directive_str" 
+        for ((i=0; i<${#directives[@]}; i++))
+        do
+            directive=${directives[$i]}
+            key=$(echo "$directive" | cut -d "=" -f 1)
+            value=$(echo "$directive" | cut -d "=" -f 2)
+            case $key in
+                kill)
+                    kill_signal=$value
+                    if ! echo $kill_signal | egrep -q '^SIGTERM$|^SIGKILL$|^SIGINT$|^goby_terminate$'; then
+                        echo "Invalid kill=$kill_signal signal \"$kill_signal\": use \"goby_terminate\" (default), \"SIGTERM\", \"SIGINT\", or \"SIGKILL\"";
+                        exit 1
+                    fi
+                    ;;
+                *)
+                    echo "Invalid [$key=$value]: directive key: " $key
+                    exit 1
+                    ;;
+            esac
+        done               
+    fi
+    spid_sig+=($kill_signal)
+
+    
+    esccmd=$(echo $cmd | sed 's/"/\\"/g')
+    bin=$(echo $cmd | cut -d " " -f 1)
     name=$platform.${bin##*/}
     case $launch in
         normal)            
-            bash -c "$escline"&
+            bash -c "$esccmd"&
             pid=$!
-            echo "Launched ($pid) $line"
+            echo "Launched ($pid) $cmd"
             ppid+=($pid)
             spid+=($pid)
             ;;
         xterm)
-            setsid xterm  -T $name -e "bash -c \"$escline\""&
+            setsid xterm  -T $name -e "bash -c \"$esccmd\""&
             # pid of xterm
             parent_pid=$!
             # pid of process in xterm
@@ -213,25 +222,25 @@ do
             # wait until the child launched in screen
             while [[ -z "$child_pid" ]]; do
                 child_pid=$(ps --ppid $parent_pid -o pid=)
-                kill -0 $parent_pid >& /dev/null || launch_fail $line;
+                kill -0 $parent_pid >& /dev/null || launch_fail $cmd;
                 sleep 0.01
             done
-            echo "Launched (xterm: $parent_pid, child: $child_pid) $line"
+            echo "Launched (xterm: $parent_pid, child: $child_pid) $cmd"
             ppid+=($parent_pid)
             spid+=($child_pid)
             ;;
         nohup)
-            nohup bash -c "$escline"&
+            nohup bash -c "$esccmd"&
             pid=$!
-            echo "Launched ($pid) $line"
+            echo "Launched ($pid) $cmd"
             ppid+=($pid)
             spid+=($pid)
             ;;
         gnometerm)
-            gnterm+=(--tab -e "bash -c \"echo -ne \\\"\\033]0;${name}\\007\\\"; $escline\"")
+            gnterm+=(--tab -e "bash -c \"echo -ne \\\"\\033]0;${name}\\007\\\"; $esccmd\"")
             ;;       
         screen)
-            screen -DmS $name /bin/bash -c "exec $line"&
+            screen -DmS $name /bin/bash -c "exec $cmd"&
             # pid of screen
             parent_pid=$!
             # pid of process in screen
@@ -239,10 +248,10 @@ do
             # wait until the child launched in screen
             while [ -z "$child_pid" ]; do
                 child_pid=$(ps --ppid $parent_pid -o pid=)
-                kill -0 $parent_pid >& /dev/null || launch_fail $line;
+                kill -0 $parent_pid >& /dev/null || launch_fail $cmd;
                 sleep 0.01
             done
-            echo "Launched (screen: $parent_pid, child: $child_pid) $line"
+            echo "Launched (screen: $parent_pid, child: $child_pid) $cmd"
             ppid+=($parent_pid)
             spid+=($child_pid)
             ;;       
@@ -257,6 +266,7 @@ do
         sleep ${launch_delay}E-3
     fi    
 done < <(sed 's/#.*//' "$launchfile" | sed '/^\s*$/d')
+
 
 if [ $launch = gnometerm ]; then 
     gnome-terminal --maximize "${gnterm[@]}"
