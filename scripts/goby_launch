@@ -182,11 +182,8 @@ do
         for ((i=0; i<${#directives[@]}; i++))
         do
             directive=${directives[$i]}
-            echo "directive: {{$directive}}"
             key=$(echo $directive | cut -d "=" -f 1)
             value=$(echo $directive | cut -d "=" -f 2)
-            echo $key
-            echo $value
             case $key in
                 kill)
                     kill_signal=$value
