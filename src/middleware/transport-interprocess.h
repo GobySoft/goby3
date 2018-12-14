@@ -112,7 +112,7 @@ class InterProcessTransporterBase
         static_cast<Derived*>(this)->template _unsubscribe<Data, scheme>(group);
     }
 
-    void unsubscribe_all() { static_cast<Derived*>(this)->template _unsubscribe_all(); }
+    void unsubscribe_all() { static_cast<Derived*>(this)->_unsubscribe_all(); }
 
     // Wildcards
     void subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme,
@@ -121,7 +121,7 @@ class InterProcessTransporterBase
                          const std::set<int>& schemes, const std::string& type_regex = ".*",
                          const std::string& group_regex = ".*")
     {
-        static_cast<Derived*>(this)->template _subscribe_regex(f, schemes, type_regex, group_regex);
+        static_cast<Derived*>(this)->_subscribe_regex(f, schemes, type_regex, group_regex);
     }
 
     std::unique_ptr<InnerTransporter> own_inner_;
