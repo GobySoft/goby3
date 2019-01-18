@@ -30,5 +30,8 @@ std::map<int, boost::bimap<std::string, goby::uint<goby::LogEntry::type_bytes_>:
 std::map<int, std::function<void(const std::string& type)> > goby::LogEntry::new_type_hook;
 std::map<int, std::function<void(const goby::Group& group)> > goby::LogEntry::new_group_hook;
 
+std::map<goby::LogFilter, std::function<void(const std::vector<unsigned char>& data)> >
+    goby::LogEntry::filter_hook;
+
 goby::uint<goby::LogEntry::group_bytes_>::type goby::LogEntry::group_index_(1);
 goby::uint<goby::LogEntry::type_bytes_>::type goby::LogEntry::type_index_(1);

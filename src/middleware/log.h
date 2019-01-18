@@ -53,6 +53,31 @@ template <> struct uint<8>
     typedef std::uint64_t type;
 };
 
+struct LogFilter
+{
+    int scheme;
+    std::string group;
+    std::string type;
+};
+
+inline bool operator<(const LogFilter& a, const LogFilter& b)
+{
+    if (a.scheme == b.scheme)
+    {
+        if (a.group == b.group)
+            return a.type < b.type;
+        else
+            return a.group < b.group;
+    }
+    else
+    {
+        return a.scheme < b.scheme;
+    }
+}
+
+//inline bool operator==(const LogFilter& a, const LogFilter& b)
+//{ return a.scheme == b.scheme && a.group == b.group && a.type == b.type; }
+
 class LogEntry
 {
   public:
@@ -66,6 +91,9 @@ class LogEntry
 
     static std::map<int, std::function<void(const std::string& type)> > new_type_hook;
     static std::map<int, std::function<void(const Group& group)> > new_group_hook;
+
+    static std::map<LogFilter, std::function<void(const std::vector<unsigned char>& data)> >
+        filter_hook;
 
   public:
     LogEntry(const std::vector<unsigned char>& data, int scheme, const std::string& type,
@@ -85,6 +113,8 @@ class LogEntry
         s->exceptions(std::ios::failbit | std::ios::badbit | std::ios::eofbit);
 
         uint<scheme_bytes_>::type scheme(0);
+
+        bool filter_matched = false;
         do
         {
             char next_char = s->peek();
@@ -179,6 +209,9 @@ class LogEntry
                          << "] to index: " << group_index << std::endl;
                 groups_[group_scheme].left.insert({group, group_index});
                 data_.clear();
+
+                if (new_group_hook[group_scheme])
+                    new_group_hook[group_scheme](goby::DynamicGroup(group));
             }
             else if (scheme == scheme_type_index_)
             {
@@ -191,6 +224,9 @@ class LogEntry
                          << "] to index: " << type_index << std::endl;
                 types_[type_scheme].left.insert({type, type_index});
                 data_.clear();
+
+                if (new_type_hook[type_scheme])
+                    new_type_hook[type_scheme](type);
             }
             else
             {
@@ -213,8 +249,19 @@ class LogEntry
                     glog.is(WARN) && glog << "No group entry in file for group index: "
                                           << group_index << std::endl;
                 group_ = goby::DynamicGroup(group);
+
+                LogFilter filt{scheme_, group, type_};
+                if (filter_hook.count(filt))
+                {
+                    filter_matched = true;
+                    filter_hook[filt](data_);
+                }
+                else
+                {
+                    filter_matched = false;
+                }
             }
-        } while (scheme == scheme_group_index_ || scheme == scheme_type_index_);
+        } while (scheme == scheme_group_index_ || scheme == scheme_type_index_ || filter_matched);
 
         s->exceptions(old_except_mask);
     }
@@ -276,6 +323,10 @@ class LogEntry
     {
         groups_.clear();
         types_.clear();
+        new_type_hook.clear();
+        new_group_hook.clear();
+        filter_hook.clear();
+
         group_index_ = 1;
         type_index_ = 1;
     }
