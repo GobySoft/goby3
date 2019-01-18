@@ -22,8 +22,13 @@
 
 #include "log.h"
 
-boost::bimap<std::string, goby::uint<goby::LogEntry::group_bytes_>::type> goby::LogEntry::groups_;
-boost::bimap<std::string, goby::uint<goby::LogEntry::type_bytes_>::type> goby::LogEntry::types_;
+std::map<int, boost::bimap<std::string, goby::uint<goby::LogEntry::group_bytes_>::type> >
+    goby::LogEntry::groups_;
+std::map<int, boost::bimap<std::string, goby::uint<goby::LogEntry::type_bytes_>::type> >
+    goby::LogEntry::types_;
+
+std::map<int, std::function<void(const std::string& type)> > goby::LogEntry::new_type_hook;
+std::map<int, std::function<void(const goby::Group& group)> > goby::LogEntry::new_group_hook;
 
 goby::uint<goby::LogEntry::group_bytes_>::type goby::LogEntry::group_index_(1);
 goby::uint<goby::LogEntry::type_bytes_>::type goby::LogEntry::type_index_(1);

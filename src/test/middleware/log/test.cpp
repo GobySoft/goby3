@@ -29,6 +29,8 @@ const goby::Group tempgroup("groups::temp");
 const goby::Group ctdgroup("groups::ctd");
 int nctd = 5;
 
+dccl::Codec codec;
+
 void read_log(int test)
 {
     goby::LogEntry::reset();
@@ -38,10 +40,15 @@ void read_log(int test)
     {
         goby::LogEntry entry;
         entry.parse(&in_log_file);
+        assert(test != 3 && test != 4 && test != 5 && test != 6);
         assert(entry.scheme() == goby::MarshallingScheme::PROTOBUF);
         assert(entry.group() == tempgroup);
         assert(entry.type() == TempSample::descriptor()->full_name());
-        assert(test != 3 && test != 4 && test != 5 && test != 6);
+
+        TempSample t;
+        const auto& data = entry.data();
+        t.ParseFromArray(&data[0], data.size());
+        assert(t.temperature() == 500);
     }
     catch (goby::Exception& e)
     {
@@ -63,9 +70,15 @@ void read_log(int test)
     {
         goby::LogEntry entry;
         entry.parse(&in_log_file);
+
         assert(entry.scheme() == goby::MarshallingScheme::DCCL);
         assert(entry.group() == ctdgroup);
         assert(entry.type() == CTDSample::descriptor()->full_name());
+
+        CTDSample ctd;
+        const auto& data = entry.data();
+        codec.decode(data.begin(), data.end(), &ctd);
+        assert(ctd.temperature() == i + 5);
     }
 
     // eof
@@ -165,9 +178,11 @@ void write_log(int test)
     for (int i = 0; i < nctd; ++i)
     {
         CTDSample ctd;
-        ctd.set_temperature(i * 100);
-        std::vector<unsigned char> data(ctd.ByteSize());
-        ctd.SerializeToArray(&data[0], data.size());
+        ctd.set_temperature(i + 5);
+
+        std::string encoded;
+        codec.encode(&encoded, ctd);
+        std::vector<unsigned char> data(encoded.begin(), encoded.end());
         goby::LogEntry entry(data, goby::MarshallingScheme::DCCL,
                              CTDSample::descriptor()->full_name(), ctdgroup);
         entry.serialize(&out_log_file);
@@ -179,6 +194,8 @@ int main(int argc, char* argv[])
 {
     goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
+
+    codec.load<CTDSample>();
 
     int ntests = 7;
 

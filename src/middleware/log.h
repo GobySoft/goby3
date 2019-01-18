@@ -64,6 +64,9 @@ class LogEntry
     static constexpr uint<scheme_bytes_>::type scheme_group_index_{0xFFFF};
     static constexpr uint<scheme_bytes_>::type scheme_type_index_{0xFFFE};
 
+    static std::map<int, std::function<void(const std::string& type)> > new_type_hook;
+    static std::map<int, std::function<void(const Group& group)> > new_group_hook;
+
   public:
     LogEntry(const std::vector<unsigned char>& data, int scheme, const std::string& type,
              const Group& group)
@@ -167,18 +170,26 @@ class LogEntry
 
             if (scheme == scheme_group_index_)
             {
-                std::string group(data_.begin(), data_.end());
-                glog.is(DEBUG1) && glog << "Mapping group [" << group
-                                        << "] to index: " << group_index << std::endl;
-                groups_.left.insert({group, group_index});
+                std::string group_scheme_str(data_.begin(), data_.begin() + scheme_bytes_);
+                auto group_scheme = string_to_netint<uint<scheme_bytes_>::type>(group_scheme_str);
+
+                std::string group(data_.begin() + scheme_bytes_, data_.end());
+                glog.is(DEBUG1) &&
+                    glog << "For scheme [" << group_scheme << "], mapping group [" << group
+                         << "] to index: " << group_index << std::endl;
+                groups_[group_scheme].left.insert({group, group_index});
                 data_.clear();
             }
             else if (scheme == scheme_type_index_)
             {
-                std::string type(data_.begin(), data_.end());
-                glog.is(DEBUG1) && glog << "Mapping type [" << type << "] to index: " << type_index
-                                        << std::endl;
-                types_.left.insert({type, type_index});
+                std::string type_scheme_str(data_.begin(), data_.begin() + scheme_bytes_);
+                auto type_scheme = string_to_netint<uint<scheme_bytes_>::type>(type_scheme_str);
+
+                std::string type(data_.begin() + scheme_bytes_, data_.end());
+                glog.is(DEBUG1) &&
+                    glog << "For scheme [" << type_scheme << "], mapping type [" << type
+                         << "] to index: " << type_index << std::endl;
+                types_[type_scheme].left.insert({type, type_index});
                 data_.clear();
             }
             else
@@ -186,8 +197,8 @@ class LogEntry
                 scheme_ = scheme;
 
                 std::string type = "_unknown" + std::to_string(type_index) + "_";
-                auto type_it = types_.right.find(type_index);
-                if (type_it != types_.right.end())
+                auto type_it = types_[scheme].right.find(type_index);
+                if (type_it != types_[scheme].right.end())
                     type = type_it->second;
                 else
                     glog.is(WARN) && glog << "No type entry in file for type index: " << type_index
@@ -195,8 +206,8 @@ class LogEntry
                 type_ = type;
 
                 std::string group = "_unknown" + std::to_string(group_index) + "_";
-                auto group_it = groups_.right.find(group_index);
-                if (group_it != groups_.right.end())
+                auto group_it = groups_[scheme].right.find(group_index);
+                if (group_it != groups_[scheme].right.end())
                     group = group_it->second;
                 else
                     glog.is(WARN) && glog << "No group entry in file for group index: "
@@ -219,21 +230,35 @@ class LogEntry
         std::string group(group_);
 
         // insert indexing entry if the first time we saw this group
-        if (groups_.left.count(group) == 0)
+        if (groups_[scheme_].left.count(group) == 0)
         {
             auto index = group_index_++;
-            groups_.left.insert({group, index});
-            _serialize(s, scheme_group_index_, index, 0, group.data(), group.size());
+            groups_[scheme_].left.insert({group, index});
+
+            std::string scheme_str(netint_to_string(scheme_));
+            std::string scheme_plus_group = scheme_str + group;
+            _serialize(s, scheme_group_index_, index, 0, scheme_plus_group.data(),
+                       scheme_plus_group.size());
+
+            if (new_group_hook[scheme_])
+                new_group_hook[scheme_](group_);
         }
-        if (types_.left.count(type_) == 0)
+        if (types_[scheme_].left.count(type_) == 0)
         {
             auto index = type_index_++;
-            types_.left.insert({type_, index});
-            _serialize(s, scheme_type_index_, 0, index, type_.data(), type_.size());
+            types_[scheme_].left.insert({type_, index});
+
+            std::string scheme_str(netint_to_string(scheme_));
+            std::string scheme_plus_type = scheme_str + type_;
+            _serialize(s, scheme_type_index_, 0, index, scheme_plus_type.data(),
+                       scheme_plus_type.size());
+
+            if (new_type_hook[scheme_])
+                new_type_hook[scheme_](type_);
         }
 
-        auto group_index = groups_.left.at(group);
-        auto type_index = types_.left.at(type_);
+        auto group_index = groups_[scheme_].left.at(group);
+        auto type_index = types_[scheme_].left.at(type_);
 
         // insert actual data
         _serialize(s, scheme_, group_index, type_index, reinterpret_cast<const char*>(&data_[0]),
@@ -316,14 +341,16 @@ class LogEntry
 
   private:
     std::vector<unsigned char> data_;
-    int scheme_;
+    uint<scheme_bytes_>::type scheme_;
     std::string type_;
     DynamicGroup group_;
 
-    static boost::bimap<std::string, uint<group_bytes_>::type> groups_;
+    // map (scheme -> map (group_name -> group_index)
+    static std::map<int, boost::bimap<std::string, uint<group_bytes_>::type> > groups_;
     static uint<group_bytes_>::type group_index_;
 
-    static boost::bimap<std::string, uint<type_bytes_>::type> types_;
+    // map (scheme -> map (group_name -> group_index)
+    static std::map<int, boost::bimap<std::string, uint<type_bytes_>::type> > types_;
     static uint<type_bytes_>::type type_index_;
 
     const std::string magic_{"GBY3"};
