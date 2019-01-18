@@ -55,7 +55,7 @@ template <> struct uint<8>
 
 class LogEntry
 {
-  private:
+  public:
     static constexpr int size_bytes_{4};
     static constexpr int scheme_bytes_{2};
     static constexpr int group_bytes_{2};
@@ -87,22 +87,27 @@ class LogEntry
             char next_char = s->peek();
             if (next_char != magic_[0])
             {
-                glog.is(WARN) && glog << "Next character [" << next_char
-                                      << "] is not the start of the expected magic word [" << magic_
-                                      << "]. Seeking until next magic word." << std::endl;
+                glog.is(WARN) &&
+                    glog << "Next byte [0x" << std::hex << (static_cast<int>(next_char) & 0xFF)
+                         << std::dec << "] is not the start of the expected magic word [" << magic_
+                         << "]. Seeking until next magic word." << std::endl;
             }
 
             std::string magic_read(magic_.size(), '\0');
             int discarded = 0;
 
-            while (magic_read != magic_)
-            {
-                while (s->peek() != magic_[0])
+            for (;;) {
+                s->read(&magic_read[0], magic_.size());
+                if (magic_read == magic_)
+                {
+                    break;
+                }
+                else
                 {
                     ++discarded;
-                    s->get();
+                    // rewind to read the next byte
+                    s->seekg(s->tellg() - std::ios::streamoff(magic_.size() - 1));
                 }
-                s->read(&magic_read[0], magic_.size());
             }
 
             if (discarded != 0)
@@ -128,19 +133,36 @@ class LogEntry
             auto group_index(read_one<uint<group_bytes_>::type>(s, &crc));
             auto type_index(read_one<uint<type_bytes_>::type>(s, &crc));
 
-            data_.resize(data_size);
-            s->read(reinterpret_cast<char*>(&data_[0]), data_size);
-            crc.process_bytes(&data_[0], data_.size());
-
-            auto calculated_crc = crc.checksum();
-
-            auto given_crc(read_one<uint<crc_bytes_>::type>(s));
-
-            if (calculated_crc != given_crc)
+            auto data_start_pos = s->tellg();
+            try
             {
-                data_.clear();
-                throw(goby::Exception("Invalid CRC on packet: given: " + std::to_string(given_crc) +
-                                      ", calculated: " + std::to_string(calculated_crc)));
+                data_.resize(data_size);
+                s->read(reinterpret_cast<char*>(&data_[0]), data_size);
+
+                crc.process_bytes(&data_[0], data_.size());
+
+                auto calculated_crc = crc.checksum();
+                auto given_crc(read_one<uint<crc_bytes_>::type>(s));
+
+                if (calculated_crc != given_crc)
+                {
+                    // return to where we started reading data as the size might have been corrupt
+                    s->seekg(data_start_pos);
+                    data_.clear();
+                    throw(goby::Exception("Invalid CRC on packet: given: " +
+                                          std::to_string(given_crc) + ", calculated: " +
+                                          std::to_string(calculated_crc)));
+                }
+            }
+            catch (std::ios_base::failure& e)
+            {
+                // clear EOF, etc.
+                s->clear();
+                // return to where data reading starting in case size was corrupted
+                s->seekg(data_start_pos);
+                throw(goby::Exception("Failed to read " + std::to_string(size) +
+                                      " bytes of data; seeking back to start of data read in hopes "
+                                      "of finding valid next message."));
             }
 
             if (scheme == scheme_group_index_)

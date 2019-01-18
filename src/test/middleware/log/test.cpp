@@ -41,12 +41,12 @@ void read_log(int test)
         assert(entry.scheme() == goby::MarshallingScheme::PROTOBUF);
         assert(entry.group() == tempgroup);
         assert(entry.type() == TempSample::descriptor()->full_name());
-        assert(test != 3 && test != 4);
+        assert(test != 3 && test != 4 && test != 5 && test != 6);
     }
     catch (goby::Exception& e)
     {
         std::cerr << e.what() << std::endl;
-        assert(test == 3 || test == 4);
+        assert(test == 3 || test == 4 || test == 5 || test == 6);
     }
 
     if (test == 4)
@@ -117,7 +117,7 @@ void write_log(int test)
         {
             // corrupt the previous entry
             auto pos = out_log_file.tellp();
-            out_log_file.seekp(pos - std::ios::streamoff(6));
+            out_log_file.seekp(pos - std::ios::streamoff(goby::LogEntry::crc_bytes_ + 2));
             out_log_file.put(0);
             out_log_file.seekp(pos);
             break;
@@ -131,6 +131,33 @@ void write_log(int test)
             out_log_file.put(0);
             out_log_file.seekp(pos);
             break;
+        }
+
+        case 5:
+        {
+            // corrupt the size field to make it larger than the file
+            auto pos = out_log_file.tellp();
+
+            out_log_file.seekp(pos - std::ios::streamoff(goby::LogEntry::crc_bytes_ + t.ByteSize() +
+                                                         goby::LogEntry::type_bytes_ +
+                                                         goby::LogEntry::group_bytes_ +
+                                                         goby::LogEntry::scheme_bytes_ +
+                                                         goby::LogEntry::size_bytes_ - 1));
+            out_log_file.put(0xFF);
+            out_log_file.seekp(pos);
+        }
+
+        case 6:
+        {
+            // corrupt the size field to make it just larger than the message
+            auto pos = out_log_file.tellp();
+
+            out_log_file.seekp(pos - std::ios::streamoff(goby::LogEntry::crc_bytes_ + t.ByteSize() +
+                                                         goby::LogEntry::type_bytes_ +
+                                                         goby::LogEntry::group_bytes_ +
+                                                         goby::LogEntry::scheme_bytes_ + 1));
+            out_log_file.put(0x14);
+            out_log_file.seekp(pos);
         }
     }
 
@@ -153,7 +180,7 @@ int main(int argc, char* argv[])
     goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
 
-    int ntests = 5;
+    int ntests = 7;
 
     for (int test = 0; test < ntests; ++test)
     {
