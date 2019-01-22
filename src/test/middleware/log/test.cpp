@@ -40,6 +40,7 @@ void add_new_protobuf_type(int scheme, const std::string& protobuf_type,
 void read_log(int test)
 {
     goby::LogEntry::reset();
+    dccl::DynamicProtobufManager::reset();
 
     goby::LogEntry::new_type_hook[goby::MarshallingScheme::DCCL] = [&](const std::string& type) {
         std::cout << "New type hook for DCCL: " << type << std::endl;
@@ -74,9 +75,12 @@ void read_log(int test)
         assert(entry.group() == tempgroup);
         assert(entry.type() == TempSample::descriptor()->full_name());
 
-        TempSample t;
+        auto temp_sample = dccl::DynamicProtobufManager::new_protobuf_message("TempSample");
+        assert(temp_sample);
+
         const auto& data = entry.data();
-        t.ParseFromArray(&data[0], data.size());
+        temp_sample->ParseFromArray(&data[0], data.size());
+        TempSample& t = dynamic_cast<TempSample&>(*temp_sample);
         assert(t.temperature() == 500);
     }
     catch (goby::Exception& e)
@@ -104,9 +108,12 @@ void read_log(int test)
         assert(entry.group() == ctdgroup);
         assert(entry.type() == CTDSample::descriptor()->full_name());
 
-        CTDSample ctd;
         const auto& data = entry.data();
-        codec.decode(data.begin(), data.end(), &ctd);
+        std::string data_str(data.begin(), data.end());
+        auto ctd_sample = codec.decode<std::unique_ptr<google::protobuf::Message> >(data_str);
+        assert(ctd_sample);
+
+        CTDSample& ctd = dynamic_cast<CTDSample&>(*ctd_sample);
         assert(ctd.temperature() == i + 5);
     }
 
