@@ -25,12 +25,13 @@
 
 #include "goby/common/time.h"
 #include "goby/middleware/log.h"
+#include "goby/middleware/protobuf/logger_config.pb.h"
 #include "goby/middleware/single-thread-application.h"
 
-#include "goby/middleware/protobuf/logger_config.pb.h"
+#include "dccl_logger_plugin.h"
+#include "protobuf_logger_plugin.h"
 
 using goby::glog;
-using namespace goby::common::logger;
 
 void signal_handler(int sig);
 
@@ -46,13 +47,24 @@ class Logger : public goby::SingleThreadApplication<protobuf::LoggerConfig>
           log_(log_file_path_.c_str(), std::ofstream::binary)
     {
         if (!log_.is_open())
-            glog.is(DIE) && glog << "Failed to open log in directory: " << cfg().log_dir()
-                                 << std::endl;
+            glog.is_die() && glog << "Failed to open log in directory: " << cfg().log_dir()
+                                  << std::endl;
 
         namespace sp = std::placeholders;
         interprocess().subscribe_regex(
             std::bind(&Logger::log, this, sp::_1, sp::_2, sp::_3, sp::_4),
             {goby::MarshallingScheme::ALL_SCHEMES}, cfg().type_regex(), cfg().group_regex());
+
+        for (const auto& lib : cfg().load_shared_library())
+        {
+            void* lib_handle = dlopen(lib.c_str(), RTLD_LAZY);
+            if (!lib_handle)
+                glog.is_die() && glog << "Failed to open library: " << lib << std::endl;
+            dl_handles_.push_back(lib_handle);
+        }
+
+        pb_plugin_.register_write_hooks(log_);
+        dccl_plugin_.register_write_hooks(log_);
     }
 
     ~Logger()
@@ -60,6 +72,8 @@ class Logger : public goby::SingleThreadApplication<protobuf::LoggerConfig>
         log_.close();
         // set read only
         chmod(log_file_path_.c_str(), S_IRUSR | S_IRGRP);
+
+        for (void* handle : dl_handles_) dlclose(handle);
     }
 
     void log(const std::vector<unsigned char>& data, int scheme, const std::string& type,
@@ -75,6 +89,11 @@ class Logger : public goby::SingleThreadApplication<protobuf::LoggerConfig>
   private:
     std::string log_file_path_;
     std::ofstream log_;
+
+    std::vector<void*> dl_handles_;
+
+    logger::ProtobufPlugin pb_plugin_;
+    logger::DCCLPlugin dccl_plugin_;
 };
 } // namespace goby
 
@@ -114,14 +133,10 @@ void signal_handler(int sig) { goby::Logger::do_quit = true; }
 void goby::Logger::log(const std::vector<unsigned char>& data, int scheme, const std::string& type,
                        const Group& group)
 {
-    glog.is(DEBUG1) && glog << "Received " << data.size()
-                            << " bytes to log to [scheme, type, group] = [" << scheme << ", "
-                            << type << ", " << group << "]" << std::endl;
+    glog.is_debug1() && glog << "Received " << data.size()
+                             << " bytes to log to [scheme, type, group] = [" << scheme << ", "
+                             << type << ", " << group << "]" << std::endl;
 
     LogEntry entry(data, scheme, type, group);
-
-    // TODO: add logger hook
-    // plugin.log(entry);
-
     entry.serialize(&log_);
 }

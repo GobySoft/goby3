@@ -40,8 +40,8 @@ int main()
         exit(1);
     }
 
-    google::protobuf::SimpleDescriptorDatabase* simple_database =
-        new google::protobuf::SimpleDescriptorDatabase;
+    boost::shared_ptr<google::protobuf::SimpleDescriptorDatabase> simple_database(
+        new google::protobuf::SimpleDescriptorDatabase);
     goby::util::DynamicProtobufManager::add_database(simple_database);
 
     {
@@ -100,7 +100,6 @@ int main()
 
         std::cout << "all tests passed" << std::endl;
     }
-    delete simple_database;
 
     goby::util::DynamicProtobufManager::protobuf_shutdown();
 

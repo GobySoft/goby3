@@ -12,4 +12,7 @@ message LoggerConfig
 
     optional string type_regex = 4 [default = ".*"];
     optional string group_regex = 5 [default = ".*"];
+
+    repeated string load_shared_library = 10;
+    
 }
