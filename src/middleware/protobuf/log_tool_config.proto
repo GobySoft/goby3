@@ -12,7 +12,6 @@ message LogToolConfig
     enum OutputFormat
     {
         DEBUG_TEXT = 1;
-        HDF5 = 2;
     }
 
     optional OutputFormat format = 30 [default = DEBUG_TEXT];

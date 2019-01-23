@@ -29,7 +29,9 @@
 
 #include "goby/common/exception.h"
 #include "goby/common/logger.h"
+
 #include "group.h"
+#include "serialize_parse.h"
 
 namespace goby
 {
@@ -81,6 +83,7 @@ inline bool operator<(const LogFilter& a, const LogFilter& b)
 class LogEntry
 {
   public:
+    static constexpr int version_bytes_{2};
     static constexpr int size_bytes_{4};
     static constexpr int scheme_bytes_{2};
     static constexpr int group_bytes_{2};
@@ -88,6 +91,11 @@ class LogEntry
     static constexpr int crc_bytes_{4};
     static constexpr uint<scheme_bytes_>::type scheme_group_index_{0xFFFF};
     static constexpr uint<scheme_bytes_>::type scheme_type_index_{0xFFFE};
+    static constexpr int current_version{2};
+
+    // 0 until version is read or written
+    static uint<version_bytes_>::type version_;
+    static constexpr decltype(version_) invalid_version{0};
 
     static std::map<int, std::function<void(const std::string& type)> > new_type_hook;
     static std::map<int, std::function<void(const Group& group)> > new_group_hook;
@@ -104,215 +112,13 @@ class LogEntry
 
     LogEntry() : group_("") {}
 
-    template <typename Stream> void parse(Stream* s)
-    {
-        using namespace goby::common::logger;
-        using goby::glog;
-
-        auto old_except_mask = s->exceptions();
-        s->exceptions(std::ios::failbit | std::ios::badbit | std::ios::eofbit);
-
-        uint<scheme_bytes_>::type scheme(0);
-
-        bool filter_matched = false;
-        do
-        {
-            char next_char = s->peek();
-            if (next_char != magic_[0])
-            {
-                glog.is(WARN) &&
-                    glog << "Next byte [0x" << std::hex << (static_cast<int>(next_char) & 0xFF)
-                         << std::dec << "] is not the start of the expected magic word [" << magic_
-                         << "]. Seeking until next magic word." << std::endl;
-            }
-
-            std::string magic_read(magic_.size(), '\0');
-            int discarded = 0;
-
-            for (;;) {
-                s->read(&magic_read[0], magic_.size());
-                if (magic_read == magic_)
-                {
-                    break;
-                }
-                else
-                {
-                    ++discarded;
-                    // rewind to read the next byte
-                    s->seekg(s->tellg() - std::ios::streamoff(magic_.size() - 1));
-                }
-            }
-
-            if (discarded != 0)
-                glog.is(WARN) && glog << "Found next magic word after skipping " << discarded
-                                      << " bytes" << std::endl;
-
-            boost::crc_32_type crc;
-            crc.process_bytes(&magic_read[0], magic_.size());
-
-            auto size(read_one<uint<size_bytes_>::type>(s, &crc));
-            auto fixed_field_size = scheme_bytes_ + group_bytes_ + type_bytes_ + crc_bytes_;
-
-            if (size < fixed_field_size)
-                throw(goby::Exception("Invalid size read: " + std::to_string(size) +
-                                      " as message must be at least " +
-                                      std::to_string(fixed_field_size) + " bytes long"));
-
-            auto data_size = size - fixed_field_size;
-            glog.is(DEBUG2) && glog << "Reading entry of " << size << " bytes (" << data_size
-                                    << " bytes data)" << std::endl;
-
-            scheme = read_one<uint<scheme_bytes_>::type>(s, &crc);
-            auto group_index(read_one<uint<group_bytes_>::type>(s, &crc));
-            auto type_index(read_one<uint<type_bytes_>::type>(s, &crc));
-
-            auto data_start_pos = s->tellg();
-            try
-            {
-                data_.resize(data_size);
-                s->read(reinterpret_cast<char*>(&data_[0]), data_size);
-
-                crc.process_bytes(&data_[0], data_.size());
-
-                auto calculated_crc = crc.checksum();
-                auto given_crc(read_one<uint<crc_bytes_>::type>(s));
-
-                if (calculated_crc != given_crc)
-                {
-                    // return to where we started reading data as the size might have been corrupt
-                    s->seekg(data_start_pos);
-                    data_.clear();
-                    throw(goby::Exception("Invalid CRC on packet: given: " +
-                                          std::to_string(given_crc) + ", calculated: " +
-                                          std::to_string(calculated_crc)));
-                }
-            }
-            catch (std::ios_base::failure& e)
-            {
-                // clear EOF, etc.
-                s->clear();
-                // return to where data reading starting in case size was corrupted
-                s->seekg(data_start_pos);
-                throw(goby::Exception("Failed to read " + std::to_string(size) +
-                                      " bytes of data; seeking back to start of data read in hopes "
-                                      "of finding valid next message."));
-            }
-
-            if (scheme == scheme_group_index_)
-            {
-                std::string group_scheme_str(data_.begin(), data_.begin() + scheme_bytes_);
-                auto group_scheme = string_to_netint<uint<scheme_bytes_>::type>(group_scheme_str);
-
-                std::string group(data_.begin() + scheme_bytes_, data_.end());
-                glog.is(DEBUG1) &&
-                    glog << "For scheme [" << group_scheme << "], mapping group [" << group
-                         << "] to index: " << group_index << std::endl;
-                groups_[group_scheme].left.insert({group, group_index});
-                data_.clear();
-
-                if (new_group_hook[group_scheme])
-                    new_group_hook[group_scheme](goby::DynamicGroup(group));
-            }
-            else if (scheme == scheme_type_index_)
-            {
-                std::string type_scheme_str(data_.begin(), data_.begin() + scheme_bytes_);
-                auto type_scheme = string_to_netint<uint<scheme_bytes_>::type>(type_scheme_str);
-
-                std::string type(data_.begin() + scheme_bytes_, data_.end());
-                glog.is(DEBUG1) &&
-                    glog << "For scheme [" << type_scheme << "], mapping type [" << type
-                         << "] to index: " << type_index << std::endl;
-                types_[type_scheme].left.insert({type, type_index});
-                data_.clear();
-
-                if (new_type_hook[type_scheme])
-                    new_type_hook[type_scheme](type);
-            }
-            else
-            {
-                scheme_ = scheme;
-
-                std::string type = "_unknown" + std::to_string(type_index) + "_";
-                auto type_it = types_[scheme].right.find(type_index);
-                if (type_it != types_[scheme].right.end())
-                    type = type_it->second;
-                else
-                    glog.is(WARN) && glog << "No type entry in file for type index: " << type_index
-                                          << std::endl;
-                type_ = type;
-
-                std::string group = "_unknown" + std::to_string(group_index) + "_";
-                auto group_it = groups_[scheme].right.find(group_index);
-                if (group_it != groups_[scheme].right.end())
-                    group = group_it->second;
-                else
-                    glog.is(WARN) && glog << "No group entry in file for group index: "
-                                          << group_index << std::endl;
-                group_ = goby::DynamicGroup(group);
-
-                LogFilter filt{scheme_, group, type_};
-                if (filter_hook.count(filt))
-                {
-                    filter_matched = true;
-                    filter_hook[filt](data_);
-                }
-                else
-                {
-                    filter_matched = false;
-                }
-            }
-        } while (scheme == scheme_group_index_ || scheme == scheme_type_index_ || filter_matched);
-
-        s->exceptions(old_except_mask);
-    }
+    void parse_version(std::istream* s);
+    void parse(std::istream* s);
 
     // [GBY3][size: 4][scheme: 2][group: 2][type: 2][data][crc32: 4]
     // if scheme == 0xFFFF what follows is not data, but the string value for the group index
     // if scheme == 0xFFFE what follows is not data, but the string value for the group index
-    template <typename Stream> void serialize(Stream* s) const
-    {
-        auto old_except_mask = s->exceptions();
-        s->exceptions(std::ios::failbit | std::ios::badbit | std::ios::eofbit);
-
-        std::string group(group_);
-
-        // insert indexing entry if the first time we saw this group
-        if (groups_[scheme_].left.count(group) == 0)
-        {
-            auto index = group_index_++;
-            groups_[scheme_].left.insert({group, index});
-
-            std::string scheme_str(netint_to_string(scheme_));
-            std::string scheme_plus_group = scheme_str + group;
-            _serialize(s, scheme_group_index_, index, 0, scheme_plus_group.data(),
-                       scheme_plus_group.size());
-
-            if (new_group_hook[scheme_])
-                new_group_hook[scheme_](group_);
-        }
-        if (types_[scheme_].left.count(type_) == 0)
-        {
-            auto index = type_index_++;
-            types_[scheme_].left.insert({type_, index});
-
-            std::string scheme_str(netint_to_string(scheme_));
-            std::string scheme_plus_type = scheme_str + type_;
-            _serialize(s, scheme_type_index_, 0, index, scheme_plus_type.data(),
-                       scheme_plus_type.size());
-
-            if (new_type_hook[scheme_])
-                new_type_hook[scheme_](type_);
-        }
-
-        auto group_index = groups_[scheme_].left.at(group);
-        auto type_index = types_[scheme_].left.at(type_);
-
-        // insert actual data
-        _serialize(s, scheme_, group_index, type_index, reinterpret_cast<const char*>(&data_[0]),
-                   data_.size());
-
-        s->exceptions(old_except_mask);
-    }
+    void serialize(std::ostream* s) const;
 
     const std::vector<unsigned char>& data() const { return data_; }
     int scheme() const { return scheme_; }
@@ -329,11 +135,11 @@ class LogEntry
 
         group_index_ = 1;
         type_index_ = 1;
+        version_ = invalid_version;
     }
 
   private:
-    template <typename Stream>
-    void _serialize(Stream* s, uint<scheme_bytes_>::type scheme,
+    void _serialize(std::ostream* s, uint<scheme_bytes_>::type scheme,
                     uint<group_bytes_>::type group_index, uint<type_bytes_>::type type_index,
                     const char* data, int data_size) const
     {
@@ -358,8 +164,7 @@ class LogEntry
         s->write(cs_str.data(), cs_str.size());
     }
 
-    template <typename Unsigned, typename Stream>
-    Unsigned read_one(Stream* s, boost::crc_32_type* crc = 0)
+    template <typename Unsigned> Unsigned read_one(std::istream* s, boost::crc_32_type* crc = 0)
     {
         auto size = std::numeric_limits<Unsigned>::digits / 8;
         std::string str(size, '\0');

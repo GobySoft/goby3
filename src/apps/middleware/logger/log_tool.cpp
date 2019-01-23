@@ -84,23 +84,18 @@ goby::LogTool::LogTool()
             log_entry.parse(&f_in_);
             try
             {
-                if (log_entry.scheme() == goby::MarshallingScheme::DCCL) {}
-                else if (log_entry.scheme() == goby::MarshallingScheme::PROTOBUF)
+                auto plugin = plugins_.find(log_entry.scheme());
+                if (plugin == plugins_.end())
+                    throw(logger::LogException("No plugin available for scheme: " +
+                                               std::to_string(log_entry.scheme())));
+
+                switch (app_cfg().format())
                 {
-                    auto desc = dccl::DynamicProtobufManager::find_descriptor(log_entry.type());
-
-                    if (!desc)
-                        throw(logger::LogException(
-                            "Failed to find Descriptor for Protobuf message of type: " +
-                            log_entry.type()));
-
-                    auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                        std::unique_ptr<google::protobuf::Message> >(desc);
-
-                    msg->ParseFromArray(&log_entry.data()[0], log_entry.data().size());
-
-                    f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
-                           << log_entry.type() << " | " << msg->ShortDebugString() << std::endl;
+                    case protobuf::LogToolConfig::DEBUG_TEXT:
+                        f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
+                               << log_entry.type() << " | "
+                               << plugin->second->debug_text_message(log_entry) << std::endl;
+                        break;
                 }
             }
 

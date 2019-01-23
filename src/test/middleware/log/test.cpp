@@ -187,7 +187,7 @@ void write_log(int test)
         {
             // corrupt the start (index)
             auto pos = out_log_file.tellp();
-            out_log_file.seekp(7, out_log_file.beg);
+            out_log_file.seekp(9, out_log_file.beg);
             out_log_file.put(0);
             out_log_file.seekp(pos);
             break;
