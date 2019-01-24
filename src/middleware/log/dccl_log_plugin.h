@@ -19,45 +19,22 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCL_LOGGER_20190123_H
-#define DCCL_LOGGER_20190123_H
+#ifndef DCCL_LOG_20190123_H
+#define DCCL_LOG_20190123_H
 
 #include <dccl/codec.h>
 
-#include "protobuf_logger_plugin.h"
+#include "protobuf_log_plugin.h"
 
 namespace goby
 {
-namespace logger
+namespace log
 {
-class DCCLPlugin : public ProtobufPluginBase
+class DCCLPlugin : public ProtobufPluginBase<goby::MarshallingScheme::DCCL>
 {
-  public:
-    void register_write_hooks(std::ofstream& out_log_file) override
-    {
-        ProtobufPluginBase::register_write_hooks<goby::MarshallingScheme::DCCL>(out_log_file);
-    }
-
-  private:
-    void parse_message(goby::LogEntry& log_entry, google::protobuf::Message* msg) override
-    {
-        auto desc = msg->GetDescriptor();
-        if (loaded_descriptors_.count(desc) == 0)
-        {
-            codec_.load(desc);
-            loaded_descriptors_.insert(desc);
-        }
-
-        const auto& data = log_entry.data();
-        codec_.decode(data.begin(), data.end(), msg);
-    }
-
-  private:
-    dccl::Codec codec_;
-    std::set<const google::protobuf::Descriptor*> loaded_descriptors_;
 };
 
-} // namespace logger
+} // namespace log
 } // namespace goby
 
 #endif

@@ -19,16 +19,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LOGGER_PLUGIN_20190123_H
-#define LOGGER_PLUGIN_20190123_H
+#ifndef LOG_PLUGIN_20190123_H
+#define LOG_PLUGIN_20190123_H
 
-#include "goby/middleware/log.h"
+#include "goby/middleware/log/log_entry.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
 #include "goby/middleware/serialize_parse.h"
 
 namespace goby
 {
-namespace logger
+namespace log
 {
 class LogException : public std::runtime_error
 {
@@ -44,11 +44,11 @@ class LogPlugin
 
     virtual std::string debug_text_message(goby::LogEntry& log_entry)
     {
-        throw(logger::LogException("DEBUG_TEXT is not supported by the scheme's plugin"));
+        throw(log::LogException("DEBUG_TEXT is not supported by the scheme's plugin"));
     }
 };
 
-} // namespace logger
+} // namespace log
 } // namespace goby
 
 #endif

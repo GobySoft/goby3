@@ -24,8 +24,8 @@
 #include "goby/middleware/log.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
 
-#include "dccl_logger_plugin.h"
-#include "protobuf_logger_plugin.h"
+#include "goby/middleware/log/dccl_log_plugin.h"
+#include "goby/middleware/log/protobuf_log_plugin.h"
 
 using goby::glog;
 
@@ -49,7 +49,7 @@ class LogTool : public goby::common::ApplicationBase3<protobuf::LogToolConfig>
     std::vector<void*> dl_handles_;
 
     // scheme to plugin
-    std::map<int, std::unique_ptr<logger::LogPlugin> > plugins_;
+    std::map<int, std::unique_ptr<log::LogPlugin> > plugins_;
 
     std::ifstream f_in_;
     std::ofstream f_out_;
@@ -71,8 +71,8 @@ goby::LogTool::LogTool()
         dl_handles_.push_back(lib_handle);
     }
 
-    plugins_[goby::MarshallingScheme::PROTOBUF].reset(new logger::ProtobufPlugin);
-    plugins_[goby::MarshallingScheme::DCCL].reset(new logger::DCCLPlugin);
+    plugins_[goby::MarshallingScheme::PROTOBUF].reset(new log::ProtobufPlugin);
+    plugins_[goby::MarshallingScheme::DCCL].reset(new log::DCCLPlugin);
 
     for (auto& p : plugins_) p.second->register_read_hooks(f_in_);
 
@@ -86,8 +86,8 @@ goby::LogTool::LogTool()
             {
                 auto plugin = plugins_.find(log_entry.scheme());
                 if (plugin == plugins_.end())
-                    throw(logger::LogException("No plugin available for scheme: " +
-                                               std::to_string(log_entry.scheme())));
+                    throw(log::LogException("No plugin available for scheme: " +
+                                            std::to_string(log_entry.scheme())));
 
                 switch (app_cfg().format())
                 {
@@ -99,7 +99,7 @@ goby::LogTool::LogTool()
                 }
             }
 
-            catch (logger::LogException& e)
+            catch (log::LogException& e)
             {
                 glog.is_warn() && glog << "Failed to parse message (scheme: " << log_entry.scheme()
                                        << ", group: " << log_entry.group()

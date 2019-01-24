@@ -21,6 +21,8 @@
 
 #include "goby/common/logger.h"
 #include "goby/middleware/log.h"
+#include "goby/middleware/log/dccl_log_plugin.h"
+#include "goby/middleware/log/protobuf_log_plugin.h"
 #include "goby/middleware/serialize_parse.h"
 
 #include "test.pb.h"
@@ -30,12 +32,8 @@ constexpr goby::Group ctdgroup("groups::ctd");
 int nctd = 5;
 
 dccl::Codec codec;
-std::set<const google::protobuf::FileDescriptor*> written_file_desc_;
-
-constexpr goby::Group file_desc_group("goby::logger::ProtobufFileDescriptor");
-
-void add_new_protobuf_type(int scheme, const std::string& protobuf_type,
-                           std::ofstream& out_log_file);
+goby::log::ProtobufPlugin pb_plugin;
+goby::log::DCCLPlugin dccl_plugin;
 
 void read_log(int test)
 {
@@ -52,20 +50,10 @@ void read_log(int test)
             assert(type == "TempSample" || type == "google.protobuf.FileDescriptorProto");
         };
 
-    goby::LogEntry::filter_hook[{
-        static_cast<int>(goby::MarshallingScheme::PROTOBUF),
-        static_cast<std::string>(file_desc_group),
-        google::protobuf::FileDescriptorProto::descriptor()->full_name()}] =
-        [](const std::vector<unsigned char>& data) {
-            std::cout << "FileDescProto hook called with " << data.size() << " bytes of data"
-                      << std::endl;
-            google::protobuf::FileDescriptorProto file_desc_proto;
-            file_desc_proto.ParseFromArray(&data[0], data.size());
-            std::cout << "Adding: " << file_desc_proto.name() << std::endl;
-            dccl::DynamicProtobufManager::add_protobuf_file(file_desc_proto);
-        };
-
     std::ifstream in_log_file("/tmp/goby3_test_log.goby");
+    pb_plugin.register_read_hooks(in_log_file);
+    dccl_plugin.register_read_hooks(in_log_file);
+
     try
     {
         goby::LogEntry entry;
@@ -75,11 +63,8 @@ void read_log(int test)
         assert(entry.group() == tempgroup);
         assert(entry.type() == TempSample::descriptor()->full_name());
 
-        auto temp_sample = dccl::DynamicProtobufManager::new_protobuf_message("TempSample");
+        auto temp_sample = pb_plugin.parse_message(entry);
         assert(temp_sample);
-
-        const auto& data = entry.data();
-        temp_sample->ParseFromArray(&data[0], data.size());
         TempSample& t = dynamic_cast<TempSample&>(*temp_sample);
         assert(t.temperature() == 500);
     }
@@ -134,18 +119,9 @@ void read_log(int test)
 void write_log(int test)
 {
     goby::LogEntry::reset();
-    written_file_desc_.clear();
-
     std::ofstream out_log_file("/tmp/goby3_test_log.goby");
-
-    goby::LogEntry::new_type_hook[goby::MarshallingScheme::DCCL] = [&](const std::string& type) {
-        add_new_protobuf_type(goby::MarshallingScheme::DCCL, type, out_log_file);
-    };
-
-    goby::LogEntry::new_type_hook[goby::MarshallingScheme::PROTOBUF] =
-        [&](const std::string& type) {
-            add_new_protobuf_type(goby::MarshallingScheme::PROTOBUF, type, out_log_file);
-        };
+    pb_plugin.register_write_hooks(out_log_file);
+    dccl_plugin.register_write_hooks(out_log_file);
 
     switch (test)
     {
@@ -237,51 +213,6 @@ void write_log(int test)
                              CTDSample::descriptor()->full_name(), ctdgroup);
         entry.serialize(&out_log_file);
         ctds.push_back(ctd);
-    }
-}
-
-void insert_protobuf_file_desc(const google::protobuf::FileDescriptor* file_desc,
-                               std::ofstream& out_log_file)
-{
-    for (int i = 0, n = file_desc->dependency_count(); i < n; ++i)
-        insert_protobuf_file_desc(file_desc->dependency(i), out_log_file);
-
-    if (written_file_desc_.count(file_desc) == 0)
-    {
-        std::cout << "Inserting file descriptor proto for: " << file_desc->name() << " : "
-                  << file_desc << std::endl;
-        written_file_desc_.insert(file_desc);
-
-        google::protobuf::FileDescriptorProto file_desc_proto;
-        file_desc->CopyTo(&file_desc_proto);
-        std::vector<unsigned char> data(file_desc_proto.ByteSize());
-        file_desc_proto.SerializeToArray(&data[0], data.size());
-        goby::LogEntry entry(data, goby::MarshallingScheme::PROTOBUF,
-                             google::protobuf::FileDescriptorProto::descriptor()->full_name(),
-                             file_desc_group);
-        entry.serialize(&out_log_file);
-    }
-    else
-    {
-        std::cout << "Skipping already written file descriptor proto for: " << file_desc->name()
-                  << std::endl;
-    }
-}
-
-void add_new_protobuf_type(int scheme, const std::string& protobuf_type,
-                           std::ofstream& out_log_file)
-{
-    std::cout << "Hook called for scheme: " << scheme << " and type " << protobuf_type << std::endl;
-
-    auto desc = dccl::DynamicProtobufManager::find_descriptor(protobuf_type);
-    if (!desc)
-    {
-        goby::glog.is_warn() && goby::glog << "Unknown protobuf type: " << protobuf_type
-                                           << std::endl;
-    }
-    else
-    {
-        insert_protobuf_file_desc(desc->file(), out_log_file);
     }
 }
 

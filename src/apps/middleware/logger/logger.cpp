@@ -28,8 +28,8 @@
 #include "goby/middleware/protobuf/logger_config.pb.h"
 #include "goby/middleware/single-thread-application.h"
 
-#include "dccl_logger_plugin.h"
-#include "protobuf_logger_plugin.h"
+#include "goby/middleware/log/dccl_log_plugin.h"
+#include "goby/middleware/log/protobuf_log_plugin.h"
 
 using goby::glog;
 
@@ -92,8 +92,8 @@ class Logger : public goby::SingleThreadApplication<protobuf::LoggerConfig>
 
     std::vector<void*> dl_handles_;
 
-    logger::ProtobufPlugin pb_plugin_;
-    logger::DCCLPlugin dccl_plugin_;
+    log::ProtobufPlugin pb_plugin_;
+    log::DCCLPlugin dccl_plugin_;
 };
 } // namespace goby
 
