@@ -3,3 +3,4 @@ target_link_libraries(goby_logger goby_middleware)
 
 add_executable(goby_log_tool log_tool.cpp protobuf_logger_plugin.cpp)
 target_link_libraries(goby_log_tool goby_middleware)
+

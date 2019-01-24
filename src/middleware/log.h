@@ -83,7 +83,7 @@ inline bool operator<(const LogFilter& a, const LogFilter& b)
 class LogEntry
 {
   public:
-    static constexpr int version_bytes_{2};
+    static constexpr int magic_bytes_{4};
     static constexpr int size_bytes_{4};
     static constexpr int scheme_bytes_{2};
     static constexpr int group_bytes_{2};
@@ -91,9 +91,10 @@ class LogEntry
     static constexpr int crc_bytes_{4};
     static constexpr uint<scheme_bytes_>::type scheme_group_index_{0xFFFF};
     static constexpr uint<scheme_bytes_>::type scheme_type_index_{0xFFFE};
-    static constexpr int current_version{2};
 
-    // 0 until version is read or written
+    static constexpr int version_bytes_{4};
+    static constexpr int current_version{2};
+    // "invalid_version" until version is read or written
     static uint<version_bytes_>::type version_;
     static constexpr decltype(version_) invalid_version{0};
 

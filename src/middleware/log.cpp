@@ -45,12 +45,21 @@ void goby::LogEntry::parse_version(std::istream* s)
 
     // Original file format didn't have a version, so "GB" would be the version bytes
     // (first two characters of the magic word)
-    if (version_ == 0x4742)
+    if (version_ == string_to_netint<decltype(version_)>(magic_))
     {
         version_ = 1;
         // rewind
         s->seekg(s->tellg() - std::ios::streamoff(version_bytes_));
     }
+    else if (version_ > current_version)
+    {
+        glog.is_warn() && glog << "Version 0x" << std::hex << version_
+                               << " is invalid. Will try to read file using current version ("
+                               << std::dec << current_version << ")" << std::endl;
+        version_ = current_version;
+    }
+
+    glog.is_verbose() && glog << "File version is " << version_ << std::endl;
 }
 
 void goby::LogEntry::parse(std::istream* s)

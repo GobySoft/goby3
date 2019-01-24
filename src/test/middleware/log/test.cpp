@@ -185,9 +185,12 @@ void write_log(int test)
 
         case 4:
         {
-            // corrupt the start (index)
+            // corrupt the start (index) data
             auto pos = out_log_file.tellp();
-            out_log_file.seekp(9, out_log_file.beg);
+            out_log_file.seekp(goby::LogEntry::version_bytes_ + goby::LogEntry::magic_bytes_ +
+                                   goby::LogEntry::size_bytes_ + goby::LogEntry::scheme_bytes_ +
+                                   goby::LogEntry::group_bytes_ - 1,
+                               out_log_file.beg);
             out_log_file.put(0);
             out_log_file.seekp(pos);
             break;
@@ -273,8 +276,8 @@ void add_new_protobuf_type(int scheme, const std::string& protobuf_type,
     auto desc = dccl::DynamicProtobufManager::find_descriptor(protobuf_type);
     if (!desc)
     {
-        goby::glog.is_warn() &&
-            goby::glog << "Unknown protobuf type: " << protobuf_type << std::endl;
+        goby::glog.is_warn() && goby::glog << "Unknown protobuf type: " << protobuf_type
+                                           << std::endl;
     }
     else
     {
