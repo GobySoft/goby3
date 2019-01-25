@@ -43,10 +43,14 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
   public:
     std::string debug_text_message(goby::LogEntry& log_entry) override
     {
-        auto msg = parse_message(log_entry);
+        auto msgs = parse_message(log_entry);
 
         std::stringstream ss;
-        ss << msg->ShortDebugString();
+        for (typename decltype(msgs)::size_type i = 0, n = msgs.size(); i < n; ++i) {
+            if (n > 1)
+                ss << "[" << i << "]";
+            ss << msgs[i]->ShortDebugString();
+        }
         return ss.str();
     }
 
@@ -71,30 +75,37 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
         };
     }
 
-    std::shared_ptr<google::protobuf::Message> parse_message(goby::LogEntry& log_entry)
+    std::vector<std::shared_ptr<google::protobuf::Message> >
+    parse_message(goby::LogEntry& log_entry)
     {
-        auto desc = dccl::DynamicProtobufManager::find_descriptor(log_entry.type());
-
-        if (!desc)
-            throw(log::LogException("Failed to find Descriptor for Protobuf message of type: " +
-                                    log_entry.type()));
-
-        auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
-            std::shared_ptr<google::protobuf::Message> >(desc);
-
-        if (!msg)
-            throw(log::LogException("Failed to create Protobuf message of type: " +
-                                    desc->full_name()));
+        std::vector<std::shared_ptr<google::protobuf::Message> > msgs;
 
         const auto& data = log_entry.data();
-        auto bytes_begin = data.begin(), bytes_end = data.end();
+        auto bytes_begin = data.begin(), bytes_end = data.end(), actual_end = data.begin();
 
-        decltype(bytes_begin) unused_actual_end;
+        while (actual_end != bytes_end) {
+            auto desc = dccl::DynamicProtobufManager::find_descriptor(log_entry.type());
 
-        SerializerParserHelper<google::protobuf::Message, scheme>::parse(
-            bytes_begin, bytes_end, unused_actual_end, msg.get());
+            if (!desc)
+                throw(log::LogException("Failed to find Descriptor for Protobuf message of type: " +
+                                        log_entry.type()));
 
-        return msg;
+            auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
+                std::shared_ptr<google::protobuf::Message> >(desc);
+
+            if (!msg)
+                throw(log::LogException("Failed to create Protobuf message of type: " +
+                                        desc->full_name()));
+
+            SerializerParserHelper<google::protobuf::Message, scheme>::parse(bytes_begin, bytes_end,
+                                                                             actual_end, msg.get());
+
+            msgs.push_back(msg);
+
+            bytes_begin = actual_end;
+        }
+
+        return msgs;
     }
 
   private:

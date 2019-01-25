@@ -29,7 +29,7 @@
 
 constexpr goby::Group tempgroup("groups::temp");
 constexpr goby::Group ctdgroup("groups::ctd");
-int nctd = 5;
+int nctd = 6;
 
 dccl::Codec codec;
 goby::log::ProtobufPlugin pb_plugin;
@@ -63,9 +63,9 @@ void read_log(int test)
         assert(entry.group() == tempgroup);
         assert(entry.type() == TempSample::descriptor()->full_name());
 
-        auto temp_sample = pb_plugin.parse_message(entry);
-        assert(temp_sample);
-        TempSample& t = dynamic_cast<TempSample&>(*temp_sample);
+        auto temp_samples = pb_plugin.parse_message(entry);
+        assert(temp_samples.size() == 1 && temp_samples[0]);
+        TempSample& t = dynamic_cast<TempSample&>(*temp_samples[0]);
         assert(t.temperature() == 500);
     }
     catch (goby::Exception& e)
@@ -84,8 +84,7 @@ void read_log(int test)
         assert(entry.type() == TempSample::descriptor()->full_name());
     }
 
-    for (int i = 0; i < nctd; ++i)
-    {
+    for (int i = 0; i < nctd / 2; ++i) {
         goby::LogEntry entry;
         entry.parse(&in_log_file);
 
@@ -93,13 +92,13 @@ void read_log(int test)
         assert(entry.group() == ctdgroup);
         assert(entry.type() == CTDSample::descriptor()->full_name());
 
-        const auto& data = entry.data();
-        std::string data_str(data.begin(), data.end());
-        auto ctd_sample = codec.decode<std::unique_ptr<google::protobuf::Message> >(data_str);
-        assert(ctd_sample);
+        auto ctd_samples = dccl_plugin.parse_message(entry);
+        assert(ctd_samples.size() == 2 && ctd_samples[0] && ctd_samples[1]);
 
-        CTDSample& ctd = dynamic_cast<CTDSample&>(*ctd_sample);
-        assert(ctd.temperature() == i + 5);
+        CTDSample& ctd1 = dynamic_cast<CTDSample&>(*ctd_samples[0]);
+        CTDSample& ctd2 = dynamic_cast<CTDSample&>(*ctd_samples[1]);
+        assert(ctd1.temperature() == i * 2 + 5);
+        assert(ctd2.temperature() == (i * 2 + 1) + 5);
     }
 
     // eof
@@ -201,18 +200,24 @@ void write_log(int test)
     }
 
     std::vector<CTDSample> ctds;
-    for (int i = 0; i < nctd; ++i)
-    {
-        CTDSample ctd;
-        ctd.set_temperature(i + 5);
+    for (int i = 0; i < nctd; i += 2) {
+        CTDSample ctd1;
+        ctd1.set_temperature(i + 5);
+        CTDSample ctd2;
+        ctd2.set_temperature(i + 1 + 5);
 
-        std::string encoded;
-        codec.encode(&encoded, ctd);
+        std::string encoded1, encoded2;
+        codec.encode(&encoded1, ctd1);
+        codec.encode(&encoded2, ctd2);
+
+        std::string encoded = encoded1 + encoded2;
+
         std::vector<unsigned char> data(encoded.begin(), encoded.end());
         goby::LogEntry entry(data, goby::MarshallingScheme::DCCL,
                              CTDSample::descriptor()->full_name(), ctdgroup);
         entry.serialize(&out_log_file);
-        ctds.push_back(ctd);
+        ctds.push_back(ctd1);
+        ctds.push_back(ctd2);
     }
 }
 
