@@ -111,6 +111,12 @@ goby::LogTool::LogTool()
                        << " bytes. Reason: " << e.what() << std::endl;
             }
         }
+        catch (log::LogException& e)
+        {
+            glog.is_warn() &&
+                glog << "Exception processing input log (will attempt to continue): " << e.what()
+                     << std::endl;
+        }
         catch (std::exception& e)
         {
             if (!f_in_.eof())

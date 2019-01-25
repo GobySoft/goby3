@@ -119,9 +119,9 @@ void goby::LogEntry::parse(std::istream* s)
         auto fixed_field_size = scheme_bytes_ + group_bytes_ + type_bytes_ + crc_bytes_;
 
         if (size < fixed_field_size)
-            throw(goby::Exception("Invalid size read: " + std::to_string(size) +
-                                  " as message must be at least " +
-                                  std::to_string(fixed_field_size) + " bytes long"));
+            throw(log::LogException("Invalid size read: " + std::to_string(size) +
+                                    " as message must be at least " +
+                                    std::to_string(fixed_field_size) + " bytes long"));
 
         auto data_size = size - fixed_field_size;
         glog.is(DEBUG2) &&
@@ -148,8 +148,9 @@ void goby::LogEntry::parse(std::istream* s)
                 // return to where we started reading data as the size might have been corrupt
                 s->seekg(data_start_pos);
                 data_.clear();
-                throw(goby::Exception("Invalid CRC on packet: given: " + std::to_string(given_crc) +
-                                      ", calculated: " + std::to_string(calculated_crc)));
+                throw(log::LogException("Invalid CRC on packet: given: " +
+                                        std::to_string(given_crc) + ", calculated: " +
+                                        std::to_string(calculated_crc)));
             }
         }
         catch (std::ios_base::failure& e)
@@ -158,9 +159,9 @@ void goby::LogEntry::parse(std::istream* s)
             s->clear();
             // return to where data reading starting in case size was corrupted
             s->seekg(data_start_pos);
-            throw(goby::Exception("Failed to read " + std::to_string(size) +
-                                  " bytes of data; seeking back to start of data read in hopes "
-                                  "of finding valid next message."));
+            throw(log::LogException("Failed to read " + std::to_string(size) +
+                                    " bytes of data; seeking back to start of data read in hopes "
+                                    "of finding valid next message."));
         }
 
         if (scheme == scheme_group_index_)

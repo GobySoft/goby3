@@ -35,6 +35,15 @@
 
 namespace goby
 {
+namespace log
+{
+class LogException : public std::runtime_error
+{
+  public:
+    LogException(const std::string& s) : std::runtime_error(s){};
+};
+}
+
 template <int Bytes> struct uint
 {
 };

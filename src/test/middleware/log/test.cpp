@@ -68,7 +68,7 @@ void read_log(int test)
         TempSample& t = dynamic_cast<TempSample&>(*temp_samples[0]);
         assert(t.temperature() == 500);
     }
-    catch (goby::Exception& e)
+    catch (goby::log::LogException& e)
     {
         std::cerr << e.what() << std::endl;
         assert(test == 3 || test == 4 || test == 5 || test == 6);
