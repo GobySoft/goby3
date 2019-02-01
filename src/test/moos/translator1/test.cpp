@@ -25,6 +25,7 @@
 #include "goby/common/logger.h"
 #include "goby/moos/moos_translator.h"
 #include "goby/util/binary.h"
+#include "goby/util/sci.h"
 #include "test.pb.h"
 
 using namespace goby::moos;
@@ -301,6 +302,31 @@ int main(int argc, char* argv[])
 
     moos_msgs = translator.protobuf_to_moos(*report_out);
 
+    double expected_lat = 0, expected_lon = 0;
+    geodesy.UTM2LatLong(report.x(), report.y(), expected_lat, expected_lon);
+    const int LAT_INT_DIGITS = 2;
+    const int LON_INT_DIGITS = 3;
+    expected_lat = goby::util::unbiased_round(expected_lat, std::numeric_limits<double>::digits10 -
+                                                                LAT_INT_DIGITS - 1);
+    expected_lon = goby::util::unbiased_round(expected_lon, std::numeric_limits<double>::digits10 -
+                                                                LON_INT_DIGITS - 1);
+
+    std::stringstream expected_lat_ss, expected_lon_ss;
+    expected_lat_ss << std::setprecision(std::numeric_limits<double>::digits10) << expected_lat;
+    expected_lon_ss << std::setprecision(std::numeric_limits<double>::digits10) << expected_lon;
+    boost::format expected_lat_fmt("%1%");
+    boost::format expected_lon_fmt("%1%");
+    std::string expected_lat_fmt_str =
+        (expected_lat_fmt %
+         boost::io::group(std::setprecision(std::numeric_limits<double>::digits10), expected_lat))
+            .str();
+    std::string expected_lon_fmt_str =
+        (expected_lon_fmt %
+         boost::io::group(std::setprecision(std::numeric_limits<double>::digits10), expected_lon))
+            .str();
+    std::string expected_lat_key_values_str = expected_lat_ss.str();
+    std::string expected_lon_key_values_str = expected_lon_ss.str();
+
     for (std::multimap<std::string, CMOOSMsg>::const_iterator it = moos_msgs.begin(),
                                                               n = moos_msgs.end();
          it != n; ++it)
@@ -308,15 +334,25 @@ int main(int argc, char* argv[])
         goby::glog << "Variable: " << it->first << "\n"
                    << "Value: " << it->second.GetString() << std::endl;
 
+        goby::glog << "Expected lat (FORMAT): " << expected_lat_fmt_str << std::endl;
+        goby::glog << "Expected lon (FORMAT): " << expected_lon_fmt_str << std::endl;
+        goby::glog << "Expected lat (KEY_VALUES): " << expected_lat_key_values_str << std::endl;
+        goby::glog << "Expected lon (KEY_VALUES): " << expected_lon_key_values_str << std::endl;
+
         if (it->first == "NODE_REPORT_FORMAT")
             assert(it->second.GetString() ==
-                   "NAME=unicorn,X=550,Y=1023.5,HEADING=240,REPEAT={};LAT=42.509107611869;LON=10."
-                   "80695580804;X+Y=1573.5,X-Y=-473.5");
+                   std::string("NAME=unicorn,X=550,Y=1023.5,HEADING=240,REPEAT={};LAT=") +
+                       expected_lat_fmt_str + ";LON=" + expected_lon_fmt_str +
+                       ";X+Y=1573.5,X-Y=-473.5");
         else if (it->first == "NODE_REPORT_KEY_VALUE")
             assert(it->second.GetString() ==
-                   "Name=unicorn,x=550,y=1023.5,heading=240,utm_y2lat(y)=42.509107611869,utm_x2lon("
-                   "x)=10.80695580804,name2modem_id(Name)=3,name2modem_id+modem_id2type+to_upper("
-                   "Name)=AUV,add(x)=1573.5,subtract(x)=-473.5");
+                   std::string("Name=unicorn,x=550,y=1023.5,heading=240,utm_y2lat(y)=") +
+                       expected_lat_key_values_str +
+                       ",utm_x2lon("
+                       "x)=" +
+                       expected_lon_key_values_str +
+                       ",name2modem_id(Name)=3,name2modem_id+modem_id2type+to_upper("
+                       "Name)=AUV,add(x)=1573.5,subtract(x)=-473.5");
     }
 
     std::string sub_message_format_str = "em.val=%17:1%";
