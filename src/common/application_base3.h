@@ -150,7 +150,16 @@ template <typename Config> goby::common::ApplicationBase3<Config>::ApplicationBa
     {
         using namespace boost::posix_time;
 
-        boost::format file_format(app3_base_configuration_.glog_config().file_log(i).file_name());
+        const auto& file_format_str =
+            app3_base_configuration_.glog_config().file_log(i).file_name();
+        boost::format file_format(file_format_str);
+
+        if (file_format_str.find("%1") == std::string::npos)
+            glog.is(DIE) &&
+                glog << "file_name string must contain \"%1%\" which is expanded to the current "
+                        "application start time (e.g. 20190201T184925). Erroneous file_name is: "
+                     << file_format_str << std::endl;
+
         file_format.exceptions(boost::io::all_error_bits ^
                                (boost::io::too_many_args_bit | boost::io::too_few_args_bit));
 
