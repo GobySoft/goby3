@@ -193,6 +193,8 @@ int main(int argc, char* argv[])
     }
 
     std::cout << "all tests passed" << std::endl;
+
+    dccl::DynamicProtobufManager::protobuf_shutdown();
 }
 
 void qsize(goby::acomms::protobuf::QueueSize size) {}
