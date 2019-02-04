@@ -116,6 +116,8 @@ int main(int argc, char* argv[])
     assert(handle_ack_called == true);
 
     std::cout << "all tests passed" << std::endl;
+
+    dccl::DynamicProtobufManager::protobuf_shutdown();
 }
 
 void handle_receive(const google::protobuf::Message& msg)
