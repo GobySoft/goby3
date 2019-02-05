@@ -575,11 +575,12 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
                         break;
 
                     case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-                        out << refl->GetRepeatedFloat(proto_msg, field_desc, j);
+                        out << std::setprecision(std::numeric_limits<float>::digits10)
+                            << refl->GetRepeatedFloat(proto_msg, field_desc, j);
                         break;
 
                     case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-                        out << std::setprecision(15)
+                        out << std::setprecision(std::numeric_limits<double>::digits10)
                             << refl->GetRepeatedDouble(proto_msg, field_desc, j);
                         break;
 
@@ -635,11 +636,13 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
                     break;
 
                 case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-                    out << refl->GetFloat(proto_msg, field_desc);
+                    out << std::setprecision(std::numeric_limits<float>::digits10)
+                        << refl->GetFloat(proto_msg, field_desc);
                     break;
 
                 case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-                    out << std::setprecision(15) << refl->GetDouble(proto_msg, field_desc);
+                    out << std::setprecision(std::numeric_limits<double>::digits10)
+                        << refl->GetDouble(proto_msg, field_desc);
                     break;
 
                 case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:

@@ -317,4 +317,6 @@ int main(int argc, char* argv[])
     }
 
     std::cout << process_suffix << ": all tests passed" << std::endl;
+
+    dccl::DynamicProtobufManager::protobuf_shutdown();
 }

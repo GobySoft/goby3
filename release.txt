@@ -10,6 +10,25 @@ Early look at the new Goby3 nested communications middleware. See examples at ht
 Goby Release Notes (Major version 2)
 
 ****************
+Version 2.1.12a
+
+### Bug fixes
+- Fixed version.h header macros (regression introduced by clang-format)
+
+See https://github.com/GobySoft/goby/compare/2.1.12...2.1.12a
+
+****************
+Version 2.1.12
+
+### Code aesthetics
+- Consistent code formatting using clang-format style
+
+### Bug fixes
+- Corrected moos_translator1 unit test for Ubuntu 18.04
+
+See https://github.com/GobySoft/goby/compare/2.1.11...2.1.12
+
+****************
 Version 2.1.11
 
 ### MOOS

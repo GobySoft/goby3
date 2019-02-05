@@ -11,6 +11,7 @@ fi
 set -e -u
 echo "Configuring Goby"
 echo "cmake .. ${GOBY_CMAKE_FLAGS}"
+mkdir -p build
 pushd build >& /dev/null
 cmake .. ${GOBY_CMAKE_FLAGS}
 echo "Building Goby"

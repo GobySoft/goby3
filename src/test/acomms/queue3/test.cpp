@@ -177,6 +177,8 @@ int main(int argc, char* argv[])
     assert(receive_count == 2);
 
     std::cout << "all tests passed" << std::endl;
+
+    dccl::DynamicProtobufManager::protobuf_shutdown();
 }
 
 void handle_receive(const google::protobuf::Message& msg)
