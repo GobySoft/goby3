@@ -103,6 +103,8 @@ int main(int argc, char* argv[])
     assert(decode_order.empty());
 
     std::cout << "all tests passed" << std::endl;
+
+    dccl::DynamicProtobufManager::protobuf_shutdown();
 }
 
 void request_test(int request_bytes, int expected_encode_requests, int expected_messages_sent)
