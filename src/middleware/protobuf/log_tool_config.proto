@@ -1,0 +1,20 @@
+import "goby/common/protobuf/app3.proto";
+
+package goby.protobuf;
+
+message LogToolConfig
+{
+    optional goby.protobuf.App3Config app = 1;
+
+    required string input_file = 10;
+    required string output_file = 20;
+
+    enum OutputFormat
+    {
+        DEBUG_TEXT = 1;
+    }
+
+    optional OutputFormat format = 30 [default = DEBUG_TEXT];
+    
+    repeated string load_shared_library = 40;
+}

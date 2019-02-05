@@ -8,6 +8,7 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/intervehicle_status.proto
   protobuf/gobyd_config.proto
   protobuf/logger_config.proto
+  protobuf/log_tool_config.proto
   protobuf/terminate_config.proto
   protobuf/terminate.proto
   )
@@ -18,7 +19,7 @@ set(SRC
   transport-interprocess-zeromq.cpp
   transport-intervehicle.cpp
   transport-interfaces.cpp
-  log.cpp
+  log/log_entry.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 

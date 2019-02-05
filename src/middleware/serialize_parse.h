@@ -144,19 +144,18 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
     }
 
     // Must subscribe to the actual type (or use subscribe_regex())
+    static std::string type_name(const google::protobuf::Descriptor* desc)
+    {
+        return desc->full_name();
+    }
 
-    // static std::string type_name() { return google::protobuf::Message::descriptor()->full_name(); }
-
-    //template<typename CharIterator>
-    // static google::protobuf::Message parse(CharIterator bytes_begin,
-    // CharIterator bytes_end,
-    // CharIterator& actual_end)
-    // {
-    // google::protobuf::Message msg;
-    // msg.ParseFromArray(&*bytes_begin, bytes_end-bytes_begin);
-    // actual_end = bytes_begin + msg.ByteSize();
-    // return msg;
-    // }
+    template <typename CharIterator>
+    static void parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
+                      google::protobuf::Message* msg)
+    {
+        msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
+        actual_end = bytes_begin + msg->ByteSize();
+    }
 };
 
 namespace protobuf
@@ -276,6 +275,48 @@ struct SerializerParserHelper<DataType, MarshallingScheme::DCCL>
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         check_load<DataType>();
         return codec().template id<DataType>();
+    }
+
+  private:
+};
+
+template <>
+struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL>
+    : public DCCLSerializerParserHelperBase
+{
+  public:
+    static std::vector<char> serialize(const google::protobuf::Message& msg)
+    {
+        std::lock_guard<std::mutex> lock(dccl_mutex_);
+        check_load(msg.GetDescriptor());
+        std::vector<char> bytes(codec().size(msg), 0);
+        codec().encode(bytes.data(), bytes.size(), msg);
+        return bytes;
+    }
+
+    static std::string type_name(const google::protobuf::Descriptor* desc)
+    {
+        return desc->full_name();
+    }
+    static std::string type_name(const google::protobuf::Message& d)
+    {
+        return type_name(d.GetDescriptor());
+    }
+
+    template <typename CharIterator>
+    static void parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
+                      google::protobuf::Message* msg)
+    {
+        std::lock_guard<std::mutex> lock(dccl_mutex_);
+        check_load(msg->GetDescriptor());
+        actual_end = codec().decode(bytes_begin, bytes_end, msg);
+    }
+
+    static unsigned id(const google::protobuf::Descriptor* desc)
+    {
+        std::lock_guard<std::mutex> lock(dccl_mutex_);
+        check_load(desc);
+        return codec().id(desc);
     }
 
   private:
