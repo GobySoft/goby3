@@ -93,7 +93,7 @@ template <typename Config> class ApplicationBase3
     /// \brief Requests a clean exit.
     ///
     /// \param return_value The request return value
-    virtual void quit(int return_value = 0)
+    void quit(int return_value = 0)
     {
         alive_ = false;
         return_value_ = return_value;

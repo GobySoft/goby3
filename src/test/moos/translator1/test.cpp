@@ -456,6 +456,8 @@ int main(int argc, char* argv[])
            embedded_test.SerializePartialAsString());
 
     std::cout << "all tests passed" << std::endl;
+
+    dccl::DynamicProtobufManager::protobuf_shutdown();
 }
 
 void run_one_in_one_out_test(MOOSTranslator& translator, int i, bool hex_encode)

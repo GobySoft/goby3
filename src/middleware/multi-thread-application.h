@@ -126,6 +126,7 @@ class MultiThreadApplicationBase : public goby::common::ApplicationBase3<Config>
                     _join_thread(joinable.first, joinable.second);
                 });
     }
+
     virtual ~MultiThreadApplicationBase() {}
 
     template <typename ThreadType> void launch_thread()
@@ -158,8 +159,32 @@ class MultiThreadApplicationBase : public goby::common::ApplicationBase3<Config>
 
   protected:
     goby::InterThreadTransporter& interthread() { return interthread_; }
+    virtual void finalize() override { join_all_threads(); }
 
-    void quit(int return_value = 0) override;
+    void join_all_threads()
+    {
+        if (running_thread_count_ > 0)
+        {
+            goby::glog.is(goby::common::logger::DEBUG1) &&
+                goby::glog << "Requesting that all remaining threads shutdown cleanly..."
+                           << std::endl;
+
+            interthread_.publish<MainThreadBase::shutdown_group_>(true);
+
+            // allow the threads to self-join
+            while (running_thread_count_ > 0)
+            {
+                goby::glog.is(goby::common::logger::DEBUG1) &&
+                    goby::glog << "Waiting for " << running_thread_count_ << " threads."
+                               << std::endl;
+
+                MainThreadBase::transporter().poll();
+            }
+
+            goby::glog.is(goby::common::logger::DEBUG1) &&
+                goby::glog << "All threads cleanly joined." << std::endl;
+        }
+    }
 
   private:
     void run() override
@@ -366,26 +391,6 @@ void goby::MultiThreadApplicationBase<Config, Transporter>::_join_thread(
             goby::glog << "Already joined thread: " << type_i.name() << " index " << index
                        << std::endl;
     }
-}
-
-template <class Config, class Transporter>
-void goby::MultiThreadApplicationBase<Config, Transporter>::quit(int return_value)
-{
-    goby::glog.is(goby::common::logger::DEBUG1) &&
-        goby::glog << "Requesting all threads shutdown cleanly..." << std::endl;
-
-    interthread_.publish<MainThreadBase::shutdown_group_>(true);
-
-    // allow the threads to self-join
-    while (running_thread_count_ > 0)
-    {
-        goby::glog.is(goby::common::logger::DEBUG1) &&
-            goby::glog << "Waiting for " << running_thread_count_ << " threads." << std::endl;
-
-        MainThreadBase::transporter().poll();
-    }
-
-    goby::common::ApplicationBase3<Config>::quit(return_value);
 }
 
 #endif
