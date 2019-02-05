@@ -30,10 +30,12 @@ namespace goby
 {
 namespace log
 {
-
 class LogPlugin
 {
   public:
+    LogPlugin() {}
+    virtual ~LogPlugin() {}
+
     virtual void register_write_hooks(std::ofstream& out_log_file) = 0;
     virtual void register_read_hooks(const std::ifstream& in_log_file) = 0;
 

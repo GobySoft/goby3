@@ -92,10 +92,12 @@ goby::LogTool::LogTool()
                 switch (app_cfg().format())
                 {
                     case protobuf::LogToolConfig::DEBUG_TEXT:
+                    {
+                        auto debug_text_msg = plugin->second->debug_text_message(log_entry);
                         f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
-                               << log_entry.type() << " | "
-                               << plugin->second->debug_text_message(log_entry) << std::endl;
+                               << log_entry.type() << " | " << debug_text_msg << std::endl;
                         break;
+                    }
                 }
             }
 
@@ -105,10 +107,15 @@ goby::LogTool::LogTool()
                                        << ", group: " << log_entry.group()
                                        << ", type: " << log_entry.type() << std::endl;
 
-                f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
-                       << log_entry.type() << " | "
-                       << "Unable to parse message of " << log_entry.data().size()
-                       << " bytes. Reason: " << e.what() << std::endl;
+                switch (app_cfg().format())
+                {
+                    case protobuf::LogToolConfig::DEBUG_TEXT:
+                        f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
+                               << log_entry.type() << " | "
+                               << "Unable to parse message of " << log_entry.data().size()
+                               << " bytes. Reason: " << e.what() << std::endl;
+                        break;
+                }
             }
         }
         catch (log::LogException& e)
