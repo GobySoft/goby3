@@ -370,8 +370,6 @@ class InterProcessPortal
         auto it = forwarder_subscription_identifiers_[thread_id].find(identifier);
         if (it != forwarder_subscription_identifiers_[thread_id].end())
         {
-            forwarder_subscription_identifiers_[thread_id].erase(it);
-
             bool no_forwarder_subscribers = true;
             for (const auto& p : forwarder_subscription_identifiers_)
             {
@@ -392,6 +390,8 @@ class InterProcessPortal
                 if (portal_subscriptions_.count(identifier) == 0)
                     zmq_main_.unsubscribe(identifier);
             }
+
+            forwarder_subscription_identifiers_[thread_id].erase(it);
         }
     }
 
