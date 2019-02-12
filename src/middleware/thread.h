@@ -86,13 +86,18 @@ template <typename Config, typename TransporterType> class Thread
         : loop_frequency_(loop_freq), loop_time_(std::chrono::system_clock::now()), cfg_(cfg),
           index_(index)
     {
-        unsigned long long ticks_since_epoch =
-            std::chrono::duration_cast<std::chrono::microseconds>(loop_time_.time_since_epoch())
-                .count() /
-            (1000000ull / loop_frequency_hertz());
+        if (loop_frequency_hertz() > 0)
+        {
+            unsigned long long microsec_interval = 1000000.0 / loop_frequency_hertz();
 
-        loop_time_ = std::chrono::system_clock::time_point(std::chrono::microseconds(
-            (ticks_since_epoch + 1) * (unsigned long long)(1000000ull / loop_frequency_hertz())));
+            unsigned long long ticks_since_epoch =
+                std::chrono::duration_cast<std::chrono::microseconds>(loop_time_.time_since_epoch())
+                    .count() /
+                microsec_interval;
+
+            loop_time_ = std::chrono::system_clock::time_point(
+                std::chrono::microseconds((ticks_since_epoch + 1) * microsec_interval));
+        }
     }
 
     void set_transporter(TransporterType* transporter) { transporter_ = transporter; }
