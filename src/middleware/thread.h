@@ -86,7 +86,8 @@ template <typename Config, typename TransporterType> class Thread
         : loop_frequency_(loop_freq), loop_time_(std::chrono::system_clock::now()), cfg_(cfg),
           index_(index)
     {
-        if (loop_frequency_hertz() > 0)
+        if (loop_frequency_hertz() > 0 &&
+            loop_frequency_hertz() != std::numeric_limits<double>::infinity())
         {
             unsigned long long microsec_interval = 1000000.0 / loop_frequency_hertz();
 
