@@ -64,7 +64,7 @@ job-template-amd64: &job-template-amd64
         name: Update apt packages
         command: apt-get update && apt-get dist-upgrade -y
     - run:
-        name: Install GMP Developer (TODO: Remove and add to Docker)
+        name: Install GMP Developer (TODO Remove and add to Docker)
         command: apt-get update && apt-get -y install libgmp3-dev:${TARGET_ARCH}
     - run: &run-import-gpg
         name: Import GPG key
