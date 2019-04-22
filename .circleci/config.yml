@@ -84,8 +84,8 @@ job-template-amd64: &job-template-amd64
           git checkout origin/${CIRCLE_BRANCH} ||
           echo "No branch in debian called ${CIRCLE_BRANCH}, using $(git rev-parse --abbrev-ref HEAD)"
     - run: &run-nest-deb
-        name: Nest debian source into project source
-        command: mv /root/debian ${CIRCLE_WORKING_DIRECTORY}
+        name: Nest debian source into project source and comment out clang as build-depends (causes problems for cross-builds)
+        command: mv /root/debian ${CIRCLE_WORKING_DIRECTORY} && sed -i 's/^\(.*\)clang/#\1clang/' ${CIRCLE_WORKING_DIRECTORY}/debian/control
     - run: &run-patch-version
         name: Patch the version patch number automatically in CMakeLists.txt
         command: |
