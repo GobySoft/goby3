@@ -63,6 +63,9 @@ job-template-amd64: &job-template-amd64
     - run: &run-update-apt
         name: Update apt packages
         command: apt-get update && apt-get dist-upgrade -y
+    - run:
+        name: Install GMP Developer (TODO: Remove and add to Docker)
+        command: apt-get update && apt-get -y install libgmp3-dev:${TARGET_ARCH}
     - run: &run-import-gpg
         name: Import GPG key
         command: echo -e "$GPG_KEY" | gpg --import
@@ -225,10 +228,10 @@ workflows:
             - armhf-bionic-build
 #            - armhf-xenial-build
             
-      - amd64+scan-build
-      - amd64+asan-build
-      - amd64+tsan-build
-      - amd64+ubsan-build
+#      - amd64+scan-build
+#      - amd64+asan-build
+#      - amd64+tsan-build
+#      - amd64+ubsan-build
             
 jobs:
 
