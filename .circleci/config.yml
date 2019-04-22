@@ -60,12 +60,14 @@ docker-armhf-bionic: &docker-armhf-bionic
 job-template-amd64: &job-template-amd64
   working_directory: /root/goby3
   steps:
+    - run:
+        name: Add continuous build package sources.list (if not a tagged release)
+        command: |
+          [ -z "${CIRCLE_TAG}" ] &&
+          echo "deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/" >> /etc/apt/sources.list.d/gobysoft_continuous.list
     - run: &run-update-apt
         name: Update apt packages
         command: apt-get update && apt-get dist-upgrade -y
-    - run:
-        name: Install GMP Developer (TODO Remove and add to Docker)
-        command: apt-get update && apt-get -y install libgmp3-dev:${TARGET_ARCH}
     - run: &run-import-gpg
         name: Import GPG key
         command: echo -e "$GPG_KEY" | gpg --import
@@ -85,7 +87,11 @@ job-template-amd64: &job-template-amd64
           echo "No branch in debian called ${CIRCLE_BRANCH}, using $(git rev-parse --abbrev-ref HEAD)"
     - run: &run-nest-deb
         name: Nest debian source into project source and comment out clang as build-depends (causes problems for cross-builds)
-        command: mv /root/debian ${CIRCLE_WORKING_DIRECTORY} && sed -i 's/^\(.*\)clang/#\1clang/' ${CIRCLE_WORKING_DIRECTORY}/debian/control
+        command: |
+          cp -r /root/debian ${SOURCE_WORKING_DIRECTORY} &&
+          cp /root/src/changelog ${SOURCE_WORKING_DIRECTORY}/debian &&
+          sed -i "s/DISTRORELEASEVERSION/${DISTRO_RELEASE_VERSION}/;s/DISTRORELEASECODENAME/${DISTRO_RELEASE_CODENAME}/" ${SOURCE_WORKING_DIRECTORY}/debian/changelog &&
+          sed -i 's/^\(.*\)clang/#\1clang/' ${CIRCLE_WORKING_DIRECTORY}/debian/control
     - run: &run-patch-version
         name: Patch the version patch number automatically in CMakeLists.txt
         command: |
@@ -95,13 +101,6 @@ job-template-amd64: &job-template-amd64
           export NEWVERSION_PATCH=$(echo $NEWVERSION | cut -d . -f 3)
           sed -i "s/^set(GOBY_VERSION_PATCH *\".*\"/set(GOBY_VERSION_PATCH \"${NEWVERSION_PATCH}\"/" CMakeLists.txt
           quilt refresh                  
-    - run: &run-dch
-        name: Generate original source tarball and add changelog entry 
-        command: |
-          export NEWVERSION="$(echo ../*.orig.tar.xz | sed 's/.*_\(.*\)\.orig\.tar\.xz/\1/')"
-          COMMENT="Autobuild for version ${NEWVERSION}" &&
-          cd debian &&
-          dch --newversion=${NEWVERSION}-0~${DISTRO_RELEASE_VERSION}.1 -D ${DISTRO_RELEASE_CODENAME} "${COMMENT}"          
     - run: &run-build-pkg
         name: Build the Debian package 
         command: |
@@ -251,12 +250,21 @@ jobs:
             git config tar.tar.xz.command "xz -c" &&
             mkdir -p /root/src &&
             git archive --prefix=goby3-${NEWVERSION}/ -o /root/src/goby3_${NEWVERSION}.orig.tar.xz HEAD;
+      - run:
+          name: Add changelog entry 
+          command: |
+            cd .. &&
+            export NEWVERSION="$(echo /root/src/*.orig.tar.gz | sed 's/.*_\(.*\)\.orig\.tar\.gz/\1/')"
+            COMMENT="Autobuild for version ${NEWVERSION}" &&
+            dch --newversion=${NEWVERSION}-0~DISTRORELEASEVERSION.1 -D DISTRORELEASECODENAME "${COMMENT}" &&
+            cp debian/changelog /root/src
       - store_artifacts:
           path: /root/src
       - persist_to_workspace:
           root: /root/src
           paths:
             - '*.tar.xz'
+            - 'changelog'
             
   amd64-stretch-build:
     <<: *job-template-amd64

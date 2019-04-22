@@ -29,7 +29,7 @@ RUN sed -i 's/^\(.*\)clang/#\1clang/' debian/control && \
     sed -i 's/^\(.*\)libhdf/#\1libhdf/' debian/control && \
     sed -i 's/^\(.*\)libboost-regex/#\1libboost-regex/' debian/control && \
     sed -i 's/^\(.*\)libdccl/#\1libdccl/' debian/control && \
-    sed -i 's/^\(.*\)libmoos/#\1libmoos/' debian/control && \
+    sed -i 's/^\(.*\)libgmp3/#\1libgmp3/' debian/control && \
     cat debian/control
 
 RUN apt-get update && \
@@ -41,9 +41,3 @@ RUN apt-get update && \
 
 # Restore control file
 RUN git -C debian checkout control
-
-
-# libdccl3-dev:arm64
-# libboost-regex-dev:arm64 libicu-dev:arm64
-# libhdf5-dev
-# libmoos10-dev:arm64
