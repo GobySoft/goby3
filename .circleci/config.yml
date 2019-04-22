@@ -1,0 +1,400 @@
+## Pre-declare environmental variables
+environment-template-common: &environment-template-common
+  DEBIAN_FRONTEND: "noninteractive"
+  DEBIAN_PRIORITY: "critical"
+  DEBCONF_NOWARNINGS: "yes"
+  DEBFULLNAME: "GobySoft CircleCI"
+  DEBEMAIL: "toby@gobysoft.org"
+  QUILT_PATCHES: debian/patches
+  QUILT_REFRESH_ARGS: "-p ab --no-timestamps --no-index --strip-trailing-whitespace"
+
+environment-template-amd64: &environment-template-amd64
+  TARGET_ARCH: "amd64"
+  DEB_BUILD_OPTIONS: "parallel=4"
+  # one job only must do the source build for each distro
+  DO_SOURCE_BUILD: "true"
+
+environment-template-arm64: &environment-template-arm64
+  TARGET_ARCH: "arm64"
+  DEB_BUILD_OPTIONS: "parallel=4 nocheck"
+  
+environment-template-armhf: &environment-template-armhf
+  TARGET_ARCH: "armhf"
+  DEB_BUILD_OPTIONS: "parallel=4 nocheck"
+  
+environment-template-stretch: &environment-template-stretch
+  DISTRO_RELEASE_CODENAME: "stretch"
+  DISTRO_RELEASE_VERSION: "debian9"
+
+environment-template-xenial: &environment-template-xenial
+  DISTRO_RELEASE_CODENAME: "xenial"
+  DISTRO_RELEASE_VERSION: "ubuntu16.04"
+  
+environment-template-bionic: &environment-template-bionic
+  DISTRO_RELEASE_CODENAME: "bionic"
+  DISTRO_RELEASE_VERSION: "ubuntu18.04"
+
+## Pre-declare Docker containers
+docker-base-stretch: &docker-base-stretch
+  - image: gobysoft/goby3-debian-build-base:9.1
+docker-arm64-stretch: &docker-arm64-stretch
+  - image: gobysoft/goby3-debian-build-arm64:9.1
+docker-armhf-stretch: &docker-armhf-stretch
+  - image: gobysoft/goby3-debian-build-armhf:9.1
+
+docker-base-xenial: &docker-base-xenial
+  - image: gobysoft/goby3-ubuntu-build-base:16.04.1
+docker-arm64-xenial: &docker-arm64-xenial
+  - image: gobysoft/goby3-ubuntu-build-arm64:16.04.1
+docker-armhf-xenial: &docker-armhf-xenial
+  - image: gobysoft/goby3-ubuntu-build-armhf:16.04.1
+  
+docker-base-bionic: &docker-base-bionic
+  - image: gobysoft/goby3-ubuntu-build-base:18.04.1
+docker-arm64-bionic: &docker-arm64-bionic
+  - image: gobysoft/goby3-ubuntu-build-arm64:18.04.1
+docker-armhf-bionic: &docker-armhf-bionic
+  - image: gobysoft/goby3-ubuntu-build-armhf:18.04.1
+
+## Pre-declare job templates
+job-template-amd64: &job-template-amd64
+  working_directory: /root/goby3
+  steps:
+    - run: &run-update-apt
+        name: Update apt packages
+        command: apt-get update && apt-get dist-upgrade -y
+    - run: &run-import-gpg
+        name: Import GPG key
+        command: echo -e "$GPG_KEY" | gpg --import
+    - attach-workspace: &attach-src-workspace
+        at: /root/src
+    - run: &run-extract-src
+        name: Extract the original source tarball
+        command: |
+          cp /root/src/*.orig.tar.xz ${CIRCLE_WORKING_DIRECTORY}/.. &&
+          tar xfJ ../*.orig.tar.xz --strip-components=1
+    - run: &run-update-deb
+        name: Update the debian source repo and pull the branch with the same name as the project branch (if it exists)
+        command: |        
+          cd /root/debian &&
+          git pull &&
+          git checkout origin/${CIRCLE_BRANCH} ||
+          echo "No branch in debian called ${CIRCLE_BRANCH}, using $(git rev-parse --abbrev-ref HEAD)"
+    - run: &run-nest-deb
+        name: Nest debian source into project source
+        command: mv /root/debian ${CIRCLE_WORKING_DIRECTORY}
+    - run: &run-patch-version
+        name: Patch the version patch number automatically in CMakeLists.txt
+        command: |
+          export NEWVERSION="$(echo ../*.orig.tar.xz | sed 's/.*_\(.*\)\.orig\.tar\.xz/\1/')"
+          quilt new 01-patch-version
+          quilt add CMakeLists.txt
+          export NEWVERSION_PATCH=$(echo $NEWVERSION | cut -d . -f 3)
+          sed -i "s/^set(GOBY_VERSION_PATCH *\".*\"/set(GOBY_VERSION_PATCH \"${NEWVERSION_PATCH}\"/" CMakeLists.txt
+          quilt refresh                  
+    - run: &run-dch
+        name: Generate original source tarball and add changelog entry 
+        command: |
+          export NEWVERSION="$(echo ../*.orig.tar.xz | sed 's/.*_\(.*\)\.orig\.tar\.xz/\1/')"
+          COMMENT="Autobuild for version ${NEWVERSION}" &&
+          cd debian &&
+          dch --newversion=${NEWVERSION}-0~${DISTRO_RELEASE_VERSION}.1 -D ${DISTRO_RELEASE_CODENAME} "${COMMENT}"          
+    - run: &run-build-pkg
+        name: Build the Debian package 
+        command: |
+          export DPKG_BUILDPACKAGE_BUILD_TYPE="-B"
+          # default is to do source and binary build
+          [[ "${DO_SOURCE_BUILD}" == "true" ]] && DPKG_BUILDPACKAGE_BUILD_TYPE=""        
+          CONFIG_SITE=/etc/dpkg-cross/cross-config.${TARGET_ARCH} && dpkg-buildpackage -k19478082E2F8D3FE -a${TARGET_ARCH} ${DPKG_BUILDPACKAGE_BUILD_TYPE}
+    - run: &run-store-next-build
+        name: Store deb files for next build
+        command: |
+          mkdir -p /root/deb &&
+          find .. -maxdepth 1 -type f -exec cp {}  /root/deb \; &&
+          rm -f /root/deb/*-build-deps*.deb
+    - run: &run-store-for-artifacts
+        name: Store deb files for storing artifacts
+        command: mkdir -p /tmp/deb && cp /root/deb/* /tmp/deb
+    - store_artifacts: &store
+        path: /tmp/deb
+    - run: &remove-orig-source
+        name: Remove original source file to avoid conflicts in merging
+        command: |        
+          rm -f /root/deb/*.orig.tar.xz || true
+    - persist_to_workspace: &persist-debs
+        root: /root/deb
+        paths:
+          - '*.dsc'
+          - '*.tar.xz'
+          - '*.deb'
+          - '*.ddeb'
+          - '*.changes'
+          - '*.buildinfo'
+  
+job-template-cross: &job-template-cross
+  <<: *job-template-amd64
+
+# base sanitizer and upload off Bionic build
+job-template-sanitizers: &job-template-sanitizers
+  <<: *job-template-amd64
+  environment:
+    <<: *environment-template-common
+    <<: *environment-template-bionic
+    <<: *environment-template-amd64
+    SANITIZER_NUM_JOBS: 2
+  docker: *docker-base-bionic
+
+job-template-upload: &job-template-upload
+  <<: *job-template-amd64
+  docker: *docker-base-bionic
+
+# which branches to run the Debian build and upload on
+filter-template-deb-build: &filter-template-deb-build
+  filters:
+    tags:
+      only: /.*/
+    branches:
+      only:
+        - "3.0"
+        - "3.0-multiarch"
+  
+## Begin actual config
+version: 2
+workflows:
+  version: 2
+  commit:
+    jobs:
+      - get-orig-source:
+          <<: *filter-template-deb-build
+          
+      # - amd64-stretch-build:
+      #     <<: *filter-template-deb-build
+      #     requires:
+      #       - get-orig-source
+      # - arm64-stretch-build:
+      #     <<: *filter-template-deb-build
+      #     requires:
+      #       - amd64-stretch-build
+      # - armhf-stretch-build:
+      #     <<: *filter-template-deb-build
+      #     requires:
+      #       - arm64-stretch-build
+            
+      # - amd64-xenial-build:
+      #     <<: *filter-template-deb-build
+      #     requires:
+      #       - get-orig-source
+      # - arm64-xenial-build:
+      #     <<: *filter-template-deb-build
+      #     requires:
+      #       - amd64-xenial-build
+      # - armhf-xenial-build:
+      #     <<: *filter-template-deb-build
+      #     requires:
+      #       - arm64-xenial-build
+            
+      - amd64-bionic-build:
+          <<: *filter-template-deb-build
+          requires:
+            - get-orig-source
+      - arm64-bionic-build:
+          <<: *filter-template-deb-build
+          requires:
+            - amd64-bionic-build
+      - armhf-bionic-build:
+          <<: *filter-template-deb-build
+          requires:
+            - arm64-bionic-build
+
+      # always do the continuous upload if we did the deb builds
+      - continuous-upload:
+          requires:
+#            - armhf-stretch-build
+            - armhf-bionic-build
+#            - armhf-xenial-build
+
+      # only do the release upload on tagged builds
+      - release-upload:
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+          requires:
+            - armhf-stretch-build
+            - armhf-bionic-build
+            - armhf-xenial-build
+            
+      - amd64+scan-build
+      - amd64+asan-build
+      - amd64+tsan-build
+      - amd64+ubsan-build
+            
+jobs:
+
+  get-orig-source:
+    <<: *job-template-amd64
+    docker: *docker-base-bionic
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-bionic
+      <<: *environment-template-amd64
+    steps:
+      - checkout
+      - run:
+          name: Get original source tarball
+          command: |
+            export NEWVERSION="$(git describe --tags HEAD | sed 's/_/~/' | sed 's/-/+/g')"          
+            git config tar.tar.xz.command "xz -c" &&
+            mkdir -p /root/src &&
+            git archive --prefix=goby3-${NEWVERSION}/ -o /root/src/goby3_${NEWVERSION}.orig.tar.xz HEAD;
+      - store_artifacts:
+          path: /root/src
+      - persist_to_workspace:
+          root: /root/src
+          paths:
+            - '*.tar.xz'
+            
+  amd64-stretch-build:
+    <<: *job-template-amd64
+    docker: *docker-base-stretch
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-stretch
+      <<: *environment-template-amd64
+  arm64-stretch-build: 
+    <<: *job-template-cross
+    docker: *docker-arm64-stretch
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-stretch
+      <<: *environment-template-arm64
+  armhf-stretch-build: 
+    <<: *job-template-cross
+    docker: *docker-armhf-stretch
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-stretch
+      <<: *environment-template-armhf
+  amd64-xenial-build:
+    <<: *job-template-amd64
+    docker: *docker-base-xenial
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-xenial
+      <<: *environment-template-amd64
+  arm64-xenial-build: 
+    <<: *job-template-cross
+    docker: *docker-arm64-xenial
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-xenial
+      <<: *environment-template-arm64
+  armhf-xenial-build: 
+    <<: *job-template-cross
+    docker: *docker-armhf-xenial
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-xenial
+      <<: *environment-template-armhf
+  amd64-bionic-build:
+    <<: *job-template-amd64
+    docker: *docker-base-bionic
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-bionic
+      <<: *environment-template-amd64
+  arm64-bionic-build: 
+    <<: *job-template-cross
+    docker: *docker-arm64-bionic
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-bionic
+      <<: *environment-template-arm64
+  armhf-bionic-build: 
+    <<: *job-template-cross
+    docker: *docker-armhf-bionic
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-bionic
+      <<: *environment-template-armhf
+  amd64+scan-build:
+    <<: *job-template-sanitizers
+    steps:
+      - checkout
+      - run: *run-update-apt
+      - run:
+          name: Build with static analyzer
+          command: mkdir -p build && cd build && scan-build cmake .. -Denable_testing=ON -DCMAKE_BUILD_TYPE=Debug && scan-build --use-c++=/usr/bin/clang++ --status-bugs cmake --build . -- -j${SANITIZER_NUM_JOBS}
+      - run:
+          name: Store static analyzer results
+          command: cd /tmp && tar cfvz scan-build.tar.gz scan-build*
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/scan-build.tar.gz
+          when: on_fail
+  amd64+asan-build:
+    <<: *job-template-sanitizers
+    steps:
+      - checkout
+      - run: *run-update-apt
+      - run:
+          name: Build with AddressSanitizer (and LeakSanitizer)
+          command: mkdir -p build && cd build && cmake -DSANITIZE_ADDRESS=ON -Denable_testing=ON .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
+      - run: &run-tests
+          name: Run tests
+          command: cd build && ctest --output-on-failure
+  amd64+tsan-build:
+    <<: *job-template-sanitizers
+    steps:
+      - checkout
+      - run: *run-update-apt
+      - run: 
+          name: Build with ThreadSanitizer
+          command: mkdir -p build && cd build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
+      - run: *run-tests
+  amd64+ubsan-build:
+    <<: *job-template-sanitizers
+    steps:
+      - checkout
+      - run: *run-update-apt
+      - run:
+          name: Build with UndefinedBehaviorSanitizer
+          command: mkdir -p build && cd build && cmake -DSANITIZE_UNDEFINED=ON -Denable_testing=ON .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
+      - run: *run-tests
+  continuous-upload:
+    <<: *job-template-upload
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-bionic
+      <<: *environment-template-amd64
+      UPLOAD_DESTINATION: "gobysoft-continuous"
+    steps: &steps-upload
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "cd:15:c9:43:48:20:c9:56:58:9e:91:01:74:0d:fe:d2"
+      - run: *run-import-gpg
+      - attach-workspace: *attach-deb-workspace
+      - attach-workspace: *attach-src-workspace
+      - run:
+          name: Move original source into output directory
+          command: mv /root/src/* /root/deb
+      - run:
+          name: Upload packages to packages.gobysoft.org
+          command: |
+            echo 'trusted-key A8E48CFF6650A07F6EF2B9AD19478082E2F8D3FE' >> ~/.gnupg/gpg.conf
+            echo '|1|HjIjI40ko7XtgqXNK8DNuiVcy4Q=|7PEGcXNRmsj1tzGeRjb9UgWIWwE= ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK8LmTLyo7inmKCa28F2JZBSpQFT1VrwnFpeV1v6PlQE' >> ~/.ssh/known_hosts
+            for change_file in /root/deb/*.changes;
+            do dput -c ${CIRCLE_WORKING_DIRECTORY}/.circleci/dput.cf ${UPLOAD_DESTINATION} $change_file;
+            done
+          
+
+  release-upload:
+    <<: *job-template-upload
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-bionic
+      <<: *environment-template-amd64
+      UPLOAD_DESTINATION: "gobysoft-release"
+    steps: *steps-upload
