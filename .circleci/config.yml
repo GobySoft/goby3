@@ -221,9 +221,9 @@ workflows:
             branches:
               ignore: /.*/
           requires:
-            - armhf-stretch-build
+#            - armhf-stretch-build
             - armhf-bionic-build
-            - armhf-xenial-build
+#            - armhf-xenial-build
             
       - amd64+scan-build
       - amd64+asan-build
@@ -375,7 +375,8 @@ jobs:
           fingerprints:
             - "cd:15:c9:43:48:20:c9:56:58:9e:91:01:74:0d:fe:d2"
       - run: *run-import-gpg
-      - attach-workspace: *attach-deb-workspace
+      - attach-workspace:
+          at: /root/deb
       - attach-workspace: *attach-src-workspace
       - run:
           name: Move original source into output directory
