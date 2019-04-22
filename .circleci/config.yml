@@ -88,9 +88,9 @@ job-template-amd64: &job-template-amd64
     - run: &run-nest-deb
         name: Nest debian source into project source and comment out clang as build-depends (causes problems for cross-builds)
         command: |
-          cp -r /root/debian ${SOURCE_WORKING_DIRECTORY} &&
-          cp /root/src/changelog ${SOURCE_WORKING_DIRECTORY}/debian &&
-          sed -i "s/DISTRORELEASEVERSION/${DISTRO_RELEASE_VERSION}/;s/DISTRORELEASECODENAME/${DISTRO_RELEASE_CODENAME}/" ${SOURCE_WORKING_DIRECTORY}/debian/changelog &&
+          mv /root/debian ${CIRCLE_WORKING_DIRECTORY} &&
+          cp /root/src/changelog ${CIRCLE_WORKING_DIRECTORY}/debian &&
+          sed -i "s/DISTRORELEASEVERSION/${DISTRO_RELEASE_VERSION}/;s/DISTRORELEASECODENAME/${DISTRO_RELEASE_CODENAME}/" ${CIRCLE_WORKING_DIRECTORY}/debian/changelog &&
           sed -i 's/^\(.*\)clang/#\1clang/' ${CIRCLE_WORKING_DIRECTORY}/debian/control
     - run: &run-patch-version
         name: Patch the version patch number automatically in CMakeLists.txt
