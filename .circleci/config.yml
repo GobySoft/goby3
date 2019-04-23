@@ -169,31 +169,31 @@ workflows:
       - get-orig-source:
           <<: *filter-template-deb-build
           
-      # - amd64-stretch-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - get-orig-source
-      # - arm64-stretch-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - amd64-stretch-build
-      # - armhf-stretch-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - arm64-stretch-build
+      - amd64-stretch-build:
+          <<: *filter-template-deb-build
+          requires:
+            - get-orig-source
+      - arm64-stretch-build:
+          <<: *filter-template-deb-build
+          requires:
+            - amd64-stretch-build
+      - armhf-stretch-build:
+          <<: *filter-template-deb-build
+          requires:
+            - arm64-stretch-build
             
-      # - amd64-xenial-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - get-orig-source
-      # - arm64-xenial-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - amd64-xenial-build
-      # - armhf-xenial-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - arm64-xenial-build
+      - amd64-xenial-build:
+          <<: *filter-template-deb-build
+          requires:
+            - get-orig-source
+      - arm64-xenial-build:
+          <<: *filter-template-deb-build
+          requires:
+            - amd64-xenial-build
+      - armhf-xenial-build:
+          <<: *filter-template-deb-build
+          requires:
+            - arm64-xenial-build
             
       - amd64-bionic-build:
           <<: *filter-template-deb-build
@@ -211,9 +211,9 @@ workflows:
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
           requires:
-#            - armhf-stretch-build
+            - armhf-stretch-build
             - armhf-bionic-build
-#            - armhf-xenial-build
+            - armhf-xenial-build
 
       # only do the release upload on tagged builds
       - release-upload:
@@ -223,9 +223,9 @@ workflows:
             branches:
               ignore: /.*/
           requires:
-#            - armhf-stretch-build
+            - armhf-stretch-build
             - armhf-bionic-build
-#            - armhf-xenial-build
+            - armhf-xenial-build
             
 #      - amd64+scan-build
 #      - amd64+asan-build

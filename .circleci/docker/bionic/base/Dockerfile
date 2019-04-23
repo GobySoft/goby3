@@ -9,12 +9,6 @@ RUN apt-get update && apt-get -y install dirmngr && \
     echo "deb http://packages.gobysoft.org/ubuntu/release/ bionic/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
     apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE
 
-# We need this for Wt for now. Hopefully we'll replace with packages.gobysoft.org later
-RUN apt-get update && \
-    apt-get -y install software-properties-common && \
-    add-apt-repository -y ppa:goby-dev/ppa && \
-    apt-get update
-
 # Clone the Debian packaging project and install the dependencies it declares
 RUN git clone \
     https://github.com/GobySoft/goby-debian -b 3.0 debian    
