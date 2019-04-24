@@ -154,9 +154,9 @@ endmacro()
 
 if(build_common)
 
-   ## boost
-   goby_find_required_package(Boost 1.40.0 COMPONENTS system date_time thread program_options filesystem regex)
-   include_directories(${Boost_INCLUDE_DIRS})
+  ## boost
+  goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time thread program_options filesystem)
+  include_directories(${Boost_INCLUDE_DIRS})
 
   add_subdirectory(common)
 

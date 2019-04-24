@@ -39,9 +39,6 @@
 #include <Wt/WTimer>
 #include <Wt/WVBoxLayout>
 
-#include <boost/algorithm/string/regex.hpp>
-#include <boost/regex.hpp>
-
 #include "goby/common/time.h"
 
 using namespace Wt;

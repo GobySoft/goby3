@@ -144,6 +144,8 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-bionic
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 2
+    CXX: /usr/bin/clang++
+    CC: /usr/bin/clang
   docker: *docker-base-bionic
 
 job-template-upload: &job-template-upload
