@@ -51,9 +51,9 @@ class DCCLMessageVar
 {
   public:
     // Added in Goby2 for transition to new Protobuf structure
-    virtual void write_schema_to_dccl2(std::ofstream* proto_file, int sequence_number);
+    virtual void write_schema_to_dccl2(std::ofstream* proto_file, int sequence_number) {}
 
-    DCCLMessageVar();
+    DCCLMessageVar() {}
 
     // set
     void set_name(std::string name) { name_ = name; }
@@ -130,11 +130,14 @@ class DCCLMessageVar
     const std::vector<std::string>& algorithms() const { return algorithms_; }
 
     // other
-    void initialize(const DCCLMessage& msg);
+    void initialize(const DCCLMessage& msg) {}
+
     //         std::string get_display() const;
 
     void set_defaults(std::map<std::string, std::vector<DCCLMessageVal> >& vals, unsigned modem_id,
-                      unsigned id);
+                      unsigned id)
+    {
+    }
 
   protected:
     virtual void initialize_specific() = 0;
