@@ -136,12 +136,12 @@ option(build_common "Build the Goby Common library" ON)
 macro(goby_install_lib target_lib)
   set_property(TARGET ${target_lib} APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
     $<BUILD_INTERFACE:${goby_INC_DIR}>
-    $<INSTALL_INTERFACE:include>  # <prefix>/include
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>  # <prefix>/include
     )
 
   install(TARGETS ${target_lib} EXPORT goby-config
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib) 
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}) 
   list(APPEND GOBY_LIBRARY_LIST ${target_lib})
   set(GOBY_LIBRARY_LIST ${GOBY_LIBRARY_LIST} CACHE INTERNAL "goby_library_list")
 endmacro()
@@ -154,9 +154,9 @@ endmacro()
 
 if(build_common)
 
-   ## boost
-   goby_find_required_package(Boost 1.40.0 COMPONENTS system date_time thread program_options filesystem regex)
-   include_directories(${Boost_INCLUDE_DIRS})
+  ## boost
+  goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time thread program_options filesystem)
+  include_directories(${Boost_INCLUDE_DIRS})
 
   add_subdirectory(common)
 

@@ -60,6 +60,11 @@ docker-armhf-bionic: &docker-armhf-bionic
 job-template-amd64: &job-template-amd64
   working_directory: /root/goby3
   steps:
+    - run:
+        name: Add continuous build package sources.list (if not a tagged release)
+        command: |
+          [ -z "${CIRCLE_TAG}" ] &&
+          echo "deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/" >> /etc/apt/sources.list.d/gobysoft_continuous.list
     - run: &run-update-apt
         name: Update apt packages
         command: apt-get update && apt-get dist-upgrade -y
@@ -81,8 +86,12 @@ job-template-amd64: &job-template-amd64
           git checkout origin/${CIRCLE_BRANCH} ||
           echo "No branch in debian called ${CIRCLE_BRANCH}, using $(git rev-parse --abbrev-ref HEAD)"
     - run: &run-nest-deb
-        name: Nest debian source into project source
-        command: mv /root/debian ${CIRCLE_WORKING_DIRECTORY}
+        name: Nest debian source into project source and comment out clang as build-depends (causes problems for cross-builds)
+        command: |
+          mv /root/debian ${CIRCLE_WORKING_DIRECTORY} &&
+          cp /root/src/changelog ${CIRCLE_WORKING_DIRECTORY}/debian &&
+          sed -i "s/DISTRORELEASEVERSION/${DISTRO_RELEASE_VERSION}/;s/DISTRORELEASECODENAME/${DISTRO_RELEASE_CODENAME}/" ${CIRCLE_WORKING_DIRECTORY}/debian/changelog &&
+          sed -i 's/^\(.*\)clang/#\1clang/' ${CIRCLE_WORKING_DIRECTORY}/debian/control
     - run: &run-patch-version
         name: Patch the version patch number automatically in CMakeLists.txt
         command: |
@@ -92,13 +101,6 @@ job-template-amd64: &job-template-amd64
           export NEWVERSION_PATCH=$(echo $NEWVERSION | cut -d . -f 3)
           sed -i "s/^set(GOBY_VERSION_PATCH *\".*\"/set(GOBY_VERSION_PATCH \"${NEWVERSION_PATCH}\"/" CMakeLists.txt
           quilt refresh                  
-    - run: &run-dch
-        name: Generate original source tarball and add changelog entry 
-        command: |
-          export NEWVERSION="$(echo ../*.orig.tar.xz | sed 's/.*_\(.*\)\.orig\.tar\.xz/\1/')"
-          COMMENT="Autobuild for version ${NEWVERSION}" &&
-          cd debian &&
-          dch --newversion=${NEWVERSION}-0~${DISTRO_RELEASE_VERSION}.1 -D ${DISTRO_RELEASE_CODENAME} "${COMMENT}"          
     - run: &run-build-pkg
         name: Build the Debian package 
         command: |
@@ -142,6 +144,8 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-bionic
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 2
+    CXX: /usr/bin/clang++
+    CC: /usr/bin/clang
   docker: *docker-base-bionic
 
 job-template-upload: &job-template-upload
@@ -167,31 +171,31 @@ workflows:
       - get-orig-source:
           <<: *filter-template-deb-build
           
-      # - amd64-stretch-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - get-orig-source
-      # - arm64-stretch-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - amd64-stretch-build
-      # - armhf-stretch-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - arm64-stretch-build
+      - amd64-stretch-build:
+          <<: *filter-template-deb-build
+          requires:
+            - get-orig-source
+      - arm64-stretch-build:
+          <<: *filter-template-deb-build
+          requires:
+            - amd64-stretch-build
+      - armhf-stretch-build:
+          <<: *filter-template-deb-build
+          requires:
+            - arm64-stretch-build
             
-      # - amd64-xenial-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - get-orig-source
-      # - arm64-xenial-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - amd64-xenial-build
-      # - armhf-xenial-build:
-      #     <<: *filter-template-deb-build
-      #     requires:
-      #       - arm64-xenial-build
+      - amd64-xenial-build:
+          <<: *filter-template-deb-build
+          requires:
+            - get-orig-source
+      - arm64-xenial-build:
+          <<: *filter-template-deb-build
+          requires:
+            - amd64-xenial-build
+      - armhf-xenial-build:
+          <<: *filter-template-deb-build
+          requires:
+            - arm64-xenial-build
             
       - amd64-bionic-build:
           <<: *filter-template-deb-build
@@ -209,9 +213,9 @@ workflows:
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
           requires:
-#            - armhf-stretch-build
+            - armhf-stretch-build
             - armhf-bionic-build
-#            - armhf-xenial-build
+            - armhf-xenial-build
 
       # only do the release upload on tagged builds
       - release-upload:
@@ -225,10 +229,10 @@ workflows:
             - armhf-bionic-build
             - armhf-xenial-build
             
-      - amd64+scan-build
+#      - amd64+scan-build
       - amd64+asan-build
-      - amd64+tsan-build
-      - amd64+ubsan-build
+#      - amd64+tsan-build
+#      - amd64+ubsan-build
             
 jobs:
 
@@ -248,12 +252,21 @@ jobs:
             git config tar.tar.xz.command "xz -c" &&
             mkdir -p /root/src &&
             git archive --prefix=goby3-${NEWVERSION}/ -o /root/src/goby3_${NEWVERSION}.orig.tar.xz HEAD;
+      - run:
+          name: Add changelog entry 
+          command: |
+            cd .. &&
+            export NEWVERSION="$(echo /root/src/*.orig.tar.xz | sed 's/.*_\(.*\)\.orig\.tar\.xz/\1/')"
+            COMMENT="Autobuild for version ${NEWVERSION}" &&
+            dch --newversion=${NEWVERSION}-0~DISTRORELEASEVERSION.1 -D DISTRORELEASECODENAME "${COMMENT}" &&
+            cp debian/changelog /root/src
       - store_artifacts:
           path: /root/src
       - persist_to_workspace:
           root: /root/src
           paths:
             - '*.tar.xz'
+            - 'changelog'
             
   amd64-stretch-build:
     <<: *job-template-amd64
@@ -375,7 +388,8 @@ jobs:
           fingerprints:
             - "cd:15:c9:43:48:20:c9:56:58:9e:91:01:74:0d:fe:d2"
       - run: *run-import-gpg
-      - attach-workspace: *attach-deb-workspace
+      - attach-workspace:
+          at: /root/deb
       - attach-workspace: *attach-src-workspace
       - run:
           name: Move original source into output directory

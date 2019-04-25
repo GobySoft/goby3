@@ -24,9 +24,9 @@
 #define MOOSPROTOBUFHELPERS20110216H
 
 #include <limits>
+#include <regex>
 
 #include <boost/format.hpp>
-#include <boost/regex.hpp>
 
 #include <google/protobuf/io/printer.h>
 #include <google/protobuf/io/tokenizer.h>
@@ -855,8 +855,10 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
         }
 
         std::string mutable_format_temp = mutable_format;
-        for (boost::sregex_iterator it(mutable_format.begin(), mutable_format.end(),
-                                       boost::regex("%([0-9\\.]+:)+[0-9\\.]+%")),
+
+        std::regex moos_index_regex("%([0-9\\.]+:)+[0-9\\.]+%");
+        for (std::sregex_iterator
+                 it(mutable_format.begin(), mutable_format.end(), moos_index_regex),
              end;
              it != end; ++it)
         {
@@ -914,8 +916,9 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
 
         std::map<int, RepeatedFieldKey> indexed_repeated_fields;
 
-        for (boost::sregex_iterator it(mutable_format.begin(), mutable_format.end(),
-                                       boost::regex("%[0-9]+\\.[0-9]+%")),
+        std::regex repeated_field_regex("%[0-9]+\\.[0-9]+%");
+        for (std::sregex_iterator
+                 it(mutable_format.begin(), mutable_format.end(), repeated_field_regex),
              end;
              it != end; ++it)
         {
