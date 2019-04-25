@@ -31,7 +31,7 @@
 #if __GNUC__ < 7 || __GNUC_MINOR__ < 2
 // bug in gcc < 7.2 requires extern
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52036
-#error Must use Clang or GCC > 7.2 to compile goby3-examples
+#error Must use Clang or GCC > 7.2 to compile goby3 middleware
 #endif
 #endif
 #endif
