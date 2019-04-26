@@ -21,7 +21,7 @@ if(enable_zeromq)
 endif()
 
 add_library(goby_moos ${SRC} ${ZEROMQ_SRC} ${PROTO_SRCS} ${PROTO_HDRS})
-goby_install_lib(goby_moos)
+goby_install_lib(goby_moos moos)
 
 target_link_libraries(goby_moos
   goby_util

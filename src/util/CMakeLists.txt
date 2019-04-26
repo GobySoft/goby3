@@ -21,4 +21,4 @@ target_link_libraries(goby_util
   proj
   dccl)
 set_target_properties(goby_util PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
-goby_install_lib(goby_util)
+goby_install_lib(goby_util core)

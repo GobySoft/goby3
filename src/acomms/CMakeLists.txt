@@ -38,4 +38,4 @@ target_link_libraries(goby_acomms goby_util goby_common dccl dccl_arithmetic ${C
 
 set_target_properties(goby_acomms PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
-goby_install_lib(goby_acomms)
+goby_install_lib(goby_acomms core)
