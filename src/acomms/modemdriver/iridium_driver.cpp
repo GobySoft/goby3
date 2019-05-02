@@ -94,7 +94,7 @@ void goby::acomms::IridiumDriver::modem_init()
 
         if (driver_cfg_.GetExtension(IridiumDriverConfig::use_dtr) && modem().active() && !dtr_set)
         {
-            serial_fd_ = dynamic_cast<util::SerialClient&>(modem()).socket().native();
+            serial_fd_ = dynamic_cast<util::SerialClient&>(modem()).socket().native_handle();
             set_dtr(true);
             glog.is(DEBUG1) && glog << group(glog_out_group()) << "DTR is: " << query_dtr()
                                     << std::endl;

@@ -111,7 +111,7 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
         // Grab our native file descrpitor for the serial port.  Only works for linux.
         // Used to change control lines (e.g. RTS) w/ linux through IOCTL calls.
         // Would need #ifdef's for conditional compling if other platforms become desired.
-        serial_fd_ = dynamic_cast<util::SerialClient&>(modem()).socket().native();
+        serial_fd_ = dynamic_cast<util::SerialClient&>(modem()).socket().native_handle();
 
         // The MM2 (at least, possibly MM1 as well) has an issue where serial comms are
         // garbled when RTS is asserted and hardware flow control is disabled (HFC0).
