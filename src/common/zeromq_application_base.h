@@ -69,7 +69,7 @@ class ZeroMQApplicationBase : public goby::common::ApplicationBase
     /// \param hertz new frequency for loop()
     void set_loop_freq(double hertz)
     {
-        set_loop_period(boost::posix_time::milliseconds(1000.0 / hertz));
+        set_loop_period(boost::posix_time::milliseconds(static_cast<long>(1000.0 / hertz)));
     }
 
     /// interval between calls to loop()

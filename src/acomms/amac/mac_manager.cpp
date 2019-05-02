@@ -208,7 +208,8 @@ void goby::acomms::MACManager::increment_slot()
     {
         case protobuf::MAC_FIXED_DECENTRALIZED:
         case protobuf::MAC_POLLED:
-            next_slot_t_ += boost::posix_time::microseconds(current_slot_->slot_seconds() * 1e6);
+            next_slot_t_ += boost::posix_time::microseconds(
+                static_cast<long>(current_slot_->slot_seconds() * 1e6));
 
             ++current_slot_;
             if (current_slot_ == std::list<protobuf::ModemTransmission>::end())
@@ -258,8 +259,8 @@ boost::posix_time::ptime goby::acomms::MACManager::next_cycle_time()
 
     double secs_to_next = cycles_since_reference_ * cycle_duration();
 
-    return reference + seconds(secs_to_next) +
-           microseconds((secs_to_next - floor(secs_to_next)) * 1000000);
+    return reference + seconds(static_cast<long>(secs_to_next)) +
+           microseconds(static_cast<long>((secs_to_next - floor(secs_to_next)) * 1000000));
 }
 
 void goby::acomms::MACManager::update()
@@ -291,7 +292,7 @@ void goby::acomms::MACManager::update()
                                 << "Starting next available slot (in middle of cycle)" << std::endl;
 
         // step back a cycle
-        next_slot_t_ -= boost::posix_time::microseconds(cycle_duration() * 1e6);
+        next_slot_t_ -= boost::posix_time::microseconds(static_cast<long>(cycle_duration() * 1e6));
 
         boost::posix_time::ptime now = goby_time();
 

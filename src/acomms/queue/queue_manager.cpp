@@ -543,8 +543,8 @@ goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& 
 
         // encode on demand
         if (manip_manager_.has(codec_->id(q.descriptor()), protobuf::ON_DEMAND) &&
-            (!q.size() || q.newest_msg_time() + boost::posix_time::microseconds(
-                                                    cfg_.on_demand_skew_seconds() * 1e6) <
+            (!q.size() || q.newest_msg_time() + boost::posix_time::microseconds(static_cast<long>(
+                                                    cfg_.on_demand_skew_seconds() * 1e6)) <
                               common::goby_time()))
         {
             boost::shared_ptr<google::protobuf::Message> new_msg =
