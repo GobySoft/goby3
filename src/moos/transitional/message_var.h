@@ -167,7 +167,6 @@ class DCCLMessageVar
 
   private:
     bool source_set_;
-    DCCLAlgorithmPerformer* ap_;
     std::string source_key_;
     std::vector<std::string> algorithms_;
 };

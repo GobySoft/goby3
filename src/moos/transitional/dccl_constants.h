@@ -220,18 +220,6 @@ inline std::string binary_string2hex_string(const std::string& bs)
     return hs;
 }
 
-/// \brief converts a boost::dynamic_bitset (similar to std::bitset but without compile time size requirements) into a hex string
-/* inline std::string dyn_bitset2hex_string(const boost::dynamic_bitset<unsigned char>& bits, unsigned trim_to_bytes_size = 0) */
-/* { */
-/*     std::stringstream binary; */
-/*     binary << bits; */
-/*     std::string out = binary_string2hex_string(binary.str()); */
-
-/*     if(trim_to_bytes_size) */
-/*         return out.substr(out.length() - trim_to_bytes_size*2); */
-/*     else */
-/*         return out; */
-/* } */
 
 /// \brief converts a hex string ("8AAA") into a binary string ("1000101010101010")
 ///
@@ -250,17 +238,6 @@ inline std::string hex_string2binary_string(const std::string& bs)
     return hs;
 }
 
-/// \brief converts a hex string ("8AAA") into a dynamic_bitset
-/* inline boost::dynamic_bitset<unsigned char> hex_string2dyn_bitset(const std::string & hs, unsigned bits_size = 0) */
-/* { */
-/*     boost::dynamic_bitset<unsigned char> bits; */
-/*     std::stringstream bin_str; */
-/*     bin_str << hex_string2binary_string(hs);        */
-/*     bin_str >> bits; */
-
-/*     if(bits_size) bits.resize(bits_size);         */
-/*     return bits; */
-/* } */
 
 /// \brief attempts to convert a hex string into a numerical representation (of type T)
 ///
@@ -298,40 +275,6 @@ template <typename T> std::string number2hex_string(const T& t, unsigned int wid
     number2hex_string(s, t, width);
     return s;
 }
-
-/* class ManipulatorManager */
-/* { */
-/*   public: */
-/*     void add(unsigned id, goby::transitional::protobuf::MessageFile::Manipulator manip) */
-/*     { */
-/*         manips_.insert(std::make_pair(id, manip)); */
-/*     } */
-
-/*     bool has(unsigned id, goby::transitional::protobuf::MessageFile::Manipulator manip) const */
-/*     { */
-/*         typedef std::multimap<unsigned, goby::transitional::protobuf::MessageFile::Manipulator>::const_iterator iterator; */
-/*         std::pair<iterator,iterator> p = manips_.equal_range(id); */
-
-/*         for(iterator it = p.first; it != p.second; ++it) */
-/*         { */
-/*             if(it->second == manip) */
-/*                 return true; */
-/*         } */
-
-/*         return false; */
-/*     } */
-
-/*     void clear() */
-/*     { */
-/*         manips_.clear(); */
-/*     } */
-
-/*   private: */
-/*     // manipulator multimap (no_encode, no_decode, etc) */
-/*     // maps DCCL ID (unsigned) onto Manipulator enumeration (xml_config.proto) */
-/*     std::multimap<unsigned, goby::transitional::protobuf::MessageFile::Manipulator> manips_; */
-
-/* }; */
 
 } // namespace transitional
 } // namespace goby

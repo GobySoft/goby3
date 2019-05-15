@@ -39,7 +39,6 @@
 #include "goby/moos/protobuf/bluefin_driver.pb.h"
 #include "goby/moos/protobuf/frontseat.pb.h"
 #include "goby/moos/protobuf/ufield_sim_driver.pb.h"
-#include "goby/pb/pb_modem_driver.h"
 #include "goby/util/sci.h"
 #include "pAcommsHandler.h"
 
@@ -611,11 +610,6 @@ void CpAcommsHandler::create_driver(boost::shared_ptr<goby::acomms::ModemDriverB
                                          cfg_.modem_id_lookup_path());
                 break;
 
-            case goby::acomms::protobuf::DRIVER_PB_STORE_SERVER:
-                zeromq_service_.push_back(boost::shared_ptr<goby::common::ZeroMQService>(
-                    new goby::common::ZeroMQService));
-                driver.reset(new goby::pb::PBDriver(zeromq_service_.back().get()));
-                break;
 
             case goby::acomms::protobuf::DRIVER_IRIDIUM:
                 driver.reset(new goby::acomms::IridiumDriver);

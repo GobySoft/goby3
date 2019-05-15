@@ -9,7 +9,6 @@ target_link_libraries(pAcommsHandler
   goby_acomms
   goby_util
   goby_moos
-  goby_pb
   ${MOOS_LIBRARIES}
   ${MOOSGeodesy_LIBRARIES}
   ${Boost_LIBRARIES}
