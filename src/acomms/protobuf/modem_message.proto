@@ -114,6 +114,7 @@ message ModemTransmission
     // extensions 1361-1380 used by bluefin_driver.proto
     // extensions 1381-1400 used by iridium_driver.proto
     // extensions 1401-1420 used by benthos_atm900.proto
+    // extensions 1421-1440 used by mccs_driver.proto
     extensions 1000 to max;
 }
 

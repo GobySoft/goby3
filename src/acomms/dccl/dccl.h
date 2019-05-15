@@ -130,6 +130,9 @@ class DCCLCodec
         return inst_.get();
     }
 
+    /// \brief Return the underlying dccl::Codec that is used by this wrapper
+    boost::shared_ptr<dccl::Codec> codec() { return codec_; }
+
     void set_cfg(const protobuf::DCCLConfig& cfg)
     {
         cfg_.CopyFrom(cfg);

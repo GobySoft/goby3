@@ -11,7 +11,6 @@ message NodeStatus
 
     required double time = 1 [
         (dccl.field).codec = "_time",
-        (dccl.field).in_head = true,
         (dccl.field).units.derived_dimensions = "time"
     ];
     optional string name = 2 [(dccl.field).omit = true];

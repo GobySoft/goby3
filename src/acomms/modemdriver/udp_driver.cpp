@@ -124,6 +124,10 @@ void goby::acomms::UDPDriver::start_send(const google::protobuf::Message& msg)
     glog.is(DEBUG1) && glog << group(glog_out_group())
                             << "Sending hex: " << goby::util::hex_encode(bytes) << std::endl;
 
+    protobuf::ModemRaw raw_msg;
+    raw_msg.set_raw(bytes);
+    signal_raw_outgoing(raw_msg);
+
     socket_.async_send_to(boost::asio::buffer(bytes), receiver_,
                           boost::bind(&UDPDriver::send_complete, this, _1, _2));
 }
@@ -158,6 +162,10 @@ void goby::acomms::UDPDriver::receive_complete(const boost::system::error_code& 
         start_receive();
         return;
     }
+
+    protobuf::ModemRaw raw_msg;
+    raw_msg.set_raw(std::string(&receive_buffer_[0], bytes_transferred));
+    signal_raw_incoming(raw_msg);
 
     glog.is(DEBUG1) && glog << group(glog_in_group()) << "Received " << bytes_transferred
                             << " bytes from " << sender_.address().to_string() << ":"
