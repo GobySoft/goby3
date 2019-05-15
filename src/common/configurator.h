@@ -24,7 +24,6 @@
 #define CONFIGURATOR_20181205H
 
 #include "goby/common/configuration_reader.h"
-#include "goby/common/core_helpers.h"
 #include "goby/common/protobuf/app3.pb.h"
 
 namespace goby
@@ -77,6 +76,9 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
         std::cerr << "Invalid configuration: use --help and/or --example_config for more help: "
                   << e.what() << std::endl;
     }
+
+    void merge_app_base_cfg(goby::protobuf::App3Config* base_cfg,
+                            const boost::program_options::variables_map& var_map);
 };
 
 template <typename Config>
@@ -111,6 +113,40 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
 
     // TODO: convert to C++ struct app3 configuration format
     this->mutable_app3_configuration() = *cfg.mutable_app();
+}
+
+template <typename Config>
+void ProtobufConfigurator<Config>::merge_app_base_cfg(
+    goby::protobuf::App3Config* base_cfg, const boost::program_options::variables_map& var_map)
+{
+    if (var_map.count("ncurses"))
+    {
+        base_cfg->mutable_glog_config()->set_show_gui(true);
+    }
+
+    if (var_map.count("verbose"))
+    {
+        switch (var_map["verbose"].as<std::string>().size())
+        {
+            default:
+            case 0:
+                base_cfg->mutable_glog_config()->set_tty_verbosity(
+                    common::protobuf::GLogConfig::VERBOSE);
+                break;
+            case 1:
+                base_cfg->mutable_glog_config()->set_tty_verbosity(
+                    common::protobuf::GLogConfig::DEBUG1);
+                break;
+            case 2:
+                base_cfg->mutable_glog_config()->set_tty_verbosity(
+                    common::protobuf::GLogConfig::DEBUG2);
+                break;
+            case 3:
+                base_cfg->mutable_glog_config()->set_tty_verbosity(
+                    common::protobuf::GLogConfig::DEBUG3);
+                break;
+        }
+    }
 }
 
 } // namespace common

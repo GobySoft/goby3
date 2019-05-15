@@ -32,7 +32,7 @@
 #include <vector>
 
 #include <boost/foreach.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "goby/acomms/protobuf/queue.pb.h"
 
@@ -123,16 +123,16 @@ class DCCLMessage
     DCCLMessageVar& header_var(transitional::DCCLHeaderPart p) { return *header_[p]; }
     DCCLPublish& last_publish() { return publishes_.back(); }
 
-    std::vector<boost::shared_ptr<DCCLMessageVar> >& layout() { return layout_; }
-    std::vector<boost::shared_ptr<DCCLMessageVar> >& header() { return header_; }
+    std::vector<std::shared_ptr<DCCLMessageVar> >& layout() { return layout_; }
+    std::vector<std::shared_ptr<DCCLMessageVar> >& header() { return header_; }
 
-    const std::vector<boost::shared_ptr<DCCLMessageVar> >& layout_const() const { return layout_; }
-    const std::vector<boost::shared_ptr<DCCLMessageVar> >& header_const() const { return header_; }
+    const std::vector<std::shared_ptr<DCCLMessageVar> >& layout_const() const { return layout_; }
+    const std::vector<std::shared_ptr<DCCLMessageVar> >& header_const() const { return header_; }
 
     std::vector<DCCLPublish>& publishes() { return publishes_; }
     const std::vector<DCCLPublish>& publishes_const() const { return publishes_; }
 
-    boost::shared_ptr<DCCLMessageVar> name2message_var(const std::string& name) const;
+    std::shared_ptr<DCCLMessageVar> name2message_var(const std::string& name) const;
 
     const google::protobuf::Descriptor* descriptor() { return descriptor_; }
 
@@ -185,8 +185,8 @@ class DCCLMessage
     std::string in_var_;
     std::string out_var_;
 
-    std::vector<boost::shared_ptr<DCCLMessageVar> > layout_;
-    std::vector<boost::shared_ptr<DCCLMessageVar> > header_;
+    std::vector<std::shared_ptr<DCCLMessageVar> > layout_;
+    std::vector<std::shared_ptr<DCCLMessageVar> > header_;
 
     std::vector<DCCLPublish> publishes_;
 

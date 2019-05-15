@@ -26,7 +26,7 @@
 
 #include "H5Cpp.h"
 
-#include "goby/common/application_base.h"
+#include "goby/common/application_base3.h"
 #include "goby/common/hdf5_plugin.h"
 #include "goby/common/protobuf/hdf5.pb.h"
 #include "goby/util/binary.h"
@@ -46,7 +46,7 @@ struct MessageCollection
     std::string name;
 
     // time -> Message contents
-    std::multimap<std::uint64_t, boost::shared_ptr<google::protobuf::Message> > entries;
+    std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message> > entries;
 };
 
 struct Channel
@@ -90,10 +90,10 @@ class GroupFactory
     GroupWrapper root_group_;
 };
 
-class Writer : public goby::common::ApplicationBase
+class Writer : public goby::common::ApplicationBase3<goby::common::protobuf::HDF5Config>
 {
   public:
-    Writer(goby::common::protobuf::HDF5Config* cfg);
+    Writer();
 
   private:
     void load();
@@ -132,11 +132,10 @@ class Writer : public goby::common::ApplicationBase
                       const std::vector<std::string>& data, const std::vector<hsize_t>& hs,
                       const std::string& default_value);
 
-    void iterate() {}
+    void run() {}
 
   private:
-    goby::common::protobuf::HDF5Config& cfg_;
-    boost::shared_ptr<goby::common::HDF5Plugin> plugin_;
+    std::shared_ptr<goby::common::HDF5Plugin> plugin_;
 
     // channel name -> hdf5::Channel
     std::map<std::string, goby::common::hdf5::Channel> channels_;

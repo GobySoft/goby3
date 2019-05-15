@@ -27,8 +27,8 @@ using goby::common::goby_time;
 using goby::util::as;
 using namespace boost::posix_time;
 
-DriverTester::DriverTester(boost::shared_ptr<goby::acomms::ModemDriverBase> driver1,
-                           boost::shared_ptr<goby::acomms::ModemDriverBase> driver2,
+DriverTester::DriverTester(std::shared_ptr<goby::acomms::ModemDriverBase> driver1,
+                           std::shared_ptr<goby::acomms::ModemDriverBase> driver2,
                            const goby::acomms::protobuf::DriverConfig& cfg1,
                            const goby::acomms::protobuf::DriverConfig& cfg2,
                            const std::vector<int>& tests_to_run,

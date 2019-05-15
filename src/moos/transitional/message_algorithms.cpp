@@ -113,7 +113,7 @@ void goby::transitional::DCCLAlgorithmPerformer::check_algorithm(const std::stri
     for (std::vector<std::string>::size_type i = 1, n = ref_vars.size(); i < n; ++i)
     {
         bool ref_found = false;
-        BOOST_FOREACH (const boost::shared_ptr<DCCLMessageVar> mv, msg.header_const())
+        BOOST_FOREACH (const std::shared_ptr<DCCLMessageVar> mv, msg.header_const())
         {
             if (ref_vars[i] == mv->name())
             {
@@ -122,7 +122,7 @@ void goby::transitional::DCCLAlgorithmPerformer::check_algorithm(const std::stri
             }
         }
 
-        BOOST_FOREACH (const boost::shared_ptr<DCCLMessageVar> mv, msg.layout_const())
+        BOOST_FOREACH (const std::shared_ptr<DCCLMessageVar> mv, msg.layout_const())
         {
             if (ref_vars[i] == mv->name())
             {

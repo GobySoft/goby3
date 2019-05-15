@@ -33,7 +33,7 @@
 #include <boost/thread.hpp>
 
 #include <boost/date_time.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "goby/common/protobuf/logger.pb.h"
 
@@ -159,7 +159,7 @@ class FlexOStreamBuf : public std::streambuf
     std::atomic<logger::Verbosity> current_verbosity_;
 
     FlexNCurses* curses_;
-    boost::shared_ptr<boost::thread> input_thread_;
+    std::shared_ptr<boost::thread> input_thread_;
 
     boost::posix_time::ptime start_time_;
 

@@ -32,7 +32,7 @@
 #include <boost/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/foreach.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "goby/util/as.h"
 
@@ -70,7 +70,7 @@ class TCPServer : public LineBasedInterface
     /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230
     std::string local_endpoint() { return goby::util::as<std::string>(acceptor_.local_endpoint()); }
 
-    const std::map<Endpoint, boost::shared_ptr<TCPConnection> >& connections();
+    const std::map<Endpoint, std::shared_ptr<TCPConnection> >& connections();
 
     friend class TCPConnection;
     friend class LineBasedConnection<boost::asio::ip::tcp::socket>;
@@ -88,21 +88,21 @@ class TCPServer : public LineBasedInterface
 
   private:
     void start_accept();
-    void handle_accept(boost::shared_ptr<TCPConnection> new_connection,
+    void handle_accept(std::shared_ptr<TCPConnection> new_connection,
                        const boost::system::error_code& error);
 
   private:
     std::string server_;
     boost::asio::ip::tcp::acceptor acceptor_;
-    boost::shared_ptr<TCPConnection> new_connection_;
-    std::map<Endpoint, boost::shared_ptr<TCPConnection> > connections_;
+    std::shared_ptr<TCPConnection> new_connection_;
+    std::map<Endpoint, std::shared_ptr<TCPConnection> > connections_;
 };
 
 class TCPConnection : public boost::enable_shared_from_this<TCPConnection>,
                       public LineBasedConnection<boost::asio::ip::tcp::socket>
 {
   public:
-    static boost::shared_ptr<TCPConnection> create(LineBasedInterface* interface);
+    static std::shared_ptr<TCPConnection> create(LineBasedInterface* interface);
 
     boost::asio::ip::tcp::socket& socket() { return socket_; }
 

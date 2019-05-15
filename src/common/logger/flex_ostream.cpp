@@ -26,7 +26,7 @@
 
 using namespace goby::common::logger;
 
-// boost::shared_ptr<goby::common::FlexOstream> goby::common::FlexOstream::inst_;
+// std::shared_ptr<goby::common::FlexOstream> goby::common::FlexOstream::inst_;
 
 // goby::common::FlexOstream& goby::common::glogger()
 // {

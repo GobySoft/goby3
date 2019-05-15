@@ -39,7 +39,6 @@
 #include "goby/common/time3.h"
 
 #include "configurator.h"
-#include "core_helpers.h"
 
 namespace goby
 {

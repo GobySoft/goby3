@@ -178,15 +178,7 @@ if(build_common)
       if(enable_zeromq)
         option(build_middleware "Build the Goby Middleware" ON)
         add_subdirectory(middleware)
-      endif()
-      
-      if(enable_zeromq)
-        option(build_pb "Build the Goby implementation in Protobuf/C++ (PB) (requires goby-acomms)" ON)
-        if(build_pb)
-          add_subdirectory(pb)
-        endif(build_pb)
-      endif()
-
+      endif()      
 
       # first try to find v10 MOOS
       find_package(MOOS 10 QUIET NO_MODULE)

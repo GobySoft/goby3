@@ -30,10 +30,10 @@ namespace moos
 class SV2SerialConnection : public boost::enable_shared_from_this<SV2SerialConnection>
 {
   public:
-    static boost::shared_ptr<SV2SerialConnection> create(boost::asio::io_service& io_service,
-                                                         std::string name, int baud = 115200)
+    static std::shared_ptr<SV2SerialConnection> create(boost::asio::io_service& io_service,
+                                                       std::string name, int baud = 115200)
     {
-        return boost::shared_ptr<SV2SerialConnection>(
+        return std::shared_ptr<SV2SerialConnection>(
             new SV2SerialConnection(io_service, name, baud));
     }
 

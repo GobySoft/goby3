@@ -86,7 +86,7 @@ class IverFrontSeat : public FrontSeatInterfaceBase
     const IverFrontSeatConfig iver_config_;
     goby::util::SerialClient serial_;
 
-    boost::shared_ptr<goby::util::SerialClient> ntp_serial_;
+    std::shared_ptr<goby::util::SerialClient> ntp_serial_;
 
     bool frontseat_providing_data_;
     double last_frontseat_data_time_;

@@ -26,14 +26,12 @@
 #include <tuple>
 #include <zmq.hpp>
 
-#include "goby/common/protobuf/zero_mq_node_config.pb.h"
 #include "goby/middleware/protobuf/interprocess_zeromq.pb.h"
 #include "transport-interprocess.h"
 
 namespace goby
 {
-void setup_socket(zmq::socket_t& socket,
-                  const goby::common::protobuf::ZeroMQServiceConfig::Socket& cfg);
+void setup_socket(zmq::socket_t& socket, const protobuf::ZMQSocket& cfg);
 // run in the same thread as InterProcessPortal
 class ZMQMainThread
 {
@@ -41,7 +39,7 @@ class ZMQMainThread
     ZMQMainThread(zmq::context_t& context);
     bool ready() { return publish_socket_configured_; }
     bool recv(protobuf::InprocControl* control_msg, int flags = 0);
-    void set_publish_cfg(const goby::common::protobuf::ZeroMQServiceConfig::Socket& cfg);
+    void set_publish_cfg(const protobuf::ZMQSocket& cfg);
     void publish(const std::string& identifier, const char* bytes, int size);
     void subscribe(const std::string& identifier);
     void unsubscribe(const std::string& identifier);

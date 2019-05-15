@@ -29,8 +29,8 @@
 class DriverTester
 {
   public:
-    DriverTester(boost::shared_ptr<goby::acomms::ModemDriverBase> driver1,
-                 boost::shared_ptr<goby::acomms::ModemDriverBase> driver2,
+    DriverTester(std::shared_ptr<goby::acomms::ModemDriverBase> driver1,
+                 std::shared_ptr<goby::acomms::ModemDriverBase> driver2,
                  const goby::acomms::protobuf::DriverConfig& cfg1,
                  const goby::acomms::protobuf::DriverConfig& cfg2,
                  const std::vector<int>& tests_to_run,
@@ -58,7 +58,7 @@ class DriverTester
     void test6();
 
   private:
-    boost::shared_ptr<goby::acomms::ModemDriverBase> driver1_, driver2_;
+    std::shared_ptr<goby::acomms::ModemDriverBase> driver1_, driver2_;
 
     int check_count_;
 

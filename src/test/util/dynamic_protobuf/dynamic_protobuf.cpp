@@ -46,22 +46,22 @@ int main()
 
     {
         // testing compiled in
-        boost::shared_ptr<google::protobuf::Message> adyn_msg =
-            goby::util::DynamicProtobufManager::new_protobuf_message("A");
+        auto adyn_msg = goby::util::DynamicProtobufManager::new_protobuf_message<
+            std::shared_ptr<google::protobuf::Message> >("A");
 
         std::cout << adyn_msg->GetDescriptor()->DebugString() << std::endl;
 
         // testing dlopen'd
-        boost::shared_ptr<google::protobuf::Message> bdyn_msg =
-            goby::util::DynamicProtobufManager::new_protobuf_message("B");
+        auto bdyn_msg = goby::util::DynamicProtobufManager::new_protobuf_message<
+            std::shared_ptr<google::protobuf::Message> >("B");
 
         std::cout << bdyn_msg->GetDescriptor()->DebugString() << std::endl;
 
         // test non-existent
         try
         {
-            boost::shared_ptr<google::protobuf::Message> cdyn_msg =
-                goby::util::DynamicProtobufManager::new_protobuf_message("C");
+            auto cdyn_msg = goby::util::DynamicProtobufManager::new_protobuf_message<
+                std::shared_ptr<google::protobuf::Message> >("C");
             // should throw
             assert(false);
         }
@@ -79,8 +79,8 @@ int main()
         google::protobuf::TextFormat::ParseFromString(d_proto_str, &d_proto);
         goby::util::DynamicProtobufManager::add_protobuf_file(d_proto);
 
-        boost::shared_ptr<google::protobuf::Message> ddyn_msg =
-            goby::util::DynamicProtobufManager::new_protobuf_message("D");
+        auto ddyn_msg = goby::util::DynamicProtobufManager::new_protobuf_message<
+            std::shared_ptr<google::protobuf::Message> >("D");
 
         std::cout << ddyn_msg->GetDescriptor()->DebugString() << std::endl;
 
@@ -94,8 +94,8 @@ int main()
 
         simple_database->Add(e_proto);
 
-        boost::shared_ptr<google::protobuf::Message> edyn_msg =
-            goby::util::DynamicProtobufManager::new_protobuf_message("E");
+        auto edyn_msg = goby::util::DynamicProtobufManager::new_protobuf_message<
+            std::shared_ptr<google::protobuf::Message> >("E");
         std::cout << edyn_msg->GetDescriptor()->DebugString() << std::endl;
 
         std::cout << "all tests passed" << std::endl;

@@ -123,15 +123,12 @@ class DCCLCodec
     /// \brief DCCLCodec is a singleton class; use this to get a pointer to the class.
     static DCCLCodec* get()
     {
-        // set these now so that the user has a chance of setting the logger
-        if (!inst_)
-            inst_.reset(new DCCLCodec);
-
-        return inst_.get();
+        static DCCLCodec d;
+        return &d;
     }
 
     /// \brief Return the underlying dccl::Codec that is used by this wrapper
-    boost::shared_ptr<dccl::Codec> codec() { return codec_; }
+    std::shared_ptr<dccl::Codec> codec() { return codec_; }
 
     void set_cfg(const protobuf::DCCLConfig& cfg)
     {
@@ -347,14 +344,12 @@ class DCCLCodec
     }
 
   private:
-    static boost::shared_ptr<DCCLCodec> inst_;
-
     static std::string glog_encode_group_;
     static std::string glog_decode_group_;
 
     protobuf::DCCLConfig cfg_;
 
-    boost::shared_ptr<dccl::Codec> codec_;
+    std::shared_ptr<dccl::Codec> codec_;
 
     std::set<void*> loaded_libs_;
     std::set<const google::protobuf::Descriptor*> loaded_msgs_;

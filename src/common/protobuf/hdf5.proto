@@ -1,7 +1,11 @@
+import "goby/common/protobuf/app3.proto";
+
 package goby.common.protobuf;
 
 message HDF5Config
 {
+    optional goby.protobuf.App3Config app = 1;
+    
     required string output_file = 10;
     optional bool include_string_fields = 20 [default = false];
 

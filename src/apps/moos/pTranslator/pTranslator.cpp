@@ -75,7 +75,7 @@ CpTranslator::CpTranslator()
     // process translator entries
     for (int i = 0, n = cfg_.translator_entry_size(); i < n; ++i)
     {
-        typedef boost::shared_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
+        typedef std::shared_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
         glog.is(VERBOSE) && glog << "Checking translator entry: "
                                  << cfg_.translator_entry(i).DebugString() << std::flush;
 
@@ -94,7 +94,7 @@ CpTranslator::CpTranslator()
         else if (cfg_.translator_entry(i).trigger().type() ==
                  goby::moos::protobuf::TranslatorEntry::Trigger::TRIGGER_TIME)
         {
-            timers_.push_back(boost::shared_ptr<Timer>(new Timer(timer_io_service_)));
+            timers_.push_back(std::shared_ptr<Timer>(new Timer(timer_io_service_)));
 
             Timer& new_timer = *timers_.back();
 
@@ -138,7 +138,7 @@ void CpTranslator::create_on_publish(const CMOOSMsg& trigger_msg,
 
 void CpTranslator::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
 {
-    boost::shared_ptr<google::protobuf::Message> msg = dynamic_parse_for_moos(moos_msg.GetString());
+    std::shared_ptr<google::protobuf::Message> msg = dynamic_parse_for_moos(moos_msg.GetString());
 
     if (!msg)
     {
@@ -202,8 +202,8 @@ void CpTranslator::create_on_timer(const boost::system::error_code& error,
 
 void CpTranslator::do_translation(const goby::moos::protobuf::TranslatorEntry& entry)
 {
-    boost::shared_ptr<google::protobuf::Message> created_message =
-        translator_.moos_to_protobuf<boost::shared_ptr<google::protobuf::Message> >(
+    std::shared_ptr<google::protobuf::Message> created_message =
+        translator_.moos_to_protobuf<std::shared_ptr<google::protobuf::Message> >(
             dynamic_vars().all(), entry.protobuf_name());
 
     glog.is(DEBUG1) && glog << "Created message: \n" << created_message->DebugString() << std::endl;
@@ -211,7 +211,7 @@ void CpTranslator::do_translation(const goby::moos::protobuf::TranslatorEntry& e
     do_publish(created_message);
 }
 
-void CpTranslator::do_publish(boost::shared_ptr<google::protobuf::Message> created_message)
+void CpTranslator::do_publish(std::shared_ptr<google::protobuf::Message> created_message)
 {
     std::multimap<std::string, CMOOSMsg> out;
 

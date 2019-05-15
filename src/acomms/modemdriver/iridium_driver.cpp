@@ -35,7 +35,7 @@ using namespace goby::common::logger;
 using goby::common::goby_time;
 using goby::acomms::operator<<;
 
-boost::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
+std::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
 
 goby::acomms::IridiumDriver::IridiumDriver()
     : fsm_(driver_cfg_), last_triple_plus_time_(0), serial_fd_(-1), next_frame_(0)
