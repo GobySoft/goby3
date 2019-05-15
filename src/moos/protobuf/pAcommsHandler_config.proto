@@ -4,7 +4,6 @@ import "goby/acomms/protobuf/queue.proto";
 import "goby/acomms/protobuf/amac_config.proto";
 import "goby/acomms/protobuf/dccl.proto";
 import "goby/acomms/protobuf/route.proto";
-import "goby/moos/protobuf/transitional.proto";
 import "goby/moos/protobuf/translator.proto";
 import "goby/common/protobuf/option_extensions.proto";
 
@@ -169,9 +168,4 @@ message pAcommsHandlerConfig
         (goby.field).moos_global = "modem_id_lookup_path"
     ];
 
-    optional goby.transitional.protobuf.DCCLTransitionalConfig
-        transitional_cfg = 200 [
-        (goby.field).description =
-            "Backwards compatibility for DCCLv1 XML file"
-    ];  // see transitional.proto
 }

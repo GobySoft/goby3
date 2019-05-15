@@ -34,11 +34,6 @@
 #include "goby/acomms.h"
 #include "goby/util.h"
 
-#ifdef ENABLE_GOBY_V1_TRANSITIONAL_SUPPORT
-#include "goby/moos/transitional/dccl_transitional.h"
-#endif
-
-#include "goby/common/zeromq_service.h"
 #include "goby/moos/goby_moos_app.h"
 #include "goby/moos/moos_translator.h"
 #include "goby/util/dynamic_protobuf_manager.h"
@@ -135,10 +130,6 @@ class CpAcommsHandler : public GobyMOOSApp
   private:
     goby::moos::MOOSTranslator translator_;
 
-#ifdef ENABLE_GOBY_V1_TRANSITIONAL_SUPPORT
-    //Old style XML DCCL1 parsing
-    goby::transitional::DCCLTransitionalCodec transitional_dccl_;
-#endif
 
     // new DCCL2 codec
     goby::acomms::DCCLCodec* dccl_;
@@ -162,8 +153,6 @@ class CpAcommsHandler : public GobyMOOSApp
 
     goby::acomms::RouteManager* router_;
 
-    // for PBDriver, IridiumDriver
-    std::vector<boost::shared_ptr<goby::common::ZeroMQService> > zeromq_service_;
 
     // for UDPDriver
     std::vector<boost::shared_ptr<boost::asio::io_service> > asio_service_;

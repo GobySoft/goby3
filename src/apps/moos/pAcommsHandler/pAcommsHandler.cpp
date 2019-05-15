@@ -70,17 +70,6 @@ CpAcommsHandler::CpAcommsHandler()
                   cfg_.common().lon_origin(), cfg_.modem_id_lookup_path()),
       dccl_(goby::acomms::DCCLCodec::get()), work_(timer_io_service_), router_(0)
 {
-#ifdef ENABLE_GOBY_V1_TRANSITIONAL_SUPPORT
-    transitional_dccl_.convert_to_v2_representation(&cfg_);
-    glog.is(DEBUG2) && glog << group("pAcommsHandler")
-                            << "Configuration after transitional configuration modifications: \n"
-                            << cfg_ << std::flush;
-#else
-    if (cfg_.has_transitional_cfg())
-        glog.is(WARN) && glog << "transitional_cfg is set but pAcommsHandler was not compiled with "
-                                 "the CMake flag 'enable_goby_v1_transitional_support' set to ON"
-                              << std::endl;
-#endif
 
     translator_.add_entry(cfg_.translator_entry());
 
@@ -429,7 +418,6 @@ void CpAcommsHandler::process_configuration()
 
     cfg_.mutable_queue_cfg()->set_modem_id(cfg_.modem_id());
     cfg_.mutable_mac_cfg()->set_modem_id(cfg_.modem_id());
-    cfg_.mutable_transitional_cfg()->set_modem_id(cfg_.modem_id());
 
     for (std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
                   goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
