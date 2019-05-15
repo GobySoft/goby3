@@ -46,7 +46,7 @@ struct MessageCollection
     std::string name;
 
     // time -> Message contents
-    std::multimap<std::uint64_t, boost::shared_ptr<google::protobuf::Message> > entries;
+    std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message> > entries;
 };
 
 struct Channel
@@ -135,7 +135,7 @@ class Writer : public goby::common::ApplicationBase3<goby::common::protobuf::HDF
     void run() {}
 
   private:
-    boost::shared_ptr<goby::common::HDF5Plugin> plugin_;
+    std::shared_ptr<goby::common::HDF5Plugin> plugin_;
 
     // channel name -> hdf5::Channel
     std::map<std::string, goby::common::hdf5::Channel> channels_;

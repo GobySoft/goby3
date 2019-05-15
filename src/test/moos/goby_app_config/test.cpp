@@ -40,7 +40,7 @@ class GobyMOOSAppTest : public GobyMOOSApp
     static GobyMOOSAppTest* inst_;
 };
 
-boost::shared_ptr<AppConfig> master_config;
+std::shared_ptr<AppConfig> master_config;
 GobyMOOSAppTest* GobyMOOSAppTest::inst_ = 0;
 
 GobyMOOSAppTest* GobyMOOSAppTest::get_instance()

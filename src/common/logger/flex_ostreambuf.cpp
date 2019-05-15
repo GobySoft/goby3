@@ -114,7 +114,7 @@ void goby::common::FlexOStreamBuf::enable_gui()
 
     curses_->recalculate_win();
 
-    input_thread_ = boost::shared_ptr<boost::thread>(
+    input_thread_ = std::shared_ptr<boost::thread>(
         new boost::thread(boost::bind(&FlexNCurses::run_input, curses_)));
 #else
     throw(goby::Exception("Tried to enable NCurses GUI without compiling against NCurses. Install "

@@ -107,7 +107,7 @@ CpAcommsHandler::CpAcommsHandler()
 
     driver_bind();
 
-    for (std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
+    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
                   goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
                                                                    end = drivers_.end();
          it != end; ++it)
@@ -147,7 +147,7 @@ void CpAcommsHandler::loop()
     if (driver_restart_time_.size())
         restart_drivers();
 
-    for (std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
+    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
                   goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
                                                                    end = drivers_.end();
          it != end; ++it)
@@ -252,7 +252,7 @@ void CpAcommsHandler::handle_mac_cycle_update(const CMOOSMsg& msg)
             case goby::acomms::protobuf::MACUpdate::STARTED:
                 mac_.restart();
 
-                for (std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
+                for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
                               goby::acomms::protobuf::DriverConfig*>::iterator
                          it = drivers_.begin(),
                          end = drivers_.end();
@@ -269,7 +269,7 @@ void CpAcommsHandler::handle_mac_cycle_update(const CMOOSMsg& msg)
                 break;
 
             case goby::acomms::protobuf::MACUpdate::STOPPED:
-                for (std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
+                for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
                               goby::acomms::protobuf::DriverConfig*>::iterator
                          it = drivers_.begin(),
                          end = drivers_.end();
@@ -319,7 +319,7 @@ void CpAcommsHandler::handle_driver_cfg_update(const goby::acomms::protobuf::Dri
                              << std::endl;
 
     bool driver_found = false;
-    for (std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
+    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
                   goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
                                                                    end = drivers_.end();
          it != end; ++it)
@@ -389,7 +389,7 @@ void CpAcommsHandler::process_configuration()
     {
         for (int i = 0, n = cfg_.listen_driver_type_size(); i < n; ++i)
         {
-            boost::shared_ptr<goby::acomms::ModemDriverBase> driver;
+            std::shared_ptr<goby::acomms::ModemDriverBase> driver;
             create_driver(driver, cfg_.listen_driver_type(i), cfg_.mutable_listen_driver_cfg(i), 0);
             drivers_.insert(std::make_pair(driver, cfg_.mutable_listen_driver_cfg(i)));
         }
@@ -419,7 +419,7 @@ void CpAcommsHandler::process_configuration()
     cfg_.mutable_queue_cfg()->set_modem_id(cfg_.modem_id());
     cfg_.mutable_mac_cfg()->set_modem_id(cfg_.modem_id());
 
-    for (std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
+    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
                   goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
                                                                    end = drivers_.end();
          it != end; ++it)
@@ -467,7 +467,7 @@ void CpAcommsHandler::process_configuration()
 
     // start goby-acomms classes
 
-    for (std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
+    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
                   goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
                                                                    end = drivers_.end();
          it != end; ++it)
@@ -481,7 +481,7 @@ void CpAcommsHandler::process_configuration()
     // process translator entries
     for (int i = 0, n = cfg_.translator_entry_size(); i < n; ++i)
     {
-        typedef boost::shared_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
+        typedef std::shared_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
         glog.is(VERBOSE) && glog << group("pAcommsHandler") << "Checking translator entry: "
                                  << cfg_.translator_entry(i).protobuf_name() << std::endl;
 
@@ -501,7 +501,7 @@ void CpAcommsHandler::process_configuration()
         else if (cfg_.translator_entry(i).trigger().type() ==
                  goby::moos::protobuf::TranslatorEntry::Trigger::TRIGGER_TIME)
         {
-            timers_.push_back(boost::shared_ptr<Timer>(new Timer(timer_io_service_)));
+            timers_.push_back(std::shared_ptr<Timer>(new Timer(timer_io_service_)));
 
             Timer& new_timer = *timers_.back();
 
@@ -542,7 +542,7 @@ void CpAcommsHandler::process_configuration()
     }
 }
 
-void CpAcommsHandler::create_driver(boost::shared_ptr<goby::acomms::ModemDriverBase>& driver,
+void CpAcommsHandler::create_driver(std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
                                     goby::acomms::protobuf::DriverType driver_type,
                                     goby::acomms::protobuf::DriverConfig* driver_cfg,
                                     goby::acomms::MACManager* mac)
@@ -605,7 +605,7 @@ void CpAcommsHandler::create_driver(boost::shared_ptr<goby::acomms::ModemDriverB
 
             case goby::acomms::protobuf::DRIVER_UDP:
                 asio_service_.push_back(
-                    boost::shared_ptr<boost::asio::io_service>(new boost::asio::io_service));
+                    std::shared_ptr<boost::asio::io_service>(new boost::asio::io_service));
                 driver.reset(new goby::acomms::UDPDriver(asio_service_.back().get()));
                 break;
 
@@ -677,8 +677,8 @@ void CpAcommsHandler::handle_encode_on_demand(
     glog.is(VERBOSE) && glog << group("pAcommsHandler")
                              << "Received encode on demand request: " << request_msg << std::endl;
 
-    boost::shared_ptr<google::protobuf::Message> created_message =
-        translator_.moos_to_protobuf<boost::shared_ptr<google::protobuf::Message> >(
+    std::shared_ptr<google::protobuf::Message> created_message =
+        translator_.moos_to_protobuf<std::shared_ptr<google::protobuf::Message> >(
             dynamic_vars().all(), data_msg->GetDescriptor()->full_name());
 
     data_msg->CopyFrom(*created_message);
@@ -701,7 +701,7 @@ void CpAcommsHandler::create_on_publish(const CMOOSMsg& trigger_msg,
 
 void CpAcommsHandler::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
 {
-    boost::shared_ptr<google::protobuf::Message> msg = dynamic_parse_for_moos(moos_msg.GetString());
+    std::shared_ptr<google::protobuf::Message> msg = dynamic_parse_for_moos(moos_msg.GetString());
 
     if (!msg)
     {
@@ -774,8 +774,8 @@ void CpAcommsHandler::translate_and_push(const goby::moos::protobuf::TranslatorE
 {
     try
     {
-        boost::shared_ptr<google::protobuf::Message> created_message =
-            translator_.moos_to_protobuf<boost::shared_ptr<google::protobuf::Message> >(
+        std::shared_ptr<google::protobuf::Message> created_message =
+            translator_.moos_to_protobuf<std::shared_ptr<google::protobuf::Message> >(
                 dynamic_vars().all(), entry.protobuf_name());
 
         glog.is(DEBUG2) && glog << group("pAcommsHandler") << "Created message: \n"
@@ -791,7 +791,7 @@ void CpAcommsHandler::translate_and_push(const goby::moos::protobuf::TranslatorE
 }
 
 void CpAcommsHandler::driver_reset(
-    boost::shared_ptr<goby::acomms::ModemDriverBase> driver,
+    std::shared_ptr<goby::acomms::ModemDriverBase> driver,
     const goby::acomms::ModemDriverException& e,
     pAcommsHandlerConfig::DriverFailureApproach::DriverFailureTechnique
         technique /* = cfg_.driver_failure_approach().technique() */)
@@ -820,10 +820,10 @@ void CpAcommsHandler::driver_reset(
                 }
                 else
                 {
-                    std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
+                    std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
                              goby::acomms::protobuf::DriverConfig*>::iterator old_it =
                         drivers_.find(driver);
-                    std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
+                    std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
                              goby::acomms::protobuf::DriverConfig*>::iterator new_it = old_it;
 
                     // try the next one after the current driver_, otherwise the first driver
@@ -878,9 +878,9 @@ void CpAcommsHandler::driver_reset(
 void CpAcommsHandler::restart_drivers()
 {
     double now = goby::common::goby_time<double>();
-    std::set<boost::shared_ptr<goby::acomms::ModemDriverBase> > drivers_to_start;
+    std::set<std::shared_ptr<goby::acomms::ModemDriverBase> > drivers_to_start;
 
-    for (std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>, double>::iterator it =
+    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>, double>::iterator it =
              driver_restart_time_.begin();
          it != driver_restart_time_.end();)
     {
@@ -895,12 +895,12 @@ void CpAcommsHandler::restart_drivers()
         }
     }
 
-    for (std::set<boost::shared_ptr<goby::acomms::ModemDriverBase> >::iterator
+    for (std::set<std::shared_ptr<goby::acomms::ModemDriverBase> >::iterator
              it = drivers_to_start.begin(),
              end = drivers_to_start.end();
          it != end; ++it)
     {
-        boost::shared_ptr<goby::acomms::ModemDriverBase> driver = *it;
+        std::shared_ptr<goby::acomms::ModemDriverBase> driver = *it;
         try
         {
             glog.is(DEBUG1) && glog << "Starting up driver: " << driver << std::endl;

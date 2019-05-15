@@ -25,7 +25,7 @@ using goby::glog;
 using namespace goby::common::logger;
 using goby::moos::operator<<;
 
-boost::shared_ptr<GobyMOOSAppTemplateConfig> master_config;
+std::shared_ptr<GobyMOOSAppTemplateConfig> master_config;
 GobyMOOSAppTemplate* GobyMOOSAppTemplate::inst_ = 0;
 
 int main(int argc, char* argv[]) { return goby::moos::run<GobyMOOSAppTemplate>(argc, argv); }

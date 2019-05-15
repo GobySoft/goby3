@@ -34,7 +34,7 @@ using goby::util::as;
 using namespace boost::posix_time;
 
 boost::asio::io_service io1;
-boost::shared_ptr<goby::acomms::UDPDriver> driver1;
+std::shared_ptr<goby::acomms::UDPDriver> driver1;
 
 void handle_data_request1(protobuf::ModemTransmission* msg);
 void handle_modify_transmission1(protobuf::ModemTransmission* msg);

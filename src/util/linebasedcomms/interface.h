@@ -125,7 +125,7 @@ class LineBasedInterface
         boost::thread t_;
     };
 
-    boost::shared_ptr<IOLauncher> io_launcher_;
+    std::shared_ptr<IOLauncher> io_launcher_;
 
     boost::asio::io_service::work work_;
     bool active_; // remains true while this object is still operating

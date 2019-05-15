@@ -50,7 +50,7 @@ class QueueManager;
 
 struct QueuedMessage
 {
-    boost::shared_ptr<google::protobuf::Message> dccl_msg;
+    std::shared_ptr<google::protobuf::Message> dccl_msg;
     protobuf::QueuedMessageMeta meta;
 };
 
@@ -63,8 +63,8 @@ class Queue
     Queue(const google::protobuf::Descriptor* desc, QueueManager* parent,
           const protobuf::QueuedMessageEntry& cfg = protobuf::QueuedMessageEntry());
 
-    bool push_message(boost::shared_ptr<google::protobuf::Message> dccl_msg);
-    bool push_message(boost::shared_ptr<google::protobuf::Message> dccl_msg,
+    bool push_message(std::shared_ptr<google::protobuf::Message> dccl_msg);
+    bool push_message(std::shared_ptr<google::protobuf::Message> dccl_msg,
                       protobuf::QueuedMessageMeta meta);
 
     protobuf::QueuedMessageMeta meta_from_msg(const google::protobuf::Message& dccl_msg);
@@ -74,10 +74,10 @@ class Queue
 
     goby::acomms::QueuedMessage give_data(unsigned frame);
     bool pop_message(unsigned frame);
-    bool pop_message_ack(unsigned frame, boost::shared_ptr<google::protobuf::Message>& removed_msg);
+    bool pop_message_ack(unsigned frame, std::shared_ptr<google::protobuf::Message>& removed_msg);
     void stream_for_pop(const QueuedMessage& queued_msg);
 
-    std::vector<boost::shared_ptr<google::protobuf::Message> > expire();
+    std::vector<std::shared_ptr<google::protobuf::Message> > expire();
 
     bool get_priority_values(double* priority, boost::posix_time::ptime* last_send_time,
                              const protobuf::ModemTransmission& request_msg,

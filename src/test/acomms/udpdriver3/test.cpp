@@ -33,7 +33,7 @@
 #include <cstdlib>
 
 boost::asio::io_service io1, io2;
-boost::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
+std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 goby::acomms::QueueManager q1, q2;
 GobyMessage msg_in1, msg_in2;
 bool received_ack = false;

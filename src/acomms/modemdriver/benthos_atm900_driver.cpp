@@ -34,7 +34,7 @@ using goby::common::goby_time;
 
 const std::string goby::acomms::BenthosATM900Driver::SERIAL_DELIMITER = "\r\n";
 
-boost::shared_ptr<dccl::Codec> goby::acomms::benthos_header_dccl_;
+std::shared_ptr<dccl::Codec> goby::acomms::benthos_header_dccl_;
 
 goby::acomms::BenthosATM900Driver::BenthosATM900Driver() : fsm_(driver_cfg_), next_frame_(0)
 {

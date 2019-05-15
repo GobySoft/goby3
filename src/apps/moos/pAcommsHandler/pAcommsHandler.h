@@ -79,7 +79,7 @@ class CpAcommsHandler : public GobyMOOSApp
     void loop(); // from GobyMOOSApp
 
     void process_configuration();
-    void create_driver(boost::shared_ptr<goby::acomms::ModemDriverBase>& driver,
+    void create_driver(std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
                        goby::acomms::protobuf::DriverType driver_type,
                        goby::acomms::protobuf::DriverConfig* driver_cfg,
                        goby::acomms::MACManager* mac);
@@ -115,7 +115,7 @@ class CpAcommsHandler : public GobyMOOSApp
 
     void driver_bind();
     void driver_unbind();
-    void driver_reset(boost::shared_ptr<goby::acomms::ModemDriverBase> driver,
+    void driver_reset(std::shared_ptr<goby::acomms::ModemDriverBase> driver,
                       const goby::acomms::ModemDriverException& e,
                       pAcommsHandlerConfig::DriverFailureApproach::DriverFailureTechnique =
                           cfg_.driver_failure_approach().technique());
@@ -138,11 +138,10 @@ class CpAcommsHandler : public GobyMOOSApp
     goby::acomms::QueueManager queue_manager_;
 
     // driver class that interfaces to the modem
-    boost::shared_ptr<goby::acomms::ModemDriverBase> driver_;
+    std::shared_ptr<goby::acomms::ModemDriverBase> driver_;
 
     // driver and additional listener drivers (receive only)
-    std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>,
-             goby::acomms::protobuf::DriverConfig*>
+    std::map<std::shared_ptr<goby::acomms::ModemDriverBase>, goby::acomms::protobuf::DriverConfig*>
         drivers_;
 
     // MAC
@@ -155,11 +154,11 @@ class CpAcommsHandler : public GobyMOOSApp
 
 
     // for UDPDriver
-    std::vector<boost::shared_ptr<boost::asio::io_service> > asio_service_;
+    std::vector<std::shared_ptr<boost::asio::io_service> > asio_service_;
 
-    std::vector<boost::shared_ptr<Timer> > timers_;
+    std::vector<std::shared_ptr<Timer> > timers_;
 
-    std::map<boost::shared_ptr<goby::acomms::ModemDriverBase>, double> driver_restart_time_;
+    std::map<std::shared_ptr<goby::acomms::ModemDriverBase>, double> driver_restart_time_;
 
     std::set<const google::protobuf::Descriptor*> dccl_frontseat_forward_;
 

@@ -64,13 +64,13 @@ bool TestHDF5Plugin::provide_entry(goby::common::HDF5ProtobufEntry* entry)
     {
         TestMsg msg;
         fill_message(msg);
-        entry->msg = boost::shared_ptr<google::protobuf::Message>(new TestMsg(msg));
+        entry->msg = std::shared_ptr<google::protobuf::Message>(new TestMsg(msg));
     }
     else
     {
         TestHDF5Message msg;
         fill_message(msg);
-        entry->msg = boost::shared_ptr<google::protobuf::Message>(new TestHDF5Message(msg));
+        entry->msg = std::shared_ptr<google::protobuf::Message>(new TestHDF5Message(msg));
     }
 
     if (entry_index < 10)

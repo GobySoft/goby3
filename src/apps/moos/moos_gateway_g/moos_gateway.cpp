@@ -57,7 +57,7 @@ class MOOSGateway : public goby::common::ZeroMQApplicationBase,
     void check_for_new_moos_variables();
     bool clears_subscribe_filters(const std::string& moos_variable);
 
-    void pb_inbox(boost::shared_ptr<google::protobuf::Message> msg, const std::string& group);
+    void pb_inbox(std::shared_ptr<google::protobuf::Message> msg, const std::string& group);
 
   private:
     static goby::common::ZeroMQService zeromq_service_;
@@ -229,7 +229,7 @@ void goby::moos::MOOSGateway::loop()
 
         if (cfg_.pb_convert() && moos2pb_.count(msg.GetKey()))
         {
-            boost::shared_ptr<google::protobuf::Message> pbmsg =
+            std::shared_ptr<google::protobuf::Message> pbmsg =
                 dynamic_parse_for_moos(msg.GetString());
             if (pbmsg)
             {
@@ -293,7 +293,7 @@ bool goby::moos::MOOSGateway::clears_subscribe_filters(const std::string& moos_v
     return false;
 }
 
-void goby::moos::MOOSGateway::pb_inbox(boost::shared_ptr<google::protobuf::Message> msg,
+void goby::moos::MOOSGateway::pb_inbox(std::shared_ptr<google::protobuf::Message> msg,
                                        const std::string& group)
 {
     glog.is(DEBUG2) && glog << "PB --> MOOS: Group: " << group

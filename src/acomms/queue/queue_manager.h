@@ -249,7 +249,7 @@ class QueueManager
   private:
     friend class Queue;
     int modem_id_;
-    std::map<unsigned, boost::shared_ptr<Queue> > queues_;
+    std::map<unsigned, std::shared_ptr<Queue> > queues_;
 
     // map frame number onto %queue pointer that contains
     // the data for this ack

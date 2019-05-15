@@ -74,7 +74,7 @@ class NoOpIdentifierCodec : public dccl::TypedFixedFieldCodec<dccl::uint32>
     virtual unsigned size() { return 0; }
 };
 
-extern boost::shared_ptr<dccl::Codec> benthos_header_dccl_;
+extern std::shared_ptr<dccl::Codec> benthos_header_dccl_;
 
 inline void init_benthos_dccl()
 {

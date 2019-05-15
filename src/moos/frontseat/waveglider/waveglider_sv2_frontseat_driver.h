@@ -74,9 +74,9 @@ class WavegliderSV2FrontSeat : public FrontSeatInterfaceBase
     goby::moos::protobuf::FrontSeatState frontseat_state_;
 
     boost::asio::io_service io_;
-    boost::shared_ptr<goby::moos::SV2SerialConnection> serial_;
+    std::shared_ptr<goby::moos::SV2SerialConnection> serial_;
 
-    boost::circular_buffer<boost::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> >
+    boost::circular_buffer<std::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> >
         queued_messages_;
 
     dccl::Codec dccl_;

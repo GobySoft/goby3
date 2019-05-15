@@ -25,7 +25,6 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/signals2.hpp>
 
 #include "goby/common/time.h"
@@ -35,12 +34,12 @@ namespace goby
 {
 namespace acomms
 {
-class RUDICSConnection : public boost::enable_shared_from_this<RUDICSConnection>
+class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
 {
   public:
-    static boost::shared_ptr<RUDICSConnection> create(boost::asio::io_service& io_service)
+    static std::shared_ptr<RUDICSConnection> create(boost::asio::io_service& io_service)
     {
-        return boost::shared_ptr<RUDICSConnection>(new RUDICSConnection(io_service));
+        return std::shared_ptr<RUDICSConnection>(new RUDICSConnection(io_service));
     }
 
     boost::asio::ip::tcp::socket& socket() { return socket_; }
@@ -90,9 +89,9 @@ class RUDICSConnection : public boost::enable_shared_from_this<RUDICSConnection>
     }
 
     boost::signals2::signal<void(const std::string& line,
-                                 boost::shared_ptr<RUDICSConnection> connection)>
+                                 std::shared_ptr<RUDICSConnection> connection)>
         line_signal;
-    boost::signals2::signal<void(boost::shared_ptr<RUDICSConnection> connection)> disconnect_signal;
+    boost::signals2::signal<void(std::shared_ptr<RUDICSConnection> connection)> disconnect_signal;
 
     const std::string& remote_endpoint_str() { return remote_endpoint_str_; }
 
@@ -162,23 +161,23 @@ class RUDICSServer
         start_accept();
     }
 
-    std::set<boost::shared_ptr<RUDICSConnection> >& connections() { return connections_; }
+    std::set<std::shared_ptr<RUDICSConnection> >& connections() { return connections_; }
 
-    boost::signals2::signal<void(boost::shared_ptr<RUDICSConnection> connection)> connect_signal;
+    boost::signals2::signal<void(std::shared_ptr<RUDICSConnection> connection)> connect_signal;
 
-    void disconnect(boost::shared_ptr<RUDICSConnection> connection) { connection->close(); }
+    void disconnect(std::shared_ptr<RUDICSConnection> connection) { connection->close(); }
 
   private:
     void start_accept()
     {
-        boost::shared_ptr<RUDICSConnection> new_connection =
+        std::shared_ptr<RUDICSConnection> new_connection =
             RUDICSConnection::create(acceptor_.get_io_service());
         acceptor_.async_accept(new_connection->socket(),
                                boost::bind(&RUDICSServer::handle_accept, this, new_connection,
                                            boost::asio::placeholders::error));
     }
 
-    void handle_accept(boost::shared_ptr<RUDICSConnection> new_connection,
+    void handle_accept(std::shared_ptr<RUDICSConnection> new_connection,
                        const boost::system::error_code& error)
     {
         if (!error)
@@ -199,7 +198,7 @@ class RUDICSServer
         start_accept();
     }
 
-    void handle_disconnect(boost::shared_ptr<RUDICSConnection> connection)
+    void handle_disconnect(std::shared_ptr<RUDICSConnection> connection)
     {
         using goby::glog;
         using goby::common::logger::DEBUG1;
@@ -211,7 +210,7 @@ class RUDICSServer
                  << ". Remaining connection count: " << connections_.size() << std::endl;
     }
 
-    std::set<boost::shared_ptr<RUDICSConnection> > connections_;
+    std::set<std::shared_ptr<RUDICSConnection> > connections_;
     boost::asio::ip::tcp::acceptor acceptor_;
 };
 

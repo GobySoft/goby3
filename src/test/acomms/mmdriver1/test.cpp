@@ -24,7 +24,7 @@
 #include "../driver_tester/driver_tester.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
 
-boost::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
+std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 
 int main(int argc, char* argv[])
 {

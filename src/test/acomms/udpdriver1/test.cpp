@@ -26,7 +26,7 @@
 #include <cstdlib>
 
 boost::asio::io_service io1, io2;
-boost::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
+std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 
 void handle_raw_incoming(int driver, const goby::acomms::protobuf::ModemRaw& raw)
 {

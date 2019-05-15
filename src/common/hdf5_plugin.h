@@ -26,7 +26,7 @@
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "goby/common/protobuf/hdf5.pb.h"
 #include "goby/util/primitive_types.h"
@@ -39,7 +39,7 @@ struct HDF5ProtobufEntry
 {
     std::string channel;
     std::uint64_t time;
-    boost::shared_ptr<google::protobuf::Message> msg;
+    std::shared_ptr<google::protobuf::Message> msg;
 
     HDF5ProtobufEntry() : time(0) {}
 

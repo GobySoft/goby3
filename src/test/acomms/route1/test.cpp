@@ -62,7 +62,7 @@ void handle_receive3(const google::protobuf::Message& msg);
 void handle_modem_receive3(const protobuf::ModemTransmission& message);
 
 boost::asio::io_service io2, io3;
-boost::shared_ptr<goby::acomms::UDPDriver> driver2, driver3;
+std::shared_ptr<goby::acomms::UDPDriver> driver2, driver3;
 
 bool received_message = false;
 

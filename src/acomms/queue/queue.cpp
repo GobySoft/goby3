@@ -41,13 +41,13 @@ goby::acomms::Queue::Queue(const google::protobuf::Descriptor* desc, QueueManage
 }
 
 // add a new message
-bool goby::acomms::Queue::push_message(boost::shared_ptr<google::protobuf::Message> dccl_msg)
+bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message> dccl_msg)
 {
     protobuf::QueuedMessageMeta meta = meta_from_msg(*dccl_msg);
     return push_message(dccl_msg, meta);
 }
 
-bool goby::acomms::Queue::push_message(boost::shared_ptr<google::protobuf::Message> dccl_msg,
+bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message> dccl_msg,
                                        protobuf::QueuedMessageMeta meta)
 {
     // loopback if set
@@ -250,8 +250,7 @@ boost::any goby::acomms::Queue::find_queue_field(const std::string& field_name,
         if (field_desc->is_repeated())
             throw(QueueException("Cannot assign a Queue role to a repeated field"));
 
-        boost::shared_ptr<FromProtoCppTypeBase> helper =
-            goby::acomms::DCCLTypeHelper::find(field_desc);
+        auto helper = goby::acomms::DCCLTypeHelper::find(field_desc);
 
         // last field_name
         if (i == (n - 1))
@@ -412,7 +411,7 @@ bool goby::acomms::Queue::pop_message(unsigned frame)
 }
 
 bool goby::acomms::Queue::pop_message_ack(unsigned frame,
-                                          boost::shared_ptr<google::protobuf::Message>& removed_msg)
+                                          std::shared_ptr<google::protobuf::Message>& removed_msg)
 {
     // pop message from the ack stack
     if (waiting_for_ack_.count(frame))
@@ -449,9 +448,9 @@ void goby::acomms::Queue::stream_for_pop(const QueuedMessage& queued_msg)
                             << std::endl;
 }
 
-std::vector<boost::shared_ptr<google::protobuf::Message> > goby::acomms::Queue::expire()
+std::vector<std::shared_ptr<google::protobuf::Message> > goby::acomms::Queue::expire()
 {
-    std::vector<boost::shared_ptr<google::protobuf::Message> > expired_msgs;
+    std::vector<std::shared_ptr<google::protobuf::Message> > expired_msgs;
 
     while (!messages_.empty())
     {
@@ -553,8 +552,8 @@ void goby::acomms::Queue::process_cfg()
     static_meta_.Clear();
 
     // used to check that the FIELD_VALUE roles fields actually exist
-    boost::shared_ptr<google::protobuf::Message> new_msg =
-        goby::util::DynamicProtobufManager::new_protobuf_message(desc_);
+    auto new_msg = goby::util::DynamicProtobufManager::new_protobuf_message<
+        std::shared_ptr<google::protobuf::Message> >(desc_);
 
     for (int i = 0, n = cfg_.role_size(); i < n; ++i)
     {

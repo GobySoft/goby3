@@ -65,12 +65,12 @@ class ModemDriver : public goby::pb::Application
     protobuf::ModemDriverConfig& cfg_;
 
     // for PBDriver
-    boost::shared_ptr<goby::common::ZeroMQService> zeromq_service_;
+    std::shared_ptr<goby::common::ZeroMQService> zeromq_service_;
 
     // for UDPDriver
-    boost::shared_ptr<boost::asio::io_service> asio_service_;
+    std::shared_ptr<boost::asio::io_service> asio_service_;
 
-    boost::shared_ptr<goby::acomms::ModemDriverBase> driver_;
+    std::shared_ptr<goby::acomms::ModemDriverBase> driver_;
 
     bool data_response_received_;
     protobuf::ModemTransmission data_response_;

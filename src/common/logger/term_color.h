@@ -28,7 +28,7 @@
 
 #include <boost/assign.hpp>
 #include <boost/foreach.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace goby
 {
@@ -160,16 +160,17 @@ class TermColor
     }
 
   private:
-    // so we can use shared_ptr to hold the singleton
-    template <typename T> friend void boost::checked_delete(T*);
-
     TermColor();
     ~TermColor() {}
 
     TermColor(const TermColor&);
     TermColor& operator=(const TermColor&);
 
-    static TermColor* get_instance() { return inst_.get(); }
+    static TermColor* get_instance()
+    {
+        static TermColor t;
+        return &t;
+    }
 
     Colors::Color priv_from_str(const std::string& s) { return colors_map_[s]; }
 
@@ -207,7 +208,6 @@ class TermColor
     }
 
   private:
-    static boost::shared_ptr<TermColor> inst_;
     std::map<std::string, Colors::Color> colors_map_;
     std::map<std::string, Colors::Color> esc_code_map_;
 };

@@ -310,7 +310,7 @@ void goby::common::LiaisonAcomms::moos_inbox(CMOOSMsg& msg)
     }
     else if (msg.GetKey() == "ACOMMS_QUEUE_RECEIVE")
     {
-        boost::shared_ptr<google::protobuf::Message> dccl_msg =
+        std::shared_ptr<google::protobuf::Message> dccl_msg =
             dynamic_parse_for_moos(msg.GetString());
         if (dccl_msg && queue_stats_.count(dccl_.id(dccl_msg->GetDescriptor())))
         {

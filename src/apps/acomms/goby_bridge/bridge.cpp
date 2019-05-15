@@ -65,7 +65,7 @@ class Bridge : public goby::pb::Application, public goby::pb::DynamicProtobufNod
     void handle_modem_receive(const goby::acomms::protobuf::ModemTransmission& message,
                               QueueManager* in_queue);
 
-    void handle_external_push(boost::shared_ptr<google::protobuf::Message> msg,
+    void handle_external_push(std::shared_ptr<google::protobuf::Message> msg,
                               QueueManager* in_queue)
     {
         try
@@ -92,13 +92,13 @@ class Bridge : public goby::pb::Application, public goby::pb::DynamicProtobufNod
   private:
     protobuf::BridgeConfig& cfg_;
 
-    std::vector<boost::shared_ptr<QueueManager> > q_managers_;
-    std::vector<boost::shared_ptr<MACManager> > mac_managers_;
+    std::vector<std::shared_ptr<QueueManager> > q_managers_;
+    std::vector<std::shared_ptr<MACManager> > mac_managers_;
 
     RouteManager r_manager_;
 
-    boost::shared_ptr<micromodem::protobuf::HardwareControlCommand> pending_hw_ctl_;
-    boost::shared_ptr<goby::acomms::protobuf::TimeUpdateResponse> pending_time_update_;
+    std::shared_ptr<micromodem::protobuf::HardwareControlCommand> pending_hw_ctl_;
+    std::shared_ptr<goby::acomms::protobuf::TimeUpdateResponse> pending_time_update_;
     std::uint64_t time_update_request_time_;
 };
 } // namespace acomms
@@ -200,12 +200,12 @@ goby::acomms::Bridge::~Bridge() {}
 
 void goby::acomms::Bridge::loop()
 {
-    for (std::vector<boost::shared_ptr<QueueManager> >::iterator it = q_managers_.begin(),
-                                                                 end = q_managers_.end();
+    for (std::vector<std::shared_ptr<QueueManager> >::iterator it = q_managers_.begin(),
+                                                               end = q_managers_.end();
          it != end; ++it)
     { (*it)->do_work(); }
 
-    for (std::vector<boost::shared_ptr<MACManager> >::iterator it = mac_managers_.begin(),
+    for (std::vector<std::shared_ptr<MACManager> >::iterator it = mac_managers_.begin(),
          end = mac_managers_.end();
          it != end; ++it)
     { (*it)->do_work(); } std::uint64_t now = goby::common::goby_time<std::uint64_t>();
