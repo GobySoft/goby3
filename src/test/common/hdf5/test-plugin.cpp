@@ -30,7 +30,7 @@
 class TestHDF5Plugin : public goby::common::HDF5Plugin
 {
   public:
-    TestHDF5Plugin(goby::common::protobuf::HDF5Config* cfg);
+    TestHDF5Plugin(const goby::common::protobuf::HDF5Config* cfg);
 
   private:
     bool provide_entry(goby::common::HDF5ProtobufEntry* entry);
@@ -42,13 +42,13 @@ class TestHDF5Plugin : public goby::common::HDF5Plugin
 
 extern "C"
 {
-    goby::common::HDF5Plugin* goby_hdf5_load(goby::common::protobuf::HDF5Config* cfg)
+    goby::common::HDF5Plugin* goby_hdf5_load(const goby::common::protobuf::HDF5Config* cfg)
     {
         return new TestHDF5Plugin(cfg);
     }
 }
 
-TestHDF5Plugin::TestHDF5Plugin(goby::common::protobuf::HDF5Config* cfg)
+TestHDF5Plugin::TestHDF5Plugin(const goby::common::protobuf::HDF5Config* cfg)
     : goby::common::HDF5Plugin(cfg)
 {
 }

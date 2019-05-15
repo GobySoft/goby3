@@ -1,5 +1,4 @@
 import "goby/middleware/protobuf/liaison_config.proto";
-import "goby/moos/protobuf/translator.proto";
 
 package goby.common.protobuf;
 

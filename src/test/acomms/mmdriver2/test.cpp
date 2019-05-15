@@ -23,7 +23,7 @@
 
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
-#include "goby/common/application_base.h"
+#include "goby/common/application_base3.h"
 #include "goby/common/logger.h"
 #include "goby/util/binary.h"
 #include "test_config.pb.h"
@@ -37,15 +37,16 @@ using namespace boost::posix_time;
 boost::mutex driver_mutex;
 int last_transmission_index = 0;
 
-class MMDriverTest2 : public goby::common::ApplicationBase
+class MMDriverTest2
+    : public goby::common::ApplicationBase3<goby::test::protobuf::MMDriverTest2Config>
 {
   public:
-    MMDriverTest2(goby::test::protobuf::MMDriverTest2Config* cfg);
+    MMDriverTest2();
 
   private:
-    void iterate();
+    void run() override;
 
-    void run(goby::acomms::MMDriver& modem, goby::acomms::protobuf::DriverConfig& cfg);
+    void run_driver(goby::acomms::MMDriver& modem, goby::acomms::protobuf::DriverConfig& cfg);
 
     void handle_transmit_result1(const protobuf::ModemTransmission& msg);
     void handle_data_receive1(const protobuf::ModemTransmission& msg);
@@ -58,7 +59,6 @@ class MMDriverTest2 : public goby::common::ApplicationBase
             const goby::acomms::protobuf::DriverConfig& cfg);
 
   private:
-    goby::test::protobuf::MMDriverTest2Config& cfg_;
 
     goby::acomms::MMDriver driver1, driver2;
     // maps transmit index to receive statistics
@@ -68,15 +68,14 @@ class MMDriverTest2 : public goby::common::ApplicationBase
     bool modems_running_;
 };
 
-MMDriverTest2::MMDriverTest2(goby::test::protobuf::MMDriverTest2Config* cfg)
-    : ApplicationBase(cfg), cfg_(*cfg), modems_running_(true)
+MMDriverTest2::MMDriverTest2() : modems_running_(true)
 {
     goby::glog.set_lock_action(lock);
 
-    goby::glog.is(VERBOSE) && goby::glog << "Running test: " << cfg_ << std::endl;
+    goby::glog.is(VERBOSE) && goby::glog << "Running test: " << app_cfg() << std::endl;
 }
 
-void MMDriverTest2::iterate()
+void MMDriverTest2::run()
 {
     goby::acomms::connect(&driver1.signal_receive, this, &MMDriverTest2::handle_data_receive1);
     goby::acomms::connect(&driver1.signal_transmit_result, this,
@@ -86,31 +85,33 @@ void MMDriverTest2::iterate()
                           &MMDriverTest2::handle_transmit_result2);
 
     boost::thread modem_thread_A(
-        boost::bind(&MMDriverTest2::run, this, boost::ref(driver1), cfg_.mm1_cfg()));
+        boost::bind(&MMDriverTest2::run_driver, this, boost::ref(driver1), app_cfg().mm1_cfg()));
     boost::thread modem_thread_B(
-        boost::bind(&MMDriverTest2::run, this, boost::ref(driver2), cfg_.mm2_cfg()));
+        boost::bind(&MMDriverTest2::run_driver, this, boost::ref(driver2), app_cfg().mm2_cfg()));
 
     while (!driver1.is_started() || !driver2.is_started()) usleep(10000);
 
-    for (int i = 0, n = cfg_.repeat(); i < n; ++i)
+    for (int i = 0, n = app_cfg().repeat(); i < n; ++i)
     {
         goby::glog.is(VERBOSE) && goby::glog << "Beginning test sequence repetition " << i + 1
                                              << " of " << n << std::endl;
 
-        int o = cfg_.transmission_size();
+        int o = app_cfg().transmission_size();
         for (last_transmission_index = 0; last_transmission_index < o; ++last_transmission_index)
         {
-            if (cfg_.transmission(last_transmission_index).src() == 1)
+            if (app_cfg().transmission(last_transmission_index).src() == 1)
             {
                 boost::mutex::scoped_lock lock(driver_mutex);
-                driver1.handle_initiate_transmission(cfg_.transmission(last_transmission_index));
+                driver1.handle_initiate_transmission(
+                    app_cfg().transmission(last_transmission_index));
             }
-            else if (cfg_.transmission(last_transmission_index).src() == 2)
+            else if (app_cfg().transmission(last_transmission_index).src() == 2)
             {
                 boost::mutex::scoped_lock lock(driver_mutex);
-                driver2.handle_initiate_transmission(cfg_.transmission(last_transmission_index));
+                driver2.handle_initiate_transmission(
+                    app_cfg().transmission(last_transmission_index));
             }
-            sleep(cfg_.transmission(last_transmission_index).slot_seconds());
+            sleep(app_cfg().transmission(last_transmission_index).slot_seconds());
         }
     }
 
@@ -118,14 +119,15 @@ void MMDriverTest2::iterate()
     modem_thread_A.join();
     modem_thread_B.join();
 
-    summary(driver1_receive, cfg_.mm1_cfg());
-    summary(driver2_receive, cfg_.mm2_cfg());
+    summary(driver1_receive, app_cfg().mm1_cfg());
+    summary(driver2_receive, app_cfg().mm2_cfg());
 
     goby::glog.is(VERBOSE) && goby::glog << "Completed test" << std::endl;
     quit();
 }
 
-void MMDriverTest2::run(goby::acomms::MMDriver& modem, goby::acomms::protobuf::DriverConfig& cfg)
+void MMDriverTest2::run_driver(goby::acomms::MMDriver& modem,
+                               goby::acomms::protobuf::DriverConfig& cfg)
 {
     goby::glog.is(VERBOSE) && goby::glog << "Initializing modem" << std::endl;
     modem.startup(cfg);
@@ -184,7 +186,7 @@ void MMDriverTest2::summary(
     {
         goby::glog.is(VERBOSE) && goby::glog << "** Showing stats for this transmission (last "
                                                 "transmission before this reception occured): "
-                                             << cfg_.transmission(it->first).DebugString()
+                                             << app_cfg().transmission(it->first).DebugString()
                                              << std::flush;
 
         const std::vector<micromodem::protobuf::ReceiveStatistics>& current_receive_vector =
@@ -251,8 +253,4 @@ void MMDriverTest2::summary(
                                          << std::endl;
 }
 
-int main(int argc, char* argv[])
-{
-    goby::test::protobuf::MMDriverTest2Config cfg;
-    goby::run<MMDriverTest2>(argc, argv, &cfg);
-}
+int main(int argc, char* argv[]) { goby::run<MMDriverTest2>(argc, argv); }

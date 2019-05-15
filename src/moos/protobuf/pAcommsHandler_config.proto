@@ -4,7 +4,6 @@ import "goby/acomms/protobuf/queue.proto";
 import "goby/acomms/protobuf/amac_config.proto";
 import "goby/acomms/protobuf/dccl.proto";
 import "goby/acomms/protobuf/route.proto";
-import "goby/acomms/protobuf/modem_message.proto";
 import "goby/moos/protobuf/transitional.proto";
 import "goby/moos/protobuf/translator.proto";
 import "goby/common/protobuf/option_extensions.proto";

@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const HDF5ProtobufEntry& entry
 class HDF5Plugin
 {
   public:
-    HDF5Plugin(goby::common::protobuf::HDF5Config* cfg) {}
+    HDF5Plugin(const goby::common::protobuf::HDF5Config* cfg) {}
     virtual ~HDF5Plugin() {}
 
     virtual bool provide_entry(HDF5ProtobufEntry* entry) = 0;
