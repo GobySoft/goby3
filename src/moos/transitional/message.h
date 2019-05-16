@@ -31,7 +31,6 @@
 #include <sstream>
 #include <vector>
 
-#include <boost/foreach.hpp>
 #include <memory>
 
 #include "goby/acomms/protobuf/queue.pb.h"

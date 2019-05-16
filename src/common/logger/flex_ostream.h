@@ -30,8 +30,6 @@
 #include <google/protobuf/io/tokenizer.h>
 #include <google/protobuf/text_format.h>
 
-#include <boost/static_assert.hpp>
-
 #include "goby/common/logger/flex_ostreambuf.h"
 #include "logger_manipulators.h"
 

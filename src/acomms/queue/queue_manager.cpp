@@ -20,8 +20,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/foreach.hpp>
-
 #include "goby/common/logger.h"
 #include "goby/common/time.h"
 #include "goby/util/binary.h"
@@ -125,7 +123,7 @@ void goby::acomms::QueueManager::do_work()
         std::vector<std::shared_ptr<google::protobuf::Message> > expired_msgs =
             it->second->expire();
 
-        BOOST_FOREACH (std::shared_ptr<google::protobuf::Message> expire, expired_msgs)
+        for (std::shared_ptr<google::protobuf::Message> expire : expired_msgs)
         {
             signal_expire(*expire);
             if (network_ack_src_ids_.count(meta_from_msg(*expire).src()))
@@ -413,7 +411,7 @@ void goby::acomms::QueueManager::handle_modem_data_request(protobuf::ModemTransm
 std::string goby::acomms::QueueManager::encode_repeated(const std::list<QueuedMessage>& msgs)
 {
     std::string out;
-    BOOST_FOREACH (const QueuedMessage& msg, msgs)
+    for (const QueuedMessage& msg : msgs)
     {
         if (encrypt_rules_.size())
         {
@@ -498,8 +496,7 @@ goby::acomms::QueueManager::decode_repeated(const std::string& orig_bytes)
 unsigned goby::acomms::QueueManager::size_repeated(const std::list<QueuedMessage>& msgs)
 {
     unsigned out = 0;
-    BOOST_FOREACH (const QueuedMessage& msg, msgs)
-        out += codec_->size(*(msg.dccl_msg));
+    for (const QueuedMessage& msg : msgs) out += codec_->size(*(msg.dccl_msg));
     return out;
 }
 
@@ -671,7 +668,7 @@ void goby::acomms::QueueManager::handle_modem_receive(
                     dccl_msgs = decode_repeated(modem_message.frame(frame_number));
                 }
 
-                BOOST_FOREACH (const QueuedMessage& decoded_message, dccl_msgs)
+                for (const QueuedMessage& decoded_message : dccl_msgs)
                 {
                     const protobuf::QueuedMessageMeta& meta_msg = decoded_message.meta;
 

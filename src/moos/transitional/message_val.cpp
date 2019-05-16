@@ -23,8 +23,6 @@
 #include <iomanip>
 #include <stdexcept>
 
-#include <boost/foreach.hpp>
-
 #include <boost/lexical_cast.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 
@@ -374,7 +372,7 @@ std::ostream& goby::transitional::
 operator<<(std::ostream& os, const std::vector<goby::transitional::DCCLMessageVal>& vm)
 {
     int j = 0;
-    BOOST_FOREACH (const DCCLMessageVal& m, vm)
+    for (const DCCLMessageVal& m : vm)
     {
         if (j)
             os << ",";

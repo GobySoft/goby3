@@ -29,7 +29,6 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/foreach.hpp>
 
 #include "goby/util/as.h"
 
@@ -90,8 +89,7 @@ class NMEASentence : public std::vector<std::string>
             std::vector<std::string> vec;
             boost::split(vec, str, boost::is_any_of(","));
 
-            BOOST_FOREACH (const std::string& s, vec)
-                std::vector<std::string>::push_back(s);
+            for (const std::string& s : vec) std::vector<std::string>::push_back(s);
         }
     }
 

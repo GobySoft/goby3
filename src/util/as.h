@@ -35,7 +35,6 @@
 #include <boost/mpl/and.hpp>
 #include <boost/mpl/logical.hpp>
 #include <boost/numeric/conversion/cast.hpp>
-#include <boost/static_assert.hpp>
 #include <boost/type_traits.hpp>
 #include <boost/utility.hpp>
 

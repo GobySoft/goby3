@@ -29,7 +29,6 @@
 #include <boost/asio/time_traits.hpp>
 #include <boost/date_time.hpp>
 #include <boost/function.hpp>
-#include <boost/static_assert.hpp>
 
 #include "goby/util/as.h"
 #include "goby/util/primitive_types.h"
@@ -105,7 +104,7 @@ namespace common
 {
 template <typename ReturnType> ReturnType goby_time()
 {
-    BOOST_STATIC_ASSERT(sizeof(ReturnType) == 0);
+    static_assert(sizeof(ReturnType) == 0, "Invalid ReturnType for goby_time<>()");
 }
 
 extern boost::function0<std::uint64_t> goby_time_function;

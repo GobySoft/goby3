@@ -20,8 +20,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/foreach.hpp>
-
 #include "goby/acomms/dccl.h"
 #include "message.h"
 #include "message_algorithms.h"
@@ -113,7 +111,7 @@ void goby::transitional::DCCLAlgorithmPerformer::check_algorithm(const std::stri
     for (std::vector<std::string>::size_type i = 1, n = ref_vars.size(); i < n; ++i)
     {
         bool ref_found = false;
-        BOOST_FOREACH (const std::shared_ptr<DCCLMessageVar> mv, msg.header_const())
+        for (const std::shared_ptr<DCCLMessageVar> mv : msg.header_const())
         {
             if (ref_vars[i] == mv->name())
             {
@@ -122,7 +120,7 @@ void goby::transitional::DCCLAlgorithmPerformer::check_algorithm(const std::stri
             }
         }
 
-        BOOST_FOREACH (const std::shared_ptr<DCCLMessageVar> mv, msg.layout_const())
+        for (const std::shared_ptr<DCCLMessageVar> mv : msg.layout_const())
         {
             if (ref_vars[i] == mv->name())
             {

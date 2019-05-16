@@ -186,7 +186,7 @@ void goby::moos::MOOSTranslator::alg_utm_y2lat(
 void goby::moos::MOOSTranslator::alg_modem_id2name(transitional::DCCLMessageVal& in)
 {
     bool is_numeric = true;
-    BOOST_FOREACH (const char c, std::string(in))
+    for (const char c : std::string(in))
     {
         if (!isdigit(c))
         {
@@ -201,7 +201,7 @@ void goby::moos::MOOSTranslator::alg_modem_id2name(transitional::DCCLMessageVal&
 void goby::moos::MOOSTranslator::alg_modem_id2type(transitional::DCCLMessageVal& in)
 {
     bool is_numeric = true;
-    BOOST_FOREACH (const char c, std::string(in))
+    for (const char c : std::string(in))
     {
         if (!isdigit(c))
         {

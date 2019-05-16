@@ -24,7 +24,6 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/assign.hpp>
-#include <boost/foreach.hpp>
 
 #include <dccl/bitset.h>
 

@@ -25,10 +25,7 @@
 #include <limits>
 #include <sstream>
 
-#include <boost/assign.hpp>
-#include <boost/bind.hpp>
 #include <boost/date_time.hpp>
-#include <boost/foreach.hpp>
 
 #include "goby/common/logger/flex_ostreambuf.h"
 
@@ -75,7 +72,7 @@ void goby::common::FlexOStreamBuf::add_stream(logger::Verbosity verbosity, std::
     //check that this stream doesn't exist
     // if so, update its verbosity and return
     bool stream_exists = false;
-    BOOST_FOREACH (StreamConfig& sc, streams_)
+    for (StreamConfig& sc : streams_)
     {
         if (sc.os() == os)
         {
@@ -109,13 +106,11 @@ void goby::common::FlexOStreamBuf::enable_gui()
 
     // add any groups already on the screen as ncurses windows
     typedef std::pair<std::string, Group> P;
-    BOOST_FOREACH (const P& p, groups_)
-        curses_->add_win(&groups_[p.first]);
+    for (const P& p : groups_) curses_->add_win(&groups_[p.first]);
 
     curses_->recalculate_win();
 
-    input_thread_ = std::shared_ptr<std::thread>(
-        new std::thread(boost::bind(&FlexNCurses::run_input, curses_)));
+    input_thread_ = std::shared_ptr<std::thread>(new std::thread([&]() { curses_->run_input(); }));
 #else
     throw(goby::Exception("Tried to enable NCurses GUI without compiling against NCurses. Install "
                           "NCurses and recompile goby or disable GUI functionality"));
@@ -189,7 +184,7 @@ int goby::common::FlexOStreamBuf::sync()
 void goby::common::FlexOStreamBuf::display(std::string& s)
 {
     bool gui_displayed = false;
-    BOOST_FOREACH (const StreamConfig& cfg, streams_)
+    for (const StreamConfig& cfg : streams_)
     {
         if ((cfg.os() == &std::cout || cfg.os() == &std::cerr || cfg.os() == &std::clog) &&
             current_verbosity_ <= cfg.verbosity())

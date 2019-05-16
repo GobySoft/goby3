@@ -213,7 +213,7 @@ void goby::moos::MOOSGateway::loop()
 
     moos_client_.Fetch(moos_msgs);
 
-    BOOST_FOREACH (CMOOSMsg& msg, moos_msgs)
+    for (CMOOSMsg& msg : moos_msgs)
     {
         // we wrote this, so ignore
         if (msg.GetSourceAux().find(application_name()) != std::string::npos)
@@ -264,7 +264,7 @@ void goby::moos::MOOSGateway::check_for_new_moos_variables()
             std::string var_str(InMail.begin()->GetString());
             boost::split(all_var, var_str, boost::is_any_of(","));
 
-            BOOST_FOREACH (const std::string& s, all_var)
+            for (const std::string& s : all_var)
             {
                 if (!subscribed_vars_.count(s))
                 {

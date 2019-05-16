@@ -26,7 +26,6 @@
 #include <boost/asio.hpp>
 #include <boost/asio/time_traits.hpp>
 #include <boost/bind.hpp>
-#include <boost/foreach.hpp>
 #include <boost/function.hpp>
 #include <boost/lexical_cast.hpp>
 
