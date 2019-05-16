@@ -66,13 +66,13 @@ class FlexOstream : public std::ostream
     /// Set the name of the application that the logger is serving.
     void set_name(const std::string& s)
     {
-        boost::recursive_mutex::scoped_lock l(goby::common::logger::mutex);
+        std::lock_guard<std::recursive_mutex> l(goby::common::logger::mutex);
         sb_.name(s);
     }
 
     void enable_gui()
     {
-        boost::recursive_mutex::scoped_lock l(goby::common::logger::mutex);
+        std::lock_guard<std::recursive_mutex> l(goby::common::logger::mutex);
         sb_.enable_gui();
     }
 
@@ -88,7 +88,7 @@ class FlexOstream : public std::ostream
     /// Attach a stream object (e.g. std::cout, std::ofstream, ...) to the logger with desired verbosity
     void add_stream(logger::Verbosity verbosity = logger::VERBOSE, std::ostream* os = 0)
     {
-        boost::recursive_mutex::scoped_lock l(goby::common::logger::mutex);
+        std::lock_guard<std::recursive_mutex> l(goby::common::logger::mutex);
         sb_.add_stream(verbosity, os);
     }
 
@@ -96,7 +96,7 @@ class FlexOstream : public std::ostream
                         goby::common::protobuf::GLogConfig::VERBOSE,
                     std::ostream* os = 0)
     {
-        boost::recursive_mutex::scoped_lock l(goby::common::logger::mutex);
+        std::lock_guard<std::recursive_mutex> l(goby::common::logger::mutex);
         sb_.add_stream(static_cast<logger::Verbosity>(verbosity), os);
     }
 
@@ -135,7 +135,7 @@ class FlexOstream : public std::ostream
     /// \name Thread safety related
     //@{
     /// Get a reference to the Goby logger mutex for scoped locking
-    boost::recursive_mutex& mutex() { return logger::mutex; }
+    std::recursive_mutex& mutex() { return logger::mutex; }
 
     void set_lock_action(logger_lock::LockAction lock_action) { sb_.set_lock_action(lock_action); }
     //@}

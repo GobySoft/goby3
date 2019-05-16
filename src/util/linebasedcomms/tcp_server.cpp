@@ -22,10 +22,10 @@
 
 #include "tcp_server.h"
 
-boost::shared_ptr<goby::util::TCPConnection>
+std::shared_ptr<goby::util::TCPConnection>
 goby::util::TCPConnection::create(LineBasedInterface* interface)
 {
-    return boost::shared_ptr<TCPConnection>(new TCPConnection(interface));
+    return std::shared_ptr<TCPConnection>(new TCPConnection(interface));
 }
 
 void goby::util::TCPConnection::socket_write(const protobuf::Datagram& line) // give it a string
@@ -50,14 +50,14 @@ void goby::util::TCPServer::do_write(const protobuf::Datagram& line)
 {
     if (line.has_dest())
     {
-        std::map<Endpoint, boost::shared_ptr<TCPConnection> >::iterator it =
+        std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator it =
             connections_.find(line.dest());
         if (it != connections_.end())
             (it->second)->write(line);
     }
     else
     {
-        for (std::map<Endpoint, boost::shared_ptr<TCPConnection> >::iterator
+        for (std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator
                  it = connections_.begin(),
                  end = connections_.end();
              it != end; ++it)
@@ -71,14 +71,13 @@ void goby::util::TCPServer::do_close(const boost::system::error_code& error,
 {
     if (!endpt.empty())
     {
-        std::map<Endpoint, boost::shared_ptr<TCPConnection> >::iterator it =
-            connections_.find(endpt);
+        std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator it = connections_.find(endpt);
         if (it != connections_.end())
             (it->second)->close(error);
     }
     else
     {
-        for (std::map<Endpoint, boost::shared_ptr<TCPConnection> >::iterator
+        for (std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator
                  it = connections_.begin(),
                  end = connections_.end();
              it != end; ++it)
@@ -86,10 +85,10 @@ void goby::util::TCPServer::do_close(const boost::system::error_code& error,
     }
 }
 
-const std::map<goby::util::TCPServer::Endpoint, boost::shared_ptr<goby::util::TCPConnection> >&
+const std::map<goby::util::TCPServer::Endpoint, std::shared_ptr<goby::util::TCPConnection> >&
 goby::util::TCPServer::connections()
 {
-    typedef std::map<Endpoint, boost::shared_ptr<TCPConnection> >::iterator It;
+    typedef std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator It;
     It it = connections_.begin(), it_end = connections_.end();
     while (it != it_end)
     {
@@ -115,7 +114,7 @@ void goby::util::TCPServer::start_accept()
                                        boost::asio::placeholders::error));
 }
 
-void goby::util::TCPServer::handle_accept(boost::shared_ptr<TCPConnection> new_connection,
+void goby::util::TCPServer::handle_accept(std::shared_ptr<TCPConnection> new_connection,
                                           const boost::system::error_code& error)
 {
     if (!error)

@@ -1,7 +1,7 @@
 
 # for now, we need to be able to link in UDPDriver and PBDriver
 # at some point, make these dynamically loadable
-if(enable_zeromq AND build_pb)
+if(enable_zeromq)
   option(build_pAcommsHandler "Build pAcommsHandler" ON)
 else()
   option(build_pAcommsHandler "Build pAcommsHandler" OFF)
@@ -31,9 +31,9 @@ if(build_pGobyMOOSAppTemplate)
   add_subdirectory(pGobyMOOSAppTemplate) 
 endif()
 
-if(build_pb AND enable_zeromq)
-  add_subdirectory(moos_gateway_g)
-endif()
+#if(build_pb AND enable_zeromq)
+#  add_subdirectory(moos_gateway_g)
+#endif()
 
 if(build_middleware)
   add_subdirectory(goby_moos_gateway)

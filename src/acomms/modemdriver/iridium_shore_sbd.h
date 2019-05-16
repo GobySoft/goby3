@@ -195,9 +195,9 @@ class SBDMTConfirmationMessageReader : public SBDMessageReader
 class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
 {
   public:
-    static boost::shared_ptr<SBDConnection> create(boost::asio::io_service& io_service)
+    static std::shared_ptr<SBDConnection> create(boost::asio::io_service& io_service)
     {
-        return boost::shared_ptr<SBDConnection>(new SBDConnection(io_service));
+        return std::shared_ptr<SBDConnection>(new SBDConnection(io_service));
     }
 
     boost::asio::ip::tcp::socket& socket() { return socket_; }
@@ -241,12 +241,12 @@ class SBDServer
         start_accept();
     }
 
-    std::set<boost::shared_ptr<SBDConnection> >& connections() { return connections_; }
+    std::set<std::shared_ptr<SBDConnection> >& connections() { return connections_; }
 
   private:
     void start_accept()
     {
-        boost::shared_ptr<SBDConnection> new_connection =
+        std::shared_ptr<SBDConnection> new_connection =
             SBDConnection::create(acceptor_.get_io_service());
 
         connections_.insert(new_connection);
@@ -256,7 +256,7 @@ class SBDServer
                                            boost::asio::placeholders::error));
     }
 
-    void handle_accept(boost::shared_ptr<SBDConnection> new_connection,
+    void handle_accept(std::shared_ptr<SBDConnection> new_connection,
                        const boost::system::error_code& error)
     {
         if (!error)
@@ -273,7 +273,7 @@ class SBDServer
         start_accept();
     }
 
-    std::set<boost::shared_ptr<SBDConnection> > connections_;
+    std::set<std::shared_ptr<SBDConnection> > connections_;
     boost::asio::ip::tcp::acceptor acceptor_;
 };
 

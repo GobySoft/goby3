@@ -67,9 +67,9 @@ class IridiumShoreDriver : public ModemDriverBase
     void send_sbd_mt(const std::string& bytes, const std::string& imei);
 
     void rudics_send(const std::string& data, ModemId id);
-    void rudics_disconnect(boost::shared_ptr<RUDICSConnection> connection);
-    void rudics_line(const std::string& line, boost::shared_ptr<RUDICSConnection> connection);
-    void rudics_connect(boost::shared_ptr<RUDICSConnection> connection);
+    void rudics_disconnect(std::shared_ptr<RUDICSConnection> connection);
+    void rudics_line(const std::string& line, std::shared_ptr<RUDICSConnection> connection);
+    void rudics_connect(std::shared_ptr<RUDICSConnection> connection);
 
   private:
     protobuf::DriverConfig driver_cfg_;
@@ -86,19 +86,19 @@ class IridiumShoreDriver : public ModemDriverBase
         };
         RemoteNode() : data_out(DATA_BUFFER_CAPACITY) {}
 
-        boost::shared_ptr<OnCallBase> on_call;
+        std::shared_ptr<OnCallBase> on_call;
         boost::circular_buffer<protobuf::ModemTransmission> data_out;
     };
 
     std::map<ModemId, RemoteNode> remote_;
 
     boost::asio::io_service rudics_io_;
-    boost::shared_ptr<RUDICSServer> rudics_server_;
+    std::shared_ptr<RUDICSServer> rudics_server_;
     boost::asio::io_service sbd_io_;
-    boost::shared_ptr<SBDServer> mo_sbd_server_;
+    std::shared_ptr<SBDServer> mo_sbd_server_;
 
     // maps remote modem to connection
-    boost::bimap<ModemId, boost::shared_ptr<RUDICSConnection> > clients_;
+    boost::bimap<ModemId, std::shared_ptr<RUDICSConnection> > clients_;
 
     typedef std::string IMEI;
     std::map<ModemId, IMEI> modem_id_to_imei_;

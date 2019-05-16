@@ -103,9 +103,9 @@ void goby::acomms::QueueManager::add_queue(
     }
     else
     {
-        std::pair<std::map<unsigned, boost::shared_ptr<Queue> >::iterator, bool> new_q_pair =
-            queues_.insert(std::make_pair(
-                dccl_id, boost::shared_ptr<Queue>(new Queue(desc, this, queue_cfg))));
+        std::pair<std::map<unsigned, std::shared_ptr<Queue> >::iterator, bool> new_q_pair =
+            queues_.insert(
+                std::make_pair(dccl_id, std::shared_ptr<Queue>(new Queue(desc, this, queue_cfg))));
 
         Queue& new_q = *((new_q_pair.first)->second);
 
@@ -118,14 +118,14 @@ void goby::acomms::QueueManager::add_queue(
 
 void goby::acomms::QueueManager::do_work()
 {
-    for (std::map<unsigned, boost::shared_ptr<Queue> >::iterator it = queues_.begin(),
-                                                                 n = queues_.end();
+    for (std::map<unsigned, std::shared_ptr<Queue> >::iterator it = queues_.begin(),
+                                                               n = queues_.end();
          it != n; ++it)
     {
-        std::vector<boost::shared_ptr<google::protobuf::Message> > expired_msgs =
+        std::vector<std::shared_ptr<google::protobuf::Message> > expired_msgs =
             it->second->expire();
 
-        BOOST_FOREACH (boost::shared_ptr<google::protobuf::Message> expire, expired_msgs)
+        BOOST_FOREACH (std::shared_ptr<google::protobuf::Message> expire, expired_msgs)
         {
             signal_expire(*expire);
             if (network_ack_src_ids_.count(meta_from_msg(*expire).src()))
@@ -150,7 +150,7 @@ void goby::acomms::QueueManager::push_message(const google::protobuf::Message& d
                              "; you must configure it first."));
 
     // add the message
-    boost::shared_ptr<google::protobuf::Message> new_dccl_msg(dccl_msg.New());
+    std::shared_ptr<google::protobuf::Message> new_dccl_msg(dccl_msg.New());
     new_dccl_msg->CopyFrom(dccl_msg);
 
     if (meta)
@@ -163,7 +163,7 @@ void goby::acomms::QueueManager::push_message(const google::protobuf::Message& d
 
 void goby::acomms::QueueManager::flush_queue(const protobuf::QueueFlush& flush)
 {
-    std::map<unsigned, boost::shared_ptr<Queue> >::iterator it = queues_.find(flush.dccl_id());
+    std::map<unsigned, std::shared_ptr<Queue> >::iterator it = queues_.find(flush.dccl_id());
 
     if (it != queues_.end())
     {
@@ -182,8 +182,8 @@ void goby::acomms::QueueManager::flush_queue(const protobuf::QueueFlush& flush)
 void goby::acomms::QueueManager::info_all(std::ostream* os) const
 {
     *os << "= Begin QueueManager [[" << queues_.size() << " queues total]] =" << std::endl;
-    for (std::map<unsigned, boost::shared_ptr<Queue> >::const_iterator it = queues_.begin(),
-                                                                       n = queues_.end();
+    for (std::map<unsigned, std::shared_ptr<Queue> >::const_iterator it = queues_.begin(),
+                                                                     n = queues_.end();
          it != n; ++it)
         info(it->second->descriptor(), os);
     *os << "= End QueueManager =";
@@ -192,8 +192,7 @@ void goby::acomms::QueueManager::info_all(std::ostream* os) const
 void goby::acomms::QueueManager::info(const google::protobuf::Descriptor* desc,
                                       std::ostream* os) const
 {
-    std::map<unsigned, boost::shared_ptr<Queue> >::const_iterator it =
-        queues_.find(codec_->id(desc));
+    std::map<unsigned, std::shared_ptr<Queue> >::const_iterator it = queues_.find(codec_->id(desc));
 
     if (it != queues_.end())
         it->second->info(os);
@@ -450,8 +449,8 @@ goby::acomms::QueueManager::decode_repeated(const std::string& orig_bytes)
 
             if (encrypt_rules_.size())
             {
-                boost::shared_ptr<google::protobuf::Message> header =
-                    codec_->decode<boost::shared_ptr<google::protobuf::Message> >(bytes, true);
+                std::shared_ptr<google::protobuf::Message> header =
+                    codec_->decode<std::shared_ptr<google::protobuf::Message> >(bytes, true);
 
                 msg.meta = meta_from_msg(*header);
 
@@ -467,7 +466,7 @@ goby::acomms::QueueManager::decode_repeated(const std::string& orig_bytes)
                 codec_->merge_cfg(cfg);
             }
 
-            msg.dccl_msg = codec_->decode<boost::shared_ptr<google::protobuf::Message> >(bytes);
+            msg.dccl_msg = codec_->decode<std::shared_ptr<google::protobuf::Message> >(bytes);
 
             if (!encrypt_rules_.size())
                 msg.meta = meta_from_msg(*(msg.dccl_msg));
@@ -535,8 +534,8 @@ goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& 
                             << data.size() << "/" << request_msg.max_frame_bytes() << "B"
                             << std::endl;
 
-    for (std::map<unsigned, boost::shared_ptr<Queue> >::iterator it = queues_.begin(),
-                                                                 n = queues_.end();
+    for (std::map<unsigned, std::shared_ptr<Queue> >::iterator it = queues_.begin(),
+                                                               n = queues_.end();
          it != n; ++it)
     {
         Queue& q = *(it->second);
@@ -547,8 +546,8 @@ goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& 
                                                     cfg_.on_demand_skew_seconds() * 1e6)) <
                               common::goby_time()))
         {
-            boost::shared_ptr<google::protobuf::Message> new_msg =
-                goby::util::DynamicProtobufManager::new_protobuf_message(q.descriptor());
+            auto new_msg = goby::util::DynamicProtobufManager::new_protobuf_message<
+                std::shared_ptr<google::protobuf::Message> >(q.descriptor());
             signal_data_on_demand(request_msg, new_msg.get());
 
             if (new_msg->IsInitialized())
@@ -616,7 +615,7 @@ void goby::acomms::QueueManager::process_modem_ack(const protobuf::ModemTransmis
             {
                 Queue* q = it->second;
 
-                boost::shared_ptr<google::protobuf::Message> removed_msg;
+                std::shared_ptr<google::protobuf::Message> removed_msg;
                 if (!q->pop_message_ack(frame_number, removed_msg))
                 {
                     glog.is(DEBUG1) && glog << group(glog_in_group_) << warn
@@ -718,8 +717,8 @@ void goby::acomms::QueueManager::handle_modem_receive(
                 if (!signal_in_route.empty())
                 {
                     // decode only header
-                    boost::shared_ptr<google::protobuf::Message> decoded_message =
-                        codec_->decode<boost::shared_ptr<google::protobuf::Message> >(
+                    std::shared_ptr<google::protobuf::Message> decoded_message =
+                        codec_->decode<std::shared_ptr<google::protobuf::Message> >(
                             modem_message.frame(frame_number), true);
                     protobuf::QueuedMessageMeta meta_msg = meta_from_msg(*decoded_message);
                     // messages addressed to us on the link

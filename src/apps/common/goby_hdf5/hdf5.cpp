@@ -54,8 +54,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    goby::common::protobuf::HDF5Config cfg;
-    return goby::run<goby::common::hdf5::Writer>(argc, argv, &cfg);
+    return goby::run<goby::common::hdf5::Writer>(argc, argv);
 }
 
 void goby::common::hdf5::Channel::add_message(const goby::common::HDF5ProtobufEntry& entry)
@@ -103,9 +102,8 @@ goby::common::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::stri
     }
 }
 
-goby::common::hdf5::Writer::Writer(goby::common::protobuf::HDF5Config* cfg)
-    : ApplicationBase(cfg), cfg_(*cfg), h5file_(cfg_.output_file(), H5F_ACC_TRUNC),
-      group_factory_(h5file_)
+goby::common::hdf5::Writer::Writer()
+    : h5file_(app_cfg().output_file(), H5F_ACC_TRUNC), group_factory_(h5file_)
 {
     load();
     collect();
@@ -115,7 +113,7 @@ goby::common::hdf5::Writer::Writer(goby::common::protobuf::HDF5Config* cfg)
 
 void goby::common::hdf5::Writer::load()
 {
-    typedef goby::common::HDF5Plugin* (*plugin_func)(goby::common::protobuf::HDF5Config*);
+    typedef goby::common::HDF5Plugin* (*plugin_func)(const goby::common::protobuf::HDF5Config*);
     plugin_func plugin_ptr = (plugin_func)dlsym(plugin_handle, "goby_hdf5_load");
 
     if (!plugin_ptr)
@@ -123,7 +121,7 @@ void goby::common::hdf5::Writer::load()
             glog << "Function goby_hdf5_load in library defined in GOBY_HDF5_PLUGIN does not exist."
                  << std::endl;
 
-    plugin_.reset((*plugin_ptr)(&cfg_));
+    plugin_.reset((*plugin_ptr)(&app_cfg()));
 
     if (!plugin_)
         glog.is(DIE) && glog << "Function goby_hdf5_load in library defined in GOBY_HDF5_PLUGIN "
@@ -184,7 +182,7 @@ void goby::common::hdf5::Writer::write_message_collection(
 
         std::vector<const google::protobuf::Message*> messages;
         for (std::multimap<std::uint64_t,
-                           boost::shared_ptr<google::protobuf::Message> >::const_iterator
+                           std::shared_ptr<google::protobuf::Message> >::const_iterator
                  it = message_collection.entries.begin(),
                  end = message_collection.entries.end();
              it != end; ++it)
@@ -309,7 +307,7 @@ void goby::common::hdf5::Writer::write_field_selector(
             break;
 
         case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-            if (cfg_.include_string_fields())
+            if (app_cfg().include_string_fields())
                 write_field<std::string>(group, field_desc, messages, hs);
             else
                 // placeholder for users to know that the field exists, even if the data are omitted
@@ -369,7 +367,7 @@ void goby::common::hdf5::Writer::write_time(
     std::vector<std::uint64_t> utime(message_collection.entries.size(), 0);
     std::vector<double> datenum(message_collection.entries.size(), 0);
     int i = 0;
-    for (std::multimap<std::uint64_t, boost::shared_ptr<google::protobuf::Message> >::const_iterator
+    for (std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message> >::const_iterator
              it = message_collection.entries.begin(),
              end = message_collection.entries.end();
          it != end; ++it)

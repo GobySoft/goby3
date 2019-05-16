@@ -87,7 +87,7 @@ class IridiumHeaderIdentifierCodec : public dccl::TypedFixedFieldCodec<std::uint
     virtual unsigned size() { return 0; }
 };
 
-extern boost::shared_ptr<dccl::Codec> iridium_header_dccl_;
+extern std::shared_ptr<dccl::Codec> iridium_header_dccl_;
 
 inline void init_iridium_dccl()
 {

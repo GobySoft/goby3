@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 
-#include <boost/thread.hpp>
+#include <thread>
 
 #include "goby/common/time.h"
 #include "term_color.h"

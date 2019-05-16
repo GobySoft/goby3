@@ -53,7 +53,7 @@ class CpTranslator : public GobyMOOSApp
                          const goby::moos::protobuf::TranslatorEntry& entry, Timer* timer);
 
     void do_translation(const goby::moos::protobuf::TranslatorEntry& entry);
-    void do_publish(boost::shared_ptr<google::protobuf::Message> created_message);
+    void do_publish(std::shared_ptr<google::protobuf::Message> created_message);
 
   private:
     enum
@@ -66,7 +66,7 @@ class CpTranslator : public GobyMOOSApp
     boost::asio::io_service timer_io_service_;
     boost::asio::io_service::work work_;
 
-    std::vector<boost::shared_ptr<Timer> > timers_;
+    std::vector<std::shared_ptr<Timer> > timers_;
 
     static pTranslatorConfig cfg_;
     static CpTranslator* inst_;

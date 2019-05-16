@@ -29,8 +29,6 @@
 #include <thread>
 #include <unistd.h>
 
-#include "goby/common/zeromq_service.h"
-
 #include "goby/acomms/amac.h"
 #include "goby/acomms/bind.h"
 #include "goby/acomms/modem_driver.h"

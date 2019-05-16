@@ -236,7 +236,7 @@ class MOOSPrefixTranslation
         }
     }
 
-    static boost::shared_ptr<google::protobuf::Message> dynamic_parse(const std::string& in)
+    static std::shared_ptr<google::protobuf::Message> dynamic_parse(const std::string& in)
     {
         if (in.size() > goby::moos::MAGIC_PROTOBUF_HEADER.size() &&
             in.substr(0, goby::moos::MAGIC_PROTOBUF_HEADER.size()) ==
@@ -257,8 +257,8 @@ class MOOSPrefixTranslation
 
             try
             {
-                boost::shared_ptr<google::protobuf::Message> return_message =
-                    goby::util::DynamicProtobufManager::new_protobuf_message(name);
+                auto return_message = goby::util::DynamicProtobufManager::new_protobuf_message<
+                    std::shared_ptr<google::protobuf::Message> >(name);
                 if (in.size() > end_bracket_pos + 1)
                     goby::moos::MOOSTranslation<base_technique>::parse(
                         in.substr(end_bracket_pos + 1), return_message.get());
@@ -266,12 +266,12 @@ class MOOSPrefixTranslation
             }
             catch (std::exception& e)
             {
-                return boost::shared_ptr<google::protobuf::Message>();
+                return std::shared_ptr<google::protobuf::Message>();
             }
         }
         else
         {
-            return boost::shared_ptr<google::protobuf::Message>();
+            return std::shared_ptr<google::protobuf::Message>();
         }
     }
 };
@@ -1606,7 +1606,7 @@ inline void parse_for_moos(const std::string& in, google::protobuf::Message* msg
     }
 }
 
-inline boost::shared_ptr<google::protobuf::Message> dynamic_parse_for_moos(const std::string& in)
+inline std::shared_ptr<google::protobuf::Message> dynamic_parse_for_moos(const std::string& in)
 {
     switch (goby::moos::moos_technique)
     {
@@ -1632,7 +1632,7 @@ inline boost::shared_ptr<google::protobuf::Message> dynamic_parse_for_moos(const
                            << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(
                                   goby::moos::moos_technique)
                            << std::endl;
-            return boost::shared_ptr<google::protobuf::Message>();
+            return std::shared_ptr<google::protobuf::Message>();
     }
 }
 

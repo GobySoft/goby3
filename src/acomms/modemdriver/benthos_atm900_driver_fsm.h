@@ -315,7 +315,7 @@ struct Command : boost::statechart::simple_state<Command, Active, Configure,
 
     enum
     {
-        RETRIES_BEFORE_RESET = 3
+        RETRIES_BEFORE_RESET = 10
     };
 };
 

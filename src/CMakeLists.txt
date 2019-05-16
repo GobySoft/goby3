@@ -164,7 +164,7 @@ endmacro()
 if(build_common)
 
   ## boost
-  goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time thread program_options filesystem)
+  goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
   include_directories(${Boost_INCLUDE_DIRS})
 
   add_subdirectory(common)
@@ -181,15 +181,7 @@ if(build_common)
       if(enable_zeromq)
         option(build_middleware "Build the Goby Middleware" ON)
         add_subdirectory(middleware)
-      endif()
-      
-      if(enable_zeromq)
-        option(build_pb "Build the Goby implementation in Protobuf/C++ (PB) (requires goby-acomms)" ON)
-        if(build_pb)
-          add_subdirectory(pb)
-        endif(build_pb)
-      endif()
-
+      endif()      
 
       # first try to find v10 MOOS
       find_package(MOOS 10 QUIET NO_MODULE)

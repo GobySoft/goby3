@@ -160,6 +160,11 @@ void goby::acomms::benthos_fsm::ReceiveData::in_state_react(const EvRxSerial& e)
             {
                 std::string id_str = src_dest[i].substr(i == 0 ? SOURCE_ID_START : DEST_ID_START);
                 boost::trim_left_if(id_str, boost::is_any_of("0"));
+
+                // handle special case of "000"
+                if (id_str.empty())
+                    id_str = "0";
+
                 int id = boost::lexical_cast<unsigned>(id_str);
                 if (i == 0)
                     rx_msg_.set_src(id);
@@ -427,10 +432,9 @@ void goby::acomms::benthos_fsm::Command::in_state_react(const EvAck& e)
         {
             valid = true;
         }
-        else if (last_cmd.substr(0, 3) == "+++" &&
-                 (e.response_.compare(0, user.size(), user) == 0 || e.response_.empty()))
+        else if (last_cmd.substr(0, 3) == "+++" && (e.response_.compare(0, user.size(), user) == 0))
         {
-            // no response in command mode other than giving us a new user:N> prompt or sometimes just an empty string
+            // no response in command mode other than giving us a new user:N> prompt
             valid = true;
         }
         else if (last_cmd.substr(0, 3) == "ATL" &&

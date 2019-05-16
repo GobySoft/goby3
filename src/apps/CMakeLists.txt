@@ -17,7 +17,3 @@ endif()
 if(build_moos)
   add_subdirectory(moos)
 endif()
-
-if(build_pb)
-  add_subdirectory(pb)
-endif()

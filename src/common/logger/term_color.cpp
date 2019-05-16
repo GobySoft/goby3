@@ -37,8 +37,6 @@ std::ostream& goby::common::tcolor::add_escape_code(std::ostream& os, const std:
     }
 }
 
-boost::shared_ptr<goby::common::TermColor> goby::common::TermColor::inst_(new TermColor());
-
 goby::common::TermColor::TermColor()
 {
     boost::assign::insert(colors_map_)("nocolor", Colors::nocolor)("red", Colors::red)(

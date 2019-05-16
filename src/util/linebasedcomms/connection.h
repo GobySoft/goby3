@@ -93,7 +93,7 @@ template <typename ASIOAsyncReadStream> class LineBasedConnection
         std::getline(is, line, last);
 
         {
-            boost::mutex::scoped_lock lock(interface_->in_mutex());
+            std::lock_guard<std::mutex> lock(interface_->in_mutex());
             interface_->in().push_back(in_datagram_);
         }
         read_start(); // start waiting for another asynchronous read again

@@ -46,7 +46,7 @@ using namespace goby::common::logger;
 using goby::glog;
 using goby::common::logger_lock::lock;
 
-boost::mutex goby::common::LiaisonCommander::dbo_mutex_;
+std::mutex goby::common::LiaisonCommander::dbo_mutex_;
 std::shared_ptr<Dbo::backend::Sqlite3> goby::common::LiaisonCommander::sqlite3_;
 std::shared_ptr<Dbo::FixedSqlConnectionPool> goby::common::LiaisonCommander::connection_pool_;
 boost::posix_time::ptime
@@ -134,7 +134,7 @@ void goby::common::LiaisonCommander::display_notify_subscription(
 
 //         Dbo::ptr<CommandEntry> acked_command(static_cast<goby::common::CommandEntry*>(0));
 //         {
-//             boost::mutex::scoped_lock slock(dbo_mutex_);
+//             std::lock_guard<std::mutex> slock(dbo_mutex_);
 //             Dbo::Transaction transaction(controls_div_->session_);
 //             acked_command = controls_div_->session_.find<CommandEntry>().where("utime = ?").bind((long long)ack.message_time());
 //             if(acked_command)
@@ -213,7 +213,7 @@ void goby::common::LiaisonCommander::loop()
         glog.is(DEBUG1) && glog << last_db_update_time_ << "/" << current_command->last_reload_time_
                                 << std::endl;
 
-        boost::mutex::scoped_lock slock(dbo_mutex_);
+        std::lock_guard<std::mutex> slock(dbo_mutex_);
         Dbo::Transaction transaction(controls_div_->session_);
         current_command->query_model_->reload();
         current_command->last_reload_time_ = goby::common::goby_time();
@@ -240,14 +240,14 @@ goby::common::LiaisonCommander::ControlsContainer::ControlsContainer(
     // if we're the first thread, make the database connection
     if (!sqlite3_)
     {
-        boost::mutex::scoped_lock slock(dbo_mutex_);
+        std::lock_guard<std::mutex> slock(dbo_mutex_);
         sqlite3_.reset(new Dbo::backend::Sqlite3(pb_commander_config_.sqlite3_database()));
         connection_pool_.reset(new Dbo::FixedSqlConnectionPool(
             sqlite3_.get(), pb_commander_config_.database_pool_size()));
     }
 
     {
-        boost::mutex::scoped_lock slock(dbo_mutex_);
+        std::lock_guard<std::mutex> slock(dbo_mutex_);
         session_.setConnectionPool(*connection_pool_);
         session_.mapClass<CommandEntry>("_liaison_commands");
 
@@ -296,7 +296,7 @@ goby::common::LiaisonCommander::ControlsContainer::ControlsContainer(
 
     Dbo::ptr<CommandEntry> last_command(static_cast<goby::common::CommandEntry*>(0));
     {
-        boost::mutex::scoped_lock slock(dbo_mutex_);
+        std::lock_guard<std::mutex> slock(dbo_mutex_);
         Dbo::Transaction transaction(session_);
         last_command = session_.find<CommandEntry>("ORDER BY time DESC LIMIT 1");
         if (last_command)
@@ -444,7 +444,7 @@ void goby::common::LiaisonCommander::ControlsContainer::send_message()
         session_.add(command_entry);
 
         {
-            boost::mutex::scoped_lock slock(dbo_mutex_);
+            std::lock_guard<std::mutex> slock(dbo_mutex_);
             Dbo::Transaction transaction(*current_command->session_);
             transaction.commit();
             last_db_update_time_ = now;
@@ -478,7 +478,7 @@ goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandCont
     tree_table_->addColumn("Modify", pb_commander_config.modify_width_pixels());
 
     {
-        boost::mutex::scoped_lock slock(dbo_mutex_);
+        std::lock_guard<std::mutex> slock(dbo_mutex_);
         Dbo::Transaction transaction(*session_);
         query_model_->setQuery(
             session_->find<CommandEntry>("where protobuf_name='" + protobuf_name + "'"));

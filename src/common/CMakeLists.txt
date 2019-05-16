@@ -1,11 +1,8 @@
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/app3.proto
-  protobuf/app_base_config.proto
   protobuf/hdf5.proto
   protobuf/logger.proto
-  protobuf/option_extensions.proto
-  protobuf/pubsub_node_config.proto
-  protobuf/zero_mq_node_config.proto)
+  protobuf/option_extensions.proto)
 
 set(SRC
   time.cpp
@@ -15,16 +12,9 @@ set(SRC
   logger/logger_manipulators.cpp 
   logger/term_color.cpp
   configuration_reader.cpp
-  application_base.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 
-if(enable_zeromq)
-  set(SRC
-    ${SRC}
-    zeromq_service.cpp
-    )
-endif()
 
 if(enable_ncurses)
   set(SRC
@@ -34,10 +24,6 @@ if(enable_ncurses)
 endif()
 
 add_library(goby_common ${SRC})
-
-if(enable_zeromq)
-  target_link_libraries(goby_common ${ZeroMQ_LIBRARIES})
-endif()
 
 if(enable_ncurses)
   target_link_libraries(goby_common ${CURSES_LIBRARIES})

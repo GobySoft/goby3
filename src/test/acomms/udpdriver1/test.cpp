@@ -26,7 +26,17 @@
 #include <cstdlib>
 
 boost::asio::io_service io1, io2;
-boost::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
+std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
+
+void handle_raw_incoming(int driver, const goby::acomms::protobuf::ModemRaw& raw)
+{
+    std::cout << "Raw in (" << driver << "): " << raw.ShortDebugString() << std::endl;
+}
+
+void handle_raw_outgoing(int driver, const goby::acomms::protobuf::ModemRaw& raw)
+{
+    std::cout << "Raw out (" << driver << "): " << raw.ShortDebugString() << std::endl;
+}
 
 int main(int argc, char* argv[])
 {
@@ -43,6 +53,11 @@ int main(int argc, char* argv[])
 
     driver1.reset(new goby::acomms::UDPDriver(&io1));
     driver2.reset(new goby::acomms::UDPDriver(&io2));
+
+    goby::acomms::connect(&driver1->signal_raw_incoming, boost::bind(&handle_raw_incoming, 1, _1));
+    goby::acomms::connect(&driver2->signal_raw_incoming, boost::bind(&handle_raw_incoming, 2, _1));
+    goby::acomms::connect(&driver1->signal_raw_outgoing, boost::bind(&handle_raw_outgoing, 1, _1));
+    goby::acomms::connect(&driver2->signal_raw_outgoing, boost::bind(&handle_raw_outgoing, 2, _1));
 
     goby::acomms::protobuf::DriverConfig cfg1, cfg2;
 

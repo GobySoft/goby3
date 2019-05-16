@@ -45,10 +45,10 @@
 using goby::common::goby_time;
 
 #ifdef HAS_NCURSES
-boost::mutex curses_mutex;
+std::mutex curses_mutex;
 #endif
 
-boost::recursive_mutex goby::common::logger::mutex;
+std::recursive_mutex goby::common::logger::mutex;
 
 goby::common::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
     : buffer_(1), name_("no name"), die_flag_(false), current_verbosity_(logger::UNKNOWN),
@@ -103,7 +103,7 @@ void goby::common::FlexOStreamBuf::enable_gui()
     is_gui_ = true;
     curses_ = new FlexNCurses;
 
-    boost::mutex::scoped_lock lock(curses_mutex);
+    std::lock_guard<std::mutex> lock(curses_mutex);
 
     curses_->startup();
 
@@ -114,8 +114,8 @@ void goby::common::FlexOStreamBuf::enable_gui()
 
     curses_->recalculate_win();
 
-    input_thread_ = boost::shared_ptr<boost::thread>(
-        new boost::thread(boost::bind(&FlexNCurses::run_input, curses_)));
+    input_thread_ = std::shared_ptr<std::thread>(
+        new std::thread(boost::bind(&FlexNCurses::run_input, curses_)));
 #else
     throw(goby::Exception("Tried to enable NCurses GUI without compiling against NCurses. Install "
                           "NCurses and recompile goby or disable GUI functionality"));
@@ -131,7 +131,7 @@ void goby::common::FlexOStreamBuf::add_group(const std::string& name, Group g)
 #ifdef HAS_NCURSES
     if (is_gui_)
     {
-        boost::mutex::scoped_lock lock(curses_mutex);
+        std::lock_guard<std::mutex> lock(curses_mutex);
         curses_->add_win(&groups_[name]);
     }
 #endif
@@ -199,7 +199,7 @@ void goby::common::FlexOStreamBuf::display(std::string& s)
             {
                 if (!die_flag_)
                 {
-                    boost::mutex::scoped_lock lock(curses_mutex);
+                    std::lock_guard<std::mutex> lock(curses_mutex);
                     std::stringstream line;
                     boost::posix_time::time_duration time_of_day = goby_time().time_of_day();
                     line << "\n"
@@ -245,7 +245,7 @@ void goby::common::FlexOStreamBuf::refresh()
 #ifdef HAS_NCURSES
     if (is_gui_)
     {
-        boost::mutex::scoped_lock lock(curses_mutex);
+        std::lock_guard<std::mutex> lock(curses_mutex);
         curses_->recalculate_win();
     }
 #endif

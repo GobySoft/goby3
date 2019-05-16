@@ -26,7 +26,7 @@ set(SRC
 add_library(goby_middleware ${SRC})
 
 
-target_link_libraries(goby_middleware ${PROTOBUF_LIBRARY} goby_acomms)
+target_link_libraries(goby_middleware ${PROTOBUF_LIBRARY} goby_acomms ${ZeroMQ_LIBRARIES})
 set_target_properties(goby_middleware PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
 goby_install_lib(goby_middleware core)

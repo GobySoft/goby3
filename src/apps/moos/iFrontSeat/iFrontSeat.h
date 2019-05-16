@@ -63,7 +63,7 @@ class iFrontSeat : public GobyMOOSApp
     void handle_driver_raw_out(const goby::moos::protobuf::FrontSeatRaw& data);
 
   private:
-    boost::shared_ptr<FrontSeatInterfaceBase> frontseat_;
+    std::shared_ptr<FrontSeatInterfaceBase> frontseat_;
 
     FrontSeatLegacyTranslator translator_;
 

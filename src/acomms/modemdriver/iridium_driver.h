@@ -67,7 +67,7 @@ class IridiumDriver : public ModemDriverBase
     fsm::IridiumDriverFSM fsm_;
     protobuf::DriverConfig driver_cfg_;
 
-    boost::shared_ptr<goby::util::TCPClient> debug_client_;
+    std::shared_ptr<goby::util::TCPClient> debug_client_;
 
     double last_triple_plus_time_;
     enum

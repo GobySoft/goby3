@@ -28,7 +28,6 @@
 #include "goby/util/binary.h"
 #include "goby/util/linebasedcomms/nmea_sentence.h"
 
-#include "goby/moos/frontseat/iver/iver_driver.pb.h"
 #include "iver_driver.h"
 
 namespace gpb = goby::moos::protobuf;
@@ -50,7 +49,8 @@ IverFrontSeat::IverFrontSeat(const iFrontSeatConfig& cfg)
     : FrontSeatInterfaceBase(cfg), iver_config_(cfg.GetExtension(iver_config)),
       serial_(iver_config_.serial_port(), iver_config_.serial_baud(), "\r\n"),
       frontseat_providing_data_(false), last_frontseat_data_time_(0),
-      frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED)
+      frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED),
+      reported_mission_mode_(gpb::IverState::IVER_MODE_UNKNOWN)
 {
     goby::util::NMEASentence::enforce_talker_length = false;
 
@@ -167,6 +167,56 @@ void IverFrontSeat::process_receive(const std::string& s)
 
             static const boost::units::metric::knot_base_unit::unit_type knots;
             status_.set_speed_with_units(nmea.as<double>(SPEED) * knots);
+
+            std::string mode_str = nmea.at(MODE);
+            if (mode_str.size() >= 1 && gpb::IverState::IverMissionMode_IsValid(mode_str[0]))
+            {
+                reported_mission_mode_ = static_cast<gpb::IverState::IverMissionMode>(mode_str[0]);
+                glog.is(DEBUG1) &&
+                    glog << "Iver mission mode: "
+                         << gpb::IverState::IverMissionMode_Name(reported_mission_mode_)
+                         << std::endl;
+            }
+            else
+            {
+                glog.is(WARN) && glog << "[Parser]: Invalid mode string [" << mode_str << "]"
+                                      << std::endl;
+                reported_mission_mode_ = gpb::IverState::IVER_MODE_UNKNOWN;
+            }
+
+            switch (reported_mission_mode_)
+            {
+                case gpb::IverState::IVER_MODE_UNKNOWN:
+                case gpb::IverState::IVER_MODE_STOPPED:
+                    frontseat_state_ = gpb::FRONTSEAT_IDLE;
+                    break;
+
+                case gpb::IverState::IVER_MODE_PARKING:
+                    frontseat_state_ = gpb::FRONTSEAT_IN_CONTROL;
+                    break;
+
+                    // all these modes can take a backseat command
+                case gpb::IverState::IVER_MODE_NORMAL:
+                case gpb::IverState::IVER_MODE_MANUAL_OVERRIDE:
+                case gpb::IverState::IVER_MODE_MANUAL_PARKING:
+                case gpb::IverState::IVER_MODE_SERVO_MODE:
+                case gpb::IverState::IVER_MODE_MISSION_MODE:
+                    // no explicit handshake for frontseat command
+                    frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
+                    break;
+            }
+
+            static const boost::units::imperial::foot_base_unit::unit_type feet;
+            status_.mutable_global_fix()->set_depth_with_units(nmea.as<double>(COR_DFS) * feet);
+            status_.mutable_global_fix()->set_altitude_with_units(nmea.as<double>(ALTIMETER) *
+                                                                  feet);
+            status_.mutable_pose()->set_heading_with_units(nmea.as<double>(TRUEHEADING) *
+                                                           boost::units::degree::degrees);
+
+            gpb::FrontSeatInterfaceData fs_data;
+            gpb::IverState& iver_state = *fs_data.MutableExtension(gpb::iver_state);
+            iver_state.set_mode(reported_mission_mode_);
+            signal_data_from_frontseat(fs_data);
         }
         else if (nmea.at(0).substr(0, 2) == "$C")
         {
@@ -184,15 +234,10 @@ void IverFrontSeat::process_receive(const std::string& s)
             std::vector<std::string> cfields;
             boost::split(cfields, nmea.at(0), boost::is_any_of("CPRTD"));
 
-            static const boost::units::imperial::foot_base_unit::unit_type feet;
-            status_.mutable_global_fix()->set_depth_with_units(
-                goby::util::as<double>(cfields.at(DEPTH)) * feet);
             status_.mutable_pose()->set_roll_with_units(goby::util::as<double>(cfields.at(ROLL)) *
                                                         boost::units::degree::degrees);
             status_.mutable_pose()->set_pitch_with_units(goby::util::as<double>(cfields.at(PITCH)) *
                                                          boost::units::degree::degrees);
-            status_.mutable_pose()->set_heading_with_units(
-                goby::util::as<double>(cfields.at(HEADING)) * boost::units::degree::degrees);
 
             compute_missing(&status_);
             gpb::FrontSeatInterfaceData data;
@@ -200,9 +245,6 @@ void IverFrontSeat::process_receive(const std::string& s)
             signal_data_from_frontseat(data);
             frontseat_providing_data_ = true;
             last_frontseat_data_time_ = goby_time<double>();
-
-            // no explicit handshake for frontseat command
-            frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
         }
         else
         {
@@ -254,6 +296,31 @@ void IverFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& command
             }
             break;
         }
+    }
+
+    if (command.has_desired_course())
+    {
+        goby::util::NMEASentence nmea("$OMS", goby::util::NMEASentence::IGNORE);
+
+        // degrees
+        double heading =
+            command.desired_course().heading_with_units() / boost::units::degree::degrees;
+        while (heading >= 360) heading -= 360;
+        while (heading < 0) heading += 360;
+
+        nmea.push_back(tenths_precision_str(heading));
+        using boost::units::quantity;
+        typedef boost::units::imperial::foot_base_unit::unit_type feet;
+        nmea.push_back(tenths_precision_str(
+            command.desired_course().depth_with_units<quantity<feet> >().value()));   // in feet
+        nmea.push_back(tenths_precision_str(iver_config_.max_pitch_angle_degrees())); // in degrees
+        typedef boost::units::metric::knot_base_unit::unit_type knots;
+        nmea.push_back(tenths_precision_str(
+            command.desired_course().speed_with_units<quantity<knots> >().value())); // in knots
+        const int time_out = 5;                                                      // seconds
+        nmea.push_back(time_out);
+
+        write(nmea.message());
     }
 }
 

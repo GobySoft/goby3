@@ -1,13 +1,13 @@
 import "goby/common/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/modem_message.proto";
-import "goby/common/protobuf/app_base_config.proto";
+import "goby/common/protobuf/app3.proto";
 
 package goby.test.protobuf;
 
 message MMDriverTest2Config
 {
-    optional AppBaseConfig app = 1;
+    optional goby.protobuf.App3Config app = 1;
 
     required goby.acomms.protobuf.DriverConfig mm1_cfg = 10
         [(goby.field).description = "Configure the transmitting modem"];

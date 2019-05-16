@@ -87,7 +87,7 @@ void WavegliderSV2FrontSeat::send_command_to_frontseat(const gpb::CommandRequest
         dccl::uint32 board_addr = waveglider_sv2_config_.board_id() << dccl::BITS_IN_BYTE |
                                   waveglider_sv2_config_.task_id();
 
-        boost::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> hdg_cmd(
+        std::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> hdg_cmd(
             new goby::moos::protobuf::SV2CommandFollowFixedHeading);
         hdg_cmd->mutable_header()->set_start_of_frame(0x7e);
         hdg_cmd->mutable_header()->set_dest(goby::moos::protobuf::SV2Header::BOARD_ID_CC
@@ -359,7 +359,7 @@ void WavegliderSV2FrontSeat::handle_request_queued_message(
 {
     if (queued_messages_.size())
     {
-        boost::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> reply =
+        std::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> reply =
             queued_messages_.front();
         reply->mutable_header()->set_transaction_id(request.header().transaction_id());
         glog.is(DEBUG1) && glog << "Sent queued Message reply." << std::endl;

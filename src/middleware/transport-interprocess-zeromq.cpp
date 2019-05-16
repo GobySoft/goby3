@@ -25,30 +25,26 @@
 using goby::glog;
 using namespace goby::common::logger;
 
-void goby::setup_socket(zmq::socket_t& socket,
-                        const goby::common::protobuf::ZeroMQServiceConfig::Socket& cfg)
+void goby::setup_socket(zmq::socket_t& socket, const protobuf::ZMQSocket& cfg)
 {
     int send_hwm = cfg.send_queue_size();
     int receive_hwm = cfg.receive_queue_size();
     socket.setsockopt(ZMQ_SNDHWM, &send_hwm, sizeof(send_hwm));
     socket.setsockopt(ZMQ_RCVHWM, &receive_hwm, sizeof(receive_hwm));
 
-    bool bind = (cfg.connect_or_bind() == common::protobuf::ZeroMQServiceConfig::Socket::BIND);
+    bool bind = (cfg.connect_or_bind() == protobuf::ZMQSocket::BIND);
 
     std::string endpoint;
     switch (cfg.transport())
     {
-        case common::protobuf::ZeroMQServiceConfig::Socket::IPC:
-            endpoint = "ipc://" + cfg.socket_name();
-            break;
-        case common::protobuf::ZeroMQServiceConfig::Socket::TCP:
+        case protobuf::ZMQSocket::IPC: endpoint = "ipc://" + cfg.socket_name(); break;
+        case protobuf::ZMQSocket::TCP:
             endpoint = "tcp://" + (bind ? std::string("*") : cfg.ethernet_address()) + ":" +
                        std::to_string(cfg.ethernet_port());
             break;
         default:
-            throw(std::runtime_error(
-                "Unsupported transport type: " +
-                common::protobuf::ZeroMQServiceConfig::Socket::Transport_Name(cfg.transport())));
+            throw(std::runtime_error("Unsupported transport type: " +
+                                     protobuf::ZMQSocket::Transport_Name(cfg.transport())));
             break;
     }
 
@@ -83,8 +79,7 @@ bool goby::ZMQMainThread::recv(protobuf::InprocControl* control_msg, int flags)
     return message_received;
 }
 
-void goby::ZMQMainThread::set_publish_cfg(
-    const goby::common::protobuf::ZeroMQServiceConfig::Socket& cfg)
+void goby::ZMQMainThread::set_publish_cfg(const protobuf::ZMQSocket& cfg)
 {
     setup_socket(publish_socket_, cfg);
     publish_socket_configured_ = true;
@@ -176,25 +171,25 @@ goby::ZMQReadThread::ZMQReadThread(const protobuf::InterProcessPortalConfig& cfg
 
     control_socket_.connect("inproc://control");
 
-    goby::common::protobuf::ZeroMQServiceConfig::Socket query_socket;
-    query_socket.set_socket_type(common::protobuf::ZeroMQServiceConfig::Socket::REQUEST);
+    protobuf::ZMQSocket query_socket;
+    query_socket.set_socket_type(protobuf::ZMQSocket::REQUEST);
     query_socket.set_socket_id(SOCKET_MANAGER);
 
     switch (cfg_.transport())
     {
         case protobuf::InterProcessPortalConfig::IPC:
-            query_socket.set_transport(common::protobuf::ZeroMQServiceConfig::Socket::IPC);
+            query_socket.set_transport(protobuf::ZMQSocket::IPC);
             query_socket.set_socket_name(
                 (cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) +
                 ".manager");
             break;
         case protobuf::InterProcessPortalConfig::TCP:
-            query_socket.set_transport(common::protobuf::ZeroMQServiceConfig::Socket::TCP);
+            query_socket.set_transport(protobuf::ZMQSocket::TCP);
             query_socket.set_ethernet_address(cfg_.ipv4_address());
             query_socket.set_ethernet_port(cfg_.tcp_port());
             break;
     }
-    query_socket.set_connect_or_bind(common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
+    query_socket.set_connect_or_bind(protobuf::ZMQSocket::CONNECT);
     setup_socket(manager_socket_, query_socket);
 }
 
@@ -313,11 +308,9 @@ void goby::ZMQReadThread::manager_data(const zmq::message_t& zmq_msg)
     response.ParseFromArray(zmq_msg.data(), zmq_msg.size());
     if (response.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
     {
-        if (response.subscribe_socket().transport() ==
-            common::protobuf::ZeroMQServiceConfig::Socket::TCP)
+        if (response.subscribe_socket().transport() == protobuf::ZMQSocket::TCP)
             response.mutable_subscribe_socket()->set_ethernet_address(cfg_.ipv4_address());
-        if (response.publish_socket().transport() ==
-            common::protobuf::ZeroMQServiceConfig::Socket::TCP)
+        if (response.publish_socket().transport() == protobuf::ZMQSocket::TCP)
             response.mutable_publish_socket()->set_ethernet_address(cfg_.ipv4_address());
 
         setup_socket(subscribe_socket_, response.subscribe_socket());
@@ -456,18 +449,12 @@ void goby::ZMQManager::run()
 
             if (pb_request.request() == goby::protobuf::PROVIDE_PUB_SUB_SOCKETS)
             {
-                goby::common::protobuf::ZeroMQServiceConfig::Socket* subscribe_socket =
-                    pb_response.mutable_subscribe_socket();
-                goby::common::protobuf::ZeroMQServiceConfig::Socket* publish_socket =
-                    pb_response.mutable_publish_socket();
-                subscribe_socket->set_socket_type(
-                    goby::common::protobuf::ZeroMQServiceConfig::Socket::SUBSCRIBE);
-                publish_socket->set_socket_type(
-                    goby::common::protobuf::ZeroMQServiceConfig::Socket::PUBLISH);
-                subscribe_socket->set_connect_or_bind(
-                    goby::common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
-                publish_socket->set_connect_or_bind(
-                    goby::common::protobuf::ZeroMQServiceConfig::Socket::CONNECT);
+                protobuf::ZMQSocket* subscribe_socket = pb_response.mutable_subscribe_socket();
+                protobuf::ZMQSocket* publish_socket = pb_response.mutable_publish_socket();
+                subscribe_socket->set_socket_type(protobuf::ZMQSocket::SUBSCRIBE);
+                publish_socket->set_socket_type(protobuf::ZMQSocket::PUBLISH);
+                subscribe_socket->set_connect_or_bind(protobuf::ZMQSocket::CONNECT);
+                publish_socket->set_connect_or_bind(protobuf::ZMQSocket::CONNECT);
 
                 subscribe_socket->set_send_queue_size(cfg_.send_queue_size());
                 subscribe_socket->set_receive_queue_size(cfg_.receive_queue_size());
@@ -477,10 +464,8 @@ void goby::ZMQManager::run()
                 switch (cfg_.transport())
                 {
                     case goby::protobuf::InterProcessPortalConfig::IPC:
-                        subscribe_socket->set_transport(
-                            goby::common::protobuf::ZeroMQServiceConfig::Socket::IPC);
-                        publish_socket->set_transport(
-                            goby::common::protobuf::ZeroMQServiceConfig::Socket::IPC);
+                        subscribe_socket->set_transport(protobuf::ZMQSocket::IPC);
+                        publish_socket->set_transport(protobuf::ZMQSocket::IPC);
                         subscribe_socket->set_socket_name((cfg_.has_socket_name()
                                                                ? cfg_.socket_name()
                                                                : "/tmp/goby_" + cfg_.platform()) +
@@ -491,10 +476,8 @@ void goby::ZMQManager::run()
                                                         ".xsub");
                         break;
                     case goby::protobuf::InterProcessPortalConfig::TCP:
-                        subscribe_socket->set_transport(
-                            goby::common::protobuf::ZeroMQServiceConfig::Socket::TCP);
-                        publish_socket->set_transport(
-                            goby::common::protobuf::ZeroMQServiceConfig::Socket::TCP);
+                        subscribe_socket->set_transport(protobuf::ZMQSocket::TCP);
+                        publish_socket->set_transport(protobuf::ZMQSocket::TCP);
                         subscribe_socket->set_ethernet_port(
                             router_.pub_port); // our publish is their subscribe
                         publish_socket->set_ethernet_port(router_.sub_port);

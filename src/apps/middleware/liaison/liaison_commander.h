@@ -285,7 +285,7 @@ class LiaisonCommander : public LiaisonContainerWithComms<LiaisonCommander, Comm
 
     // static database objects
     static boost::posix_time::ptime last_db_update_time_;
-    static boost::mutex dbo_mutex_;
+    static std::mutex dbo_mutex_;
     static std::shared_ptr<Wt::Dbo::backend::Sqlite3> sqlite3_;
     static std::shared_ptr<Wt::Dbo::FixedSqlConnectionPool> connection_pool_;
 };
