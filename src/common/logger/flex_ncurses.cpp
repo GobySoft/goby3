@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 
 #include <boost/algorithm/string.hpp>
@@ -39,7 +40,7 @@
 using boost::posix_time::ptime;
 
 // defined in flex_ostreambuf.cpp
-extern boost::mutex curses_mutex;
+extern std::mutex curses_mutex;
 
 goby::common::FlexNCurses::FlexNCurses()
     : xmax_(0), ymax_(0), xwinN_(1), ywinN_(1), foot_window_(0), is_locked_(false),
@@ -972,7 +973,7 @@ void goby::common::FlexNCurses::run_input()
     // MOOS loves to stomp on me at startup...
     // if(true)
     // {
-    //     boost::mutex::scoped_lock lock(curses_mutex);
+    //     std::lock_guard<std::mutex> lock(curses_mutex);
     //     BOOST_FOREACH(size_t i, unique_panels_)
     //     {
     //         WINDOW* win = static_cast<WINDOW*>(panels_[i].window());
@@ -996,7 +997,7 @@ void goby::common::FlexNCurses::run_input()
     {
         int k = getch();
 
-        boost::mutex::scoped_lock lock(curses_mutex);
+        std::lock_guard<std::mutex> lock(curses_mutex);
         switch (k)
         {
             // same as resize but restores the order too

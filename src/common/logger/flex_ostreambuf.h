@@ -27,10 +27,11 @@
 #include <cstdio>
 #include <deque>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <vector>
 
-#include <boost/thread.hpp>
+#include <thread>
 
 #include <boost/date_time.hpp>
 #include <memory>
@@ -59,7 +60,7 @@ enum LockAction
 
 namespace logger
 {
-extern boost::recursive_mutex mutex;
+extern std::recursive_mutex mutex;
 
 enum Verbosity
 {
@@ -159,7 +160,7 @@ class FlexOStreamBuf : public std::streambuf
     std::atomic<logger::Verbosity> current_verbosity_;
 
     FlexNCurses* curses_;
-    std::shared_ptr<boost::thread> input_thread_;
+    std::shared_ptr<std::thread> input_thread_;
 
     boost::posix_time::ptime start_time_;
 

@@ -24,7 +24,7 @@
 #define DriverBase20091214H
 
 #include <boost/signals2.hpp>
-#include <boost/thread.hpp>
+#include <thread>
 
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/protobuf/driver_base.pb.h"

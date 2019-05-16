@@ -23,18 +23,19 @@
 #ifndef ASIOLineBasedInterface20100715H
 #define ASIOLineBasedInterface20100715H
 
-#include <boost/array.hpp>
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/thread.hpp>
 #include <deque>
 #include <fstream>
 #include <iostream>
+#include <mutex>
+#include <string>
+#include <thread>
+
+#include <boost/array.hpp>
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
 #include "goby/common/time.h"
 #include "goby/util/protobuf/linebasedcomms.pb.h"
-
-#include <string>
 
 namespace goby
 {
@@ -97,13 +98,13 @@ class LineBasedInterface
     std::string delimiter_;
     boost::asio::io_service io_service_; // the main IO service that runs this connection
     std::deque<protobuf::Datagram> in_;  // buffered read data
-    boost::mutex in_mutex_;
+    std::mutex in_mutex_;
 
     template <typename ASIOAsyncReadStream> friend class LineBasedConnection;
 
     std::string& delimiter() { return delimiter_; }
     std::deque<goby::util::protobuf::Datagram>& in() { return in_; }
-    boost::mutex& in_mutex() { return in_mutex_; }
+    std::mutex& in_mutex() { return in_mutex_; }
 
   private:
     class IOLauncher
@@ -122,7 +123,7 @@ class LineBasedInterface
 
       private:
         boost::asio::io_service& io_service_;
-        boost::thread t_;
+        std::thread t_;
     };
 
     std::shared_ptr<IOLauncher> io_launcher_;

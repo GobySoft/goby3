@@ -34,7 +34,7 @@ using goby::common::goby_time;
 using goby::util::as;
 using namespace boost::posix_time;
 
-boost::mutex driver_mutex;
+std::mutex driver_mutex;
 int last_transmission_index = 0;
 
 class MMDriverTest2
@@ -84,9 +84,9 @@ void MMDriverTest2::run()
     goby::acomms::connect(&driver2.signal_transmit_result, this,
                           &MMDriverTest2::handle_transmit_result2);
 
-    boost::thread modem_thread_A(
+    std::thread modem_thread_A(
         boost::bind(&MMDriverTest2::run_driver, this, boost::ref(driver1), app_cfg().mm1_cfg()));
-    boost::thread modem_thread_B(
+    std::thread modem_thread_B(
         boost::bind(&MMDriverTest2::run_driver, this, boost::ref(driver2), app_cfg().mm2_cfg()));
 
     while (!driver1.is_started() || !driver2.is_started()) usleep(10000);
@@ -101,13 +101,13 @@ void MMDriverTest2::run()
         {
             if (app_cfg().transmission(last_transmission_index).src() == 1)
             {
-                boost::mutex::scoped_lock lock(driver_mutex);
+                std::lock_guard<std::mutex> lock(driver_mutex);
                 driver1.handle_initiate_transmission(
                     app_cfg().transmission(last_transmission_index));
             }
             else if (app_cfg().transmission(last_transmission_index).src() == 2)
             {
-                boost::mutex::scoped_lock lock(driver_mutex);
+                std::lock_guard<std::mutex> lock(driver_mutex);
                 driver2.handle_initiate_transmission(
                     app_cfg().transmission(last_transmission_index));
             }
@@ -135,7 +135,7 @@ void MMDriverTest2::run_driver(goby::acomms::MMDriver& modem,
     while (modems_running_)
     {
         {
-            boost::mutex::scoped_lock lock(driver_mutex);
+            std::lock_guard<std::mutex> lock(driver_mutex);
             modem.do_work();
         }
         usleep(100000); // 0.1 seconds
