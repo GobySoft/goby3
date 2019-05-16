@@ -23,7 +23,6 @@
 #ifndef STRING20100713H
 #define STRING20100713H
 
-#include <boost/lexical_cast.hpp>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -32,6 +31,7 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/mpl/and.hpp>
 #include <boost/mpl/logical.hpp>
 #include <boost/numeric/conversion/cast.hpp>

@@ -23,7 +23,6 @@
 #include <sstream>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/assign.hpp>
 
 #include <dccl/bitset.h>
 
@@ -195,131 +194,155 @@ void goby::acomms::MMDriver::update_cfg(const protobuf::DriverConfig& cfg)
 
 void goby::acomms::MMDriver::initialize_talkers()
 {
-    boost::assign::insert(sentence_id_map_)("ACK", ACK)("DRQ", DRQ)("RXA", RXA)("RXD", RXD)(
-        "RXP", RXP)("TXD", TXD)("TXA", TXA)("TXP", TXP)("TXF", TXF)("CYC", CYC)("MPC", MPC)(
-        "MPA", MPA)("MPR", MPR)("RSP", RSP)("MSC", MSC)("MSA", MSA)("MSR", MSR)("EXL", EXL)(
-        "MEC", MEC)("MEA", MEA)("MER", MER)("MUC", MUC)("MUA", MUA)("MUR", MUR)("PDT", PDT)(
-        "PNT", PNT)("TTA", TTA)("MFD", MFD)("CLK", CLK)("CFG", CFG)("AGC", AGC)("BBD", BBD)(
-        "CFR", CFR)("CST", CST)("MSG", MSG)("REV", REV)("DQF", DQF)("SHF", SHF)("MFD", MFD)(
-        "SNR", SNR)("DOP", DOP)("DBG", DBG)("FFL", FFL)("FST", FST)("ERR", ERR)("TOA", TOA)(
-        "XST", XST)("TDP", TDP)("RDP", RDP)("TMS", TMS)("TMQ", TMQ)("TMG", TMG);
+    sentence_id_map_ = {
+        {"ACK", ACK}, {"DRQ", DRQ}, {"RXA", RXA}, {"RXD", RXD}, {"RXP", RXP}, {"TXD", TXD},
+        {"TXA", TXA}, {"TXP", TXP}, {"TXF", TXF}, {"CYC", CYC}, {"MPC", MPC}, {"MPA", MPA},
+        {"MPR", MPR}, {"RSP", RSP}, {"MSC", MSC}, {"MSA", MSA}, {"MSR", MSR}, {"EXL", EXL},
+        {"MEC", MEC}, {"MEA", MEA}, {"MER", MER}, {"MUC", MUC}, {"MUA", MUA}, {"MUR", MUR},
+        {"PDT", PDT}, {"PNT", PNT}, {"TTA", TTA}, {"MFD", MFD}, {"CLK", CLK}, {"CFG", CFG},
+        {"AGC", AGC}, {"BBD", BBD}, {"CFR", CFR}, {"CST", CST}, {"MSG", MSG}, {"REV", REV},
+        {"DQF", DQF}, {"SHF", SHF}, {"MFD", MFD}, {"SNR", SNR}, {"DOP", DOP}, {"DBG", DBG},
+        {"FFL", FFL}, {"FST", FST}, {"ERR", ERR}, {"TOA", TOA}, {"XST", XST}, {"TDP", TDP},
+        {"RDP", RDP}, {"TMS", TMS}, {"TMQ", TMQ}, {"TMG", TMG}};
 
-    boost::assign::insert(talker_id_map_)("CC", CC)("CA", CA)("SN", SN)("GP", GP);
-
-    // from Micro-Modem Software Interface Guide v. 3.04
-    boost::assign::insert(description_map_)("$CAACK", "Acknowledgment of a transmitted packet")(
-        "$CADRQ", "Data request message, modem to host")("$CARXA",
-                                                         "Received ASCII message, modem to host")(
-        "$CARXD", "Received binary message, modem to host")(
-        "$CARXP", "Incoming packet detected, modem to host")(
-        "$CCTXD", "Transmit binary data message, host to modem")(
-        "$CCTXA", "Transmit ASCII data message, host to modem")(
-        "$CATXD", "Echo back of transmit binary data message")(
-        "$CATXA", "Echo back of transmit ASCII data message")(
-        "$CATXP", "Start of packet transmission, modem to host")(
-        "$CATXF", "End of packet transmission, modem to host")(
-        "$CCCYC", "Network Cycle Initialization Command")(
-        "$CACYC", "Echo of Network Cycle Initialization command")(
-        "$CCMPC", "Mini-Packet Ping command, host to modem")(
-        "$CAMPC", "Echo of Ping command, modem to host")("$CAMPA",
-                                                         "A Ping has been received, modem to host")(
-        "$CAMPR", "Reply to Ping has been received, modem to host")(
-        "$CCRSP", "Pinging with an FM sweep")("$CARSP", "Respose to FM sweep ping command")(
-        "$CCMSC", "Sleep command, host to modem")("$CAMSC", "Echo of Sleep command, modem to host")(
-        "$CAMSA", "A Sleep was received acoustically, modem to host")(
-        "$CAMSR", "A Sleep reply was received, modem to host")(
-        "$CCEXL", "External hardware control command, local modem only")(
-        "$CCMEC", "External hardware control command, host to modem")(
-        "$CAMEC", "Echo of hardware control command, modem to host")(
-        "$CAMEA", "Hardware control command received acoustically")(
-        "$CAMER", "Hardware control command reply received")(
-        "$CCMUC", "User Mini-Packet command, host to modem")(
-        "$CAMUC", "Echo of user Mini-Packet, modem to host")(
-        "$CAMUA", "Mini-Packet received acoustically, modem to host")(
-        "$CAMUR", "Reply to Mini-Packet received, modem to host")(
-        "$CCPDT", "Ping REMUS digital transponder, host to modem")(
-        "$CCPNT", "Ping narrowband transponder, host to modem")(
-        "$SNTTA", "Transponder travel times, modem to host")(
-        "$SNMFD", "Nav matched filter information, modem to host")(
-        "$CCCLK", "Set clock, host to modem")("$CCCFG",
-                                              "Set NVRAM configuration parameter, host to modem")(
-        "$CACFG", "Echo of NVRAM configuration parameter, modem to host")(
-        "$CCCFQ", "Query configuration parameter, host to modem")("$CCAGC",
-                                                                  "Set automatic gain control")(
-        "$CABBD", "Dump of baseband data to serial port, modem to host")(
-        "$CCCFR", "Measure noise level at receiver, host to modem")(
-        "$SNCFR", "Noise report, modem to host")("$CACST",
-                                                 "Communication cycle receive statistics")(
-        "$CAXST", "Communication cycle transmit statistics")(
-        "$CAMSG", "Transaction message, modem to host")("$CAREV",
-                                                        "Software revision message, modem to host")(
-        "$CADQF", "Data quality factor information, modem to host")(
-        "$CASHF", "Shift information, modem to host")(
-        "$CAMFD", "Comms matched filter information, modem to host")(
-        "$CACLK", "Time/Date message, modem to host")("$CASNR",
-                                                      "SNR statistics on the incoming PSK packet")(
-        "$CADOP", "Doppler speed message, modem to host")(
-        "$CADBG", "Low level debug message, modem to host")("$CAERR",
-                                                            "Error message, modem to host")(
-        "$CATOA", "Message from modem to host reporting time of arrival of the previous packet, "
-                  "and the synchronous timing mode used to determine that time.")(
-        "$CCTDP", "Transmit (downlink) data packet with Flexible Data Protocol (Micro-Modem 2)")(
-        "$CCTDP", "Response to CCTDP for Flexible Data Protocol (Micro-Modem 2)")(
-        "$CARDP", "Reception of a FDP downlink data packet (Micro-Modem 2)")(
-        "$CCTMS", "Set the modem clock (Micro-Modem 2)")(
-        "$CATMS", "Response to set clock command (Micro-Modem 2)")(
-        "$CCTMQ", "Query modem time command (Micro-Modem 2)")(
-        "$CATMQ", "Response to time query (CCTMQ) command (Micro-Modem 2)")(
-        "$CATMG", "Informational message about timing source, printed when timing sources change "
-                  "(Micro-Modem 2)");
+    talker_id_map_ = {{"CC", CC}, {"CA", CA}, {"SN", SN}, {"GP", GP}};
 
     // from Micro-Modem Software Interface Guide v. 3.04
-    boost::assign::insert(cfg_map_)("AGC", "Turn on automatic gain control")(
-        "AGN", "Analog Gain (50 is 6 dB, 250 is 30 dB)")(
-        "ASD",
-        "Always Send Data. Tells the modem to send test data when the user does not provide any.")(
-        "BBD", "PSK Baseband data dump to serial port")(
-        "BND", "Frequency Bank (1, 2, 3 for band A, B, or C, 0 for user-defined PSK only band)")(
-        "BR1", "Baud rate for serial port 1 (3 = 19200)")(
-        "BR2", "Baud rate for serial port 2 (3 = 19200)")("BRN", "Run bootloader at next revert")(
-        "BSP", "Boot loader serial port")(
-        "BW0", "Bandwidth for Band 0 PSK CPR 0-1 Coprocessor power toggle switch 1")(
-        "CRL", "Cycle init reverb lockout (ms) 50")("CST", "Cycle statistics message 1")(
-        "CTO", "Cycle init timeout (sec) 10")("DBG", "Enable low-level debug messages 0")(
-        "DGM", "Diagnostic messaging 0")("DOP", "Whether or not to send the $CADOP message")(
-        "DQF", "Whether or not to send the $CADQF message")("DTH",
-                                                            "Matched filter signal threshold, FSK")(
-        "DTO", "Data request timeout (sec)")("DTP", "Matched filter signal threshold, PSK")(
-        "ECD", "Int Delay at end of cycle (ms)")("EFF", "Feedforward taps for the LMS equalizer")(
-        "EFB", "Feedback taps for the LMS equalizer")("FMD", "PSK FM probe direction,0 up, 1 down")(
-        "FML", "PSK FM probe length, symbols")("FC0", "Carrier at Band 0 PSK only")(
-        "GPS", "GPS parser on aux. serial port")("HFC",
-                                                 "Hardware flow control on main serial port")(
-        "MCM", "Enable current mode hydrophone power supply on Rev. C Multi-Channel Analog Board. "
-               "Must be set to 1 for Rev. B Multi-Channel Analog Board.")(
-        "MFD", "Whether or not to send the MFD messages")("IRE",
-                                                          "Print impulse response of FM sweep")(
-        "MFC", "MFD calibration value (samples)")("MFD", "Whether or not to send the MFD messages")(
-        "MOD", "0 sends FSK minipacket, 1 sends PSK minipacket")(
-        "MPR", "Enable power toggling on Multi-Channel Analog Board")(
-        "MSE", "Print symbol mean squared error (dB) from the LMS equalizer")(
-        "MVM", "Enable voltage mode hydrophone power supply on Multi-Channel Analog Board")(
-        "NDT", "Detect threshold for nav detector")("NPT", "Power threshold for nav detector")(
-        "NRL", "Navigation reverb lockout (ms)")("NRV", "Number of CTOs before hard reboot")(
-        "PAD", "Power-amp delay (ms)")("PCM", "Passband channel mask")(
-        "POW", "Detection power threshold (dB) PRL Int Packet reverb lockout (ms)")(
-        "PTH", "Matched filter detector power threshold")("PTO", "Packet timeout (sec)")(
-        "REV", "Whether or not to send the $CAREV message")(
-        "SGP", "Show GPS messages on main serial port")(
-        "RXA", "Whether or not to send the $CARXA message")(
-        "RXD", "Whether or not to send the $CARXD message")(
-        "RXP", "Whether or not to send the $CARXP message")("SCG", "Set clock from GPS")(
-        "SHF", "Whether or not to send the $CASHF message")(
-        "SNR", "Turn on SNR stats for PSK comms")("SNV", "Synchronous transmission of packets")(
-        "SRC", "Default Source Address")("TAT", "Navigation turn-around-time (msec)")(
-        "TOA", "Display time of arrival of a packet (sec)")("TXD", "Delay before transmit (ms)")(
-        "TXP", "Turn on start of transmit message")("TXF", "Turn on end of transmit message")(
-        "XST", "Turn on transmit stats message, CAXST");
+    description_map_ = {
+        {"$CAACK", "Acknowledgment of a transmitted packet"},
+        {"$CADRQ", "Data request message, modem to host"},
+        {"$CARXA", "Received ASCII message, modem to host"},
+        {"$CARXD", "Received binary message, modem to host"},
+        {"$CARXP", "Incoming packet detected, modem to host"},
+        {"$CCTXD", "Transmit binary data message, host to modem"},
+        {"$CCTXA", "Transmit ASCII data message, host to modem"},
+        {"$CATXD", "Echo back of transmit binary data message"},
+        {"$CATXA", "Echo back of transmit ASCII data message"},
+        {"$CATXP", "Start of packet transmission, modem to host"},
+        {"$CATXF", "End of packet transmission, modem to host"},
+        {"$CCCYC", "Network Cycle Initialization Command"},
+        {"$CACYC", "Echo of Network Cycle Initialization command"},
+        {"$CCMPC", "Mini-Packet Ping command, host to modem"},
+        {"$CAMPC", "Echo of Ping command, modem to host"},
+        {"$CAMPA", "A Ping has been received, modem to host"},
+        {"$CAMPR", "Reply to Ping has been received, modem to host"},
+        {"$CCRSP", "Pinging with an FM sweep"},
+        {"$CARSP", "Respose to FM sweep ping command"},
+        {"$CCMSC", "Sleep command, host to modem"},
+        {"$CAMSC", "Echo of Sleep command, modem to host"},
+        {"$CAMSA", "A Sleep was received acoustically, modem to host"},
+        {"$CAMSR", "A Sleep reply was received, modem to host"},
+        {"$CCEXL", "External hardware control command, local modem only"},
+        {"$CCMEC", "External hardware control command, host to modem"},
+        {"$CAMEC", "Echo of hardware control command, modem to host"},
+        {"$CAMEA", "Hardware control command received acoustically"},
+        {"$CAMER", "Hardware control command reply received"},
+        {"$CCMUC", "User Mini-Packet command, host to modem"},
+        {"$CAMUC", "Echo of user Mini-Packet, modem to host"},
+        {"$CAMUA", "Mini-Packet received acoustically, modem to host"},
+        {"$CAMUR", "Reply to Mini-Packet received, modem to host"},
+        {"$CCPDT", "Ping REMUS digital transponder, host to modem"},
+        {"$CCPNT", "Ping narrowband transponder, host to modem"},
+        {"$SNTTA", "Transponder travel times, modem to host"},
+        {"$SNMFD", "Nav matched filter information, modem to host"},
+        {"$CCCLK", "Set clock, host to modem"},
+        {"$CCCFG", "Set NVRAM configuration parameter, host to modem"},
+        {"$CACFG", "Echo of NVRAM configuration parameter, modem to host"},
+        {"$CCCFQ", "Query configuration parameter, host to modem"},
+        {"$CCAGC", "Set automatic gain control"},
+        {"$CABBD", "Dump of baseband data to serial port, modem to host"},
+        {"$CCCFR", "Measure noise level at receiver, host to modem"},
+        {"$SNCFR", "Noise report, modem to host"},
+        {"$CACST", "Communication cycle receive statistics"},
+        {"$CAXST", "Communication cycle transmit statistics"},
+        {"$CAMSG", "Transaction message, modem to host"},
+        {"$CAREV", "Software revision message, modem to host"},
+        {"$CADQF", "Data quality factor information, modem to host"},
+        {"$CASHF", "Shift information, modem to host"},
+        {"$CAMFD", "Comms matched filter information, modem to host"},
+        {"$CACLK", "Time/Date message, modem to host"},
+        {"$CASNR", "SNR statistics on the incoming PSK packet"},
+        {"$CADOP", "Doppler speed message, modem to host"},
+        {"$CADBG", "Low level debug message, modem to host"},
+        {"$CAERR", "Error message, modem to host"},
+        {"$CATOA", "Message from modem to host reporting time of arrival of the previous packet, "
+                   "and the synchronous timing mode used to determine that time."},
+        {"$CCTDP", "Transmit (downlink) data packet with Flexible Data Protocol (Micro-Modem 2)"},
+        {"$CCTDP", "Response to CCTDP for Flexible Data Protocol (Micro-Modem 2)"},
+        {"$CARDP", "Reception of a FDP downlink data packet (Micro-Modem 2)"},
+        {"$CCTMS", "Set the modem clock (Micro-Modem 2)"},
+        {"$CATMS", "Response to set clock command (Micro-Modem 2)"},
+        {"$CCTMQ", "Query modem time command (Micro-Modem 2)"},
+        {"$CATMQ", "Response to time query (CCTMQ) command (Micro-Modem 2)"},
+        {"$CATMG", "Informational message about timing source, printed when timing sources change "
+                   "(Micro-Modem 2)"}};
+
+    // from Micro-Modem Software Interface Guide v. 3.04
+    cfg_map_ = {
+        {"AGC", "Turn on automatic gain control"},
+        {"AGN", "Analog Gain (50 is 6 dB, 250 is 30 dB)"},
+        {"ASD",
+         "Always Send Data. Tells the modem to send test data when the user does not provide any."},
+        {"BBD", "PSK Baseband data dump to serial port"},
+        {"BND", "Frequency Bank (1, 2, 3 for band A, B, or C, 0 for user-defined PSK only band)"},
+        {"BR1", "Baud rate for serial port 1 (3 = 19200)"},
+        {"BR2", "Baud rate for serial port 2 (3 = 19200)"},
+        {"BRN", "Run bootloader at next revert"},
+        {"BSP", "Boot loader serial port"},
+        {"BW0", "Bandwidth for Band 0 PSK CPR 0-1 Coprocessor power toggle switch 1"},
+        {"CRL", "Cycle init reverb lockout (ms) 50"},
+        {"CST", "Cycle statistics message 1"},
+        {"CTO", "Cycle init timeout (sec) 10"},
+        {"DBG", "Enable low-level debug messages 0"},
+        {"DGM", "Diagnostic messaging 0"},
+        {"DOP", "Whether or not to send the $CADOP message"},
+        {"DQF", "Whether or not to send the $CADQF message"},
+        {"DTH", "Matched filter signal threshold, FSK"},
+        {"DTO", "Data request timeout (sec)"},
+        {"DTP", "Matched filter signal threshold, PSK"},
+        {"ECD", "Int Delay at end of cycle (ms)"},
+        {"EFF", "Feedforward taps for the LMS equalizer"},
+        {"EFB", "Feedback taps for the LMS equalizer"},
+        {"FMD", "PSK FM probe direction,0 up, 1 down"},
+        {"FML", "PSK FM probe length, symbols"},
+        {"FC0", "Carrier at Band 0 PSK only"},
+        {"GPS", "GPS parser on aux. serial port"},
+        {"HFC", "Hardware flow control on main serial port"},
+        {"MCM", "Enable current mode hydrophone power supply on Rev. C Multi-Channel Analog Board. "
+                "Must be set to 1 for Rev. B Multi-Channel Analog Board."},
+        {"MFD", "Whether or not to send the MFD messages"},
+        {"IRE", "Print impulse response of FM sweep"},
+        {"MFC", "MFD calibration value (samples)"},
+        {"MFD", "Whether or not to send the MFD messages"},
+        {"MOD", "0 sends FSK minipacket, 1 sends PSK minipacket"},
+        {"MPR", "Enable power toggling on Multi-Channel Analog Board"},
+        {"MSE", "Print symbol mean squared error (dB) from the LMS equalizer"},
+        {"MVM", "Enable voltage mode hydrophone power supply on Multi-Channel Analog Board"},
+        {"NDT", "Detect threshold for nav detector"},
+        {"NPT", "Power threshold for nav detector"},
+        {"NRL", "Navigation reverb lockout (ms)"},
+        {"NRV", "Number of CTOs before hard reboot"},
+        {"PAD", "Power-amp delay (ms)"},
+        {"PCM", "Passband channel mask"},
+        {"POW", "Detection power threshold (dB) PRL Int Packet reverb lockout (ms)"},
+        {"PTH", "Matched filter detector power threshold"},
+        {"PTO", "Packet timeout (sec)"},
+        {"REV", "Whether or not to send the $CAREV message"},
+        {"SGP", "Show GPS messages on main serial port"},
+        {"RXA", "Whether or not to send the $CARXA message"},
+        {"RXD", "Whether or not to send the $CARXD message"},
+        {"RXP", "Whether or not to send the $CARXP message"},
+        {"SCG", "Set clock from GPS"},
+        {"SHF", "Whether or not to send the $CASHF message"},
+        {"SNR", "Turn on SNR stats for PSK comms"},
+        {"SNV", "Synchronous transmission of packets"},
+        {"SRC", "Default Source Address"},
+        {"TAT", "Navigation turn-around-time (msec)"},
+        {"TOA", "Display time of arrival of a packet (sec)"},
+        {"TXD", "Delay before transmit (ms)"},
+        {"TXP", "Turn on start of transmit message"},
+        {"TXF", "Turn on end of transmit message"},
+        {"XST", "Turn on transmit stats message, CAXST"}};
 }
 
 void goby::acomms::MMDriver::set_hydroid_gateway_prefix(int id)

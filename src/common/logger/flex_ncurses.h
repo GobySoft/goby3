@@ -24,12 +24,13 @@
 #define FlexNCurses20091110H
 
 #include <deque>
+#include <set>
 #include <string>
+#include <thread>
 #include <vector>
 
-#include <thread>
-
 #include "goby/common/time.h"
+
 #include "term_color.h"
 
 class Group;

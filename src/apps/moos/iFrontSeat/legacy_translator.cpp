@@ -19,14 +19,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/assign.hpp>
-
 #include "goby/acomms/connect.h"
+#include "goby/moos/frontseat/bluefin/bluefin.pb.h"
 
 #include "iFrontSeat.h"
 #include "legacy_translator.h"
-
-#include "goby/moos/frontseat/bluefin/bluefin.pb.h"
 
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
@@ -34,12 +31,11 @@ using namespace goby::common::logger;
 
 FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs) : ifs_(fs), request_id_(0)
 {
-    using boost::assign::operator+=;
-
     if (ifs_->cfg_.legacy_cfg().subscribe_ctd())
     {
-        std::vector<std::string> ctd_params;
-        ctd_params += "CONDUCTIVITY", "TEMPERATURE", "PRESSURE", "SALINITY";
+        std::vector<std::string> ctd_params(
+            {"CONDUCTIVITY", "TEMPERATURE", "PRESSURE", "SALINITY"});
+
         for (std::vector<std::string>::const_iterator it = ctd_params.begin(),
                                                       end = ctd_params.end();
              it != end; ++it)
@@ -55,8 +51,9 @@ FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs) : ifs_(fs),
 
     if (ifs_->cfg_.legacy_cfg().subscribe_desired())
     {
-        std::vector<std::string> desired_params;
-        desired_params += "HEADING", "SPEED", "DEPTH", "PITCH", "ROLL", "Z_RATE", "ALTITUDE";
+        std::vector<std::string> desired_params(
+            {"HEADING", "SPEED", "DEPTH", "PITCH", "ROLL", "Z_RATE", "ALTITUDE"});
+
         for (std::vector<std::string>::const_iterator it = desired_params.begin(),
                                                       end = desired_params.end();
              it != end; ++it)

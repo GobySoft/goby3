@@ -24,10 +24,9 @@
 #define TermColor20091211H
 
 #include <iostream>
-#include <string>
-
-#include <boost/assign.hpp>
+#include <map>
 #include <memory>
+#include <string>
 
 namespace goby
 {
