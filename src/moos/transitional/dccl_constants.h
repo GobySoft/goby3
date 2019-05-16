@@ -35,7 +35,6 @@
 
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/dccl.h"
-#include "goby/moos/protobuf/transitional.pb.h"
 
 namespace goby
 {
