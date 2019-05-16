@@ -43,7 +43,7 @@ void goby::common::FlexOstream::add_group(const std::string& name,
                                           const std::string& description /*= ""*/)
 {
     {
-        boost::recursive_mutex::scoped_lock l(goby::common::logger::mutex);
+        std::lock_guard<std::recursive_mutex> l(goby::common::logger::mutex);
 
         if (description.empty())
         {

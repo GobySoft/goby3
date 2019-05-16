@@ -47,7 +47,7 @@ void goby::util::LineBasedInterface::start()
 
 void goby::util::LineBasedInterface::clear()
 {
-    boost::mutex::scoped_lock lock(in_mutex_);
+    std::lock_guard<std::mutex> lock(in_mutex_);
     in_.clear();
 }
 
@@ -60,7 +60,7 @@ bool goby::util::LineBasedInterface::readline(protobuf::Datagram* msg,
     }
     else
     {
-        boost::mutex::scoped_lock lock(in_mutex_);
+        std::lock_guard<std::mutex> lock(in_mutex_);
         switch (order)
         {
             case NEWEST_FIRST:
@@ -86,7 +86,7 @@ bool goby::util::LineBasedInterface::readline(std::string* s,
     }
     else
     {
-        boost::mutex::scoped_lock lock(in_mutex_);
+        std::lock_guard<std::mutex> lock(in_mutex_);
         switch (order)
         {
             case NEWEST_FIRST:

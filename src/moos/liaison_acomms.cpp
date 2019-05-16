@@ -271,7 +271,7 @@ void goby::common::LiaisonAcomms::dccl_select(WString msg)
     if (desc)
     {
         std::stringstream ss;
-        boost::mutex::scoped_lock l(dccl_mutex_);
+        std::lock_guard<std::mutex> l(dccl_mutex_);
         dccl_.info(desc, &ss);
         dccl_analyze_text_->setText(ss.str());
 
@@ -425,7 +425,7 @@ void goby::common::LiaisonAcomms::handle_modem_message(
 
 void goby::common::LiaisonAcomms::process_acomms_config()
 {
-    boost::mutex::scoped_lock l(dccl_mutex_);
+    std::lock_guard<std::mutex> l(dccl_mutex_);
 
     // load messages in queue config
     for (int i = 0, n = acomms_config_.queue_cfg().message_entry_size(); i < n; ++i)
@@ -701,7 +701,7 @@ void goby::common::LiaisonAcomms::queue_info(const Wt::WMouseEvent& event, int i
 {
     const google::protobuf::Descriptor* desc = 0;
     {
-        boost::mutex::scoped_lock l(dccl_mutex_);
+        std::lock_guard<std::mutex> l(dccl_mutex_);
         if (dccl_.loaded().count(id))
             desc = dccl_.loaded().find(id)->second;
     }

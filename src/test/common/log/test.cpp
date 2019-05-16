@@ -118,8 +118,8 @@ int main()
 
     for (int i = 0; i < 2; ++i)
     {
-        boost::thread t1(boost::bind(spew, 1000, 1, i));
-        boost::thread t2(boost::bind(spew, 1000, 2, i));
+        std::thread t1([i]() { spew(1000, 1, i); });
+        std::thread t2([i]() { spew(1000, 2, i); });
         t1.join();
         t2.join();
     }

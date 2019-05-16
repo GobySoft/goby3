@@ -21,7 +21,6 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <boost/format.hpp>
-#include <boost/thread/mutex.hpp>
 
 #include "goby/acomms/connect.h"
 #include "goby/common/logger.h"

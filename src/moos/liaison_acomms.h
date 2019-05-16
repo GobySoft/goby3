@@ -91,7 +91,7 @@ class LiaisonAcomms : public LiaisonContainer, public goby::moos::MOOSNode
     std::string format_seconds(int sec);
 
   private:
-    boost::mutex dccl_mutex_;
+    std::mutex dccl_mutex_;
     dccl::Codec dccl_;
 
     Wt::WPushButton* dccl_analyze_;

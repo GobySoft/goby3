@@ -20,6 +20,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <memory>
+
 #include <boost/asio.hpp>
 #include <dccl/binary.h>
 
@@ -27,7 +29,7 @@ namespace goby
 {
 namespace moos
 {
-class SV2SerialConnection : public boost::enable_shared_from_this<SV2SerialConnection>
+class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnection>
 {
   public:
     static std::shared_ptr<SV2SerialConnection> create(boost::asio::io_service& io_service,

@@ -24,7 +24,7 @@
 #define LIAISONSCOPE20110609H
 
 #include <boost/circular_buffer.hpp>
-#include <boost/thread.hpp>
+#include <thread>
 
 #include <Wt/WBorder>
 #include <Wt/WBoxLayout>

@@ -338,7 +338,7 @@ void goby::common::LiaisonScope::ControlsContainer::pause()
     // (so we don't stop reading mail)
     timer_->stop();
     is_paused_ = true;
-    // paused_mail_thread_.reset(new boost::thread(boost::bind(&ControlsContainer::run_paused_mail, this)));
+    // paused_mail_thread_.reset(new std::thread(boost::bind(&ControlsContainer::run_paused_mail, this)));
 }
 
 void goby::common::LiaisonScope::ControlsContainer::resume()
