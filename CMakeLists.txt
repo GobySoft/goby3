@@ -6,16 +6,11 @@
 # this project is intended to be built out of source by using 
 # > ./build.sh
 
-cmake_minimum_required(VERSION 2.8.0 FATAL_ERROR)
-cmake_policy(SET CMP0009 NEW)
+cmake_minimum_required(VERSION 3.5.1 FATAL_ERROR)
 project(goby)
 
-if(CMAKE_VERSION VERSION_LESS 3.1)
-  add_definitions(-std=c++14)
-else()
-  set(CMAKE_CXX_STANDARD 14)
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-endif()
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ## allows us to write custom modules or modifying existing ones
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")

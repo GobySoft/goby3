@@ -161,6 +161,7 @@ filter-template-deb-build: &filter-template-deb-build
     branches:
       only:
         - "3.0"
+        - "3.0-dependency-cleanup"
   
 ## Begin actual config
 version: 2
