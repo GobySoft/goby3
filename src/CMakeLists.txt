@@ -19,7 +19,7 @@ goby_find_required_package(ProtobufGoby)
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
 
-if(${PROTOC_VERSION} VERSION_LESS 3.0.0}) 
+if(${PROTOC_VERSION} VERSION_LESS 3.0.0) 
   message("libprotobuf < 3.0.0")
 else()
   message("libprotobuf >= 3.0.0")
@@ -141,15 +141,18 @@ macro(goby_install_lib target_lib component)
 
   if(${component} STREQUAL "core")
     set(config_target "goby-config")
+    set(library_list "GOBY_LIBRARY_LIST")
   else()
     set(config_target "goby_${component}-config")
+    string(TOUPPER ${component} component_upper)
+    set(library_list "GOBY_${component_upper}_LIBRARY_LIST")
   endif()
   
   install(TARGETS ${target_lib} EXPORT ${config_target}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  list(APPEND GOBY_LIBRARY_LIST ${target_lib})
-  set(GOBY_LIBRARY_LIST ${GOBY_LIBRARY_LIST} CACHE INTERNAL "goby_library_list")
+  list(APPEND ${library_list} ${target_lib})
+  set(${library_list} ${${library_list}} CACHE INTERNAL "${library_list}")
 endmacro()
 
 
@@ -204,6 +207,17 @@ if(build_common)
 
       if(build_moos)
         add_subdirectory(moos)
+
+        # export config for goby_moos libraries
+        include(CMakePackageConfigHelpers)
+        write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby_moos-config-version.cmake
+          VERSION ${GOBY_VERSION}
+          COMPATIBILITY SameMajorVersion )
+        install(EXPORT goby_moos-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+        install(FILES ${CMAKE_BINARY_DIR}/goby_moos-config-version.cmake 
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_moos)
+        # configuration export - local build version
+        export(TARGETS ${GOBY_MOOS_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_moos-config.cmake)
       endif(build_moos)
     endif(build_acomms)
   endif(build_util)
@@ -227,4 +241,3 @@ option(build_apps "Build applications (as well as libraries)" ON)
 if(build_apps)
   add_subdirectory(apps)
 endif()
-
