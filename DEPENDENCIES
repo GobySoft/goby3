@@ -1,196 +1,124 @@
 #!/bin/bash
 # Dependencies installation script for Goby
-#
-# At a minimum, Goby can be built in a C++ and CMake development environment 
-# that also includes Google Protocol Buffers (http://code.google.com/p/protobuf/), Boost (http://www.boost.org/), The GNU Multiple Precision Arithmetic Library (https://gmplib.org/), and DCCL (https://github.com/GobySoft/dccl). For the Goby3 middleware, you will also need ZeroMQ (http://zeromq.org/).
-#
-# All of these will readily compile on most embedded systems. The other dependencies add additional useful functionality.
-function usage()
-{
-    echo "usage: ./DEPENDENCIES distribution [ALL] [DOC]";
-    echo "";
-    echo "distribution can be:";
-    echo "debian"
-    echo "ubuntu"
-    echo "fedora"
-    echo "opensuse"
-    echo;
-    echo "Other distributions should determine their dependencies"
-    echo "by reading this file (less DEPENDENCIES). Please improve this script"
-    echo "by adding your distribution."
 
-    echo "option ALL installs all optional code dependencies";
-    echo "option DOC installs all dependencies for generating documentation (doxygen, latex, etc.)";
-}
-
-if [ $# -lt 1 ]; then usage; exit 1; fi;
 if [[ $UID -ne 0 ]]; then printf "You must run this script as root. Use 'sudo' in Ubuntu. \n" 1>&2; exit 1; fi
 
+usage()
+{
+    echo -e "Usage: DEPENDENCIES script"
+    echo -e "\t$0 [options]"
+    echo -e ""
+    echo -e "Purpose: this script installs dependencies for building Goby3 using the Debian and Ubuntu packages provided in packages.gobysoft.org"
+    echo -e ""
+    echo -e "Example (without arguments, this script installs the minimum dependencies required for building the core Goby3 code from packages.gobysoft.org/{ubuntu|debian}/release):"
+    echo -e "\t$0"
+    echo -e ""
+    echo -e "" 
+    echo -e "Options:"
+    echo -e "\t-h\t\tShow help."
+    echo -e "\t-g\t\tAlso install GUI-related dependencies"
+    echo -e "\t-m\t\tAlso install MOOS-related dependencies"
+    echo -e "\t-a\t\tAlso install all dependencies used to build the code in the Debian package (apt-get build-dep goby3 --arch-only)."
+    echo -e "\t-d\t\tAlso install dependencies for building documentation  (apt-get build-dep goby3 --indep-only)"
+    echo -e "\t-c\t\tUse 'continuous' series on packages.gobysoft.org instead of 'release' when resolving and installing dependencies"
+}
 
-echo "Installing dependencies for $1 ...";
-install_doc=0; if [[ $2 == "DOC" || $3 == "DOC" ]]; then install_doc=1; fi;
-if [ $install_doc -ne 0 ]; then echo "Installing documentation dependencies ..."; fi
-install_all=0; if [[ $2 == "ALL" || $3 == "ALL" ]]; then install_all=1; fi;
-if [ $install_all -ne 0 ]; then echo "Installing all dependencies ..."; fi
+fail()
+{
+    echo "Your operating system and/or release version is not supported by this script."
+    echo -e "Please read the 'Build-Depends:' list from\n\thttps://github.com/GobySoft/goby-debian/blob/3.0/control\nto access the current list of Goby3 build dependences for Debian/Ubuntu. You can use this list to help find the correct dependencies for your operating system"
+    exit 1 
+}
 
-set -u -e 
+validate_url()
+{
+    if [[ `wget -S --spider $1  2>&1 | grep 'HTTP/1.1 200 OK'` ]];
+    then return 0;
+    else return 1;
+    fi
+}
 
-case $1 in
-ubuntu|debian)
-        # additionally, debian will require:
-        # DCCL3 from source: http://libdccl.org
+PACKAGE_SERIES=release
 
-        if [[ -e "`which aptitude`" ]]; then
-            package_manager=aptitude
-        else
-            package_manager=apt-get
-        fi
-        
-        install_command="install"
+INSTALL_ALL_DEPENDS=false
+INSTALL_DOC_DEPENDS=false
+INSTALL_MOOS_DEPENDS=false
+INSTALL_GUI_DEPENDS=false
 
-        packages="build-essential
-            cmake
-            libboost-dev
-            libboost-system-dev
-            libboost-date-time-dev
-            libboost-thread-dev
-            libboost-program-options-dev
-            libboost-filesystem-dev
-            libboost-signals-dev
-            libboost-regex-dev
-            libprotobuf-dev
-            libprotoc-dev
-            protobuf-compiler
-            libgmp3-dev
-            libzmq3-dev
-            libproj-dev"
-        if [ $install_all -ne 0 ]; then 
-            packages="${packages}
-            libcrypto++-dev
-            libncurses-dev
-            libwt-dev
-            libwtdbo-dev
-            libwtdbosqlite-dev
-            libwthttp-dev
-            libsqlite3-dev"
-        fi
+while getopts ":hdcgma" opt; do
+    case $opt in
+        h) usage; exit 1 ;;
+        c) PACKAGE_SERIES=continuous ;;
+        g) INSTALL_GUI_DEPENDS=true ;;
+        m) INSTALL_MOOS_DEPENDS=true ;;
+        a) INSTALL_ALL_DEPENDS=true ;;
+        d) INSTALL_DOC_DEPENDS=true ;;
+        \?)
+            echo "Invalid option: -$OPTARG. For help use -h."
+            exit  1
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument. For help use -h."
+            exit 1
+    esac
+done
 
-        if [[ $1 == "ubuntu" ]]; then
-            add-apt-repository ppa:dccl-dev/ppa -s -y
-            apt-get update -qq
-            set +x
-            packages="${packages} 
-            libdccl3-dev
-            dccl3-compiler"
-        fi
-        
-        if [ $install_doc -ne 0 ]; then 
-            packages="${packages} 
-            graphviz
-            doxygen
-            texlive-xetex
-            ttf-sil-gentium
-            imagemagick
-            texlive-fonts-recommended
-            texlive-font-utils
-            ghostscript
-            lmodern
-            texlive-latex-recommended
-            texlive-latex-extra"
-        fi
-       
-        # PPA dependencies
-        if [[ $1 == "ubuntu" &&  $install_all -ne 0 ]]; then 
-            set -x
-            add-apt-repository ppa:goby-dev/ppa -s -y 
-            add-apt-repository ppa:tes/lamss-moos10 -s -y
-            apt-get update -qq
-            set +x
 
-            # override and use build-dep if ALL and DOC are requested
-            if [ $install_doc -ne 0 ]; then
-                package_manager="apt-get"
-                install_command="build-dep"
-                packages="libgoby2"
-            else
-                packages="${packages} 
-            libmoos10-dev"
-            fi
-        fi
+echo "==== Determining Operating System and Release ===="
+OS_RELEASE_FILE=/etc/os-release
+
+[ -z ${OS_RELEASE_FILE} ] && echo "Could not find ${OS_RELEASE_FILE} file to auto-detect operating system ID and version" && fail
+
+# detect distro ID (e.g. "debian")
+OS_ID=$(egrep "^ID=" ${OS_RELEASE_FILE} | cut -d = -f 2)
+
+case $OS_ID in
+    ubuntu)
+        RELEASE_CODENAME=$(egrep "^VERSION_CODENAME=" ${OS_RELEASE_FILE} | cut -d = -f 2)
+    ;;
+    debian)
+        RELEASE_CODENAME=$(egrep "^VERSION=" ${OS_RELEASE_FILE} | sed 's/^.*(\([a-z]*\)).*$/\1/')
+    ;;
+    *)
+        fail
         ;;
-fedora)
-        package_manager=yum
-        install_command="install"
-        packages="cmake
-            protobuf-devel
-            boost-devel"
-
-        if [[ $install_all -ne 0 || $install_doc -ne 0 ]]; then 
-            echo "Warning: ALL and DOC are not yet supported for $1"
-        fi
-        ;; 
-opensuse)
-        package_manager=zypper
-        install_command="install"
-        packages="make gcc gcc-c++
-            protobuf-devel
-            boost-devel"
-
-        if [[ $install_all -ne 0 || $install_doc -ne 0 ]]; then 
-            echo "Warning: ALL and DOC are not yet supported for $1"
-        fi
-
-        ;; 
-*)
-   echo -e "Invalid distribution: $1\n"; usage; exit 1;;
 esac
 
-echo "Installing: ${packages}..."
+case $OS_ID in
+    ubuntu|debian)
+        echo "Operating System: $OS_ID"
+        echo "Release: $RELEASE_CODENAME"
 
-set -x
+        echo "==== Installing packages required to run this script ==="
+        (set -x; apt-get update -qq && apt-get -y install wget dirmngr apt-transport-https)
+        
+        PACKAGES_URL_BASE="https://packages.gobysoft.org/${OS_ID}/${PACKAGE_SERIES}/"
 
-${package_manager} ${install_command} ${packages}
+        echo "==== Checking dependencies for your OS (${OS_ID}) and release (${RELEASE_CODENAME}) on packages.gobysoft.org ===="
+        if validate_url ${PACKAGES_URL_BASE}/${RELEASE_CODENAME}/Release; then
+            echo "Release codename found"
+            echo "==== Adding packages.gobysoft.org Debian repository ===="
+            (set -x; echo -e "deb ${PACKAGES_URL_BASE} ${RELEASE_CODENAME}/\ndeb-src ${PACKAGES_URL_BASE} ${RELEASE_CODENAME}/" > /etc/apt/sources.list.d/gobysoft_${PACKAGE_SERIES}.list && \
+                 apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE &&
+                 apt-get update -qq)
+        else
+            echo "Release codename not found on packages.gobysoft.org."
+            fail
+        fi
 
+        echo "==== Installing dependencies ===="
 
-# Fedora notes
-# - base
-# yum install cmake
-# yum install protobuf-devel
-# yum install boost-devel
+        (set -x; apt-get install --install-recommends cmake build-essential libgoby3-dev)
 
-# OpenSuSe Notes
-# - base
-# zypper install -t pattern devel_C_C++
-# zypper install cmake
-# zypper install boost-devel
-# zypper install protobuf-devel
-# - optional
-# zypper install libxerces-c-devel
-# (crypto++ from src)
-# zypper install wt-devel
-
-
-
-# MAC OS X
-# Use MacPorts to install the needed dependencies. You will have 
-# to install Wt from source to /opt/local 
-# I believe these are the ports necessary to compile moos-ivp,
-# moos-ivp-local, and goby:
-# 
-# - base
-# boost +universal
-# protobuf-cpp
-# cmake
-# - optional
-# jpeg +universal
-# libcryptopp +universal
-# ncurses +universal
-# ncursesw
-# socat
-# tiff +universal
-# xercesc
-# zlib +universal
-
-
-# Windows
-# Goby does not currently build on Windows
+        # install clang if GCC is less than 7.2
+        dpkg --compare-versions `dpkg-query --showformat='${Version}' --show gcc` ">=" 4:7.2~ ||  (set -x; echo "Installing clang as your GCC version is less than 7.2"; apt-get install clang)
+        
+        [[ "${INSTALL_MOOS_DEPENDS}" == "true" ]] && (set -x; apt-get install libgoby3-moos-dev)
+        [[ "${INSTALL_GUI_DEPENDS}" == "true" ]] && (set -x; apt-get install libgoby3-gui-dev)
+        [[ "${INSTALL_DOC_DEPENDS}" == "true" ]] && (set -x; apt-get build-dep goby3 --indep-only)
+        [[ "${INSTALL_ALL_DEPENDS}" == "true" ]] && (set -x; apt-get build-dep goby3 --arch-only)
+        ;;
+    *)
+        fail
+        ;;
+esac

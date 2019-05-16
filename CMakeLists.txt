@@ -24,6 +24,26 @@ if(enable_testing)
   include(CTest)
 endif()
 
+# Check GCC version
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    # require at least gcc 7.2
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.2)
+      message(WARNING "Due to a GCC (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52036), GCC version must be at least 7.2 (you have ${CMAKE_CXX_COMPILER_VERSION}). Attempting to use Clang instead")
+
+      find_program(CLANG_C_BINARY clang)
+      find_program(CLANG_CXX_BINARY clang++)     
+
+      if(NOT CLANG_C_BINARY OR NOT CLANG_CXX_BINARY)
+        message(FATAL_ERROR "Could not find clang. On Debian or Ubuntu use 'apt install clang'")
+      else()
+        message("Found Clang: ${CLANG_C_BINARY}, ${CLANG_CXX_BINARY}")
+      endif()
+      
+      set(CMAKE_C_COMPILER "${CLANG_C_BINARY}")
+      set(CMAKE_CXX_COMPILER "${CLANG_CXX_BINARY}")
+
+    endif()
+endif()
 
 set(GOBY_VERSION_MAJOR "3")
 set(GOBY_VERSION_MINOR "0")
