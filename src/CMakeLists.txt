@@ -110,7 +110,6 @@ set(WT_DOC_STRING "Enable Wt web browser GUI components (requires libwt-dev, lib
 find_path(Wt_RESOURCES_DIR_BASE share/Wt/resources/plus.gif /usr /usr/local)
 if(WTGOBY_FOUND AND Wt_RESOURCES_DIR_BASE)
   option(enable_wt ${WT_DOC_STRING} ON)
-   goby_find_required_package(Boost 1.40.0 COMPONENTS signals)
 else()
   option(enable_wt ${WT_DOC_STRING} OFF)
   message(">> setting enable_wt to OFF ... if you need this functionality: 1) install libwt-dev, libwtdbo-dev, libwtdbosqlite-dev, and libwthttp-dev; 2) run cmake -Denable_wt=ON")
@@ -122,7 +121,6 @@ if(enable_wt)
   set(Wt_RESOURCES_DIR "${Wt_RESOURCES_DIR_BASE}/share/Wt/resources")
   add_custom_command(OUTPUT WtResourcesLink COMMAND ${CMAKE_COMMAND} -E create_symlink ${Wt_RESOURCES_DIR} ${goby_SHARE_DIR}/liaison/resources)
   add_custom_target(wt_link ALL DEPENDS WtResourcesLink)
-  add_definitions(-DBOOST_SIGNALS_NO_DEPRECATION_WARNING)
 endif()  
 
 # GMP

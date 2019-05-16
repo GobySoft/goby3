@@ -39,8 +39,6 @@ add_executable(goby_liaison
   liaison_scope.cpp
   )
 
-goby_find_required_package(Boost 1.40.0 COMPONENTS signals)
-
 target_link_libraries(goby_liaison
   ${Boost_LIBRARIES}
   ${Wt_LIBRARIES}

@@ -6,16 +6,11 @@
 # this project is intended to be built out of source by using 
 # > ./build.sh
 
-cmake_minimum_required(VERSION 2.8.0 FATAL_ERROR)
-cmake_policy(SET CMP0009 NEW)
+cmake_minimum_required(VERSION 3.5.1 FATAL_ERROR)
 project(goby)
 
-if(CMAKE_VERSION VERSION_LESS 3.1)
-  add_definitions(-std=c++14)
-else()
-  set(CMAKE_CXX_STANDARD 14)
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-endif()
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ## allows us to write custom modules or modifying existing ones
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
@@ -29,6 +24,26 @@ if(enable_testing)
   include(CTest)
 endif()
 
+# Check GCC version
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    # require at least gcc 7.2
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.2)
+      message(WARNING "Due to a GCC (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52036), GCC version must be at least 7.2 (you have ${CMAKE_CXX_COMPILER_VERSION}). Attempting to use Clang instead")
+
+      find_program(CLANG_C_BINARY clang)
+      find_program(CLANG_CXX_BINARY clang++)     
+
+      if(NOT CLANG_C_BINARY OR NOT CLANG_CXX_BINARY)
+        message(FATAL_ERROR "Could not find clang. On Debian or Ubuntu use 'apt install clang'")
+      else()
+        message("Found Clang: ${CLANG_C_BINARY}, ${CLANG_CXX_BINARY}")
+      endif()
+      
+      set(CMAKE_C_COMPILER "${CLANG_C_BINARY}")
+      set(CMAKE_CXX_COMPILER "${CLANG_CXX_BINARY}")
+
+    endif()
+endif()
 
 set(GOBY_VERSION_MAJOR "3")
 set(GOBY_VERSION_MINOR "0")

@@ -3,5 +3,6 @@ bin
 lib
 include
 share
+build
 src/acomms/protobuf/dccl_option_extensions.proto
 src/acomms/protobuf/arithmetic_extensions.proto
