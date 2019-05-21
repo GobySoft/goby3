@@ -173,6 +173,8 @@ struct DCCLSerializerParserHelperBase
 
     struct LoaderBase
     {
+        LoaderBase() = default;
+        virtual ~LoaderBase() = default;
     };
 
     template <typename DataType> struct Loader : public LoaderBase
@@ -226,6 +228,9 @@ struct DCCLSerializerParserHelperBase
     }
 
   public:
+    DCCLSerializerParserHelperBase() = default;
+    virtual ~DCCLSerializerParserHelperBase() = default;
+
     template <typename CharIterator> static unsigned id(CharIterator begin, CharIterator end)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);

@@ -1,4 +1,0 @@
-message B
-{
-    required double b1 = 1;
-}

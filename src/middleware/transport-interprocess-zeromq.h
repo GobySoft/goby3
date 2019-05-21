@@ -101,14 +101,18 @@ class InterProcessPortal
         InterProcessTransporterBase<InterProcessPortal<InnerTransporter>, InnerTransporter>;
 
     InterProcessPortal(const protobuf::InterProcessPortalConfig& cfg)
-        : cfg_(cfg), zmq_context_(cfg.zeromq_number_io_threads()), zmq_main_(zmq_context_),
+        : cfg_(cfg),
+          zmq_context_(cfg.zeromq_number_io_threads()),
+          zmq_main_(zmq_context_),
           zmq_read_thread_(cfg_, zmq_context_, zmq_alive_, PollerInterface::cv())
     {
         _init();
     }
 
     InterProcessPortal(InnerTransporter& inner, const protobuf::InterProcessPortalConfig& cfg)
-        : Base(inner), cfg_(cfg), zmq_context_(cfg.zeromq_number_io_threads()),
+        : Base(inner),
+          cfg_(cfg),
+          zmq_context_(cfg.zeromq_number_io_threads()),
           zmq_main_(zmq_context_),
           zmq_read_thread_(cfg_, zmq_context_, zmq_alive_, PollerInterface::cv())
     {

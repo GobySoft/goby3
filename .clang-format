@@ -12,6 +12,7 @@ AllowShortFunctionsOnASingleLine: true
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: true
 ColumnLimit:     100
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
 PointerAlignment: Left
 NamespaceIndentation: None
 AlwaysBreakTemplateDeclarations: false

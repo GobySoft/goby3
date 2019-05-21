@@ -63,7 +63,10 @@ void publisher()
     goby::InterThreadTransporter inproc1;
     goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc1);
     double a = 0;
-    while (publish_count < max_publish)
+    while (
+        publish_count <
+        max_publish *
+            2) // double the amount of publication to handle the (inherent) slop in unsubscribe/subscribe
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++);
@@ -168,7 +171,8 @@ class ThreadSubscriber
 
             inproc2_.poll(std::chrono::seconds(1));
             if (std::chrono::system_clock::now() > timeout)
-                glog.is(DIE) && glog << "ThreadSubscriber timed out waiting for data" << std::endl;
+                glog.is(DIE) && glog << "ThreadSubscriber " << std::this_thread::get_id()
+                                     << " timed out waiting for data" << std::endl;
         }
         glog.is(DEBUG1) && glog << "ThreadSubscriber  " << std::this_thread::get_id() << " is done."
                                 << std::endl;
@@ -244,14 +248,15 @@ int main(int argc, char* argv[])
     pid_t child_pid = fork();
 
     bool is_child = (child_pid == 0);
+    bool is_subscriber = is_child;
 
     //    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
 
     std::string os_name =
-        std::string("/tmp/goby_test_middleware3_") + (is_child ? "subscriber" : "publisher");
+        std::string("/tmp/goby_test_middleware3_") + (is_subscriber ? "subscriber" : "publisher");
     std::ofstream os(os_name.c_str());
     goby::glog.add_stream(goby::common::logger::DEBUG3, &os);
-    goby::glog.set_name(std::string(argv[0]) + (is_child ? "_subscriber" : "_publisher"));
+    goby::glog.set_name(std::string(argv[0]) + (is_subscriber ? "_subscriber" : "_publisher"));
     goby::glog.set_lock_action(goby::common::logger_lock::lock);
 
     //    std::thread t3(subscriber);
@@ -269,7 +274,17 @@ int main(int argc, char* argv[])
     std::unique_ptr<std::thread> t4, t5;
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
-    if (!is_child)
+    if (is_subscriber)
+    {
+        std::thread t3([&] { zmq_forward(cfg); });
+        while (!zmq_ready) usleep(1e5);
+        std::thread t1(subscriber);
+        t1.join();
+        for (int i = 0; i < max_subs; ++i) threads.at(i).join();
+        forward = false;
+        t3.join();
+    }
+    else
     {
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
@@ -279,6 +294,7 @@ int main(int argc, char* argv[])
         goby::ZMQManager manager(*manager_context, cfg, router);
         t5.reset(new std::thread([&] { manager.run(); }));
         sleep(1);
+
         std::thread t3([&] { zmq_forward(cfg); });
         while (!zmq_ready) usleep(1e5);
         std::thread t1(publisher);
@@ -295,18 +311,8 @@ int main(int argc, char* argv[])
         if (wstatus != 0)
             exit(EXIT_FAILURE);
     }
-    else
-    {
-        std::thread t3([&] { zmq_forward(cfg); });
-        while (!zmq_ready) usleep(1e5);
-        std::thread t1(subscriber);
-        t1.join();
-        for (int i = 0; i < max_subs; ++i) threads.at(i).join();
-        forward = false;
-        t3.join();
-    }
 
-    glog.is(VERBOSE) && glog << (is_child ? "subscriber" : "publisher") << ": all tests passed"
+    glog.is(VERBOSE) && glog << (is_subscriber ? "subscriber" : "publisher") << ": all tests passed"
                              << std::endl;
-    std::cout << (is_child ? "subscriber" : "publisher") << ": all tests passed" << std::endl;
+    std::cout << (is_subscriber ? "subscriber" : "publisher") << ": all tests passed" << std::endl;
 }
