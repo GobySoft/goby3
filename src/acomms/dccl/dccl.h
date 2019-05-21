@@ -189,8 +189,7 @@ class DCCLCodec
 
     void validate_repeated(const std::list<const google::protobuf::Descriptor*>& descs)
     {
-        BOOST_FOREACH (const google::protobuf::Descriptor* p, descs)
-            validate(p);
+        for (const google::protobuf::Descriptor* p : descs) validate(p);
     }
 
     void info(const google::protobuf::Descriptor* desc, std::ostream* os) const
@@ -201,8 +200,7 @@ class DCCLCodec
     void info_repeated(const std::list<const google::protobuf::Descriptor*>& desc,
                        std::ostream* os) const
     {
-        BOOST_FOREACH (const google::protobuf::Descriptor* p, desc)
-            info(p, os);
+        for (const google::protobuf::Descriptor* p : desc) info(p, os);
     }
 
     unsigned id(const google::protobuf::Descriptor* desc) const
@@ -214,8 +212,7 @@ class DCCLCodec
     unsigned size_repeated(const std::list<GoogleProtobufMessagePointer>& msgs)
     {
         unsigned out = 0;
-        BOOST_FOREACH (const GoogleProtobufMessagePointer& msg, msgs)
-            out += size(*msg);
+        for (const GoogleProtobufMessagePointer& msg : msgs) out += size(*msg);
         return out;
     }
 
@@ -229,7 +226,7 @@ class DCCLCodec
     std::string encode_repeated(const std::list<GoogleProtobufMessagePointer>& msgs)
     {
         std::string out;
-        BOOST_FOREACH (const GoogleProtobufMessagePointer& msg, msgs)
+        for (const GoogleProtobufMessagePointer& msg : msgs)
         {
             std::string piece;
             encode(&piece, *msg);

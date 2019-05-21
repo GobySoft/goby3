@@ -31,7 +31,6 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
-#include <boost/foreach.hpp>
 #include <memory>
 
 #include "goby/util/as.h"

@@ -7,14 +7,9 @@ macro(goby_find_required_package package_name)
     message(FATAL_ERROR "missing required external library: ${package_name}. Please read the goby/DEPENDENCIES file to resolve.")
   endif()
 endmacro()
-  
-macro(missing_optional_library lib_name)
-  message(WARNING "missing optional external library: ${lib_name}. Goby will function without the support of this library, but some functionality will be not be available.")
-endmacro()
 
 ## find external packages, libraries, and headers for the entire goby project
 # mandatory
-
 goby_find_required_package(ProtobufGoby)
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
@@ -41,8 +36,12 @@ if(DCCL_INCLUDE_DIR)
   protobuf_include_dirs("${DCCL_INCLUDE_DIR}")
 endif()
 
-
+# proj
 goby_find_required_package(Proj)
+
+# GMP
+goby_find_required_package(GMP)
+
 
 # shared library suffix
 add_definitions(-DSHARED_LIBRARY_SUFFIX="${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -123,13 +122,8 @@ if(enable_wt)
   add_custom_target(wt_link ALL DEPENDS WtResourcesLink)
 endif()  
 
-# GMP
-goby_find_required_package(GMP)
-
 ## set flags
 option(build_common "Build the Goby Common library" ON)  
-
-
 
 macro(goby_install_lib target_lib component)
   set_property(TARGET ${target_lib} APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES

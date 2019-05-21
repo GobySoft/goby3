@@ -845,7 +845,7 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
 
         // add / overwrite any options that are specified in the cfg file with those given on the command line
         typedef std::pair<std::string, boost::program_options::variable_value> P;
-        BOOST_FOREACH (const P& p, var_map)
+        for (const P& p : var_map)
         {
             // let protobuf deal with the defaults
             if (!p.second.defaulted())
@@ -861,7 +861,7 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
 
             std::stringstream err_msg;
             err_msg << "Configuration is missing required parameters: \n";
-            BOOST_FOREACH (const std::string& s, errors)
+            for (const std::string& s : errors)
                 err_msg << goby::common::esc_red << s << "\n" << goby::common::esc_nocolor;
 
             err_msg << "Make sure you specified a proper .moos file";

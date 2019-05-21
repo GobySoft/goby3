@@ -25,7 +25,6 @@
 
 #include <boost/bind.hpp>
 #include <boost/date_time/gregorian/gregorian_types.hpp>
-#include <boost/foreach.hpp>
 
 #include "goby/acomms/acomms_helpers.h"
 #include "goby/common/logger.h"
@@ -310,8 +309,7 @@ void goby::acomms::MACManager::update()
 double goby::acomms::MACManager::cycle_duration()
 {
     double length = 0;
-    BOOST_FOREACH (const protobuf::ModemTransmission& slot, *this)
-        length += slot.slot_seconds();
+    for (const protobuf::ModemTransmission& slot : *this) length += slot.slot_seconds();
 
     return length;
 }

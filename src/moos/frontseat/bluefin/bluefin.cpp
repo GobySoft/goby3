@@ -21,7 +21,6 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/assign.hpp>
 #include <boost/format.hpp>
 #include <boost/math/special_functions/fpclassify.hpp> // for isnan
 
@@ -445,14 +444,18 @@ void BluefinFrontSeat::initialize_huxley()
     out_.clear();
     pending_.clear();
 
-    using boost::assign::operator+=;
     std::vector<SentenceIDs> log_requests;
     if (!bf_config_.disable_ack())
-        log_requests += ACK; // must request ACK first so we get NMEA ACKs for the other messages
-    log_requests += NVG, MIS, MSC, NVR, SVS, RVL, SHT, TOP, MBS, MBE, CTD, DVL, BOY, TRM;
+        log_requests.push_back(
+            ACK); // must request ACK first so we get NMEA ACKs for the other messages
+
+    std::vector<SentenceIDs> standard_log_requests = {NVG, MIS, MSC, NVR, SVS, RVL, SHT,
+                                                      TOP, MBS, MBE, CTD, DVL, BOY, TRM};
+    log_requests.insert(log_requests.end(), standard_log_requests.begin(),
+                        standard_log_requests.end());
 
     if (bf_config_.accepting_commands_hook() == BluefinFrontSeatConfig::BFCTL_TRIGGER)
-        log_requests += CTL;
+        log_requests.push_back(CTL);
 
     NMEASentence nmea("$BPLOG", NMEASentence::IGNORE);
     nmea.push_back("");
@@ -621,57 +624,93 @@ std::string BluefinFrontSeat::unix_time2nmea_time(double time)
 
 void BluefinFrontSeat::load_nmea_mappings()
 {
-    boost::assign::insert(sentence_id_map_)("MSC", MSC)("SHT", SHT)("BDL", BDL)("SDL", SDL)(
-        "TOP", TOP)("DVT", DVT)("VER", VER)("NVG", NVG)("SVS", SVS)("RCM", RCM)("RDP", RDP)(
-        "RVL", RVL)("RBS", RBS)("MBS", MBS)("MBE", MBE)("MIS", MIS)("ERC", ERC)("DVL", DVL)(
-        "DV2", DV2)("IMU", IMU)("CTD", CTD)("RNV", RNV)("PIT", PIT)("CNV", CNV)("PLN", PLN)(
-        "ACK", ACK)("TRM", TRM)("LOG", LOG)("STS", STS)("DVR", DVR)("CPS", CPS)("CPR", CPR)(
-        "TRK", TRK)("RTC", RTC)("RGP", RGP)("RCN", RCN)("RCA", RCA)("RCB", RCB)("RMB", RMB)(
-        "EMB", EMB)("TMR", TMR)("ABT", ABT)("KIL", KIL)("MSG", MSG)("RMP", RMP)("SEM", SEM)(
-        "NPU", NPU)("CPD", CPD)("SIL", SIL)("BOY", BOY)("SUS", SUS)("CON", CON)("RES", RES)(
-        "SPD", SPD)("SAN", SAN)("GHP", GHP)("GBP", GBP)("RNS", RNS)("RBO", RBO)("CMA", CMA)(
-        "NVR", NVR)("TEL", TEL)("CTL", CTL)("DCL", DCL);
+    {
+        std::vector<typename decltype(sentence_id_map_)::value_type> v = {
+            {"MSC", MSC}, {"SHT", SHT}, {"BDL", BDL}, {"SDL", SDL}, {"TOP", TOP}, {"DVT", DVT},
+            {"VER", VER}, {"NVG", NVG}, {"SVS", SVS}, {"RCM", RCM}, {"RDP", RDP}, {"RVL", RVL},
+            {"RBS", RBS}, {"MBS", MBS}, {"MBE", MBE}, {"MIS", MIS}, {"ERC", ERC}, {"DVL", DVL},
+            {"DV2", DV2}, {"IMU", IMU}, {"CTD", CTD}, {"RNV", RNV}, {"PIT", PIT}, {"CNV", CNV},
+            {"PLN", PLN}, {"ACK", ACK}, {"TRM", TRM}, {"LOG", LOG}, {"STS", STS}, {"DVR", DVR},
+            {"CPS", CPS}, {"CPR", CPR}, {"TRK", TRK}, {"RTC", RTC}, {"RGP", RGP}, {"RCN", RCN},
+            {"RCA", RCA}, {"RCB", RCB}, {"RMB", RMB}, {"EMB", EMB}, {"TMR", TMR}, {"ABT", ABT},
+            {"KIL", KIL}, {"MSG", MSG}, {"RMP", RMP}, {"SEM", SEM}, {"NPU", NPU}, {"CPD", CPD},
+            {"SIL", SIL}, {"BOY", BOY}, {"SUS", SUS}, {"CON", CON}, {"RES", RES}, {"SPD", SPD},
+            {"SAN", SAN}, {"GHP", GHP}, {"GBP", GBP}, {"RNS", RNS}, {"RBO", RBO}, {"CMA", CMA},
+            {"NVR", NVR}, {"TEL", TEL}, {"CTL", CTL}, {"DCL", DCL}};
+        sentence_id_map_ = decltype(sentence_id_map_)(v.begin(), v.end());
+    }
 
-    boost::assign::insert(talker_id_map_)("BF", BF)("BP", BP);
+    talker_id_map_ = {{"BF", BF}, {"BP", BP}};
 
-    boost::assign::insert(description_map_)("$BFMSC", "Payload Mission Command")(
-        "$BFSHT", "Payload Shutdown")("$BFBDL", "Begin Data Logging")
-
-        ("$BFSDL", "Stop Data Logging")("$BFTOP", "Topside Message (Not Implemented) ")(
-            "$BFDVT", "Begin/End DVL External Triggering")("$BFVER", "Vehicle Interface Version")(
-            "$BFNVG", "Navigation Update")("$BFNVR", "Velocity and Rate Update")(
-            "$BFTEL", "Telemetry Status (Not Implemented)")("$BFSVS", "Sound Velocity")(
-            "$BFRCM", "Raw Compass Data")("$BFRDP", "Raw Depth Sensor Data")("$BFRVL",
-                                                                             "Raw Vehicle Speed")(
-            "$BFRBS", "Battery Voltage")("$BFMBS", "Begin New Behavior")("$BFMBE", "End Behavior")(
-            "$BFMIS", "Mission Status")("$BFERC", "Elevator and Rudder Data")(
-            "$BFDVL", "Raw DVL Data")("$BFDV2", "Raw DVL Data, Extended")("$BFIMU", "Raw IMU Data")(
-            "$BFCTD", "Raw CTD Sensor Data")("$BFRNV", "Relative Navigation Position")(
-            "$BFPIT", "Pitch Servo Positions")("$BFCNV", "Cartesian Relative Navigation Position")(
-            "$BFPLN", "Mission Plan Element")("$BFACK", "Message Acknowledgement")(
-            "$BFTRM", "Trim Status")("$BPSMC", "Confirm Mission Start")(
-            "$BFBOY", "Buoyancy Status")("$BPLOG", "Logging Control")(
-            "$BPSTS", "Payload Status Message")("$BPTOP", "Request to Send Data Topside")(
-            "$BPDVR", "Request to Change DVL Triggering Method")("$BPTRK",
-                                                                 "Request Additional Trackline")(
-            "$BPRTC", "Request Additional Trackcircle")("$BPRGP", "Request Additional GPS Hits")(
-            "$BPRCN", "Cancel Requested Behavior")("$BPRCE", "Cancel Current Mission Element")(
-            "$BPRCA", "Cancel All Requested Behaviors")("$BPRCB", "Cancel Current Behavior")(
-            "$BPRMB", "Modify Current Behavior")("$BPEMB", "End Behavior Modify")(
-            "$BPTMR", "Topside Message Relay (Not Available on Most Vehicles)")(
-            "$BPCTD", "Raw CTD Sensor Data")("$BPABT", "Abort Mission")("$BPKIL", "Kill Mission")(
-            "$BPMSG", "Log Message")("$BPRMP", "Request Mission Plan")(
-            "$BPSEM", "Start Empty Mission (Not Implemented)")("$BPNPU",
-                                                               "Navigation Position Update")(
-            "$BPSIL", "Silent Mode")("$BPTRM", "Request Trim Adjustment Behavior")(
-            "$BPBOY", "Request Buoyancy Adjustment Behavior")("$BPVER",
-                                                              "Payload Interface Version")(
-            "$BPSUS", "Suspend Mission")("$BPCON", "Continue")("$BPRES", "Resume Mission")(
-            "$BPSPD", "Hull Relative Speed Limit")("$BPSAN", "Set Sonar Angle")(
-            "$BPGHP", "Go To Hull Position")("$BPGBP", "Go to Bottom Position")(
-            "$BPRNS", "Reset Relative Navigation")("$BPRBO", "Hull Relative Bearing Offset")(
-            "$BFCMA", "Communications Medium Access")("$BFCPS", "Communications Packet Sent")(
-            "$BFCPR", "Communications Packet Received Data")("$BPCPD",
-                                                             "Communications Packet Data")(
-            "$BFCTL", "Backseat Control")("$BPDCL", "Forward DCCL message to Huxley from Payload");
+    description_map_ = {{"$BFMSC", "Payload Mission Command"},
+                        {"$BFSHT", "Payload Shutdown"},
+                        {"$BFBDL", "Begin Data Logging"},
+                        {"$BFSDL", "Stop Data Logging"},
+                        {"$BFTOP", "Topside Message (Not Implemented) "},
+                        {"$BFDVT", "Begin/End DVL External Triggering"},
+                        {"$BFVER", "Vehicle Interface Version"},
+                        {"$BFNVG", "Navigation Update"},
+                        {"$BFNVR", "Velocity and Rate Update"},
+                        {"$BFTEL", "Telemetry Status (Not Implemented)"},
+                        {"$BFSVS", "Sound Velocity"},
+                        {"$BFRCM", "Raw Compass Data"},
+                        {"$BFRDP", "Raw Depth Sensor Data"},
+                        {"$BFRVL", "Raw Vehicle Speed"},
+                        {"$BFRBS", "Battery Voltage"},
+                        {"$BFMBS", "Begin New Behavior"},
+                        {"$BFMBE", "End Behavior"},
+                        {"$BFMIS", "Mission Status"},
+                        {"$BFERC", "Elevator and Rudder Data"},
+                        {"$BFDVL", "Raw DVL Data"},
+                        {"$BFDV2", "Raw DVL Data, Extended"},
+                        {"$BFIMU", "Raw IMU Data"},
+                        {"$BFCTD", "Raw CTD Sensor Data"},
+                        {"$BFRNV", "Relative Navigation Position"},
+                        {"$BFPIT", "Pitch Servo Positions"},
+                        {"$BFCNV", "Cartesian Relative Navigation Position"},
+                        {"$BFPLN", "Mission Plan Element"},
+                        {"$BFACK", "Message Acknowledgement"},
+                        {"$BFTRM", "Trim Status"},
+                        {"$BPSMC", "Confirm Mission Start"},
+                        {"$BFBOY", "Buoyancy Status"},
+                        {"$BPLOG", "Logging Control"},
+                        {"$BPSTS", "Payload Status Message"},
+                        {"$BPTOP", "Request to Send Data Topside"},
+                        {"$BPDVR", "Request to Change DVL Triggering Method"},
+                        {"$BPTRK", "Request Additional Trackline"},
+                        {"$BPRTC", "Request Additional Trackcircle"},
+                        {"$BPRGP", "Request Additional GPS Hits"},
+                        {"$BPRCN", "Cancel Requested Behavior"},
+                        {"$BPRCE", "Cancel Current Mission Element"},
+                        {"$BPRCA", "Cancel All Requested Behaviors"},
+                        {"$BPRCB", "Cancel Current Behavior"},
+                        {"$BPRMB", "Modify Current Behavior"},
+                        {"$BPEMB", "End Behavior Modify"},
+                        {"$BPTMR", "Topside Message Relay (Not Available on Most Vehicles)"},
+                        {"$BPCTD", "Raw CTD Sensor Data"},
+                        {"$BPABT", "Abort Mission"},
+                        {"$BPKIL", "Kill Mission"},
+                        {"$BPMSG", "Log Message"},
+                        {"$BPRMP", "Request Mission Plan"},
+                        {"$BPSEM", "Start Empty Mission (Not Implemented)"},
+                        {"$BPNPU", "Navigation Position Update"},
+                        {"$BPSIL", "Silent Mode"},
+                        {"$BPTRM", "Request Trim Adjustment Behavior"},
+                        {"$BPBOY", "Request Buoyancy Adjustment Behavior"},
+                        {"$BPVER", "Payload Interface Version"},
+                        {"$BPSUS", "Suspend Mission"},
+                        {"$BPCON", "Continue"},
+                        {"$BPRES", "Resume Mission"},
+                        {"$BPSPD", "Hull Relative Speed Limit"},
+                        {"$BPSAN", "Set Sonar Angle"},
+                        {"$BPGHP", "Go To Hull Position"},
+                        {"$BPGBP", "Go to Bottom Position"},
+                        {"$BPRNS", "Reset Relative Navigation"},
+                        {"$BPRBO", "Hull Relative Bearing Offset"},
+                        {"$BFCMA", "Communications Medium Access"},
+                        {"$BFCPS", "Communications Packet Sent"},
+                        {"$BFCPR", "Communications Packet Received Data"},
+                        {"$BPCPD", "Communications Packet Data"},
+                        {"$BFCTL", "Backseat Control"},
+                        {"$BPDCL", "Forward DCCL message to Huxley from Payload"}};
 }

@@ -32,7 +32,6 @@
 #include <string>
 #include <vector>
 
-//#include <boost/dynamic_bitset.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "dccl_constants.h"

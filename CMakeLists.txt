@@ -112,21 +112,13 @@ add_custom_target(share_link ALL DEPENDS ShareLink)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall") # -fprofile-arcs -ftest-coverage")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall") # -fprofile-arcs -ftest-coverage")
-#set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
 
 ## set type of libraries
-option(make_static_libs "Build static libraries instead of shared." OFF)
-
-if(make_static_libs)
-  set(BUILD_SHARED_LIBS OFF)
-else()
-  set(BUILD_SHARED_LIBS ON)
-endif()
+option(BUILD_SHARED_LIBS "Build shared libraries (set OFF to build static libraries)." ON)
 
 ## build dynamic protobuf manager with ability to read from disk (requires
 ## boost-filesystem)
 option(make_proto_runtime_compile "Allow runtime compilation of .proto files." ON)
-
 
 ## set the cmake defaults for libraries and binaries
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${goby_LIB_DIR} CACHE PATH 

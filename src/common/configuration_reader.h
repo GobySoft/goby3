@@ -28,8 +28,6 @@
 #include <sstream>
 #include <vector>
 
-#include <boost/cstdint.hpp>
-#include <boost/foreach.hpp>
 #include <boost/program_options.hpp>
 
 #include <google/protobuf/descriptor.h>

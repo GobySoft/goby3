@@ -23,6 +23,8 @@
 #ifndef LIAISONCONTAINER20130128H
 #define LIAISONCONTAINER20130128H
 
+#include <queue>
+
 #include <Wt/WColor>
 #include <Wt/WContainerWidget>
 #include <Wt/WText>

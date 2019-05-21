@@ -27,7 +27,7 @@
 #include <sstream>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/foreach.hpp>
+
 #include <ncurses.h>
 
 #include "goby/util/as.h"
@@ -86,7 +86,7 @@ void goby::common::FlexNCurses::update_size()
     ywinN_ = (panels_.size() % xwinN_) ? panels_.size() / xwinN_ + 1 : panels_.size() / xwinN_;
 
     line_buffer_.resize(xwinN_);
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         int col = (i / ywinN_);
         panels_[i].col(col);
@@ -96,7 +96,7 @@ void goby::common::FlexNCurses::update_size()
         //int ywidth = (m_N == ywinN_) ? 0 : (ymax_-m_N*HEAD_Y)/(ywinN_-m_N);
     }
 
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         int col = (i / ywinN_);
         line_buffer_[col] -= panels_[i].ywidth();
@@ -131,19 +131,19 @@ void goby::common::FlexNCurses::add_win(const Group* g)
 void goby::common::FlexNCurses::recalculate_win()
 {
     // clear any old windows
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         delwin(static_cast<WINDOW*>(panels_[i].window()));
         delwin(static_cast<WINDOW*>(panels_[i].head_window()));
         panels_[i].window(0);
         panels_[i].head_window(0);
     }
-    BOOST_FOREACH (void* p, vert_windows_)
+    for (void* p : vert_windows_)
     {
         delwin(static_cast<WINDOW*>(p));
         p = 0;
     }
-    BOOST_FOREACH (void* p, col_end_windows_)
+    for (void* p : col_end_windows_)
     {
         delwin(static_cast<WINDOW*>(p));
         p = 0;
@@ -163,7 +163,7 @@ void goby::common::FlexNCurses::recalculate_win()
 
     col_end_windows_.resize(xwinN_);
     vert_windows_.resize(xwinN_ - 1);
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         int col = panels_[i].col();
         int ystart = 0;
@@ -200,8 +200,7 @@ void goby::common::FlexNCurses::recalculate_win()
         // title and horizontal divider
         WINDOW* new_head = newwin(HEAD_Y, xwidth, ystart, xstart);
         panels_[i].head_window(new_head);
-        BOOST_FOREACH (size_t j, panels_[i].combined())
-            panels_[j].head_window(new_head);
+        for (size_t j : panels_[i].combined()) panels_[j].head_window(new_head);
 
         write_head_title(i);
 
@@ -213,8 +212,7 @@ void goby::common::FlexNCurses::recalculate_win()
             // scrolling text window
             WINDOW* new_window = newwin(ywidth - HEAD_Y, xwidth, ystart + HEAD_Y, xstart);
             panels_[i].window(new_window);
-            BOOST_FOREACH (size_t j, panels_[i].combined())
-                panels_[j].window(new_window);
+            for (size_t j : panels_[i].combined()) panels_[j].window(new_window);
 
             // move the cursor to start place for text
             wmove(new_window, 0, 0);
@@ -255,7 +253,6 @@ void goby::common::FlexNCurses::insert(ptime t, const std::string& s, Group* g)
 
 size_t goby::common::FlexNCurses::panel_from_group(Group* g)
 {
-    //    BOOST_FOREACH(size_t i, unique_panels_)
     for (size_t i = 0, n = panels_.size(); i < n; ++i)
     {
         if (panels_[i].group() == g)
@@ -345,7 +342,7 @@ long goby::common::FlexNCurses::color2attr_t(Colors::Color c)
 // find screen containing click
 size_t goby::common::FlexNCurses::find_containing_window(int y, int x)
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (in_window(panels_[i].window(), y, x) || in_window(panels_[i].head_window(), y, x))
             return i;
@@ -391,7 +388,7 @@ void goby::common::FlexNCurses::write_head_title(size_t i)
     wattron(win, color_attr);
     waddstr(win, ss.str().c_str());
 
-    BOOST_FOREACH (size_t j, panels_[i].combined())
+    for (size_t j : panels_[i].combined())
     {
         wattron(win, white_attr);
         waddstr(win, "| ");
@@ -420,7 +417,7 @@ void goby::common::FlexNCurses::deselect_all()
     if (is_locked_)
         return;
 
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (panels_[i].selected())
         {
@@ -432,8 +429,7 @@ void goby::common::FlexNCurses::deselect_all()
 
 void goby::common::FlexNCurses::select_all()
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
-        select(i);
+    for (size_t i : unique_panels_) select(i);
 }
 
 void goby::common::FlexNCurses::select(size_t gt)
@@ -503,7 +499,7 @@ void goby::common::FlexNCurses::shift(size_t next)
 void goby::common::FlexNCurses::combine()
 {
     size_t lowest;
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (panels_[i].selected())
         {
@@ -512,13 +508,12 @@ void goby::common::FlexNCurses::combine()
         }
     }
 
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (panels_[i].selected() && i != lowest)
         {
             panels_[lowest].add_combined(i);
-            BOOST_FOREACH (size_t j, panels_[i].combined())
-                panels_[lowest].add_combined(j);
+            for (size_t j : panels_[i].combined()) panels_[lowest].add_combined(j);
 
             panels_[i].clear_combined();
 
@@ -532,14 +527,13 @@ void goby::common::FlexNCurses::combine()
 
 void goby::common::FlexNCurses::uncombine(size_t i)
 {
-    BOOST_FOREACH (size_t j, panels_[i].combined())
-        unique_panels_.insert(j);
+    for (size_t j : panels_[i].combined()) unique_panels_.insert(j);
     panels_[i].clear_combined();
 }
 
 void goby::common::FlexNCurses::uncombine_selected()
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (panels_[i].selected())
         {
@@ -553,8 +547,7 @@ void goby::common::FlexNCurses::uncombine_selected()
 
 void goby::common::FlexNCurses::uncombine_all()
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
-        uncombine(i);
+    for (size_t i : unique_panels_) uncombine(i);
 
     update_size();
     recalculate_win();
@@ -562,7 +555,7 @@ void goby::common::FlexNCurses::uncombine_all()
 
 void goby::common::FlexNCurses::move_up()
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (!first_in_col(i) && panels_[i].selected())
             iter_swap(panels_.begin() + i, panels_.begin() + i - 1);
@@ -593,7 +586,7 @@ void goby::common::FlexNCurses::move_right()
         size_t rpanel = right(i);
         if (rpanel == panels_.size())
         {
-            BOOST_FOREACH (size_t j, unique_panels_)
+            for (size_t j : unique_panels_)
             {
                 if (last_in_col(j) && panels_[i].col() + 1 == panels_[j].col())
                     rpanel = j + 1;
@@ -619,12 +612,12 @@ void goby::common::FlexNCurses::move_right()
 
 void goby::common::FlexNCurses::move_left()
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         size_t lpanel = left(i);
         if (lpanel == panels_.size())
         {
-            BOOST_FOREACH (size_t j, unique_panels_)
+            for (size_t j : unique_panels_)
             {
                 if (first_in_col(j) && panels_[i].col() == panels_[j].col())
                     lpanel = j;
@@ -650,7 +643,7 @@ void goby::common::FlexNCurses::move_left()
 
 size_t goby::common::FlexNCurses::find_first_selected()
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (panels_[i].selected())
             return i;
@@ -660,7 +653,7 @@ size_t goby::common::FlexNCurses::find_first_selected()
 
 bool goby::common::FlexNCurses::last_in_col(size_t val)
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (panels_[i].col() == panels_[val].col() && i > val)
             return false;
@@ -670,7 +663,7 @@ bool goby::common::FlexNCurses::last_in_col(size_t val)
 
 bool goby::common::FlexNCurses::first_in_col(size_t val)
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (panels_[i].col() == panels_[val].col() && i < val)
             return false;
@@ -680,7 +673,7 @@ bool goby::common::FlexNCurses::first_in_col(size_t val)
 
 void goby::common::FlexNCurses::grow_all()
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (panels_[i].selected())
             grow(i);
@@ -690,7 +683,7 @@ void goby::common::FlexNCurses::grow_all()
 
 void goby::common::FlexNCurses::shrink_all()
 {
-    BOOST_FOREACH (size_t i, unique_panels_)
+    for (size_t i : unique_panels_)
     {
         if (panels_[i].selected())
             shrink(i);
@@ -703,7 +696,7 @@ void goby::common::FlexNCurses::grow(int i)
     panels_[i].set_minimized(false);
     size_t largest_panel = panels_.size();
     int largest_panel_size = 0;
-    BOOST_FOREACH (size_t j, unique_panels_)
+    for (size_t j : unique_panels_)
     {
         if (panels_[j].ywidth() >= largest_panel_size && panels_[j].col() == panels_[i].col() &&
             !panels_[j].minimized() && !panels_[j].selected())
@@ -730,7 +723,7 @@ void goby::common::FlexNCurses::shrink(int i)
 {
     size_t smallest_panel = panels_.size();
     int smallest_panel_size = ymax_;
-    BOOST_FOREACH (size_t j, unique_panels_)
+    for (size_t j : unique_panels_)
     {
         if (panels_[j].ywidth() <= smallest_panel_size && panels_[j].col() == panels_[i].col() &&
             !panels_[j].minimized() && !panels_[j].selected())
@@ -759,13 +752,12 @@ void goby::common::FlexNCurses::toggle_minimized(int i)
 
 void goby::common::FlexNCurses::winunlock()
 {
-    BOOST_FOREACH (size_t j, unique_panels_)
+    for (size_t j : unique_panels_)
     {
         if (panels_[j].locked())
         {
             panels_[j].locked(false);
-            BOOST_FOREACH (size_t k, panels_[j].combined())
-                panels_[k].locked(false);
+            for (size_t k : panels_[j].combined()) panels_[k].locked(false);
 
             write_head_title(j);
             redraw_lines(j);
@@ -810,7 +802,7 @@ void goby::common::FlexNCurses::redraw_lines(int j, int offset /* = -1 */)
 void goby::common::FlexNCurses::winlock()
 {
     size_t i = panels_.size();
-    BOOST_FOREACH (size_t j, unique_panels_)
+    for (size_t j : unique_panels_)
     {
         if (panels_[j].selected())
         {
@@ -827,8 +819,7 @@ void goby::common::FlexNCurses::winlock()
     is_locked_ = true;
     locked_panel_ = i;
     panels_[i].locked(true);
-    BOOST_FOREACH (size_t j, panels_[i].combined())
-        panels_[j].locked(true);
+    for (size_t j : panels_[i].combined()) panels_[j].locked(true);
 
     lines_from_beg(get_history_size(i) - panels_[i].ywidth(), i);
     write_head_title(i);
@@ -877,10 +868,7 @@ void goby::common::FlexNCurses::restore_order()
     std::vector<Panel> new_panels;
     new_panels.resize(panels_.size());
 
-    BOOST_FOREACH (const Panel& p, panels_)
-    {
-        new_panels[p.original_order()] = p;
-    }
+    for (const Panel& p : panels_) { new_panels[p.original_order()] = p; }
 
     panels_ = new_panels;
 }
@@ -905,7 +893,7 @@ std::multimap<ptime, std::string> goby::common::FlexNCurses::get_history(size_t 
         std::multimap<ptime, std::string> merged;
         for (; i_it_begin != panels_[i].history().end(); ++i_it_begin) merged.insert(*i_it_begin);
 
-        BOOST_FOREACH (size_t j, panels_[i].combined())
+        for (size_t j : panels_[i].combined())
         {
             std::multimap<ptime, std::string>::iterator j_it_begin;
             if (how_much < 0)
@@ -931,10 +919,7 @@ size_t goby::common::FlexNCurses::get_history_size(size_t i)
     else
     {
         size_t sum = panels_[i].history().size();
-        BOOST_FOREACH (size_t j, panels_[i].combined())
-        {
-            sum += panels_[j].history().size();
-        }
+        for (size_t j : panels_[i].combined()) { sum += panels_[j].history().size(); }
         return sum;
     }
 }
@@ -969,30 +954,6 @@ int goby::common::FlexNCurses::Panel::minimized(bool b)
 
 void goby::common::FlexNCurses::run_input()
 {
-    // sleep(1);
-    // MOOS loves to stomp on me at startup...
-    // if(true)
-    // {
-    //     std::lock_guard<std::mutex> lock(curses_mutex);
-    //     BOOST_FOREACH(size_t i, unique_panels_)
-    //     {
-    //         WINDOW* win = static_cast<WINDOW*>(panels_[i].window());
-    //         if(win) redrawwin(win);    //         WINDOW* head_win = static_cast<WINDOW*>(panels_[i].head_window());
-    //         if(head_win) redrawwin(head_win);
-    //     }
-    //     BOOST_FOREACH(void* w, vert_windows_)
-    //     {
-    //         WINDOW* vert_win = static_cast<WINDOW*>(w);
-    //         if(vert_win) redrawwin(vert_win);
-    //     }
-    //     BOOST_FOREACH(void* w, col_end_windows_)
-    //     {
-    //         WINDOW* win = static_cast<WINDOW*>(w);
-    //         if(win) redrawwin(win);
-    //     }
-    //     redrawwin(static_cast<WINDOW*>(foot_window_));
-    // }
-
     while (alive_)
     {
         int k = getch();
@@ -1075,7 +1036,7 @@ void goby::common::FlexNCurses::run_input()
 
             case 'm':
             case ' ':
-                BOOST_FOREACH (size_t i, unique_panels_)
+                for (size_t i : unique_panels_)
                 {
                     if (panels_[i].selected())
                         toggle_minimized(i);
@@ -1084,7 +1045,7 @@ void goby::common::FlexNCurses::run_input()
                 break;
 
             case 'M':
-                BOOST_FOREACH (size_t i, unique_panels_)
+                for (size_t i : unique_panels_)
                 {
                     if (!panels_[i].selected())
                         toggle_minimized(i);

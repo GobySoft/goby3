@@ -24,11 +24,9 @@
 #define TermColor20091211H
 
 #include <iostream>
-#include <string>
-
-#include <boost/assign.hpp>
-#include <boost/foreach.hpp>
+#include <map>
 #include <memory>
+#include <string>
 
 namespace goby
 {
@@ -178,7 +176,7 @@ class TermColor
     std::string priv_str_from_col(const Colors::Color& c)
     {
         typedef std::pair<std::string, Colors::Color> P;
-        BOOST_FOREACH (const P& p, colors_map_)
+        for (const P& p : colors_map_)
         {
             if (p.second == c)
                 return p.first;
@@ -193,7 +191,7 @@ class TermColor
     std::string priv_esc_code_from_col(const Colors::Color& c)
     {
         typedef std::pair<std::string, Colors::Color> P;
-        BOOST_FOREACH (const P& p, esc_code_map_)
+        for (const P& p : esc_code_map_)
         {
             if (p.second == c)
                 return p.first;
