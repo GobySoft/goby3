@@ -20,10 +20,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "dccl/dynamic_protobuf_manager.h"
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/dccl.h"
 #include "goby/common/logger.h"
-#include "goby/util/dynamic_protobuf_manager.h"
 
 #include "queue.h"
 #include "queue_manager.h"
@@ -552,7 +552,7 @@ void goby::acomms::Queue::process_cfg()
     static_meta_.Clear();
 
     // used to check that the FIELD_VALUE roles fields actually exist
-    auto new_msg = goby::util::DynamicProtobufManager::new_protobuf_message<
+    auto new_msg = dccl::DynamicProtobufManager::new_protobuf_message<
         std::shared_ptr<google::protobuf::Message> >(desc_);
 
     for (int i = 0, n = cfg_.role_size(); i < n; ++i)

@@ -31,11 +31,11 @@
 #include <google/protobuf/io/printer.h>
 #include <google/protobuf/io/tokenizer.h>
 
+#include "dccl/dynamic_protobuf_manager.h"
 #include "goby/common/logger.h"
 #include "goby/moos/moos_string.h"
 #include "goby/util/as.h"
 #include "goby/util/binary.h"
-#include "goby/util/dynamic_protobuf_manager.h"
 #include "goby/util/primitive_types.h"
 
 #include "goby/moos/transitional/message_algorithms.h"
@@ -257,7 +257,7 @@ class MOOSPrefixTranslation
 
             try
             {
-                auto return_message = goby::util::DynamicProtobufManager::new_protobuf_message<
+                auto return_message = dccl::DynamicProtobufManager::new_protobuf_message<
                     std::shared_ptr<google::protobuf::Message> >(name);
                 if (in.size() > end_bracket_pos + 1)
                     goby::moos::MOOSTranslation<base_technique>::parse(

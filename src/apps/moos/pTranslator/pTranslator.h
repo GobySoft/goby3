@@ -26,9 +26,9 @@
 
 #include <boost/asio/deadline_timer.hpp>
 
+#include "dccl/dynamic_protobuf_manager.h"
 #include "goby/moos/goby_moos_app.h"
 #include "goby/moos/moos_translator.h"
-#include "goby/util/dynamic_protobuf_manager.h"
 
 #include "pTranslator_config.pb.h"
 

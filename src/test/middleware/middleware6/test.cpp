@@ -63,7 +63,7 @@ using Type = Large;
 const int max_publish = 1000;
 #else
 using Type = Sample;
-const int max_publish = 100000;
+const int max_publish = 1000;
 #endif
 
 // parent process - thread 1
@@ -210,11 +210,12 @@ int main(int argc, char* argv[])
     //goby::glog.set_name(std::string(argv[0]) + (is_child ? "_subscriber" : "_publisher"));
     //goby::glog.set_lock_action(goby::common::logger_lock::lock);
 
-    std::unique_ptr<std::thread> t10, t11;
-    std::unique_ptr<zmq::context_t> manager_context;
-    std::unique_ptr<zmq::context_t> router_context;
     if (!is_child)
     {
+        std::unique_ptr<std::thread> t10, t11;
+        std::unique_ptr<zmq::context_t> manager_context;
+        std::unique_ptr<zmq::context_t> router_context;
+
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
 
@@ -222,7 +223,7 @@ int main(int argc, char* argv[])
         t10.reset(new std::thread([&] { router.run(); }));
         goby::ZMQManager manager(*manager_context, cfg, router);
         t11.reset(new std::thread([&] { manager.run(); }));
-        sleep(1);
+        //        sleep(1);
         std::thread t1([&] { publisher(cfg); });
         int wstatus = 0;
         if (test == 0)
@@ -237,8 +238,8 @@ int main(int argc, char* argv[])
 
         forward = false;
         t1.join();
-        router_context.reset();
         manager_context.reset();
+        router_context.reset();
         t10->join();
         t11->join();
         if (wstatus != 0)

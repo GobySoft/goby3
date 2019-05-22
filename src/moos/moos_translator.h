@@ -29,11 +29,11 @@
 #include <set>
 #include <string>
 
+#include "dccl/dynamic_protobuf_manager.h"
 #include "goby/moos/modem_id_convert.h"
 #include "goby/moos/moos_protobuf_helpers.h"
 #include "goby/moos/protobuf/translator.pb.h"
 #include "goby/moos/transitional/message_algorithms.h"
-#include "goby/util/dynamic_protobuf_manager.h"
 
 namespace goby
 {
@@ -446,13 +446,13 @@ goby::moos::MOOSTranslator::moos_to_protobuf(const StringCMOOSMsgMap& moos_varia
     const goby::moos::protobuf::TranslatorEntry& entry = it->second;
 
     GoogleProtobufMessagePointer msg =
-        goby::util::DynamicProtobufManager::new_protobuf_message<GoogleProtobufMessagePointer>(
+        dccl::DynamicProtobufManager::new_protobuf_message<GoogleProtobufMessagePointer>(
             protobuf_name);
 
     if (!msg)
         throw(std::runtime_error("Unknown Protobuf type: " + protobuf_name +
                                  "; be sure it is compiled in or directly loaded into the "
-                                 "goby::util::DynamicProtobufManager."));
+                                 "dccl::DynamicProtobufManager."));
 
     for (int i = 0, n = entry.create_size(); i < n; ++i)
     {

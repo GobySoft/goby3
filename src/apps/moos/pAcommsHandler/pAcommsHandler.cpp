@@ -436,7 +436,7 @@ void CpAcommsHandler::process_configuration()
                                  << std::endl;
 
         void* handle =
-            goby::util::DynamicProtobufManager::load_from_shared_lib(cfg_.load_shared_library(i));
+            dccl::DynamicProtobufManager::load_from_shared_lib(cfg_.load_shared_library(i));
         handles.push_back(handle);
 
         if (!handle)
@@ -453,14 +453,14 @@ void CpAcommsHandler::process_configuration()
     for (int i = 0, n = handles.size(); i < n; ++i) dccl_->load_shared_library_codecs(handles[i]);
 
     // load all .proto files
-    goby::util::DynamicProtobufManager::enable_compilation();
+    dccl::DynamicProtobufManager::enable_compilation();
     for (int i = 0, n = cfg_.load_proto_file_size(); i < n; ++i)
     {
         glog.is(VERBOSE) && glog << group("pAcommsHandler")
                                  << "Loading protobuf file: " << cfg_.load_proto_file(i)
                                  << std::endl;
 
-        if (!goby::util::DynamicProtobufManager::load_from_proto_file(cfg_.load_proto_file(i)))
+        if (!dccl::DynamicProtobufManager::load_from_proto_file(cfg_.load_proto_file(i)))
             glog.is(DIE) && glog << "Failed to load file." << std::endl;
     }
 
@@ -486,7 +486,7 @@ void CpAcommsHandler::process_configuration()
 
         // check that the protobuf file is loaded somehow
         GoogleProtobufMessagePointer msg =
-            goby::util::DynamicProtobufManager::new_protobuf_message<GoogleProtobufMessagePointer>(
+            dccl::DynamicProtobufManager::new_protobuf_message<GoogleProtobufMessagePointer>(
                 cfg_.translator_entry(i).protobuf_name());
 
         if (cfg_.translator_entry(i).trigger().type() ==
@@ -527,8 +527,7 @@ void CpAcommsHandler::process_configuration()
     for (int i = 0, n = cfg_.dccl_frontseat_forward_name_size(); i < n; ++i)
     {
         const google::protobuf::Descriptor* desc =
-            goby::util::DynamicProtobufManager::find_descriptor(
-                cfg_.dccl_frontseat_forward_name(i));
+            dccl::DynamicProtobufManager::find_descriptor(cfg_.dccl_frontseat_forward_name(i));
         if (desc)
         {
             dccl_frontseat_forward_.insert(desc);
@@ -708,7 +707,7 @@ void CpAcommsHandler::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
                               << "Multiplex receive failed: Unknown Protobuf type for "
                               << moos_msg.GetString()
                               << "; be sure it is compiled in or directly loaded into the "
-                                 "goby::util::DynamicProtobufManager."
+                                 "dccl::DynamicProtobufManager."
                               << std::endl;
         return;
     }

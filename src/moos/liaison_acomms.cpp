@@ -42,8 +42,8 @@
 #include <Wt/WStandardItemModel>
 #include <Wt/WTable>
 
+#include "dccl/dynamic_protobuf_manager.h"
 #include "goby/util/as.h"
-#include "goby/util/dynamic_protobuf_manager.h"
 
 #include "goby/acomms/protobuf/mm_driver.pb.h"
 #include "goby/moos/moos_protobuf_helpers.h"
@@ -266,8 +266,7 @@ void goby::common::LiaisonAcomms::dccl_select(WString msg)
     std::string m = msg.narrow();
     m = m.substr(m.find(" ") + 1);
 
-    const google::protobuf::Descriptor* desc =
-        goby::util::DynamicProtobufManager::find_descriptor(m);
+    const google::protobuf::Descriptor* desc = dccl::DynamicProtobufManager::find_descriptor(m);
     if (desc)
     {
         std::stringstream ss;
@@ -434,7 +433,7 @@ void goby::common::LiaisonAcomms::process_acomms_config()
             acomms_config_.queue_cfg().message_entry(i);
 
         const google::protobuf::Descriptor* desc =
-            goby::util::DynamicProtobufManager::find_descriptor(q.protobuf_name());
+            dccl::DynamicProtobufManager::find_descriptor(q.protobuf_name());
 
         if (desc)
         {

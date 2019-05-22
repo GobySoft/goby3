@@ -28,8 +28,8 @@
 #include <Wt/WText>
 #include <Wt/WVBoxLayout>
 
+#include "dccl/dynamic_protobuf_manager.h"
 #include "goby/common/time.h"
-#include "goby/util/dynamic_protobuf_manager.h"
 
 #include "liaison_commander.h"
 #include "liaison_home.h"
