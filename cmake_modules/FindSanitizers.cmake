@@ -7,9 +7,9 @@ if(SANITIZE_ADDRESS AND SANITIZE_THREAD)
     "exclusive.")
 endif()
 
-set(SANITIZE_ADDRESS_FLAGS "-g -fsanitize=address -fno-omit-frame-pointer")
-set(SANITIZE_THREAD_FLAGS "-g -fsanitize=thread")
-set(SANITIZE_UNDEFINED_FLAGS "-g -fsanitize=undefined -fno-omit-frame-pointer")
+set(SANITIZE_ADDRESS_FLAGS "-g -fsanitize=address -fno-omit-frame-pointer -fno-sanitize-recover=address")
+set(SANITIZE_THREAD_FLAGS "-g -fsanitize=thread  -fno-sanitize-recover=thread")
+set(SANITIZE_UNDEFINED_FLAGS "-g -fsanitize=undefined -fno-omit-frame-pointer  -fno-sanitize-recover=undefined")
 
 if(SANITIZE_ADDRESS)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZE_ADDRESS_FLAGS}")

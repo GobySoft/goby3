@@ -1,0 +1,12 @@
+#    TSAN_OPTIONS="suppressions=.../suppressions.tsan.txt" test
+
+# ZeroMQ uses a "ad-hoc lock-free queue implementation"
+# https://github.com/zeromq/libzmq/issues/3309
+race:/usr/include/zmq.hpp
+called_from_lib:libzmq.so
+
+# Ubuntu Bionic provides Protocol Buffers 3.0.0, which contains a data race.
+# The data race is not present in newer versions (3.6.1, perhaps earlier).
+race:/usr/include/google/protobuf/
+race:GetMetadata
+called_from_lib:libprotobuf.so
