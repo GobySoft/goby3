@@ -96,13 +96,13 @@ void goby::ModemDriverThread::publish(const std::string& bytes)
 
 bool goby::ModemDriverThread::retrieve_message(goby::acomms::protobuf::ModemTransmission* msg)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (received_.empty())
     {
         return false;
     }
     else
     {
-        std::lock_guard<std::mutex> lock(mutex_);
         *msg = received_.front();
         received_.pop_front();
         return true;
