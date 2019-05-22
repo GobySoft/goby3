@@ -112,10 +112,10 @@ inline double density_anomaly(double S, double T, double P0)
     // SPECIFIC VOLUME AT ATMOSPHERIC PRESSURE
     double V350P = 1.0 / R3500;
     double SVA = -SIG * V350P / (R3500 + SIG);
-    double SIGMA = SIG + DR350;
-    //double V0 = 1.0/(1000.0 + SIGMA);
-    //  SCALE SPECIFIC VOL. ANAMOLY TO NORMALLY REPORTED UNITS
-    //    double SVAN=SVA*1.0E+8;
+    // double SIGMA = SIG + DR350;
+    // double V0 = 1.0/(1000.0 + SIGMA);
+    // SCALE SPECIFIC VOL. ANAMOLY TO NORMALLY REPORTED UNITS
+    // double SVAN=SVA*1.0E+8;
 
     // ******************************************************************
     // ******  NEW HIGH PRESSURE EQUATION OF STATE FOR SEAWATER ********
@@ -167,7 +167,7 @@ inline double density_anomaly(double S, double T, double P0)
     // *******************************************************
     double DR35P = GAM / V350P;
     double DVAN = SVA / (V350P * (V350P + SVA));
-    SIGMA = DR350 + DR35P - DVAN; // Density anomaly
+    double SIGMA = DR350 + DR35P - DVAN; // Density anomaly
 
     return SIGMA;
 }

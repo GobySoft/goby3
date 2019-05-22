@@ -498,7 +498,7 @@ void goby::common::FlexNCurses::shift(size_t next)
 
 void goby::common::FlexNCurses::combine()
 {
-    size_t lowest;
+    size_t lowest = 0;
     for (size_t i : unique_panels_)
     {
         if (panels_[i].selected())

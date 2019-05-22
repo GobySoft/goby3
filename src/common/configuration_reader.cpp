@@ -113,8 +113,16 @@ void goby::common::ConfigReader::read_cfg(int argc, char* argv[],
     }
     else if (var_map->count("example_config"))
     {
-        get_example_cfg_file(message, &std::cout);
-        exit(EXIT_SUCCESS);
+        if (message)
+        {
+            get_example_cfg_file(message, &std::cout);
+            exit(EXIT_SUCCESS);
+        }
+        else
+        {
+            std::cerr << "No configuration message was provided for this application" << std::endl;
+            exit(EXIT_FAILURE);
+        }
     }
     else if (var_map->count("version"))
     {

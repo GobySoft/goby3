@@ -120,8 +120,8 @@ void goby::common::hdf5::Writer::load()
         glog.is(DIE) &&
             glog << "Function goby_hdf5_load in library defined in GOBY_HDF5_PLUGIN does not exist."
                  << std::endl;
-
-    plugin_.reset((*plugin_ptr)(&app_cfg()));
+    else
+        plugin_.reset((*plugin_ptr)(&app_cfg()));
 
     if (!plugin_)
         glog.is(DIE) && glog << "Function goby_hdf5_load in library defined in GOBY_HDF5_PLUGIN "

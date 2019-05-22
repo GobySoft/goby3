@@ -218,7 +218,7 @@ workflows:
             - armhf-bionic-build
             - armhf-xenial-build
             
-#      - amd64+scan-build
+      - amd64+scan-build
       - amd64+asan-build
       - amd64+tsan-build
       - amd64+ubsan-build

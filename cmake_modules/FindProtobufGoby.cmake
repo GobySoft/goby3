@@ -107,6 +107,9 @@ function(PROTOBUF_GENERATE_CPP SRCS HDRS)
              "${FIL_PATH}/${FIL_WE}.pb.h"
       COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE}
       ARGS --cpp_out ${goby_INC_DIR} --proto_path ${goby_INC_DIR} ${goby_INC_DIR}/goby/${REL_FIL} ${ALL_PROTOBUF_INCLUDE_DIRS} -I ${goby_INC_DIR} --dccl_out ${goby_INC_DIR}
+      # add guards for Clang static analyzer (scan-build)
+      COMMAND /bin/bash
+      ARGS -c "FILE=${FIL_PATH}/${FIL_WE}.pb.cc && TMPFILE=\${FILE}.\${RANDOM} && cat <(echo '#ifndef __clang_analyzer__') \${FILE} <(echo -e '\\n#endif // __clang_analyzer__') > \${TMPFILE} && mv \${TMPFILE} \${FILE}"
       DEPENDS ${ABS_FIL}
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )
