@@ -7,7 +7,9 @@ environment-template-common: &environment-template-common
   DEBEMAIL: "toby@gobysoft.org"
   QUILT_PATCHES: debian/patches
   QUILT_REFRESH_ARGS: "-p ab --no-timestamps --no-index --strip-trailing-whitespace"
-
+  CC: /usr/bin/clang
+  CXX: /usr/bin/clang++
+  
 environment-template-amd64: &environment-template-amd64
   TARGET_ARCH: "amd64"
   DEB_BUILD_OPTIONS: "parallel=4"
@@ -60,15 +62,27 @@ docker-armhf-bionic: &docker-armhf-bionic
 job-template-amd64: &job-template-amd64
   working_directory: /root/goby3
   steps:
+    - checkout
+    - run: &run-update-apt
+        name: Update apt packages
+        command: apt-get update && apt-get dist-upgrade -y
+    - run:
+        name: Build
+        command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
+    - run: &run-tests
+        name: Run tests
+        command: cd build && ctest --output-on-failure        
+
+job-template-deb-amd64: &job-template-deb-amd64
+  <<: *job-template-amd64
+  steps:
     - run:
         name: Add continuous build package sources.list (if not a tagged release)
         command: |
           [ -z "${CIRCLE_TAG}" ] &&
           echo "deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/" >> /etc/apt/sources.list.d/gobysoft_continuous.list ||
           true
-    - run: &run-update-apt
-        name: Update apt packages
-        command: apt-get update && apt-get dist-upgrade -y
+    - run: *run-update-apt
     - run: &run-import-gpg
         name: Import GPG key
         command: echo -e "$GPG_KEY" | gpg --import
@@ -134,8 +148,8 @@ job-template-amd64: &job-template-amd64
           - '*.changes'
           - '*.buildinfo'
   
-job-template-cross: &job-template-cross
-  <<: *job-template-amd64
+job-template-deb-cross: &job-template-deb-cross
+  <<: *job-template-deb-amd64
 
 # base sanitizer and upload off Bionic build
 job-template-sanitizers: &job-template-sanitizers
@@ -145,66 +159,89 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-bionic
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 2
-    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"
+    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"    
   docker: *docker-base-bionic
 
 job-template-upload: &job-template-upload
   <<: *job-template-amd64
   docker: *docker-base-bionic
 
+  
 # which branches to run the Debian build and upload on
-filter-template-deb-upload: &filter-template-deb-upload
+filter-template-master-only: &filter-template-master-only
   filters:
     tags:
       only: /.*/
     branches:
       only:
         - "3.0"
-  
+
+filter-template-non-master: &filter-template-non-master
+  filters:
+    branches:
+      ignore:
+        - "3.0"
+        
 ## Begin actual config
 version: 2
 workflows:
   version: 2
   commit:
     jobs:
-      - get-orig-source          
       - amd64-stretch-build:
-          requires:
-            - get-orig-source
-      - arm64-stretch-build:
-          requires:
-            - amd64-stretch-build
-      - armhf-stretch-build:
-          requires:
-            - arm64-stretch-build
-            
+          <<: *filter-template-non-master
       - amd64-xenial-build:
-          requires:
-            - get-orig-source
-      - arm64-xenial-build:
-          requires:
-            - amd64-xenial-build
-      - armhf-xenial-build:
-          requires:
-            - arm64-xenial-build
-            
+          <<: *filter-template-non-master
       - amd64-bionic-build:
+          <<: *filter-template-non-master
+      
+      - get-orig-source:
+          <<: *filter-template-master-only
+      - amd64-stretch-deb-build:
+          <<: *filter-template-master-only
           requires:
             - get-orig-source
-      - arm64-bionic-build:
+      - arm64-stretch-deb-build:
+          <<: *filter-template-master-only
           requires:
-            - amd64-bionic-build
-      - armhf-bionic-build:
+            - amd64-stretch-deb-build
+      - armhf-stretch-deb-build:
+          <<: *filter-template-master-only
           requires:
-            - arm64-bionic-build
+            - arm64-stretch-deb-build
+            
+      - amd64-xenial-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - arm64-xenial-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - amd64-xenial-deb-build
+      - armhf-xenial-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - arm64-xenial-deb-build
+            
+      - amd64-bionic-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - arm64-bionic-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - amd64-bionic-deb-build
+      - armhf-bionic-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - arm64-bionic-deb-build
 
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
-          <<: *filter-template-deb-upload
           requires:
-            - armhf-stretch-build
-            - armhf-bionic-build
-            - armhf-xenial-build
+            - armhf-stretch-deb-build
+            - armhf-bionic-deb-build
+            - armhf-xenial-deb-build
 
       # only do the release upload on tagged builds
       - release-upload:
@@ -214,19 +251,25 @@ workflows:
             branches:
               ignore: /.*/
           requires:
-            - armhf-stretch-build
-            - armhf-bionic-build
-            - armhf-xenial-build
+            - armhf-stretch-deb-build
+            - armhf-bionic-deb-build
+            - armhf-xenial-deb-build
             
-      - amd64+scan-build
-      - amd64+asan-build
-      - amd64+tsan-build
-      - amd64+ubsan-build
-            
+      - amd64+scan-build:
+          <<: *filter-template-master-only
+      - amd64+asan-build:
+          <<: *filter-template-master-only
+      - amd64+tsan-build:
+          <<: *filter-template-master-only
+
+# problem running this using clang with libcrypto++-dev 
+#      - amd64+ubsan-build:
+#          <<: *filter-template-master-only          
+          
 jobs:
 
   get-orig-source:
-    <<: *job-template-amd64
+    <<: *job-template-deb-amd64
     docker: *docker-base-bionic
     environment:
       <<: *environment-template-common
@@ -256,65 +299,83 @@ jobs:
           paths:
             - '*.tar.xz'
             - 'changelog'
-            
+
   amd64-stretch-build:
     <<: *job-template-amd64
     docker: *docker-base-stretch
     environment:
       <<: *environment-template-common
-      <<: *environment-template-stretch
-      <<: *environment-template-amd64
-  arm64-stretch-build: 
-    <<: *job-template-cross
-    docker: *docker-arm64-stretch
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-stretch
-      <<: *environment-template-arm64
-  armhf-stretch-build: 
-    <<: *job-template-cross
-    docker: *docker-armhf-stretch
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-stretch
-      <<: *environment-template-armhf
+
   amd64-xenial-build:
     <<: *job-template-amd64
     docker: *docker-base-xenial
     environment:
       <<: *environment-template-common
-      <<: *environment-template-xenial
-      <<: *environment-template-amd64
-  arm64-xenial-build: 
-    <<: *job-template-cross
-    docker: *docker-arm64-xenial
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-xenial
-      <<: *environment-template-arm64
-  armhf-xenial-build: 
-    <<: *job-template-cross
-    docker: *docker-armhf-xenial
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-xenial
-      <<: *environment-template-armhf
+
   amd64-bionic-build:
     <<: *job-template-amd64
     docker: *docker-base-bionic
     environment:
       <<: *environment-template-common
+  
+  amd64-stretch-deb-build:
+    <<: *job-template-deb-amd64
+    docker: *docker-base-stretch
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-stretch
+      <<: *environment-template-amd64
+  arm64-stretch-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-arm64-stretch
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-stretch
+      <<: *environment-template-arm64
+  armhf-stretch-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-armhf-stretch
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-stretch
+      <<: *environment-template-armhf
+  amd64-xenial-deb-build:
+    <<: *job-template-deb-amd64
+    docker: *docker-base-xenial
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-xenial
+      <<: *environment-template-amd64
+  arm64-xenial-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-arm64-xenial
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-xenial
+      <<: *environment-template-arm64
+  armhf-xenial-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-armhf-xenial
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-xenial
+      <<: *environment-template-armhf
+  amd64-bionic-deb-build:
+    <<: *job-template-deb-amd64
+    docker: *docker-base-bionic
+    environment:
+      <<: *environment-template-common
       <<: *environment-template-bionic
       <<: *environment-template-amd64
-  arm64-bionic-build: 
-    <<: *job-template-cross
+  arm64-bionic-deb-build: 
+    <<: *job-template-deb-cross
     docker: *docker-arm64-bionic
     environment:
       <<: *environment-template-common
       <<: *environment-template-bionic
       <<: *environment-template-arm64
-  armhf-bionic-build: 
-    <<: *job-template-cross
+  armhf-bionic-deb-build: 
+    <<: *job-template-deb-cross
     docker: *docker-armhf-bionic
     environment:
       <<: *environment-template-common
@@ -343,9 +404,7 @@ jobs:
       - run:
           name: Build with AddressSanitizer (and LeakSanitizer)
           command: mkdir -p build && cd build && cmake -DSANITIZE_ADDRESS=ON -Denable_testing=ON .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
-      - run: &run-tests
-          name: Run tests
-          command: cd build && ctest --output-on-failure
+      - run: *run-tests
   amd64+tsan-build:
     <<: *job-template-sanitizers
     steps:
