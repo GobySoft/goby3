@@ -28,7 +28,7 @@ endif()
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     # require at least gcc 7.2
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.2)
-      message(WARNING "Due to a GCC (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52036), GCC version must be at least 7.2 (you have ${CMAKE_CXX_COMPILER_VERSION}). Attempting to use Clang instead")
+      message(WARNING "Due to a GCC bug (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52036), the GCC version must be at least 7.2 (you have ${CMAKE_CXX_COMPILER_VERSION}). Attempting to use Clang instead")
 
       find_program(CLANG_C_BINARY clang)
       find_program(CLANG_CXX_BINARY clang++)     
