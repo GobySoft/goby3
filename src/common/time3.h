@@ -58,7 +58,7 @@ struct SimulatorSettings
 };
 
 /// \brief return the current time since 1970-01-01 00:00 UTC ("UNIX Time")
-template <typename TimeType> inline TimeType now()
+template <typename TimeType = MicroTime> inline TimeType now()
 {
     // remove units from chrono time
     std::int64_t microsecs_since_epoch =
@@ -81,9 +81,6 @@ template <typename TimeType> inline TimeType now()
         return TimeType(time_since_epoch);
     }
 }
-
-/// \brief return the current time as the number of microseconds since 1970-01-01 00:00 UTC (same as now<goby::time::MicroTime>())
-inline MicroTime now() { return now<MicroTime>(); }
 
 /// \brief Convert from boost::posix_time::ptime to boost::units::quantity<...> of time
 template <typename Quantity = MicroTime> Quantity from_ptime(boost::posix_time::ptime time_in)
