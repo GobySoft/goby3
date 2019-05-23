@@ -7,7 +7,9 @@ environment-template-common: &environment-template-common
   DEBEMAIL: "toby@gobysoft.org"
   QUILT_PATCHES: debian/patches
   QUILT_REFRESH_ARGS: "-p ab --no-timestamps --no-index --strip-trailing-whitespace"
-
+  CC: /usr/bin/clang
+  CXX: /usr/bin/clang++
+  
 environment-template-amd64: &environment-template-amd64
   TARGET_ARCH: "amd64"
   DEB_BUILD_OPTIONS: "parallel=4"
@@ -156,8 +158,8 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-common
     <<: *environment-template-bionic
     <<: *environment-template-amd64
-    SANITIZER_NUM_JOBS: 1
-    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"
+    SANITIZER_NUM_JOBS: 2
+    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"    
   docker: *docker-base-bionic
 
 job-template-upload: &job-template-upload
@@ -261,9 +263,11 @@ workflows:
           <<: *filter-template-master-only
       - amd64+tsan-build:
           <<: *filter-template-master-only
-      - amd64+ubsan-build:
-          <<: *filter-template-master-only
-            
+
+# problem running this using clang with libcrypto++-dev 
+#      - amd64+ubsan-build:
+#          <<: *filter-template-master-only          
+          
 jobs:
 
   get-orig-source:
@@ -301,13 +305,21 @@ jobs:
   amd64-stretch-build:
     <<: *job-template-amd64
     docker: *docker-base-stretch
+    environment:
+      <<: *environment-template-common
+
   amd64-xenial-build:
     <<: *job-template-amd64
     docker: *docker-base-xenial
+    environment:
+      <<: *environment-template-common
+
   amd64-bionic-build:
     <<: *job-template-amd64
     docker: *docker-base-bionic
-    
+    environment:
+      <<: *environment-template-common
+  
   amd64-stretch-deb-build:
     <<: *job-template-deb-amd64
     docker: *docker-base-stretch
