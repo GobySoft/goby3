@@ -145,7 +145,7 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-bionic
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 2
-    TSAN_OPTIONS: "suppressions=${CIRCLE_WORKING_DIRECTORY}/src/test/suppressions.tsan.txt"
+    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"
   docker: *docker-base-bionic
 
 job-template-upload: &job-template-upload
