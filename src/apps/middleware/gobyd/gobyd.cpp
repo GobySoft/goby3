@@ -62,7 +62,8 @@ int main(int argc, char* argv[]) { return goby::run<goby::Daemon>(argc, argv); }
 
 goby::Daemon::Daemon()
     : router_context_(new zmq::context_t(app_cfg().router_threads())),
-      manager_context_(new zmq::context_t(1)), router_(*router_context_, app_cfg().interprocess()),
+      manager_context_(new zmq::context_t(1)),
+      router_(*router_context_, app_cfg().interprocess()),
       manager_(*manager_context_, app_cfg().interprocess(), router_),
       router_thread_(new std::thread([&] { router_.run(); })),
       manager_thread_(new std::thread([&] { manager_.run(); }))

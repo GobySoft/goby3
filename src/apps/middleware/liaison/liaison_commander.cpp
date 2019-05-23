@@ -32,11 +32,11 @@
 #include <cmath>
 
 #include "dccl/common.h"
+#include "dccl/dynamic_protobuf_manager.h"
 #include "dccl/protobuf/option_extensions.pb.h"
 #include "goby/acomms/protobuf/network_ack.pb.h"
 #include "goby/middleware/liaison/groups.h"
 #include "goby/util/binary.h"
-#include "goby/util/dynamic_protobuf_manager.h"
 #include "goby/util/sci.h"
 
 #include "liaison_commander.h"
@@ -308,9 +308,8 @@ goby::common::LiaisonCommander::ControlsContainer::ControlsContainer(
 
     for (int i = 0, n = pb_commander_config.load_protobuf_name_size(); i < n; ++i)
     {
-        const google::protobuf::Descriptor* desc =
-            goby::util::DynamicProtobufManager::find_descriptor(
-                pb_commander_config.load_protobuf_name(i));
+        const google::protobuf::Descriptor* desc = dccl::DynamicProtobufManager::find_descriptor(
+            pb_commander_config.load_protobuf_name(i));
 
         if (!desc)
         {
@@ -460,15 +459,20 @@ goby::common::LiaisonCommander::ControlsContainer::CommandContainer::CommandCont
     Dbo::Session* session)
     //    WStackedWidget* master_field_info_stack)
     : WGroupBox(protobuf_name),
-      message_(goby::util::DynamicProtobufManager::new_protobuf_message<
+      message_(dccl::DynamicProtobufManager::new_protobuf_message<
                std::shared_ptr<google::protobuf::Message> >(protobuf_name)),
-      latest_time_(0), group_div_(new WContainerWidget(this)),
-      group_label_(new WLabel("Group: ", group_div_)), group_line_(new WLineEdit(group_div_)),
-      tree_box_(new WGroupBox("Contents", this)), tree_table_(new WTreeTable(tree_box_)),
+      latest_time_(0),
+      group_div_(new WContainerWidget(this)),
+      group_label_(new WLabel("Group: ", group_div_)),
+      group_line_(new WLineEdit(group_div_)),
+      tree_box_(new WGroupBox("Contents", this)),
+      tree_table_(new WTreeTable(tree_box_)),
       //      field_info_stack_(new WStackedWidget(master_field_info_stack)),
-      session_(session), query_model_(new Dbo::QueryModel<Dbo::ptr<CommandEntry> >(this)),
+      session_(session),
+      query_model_(new Dbo::QueryModel<Dbo::ptr<CommandEntry> >(this)),
       query_box_(new WGroupBox("Sent message log (click for details)", this)),
-      query_table_(new WTreeView(query_box_)), last_reload_time_(boost::posix_time::neg_infin),
+      query_table_(new WTreeView(query_box_)),
+      last_reload_time_(boost::posix_time::neg_infin),
       pb_commander_config_(pb_commander_config)
 {
     //    new WText("", field_info_stack_);
@@ -644,7 +648,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::genera
         generate_tree_row(parent, message, desc->field(i));
 
     std::vector<const google::protobuf::FieldDescriptor*> extensions;
-    goby::util::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(desc, &extensions);
+    dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(desc, &extensions);
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
     for (int i = 0, n = extensions.size(); i < n; ++i)
         generate_tree_row(parent, message, extensions[i]);

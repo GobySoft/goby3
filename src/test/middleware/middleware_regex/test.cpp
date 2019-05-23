@@ -148,6 +148,9 @@ int main(int argc, char* argv[])
         sleep(1);
         std::thread t3([&] { zmq_forward(cfg); });
         while (!zmq_ready) usleep(1e5);
+
+        // wait for subscriber
+        sleep(1);
         std::thread t1(publisher);
         t1.join();
         int wstatus;

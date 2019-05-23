@@ -156,7 +156,7 @@ class FlexOStreamBuf : public std::streambuf
 
     std::map<std::string, Group> groups_;
 
-    bool die_flag_;
+    std::atomic<bool> die_flag_;
     std::atomic<logger::Verbosity> current_verbosity_;
 
     FlexNCurses* curses_;

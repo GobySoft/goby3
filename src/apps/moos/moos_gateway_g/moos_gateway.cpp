@@ -106,7 +106,7 @@ goby::moos::MOOSGateway::MOOSGateway(protobuf::MOOSGatewayConfig* cfg)
                                        : goby::common::protobuf::PubSubSocketConfig()),
       moos_resubscribe_required_(false)
 {
-    goby::util::DynamicProtobufManager::enable_compilation();
+    dccl::DynamicProtobufManager::enable_compilation();
 
     // load all shared libraries
     for (int i = 0, n = cfg_.load_shared_library_size(); i < n; ++i)
@@ -128,7 +128,7 @@ goby::moos::MOOSGateway::MOOSGateway(protobuf::MOOSGatewayConfig* cfg)
         glog.is(VERBOSE) && glog << "Loading protobuf file: " << cfg_.load_proto_file(i)
                                  << std::endl;
 
-        if (!goby::util::DynamicProtobufManager::find_descriptor(cfg_.load_proto_file(i)))
+        if (!dccl::DynamicProtobufManager::find_descriptor(cfg_.load_proto_file(i)))
             glog.is(DIE) && glog << "Failed to load file." << std::endl;
     }
 

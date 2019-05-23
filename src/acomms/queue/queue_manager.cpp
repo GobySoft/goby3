@@ -24,9 +24,9 @@
 #include "goby/common/time.h"
 #include "goby/util/binary.h"
 
+#include "dccl/dynamic_protobuf_manager.h"
 #include "goby/acomms/dccl.h"
 #include "goby/common/logger.h"
-#include "goby/util/dynamic_protobuf_manager.h"
 
 #include "queue_constants.h"
 #include "queue_manager.h"
@@ -60,9 +60,9 @@ goby::acomms::QueueManager::QueueManager()
            google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
                "goby.acomms.protobuf.NetworkAck"));
 
-    assert(ack.GetDescriptor() == goby::util::DynamicProtobufManager::new_protobuf_message(
-                                      "goby.acomms.protobuf.NetworkAck")
-                                      ->GetDescriptor());
+    assert(ack.GetDescriptor() ==
+           dccl::DynamicProtobufManager::new_protobuf_message("goby.acomms.protobuf.NetworkAck")
+               ->GetDescriptor());
 }
 
 void goby::acomms::QueueManager::add_queue(
@@ -543,7 +543,7 @@ goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& 
                                                     cfg_.on_demand_skew_seconds() * 1e6)) <
                               common::goby_time()))
         {
-            auto new_msg = goby::util::DynamicProtobufManager::new_protobuf_message<
+            auto new_msg = dccl::DynamicProtobufManager::new_protobuf_message<
                 std::shared_ptr<google::protobuf::Message> >(q.descriptor());
             signal_data_on_demand(request_msg, new_msg.get());
 
@@ -761,8 +761,7 @@ void goby::acomms::QueueManager::process_cfg()
     for (int i = 0, n = cfg_.message_entry_size(); i < n; ++i)
     {
         const google::protobuf::Descriptor* desc =
-            goby::util::DynamicProtobufManager::find_descriptor(
-                cfg_.message_entry(i).protobuf_name());
+            dccl::DynamicProtobufManager::find_descriptor(cfg_.message_entry(i).protobuf_name());
         if (desc)
         {
             add_queue(desc, cfg_.message_entry(i));

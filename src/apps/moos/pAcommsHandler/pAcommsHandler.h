@@ -34,9 +34,9 @@
 #include "goby/acomms.h"
 #include "goby/util.h"
 
+#include "dccl/dynamic_protobuf_manager.h"
 #include "goby/moos/goby_moos_app.h"
 #include "goby/moos/moos_translator.h"
-#include "goby/util/dynamic_protobuf_manager.h"
 
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/moos/protobuf/pAcommsHandler_config.pb.h"

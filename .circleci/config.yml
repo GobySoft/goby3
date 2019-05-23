@@ -145,8 +145,7 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-bionic
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 2
-    CXX: /usr/bin/clang++
-    CC: /usr/bin/clang
+    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"
   docker: *docker-base-bionic
 
 job-template-upload: &job-template-upload
@@ -154,14 +153,13 @@ job-template-upload: &job-template-upload
   docker: *docker-base-bionic
 
 # which branches to run the Debian build and upload on
-filter-template-deb-build: &filter-template-deb-build
+filter-template-deb-upload: &filter-template-deb-upload
   filters:
     tags:
       only: /.*/
     branches:
       only:
         - "3.0"
-        - "3.0-dependency-cleanup"
   
 ## Begin actual config
 version: 2
@@ -169,50 +167,40 @@ workflows:
   version: 2
   commit:
     jobs:
-      - get-orig-source:
-          <<: *filter-template-deb-build
-          
+      - get-orig-source          
       - amd64-stretch-build:
-          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - arm64-stretch-build:
-          <<: *filter-template-deb-build
           requires:
             - amd64-stretch-build
       - armhf-stretch-build:
-          <<: *filter-template-deb-build
           requires:
             - arm64-stretch-build
             
       - amd64-xenial-build:
-          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - arm64-xenial-build:
-          <<: *filter-template-deb-build
           requires:
             - amd64-xenial-build
       - armhf-xenial-build:
-          <<: *filter-template-deb-build
           requires:
             - arm64-xenial-build
             
       - amd64-bionic-build:
-          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - arm64-bionic-build:
-          <<: *filter-template-deb-build
           requires:
             - amd64-bionic-build
       - armhf-bionic-build:
-          <<: *filter-template-deb-build
           requires:
             - arm64-bionic-build
 
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
+          <<: *filter-template-deb-upload
           requires:
             - armhf-stretch-build
             - armhf-bionic-build
@@ -230,10 +218,10 @@ workflows:
             - armhf-bionic-build
             - armhf-xenial-build
             
-#      - amd64+scan-build
+      - amd64+scan-build
       - amd64+asan-build
-#      - amd64+tsan-build
-#      - amd64+ubsan-build
+      - amd64+tsan-build
+      - amd64+ubsan-build
             
 jobs:
 

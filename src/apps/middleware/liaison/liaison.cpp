@@ -29,8 +29,8 @@
 #include <Wt/WText>
 #include <Wt/WVBoxLayout>
 
+#include "dccl/dynamic_protobuf_manager.h"
 #include "goby/common/time.h"
-#include "goby/util/dynamic_protobuf_manager.h"
 
 #include "liaison.h"
 #include "liaison_wt_thread.h"
@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
     }
 
     int return_value = goby::run<goby::common::Liaison>(argc, argv);
-    goby::util::DynamicProtobufManager::protobuf_shutdown();
+    dccl::DynamicProtobufManager::protobuf_shutdown();
 
     for (int i = 0, n = goby::common::Liaison::plugin_handles_.size(); i < n; ++i)
         dlclose(goby::common::Liaison::plugin_handles_[i]);
@@ -82,7 +82,7 @@ goby::common::Liaison::Liaison()
                                  << std::endl;
 
         void* handle =
-            goby::util::DynamicProtobufManager::load_from_shared_lib(cfg().load_shared_library(i));
+            dccl::DynamicProtobufManager::load_from_shared_lib(cfg().load_shared_library(i));
 
         if (!handle)
         {
@@ -92,7 +92,7 @@ goby::common::Liaison::Liaison()
     }
 
     // load all .proto files
-    goby::util::DynamicProtobufManager::enable_compilation();
+    dccl::DynamicProtobufManager::enable_compilation();
     for (int i = 0, n = cfg().load_proto_file_size(); i < n; ++i)
         load_proto_file(cfg().load_proto_file(i));
 
@@ -190,7 +190,7 @@ void goby::common::Liaison::load_proto_file(const std::string& path)
 
     glog.is(VERBOSE) && glog << "Loading protobuf file: " << bpath << std::endl;
 
-    if (!goby::util::DynamicProtobufManager::user_descriptor_pool().FindFileByName(bpath.string()))
+    if (!dccl::DynamicProtobufManager::user_descriptor_pool().FindFileByName(bpath.string()))
         glog.is(DIE) && glog << "Failed to load file." << std::endl;
 }
 

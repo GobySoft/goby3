@@ -45,11 +45,12 @@ class TestApp : public Base
     {
         static int i = 0;
         ++i;
-        if (i < 2)
+        // wait for zeromq pub/sub setup
+        if (i < 1 * loop_frequency_hertz())
         {
             return;
         }
-        else if (i > (std::max(5, 2 + (int)loop_frequency_hertz())))
+        else if (i > (10 + 1 * loop_frequency_hertz()))
         {
             quit();
         }
@@ -104,6 +105,7 @@ int main(int argc, char* argv[])
     }
     else
     {
+        // wait for router to set up
         sleep(1);
         return goby::run<TestApp>(argc, argv);
     }

@@ -46,7 +46,7 @@ CpTranslator::CpTranslator()
                                       cfg_.common().lon_origin(), cfg_.modem_id_lookup_path()),
       work_(timer_io_service_)
 {
-    goby::util::DynamicProtobufManager::enable_compilation();
+    dccl::DynamicProtobufManager::enable_compilation();
 
     // load all shared libraries
     for (int i = 0, n = cfg_.load_shared_library_size(); i < n; ++i)
@@ -68,7 +68,7 @@ CpTranslator::CpTranslator()
         glog.is(VERBOSE) && glog << "Loading protobuf file: " << cfg_.load_proto_file(i)
                                  << std::endl;
 
-        if (!goby::util::DynamicProtobufManager::find_descriptor(cfg_.load_proto_file(i)))
+        if (!dccl::DynamicProtobufManager::find_descriptor(cfg_.load_proto_file(i)))
             glog.is(DIE) && glog << "Failed to load file." << std::endl;
     }
 
@@ -80,7 +80,7 @@ CpTranslator::CpTranslator()
                                  << cfg_.translator_entry(i).DebugString() << std::flush;
 
         // check that the protobuf file is loaded somehow
-        goby::util::DynamicProtobufManager::new_protobuf_message<GoogleProtobufMessagePointer>(
+        dccl::DynamicProtobufManager::new_protobuf_message<GoogleProtobufMessagePointer>(
             cfg_.translator_entry(i).protobuf_name());
 
         if (cfg_.translator_entry(i).trigger().type() ==
@@ -145,7 +145,7 @@ void CpTranslator::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
         glog.is(WARN) && glog << "Multiplex receive failed: Unknown Protobuf type for "
                               << moos_msg.GetString()
                               << "; be sure it is compiled in or directly loaded into the "
-                                 "goby::util::DynamicProtobufManager."
+                                 "dccl::DynamicProtobufManager."
                               << std::endl;
         return;
     }

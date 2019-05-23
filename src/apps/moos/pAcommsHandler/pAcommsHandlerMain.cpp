@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
 
     goby::transitional::DCCLAlgorithmPerformer::deleteInstance();
     CpAcommsHandler::delete_instance();
-    goby::util::DynamicProtobufManager::protobuf_shutdown();
+    dccl::DynamicProtobufManager::protobuf_shutdown();
 
     for (int i = 0, n = plugin_handles_.size(); i < n; ++i) dlclose(plugin_handles_[i]);
 

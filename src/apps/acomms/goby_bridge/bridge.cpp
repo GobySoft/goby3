@@ -127,7 +127,7 @@ goby::acomms::Bridge::Bridge(protobuf::BridgeConfig* cfg)
                                 << std::endl;
 
         void* handle =
-            goby::util::DynamicProtobufManager::load_from_shared_lib(cfg_.load_shared_library(i));
+            dccl::DynamicProtobufManager::load_from_shared_lib(cfg_.load_shared_library(i));
 
         if (!handle)
         {
@@ -141,13 +141,13 @@ goby::acomms::Bridge::Bridge(protobuf::BridgeConfig* cfg)
     }
 
     // load all .proto files
-    goby::util::DynamicProtobufManager::enable_compilation();
+    dccl::DynamicProtobufManager::enable_compilation();
     for (int i = 0, n = cfg_.load_proto_file_size(); i < n; ++i)
     {
         glog.is(DEBUG1) && glog << "Loading protobuf file: " << cfg_.load_proto_file(i)
                                 << std::endl;
 
-        if (!goby::util::DynamicProtobufManager::load_from_proto_file(cfg_.load_proto_file(i)))
+        if (!dccl::DynamicProtobufManager::load_from_proto_file(cfg_.load_proto_file(i)))
             glog.is(DIE) && glog << "Failed to load file." << std::endl;
     }
 
