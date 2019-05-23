@@ -36,9 +36,12 @@ using namespace goby::common::logger;
 using namespace goby::common::tcolor;
 
 FrontSeatInterfaceBase::FrontSeatInterfaceBase(const iFrontSeatConfig& cfg)
-    : cfg_(cfg), helm_state_(gpb::HELM_NOT_RUNNING), state_(gpb::INTERFACE_STANDBY),
-      start_time_(goby::common::goby_time<double>()),
-      last_frontseat_error_(gpb::ERROR_FRONTSEAT_NONE), last_helm_error_(gpb::ERROR_HELM_NONE)
+    : cfg_(cfg),
+      helm_state_(gpb::HELM_NOT_RUNNING),
+      state_(gpb::INTERFACE_STANDBY),
+      start_time_(goby::time::now()),
+      last_frontseat_error_(gpb::ERROR_FRONTSEAT_NONE),
+      last_helm_error_(gpb::ERROR_HELM_NONE)
 {
     if (glog.is(DEBUG1))
     {
@@ -155,14 +158,16 @@ void FrontSeatInterfaceBase::check_error_states()
     else if (cfg_.require_helm() &&
              (helm_state() == gpb::HELM_NOT_RUNNING &&
               (state_ == gpb::INTERFACE_COMMAND ||
-               (start_time_ + cfg_.helm_running_timeout() < goby_time<double>()))))
+               (start_time_ + cfg_.helm_running_timeout_with_units<goby::time::MicroTime>() <
+                goby::time::now()))))
         throw(FrontSeatException(gpb::ERROR_HELM_NOT_RUNNING));
 
     // frontseat not connected is an error except in standby, it's only
     // an error after a timeout
     if (frontseat_state() == gpb::FRONTSEAT_NOT_CONNECTED &&
         (state_ != gpb::INTERFACE_STANDBY ||
-         start_time_ + cfg_.frontseat_connected_timeout() < goby_time<double>()))
+         start_time_ + cfg_.frontseat_connected_timeout_with_units<goby::time::MicroTime>() <
+             goby::time::now()))
         throw(FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_CONNECTED));
     // frontseat must always provide data in either the listen or command states
     else if (!frontseat_providing_data() && state_ != gpb::INTERFACE_STANDBY)

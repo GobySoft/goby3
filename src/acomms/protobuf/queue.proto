@@ -1,4 +1,4 @@
-// provides MessageFile
+import "dccl/option_extensions.proto";
 import "goby/common/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/manipulator.proto";
 
@@ -94,14 +94,18 @@ message QueueFlush
 
 message QueuedMessageMeta
 {
+    option (dccl.msg).unit_system = "si";
+
     optional uint32 non_repeated_size = 1;
     optional bool ack_requested = 2;
     optional int32 src = 3;
     optional int32 dest = 4;
-    optional uint64 time = 5;
+    optional uint64 time = 5
+        [(dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}];
 
     // last time we tried to send this
-    optional uint64 last_sent_time = 10;
+    optional uint64 last_sent_time = 10
+        [(dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}];
 
     optional bytes encoded_message = 20;
 }

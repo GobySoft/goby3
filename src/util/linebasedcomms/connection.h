@@ -88,7 +88,7 @@ template <typename ASIOAsyncReadStream> class LineBasedConnection
         if (!local_endpoint().empty())
             in_datagram_.set_dest(local_endpoint());
 
-        in_datagram_.set_time(goby::common::goby_time<double>());
+        in_datagram_.set_time(goby::time::now<goby::time::SITime>().value());
         char last = interface_->delimiter().at(interface_->delimiter().length() - 1);
         std::getline(is, line, last);
 

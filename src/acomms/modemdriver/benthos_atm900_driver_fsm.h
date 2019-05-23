@@ -392,7 +392,7 @@ struct SetClock : boost::statechart::state<SetClock, Command>, StateNotify
 
     SetClock(my_context ctx) : my_base(ctx), StateNotify("SetClock")
     {
-        boost::posix_time::ptime p = goby::common::goby_time();
+        boost::posix_time::ptime p = time::to_ptime(time::now());
 
         std::string date_str = boost::str(boost::format("-d%02d/%02d/%04d") %
                                           (int)p.date().month() % p.date().day() % p.date().year());

@@ -206,7 +206,7 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
     {
         remote_endpoint_str_ = boost::lexical_cast<std::string>(socket_.remote_endpoint());
 
-        connect_time_ = goby::common::goby_time<double>();
+        connect_time_ = time::now<time::SITime>() / boost::units::si::seconds;
         boost::asio::async_read(
             socket_, boost::asio::buffer(message_.data()),
             boost::asio::transfer_at_least(SBDMessageReader::PRE_HEADER_SIZE),

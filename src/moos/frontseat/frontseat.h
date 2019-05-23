@@ -108,7 +108,7 @@ class FrontSeatInterfaceBase
     const iFrontSeatConfig& cfg_;
     goby::moos::protobuf::HelmState helm_state_;
     goby::moos::protobuf::InterfaceState state_;
-    double start_time_;
+    goby::time::MicroTime start_time_;
     goby::moos::protobuf::FrontSeatError last_frontseat_error_;
     goby::moos::protobuf::HelmError last_helm_error_;
 

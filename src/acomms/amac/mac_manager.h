@@ -118,10 +118,8 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     void position_blank();
 
     // allowed offset from actual end of slot
-    enum
-    {
-        ALLOWED_SKEW_SECONDS = 2
-    };
+
+    const time::MicroTime allowed_skew_{2 * boost::units::si::seconds};
 
   private:
     MACManager(const MACManager&);

@@ -48,7 +48,7 @@ void GroupSetter::operator()(std::ostream& os) const
 
 std::ostream& basic_log_header(std::ostream& os, const std::string& group_name)
 {
-    os << "[ " << goby::common::goby_time_as_string() << " ]";
+    os << "[ " << goby::time::str() << " ]";
 
     if (!group_name.empty())
         os << " " << std::setfill(' ') << std::setw(15) << "{" << group_name << "}";

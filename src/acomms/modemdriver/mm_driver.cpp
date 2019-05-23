@@ -34,7 +34,6 @@
 #include "mm_driver.h"
 
 using goby::glog;
-using goby::common::goby_time;
 using goby::common::ptime2unix_double;
 using goby::util::as;
 using goby::util::hex_decode;
@@ -60,12 +59,23 @@ const unsigned goby::acomms::MMDriver::PACKET_SIZE[] = {32, 64, 64, 256, 256, 25
 //
 
 goby::acomms::MMDriver::MMDriver()
-    : last_write_time_(goby_time()), waiting_for_modem_(false), startup_done_(false),
-      global_fail_count_(0), present_fail_count_(0), clock_set_(false),
-      last_hydroid_gateway_gps_request_(goby_time()), is_hydroid_gateway_(false),
-      expected_remaining_caxst_(0), expected_remaining_cacst_(0), expected_ack_destination_(0),
-      local_cccyc_(false), last_keep_alive_time_(0), using_application_acks_(false),
-      application_ack_max_frames_(0), next_frame_(0), serial_fd_(-1)
+    : last_write_time_(time::to_ptime(time::now())),
+      waiting_for_modem_(false),
+      startup_done_(false),
+      global_fail_count_(0),
+      present_fail_count_(0),
+      clock_set_(false),
+      last_hydroid_gateway_gps_request_(time::to_ptime(time::now())),
+      is_hydroid_gateway_(false),
+      expected_remaining_caxst_(0),
+      expected_remaining_cacst_(0),
+      expected_ack_destination_(0),
+      local_cccyc_(false),
+      last_keep_alive_time_(0),
+      using_application_acks_(false),
+      application_ack_max_frames_(0),
+      next_frame_(0),
+      serial_fd_(-1)
 {
     initialize_talkers();
 }
@@ -362,7 +372,7 @@ void goby::acomms::MMDriver::set_clock()
     glog.is(DEBUG1) && glog << group(glog_out_group()) << "Setting the Micro-Modem clock."
                             << std::endl;
 
-    boost::posix_time::ptime p = goby_time();
+    boost::posix_time::ptime p = time::to_ptime(time::now());
 
     // for sync nav, let's make sure to send the ccclk at the beginning of the
     // second: between 50ms-100ms after the top of the second
@@ -374,7 +384,7 @@ void goby::acomms::MMDriver::set_clock()
     {
         // wait 1 ms
         usleep(1000);
-        p = goby_time();
+        p = time::to_ptime(time::now());
         frac_sec =
             double(p.time_of_day().fractional_seconds()) / p.time_of_day().ticks_per_second();
     }
@@ -488,7 +498,7 @@ void goby::acomms::MMDriver::do_work()
         set_clock();
 
     // send a message periodically (query the source ID) to the local modem to ascertain that it is still alive
-    double now = goby::common::goby_time<double>();
+    double now = time::now<time::SITime>() / boost::units::si::seconds;
     if (last_keep_alive_time_ +
             driver_cfg_.GetExtension(micromodem::protobuf::Config::keep_alive_seconds) <=
         now)
@@ -526,10 +536,11 @@ void goby::acomms::MMDriver::do_work()
 
     // if we're using a hydroid buoy query it for its GPS position
     if (is_hydroid_gateway_ &&
-        last_hydroid_gateway_gps_request_ + HYDROID_GATEWAY_GPS_REQUEST_INTERVAL < goby_time())
+        last_hydroid_gateway_gps_request_ + HYDROID_GATEWAY_GPS_REQUEST_INTERVAL <
+            time::to_ptime(time::now()))
     {
         modem_write(hydroid_gateway_gps_request_);
-        last_hydroid_gateway_gps_request_ = goby_time();
+        last_hydroid_gateway_gps_request_ = time::to_ptime(time::now());
     }
 }
 
@@ -905,16 +916,18 @@ void goby::acomms::MMDriver::try_send()
 
     const util::NMEASentence& nmea = out_.front();
 
-    bool resend = waiting_for_modem_ && (last_write_time_ <= (goby_time() - MODEM_WAIT));
+    bool resend =
+        waiting_for_modem_ && (last_write_time_ <= (time::to_ptime(time::now()) - MODEM_WAIT));
     if (!waiting_for_modem_)
     {
         mm_write(nmea);
     }
     else if (resend)
     {
-        glog.is(DEBUG1) &&
-            glog << group(glog_out_group()) << "resending last command; no serial ack in "
-                 << (goby_time() - last_write_time_).total_seconds() << " second(s). " << std::endl;
+        glog.is(DEBUG1) && glog << group(glog_out_group())
+                                << "resending last command; no serial ack in "
+                                << (time::to_ptime(time::now()) - last_write_time_).total_seconds()
+                                << " second(s). " << std::endl;
         ++global_fail_count_;
 
         if (global_fail_count_ == MAX_FAILS_BEFORE_DEAD)
@@ -955,7 +968,7 @@ void goby::acomms::MMDriver::mm_write(const util::NMEASentence& nmea)
     modem_write(hydroid_gateway_modem_prefix_ + raw_msg.raw() + "\r\n");
 
     waiting_for_modem_ = true;
-    last_write_time_ = goby_time();
+    last_write_time_ = time::to_ptime(time::now());
 }
 
 void goby::acomms::MMDriver::increment_present_fail()
@@ -1106,7 +1119,7 @@ void goby::acomms::MMDriver::handle_ack(std::uint32_t src, std::uint32_t dest, s
 {
     if (frames_waiting_for_ack_.count(frame))
     {
-        m->set_time(goby_time<std::uint64_t>());
+        m->set_time_with_units(time::now());
         m->set_src(src);
         m->set_dest(dest);
         m->set_type(protobuf::ModemTransmission::ACK);
@@ -1140,7 +1153,7 @@ void goby::acomms::MMDriver::camer(const NMEASentence& nmea, protobuf::ModemTran
     if (as<std::int32_t>(nmea[dest_field]) != driver_cfg_.modem_id())
         return;
 
-    m->set_time(goby_time<std::uint64_t>());
+    m->set_time_with_units(time::now());
     // I think these are reversed from what the manual states
     m->set_src(as<std::uint32_t>(nmea[src_field]));
     m->set_dest(as<std::uint32_t>(nmea[dest_field]));
@@ -1226,7 +1239,7 @@ void goby::acomms::MMDriver::carxd(const NMEASentence& nmea, protobuf::ModemTran
     unsigned frame = as<std::uint32_t>(nmea[4]) - 1;
     if (frame == 0)
     {
-        m->set_time(goby_time<std::uint64_t>());
+        m->set_time_with_units(time::now());
         m->set_src(as<std::uint32_t>(nmea[1]));
         m->set_dest(as<std::uint32_t>(nmea[2]));
         m->set_type(protobuf::ModemTransmission::DATA);
@@ -1259,7 +1272,7 @@ void goby::acomms::MMDriver::camua(const NMEASentence& nmea, protobuf::ModemTran
 {
     //    m->Clear();
 
-    m->set_time(goby_time<std::uint64_t>());
+    m->set_time_with_units(time::now());
     m->set_src(as<std::uint32_t>(nmea[1]));
     m->set_dest(as<std::uint32_t>(nmea[2]));
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
@@ -1289,7 +1302,7 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
         DATA = 7
     };
 
-    m->set_time(goby_time<std::uint64_t>());
+    m->set_time_with_units(time::now());
     m->set_src(as<std::uint32_t>(nmea[SRC]));
     m->set_dest(as<std::uint32_t>(nmea[DEST]));
     m->set_rate(as<std::uint32_t>(nmea[RATE]));
@@ -1397,7 +1410,7 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
 
     using namespace boost::posix_time;
     using namespace boost::gregorian;
-    ptime expected = goby_time();
+    ptime expected = time::to_ptime(time::now());
     ptime reported;
 
     if (sentence_id == CLK)
@@ -1522,7 +1535,7 @@ void goby::acomms::MMDriver::caxst(const NMEASentence& nmea, protobuf::ModemTran
 
 void goby::acomms::MMDriver::campr(const NMEASentence& nmea, protobuf::ModemTransmission* m)
 {
-    m->set_time(goby_time<std::uint64_t>());
+    m->set_time_with_units(time::now());
 
     // $CAMPR,SRC,DEST,TRAVELTIME*CS
     // reverse src and dest so they match the original request
@@ -1551,7 +1564,7 @@ void goby::acomms::MMDriver::campr(const NMEASentence& nmea, protobuf::ModemTran
 
 void goby::acomms::MMDriver::campa(const NMEASentence& nmea, protobuf::ModemTransmission* m)
 {
-    m->set_time(goby_time<std::uint64_t>());
+    m->set_time_with_units(time::now());
 
     // $CAMPR,SRC,DEST*CS
     m->set_src(as<std::uint32_t>(nmea[1]));
@@ -1581,7 +1594,7 @@ void goby::acomms::MMDriver::sntta(const NMEASentence& nmea, protobuf::ModemTran
     m->SetExtension(micromodem::protobuf::type, last_lbl_type_);
 
     m->set_src(driver_cfg_.modem_id());
-    m->set_time(as<std::uint64_t>(nmea_time2ptime(nmea[5])));
+    m->set_time_with_units(time::from_ptime(nmea_time2ptime(nmea[5])));
     m->set_time_source(protobuf::ModemTransmission::MODEM_TIME);
 
     if (last_lbl_type_ == micromodem::protobuf::MICROMODEM_REMUS_LBL_RANGING)
@@ -1666,7 +1679,7 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
             if (!nvram_cfg_["XST"])
                 msg->Clear();
 
-            msg->set_time(goby_time<std::uint64_t>());
+            msg->set_time_with_units(time::now());
 
             msg->set_src(as<std::uint32_t>(nmea[2]));            // ADR1
             msg->set_dest(as<std::uint32_t>(nmea[3]));           // ADR2
@@ -1834,7 +1847,8 @@ void goby::acomms::MMDriver::cacst(const NMEASentence& nmea, protobuf::ModemTran
                 : micromodem::protobuf::INVALID_RECEIVE_MODE;
 
         cst->set_mode(mode);
-        cst->set_time(as<std::uint64_t>(nmea_time2ptime(nmea.as<std::string>(2 + version_offset))));
+        cst->set_time_with_units(
+            time::from_ptime(nmea_time2ptime(nmea.as<std::string>(2 + version_offset))));
 
         micromodem::protobuf::ClockMode clock_mode =
             micromodem::protobuf::ClockMode_IsValid(nmea.as<int>(3 + version_offset))
@@ -1899,7 +1913,7 @@ void goby::acomms::MMDriver::cacst(const NMEASentence& nmea, protobuf::ModemTran
     {
         micromodem::protobuf::RangingReply* ranging_reply =
             m->MutableExtension(micromodem::protobuf::ranging_reply);
-        boost::posix_time::ptime toa = as<boost::posix_time::ptime>(cst->time());
+        boost::posix_time::ptime toa = time::to_ptime(cst->time_with_units());
         double frac_sec =
             double(toa.time_of_day().fractional_seconds()) / toa.time_of_day().ticks_per_second();
 

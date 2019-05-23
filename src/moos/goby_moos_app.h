@@ -23,9 +23,7 @@
 #ifndef GOBYMOOSAPP20100726H
 #define GOBYMOOSAPP20100726H
 
-#include "goby/moos/moos_header.h"
-#include "goby/moos/moos_translator.h"
-#include "goby/util/as.h"
+#include <map>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/bind.hpp>
@@ -33,13 +31,16 @@
 #include <boost/filesystem.hpp>
 #include <boost/function.hpp>
 #include <boost/signals2.hpp>
-#include <map>
 
 #include "dynamic_moos_vars.h"
 #include "goby/common/configuration_reader.h"
 #include "goby/common/exception.h"
 #include "goby/common/logger.h"
+#include "goby/common/time.h"
+#include "goby/moos/moos_header.h"
+#include "goby/moos/moos_translator.h"
 #include "goby/moos/protobuf/goby_moos_app.pb.h"
+#include "goby/util/as.h"
 #include "goby/version.h"
 #include "moos_protobuf_helpers.h"
 
@@ -86,8 +87,12 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
 
     template <typename ProtobufConfig>
     explicit GobyMOOSAppSelector(ProtobufConfig* cfg)
-        : start_time_(MOOSTime()), configuration_read_(false), cout_cleared_(false),
-          connected_(false), started_up_(false), ignore_stale_(true),
+        : start_time_(MOOSTime()),
+          configuration_read_(false),
+          cout_cleared_(false),
+          connected_(false),
+          started_up_(false),
+          ignore_stale_(true),
           dynamic_moos_vars_enabled_(true)
     {
         using goby::glog;
@@ -175,7 +180,8 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
 
     void register_timer(int period_seconds, boost::function<void()> handler)
     {
-        int now = goby::common::goby_time<double>() / period_seconds;
+        int now =
+            (goby::time::now<goby::time::SITime>() / boost::units::si::seconds) / period_seconds;
         now *= period_seconds;
 
         SynchronousLoop new_loop;
@@ -348,7 +354,7 @@ template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::Iterate()
 
     if (synchronous_loops_.size())
     {
-        double now = goby::common::goby_time<double>();
+        double now = goby::time::now<goby::time::SITime>() / boost::units::si::seconds;
         for (typename std::vector<SynchronousLoop>::iterator it = synchronous_loops_.begin(),
                                                              end = synchronous_loops_.end();
              it != end; ++it)

@@ -86,7 +86,7 @@ template <typename TimeType> inline TimeType now()
 inline MicroTime now() { return now<MicroTime>(); }
 
 /// \brief Convert from boost::posix_time::ptime to boost::units::quantity<...> of time
-template <typename Quantity> Quantity from_ptime(boost::posix_time::ptime time_in)
+template <typename Quantity = MicroTime> Quantity from_ptime(boost::posix_time::ptime time_in)
 {
     using namespace boost::posix_time;
     using namespace boost::gregorian;
@@ -132,18 +132,18 @@ template <typename Quantity> boost::posix_time::ptime to_ptime(Quantity time_in)
 }
 
 /// \brief Returns current UTC date-time as a human-readable string
-inline std::string str()
+template <typename TimeType = MicroTime> inline std::string str(TimeType value = now())
 {
     std::stringstream ss;
-    ss << to_ptime(goby::time::now());
+    ss << to_ptime(value);
     return ss.str();
 }
 
 /// \brief Returns current UTC date-time as an ISO string suitable for file names (no spaces or special characters, e.g. 20180322T215258)
-inline std::string file_str()
+template <typename TimeType = MicroTime> inline std::string file_str(TimeType value = now())
 {
-    auto now = boost::units::round(goby::time::now<goby::time::SITime>());
-    return boost::posix_time::to_iso_string(to_ptime(now));
+    auto rounded_seconds = boost::units::round(goby::time::SITime(value));
+    return boost::posix_time::to_iso_string(to_ptime(rounded_seconds));
 }
 } // namespace time
 

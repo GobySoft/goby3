@@ -94,7 +94,7 @@ class Queue
 
     boost::posix_time::ptime newest_msg_time() const
     {
-        return size() ? goby::util::as<boost::posix_time::ptime>(messages_.back().meta.time())
+        return size() ? goby::time::to_ptime(messages_.back().meta.time_with_units())
                       : boost::posix_time::ptime();
     }
 

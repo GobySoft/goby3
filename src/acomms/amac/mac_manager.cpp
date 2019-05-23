@@ -133,7 +133,7 @@ void goby::acomms::MACManager::begin_slot(const boost::system::error_code& e)
         return;
 
     // check skew
-    if (std::abs(goby_time<double>() - goby::util::as<double>(next_slot_t_)) > ALLOWED_SKEW_SECONDS)
+    if (boost::units::abs(time::now() - time::from_ptime(next_slot_t_)) > allowed_skew_)
     {
         glog.is(DEBUG1) && glog << group(glog_mac_group_) << warn
                                 << "Clock skew detected, updating MAC." << std::endl;
@@ -142,7 +142,7 @@ void goby::acomms::MACManager::begin_slot(const boost::system::error_code& e)
     }
 
     protobuf::ModemTransmission s = *current_slot_;
-    s.set_time(goby::util::as<std::uint64_t>(next_slot_t_));
+    s.set_time_with_units(time::from_ptime(next_slot_t_));
 
     bool we_are_transmitting = true;
     switch (cfg_.type())
@@ -224,7 +224,7 @@ boost::posix_time::ptime goby::acomms::MACManager::next_cycle_time()
     using namespace boost::gregorian;
     using namespace boost::posix_time;
 
-    ptime now = goby_time();
+    ptime now = time::to_ptime(time::now());
 
     ptime reference;
     switch (cfg_.ref_time_type())
@@ -233,7 +233,7 @@ boost::posix_time::ptime goby::acomms::MACManager::next_cycle_time()
             reference = ptime(now.date(), seconds(0));
             break;
         case protobuf::MACConfig::REFERENCE_FIXED:
-            reference = goby::common::unix_double2ptime(cfg_.fixed_ref_time());
+            reference = time::to_ptime(cfg_.fixed_ref_time_with_units());
             break;
     }
 
@@ -293,7 +293,7 @@ void goby::acomms::MACManager::update()
         // step back a cycle
         next_slot_t_ -= boost::posix_time::microseconds(static_cast<long>(cycle_duration() * 1e6));
 
-        boost::posix_time::ptime now = goby_time();
+        boost::posix_time::ptime now = time::to_ptime(time::now());
 
         // skip slots until we're at a slot that is in the future
         while (next_slot_t_ < now) increment_slot();

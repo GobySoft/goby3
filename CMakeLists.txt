@@ -110,8 +110,8 @@ add_custom_command(OUTPUT ShareLink COMMAND ${CMAKE_COMMAND} -E create_symlink $
 add_custom_target(share_link ALL DEPENDS ShareLink)
 
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall") # -fprofile-arcs -ftest-coverage")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall") # -fprofile-arcs -ftest-coverage")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall")
 
 ## set type of libraries
 option(BUILD_SHARED_LIBS "Build shared libraries (set OFF to build static libraries)." ON)

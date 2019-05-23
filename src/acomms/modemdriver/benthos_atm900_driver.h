@@ -62,7 +62,6 @@ class BenthosATM900Driver : public ModemDriverBase
 
     benthos_fsm::BenthosATM900FSM fsm_;
     protobuf::DriverConfig driver_cfg_; // configuration given to you at launch
-    std::uint32_t next_frame_;
 };
 
 // placeholder id codec that uses no bits, since we're always sending just this message on the wire

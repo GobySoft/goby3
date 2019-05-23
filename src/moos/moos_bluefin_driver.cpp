@@ -137,7 +137,8 @@ void goby::moos::BluefinCommsDriver::handle_initiate_transmission(
                 if (msg.frame_size() && msg.frame(0).size())
                 {
                     NMEASentence nmea("$BPCPD", NMEASentence::IGNORE);
-                    nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+                    nmea.push_back(
+                        unix_time2nmea_time(time::now<time::SITime>() / boost::units::si::seconds));
                     nmea.push_back(++last_request_id_);
 
                     int bf_dest = goby_to_bluefin_id_.left.count(msg.dest())
@@ -184,7 +185,8 @@ void goby::moos::BluefinCommsDriver::handle_initiate_transmission(
 
 void goby::moos::BluefinCommsDriver::do_work()
 {
-    if (mac_ && mac_->running() && end_of_mac_window_ < goby_time<double>())
+    if (mac_ && mac_->running() &&
+        end_of_mac_window_ < time::now<time::SITime>() / boost::units::si::seconds)
         mac_->shutdown();
 
     MOOSMSG_LIST msgs;
@@ -238,7 +240,7 @@ void goby::moos::BluefinCommsDriver::do_work()
 
 std::string goby::moos::BluefinCommsDriver::unix_time2nmea_time(double time)
 {
-    boost::posix_time::ptime ptime = goby::common::unix_double2ptime(time);
+    boost::posix_time::ptime ptime = time::to_ptime(time * boost::units::si::seconds);
 
     // HHMMSS.SSS
     // it appears that exactly three digits of precision is important (sometimes)
@@ -260,7 +262,9 @@ void goby::moos::BluefinCommsDriver::bfcma(const goby::util::NMEASentence& nmea)
         MODEM_ADDRESS = 3,
         DEVICE_TYPE = 4
     };
-    end_of_mac_window_ = goby::util::as<double>(nmea_time2ptime(nmea.at(END_OF_TIME_WINDOW)));
+    end_of_mac_window_ =
+        time::from_ptime<time::SITime>(nmea_time2ptime(nmea.at(END_OF_TIME_WINDOW))) /
+        boost::units::si::seconds;
     current_modem_ = nmea.at(DEVICE_TYPE);
     if (mac_)
         mac_->restart();
@@ -287,7 +291,7 @@ void goby::moos::BluefinCommsDriver::bfcps(const goby::util::NMEASentence& nmea)
     if (nmea.as<int>(REQUEST_ID) == last_request_id_)
     {
         goby::acomms::protobuf::ModemTransmission msg;
-        msg.set_time(goby_time<std::uint64_t>());
+        msg.set_time_with_units(time::now());
         msg.set_src(last_data_msg_.dest()); // ack came from last data's destination, presumably
         msg.set_dest(last_data_msg_.src());
         msg.set_type(goby::acomms::protobuf::ModemTransmission::ACK);
@@ -338,7 +342,7 @@ void goby::moos::BluefinCommsDriver::bfcpr(const goby::util::NMEASentence& nmea)
     };
 
     goby::acomms::protobuf::ModemTransmission msg;
-    msg.set_time(goby::util::as<std::uint64_t>(nmea_time2ptime(nmea.at(ARRIVAL_TIME))));
+    msg.set_time_with_units(time::from_ptime(nmea_time2ptime(nmea.at(ARRIVAL_TIME))));
     msg.set_time_source(goby::acomms::protobuf::ModemTransmission::MODEM_TIME);
 
     int goby_src = goby_to_bluefin_id_.right.count(nmea.as<int>(SOURCE))

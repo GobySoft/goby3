@@ -3,7 +3,6 @@ file(GLOB PROTOS protobuf/*.proto)
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
 
 set(SRC
-   goby_moos_app.cpp
    modem_id_convert.cpp
    moos_translator.cpp
    moos_protobuf_helpers.cpp

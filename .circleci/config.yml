@@ -68,7 +68,7 @@ job-template-amd64: &job-template-amd64
         command: apt-get update && apt-get dist-upgrade -y
     - run:
         name: Build
-        command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
+        command: mkdir -p build && cd build && cmake -Denable_testing=ON -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -- -j4
     - run: &run-tests
         name: Run tests
         command: cd build && ctest --output-on-failure -j4

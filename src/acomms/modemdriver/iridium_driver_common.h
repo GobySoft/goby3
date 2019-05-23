@@ -43,8 +43,12 @@ class OnCallBase
 {
   public:
     OnCallBase()
-        : last_tx_time_(goby::common::goby_time<double>()), last_rx_time_(0), bye_received_(false),
-          bye_sent_(false), total_bytes_sent_(0), last_bytes_sent_(0)
+        : last_tx_time_(time::now<time::SITime>() / boost::units::si::seconds),
+          last_rx_time_(0),
+          bye_received_(false),
+          bye_sent_(false),
+          total_bytes_sent_(0),
+          last_bytes_sent_(0)
     {
     }
     double last_rx_tx_time() const { return std::max(last_tx_time_, last_rx_time_); }

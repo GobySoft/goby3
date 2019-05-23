@@ -257,7 +257,7 @@ void goby::moos::alg_abs(transitional::DCCLMessageVal& val_to_mod)
 void goby::moos::alg_unix_time2nmea_time(transitional::DCCLMessageVal& val_to_mod)
 {
     double unix_time = val_to_mod;
-    boost::posix_time::ptime ptime = goby::common::unix_double2ptime(unix_time);
+    boost::posix_time::ptime ptime = time::to_ptime(unix_time * boost::units::si::seconds);
 
     // HHMMSS.SSSSSS
     boost::format f("%02d%02d%02d.%06d");

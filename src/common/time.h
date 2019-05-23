@@ -39,22 +39,26 @@ namespace goby
 {
 namespace common
 {
-inline double ptime2unix_double(boost::posix_time::ptime given_time)
+[[deprecated("use from_ptime<...>(...)")]] inline double
+ptime2unix_double(boost::posix_time::ptime given_time)
 {
     return time::from_ptime<time::SITime>(given_time).value();
 }
 
-inline boost::posix_time::ptime unix_double2ptime(double given_time)
+[[deprecated("use to_ptime<...>(...)")]] inline boost::posix_time::ptime
+unix_double2ptime(double given_time)
 {
     return time::to_ptime(time::SITime::from_value(given_time));
 }
 
-inline std::uint64_t ptime2unix_microsec(boost::posix_time::ptime given_time)
+[[deprecated("use from_ptime<...>(...)")]] inline std::uint64_t
+ptime2unix_microsec(boost::posix_time::ptime given_time)
 {
     return time::from_ptime<time::MicroTime>(given_time).value();
 }
 
-inline boost::posix_time::ptime unix_microsec2ptime(std::uint64_t given_time)
+[[deprecated("use to_ptime<...>(...)")]] inline boost::posix_time::ptime
+unix_microsec2ptime(std::uint64_t given_time)
 {
     return time::to_ptime(time::MicroTime::from_value(given_time));
 }
@@ -63,53 +67,55 @@ inline boost::posix_time::ptime unix_microsec2ptime(std::uint64_t given_time)
 namespace util
 {
 template <typename To, typename From>
-typename boost::enable_if<
+[[deprecated("use from_ptime<...>(...)")]] typename boost::enable_if<
     boost::mpl::and_<boost::is_same<To, double>, boost::is_same<From, boost::posix_time::ptime> >,
     To>::type
 as(const From& from)
 {
-    return goby::common::ptime2unix_double(from);
+    return time::from_ptime<time::SITime>(from).value();
 }
 
 template <typename To, typename From>
-typename boost::enable_if<
+[[deprecated("use to_ptime<...>(...)")]] typename boost::enable_if<
     boost::mpl::and_<boost::is_same<To, boost::posix_time::ptime>, boost::is_same<From, double> >,
     To>::type
 as(const From& from)
 {
-    return goby::common::unix_double2ptime(from);
+    return time::to_ptime(time::SITime::from_value(from));
 }
 
 template <typename To, typename From>
-typename boost::enable_if<boost::mpl::and_<boost::is_same<To, std::uint64_t>,
-                                           boost::is_same<From, boost::posix_time::ptime> >,
-                          To>::type
-as(const From& from)
+[[deprecated("use from_ptime<...>(...)")]]
+    typename boost::enable_if<boost::mpl::and_<boost::is_same<To, std::uint64_t>,
+                                               boost::is_same<From, boost::posix_time::ptime> >,
+                              To>::type
+    as(const From& from)
 {
-    return goby::common::ptime2unix_microsec(from);
+    return time::from_ptime<time::MicroTime>(from).value();
 }
 
 template <typename To, typename From>
-typename boost::enable_if<boost::mpl::and_<boost::is_same<To, boost::posix_time::ptime>,
-                                           boost::is_same<From, std::uint64_t> >,
-                          To>::type
-as(const From& from)
+[[deprecated("use to_ptime<...>(...)")]]
+    typename boost::enable_if<boost::mpl::and_<boost::is_same<To, boost::posix_time::ptime>,
+                                               boost::is_same<From, std::uint64_t> >,
+                              To>::type
+    as(const From& from)
 {
-    return goby::common::unix_microsec2ptime(from);
+    return time::to_ptime(time::MicroTime::from_value(from));
 }
 } // namespace util
 
 /// Utility objects for performing functions such as logging, non-acoustic communication (ethernet / serial), time, scientific, string manipulation, etc.
 namespace common
 {
-template <typename ReturnType> ReturnType goby_time()
-{
+template <typename ReturnType>
+[[deprecated("time::now<...>()")]] ReturnType goby_time() {
     static_assert(sizeof(ReturnType) == 0, "Invalid ReturnType for goby_time<>()");
 }
 
 extern boost::function0<std::uint64_t> goby_time_function;
 
-template <> inline std::uint64_t goby_time<std::uint64_t>()
+template <>[[deprecated("time::now<...>()")]] inline std::uint64_t goby_time<std::uint64_t>()
 {
     if (!goby_time_function)
         return goby::time::now().value();
@@ -117,45 +123,54 @@ template <> inline std::uint64_t goby_time<std::uint64_t>()
         return goby_time_function();
 }
 
-template <> inline double goby_time<double>()
+template <>[[deprecated("time::now<...>()")]] inline double goby_time<double>()
 {
-    return static_cast<double>(goby_time<std::uint64_t>()) / 1.0e6;
+    return time::now<time::SITime>() / boost::units::si::seconds;
 }
 
-template <> inline boost::posix_time::ptime goby_time<boost::posix_time::ptime>()
+template <>
+[[deprecated("time::to_ptime(time::now())")]] inline boost::posix_time::ptime
+goby_time<boost::posix_time::ptime>()
 {
-    return util::as<boost::posix_time::ptime>(goby_time<std::uint64_t>());
+    return time::to_ptime(time::now());
 }
 
-inline boost::posix_time::ptime goby_time() { return goby_time<boost::posix_time::ptime>(); }
+[[deprecated("time::now<...>()")]] inline boost::posix_time::ptime goby_time()
+{
+    return time::to_ptime(time::now());
+}
 
 /// \brief Returns current UTC time as a human-readable string
-template <> inline std::string goby_time<std::string>()
+template <>
+[[deprecated("use as<std::string>(time::to_ptime(time::now()))")]] inline std::string
+goby_time<std::string>()
 {
-    return goby::util::as<std::string>(goby_time<boost::posix_time::ptime>());
+    return goby::util::as<std::string>(time::to_ptime(time::now()));
 }
 
 /// Simple string representation of goby_time()
-inline std::string goby_time_as_string(const boost::posix_time::ptime& t = goby_time())
+[[deprecated("use as<std::string>(time::to_ptime(...))")]] inline std::string
+goby_time_as_string(const boost::posix_time::ptime& t = time::to_ptime(time::now()))
 {
     return goby::util::as<std::string>(t);
 }
 
 /// ISO string representation of goby_time()
-inline std::string goby_file_timestamp()
+[[deprecated("use time::file_str()")]] inline std::string goby_file_timestamp()
 {
-    using namespace boost::posix_time;
-    return to_iso_string(second_clock::universal_time());
+    return time::file_str();
 }
 
 /// convert to ptime from time_t from time.h (whole seconds since UNIX)
-inline boost::posix_time::ptime time_t2ptime(std::time_t t)
+[[deprecated("use boost::posix_time::from_time_t(...)")]] inline boost::posix_time::ptime
+time_t2ptime(std::time_t t)
 {
     return boost::posix_time::from_time_t(t);
 }
 
 /// convert from ptime to time_t from time.h (whole seconds since UNIX)
-inline std::time_t ptime2time_t(boost::posix_time::ptime t)
+[[deprecated("use boost::posix_time::to_tm(...) and mktime(...)")]] inline std::time_t
+ptime2time_t(boost::posix_time::ptime t)
 {
     std::tm out = boost::posix_time::to_tm(t);
     return mktime(&out);
@@ -239,7 +254,7 @@ template <> struct time_traits<goby::common::GobyTime>
     typedef boost::posix_time::time_duration duration_type;
 
     /// Get the current time.
-    static time_type now() { return goby::common::goby_time(); }
+    static time_type now() { return goby::time::to_ptime(goby::time::now()); }
 
     /// Add a duration to a time.
     static time_type add(const time_type& t, const duration_type& d) { return t + d; }

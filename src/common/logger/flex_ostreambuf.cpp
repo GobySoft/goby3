@@ -39,7 +39,7 @@
 #include "goby/util/sci.h"
 #include "logger_manipulators.h"
 
-using goby::common::goby_time;
+using goby::time::now;
 
 #ifdef HAS_NCURSES
 std::mutex curses_mutex;
@@ -48,11 +48,17 @@ std::mutex curses_mutex;
 std::recursive_mutex goby::common::logger::mutex;
 
 goby::common::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
-    : buffer_(1), name_("no name"), die_flag_(false), current_verbosity_(logger::UNKNOWN),
+    : buffer_(1),
+      name_("no name"),
+      die_flag_(false),
+      current_verbosity_(logger::UNKNOWN),
 #ifdef HAS_NCURSES
       curses_(0),
 #endif
-      start_time_(goby_time()), is_gui_(false), highest_verbosity_(logger::QUIET), parent_(parent)
+      start_time_(time::to_ptime(now())),
+      is_gui_(false),
+      highest_verbosity_(logger::QUIET),
+      parent_(parent)
 
 {
     Group no_group("", "Ungrouped messages");
@@ -196,7 +202,8 @@ void goby::common::FlexOStreamBuf::display(std::string& s)
                 {
                     std::lock_guard<std::mutex> lock(curses_mutex);
                     std::stringstream line;
-                    boost::posix_time::time_duration time_of_day = goby_time().time_of_day();
+                    boost::posix_time::time_duration time_of_day =
+                        time::to_ptime(now()).time_of_day();
                     line << "\n"
                          << std::setfill('0') << std::setw(2) << time_of_day.hours() << ":"
                          << std::setw(2) << time_of_day.minutes() << ":" << std::setw(2)
@@ -204,7 +211,7 @@ void goby::common::FlexOStreamBuf::display(std::string& s)
                          << TermColor::esc_code_from_col(groups_[group_name_].color()) << " | "
                          << esc_nocolor << s;
 
-                    curses_->insert(goby_time(), line.str(), &groups_[group_name_]);
+                    curses_->insert(time::to_ptime(now()), line.str(), &groups_[group_name_]);
                 }
                 else
                 {
@@ -220,7 +227,7 @@ void goby::common::FlexOStreamBuf::display(std::string& s)
 #endif
 
             *cfg.os() << TermColor::esc_code_from_col(groups_[group_name_].color()) << name_
-                      << esc_nocolor << " [" << goby::common::goby_time_as_string() << "]";
+                      << esc_nocolor << " [" << goby::time::str() << "]";
             if (!group_name_.empty())
                 *cfg.os() << " "
                           << "{" << group_name_ << "}";

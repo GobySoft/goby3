@@ -30,6 +30,7 @@
 
 #include "goby/common/protobuf/hdf5.pb.h"
 #include "goby/util/primitive_types.h"
+#include <goby/common/time3.h>
 
 namespace goby
 {
@@ -38,22 +39,22 @@ namespace common
 struct HDF5ProtobufEntry
 {
     std::string channel;
-    std::uint64_t time;
+    goby::time::MicroTime time{0 * boost::units::si::seconds};
     std::shared_ptr<google::protobuf::Message> msg;
 
-    HDF5ProtobufEntry() : time(0) {}
+    HDF5ProtobufEntry() {}
 
     void clear()
     {
         channel.clear();
-        time = 0;
+        time = time::MicroTime(0 * boost::units::si::seconds);
         msg.reset();
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HDF5ProtobufEntry& entry)
 {
-    os << "@" << entry.time << ": ";
+    os << "@" << entry.time.value() << ": ";
     os << "/" << entry.channel;
     if (entry.msg)
     {
