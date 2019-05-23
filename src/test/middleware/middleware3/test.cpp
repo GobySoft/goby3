@@ -243,7 +243,7 @@ void zmq_forward(const goby::protobuf::InterProcessPortalConfig& cfg)
 int main(int argc, char* argv[])
 {
     goby::protobuf::InterProcessPortalConfig cfg;
-    cfg.set_platform("test4");
+    cfg.set_platform("test3");
 
     pid_t child_pid = fork();
 

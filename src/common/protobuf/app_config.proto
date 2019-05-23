@@ -3,7 +3,7 @@ import "goby/common/protobuf/logger.proto";
 
 package goby.protobuf;
 
-message App3Config
+message AppConfig
 {
     optional string name = 1 [
         (goby.field).example = "myapp_g",

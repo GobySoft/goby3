@@ -19,7 +19,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/application_base3.h"
+#include "goby/common/application.h"
 #include "goby/middleware/gobyd/groups.h"
 #include "goby/middleware/protobuf/intervehicle_status.pb.h"
 #include "goby/middleware/transport-interprocess-zeromq.h"
@@ -34,7 +34,7 @@ using goby::glog;
 
 namespace goby
 {
-class Daemon : public goby::common::ApplicationBase3<goby::protobuf::GobyDaemonConfig>
+class Daemon : public goby::common::Application<goby::protobuf::GobyDaemonConfig>
 {
   public:
     Daemon();

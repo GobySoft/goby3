@@ -33,10 +33,22 @@ extern constexpr goby::Group widget1{3};
 extern constexpr goby::Group widget2{"widget2"};
 extern constexpr goby::Group ready{"ready"};
 
+const std::string platform_name{"multi_thread_app1"};
+
 constexpr int num_messages{10};
 
 using AppBase = goby::MultiThreadApplication<TestConfig>;
 
+class TestConfigurator : public goby::common::ProtobufConfigurator<TestConfig>
+{
+  public:
+    TestConfigurator(int argc, char* argv[])
+        : goby::common::ProtobufConfigurator<TestConfig>(argc, argv)
+    {
+        TestConfig& cfg = mutable_cfg();
+        cfg.mutable_interprocess()->set_platform(platform_name);
+    }
+};
 class TestThreadRx : public goby::SimpleThread<TestConfig>
 {
   public:
@@ -152,6 +164,7 @@ int main(int argc, char* argv[])
     if (child_pid != 0)
     {
         goby::protobuf::InterProcessPortalConfig cfg;
+        cfg.set_platform(platform_name);
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
         goby::ZMQRouter router(*router_context, cfg);
@@ -173,7 +186,7 @@ int main(int argc, char* argv[])
         if (child2_pid != 0)
         {
             int wstatus;
-            int rc = goby::run<TestAppRx>(argc, argv);
+            int rc = goby::run<TestAppRx>(TestConfigurator(argc, argv));
             wait(&wstatus);
             if (wstatus != 0)
                 exit(EXIT_FAILURE);
@@ -182,7 +195,7 @@ int main(int argc, char* argv[])
         else
         {
             usleep(100000);
-            return goby::run<TestAppTx>(argc, argv);
+            return goby::run<TestAppTx>(TestConfigurator(argc, argv));
         }
     }
     std::cout << "All tests passed." << std::endl;

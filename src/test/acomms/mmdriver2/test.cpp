@@ -23,7 +23,7 @@
 
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
-#include "goby/common/application_base3.h"
+#include "goby/common/application.h"
 #include "goby/common/logger.h"
 #include "goby/util/binary.h"
 #include "test_config.pb.h"
@@ -37,8 +37,7 @@ using namespace boost::posix_time;
 std::mutex driver_mutex;
 int last_transmission_index = 0;
 
-class MMDriverTest2
-    : public goby::common::ApplicationBase3<goby::test::protobuf::MMDriverTest2Config>
+class MMDriverTest2 : public goby::common::Application<goby::test::protobuf::MMDriverTest2Config>
 {
   public:
     MMDriverTest2();

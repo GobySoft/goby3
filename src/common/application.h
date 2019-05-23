@@ -33,7 +33,7 @@
 
 #include "goby/common/exception.h"
 
-#include "goby/common/protobuf/app3.pb.h"
+#include "goby/common/protobuf/app_config.pb.h"
 
 #include "goby/common/logger.h"
 #include "goby/common/time3.h"
@@ -45,7 +45,7 @@ namespace goby
 /// \brief Run a Goby application using the provided Configurator
 /// blocks caller until ```__run()``` returns
 /// \param cfgtor Subclass of ConfiguratorInterface used to configure the App
-/// \tparam App ApplicationBase3 subclass
+/// \tparam App Application subclass
 /// \return same as ```int main(int argc, char* argv)```
 template <typename App>
 int run(const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfgtor);
@@ -53,7 +53,7 @@ int run(const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfg
 /// \brief Shorthand for goby::run for Configurators that have a constructor that simply takes argc, argv, e.g. MyConfigurator(int argc, char* argv[]). Allows for backwards-compatibility pre-Configurator.
 /// \param argc same as argc in ```int main(int argc, char* argv)```
 /// \param argv same as argv in ```int main(int argc, char* argv)```
-/// \tparam App ApplicationBase3 subclass
+/// \tparam App Application subclass
 /// \tparam Configurator Configurator object that has a constructor such as ```Configurator(int argc, char* argv)```
 /// \return same as ```int main(int argc, char* argv)```
 template <typename App,
@@ -65,14 +65,13 @@ int run(int argc, char* argv[])
 
 namespace common
 {
-template <typename Config> class ApplicationBase3
+template <typename Config> class Application
 {
   public:
-    ApplicationBase3();
-    virtual ~ApplicationBase3()
+    Application();
+    virtual ~Application()
     {
-        goby::glog.is_debug2() && goby::glog << "ApplicationBase3: destructing cleanly"
-                                             << std::endl;
+        goby::glog.is_debug2() && goby::glog << "Application: destructing cleanly" << std::endl;
     }
 
     using ConfigType = Config;
@@ -110,7 +109,7 @@ template <typename Config> class ApplicationBase3
   private:
     // sets configuration (before Application construction)
     static Config app_cfg_;
-    static goby::protobuf::App3Config app3_base_configuration_;
+    static goby::protobuf::AppConfig app3_base_configuration_;
 
     bool alive_;
     int return_value_;
@@ -123,14 +122,14 @@ template <typename Config> class ApplicationBase3
 } // namespace goby
 
 template <typename Config>
-std::vector<std::unique_ptr<std::ofstream> > goby::common::ApplicationBase3<Config>::fout_;
+std::vector<std::unique_ptr<std::ofstream> > goby::common::Application<Config>::fout_;
 
-template <typename Config> Config goby::common::ApplicationBase3<Config>::app_cfg_;
+template <typename Config> Config goby::common::Application<Config>::app_cfg_;
 
 template <typename Config>
-goby::protobuf::App3Config goby::common::ApplicationBase3<Config>::app3_base_configuration_;
+goby::protobuf::AppConfig goby::common::Application<Config>::app3_base_configuration_;
 
-template <typename Config> goby::common::ApplicationBase3<Config>::ApplicationBase3() : alive_(true)
+template <typename Config> goby::common::Application<Config>::Application() : alive_(true)
 {
     using goby::glog;
     using namespace goby::common::logger;
@@ -190,7 +189,7 @@ template <typename Config> goby::common::ApplicationBase3<Config>::ApplicationBa
     if (!app3_base_configuration_.IsInitialized())
         throw(common::ConfigException("Invalid base configuration"));
 
-    glog.is(DEBUG2) && glog << "ApplicationBase3: constructed with PID: " << getpid() << std::endl;
+    glog.is(DEBUG2) && glog << "Application: constructed with PID: " << getpid() << std::endl;
     glog.is(DEBUG1) && glog << "App name is " << app3_base_configuration_.name() << std::endl;
     glog.is(DEBUG2) && glog << "Configuration is: " << app_cfg_.DebugString() << std::endl;
 
@@ -207,7 +206,7 @@ template <typename Config> goby::common::ApplicationBase3<Config>::ApplicationBa
     }
 }
 
-template <typename Config> int goby::common::ApplicationBase3<Config>::__run()
+template <typename Config> int goby::common::Application<Config>::__run()
 {
     // block SIGWINCH (change window size) in all threads
     sigset_t signal_mask;
@@ -257,7 +256,7 @@ int goby::run(const goby::common::ConfiguratorInterface<typename App::ConfigType
     catch (std::exception& e)
     {
         // some other exception
-        std::cerr << "ApplicationBase3:: uncaught exception: " << e.what() << std::endl;
+        std::cerr << "Application:: uncaught exception: " << e.what() << std::endl;
         return 2;
     }
 

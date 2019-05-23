@@ -33,6 +33,20 @@ using namespace goby::common::logger;
 extern constexpr goby::Group widget1{"Widget1"};
 
 using Base = goby::SingleThreadApplication<TestConfig>;
+
+const std::string platform_name{"single_thread_app1"};
+
+class TestConfigurator : public goby::common::ProtobufConfigurator<TestConfig>
+{
+  public:
+    TestConfigurator(int argc, char* argv[])
+        : goby::common::ProtobufConfigurator<TestConfig>(argc, argv)
+    {
+        TestConfig& cfg = mutable_cfg();
+        cfg.mutable_interprocess()->set_platform(platform_name);
+    }
+};
+
 class TestApp : public Base
 {
   public:
@@ -88,6 +102,7 @@ int main(int argc, char* argv[])
     if (child_pid != 0)
     {
         goby::protobuf::InterProcessPortalConfig cfg;
+        cfg.set_platform(platform_name);
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
         goby::ZMQRouter router(*router_context, cfg);
@@ -107,6 +122,6 @@ int main(int argc, char* argv[])
     {
         // wait for router to set up
         sleep(1);
-        return goby::run<TestApp>(argc, argv);
+        return goby::run<TestApp>(TestConfigurator(argc, argv));
     }
 }

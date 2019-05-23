@@ -25,7 +25,7 @@
 
 #include <boost/units/systems/si.hpp>
 
-#include "goby/common/application_base3.h"
+#include "goby/common/application.h"
 #include "goby/middleware/thread.h"
 #include "goby/middleware/transport-interprocess-zeromq.h"
 #include "goby/middleware/transport-intervehicle.h"
@@ -35,7 +35,7 @@
 namespace goby
 {
 template <class Config>
-class SingleThreadApplication : public goby::common::ApplicationBase3<Config>,
+class SingleThreadApplication : public goby::common::Application<Config>,
                                 public Thread<Config, InterVehicleForwarder<InterProcessPortal<> > >
 {
   private:

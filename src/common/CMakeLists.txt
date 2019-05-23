@@ -1,5 +1,5 @@
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
-  protobuf/app3.proto
+  protobuf/app_config.proto
   protobuf/hdf5.proto
   protobuf/logger.proto
   protobuf/option_extensions.proto)

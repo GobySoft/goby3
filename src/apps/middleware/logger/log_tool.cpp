@@ -19,7 +19,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/application_base3.h"
+#include "goby/common/application.h"
 
 #include "goby/middleware/log.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
@@ -31,7 +31,7 @@ using goby::glog;
 
 namespace goby
 {
-class LogTool : public goby::common::ApplicationBase3<protobuf::LogToolConfig>
+class LogTool : public goby::common::Application<protobuf::LogToolConfig>
 {
   public:
     LogTool();

@@ -1,10 +1,10 @@
-import "goby/common/protobuf/app3.proto";
+import "goby/common/protobuf/app_config.proto";
 
 package goby.protobuf;
 
 message LogToolConfig
 {
-    optional goby.protobuf.App3Config app = 1;
+    optional goby.protobuf.AppConfig app = 1;
 
     required string input_file = 10;
     required string output_file = 20;

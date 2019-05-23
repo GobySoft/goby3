@@ -1,5 +1,5 @@
 import "goby/common/protobuf/option_extensions.proto";
-import "goby/common/protobuf/app3.proto";
+import "goby/common/protobuf/app_config.proto";
 import "goby/middleware/protobuf/interprocess_config.proto";
 import "dccl/option_extensions.proto";
 
@@ -8,7 +8,7 @@ package goby.protobuf;
 message TerminateConfig
 {
     option (dccl.msg).unit_system = "si";
-    optional App3Config app = 1;
+    optional AppConfig app = 1;
     optional InterProcessPortalConfig interprocess = 2;
     repeated string target_name = 3;
     repeated uint32 target_pid = 4;

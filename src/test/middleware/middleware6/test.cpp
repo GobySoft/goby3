@@ -187,7 +187,7 @@ int main(int argc, char* argv[])
     std::cout << "Running test type (0 = interthread, 1 = interprocess): " << test << std::endl;
 
     goby::protobuf::InterProcessPortalConfig cfg;
-    cfg.set_platform("test6");
+    cfg.set_platform("test6_" + std::to_string(test));
     //    cfg.set_transport(goby::protobuf::InterProcessPortalConfig::TCP);
     // cfg.set_ipv4_address("127.0.0.1");
     //cfg.set_tcp_port(10005);

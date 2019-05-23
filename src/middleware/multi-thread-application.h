@@ -25,7 +25,7 @@
 
 #include <boost/units/systems/si.hpp>
 
-#include "goby/common/application_base3.h"
+#include "goby/common/application.h"
 #include "goby/common/exception.h"
 #include "goby/middleware/thread.h"
 #include "goby/middleware/transport-interprocess-zeromq.h"
@@ -88,7 +88,7 @@ class SimpleThread
 };
 
 template <class Config, class Transporter>
-class MultiThreadApplicationBase : public goby::common::ApplicationBase3<Config>,
+class MultiThreadApplicationBase : public goby::common::Application<Config>,
                                    public goby::Thread<Config, Transporter>
 {
   private:
@@ -115,7 +115,7 @@ class MultiThreadApplicationBase : public goby::common::ApplicationBase3<Config>
 
     MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq,
                                Transporter* transporter)
-        : goby::common::ApplicationBase3<Config>(),
+        : goby::common::Application<Config>(),
           MainThreadBase(this->app_cfg(), transporter, loop_freq)
     {
         goby::glog.set_lock_action(goby::common::logger_lock::lock);
