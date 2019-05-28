@@ -112,7 +112,7 @@ extern boost::function0<std::uint64_t> goby_time_function;
 template <> inline std::uint64_t goby_time<std::uint64_t>()
 {
     if (!goby_time_function)
-        return goby::time::now().value();
+        return goby::time::now<goby::time::MicroTime>().value();
     else
         return goby_time_function();
 }

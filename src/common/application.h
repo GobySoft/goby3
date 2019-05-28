@@ -201,8 +201,8 @@ template <typename Config> goby::common::Application<Config>::Application() : al
             app3_base_configuration_.simulation().time().warp_factor();
         if (app3_base_configuration_.simulation().time().has_reference_microtime())
             goby::time::SimulatorSettings::reference_time =
-                app3_base_configuration_.simulation().time().reference_microtime() *
-                boost::units::si::micro * boost::units::si::seconds;
+                std::chrono::system_clock::time_point(std::chrono::microseconds(
+                    app3_base_configuration_.simulation().time().reference_microtime()));
     }
 }
 

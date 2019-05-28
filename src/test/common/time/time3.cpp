@@ -47,7 +47,7 @@ int main()
     namespace si = boost::units::si;
 
     auto now_seconds = goby::time::now<goby::time::SITime>();
-    auto now_microseconds = goby::time::now();
+    auto now_microseconds = goby::time::now<goby::time::MicroTime>();
 
     static_assert(std::is_same<goby::time::MicroTime::value_type, std::int64_t>(),
                   "expected int64_t value time");
@@ -80,7 +80,10 @@ int main()
     goby::time::SimulatorSettings::warp_factor = 10;
     goby::time::SimulatorSettings::using_sim_time = true;
 
-    std::cout << "warp reference: " << goby::time::SimulatorSettings::reference_time << std::endl;
+    std::cout << "warp reference: "
+              << goby::time::convert<goby::time::MicroTime>(
+                     goby::time::SimulatorSettings::reference_time)
+              << std::endl;
     auto ref_ptime = goby::time::to_ptime(goby::time::SimulatorSettings::reference_time);
     std::cout << "\tas ptime: " << ref_ptime << std::endl;
 
@@ -89,7 +92,7 @@ int main()
     assert(ref_ptime.date().year() ==
            boost::posix_time::second_clock::universal_time().date().year());
 
-    auto now_warped_microseconds = goby::time::now();
+    auto now_warped_microseconds = goby::time::now<goby::time::MicroTime>();
     std::cout << "now (warped 10):\t\t" << now_warped_microseconds << std::endl;
     auto now_warped_ptime = goby::time::to_ptime(now_warped_microseconds);
 
