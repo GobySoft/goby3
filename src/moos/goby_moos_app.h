@@ -76,12 +76,6 @@ class MOOSAppShell : public CMOOSApp
 
 template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public MOOSAppType
 {
-  public:
-    static std::uint64_t microsec_moos_time()
-    {
-        return static_cast<std::uint64_t>(MOOSTime() * 1.0e6);
-    }
-
   protected:
     typedef boost::function<void(const CMOOSMsg& msg)> InboxFunc;
 
@@ -956,9 +950,9 @@ template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::process_conf
 
     if (common_cfg_.time_warp_multiplier() != 1)
     {
-        goby::common::goby_time_function = GobyMOOSAppSelector<MOOSAppType>::microsec_moos_time;
         goby::time::SimulatorSettings::warp_factor = common_cfg_.time_warp_multiplier();
         goby::time::SimulatorSettings::using_sim_time = true;
+        goby::time::SimulatorSettings::reference_time = std::chrono::system_time::time_point(0);
         start_time_ *= common_cfg_.time_warp_multiplier();
     }
 }

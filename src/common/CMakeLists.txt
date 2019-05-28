@@ -5,7 +5,6 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/option_extensions.proto)
 
 set(SRC
-  time.cpp
   time3.cpp
   logger/flex_ostreambuf.cpp 
   logger/flex_ostream.cpp 

@@ -38,8 +38,6 @@ bool double_cmp(double a, double b, double precision)
     return (std::abs(a - b) < std::pow(10.0, -precision));
 }
 
-std::uint64_t fake_time() { return TEST_MICROSEC_TIME; }
-
 int main()
 {
     std::cout << "current double: " << std::setprecision(16) << goby_time<double>() << std::endl;
@@ -89,15 +87,6 @@ int main()
     assert(as<ptime>(goby_time<std::uint64_t>()) -
                boost::posix_time::microsec_clock::universal_time() <
            boost::posix_time::milliseconds(10));
-
-    goby::common::goby_time_function = &fake_time;
-
-    std::cout << goby_time() << std::endl;
-    std::cout << goby_time<double>() << std::endl;
-    std::cout << goby_time<std::uint64_t>() << std::endl;
-    assert(goby_time<std::uint64_t>() == TEST_MICROSEC_TIME);
-    assert(double_cmp(goby_time<double>(), TEST_DOUBLE_TIME, 6));
-    assert(goby_time<ptime>() == TEST_PTIME);
 
     const ptime FAR_FUTURE_COMPARISON_PTIME(date(2391, 10, 8),
                                             time_duration(9, 50, 9) + microseconds(399860));
