@@ -68,7 +68,7 @@ void goby::common::hdf5::Channel::add_message(const goby::common::HDF5ProtobufEn
             entries.insert(std::make_pair(msg_name, MessageCollection(msg_name)));
         it = itpair.first;
     }
-    it->second.entries.insert(std::make_pair(goby::time::MicroTime(entry.time).value(), entry.msg));
+    it->second.entries.insert(std::make_pair(time::MicroTime(entry.time).value(), entry.msg));
 }
 
 H5::Group& goby::common::hdf5::GroupFactory::fetch_group(const std::string& group_path)

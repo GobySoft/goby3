@@ -41,22 +41,22 @@ namespace common
 {
 inline double ptime2unix_double(boost::posix_time::ptime given_time)
 {
-    return time::from_ptime<time::SITime>(given_time).value();
+    return time::convert<time::SITime>(given_time).value();
 }
 
 inline boost::posix_time::ptime unix_double2ptime(double given_time)
 {
-    return time::to_ptime(time::SITime::from_value(given_time));
+    return time::convert<boost::posix_time::ptime>(time::SITime::from_value(given_time));
 }
 
 inline std::uint64_t ptime2unix_microsec(boost::posix_time::ptime given_time)
 {
-    return time::from_ptime<time::MicroTime>(given_time).value();
+    return time::convert<time::MicroTime>(given_time).value();
 }
 
 inline boost::posix_time::ptime unix_microsec2ptime(std::uint64_t given_time)
 {
-    return time::to_ptime(time::MicroTime::from_value(given_time));
+    return time::convert<boost::posix_time::ptime>(time::MicroTime::from_value(given_time));
 }
 } // namespace common
 
@@ -112,7 +112,7 @@ extern boost::function0<std::uint64_t> goby_time_function;
 template <> inline std::uint64_t goby_time<std::uint64_t>()
 {
     if (!goby_time_function)
-        return goby::time::now<goby::time::MicroTime>().value();
+        return goby::time::now<time::MicroTime>().value();
     else
         return goby_time_function();
 }

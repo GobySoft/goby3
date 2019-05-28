@@ -57,12 +57,12 @@ struct SimulatorSettings
     static std::chrono::system_clock::time_point reference_time;
 };
 
-struct Clock
+struct SystemClock
 {
-    typedef std::chrono::microseconds duration;
+    typedef std::chrono::nanoseconds duration;
     typedef duration::rep rep;
     typedef duration::period period;
-    typedef std::chrono::time_point<Clock> time_point;
+    typedef std::chrono::time_point<SystemClock> time_point;
     static const bool is_steady = false;
 
     static time_point now() noexcept
@@ -70,21 +70,40 @@ struct Clock
         using namespace std::chrono;
         auto now = system_clock::now();
 
-        // warp time (t) by warp factor (w), relative to reference_time (t0)
-        // so t_sim = (t-t0)*w+t0
-        if (SimulatorSettings::using_sim_time)
+        if (!SimulatorSettings::using_sim_time)
         {
-            auto duration_since_reference = now - SimulatorSettings::reference_time;
-            auto warped_duration_since_reference =
-                SimulatorSettings::warp_factor * duration_since_reference;
-            return time_point(
-                duration_cast<duration>(warped_duration_since_reference) +
-                duration_cast<duration>(SimulatorSettings::reference_time.time_since_epoch()));
+            return time_point(now.time_since_epoch());
         }
         else
         {
-            return time_point(duration_cast<duration>(now.time_since_epoch()));
+            // warp time (t) by warp factor (w), relative to reference_time (t0)
+            // so t_sim = (t-t0)*w+t0
+            auto duration_since_reference = now - SimulatorSettings::reference_time;
+            auto warped_duration_since_reference =
+                SimulatorSettings::warp_factor * duration_since_reference;
+            return time_point(warped_duration_since_reference +
+                              SimulatorSettings::reference_time.time_since_epoch());
         }
+    }
+};
+
+struct SteadyClock
+{
+    typedef std::chrono::nanoseconds duration;
+    typedef duration::rep rep;
+    typedef duration::period period;
+    typedef std::chrono::time_point<SteadyClock> time_point;
+    static const bool is_steady = false;
+
+    static time_point now() noexcept
+    {
+        using namespace std::chrono;
+        auto now = steady_clock::now();
+
+        if (!SimulatorSettings::using_sim_time)
+            return time_point(now.time_since_epoch());
+        else
+            return time_point(SimulatorSettings::warp_factor * now.time_since_epoch());
     }
 };
 
@@ -96,6 +115,7 @@ ToTimeType convert(FromTimeType from_time)
     return from_time;
 };
 
+/// \brief Convert between time representations (this function converts between two boost::units::quantity of time)
 template <
     typename ToTimeType, typename FromTimeType,
     typename ToUnitType = typename ToTimeType::unit_type,
@@ -112,10 +132,13 @@ ToTimeType convert(FromTimeType from_time)
     return ToTimeType(from_time);
 };
 
+/// \brief Convert between time representations (this function converts to a boost::units::quantity of time from either a chrono::system_clock or a goby::time::SystemClock)
 template <typename ToTimeType, typename FromTimeType,
+          typename ToUnitType = typename ToTimeType::unit_type,
+          typename ToValueType = typename ToTimeType::value_type,
           typename std::enable_if<
-              !std::is_same<ToTimeType, FromTimeType>{} &&
-                  (std::is_same<FromTimeType, Clock::time_point>{} ||
+              std::is_same<ToTimeType, boost::units::quantity<ToUnitType, ToValueType> >{} &&
+                  (std::is_same<FromTimeType, SystemClock::time_point>{} ||
                    std::is_same<FromTimeType, std::chrono::system_clock::time_point>{}),
               int>::type = 0>
 ToTimeType convert(FromTimeType from_time)
@@ -128,12 +151,15 @@ ToTimeType convert(FromTimeType from_time)
     }
 }
 
-template <
-    typename ToTimeType, typename FromTimeType,
-    typename std::enable_if<!std::is_same<ToTimeType, FromTimeType>{} &&
-                                (std::is_same<ToTimeType, Clock::time_point>{} ||
-                                 std::is_same<ToTimeType, std::chrono::system_clock::time_point>{}),
-                            int>::type = 0>
+/// \brief Convert between time representations (this function converts to either a chrono::system_clock or a goby::time::SystemClock from a boost::units::quantity of time)
+template <typename ToTimeType, typename FromTimeType,
+          typename FromUnitType = typename FromTimeType::unit_type,
+          typename FromValueType = typename FromTimeType::value_type,
+          typename std::enable_if<
+              std::is_same<FromTimeType, boost::units::quantity<FromUnitType, FromValueType> >{} &&
+                  (std::is_same<ToTimeType, SystemClock::time_point>{} ||
+                   std::is_same<ToTimeType, std::chrono::system_clock::time_point>{}),
+              int>::type = 0>
 ToTimeType convert(FromTimeType from_time)
 {
     std::int64_t microsecs_since_epoch = MicroTime(from_time).value();
@@ -142,41 +168,14 @@ ToTimeType convert(FromTimeType from_time)
         std::chrono::duration_cast<typename ToTimeType::duration>(duration_since_epoch));
 }
 
-/// \brief return the current system clock time since 1970-01-01 00:00 UTC ("UNIX Time")
-template <typename TimeType = MicroTime> inline TimeType now()
+/// \brief Convert between time representations (this function converts from a time type supported by the other convert functions to a boost::posix_time::ptime)
+template <typename ToTimeType, typename FromTimeType,
+          typename std::enable_if<!std::is_same<ToTimeType, FromTimeType>{} &&
+                                      std::is_same<ToTimeType, boost::posix_time::ptime>{},
+                                  int>::type = 0>
+ToTimeType convert(FromTimeType from_time)
 {
-    return convert<TimeType, Clock::time_point>(Clock::now());
-}
-
-/// \brief Convert from boost::posix_time::ptime to boost::units::quantity<...> of time
-template <typename TimeType = MicroTime> TimeType from_ptime(boost::posix_time::ptime time_in)
-{
-    using namespace boost::posix_time;
-    using namespace boost::gregorian;
-
-    if (time_in == not_a_date_time)
-    {
-        return convert<TimeType, MicroTime>(MicroTime::from_value(-1));
-    }
-    else
-    {
-        const int MICROSEC_IN_SEC = 1000000;
-
-        date_duration date_diff = time_in.date() - date(1970, 1, 1);
-        time_duration time_diff = time_in.time_of_day();
-
-        return convert<TimeType, MicroTime>(MicroTime::from_value(
-            static_cast<std::int64_t>(date_diff.days()) * 24 * 3600 * MICROSEC_IN_SEC +
-            static_cast<std::int64_t>(time_diff.total_seconds()) * MICROSEC_IN_SEC +
-            static_cast<std::int64_t>(time_diff.fractional_seconds()) /
-                (time_duration::ticks_per_second() / MICROSEC_IN_SEC)));
-    }
-}
-
-/// \brief Convert from boost::posix_time::ptime to boost::units::quantity<...> of time
-template <typename TimeType> boost::posix_time::ptime to_ptime(TimeType time_in)
-{
-    std::int64_t time_in_value = convert<MicroTime, TimeType>(time_in) / MicroTimeUnit();
+    std::int64_t time_in_value = convert<MicroTime, FromTimeType>(from_time) / MicroTimeUnit();
 
     using namespace boost::posix_time;
     using namespace boost::gregorian;
@@ -194,20 +193,56 @@ template <typename TimeType> boost::posix_time::ptime to_ptime(TimeType time_in)
     }
 }
 
-/// \brief Returns current UTC date-time as a human-readable string
-template <typename TimeType = MicroTime> inline std::string str(TimeType value = now<TimeType>())
+/// \brief Convert between time representations (this function converts from a boost::posix_time::ptime to a time type supported by the other convert functions)
+template <typename ToTimeType, typename FromTimeType,
+          typename std::enable_if<!std::is_same<ToTimeType, FromTimeType>{} &&
+                                      std::is_same<FromTimeType, boost::posix_time::ptime>{},
+                                  int>::type = 0>
+ToTimeType convert(FromTimeType from_time)
+{
+    using namespace boost::posix_time;
+    using namespace boost::gregorian;
+
+    if (from_time == not_a_date_time)
+    {
+        return convert<ToTimeType, MicroTime>(MicroTime::from_value(-1));
+    }
+    else
+    {
+        const int MICROSEC_IN_SEC = 1000000;
+
+        date_duration date_diff = from_time.date() - date(1970, 1, 1);
+        time_duration time_diff = from_time.time_of_day();
+
+        return convert<ToTimeType, MicroTime>(MicroTime::from_value(
+            static_cast<std::int64_t>(date_diff.days()) * 24 * 3600 * MICROSEC_IN_SEC +
+            static_cast<std::int64_t>(time_diff.total_seconds()) * MICROSEC_IN_SEC +
+            static_cast<std::int64_t>(time_diff.fractional_seconds()) /
+                (time_duration::ticks_per_second() / MICROSEC_IN_SEC)));
+    }
+}
+
+/// \brief return the current system clock time in one of the representations supported by the convert() family of functions
+template <typename TimeType> inline TimeType now()
+{
+    return convert<TimeType, SystemClock::time_point>(SystemClock::now());
+}
+
+/// \brief Returns the provided (or current time if omitted) time as a human-readable string
+template <typename TimeType = SystemClock::time_point>
+inline std::string str(TimeType value = now<TimeType>())
 {
     std::stringstream ss;
-    ss << to_ptime(value);
+    ss << convert<boost::posix_time::ptime>(value);
     return ss.str();
 }
 
-/// \brief Returns current UTC date-time as an ISO string suitable for file names (no spaces or special characters, e.g. 20180322T215258)
-template <typename TimeType = MicroTime>
+/// \brief Returns the provided (or current time if omitted) time as an ISO string suitable for file names (no spaces or special characters, e.g. 20180322T215258)
+template <typename TimeType = SystemClock::time_point>
 inline std::string file_str(TimeType value = now<TimeType>())
 {
     auto rounded_seconds = boost::units::round(convert<SITime, TimeType>(value));
-    return boost::posix_time::to_iso_string(to_ptime(rounded_seconds));
+    return boost::posix_time::to_iso_string(convert<boost::posix_time::ptime>(rounded_seconds));
 }
 } // namespace time
 

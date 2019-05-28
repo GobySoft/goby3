@@ -28,11 +28,12 @@ int goby::time::SimulatorSettings::warp_factor = 1;
 // creates the default reference time, which is Jan 1 of the current year
 std::chrono::system_clock::time_point create_reference_time()
 {
-    boost::posix_time::ptime now = goby::time::to_ptime(goby::time::now());
+    using namespace goby::time;
+    using boost::posix_time::ptime;
 
-    boost::posix_time::ptime last_year_start(boost::gregorian::date(now.date().year(), 1, 1));
-
-    return goby::time::from_ptime<std::chrono::system_clock::time_point>(last_year_start);
+    auto now_ptime = now<ptime>();
+    ptime last_year_start(boost::gregorian::date(now_ptime.date().year(), 1, 1));
+    return convert<std::chrono::system_clock::time_point>(last_year_start);
 }
 
 std::chrono::system_clock::time_point

@@ -38,7 +38,8 @@ inline std::ostream& operator<<(std::ostream& os, const CMOOSMsg& msg)
        << " Key: " << msg.GetKey() << " Type: " << (msg.IsDouble() ? "double" : "string")
        << " Value: "
        << (msg.IsDouble() ? goby::util::as<std::string>(msg.GetDouble()) : msg.GetString())
-       << " Time: " << time::to_ptime(msg.GetTime() * boost::units::si::seconds)
+       << " Time: "
+       << time::convert<boost::posix_time::ptime>(msg.GetTime() * boost::units::si::seconds)
        << " Community: " << msg.GetCommunity()
        << " Source: " << msg.m_sSrc // no getter in CMOOSMsg!!!
        << " Source Aux: " << msg.GetSourceAux();

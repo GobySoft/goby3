@@ -210,10 +210,10 @@ void goby::ZMQReadThread::run()
             req.SerializeToArray(static_cast<char*>(msg.data()), req.ByteSize());
             manager_socket_.send(msg);
 
-            auto start = std::chrono::system_clock::now();
+            auto start = goby::time::SystemClock::now();
             while (!have_pubsub_sockets_ &&
                    (start + std::chrono::seconds(cfg_.manager_timeout_seconds()) >
-                    std::chrono::system_clock::now()))
+                    goby::time::SystemClock::now()))
                 poll(cfg_.manager_timeout_seconds() * 1000);
 
             if (!have_pubsub_sockets_)

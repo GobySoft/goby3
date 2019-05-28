@@ -142,7 +142,7 @@ class LiaisonContainerWithComms : public LiaisonContainer
         std::lock_guard<std::mutex> l(wt_to_comms_mutex);
         while (!wt_to_comms_queue.empty())
         {
-            wt_to_comms_queue.front()();
+            wt_to_comms_queue.front();
             wt_to_comms_queue.pop();
         }
     }
@@ -165,7 +165,7 @@ class LiaisonContainerWithComms : public LiaisonContainer
         std::lock_guard<std::mutex> l(comms_to_wt_mutex);
         while (!comms_to_wt_queue.empty())
         {
-            comms_to_wt_queue.front()();
+            comms_to_wt_queue.front();
             comms_to_wt_queue.pop();
         }
     }

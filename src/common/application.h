@@ -192,18 +192,6 @@ template <typename Config> goby::common::Application<Config>::Application() : al
     glog.is(DEBUG2) && glog << "Application: constructed with PID: " << getpid() << std::endl;
     glog.is(DEBUG1) && glog << "App name is " << app3_base_configuration_.name() << std::endl;
     glog.is(DEBUG2) && glog << "Configuration is: " << app_cfg_.DebugString() << std::endl;
-
-    // set up simulation time
-    if (app3_base_configuration_.simulation().time().use_sim_time())
-    {
-        goby::time::SimulatorSettings::using_sim_time = true;
-        goby::time::SimulatorSettings::warp_factor =
-            app3_base_configuration_.simulation().time().warp_factor();
-        if (app3_base_configuration_.simulation().time().has_reference_microtime())
-            goby::time::SimulatorSettings::reference_time =
-                std::chrono::system_clock::time_point(std::chrono::microseconds(
-                    app3_base_configuration_.simulation().time().reference_microtime()));
-    }
 }
 
 template <typename Config> int goby::common::Application<Config>::__run()
@@ -248,6 +236,18 @@ int goby::run(const goby::common::ConfiguratorInterface<typename App::ConfigType
         // set configuration
         App::app_cfg_ = cfgtor.cfg();
         App::app3_base_configuration_ = cfgtor.app3_configuration();
+
+        // set up simulation time
+        if (App::app3_base_configuration_.simulation().time().use_sim_time())
+        {
+            goby::time::SimulatorSettings::using_sim_time = true;
+            goby::time::SimulatorSettings::warp_factor =
+                App::app3_base_configuration_.simulation().time().warp_factor();
+            if (App::app3_base_configuration_.simulation().time().has_reference_microtime())
+                goby::time::SimulatorSettings::reference_time =
+                    std::chrono::system_clock::time_point(std::chrono::microseconds(
+                        App::app3_base_configuration_.simulation().time().reference_microtime()));
+        }
 
         // instantiate the application (with the configuration already set)
         App app;

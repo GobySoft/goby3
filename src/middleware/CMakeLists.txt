@@ -18,7 +18,6 @@ set(SRC
   transport-interthread.cpp
   transport-interprocess-zeromq.cpp
   transport-intervehicle.cpp
-  transport-interfaces.cpp
   log/log_entry.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )

@@ -52,7 +52,7 @@ class LineBasedClient : public LineBasedInterface, public LineBasedConnection<AS
     // from LineBasedInterface
     void do_start()
     {
-        last_start_time_ = time::to_ptime(time::now());
+        last_start_time_ = time::now<boost::posix_time::ptime>();
 
         set_active(start_specific());
 
@@ -89,7 +89,7 @@ class LineBasedClient : public LineBasedInterface, public LineBasedConnection<AS
         if (error != boost::system::error_code())
         {
             using namespace boost::posix_time;
-            ptime now = time::to_ptime(time::now());
+            ptime now = time::now<ptime>();
             if (now - seconds(retry_interval_) < last_start_time_)
                 LineBasedInterface::sleep(retry_interval_ -
                                           (now - last_start_time_).total_seconds());

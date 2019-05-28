@@ -29,6 +29,7 @@
 
 using namespace boost::posix_time;
 using namespace boost::gregorian;
+using namespace goby::time;
 
 // 2011-08-16 19:36:57.523456 UTC
 const double TEST_DOUBLE_TIME = 1313523417.523456;
@@ -46,45 +47,46 @@ int main()
     using boost::units::quantity;
     namespace si = boost::units::si;
 
-    auto now_seconds = goby::time::now<goby::time::SITime>();
-    auto now_microseconds = goby::time::now<goby::time::MicroTime>();
+    auto now_chrono = SystemClock::now();
+    auto now_seconds = now<SITime>();
+    auto now_microseconds = now<MicroTime>();
 
-    static_assert(std::is_same<goby::time::MicroTime::value_type, std::int64_t>(),
+    static_assert(std::is_same<MicroTime::value_type, std::int64_t>(),
                   "expected int64_t value time");
-    static_assert(std::is_same<goby::time::SITime::value_type, double>(),
-                  "expected double value time");
+    static_assert(std::is_same<SITime::value_type, double>(), "expected double value time");
 
-    std::cout << "now:\t\t\t\t" << std::setprecision(std::numeric_limits<double>::digits10)
+    std::cout << "now (microseconds since epoch):\t"
+              << std::setprecision(std::numeric_limits<double>::digits10)
+              << now_chrono.time_since_epoch() / std::chrono::microseconds(1) << std::endl;
+    std::cout << "now (seconds):\t\t\t" << std::setprecision(std::numeric_limits<double>::digits10)
               << now_seconds << std::endl;
     std::cout << "now (microseconds):\t\t" << now_microseconds << std::endl;
 
-    std::cout << "seconds as microseconds:\t" << decltype(now_microseconds)(now_seconds)
+    std::cout << "seconds as microseconds:\t" << convert<decltype(now_microseconds)>(now_seconds)
               << std::endl;
 
-    std::cout << "Time string: " << goby::time::str() << std::endl;
-    std::cout << "File string: " << goby::time::file_str() << std::endl;
+    std::cout << "Time string: " << str() << std::endl;
+    std::cout << "File string: " << file_str() << std::endl;
 
     // unsigned time
-    quantity<goby::time::MicroTimeUnit, std::uint64_t> unsigned_now_microseconds(now_microseconds);
+    quantity<MicroTimeUnit, std::uint64_t> unsigned_now_microseconds(now_microseconds);
     assert(now_microseconds == unsigned_now_microseconds);
 
-    std::cout << "goby::time::from_ptime(TEST_PTIME): "
-              << goby::time::from_ptime<goby::time::SITime>(TEST_PTIME) << std::endl;
-    std::cout << "goby::time::from_ptime(TEST_PTIME): "
-              << goby::time::from_ptime<goby::time::MicroTime>(TEST_PTIME) << std::endl;
+    std::cout << "convert<SITime>(TEST_PTIME): " << convert<SITime>(TEST_PTIME) << std::endl;
+    std::cout << "convert<MicroTime>(TEST_PTIME): " << convert<MicroTime>(TEST_PTIME) << std::endl;
 
-    assert(double_cmp(goby::time::from_ptime<goby::time::SITime>(TEST_PTIME).value(),
-                      TEST_DOUBLE_TIME, 6));
-    assert(goby::time::from_ptime<goby::time::MicroTime>(TEST_PTIME).value() == TEST_MICROSEC_TIME);
+    assert(convert<SystemClock::time_point>(TEST_PTIME).time_since_epoch() /
+               std::chrono::microseconds(1) ==
+           TEST_MICROSEC_TIME);
+    assert(double_cmp(convert<SITime>(TEST_PTIME).value(), TEST_DOUBLE_TIME, 6));
+    assert(convert<MicroTime>(TEST_PTIME).value() == TEST_MICROSEC_TIME);
 
-    goby::time::SimulatorSettings::warp_factor = 10;
-    goby::time::SimulatorSettings::using_sim_time = true;
+    SimulatorSettings::warp_factor = 10;
+    SimulatorSettings::using_sim_time = true;
 
-    std::cout << "warp reference: "
-              << goby::time::convert<goby::time::MicroTime>(
-                     goby::time::SimulatorSettings::reference_time)
+    std::cout << "warp reference: " << convert<MicroTime>(SimulatorSettings::reference_time)
               << std::endl;
-    auto ref_ptime = goby::time::to_ptime(goby::time::SimulatorSettings::reference_time);
+    auto ref_ptime = convert<boost::posix_time::ptime>(SimulatorSettings::reference_time);
     std::cout << "\tas ptime: " << ref_ptime << std::endl;
 
     assert(ref_ptime.date().day() == 1);
@@ -92,9 +94,9 @@ int main()
     assert(ref_ptime.date().year() ==
            boost::posix_time::second_clock::universal_time().date().year());
 
-    auto now_warped_microseconds = goby::time::now<goby::time::MicroTime>();
+    auto now_warped_microseconds = now<MicroTime>();
     std::cout << "now (warped 10):\t\t" << now_warped_microseconds << std::endl;
-    auto now_warped_ptime = goby::time::to_ptime(now_warped_microseconds);
+    auto now_warped_ptime = convert<boost::posix_time::ptime>(now_warped_microseconds);
 
     std::cout << "\tas ptime: " << now_warped_ptime << std::endl;
 

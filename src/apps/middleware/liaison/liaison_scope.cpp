@@ -153,7 +153,7 @@ void goby::common::LiaisonScope::update_row(const std::string& group,
                                                                 DisplayRole);
 
     items[protobuf::ProtobufScopeConfig::COLUMN_TIME]->setData(
-        WDateTime::fromPosixTime(goby::time::to_ptime(goby::time::now())), DisplayRole);
+        WDateTime::fromPosixTime(goby::time::now<boost::posix_time::ptime>()), DisplayRole);
 
     if (do_attach_pb_rows)
         attach_pb_rows(items, msg);

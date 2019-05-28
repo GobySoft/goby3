@@ -90,7 +90,7 @@ void goby::common::LiaisonCommander::display_notify_subscription(
 
     WGroupBox* box = new WGroupBox(
         type + "/" + group + " @ " +
-            boost::posix_time::to_simple_string(goby::time::to_ptime(goby::time::now())),
+            boost::posix_time::to_simple_string(goby::time::now<boost::posix_time::ptime>()),
         new_div);
 
     try

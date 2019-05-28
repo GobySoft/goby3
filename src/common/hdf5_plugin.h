@@ -39,7 +39,7 @@ namespace common
 struct HDF5ProtobufEntry
 {
     std::string channel;
-    goby::time::MicroTime time{0 * boost::units::si::seconds};
+    time::MicroTime time{0 * boost::units::si::seconds};
     std::shared_ptr<google::protobuf::Message> msg;
 
     HDF5ProtobufEntry() {}
