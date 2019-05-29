@@ -39,8 +39,8 @@ void initiate_transmission(const goby::acomms::protobuf::ModemTransmission& msg)
     std::cout << "We were told to start transmission of " << msg << std::endl;
     assert(msg.src() == me);
     double cycles_since_day =
-        (goby::common::goby_time().time_of_day().total_milliseconds() / 1000.0) /
-        mac.cycle_duration();
+        goby::time::now<boost::posix_time::ptime>().time_of_day().total_microseconds() /
+        (mac.cycle_duration() / std::chrono::microseconds(1));
 
     std::cout << std::setprecision(15) << cycles_since_day << std::endl;
     std::cout << std::setprecision(15) << goby::util::unbiased_round(cycles_since_day, 0)

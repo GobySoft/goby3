@@ -322,15 +322,27 @@ goby::acomms::QueuedMessage goby::acomms::Queue::give_data(unsigned frame)
     return *it_to_give;
 }
 
+double goby::acomms::Queue::time_duration2double(boost::posix_time::time_duration time_of_day)
+{
+    using namespace boost::posix_time;
+
+    // prevent overflows in getting total seconds with call to ptime::total_seconds
+    if (time_of_day.hours() > (0x7FFFFFFF / 3600))
+        return std::numeric_limits<double>::infinity();
+    else
+        return (double(time_of_day.total_seconds()) +
+                double(time_of_day.fractional_seconds()) /
+                    double(time_duration::ticks_per_second()));
+}
+
 // gives priority values. returns false if in blackout interval or if no data or if messages of wrong size, true if not in blackout
 bool goby::acomms::Queue::get_priority_values(double* priority,
                                               boost::posix_time::ptime* last_send_time,
                                               const protobuf::ModemTransmission& request_msg,
                                               const std::string& data)
 {
-    *priority =
-        common::time_duration2double((time::now<boost::posix_time::ptime>() - last_send_time_)) /
-        queue_message_options().ttl() * queue_message_options().value_base();
+    *priority = time_duration2double((time::now<boost::posix_time::ptime>() - last_send_time_)) /
+                queue_message_options().ttl() * queue_message_options().value_base();
 
     *last_send_time = last_send_time_;
 

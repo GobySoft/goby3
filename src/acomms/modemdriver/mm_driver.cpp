@@ -71,7 +71,7 @@ goby::acomms::MMDriver::MMDriver()
       expected_remaining_cacst_(0),
       expected_ack_destination_(0),
       local_cccyc_(false),
-      last_keep_alive_time_(0),
+      last_keep_alive_time_(std::chrono::seconds(0)),
       using_application_acks_(false),
       application_ack_max_frames_(0),
       next_frame_(0),
@@ -498,9 +498,9 @@ void goby::acomms::MMDriver::do_work()
         set_clock();
 
     // send a message periodically (query the source ID) to the local modem to ascertain that it is still alive
-    double now = time::now<time::SITime>() / boost::units::si::seconds;
-    if (last_keep_alive_time_ +
-            driver_cfg_.GetExtension(micromodem::protobuf::Config::keep_alive_seconds) <=
+    auto now = time::SystemClock::now();
+    if (last_keep_alive_time_ + std::chrono::seconds(driver_cfg_.GetExtension(
+                                    micromodem::protobuf::Config::keep_alive_seconds)) <=
         now)
     {
         NMEASentence nmea("$CCCFQ", NMEASentence::IGNORE);

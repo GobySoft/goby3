@@ -43,7 +43,7 @@ class OnCallBase
 {
   public:
     OnCallBase()
-        : last_tx_time_(time::now<time::SITime>() / boost::units::si::seconds),
+        : last_tx_time_(time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1)),
           last_rx_time_(0),
           bye_received_(false),
           bye_sent_(false),

@@ -247,6 +247,12 @@ inline std::string file_str(TimeType value = now<TimeType>())
     auto rounded_seconds = boost::units::round(convert<SITime, TimeType>(value));
     return boost::posix_time::to_iso_string(convert<boost::posix_time::ptime>(rounded_seconds));
 }
+
+inline std::ostream& operator<<(std::ostream& out, const SystemClock::time_point& time)
+{
+    return (out << convert<boost::posix_time::ptime>(time));
+}
+
 } // namespace time
 
 //@}

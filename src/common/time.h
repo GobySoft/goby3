@@ -169,19 +169,19 @@ goby_time_as_string(const boost::posix_time::ptime& t = goby_time())
     return mktime(&out);
 }
 
-/// time duration to double number of seconds: good to the microsecond
-[[deprecated]] inline double time_duration2double(boost::posix_time::time_duration time_of_day)
-{
-    using namespace boost::posix_time;
+// /// time duration to double number of seconds: good to the microsecond
+// [[deprecated]] inline double time_duration2double(boost::posix_time::time_duration time_of_day)
+// {
+//     using namespace boost::posix_time;
 
-    // prevent overflows in getting total seconds with call to ptime::total_seconds
-    if (time_of_day.hours() > (0x7FFFFFFF / 3600))
-        return std::numeric_limits<double>::infinity();
-    else
-        return (double(time_of_day.total_seconds()) +
-                double(time_of_day.fractional_seconds()) /
-                    double(time_duration::ticks_per_second()));
-}
+//     // prevent overflows in getting total seconds with call to ptime::total_seconds
+//     if (time_of_day.hours() > (0x7FFFFFFF / 3600))
+//         return std::numeric_limits<double>::infinity();
+//     else
+//         return (double(time_of_day.total_seconds()) +
+//                 double(time_of_day.fractional_seconds()) /
+//                     double(time_duration::ticks_per_second()));
+// }
 
 inline boost::posix_time::ptime nmea_time2ptime(const std::string& mt)
 {

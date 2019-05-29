@@ -99,7 +99,7 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     /// \example acomms/chat/chat.cpp
 
     unsigned cycle_count() { return std::list<protobuf::ModemTransmission>::size(); }
-    double cycle_duration();
+    time::SystemClock::duration cycle_duration();
 
     boost::asio::io_service& get_io_service() { return io_; }
 
@@ -107,7 +107,7 @@ class MACManager : public std::list<protobuf::ModemTransmission>
 
   private:
     void begin_slot(const boost::system::error_code&);
-    boost::posix_time::ptime next_cycle_time();
+    time::SystemClock::time_point next_cycle_time();
 
     void increment_slot();
 
@@ -119,7 +119,7 @@ class MACManager : public std::list<protobuf::ModemTransmission>
 
     // allowed offset from actual end of slot
 
-    const time::MicroTime allowed_skew_{2 * boost::units::si::seconds};
+    const time::SystemClock::duration allowed_skew_{std::chrono::seconds(2)};
 
   private:
     MACManager(const MACManager&);
@@ -130,12 +130,14 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     // asynchronous timer
     boost::asio::io_service io_;
 
-    boost::asio::basic_deadline_timer<goby::common::GobyTime> timer_;
+    boost::asio::basic_waitable_timer<goby::time::SystemClock> timer_;
     // give the io_service some work to do forever
     boost::asio::io_service::work work_;
 
-    boost::posix_time::ptime next_cycle_t_;
-    boost::posix_time::ptime next_slot_t_;
+    // start of the next cycle (cycle = all slots)
+    time::SystemClock::time_point next_cycle_t_;
+    // start of the next slot
+    time::SystemClock::time_point next_slot_t_;
 
     std::list<protobuf::ModemTransmission>::iterator current_slot_;
 

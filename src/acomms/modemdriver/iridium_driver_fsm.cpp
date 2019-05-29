@@ -167,7 +167,7 @@ void goby::acomms::fsm::Command::handle_sbd_rx(const std::string& in)
 
 void goby::acomms::fsm::Command::in_state_react(const EvTxSerial&)
 {
-    double now = time::now<time::SITime>() / boost::units::si::seconds;
+    double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
     if (!at_out_.empty())
     {
@@ -349,7 +349,7 @@ void goby::acomms::fsm::OnCall::in_state_react(const EvRxOnCallSerial& e)
             protobuf::ModemTransmission msg;
             parse_iridium_modem_message(bytes, &msg);
             context<IridiumDriverFSM>().received().push_back(msg);
-            set_last_rx_time(time::now<time::SITime>() / boost::units::si::seconds);
+            set_last_rx_time(time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1));
         }
         catch (RudicsPacketException& e)
         {
@@ -367,7 +367,7 @@ void goby::acomms::fsm::OnCall::in_state_react(const EvTxOnCallSerial&)
 
     const double send_wait = last_bytes_sent() / target_byte_rate;
 
-    double now = time::now<time::SITime>() / boost::units::si::seconds;
+    double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
     boost::circular_buffer<protobuf::ModemTransmission>& data_out =
         context<IridiumDriverFSM>().data_out();
     if (!data_out.empty() && (now > last_tx_time() + send_wait))

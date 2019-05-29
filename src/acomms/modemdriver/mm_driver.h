@@ -335,7 +335,7 @@ class MMDriver : public ModemDriverBase
 
     micromodem::protobuf::TransmissionType last_lbl_type_;
 
-    double last_keep_alive_time_;
+    time::SystemClock::time_point last_keep_alive_time_;
 
     struct MMRevision
     {

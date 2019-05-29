@@ -123,6 +123,8 @@ class Queue
     void set_latest_metadata(const google::protobuf::FieldDescriptor* field,
                              const boost::any& field_value, const boost::any& wire_value);
 
+    double time_duration2double(boost::posix_time::time_duration time_of_day);
+
   private:
     Queue& operator=(const Queue&);
     Queue(const Queue&);

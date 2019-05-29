@@ -339,7 +339,7 @@ void goby::acomms::benthos_fsm::Range::in_state_react(const EvRxSerial& e)
 
 void goby::acomms::benthos_fsm::Command::in_state_react(const EvTxSerial&)
 {
-    double now = time::now<time::SITime>() / boost::units::si::seconds;
+    double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
     static const std::string atd = "ATD";
 

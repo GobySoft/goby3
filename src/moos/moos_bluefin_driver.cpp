@@ -137,8 +137,8 @@ void goby::moos::BluefinCommsDriver::handle_initiate_transmission(
                 if (msg.frame_size() && msg.frame(0).size())
                 {
                     NMEASentence nmea("$BPCPD", NMEASentence::IGNORE);
-                    nmea.push_back(
-                        unix_time2nmea_time(time::now<time::SITime>() / boost::units::si::seconds));
+                    nmea.push_back(unix_time2nmea_time(time::SystemClock::now().time_since_epoch() /
+                                                       std::chrono::seconds(1)));
                     nmea.push_back(++last_request_id_);
 
                     int bf_dest = goby_to_bluefin_id_.left.count(msg.dest())
@@ -186,7 +186,7 @@ void goby::moos::BluefinCommsDriver::handle_initiate_transmission(
 void goby::moos::BluefinCommsDriver::do_work()
 {
     if (mac_ && mac_->running() &&
-        end_of_mac_window_ < time::now<time::SITime>() / boost::units::si::seconds)
+        end_of_mac_window_ < time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1))
         mac_->shutdown();
 
     MOOSMSG_LIST msgs;

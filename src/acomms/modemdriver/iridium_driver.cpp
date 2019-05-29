@@ -222,7 +222,7 @@ void goby::acomms::IridiumDriver::do_work()
 {
     //   if(glog.is(DEBUG1))
     //    display_state_cfg(&glog);
-    double now = time::now<time::SITime>() / boost::units::si::seconds;
+    double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
     const fsm::OnCall* on_call = fsm_.state_cast<const fsm::OnCall*>();
 
@@ -350,7 +350,7 @@ void goby::acomms::IridiumDriver::try_serial_tx()
 
     while (!fsm_.serial_tx_buffer().empty())
     {
-        double now = time::now<time::SITime>() / boost::units::si::seconds;
+        double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
         if (last_triple_plus_time_ + TRIPLE_PLUS_WAIT > now)
             return;
 
