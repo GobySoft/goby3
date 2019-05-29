@@ -110,7 +110,7 @@ struct SteadyClock
     }
 };
 
-/// \brief Convert between time representations (this function works for tautological conversions and for conversions between boost::units types where explicit construction does the conversion)
+/// \brief Convert between time representations (this function works for tautological conversions)
 template <typename ToTimeType, typename FromTimeType,
           typename std::enable_if<std::is_same<ToTimeType, FromTimeType>{}, int>::type = 0>
 ToTimeType convert(FromTimeType from_time)
@@ -155,14 +155,15 @@ ToTimeType convert(FromTimeType from_time)
 }
 
 /// \brief Convert between time representations (this function converts to either a chrono::system_clock or a goby::time::SystemClock from a boost::units::quantity of time)
-template <typename ToTimeType, typename FromTimeType,
-          typename FromUnitType = typename FromTimeType::unit_type,
-          typename FromValueType = typename FromTimeType::value_type,
-          typename std::enable_if<
-              std::is_same<FromTimeType, boost::units::quantity<FromUnitType, FromValueType> >{} &&
-                  (std::is_same<ToTimeType, SystemClock::time_point>{} ||
-                   std::is_same<ToTimeType, std::chrono::system_clock::time_point>{}),
-              int>::type = 0>
+template <
+    typename ToTimeType, typename FromTimeType,
+    typename FromUnitType = typename FromTimeType::unit_type,
+    typename FromValueType = typename FromTimeType::value_type,
+    typename std::enable_if<
+        (std::is_same<ToTimeType, SystemClock::time_point>{} ||
+         std::is_same<ToTimeType, std::chrono::system_clock::time_point>{}) &&
+            std::is_same<FromTimeType, boost::units::quantity<FromUnitType, FromValueType> >{},
+        int>::type = 0>
 ToTimeType convert(FromTimeType from_time)
 {
     std::int64_t microsecs_since_epoch = MicroTime(from_time).value();
@@ -247,6 +248,67 @@ inline std::string file_str(TimeType value = now<TimeType>())
     auto rounded_seconds = boost::units::round(convert<SITime, TimeType>(value));
     return boost::posix_time::to_iso_string(convert<boost::posix_time::ptime>(rounded_seconds));
 }
+
+/// \brief Convert between duration representations (this function works for tautological conversions)
+template <typename ToDurationType, typename FromDurationType,
+          typename std::enable_if<std::is_same<ToDurationType, FromDurationType>{}, int>::type = 0>
+ToDurationType convert_duration(FromDurationType from_duration)
+{
+    return from_duration;
+};
+
+/// \brief Convert between duration representations (this function converts between two boost::units::quantity of time)
+template <
+    typename ToDurationType, typename FromDurationType,
+    typename ToUnitType = typename ToDurationType::unit_type,
+    typename ToValueType = typename ToDurationType::value_type,
+    typename FromUnitType = typename FromDurationType::unit_type,
+    typename FromValueType = typename FromDurationType::value_type,
+    typename std::enable_if<
+        !std::is_same<ToDurationType, FromDurationType>{} &&
+            std::is_same<ToDurationType, boost::units::quantity<ToUnitType, ToValueType> >{} &&
+            std::is_same<FromDurationType, boost::units::quantity<FromUnitType, FromValueType> >{},
+        int>::type = 0>
+ToDurationType convert_duration(FromDurationType from_duration)
+{
+    return ToDurationType(from_duration);
+};
+
+/// \brief Convert between duration representations (this function converts from std::chrono::duration to boost::units::quantity of time)
+template <
+    typename ToDurationType, typename FromDurationType,
+    typename ToUnitType = typename ToDurationType::unit_type,
+    typename ToValueType = typename ToDurationType::value_type,
+    typename FromRepType = typename FromDurationType::rep,
+    typename FromPeriodType = typename FromDurationType::period,
+    typename std::enable_if<
+        !std::is_same<ToDurationType, FromDurationType>{} &&
+            std::is_same<ToDurationType, boost::units::quantity<ToUnitType, ToValueType> >{} &&
+            std::is_same<FromDurationType, std::chrono::duration<FromRepType, FromPeriodType> >{},
+        int>::type = 0>
+ToDurationType convert_duration(FromDurationType from_duration)
+{
+    return ToDurationType(MicroTime::from_value(
+        std::chrono::duration_cast<std::chrono::microseconds>(from_duration).count()));
+};
+
+/// \brief Convert between duration representations (this function converts from boost::units::quantity of time to std::chrono::duration
+template <
+    typename ToDurationType, typename FromDurationType,
+    typename ToRepType = typename ToDurationType::rep,
+    typename ToPeriodType = typename ToDurationType::period,
+    typename FromUnitType = typename FromDurationType::unit_type,
+    typename FromValueType = typename FromDurationType::value_type,
+    typename std::enable_if<
+        !std::is_same<ToDurationType, FromDurationType>{} &&
+            std::is_same<ToDurationType, std::chrono::duration<ToRepType, ToPeriodType> >{} &&
+            std::is_same<FromDurationType, boost::units::quantity<FromUnitType, FromValueType> >{},
+        int>::type = 0>
+ToDurationType convert_duration(FromDurationType from_duration)
+{
+    return std::chrono::duration_cast<ToDurationType>(
+        std::chrono::microseconds(MicroTime(from_duration).value()));
+};
 
 inline std::ostream& operator<<(std::ostream& out, const SystemClock::time_point& time)
 {

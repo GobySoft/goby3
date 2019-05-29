@@ -58,7 +58,7 @@ void goby::acomms::MACManager::restart_timer()
     // cancel any old timer jobs waiting
     timer_.cancel();
     timer_.expires_at(next_slot_t_);
-    timer_.async_wait(boost::bind(&MACManager::begin_slot, this, _1));
+    timer_.async_wait([this](const boost::system::error_code& e) { begin_slot(e); });
 }
 
 void goby::acomms::MACManager::stop_timer() { timer_.cancel(); }
@@ -210,9 +210,8 @@ void goby::acomms::MACManager::increment_slot()
     {
         case protobuf::MAC_FIXED_DECENTRALIZED:
         case protobuf::MAC_POLLED:
-            next_slot_t_ += std::chrono::microseconds(
-                current_slot_->slot_seconds_with_units<time::MicroTime>() /
-                (boost::units::si::micro * boost::units::si::seconds));
+            next_slot_t_ += time::convert_duration<std::chrono::microseconds>(
+                current_slot_->slot_seconds_with_units());
 
             ++current_slot_;
             if (current_slot_ == std::list<protobuf::ModemTransmission>::end())
@@ -247,13 +246,15 @@ goby::time::SystemClock::time_point goby::acomms::MACManager::next_cycle_time()
 
     glog.is(DEBUG2) && glog << group(glog_mac_group_) << "reference: " << reference << std::endl;
 
-    glog.is(DEBUG2) && glog << group(glog_mac_group_) << "duration since reference: "
-                            << duration_since_ref / std::chrono::microseconds(1) << " us"
-                            << std::endl;
+    glog.is(DEBUG2) &&
+        glog << group(glog_mac_group_) << "duration since reference: "
+             << std::chrono::duration_cast<std::chrono::microseconds>(duration_since_ref).count()
+             << " us" << std::endl;
 
-    glog.is(DEBUG2) && glog << group(glog_mac_group_)
-                            << "cycle duration: " << cycle_dur / std::chrono::microseconds(1)
-                            << " us" << std::endl;
+    glog.is(DEBUG2) &&
+        glog << group(glog_mac_group_) << "cycle duration: "
+             << std::chrono::duration_cast<std::chrono::microseconds>(cycle_dur).count() << " us"
+             << std::endl;
 
     glog.is(DEBUG2) && glog << group(glog_mac_group_)
                             << "cycles since reference: " << cycles_since_reference_ << std::endl;
@@ -312,6 +313,5 @@ goby::time::SystemClock::duration goby::acomms::MACManager::cycle_duration()
     time::MicroTime length = 0;
     for (const protobuf::ModemTransmission& slot : *this)
         length += slot.slot_seconds_with_units<time::MicroTime>();
-    return std::chrono::microseconds(length /
-                                     (boost::units::si::micro * boost::units::si::seconds));
+    return time::convert_duration<goby::time::SystemClock::duration>(length);
 }

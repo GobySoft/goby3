@@ -140,6 +140,28 @@ int main()
                 now_unwarped_time.time_since_epoch()) < std::chrono::seconds(1));
     }
 
+    {
+        std::int64_t ms_value = 3000012300;
+        auto boost_units_duration = MicroTime::from_value(ms_value);
+        auto chrono_second_duration = convert_duration<std::chrono::seconds>(boost_units_duration);
+        std::cout << "boost units duration: " << boost_units_duration << std::endl;
+        std::cout << "chrono sec duration: " << chrono_second_duration.count() << " s" << std::endl;
+        assert(chrono_second_duration.count() == ms_value / 1000000);
+
+        auto boost_units_seconds_duration = convert_duration<SITime>(chrono_second_duration);
+        std::cout << "as boost units SI time: " << boost_units_seconds_duration << std::endl;
+
+        assert(double_cmp(boost_units_seconds_duration.value(), chrono_second_duration.count(), 6));
+
+        auto chrono_microsecond_duration =
+            convert_duration<std::chrono::microseconds>(boost_units_duration);
+        std::cout << "chrono microsec duration: " << chrono_microsecond_duration.count() << " us"
+                  << std::endl;
+        auto boost_units_seconds_duration2 = convert_duration<SITime>(chrono_microsecond_duration);
+        std::cout << "as boost units SI time: " << boost_units_seconds_duration2 << std::endl;
+        assert(double_cmp(boost_units_seconds_duration2.value(), ms_value / 1.0e6, 6));
+    }
+
     std::cout << "all tests passed" << std::endl;
 
     return 0;
