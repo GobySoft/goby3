@@ -23,7 +23,6 @@
 
 using namespace goby::common::logger;
 using namespace goby::acomms;
-using goby::common::goby_time;
 using goby::util::as;
 using namespace boost::posix_time;
 
@@ -212,9 +211,9 @@ void DriverTester::handle_data_receive1(const protobuf::ModemTransmission& msg)
             assert(msg.src() == 1);
             assert(!msg.has_dest());
 
-            ptime now = goby_time();
-            ptime reported = as<ptime>(msg.time());
-            assert(reported < now && reported > now - seconds(2));
+            auto now = goby::time::SystemClock::now();
+            auto reported = goby::time::convert<decltype(now)>(msg.time_with_units());
+            assert(reported < now && reported > now - std::chrono::seconds(2));
             ++check_count_;
         }
         break;
@@ -228,9 +227,9 @@ void DriverTester::handle_data_receive1(const protobuf::ModemTransmission& msg)
             assert(msg.src() == 1);
             assert(!msg.has_dest());
 
-            ptime now = goby_time();
-            ptime reported = as<ptime>(msg.time());
-            assert(reported < now && reported > now - seconds(2));
+            auto now = goby::time::SystemClock::now();
+            auto reported = goby::time::convert<decltype(now)>(msg.time_with_units());
+            assert(reported < now && reported > now - std::chrono::seconds(2));
             ++check_count_;
         }
         break;

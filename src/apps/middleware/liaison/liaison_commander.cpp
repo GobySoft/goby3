@@ -49,8 +49,8 @@ using goby::common::logger_lock::lock;
 std::mutex goby::common::LiaisonCommander::dbo_mutex_;
 std::shared_ptr<Dbo::backend::Sqlite3> goby::common::LiaisonCommander::sqlite3_;
 std::shared_ptr<Dbo::FixedSqlConnectionPool> goby::common::LiaisonCommander::connection_pool_;
-boost::posix_time::ptime
-    goby::common::LiaisonCommander::last_db_update_time_(goby::common::goby_time());
+boost::posix_time::ptime goby::common::LiaisonCommander::last_db_update_time_(
+    goby::time::now<boost::posix_time::ptime>());
 
 const std::string MESSAGE_INCLUDE_TEXT = "include";
 const std::string MESSAGE_REMOVE_TEXT = "remove";
@@ -159,7 +159,7 @@ void goby::common::LiaisonCommander::display_notify_subscription(
 //                acked_command.modify()->acks.resize(ack_set.ByteSize());
 //                ack_set.SerializeToArray(&acked_command.modify()->acks[0], acked_command->acks.size());
 //                transaction.commit();
-//                last_db_update_time_ = goby::common::goby_time();
+//                last_db_update_time_ = goby::time::now<boost::posix_time::ptime>();
 //             }
 //         }
 //     }
@@ -216,7 +216,7 @@ void goby::common::LiaisonCommander::loop()
         std::lock_guard<std::mutex> slock(dbo_mutex_);
         Dbo::Transaction transaction(controls_div_->session_);
         current_command->query_model_->reload();
-        current_command->last_reload_time_ = goby::common::goby_time();
+        current_command->last_reload_time_ = goby::time::now<boost::posix_time::ptime>();
     }
 }
 
@@ -434,7 +434,7 @@ void goby::common::LiaisonCommander::ControlsContainer::send_message()
         command_entry->address = wApp->environment().clientAddress();
         command_entry->group = current_command->group_line_->text().narrow();
 
-        boost::posix_time::ptime now = goby::common::goby_time();
+        boost::posix_time::ptime now = goby::time::now<boost::posix_time::ptime>();
         command_entry->time.setPosixTime(now);
         command_entry->utime = current_command->latest_time_;
 
@@ -1208,11 +1208,11 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::set_ti
         // }
         // else
         //        {
-        now = goby_time();
+        now = goby::time::now<boost::posix_time::ptime>();
         //}
 
         const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
-        latest_time_ = goby::util::as<std::uint64_t>(now);
+        latest_time_ = time::convert<time::MicroTime>(now).value();
         enum
         {
             MICROSEC_ORDER_MAG = 6
@@ -1224,7 +1224,8 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::set_ti
 
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
             case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-                line_edit->setText(goby::util::as<std::string>(goby::util::as<std::uint64_t>(now)));
+                line_edit->setText(
+                    goby::util::as<std::string>(time::convert<time::MicroTime>(now).value()));
                 if (!options.has_precision())
                     latest_time_ = dccl::round(latest_time_, -MICROSEC_ORDER_MAG);
                 else
@@ -1237,7 +1238,7 @@ void goby::common::LiaisonCommander::ControlsContainer::CommandContainer::set_ti
 
             case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
                 line_edit->setText(goby::util::as<std::string>(
-                    goby::util::unbiased_round(goby::util::as<double>(now), 0)));
+                    goby::util::unbiased_round(time::convert<time::SITime>(now).value(), 0)));
 
                 latest_time_ = dccl::round(latest_time_, options.precision() - MICROSEC_ORDER_MAG);
 

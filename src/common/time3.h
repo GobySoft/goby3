@@ -306,8 +306,9 @@ template <
         int>::type = 0>
 ToDurationType convert_duration(FromDurationType from_duration)
 {
+    MicroTime microtime_duration(from_duration);
     return std::chrono::duration_cast<ToDurationType>(
-        std::chrono::microseconds(MicroTime(from_duration).value()));
+        std::chrono::microseconds(microtime_duration.value()));
 };
 
 inline std::ostream& operator<<(std::ostream& out, const SystemClock::time_point& time)

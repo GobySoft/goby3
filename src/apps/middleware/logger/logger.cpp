@@ -43,7 +43,7 @@ class Logger : public goby::SingleThreadApplication<protobuf::LoggerConfig>
     Logger()
         : goby::SingleThreadApplication<protobuf::LoggerConfig>(1 * boost::units::si::hertz),
           log_file_path_(std::string(cfg().log_dir() + "/" + cfg().interprocess().platform() + "_" +
-                                     goby::common::goby_file_timestamp() + ".goby")),
+                                     goby::time::file_str() + ".goby")),
           log_(log_file_path_.c_str(), std::ofstream::binary)
     {
         if (!log_.is_open())

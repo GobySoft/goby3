@@ -27,12 +27,14 @@
 #include <stdint.h>
 
 namespace gpb = goby::moos::protobuf;
+namespace gtime = goby::time;
+
 using goby::glog;
-using goby::common::goby_time;
+
 using namespace goby::common::logger;
 using namespace goby::common::tcolor;
 
-const int allowed_skew = 30;
+const auto allowed_skew = std::chrono::seconds(30);
 
 // allows iFrontSeat to load our library
 extern "C"
@@ -47,12 +49,15 @@ uint16_t crc_compute_incrementally(uint16_t crc, char a);
 uint16_t crc_compute(const std::string& buffer, unsigned offset, unsigned count, uint16_t seed);
 
 WavegliderSV2FrontSeat::WavegliderSV2FrontSeat(const iFrontSeatConfig& cfg)
-    : FrontSeatInterfaceBase(cfg), waveglider_sv2_config_(cfg.GetExtension(waveglider_sv2_config)),
-      frontseat_providing_data_(false), last_frontseat_data_time_(0),
+    : FrontSeatInterfaceBase(cfg),
+      waveglider_sv2_config_(cfg.GetExtension(waveglider_sv2_config)),
+      frontseat_providing_data_(false),
+      last_frontseat_data_time_(std::chrono::seconds(0)),
       frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED),
       serial_(goby::moos::SV2SerialConnection::create(io_, waveglider_sv2_config_.pm_serial_port(),
                                                       waveglider_sv2_config_.pm_serial_baud())),
-      queued_messages_(1), dccl_("SV2.id", getenv("IFRONTSEAT_DRIVER_LIBRARY"))
+      queued_messages_(1),
+      dccl_("SV2.id", getenv("IFRONTSEAT_DRIVER_LIBRARY"))
 {
     serial_->message_signal.connect(
         boost::bind(&WavegliderSV2FrontSeat::handle_sv2_message, this, _1));
@@ -76,7 +81,7 @@ void WavegliderSV2FrontSeat::loop()
 
     // if we haven't gotten data for a while, set this boolean so that the
     // FrontSeatInterfaceBase class knows
-    if (goby_time<double>() > last_frontseat_data_time_ + allowed_skew)
+    if (gtime::SystemClock::now() > last_frontseat_data_time_ + allowed_skew)
         frontseat_providing_data_ = false;
 }
 
@@ -183,7 +188,7 @@ void WavegliderSV2FrontSeat::handle_sv2_message(const std::string& message)
         glog.is(DEBUG1) && glog << "Received status request." << std::endl;
         glog.is(DEBUG2) && glog << request.DebugString() << std::endl;
         frontseat_providing_data_ = true;
-        last_frontseat_data_time_ = goby::common::goby_time<double>();
+        last_frontseat_data_time_ = gtime::SystemClock::now();
         handle_request_status(request);
     }
     else if (dccl_id == dccl_.id<goby::moos::protobuf::SV2RequestQueuedMessage>())

@@ -25,11 +25,11 @@
 #include <atomic>
 #include <deque>
 
+#include <boost/units/io.hpp>
+
 #include "goby/common/logger.h"
 #include "goby/middleware/transport.h"
 #include "test.pb.h"
-
-#include <zmq.hpp>
 
 // speed test for interprocess
 //#define LARGE_MESSAGE
@@ -76,7 +76,7 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
 
         {
             std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
-            start = goby::common::goby_time<double>();
+            start = goby::time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
             std::cout << "Start: " << std::setprecision(15) << start << std::endl;
         }
 
@@ -97,7 +97,7 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
         {
             std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
             std::cout << "Publish end: " << std::setprecision(15)
-                      << goby::common::goby_time<double>() << std::endl;
+                      << goby::time::now<goby::time::SITime>() << std::endl;
         }
     }
     else if (test == 1)
@@ -105,7 +105,7 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
         goby::InterProcessPortal<> zmq(cfg);
         sleep(1);
 
-        std::cout << "Start: " << std::setprecision(15) << goby::common::goby_time<double>()
+        std::cout << "Start: " << std::setprecision(15) << goby::time::now<goby::time::SITime>()
                   << std::endl;
 
         while (publish_count < max_publish)
@@ -123,8 +123,8 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
             ++publish_count;
         }
 
-        std::cout << "Publish end: " << std::setprecision(15) << goby::common::goby_time<double>()
-                  << std::endl;
+        std::cout << "Publish end: " << std::setprecision(15)
+                  << goby::time::now<goby::time::SITime>() << std::endl;
 
         while (forward) { zmq.poll(std::chrono::milliseconds(100)); }
     }
@@ -136,8 +136,8 @@ void handle_sample1(const Type& sample)
     if (ipc_receive_count == 0)
     {
         std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
-        std::cout << "Receive start: " << std::setprecision(15) << goby::common::goby_time<double>()
-                  << std::endl;
+        std::cout << "Receive start: " << std::setprecision(15)
+                  << goby::time::now<goby::time::SITime>() << std::endl;
     }
 
     //std::cout << sample.ShortDebugString() << std::endl;
@@ -149,7 +149,7 @@ void handle_sample1(const Type& sample)
     if (ipc_receive_count == max_publish)
     {
         std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
-        end = goby::common::goby_time<double>();
+        end = goby::time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
         std::cout << "End: " << std::setprecision(15) << end << std::endl;
         if (test == 0)
             std::cout << "Seconds per message: " << std::setprecision(15)

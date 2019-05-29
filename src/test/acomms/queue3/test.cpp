@@ -36,7 +36,7 @@ goby::acomms::protobuf::QueueManagerConfig cfg;
 const int MY_MODEM_ID = 1;
 const int UNICORN_MODEM_ID = 3;
 const int MACRURA_MODEM_ID = 4;
-boost::posix_time::ptime current_time = boost::posix_time::second_clock::universal_time();
+goby::time::MicroTime current_time(boost::units::round(goby::time::now<goby::time::SITime>()));
 
 int goby_message_qsize = 0;
 
@@ -85,19 +85,19 @@ int main(int argc, char* argv[])
     goby::acomms::connect(&q_manager.signal_ack, &handle_ack);
 
     msg_in_macrura.set_telegram("hello mac!");
-    msg_in_macrura.mutable_header()->set_time(goby::util::as<std::uint64_t>(current_time));
+    msg_in_macrura.mutable_header()->set_time_with_units(current_time);
     msg_in_macrura.mutable_header()->set_source_platform(MY_MODEM_ID);
     msg_in_macrura.mutable_header()->set_dest_platform(MACRURA_MODEM_ID);
     msg_in_macrura.mutable_header()->set_dest_type(Header::PUBLISH_OTHER);
 
     msg_in_broadcast.set_telegram("hello all!");
-    msg_in_broadcast.mutable_header()->set_time(goby::util::as<std::uint64_t>(current_time));
+    msg_in_broadcast.mutable_header()->set_time_with_units(current_time);
 
     msg_in_broadcast.mutable_header()->set_source_platform(MY_MODEM_ID);
     msg_in_broadcast.mutable_header()->set_dest_type(Header::PUBLISH_ALL);
 
     msg_in_unicorn.set_telegram("hello uni!");
-    msg_in_unicorn.mutable_header()->set_time(goby::util::as<std::uint64_t>(current_time));
+    msg_in_unicorn.mutable_header()->set_time_with_units(current_time);
     msg_in_unicorn.mutable_header()->set_source_platform(MY_MODEM_ID);
     msg_in_unicorn.mutable_header()->set_dest_platform(UNICORN_MODEM_ID);
     msg_in_unicorn.mutable_header()->set_dest_type(Header::PUBLISH_OTHER);
@@ -188,7 +188,7 @@ void handle_receive(const google::protobuf::Message& msg)
     GobyMessage typed_msg;
     typed_msg.CopyFrom(msg);
 
-    assert(typed_msg.header().time() == goby::util::as<std::uint64_t>(current_time));
+    assert(typed_msg.header().time_with_units() == current_time);
 
     if (!typed_msg.header().has_dest_platform())
         assert(typed_msg.SerializeAsString() == msg_in_broadcast.SerializeAsString());

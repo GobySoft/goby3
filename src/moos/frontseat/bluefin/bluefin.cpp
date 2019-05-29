@@ -32,9 +32,11 @@
 #include "bluefin.h"
 
 namespace gpb = goby::moos::protobuf;
+namespace gtime = goby::time;
+
 using goby::glog;
-using goby::common::goby_time;
 using goby::util::NMEASentence;
+
 using namespace goby::common::logger;
 using namespace goby::common::tcolor;
 
@@ -47,13 +49,19 @@ extern "C"
 }
 
 BluefinFrontSeat::BluefinFrontSeat(const iFrontSeatConfig& cfg)
-    : FrontSeatInterfaceBase(cfg), bf_config_(cfg.GetExtension(bluefin_config)),
+    : FrontSeatInterfaceBase(cfg),
+      bf_config_(cfg.GetExtension(bluefin_config)),
       tcp_(bf_config_.huxley_tcp_address(), bf_config_.huxley_tcp_port(), "\r\n",
            bf_config_.reconnect_interval()),
-      frontseat_providing_data_(false), last_frontseat_data_time_(0),
-      frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED), next_connect_attempt_time_(0),
-      last_write_time_(0), waiting_for_huxley_(false), nmea_demerits_(0),
-      nmea_present_fail_count_(0), last_heartbeat_time_(0)
+      frontseat_providing_data_(false),
+      last_frontseat_data_time_(std::chrono::seconds(0)),
+      frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED),
+      next_connect_attempt_time_(std::chrono::seconds(0)),
+      last_write_time_(std::chrono::seconds(0)),
+      waiting_for_huxley_(false),
+      nmea_demerits_(0),
+      nmea_present_fail_count_(0),
+      last_heartbeat_time_(std::chrono::seconds(0))
 {
     load_nmea_mappings();
     glog.is(VERBOSE) && glog << "Trying to connect to Huxley server @ "
@@ -64,7 +72,7 @@ BluefinFrontSeat::BluefinFrontSeat(const iFrontSeatConfig& cfg)
 
 void BluefinFrontSeat::loop()
 {
-    double now = goby_time<double>();
+    auto now = gtime::SystemClock::now();
 
     // check the connection state
     if (!tcp_.active())
@@ -85,7 +93,8 @@ void BluefinFrontSeat::loop()
         try_receive();
     }
 
-    if (now > last_frontseat_data_time_ + bf_config_.allow_missing_nav_interval())
+    if (now > last_frontseat_data_time_ + gtime::convert_duration<gtime::SystemClock::duration>(
+                                              bf_config_.allow_missing_nav_interval_with_units()))
         frontseat_providing_data_ = false;
 }
 
@@ -132,7 +141,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
                     glog << "Bluefin Extra Command: Trim adjust requested by backseat."
                          << std::endl;
                 NMEASentence nmea("$BPTRM", NMEASentence::IGNORE);
-                nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+                nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
                 append_to_write_queue(nmea);
             }
             break;
@@ -143,7 +152,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
                     glog << "Bluefin Extra Command: Buoyancy adjustment requested by backseat."
                          << std::endl;
                 NMEASentence nmea("$BPBOY", NMEASentence::IGNORE);
-                nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+                nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
                 append_to_write_queue(nmea);
             }
             break;
@@ -156,7 +165,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
                                                bluefin_command.silent_mode())
                                         << std::endl;
                 NMEASentence nmea("$BPSIL", NMEASentence::IGNORE);
-                nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+                nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
                 nmea.push_back(static_cast<int>(bluefin_command.silent_mode()));
                 append_to_write_queue(nmea);
             }
@@ -168,7 +177,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
                     glog << "Bluefin Extra Command: Cancel current behavior requested by backseat."
                          << std::endl;
                 NMEASentence nmea("$BPRCE", NMEASentence::IGNORE);
-                nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+                nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
                 nmea.push_back(0);
                 append_to_write_queue(nmea);
             }
@@ -182,7 +191,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
                                 bluefin_command.abort_reason())
                          << std::endl;
                 NMEASentence nmea("$BPABT", NMEASentence::IGNORE);
-                nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+                nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
                 nmea.push_back("backseat abort");
                 nmea.push_back(static_cast<int>(bluefin_command.abort_reason()));
                 append_to_write_queue(nmea);
@@ -195,7 +204,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
                     glog << "Bluefin Extra Command: Mission start confirmation by backseat "
                          << std::endl;
                 NMEASentence nmea("$BPSMC", NMEASentence::IGNORE);
-                nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+                nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
                 nmea.push_back(1); //static_cast<int>(bluefin_command.start_confirm())
                 append_to_write_queue(nmea);
             }
@@ -207,7 +216,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
                     glog << "Bluefin Extra Command: Mission end confirmation by backseat "
                          << std::endl;
                 NMEASentence nmea("$BPRCE", NMEASentence::IGNORE);
-                nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+                nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
                 nmea.push_back(0);
                 append_to_write_queue(nmea);
             }
@@ -229,7 +238,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
         {
             type = gpb::BluefinExtraCommands::DESIRED_COURSE;
             NMEASentence nmea("$BPRMB", NMEASentence::IGNORE);
-            nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+            nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
             nmea.push_back(0); // zero rudder
             nmea.push_back(0); // zero pitch
             nmea.push_back(2); // previous field is a pitch [2]
@@ -242,7 +251,7 @@ void BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& comm
         {
             type = gpb::BluefinExtraCommands::DESIRED_COURSE;
             NMEASentence nmea("$BPRMB", NMEASentence::IGNORE);
-            nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+            nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
             const goby::moos::protobuf::DesiredCourse& desired_course = command.desired_course();
 
             // for zero speed, send zero RPM, pitch, rudder
@@ -290,7 +299,7 @@ void BluefinFrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData&
     if (data.has_ctd_sample())
     {
         NMEASentence nmea("$BPCTD", NMEASentence::IGNORE);
-        nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+        nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
 
         // BF wants Siemens / meter, same as CTDSample
         if (data.ctd_sample().has_conductivity())
@@ -310,7 +319,8 @@ void BluefinFrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData&
         else
             nmea.push_back("");
 
-        nmea.push_back(unix_time2nmea_time(data.ctd_sample().time()));
+        nmea.push_back(unix_time2nmea_time(
+            gtime::convert<gtime::SystemClock::time_point>(data.ctd_sample().time_with_units())));
 
         append_to_write_queue(nmea);
     }
@@ -318,7 +328,7 @@ void BluefinFrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData&
     if (data.has_dccl_message())
     {
         NMEASentence nmea("$BPDCL", NMEASentence::IGNORE);
-        nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+        nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
         nmea.push_back(boost::trim_copy(dccl::b64_encode(data.dccl_message())));
         append_to_write_queue(nmea);
     }
@@ -330,7 +340,7 @@ void BluefinFrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData&
         if (bf_extra.has_micro_modem_raw_in() && bf_config_.send_tmr_messages())
         {
             NMEASentence nmea("$BPTMR", NMEASentence::IGNORE);
-            nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+            nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
             const int TRANSPORT_ACOUSTIC_MODEM = 3;
             nmea.push_back(TRANSPORT_ACOUSTIC_MODEM);
 
@@ -343,8 +353,9 @@ void BluefinFrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData&
         }
 
         for (int i = 0, n = bf_extra.payload_status_size(); i < n; ++i)
-            payload_status_.insert(std::make_pair(bf_extra.payload_status(i).expire_time(),
-                                                  bf_extra.payload_status(i)));
+            payload_status_.insert(std::make_pair(
+                gtime::MicroTime(bf_extra.payload_status(i).expire_time_with_units()),
+                bf_extra.payload_status(i)));
     }
 }
 
@@ -364,12 +375,13 @@ void BluefinFrontSeat::send_raw_to_frontseat(const gpb::FrontSeatRaw& data)
 
 void BluefinFrontSeat::check_send_heartbeat()
 {
-    double now = goby_time<double>();
-    if (now > last_heartbeat_time_ + bf_config_.heartbeat_interval())
+    auto now = gtime::SystemClock::now();
+    if (now > last_heartbeat_time_ + gtime::convert_duration<gtime::SystemClock::duration>(
+                                         bf_config_.heartbeat_interval_with_units()))
     {
         NMEASentence nmea("$BPSTS", NMEASentence::IGNORE);
 
-        nmea.push_back(unix_time2nmea_time(goby_time<double>()));
+        nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
         const int FAILED = 0, ALL_OK = 1;
         bool ok = state() != gpb::INTERFACE_HELM_ERROR && state() != gpb::INTERFACE_FS_ERROR;
 
@@ -377,17 +389,11 @@ void BluefinFrontSeat::check_send_heartbeat()
         if (payload_status_.size())
         {
             std::map<int, std::string> seen_ids;
-            status += goby::common::goby_time_as_string();
-            payload_status_.erase(
-                payload_status_.begin(),
-                payload_status_.upper_bound(goby::common::goby_time<std::uint64_t>()));
+            status += gtime::str();
+            payload_status_.erase(payload_status_.begin(),
+                                  payload_status_.upper_bound(gtime::now<gtime::MicroTime>()));
 
-            for (std::multimap<
-                     std::uint64_t,
-                     goby::moos::protobuf::BluefinExtraData::PayloadStatus>::const_iterator
-                     it = payload_status_.begin(),
-                     end = payload_status_.end();
-                 it != end; ++it)
+            for (auto it = payload_status_.begin(), end = payload_status_.end(); it != end; ++it)
             {
                 // only display the newest from a given ID
                 if (!seen_ids.count(it->second.id()))
@@ -413,7 +419,8 @@ void BluefinFrontSeat::check_send_heartbeat()
         nmea.push_back(status);
         append_to_write_queue(nmea);
 
-        last_heartbeat_time_ = now + bf_config_.heartbeat_interval();
+        last_heartbeat_time_ = now + gtime::convert_duration<gtime::SystemClock::duration>(
+                                         bf_config_.heartbeat_interval_with_units());
     }
 }
 
@@ -489,7 +496,9 @@ void BluefinFrontSeat::try_send()
     const NMEASentence& nmea = out_.front();
 
     bool resend = waiting_for_huxley_ &&
-                  (last_write_time_ <= (goby_time<double>() - bf_config_.nmea_resend_interval()));
+                  (last_write_time_ <= (gtime::SystemClock::now() -
+                                        gtime::convert_duration<gtime::SystemClock::duration>(
+                                            bf_config_.nmea_resend_interval_with_units())));
 
     if (!waiting_for_huxley_)
     {
@@ -563,7 +572,7 @@ void BluefinFrontSeat::write(const NMEASentence& nmea)
     else
     {
         waiting_for_huxley_ = true;
-        last_write_time_ = goby_time<double>();
+        last_write_time_ = gtime::SystemClock::now();
     }
 }
 
@@ -607,9 +616,9 @@ void BluefinFrontSeat::process_receive(const NMEASentence& nmea)
     }
 }
 
-std::string BluefinFrontSeat::unix_time2nmea_time(double time)
+std::string BluefinFrontSeat::unix_time2nmea_time(goby::time::SystemClock::time_point time)
 {
-    boost::posix_time::ptime ptime = goby::common::unix_double2ptime(time);
+    auto ptime = gtime::convert<boost::posix_time::ptime>(time);
 
     // HHMMSS.SSS
     // it appears that exactly three digits of precision is important (sometimes)

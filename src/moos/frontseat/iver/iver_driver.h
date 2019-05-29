@@ -89,7 +89,8 @@ class IverFrontSeat : public FrontSeatInterfaceBase
     std::shared_ptr<goby::util::SerialClient> ntp_serial_;
 
     bool frontseat_providing_data_;
-    double last_frontseat_data_time_;
+    goby::time::SystemClock::time_point last_frontseat_data_time_;
+
     goby::moos::protobuf::FrontSeatState frontseat_state_;
     goby::moos::protobuf::IverState::IverMissionMode reported_mission_mode_;
 

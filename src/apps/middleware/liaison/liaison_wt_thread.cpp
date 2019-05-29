@@ -47,8 +47,8 @@ goby::common::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env,
     Wt::WString title_text("goby liaison: " + app_cfg_.interprocess().platform());
     setTitle(title_text);
 
-    useStyleSheet(std::string("css/fonts.css?" + common::goby_file_timestamp()));
-    useStyleSheet(std::string("css/liaison.css?" + common::goby_file_timestamp()));
+    useStyleSheet(std::string("css/fonts.css?" + time::file_str()));
+    useStyleSheet(std::string("css/liaison.css?" + time::file_str()));
     setCssTheme("default");
 
     root()->setId("main");

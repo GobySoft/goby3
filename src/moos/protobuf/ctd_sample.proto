@@ -5,14 +5,17 @@ message CTDSample
 {
     option (dccl.msg).id = 200;
     option (dccl.msg).max_bytes = 32;
-
+    option (dccl.msg).unit_system = "si";
+    
     optional int32 source_id = 1 [
         (dccl.field).max = 31,
         (dccl.field).min = 0,
         (dccl.field).in_head = true
     ];
     required double time = 2
-        [(dccl.field).codec = "_time", (dccl.field).in_head = true];
+        [(dccl.field).codec = "_time",
+         (dccl.field).in_head = true,
+         (dccl.field).units.base_dimensions = "T"];
 
     // required "primary" measurements
     optional double conductivity = 10 [(dccl.field).omit = true];

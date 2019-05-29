@@ -5,13 +5,15 @@ import "dccl/option_extensions.proto";
 // if you choose not to do so yourself
 message Header
 {
+    option (dccl.msg).unit_system = "si";
+    
     //
     // time
     //
 
     // micro-seconds since unix
     required uint64 time = 10
-        [(dccl.field).codec = "_time", (dccl.field).in_head = true];
+        [(dccl.field).codec = "_time", (dccl.field).in_head = true, (dccl.field).units = { prefix: "micro" base_dimensions: "T"} ];
 
     //
     // source

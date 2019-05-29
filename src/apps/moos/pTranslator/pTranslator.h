@@ -24,7 +24,7 @@
 
 #include <google/protobuf/descriptor.h>
 
-#include <boost/asio/deadline_timer.hpp>
+#include <boost/asio/basic_waitable_timer.hpp>
 
 #include "dccl/dynamic_protobuf_manager.h"
 #include "goby/moos/goby_moos_app.h"
@@ -39,7 +39,7 @@ class CpTranslator : public GobyMOOSApp
     static void delete_instance();
 
   private:
-    typedef boost::asio::basic_deadline_timer<goby::common::GobyTime> Timer;
+    typedef boost::asio::basic_waitable_timer<goby::time::SystemClock> Timer;
     CpTranslator();
     ~CpTranslator();
 

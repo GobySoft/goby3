@@ -134,7 +134,9 @@ class TestAppTx : public AppBase
         ++i;
         if (rx_ready_)
         {
-            glog.is_verbose() && glog << goby::common::goby_time() << std::endl;
+            using goby::time::operator<<;
+
+            glog.is_verbose() && glog << goby::time::SystemClock::now() << std::endl;
             Widget w;
             w.set_b(tx_count_++);
             {

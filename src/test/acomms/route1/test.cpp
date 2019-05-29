@@ -183,15 +183,15 @@ int main(int argc, char* argv[])
     // create a message
     in_msg.set_src(ID_0_1);
     in_msg.set_dest(ID_3_1);
-    in_msg.set_time(goby_time<std::uint64_t>() / 1000000 *
-                    1000000); // integer second for _time codec
+    in_msg.set_time_with_units(boost::units::round(
+        goby::time::now<goby::time::SITime>())); // integer second for _time codec
     in_msg.set_telegram("0-->3");
 
     // create transmission from message
     goby::acomms::protobuf::ModemTransmission initial_transmit;
     initial_transmit.set_src(ID_0_1);
     initial_transmit.set_dest(ID_1_1);
-    initial_transmit.set_time(goby_time<std::uint64_t>());
+    initial_transmit.set_time_with_units(goby::time::now<goby::time::MicroTime>());
     initial_transmit.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
 
     goby::acomms::DCCLCodec* dccl = goby::acomms::DCCLCodec::get();

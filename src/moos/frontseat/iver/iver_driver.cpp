@@ -31,11 +31,12 @@
 #include "iver_driver.h"
 
 namespace gpb = goby::moos::protobuf;
+namespace gtime = goby::time;
+
 using goby::glog;
-using goby::common::goby_time;
 using namespace goby::common::logger;
 
-const int allowed_skew = 10;
+const auto allowed_skew = std::chrono::seconds(10);
 
 extern "C"
 {
@@ -46,9 +47,11 @@ extern "C"
 }
 
 IverFrontSeat::IverFrontSeat(const iFrontSeatConfig& cfg)
-    : FrontSeatInterfaceBase(cfg), iver_config_(cfg.GetExtension(iver_config)),
+    : FrontSeatInterfaceBase(cfg),
+      iver_config_(cfg.GetExtension(iver_config)),
       serial_(iver_config_.serial_port(), iver_config_.serial_baud(), "\r\n"),
-      frontseat_providing_data_(false), last_frontseat_data_time_(0),
+      frontseat_providing_data_(false),
+      last_frontseat_data_time_(std::chrono::seconds(0)),
       frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED),
       reported_mission_mode_(gpb::IverState::IVER_MODE_UNKNOWN)
 {
@@ -71,7 +74,7 @@ void IverFrontSeat::loop()
     goby::util::NMEASentence request_data("$OSD,G,C,S,P,,,,");
     write(request_data.message());
 
-    if (goby_time<double>() > last_frontseat_data_time_ + allowed_skew)
+    if (gtime::SystemClock::now() > last_frontseat_data_time_ + allowed_skew)
         frontseat_providing_data_ = false;
 
     std::string in;
@@ -137,7 +140,7 @@ void IverFrontSeat::process_receive(const std::string& s)
         {
             status_.Clear(); // $OSI clears the message, $C sends it
 
-            status_.set_time(goby::common::goby_time<double>());
+            status_.set_time_with_units(gtime::now<gtime::SITime>());
 
             enum OSIFields
             {
@@ -244,7 +247,7 @@ void IverFrontSeat::process_receive(const std::string& s)
             data.mutable_node_status()->CopyFrom(status_);
             signal_data_from_frontseat(data);
             frontseat_providing_data_ = true;
-            last_frontseat_data_time_ = goby_time<double>();
+            last_frontseat_data_time_ = gtime::SystemClock::now();
         }
         else
         {

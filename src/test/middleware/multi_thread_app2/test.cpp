@@ -34,6 +34,8 @@ extern constexpr goby::Group widget1{3};
 
 using AppBase = goby::MultiThreadApplication<TestConfig>;
 
+using goby::time::operator<<;
+
 std::atomic<int> complete{0};
 std::atomic<int> ready{0};
 
@@ -103,7 +105,7 @@ class TestApp : public AppBase
         for (int i = 0; i < cfg().num_rx_threads(); ++i) launch_thread<TestThreadRx>(i);
         for (int i = 0; i < cfg().num_tx_threads(); ++i) launch_thread<TestThreadTx>(i);
 
-        start_ = goby::common::goby_time<std::uint64_t>();
+        start_ = goby::time::SystemClock::now();
         glog.is(VERBOSE) && glog << "Start: " << start_ << std::endl;
     }
 
@@ -111,22 +113,25 @@ class TestApp : public AppBase
     {
         if (complete == cfg().num_rx_threads())
         {
-            std::uint64_t end = goby::common::goby_time<std::uint64_t>();
+            auto end = goby::time::SystemClock::now();
             glog.is(VERBOSE) && glog << "End: " << end << std::endl;
-            glog.is(VERBOSE) && glog << "Microseconds per message: "
-                                     << (end - start_) / cfg().num_messages() << std::endl;
+            glog.is(VERBOSE) &&
+                glog << "Microseconds per message: "
+                     << ((end - start_) / std::chrono::microseconds(1)) / cfg().num_messages()
+                     << std::endl;
 
             for (int i = 0; i < cfg().num_rx_threads(); ++i) join_thread<TestThreadRx>(i);
             for (int i = 0; i < cfg().num_tx_threads(); ++i) join_thread<TestThreadTx>(i);
 
-            std::cout << cfg().num_rx_threads() << " " << (end - start_) / cfg().num_messages()
+            std::cout << cfg().num_rx_threads() << " "
+                      << ((end - start_) / std::chrono::microseconds(1)) / cfg().num_messages()
                       << std::endl;
             quit();
         }
     }
 
   private:
-    std::uint64_t start_{0};
+    goby::time::SystemClock::time_point start_{std::chrono::seconds(0)};
 };
 
 int main(int argc, char* argv[]) { goby::run<TestApp>(argc, argv); }

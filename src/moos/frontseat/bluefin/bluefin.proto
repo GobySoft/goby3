@@ -1,3 +1,5 @@
+import "dccl/option_extensions.proto";
+
 import "goby/moos/protobuf/frontseat.proto";
 import "goby/acomms/protobuf/modem_message.proto";
 
@@ -55,6 +57,8 @@ message TrimStatus
 
 message BluefinExtraData
 {
+    option (dccl.msg).unit_system = "si";
+
     optional goby.acomms.protobuf.ModemRaw micro_modem_raw_out = 1;
     optional goby.acomms.protobuf.ModemRaw micro_modem_raw_in = 2;
     optional BuoyancyStatus buoyancy_status = 10;
@@ -63,10 +67,11 @@ message BluefinExtraData
     message PayloadStatus
     {
         required int32 id = 1;
-        required uint64 expire_time = 2;
+        required uint64 expire_time = 2
+            [(dccl.field).units = {prefix: "micro" base_dimensions: "T"}];
         required string msg = 3;
         required bool all_ok = 4;
-    };
+    }
 
     repeated PayloadStatus payload_status = 30;
 }

@@ -25,6 +25,8 @@
 #include "bluefin.h"
 
 namespace gpb = goby::moos::protobuf;
+namespace gtime = goby::time;
+
 using goby::glog;
 using goby::common::goby_time;
 using goby::util::NMEASentence;
@@ -34,7 +36,7 @@ using namespace goby::common::tcolor;
 void BluefinFrontSeat::bfack(const goby::util::NMEASentence& nmea)
 {
     frontseat_providing_data_ = true;
-    last_frontseat_data_time_ = goby_time<double>();
+    last_frontseat_data_time_ = gtime::SystemClock::now();
 
     enum
     {
@@ -143,7 +145,7 @@ void BluefinFrontSeat::bfmsc(const goby::util::NMEASentence& nmea)
 void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
 {
     frontseat_providing_data_ = true;
-    last_frontseat_data_time_ = goby_time<double>();
+    last_frontseat_data_time_ = gtime::SystemClock::now();
 
     enum
     {
@@ -163,8 +165,8 @@ void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
 
     // parse out the message
     status_.Clear(); // NVG clears the message, NVR sends it
-    status_.set_time(
-        goby::util::as<double>(goby::common::nmea_time2ptime(nmea.at(COMPUTED_TIMESTAMP))));
+    status_.set_time_with_units(gtime::convert<gtime::MicroTime>(
+        goby::common::nmea_time2ptime(nmea.at(COMPUTED_TIMESTAMP))));
 
     const std::string& lat_string = nmea.at(LATITUDE);
     if (lat_string.length() > 2)
@@ -218,8 +220,11 @@ void BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
         YAW_RATE = 7,
     };
 
-    double dt =
-        goby::util::as<double>(goby::common::nmea_time2ptime(nmea.at(TIMESTAMP))) - status_.time();
+    auto status_time = status_.time_with_units();
+    auto dt =
+        gtime::convert<decltype(status_time)>(goby::common::nmea_time2ptime(nmea.at(TIMESTAMP))) -
+        status_time;
+
     double east_speed = nmea.as<double>(EAST_VELOCITY);
     double north_speed = nmea.as<double>(NORTH_VELOCITY);
 
@@ -228,10 +233,10 @@ void BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
     status_.mutable_pose()->set_heading_rate(nmea.as<double>(YAW_RATE));
     status_.set_speed(std::sqrt(north_speed * north_speed + east_speed * east_speed));
 
-    status_.mutable_pose()->set_roll_rate_time_lag(dt);
-    status_.mutable_pose()->set_pitch_rate_time_lag(dt);
-    status_.mutable_pose()->set_heading_rate_time_lag(dt);
-    status_.set_speed_time_lag(dt);
+    status_.mutable_pose()->set_roll_rate_time_lag_with_units(dt);
+    status_.mutable_pose()->set_pitch_rate_time_lag_with_units(dt);
+    status_.mutable_pose()->set_heading_rate_time_lag_with_units(dt);
+    status_.set_speed_time_lag_with_units(dt);
 
     // fill in the local X, Y
     compute_missing(&status_);

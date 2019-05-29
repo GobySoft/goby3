@@ -45,6 +45,7 @@ using namespace goby::common::tcolor;
 using namespace goby::common::logger;
 using goby::acomms::operator<<;
 using goby::moos::operator<<;
+using goby::time::operator<<;
 using goby::util::as;
 using google::protobuf::uint32;
 
@@ -505,7 +506,7 @@ void CpAcommsHandler::process_configuration()
             Timer& new_timer = *timers_.back();
 
             new_timer.expires_from_now(
-                boost::posix_time::seconds(cfg_.translator_entry(i).trigger().period()));
+                std::chrono::seconds(cfg_.translator_entry(i).trigger().period()));
             // Start an asynchronous wait.
             new_timer.async_wait(boost::bind(&CpAcommsHandler::create_on_timer, this, _1,
                                              cfg_.translator_entry(i), &new_timer));
@@ -739,22 +740,20 @@ void CpAcommsHandler::create_on_timer(const boost::system::error_code& error,
 {
     if (!error)
     {
-        double skew_seconds = std::abs(goby::common::goby_time<double>() -
-                                       goby::util::as<double>(timer->expires_at()));
+        double skew_seconds = std::abs((goby::time::SystemClock::now() - timer->expires_at()) /
+                                       std::chrono::seconds(1));
         if (skew_seconds > ALLOWED_TIMER_SKEW_SECONDS)
         {
             glog.is(VERBOSE) && glog << group("pAcommsHandler") << warn << "clock skew of "
                                      << skew_seconds << " seconds detected, resetting timer."
                                      << std::endl;
-            timer->expires_at(
-                goby::common::goby_time() +
-                boost::posix_time::seconds(boost::posix_time::seconds(entry.trigger().period())));
+            timer->expires_at(goby::time::SystemClock::now() +
+                              std::chrono::seconds(entry.trigger().period()));
         }
         else
         {
             // reset the timer
-            timer->expires_at(timer->expires_at() +
-                              boost::posix_time::seconds(entry.trigger().period()));
+            timer->expires_at(timer->expires_at() + std::chrono::seconds(entry.trigger().period()));
         }
 
         timer->async_wait(boost::bind(&CpAcommsHandler::create_on_timer, this, _1, entry, timer));
@@ -865,9 +864,9 @@ void CpAcommsHandler::driver_reset(
             glog.is(WARN) && glog << group("pAcommsHandler") << "Attempting to restart driver in "
                                   << cfg_.driver_failure_approach().driver_backoff_sec()
                                   << " seconds." << std::endl;
-            driver_restart_time_.insert(
-                std::make_pair(driver, goby::common::goby_time<double>() +
-                                           cfg_.driver_failure_approach().driver_backoff_sec()));
+            driver_restart_time_.insert(std::make_pair(
+                driver, goby::time::now<goby::time::SITime>() / boost::units::si::seconds +
+                            cfg_.driver_failure_approach().driver_backoff_sec()));
         }
         break;
     }
@@ -875,7 +874,7 @@ void CpAcommsHandler::driver_reset(
 
 void CpAcommsHandler::restart_drivers()
 {
-    double now = goby::common::goby_time<double>();
+    double now = goby::time::now<goby::time::SITime>() / boost::units::si::seconds;
     std::set<std::shared_ptr<goby::acomms::ModemDriverBase> > drivers_to_start;
 
     for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>, double>::iterator it =

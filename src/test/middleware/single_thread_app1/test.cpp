@@ -70,8 +70,10 @@ class TestApp : public Base
         }
         else
         {
+            using goby::time::operator<<;
+
             assert(rx_count_ == tx_count_);
-            std::cout << goby::common::goby_time() << std::endl;
+            std::cout << goby::time::SystemClock::now() << std::endl;
             Widget w;
             w.set_b(++tx_count_);
             std::cout << "Tx: " << w.DebugString() << std::flush;

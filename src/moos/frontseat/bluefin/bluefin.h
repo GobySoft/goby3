@@ -83,24 +83,24 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
     void bfctd(const goby::util::NMEASentence& nmea);
     void bfctl(const goby::util::NMEASentence& nmea);
 
-    std::string unix_time2nmea_time(double time);
+    std::string unix_time2nmea_time(goby::time::SystemClock::time_point time);
 
   private:
     const BluefinFrontSeatConfig bf_config_;
     goby::util::TCPClient tcp_;
     bool frontseat_providing_data_;
-    double last_frontseat_data_time_;
+    goby::time::SystemClock::time_point last_frontseat_data_time_;
     goby::moos::protobuf::FrontSeatState frontseat_state_;
-    double next_connect_attempt_time_;
+    goby::time::SystemClock::time_point next_connect_attempt_time_;
 
-    double last_write_time_;
+    goby::time::SystemClock::time_point last_write_time_;
     std::deque<goby::util::NMEASentence> out_;
     std::deque<goby::util::NMEASentence> pending_;
     bool waiting_for_huxley_;
     unsigned nmea_demerits_;
     unsigned nmea_present_fail_count_;
 
-    double last_heartbeat_time_;
+    goby::time::SystemClock::time_point last_heartbeat_time_;
 
     enum TalkerIDs
     {
@@ -191,7 +191,7 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
         outstanding_requests_;
 
     // maps status expire time to payload status
-    std::multimap<std::uint64_t, goby::moos::protobuf::BluefinExtraData::PayloadStatus>
+    std::multimap<goby::time::MicroTime, goby::moos::protobuf::BluefinExtraData::PayloadStatus>
         payload_status_;
 };
 

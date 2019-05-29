@@ -24,6 +24,7 @@ message RouteCommand
     option (dccl.msg).id = 514;
     option (dccl.msg).max_bytes = 64;
     option (dccl.msg).codec_version = 3;
+    option (dccl.msg).unit_system = "si";
 
     optional int32 src = 1 [
         (dccl.field).min = 0,
@@ -35,7 +36,10 @@ message RouteCommand
         (dccl.field).max = 31,
         (dccl.field).in_head = true
     ];
-    optional uint64 time = 3
-        [(dccl.field).in_head = true, (dccl.field).codec = "_time"];
+    optional uint64 time = 3 [
+        (dccl.field).in_head = true,
+        (dccl.field).codec = "_time",
+        (dccl.field).units = {prefix: "micro" base_dimensions: "T"}
+    ];
     optional StaticRoute new_route = 4;
 }

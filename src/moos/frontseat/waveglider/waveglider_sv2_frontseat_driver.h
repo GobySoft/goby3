@@ -70,7 +70,7 @@ class WavegliderSV2FrontSeat : public FrontSeatInterfaceBase
     const WavegliderSV2FrontSeatConfig waveglider_sv2_config_;
 
     bool frontseat_providing_data_;
-    double last_frontseat_data_time_;
+    goby::time::SystemClock::time_point last_frontseat_data_time_;
     goby::moos::protobuf::FrontSeatState frontseat_state_;
 
     boost::asio::io_service io_;

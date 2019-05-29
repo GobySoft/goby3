@@ -99,7 +99,7 @@ CpTranslator::CpTranslator()
             Timer& new_timer = *timers_.back();
 
             new_timer.expires_from_now(
-                boost::posix_time::seconds(cfg_.translator_entry(i).trigger().period()));
+                std::chrono::seconds(cfg_.translator_entry(i).trigger().period()));
             // Start an asynchronous wait.
             new_timer.async_wait(boost::bind(&CpTranslator::create_on_timer, this, _1,
                                              cfg_.translator_entry(i), &new_timer));
@@ -174,21 +174,19 @@ void CpTranslator::create_on_timer(const boost::system::error_code& error,
 {
     if (!error)
     {
-        double skew_seconds = std::abs(goby::common::goby_time<double>() -
-                                       goby::util::as<double>(timer->expires_at()));
+        double skew_seconds = std::abs((goby::time::SystemClock::now() - timer->expires_at()) /
+                                       std::chrono::seconds(1));
         if (skew_seconds > ALLOWED_TIMER_SKEW_SECONDS)
         {
             glog.is(VERBOSE) && glog << "clock skew of " << skew_seconds
                                      << " seconds detected, resetting timer." << std::endl;
-            timer->expires_at(
-                goby::common::goby_time() +
-                boost::posix_time::seconds(boost::posix_time::seconds(entry.trigger().period())));
+            timer->expires_at(goby::time::SystemClock::now() +
+                              std::chrono::seconds(entry.trigger().period()));
         }
         else
         {
             // reset the timer
-            timer->expires_at(timer->expires_at() +
-                              boost::posix_time::seconds(entry.trigger().period()));
+            timer->expires_at(timer->expires_at() + std::chrono::seconds(entry.trigger().period()));
         }
 
         timer->async_wait(boost::bind(&CpTranslator::create_on_timer, this, _1, entry, timer));

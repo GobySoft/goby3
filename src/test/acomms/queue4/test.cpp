@@ -76,8 +76,7 @@ int main(int argc, char* argv[])
     goby::acomms::connect(&q_manager.signal_ack, &handle_ack);
 
     msg_in1.set_telegram("hello!");
-    msg_in1.mutable_header()->set_time(
-        goby::util::as<std::uint64_t>(boost::posix_time::second_clock::universal_time()));
+    msg_in1.mutable_header()->set_time_with_units(goby::time::now<goby::time::MicroTime>());
     msg_in1.mutable_header()->set_source_platform(MY_MODEM_ID);
     msg_in1.mutable_header()->set_dest_platform(UNICORN_MODEM_ID);
     msg_in1.mutable_header()->set_dest_type(Header::PUBLISH_OTHER);

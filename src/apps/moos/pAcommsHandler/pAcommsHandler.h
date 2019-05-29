@@ -27,7 +27,7 @@
 
 #include <google/protobuf/descriptor.h>
 
-#include <boost/asio/deadline_timer.hpp>
+#include <boost/asio/basic_waitable_timer.hpp>
 #include <boost/bimap.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
@@ -72,7 +72,7 @@ class CpAcommsHandler : public GobyMOOSApp
     static std::map<std::string, void*> driver_plugins_;
 
   private:
-    typedef boost::asio::basic_deadline_timer<goby::common::GobyTime> Timer;
+    typedef boost::asio::basic_waitable_timer<goby::time::SystemClock> Timer;
 
     CpAcommsHandler();
     ~CpAcommsHandler();
