@@ -59,7 +59,8 @@ struct SimulatorSettings
 
 struct SystemClock
 {
-    typedef std::chrono::nanoseconds duration;
+    // use microseconds to avoid overflow at higher warp values
+    typedef std::chrono::microseconds duration;
     typedef duration::rep rep;
     typedef duration::period period;
     typedef std::chrono::time_point<SystemClock> time_point;
@@ -72,17 +73,19 @@ struct SystemClock
 
         if (!SimulatorSettings::using_sim_time)
         {
-            return time_point(now.time_since_epoch());
+            return time_point(duration_cast<duration>(now.time_since_epoch()));
         }
         else
         {
             // warp time (t) by warp factor (w), relative to reference_time (t0)
             // so t_sim = (t-t0)*w+t0
-            auto duration_since_reference = now - SimulatorSettings::reference_time;
-            auto warped_duration_since_reference =
-                SimulatorSettings::warp_factor * duration_since_reference;
-            return time_point(warped_duration_since_reference +
-                              SimulatorSettings::reference_time.time_since_epoch());
+            std::int64_t microseconds_since_reference =
+                (now - SimulatorSettings::reference_time) / microseconds(1);
+            std::int64_t warped_microseconds_since_reference =
+                SimulatorSettings::warp_factor * microseconds_since_reference;
+            return time_point(
+                duration_cast<duration>(microseconds(warped_microseconds_since_reference)) +
+                duration_cast<duration>(SimulatorSettings::reference_time.time_since_epoch()));
         }
     }
 };

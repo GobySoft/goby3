@@ -84,23 +84,61 @@ int main()
     SimulatorSettings::warp_factor = 10;
     SimulatorSettings::using_sim_time = true;
 
-    std::cout << "warp reference: " << convert<MicroTime>(SimulatorSettings::reference_time)
-              << std::endl;
-    auto ref_ptime = convert<boost::posix_time::ptime>(SimulatorSettings::reference_time);
-    std::cout << "\tas ptime: " << ref_ptime << std::endl;
+    {
+        std::cout << "warp reference: " << convert<MicroTime>(SimulatorSettings::reference_time)
+                  << std::endl;
+        auto ref_ptime = convert<boost::posix_time::ptime>(SimulatorSettings::reference_time);
+        std::cout << "\tas ptime: " << ref_ptime << std::endl;
 
-    assert(ref_ptime.date().day() == 1);
-    assert(ref_ptime.date().month() == 1);
-    assert(ref_ptime.date().year() ==
-           boost::posix_time::second_clock::universal_time().date().year());
+        assert(ref_ptime.date().day() == 1);
+        assert(ref_ptime.date().month() == 1);
+        assert(ref_ptime.date().year() ==
+               boost::posix_time::second_clock::universal_time().date().year());
+        assert(ref_ptime.time_of_day().hours() == 0);
+        assert(ref_ptime.time_of_day().minutes() == 0);
+        assert(ref_ptime.time_of_day().seconds() == 0);
 
-    auto now_warped_microseconds = now<MicroTime>();
-    std::cout << "now (warped 10):\t\t" << now_warped_microseconds << std::endl;
-    auto now_warped_ptime = convert<boost::posix_time::ptime>(now_warped_microseconds);
+        auto now_warped_microseconds = now<MicroTime>();
+        std::cout << "now (warped 10):\t\t" << now_warped_microseconds << std::endl;
+        auto now_warped_ptime = convert<boost::posix_time::ptime>(now_warped_microseconds);
 
-    std::cout << "\tas ptime: " << now_warped_ptime << std::endl;
+        std::cout << "\tas ptime: " << now_warped_ptime << std::endl;
 
-    assert(now_warped_microseconds > now_microseconds);
+        assert(now_warped_microseconds > now_microseconds);
+    }
+
+    {
+        // MOOS-style reference time
+        SimulatorSettings::reference_time =
+            std::chrono::system_clock::time_point(std::chrono::seconds(0));
+
+        std::cout << "MOOS style warp reference: "
+                  << convert<MicroTime>(SimulatorSettings::reference_time) << std::endl;
+        auto ref_ptime = convert<boost::posix_time::ptime>(SimulatorSettings::reference_time);
+        std::cout << "\tas ptime: " << ref_ptime << std::endl;
+
+        assert(ref_ptime.date().day() == 1);
+        assert(ref_ptime.date().month() == 1);
+        assert(ref_ptime.date().year() == 1970);
+        assert(ref_ptime.time_of_day().hours() == 0);
+        assert(ref_ptime.time_of_day().minutes() == 0);
+        assert(ref_ptime.time_of_day().seconds() == 0);
+
+        auto now_warped_time = SystemClock::now();
+        std::cout << "now (warped 10):\t\t"
+                  << now_warped_time.time_since_epoch() / std::chrono::microseconds(1) << " us"
+                  << std::endl;
+        auto now_warped_ptime = convert<boost::posix_time::ptime>(now_warped_time);
+
+        std::cout << "\tas ptime: " << now_warped_ptime << std::endl;
+
+        SimulatorSettings::using_sim_time = false;
+
+        auto now_unwarped_time = SystemClock::now();
+
+        assert((now_warped_time.time_since_epoch() / SimulatorSettings::warp_factor -
+                now_unwarped_time.time_since_epoch()) < std::chrono::seconds(1));
+    }
 
     std::cout << "all tests passed" << std::endl;
 

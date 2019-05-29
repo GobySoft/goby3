@@ -952,7 +952,8 @@ template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::process_conf
     {
         goby::time::SimulatorSettings::warp_factor = common_cfg_.time_warp_multiplier();
         goby::time::SimulatorSettings::using_sim_time = true;
-        goby::time::SimulatorSettings::reference_time = std::chrono::system_time::time_point(0);
+        goby::time::SimulatorSettings::reference_time =
+            std::chrono::system_clock::time_point(std::chrono::seconds(0));
         start_time_ *= common_cfg_.time_warp_multiplier();
     }
 }
