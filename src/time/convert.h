@@ -20,95 +20,23 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Time3_20180322H
-#define Time3_20180322H
+#ifndef TIME_CONVERT_20190530H
+#define TIME_CONVERT_20190530H
 
 #include <chrono>
-#include <limits>
 #include <sstream>
 #include <type_traits>
 
 #include <boost/date_time.hpp>
-
 #include <boost/units/cmath.hpp>
-#include <boost/units/quantity.hpp>
-#include <boost/units/systems/si/prefixes.hpp>
-#include <boost/units/systems/si/time.hpp>
+
+#include "goby/time/system_clock.h"
+#include "goby/time/typedefs.h"
 
 namespace goby
 {
-///\name Time
-//@{
-
-/// Functions and objects related to timekeeping.
 namespace time
 {
-/// \brief microsecond unit
-using MicroTimeUnit = decltype(boost::units::si::micro* boost::units::si::seconds);
-/// \brief quantity of microseconds (using int64)
-using MicroTime = boost::units::quantity<MicroTimeUnit, std::int64_t>;
-/// \brief quantity of seconds (using double)
-using SITime = boost::units::quantity<boost::units::si::time, double>;
-
-struct SimulatorSettings
-{
-    static bool using_sim_time;
-    static int warp_factor;
-    static std::chrono::system_clock::time_point reference_time;
-};
-
-struct SystemClock
-{
-    // use microseconds to avoid overflow at higher warp values
-    typedef std::chrono::microseconds duration;
-    typedef duration::rep rep;
-    typedef duration::period period;
-    typedef std::chrono::time_point<SystemClock> time_point;
-    static const bool is_steady = false;
-
-    static time_point now() noexcept
-    {
-        using namespace std::chrono;
-        auto now = system_clock::now();
-
-        if (!SimulatorSettings::using_sim_time)
-        {
-            return time_point(duration_cast<duration>(now.time_since_epoch()));
-        }
-        else
-        {
-            // warp time (t) by warp factor (w), relative to reference_time (t0)
-            // so t_sim = (t-t0)*w+t0
-            std::int64_t microseconds_since_reference =
-                (now - SimulatorSettings::reference_time) / microseconds(1);
-            std::int64_t warped_microseconds_since_reference =
-                SimulatorSettings::warp_factor * microseconds_since_reference;
-            return time_point(
-                duration_cast<duration>(microseconds(warped_microseconds_since_reference)) +
-                duration_cast<duration>(SimulatorSettings::reference_time.time_since_epoch()));
-        }
-    }
-};
-
-struct SteadyClock
-{
-    typedef std::chrono::nanoseconds duration;
-    typedef duration::rep rep;
-    typedef duration::period period;
-    typedef std::chrono::time_point<SteadyClock> time_point;
-    static const bool is_steady = false;
-
-    static time_point now() noexcept
-    {
-        using namespace std::chrono;
-        auto now = steady_clock::now();
-
-        if (!SimulatorSettings::using_sim_time)
-            return time_point(now.time_since_epoch());
-        else
-            return time_point(SimulatorSettings::warp_factor * now.time_since_epoch());
-    }
-};
 
 /// \brief Convert between time representations (this function works for tautological conversions)
 template <typename ToTimeType, typename FromTimeType,
@@ -226,15 +154,9 @@ ToTimeType convert(FromTimeType from_time)
     }
 }
 
-/// \brief return the current system clock time in one of the representations supported by the convert() family of functions
-template <typename TimeType> inline TimeType now()
-{
-    return convert<TimeType, SystemClock::time_point>(SystemClock::now());
-}
-
 /// \brief Returns the provided (or current time if omitted) time as a human-readable string
 template <typename TimeType = SystemClock::time_point>
-inline std::string str(TimeType value = now<TimeType>())
+inline std::string str(TimeType value = SystemClock::now<TimeType>())
 {
     std::stringstream ss;
     ss << convert<boost::posix_time::ptime>(value);
@@ -243,7 +165,7 @@ inline std::string str(TimeType value = now<TimeType>())
 
 /// \brief Returns the provided (or current time if omitted) time as an ISO string suitable for file names (no spaces or special characters, e.g. 20180322T215258)
 template <typename TimeType = SystemClock::time_point>
-inline std::string file_str(TimeType value = now<TimeType>())
+inline std::string file_str(TimeType value = SystemClock::now<TimeType>())
 {
     auto rounded_seconds = boost::units::round(convert<SITime, TimeType>(value));
     return boost::posix_time::to_iso_string(convert<boost::posix_time::ptime>(rounded_seconds));
@@ -311,15 +233,12 @@ ToDurationType convert_duration(FromDurationType from_duration)
         std::chrono::microseconds(microtime_duration.value()));
 };
 
-inline std::ostream& operator<<(std::ostream& out, const SystemClock::time_point& time)
-{
-    return (out << convert<boost::posix_time::ptime>(time));
-}
-
 } // namespace time
-
-//@}
-
 } // namespace goby
+
+template <typename TimeType> TimeType goby::time::SystemClock::now()
+{
+    return goby::time::convert<TimeType, goby::time::SystemClock::time_point>(now());
+}
 
 #endif

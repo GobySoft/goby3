@@ -20,21 +20,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/time3.h"
+#ifndef TIME_IO_20190530H
+#define TIME_IO_20190530H
 
-bool goby::time::SimulatorSettings::using_sim_time = false;
-int goby::time::SimulatorSettings::warp_factor = 1;
+#include "goby/time/convert.h"
+#include "goby/time/system_clock.h"
 
-// creates the default reference time, which is Jan 1 of the current year
-std::chrono::system_clock::time_point create_reference_time()
+inline std::ostream& operator<<(std::ostream& out, const goby::time::SystemClock::time_point& time)
 {
-    using namespace goby::time;
-    using boost::posix_time::ptime;
-
-    auto now_ptime = now<ptime>();
-    ptime last_year_start(boost::gregorian::date(now_ptime.date().year(), 1, 1));
-    return convert<std::chrono::system_clock::time_point>(last_year_start);
+    return (out << convert<boost::posix_time::ptime>(time));
 }
 
-std::chrono::system_clock::time_point
-    goby::time::SimulatorSettings::reference_time(create_reference_time());
+#endif

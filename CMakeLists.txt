@@ -188,7 +188,7 @@ file(GLOB_RECURSE INCLUDE_FILES RELATIVE ${goby_SRC_DIR}
   src/middleware/*.h
   src/util/*.h 
   src/moos/*.h 
-  src/pb/*.h 
+  src/time/*.h 
   )
 
 file(GLOB_RECURSE PROTOBUF_FILES RELATIVE ${goby_SRC_DIR}
