@@ -1,6 +1,4 @@
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
-  protobuf/app_config.proto
-  protobuf/hdf5.proto
   protobuf/logger.proto
   protobuf/option_extensions.proto)
 
@@ -10,7 +8,6 @@ set(SRC
   logger/flex_ostream.cpp 
   logger/logger_manipulators.cpp 
   logger/term_color.cpp
-  configuration_reader.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 

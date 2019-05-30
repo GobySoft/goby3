@@ -23,8 +23,8 @@
 
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
-#include "goby/common/application.h"
 #include "goby/common/logger.h"
+#include "goby/middleware/application.h"
 #include "goby/util/binary.h"
 #include "test_config.pb.h"
 using namespace goby::acomms;

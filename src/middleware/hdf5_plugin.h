@@ -28,7 +28,7 @@
 
 #include <memory>
 
-#include "goby/common/protobuf/hdf5.pb.h"
+#include "goby/middleware/protobuf/hdf5.pb.h"
 #include "goby/time/typedefs.h"
 #include "goby/util/primitive_types.h"
 
@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const HDF5ProtobufEntry& entry
 class HDF5Plugin
 {
   public:
-    HDF5Plugin(const goby::common::protobuf::HDF5Config* cfg) {}
+    HDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg) {}
     virtual ~HDF5Plugin() {}
 
     virtual bool provide_entry(HDF5ProtobufEntry* entry) = 0;

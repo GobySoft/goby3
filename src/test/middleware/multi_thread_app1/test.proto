@@ -1,5 +1,5 @@
 import "dccl/option_extensions.proto";
-import "goby/common/protobuf/app_config.proto";
+import "goby/middleware/protobuf/app_config.proto";
 import "goby/middleware/protobuf/interprocess_config.proto";
 
 message TestConfig

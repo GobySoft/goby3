@@ -1,4 +1,6 @@
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
+  protobuf/app_config.proto
+  protobuf/hdf5.proto
   protobuf/intervehicle_config.proto
   protobuf/interprocess_config.proto
   protobuf/interprocess_data.proto
@@ -18,6 +20,7 @@ set(SRC
   transport-interthread.cpp
   transport-interprocess-zeromq.cpp
   transport-intervehicle.cpp
+  configuration_reader.cpp
   log/log_entry.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )

@@ -33,7 +33,7 @@
 
 #include "goby/common/exception.h"
 
-#include "goby/common/protobuf/app_config.pb.h"
+#include "goby/middleware/protobuf/app_config.pb.h"
 
 #include "goby/common/logger.h"
 #include "goby/time.h"

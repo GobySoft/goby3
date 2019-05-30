@@ -113,7 +113,7 @@ goby::common::hdf5::Writer::Writer()
 
 void goby::common::hdf5::Writer::load()
 {
-    typedef goby::common::HDF5Plugin* (*plugin_func)(const goby::common::protobuf::HDF5Config*);
+    typedef goby::common::HDF5Plugin* (*plugin_func)(const goby::middleware::protobuf::HDF5Config*);
     plugin_func plugin_ptr = (plugin_func)dlsym(plugin_handle, "goby_hdf5_load");
 
     if (!plugin_ptr)

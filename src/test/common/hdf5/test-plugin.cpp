@@ -19,7 +19,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/hdf5_plugin.h"
+#include "goby/middleware/hdf5_plugin.h"
 
 #include "goby/time.h"
 #include "goby/util/binary.h"
@@ -30,7 +30,7 @@
 class TestHDF5Plugin : public goby::common::HDF5Plugin
 {
   public:
-    TestHDF5Plugin(const goby::common::protobuf::HDF5Config* cfg);
+    TestHDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg);
 
   private:
     bool provide_entry(goby::common::HDF5ProtobufEntry* entry);
@@ -42,13 +42,13 @@ class TestHDF5Plugin : public goby::common::HDF5Plugin
 
 extern "C"
 {
-    goby::common::HDF5Plugin* goby_hdf5_load(const goby::common::protobuf::HDF5Config* cfg)
+    goby::common::HDF5Plugin* goby_hdf5_load(const goby::middleware::protobuf::HDF5Config* cfg)
     {
         return new TestHDF5Plugin(cfg);
     }
 }
 
-TestHDF5Plugin::TestHDF5Plugin(const goby::common::protobuf::HDF5Config* cfg)
+TestHDF5Plugin::TestHDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg)
     : goby::common::HDF5Plugin(cfg)
 {
 }

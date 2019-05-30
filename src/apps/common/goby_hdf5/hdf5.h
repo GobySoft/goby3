@@ -26,9 +26,9 @@
 
 #include "H5Cpp.h"
 
-#include "goby/common/application.h"
-#include "goby/common/hdf5_plugin.h"
-#include "goby/common/protobuf/hdf5.pb.h"
+#include "goby/middleware/application.h"
+#include "goby/middleware/hdf5_plugin.h"
+#include "goby/middleware/protobuf/hdf5.pb.h"
 #include "goby/util/binary.h"
 
 #include "hdf5_predicate.h"
@@ -90,7 +90,7 @@ class GroupFactory
     GroupWrapper root_group_;
 };
 
-class Writer : public goby::common::Application<goby::common::protobuf::HDF5Config>
+class Writer : public goby::common::Application<goby::middleware::protobuf::HDF5Config>
 {
   public:
     Writer();

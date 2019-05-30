@@ -24,7 +24,7 @@
 
 #include "configuration_reader.h"
 
-#include "exception.h"
+#include "goby/common/exception.h"
 #include "goby/common/logger/flex_ostream.h"
 #include "goby/common/logger/term_color.h"
 #include "goby/version.h"

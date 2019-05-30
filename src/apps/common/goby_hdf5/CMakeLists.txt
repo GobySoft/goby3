@@ -7,4 +7,5 @@ target_link_libraries(goby_hdf5
   ${HDF5_LIBRARIES}
   ${PROTOBUF_LIBRARIES}
   goby_common
+  goby_middleware
 )
