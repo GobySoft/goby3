@@ -12,3 +12,6 @@ add_subdirectory(multi_thread_app2)
 
 add_subdirectory(log)
 
+if(enable_hdf5)
+  add_subdirectory(hdf5)
+endif()

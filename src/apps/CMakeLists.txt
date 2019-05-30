@@ -1,4 +1,3 @@
-add_subdirectory(common)
 add_subdirectory(acomms)
 add_subdirectory(util)
 add_subdirectory(middleware)
