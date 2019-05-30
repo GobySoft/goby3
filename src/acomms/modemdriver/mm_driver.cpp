@@ -1597,7 +1597,7 @@ void goby::acomms::MMDriver::sntta(const NMEASentence& nmea, protobuf::ModemTran
     m->SetExtension(micromodem::protobuf::type, last_lbl_type_);
 
     m->set_src(driver_cfg_.modem_id());
-    m->set_time_with_units(time::convert<time::MicroTime>(nmea_time2ptime(nmea[5])));
+    m->set_time_with_units(time::convert_from_nmea<time::MicroTime>(nmea[5]));
     m->set_time_source(protobuf::ModemTransmission::MODEM_TIME);
 
     if (last_lbl_type_ == micromodem::protobuf::MICROMODEM_REMUS_LBL_RANGING)
@@ -1850,8 +1850,8 @@ void goby::acomms::MMDriver::cacst(const NMEASentence& nmea, protobuf::ModemTran
                 : micromodem::protobuf::INVALID_RECEIVE_MODE;
 
         cst->set_mode(mode);
-        cst->set_time_with_units(time::convert<time::MicroTime>(
-            nmea_time2ptime(nmea.as<std::string>(2 + version_offset))));
+        cst->set_time_with_units(
+            time::convert_from_nmea<time::MicroTime>(nmea.as<std::string>(2 + version_offset)));
 
         micromodem::protobuf::ClockMode clock_mode =
             micromodem::protobuf::ClockMode_IsValid(nmea.as<int>(3 + version_offset))

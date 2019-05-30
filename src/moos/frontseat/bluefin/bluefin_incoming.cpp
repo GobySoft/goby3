@@ -165,8 +165,8 @@ void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
 
     // parse out the message
     status_.Clear(); // NVG clears the message, NVR sends it
-    status_.set_time_with_units(gtime::convert<gtime::MicroTime>(
-        goby::common::nmea_time2ptime(nmea.at(COMPUTED_TIMESTAMP))));
+    status_.set_time_with_units(
+        gtime::convert_from_nmea<gtime::MicroTime>(nmea.at(COMPUTED_TIMESTAMP)));
 
     const std::string& lat_string = nmea.at(LATITUDE);
     if (lat_string.length() > 2)
@@ -221,9 +221,7 @@ void BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
     };
 
     auto status_time = status_.time_with_units();
-    auto dt =
-        gtime::convert<decltype(status_time)>(goby::common::nmea_time2ptime(nmea.at(TIMESTAMP))) -
-        status_time;
+    auto dt = gtime::convert_from_nmea<decltype(status_time)>(nmea.at(TIMESTAMP)) - status_time;
 
     double east_speed = nmea.as<double>(EAST_VELOCITY);
     double north_speed = nmea.as<double>(NORTH_VELOCITY);

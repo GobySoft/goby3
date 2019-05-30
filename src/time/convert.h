@@ -233,6 +233,48 @@ ToDurationType convert_duration(FromDurationType from_duration)
         std::chrono::microseconds(microtime_duration.value()));
 };
 
+template <typename ToTimeType> ToTimeType convert_from_nmea(const std::string& mt)
+{
+    using namespace boost::posix_time;
+    using namespace boost::gregorian;
+
+    std::string::size_type dot_pos = mt.find('.');
+
+    // must be at least HHMMSS
+    if (mt.length() < 6)
+        return convert<ToTimeType>(ptime(not_a_date_time));
+    else
+    {
+        std::string s_fs = "0";
+        // has some fractional seconds
+        if (dot_pos != std::string::npos)
+            s_fs = mt.substr(dot_pos + 1); // everything after the "."
+        else
+            dot_pos = mt.size();
+
+        std::string s_hour = mt.substr(dot_pos - 6, 2), s_min = mt.substr(dot_pos - 4, 2),
+                    s_sec = mt.substr(dot_pos - 2, 2);
+
+        try
+        {
+            int hour = boost::lexical_cast<int>(s_hour);
+            int min = boost::lexical_cast<int>(s_min);
+            int sec = boost::lexical_cast<int>(s_sec);
+            int micro_sec = boost::lexical_cast<int>(s_fs) * pow(10, 6 - s_fs.size());
+
+            boost::gregorian::date return_date(boost::gregorian::day_clock::universal_day());
+            boost::posix_time::time_duration return_duration(
+                boost::posix_time::time_duration(hour, min, sec, 0) + microseconds(micro_sec));
+            boost::posix_time::ptime return_time(return_date, return_duration);
+            return convert<ToTimeType>(return_time);
+        }
+        catch (boost::bad_lexical_cast&)
+        {
+            return convert<ToTimeType>(ptime(not_a_date_time));
+        }
+    }
+}
+
 } // namespace time
 } // namespace goby
 

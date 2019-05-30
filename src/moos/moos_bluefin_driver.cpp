@@ -262,7 +262,7 @@ void goby::moos::BluefinCommsDriver::bfcma(const goby::util::NMEASentence& nmea)
         MODEM_ADDRESS = 3,
         DEVICE_TYPE = 4
     };
-    end_of_mac_window_ = time::convert<time::SITime>(nmea_time2ptime(nmea.at(END_OF_TIME_WINDOW))) /
+    end_of_mac_window_ = time::convert_from_nmea<time::SITime>(nmea.at(END_OF_TIME_WINDOW)) /
                          boost::units::si::seconds;
     current_modem_ = nmea.at(DEVICE_TYPE);
     if (mac_)
@@ -341,7 +341,7 @@ void goby::moos::BluefinCommsDriver::bfcpr(const goby::util::NMEASentence& nmea)
     };
 
     goby::acomms::protobuf::ModemTransmission msg;
-    msg.set_time_with_units(time::convert<time::MicroTime>(nmea_time2ptime(nmea.at(ARRIVAL_TIME))));
+    msg.set_time_with_units(time::convert_from_nmea<time::MicroTime>(nmea.at(ARRIVAL_TIME)));
     msg.set_time_source(goby::acomms::protobuf::ModemTransmission::MODEM_TIME);
 
     int goby_src = goby_to_bluefin_id_.right.count(nmea.as<int>(SOURCE))
