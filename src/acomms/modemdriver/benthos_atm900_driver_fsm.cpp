@@ -26,7 +26,7 @@
 #include <boost/units/systems/si/prefixes.hpp>
 
 #include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
 
 #include "benthos_atm900_driver.h"

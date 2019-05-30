@@ -40,7 +40,7 @@ FrontSeatInterfaceBase::FrontSeatInterfaceBase(const iFrontSeatConfig& cfg)
     : cfg_(cfg),
       helm_state_(gpb::HELM_NOT_RUNNING),
       state_(gpb::INTERFACE_STANDBY),
-      start_time_(goby::time::now<MicroTime>()),
+      start_time_(goby::time::SystemClock::now<MicroTime>()),
       last_frontseat_error_(gpb::ERROR_FRONTSEAT_NONE),
       last_helm_error_(gpb::ERROR_HELM_NONE)
 {
@@ -160,7 +160,7 @@ void FrontSeatInterfaceBase::check_error_states()
              (helm_state() == gpb::HELM_NOT_RUNNING &&
               (state_ == gpb::INTERFACE_COMMAND ||
                (start_time_ + cfg_.helm_running_timeout_with_units<MicroTime>() <
-                goby::time::now<MicroTime>()))))
+                goby::time::SystemClock::now<MicroTime>()))))
         throw(FrontSeatException(gpb::ERROR_HELM_NOT_RUNNING));
 
     // frontseat not connected is an error except in standby, it's only
@@ -168,7 +168,7 @@ void FrontSeatInterfaceBase::check_error_states()
     if (frontseat_state() == gpb::FRONTSEAT_NOT_CONNECTED &&
         (state_ != gpb::INTERFACE_STANDBY ||
          start_time_ + cfg_.frontseat_connected_timeout_with_units<MicroTime>() <
-             goby::time::now<MicroTime>()))
+             goby::time::SystemClock::now<MicroTime>()))
         throw(FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_CONNECTED));
     // frontseat must always provide data in either the listen or command states
     else if (!frontseat_providing_data() && state_ != gpb::INTERFACE_STANDBY)

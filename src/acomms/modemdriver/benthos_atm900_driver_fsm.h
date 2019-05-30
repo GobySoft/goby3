@@ -39,7 +39,7 @@
 
 #include "goby/acomms/acomms_constants.h"
 #include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
 
 #include "goby/acomms/protobuf/benthos_atm900.pb.h"
@@ -392,7 +392,7 @@ struct SetClock : boost::statechart::state<SetClock, Command>, StateNotify
 
     SetClock(my_context ctx) : my_base(ctx), StateNotify("SetClock")
     {
-        auto p = time::now<boost::posix_time::ptime>();
+        auto p = time::SystemClock::now<boost::posix_time::ptime>();
 
         std::string date_str = boost::str(boost::format("-d%02d/%02d/%04d") %
                                           (int)p.date().month() % p.date().day() % p.date().year());

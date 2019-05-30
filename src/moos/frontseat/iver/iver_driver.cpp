@@ -140,7 +140,7 @@ void IverFrontSeat::process_receive(const std::string& s)
         {
             status_.Clear(); // $OSI clears the message, $C sends it
 
-            status_.set_time_with_units(gtime::now<gtime::SITime>());
+            status_.set_time_with_units(gtime::SystemClock::now<gtime::SITime>());
 
             enum OSIFields
             {

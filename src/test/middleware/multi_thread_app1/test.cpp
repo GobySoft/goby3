@@ -19,8 +19,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/time.h"
 #include "goby/middleware/multi-thread-application.h"
+#include "goby/time.h"
+#include "goby/time/io.h"
 
 #include <boost/units/io.hpp>
 #include <sys/types.h>
@@ -134,8 +135,6 @@ class TestAppTx : public AppBase
         ++i;
         if (rx_ready_)
         {
-            using goby::time::operator<<;
-
             glog.is_verbose() && glog << goby::time::SystemClock::now() << std::endl;
             Widget w;
             w.set_b(tx_count_++);

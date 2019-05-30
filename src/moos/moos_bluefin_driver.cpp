@@ -24,10 +24,10 @@
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/protobuf/mm_driver.pb.h"
 #include "goby/common/logger.h"
-#include "goby/common/time.h"
 #include "goby/moos/moos_protobuf_helpers.h"
 #include "goby/moos/moos_string.h"
 #include "goby/moos/protobuf/bluefin_driver.pb.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
 #include "goby/util/linebasedcomms/nmea_sentence.h"
 #include <boost/format.hpp>
@@ -290,7 +290,7 @@ void goby::moos::BluefinCommsDriver::bfcps(const goby::util::NMEASentence& nmea)
     if (nmea.as<int>(REQUEST_ID) == last_request_id_)
     {
         goby::acomms::protobuf::ModemTransmission msg;
-        msg.set_time_with_units(time::now<time::MicroTime>());
+        msg.set_time_with_units(time::SystemClock::now<time::MicroTime>());
         msg.set_src(last_data_msg_.dest()); // ack came from last data's destination, presumably
         msg.set_dest(last_data_msg_.src());
         msg.set_type(goby::acomms::protobuf::ModemTransmission::ACK);

@@ -58,10 +58,10 @@
 #include <Wt/Dbo/backend/Sqlite3>
 
 #include "goby/common/logger.h"
-#include "goby/common/time.h"
 #include "goby/middleware/liaison/liaison_container.h"
 #include "goby/middleware/multi-thread-application.h"
 #include "goby/middleware/protobuf/liaison_config.pb.h"
+#include "goby/time.h"
 #include "goby/util/as.h"
 
 #include "liaison.h"

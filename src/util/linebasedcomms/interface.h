@@ -34,7 +34,7 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/protobuf/linebasedcomms.pb.h"
 
 namespace goby

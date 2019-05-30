@@ -120,7 +120,7 @@ class Terminate : public goby::SingleThreadApplication<goby::protobuf::Terminate
         }
 
         // check timeout
-        decltype(start_time_) now(goby::time::now<time::MicroTime>()),
+        decltype(start_time_) now(goby::time::SystemClock::now<time::MicroTime>()),
             timeout(cfg().response_timeout_with_units());
         if (now > start_time_ + timeout)
         {
@@ -156,7 +156,7 @@ class Terminate : public goby::SingleThreadApplication<goby::protobuf::Terminate
     bool process_exists(unsigned pid) { return (0 == kill(pid, 0)); }
 
   private:
-    time::MicroTime start_time_{goby::time::now<time::MicroTime>()};
+    time::MicroTime start_time_{goby::time::SystemClock::now<time::MicroTime>()};
 
     // targets that we requested by name that haven't responded
     std::set<std::string> waiting_for_response_names_;

@@ -19,8 +19,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/time.h"
 #include "goby/middleware/single-thread-application.h"
+#include "goby/time.h"
+#include "goby/time/io.h"
 
 #include <boost/units/io.hpp>
 #include <sys/types.h>
@@ -70,8 +71,6 @@ class TestApp : public Base
         }
         else
         {
-            using goby::time::operator<<;
-
             assert(rx_count_ == tx_count_);
             std::cout << goby::time::SystemClock::now() << std::endl;
             Widget w;

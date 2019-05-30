@@ -26,9 +26,17 @@
 #include "goby/time/convert.h"
 #include "goby/time/system_clock.h"
 
+namespace goby
+{
+namespace time
+{
 inline std::ostream& operator<<(std::ostream& out, const goby::time::SystemClock::time_point& time)
 {
-    return (out << convert<boost::posix_time::ptime>(time));
+    return (out << goby::time::convert<boost::posix_time::ptime>(time));
 }
+} // namespace time
+} // namespace goby
+
+using goby::time::operator<<;
 
 #endif

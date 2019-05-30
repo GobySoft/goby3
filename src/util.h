@@ -26,7 +26,7 @@
 #define UTILCOURTESY20100713H
 
 #include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/as.h"
 #include "goby/util/binary.h"
 #include "goby/util/linebasedcomms.h"

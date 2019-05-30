@@ -29,7 +29,7 @@
 #include <thread>
 #include <vector>
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 #include "term_color.h"
 

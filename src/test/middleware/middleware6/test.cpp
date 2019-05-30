@@ -97,7 +97,7 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
         {
             std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
             std::cout << "Publish end: " << std::setprecision(15)
-                      << goby::time::now<goby::time::SITime>() << std::endl;
+                      << goby::time::SystemClock::now<goby::time::SITime>() << std::endl;
         }
     }
     else if (test == 1)
@@ -105,8 +105,8 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
         goby::InterProcessPortal<> zmq(cfg);
         sleep(1);
 
-        std::cout << "Start: " << std::setprecision(15) << goby::time::now<goby::time::SITime>()
-                  << std::endl;
+        std::cout << "Start: " << std::setprecision(15)
+                  << goby::time::SystemClock::now<goby::time::SITime>() << std::endl;
 
         while (publish_count < max_publish)
         {
@@ -124,7 +124,7 @@ void publisher(const goby::protobuf::InterProcessPortalConfig& cfg)
         }
 
         std::cout << "Publish end: " << std::setprecision(15)
-                  << goby::time::now<goby::time::SITime>() << std::endl;
+                  << goby::time::SystemClock::now<goby::time::SITime>() << std::endl;
 
         while (forward) { zmq.poll(std::chrono::milliseconds(100)); }
     }
@@ -137,7 +137,7 @@ void handle_sample1(const Type& sample)
     {
         std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
         std::cout << "Receive start: " << std::setprecision(15)
-                  << goby::time::now<goby::time::SITime>() << std::endl;
+                  << goby::time::SystemClock::now<goby::time::SITime>() << std::endl;
     }
 
     //std::cout << sample.ShortDebugString() << std::endl;

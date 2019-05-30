@@ -27,7 +27,7 @@
 #include <boost/bind.hpp>
 #include <boost/signals2.hpp>
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
 
 namespace goby

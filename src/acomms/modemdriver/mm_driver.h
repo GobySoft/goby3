@@ -25,7 +25,7 @@
 
 #include <dccl.h>
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 #include "driver_base.h"
 #include "goby/acomms/acomms_helpers.h"

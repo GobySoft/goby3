@@ -39,7 +39,7 @@
 #include <Wt/WTimer>
 #include <Wt/WVBoxLayout>
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 using namespace Wt;
 using namespace goby::common::logger_lock;
@@ -153,7 +153,8 @@ void goby::common::LiaisonScope::update_row(const std::string& group,
                                                                 DisplayRole);
 
     items[protobuf::ProtobufScopeConfig::COLUMN_TIME]->setData(
-        WDateTime::fromPosixTime(goby::time::now<boost::posix_time::ptime>()), DisplayRole);
+        WDateTime::fromPosixTime(goby::time::SystemClock::now<boost::posix_time::ptime>()),
+        DisplayRole);
 
     if (do_attach_pb_rows)
         attach_pb_rows(items, msg);

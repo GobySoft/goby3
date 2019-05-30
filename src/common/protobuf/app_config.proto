@@ -24,7 +24,7 @@ message AppConfig
                 default = false,
                 (goby.field).description =
                     "Enable the use of a different clock for all calls to "
-                    "goby::time::now<time::MicroTime>() and related"
+                    "goby::time::SystemClock::now<time::MicroTime>() and related"
             ];
             optional int32 warp_factor = 2 [
                 default = 1,

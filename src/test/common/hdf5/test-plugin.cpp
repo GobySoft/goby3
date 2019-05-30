@@ -21,7 +21,7 @@
 
 #include "goby/common/hdf5_plugin.h"
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
 
 #include "test.pb.h"
@@ -80,7 +80,7 @@ bool TestHDF5Plugin::provide_entry(goby::common::HDF5ProtobufEntry* entry)
         entry->channel =
             " test/group2/"; // add some whitespace and trailing "/" - will become "test/group2"
 
-    entry->time = goby::time::now<goby::time::MicroTime>();
+    entry->time = goby::time::SystemClock::now<goby::time::MicroTime>();
 
     std::cout << *entry << std::endl;
 

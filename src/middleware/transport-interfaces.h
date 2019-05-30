@@ -23,6 +23,7 @@
 #ifndef TransportInterfaces20170808H
 #define TransportInterfaces20170808H
 
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -32,7 +33,6 @@
 
 #include "goby/common/exception.h"
 #include "goby/common/logger.h"
-#include "goby/common/time3.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"
 
 namespace goby

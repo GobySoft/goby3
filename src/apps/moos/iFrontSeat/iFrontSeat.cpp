@@ -26,7 +26,7 @@
 
 #include "goby/acomms/connect.h"
 #include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 #include "iFrontSeat.h"
 

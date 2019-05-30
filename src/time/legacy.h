@@ -28,7 +28,6 @@
 
 #include <boost/asio/time_traits.hpp>
 #include <boost/date_time.hpp>
-#include <boost/function.hpp>
 
 #include "goby/time/system_clock.h"
 #include "goby/util/as.h"
@@ -116,7 +115,7 @@ template <typename ReturnType>
 template <>
 [[deprecated("use time::SystemClock::now()")]] inline std::uint64_t goby_time<std::uint64_t>()
 {
-    return goby::time::now<time::MicroTime>().value();
+    return goby::time::SystemClock::now<time::MicroTime>().value();
 }
 
 template <>[[deprecated("use time::SystemClock::now()")]] inline double goby_time<double>()
@@ -212,7 +211,7 @@ inline boost::posix_time::ptime nmea_time2ptime(const std::string& mt)
 }
 
 // dummy struct for use with boost::asio::time_traits
-struct [[deprecated]] GobyTime
+struct [[deprecated("use boost::asio::basic_waitable_timer")]] GobyTime
 {
 };
 
@@ -225,7 +224,7 @@ namespace asio
 {
 /// Time traits specialised for GobyTime
 template <>
-struct [[deprecated]] time_traits<goby::common::GobyTime> {
+struct [[deprecated("use boost::asio::basic_waitable_timer")]] time_traits<goby::common::GobyTime> {
     /// The time type.
     typedef boost::posix_time::ptime time_type;
 
@@ -233,7 +232,7 @@ struct [[deprecated]] time_traits<goby::common::GobyTime> {
     typedef boost::posix_time::time_duration duration_type;
 
     /// Get the current time.
-    static time_type now() { return goby::time::now<boost::posix_time::ptime>(); }
+    static time_type now() { return goby::time::SystemClock::now<boost::posix_time::ptime>(); }
 
     /// Add a duration to a time.
     static time_type add(const time_type& t, const duration_type& d) { return t + d; }

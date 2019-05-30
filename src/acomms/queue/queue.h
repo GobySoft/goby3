@@ -36,7 +36,7 @@
 #include <boost/any.hpp>
 
 #include "goby/acomms/dccl/dccl.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/as.h"
 
 #include "goby/acomms/acomms_helpers.h"

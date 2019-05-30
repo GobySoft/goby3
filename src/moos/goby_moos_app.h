@@ -36,10 +36,10 @@
 #include "goby/common/configuration_reader.h"
 #include "goby/common/exception.h"
 #include "goby/common/logger.h"
-#include "goby/common/time.h"
 #include "goby/moos/moos_header.h"
 #include "goby/moos/moos_translator.h"
 #include "goby/moos/protobuf/goby_moos_app.pb.h"
+#include "goby/time.h"
 #include "goby/util/as.h"
 #include "goby/version.h"
 #include "moos_protobuf_helpers.h"
@@ -174,8 +174,8 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
 
     void register_timer(int period_seconds, boost::function<void()> handler)
     {
-        int now =
-            (goby::time::now<goby::time::SITime>() / boost::units::si::seconds) / period_seconds;
+        int now = (goby::time::SystemClock::now<goby::time::SITime>() / boost::units::si::seconds) /
+                  period_seconds;
         now *= period_seconds;
 
         SynchronousLoop new_loop;
@@ -348,7 +348,7 @@ template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::Iterate()
 
     if (synchronous_loops_.size())
     {
-        double now = goby::time::now<goby::time::SITime>() / boost::units::si::seconds;
+        double now = goby::time::SystemClock::now<goby::time::SITime>() / boost::units::si::seconds;
         for (typename std::vector<SynchronousLoop>::iterator it = synchronous_loops_.begin(),
                                                              end = synchronous_loops_.end();
              it != end; ++it)

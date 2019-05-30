@@ -23,10 +23,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "goby/common/time.h"
 #include "goby/middleware/log.h"
 #include "goby/middleware/protobuf/logger_config.pb.h"
 #include "goby/middleware/single-thread-application.h"
+#include "goby/time.h"
 
 #include "goby/middleware/log/dccl_log_plugin.h"
 #include "goby/middleware/log/protobuf_log_plugin.h"

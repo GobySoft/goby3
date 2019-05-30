@@ -27,7 +27,7 @@
 
 #include <boost/bimap.hpp>
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 #include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/amac.h"

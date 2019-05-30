@@ -24,7 +24,7 @@
 #define ASIOLineBasedConnection20100715H
 
 #include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 #include "interface.h"
 
@@ -88,7 +88,7 @@ template <typename ASIOAsyncReadStream> class LineBasedConnection
         if (!local_endpoint().empty())
             in_datagram_.set_dest(local_endpoint());
 
-        in_datagram_.set_time(goby::time::now<goby::time::SITime>().value());
+        in_datagram_.set_time(goby::time::SystemClock::now<goby::time::SITime>().value());
         char last = interface_->delimiter().at(interface_->delimiter().length() - 1);
         std::getline(is, line, last);
 

@@ -27,7 +27,7 @@
 #include <dccl/field_codec_fixed.h>
 #include <dccl/field_codec_manager.h>
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 #include "benthos_atm900_driver_fsm.h"
 #include "driver_base.h"

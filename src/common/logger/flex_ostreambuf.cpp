@@ -35,11 +35,11 @@
 #include "flex_ostream.h"
 
 #include "goby/common/exception.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/sci.h"
 #include "logger_manipulators.h"
 
-using goby::time::now;
+using goby::time::SystemClock;
 
 #ifdef HAS_NCURSES
 std::mutex curses_mutex;
@@ -55,7 +55,7 @@ goby::common::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
 #ifdef HAS_NCURSES
       curses_(0),
 #endif
-      start_time_(time::now<boost::posix_time::ptime>()),
+      start_time_(time::SystemClock::now<boost::posix_time::ptime>()),
       is_gui_(false),
       highest_verbosity_(logger::QUIET),
       parent_(parent)
@@ -203,7 +203,7 @@ void goby::common::FlexOStreamBuf::display(std::string& s)
                     std::lock_guard<std::mutex> lock(curses_mutex);
                     std::stringstream line;
                     boost::posix_time::time_duration time_of_day =
-                        now<boost::posix_time::ptime>().time_of_day();
+                        SystemClock::now<boost::posix_time::ptime>().time_of_day();
                     line << "\n"
                          << std::setfill('0') << std::setw(2) << time_of_day.hours() << ":"
                          << std::setw(2) << time_of_day.minutes() << ":" << std::setw(2)
@@ -211,7 +211,7 @@ void goby::common::FlexOStreamBuf::display(std::string& s)
                          << TermColor::esc_code_from_col(groups_[group_name_].color()) << " | "
                          << esc_nocolor << s;
 
-                    curses_->insert(now<boost::posix_time::ptime>(), line.str(),
+                    curses_->insert(SystemClock::now<boost::posix_time::ptime>(), line.str(),
                                     &groups_[group_name_]);
                 }
                 else

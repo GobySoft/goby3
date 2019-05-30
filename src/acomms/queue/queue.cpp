@@ -38,7 +38,7 @@ goby::acomms::Queue::Queue(const google::protobuf::Descriptor* desc, QueueManage
     : desc_(desc),
       parent_(parent),
       cfg_(cfg),
-      last_send_time_(time::now<boost::posix_time::ptime>())
+      last_send_time_(time::SystemClock::now<boost::posix_time::ptime>())
 {
     process_cfg();
 }
@@ -90,7 +90,7 @@ bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message
         if ((meta.has_ack_requested() && meta.ack_requested()) || queue_message_options().ack())
         {
             protobuf::ModemTransmission ack_msg;
-            ack_msg.set_time_with_units(goby::time::now<time::MicroTime>());
+            ack_msg.set_time_with_units(goby::time::SystemClock::now<time::MicroTime>());
             ack_msg.set_src(meta.dest());
             ack_msg.set_dest(meta.dest());
             ack_msg.set_type(protobuf::ModemTransmission::ACK);
@@ -101,7 +101,7 @@ bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message
     }
 
     if (!meta.has_time())
-        meta.set_time_with_units(goby::time::now<time::MicroTime>());
+        meta.set_time_with_units(goby::time::SystemClock::now<time::MicroTime>());
 
     if (meta.non_repeated_size() == 0)
     {
@@ -316,7 +316,7 @@ goby::acomms::QueuedMessage goby::acomms::Queue::give_data(unsigned frame)
     if (ack)
         waiting_for_ack_.insert(std::pair<unsigned, messages_it>(frame, it_to_give));
 
-    last_send_time_ = time::now<boost::posix_time::ptime>();
+    last_send_time_ = time::SystemClock::now<boost::posix_time::ptime>();
     it_to_give->meta.set_last_sent_time_with_units(time::convert<time::MicroTime>(last_send_time_));
 
     return *it_to_give;
@@ -341,7 +341,8 @@ bool goby::acomms::Queue::get_priority_values(double* priority,
                                               const protobuf::ModemTransmission& request_msg,
                                               const std::string& data)
 {
-    *priority = time_duration2double((time::now<boost::posix_time::ptime>() - last_send_time_)) /
+    *priority = time_duration2double(
+                    (time::SystemClock::now<boost::posix_time::ptime>() - last_send_time_)) /
                 queue_message_options().ttl() * queue_message_options().value_base();
 
     *last_send_time = last_send_time_;
@@ -356,7 +357,7 @@ bool goby::acomms::Queue::get_priority_values(double* priority,
     // or the same as the first user-frame
 
     if (last_send_time_ + boost::posix_time::seconds(queue_message_options().blackout_time()) >
-        time::now<boost::posix_time::ptime>())
+        time::SystemClock::now<boost::posix_time::ptime>())
     {
         glog.is(DEBUG1) && glog << group(parent_->glog_priority_group()) << "\t" << name()
                                 << " is in blackout" << std::endl;
@@ -474,7 +475,7 @@ std::vector<std::shared_ptr<google::protobuf::Message> > goby::acomms::Queue::ex
     {
         if ((time::convert<boost::posix_time::ptime>(messages_.front().meta.time_with_units()) +
              boost::posix_time::seconds(queue_message_options().ttl())) <
-            time::now<boost::posix_time::ptime>())
+            time::SystemClock::now<boost::posix_time::ptime>())
         {
             expired_msgs.push_back(messages_.front().dccl_msg);
             glog.is(DEBUG1) && glog << group(parent_->glog_pop_group()) << "expiring"
@@ -543,7 +544,7 @@ bool goby::acomms::Queue::clear_ack_queue(unsigned start_frame)
         else if (it->second->meta.last_sent_time_with_units() +
                      time::MicroTime(parent_->cfg_.minimum_ack_wait_seconds() *
                                      boost::units::si::seconds) <
-                 time::now<time::MicroTime>())
+                 time::SystemClock::now<time::MicroTime>())
         {
             glog.is(DEBUG1) && glog << group(parent_->glog_pop_group()) << name()
                                     << ": Clearing ack for queue because "

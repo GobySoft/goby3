@@ -29,8 +29,8 @@
 #include <memory>
 
 #include "goby/common/protobuf/hdf5.pb.h"
+#include "goby/time/typedefs.h"
 #include "goby/util/primitive_types.h"
-#include <goby/common/time3.h>
 
 namespace goby
 {

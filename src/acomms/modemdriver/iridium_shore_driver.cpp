@@ -25,7 +25,7 @@
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/modemdriver/rudics_packet.h"
 #include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
 
 #include "iridium_shore_driver.h"
@@ -319,8 +319,8 @@ void goby::acomms::IridiumShoreDriver::rudics_line(const std::string& data,
                 remote_[modem_msg.src()].on_call.reset(new OnCallBase);
             }
 
-            remote_[modem_msg.src()].on_call->set_last_rx_time(time::now<time::SITime>() /
-                                                               boost::units::si::seconds);
+            remote_[modem_msg.src()].on_call->set_last_rx_time(
+                time::SystemClock::now<time::SITime>() / boost::units::si::seconds);
 
             receive(modem_msg);
         }

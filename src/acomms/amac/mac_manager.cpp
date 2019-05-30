@@ -28,14 +28,13 @@
 
 #include "goby/acomms/acomms_helpers.h"
 #include "goby/common/logger.h"
+#include "goby/time/io.h"
 
 #include "mac_manager.h"
 
 using goby::glog;
 using namespace goby::common::logger;
 using namespace goby::common::tcolor;
-
-using goby::time::operator<<;
 
 int goby::acomms::MACManager::count_;
 

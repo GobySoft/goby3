@@ -23,7 +23,7 @@
 #ifndef IridiumModemDriver20130823H
 #define IridiumModemDriver20130823H
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 #include "goby/util/linebasedcomms/tcp_client.h"
 

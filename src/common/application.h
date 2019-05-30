@@ -36,7 +36,7 @@
 #include "goby/common/protobuf/app_config.pb.h"
 
 #include "goby/common/logger.h"
-#include "goby/common/time3.h"
+#include "goby/time.h"
 
 #include "configurator.h"
 
@@ -146,8 +146,6 @@ template <typename Config> goby::common::Application<Config>::Application() : al
     fout_.resize(app3_base_configuration_.glog_config().file_log_size());
     for (int i = 0, n = app3_base_configuration_.glog_config().file_log_size(); i < n; ++i)
     {
-        using namespace boost::posix_time;
-
         const auto& file_format_str =
             app3_base_configuration_.glog_config().file_log(i).file_name();
         boost::format file_format(file_format_str);
@@ -161,9 +159,8 @@ template <typename Config> goby::common::Application<Config>::Application() : al
         file_format.exceptions(boost::io::all_error_bits ^
                                (boost::io::too_many_args_bit | boost::io::too_few_args_bit));
 
-        std::string file_name = (file_format % to_iso_string(second_clock::universal_time()) %
-                                 app3_base_configuration_.name())
-                                    .str();
+        std::string file_name =
+            (file_format % goby::time::file_str() % app3_base_configuration_.name()).str();
         std::string file_symlink = (file_format % "latest" % app3_base_configuration_.name()).str();
 
         glog.is(VERBOSE) && glog << "logging output to file: " << file_name << std::endl;

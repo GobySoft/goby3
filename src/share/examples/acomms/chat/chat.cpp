@@ -34,7 +34,7 @@
 #include "goby/acomms/dccl.h"
 #include "goby/acomms/modem_driver.h"
 #include "goby/acomms/queue.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/as.h"
 
 #include <boost/lexical_cast.hpp>

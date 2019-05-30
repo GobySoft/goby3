@@ -38,6 +38,7 @@
 #include "goby/moos/protobuf/bluefin_driver.pb.h"
 #include "goby/moos/protobuf/frontseat.pb.h"
 #include "goby/moos/protobuf/ufield_sim_driver.pb.h"
+#include "goby/time/io.h"
 #include "goby/util/sci.h"
 #include "pAcommsHandler.h"
 
@@ -45,7 +46,6 @@ using namespace goby::common::tcolor;
 using namespace goby::common::logger;
 using goby::acomms::operator<<;
 using goby::moos::operator<<;
-using goby::time::operator<<;
 using goby::util::as;
 using google::protobuf::uint32;
 
@@ -864,9 +864,10 @@ void CpAcommsHandler::driver_reset(
             glog.is(WARN) && glog << group("pAcommsHandler") << "Attempting to restart driver in "
                                   << cfg_.driver_failure_approach().driver_backoff_sec()
                                   << " seconds." << std::endl;
-            driver_restart_time_.insert(std::make_pair(
-                driver, goby::time::now<goby::time::SITime>() / boost::units::si::seconds +
-                            cfg_.driver_failure_approach().driver_backoff_sec()));
+            driver_restart_time_.insert(
+                std::make_pair(driver, goby::time::SystemClock::now<goby::time::SITime>() /
+                                               boost::units::si::seconds +
+                                           cfg_.driver_failure_approach().driver_backoff_sec()));
         }
         break;
     }
@@ -874,7 +875,7 @@ void CpAcommsHandler::driver_reset(
 
 void CpAcommsHandler::restart_drivers()
 {
-    double now = goby::time::now<goby::time::SITime>() / boost::units::si::seconds;
+    double now = goby::time::SystemClock::now<goby::time::SITime>() / boost::units::si::seconds;
     std::set<std::shared_ptr<goby::acomms::ModemDriverBase> > drivers_to_start;
 
     for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>, double>::iterator it =

@@ -21,7 +21,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
 
 #include "dccl/dynamic_protobuf_manager.h"
@@ -541,7 +541,7 @@ goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& 
         if (manip_manager_.has(codec_->id(q.descriptor()), protobuf::ON_DEMAND) &&
             (!q.size() || q.newest_msg_time() + boost::posix_time::microseconds(static_cast<long>(
                                                     cfg_.on_demand_skew_seconds() * 1e6)) <
-                              time::now<boost::posix_time::ptime>()))
+                              time::SystemClock::now<boost::posix_time::ptime>()))
         {
             auto new_msg = dccl::DynamicProtobufManager::new_protobuf_message<
                 std::shared_ptr<google::protobuf::Message> >(q.descriptor());

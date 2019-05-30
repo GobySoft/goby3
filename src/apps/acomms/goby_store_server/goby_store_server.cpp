@@ -25,9 +25,9 @@
 
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/protobuf/store_server.pb.h"
-#include "goby/common/time.h"
 #include "goby/common/zeromq_application_base.h"
 #include "goby/pb/protobuf_node.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
 #include "goby_store_server_config.pb.h"
 

@@ -29,7 +29,7 @@
 #include <Wt/WVBoxLayout>
 
 #include "dccl/dynamic_protobuf_manager.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 #include "liaison_commander.h"
 #include "liaison_home.h"

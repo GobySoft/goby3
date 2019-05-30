@@ -25,7 +25,7 @@
 
 #include "goby/moos/moos_header.h"
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/as.h"
 
 namespace goby

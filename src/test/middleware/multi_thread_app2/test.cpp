@@ -19,8 +19,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/time.h"
 #include "goby/middleware/multi-thread-application.h"
+#include "goby/time.h"
+#include "goby/time/io.h"
 
 #include <boost/units/io.hpp>
 #include <sys/types.h>
@@ -33,8 +34,6 @@ using namespace goby::common::logger;
 extern constexpr goby::Group widget1{3};
 
 using AppBase = goby::MultiThreadApplication<TestConfig>;
-
-using goby::time::operator<<;
 
 std::atomic<int> complete{0};
 std::atomic<int> ready{0};

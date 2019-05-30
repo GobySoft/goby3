@@ -25,7 +25,7 @@
 
 #include <boost/units/io.hpp>
 
-#include "goby/common/time3.h"
+#include "goby/time.h"
 
 using namespace boost::posix_time;
 using namespace boost::gregorian;
@@ -48,8 +48,8 @@ int main()
     namespace si = boost::units::si;
 
     auto now_chrono = SystemClock::now();
-    auto now_seconds = now<SITime>();
-    auto now_microseconds = now<MicroTime>();
+    auto now_seconds = SystemClock::now<SITime>();
+    auto now_microseconds = SystemClock::now<MicroTime>();
 
     static_assert(std::is_same<MicroTime::value_type, std::int64_t>(),
                   "expected int64_t value time");
@@ -98,7 +98,7 @@ int main()
         assert(ref_ptime.time_of_day().minutes() == 0);
         assert(ref_ptime.time_of_day().seconds() == 0);
 
-        auto now_warped_microseconds = now<MicroTime>();
+        auto now_warped_microseconds = SystemClock::now<MicroTime>();
         std::cout << "now (warped 10):\t\t" << now_warped_microseconds << std::endl;
         auto now_warped_ptime = convert<boost::posix_time::ptime>(now_warped_microseconds);
 

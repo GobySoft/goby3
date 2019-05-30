@@ -36,7 +36,8 @@ goby::acomms::protobuf::QueueManagerConfig cfg;
 const int MY_MODEM_ID = 1;
 const int UNICORN_MODEM_ID = 3;
 const int MACRURA_MODEM_ID = 4;
-goby::time::MicroTime current_time(boost::units::round(goby::time::now<goby::time::SITime>()));
+goby::time::MicroTime
+    current_time(boost::units::round(goby::time::SystemClock::now<goby::time::SITime>()));
 
 int goby_message_qsize = 0;
 

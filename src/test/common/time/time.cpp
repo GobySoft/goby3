@@ -19,7 +19,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "stdint.h"
 
 using goby::common::goby_time;

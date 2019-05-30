@@ -22,6 +22,7 @@
 #include <dlfcn.h>
 
 #include "goby/moos/moos_string.h"
+#include "goby/time/io.h"
 
 #include "pTranslator.h"
 

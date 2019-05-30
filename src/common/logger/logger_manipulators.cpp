@@ -22,7 +22,7 @@
 
 #include "logger_manipulators.h"
 #include "flex_ostream.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 std::ostream& operator<<(std::ostream& os, const Group& g)
 {

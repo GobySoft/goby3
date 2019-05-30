@@ -24,7 +24,7 @@
 #define QueueConstants20091205H
 
 #include "goby/acomms/acomms_constants.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 namespace goby
 {

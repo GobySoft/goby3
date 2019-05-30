@@ -390,8 +390,9 @@ void BluefinFrontSeat::check_send_heartbeat()
         {
             std::map<int, std::string> seen_ids;
             status += gtime::str();
-            payload_status_.erase(payload_status_.begin(),
-                                  payload_status_.upper_bound(gtime::now<gtime::MicroTime>()));
+            payload_status_.erase(
+                payload_status_.begin(),
+                payload_status_.upper_bound(gtime::SystemClock::now<gtime::MicroTime>()));
 
             for (auto it = payload_status_.begin(), end = payload_status_.end(); it != end; ++it)
             {
