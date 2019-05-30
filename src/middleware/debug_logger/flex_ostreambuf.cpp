@@ -34,7 +34,7 @@
 #endif
 #include "flex_ostream.h"
 
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 #include "goby/time.h"
 #include "goby/util/sci.h"
 #include "logger_manipulators.h"

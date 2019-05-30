@@ -31,7 +31,7 @@
 
 #include <boost/format.hpp>
 
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 
 #include "goby/middleware/protobuf/app_config.pb.h"
 

@@ -24,7 +24,7 @@
 #define QueueException20100812H
 // simple exception class
 
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 
 namespace goby
 {

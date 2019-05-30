@@ -198,6 +198,7 @@ file(GLOB_RECURSE PROTOBUF_FILES RELATIVE ${goby_SRC_DIR}
 foreach(I ${BASE_INCLUDE_FILES} ${INCLUDE_FILES} ${PROTOBUF_FILES})
   configure_file(${goby_SRC_DIR}/${I} ${goby_INC_DIR}/goby/${I} @ONLY)
 endforeach()
+configure_file(${goby_SRC_DIR}/goby.h ${goby_INC_DIR}/goby.h @ONLY)
 
 # write the proto syntax version if required 
 foreach(I ${PROTOBUF_FILES})

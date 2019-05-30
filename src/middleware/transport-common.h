@@ -29,7 +29,7 @@
 #include <thread>
 #include <unordered_map>
 
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 #include "goby/util/binary.h"
 
 #include "poller.h"

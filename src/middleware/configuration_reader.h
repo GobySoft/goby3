@@ -37,7 +37,7 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
 
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 #include "goby/util/as.h"
 
 class AppBaseConfig;

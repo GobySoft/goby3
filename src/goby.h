@@ -20,16 +20,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TIMECOURTESY20190530H
-#define TIMECOURTESY20190530H
+#ifndef GOBYCOURTESY20190530H
+#define GOBYCOURTESY20190530H
 
-#include "goby/time/convert.h"
-#include "goby/time/legacy.h"
-#include "goby/time/simulation.h"
-#include "goby/time/steady_clock.h"
-#include "goby/time/system_clock.h"
-#include "goby/time/typedefs.h"
-
-// do not include io.h - user must include as needed
+#include "goby/acomms.h"
+#include "goby/exception.h"
+#include "goby/time.h"
+#include "goby/util.h"
+#include "goby/version.h"
 
 #endif

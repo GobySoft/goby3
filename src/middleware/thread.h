@@ -30,7 +30,7 @@
 
 #include <boost/units/systems/si.hpp>
 
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 
 #include "group.h"
 

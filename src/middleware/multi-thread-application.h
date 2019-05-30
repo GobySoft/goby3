@@ -25,7 +25,7 @@
 
 #include <boost/units/systems/si.hpp>
 
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 #include "goby/middleware/application.h"
 #include "goby/middleware/thread.h"
 #include "goby/middleware/transport-interprocess-zeromq.h"

@@ -33,8 +33,8 @@
 #include <boost/signals2.hpp>
 
 #include "dynamic_moos_vars.h"
-#include "goby/common/exception.h"
 #include "goby/common/logger.h"
+#include "goby/exception.h"
 #include "goby/middleware/configuration_reader.h"
 #include "goby/moos/moos_header.h"
 #include "goby/moos/moos_translator.h"

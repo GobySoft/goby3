@@ -24,7 +24,7 @@
 #define DriverException20100812H
 
 #include "goby/acomms/protobuf/modem_driver_status.pb.h"
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 
 namespace goby
 {

@@ -21,7 +21,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/common/logger/flex_ostream.h"
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 #include "logger_manipulators.h"
 
 using namespace goby::common::logger;

@@ -31,8 +31,8 @@
 #include "group.h"
 #include "serialize_parse.h"
 
-#include "goby/common/exception.h"
 #include "goby/common/logger.h"
+#include "goby/exception.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"
 
 namespace goby

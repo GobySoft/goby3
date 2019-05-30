@@ -21,8 +21,8 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "interface.h"
-#include "goby/common/exception.h"
 #include "goby/common/logger.h"
+#include "goby/exception.h"
 
 goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
     : work_(io_service_), active_(false)
