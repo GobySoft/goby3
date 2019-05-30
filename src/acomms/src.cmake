@@ -2,9 +2,7 @@ protobuf_generate_cpp(ACOMMS_PROTO_SRCS ACOMMS_PROTO_HDRS
   acomms/protobuf/abc_driver.proto
   acomms/protobuf/amac_config.proto
   acomms/protobuf/amac.proto
-  acomms/protobuf/arithmetic_extensions.proto
   acomms/protobuf/benthos_atm900.proto
-  acomms/protobuf/dccl_option_extensions.proto
   acomms/protobuf/dccl.proto
   acomms/protobuf/driver_base.proto
   acomms/protobuf/file_transfer.proto
