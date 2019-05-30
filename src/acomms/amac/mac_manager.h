@@ -157,12 +157,7 @@ inline bool operator==(const ModemTransmission& a, const ModemTransmission& b)
 }
 } // namespace protobuf
 
-inline std::ostream& operator<<(std::ostream& os, const MACManager& mac)
-{
-    for (std::list<protobuf::ModemTransmission>::const_iterator it = mac.begin(), n = mac.end();
-         it != n; ++it)
-    { os << *it; } return os;
-}
+std::ostream& operator<<(std::ostream& os, const MACManager& mac);
 
 } // namespace acomms
 } // namespace goby

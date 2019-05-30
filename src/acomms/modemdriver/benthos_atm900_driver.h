@@ -27,12 +27,11 @@
 #include <dccl/field_codec_fixed.h>
 #include <dccl/field_codec_manager.h>
 
+#include "goby/acomms/protobuf/benthos_atm900.pb.h"
 #include "goby/time.h"
 
 #include "benthos_atm900_driver_fsm.h"
 #include "driver_base.h"
-#include "goby/acomms/acomms_helpers.h"
-#include "goby/acomms/protobuf/benthos_atm900.pb.h"
 #include "rudics_packet.h"
 
 namespace goby

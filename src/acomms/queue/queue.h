@@ -39,7 +39,7 @@
 #include "goby/time.h"
 #include "goby/util/as.h"
 
-#include "goby/acomms/acomms_helpers.h"
+#include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/acomms/protobuf/queue.pb.h"
 
 namespace goby

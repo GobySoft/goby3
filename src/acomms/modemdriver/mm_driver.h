@@ -28,7 +28,6 @@
 #include "goby/time.h"
 
 #include "driver_base.h"
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/protobuf/mm_driver.pb.h"
 
 namespace goby

@@ -29,7 +29,6 @@
 
 #include "goby/time.h"
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/amac.h"
 #include "goby/acomms/modemdriver/driver_base.h"
 

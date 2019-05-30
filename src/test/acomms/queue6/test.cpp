@@ -23,11 +23,11 @@
 #include "goby/acomms/queue.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
+
 #include "test.pb.h"
 
 // tests various manipulators' functionality
-
-using goby::acomms::operator<<;
 
 goby::acomms::QueueManager q_manager;
 const int MY_MODEM_ID = 1;

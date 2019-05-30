@@ -24,11 +24,11 @@
 #include "goby/acomms/queue.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
+
 #include "test.pb.h"
 
 // tests multi-frame DCCL queuing with non-BROADCAST destination
-
-using goby::acomms::operator<<;
 
 int receive_count = 0;
 bool handle_ack_called = false;

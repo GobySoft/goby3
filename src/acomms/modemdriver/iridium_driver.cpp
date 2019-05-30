@@ -24,16 +24,15 @@
 
 #include "iridium_driver.h"
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/modemdriver/rudics_packet.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
 using goby::glog;
 using namespace goby::common::logger;
 using goby::common::goby_time;
-using goby::acomms::operator<<;
 
 std::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
 

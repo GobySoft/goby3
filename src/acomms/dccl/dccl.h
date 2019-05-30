@@ -23,7 +23,6 @@
 #ifndef DCCLCOMPAT20131116H
 #define DCCLCOMPAT20131116H
 
-#include "goby/acomms/acomms_helpers.h" // for operator<< of google::protobuf::Message
 #include "goby/acomms/protobuf/dccl.pb.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"

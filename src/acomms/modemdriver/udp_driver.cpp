@@ -26,6 +26,7 @@
 #include "goby/acomms/modemdriver/mm_driver.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
 using goby::glog;
 using goby::util::hex_decode;
@@ -36,7 +37,9 @@ using goby::common::goby_time;
 const size_t UDP_MAX_PACKET_SIZE = 65507; // (16 bit length = 65535 - 8 byte UDP header -20 byte IP)
 
 goby::acomms::UDPDriver::UDPDriver(boost::asio::io_service* io_service)
-    : io_service_(io_service), socket_(*io_service), receive_buffer_(UDP_MAX_PACKET_SIZE),
+    : io_service_(io_service),
+      socket_(*io_service),
+      receive_buffer_(UDP_MAX_PACKET_SIZE),
       next_frame_(0)
 {
 }

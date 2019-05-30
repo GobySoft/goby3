@@ -26,9 +26,9 @@
 #include <boost/bind.hpp>
 #include <boost/date_time/gregorian/gregorian_types.hpp>
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/time/io.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
 #include "mac_manager.h"
 
@@ -313,4 +313,11 @@ goby::time::SystemClock::duration goby::acomms::MACManager::cycle_duration()
     for (const protobuf::ModemTransmission& slot : *this)
         length += slot.slot_seconds_with_units<time::MicroTime>();
     return time::convert_duration<goby::time::SystemClock::duration>(length);
+}
+
+std::ostream& goby::acomms::operator<<(std::ostream& os, const MACManager& mac)
+{
+    for (std::list<protobuf::ModemTransmission>::const_iterator it = mac.begin(), n = mac.end();
+         it != n; ++it)
+    { os << *it; } return os;
 }

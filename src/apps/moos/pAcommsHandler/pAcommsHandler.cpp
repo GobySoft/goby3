@@ -39,7 +39,9 @@
 #include "goby/moos/protobuf/frontseat.pb.h"
 #include "goby/moos/protobuf/ufield_sim_driver.pb.h"
 #include "goby/time/io.h"
+#include "goby/util/protobuf/io.h"
 #include "goby/util/sci.h"
+
 #include "pAcommsHandler.h"
 
 using namespace goby::common::tcolor;
@@ -68,9 +70,10 @@ CpAcommsHandler::CpAcommsHandler()
     : GobyMOOSApp(&cfg_),
       translator_(goby::moos::protobuf::TranslatorEntry(), cfg_.common().lat_origin(),
                   cfg_.common().lon_origin(), cfg_.modem_id_lookup_path()),
-      dccl_(goby::acomms::DCCLCodec::get()), work_(timer_io_service_), router_(0)
+      dccl_(goby::acomms::DCCLCodec::get()),
+      work_(timer_io_service_),
+      router_(0)
 {
-
     translator_.add_entry(cfg_.translator_entry());
 
     goby::acomms::connect(&queue_manager_.signal_receive, this,
@@ -596,7 +599,6 @@ void CpAcommsHandler::create_driver(std::shared_ptr<goby::acomms::ModemDriverBas
                 driver_cfg->SetExtension(goby::moos::protobuf::Config::modem_id_lookup_path,
                                          cfg_.modem_id_lookup_path());
                 break;
-
 
             case goby::acomms::protobuf::DRIVER_IRIDIUM:
                 driver.reset(new goby::acomms::IridiumDriver);

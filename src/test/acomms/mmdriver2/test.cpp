@@ -26,6 +26,8 @@
 #include "goby/middleware/application.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
+
 #include "test_config.pb.h"
 using namespace goby::acomms;
 using namespace goby::common::logger;

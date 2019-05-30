@@ -24,6 +24,7 @@
 #include "goby/acomms/amac.h"
 #include "goby/acomms/connect.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 #include "goby/util/sci.h"
 
 goby::acomms::MACManager mac;
@@ -31,8 +32,6 @@ const int num_cycles_check = 3;
 int first_cycle = -1;
 int current_cycle = -1;
 int me = 1;
-
-using goby::acomms::operator<<;
 
 void initiate_transmission(const goby::acomms::protobuf::ModemTransmission& msg)
 {

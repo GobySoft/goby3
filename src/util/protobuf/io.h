@@ -20,28 +20,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef AcommsHelpers20110208H
-#define AcommsHelpers20110208H
+#ifndef UTIL_PB_IO_20190530H
+#define UTIL_PB_IO_20190530H
 
-#include <bitset>
-#include <limits>
-#include <string>
+#include <dccl/common.h>
 
-#include <google/protobuf/descriptor.h>
-
-#include "goby/acomms/protobuf/modem_message.pb.h"
-
-namespace goby
+namespace google
 {
-namespace acomms
+namespace protobuf
 {
-// provides stream output operator for Google Protocol Buffers Message
-inline std::ostream& operator<<(std::ostream& out, const google::protobuf::Message& msg)
-{
-    return (out << "[[" << msg.GetDescriptor()->name() << "]] " << msg.DebugString());
-}
+using dccl::operator<<;
+} // namespace protobuf
+} // namespace google
 
-} // namespace acomms
-} // namespace goby
+using google::protobuf::operator<<;
 
 #endif

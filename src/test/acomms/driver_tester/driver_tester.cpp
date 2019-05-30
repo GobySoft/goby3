@@ -21,6 +21,8 @@
 
 #include "driver_tester.h"
 
+#include "goby/util/protobuf/io.h"
+
 using namespace goby::common::logger;
 using namespace goby::acomms;
 using goby::util::as;

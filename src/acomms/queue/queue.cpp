@@ -21,9 +21,11 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "dccl/dynamic_protobuf_manager.h"
+
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/dccl.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
 #include "queue.h"
 #include "queue_manager.h"

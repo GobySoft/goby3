@@ -24,11 +24,11 @@
 #include "goby/acomms/queue.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
+
 #include "test.pb.h"
 
 // tests basic DCCL queuing
-
-using goby::acomms::operator<<;
 
 int receive_count = 0;
 TestMsg test_msg1;

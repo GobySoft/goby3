@@ -31,7 +31,6 @@
 //         |                   v                  |
 //        in                 Driver  ------>    Driver
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/amac/mac_manager.h"
 #include "goby/acomms/bind.h"
 #include "goby/acomms/connect.h"

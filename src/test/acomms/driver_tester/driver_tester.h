@@ -19,7 +19,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
 #include "goby/acomms/protobuf/benthos_atm900.pb.h"

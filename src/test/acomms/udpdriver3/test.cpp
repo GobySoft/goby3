@@ -21,16 +21,17 @@
 
 // tests functionality of the UDPDriver with respect to multiple frames & acknowledgments
 
-#include "goby/acomms/modemdriver/udp_driver.h"
+#include <cstdlib>
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/bind.h"
 #include "goby/acomms/connect.h"
+#include "goby/acomms/modemdriver/udp_driver.h"
 #include "goby/acomms/queue.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
+
 #include "test.pb.h"
-#include <cstdlib>
 
 boost::asio::io_service io1, io2;
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;

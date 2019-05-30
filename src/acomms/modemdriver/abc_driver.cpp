@@ -25,6 +25,7 @@
 
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
 using goby::glog;
 using goby::util::hex_decode;
