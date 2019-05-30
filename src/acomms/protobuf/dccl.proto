@@ -1,5 +1,5 @@
 // provides MessageFile
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 
 package goby.acomms.protobuf;
 

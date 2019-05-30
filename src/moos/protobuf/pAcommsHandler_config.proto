@@ -5,7 +5,7 @@ import "goby/acomms/protobuf/amac_config.proto";
 import "goby/acomms/protobuf/dccl.proto";
 import "goby/acomms/protobuf/route.proto";
 import "goby/moos/protobuf/translator.proto";
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 
 message pAcommsHandlerConfig
 {

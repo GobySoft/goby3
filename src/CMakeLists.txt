@@ -1,5 +1,5 @@
 ## set up function for external libraries errors
-# e.g. Boost libboost-dev 1.36 REQUIRED ... 
+#e.g.Boost libboost - dev 1.36 REQUIRED... 
 macro(goby_find_required_package package_name)
   find_package(${package_name} ${ARGN})
   string(TOUPPER ${package_name} package_name_upper)
@@ -9,7 +9,7 @@ macro(goby_find_required_package package_name)
 endmacro()
 
 ## find external packages, libraries, and headers for the entire goby project
-# mandatory
+#mandatory
 goby_find_required_package(ProtobufGoby)
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
@@ -21,12 +21,12 @@ else()
   set(PROTOBUF_SYNTAX_VERSION "syntax = \"proto2\";" PARENT_SCOPE)
 endif()
 
-# dccl
+#dccl
 goby_find_required_package(DCCL)
 message("Using DCCL in ${DCCL_DIR}")
 
 if(NOT DEFINED DCCL_INCLUDE_DIR)
-  # for DCCL 3.0.3 and newer
+  #for DCCL 3.0.3 and newer
   get_target_property(DCCL_INCLUDE_DIR dccl INTERFACE_INCLUDE_DIRECTORIES)
 endif()
 
@@ -36,17 +36,16 @@ if(DCCL_INCLUDE_DIR)
   protobuf_include_dirs("${DCCL_INCLUDE_DIR}")
 endif()
 
-# proj
+#proj
 goby_find_required_package(Proj)
 
-# GMP
+#GMP
 goby_find_required_package(GMP)
 
-
-# shared library suffix
+#shared library suffix
 add_definitions(-DSHARED_LIBRARY_SUFFIX="${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
-# optional
+#optional
 ## ncurses
 set(CURSES_USE_NCURSES TRUE)
 set(CURSES_NEED_NCURSES TRUE)
@@ -105,7 +104,7 @@ endif()
 ## Wt
 find_package(WtGoby QUIET)
 set(WT_DOC_STRING "Enable Wt web browser GUI components (requires libwt-dev, libwtdbo-dev, libwtdbosqlite-dev, and libwthttp-dev: http://www.webtoolkit.eu/wt)")
-# find resources directory
+#find resources directory
 find_path(Wt_RESOURCES_DIR_BASE share/Wt/resources/plus.gif /usr /usr/local)
 if(WTGOBY_FOUND AND Wt_RESOURCES_DIR_BASE)
   option(enable_wt ${WT_DOC_STRING} ON)
@@ -123,8 +122,6 @@ if(enable_wt)
 endif()  
 
 ## set flags
-option(build_common "Build the Goby Common library" ON)  
-
 macro(goby_install_lib target_lib component)
   set_property(TARGET ${target_lib} APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
     $<BUILD_INTERFACE:${goby_INC_DIR}>
@@ -147,75 +144,84 @@ macro(goby_install_lib target_lib component)
   set(${library_list} ${${library_list}} CACHE INTERNAL "${library_list}")
 endmacro()
 
+#module dependencies
+#you can optionally build up to any point in this chain
+#common->util->acomms->moos
+#->middleware
 
-# module dependencies
-# you can optionally build up to any point in this chain
-# common -> util -> acomms -> moos
-#                          -> middleware
+## boost
+goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
+include_directories(${Boost_INCLUDE_DIRS})
 
-if(build_common)
+include(acomms/src.cmake)
+include(util/src.cmake)
+include(time/src.cmake)
+include(middleware/src.cmake)
 
-  ## boost
-  goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
-  include_directories(${Boost_INCLUDE_DIRS})
-
-  add_subdirectory(common)
-
-  option(build_util "Build the Goby Utility library and applications (requires goby-common)" ON)
-  if(build_util)    
-    add_subdirectory(util)
-
-    option(build_acomms "Build the Goby Acoustic Communications library and applications (requires goby-util)" ON)
-    if(build_acomms)     
-      add_subdirectory(acomms)
+protobuf_generate_cpp(BASE_PROTO_SRCS BASE_PROTO_HDRS 
+  protobuf/option_extensions.proto
+  )
 
 
-      if(enable_zeromq)
-        option(build_middleware "Build the Goby Middleware" ON)
-        add_subdirectory(middleware)
-      endif()      
+add_library(goby
+  ${BASE_PROTO_SRCS} ${BASE_PROTO_HDRS}
+  ${ACOMMS_SRC}
+  ${UTIL_SRC}
+  ${TIME_SRC}
+  ${MIDDLEWARE_SRC}
+  )
 
-      # first try to find v10 MOOS
-      find_package(MOOS 10 QUIET NO_MODULE)
-      set(MOOS_DOC_STRING "Build the Acoustic Communications MOOS apps (pAcommsHandler, etc.)")
-      if(MOOS_FOUND)
-        # new MOOS 10
-        set(MOOS_LIBRARIES MOOS)
-        set(MOOS_LIBRARY_HEADER "MOOS/libMOOS/MOOSLib.h" PARENT_SCOPE)
-      else()
-        message(">> Could not find MOOS v10, trying to find MOOS pre-v10.")
-        # try to find old MOOS
-        find_package(MOOS QUIET)
-        set(MOOS_LIBRARY_HEADER "MOOSLIB/MOOSLib.h" PARENT_SCOPE)
-      endif()
+target_link_libraries(goby
+  dccl
+  dccl_arithmetic
+  ${Boost_LIBRARIES}
+  ${PROTOBUF_LIBRARY}
+  proj
+  ${GMP_LIBRARIES}
+  ${ZeroMQ_LIBRARIES}
+  )
 
-      if(MOOS_FOUND)
-        include_directories(${MOOS_INCLUDE_DIRS})
-        option(build_moos ${MOOS_DOC_STRING} ON)
-      else()
-        option(build_moos ${MOOS_DOC_STRING} OFF)
-        message(">> setting build_moos to OFF ... if you need this functionality: 1) install MOOS and libproj-dev; 2) run cmake -Dbuild_moos=ON")
-      endif()
+if(enable_ncurses)
+  target_link_libraries(goby ${CURSES_LIBRARIES})
+endif()
 
-      if(build_moos)
-        add_subdirectory(moos)
+set_target_properties(goby PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
-        # export config for goby_moos libraries
-        include(CMakePackageConfigHelpers)
-        write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby_moos-config-version.cmake
-          VERSION ${GOBY_VERSION}
-          COMPATIBILITY SameMajorVersion )
-        install(EXPORT goby_moos-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
-        install(FILES ${CMAKE_BINARY_DIR}/goby_moos-config-version.cmake 
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_moos)
-        # configuration export - local build version
-        export(TARGETS ${GOBY_MOOS_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_moos-config.cmake)
-      endif(build_moos)
-    endif(build_acomms)
-  endif(build_util)
-endif(build_common)
+goby_install_lib(goby core)
 
-# latex, for documentation
+if(enable_zeromq)
+endif()
+
+#first try to find v10 MOOS
+find_package(MOOS 10 QUIET NO_MODULE)
+set(MOOS_DOC_STRING "Build the Acoustic Communications MOOS apps (pAcommsHandler, etc.)")
+if(MOOS_FOUND)
+  #new MOOS 10
+  set(MOOS_LIBRARIES MOOS)
+  set(MOOS_LIBRARY_HEADER "MOOS/libMOOS/MOOSLib.h" PARENT_SCOPE)
+  include_directories(${MOOS_INCLUDE_DIRS})
+  option(build_moos ${MOOS_DOC_STRING} ON)
+else()
+  option(build_moos ${MOOS_DOC_STRING} OFF)
+  message(">> setting build_moos to OFF ... if you need this functionality: 1) install MOOS and libproj-dev; 2) run cmake -Dbuild_moos=ON")
+endif()
+
+if(build_moos)
+  add_subdirectory(moos)
+
+  #export config for goby_moos libraries
+  include(CMakePackageConfigHelpers)
+  write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby_moos-config-version.cmake
+    VERSION ${GOBY_VERSION}
+    COMPATIBILITY SameMajorVersion )
+  install(EXPORT goby_moos-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+  install(FILES ${CMAKE_BINARY_DIR}/goby_moos-config-version.cmake 
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_moos)
+  #configuration export - local build version
+  export(TARGETS ${GOBY_MOOS_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_moos-config.cmake)
+endif(build_moos)
+
+#latex, for documentation
 find_package(LATEX QUIET)
 set(LATEX_DOC_STRING "Build documentation (requires Doxygen, LaTeX, XeLaTeX, and certain fonts)")
 option(build_doc ${LATEX_DOC_STRING} OFF)

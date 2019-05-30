@@ -32,7 +32,7 @@ The "= 1" indicates that this is the first field on the wire in our DCCL message
 To turn this Protobuf message into a DCCL message, we need to add a few options. All the options are defined in acomms_option_extensions.proto so we include that:
 
 \verbatim
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 
 message Simple
 {  
@@ -45,7 +45,7 @@ At a minimum we must give a unique ID for our DCCL message and a maximum number 
 After these additions we have:
 
 \verbatim
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 
 message Simple
 {  

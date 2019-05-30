@@ -7,7 +7,7 @@
 # > ./build.sh
 
 cmake_minimum_required(VERSION 3.5.1 FATAL_ERROR)
-project(goby)
+project(goby C CXX)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -188,7 +188,8 @@ file(GLOB_RECURSE INCLUDE_FILES RELATIVE ${goby_SRC_DIR}
   src/middleware/*.h
   src/util/*.h 
   src/moos/*.h 
-  src/time/*.h 
+  src/time/*.h
+  src/protobuf/*.h
   )
 
 file(GLOB_RECURSE PROTOBUF_FILES RELATIVE ${goby_SRC_DIR}

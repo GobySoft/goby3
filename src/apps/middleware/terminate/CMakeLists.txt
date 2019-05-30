@@ -1,2 +1,2 @@
 add_executable(goby_terminate terminate.cpp)
-target_link_libraries(goby_terminate goby_common goby_middleware)
+target_link_libraries(goby_terminate goby)

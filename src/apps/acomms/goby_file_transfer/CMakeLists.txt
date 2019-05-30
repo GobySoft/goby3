@@ -5,5 +5,5 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
 # add these executables to the project
 add_executable(goby_file_transfer file_transfer.cpp ${PROTO_SRCS} ${PROTO_HDRS})
 
-target_link_libraries(goby_file_transfer goby_common goby_pb goby_acomms goby_util)
+target_link_libraries(goby_file_transfer goby)
 

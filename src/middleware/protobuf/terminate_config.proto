@@ -1,4 +1,4 @@
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 import "goby/middleware/protobuf/app_config.proto";
 import "goby/middleware/protobuf/interprocess_config.proto";
 import "dccl/option_extensions.proto";

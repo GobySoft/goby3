@@ -20,7 +20,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/protobuf/option_extensions.pb.h"
+#include "goby/protobuf/option_extensions.pb.h"
 
 #include "configuration_reader.h"
 

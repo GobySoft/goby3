@@ -1,7 +1,7 @@
 import "dccl/option_extensions.proto";
 
 import "goby/moos/protobuf/goby_moos_app.proto";
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 
 message iFrontSeatConfig
 {

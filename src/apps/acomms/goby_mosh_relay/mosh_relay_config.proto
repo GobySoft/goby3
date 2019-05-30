@@ -1,4 +1,4 @@
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 import "goby/common/protobuf/app_base_config.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 

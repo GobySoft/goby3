@@ -3,7 +3,7 @@ if(CURSES_FOUND)
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
   add_executable(goby_chat chat.cpp chat_curses.cpp ${PROTO_SRCS} ${PROTO_HDRS})
-  target_link_libraries(goby_chat ${Boost_LIBRARIES} goby_acomms ${PROTOBUF_LIBRARIES} ${CURSES_LIBRARIES})
+  target_link_libraries(goby_chat ${Boost_LIBRARIES} goby ${PROTOBUF_LIBRARIES} ${CURSES_LIBRARIES})
 
   install(TARGETS goby_chat RUNTIME DESTINATION bin)
 

@@ -1,18 +1,7 @@
-if(build_acomms)
-  add_subdirectory(acomms)
-endif()
-
-if(build_common)
-  add_subdirectory(common)
-endif()
-
-if(build_util)
-  add_subdirectory(util)
-endif()
-
-if(build_middleware)
-  add_subdirectory(middleware)
-endif()
+add_subdirectory(acomms)
+add_subdirectory(common)
+add_subdirectory(util)
+add_subdirectory(middleware)
 
 if(build_moos)
   add_subdirectory(moos)

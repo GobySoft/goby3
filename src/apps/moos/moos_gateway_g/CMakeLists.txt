@@ -5,4 +5,4 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
 # add these executables to the project
 add_executable(moos_gateway_g moos_gateway.cpp ${PROTO_SRCS} ${PROTO_HDRS})
 
-target_link_libraries(moos_gateway_g goby_common goby_moos goby_pb)
+target_link_libraries(moos_gateway_g goby goby_moos)
