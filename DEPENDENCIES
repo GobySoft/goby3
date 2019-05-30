@@ -108,8 +108,9 @@ case $OS_ID in
 
         echo "==== Installing dependencies ===="
 
-        (set -x; apt-get install --install-recommends cmake build-essential libgoby3-dev)
-
+        GOBY3_DEV_INSTALLED=$(dpkg -l | grep -q libgoby3-dev && echo "true" || echo "false")
+        (set -x; apt-get install --install-recommends -y cmake build-essential libgoby3-dev)
+        
         # install clang if GCC is less than 7.2
         dpkg --compare-versions `dpkg-query --showformat='${Version}' --show gcc` ">=" 4:7.2~ ||  (set -x; echo "Installing clang as your GCC version is less than 7.2"; apt-get install clang)
         
@@ -117,6 +118,13 @@ case $OS_ID in
         [[ "${INSTALL_GUI_DEPENDS}" == "true" ]] && (set -x; apt-get install libgoby3-gui-dev)
         [[ "${INSTALL_DOC_DEPENDS}" == "true" ]] && (set -x; apt-get build-dep goby3 --indep-only)
         [[ "${INSTALL_ALL_DEPENDS}" == "true" ]] && (set -x; apt-get build-dep goby3 --arch-only)
+
+
+        if [[ ${GOBY3_DEV_INSTALLED} == "false" ]]; then
+            echo "Removing libgoby3-dev as it was not installed already (but leaving dependencies)"
+            (set -x; apt-get -y remove libgoby3-dev)
+        fi
+
         ;;
     *)
         fail
