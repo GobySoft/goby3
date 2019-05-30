@@ -37,10 +37,10 @@
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
 #include "goby/acomms/route/route.h"
-#include "goby/common/logger.h"
 #include "goby/time.h"
 #include "goby/util/as.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 #include "test.pb.h"
 #include <cstdlib>
 

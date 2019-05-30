@@ -23,12 +23,12 @@
 #include "moos_bluefin_driver.h"
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/protobuf/mm_driver.pb.h"
-#include "goby/common/logger.h"
 #include "goby/moos/moos_protobuf_helpers.h"
 #include "goby/moos/moos_string.h"
 #include "goby/moos/protobuf/bluefin_driver.pb.h"
 #include "goby/time.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 #include "goby/util/linebasedcomms/nmea_sentence.h"
 #include <boost/format.hpp>
 

@@ -25,8 +25,8 @@
 #include <boost/signals2.hpp>
 
 #include "goby/acomms/connect.h"
-#include "goby/common/logger.h"
 #include "goby/time.h"
+#include "goby/util/debug_logger.h"
 
 #include "iFrontSeat.h"
 

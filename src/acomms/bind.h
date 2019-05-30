@@ -33,7 +33,7 @@
 #include "goby/acomms/modem_driver.h"
 #include "goby/acomms/queue.h"
 #include "goby/acomms/route.h"
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 namespace goby
 {

@@ -23,7 +23,7 @@
 #include <dlfcn.h>
 #include <iostream>
 
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 #include "hdf5.h"
 

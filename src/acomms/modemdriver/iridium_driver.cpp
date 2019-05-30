@@ -27,8 +27,8 @@
 #include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/modemdriver/rudics_packet.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 using goby::glog;
 using namespace goby::common::logger;

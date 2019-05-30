@@ -36,7 +36,7 @@
 #include <boost/date_time.hpp>
 #include <memory>
 
-#include "goby/common/protobuf/logger.pb.h"
+#include "goby/util/protobuf/debug_logger.pb.h"
 
 #include "term_color.h"
 

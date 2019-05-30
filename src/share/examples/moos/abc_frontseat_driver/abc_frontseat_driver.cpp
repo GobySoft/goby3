@@ -19,8 +19,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/logger.h"
 #include "goby/util/as.h"
+#include "goby/util/debug_logger.h"
 
 #include "abc_frontseat_driver.h"
 

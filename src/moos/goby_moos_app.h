@@ -33,7 +33,6 @@
 #include <boost/signals2.hpp>
 
 #include "dynamic_moos_vars.h"
-#include "goby/common/logger.h"
 #include "goby/exception.h"
 #include "goby/middleware/configuration_reader.h"
 #include "goby/moos/moos_header.h"
@@ -41,6 +40,7 @@
 #include "goby/moos/protobuf/goby_moos_app.pb.h"
 #include "goby/time.h"
 #include "goby/util/as.h"
+#include "goby/util/debug_logger.h"
 #include "goby/version.h"
 #include "moos_protobuf_helpers.h"
 

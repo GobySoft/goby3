@@ -27,8 +27,8 @@
 
 #include <boost/units/io.hpp>
 
-#include "goby/common/logger.h"
 #include "goby/middleware/transport.h"
+#include "goby/util/debug_logger.h"
 #include "test.pb.h"
 
 // speed test for interprocess

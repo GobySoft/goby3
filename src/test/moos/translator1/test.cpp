@@ -22,9 +22,9 @@
 #include <iostream>
 
 #include "basic_node_report.pb.h"
-#include "goby/common/logger.h"
 #include "goby/moos/moos_translator.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 #include "goby/util/sci.h"
 #include "test.pb.h"
 

@@ -38,9 +38,9 @@
 #include <iostream>
 
 #include "goby/acomms/acomms_constants.h"
-#include "goby/common/logger.h"
 #include "goby/time.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 #include "goby/acomms/protobuf/benthos_atm900.pb.h"
 #include "goby/acomms/protobuf/modem_message.pb.h"

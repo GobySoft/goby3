@@ -27,7 +27,7 @@
 
 #include <boost/date_time.hpp>
 
-#include "goby/common/logger/flex_ostreambuf.h"
+#include "goby/util/debug_logger/flex_ostreambuf.h"
 
 #ifdef HAS_NCURSES
 #include "flex_ncurses.h"

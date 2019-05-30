@@ -21,7 +21,7 @@
 
 #include <boost/asio.hpp>
 
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 #include "goby/pb/application.h"
 

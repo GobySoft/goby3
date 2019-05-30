@@ -27,8 +27,8 @@
 #include <boost/crc.hpp>
 #include <cstdint>
 
-#include "goby/common/logger.h"
 #include "goby/exception.h"
+#include "goby/util/debug_logger.h"
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/serialize_parse.h"

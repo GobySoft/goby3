@@ -25,9 +25,9 @@
 #include <boost/units/base_units/metric/knot.hpp>
 #include <boost/units/systems/si/prefixes.hpp>
 
-#include "goby/common/logger.h"
 #include "goby/time.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 #include "benthos_atm900_driver.h"
 #include "benthos_atm900_driver_fsm.h"

@@ -23,7 +23,7 @@
 #include "dccl/dynamic_protobuf_manager.h"
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/dccl.h"
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 #include "queue.h"
 #include "queue_manager.h"

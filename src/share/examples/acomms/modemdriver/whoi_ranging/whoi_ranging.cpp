@@ -25,7 +25,7 @@
 
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modem_driver.h"
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 #include <iostream>
 

@@ -19,11 +19,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/logger.h"
 #include "goby/middleware/log.h"
 #include "goby/middleware/log/dccl_log_plugin.h"
 #include "goby/middleware/log/protobuf_log_plugin.h"
 #include "goby/middleware/serialize_parse.h"
+#include "goby/util/debug_logger.h"
 
 #include "test.pb.h"
 

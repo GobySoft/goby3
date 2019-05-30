@@ -23,7 +23,7 @@
 
 #include "goby/acomms/amac.h"
 #include "goby/acomms/connect.h"
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 #include "goby/util/sci.h"
 
 goby::acomms::MACManager mac;

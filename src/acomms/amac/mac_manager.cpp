@@ -27,8 +27,8 @@
 #include <boost/date_time/gregorian/gregorian_types.hpp>
 
 #include "goby/acomms/acomms_helpers.h"
-#include "goby/common/logger.h"
 #include "goby/time/io.h"
+#include "goby/util/debug_logger.h"
 
 #include "mac_manager.h"
 

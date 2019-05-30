@@ -1,5 +1,5 @@
 import "goby/common/protobuf/option_extensions.proto";
-import "goby/common/protobuf/logger.proto";
+import "goby/util/protobuf/debug_logger.proto";
 import "goby/moos/protobuf/translator.proto";
 
 message GobyMOOSAppConfig

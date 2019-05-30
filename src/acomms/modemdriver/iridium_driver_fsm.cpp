@@ -24,9 +24,9 @@
 #include <boost/algorithm/string/classification.hpp>
 
 #include "goby/acomms/acomms_constants.h"
-#include "goby/common/logger.h"
 #include "goby/time.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 #include "iridium_driver_fsm.h"
 #include "rudics_packet.h"

@@ -20,13 +20,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/logger.h"
 #include "goby/time.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 #include "dccl/dynamic_protobuf_manager.h"
 #include "goby/acomms/dccl.h"
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 #include "queue_constants.h"
 #include "queue_manager.h"

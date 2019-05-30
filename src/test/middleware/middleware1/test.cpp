@@ -24,8 +24,8 @@
 // plugin new serialization/parse scheme
 #include "test-scheme.h"
 
-#include "goby/common/logger.h"
 #include "goby/middleware/transport.h"
+#include "goby/util/debug_logger.h"
 #include "test.pb.h"
 
 extern constexpr goby::Group ctd{"CTD"};

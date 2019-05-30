@@ -23,8 +23,8 @@
 #include "benthos_atm900_driver.h"
 #include "driver_exception.h"
 
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 using goby::glog;
 using goby::util::hex_decode;

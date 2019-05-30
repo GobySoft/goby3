@@ -24,8 +24,8 @@
 #include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 using namespace goby::common::logger;
 using namespace goby::acomms;

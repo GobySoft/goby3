@@ -22,8 +22,8 @@
 #include "goby/acomms/connect.h"
 #include "goby/acomms/dccl.h"
 #include "goby/acomms/queue.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 #include "test.pb.h"
 // tests basic DCCL queuing with non-BROADCAST destination
 

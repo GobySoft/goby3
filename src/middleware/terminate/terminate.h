@@ -26,7 +26,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 #include "goby/middleware/protobuf/terminate.pb.h"
 #include "goby/middleware/terminate/groups.h"

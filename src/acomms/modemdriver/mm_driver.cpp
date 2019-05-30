@@ -26,8 +26,8 @@
 
 #include <dccl/bitset.h>
 
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 #include "goby/util/sci.h"
 
 #include "driver_exception.h"

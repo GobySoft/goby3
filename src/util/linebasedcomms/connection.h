@@ -23,8 +23,8 @@
 #ifndef ASIOLineBasedConnection20100715H
 #define ASIOLineBasedConnection20100715H
 
-#include "goby/common/logger.h"
 #include "goby/time.h"
+#include "goby/util/debug_logger.h"
 
 #include "interface.h"
 

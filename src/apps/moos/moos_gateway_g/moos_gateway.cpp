@@ -19,14 +19,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/logger.h"
-#include "goby/common/logger/term_color.h"
 #include "goby/common/pubsub_node_wrapper.h"
 #include "goby/common/zeromq_application_base.h"
 #include "goby/moos/moos_node.h"
 #include "goby/moos/moos_protobuf_helpers.h"
 #include "goby/pb/protobuf_node.h"
 #include "goby/pb/protobuf_pubsub_node_wrapper.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/debug_logger/term_color.h"
 
 #include "moos_gateway_config.pb.h"
 

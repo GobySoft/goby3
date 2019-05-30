@@ -23,9 +23,9 @@
 #include <boost/units/base_units/imperial/foot.hpp>
 #include <boost/units/base_units/metric/knot.hpp>
 
-#include "goby/common/logger.h"
 #include "goby/util/as.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 #include "goby/util/linebasedcomms/nmea_sentence.h"
 
 #include "iver_driver.h"

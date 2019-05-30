@@ -22,7 +22,7 @@
 #include <cassert>
 #include <cstdio>
 
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 using goby::glog;
 

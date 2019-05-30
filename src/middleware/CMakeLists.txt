@@ -23,7 +23,8 @@ set(SRC
   configuration_reader.cpp
   log/log_entry.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
-)
+  )
+
 
 add_library(goby_middleware ${SRC})
 

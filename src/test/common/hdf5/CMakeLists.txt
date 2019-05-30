@@ -6,5 +6,5 @@ add_library(goby_hdf5test SHARED test-plugin.cpp ${PROTO_SRCS} ${PROTO_HDRS})
 target_link_libraries(goby_hdf5test goby_middleware dccl)
 
 add_executable(goby_test_hdf5 test.cpp)
-target_link_libraries(goby_test_hdf5 goby_common)
+target_link_libraries(goby_test_hdf5 goby_common goby_util)
 add_test(goby_test_hdf5 ${goby_BIN_DIR}/goby_test_hdf5)

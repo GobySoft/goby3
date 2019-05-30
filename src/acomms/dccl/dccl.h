@@ -25,8 +25,8 @@
 
 #include "goby/acomms/acomms_helpers.h" // for operator<< of google::protobuf::Message
 #include "goby/acomms/protobuf/dccl.pb.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 #include "dccl/codec.h"
 #include "dccl/codecs2/field_codec_default.h"

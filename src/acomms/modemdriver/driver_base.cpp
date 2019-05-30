@@ -23,7 +23,7 @@
 #include <boost/format.hpp>
 
 #include "goby/acomms/connect.h"
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 #include "driver_base.h"
 #include "driver_exception.h"

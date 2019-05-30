@@ -1,29 +1,14 @@
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
-  protobuf/logger.proto
   protobuf/option_extensions.proto)
 
 set(SRC
   ../time/simulation.cpp
-  logger/flex_ostreambuf.cpp 
-  logger/flex_ostream.cpp 
-  logger/logger_manipulators.cpp 
-  logger/term_color.cpp
   ${PROTO_SRCS} ${PROTO_HDRS} 
 )
 
 
-if(enable_ncurses)
-  set(SRC
-    ${SRC}
-    logger/flex_ncurses.cpp
-    )
-endif()
-
 add_library(goby_common ${SRC})
 
-if(enable_ncurses)
-  target_link_libraries(goby_common ${CURSES_LIBRARIES})
-endif()
 
 
 target_link_libraries(goby_common ${PROTOBUF_LIBRARY} ${Boost_LIBRARIES} pthread ${CMAKE_DL_LIBS})

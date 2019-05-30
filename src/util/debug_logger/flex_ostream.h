@@ -30,7 +30,7 @@
 #include <google/protobuf/io/tokenizer.h>
 #include <google/protobuf/text_format.h>
 
-#include "goby/common/logger/flex_ostreambuf.h"
+#include "goby/util/debug_logger/flex_ostreambuf.h"
 #include "logger_manipulators.h"
 
 namespace goby

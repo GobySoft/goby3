@@ -32,10 +32,10 @@
 #include <google/protobuf/io/tokenizer.h>
 
 #include "dccl/dynamic_protobuf_manager.h"
-#include "goby/common/logger.h"
 #include "goby/moos/moos_string.h"
 #include "goby/util/as.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 #include "goby/util/primitive_types.h"
 
 #include "goby/moos/transitional/message_algorithms.h"

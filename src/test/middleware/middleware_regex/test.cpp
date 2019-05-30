@@ -25,8 +25,8 @@
 #include <atomic>
 #include <deque>
 
-#include "goby/common/logger.h"
 #include "goby/middleware/transport.h"
+#include "goby/util/debug_logger.h"
 #include "test.pb.h"
 
 #include <zmq.hpp>

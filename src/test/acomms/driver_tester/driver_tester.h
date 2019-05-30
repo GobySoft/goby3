@@ -23,8 +23,8 @@
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
 #include "goby/acomms/protobuf/benthos_atm900.pb.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 class DriverTester
 {

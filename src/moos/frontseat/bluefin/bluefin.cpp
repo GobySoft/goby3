@@ -24,8 +24,8 @@
 #include <boost/format.hpp>
 #include <boost/math/special_functions/fpclassify.hpp> // for isnan
 
-#include "goby/common/logger.h"
 #include "goby/util/as.h"
+#include "goby/util/debug_logger.h"
 
 #include "dccl/binary.h"
 

@@ -23,11 +23,11 @@
 #include "moos_ufield_sim_driver.h"
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/protobuf/mm_driver.pb.h"
-#include "goby/common/logger.h"
 #include "goby/moos/modem_id_convert.h"
 #include "goby/moos/moos_string.h"
 #include "goby/moos/protobuf/ufield_sim_driver.pb.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 using goby::glog;
 using goby::util::hex_decode;

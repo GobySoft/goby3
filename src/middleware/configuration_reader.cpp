@@ -24,9 +24,9 @@
 
 #include "configuration_reader.h"
 
-#include "goby/common/logger/flex_ostream.h"
-#include "goby/common/logger/term_color.h"
 #include "goby/exception.h"
+#include "goby/util/debug_logger/flex_ostream.h"
+#include "goby/util/debug_logger/term_color.h"
 #include "goby/version.h"
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
