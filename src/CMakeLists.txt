@@ -38,6 +38,8 @@ endif()
 
 # proj
 goby_find_required_package(Proj)
+# goby and MOOS make use of deprecated PROJ4 API
+add_definitions(-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H)
 
 # GMP
 goby_find_required_package(GMP)
