@@ -177,7 +177,7 @@ template <typename Config> goby::common::ApplicationBase3<Config>::ApplicationBa
                                  << std::endl;
 
         remove(file_symlink.c_str());
-        int result = symlink(canonicalize_file_name(file_name.c_str()), file_symlink.c_str());
+        int result = symlink(realpath(file_name.c_str(), NULL), file_symlink.c_str());
         if (result != 0)
             glog.is(WARN) &&
                 glog << "Cannot create symlink to latest file. Continuing onwards anyway"
