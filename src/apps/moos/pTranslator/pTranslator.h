@@ -24,7 +24,7 @@
 
 #include <google/protobuf/descriptor.h>
 
-#include <boost/asio/deadline_timer.hpp>
+#include <boost/asio.hpp>
 
 #include "dccl/dynamic_protobuf_manager.h"
 #include "goby/moos/goby_moos_app.h"
