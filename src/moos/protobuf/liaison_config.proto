@@ -1,8 +1,8 @@
-import "goby/middleware/protobuf/liaison_config.proto";
+import "goby/zeromq/protobuf/liaison_config.proto";
 
-package goby.common.protobuf;
+package goby.moos.protobuf;
 
-extend goby.common.protobuf.LiaisonConfig
+extend goby.zeromq.protobuf.LiaisonConfig
 {
     optional GeodesyConfig geodesy_config = 1002;
     optional AcommsConfig acomms_config = 1003;

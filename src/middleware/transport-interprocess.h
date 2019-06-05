@@ -30,7 +30,6 @@
 #include <tuple>
 #include <unistd.h>
 
-#include "goby/middleware/protobuf/interprocess_config.pb.h"
 #include "transport-common.h"
 
 namespace goby

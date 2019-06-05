@@ -176,6 +176,7 @@ install(DIRECTORY ${goby_INC_DIR}/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 # clear library list
 unset(GOBY_LIBRARY_LIST CACHE)
 unset(GOBY_MOOS_LIBRARY_LIST CACHE)
+unset(GOBY_ZEROMQ_LIBRARY_LIST CACHE)
 
 ## start adding subdirectories
 add_subdirectory(src)
@@ -190,6 +191,7 @@ file(GLOB_RECURSE INCLUDE_FILES RELATIVE ${goby_SRC_DIR}
   src/moos/*.h 
   src/time/*.h
   src/protobuf/*.h
+  src/zeromq/*.h
   )
 
 file(GLOB_RECURSE PROTOBUF_FILES RELATIVE ${goby_SRC_DIR}

@@ -28,7 +28,7 @@
 #include "goby/exception.h"
 #include "goby/middleware/application.h"
 #include "goby/middleware/thread.h"
-#include "goby/middleware/transport-interprocess-zeromq.h"
+#include "goby/middleware/transport-interprocess.h"
 #include "goby/middleware/transport-interthread.h"
 #include "goby/middleware/transport-intervehicle.h"
 
@@ -208,7 +208,7 @@ class MultiThreadApplicationBase : public goby::common::Application<Config>,
     void _join_thread(const std::type_index& type_i, int index);
 };
 
-template <class Config>
+template <class Config, template <class> class InterProcessPortal>
 class MultiThreadApplication
     : public MultiThreadApplicationBase<
           Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter> > >

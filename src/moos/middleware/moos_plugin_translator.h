@@ -25,9 +25,9 @@
 
 #include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"
 #include "goby/middleware/multi-thread-application.h"
-#include "goby/middleware/transport-interprocess-zeromq.h"
 #include "goby/middleware/transport-interthread.h"
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
+#include "goby/zeromq/transport-interprocess-zeromq.h"
 
 namespace goby
 {

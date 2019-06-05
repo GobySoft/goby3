@@ -27,14 +27,14 @@
 
 #include "goby/middleware/application.h"
 #include "goby/middleware/thread.h"
-#include "goby/middleware/transport-interprocess-zeromq.h"
+#include "goby/middleware/transport-interprocess.h"
 #include "goby/middleware/transport-intervehicle.h"
 
 #include "goby/middleware/terminate/terminate.h"
 
 namespace goby
 {
-template <class Config>
+template <class Config, template <class = NullTransporter> class InterProcessPortal>
 class SingleThreadApplication : public goby::common::Application<Config>,
                                 public Thread<Config, InterVehicleForwarder<InterProcessPortal<> > >
 {

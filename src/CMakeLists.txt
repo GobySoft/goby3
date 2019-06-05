@@ -65,21 +65,6 @@ if(enable_ncurses)
 endif()
 mark_as_advanced(CURSES_CURSES_H_PATH CURSES_FORM_LIBRARY CURSES_HAVE_CURSES_H)
 
-## zeromq
-find_package(ZeroMQ QUIET)
-set(ZEROMQ_DOC_STRING "Enable ZeroMQ Transport Layer components (requires libzmq-dev: http://www.zeromq.org/)")
-if(ZEROMQ_FOUND)
-  option(enable_zeromq ${ZEROMQ_DOC_STRING} ON)
-else()
-  option(enable_zeromq ${ZEROMQ_DOC_STRING} OFF)
-  message(">> setting enable_zeromq to OFF ... if you need this functionality: 1) install libzmq-dev; 2) run cmake -Denable_zeromq=ON")
-endif()
-
-if(enable_zeromq)
-  goby_find_required_package(ZeroMQ)
-  include_directories(${ZeroMQ_INCLUDE_DIRS})
-endif()
-
 ## Sqlite3
 find_package(Sqlite3 QUIET)
 set(SQLITE_DOC_STRING "Enable SQLite3 database components (requires libsqlite3-dev: http://www.sqlite.org)")
@@ -178,7 +163,6 @@ target_link_libraries(goby
   ${PROTOBUF_LIBRARY}
   proj
   ${GMP_LIBRARIES}
-  ${ZeroMQ_LIBRARIES}
   )
 
 if(enable_ncurses)
@@ -189,7 +173,33 @@ set_target_properties(goby PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOB
 
 goby_install_lib(goby core)
 
-if(enable_zeromq)
+
+## zeromq
+find_package(ZeroMQ QUIET)
+set(ZEROMQ_DOC_STRING "Enable ZeroMQ Transport Layer components (requires libzmq3-dev: http://www.zeromq.org/)")
+if(ZEROMQ_FOUND)
+  option(build_zeromq ${ZEROMQ_DOC_STRING} ON)
+else()
+  option(build_zeromq ${ZEROMQ_DOC_STRING} OFF)
+  message(">> setting build_zeromq to OFF ... if you need this functionality: 1) install libzmq-dev; 2) run cmake -Dbuild_zeromq=ON")
+endif()
+
+if(build_zeromq)
+  goby_find_required_package(ZeroMQ)
+  include_directories(${ZeroMQ_INCLUDE_DIRS})
+
+  add_subdirectory(zeromq)
+  
+  #export config for goby_zeromq libraries
+  include(CMakePackageConfigHelpers)
+  write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby_zeromq-config-version.cmake
+    VERSION ${GOBY_VERSION}
+    COMPATIBILITY SameMajorVersion )
+  install(EXPORT goby_zeromq-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+  install(FILES ${CMAKE_BINARY_DIR}/goby_zeromq-config-version.cmake 
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_zeromq)
+  #configuration export - local build version
+  export(TARGETS ${GOBY_ZEROMQ_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_zeromq-config.cmake)
 endif()
 
 #first try to find v10 MOOS
@@ -207,6 +217,8 @@ else()
 endif()
 
 if(build_moos)
+  goby_find_required_package(MOOS 10 NO_MODULE)
+
   add_subdirectory(moos)
 
   #export config for goby_moos libraries
