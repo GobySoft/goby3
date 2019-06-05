@@ -126,14 +126,9 @@ macro(goby_install_lib target_lib component)
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>  # <prefix>/include
     )
 
-  if(${component} STREQUAL "core")
-    set(config_target "goby-config")
-    set(library_list "GOBY_LIBRARY_LIST")
-  else()
-    set(config_target "goby_${component}-config")
-    string(TOUPPER ${component} component_upper)
-    set(library_list "GOBY_${component_upper}_LIBRARY_LIST")
-  endif()
+  set(config_target "goby_${component}-config")
+  string(TOUPPER ${component} component_upper)
+  set(library_list "GOBY_${component_upper}_LIBRARY_LIST")
   
   install(TARGETS ${target_lib} EXPORT ${config_target}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -206,13 +201,7 @@ if(build_zeromq)
   add_subdirectory(zeromq)
   
   #export config for goby_zeromq libraries
-  include(CMakePackageConfigHelpers)
-  write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby_zeromq-config-version.cmake
-    VERSION ${GOBY_VERSION}
-    COMPATIBILITY SameMajorVersion )
-  install(EXPORT goby_zeromq-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_zeromq)
-  install(FILES ${CMAKE_BINARY_DIR}/goby_zeromq-config-version.cmake 
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_zeromq)
+  install(EXPORT goby_zeromq-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
   #configuration export - local build version
   export(TARGETS ${GOBY_ZEROMQ_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_zeromq-config.cmake)
 endif()
@@ -237,13 +226,7 @@ if(build_moos)
   add_subdirectory(moos)
 
   #export config for goby_moos libraries
-  include(CMakePackageConfigHelpers)
-  write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby_moos-config-version.cmake
-    VERSION ${GOBY_VERSION}
-    COMPATIBILITY SameMajorVersion )
-  install(EXPORT goby_moos-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_moos)
-  install(FILES ${CMAKE_BINARY_DIR}/goby_moos-config-version.cmake 
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_moos)
+  install(EXPORT goby_moos-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
   #configuration export - local build version
   export(TARGETS ${GOBY_MOOS_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_moos-config.cmake)
 endif(build_moos)

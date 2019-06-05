@@ -174,7 +174,7 @@ install(DIRECTORY ${goby_INC_DIR}/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   FILES_MATCHING REGEX .*\\.h|.*\\.proto)
 
 # clear library list
-unset(GOBY_LIBRARY_LIST CACHE)
+unset(GOBY_CORE_LIBRARY_LIST CACHE)
 unset(GOBY_MOOS_LIBRARY_LIST CACHE)
 unset(GOBY_ZEROMQ_LIBRARY_LIST CACHE)
 
@@ -223,11 +223,10 @@ write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby-config-version.cmake
                                  VERSION ${GOBY_VERSION}
                                  COMPATIBILITY SameMajorVersion )
                                
-install(EXPORT goby-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
-install(FILES ${CMAKE_BINARY_DIR}/goby-config-version.cmake 
+install(EXPORT goby_core-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+configure_file(${goby_SHARE_DIR}/goby-config.cmake ${CMAKE_BINARY_DIR}/goby-config.cmake @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/goby-config.cmake ${CMAKE_BINARY_DIR}/goby-config-version.cmake 
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
 
-
 # configuration export - local build version
-export(TARGETS ${GOBY_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby-config.cmake)
-
+export(TARGETS ${GOBY_CORE_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_core-config.cmake)
