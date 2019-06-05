@@ -39,6 +39,7 @@
 
 #include "goby/acomms/acomms_constants.h"
 #include "goby/time.h"
+#include "goby/util/as.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 

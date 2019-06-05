@@ -35,7 +35,6 @@
 
 using goby::glog;
 using namespace goby::common::logger;
-using goby::common::goby_time;
 
 int goby::acomms::benthos_fsm::BenthosATM900FSM::count_ = 0;
 

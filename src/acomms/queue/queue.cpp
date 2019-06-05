@@ -30,8 +30,6 @@
 #include "queue.h"
 #include "queue_manager.h"
 
-using goby::common::goby_time;
-
 using namespace goby::common::logger;
 using goby::util::as;
 

@@ -35,7 +35,6 @@
 #include "mm_driver.h"
 
 using goby::glog;
-using goby::common::ptime2unix_double;
 using goby::util::as;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
@@ -43,7 +42,6 @@ using goby::util::NMEASentence;
 using namespace goby::common::tcolor;
 using namespace goby::common::logger;
 using namespace goby::common::logger_lock;
-using goby::common::nmea_time2ptime;
 
 const boost::posix_time::time_duration goby::acomms::MMDriver::MODEM_WAIT =
     boost::posix_time::seconds(5);

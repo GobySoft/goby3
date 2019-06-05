@@ -28,7 +28,6 @@ namespace gpb = goby::moos::protobuf;
 namespace gtime = goby::time;
 
 using goby::glog;
-using goby::common::goby_time;
 using goby::util::NMEASentence;
 using namespace goby::common::logger;
 using namespace goby::common::tcolor;

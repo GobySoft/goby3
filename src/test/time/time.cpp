@@ -20,6 +20,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/time.h"
+#include "goby/time/legacy.h"
 #include "stdint.h"
 
 using goby::common::goby_time;

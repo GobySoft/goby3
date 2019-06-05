@@ -33,7 +33,6 @@
 
 using goby::glog;
 using namespace goby::common::logger;
-using goby::common::goby_time;
 
 int goby::acomms::fsm::IridiumDriverFSM::count_ = 0;
 

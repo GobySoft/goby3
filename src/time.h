@@ -24,12 +24,11 @@
 #define TIMECOURTESY20190530H
 
 #include "goby/time/convert.h"
-#include "goby/time/legacy.h"
 #include "goby/time/simulation.h"
 #include "goby/time/steady_clock.h"
 #include "goby/time/system_clock.h"
 #include "goby/time/typedefs.h"
 
-// do not include io.h - user must include as needed
+// do not include legacy.h or io.h - user must include as needed
 
 #endif

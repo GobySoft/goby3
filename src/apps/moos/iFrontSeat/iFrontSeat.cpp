@@ -33,7 +33,6 @@
 using namespace goby::common::logger;
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
-using goby::common::goby_time;
 
 iFrontSeatConfig iFrontSeat::cfg_;
 iFrontSeat* iFrontSeat::inst_ = 0;

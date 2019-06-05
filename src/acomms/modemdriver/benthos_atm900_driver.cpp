@@ -31,7 +31,6 @@ using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::common::logger;
-using goby::common::goby_time;
 
 const std::string goby::acomms::BenthosATM900Driver::SERIAL_DELIMITER = "\r\n";
 

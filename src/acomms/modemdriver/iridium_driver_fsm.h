@@ -39,6 +39,7 @@
 #include "goby/acomms/modemdriver/iridium_driver_common.h"
 #include "goby/acomms/protobuf/iridium_driver.pb.h"
 #include "goby/acomms/protobuf/modem_message.pb.h"
+#include "goby/util/as.h"
 
 namespace goby
 {

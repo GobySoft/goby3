@@ -31,7 +31,6 @@
 
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
-using goby::common::goby_time;
 using namespace goby::common::logger;
 using namespace goby::common::tcolor;
 using goby::time::MicroTime;

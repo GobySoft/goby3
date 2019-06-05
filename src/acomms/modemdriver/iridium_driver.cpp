@@ -32,7 +32,6 @@
 
 using goby::glog;
 using namespace goby::common::logger;
-using goby::common::goby_time;
 
 std::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
 

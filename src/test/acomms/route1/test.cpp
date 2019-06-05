@@ -45,7 +45,6 @@
 
 using namespace goby::common::logger;
 using namespace goby::acomms;
-using goby::common::goby_time;
 using goby::util::as;
 using namespace boost::posix_time;
 

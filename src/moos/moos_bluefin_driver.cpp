@@ -37,8 +37,6 @@ using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::common::logger;
 using goby::acomms::operator<<;
-using goby::common::goby_time;
-using goby::common::nmea_time2ptime;
 using goby::util::NMEASentence;
 
 goby::moos::BluefinCommsDriver::BluefinCommsDriver(goby::acomms::MACManager* mac)

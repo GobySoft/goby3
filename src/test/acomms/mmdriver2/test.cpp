@@ -32,7 +32,6 @@
 using namespace goby::acomms;
 using namespace goby::common::logger;
 using namespace goby::common::logger_lock;
-using goby::common::goby_time;
 using goby::util::as;
 using namespace boost::posix_time;
 
