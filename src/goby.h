@@ -27,6 +27,5 @@
 #include "goby/exception.h"
 #include "goby/time.h"
 #include "goby/util.h"
-#include "goby/version.h"
 
 #endif

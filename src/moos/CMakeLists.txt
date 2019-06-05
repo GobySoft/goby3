@@ -13,6 +13,7 @@ set(PROTOS
   )
 
 set(SRC
+   goby_moos_app.cpp
    modem_id_convert.cpp
    moos_translator.cpp
    moos_protobuf_helpers.cpp

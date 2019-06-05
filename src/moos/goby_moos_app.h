@@ -41,13 +41,14 @@
 #include "goby/time.h"
 #include "goby/util/as.h"
 #include "goby/util/debug_logger.h"
-#include "goby/version.h"
 #include "moos_protobuf_helpers.h"
 
 namespace goby
 {
 namespace moos
 {
+void write_version_message();
+
 template <typename App> int run(int argc, char* argv[]);
 
 template <typename ProtobufMessage>
@@ -774,7 +775,7 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
         }
         else if (var_map.count("version"))
         {
-            std::cout << goby::version_message() << std::endl;
+            goby::moos::write_version_message();
             exit(EXIT_SUCCESS);
         }
 
