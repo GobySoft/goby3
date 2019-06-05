@@ -39,9 +39,6 @@ endif()
 #proj
 goby_find_required_package(Proj)
 
-#GMP
-goby_find_required_package(GMP)
-
 #shared library suffix
 add_definitions(-DSHARED_LIBRARY_SUFFIX="${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
@@ -64,6 +61,22 @@ if(enable_ncurses)
   include_directories(${CURSES_INCLUDE_DIR})
 endif()
 mark_as_advanced(CURSES_CURSES_H_PATH CURSES_FORM_LIBRARY CURSES_HAVE_CURSES_H)
+
+
+#GMP
+find_package(GMP QUIET)
+set(GMP_DOC_STRING "Use GMP instead of boost::multiprecision::cpp_int (faster, but requires libgmp-dev)")
+if(GMP_FOUND)
+  option(enable_gmp ${GMP_DOC_STRING} ON)
+else()
+  option(enable_gmp ${GMP_DOC_STRING} OFF)
+  message(">> setting enable_gmp to OFF ... if you need this functionality: 1) install libgmp-dev; 2) run cmake -Denable_gmp=ON")
+endif()
+
+if(enable_gmp)
+  goby_find_required_package(GMP)  
+  add_definitions(-DHAS_GMP)
+endif()
 
 ## Sqlite3
 find_package(Sqlite3 QUIET)
@@ -147,7 +160,6 @@ protobuf_generate_cpp(BASE_PROTO_SRCS BASE_PROTO_HDRS
   protobuf/option_extensions.proto
   )
 
-
 add_library(goby
   ${BASE_PROTO_SRCS} ${BASE_PROTO_HDRS}
   ${ACOMMS_SRC}
@@ -162,8 +174,11 @@ target_link_libraries(goby
   ${Boost_LIBRARIES}
   ${PROTOBUF_LIBRARY}
   proj
-  ${GMP_LIBRARIES}
   )
+
+if(enable_gmp)
+  target_link_libraries(goby ${GMP_LIBRARIES})
+endif()
 
 if(enable_ncurses)
   target_link_libraries(goby ${CURSES_LIBRARIES})

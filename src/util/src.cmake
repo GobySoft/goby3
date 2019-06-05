@@ -4,6 +4,7 @@ protobuf_generate_cpp(UTIL_PROTO_SRCS UTIL_PROTO_HDRS
   )
 
 set(UTIL_SRC
+  util/base_convert.cpp
   util/linebasedcomms/interface.cpp
   util/linebasedcomms/nmea_sentence.cpp
   util/linebasedcomms/serial_client.cpp
