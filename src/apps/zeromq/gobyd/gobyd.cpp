@@ -23,7 +23,7 @@
 #include "goby/middleware/gobyd/groups.h"
 #include "goby/middleware/protobuf/intervehicle_status.pb.h"
 #include "goby/middleware/transport-intervehicle.h"
-#include "goby/zeromq/transport-interprocess-zeromq.h"
+#include "goby/zeromq/transport-interprocess.h"
 
 #include "goby/zeromq/protobuf/gobyd_config.pb.h"
 
@@ -49,8 +49,8 @@ class Daemon : public goby::common::Application<protobuf::GobyDaemonConfig>
     // for handling ZMQ Interprocess Communications
     std::unique_ptr<zmq::context_t> router_context_;
     std::unique_ptr<zmq::context_t> manager_context_;
-    ZMQRouter router_;
-    ZMQManager manager_;
+    Router router_;
+    Manager manager_;
     std::unique_ptr<std::thread> router_thread_;
     std::unique_ptr<std::thread> manager_thread_;
 

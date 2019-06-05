@@ -24,7 +24,7 @@
 #define ZEROMQ_MULTI_THREAD_APPLICATION20190605H
 
 #include "goby/middleware/multi-thread-application.h"
-#include "goby/zeromq/transport-interprocess-zeromq.h"
+#include "goby/zeromq/transport-interprocess.h"
 
 namespace goby
 {

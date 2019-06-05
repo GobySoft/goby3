@@ -168,9 +168,9 @@ int main(int argc, char* argv[])
         cfg.set_platform(platform_name);
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
-        goby::zeromq::ZMQRouter router(*router_context, cfg);
+        goby::zeromq::Router router(*router_context, cfg);
         t2.reset(new std::thread([&] { router.run(); }));
-        goby::zeromq::ZMQManager manager(*manager_context, cfg, router);
+        goby::zeromq::Manager manager(*manager_context, cfg, router);
         t3.reset(new std::thread([&] { manager.run(); }));
         int wstatus;
         wait(&wstatus);

@@ -25,7 +25,7 @@
 #include "test-scheme.h"
 
 #include "goby/middleware/transport.h"
-#include "goby/zeromq/transport-interprocess-zeromq.h"
+#include "goby/zeromq/transport-interprocess.h"
 
 #include "goby/util/debug_logger.h"
 #include "test.pb.h"
@@ -44,9 +44,9 @@ int main(int argc, char* argv[])
     zmq_cfg.set_platform("test1");
     std::unique_ptr<zmq::context_t> manager_context(new zmq::context_t(1));
     std::unique_ptr<zmq::context_t> router_context(new zmq::context_t(1));
-    goby::zeromq::ZMQRouter router(*router_context, zmq_cfg);
+    goby::zeromq::Router router(*router_context, zmq_cfg);
     std::thread t1([&] { router.run(); });
-    goby::zeromq::ZMQManager manager(*manager_context, zmq_cfg, router);
+    goby::zeromq::Manager manager(*manager_context, zmq_cfg, router);
     std::thread t2([&] { manager.run(); });
 
     //    goby::ProtobufMarshaller pb;

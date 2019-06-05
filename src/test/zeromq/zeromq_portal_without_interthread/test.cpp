@@ -26,7 +26,7 @@
 #include <deque>
 
 #include "goby/middleware/transport.h"
-#include "goby/zeromq/transport-interprocess-zeromq.h"
+#include "goby/zeromq/transport-interprocess.h"
 
 #include "goby/util/debug_logger.h"
 #include "test.pb.h"
@@ -144,9 +144,9 @@ int main(int argc, char* argv[])
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(10));
 
-        goby::zeromq::ZMQRouter router(*router_context, cfg);
+        goby::zeromq::Router router(*router_context, cfg);
         t2.reset(new std::thread([&] { router.run(); }));
-        goby::zeromq::ZMQManager manager(*manager_context, cfg, router);
+        goby::zeromq::Manager manager(*manager_context, cfg, router);
         t3.reset(new std::thread([&] { manager.run(); }));
         std::thread t1([&] { publisher(cfg); });
         int wstatus;

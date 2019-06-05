@@ -22,31 +22,31 @@
 
 #include "goby/time/system_clock.h"
 
-#include "transport-interprocess-zeromq.h"
+#include "transport-interprocess.h"
 
 using goby::glog;
 using namespace goby::common::logger;
 
-void goby::zeromq::setup_socket(zmq::socket_t& socket, const protobuf::ZMQSocket& cfg)
+void goby::zeromq::setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg)
 {
     int send_hwm = cfg.send_queue_size();
     int receive_hwm = cfg.receive_queue_size();
     socket.setsockopt(ZMQ_SNDHWM, &send_hwm, sizeof(send_hwm));
     socket.setsockopt(ZMQ_RCVHWM, &receive_hwm, sizeof(receive_hwm));
 
-    bool bind = (cfg.connect_or_bind() == protobuf::ZMQSocket::BIND);
+    bool bind = (cfg.connect_or_bind() == protobuf::Socket::BIND);
 
     std::string endpoint;
     switch (cfg.transport())
     {
-        case protobuf::ZMQSocket::IPC: endpoint = "ipc://" + cfg.socket_name(); break;
-        case protobuf::ZMQSocket::TCP:
+        case protobuf::Socket::IPC: endpoint = "ipc://" + cfg.socket_name(); break;
+        case protobuf::Socket::TCP:
             endpoint = "tcp://" + (bind ? std::string("*") : cfg.ethernet_address()) + ":" +
                        std::to_string(cfg.ethernet_port());
             break;
         default:
             throw(std::runtime_error("Unsupported transport type: " +
-                                     protobuf::ZMQSocket::Transport_Name(cfg.transport())));
+                                     protobuf::Socket::Transport_Name(cfg.transport())));
             break;
     }
 
@@ -57,16 +57,17 @@ void goby::zeromq::setup_socket(zmq::socket_t& socket, const protobuf::ZMQSocket
 }
 
 //
-// ZMQMainThread
+// InterProcessPortalMainThread
 //
 
-goby::zeromq::ZMQMainThread::ZMQMainThread(zmq::context_t& context)
+goby::zeromq::InterProcessPortalMainThread::InterProcessPortalMainThread(zmq::context_t& context)
     : control_socket_(context, ZMQ_PAIR), publish_socket_(context, ZMQ_PUB)
 {
     control_socket_.bind("inproc://control");
 }
 
-bool goby::zeromq::ZMQMainThread::recv(protobuf::InprocControl* control_msg, int flags)
+bool goby::zeromq::InterProcessPortalMainThread::recv(protobuf::InprocControl* control_msg,
+                                                      int flags)
 {
     zmq::message_t zmq_msg;
     bool message_received = false;
@@ -81,7 +82,7 @@ bool goby::zeromq::ZMQMainThread::recv(protobuf::InprocControl* control_msg, int
     return message_received;
 }
 
-void goby::zeromq::ZMQMainThread::set_publish_cfg(const protobuf::ZMQSocket& cfg)
+void goby::zeromq::InterProcessPortalMainThread::set_publish_cfg(const protobuf::Socket& cfg)
 {
     setup_socket(publish_socket_, cfg);
     publish_socket_configured_ = true;
@@ -95,8 +96,8 @@ void goby::zeromq::ZMQMainThread::set_publish_cfg(const protobuf::ZMQSocket& cfg
     publish_queue_.clear();
 }
 
-void goby::zeromq::ZMQMainThread::publish(const std::string& identifier, const char* bytes,
-                                          int size)
+void goby::zeromq::InterProcessPortalMainThread::publish(const std::string& identifier,
+                                                         const char* bytes, int size)
 {
     if (publish_socket_configured_)
     {
@@ -115,7 +116,7 @@ void goby::zeromq::ZMQMainThread::publish(const std::string& identifier, const c
     }
 }
 
-void goby::zeromq::ZMQMainThread::subscribe(const std::string& identifier)
+void goby::zeromq::InterProcessPortalMainThread::subscribe(const std::string& identifier)
 {
     protobuf::InprocControl control;
     control.set_type(protobuf::InprocControl::SUBSCRIBE);
@@ -126,11 +127,11 @@ void goby::zeromq::ZMQMainThread::subscribe(const std::string& identifier)
     protobuf::InprocControl control_ack;
     recv(&control_ack);
     if (control_ack.type() != protobuf::InprocControl::SUBSCRIBE_ACK)
-        glog.is(WARN) && glog << "Received invalid ack from ZMQReadThread: "
+        glog.is(WARN) && glog << "Received invalid ack from InterProcessPortalReadThread: "
                               << control_ack.ShortDebugString() << std::endl;
 }
 
-void goby::zeromq::ZMQMainThread::unsubscribe(const std::string& identifier)
+void goby::zeromq::InterProcessPortalMainThread::unsubscribe(const std::string& identifier)
 {
     protobuf::InprocControl control;
     control.set_type(protobuf::InprocControl::UNSUBSCRIBE);
@@ -141,17 +142,18 @@ void goby::zeromq::ZMQMainThread::unsubscribe(const std::string& identifier)
     protobuf::InprocControl control_ack;
     recv(&control_ack);
     if (control_ack.type() != protobuf::InprocControl::UNSUBSCRIBE_ACK)
-        glog.is(WARN) && glog << "Received invalid ack from ZMQReadThread: "
+        glog.is(WARN) && glog << "Received invalid ack from InterProcessPortalReadThread: "
                               << control_ack.ShortDebugString() << std::endl;
 }
-void goby::zeromq::ZMQMainThread::reader_shutdown()
+void goby::zeromq::InterProcessPortalMainThread::reader_shutdown()
 {
     protobuf::InprocControl control;
     control.set_type(protobuf::InprocControl::SHUTDOWN);
     send_control_msg(control);
 }
 
-void goby::zeromq::ZMQMainThread::send_control_msg(const protobuf::InprocControl& control)
+void goby::zeromq::InterProcessPortalMainThread::send_control_msg(
+    const protobuf::InprocControl& control)
 {
     zmq::message_t zmq_control_msg(control.ByteSize());
     control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());
@@ -159,11 +161,11 @@ void goby::zeromq::ZMQMainThread::send_control_msg(const protobuf::InprocControl
 }
 
 //
-// ZMQReadThread
+// InterProcessPortalReadThread
 //
-goby::zeromq::ZMQReadThread::ZMQReadThread(const protobuf::InterProcessPortalConfig& cfg,
-                                           zmq::context_t& context, std::atomic<bool>& alive,
-                                           std::shared_ptr<std::condition_variable_any> poller_cv)
+goby::zeromq::InterProcessPortalReadThread::InterProcessPortalReadThread(
+    const protobuf::InterProcessPortalConfig& cfg, zmq::context_t& context,
+    std::atomic<bool>& alive, std::shared_ptr<std::condition_variable_any> poller_cv)
     : cfg_(cfg),
       control_socket_(context, ZMQ_PAIR),
       subscribe_socket_(context, ZMQ_SUB),
@@ -178,29 +180,29 @@ goby::zeromq::ZMQReadThread::ZMQReadThread(const protobuf::InterProcessPortalCon
 
     control_socket_.connect("inproc://control");
 
-    protobuf::ZMQSocket query_socket;
-    query_socket.set_socket_type(protobuf::ZMQSocket::REQUEST);
+    protobuf::Socket query_socket;
+    query_socket.set_socket_type(protobuf::Socket::REQUEST);
     query_socket.set_socket_id(SOCKET_MANAGER);
 
     switch (cfg_.transport())
     {
         case protobuf::InterProcessPortalConfig::IPC:
-            query_socket.set_transport(protobuf::ZMQSocket::IPC);
+            query_socket.set_transport(protobuf::Socket::IPC);
             query_socket.set_socket_name(
                 (cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) +
                 ".manager");
             break;
         case protobuf::InterProcessPortalConfig::TCP:
-            query_socket.set_transport(protobuf::ZMQSocket::TCP);
+            query_socket.set_transport(protobuf::Socket::TCP);
             query_socket.set_ethernet_address(cfg_.ipv4_address());
             query_socket.set_ethernet_port(cfg_.tcp_port());
             break;
     }
-    query_socket.set_connect_or_bind(protobuf::ZMQSocket::CONNECT);
+    query_socket.set_connect_or_bind(protobuf::Socket::CONNECT);
     setup_socket(manager_socket_, query_socket);
 }
 
-void goby::zeromq::ZMQReadThread::run()
+void goby::zeromq::InterProcessPortalReadThread::run()
 {
     while (alive_)
     {
@@ -210,7 +212,7 @@ void goby::zeromq::ZMQReadThread::run()
         }
         else
         {
-            protobuf::ZMQManagerRequest req;
+            protobuf::ManagerRequest req;
             req.set_request(protobuf::PROVIDE_PUB_SUB_SOCKETS);
 
             zmq::message_t msg(req.ByteSize());
@@ -231,7 +233,7 @@ void goby::zeromq::ZMQReadThread::run()
     }
 }
 
-void goby::zeromq::ZMQReadThread::poll(long timeout_ms)
+void goby::zeromq::InterProcessPortalReadThread::poll(long timeout_ms)
 {
     zmq::poll(&poll_items_[0], poll_items_.size(), timeout_ms);
 
@@ -259,7 +261,7 @@ void goby::zeromq::ZMQReadThread::poll(long timeout_ms)
     }
 }
 
-void goby::zeromq::ZMQReadThread::control_data(const zmq::message_t& zmq_msg)
+void goby::zeromq::InterProcessPortalReadThread::control_data(const zmq::message_t& zmq_msg)
 {
     // command from the main thread
     protobuf::InprocControl control_msg;
@@ -300,7 +302,7 @@ void goby::zeromq::ZMQReadThread::control_data(const zmq::message_t& zmq_msg)
         default: break;
     }
 }
-void goby::zeromq::ZMQReadThread::subscribe_data(const zmq::message_t& zmq_msg)
+void goby::zeromq::InterProcessPortalReadThread::subscribe_data(const zmq::message_t& zmq_msg)
 {
     // data from goby - forward to the main thread
     protobuf::InprocControl control;
@@ -308,16 +310,16 @@ void goby::zeromq::ZMQReadThread::subscribe_data(const zmq::message_t& zmq_msg)
     control.set_received_data(std::string((char*)zmq_msg.data(), zmq_msg.size()));
     send_control_msg(control);
 }
-void goby::zeromq::ZMQReadThread::manager_data(const zmq::message_t& zmq_msg)
+void goby::zeromq::InterProcessPortalReadThread::manager_data(const zmq::message_t& zmq_msg)
 {
     // manager (gobyd) reply
-    protobuf::ZMQManagerResponse response;
+    protobuf::ManagerResponse response;
     response.ParseFromArray(zmq_msg.data(), zmq_msg.size());
     if (response.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
     {
-        if (response.subscribe_socket().transport() == protobuf::ZMQSocket::TCP)
+        if (response.subscribe_socket().transport() == protobuf::Socket::TCP)
             response.mutable_subscribe_socket()->set_ethernet_address(cfg_.ipv4_address());
-        if (response.publish_socket().transport() == protobuf::ZMQSocket::TCP)
+        if (response.publish_socket().transport() == protobuf::Socket::TCP)
             response.mutable_publish_socket()->set_ethernet_address(cfg_.ipv4_address());
 
         setup_socket(subscribe_socket_, response.subscribe_socket());
@@ -334,7 +336,8 @@ void goby::zeromq::ZMQReadThread::manager_data(const zmq::message_t& zmq_msg)
     }
 }
 
-void goby::zeromq::ZMQReadThread::send_control_msg(const protobuf::InprocControl& control)
+void goby::zeromq::InterProcessPortalReadThread::send_control_msg(
+    const protobuf::InprocControl& control)
 {
     zmq::message_t zmq_control_msg(control.ByteSize());
     control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());
@@ -343,10 +346,10 @@ void goby::zeromq::ZMQReadThread::send_control_msg(const protobuf::InprocControl
 }
 
 //
-// ZMQRouter
+// Router
 //
 
-unsigned goby::zeromq::ZMQRouter::last_port(zmq::socket_t& socket)
+unsigned goby::zeromq::Router::last_port(zmq::socket_t& socket)
 {
     size_t last_endpoint_size = 100;
     char last_endpoint[last_endpoint_size];
@@ -360,7 +363,7 @@ unsigned goby::zeromq::ZMQRouter::last_port(zmq::socket_t& socket)
     return port;
 }
 
-void goby::zeromq::ZMQRouter::run()
+void goby::zeromq::Router::run()
 {
     zmq::socket_t frontend(context_, ZMQ_XPUB);
     zmq::socket_t backend(context_, ZMQ_XSUB);
@@ -412,9 +415,9 @@ void goby::zeromq::ZMQRouter::run()
 }
 
 //
-// ZMQRouter
+// Router
 //
-void goby::zeromq::ZMQManager::run()
+void goby::zeromq::Manager::run()
 {
     zmq::socket_t socket(context_, ZMQ_REP);
 
@@ -444,24 +447,24 @@ void goby::zeromq::ZMQManager::run()
             zmq::message_t request;
             socket.recv(&request);
 
-            protobuf::ZMQManagerRequest pb_request;
+            protobuf::ManagerRequest pb_request;
             pb_request.ParseFromArray((char*)request.data(), request.size());
 
             while (cfg_.transport() == protobuf::InterProcessPortalConfig::TCP &&
                    (router_.pub_port == 0 || router_.sub_port == 0))
                 usleep(1e4);
 
-            protobuf::ZMQManagerResponse pb_response;
+            protobuf::ManagerResponse pb_response;
             pb_response.set_request(pb_request.request());
 
             if (pb_request.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
             {
-                protobuf::ZMQSocket* subscribe_socket = pb_response.mutable_subscribe_socket();
-                protobuf::ZMQSocket* publish_socket = pb_response.mutable_publish_socket();
-                subscribe_socket->set_socket_type(protobuf::ZMQSocket::SUBSCRIBE);
-                publish_socket->set_socket_type(protobuf::ZMQSocket::PUBLISH);
-                subscribe_socket->set_connect_or_bind(protobuf::ZMQSocket::CONNECT);
-                publish_socket->set_connect_or_bind(protobuf::ZMQSocket::CONNECT);
+                protobuf::Socket* subscribe_socket = pb_response.mutable_subscribe_socket();
+                protobuf::Socket* publish_socket = pb_response.mutable_publish_socket();
+                subscribe_socket->set_socket_type(protobuf::Socket::SUBSCRIBE);
+                publish_socket->set_socket_type(protobuf::Socket::PUBLISH);
+                subscribe_socket->set_connect_or_bind(protobuf::Socket::CONNECT);
+                publish_socket->set_connect_or_bind(protobuf::Socket::CONNECT);
 
                 subscribe_socket->set_send_queue_size(cfg_.send_queue_size());
                 subscribe_socket->set_receive_queue_size(cfg_.receive_queue_size());
@@ -471,8 +474,8 @@ void goby::zeromq::ZMQManager::run()
                 switch (cfg_.transport())
                 {
                     case protobuf::InterProcessPortalConfig::IPC:
-                        subscribe_socket->set_transport(protobuf::ZMQSocket::IPC);
-                        publish_socket->set_transport(protobuf::ZMQSocket::IPC);
+                        subscribe_socket->set_transport(protobuf::Socket::IPC);
+                        publish_socket->set_transport(protobuf::Socket::IPC);
                         subscribe_socket->set_socket_name((cfg_.has_socket_name()
                                                                ? cfg_.socket_name()
                                                                : "/tmp/goby_" + cfg_.platform()) +
@@ -483,8 +486,8 @@ void goby::zeromq::ZMQManager::run()
                                                         ".xsub");
                         break;
                     case protobuf::InterProcessPortalConfig::TCP:
-                        subscribe_socket->set_transport(protobuf::ZMQSocket::TCP);
-                        publish_socket->set_transport(protobuf::ZMQSocket::TCP);
+                        subscribe_socket->set_transport(protobuf::Socket::TCP);
+                        publish_socket->set_transport(protobuf::Socket::TCP);
                         subscribe_socket->set_ethernet_port(
                             router_.pub_port); // our publish is their subscribe
                         publish_socket->set_ethernet_port(router_.sub_port);

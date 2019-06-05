@@ -34,15 +34,15 @@ namespace goby
 {
 namespace zeromq
 {
-void setup_socket(zmq::socket_t& socket, const protobuf::ZMQSocket& cfg);
+void setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg);
 // run in the same thread as InterProcessPortal
-class ZMQMainThread
+class InterProcessPortalMainThread
 {
   public:
-    ZMQMainThread(zmq::context_t& context);
+    InterProcessPortalMainThread(zmq::context_t& context);
     bool ready() { return publish_socket_configured_; }
     bool recv(protobuf::InprocControl* control_msg, int flags = 0);
-    void set_publish_cfg(const protobuf::ZMQSocket& cfg);
+    void set_publish_cfg(const protobuf::Socket& cfg);
     void publish(const std::string& identifier, const char* bytes, int size);
     void subscribe(const std::string& identifier);
     void unsubscribe(const std::string& identifier);
@@ -60,11 +60,12 @@ class ZMQMainThread
 };
 
 // run in a separate thread to allow zmq_.poll() to block without interrupting the main thread
-class ZMQReadThread
+class InterProcessPortalReadThread
 {
   public:
-    ZMQReadThread(const protobuf::InterProcessPortalConfig& cfg, zmq::context_t& context,
-                  std::atomic<bool>& alive, std::shared_ptr<std::condition_variable_any> poller_cv);
+    InterProcessPortalReadThread(const protobuf::InterProcessPortalConfig& cfg,
+                                 zmq::context_t& context, std::atomic<bool>& alive,
+                                 std::shared_ptr<std::condition_variable_any> poller_cv);
     void run();
 
   private:
@@ -495,8 +496,8 @@ class InterProcessPortal
     std::unique_ptr<std::thread> zmq_thread_;
     std::atomic<bool> zmq_alive_{true};
     zmq::context_t zmq_context_;
-    ZMQMainThread zmq_main_;
-    ZMQReadThread zmq_read_thread_;
+    InterProcessPortalMainThread zmq_main_;
+    InterProcessPortalReadThread zmq_read_thread_;
 
     // maps identifier to subscription
     std::unordered_multimap<std::string, std::shared_ptr<const SerializationSubscriptionBase> >
@@ -517,10 +518,10 @@ class InterProcessPortal
     std::unordered_map<std::thread::id, std::string> threads_;
 };
 
-class ZMQRouter
+class Router
 {
   public:
-    ZMQRouter(zmq::context_t& context, const protobuf::InterProcessPortalConfig& cfg)
+    Router(zmq::context_t& context, const protobuf::InterProcessPortalConfig& cfg)
         : context_(context), cfg_(cfg)
     {
     }
@@ -528,8 +529,8 @@ class ZMQRouter
     void run();
     unsigned last_port(zmq::socket_t& socket);
 
-    ZMQRouter(ZMQRouter&) = delete;
-    ZMQRouter& operator=(ZMQRouter&) = delete;
+    Router(Router&) = delete;
+    Router& operator=(Router&) = delete;
 
   public:
     std::atomic<unsigned> pub_port{0};
@@ -540,11 +541,11 @@ class ZMQRouter
     const protobuf::InterProcessPortalConfig& cfg_;
 };
 
-class ZMQManager
+class Manager
 {
   public:
-    ZMQManager(zmq::context_t& context, const protobuf::InterProcessPortalConfig& cfg,
-               const ZMQRouter& router)
+    Manager(zmq::context_t& context, const protobuf::InterProcessPortalConfig& cfg,
+            const Router& router)
         : context_(context), cfg_(cfg), router_(router)
     {
     }
@@ -554,7 +555,7 @@ class ZMQManager
   private:
     zmq::context_t& context_;
     const protobuf::InterProcessPortalConfig& cfg_;
-    const ZMQRouter& router_;
+    const Router& router_;
 };
 } // namespace zeromq
 } // namespace goby

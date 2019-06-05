@@ -7,12 +7,12 @@ enum Request
     PROVIDE_PUB_SUB_SOCKETS = 1;
 }
 
-message ZMQManagerRequest
+message ManagerRequest
 {
     required Request request = 1;
 }
 
-message ZMQSocket
+message Socket
 {
     enum SocketType
     {
@@ -73,11 +73,11 @@ message ZMQSocket
     optional uint32 receive_queue_size = 11 [default = 1000];
 }
 
-message ZMQManagerResponse
+message ManagerResponse
 {
     required Request request = 1;
-    optional ZMQSocket publish_socket = 2;
-    optional ZMQSocket subscribe_socket = 3;
+    optional Socket publish_socket = 2;
+    optional Socket subscribe_socket = 3;
 }
 
 message InprocControl
@@ -94,7 +94,7 @@ message InprocControl
     }
     required InprocControlType type = 1;
 
-    optional ZMQSocket publish_socket = 2;
+    optional Socket publish_socket = 2;
     optional bytes subscription_identifier = 3;
     optional bytes received_data = 4;
 }
