@@ -210,7 +210,7 @@ if(build_zeromq)
   write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby_zeromq-config-version.cmake
     VERSION ${GOBY_VERSION}
     COMPATIBILITY SameMajorVersion )
-  install(EXPORT goby_zeromq-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+  install(EXPORT goby_zeromq-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_zeromq)
   install(FILES ${CMAKE_BINARY_DIR}/goby_zeromq-config-version.cmake 
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_zeromq)
   #configuration export - local build version
@@ -241,7 +241,7 @@ if(build_moos)
   write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby_moos-config-version.cmake
     VERSION ${GOBY_VERSION}
     COMPATIBILITY SameMajorVersion )
-  install(EXPORT goby_moos-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+  install(EXPORT goby_moos-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_moos)
   install(FILES ${CMAKE_BINARY_DIR}/goby_moos-config-version.cmake 
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby_moos)
   #configuration export - local build version
