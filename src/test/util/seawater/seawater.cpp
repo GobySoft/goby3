@@ -21,6 +21,8 @@
 
 #define BOOST_TEST_MODULE seawater - formulas - test
 #include <boost/test/included/unit_test.hpp>
+#include <boost/units/io.hpp>
+#include <boost/units/systems/si/prefixes.hpp>
 
 #include <iomanip>
 #include <iostream>
@@ -29,7 +31,9 @@
 
 #include "goby/util/seawater.h"
 
-BOOST_AUTO_TEST_CASE(test_salinity)
+using namespace boost::units;
+
+BOOST_AUTO_TEST_CASE(salinity_check_value)
 {
     // from UNESCO 1983 test cases
     double test_conductivity_ratio = 1.888091;
@@ -50,20 +54,50 @@ BOOST_AUTO_TEST_CASE(test_salinity)
     BOOST_CHECK_CLOSE(calculated_salinity, 40.00000, std::pow(10, -5));
 }
 
-BOOST_AUTO_TEST_CASE(test_soundspeed)
+BOOST_AUTO_TEST_CASE(soundspeed_check_value)
 {
-    double test_temperature = 25;
-    double test_salinity = 35;
-    double test_depth = 1000;
+    auto test_temperature = 25.0 * absolute<celsius::temperature>();
+    quantity<si::dimensionless> test_salinity = 35.0;
+    auto test_depth = 1000.0 * si::meters;
 
-    double calculated_soundspeed =
+    auto test_temperature_kelvin = (273.15 + 25.0) * absolute<si::temperature>();
+    double test_salinity_dbl = 35.0;
+    auto test_depth_km = 1.0 * si::kilo * si::meters;
+
+    auto calculated_soundspeed =
         goby::util::mackenzie_soundspeed(test_temperature, test_salinity, test_depth);
 
     std::cout << "calculated speed of sound: " << std::fixed << std::setprecision(3)
-              << calculated_soundspeed << " m/s "
-              << " for T = " << test_temperature << ", S = " << test_salinity
-              << ", and D = " << test_depth << std::endl;
+              << calculated_soundspeed << " for T = " << test_temperature
+              << ", S = " << test_salinity << ", and D = " << test_depth << std::endl;
 
     // check value for mackenzie
-    BOOST_CHECK_CLOSE(calculated_soundspeed, 1550.744, std::pow(10, -3));
+    BOOST_CHECK_CLOSE(calculated_soundspeed / si::meters_per_second, 1550.744, std::pow(10, -3));
+
+    // check using different input units
+    BOOST_CHECK_CLOSE(goby::util::mackenzie_soundspeed(test_temperature_kelvin, test_salinity_dbl,
+                                                       test_depth_km) /
+                          si::meters_per_second,
+                      1550.744, std::pow(10, -3));
+}
+
+BOOST_AUTO_TEST_CASE(soundspeed_out_of_range)
+{
+    auto test_temperature = 25.0 * absolute<celsius::temperature>();
+    quantity<si::dimensionless> test_salinity = 35.0;
+    auto test_depth = 1000.0 * si::meters;
+
+    auto out_of_range_temperature = 40.0 * absolute<si::temperature>();
+    quantity<si::dimensionless> out_of_range_salinity = 0.0;
+    auto out_of_range_depth = 9.0 * si::kilo * si::meters;
+
+    BOOST_CHECK_THROW(
+        goby::util::mackenzie_soundspeed(out_of_range_temperature, test_salinity, test_depth),
+        std::out_of_range);
+    BOOST_CHECK_THROW(
+        goby::util::mackenzie_soundspeed(test_temperature, out_of_range_salinity, test_depth),
+        std::out_of_range);
+    BOOST_CHECK_THROW(
+        goby::util::mackenzie_soundspeed(test_temperature, test_salinity, out_of_range_depth),
+        std::out_of_range);
 }

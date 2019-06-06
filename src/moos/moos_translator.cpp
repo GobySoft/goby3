@@ -104,7 +104,23 @@ void goby::moos::alg_dB_to_power(transitional::DCCLMessageVal& val_to_mod)
 void goby::moos::alg_TSD_to_soundspeed(transitional::DCCLMessageVal& val,
                                        const std::vector<transitional::DCCLMessageVal>& ref_vals)
 {
-    val.set(goby::util::mackenzie_soundspeed(val, ref_vals[0], ref_vals[1]), 3);
+    try
+    {
+        val.set(goby::util::mackenzie_soundspeed(
+                    static_cast<double>(val) *
+                        boost::units::absolute<boost::units::celsius::temperature>(),
+                    boost::units::quantity<boost::units::si::dimensionless>(
+                        static_cast<double>(ref_vals[0])),
+                    static_cast<double>(ref_vals[1]) * boost::units::si::meters) /
+                    (boost::units::si::meters_per_second),
+                3);
+    }
+    catch (std::out_of_range& e)
+    {
+        glog.is_warn() && glog << "Out of range error calculating soundspeed: " << e.what()
+                               << std::endl;
+        val.set(std::numeric_limits<double>::quiet_NaN());
+    }
 }
 
 void goby::moos::alg_angle_0_360(transitional::DCCLMessageVal& angle)

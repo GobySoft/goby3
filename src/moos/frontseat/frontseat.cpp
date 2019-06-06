@@ -211,8 +211,18 @@ void FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
     }
     if (!ctd_sample->has_sound_speed())
     {
-        ctd_sample->set_sound_speed(goby::util::mackenzie_soundspeed(
-            ctd_sample->temperature(), ctd_sample->salinity(), ctd_sample->depth()));
+        try
+        {
+            ctd_sample->set_sound_speed_with_units(goby::util::mackenzie_soundspeed(
+                ctd_sample->temperature_with_units(), ctd_sample->salinity_with_units(),
+                ctd_sample->depth_with_units()));
+        }
+        catch (std::out_of_range& e)
+        {
+            glog.is_warn() && glog << "Out of range error calculating soundspeed: " << e.what()
+                                   << std::endl;
+            ctd_sample->set_sound_speed(std::numeric_limits<double>::quiet_NaN());
+        }
 
         ctd_sample->set_sound_speed_algorithm(gpb::CTDSample::MACKENZIE_1981);
     }
