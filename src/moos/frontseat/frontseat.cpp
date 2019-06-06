@@ -199,21 +199,21 @@ void FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
     double pressure_dbar = ctd_sample->pressure() / 10000;
     if (!ctd_sample->has_salinity())
     {
-        double conductivity_mSiemens_cm = ctd_sample->conductivity() * 10;
-        double temperature_deg_C = ctd_sample->temperature();
-        ctd_sample->set_salinity(SalinityCalculator::salinity(conductivity_mSiemens_cm,
-                                                              temperature_deg_C, pressure_dbar));
+        ctd_sample->set_salinity_with_units(goby::util::seawater::salinity(
+            ctd_sample->conductivity_with_units(), ctd_sample->temperature_with_units(),
+            ctd_sample->pressure_with_units()));
         ctd_sample->set_salinity_algorithm(gpb::CTDSample::UNESCO_44_PREKIN_AND_LEWIS_1980);
     }
     if (!ctd_sample->has_depth())
     {
-        ctd_sample->set_depth(pressure2depth(pressure_dbar, ctd_sample->lat()));
+        ctd_sample->set_depth_with_units(goby::util::seawater::depth(
+            ctd_sample->pressure_with_units(), ctd_sample->lat_with_units()));
     }
     if (!ctd_sample->has_sound_speed())
     {
         try
         {
-            ctd_sample->set_sound_speed_with_units(goby::util::mackenzie_soundspeed(
+            ctd_sample->set_sound_speed_with_units(goby::util::seawater::mackenzie_soundspeed(
                 ctd_sample->temperature_with_units(), ctd_sample->salinity_with_units(),
                 ctd_sample->depth_with_units()));
         }

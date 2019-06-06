@@ -19,7 +19,10 @@ message CTDSample
     ];
 
     // required "primary" measurements
-    optional double conductivity = 10 [(dccl.field).omit = true];
+    optional double conductivity = 10 [
+        (dccl.field).omit = true,
+        (dccl.field).units = {derived_dimensions: "conductivity"}
+    ];
     required double temperature = 11 [
         (dccl.field).min = 0,
         (dccl.field).max = 30,
@@ -68,13 +71,21 @@ message CTDSample
     required double lat = 24 [
         (dccl.field).min = -90,
         (dccl.field).max = 90,
-        (dccl.field).precision = 6
+        (dccl.field).precision = 6,
+        (dccl.field).units = {
+            system: "degree"
+            derived_dimensions: "plane_angle"
+        }
     ];
 
     required double lon = 25 [
         (dccl.field).min = -180,
         (dccl.field).max = 180,
-        (dccl.field).precision = 6
+        (dccl.field).precision = 6,
+        (dccl.field).units = {
+            system: "degree"
+            derived_dimensions: "plane_angle"
+        }
     ];
 
     // algorithm used for secondary quantities

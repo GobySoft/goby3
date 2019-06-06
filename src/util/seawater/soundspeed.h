@@ -31,6 +31,8 @@ namespace goby
 {
 namespace util
 {
+namespace seawater
+{
 /// K.V. Mackenzie, Nine-term equation for the sound speed in the oceans (1981) J. Acoust. Soc. Am. 70(3), pp 807-812
 /// https://doi.org/10.1121/1.386920
 /// Ranges of validity encompass: temperature -2 to 30 deg C, salinity 30 to 40, and depth 0 to 8000 m.
@@ -83,7 +85,7 @@ mackenzie_soundspeed(boost::units::quantity<boost::units::absolute<TemperatureUn
     return mackenzie_soundspeed(
         temperature, boost::units::quantity<boost::units::si::dimensionless>(salinity), depth);
 }
-
+} // namespace seawater
 } // namespace util
 } // namespace goby
 

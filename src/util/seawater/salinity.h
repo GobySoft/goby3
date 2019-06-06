@@ -57,134 +57,71 @@
 
 #include <cmath>
 
-class SalinityCalculator
+#include <boost/units/quantity.hpp>
+#include <boost/units/systems/si.hpp>
+#include <boost/units/systems/si/prefixes.hpp>
+#include <boost/units/systems/temperature/celsius.hpp>
+
+#include "goby/util/seawater/detail/salinity_impl.h"
+#include "units.h"
+
+namespace goby
 {
-  public:
-    enum
-    {
-        TO_SALINITY = false,
-        FROM_SALINITY = true
-    };
-    static double salinity(double cnd_milli_siemens_per_cm, double temp_deg_c, double pressure_dbar,
-                           bool M = TO_SALINITY)
-    {
-        const double CONDUCTIVITY_AT_STANDARD = 42.914; // S = 35, T = 15 deg C, P = 0 dbar
-        double CND = cnd_milli_siemens_per_cm / CONDUCTIVITY_AT_STANDARD;
-        double T = temp_deg_c;
-        double P = pressure_dbar;
+namespace util
+{
+namespace seawater
+{
+static const boost::units::quantity<decltype(milli_siemens_per_cm)> conductivity_at_standard{
+    42.914 * milli_siemens_per_cm}; // S = 35, T = 15 deg C, P = 0 dbar
 
-        double SAL78 = 0;
+template <typename ConductivityUnit = decltype(milli_siemens_per_cm),
+          typename TemperatureUnit = boost::units::celsius::temperature,
+          typename PressureUnit = decltype(boost::units::si::deci* bar)>
+inline boost::units::quantity<boost::units::si::dimensionless>
+salinity(boost::units::quantity<ConductivityUnit> conductivity,
+         boost::units::quantity<boost::units::absolute<TemperatureUnit> > temperature,
+         boost::units::quantity<PressureUnit> pressure)
+{
+    using namespace boost::units;
+    double CND = quantity<decltype(milli_siemens_per_cm)>(conductivity) / conductivity_at_standard;
+    double T = quantity<absolute<celsius::temperature> >(temperature).value();
+    double P = quantity<decltype(si::deci * bar)>(pressure).value();
 
-        // ZERO SALINITY/CONDUCTIVITY TRAP
-        if (((M == 0) && (CND <= 5e-4)) || ((M == 1) && (CND <= 0.2)))
-            return SAL78;
+    return quantity<si::dimensionless>(
+        detail::SalinityCalculator::compute(CND, T, P, detail::SalinityCalculator::TO_SALINITY));
+}
 
-        double DT = T - 15;
+template <typename TemperatureUnit = boost::units::celsius::temperature,
+          typename DimensionlessUnit = boost::units::si::dimensionless,
+          typename PressureUnit = decltype(boost::units::si::deci* bar)>
+inline boost::units::quantity<decltype(milli_siemens_per_cm)>
+conductivity(boost::units::quantity<DimensionlessUnit> salinity,
+             boost::units::quantity<boost::units::absolute<TemperatureUnit> > temperature,
+             boost::units::quantity<PressureUnit> pressure)
+{
+    using namespace boost::units;
+    double SAL = salinity;
+    double T = quantity<absolute<celsius::temperature> >(temperature).value();
+    double P = quantity<decltype(si::deci * bar)>(pressure).value();
 
-        // SELECT BRANCH FOR SALINITY (M=0) OR CONDUCTIVITY (M=1)
-        if (M == 0)
-        {
-            // CONVERT CONDUCTIVITY TO SALINITY
-            double Res = CND;
-            double RT = Res / (RT35(T) * (1.0 + C(P) / (B(T) + A(T) * Res)));
-            RT = std::sqrt(std::abs(RT));
-            SAL78 = SAL(RT, DT);
-            return SAL78;
-        }
-        else
-        {
-            // INVERT SALINITY TO CONDUCTIVITY BY THE
-            // NEWTON-RAPHSON ITERATIVE METHOD
-            // FIRST APPROXIMATION
+    return detail::SalinityCalculator::compute(SAL, T, P,
+                                               detail::SalinityCalculator::FROM_SALINITY) *
+           conductivity_at_standard;
+}
 
-            double RT = std::sqrt(CND / 35);
-            double SI = SAL(RT, DT);
-            double N = 0;
+template <typename TemperatureUnit = boost::units::celsius::temperature,
+          typename PressureUnit = decltype(boost::units::si::deci* bar)>
+inline boost::units::quantity<decltype(milli_siemens_per_cm)>
+conductivity(double salinity,
+             boost::units::quantity<boost::units::absolute<TemperatureUnit> > temperature,
+             boost::units::quantity<PressureUnit> pressure)
+{
+    return conductivity(boost::units::quantity<boost::units::si::dimensionless>(salinity),
+                        temperature, pressure);
+}
 
-            // TIERATION LOOP BEGINS HERE WITH A MAXIMUM OF 10 CYCLES
-            double DELS = 0;
-            do
-            {
-                RT = RT + (CND - SI) / DSAL(RT, DT);
-                SI = SAL(RT, DT);
-                N = N + 1;
-                DELS = std::abs(SI - CND);
-            }
-            //IF((DELS.GT.1.0E-4).AND.(N.LT.10)) GO TO 15
-            while ((DELS < 1e-4) || (N >= 10));
-            //Until not ((DELS > 1.0E-4) AND (N <10));
-
-            //COMPUTE CONDUCTIVITY RATIO
-            double RTT = RT35(T) * RT * RT;
-            double AT = A(T);
-            double BT = B(T);
-            double CP = C(P);
-            CP = RTT * (CP + BT);
-            BT = BT - RTT * AT;
-
-            // SOLVE QUADRATIC EQUATION FOR R: R=RT35*RT*(1+C/AR+B)
-            //    R  := SQRT (ABS (BT * BT + 4.0 * AT * CP)) - BT;
-            double Res = std::sqrt(std::abs(BT * BT + 4 * AT * CP)) - BT;
-            // CONDUCTIVITY RETURN
-            SAL78 = 0.5 * Res / AT;
-            return SAL78;
-        }
-    }
-
-  private:
-    static double SAL(double XR, double XT)
-    {
-        // PRACTICAL SALINITY SCALE 1978 DEFINITION WITH TEMPERATURE
-        // CORRECTION;XT :=T-15.0; XR:=SQRT(RT);
-        double sal =
-            ((((2.7081 * XR - 7.0261) * XR + 14.0941) * XR + 25.3851) * XR - 0.1692) * XR + 0.0080 +
-            (XT / (1.0 + 0.0162 * XT)) *
-                (((((-0.0144 * XR + 0.0636) * XR - 0.0375) * XR - 0.0066) * XR - 0.0056) * XR +
-                 0.0005);
-        return sal;
-    }
-
-    static double DSAL(double XR, double XT)
-    {
-        // FUNCTION FOR DERIVATIVE OF SAL(XR,XT) WITH XR
-        double dsal = ((((13.5405 * XR - 28.1044) * XR + 42.2823) * XR + 50.7702) * XR - 0.1692) +
-                      (XT / (1.0 + 0.0162 * XT)) *
-                          ((((-0.0720 * XR + 0.2544) * XR - 0.1125) * XR - 0.0132) * XR - 0.0056);
-        return dsal;
-    }
-
-    static double RT35(double XT)
-    {
-        // FUNCTION RT35: C(35,T,0)/C(35,15,0) VARIATION WITH TEMPERATURE
-        double rt35 =
-            (((1.0031E-9 * XT - 6.9698E-7) * XT + 1.104259E-4) * XT + 2.00564E-2) * XT + 0.6766097;
-        return rt35;
-    }
-
-    static double C(double XP)
-    {
-        // C(XP) POLYNOMIAL CORRESPONDS TO A1-A3 CONSTANTS: LEWIS 1980
-        double c = ((3.989E-15 * XP - 6.370E-10) * XP + 2.070E-5) * XP;
-        return c;
-    }
-
-    static double B(double XT)
-    {
-        double b = (4.464E-4 * XT + 3.426E-2) * XT + 1.0;
-        return b;
-    }
-
-    static double A(double XT)
-    {
-        //A(XT) POLYNOMIAL CORRESPONDS TO B3 AND B4 CONSTANTS: LEWIS 1980
-        double a = -3.107E-3 * XT + 0.4215;
-        return a;
-    }
-
-    SalinityCalculator();
-    ~SalinityCalculator();
-    SalinityCalculator(const SalinityCalculator&);
-    SalinityCalculator& operator=(const SalinityCalculator&);
-};
+} // namespace seawater
+} // namespace util
+} // namespace goby
 
 #endif

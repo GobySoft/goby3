@@ -19,7 +19,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#define BOOST_TEST_MODULE seawater - formulas - test
+#define BOOST_TEST_MODULE seawater_formulas_test
 #include <boost/test/included/unit_test.hpp>
 #include <boost/units/io.hpp>
 #include <boost/units/systems/si/prefixes.hpp>
@@ -29,29 +29,14 @@
 
 #include <dccl/common.h>
 
+#include "goby/util/constants.h"
 #include "goby/util/seawater.h"
 
 using namespace boost::units;
 
-BOOST_AUTO_TEST_CASE(salinity_check_value)
+bool close_enough(double a, double b, int precision)
 {
-    // from UNESCO 1983 test cases
-    double test_conductivity_ratio = 1.888091;
-    const double CONDUCTIVITY_AT_STANDARD = 42.914; // S = 35, T = 15 deg C, P = 0 dbar
-    double test_conductivity_mSiemens_cm = test_conductivity_ratio * CONDUCTIVITY_AT_STANDARD;
-
-    double test_temperature_deg_C = 40;
-    double test_pressure_dbar = 10000;
-
-    double calculated_salinity = SalinityCalculator::salinity(
-        test_conductivity_mSiemens_cm, test_temperature_deg_C, test_pressure_dbar);
-
-    std::cout << "calculated salinity: " << std::fixed << std::setprecision(5)
-              << calculated_salinity << " for T = " << test_temperature_deg_C << " deg C,"
-              << " P = " << test_pressure_dbar << " dbar,"
-              << " C = " << test_conductivity_mSiemens_cm << " mSiemens / cm" << std::endl;
-
-    BOOST_CHECK_CLOSE(calculated_salinity, 40.00000, std::pow(10, -5));
+    return std::abs(a - b) < std::pow(10, -precision);
 }
 
 BOOST_AUTO_TEST_CASE(soundspeed_check_value)
@@ -65,22 +50,25 @@ BOOST_AUTO_TEST_CASE(soundspeed_check_value)
     auto test_depth_km = 1.0 * si::kilo * si::meters;
 
     auto calculated_soundspeed =
-        goby::util::mackenzie_soundspeed(test_temperature, test_salinity, test_depth);
+        goby::util::seawater::mackenzie_soundspeed(test_temperature, test_salinity, test_depth);
 
-    std::cout << "calculated speed of sound: " << std::fixed << std::setprecision(3)
-              << calculated_soundspeed << " for T = " << test_temperature
+    auto expected_soundspeed = 1550.744 * si::meters_per_second;
+    int expected_precision = 3;
+
+    std::cout << "CHECK [speed of sound] expected: " << std::fixed
+              << std::setprecision(expected_precision) << expected_soundspeed
+              << ", calculated: " << calculated_soundspeed << " for T = " << test_temperature
               << ", S = " << test_salinity << ", and D = " << test_depth << std::endl;
 
     // check value for mackenzie
-    BOOST_CHECK_CLOSE(static_cast<double>(calculated_soundspeed / si::meters_per_second), 1550.744,
-                      std::pow(10, -3));
+    BOOST_CHECK(close_enough(calculated_soundspeed / si::meters_per_second,
+                             expected_soundspeed / si::meters_per_second, expected_precision));
 
     // check using different input units
-    BOOST_CHECK_CLOSE(
-        static_cast<double>(goby::util::mackenzie_soundspeed(test_temperature_kelvin,
-                                                             test_salinity_dbl, test_depth_km) /
-                            si::meters_per_second),
-        1550.744, std::pow(10, -3));
+    BOOST_CHECK(close_enough(goby::util::seawater::mackenzie_soundspeed(
+                                 test_temperature_kelvin, test_salinity_dbl, test_depth_km) /
+                                 si::meters_per_second,
+                             expected_soundspeed / si::meters_per_second, expected_precision));
 }
 
 BOOST_AUTO_TEST_CASE(soundspeed_out_of_range)
@@ -93,13 +81,129 @@ BOOST_AUTO_TEST_CASE(soundspeed_out_of_range)
     quantity<si::dimensionless> out_of_range_salinity = 0.0;
     auto out_of_range_depth = 9.0 * si::kilo * si::meters;
 
-    BOOST_CHECK_THROW(
-        goby::util::mackenzie_soundspeed(out_of_range_temperature, test_salinity, test_depth),
-        std::out_of_range);
-    BOOST_CHECK_THROW(
-        goby::util::mackenzie_soundspeed(test_temperature, out_of_range_salinity, test_depth),
-        std::out_of_range);
-    BOOST_CHECK_THROW(
-        goby::util::mackenzie_soundspeed(test_temperature, test_salinity, out_of_range_depth),
-        std::out_of_range);
+    BOOST_CHECK_THROW(goby::util::seawater::mackenzie_soundspeed(out_of_range_temperature,
+                                                                 test_salinity, test_depth),
+                      std::out_of_range);
+    BOOST_CHECK_THROW(goby::util::seawater::mackenzie_soundspeed(test_temperature,
+                                                                 out_of_range_salinity, test_depth),
+                      std::out_of_range);
+    BOOST_CHECK_THROW(goby::util::seawater::mackenzie_soundspeed(test_temperature, test_salinity,
+                                                                 out_of_range_depth),
+                      std::out_of_range);
+}
+
+BOOST_AUTO_TEST_CASE(depth_check_value)
+{
+    using boost::units::si::deci;
+    using goby::util::seawater::bar;
+
+    auto pressure = 10000.0 * deci * bar;
+    auto latitude = 30.0 * degree::degrees;
+
+    auto calculated_depth = goby::util::seawater::depth(pressure, latitude);
+    auto expected_depth = 9712.653 * si::meters;
+    int expected_precision = 3;
+
+    std::cout << "CHECK [depth] expected: " << std::fixed << std::setprecision(expected_precision)
+              << expected_depth << ", calculated: " << calculated_depth << " for P = " << pressure
+              << ", Lat = " << latitude << std::endl;
+
+    BOOST_CHECK(close_enough(calculated_depth / si::meters, expected_depth / si::meters,
+                             expected_precision));
+}
+
+// check a few of the other values from the "Table of Depth" in UNESCO 1983
+BOOST_AUTO_TEST_CASE(depth_additional_values)
+{
+    using boost::units::si::deci;
+    using goby::util::seawater::bar;
+    {
+        auto pressure = 500.0 * deci * bar;
+        auto latitude = 0.0 * degree::degrees;
+        auto calculated_depth = goby::util::seawater::depth(pressure, latitude);
+        auto expected_depth = 496.65 * si::meters;
+        int expected_precision = 2;
+
+        BOOST_CHECK(close_enough(calculated_depth / si::meters, expected_depth / si::meters,
+                                 expected_precision));
+    }
+    {
+        auto pressure = 500.0 * bar; // 5000 dbar
+        auto latitude = 60.0 * degree::degrees;
+        auto calculated_depth = goby::util::seawater::depth(pressure, latitude);
+        auto expected_depth = 4895.60 * si::meters;
+        int expected_precision = 2;
+
+        BOOST_CHECK(close_enough(calculated_depth / si::meters, expected_depth / si::meters,
+                                 expected_precision));
+    }
+    {
+        auto pressure = 9000.0 * deci * bar;
+        auto latitude = goby::util::pi<double> / 2 * si::radians; // 90 deg
+        auto calculated_depth = goby::util::seawater::depth(pressure, latitude);
+        auto expected_depth = 8724.85 * si::meters;
+        int expected_precision = 2;
+
+        BOOST_CHECK(close_enough(calculated_depth / si::meters, expected_depth / si::meters,
+                                 expected_precision));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(salinity_check_value)
+{
+    using boost::units::si::deci;
+    using goby::util::seawater::bar;
+    // from UNESCO 1983 test cases
+    auto test_conductivity_ratio = 1.888091;
+    auto test_conductivity =
+        test_conductivity_ratio * goby::util::seawater::conductivity_at_standard;
+
+    auto test_temperature = 40.0 * absolute<celsius::temperature>();
+    auto test_pressure = 10000.0 * deci * bar;
+
+    // sanity check that dS/m == mS/cm
+    BOOST_CHECK_EQUAL(1 * si::deci * si::conductivity(),
+                      1 * goby::util::seawater::milli_siemens_per_cm);
+
+    double calculated_salinity =
+        goby::util::seawater::salinity(test_conductivity, test_temperature, test_pressure);
+
+    double expected_salinity = 40.00000;
+    int expected_precision = 5;
+
+    std::cout << "CHECK [salinity] expected: " << std::fixed
+              << std::setprecision(expected_precision) << expected_salinity
+              << ", calculated: " << calculated_salinity << " for T = " << test_temperature
+              << ", P = " << test_pressure << ", C = " << test_conductivity << std::endl;
+
+    BOOST_CHECK(close_enough(calculated_salinity, expected_salinity, expected_precision));
+}
+
+BOOST_AUTO_TEST_CASE(conductivity_check_value)
+{
+    using boost::units::si::deci;
+    using goby::util::seawater::bar;
+    // from UNESCO 1983 test cases
+    auto expected_conductivity_ratio = 1.888091;
+
+    int expected_precision = 6;
+
+    auto test_temperature = 40.0 * absolute<celsius::temperature>();
+    auto test_pressure = 10000.0 * deci * bar;
+
+    double test_salinity = 40.00000;
+
+    auto calculated_conductivity =
+        goby::util::seawater::conductivity(test_salinity, test_temperature, test_pressure);
+    double calculated_conductivity_ratio =
+        calculated_conductivity / goby::util::seawater::conductivity_at_standard;
+
+    std::cout << "CHECK [conductivity] expected (ratio): " << std::fixed
+              << std::setprecision(expected_precision) << expected_conductivity_ratio
+              << ", calculated (ratio): " << calculated_conductivity_ratio
+              << " for T = " << test_temperature << ", P = " << test_pressure
+              << ", SAL = " << test_salinity << std::endl;
+
+    BOOST_CHECK(close_enough(calculated_conductivity_ratio, expected_conductivity_ratio,
+                             expected_precision));
 }

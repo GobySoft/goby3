@@ -67,7 +67,6 @@ inline unsigned ceil_log2(int i) { return ceil_log2(static_cast<unsigned>(i)); }
 
 [[deprecated("use std::log2()")]] inline double log2(double d) { return std::log2(d); }
 
-template <class T> constexpr T pi = T(3.1415926535897932385L);
 } // namespace util
 
 //@}

@@ -106,11 +106,10 @@ void goby::moos::alg_TSD_to_soundspeed(transitional::DCCLMessageVal& val,
 {
     try
     {
-        val.set(goby::util::mackenzie_soundspeed(
+        val.set(goby::util::seawater::mackenzie_soundspeed(
                     static_cast<double>(val) *
                         boost::units::absolute<boost::units::celsius::temperature>(),
-                    boost::units::quantity<boost::units::si::dimensionless>(
-                        static_cast<double>(ref_vals[0])),
+                    static_cast<double>(ref_vals[0]),
                     static_cast<double>(ref_vals[1]) * boost::units::si::meters) /
                     (boost::units::si::meters_per_second),
                 3);
