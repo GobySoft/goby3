@@ -207,3 +207,29 @@ BOOST_AUTO_TEST_CASE(conductivity_check_value)
     BOOST_CHECK(close_enough(calculated_conductivity_ratio, expected_conductivity_ratio,
                              expected_precision));
 }
+
+BOOST_AUTO_TEST_CASE(density_anomaly_check_value)
+{
+    using boost::units::si::deci;
+    using goby::util::seawater::bar;
+    // from UNESCO 1983 test cases
+
+    auto expected_density_anomaly = 59.82037 * si::kilograms_per_cubic_meter;
+    int expected_precision = 5;
+
+    auto test_temperature = 40.0 * absolute<celsius::temperature>();
+    auto test_pressure = 10000.0 * deci * bar;
+    double test_salinity = 40.0;
+
+    auto calculated_density_anomaly =
+        goby::util::seawater::density_anomaly(test_salinity, test_temperature, test_pressure);
+
+    std::cout << "CHECK [density anomaly] expected: " << std::fixed
+              << std::setprecision(expected_precision) << expected_density_anomaly
+              << ", calculated: " << calculated_density_anomaly << " for T = " << test_temperature
+              << ", P = " << test_pressure << ", SAL = " << test_salinity << std::endl;
+
+    BOOST_CHECK(close_enough(calculated_density_anomaly / si::kilograms_per_cubic_meter,
+                             expected_density_anomaly / si::kilograms_per_cubic_meter,
+                             expected_precision));
+}

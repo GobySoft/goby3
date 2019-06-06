@@ -196,7 +196,6 @@ void FrontSeatInterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg, Directio
 
 void FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
 {
-    double pressure_dbar = ctd_sample->pressure() / 10000;
     if (!ctd_sample->has_salinity())
     {
         ctd_sample->set_salinity_with_units(goby::util::seawater::salinity(
@@ -228,9 +227,11 @@ void FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
     }
     if (!ctd_sample->has_density())
     {
-        ctd_sample->set_density(
-            density_anomaly(ctd_sample->salinity(), ctd_sample->temperature(), pressure_dbar) +
-            1000.0);
+        ctd_sample->set_density_with_units(
+            goby::util::seawater::density_anomaly(ctd_sample->salinity_with_units(),
+                                                  ctd_sample->temperature_with_units(),
+                                                  ctd_sample->pressure_with_units()) +
+            1000.0 * boost::units::si::kilograms_per_cubic_meter);
 
         ctd_sample->set_density_algorithm(gpb::CTDSample::UNESCO_38_MILLERO_AND_POISSON_1981);
     }

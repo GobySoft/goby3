@@ -76,6 +76,14 @@ mackenzie_soundspeed(boost::units::quantity<boost::units::absolute<TemperatureUn
            si::meters_per_second;
 }
 
+/// K.V. Mackenzie, Nine-term equation for the sound speed in the oceans (1981) J. Acoust. Soc. Am. 70(3), pp 807-812 (variant that accepts plain double for salinity)
+/// https://doi.org/10.1121/1.386920
+/// Ranges of validity encompass: temperature -2 to 30 deg C, salinity 30 to 40, and depth 0 to 8000 m.
+/// \param temperature temperature
+/// \param salinity salinity
+/// \param depth depth
+/// \throw std::out_of_range if any of the inputs are out of the validity range for this algorithm
+/// \return speed of sound in meters per second
 template <typename TemperatureUnit = boost::units::celsius::temperature,
           typename LengthUnit = boost::units::si::length>
 boost::units::quantity<boost::units::si::velocity>
