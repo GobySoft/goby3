@@ -72,13 +72,15 @@ BOOST_AUTO_TEST_CASE(soundspeed_check_value)
               << ", S = " << test_salinity << ", and D = " << test_depth << std::endl;
 
     // check value for mackenzie
-    BOOST_CHECK_CLOSE(calculated_soundspeed / si::meters_per_second, 1550.744, std::pow(10, -3));
+    BOOST_CHECK_CLOSE(static_cast<double>(calculated_soundspeed / si::meters_per_second), 1550.744,
+                      std::pow(10, -3));
 
     // check using different input units
-    BOOST_CHECK_CLOSE(goby::util::mackenzie_soundspeed(test_temperature_kelvin, test_salinity_dbl,
-                                                       test_depth_km) /
-                          si::meters_per_second,
-                      1550.744, std::pow(10, -3));
+    BOOST_CHECK_CLOSE(
+        static_cast<double>(goby::util::mackenzie_soundspeed(test_temperature_kelvin,
+                                                             test_salinity_dbl, test_depth_km) /
+                            si::meters_per_second),
+        1550.744, std::pow(10, -3));
 }
 
 BOOST_AUTO_TEST_CASE(soundspeed_out_of_range)
