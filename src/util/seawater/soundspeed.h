@@ -20,13 +20,26 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SEAWATER_20190530H
-#define SEAWATER_20190530H
+#ifndef SOUNDSPEED_20190606H
+#define SOUNDSPEED_20190606H
 
-#include "seawater/depth.h"
-#include "seawater/pressure.h"
-#include "seawater/salinity.h"
-#include "seawater/soundspeed.h"
-#include "seawater/swstate.h"
+namespace goby
+{
+namespace util
+{
+/// K.V. Mackenzie, Nine-term equation for the sound speed in the oceans (1981) J. Acoust. Soc. Am. 70(3), pp 807-812
+/// http://scitation.aip.org/getabs/servlet/GetabsServlet?prog=normal&id=JASMAN000070000003000807000001&idtype=cvips&gifs=yes
+/// \param T temperature in degrees Celcius (see paper for applicable ranges)
+/// \param S salinity (unitless, calculated using Practical Salinity Scale) (see paper for applicable ranges)
+/// \param D depth in meters (see paper for applicable ranges)
+/// \return speed of sound in meters per second
+inline double mackenzie_soundspeed(double T, double S, double D)
+{
+    return 1448.96 + 4.591 * T - 5.304e-2 * T * T + 2.374e-4 * T * T * T + 1.340 * (S - 35) +
+           1.630e-2 * D + 1.675e-7 * D * D - 1.025e-2 * T * (S - 35) - 7.139e-13 * T * D * D * D;
+}
+
+} // namespace util
+} // namespace goby
 
 #endif

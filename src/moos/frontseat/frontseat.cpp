@@ -21,7 +21,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/util/debug_logger.h"
-#include "goby/util/sci.h"
+#include "goby/util/seawater.h"
 
 #include "goby/util/seawater/depth.h"
 #include "goby/util/seawater/salinity.h"

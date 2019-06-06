@@ -24,7 +24,7 @@
 #include <boost/math/special_functions/fpclassify.hpp>
 
 #include "goby/acomms/dccl.h"
-#include "goby/util/sci.h"
+#include "goby/util/seawater.h"
 
 #include "moos_translator.h"
 
@@ -161,8 +161,7 @@ void goby::moos::MOOSTranslator::alg_utm_x2lon(
         geodesy_.UTM2LatLong(x, y, lat, lon);
 
     const int LON_INT_DIGITS = 3;
-    lon =
-        goby::util::unbiased_round(lon, std::numeric_limits<double>::digits10 - LON_INT_DIGITS - 1);
+    lon = dccl::round(lon, std::numeric_limits<double>::digits10 - LON_INT_DIGITS - 1);
     mv = lon;
 }
 
@@ -178,8 +177,7 @@ void goby::moos::MOOSTranslator::alg_utm_y2lat(
         geodesy_.UTM2LatLong(x, y, lat, lon);
 
     const int LAT_INT_DIGITS = 2;
-    lat =
-        goby::util::unbiased_round(lat, std::numeric_limits<double>::digits10 - LAT_INT_DIGITS - 1);
+    lat = dccl::round(lat, std::numeric_limits<double>::digits10 - LAT_INT_DIGITS - 1);
     mv = lat;
 }
 

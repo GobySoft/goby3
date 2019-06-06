@@ -43,8 +43,7 @@ void initiate_transmission(const goby::acomms::protobuf::ModemTransmission& msg)
                               (mac.cycle_duration() / std::chrono::microseconds(1));
 
     std::cout << std::setprecision(15) << cycles_since_day << std::endl;
-    std::cout << std::setprecision(15) << goby::util::unbiased_round(cycles_since_day, 0)
-              << std::endl;
+    std::cout << std::setprecision(15) << dccl::round(cycles_since_day, 0) << std::endl;
 
     current_cycle = cycles_since_day;
     if (first_cycle == -1)
@@ -52,8 +51,7 @@ void initiate_transmission(const goby::acomms::protobuf::ModemTransmission& msg)
 
     assert(mac.cycle_count() == 3);
 
-    assert(goby::util::unbiased_round(
-               cycles_since_day - goby::util::unbiased_round(cycles_since_day, 0), 1) == 0);
+    assert(dccl::round(cycles_since_day - dccl::round(cycles_since_day, 0), 1) == 0);
 }
 
 int main(int argc, char* argv[])

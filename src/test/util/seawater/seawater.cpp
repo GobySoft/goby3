@@ -19,16 +19,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/util/seawater/salinity.h"
-#include "goby/util/sci.h"
-#include <cassert>
+#define BOOST_TEST_MODULE seawater - formulas - test
+#include <boost/test/included/unit_test.hpp>
+
 #include <iomanip>
 #include <iostream>
 
-int main()
-{
-    using goby::util::unbiased_round;
+#include <dccl/common.h>
 
+#include "goby/util/seawater.h"
+
+BOOST_AUTO_TEST_CASE(test_salinity)
+{
     // from UNESCO 1983 test cases
     double test_conductivity_ratio = 1.888091;
     const double CONDUCTIVITY_AT_STANDARD = 42.914; // S = 35, T = 15 deg C, P = 0 dbar
@@ -45,5 +47,23 @@ int main()
               << " P = " << test_pressure_dbar << " dbar,"
               << " C = " << test_conductivity_mSiemens_cm << " mSiemens / cm" << std::endl;
 
-    assert(goby::util::unbiased_round(calculated_salinity, 5) == 40.00000);
+    BOOST_CHECK_CLOSE(calculated_salinity, 40.00000, std::pow(10, -5));
+}
+
+BOOST_AUTO_TEST_CASE(test_soundspeed)
+{
+    double test_temperature = 25;
+    double test_salinity = 35;
+    double test_depth = 1000;
+
+    double calculated_soundspeed =
+        goby::util::mackenzie_soundspeed(test_temperature, test_salinity, test_depth);
+
+    std::cout << "calculated speed of sound: " << std::fixed << std::setprecision(3)
+              << calculated_soundspeed << " m/s "
+              << " for T = " << test_temperature << ", S = " << test_salinity
+              << ", and D = " << test_depth << std::endl;
+
+    // check value for mackenzie
+    BOOST_CHECK_CLOSE(calculated_soundspeed, 1550.744, std::pow(10, -3));
 }

@@ -200,7 +200,7 @@ bool goby::transitional::DCCLMessageVal::get(long& t) const
             try
             {
                 double d = boost::lexical_cast<double>(sval_);
-                t = boost::numeric_cast<long>(util::unbiased_round(d, 0));
+                t = boost::numeric_cast<long>(dccl::round(d, 0));
             }
             catch (...)
             {
@@ -216,7 +216,7 @@ bool goby::transitional::DCCLMessageVal::get(long& t) const
         case cpp_double:
             try
             {
-                t = boost::numeric_cast<long>(util::unbiased_round(dval_, 0));
+                t = boost::numeric_cast<long>(dccl::round(dval_, 0));
             }
             catch (...)
             {

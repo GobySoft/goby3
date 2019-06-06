@@ -29,6 +29,8 @@
 #include <boost/units/systems/si.hpp>
 #include <boost/units/systems/si/prefixes.hpp>
 
+#include <dccl/common.h>
+
 #include "goby/util/linebasedcomms/serial_client.h"
 #include "goby/util/primitive_types.h"
 #include "goby/util/sci.h"
@@ -78,7 +80,7 @@ class IverFrontSeat : public FrontSeatInterfaceBase
     std::string tenths_precision_str(double d)
     {
         std::stringstream ss;
-        ss << std::fixed << std::setprecision(1) << goby::util::unbiased_round(d, 1);
+        ss << std::fixed << std::setprecision(1) << dccl::round(d, 1);
         return ss.str();
     }
 

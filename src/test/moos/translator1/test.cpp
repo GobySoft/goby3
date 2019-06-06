@@ -306,10 +306,10 @@ int main(int argc, char* argv[])
     geodesy.UTM2LatLong(report.x(), report.y(), expected_lat, expected_lon);
     const int LAT_INT_DIGITS = 2;
     const int LON_INT_DIGITS = 3;
-    expected_lat = goby::util::unbiased_round(expected_lat, std::numeric_limits<double>::digits10 -
-                                                                LAT_INT_DIGITS - 1);
-    expected_lon = goby::util::unbiased_round(expected_lon, std::numeric_limits<double>::digits10 -
-                                                                LON_INT_DIGITS - 1);
+    expected_lat =
+        dccl::round(expected_lat, std::numeric_limits<double>::digits10 - LAT_INT_DIGITS - 1);
+    expected_lon =
+        dccl::round(expected_lon, std::numeric_limits<double>::digits10 - LON_INT_DIGITS - 1);
 
     std::stringstream expected_lat_ss, expected_lon_ss;
     expected_lat_ss << std::setprecision(std::numeric_limits<double>::digits10) << expected_lat;

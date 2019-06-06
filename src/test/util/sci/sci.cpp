@@ -53,9 +53,6 @@ int main()
 
     assert(double_cmp(unbiased_round(4.123, 2), 4.12, 2));
 
-    // check value for mackenzie
-    assert(double_cmp(unbiased_round(mackenzie_soundspeed(25, 35, 1000), 3), 1550.744, 3));
-
     std::cout << "all tests passed" << std::endl;
     return 0;
 }

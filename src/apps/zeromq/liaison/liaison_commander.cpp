@@ -1243,7 +1243,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::set_ti
 
             case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
                 line_edit->setText(goby::util::as<std::string>(
-                    goby::util::unbiased_round(time::convert<time::SITime>(now).value(), 0)));
+                    dccl::round(time::convert<time::SITime>(now).value(), 0)));
 
                 latest_time_ = dccl::round(latest_time_, options.precision() - MICROSEC_ORDER_MAG);
 
@@ -1326,7 +1326,7 @@ goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::string_from
     double* value, const google::protobuf::FieldDescriptor* field_desc)
 {
     const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
-    *value = goby::util::unbiased_round(*value, options.precision());
+    *value = dccl::round(*value, options.precision());
 
     if (options.precision() < 0)
     {
