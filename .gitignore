@@ -1,6 +1,6 @@
 *~
-bin
-lib
-include
-share
-build
+/bin
+/lib
+/include
+/share
+/build

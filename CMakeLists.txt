@@ -224,7 +224,7 @@ write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby-config-version.cmake
                                  COMPATIBILITY SameMajorVersion )
                                
 install(EXPORT goby_core-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
-configure_file(${goby_SHARE_DIR}/goby-config.cmake ${CMAKE_BINARY_DIR}/goby-config.cmake @ONLY)
+configure_file(${goby_SRC_DIR}/goby-config.cmake.in ${CMAKE_BINARY_DIR}/goby-config.cmake @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/goby-config.cmake ${CMAKE_BINARY_DIR}/goby-config-version.cmake 
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
 
