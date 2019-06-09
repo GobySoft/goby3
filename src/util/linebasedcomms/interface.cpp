@@ -27,7 +27,7 @@
 goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
     : work_(io_service_), active_(false)
 {
-    goby::glog.set_lock_action(goby::common::logger_lock::lock);
+    goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
     if (delimiter.empty())
         throw Exception("Line based comms started with null string as delimiter!");

@@ -37,7 +37,7 @@ class Group;
 
 namespace goby
 {
-namespace common
+namespace util
 {
 /// Enables the Verbosity == gui mode of the Goby logger and displays an NCurses gui for the logger content
 class FlexNCurses
@@ -264,7 +264,7 @@ class FlexNCurses
         FOOTER_Y = 3
     };
 };
-} // namespace common
+} // namespace util
 } // namespace goby
 
 #endif

@@ -31,14 +31,14 @@
 #include "goby/util/binary.h"
 #include "goby_store_server_config.pb.h"
 
-using namespace goby::common::logger;
-using goby::common::goby_time;
+using namespace goby::util::logger;
+using goby::util::goby_time;
 
 namespace goby
 {
 namespace acomms
 {
-class GobyStoreServer : public goby::common::ZeroMQApplicationBase,
+class GobyStoreServer : public goby::util::ZeroMQApplicationBase,
                         public goby::pb::StaticProtobufNode
 {
   public:
@@ -56,7 +56,7 @@ class GobyStoreServer : public goby::common::ZeroMQApplicationBase,
     void check(int rc, const std::string& error_prefix);
 
   private:
-    static goby::common::ZeroMQService zeromq_service_;
+    static goby::util::ZeroMQService zeromq_service_;
     protobuf::GobyStoreServerConfig& cfg_;
     sqlite3* db_;
 
@@ -66,7 +66,7 @@ class GobyStoreServer : public goby::common::ZeroMQApplicationBase,
 } // namespace acomms
 } // namespace goby
 
-goby::common::ZeroMQService goby::acomms::GobyStoreServer::zeromq_service_;
+goby::util::ZeroMQService goby::acomms::GobyStoreServer::zeromq_service_;
 
 int main(int argc, char* argv[])
 {
@@ -86,7 +86,7 @@ goby::acomms::GobyStoreServer::GobyStoreServer(protobuf::GobyStoreServerConfig* 
     if (cfg_.has_db_file_name())
         full_db_name += cfg_.db_file_name();
     else
-        full_db_name += "goby_store_server_" + goby::common::goby_file_timestamp() + ".db";
+        full_db_name += "goby_store_server_" + goby::util::goby_file_timestamp() + ".db";
 
     int rc;
     rc = sqlite3_open(full_db_name.c_str(), &db_);
@@ -113,7 +113,7 @@ goby::acomms::GobyStoreServer::GobyStoreServer(protobuf::GobyStoreServerConfig* 
                                              &GobyStoreServer::handle_request, this);
 
     // start zeromqservice
-    common::protobuf::ZeroMQServiceConfig service_cfg;
+    util::protobuf::ZeroMQServiceConfig service_cfg;
     service_cfg.add_socket()->CopyFrom(cfg_.reply_socket());
     zeromq_service_.set_cfg(service_cfg);
 }

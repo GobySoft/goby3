@@ -23,7 +23,7 @@
 #include "transport-intervehicle.h"
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 goby::ModemDriverThread::ModemDriverThread(const protobuf::InterVehiclePortalConfig& cfg,
                                            std::atomic<bool>& alive,

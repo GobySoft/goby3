@@ -197,13 +197,13 @@ struct StateNotify
 {
     StateNotify(const std::string& name) : name_(name)
     {
-        glog.is(goby::common::logger::DEBUG1) && glog << group("benthosatm900::fsm") << name_
-                                                      << std::endl;
+        glog.is(goby::util::logger::DEBUG1) && glog << group("benthosatm900::fsm") << name_
+                                                    << std::endl;
     }
     ~StateNotify()
     {
-        glog.is(goby::common::logger::DEBUG1) && glog << group("benthosatm900::fsm") << "~" << name_
-                                                      << std::endl;
+        glog.is(goby::util::logger::DEBUG1) && glog << group("benthosatm900::fsm") << "~" << name_
+                                                    << std::endl;
     }
 
   private:

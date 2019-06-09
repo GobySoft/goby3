@@ -29,7 +29,7 @@ using goby::glog;
 /// asserts false if called - used for testing proper short-circuiting of logger calls
 inline std::ostream& stream_assert(std::ostream& os) { assert(false); }
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 struct A
 {
@@ -103,7 +103,7 @@ int main()
     glog.is(WARN) && glog << "warn ok" << std::endl;
 
     std::cout << "checking locking ... " << std::endl;
-    glog.set_lock_action(goby::common::logger_lock::lock);
+    glog.set_lock_action(goby::util::logger_lock::lock);
     glog.is(VERBOSE) && glog << "lock ok" << std::endl;
     glog.is(VERBOSE) && glog << "unlock ok" << std::endl;
     // glog << "lock ok" << std::endl;
@@ -124,7 +124,7 @@ int main()
         t2.join();
     }
 
-    glog.set_lock_action(goby::common::logger_lock::none);
+    glog.set_lock_action(goby::util::logger_lock::none);
 
     std::cout << "attaching std::cout to DEBUG1" << std::endl;
     glog.add_stream(DEBUG1, &std::cout);
@@ -161,8 +161,8 @@ int main()
 
     std::cout << "ss1: \n" << ss1.rdbuf();
 
-    glog.add_group("test1", goby::common::Colors::lt_green, "Test 1");
-    glog.add_group("test2", goby::common::Colors::lt_green, "Test 2");
+    glog.add_group("test1", goby::util::Colors::lt_green, "Test 1");
+    glog.add_group("test2", goby::util::Colors::lt_green, "Test 2");
 
     glog << group("test1") << "test1 group ok" << std::endl;
     glog.is(WARN) && glog << group("test2") << "test2 group warning ok" << std::endl;

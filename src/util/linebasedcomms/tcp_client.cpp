@@ -35,7 +35,7 @@ goby::util::TCPClient::TCPClient(const std::string& server, unsigned port,
 
 bool goby::util::TCPClient::start_specific()
 {
-    using namespace goby::common::logger;
+    using namespace goby::util::logger;
     using goby::glog;
 
     boost::asio::ip::tcp::resolver resolver(io_service_);

@@ -42,7 +42,7 @@
 
 #include "bridge_config.pb.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 namespace goby
 {
@@ -179,7 +179,7 @@ goby::acomms::Bridge::Bridge(protobuf::BridgeConfig* cfg)
             "Rx" + goby::util::as<std::string>(qcfg.modem_id()));
 
         DynamicProtobufNode::subscribe(
-            goby::common::PubSubNodeWrapperBase::SOCKET_SUBSCRIBE,
+            goby::util::PubSubNodeWrapperBase::SOCKET_SUBSCRIBE,
             boost::bind(&Bridge::handle_external_push, this, _1, q_managers_[i].get()),
             "QueuePush" + goby::util::as<std::string>(qcfg.modem_id()));
 
@@ -208,7 +208,7 @@ void goby::acomms::Bridge::loop()
     for (std::vector<std::shared_ptr<MACManager> >::iterator it = mac_managers_.begin(),
          end = mac_managers_.end();
          it != end; ++it)
-    { (*it)->do_work(); } std::uint64_t now = goby::common::goby_time<std::uint64_t>();
+    { (*it)->do_work(); } std::uint64_t now = goby::util::goby_time<std::uint64_t>();
     if (pending_hw_ctl_ && (pending_hw_ctl_->time() + cfg_.special_command_ttl() * 1000000 < now))
     {
         glog.is(VERBOSE) && glog << "HardwareControlCommand expired." << std::endl;
@@ -421,7 +421,7 @@ void goby::acomms::Bridge::handle_initiate_transmission(const protobuf::ModemTra
             new_transmission.set_ack_requested(true);
             new_transmission.set_dest(pending_time_update_->dest());
 
-            pending_time_update_->set_time(goby::common::goby_time<std::uint64_t>());
+            pending_time_update_->set_time(goby::util::goby_time<std::uint64_t>());
 
             goby::acomms::DCCLCodec::get()->encode(new_transmission.add_frame(),
                                                    *pending_time_update_);

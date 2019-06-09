@@ -137,7 +137,7 @@ class InterProcessPortal
   private:
     void _init()
     {
-        goby::glog.set_lock_action(goby::common::logger_lock::lock);
+        goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
         using goby::protobuf::SerializerTransporterData;
         Base::inner_.template subscribe<Base::forward_group_, SerializerTransporterData>(

@@ -31,8 +31,8 @@
 
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
-using namespace goby::common::logger;
-using namespace goby::common::tcolor;
+using namespace goby::util::logger;
+using namespace goby::util::tcolor;
 using goby::time::MicroTime;
 
 FrontSeatInterfaceBase::FrontSeatInterfaceBase(const iFrontSeatConfig& cfg)
@@ -60,8 +60,8 @@ FrontSeatInterfaceBase::FrontSeatInterfaceBase(const iFrontSeatConfig& cfg)
     glog_out_group_ = "FrontSeatInterfaceBase::raw::out";
     glog_in_group_ = "FrontSeatInterfaceBase::raw::in";
 
-    goby::glog.add_group(glog_out_group_, goby::common::Colors::lt_magenta);
-    goby::glog.add_group(glog_in_group_, goby::common::Colors::lt_blue);
+    goby::glog.add_group(glog_out_group_, goby::util::Colors::lt_magenta);
+    goby::glog.add_group(glog_in_group_, goby::util::Colors::lt_blue);
 }
 
 void FrontSeatInterfaceBase::do_work()

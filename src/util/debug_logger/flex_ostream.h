@@ -35,7 +35,7 @@
 
 namespace goby
 {
-namespace common
+namespace util
 {
 /// Forms the basis of the Goby logger: std::ostream derived class for holding the FlexOStreamBuf
 class FlexOstream : public std::ostream
@@ -64,37 +64,37 @@ class FlexOstream : public std::ostream
     /// Set the name of the application that the logger is serving.
     void set_name(const std::string& s)
     {
-        std::lock_guard<std::recursive_mutex> l(goby::common::logger::mutex);
+        std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
         sb_.name(s);
     }
 
     void enable_gui()
     {
-        std::lock_guard<std::recursive_mutex> l(goby::common::logger::mutex);
+        std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
         sb_.enable_gui();
     }
 
-    bool is(goby::common::logger::Verbosity verbosity);
+    bool is(goby::util::logger::Verbosity verbosity);
 
-    bool is_die() { return is(goby::common::logger::DIE); }
-    bool is_warn() { return is(goby::common::logger::WARN); }
-    bool is_verbose() { return is(goby::common::logger::VERBOSE); }
-    bool is_debug1() { return is(goby::common::logger::DEBUG1); }
-    bool is_debug2() { return is(goby::common::logger::DEBUG2); }
-    bool is_debug3() { return is(goby::common::logger::DEBUG3); }
+    bool is_die() { return is(goby::util::logger::DIE); }
+    bool is_warn() { return is(goby::util::logger::WARN); }
+    bool is_verbose() { return is(goby::util::logger::VERBOSE); }
+    bool is_debug1() { return is(goby::util::logger::DEBUG1); }
+    bool is_debug2() { return is(goby::util::logger::DEBUG2); }
+    bool is_debug3() { return is(goby::util::logger::DEBUG3); }
 
     /// Attach a stream object (e.g. std::cout, std::ofstream, ...) to the logger with desired verbosity
     void add_stream(logger::Verbosity verbosity = logger::VERBOSE, std::ostream* os = 0)
     {
-        std::lock_guard<std::recursive_mutex> l(goby::common::logger::mutex);
+        std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
         sb_.add_stream(verbosity, os);
     }
 
-    void add_stream(goby::common::protobuf::GLogConfig::Verbosity verbosity =
-                        goby::common::protobuf::GLogConfig::VERBOSE,
+    void add_stream(goby::util::protobuf::GLogConfig::Verbosity verbosity =
+                        goby::util::protobuf::GLogConfig::VERBOSE,
                     std::ostream* os = 0)
     {
-        std::lock_guard<std::recursive_mutex> l(goby::common::logger::mutex);
+        std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
         sb_.add_stream(static_cast<logger::Verbosity>(verbosity), os);
     }
 
@@ -143,8 +143,8 @@ class FlexOstream : public std::ostream
 
     void set_unset_verbosity()
     {
-        if (sb_.verbosity_depth() == goby::common::logger::UNKNOWN)
-            this->is(goby::common::logger::VERBOSE);
+        if (sb_.verbosity_depth() == goby::util::logger::UNKNOWN)
+            this->is(goby::util::logger::VERBOSE);
     }
 
   private:
@@ -194,17 +194,17 @@ inline std::ostream& operator<<(FlexOstream& out,
     return std::operator<<(out, s);
 }
 
-} // namespace common
+} // namespace util
 
 /// \name Logger
 //@{
 /// \brief Access the Goby logger through this object.
-extern common::FlexOstream glog;
+extern util::FlexOstream glog;
 //@}
 namespace util
 {
 // for compatibility with Goby1
-inline common::FlexOstream& glogger() { return goby::glog; }
+inline util::FlexOstream& glogger() { return goby::glog; }
 } // namespace util
 } // namespace goby
 
@@ -218,7 +218,7 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
 
     void AddError(int line, int column, const std::string& message)
     {
-        using goby::common::logger::WARN;
+        using goby::util::logger::WARN;
 
         print_original(line, column);
         goby::glog.is(WARN) && goby::glog << "line: " << line << " col: " << column << " "
@@ -227,7 +227,7 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
     }
     void AddWarning(int line, int column, const std::string& message)
     {
-        using goby::common::logger::WARN;
+        using goby::util::logger::WARN;
 
         print_original(line, column);
         goby::glog.is(WARN) && goby::glog << "line: " << line << " col: " << column << " "
@@ -238,7 +238,7 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
 
     void print_original(int line, int column)
     {
-        using goby::common::logger::WARN;
+        using goby::util::logger::WARN;
 
         std::stringstream ss(original_ + "\n");
         std::string line_str;
@@ -250,9 +250,9 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
         while (!getline(ss, line_str).eof())
         {
             if (i == line)
-                goby::glog.is(WARN) && goby::glog << goby::common::tcolor::lt_red << "[line "
+                goby::glog.is(WARN) && goby::glog << goby::util::tcolor::lt_red << "[line "
                                                   << std::setw(3) << i++ << "]" << line_str
-                                                  << goby::common::tcolor::nocolor << std::endl;
+                                                  << goby::util::tcolor::nocolor << std::endl;
             else
                 goby::glog.is(WARN) && goby::glog << "[line " << std::setw(3) << i++ << "]"
                                                   << line_str << std::endl;

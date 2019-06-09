@@ -246,8 +246,8 @@ class DCCLCodec
             {
                 out.push_back(decode<GoogleProtobufMessagePointer>(bytes));
                 unsigned last_size = size(*out.back());
-                glog.is(common::logger::DEBUG1) && glog << "last message size was: " << last_size
-                                                        << std::endl;
+                glog.is(util::logger::DEBUG1) && glog << "last message size was: " << last_size
+                                                      << std::endl;
                 bytes.erase(0, last_size);
             }
             catch (dccl::Exception& e)
@@ -256,7 +256,7 @@ class DCCLCodec
                     throw(e);
                 else
                 {
-                    glog.is(common::logger::WARN) &&
+                    glog.is(util::logger::WARN) &&
                         glog << "failed to decode " << goby::util::hex_encode(bytes)
                              << " but returning parts already decoded" << std::endl;
                     return out;
@@ -290,9 +290,9 @@ class DCCLCodec
             }
             catch (dccl::Exception& e)
             {
-                glog.is(common::logger::WARN) && glog << "Failed to reload " << (*it)->full_name()
-                                                      << " after ID codec change: " << e.what()
-                                                      << std::endl;
+                glog.is(util::logger::WARN) && glog << "Failed to reload " << (*it)->full_name()
+                                                    << " after ID codec change: " << e.what()
+                                                    << std::endl;
             }
         }
     }

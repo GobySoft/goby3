@@ -39,9 +39,9 @@ using goby::util::as;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
 using goby::util::NMEASentence;
-using namespace goby::common::tcolor;
-using namespace goby::common::logger;
-using namespace goby::common::logger_lock;
+using namespace goby::util::tcolor;
+using namespace goby::util::logger;
+using namespace goby::util::logger_lock;
 
 const boost::posix_time::time_duration goby::acomms::MMDriver::MODEM_WAIT =
     boost::posix_time::seconds(5);

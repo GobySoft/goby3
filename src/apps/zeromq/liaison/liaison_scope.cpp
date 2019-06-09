@@ -41,8 +41,8 @@
 #include "goby/time.h"
 
 using namespace Wt;
-using namespace goby::common::logger_lock;
-using namespace goby::common::logger;
+using namespace goby::util::logger_lock;
+using namespace goby::util::logger;
 
 goby::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cfg)
     : LiaisonContainerWithComms<LiaisonScope, ScopeCommsThread>(cfg),

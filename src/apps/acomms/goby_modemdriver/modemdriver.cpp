@@ -36,7 +36,7 @@
 #include "goby/acomms/protobuf/modem_driver_status.pb.h"
 #include "modemdriver_config.pb.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 namespace goby
 {
@@ -65,7 +65,7 @@ class ModemDriver : public goby::pb::Application
     protobuf::ModemDriverConfig& cfg_;
 
     // for PBDriver
-    std::shared_ptr<goby::common::ZeroMQService> zeromq_service_;
+    std::shared_ptr<goby::util::ZeroMQService> zeromq_service_;
 
     // for UDPDriver
     std::shared_ptr<boost::asio::io_service> asio_service_;
@@ -107,7 +107,7 @@ goby::acomms::ModemDriver::ModemDriver(protobuf::ModemDriverConfig* cfg)
             break;
 
         case goby::acomms::protobuf::DRIVER_PB_STORE_SERVER:
-            zeromq_service_.reset(new goby::common::ZeroMQService);
+            zeromq_service_.reset(new goby::util::ZeroMQService);
             driver_.reset(new goby::pb::PBDriver(zeromq_service_.get()));
             break;
 
@@ -171,7 +171,7 @@ void goby::acomms::ModemDriver::loop()
         }
     }
 
-    double now = goby::common::goby_time<double>();
+    double now = goby::util::goby_time<double>();
     if (last_status_time_ + cfg_.status_period_s() <= now)
     {
         status_.set_time(now);
@@ -191,8 +191,8 @@ void goby::acomms::ModemDriver::handle_modem_data_request(protobuf::ModemTransmi
     publish(*msg, "DataRequest" + modem_id_str());
     data_response_received_ = false;
 
-    double start_time = goby::common::goby_time<double>();
-    while (goby::common::goby_time<double>() < start_time + cfg_.data_request_timeout())
+    double start_time = goby::util::goby_time<double>();
+    while (goby::util::goby_time<double>() < start_time + cfg_.data_request_timeout())
     {
         zeromq_service().poll(10000);
         if (data_response_received_)

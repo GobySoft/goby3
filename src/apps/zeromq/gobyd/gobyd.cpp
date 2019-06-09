@@ -29,7 +29,7 @@
 
 #include "goby/middleware/terminate/terminate.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::glog;
 
 namespace goby

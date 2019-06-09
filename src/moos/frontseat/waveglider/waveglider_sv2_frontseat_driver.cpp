@@ -31,8 +31,8 @@ namespace gtime = goby::time;
 
 using goby::glog;
 
-using namespace goby::common::logger;
-using namespace goby::common::tcolor;
+using namespace goby::util::logger;
+using namespace goby::util::tcolor;
 
 const auto allowed_skew = std::chrono::seconds(30);
 

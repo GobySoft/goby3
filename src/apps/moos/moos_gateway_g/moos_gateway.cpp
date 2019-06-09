@@ -30,7 +30,7 @@
 
 #include "moos_gateway_config.pb.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 bool MOOSGateway_OnConnect(void* pParam);
 bool MOOSGateway_OnDisconnect(void* pParam);
@@ -39,7 +39,7 @@ namespace goby
 {
 namespace moos
 {
-class MOOSGateway : public goby::common::ZeroMQApplicationBase,
+class MOOSGateway : public goby::util::ZeroMQApplicationBase,
                     public MOOSNode,
                     public goby::pb::DynamicProtobufNode
 {
@@ -60,10 +60,10 @@ class MOOSGateway : public goby::common::ZeroMQApplicationBase,
     void pb_inbox(std::shared_ptr<google::protobuf::Message> msg, const std::string& group);
 
   private:
-    static goby::common::ZeroMQService zeromq_service_;
+    static goby::util::ZeroMQService zeromq_service_;
     protobuf::MOOSGatewayConfig& cfg_;
 
-    goby::common::PubSubNodeWrapper<CMOOSMsg> goby_moos_pubsub_client_;
+    goby::util::PubSubNodeWrapper<CMOOSMsg> goby_moos_pubsub_client_;
     CMOOSCommClient moos_client_;
     goby::pb::DynamicProtobufPubSubNodeWrapper goby_pb_pubsub_client_;
 
@@ -85,7 +85,7 @@ class MOOSGateway : public goby::common::ZeroMQApplicationBase,
 } // namespace moos
 } // namespace goby
 
-goby::common::ZeroMQService goby::moos::MOOSGateway::zeromq_service_;
+goby::util::ZeroMQService goby::moos::MOOSGateway::zeromq_service_;
 
 int main(int argc, char* argv[])
 {
@@ -97,13 +97,13 @@ using goby::glog;
 
 goby::moos::MOOSGateway::MOOSGateway(protobuf::MOOSGatewayConfig* cfg)
     : ZeroMQApplicationBase(&zeromq_service_, cfg),
-      MOOSNode(&zeromq_service_), goby::pb::DynamicProtobufNode(&zeromq_service_), cfg_(*cfg),
-      goby_moos_pubsub_client_(this, cfg_.pb_convert()
-                                         ? goby::common::protobuf::PubSubSocketConfig()
-                                         : cfg_.base().pubsub_config()),
-      goby_pb_pubsub_client_(this, cfg_.pb_convert()
-                                       ? cfg_.base().pubsub_config()
-                                       : goby::common::protobuf::PubSubSocketConfig()),
+      MOOSNode(&zeromq_service_),
+      goby::pb::DynamicProtobufNode(&zeromq_service_),
+      cfg_(*cfg),
+      goby_moos_pubsub_client_(this, cfg_.pb_convert() ? goby::util::protobuf::PubSubSocketConfig()
+                                                       : cfg_.base().pubsub_config()),
+      goby_pb_pubsub_client_(this, cfg_.pb_convert() ? cfg_.base().pubsub_config()
+                                                     : goby::util::protobuf::PubSubSocketConfig()),
       moos_resubscribe_required_(false)
 {
     dccl::DynamicProtobufManager::enable_compilation();
@@ -168,7 +168,7 @@ goby::moos::MOOSGateway::MOOSGateway(protobuf::MOOSGatewayConfig* cfg)
         {
             pb2moos_.insert(std::make_pair(cfg_.pb_pair(i).pb_group(), cfg_.pb_pair(i).moos_var()));
             goby::pb::DynamicProtobufNode::subscribe(
-                goby::common::PubSubNodeWrapperBase::SOCKET_SUBSCRIBE,
+                goby::util::PubSubNodeWrapperBase::SOCKET_SUBSCRIBE,
                 boost::bind(&MOOSGateway::pb_inbox, this, _1, cfg_.pb_pair(i).pb_group()),
                 cfg_.pb_pair(i).pb_group());
         }
@@ -184,8 +184,8 @@ goby::moos::MOOSGateway::MOOSGateway(protobuf::MOOSGatewayConfig* cfg)
         }
     }
 
-    glog.add_group("from_moos", common::Colors::lt_magenta, "MOOS -> Goby");
-    glog.add_group("to_moos", common::Colors::lt_green, "Goby -> MOOS");
+    glog.add_group("from_moos", util::Colors::lt_magenta, "MOOS -> Goby");
+    glog.add_group("to_moos", util::Colors::lt_green, "Goby -> MOOS");
 }
 
 goby::moos::MOOSGateway::~MOOSGateway() {}

@@ -31,7 +31,7 @@
 #include "goby/util/protobuf/io.h"
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 std::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
 

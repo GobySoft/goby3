@@ -59,13 +59,12 @@ struct StateNotify
 {
     StateNotify(const std::string& name) : name_(name)
     {
-        glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver") << name_
-                                                      << std::endl;
+        glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << name_ << std::endl;
     }
     ~StateNotify()
     {
-        glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver") << "~" << name_
-                                                      << std::endl;
+        glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << "~" << name_
+                                                    << std::endl;
     }
 
   private:
@@ -338,7 +337,7 @@ struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0> >, 
         }
         else
         {
-            glog.is(goby::common::logger::DEBUG1) &&
+            glog.is(goby::util::logger::DEBUG1) &&
                 glog << group("iridiumdriver") << "Not dialing since we are already on a call."
                      << std::endl;
             return discard_event();
@@ -373,7 +372,7 @@ struct PostDisconnected : boost::statechart::state<PostDisconnected, Command::or
   public:
     PostDisconnected(my_context ctx) : my_base(ctx), StateNotify("PostDisconnected")
     {
-        glog.is(goby::common::logger::DEBUG1) &&
+        glog.is(goby::util::logger::DEBUG1) &&
             glog << group("iridiumdriver") << "Disconnected; checking error details: " << std::endl;
         context<Command>().push_at_command("+CEER");
     }
@@ -451,9 +450,9 @@ struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateN
     ~OnCall()
     {
         // signal the disconnect event for the command state to handle
-        glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver") << "Sent "
-                                                      << total_bytes_sent()
-                                                      << " bytes on this call." << std::endl;
+        glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << "Sent "
+                                                    << total_bytes_sent() << " bytes on this call."
+                                                    << std::endl;
         post_event(EvDisconnect());
     }
 
@@ -552,14 +551,14 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
     {
         if (context<SBD>().data().empty())
         {
-            glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver")
-                                                          << "Mailbox Check." << std::endl;
+            glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver")
+                                                        << "Mailbox Check." << std::endl;
             post_event(EvSBDWriteComplete()); // Mailbox Check
         }
         else
         {
-            glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver")
-                                                          << "Writing data." << std::endl;
+            glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << "Writing data."
+                                                        << std::endl;
 
             const int csum_bytes = 2;
             context<Command>().push_at_command(
@@ -656,9 +655,9 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
 
         if (sbdi_fields.size() != 7)
         {
-            glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver")
-                                                          << "Invalid +SBDI response: " << e.sbdi_
-                                                          << std::endl;
+            glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver")
+                                                        << "Invalid +SBDI response: " << e.sbdi_
+                                                        << std::endl;
             return transit<SBDReady>();
         }
         else
@@ -689,14 +688,14 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
             int mo_status = goby::util::as<int>(sbdi_fields[MO_STATUS]);
             if (mo_status <= MO_STATUS_SUCCESS_MAX)
             {
-                glog.is(goby::common::logger::DEBUG1) &&
+                glog.is(goby::util::logger::DEBUG1) &&
                     glog << group("iridiumdriver")
                          << "Success sending SBDIX: " << mo_status_as_string(mo_status)
                          << std::endl;
             }
             else
             {
-                glog.is(goby::common::logger::WARN) &&
+                glog.is(goby::util::logger::WARN) &&
                     glog << group("iridiumdriver")
                          << "Error sending SBD packet: " << mo_status_as_string(mo_status)
                          << std::endl;

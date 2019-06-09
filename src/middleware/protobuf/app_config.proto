@@ -11,7 +11,7 @@ message AppConfig
             "default is compiled name - change this to run multiple instances"
     ];
 
-    optional goby.common.protobuf.GLogConfig glog_config = 10
+    optional goby.util.protobuf.GLogConfig glog_config = 10
         [(goby.field).description =
              "configure the Goby Logger (TTY terminal and file debugging "
              "logger)"];

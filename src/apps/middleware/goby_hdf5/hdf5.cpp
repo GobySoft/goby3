@@ -29,7 +29,7 @@
 
 void* plugin_handle = 0;
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::glog;
 
 int main(int argc, char* argv[])

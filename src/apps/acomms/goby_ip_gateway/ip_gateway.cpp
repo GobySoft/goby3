@@ -52,7 +52,7 @@ enum
 int tun_alloc(char* dev);
 int tun_config(const char* dev, const char* host, unsigned cidr_prefix, unsigned mtu);
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 namespace goby
 {

@@ -34,7 +34,7 @@
 #include "rudics_packet.h"
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 int goby::acomms::benthos_fsm::BenthosATM900FSM::count_ = 0;
 
@@ -106,7 +106,7 @@ goby::acomms::benthos_fsm::ReceiveData::ReceiveData(my_context ctx)
     }
     catch (std::exception& e)
     {
-        goby::glog.is(goby::common::logger::WARN) &&
+        goby::glog.is(goby::util::logger::WARN) &&
             goby::glog << "Invalid data received, ignoring: " << e.what() << std::endl;
         post_event(EvReceiveComplete());
     }
@@ -251,7 +251,7 @@ void goby::acomms::benthos_fsm::ReceiveData::in_state_react(const EvRxSerial& e)
     }
     catch (std::exception& e)
     {
-        goby::glog.is(goby::common::logger::WARN) &&
+        goby::glog.is(goby::util::logger::WARN) &&
             goby::glog << "Invalid data received, ignoring. Reason: " << e.what() << std::endl;
         post_event(EvReceiveComplete());
     }
@@ -329,7 +329,7 @@ void goby::acomms::benthos_fsm::Range::in_state_react(const EvRxSerial& e)
     }
     catch (std::exception& e)
     {
-        goby::glog.is(goby::common::logger::WARN) &&
+        goby::glog.is(goby::util::logger::WARN) &&
             goby::glog << "Invalid ranging data received, ignoring. Reason: " << e.what()
                        << std::endl;
         post_event(EvRangingComplete());

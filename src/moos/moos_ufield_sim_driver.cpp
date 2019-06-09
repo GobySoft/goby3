@@ -33,7 +33,7 @@
 using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 goby::moos::UFldDriver::UFldDriver() : last_ccmpc_dest_(-1) {}
 
@@ -44,7 +44,7 @@ void goby::moos::UFldDriver::startup(const goby::acomms::protobuf::DriverConfig&
 
     driver_cfg_ = cfg;
 
-    goby::glog.is(goby::common::logger::DEBUG1) &&
+    goby::glog.is(goby::util::logger::DEBUG1) &&
         goby::glog << modem_lookup_.read_lookup_file(
                           driver_cfg_.GetExtension(protobuf::Config::modem_id_lookup_path))
                    << std::flush;

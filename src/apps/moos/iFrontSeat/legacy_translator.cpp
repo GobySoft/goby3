@@ -27,7 +27,7 @@
 
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs) : ifs_(fs), request_id_(0)
 {

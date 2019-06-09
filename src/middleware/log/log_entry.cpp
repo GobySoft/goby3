@@ -65,7 +65,7 @@ void goby::LogEntry::parse_version(std::istream* s)
 
 void goby::LogEntry::parse(std::istream* s)
 {
-    using namespace goby::common::logger;
+    using namespace goby::util::logger;
     using goby::glog;
 
     if (version_ == invalid_version)

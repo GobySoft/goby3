@@ -34,7 +34,7 @@ namespace gpb = goby::moos::protobuf;
 namespace gtime = goby::time;
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 const auto allowed_skew = std::chrono::seconds(10);
 

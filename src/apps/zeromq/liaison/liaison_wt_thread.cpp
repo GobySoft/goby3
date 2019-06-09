@@ -38,7 +38,7 @@
 
 using goby::glog;
 using namespace Wt;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 goby::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env,
                                                protobuf::LiaisonConfig app_cfg)

@@ -27,8 +27,8 @@ std::string goby::acomms::DCCLCodec::glog_decode_group_ = "goby::acomms::dccl::d
 
 goby::acomms::DCCLCodec::DCCLCodec() : codec_(new dccl::Codec)
 {
-    glog.add_group(glog_encode_group_, common::Colors::lt_magenta);
-    glog.add_group(glog_decode_group_, common::Colors::lt_blue);
+    glog.add_group(glog_encode_group_, util::Colors::lt_magenta);
+    glog.add_group(glog_decode_group_, util::Colors::lt_blue);
 
     if (!glog.buf().is_quiet())
     {
@@ -37,11 +37,11 @@ goby::acomms::DCCLCodec::DCCLCodec() : codec_(new dccl::Codec)
         switch (glog.buf().highest_verbosity())
         {
             default: break;
-            case goby::common::logger::WARN: verbosity = dccl::logger::WARN_PLUS; break;
-            case goby::common::logger::VERBOSE: verbosity = dccl::logger::INFO_PLUS; break;
-            case goby::common::logger::DEBUG1: verbosity = dccl::logger::DEBUG1_PLUS; break;
-            case goby::common::logger::DEBUG2: verbosity = dccl::logger::DEBUG2_PLUS; break;
-            case goby::common::logger::DEBUG3: verbosity = dccl::logger::DEBUG3_PLUS; break;
+            case goby::util::logger::WARN: verbosity = dccl::logger::WARN_PLUS; break;
+            case goby::util::logger::VERBOSE: verbosity = dccl::logger::INFO_PLUS; break;
+            case goby::util::logger::DEBUG1: verbosity = dccl::logger::DEBUG1_PLUS; break;
+            case goby::util::logger::DEBUG2: verbosity = dccl::logger::DEBUG2_PLUS; break;
+            case goby::util::logger::DEBUG3: verbosity = dccl::logger::DEBUG3_PLUS; break;
         }
         dccl::dlog.connect(verbosity, this, &DCCLCodec::dlog_message);
     }

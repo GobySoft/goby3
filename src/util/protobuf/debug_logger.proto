@@ -1,6 +1,6 @@
 import "goby/protobuf/option_extensions.proto";
 
-package goby.common.protobuf;
+package goby.util.protobuf;
 
 message GLogConfig
 {

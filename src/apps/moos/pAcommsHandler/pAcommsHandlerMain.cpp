@@ -24,11 +24,11 @@
 std::vector<void*> plugin_handles_;
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_group("pAcommsHandler", goby::common::Colors::yellow);
+    goby::glog.add_group("pAcommsHandler", goby::util::Colors::yellow);
 
     // load plugins from environmental variable
     char* plugins = getenv("PACOMMSHANDLER_PLUGINS");

@@ -22,7 +22,7 @@
 #include "pGobyMOOSAppTemplate.h"
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::moos::operator<<;
 
 std::shared_ptr<GobyMOOSAppTemplateConfig> master_config;

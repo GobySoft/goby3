@@ -24,7 +24,7 @@
 #include "flex_ostream.h"
 
 // TODO(tes): See if this dynamic cast is unncessary now
-std::ostream& goby::common::tcolor::add_escape_code(std::ostream& os, const std::string& esc_code)
+std::ostream& goby::util::tcolor::add_escape_code(std::ostream& os, const std::string& esc_code)
 {
     try
     {
@@ -37,7 +37,7 @@ std::ostream& goby::common::tcolor::add_escape_code(std::ostream& os, const std:
     }
 }
 
-goby::common::TermColor::TermColor()
+goby::util::TermColor::TermColor()
 {
     colors_map_ = {{"nocolor", Colors::nocolor},       {"red", Colors::red},
                    {"lt_red", Colors::lt_red},         {"green", Colors::green},

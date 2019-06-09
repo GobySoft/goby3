@@ -52,7 +52,7 @@ void request_test(int request_bytes, int expected_encode_requests, int expected_
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
 
     goby::acomms::DCCLCodec* codec = goby::acomms::DCCLCodec::get();

@@ -30,7 +30,7 @@
 
 namespace goby
 {
-namespace common
+namespace util
 {
 const std::string esc_red = "\33[31m";
 const std::string esc_lt_red = "\33[91m";
@@ -209,7 +209,7 @@ class TermColor
     std::map<std::string, Colors::Color> colors_map_;
     std::map<std::string, Colors::Color> esc_code_map_;
 };
-} // namespace common
+} // namespace util
 } // namespace goby
 
 #endif

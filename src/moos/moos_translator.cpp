@@ -59,7 +59,7 @@ void goby::moos::MOOSTranslator::initialize(double lat_origin, double lon_origin
     if (!modem_id_lookup_path.empty())
     {
         std::string id_lookup_output = modem_lookup_.read_lookup_file(modem_id_lookup_path);
-        goby::glog.is(goby::common::logger::DEBUG1) && goby::glog << id_lookup_output << std::flush;
+        goby::glog.is(goby::util::logger::DEBUG1) && goby::glog << id_lookup_output << std::flush;
 
         ap->add_algorithm("modem_id2name",
                           boost::bind(&MOOSTranslator::alg_modem_id2name, this, _1));

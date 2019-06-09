@@ -33,7 +33,7 @@ goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
 void goby::moos::Translator::moos_on_connect()
 {
     using goby::glog;
-    using namespace goby::common::logger;
+    using namespace goby::util::logger;
 
     for (const std::string& moos_var : moos_trigger_vars_)
     {
@@ -51,7 +51,7 @@ void goby::moos::Translator::moos_on_connect()
 void goby::moos::Translator::loop()
 {
     using goby::glog;
-    using namespace goby::common::logger;
+    using namespace goby::util::logger;
 
     MOOSMSG_LIST moos_msgs;
     moos_comms_.Fetch(moos_msgs);

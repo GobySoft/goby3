@@ -33,7 +33,7 @@
 
 using goby::glog;
 using goby::util::as;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 int goby::acomms::QueueManager::count_ = 0;
 
@@ -48,11 +48,11 @@ goby::acomms::QueueManager::QueueManager()
     glog_out_group_ = "goby::acomms::queue::out::" + as<std::string>(count_);
     glog_in_group_ = "goby::acomms::queue::in::" + as<std::string>(count_);
 
-    goby::glog.add_group(glog_push_group_, common::Colors::lt_cyan);
-    goby::glog.add_group(glog_pop_group_, common::Colors::lt_green);
-    goby::glog.add_group(glog_priority_group_, common::Colors::yellow);
-    goby::glog.add_group(glog_out_group_, common::Colors::cyan);
-    goby::glog.add_group(glog_in_group_, common::Colors::green);
+    goby::glog.add_group(glog_push_group_, util::Colors::lt_cyan);
+    goby::glog.add_group(glog_pop_group_, util::Colors::lt_green);
+    goby::glog.add_group(glog_priority_group_, util::Colors::yellow);
+    goby::glog.add_group(glog_out_group_, util::Colors::cyan);
+    goby::glog.add_group(glog_in_group_, util::Colors::green);
 
     protobuf::NetworkAck ack;
 
@@ -471,9 +471,9 @@ goby::acomms::QueueManager::decode_repeated(const std::string& orig_bytes)
 
             out.push_back(msg);
             unsigned last_size = codec_->size(*(out.back().dccl_msg));
-            glog.is(common::logger::DEBUG1) && glog << group(glog_in_group_)
-                                                    << "last message size was: " << last_size
-                                                    << std::endl;
+            glog.is(util::logger::DEBUG1) && glog << group(glog_in_group_)
+                                                  << "last message size was: " << last_size
+                                                  << std::endl;
             bytes.erase(0, last_size);
         }
         catch (dccl::Exception& e)
@@ -482,10 +482,10 @@ goby::acomms::QueueManager::decode_repeated(const std::string& orig_bytes)
                 throw(e);
             else
             {
-                glog.is(common::logger::WARN) &&
-                    glog << group(glog_in_group_) << "failed to decode "
-                         << goby::util::hex_encode(bytes) << " but returning parts already decoded"
-                         << std::endl;
+                glog.is(util::logger::WARN) && glog << group(glog_in_group_) << "failed to decode "
+                                                    << goby::util::hex_encode(bytes)
+                                                    << " but returning parts already decoded"
+                                                    << std::endl;
                 return out;
             }
         }

@@ -261,7 +261,7 @@ class SBDServer
     {
         if (!error)
         {
-            using namespace goby::common::logger;
+            using namespace goby::util::logger;
             using goby::glog;
 
             glog.is(DEBUG1) && glog << "Received SBD connection from: "

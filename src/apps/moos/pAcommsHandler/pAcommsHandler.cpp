@@ -44,8 +44,8 @@
 
 #include "pAcommsHandler.h"
 
-using namespace goby::common::tcolor;
-using namespace goby::common::logger;
+using namespace goby::util::tcolor;
+using namespace goby::util::logger;
 using goby::acomms::operator<<;
 using goby::moos::operator<<;
 using goby::util::as;

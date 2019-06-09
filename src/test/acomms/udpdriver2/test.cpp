@@ -27,7 +27,7 @@
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using namespace goby::acomms;
 using goby::util::as;
 using namespace boost::posix_time;
@@ -42,7 +42,7 @@ void handle_data_receive1(const protobuf::ModemTransmission& msg);
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     std::ofstream fout;
 
     if (argc < 6)

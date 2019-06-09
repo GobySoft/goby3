@@ -30,7 +30,7 @@
 #include "queue.h"
 #include "queue_manager.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::util::as;
 
 goby::acomms::Queue::Queue(const google::protobuf::Descriptor* desc, QueueManager* parent,

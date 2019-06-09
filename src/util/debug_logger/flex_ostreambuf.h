@@ -44,7 +44,7 @@ class Group;
 
 namespace goby
 {
-namespace common
+namespace util
 {
 class FlexNCurses;
 
@@ -76,7 +76,7 @@ enum Verbosity
 };
 }; // namespace logger
 
-/// Class derived from std::stringbuf that allows us to insert things before the stream and control output. This is the string buffer used by goby::common::FlexOstream for the Goby Logger (glogger)
+/// Class derived from std::stringbuf that allows us to insert things before the stream and control output. This is the string buffer used by goby::util::FlexOstream for the Goby Logger (glogger)
 class FlexOstream;
 
 class FlexOStreamBuf : public std::streambuf
@@ -173,6 +173,6 @@ class FlexOStreamBuf : public std::streambuf
     std::atomic<logger_lock::LockAction> lock_action_;
     FlexOstream* parent_;
 };
-} // namespace common
+} // namespace util
 } // namespace goby
 #endif

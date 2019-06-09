@@ -19,7 +19,7 @@ message GobyMOOSAppConfig
             "log=true)"
     ];
 
-    optional goby.common.protobuf.GLogConfig.Verbosity log_verbosity = 105 [
+    optional goby.util.protobuf.GLogConfig.Verbosity log_verbosity = 105 [
         default = DEBUG2,
         (goby.field).description = "Verbosity of the log file"
     ];
@@ -69,7 +69,7 @@ message GobyMOOSAppConfig
             "Frequency at which to call into the MOOSDB for mail."
     ];
 
-    optional goby.common.protobuf.GLogConfig.Verbosity verbosity = 3 [
+    optional goby.util.protobuf.GLogConfig.Verbosity verbosity = 3 [
         default = VERBOSE,
         (goby.field).description = "Verbosity of the terminal window output"
     ];

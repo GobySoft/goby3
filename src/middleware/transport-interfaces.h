@@ -176,7 +176,7 @@ int goby::PollerInterface::_poll_all(const std::chrono::time_point<Clock, Durati
             poll_items = _transporter_poll(lock);
 
             if (poll_items == 0)
-                goby::glog.is(goby::common::logger::DEBUG3) &&
+                goby::glog.is(goby::util::logger::DEBUG3) &&
                     goby::glog << "PollerInterface condition_variable: spurious wakeup"
                                << std::endl;
         }

@@ -100,7 +100,7 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
 
         process_configuration();
 
-        glog.is(goby::common::logger::DEBUG2) && glog << cfg->DebugString() << std::endl;
+        glog.is(goby::util::logger::DEBUG2) && glog << cfg->DebugString() << std::endl;
     }
 
     virtual ~GobyMOOSAppSelector() {}
@@ -337,7 +337,7 @@ template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::Iterate()
 
     while (!msg_buffer_.empty() && (connected_ && started_up_))
     {
-        goby::glog.is(goby::common::logger::DEBUG3) &&
+        goby::glog.is(goby::util::logger::DEBUG3) &&
             goby::glog << "writing from buffer: " << msg_buffer_.front().GetKey() << ": "
                        << msg_buffer_.front().GetAsString() << std::endl;
 
@@ -382,7 +382,7 @@ template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::OnNewMail(MO
     for (MOOSMSG_LIST::const_iterator it = NewMail.begin(), end = NewMail.end(); it != end; ++it)
     {
         const CMOOSMsg& msg = *it;
-        goby::glog.is(goby::common::logger::DEBUG3) &&
+        goby::glog.is(goby::util::logger::DEBUG3) &&
             goby::glog << "Received mail: " << msg.GetKey() << ", time: " << std::setprecision(15)
                        << msg.GetTime() << std::endl;
 
@@ -393,7 +393,7 @@ template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::OnNewMail(MO
 
         if (msg.GetTime() < start_time_ && ignore_stale_)
         {
-            goby::glog.is(goby::common::logger::WARN) &&
+            goby::glog.is(goby::util::logger::WARN) &&
                 goby::glog << "ignoring normal mail from " << msg.GetKey()
                            << " from before we started (dynamics still updated)" << std::endl;
         }
@@ -482,7 +482,7 @@ template <class MOOSAppType>
 void GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var, InboxFunc handler,
                                                  int blackout /* = 0 */)
 {
-    goby::glog.is(goby::common::logger::VERBOSE) &&
+    goby::glog.is(goby::util::logger::VERBOSE) &&
         goby::glog << "subscribing for MOOS variable: " << var << " @ " << blackout << std::endl;
 
     pending_subscriptions_.push_back(std::make_pair(var, blackout));
@@ -500,7 +500,7 @@ void GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var_pattern,
                                                  const std::string& app_pattern, InboxFunc handler,
                                                  int blackout /* = 0 */)
 {
-    goby::glog.is(goby::common::logger::VERBOSE) &&
+    goby::glog.is(goby::util::logger::VERBOSE) &&
         goby::glog << "wildcard subscribing for MOOS variable pattern: " << var_pattern
                    << ", app pattern: " << app_pattern << " @ " << blackout << std::endl;
 
@@ -533,13 +533,13 @@ template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::do_subscript
         if (MOOSAppType::m_Comms.Register(pending_subscriptions_.front().first,
                                           pending_subscriptions_.front().second))
         {
-            goby::glog.is(goby::common::logger::VERBOSE) &&
+            goby::glog.is(goby::util::logger::VERBOSE) &&
                 goby::glog << "subscribed for: " << pending_subscriptions_.front().first
                            << std::endl;
         }
         else
         {
-            goby::glog.is(goby::common::logger::WARN) &&
+            goby::glog.is(goby::util::logger::WARN) &&
                 goby::glog << "failed to subscribe for: " << pending_subscriptions_.front().first
                            << std::endl;
         }
@@ -554,14 +554,14 @@ template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::do_subscript
                                           wildcard_pending_subscriptions_.front().first.second,
                                           wildcard_pending_subscriptions_.front().second))
         {
-            goby::glog.is(goby::common::logger::VERBOSE) &&
+            goby::glog.is(goby::util::logger::VERBOSE) &&
                 goby::glog << "subscribed for: "
                            << wildcard_pending_subscriptions_.front().first.first << ":"
                            << wildcard_pending_subscriptions_.front().first.second << std::endl;
         }
         else
         {
-            goby::glog.is(goby::common::logger::WARN) &&
+            goby::glog.is(goby::util::logger::WARN) &&
                 goby::glog << "failed to subscribe for: "
                            << wildcard_pending_subscriptions_.front().first.first << ":"
                            << wildcard_pending_subscriptions_.front().first.second << std::endl;
@@ -780,7 +780,7 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
         }
 
         goby::glog.set_name(application_name_);
-        goby::glog.add_stream(goby::common::protobuf::GLogConfig::VERBOSE, &std::cout);
+        goby::glog.add_stream(goby::util::protobuf::GLogConfig::VERBOSE, &std::cout);
 
         std::string protobuf_text;
         std::ifstream fin;
@@ -808,7 +808,7 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
 
             if (!in_process_config)
             {
-                goby::glog.is(goby::common::logger::DIE) &&
+                goby::glog.is(goby::util::logger::DIE) &&
                     goby::glog << "no ProcessConfig block for " << application_name_ << std::endl;
             }
 
@@ -828,14 +828,14 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
             parser.ParseFromString(protobuf_text, cfg);
             if (error_collector.has_errors() || error_collector.has_warnings())
             {
-                goby::glog.is(goby::common::logger::DIE) &&
+                goby::glog.is(goby::util::logger::DIE) &&
                     goby::glog << "fatal configuration errors (see above)" << std::endl;
             }
         }
         else
         {
-            goby::glog.is(goby::common::logger::WARN) && goby::glog << "failed to open "
-                                                                    << mission_file_ << std::endl;
+            goby::glog.is(goby::util::logger::WARN) && goby::glog << "failed to open "
+                                                                  << mission_file_ << std::endl;
         }
 
         fin.close();
@@ -863,7 +863,7 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
             std::stringstream err_msg;
             err_msg << "Configuration is missing required parameters: \n";
             for (const std::string& s : errors)
-                err_msg << goby::common::esc_red << s << "\n" << goby::common::esc_nocolor;
+                err_msg << goby::util::esc_red << s << "\n" << goby::util::esc_nocolor;
 
             err_msg << "Make sure you specified a proper .moos file";
             throw(goby::common::ConfigException(err_msg.str()));
@@ -894,7 +894,7 @@ template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::process_conf
     {
         if (!common_cfg_.has_log_path())
         {
-            goby::glog.is(goby::common::logger::WARN) &&
+            goby::glog.is(goby::util::logger::WARN) &&
                 goby::glog << "logging all terminal output to default directory ("
                            << common_cfg_.log_path() << ")."
                            << "set log_path for another path " << std::endl;
@@ -911,7 +911,7 @@ template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::process_conf
 
             std::string file_symlink = file_name_base + "_latest.txt";
 
-            goby::glog.is(goby::common::logger::VERBOSE) &&
+            goby::glog.is(goby::util::logger::VERBOSE) &&
                 goby::glog << "logging output to file: " << file_name << std::endl;
 
             fout_.open(std::string(common_cfg_.log_path() + "/" + file_name).c_str());
@@ -925,7 +925,7 @@ template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::process_conf
             if (!fout_.is_open())
             {
                 fout_.open(std::string("./" + file_name).c_str());
-                goby::glog.is(goby::common::logger::WARN) &&
+                goby::glog.is(goby::util::logger::WARN) &&
                     goby::glog
                         << "logging to current directory because given directory is unwritable!"
                         << std::endl;
@@ -933,7 +933,7 @@ template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::process_conf
             // if still no go, quit
             if (!fout_.is_open())
             {
-                goby::glog.is(goby::common::logger::DIE) &&
+                goby::glog.is(goby::util::logger::DIE) &&
                     goby::glog << "cannot write to current directory, so cannot log." << std::endl;
             }
 
@@ -979,8 +979,8 @@ template <typename App> int goby::moos::run(int argc, char* argv[])
     catch (std::exception& e)
     {
         // some other exception
-        goby::glog.is(goby::common::logger::DIE) && goby::glog << "uncaught exception: " << e.what()
-                                                               << std::endl;
+        goby::glog.is(goby::util::logger::DIE) && goby::glog << "uncaught exception: " << e.what()
+                                                             << std::endl;
         return 2;
     }
 

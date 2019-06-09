@@ -27,7 +27,7 @@
 #include "pTranslator.h"
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::moos::operator<<;
 
 pTranslatorConfig CpTranslator::cfg_;

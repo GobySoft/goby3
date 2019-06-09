@@ -31,7 +31,7 @@
 #include "iridium_shore_driver.h"
 #include "iridium_shore_sbd.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::glog;
 using goby::acomms::protobuf::DirectIPMOHeader;
 using goby::acomms::protobuf::DirectIPMOPayload;

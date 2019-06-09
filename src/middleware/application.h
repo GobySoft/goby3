@@ -132,11 +132,11 @@ goby::protobuf::AppConfig goby::common::Application<Config>::app3_base_configura
 template <typename Config> goby::common::Application<Config>::Application() : alive_(true)
 {
     using goby::glog;
-    using namespace goby::common::logger;
+    using namespace goby::util::logger;
 
     // set up the logger
     glog.set_name(app3_base_configuration_.name());
-    glog.add_stream(static_cast<common::logger::Verbosity>(
+    glog.add_stream(static_cast<util::logger::Verbosity>(
                         app3_base_configuration_.glog_config().tty_verbosity()),
                     &std::cout);
 

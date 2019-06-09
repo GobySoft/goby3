@@ -30,7 +30,7 @@
 using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 goby::acomms::ABCDriver::ABCDriver()
 {

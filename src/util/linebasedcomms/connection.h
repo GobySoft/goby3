@@ -75,7 +75,7 @@ template <typename ASIOAsyncReadStream> class LineBasedConnection
         }
         else if (error)
         {
-            //                    goby::glog.is(goby::common::logger::DEBUG2, goby::common::logger_lock::lock) &&
+            //                    goby::glog.is(goby::util::logger::DEBUG2, goby::util::logger_lock::lock) &&
             //                        goby::glog << "Error on reading from socket: " << error.message() << std::endl << unlock;
             return socket_close(error);
         }
@@ -107,7 +107,7 @@ template <typename ASIOAsyncReadStream> class LineBasedConnection
         }
         else if (error)
         {
-            //                    goby::glog.is(goby::common::logger::DEBUG2, goby::common::logger_lock::lock) &&
+            //                    goby::glog.is(goby::util::logger::DEBUG2, goby::util::logger_lock::lock) &&
             //                        goby::glog << "Error on writing from socket: " << error.message() << std::endl << unlock;
 
             return socket_close(error);

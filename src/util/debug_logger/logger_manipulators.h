@@ -30,7 +30,7 @@
 
 namespace goby
 {
-namespace common
+namespace util
 {
 class FlexOstream;
 
@@ -39,13 +39,13 @@ namespace logger
 /// label stream as "error"
 inline std::ostream& die(std::ostream& os)
 {
-    return (os << goby::common::tcolor::red << "(Error): " << goby::common::tcolor::nocolor);
+    return (os << goby::util::tcolor::red << "(Error): " << goby::util::tcolor::nocolor);
 }
 
 /// label stream as "warning"
 inline std::ostream& warn(std::ostream& os)
 {
-    return (os << goby::common::tcolor::red << "(Warning): " << goby::common::tcolor::nocolor);
+    return (os << goby::util::tcolor::red << "(Warning): " << goby::util::tcolor::nocolor);
 }
 
 /// label stream as "verbose"
@@ -61,7 +61,7 @@ inline std::ostream& debug2(std::ostream& os) { return (os << "D2: "); }
 inline std::ostream& debug3(std::ostream& os) { return (os << "D3: "); }
 
 } // namespace logger
-} // namespace common
+} // namespace util
 } // namespace goby
 
 /// Defines a group of messages to be sent to the Goby logger. For Verbosity == verbose streams, all entries appear interleaved, but each group is offset with a different color. For Verbosity == gui streams, all groups have a separate subwindow.
@@ -69,7 +69,7 @@ class Group
 {
   public:
     Group(const std::string& name = "", const std::string& description = "",
-          goby::common::Colors::Color color = goby::common::Colors::nocolor)
+          goby::util::Colors::Color color = goby::util::Colors::nocolor)
         : name_(name), description_(description), color_(color), enabled_(true)
     {
     }
@@ -81,7 +81,7 @@ class Group
     /// Human readable description of this group
     std::string description() const { return description_; }
     /// Color to use when displaying this group (for streams that support terminal escape codes only: std::cout, std::cerr, std::clog)
-    goby::common::Colors::Color color() const { return color_; }
+    goby::util::Colors::Color color() const { return color_; }
     /// Is this group enabled?
     bool enabled() const { return enabled_; }
     //@}
@@ -90,14 +90,14 @@ class Group
     //@{
     void name(const std::string& s) { name_ = s; }
     void description(const std::string& s) { description_ = s; }
-    void color(goby::common::Colors::Color c) { color_ = c; }
+    void color(goby::util::Colors::Color c) { color_ = c; }
     void enabled(bool b) { enabled_ = b; }
     //@}
 
   private:
     std::string name_;
     std::string description_;
-    goby::common::Colors::Color color_;
+    goby::util::Colors::Color color_;
     bool enabled_;
 };
 
@@ -109,7 +109,7 @@ class GroupSetter
   public:
     explicit GroupSetter(const std::string& s) : group_(s) {}
     void operator()(std::ostream& os) const;
-    void operator()(goby::common::FlexOstream& os) const;
+    void operator()(goby::util::FlexOstream& os) const;
 
   private:
     std::string group_;
@@ -123,7 +123,7 @@ inline std::ostream& operator<<(std::ostream& os, const GroupSetter& gs)
     return (os);
 }
 
-goby::common::FlexOstream& operator<<(goby::common::FlexOstream& os, const GroupSetter& gs);
+goby::util::FlexOstream& operator<<(goby::util::FlexOstream& os, const GroupSetter& gs);
 
 /// used for non tty ostreams (everything but std::cout / std::cerr) as the header for every line
 std::ostream& basic_log_header(std::ostream& os, const std::string& group_name);

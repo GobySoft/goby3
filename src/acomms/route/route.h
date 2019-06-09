@@ -34,7 +34,7 @@ namespace acomms
 class RouteManager
 {
   public:
-    RouteManager() { glog.add_group("goby::acomms::route", common::Colors::yellow); }
+    RouteManager() { glog.add_group("goby::acomms::route", util::Colors::yellow); }
     ~RouteManager() {}
 
     void set_cfg(const protobuf::RouteManagerConfig& cfg);

@@ -47,7 +47,7 @@ std::atomic<bool> forward(true);
 std::atomic<bool> zmq_ready(false);
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 extern constexpr goby::Group sample1{"Sample1"};
 extern constexpr goby::Group sample2{"Sample2"};
@@ -126,14 +126,14 @@ int main(int argc, char* argv[])
 
     bool is_child = (child_pid == 0);
 
-    //    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    //    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
 
     std::string os_name =
         std::string("/tmp/goby_test_middleware_regex_") + (is_child ? "subscriber" : "publisher");
     std::ofstream os(os_name.c_str());
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &os);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &os);
     goby::glog.set_name(std::string(argv[0]) + (is_child ? "_subscriber" : "_publisher"));
-    goby::glog.set_lock_action(goby::common::logger_lock::lock);
+    goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
     std::unique_ptr<std::thread> t4, t5;
     std::unique_ptr<zmq::context_t> manager_context;

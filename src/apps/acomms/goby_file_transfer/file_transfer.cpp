@@ -31,7 +31,7 @@
 #include "file_transfer_config.pb.h"
 #include "goby/acomms/protobuf/file_transfer.pb.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::glog;
 
 namespace goby
@@ -169,9 +169,9 @@ void goby::acomms::FileTransfer::push_file()
 
     publish(request, "QueuePush" + goby::util::as<std::string>(cfg_.local_id()));
 
-    double start_time = goby::common::goby_time<double>();
+    double start_time = goby::util::goby_time<double>();
     waiting_for_request_ack_ = true;
-    while (goby::common::goby_time<double>() < start_time + cfg_.request_timeout())
+    while (goby::util::goby_time<double>() < start_time + cfg_.request_timeout())
     {
         zeromq_service().poll(10000);
         if (!waiting_for_request_ack_)

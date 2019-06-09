@@ -35,7 +35,7 @@ void run_one_in_one_out_test(MOOSTranslator& translator, int i, bool hex_encode)
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cout);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cout);
     goby::glog.set_name(argv[0]);
 
     protobuf::TranslatorEntry entry;

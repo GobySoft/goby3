@@ -32,7 +32,7 @@
 #include "rudics_packet.h"
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 int goby::acomms::fsm::IridiumDriverFSM::count_ = 0;
 

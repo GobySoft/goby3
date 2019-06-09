@@ -24,26 +24,26 @@
 #include "goby/exception.h"
 #include "logger_manipulators.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
-// std::shared_ptr<goby::common::FlexOstream> goby::common::FlexOstream::inst_;
+// std::shared_ptr<goby::util::FlexOstream> goby::util::FlexOstream::inst_;
 
-// goby::common::FlexOstream& goby::common::glogger()
+// goby::util::FlexOstream& goby::util::glogger()
 // {
 //     if(!FlexOstream::inst_) FlexOstream::inst_.reset(new FlexOstream());
 //     return(*FlexOstream::inst_);
 // }
 
-int goby::common::FlexOstream::instances_ = 0;
+int goby::util::FlexOstream::instances_ = 0;
 
-goby::common::FlexOstream goby::glog;
+goby::util::FlexOstream goby::glog;
 
-void goby::common::FlexOstream::add_group(const std::string& name,
-                                          Colors::Color color /*= Colors::nocolor*/,
-                                          const std::string& description /*= ""*/)
+void goby::util::FlexOstream::add_group(const std::string& name,
+                                        Colors::Color color /*= Colors::nocolor*/,
+                                        const std::string& description /*= ""*/)
 {
     {
-        std::lock_guard<std::recursive_mutex> l(goby::common::logger::mutex);
+        std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
 
         if (description.empty())
         {
@@ -63,7 +63,7 @@ void goby::common::FlexOstream::add_group(const std::string& name,
               << std::endl;
 }
 
-std::ostream& goby::common::FlexOstream::operator<<(std::ostream& (*pf)(std::ostream&))
+std::ostream& goby::util::FlexOstream::operator<<(std::ostream& (*pf)(std::ostream&))
 {
     if (pf == die)
         sb_.set_die_flag(true);
@@ -71,7 +71,7 @@ std::ostream& goby::common::FlexOstream::operator<<(std::ostream& (*pf)(std::ost
     return std::ostream::operator<<(pf);
 }
 
-bool goby::common::FlexOstream::is(logger::Verbosity verbosity)
+bool goby::util::FlexOstream::is(logger::Verbosity verbosity)
 {
     assert(sb_.verbosity_depth() == logger::UNKNOWN || lock_action_ != logger_lock::lock);
 
@@ -81,7 +81,7 @@ bool goby::common::FlexOstream::is(logger::Verbosity verbosity)
     {
         if (sb_.lock_action() == logger_lock::lock)
         {
-            goby::common::logger::mutex.lock();
+            goby::util::logger::mutex.lock();
         }
 
         sb_.set_verbosity_depth(verbosity);

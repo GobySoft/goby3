@@ -45,9 +45,9 @@ using goby::time::SystemClock;
 std::mutex curses_mutex;
 #endif
 
-std::recursive_mutex goby::common::logger::mutex;
+std::recursive_mutex goby::util::logger::mutex;
 
-goby::common::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
+goby::util::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
     : buffer_(1),
       name_("no name"),
       die_flag_(false),
@@ -65,7 +65,7 @@ goby::common::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
     groups_[""] = no_group;
 }
 
-goby::common::FlexOStreamBuf::~FlexOStreamBuf()
+goby::util::FlexOStreamBuf::~FlexOStreamBuf()
 {
 #ifdef HAS_NCURSES
     if (curses_)
@@ -73,7 +73,7 @@ goby::common::FlexOStreamBuf::~FlexOStreamBuf()
 #endif
 }
 
-void goby::common::FlexOStreamBuf::add_stream(logger::Verbosity verbosity, std::ostream* os)
+void goby::util::FlexOStreamBuf::add_stream(logger::Verbosity verbosity, std::ostream* os)
 {
     //check that this stream doesn't exist
     // if so, update its verbosity and return
@@ -99,7 +99,7 @@ void goby::common::FlexOStreamBuf::add_stream(logger::Verbosity verbosity, std::
     }
 }
 
-void goby::common::FlexOStreamBuf::enable_gui()
+void goby::util::FlexOStreamBuf::enable_gui()
 {
 #ifdef HAS_NCURSES
 
@@ -123,7 +123,7 @@ void goby::common::FlexOStreamBuf::enable_gui()
 #endif
 }
 
-void goby::common::FlexOStreamBuf::add_group(const std::string& name, Group g)
+void goby::util::FlexOStreamBuf::add_group(const std::string& name, Group g)
 {
     //    if(groups_.count(name)) return;
 
@@ -138,7 +138,7 @@ void goby::common::FlexOStreamBuf::add_group(const std::string& name, Group g)
 #endif
 }
 
-int goby::common::FlexOStreamBuf::overflow(int c /*= EOF*/)
+int goby::util::FlexOStreamBuf::overflow(int c /*= EOF*/)
 {
     parent_->set_unset_verbosity();
 
@@ -153,7 +153,7 @@ int goby::common::FlexOStreamBuf::overflow(int c /*= EOF*/)
 }
 
 // called when flush() or std::endl
-int goby::common::FlexOStreamBuf::sync()
+int goby::util::FlexOStreamBuf::sync()
 {
     if (current_verbosity_ == logger::UNKNOWN && lock_action_ == logger_lock::lock)
     {
@@ -187,7 +187,7 @@ int goby::common::FlexOStreamBuf::sync()
     return 0;
 }
 
-void goby::common::FlexOStreamBuf::display(std::string& s)
+void goby::util::FlexOStreamBuf::display(std::string& s)
 {
     bool gui_displayed = false;
     for (const StreamConfig& cfg : streams_)
@@ -243,7 +243,7 @@ void goby::common::FlexOStreamBuf::display(std::string& s)
     }
 }
 
-void goby::common::FlexOStreamBuf::refresh()
+void goby::util::FlexOStreamBuf::refresh()
 {
 #ifdef HAS_NCURSES
     if (is_gui_)
@@ -255,7 +255,7 @@ void goby::common::FlexOStreamBuf::refresh()
 }
 
 // clean out any escape codes for non terminal streams
-void goby::common::FlexOStreamBuf::strip_escapes(std::string& s)
+void goby::util::FlexOStreamBuf::strip_escapes(std::string& s)
 {
     static const std::string esc = "\33[";
     static const std::string m = "m";

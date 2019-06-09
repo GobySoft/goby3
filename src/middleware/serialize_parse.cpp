@@ -54,7 +54,7 @@ void goby::DCCLSerializerParserHelperBase::load_forwarded_subscription(
         if (auto* desc = dccl::DynamicProtobufManager::find_descriptor(sub.protobuf_name()))
             check_load(desc);
         else
-            goby::glog.is(goby::common::logger::DEBUG3) &&
+            goby::glog.is(goby::util::logger::DEBUG3) &&
                 goby::glog << "Failed to load DCCL message sent via forwarded subscription: "
                            << sub.protobuf_name() << std::endl;
     }

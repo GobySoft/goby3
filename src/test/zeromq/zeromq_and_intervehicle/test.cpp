@@ -41,7 +41,7 @@ std::atomic<bool> forward(true);
 std::atomic<int> zmq_reqs(0);
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 // process 1
 void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
@@ -184,16 +184,16 @@ int main(int argc, char* argv[])
         }
     }
 
-    // goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    // goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     std::string process_suffix =
         ((process_index >= 2) ? ("subscriber_" + std::to_string(process_index))
                               : ("publisher_" + std::to_string(process_index)));
     std::string os_name = std::string("/tmp/goby_test_middleware5_") + process_suffix;
     std::ofstream os(os_name.c_str());
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &os);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &os);
     //    dccl::dlog.connect(dccl::logger::ALL, &os, true);
     goby::glog.set_name(std::string(argv[0]) + process_suffix);
-    goby::glog.set_lock_action(goby::common::logger_lock::lock);
+    goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
     std::unique_ptr<std::thread> t10, t11;
     std::unique_ptr<zmq::context_t> manager_context;

@@ -36,9 +36,9 @@ extern constexpr goby::Group temp{"TEMP"};
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
-    goby::glog.set_lock_action(goby::common::logger_lock::lock);
+    goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
     goby::zeromq::protobuf::InterProcessPortalConfig zmq_cfg;
     zmq_cfg.set_platform("test1");

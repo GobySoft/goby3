@@ -36,12 +36,12 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     std::ofstream fout;
     if (argc >= 4)
     {
         fout.open(argv[3]);
-        goby::glog.add_stream(goby::common::logger::DEBUG3, &fout);
+        goby::glog.add_stream(goby::util::logger::DEBUG3, &fout);
     }
     int mm_version = 1;
     if (argc == 5)

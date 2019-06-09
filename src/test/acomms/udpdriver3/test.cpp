@@ -105,13 +105,13 @@ void test5()
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     std::ofstream fout;
 
     if (argc == 2)
     {
         fout.open(argv[1]);
-        goby::glog.add_stream(goby::common::logger::DEBUG3, &fout);
+        goby::glog.add_stream(goby::util::logger::DEBUG3, &fout);
     }
 
     goby::glog.set_name(argv[0]);
@@ -176,9 +176,9 @@ int main(int argc, char* argv[])
     q1.set_cfg(qcfg1);
     q2.set_cfg(qcfg2);
 
-    goby::glog.add_group("test", goby::common::Colors::green);
-    goby::glog.add_group("driver1", goby::common::Colors::green);
-    goby::glog.add_group("driver2", goby::common::Colors::yellow);
+    goby::glog.add_group("test", goby::util::Colors::green);
+    goby::glog.add_group("driver1", goby::util::Colors::green);
+    goby::glog.add_group("driver2", goby::util::Colors::yellow);
 
     goby::acomms::connect(&q2.signal_receive, &handle_receive);
     goby::acomms::connect(&q1.signal_queue_size_change, &qsize);

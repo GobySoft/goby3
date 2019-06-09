@@ -33,8 +33,8 @@
 #include "mac_manager.h"
 
 using goby::glog;
-using namespace goby::common::logger;
-using namespace goby::common::tcolor;
+using namespace goby::util::logger;
+using namespace goby::util::tcolor;
 
 int goby::acomms::MACManager::count_;
 
@@ -47,7 +47,7 @@ goby::acomms::MACManager::MACManager()
     ++count_;
 
     glog_mac_group_ = "goby::acomms::amac::" + goby::util::as<std::string>(count_);
-    goby::glog.add_group(glog_mac_group_, common::Colors::blue);
+    goby::glog.add_group(glog_mac_group_, util::Colors::blue);
 }
 
 goby::acomms::MACManager::~MACManager() {}

@@ -71,14 +71,14 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
     ~RUDICSConnection()
     {
         using goby::glog;
-        using goby::common::logger::DEBUG1;
+        using goby::util::logger::DEBUG1;
         glog.is(DEBUG1) && glog << "Disconnecting from: " << remote_endpoint_str_ << std::endl;
     }
 
     void add_packet_failure()
     {
         using goby::glog;
-        using goby::common::logger::DEBUG1;
+        using goby::util::logger::DEBUG1;
         const int max_packet_failures = 3;
         if (++packet_failures_ >= max_packet_failures)
         {
@@ -106,7 +106,7 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
         if (error)
         {
             using goby::glog;
-            using goby::common::logger::WARN;
+            using goby::util::logger::WARN;
             glog.is(WARN) && glog << "Error writing to TCP connection: " << error << std::endl;
             disconnect_signal(shared_from_this());
         }
@@ -115,8 +115,8 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
     void handle_read(const boost::system::error_code& error, size_t bytes_transferred)
     {
         using goby::glog;
-        using goby::common::logger::DEBUG1;
-        using goby::common::logger::WARN;
+        using goby::util::logger::DEBUG1;
+        using goby::util::logger::WARN;
         if (!error)
         {
             std::istream istrm(&buffer_);
@@ -182,7 +182,7 @@ class RUDICSServer
     {
         if (!error)
         {
-            using namespace goby::common::logger;
+            using namespace goby::util::logger;
             using goby::glog;
 
             connections_.insert(new_connection);
@@ -201,7 +201,7 @@ class RUDICSServer
     void handle_disconnect(std::shared_ptr<RUDICSConnection> connection)
     {
         using goby::glog;
-        using goby::common::logger::DEBUG1;
+        using goby::util::logger::DEBUG1;
 
         connections_.erase(connection);
 

@@ -1548,7 +1548,7 @@ inline bool serialize_for_moos(std::string* out, const google::protobuf::Message
                 serialize(out, msg);
             return false;
         default:
-            goby::glog.is(goby::common::logger::DIE) &&
+            goby::glog.is(goby::util::logger::DIE) &&
                 goby::glog
                     << "Non-PROTOBUF techniques are not supported for 'moos_parser_technique': "
                     << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(
@@ -1596,7 +1596,7 @@ inline void parse_for_moos(const std::string& in, google::protobuf::Message* msg
                                                                                             msg);
             break;
         default:
-            goby::glog.is(goby::common::logger::DIE) &&
+            goby::glog.is(goby::util::logger::DIE) &&
                 goby::glog
                     << "Non-PROTOBUF techniques are not supported for 'moos_parser_technique': "
                     << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(
@@ -1626,7 +1626,7 @@ inline std::shared_ptr<google::protobuf::Message> dynamic_parse_for_moos(const s
                 dynamic_parse(in);
 
         default:
-            goby::glog.is(goby::common::logger::DIE) &&
+            goby::glog.is(goby::util::logger::DIE) &&
                 goby::glog << "Non-PREFIX techniques are not supported when using "
                               "dynamic_parse_for_moos for 'moos_parser_technique': "
                            << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(

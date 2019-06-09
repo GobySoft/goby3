@@ -23,7 +23,7 @@
 
 #include "goby/util/protobuf/io.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using namespace goby::acomms;
 using goby::util::as;
 using namespace boost::posix_time;
@@ -38,9 +38,9 @@ DriverTester::DriverTester(std::shared_ptr<goby::acomms::ModemDriverBase> driver
     : driver1_(driver1), driver2_(driver2), check_count_(0), tests_to_run_(tests_to_run),
       tests_to_run_index_(0), test_number_(-1), driver_type_(driver_type)
 {
-    goby::glog.add_group("test", goby::common::Colors::green);
-    goby::glog.add_group("driver1", goby::common::Colors::green);
-    goby::glog.add_group("driver2", goby::common::Colors::yellow);
+    goby::glog.add_group("test", goby::util::Colors::green);
+    goby::glog.add_group("driver1", goby::util::Colors::green);
+    goby::glog.add_group("driver2", goby::util::Colors::yellow);
 
     goby::acomms::connect(&driver1_->signal_receive, this, &DriverTester::handle_data_receive1);
     goby::acomms::connect(&driver1_->signal_transmit_result, this,

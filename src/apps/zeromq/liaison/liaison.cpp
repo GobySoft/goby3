@@ -37,7 +37,7 @@
 
 using goby::glog;
 using namespace Wt;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 std::vector<void*> goby::zeromq::Liaison::plugin_handles_;
 

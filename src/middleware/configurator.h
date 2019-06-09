@@ -131,19 +131,19 @@ void ProtobufConfigurator<Config>::merge_app_base_cfg(
             default:
             case 0:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
-                    common::protobuf::GLogConfig::VERBOSE);
+                    util::protobuf::GLogConfig::VERBOSE);
                 break;
             case 1:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
-                    common::protobuf::GLogConfig::DEBUG1);
+                    util::protobuf::GLogConfig::DEBUG1);
                 break;
             case 2:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
-                    common::protobuf::GLogConfig::DEBUG2);
+                    util::protobuf::GLogConfig::DEBUG2);
                 break;
             case 3:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
-                    common::protobuf::GLogConfig::DEBUG3);
+                    util::protobuf::GLogConfig::DEBUG3);
                 break;
         }
     }

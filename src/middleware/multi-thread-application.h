@@ -118,7 +118,7 @@ class MultiThreadApplicationBase : public goby::common::Application<Config>,
         : goby::common::Application<Config>(),
           MainThreadBase(this->app_cfg(), transporter, loop_freq)
     {
-        goby::glog.set_lock_action(goby::common::logger_lock::lock);
+        goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
         interthread_
             .template subscribe<MainThreadBase::joinable_group_, std::pair<std::type_index, int> >(
@@ -165,7 +165,7 @@ class MultiThreadApplicationBase : public goby::common::Application<Config>,
     {
         if (running_thread_count_ > 0)
         {
-            goby::glog.is(goby::common::logger::DEBUG1) &&
+            goby::glog.is(goby::util::logger::DEBUG1) &&
                 goby::glog << "Requesting that all remaining threads shutdown cleanly..."
                            << std::endl;
 
@@ -174,15 +174,15 @@ class MultiThreadApplicationBase : public goby::common::Application<Config>,
             // allow the threads to self-join
             while (running_thread_count_ > 0)
             {
-                goby::glog.is(goby::common::logger::DEBUG1) &&
-                    goby::glog << "Waiting for " << running_thread_count_ << " threads."
-                               << std::endl;
+                goby::glog.is(goby::util::logger::DEBUG1) && goby::glog << "Waiting for "
+                                                                        << running_thread_count_
+                                                                        << " threads." << std::endl;
 
                 MainThreadBase::transporter().poll();
             }
 
-            goby::glog.is(goby::common::logger::DEBUG1) &&
-                goby::glog << "All threads cleanly joined." << std::endl;
+            goby::glog.is(goby::util::logger::DEBUG1) && goby::glog << "All threads cleanly joined."
+                                                                    << std::endl;
         }
     }
 
@@ -195,7 +195,7 @@ class MultiThreadApplicationBase : public goby::common::Application<Config>,
         }
         catch (std::exception& e)
         {
-            goby::glog.is(goby::common::logger::WARN) &&
+            goby::glog.is(goby::util::logger::WARN) &&
                 goby::glog << "MultiThreadApplicationBase:: uncaught exception: " << e.what()
                            << std::endl;
             throw;
@@ -369,7 +369,7 @@ void goby::MultiThreadApplicationBase<Config, Transporter>::_join_thread(
 
     if (threads_[type_i][index].thread)
     {
-        goby::glog.is(goby::common::logger::DEBUG1) &&
+        goby::glog.is(goby::util::logger::DEBUG1) &&
             goby::glog << "Joining thread: " << type_i.name() << " index " << index << std::endl;
 
         threads_[type_i][index].alive = false;
@@ -379,7 +379,7 @@ void goby::MultiThreadApplicationBase<Config, Transporter>::_join_thread(
 
         if (thread_exception_)
         {
-            goby::glog.is(goby::common::logger::WARN) &&
+            goby::glog.is(goby::util::logger::WARN) &&
                 goby::glog << "Thread type: " << type_i.name() << ", index: " << index
                            << " had an uncaught exception" << std::endl;
             std::rethrow_exception(thread_exception_);
@@ -387,7 +387,7 @@ void goby::MultiThreadApplicationBase<Config, Transporter>::_join_thread(
     }
     else
     {
-        goby::glog.is(goby::common::logger::DEBUG1) &&
+        goby::glog.is(goby::util::logger::DEBUG1) &&
             goby::glog << "Already joined thread: " << type_i.name() << " index " << index
                        << std::endl;
     }

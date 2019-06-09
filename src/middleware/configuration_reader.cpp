@@ -34,7 +34,7 @@
 #include <google/protobuf/dynamic_message.h>
 
 // brings std::ostream& red, etc. into scope
-using namespace goby::common::tcolor;
+using namespace goby::util::tcolor;
 
 void goby::common::ConfigReader::read_cfg(int argc, char* argv[],
                                           google::protobuf::Message* message,
@@ -155,7 +155,7 @@ void goby::common::ConfigReader::read_cfg(int argc, char* argv[],
             google::protobuf::TextFormat::Parser parser;
 
             glog.set_name(*application_name);
-            glog.add_stream(protobuf::GLogConfig::VERBOSE, &std::cout);
+            glog.add_stream(util::protobuf::GLogConfig::VERBOSE, &std::cout);
             FlexOStreamErrorCollector error_collector(protobuf_text);
             parser.RecordErrorsTo(&error_collector);
             // maybe the command line will fill in the missing pieces
@@ -164,8 +164,8 @@ void goby::common::ConfigReader::read_cfg(int argc, char* argv[],
 
             if (error_collector.has_errors())
             {
-                glog.is(goby::common::logger::DIE) &&
-                    glog << "fatal configuration errors (see above)" << std::endl;
+                glog.is(goby::util::logger::DIE) && glog << "fatal configuration errors (see above)"
+                                                         << std::endl;
             }
         }
         else if (!exec_cfg_path.empty())
@@ -374,7 +374,7 @@ void goby::common::ConfigReader::get_protobuf_program_options(
 
         std::string cli_name = field_name;
         std::stringstream human_desc_ss;
-        human_desc_ss << common::esc_lt_blue
+        human_desc_ss << util::esc_lt_blue
                       << field_desc->options().GetExtension(goby::field).description();
 
         if (field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_ENUM)
@@ -391,7 +391,7 @@ void goby::common::ConfigReader::get_protobuf_program_options(
         }
 
         human_desc_ss << label(field_desc);
-        human_desc_ss << " " << common::esc_nocolor;
+        human_desc_ss << " " << util::esc_nocolor;
 
         switch (field_desc->cpp_type())
         {
@@ -533,7 +533,7 @@ void goby::common::ConfigReader::build_description_field(
 
         std::string description;
         if (use_color)
-            description += common::esc_green;
+            description += util::esc_green;
         else
             description += "# ";
 
@@ -541,7 +541,7 @@ void goby::common::ConfigReader::build_description_field(
             field_desc->options().GetExtension(goby::field).description() + label(field_desc);
 
         if (use_color)
-            description += " " + common::esc_nocolor;
+            description += " " + util::esc_nocolor;
 
         if (!use_color)
             wrap_description(&description, before_description.size());
@@ -593,7 +593,7 @@ void goby::common::ConfigReader::build_description_field(
         std::string description;
 
         if (use_color)
-            description += common::esc_green;
+            description += util::esc_green;
         else
             description += "# ";
 
@@ -626,7 +626,7 @@ void goby::common::ConfigReader::build_description_field(
         stream << description;
 
         if (use_color)
-            stream << " " << common::esc_nocolor;
+            stream << " " << util::esc_nocolor;
     }
 }
 
@@ -703,7 +703,7 @@ void goby::common::ConfigReader::check_required_cfg(const google::protobuf::Mess
         std::stringstream err_msg;
         err_msg << "Configuration is missing required parameters: \n";
         for (const std::string& s : errors)
-            err_msg << common::esc_red << s << "\n" << common::esc_nocolor;
+            err_msg << util::esc_red << s << "\n" << util::esc_nocolor;
 
         err_msg << "Make sure you specified a proper `cfg_path` to the configuration file.";
         throw(ConfigException(err_msg.str()));

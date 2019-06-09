@@ -41,9 +41,9 @@
 #include "liaison_commander.h"
 
 using namespace Wt;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::glog;
-using goby::common::logger_lock::lock;
+using goby::util::logger_lock::lock;
 
 std::mutex goby::zeromq::LiaisonCommander::dbo_mutex_;
 std::shared_ptr<Dbo::backend::Sqlite3> goby::zeromq::LiaisonCommander::sqlite3_;

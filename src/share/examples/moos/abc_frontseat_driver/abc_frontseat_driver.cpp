@@ -26,9 +26,9 @@
 
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
-using goby::common::goby_time;
-using namespace goby::common::logger;
-using namespace goby::common::tcolor;
+using goby::util::goby_time;
+using namespace goby::util::logger;
+using namespace goby::util::tcolor;
 
 const int allowed_skew = 10;
 

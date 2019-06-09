@@ -30,7 +30,7 @@
 
 #include "iFrontSeat.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
 

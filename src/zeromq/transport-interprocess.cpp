@@ -25,7 +25,7 @@
 #include "transport-interprocess.h"
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 void goby::zeromq::setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg)
 {
@@ -226,7 +226,7 @@ void goby::zeromq::InterProcessPortalReadThread::run()
                 poll(cfg_.manager_timeout_seconds() * 1000);
 
             if (!have_pubsub_sockets_)
-                goby::glog.is(goby::common::logger::DIE) &&
+                goby::glog.is(goby::util::logger::DIE) &&
                     goby::glog << "No response from gobyd: " << cfg_.ShortDebugString()
                                << std::endl;
         }

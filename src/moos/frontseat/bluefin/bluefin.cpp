@@ -37,8 +37,8 @@ namespace gtime = goby::time;
 using goby::glog;
 using goby::util::NMEASentence;
 
-using namespace goby::common::logger;
-using namespace goby::common::tcolor;
+using namespace goby::util::logger;
+using namespace goby::util::tcolor;
 
 extern "C"
 {

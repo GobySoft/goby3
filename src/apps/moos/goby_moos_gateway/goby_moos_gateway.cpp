@@ -30,7 +30,7 @@ using AppBase = goby::zeromq::MultiThreadApplication<GobyMOOSGatewayConfig>;
 using ThreadBase = goby::SimpleThread<GobyMOOSGatewayConfig>;
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 namespace goby
 {

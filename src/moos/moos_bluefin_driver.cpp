@@ -35,7 +35,7 @@
 using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::acomms::operator<<;
 using goby::util::NMEASentence;
 

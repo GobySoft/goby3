@@ -28,7 +28,7 @@
 #include "goby/acomms/protobuf/mosh_packet.pb.h"
 #include "mosh_relay_config.pb.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 using boost::asio::ip::udp;
 

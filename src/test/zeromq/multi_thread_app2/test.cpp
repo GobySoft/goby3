@@ -29,7 +29,7 @@
 
 #include "test.pb.h"
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 extern constexpr goby::Group widget1{3};
 
