@@ -161,7 +161,7 @@ class ConfigReader
         }
     }
 };
-} // namespace common
+} // namespace middleware
 } // namespace goby
 
 #endif

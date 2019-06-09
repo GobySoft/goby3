@@ -29,8 +29,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <boost/format.hpp>
 #include "goby/exception.h"
+#include <boost/format.hpp>
 
 #include "goby/middleware/protobuf/app_config.pb.h"
 
@@ -117,7 +117,7 @@ template <typename Config> class Application
     // static here allows fout_ to live until program exit to log glog output
     static std::vector<std::unique_ptr<std::ofstream> > fout_;
 };
-} // namespace common
+} // namespace middleware
 
 } // namespace goby
 
