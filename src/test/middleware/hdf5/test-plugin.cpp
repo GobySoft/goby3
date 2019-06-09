@@ -27,13 +27,13 @@
 #include "test.pb.h"
 #include "test2.pb.h"
 
-class TestHDF5Plugin : public goby::common::HDF5Plugin
+class TestHDF5Plugin : public goby::middleware::HDF5Plugin
 {
   public:
     TestHDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg);
 
   private:
-    bool provide_entry(goby::common::HDF5ProtobufEntry* entry);
+    bool provide_entry(goby::middleware::HDF5ProtobufEntry* entry);
     void fill_message(TestMsg& msg_in);
     void fill_message(TestHDF5Message& msg);
 
@@ -42,18 +42,18 @@ class TestHDF5Plugin : public goby::common::HDF5Plugin
 
 extern "C"
 {
-    goby::common::HDF5Plugin* goby_hdf5_load(const goby::middleware::protobuf::HDF5Config* cfg)
+    goby::middleware::HDF5Plugin* goby_hdf5_load(const goby::middleware::protobuf::HDF5Config* cfg)
     {
         return new TestHDF5Plugin(cfg);
     }
 }
 
 TestHDF5Plugin::TestHDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg)
-    : goby::common::HDF5Plugin(cfg)
+    : goby::middleware::HDF5Plugin(cfg)
 {
 }
 
-bool TestHDF5Plugin::provide_entry(goby::common::HDF5ProtobufEntry* entry)
+bool TestHDF5Plugin::provide_entry(goby::middleware::HDF5ProtobufEntry* entry)
 {
     static int entry_index = 0;
 

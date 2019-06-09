@@ -44,7 +44,7 @@ class AppBaseConfig;
 
 namespace goby
 {
-namespace common
+namespace middleware
 {
 ///  \brief  indicates a problem with the runtime command line
 /// or .cfg file configuration (or --help was given)

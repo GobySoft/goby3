@@ -31,7 +31,7 @@ using goby::glog;
 
 namespace goby
 {
-class LogTool : public goby::common::Application<protobuf::LogToolConfig>
+class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
 {
   public:
     LogTool();

@@ -28,7 +28,7 @@
 
 namespace goby
 {
-namespace common
+namespace middleware
 {
 template <typename Config> class ConfiguratorInterface
 {
@@ -38,7 +38,7 @@ template <typename Config> class ConfiguratorInterface
     // TODO: AppConfig will eventually not be a Protobuf Message, just a C++ struct
     const goby::protobuf::AppConfig& app3_configuration() const { return app3_configuration_; }
     virtual void validate() const {}
-    virtual void handle_config_error(common::ConfigException& e) const
+    virtual void handle_config_error(middleware::ConfigException& e) const
     {
         std::cerr << "Invalid configuration: " << e.what() << std::endl;
     }
@@ -65,13 +65,13 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
     // subclass should call to verify all required fields have been set
     virtual void validate() const override
     {
-        common::ConfigReader::check_required_cfg(this->cfg());
+        middleware::ConfigReader::check_required_cfg(this->cfg());
     }
 
   private:
     virtual std::string str() const override { return this->cfg().DebugString(); }
 
-    void handle_config_error(common::ConfigException& e) const override
+    void handle_config_error(middleware::ConfigException& e) const override
     {
         std::cerr << "Invalid configuration: use --help and/or --example_config for more help: "
                   << e.what() << std::endl;
@@ -97,15 +97,15 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
         // we will check it later in validate()
         bool check_required_cfg = false;
         boost::program_options::options_description od{"Allowed options"};
-        common::ConfigReader::read_cfg(argc, argv, &cfg, &application_name, &od, &var_map,
-                                       check_required_cfg);
+        middleware::ConfigReader::read_cfg(argc, argv, &cfg, &application_name, &od, &var_map,
+                                           check_required_cfg);
 
         cfg.mutable_app()->set_name(application_name);
-        // incorporate some parts of the AppBaseConfig that are common
+        // incorporate some parts of the AppBaseConfig that are middleware
         // with gobyd (e.g. Verbosity)
         merge_app_base_cfg(cfg.mutable_app(), var_map);
     }
-    catch (common::ConfigException& e)
+    catch (middleware::ConfigException& e)
     {
         handle_config_error(e);
         throw;
@@ -149,7 +149,7 @@ void ProtobufConfigurator<Config>::merge_app_base_cfg(
     }
 }
 
-} // namespace common
+} // namespace middleware
 } // namespace goby
 
 #endif

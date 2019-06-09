@@ -30,7 +30,6 @@
 #include <unistd.h>
 
 #include <boost/format.hpp>
-
 #include "goby/exception.h"
 
 #include "goby/middleware/protobuf/app_config.pb.h"
@@ -48,7 +47,7 @@ namespace goby
 /// \tparam App Application subclass
 /// \return same as ```int main(int argc, char* argv)```
 template <typename App>
-int run(const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfgtor);
+int run(const goby::middleware::ConfiguratorInterface<typename App::ConfigType>& cfgtor);
 
 /// \brief Shorthand for goby::run for Configurators that have a constructor that simply takes argc, argv, e.g. MyConfigurator(int argc, char* argv[]). Allows for backwards-compatibility pre-Configurator.
 /// \param argc same as argc in ```int main(int argc, char* argv)```
@@ -57,13 +56,13 @@ int run(const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfg
 /// \tparam Configurator Configurator object that has a constructor such as ```Configurator(int argc, char* argv)```
 /// \return same as ```int main(int argc, char* argv)```
 template <typename App,
-          typename Configurator = common::ProtobufConfigurator<typename App::ConfigType> >
+          typename Configurator = middleware::ProtobufConfigurator<typename App::ConfigType> >
 int run(int argc, char* argv[])
 {
     return run<App>(Configurator(argc, argv));
 }
 
-namespace common
+namespace middleware
 {
 template <typename Config> class Application
 {
@@ -102,7 +101,8 @@ template <typename Config> class Application
 
   private:
     template <typename App>
-    friend int ::goby::run(const goby::common::ConfiguratorInterface<typename App::ConfigType>&);
+    friend int ::goby::run(
+        const goby::middleware::ConfiguratorInterface<typename App::ConfigType>&);
     // main loop that exits on quit(); returns the desired return value
     int __run();
 
@@ -122,14 +122,14 @@ template <typename Config> class Application
 } // namespace goby
 
 template <typename Config>
-std::vector<std::unique_ptr<std::ofstream> > goby::common::Application<Config>::fout_;
+std::vector<std::unique_ptr<std::ofstream> > goby::middleware::Application<Config>::fout_;
 
-template <typename Config> Config goby::common::Application<Config>::app_cfg_;
+template <typename Config> Config goby::middleware::Application<Config>::app_cfg_;
 
 template <typename Config>
-goby::protobuf::AppConfig goby::common::Application<Config>::app3_base_configuration_;
+goby::protobuf::AppConfig goby::middleware::Application<Config>::app3_base_configuration_;
 
-template <typename Config> goby::common::Application<Config>::Application() : alive_(true)
+template <typename Config> goby::middleware::Application<Config>::Application() : alive_(true)
 {
     using goby::glog;
     using namespace goby::util::logger;
@@ -184,14 +184,14 @@ template <typename Config> goby::common::Application<Config>::Application() : al
     }
 
     if (!app3_base_configuration_.IsInitialized())
-        throw(common::ConfigException("Invalid base configuration"));
+        throw(middleware::ConfigException("Invalid base configuration"));
 
     glog.is(DEBUG2) && glog << "Application: constructed with PID: " << getpid() << std::endl;
     glog.is(DEBUG1) && glog << "App name is " << app3_base_configuration_.name() << std::endl;
     glog.is(DEBUG2) && glog << "Configuration is: " << app_cfg_.DebugString() << std::endl;
 }
 
-template <typename Config> int goby::common::Application<Config>::__run()
+template <typename Config> int goby::middleware::Application<Config>::__run()
 {
     // block SIGWINCH (change window size) in all threads
     sigset_t signal_mask;
@@ -208,7 +208,7 @@ template <typename Config> int goby::common::Application<Config>::__run()
 }
 
 template <typename App>
-int goby::run(const goby::common::ConfiguratorInterface<typename App::ConfigType>& cfgtor)
+int goby::run(const goby::middleware::ConfiguratorInterface<typename App::ConfigType>& cfgtor)
 {
     int return_value = 0;
     try
@@ -217,7 +217,7 @@ int goby::run(const goby::common::ConfiguratorInterface<typename App::ConfigType
         {
             cfgtor.validate();
         }
-        catch (common::ConfigException& e)
+        catch (middleware::ConfigException& e)
         {
             cfgtor.handle_config_error(e);
             return 1;

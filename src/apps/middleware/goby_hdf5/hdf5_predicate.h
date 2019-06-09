@@ -28,7 +28,7 @@
 
 namespace goby
 {
-namespace common
+namespace middleware
 {
 namespace hdf5
 {
@@ -41,7 +41,7 @@ template <> H5::PredType predicate<float>() { return H5::PredType::NATIVE_FLOAT;
 template <> H5::PredType predicate<double>() { return H5::PredType::NATIVE_DOUBLE; }
 template <> H5::PredType predicate<unsigned char>() { return H5::PredType::NATIVE_UCHAR; }
 } // namespace hdf5
-} // namespace common
+} // namespace middleware
 } // namespace goby
 
 #endif

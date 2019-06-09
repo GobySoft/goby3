@@ -54,10 +54,10 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    return goby::run<goby::common::hdf5::Writer>(argc, argv);
+    return goby::run<goby::middleware::hdf5::Writer>(argc, argv);
 }
 
-void goby::common::hdf5::Channel::add_message(const goby::common::HDF5ProtobufEntry& entry)
+void goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5ProtobufEntry& entry)
 {
     const std::string& msg_name = entry.msg->GetDescriptor()->full_name();
     typedef std::map<std::string, MessageCollection>::iterator It;
@@ -71,7 +71,7 @@ void goby::common::hdf5::Channel::add_message(const goby::common::HDF5ProtobufEn
     it->second.entries.insert(std::make_pair(time::MicroTime(entry.time).value(), entry.msg));
 }
 
-H5::Group& goby::common::hdf5::GroupFactory::fetch_group(const std::string& group_path)
+H5::Group& goby::middleware::hdf5::GroupFactory::fetch_group(const std::string& group_path)
 {
     std::deque<std::string> nodes;
     std::string clean_path = boost::trim_copy_if(group_path, boost::algorithm::is_space() ||
@@ -81,7 +81,7 @@ H5::Group& goby::common::hdf5::GroupFactory::fetch_group(const std::string& grou
 }
 
 H5::Group&
-goby::common::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::string>& nodes)
+goby::middleware::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::string>& nodes)
 {
     if (nodes.empty())
     {
@@ -102,7 +102,7 @@ goby::common::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::stri
     }
 }
 
-goby::common::hdf5::Writer::Writer()
+goby::middleware::hdf5::Writer::Writer()
     : h5file_(app_cfg().output_file(), H5F_ACC_TRUNC), group_factory_(h5file_)
 {
     load();
@@ -111,9 +111,10 @@ goby::common::hdf5::Writer::Writer()
     quit();
 }
 
-void goby::common::hdf5::Writer::load()
+void goby::middleware::hdf5::Writer::load()
 {
-    typedef goby::common::HDF5Plugin* (*plugin_func)(const goby::middleware::protobuf::HDF5Config*);
+    typedef goby::middleware::HDF5Plugin* (*plugin_func)(
+        const goby::middleware::protobuf::HDF5Config*);
     plugin_func plugin_ptr = (plugin_func)dlsym(plugin_handle, "goby_hdf5_load");
 
     if (!plugin_ptr)
@@ -129,20 +130,20 @@ void goby::common::hdf5::Writer::load()
                              << std::endl;
 }
 
-void goby::common::hdf5::Writer::collect()
+void goby::middleware::hdf5::Writer::collect()
 {
-    goby::common::HDF5ProtobufEntry entry;
+    goby::middleware::HDF5ProtobufEntry entry;
     while (plugin_->provide_entry(&entry))
     {
         boost::trim_if(entry.channel,
                        boost::algorithm::is_space() || boost::algorithm::is_any_of("/"));
 
-        typedef std::map<std::string, goby::common::hdf5::Channel>::iterator It;
+        typedef std::map<std::string, goby::middleware::hdf5::Channel>::iterator It;
         It it = channels_.find(entry.channel);
         if (it == channels_.end())
         {
             std::pair<It, bool> itpair = channels_.insert(
-                std::make_pair(entry.channel, goby::common::hdf5::Channel(entry.channel)));
+                std::make_pair(entry.channel, goby::middleware::hdf5::Channel(entry.channel)));
             it = itpair.first;
         }
 
@@ -151,26 +152,27 @@ void goby::common::hdf5::Writer::collect()
     }
 }
 
-void goby::common::hdf5::Writer::write()
+void goby::middleware::hdf5::Writer::write()
 {
-    for (std::map<std::string, goby::common::hdf5::Channel>::const_iterator it = channels_.begin(),
-                                                                            end = channels_.end();
+    for (std::map<std::string, goby::middleware::hdf5::Channel>::const_iterator
+             it = channels_.begin(),
+             end = channels_.end();
          it != end; ++it)
         write_channel("/" + it->first, it->second);
 }
 
-void goby::common::hdf5::Writer::write_channel(const std::string& group,
-                                               const goby::common::hdf5::Channel& channel)
+void goby::middleware::hdf5::Writer::write_channel(const std::string& group,
+                                                   const goby::middleware::hdf5::Channel& channel)
 {
-    for (std::map<std::string, goby::common::hdf5::MessageCollection>::const_iterator
+    for (std::map<std::string, goby::middleware::hdf5::MessageCollection>::const_iterator
              it = channel.entries.begin(),
              end = channel.entries.end();
          it != end; ++it)
         write_message_collection(group + "/" + it->first, it->second);
 }
 
-void goby::common::hdf5::Writer::write_message_collection(
-    const std::string& group, const goby::common::hdf5::MessageCollection& message_collection)
+void goby::middleware::hdf5::Writer::write_message_collection(
+    const std::string& group, const goby::middleware::hdf5::MessageCollection& message_collection)
 {
     write_time(group, message_collection);
 
@@ -192,7 +194,7 @@ void goby::common::hdf5::Writer::write_message_collection(
     }
 }
 
-void goby::common::hdf5::Writer::write_embedded_message(
+void goby::middleware::hdf5::Writer::write_embedded_message(
     const std::string& group, const google::protobuf::FieldDescriptor* field_desc,
     const std::vector<const google::protobuf::Message*> messages, std::vector<hsize_t>& hs)
 {
@@ -268,7 +270,7 @@ void goby::common::hdf5::Writer::write_embedded_message(
     }
 }
 
-void goby::common::hdf5::Writer::write_field_selector(
+void goby::middleware::hdf5::Writer::write_field_selector(
     const std::string& group, const google::protobuf::FieldDescriptor* field_desc,
     const std::vector<const google::protobuf::Message*>& messages, std::vector<hsize_t>& hs)
 {
@@ -325,7 +327,7 @@ void goby::common::hdf5::Writer::write_field_selector(
     }
 }
 
-void goby::common::hdf5::Writer::write_enum_attributes(
+void goby::middleware::hdf5::Writer::write_enum_attributes(
     const std::string& group, const google::protobuf::FieldDescriptor* field_desc)
 {
     // write enum names and values to attributes
@@ -361,8 +363,8 @@ void goby::common::hdf5::Writer::write_enum_attributes(
     }
 }
 
-void goby::common::hdf5::Writer::write_time(
-    const std::string& group, const goby::common::hdf5::MessageCollection& message_collection)
+void goby::middleware::hdf5::Writer::write_time(
+    const std::string& group, const goby::middleware::hdf5::MessageCollection& message_collection)
 {
     std::vector<std::uint64_t> utime(message_collection.entries.size(), 0);
     std::vector<double> datenum(message_collection.entries.size(), 0);
@@ -389,11 +391,11 @@ void goby::common::hdf5::Writer::write_time(
     write_vector(group, "_datenum_", datenum, hs, (double)0);
 }
 
-void goby::common::hdf5::Writer::write_vector(const std::string& group,
-                                              const std::string dataset_name,
-                                              const std::vector<std::string>& data,
-                                              const std::vector<hsize_t>& hs,
-                                              const std::string& default_value)
+void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
+                                                  const std::string dataset_name,
+                                                  const std::vector<std::string>& data,
+                                                  const std::vector<hsize_t>& hs,
+                                                  const std::string& default_value)
 {
     std::vector<const char*> data_c_str;
     for (unsigned i = 0, n = data.size(); i < n; ++i) data_c_str.push_back(data[i].c_str());

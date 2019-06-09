@@ -38,7 +38,8 @@ using namespace boost::posix_time;
 std::mutex driver_mutex;
 int last_transmission_index = 0;
 
-class MMDriverTest2 : public goby::common::Application<goby::test::protobuf::MMDriverTest2Config>
+class MMDriverTest2
+    : public goby::middleware::Application<goby::test::protobuf::MMDriverTest2Config>
 {
   public:
     MMDriverTest2();

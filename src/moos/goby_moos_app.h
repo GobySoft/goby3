@@ -745,7 +745,7 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
         boost::program_options::options_description od_both(
             "Typically given in the .moos file, but may be specified on the command line");
 
-        goby::common::ConfigReader::get_protobuf_program_options(od_both, cfg->GetDescriptor());
+        goby::middleware::ConfigReader::get_protobuf_program_options(od_both, cfg->GetDescriptor());
         od_all.add(od_both);
         od_all.add(od_cli_only);
 
@@ -769,7 +769,7 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
         else if (var_map.count("example_config"))
         {
             std::cout << "ProcessConfig = " << application_name_ << "\n{";
-            goby::common::ConfigReader::get_example_cfg_file(cfg, &std::cout, "  ");
+            goby::middleware::ConfigReader::get_example_cfg_file(cfg, &std::cout, "  ");
             std::cout << "}" << std::endl;
             exit(EXIT_SUCCESS);
         }
@@ -850,8 +850,8 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
         {
             // let protobuf deal with the defaults
             if (!p.second.defaulted())
-                goby::common::ConfigReader::set_protobuf_program_option(var_map, *cfg, p.first,
-                                                                        p.second);
+                goby::middleware::ConfigReader::set_protobuf_program_option(var_map, *cfg, p.first,
+                                                                            p.second);
         }
 
         // now the proto message must have all required fields
@@ -866,10 +866,10 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
                 err_msg << goby::util::esc_red << s << "\n" << goby::util::esc_nocolor;
 
             err_msg << "Make sure you specified a proper .moos file";
-            throw(goby::common::ConfigException(err_msg.str()));
+            throw(goby::middleware::ConfigException(err_msg.str()));
         }
     }
-    catch (goby::common::ConfigException& e)
+    catch (goby::middleware::ConfigException& e)
     {
         // output all the available command line options
         std::cerr << od_all << "\n";
@@ -971,7 +971,7 @@ template <typename App> int goby::moos::run(int argc, char* argv[])
         App* app = App::get_instance();
         app->Run(App::application_name_.c_str(), App::mission_file_.c_str());
     }
-    catch (goby::common::ConfigException& e)
+    catch (goby::middleware::ConfigException& e)
     {
         // no further warning as the ApplicationBase Ctor handles this
         return 1;

@@ -37,11 +37,11 @@ using Base = goby::zeromq::SingleThreadApplication<TestConfig>;
 
 const std::string platform_name{"single_thread_app1"};
 
-class TestConfigurator : public goby::common::ProtobufConfigurator<TestConfig>
+class TestConfigurator : public goby::middleware::ProtobufConfigurator<TestConfig>
 {
   public:
     TestConfigurator(int argc, char* argv[])
-        : goby::common::ProtobufConfigurator<TestConfig>(argc, argv)
+        : goby::middleware::ProtobufConfigurator<TestConfig>(argc, argv)
     {
         TestConfig& cfg = mutable_cfg();
         cfg.mutable_interprocess()->set_platform(platform_name);

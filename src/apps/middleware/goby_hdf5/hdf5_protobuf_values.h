@@ -27,7 +27,7 @@
 
 namespace goby
 {
-namespace common
+namespace middleware
 {
 namespace hdf5
 {

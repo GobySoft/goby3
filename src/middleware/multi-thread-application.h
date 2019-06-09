@@ -88,7 +88,7 @@ class SimpleThread
 };
 
 template <class Config, class Transporter>
-class MultiThreadApplicationBase : public goby::common::Application<Config>,
+class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
                                    public goby::Thread<Config, Transporter>
 {
   private:
@@ -115,7 +115,7 @@ class MultiThreadApplicationBase : public goby::common::Application<Config>,
 
     MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq,
                                Transporter* transporter)
-        : goby::common::Application<Config>(),
+        : goby::middleware::Application<Config>(),
           MainThreadBase(this->app_cfg(), transporter, loop_freq)
     {
         goby::glog.set_lock_action(goby::util::logger_lock::lock);

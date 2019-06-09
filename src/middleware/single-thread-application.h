@@ -35,7 +35,7 @@
 namespace goby
 {
 template <class Config, template <class = NullTransporter> class InterProcessPortal>
-class SingleThreadApplication : public goby::common::Application<Config>,
+class SingleThreadApplication : public goby::middleware::Application<Config>,
                                 public Thread<Config, InterVehicleForwarder<InterProcessPortal<> > >
 {
   private:

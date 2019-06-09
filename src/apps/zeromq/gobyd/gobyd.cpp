@@ -36,7 +36,7 @@ namespace goby
 {
 namespace zeromq
 {
-class Daemon : public goby::common::Application<protobuf::GobyDaemonConfig>
+class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
 {
   public:
     Daemon();

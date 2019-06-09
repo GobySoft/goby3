@@ -35,11 +35,6 @@
 /// The global namespace for the Goby project.
 namespace goby
 {
-namespace util
-{
-class FlexOstream;
-}
-
 /// Objects pertaining to acoustic communications (acomms)
 namespace acomms
 {

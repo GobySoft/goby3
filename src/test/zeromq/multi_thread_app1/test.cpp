@@ -40,11 +40,11 @@ constexpr int num_messages{10};
 
 using AppBase = goby::zeromq::MultiThreadApplication<TestConfig>;
 
-class TestConfigurator : public goby::common::ProtobufConfigurator<TestConfig>
+class TestConfigurator : public goby::middleware::ProtobufConfigurator<TestConfig>
 {
   public:
     TestConfigurator(int argc, char* argv[])
-        : goby::common::ProtobufConfigurator<TestConfig>(argc, argv)
+        : goby::middleware::ProtobufConfigurator<TestConfig>(argc, argv)
     {
         TestConfig& cfg = mutable_cfg();
         cfg.mutable_interprocess()->set_platform(platform_name);

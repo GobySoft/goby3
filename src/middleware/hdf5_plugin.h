@@ -34,7 +34,7 @@
 
 namespace goby
 {
-namespace common
+namespace middleware
 {
 struct HDF5ProtobufEntry
 {
@@ -72,7 +72,7 @@ class HDF5Plugin
 
     virtual bool provide_entry(HDF5ProtobufEntry* entry) = 0;
 };
-} // namespace common
+} // namespace middleware
 } // namespace goby
 
 #endif

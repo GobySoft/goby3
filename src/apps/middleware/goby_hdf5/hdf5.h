@@ -36,7 +36,7 @@
 
 namespace goby
 {
-namespace common
+namespace middleware
 {
 namespace hdf5
 {
@@ -54,7 +54,7 @@ struct Channel
     Channel(const std::string& n) : name(n) {}
     std::string name;
 
-    void add_message(const goby::common::HDF5ProtobufEntry& entry);
+    void add_message(const goby::middleware::HDF5ProtobufEntry& entry);
 
     // message name -> hdf5::Message
     std::map<std::string, MessageCollection> entries;
@@ -90,7 +90,7 @@ class GroupFactory
     GroupWrapper root_group_;
 };
 
-class Writer : public goby::common::Application<goby::middleware::protobuf::HDF5Config>
+class Writer : public goby::middleware::Application<goby::middleware::protobuf::HDF5Config>
 {
   public:
     Writer();
@@ -99,11 +99,12 @@ class Writer : public goby::common::Application<goby::middleware::protobuf::HDF5
     void load();
     void collect();
     void write();
-    void write_channel(const std::string& group, const goby::common::hdf5::Channel& channel);
-    void write_message_collection(const std::string& group,
-                                  const goby::common::hdf5::MessageCollection& message_collection);
+    void write_channel(const std::string& group, const goby::middleware::hdf5::Channel& channel);
+    void
+    write_message_collection(const std::string& group,
+                             const goby::middleware::hdf5::MessageCollection& message_collection);
     void write_time(const std::string& group,
-                    const goby::common::hdf5::MessageCollection& message_collection);
+                    const goby::middleware::hdf5::MessageCollection& message_collection);
 
     void write_field_selector(const std::string& group,
                               const google::protobuf::FieldDescriptor* field_desc,
@@ -135,13 +136,13 @@ class Writer : public goby::common::Application<goby::middleware::protobuf::HDF5
     void run() {}
 
   private:
-    std::shared_ptr<goby::common::HDF5Plugin> plugin_;
+    std::shared_ptr<goby::middleware::HDF5Plugin> plugin_;
 
     // channel name -> hdf5::Channel
-    std::map<std::string, goby::common::hdf5::Channel> channels_;
+    std::map<std::string, goby::middleware::hdf5::Channel> channels_;
     H5::H5File h5file_;
 
-    goby::common::hdf5::GroupFactory group_factory_;
+    goby::middleware::hdf5::GroupFactory group_factory_;
 };
 
 template <typename T>
@@ -225,7 +226,7 @@ void Writer::write_vector(const std::string& group, const std::string dataset_na
     att.write(predicate<T>(), &default_value);
 }
 } // namespace hdf5
-} // namespace common
+} // namespace middleware
 } // namespace goby
 
 #endif
