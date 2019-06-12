@@ -52,9 +52,7 @@ goby::util::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
       name_("no name"),
       die_flag_(false),
       current_verbosity_(logger::UNKNOWN),
-#ifdef HAS_NCURSES
       curses_(0),
-#endif
       start_time_(time::SystemClock::now<boost::posix_time::ptime>()),
       is_gui_(false),
       highest_verbosity_(logger::QUIET),
@@ -118,6 +116,9 @@ void goby::util::FlexOStreamBuf::enable_gui()
 
     input_thread_ = std::shared_ptr<std::thread>(new std::thread([&]() { curses_->run_input(); }));
 #else
+    // suppress -Wunused-private-field
+    (void)curses_;
+
     throw(goby::Exception("Tried to enable NCurses GUI without compiling against NCurses. Install "
                           "NCurses and recompile goby or disable GUI functionality"));
 #endif
@@ -225,6 +226,8 @@ void goby::util::FlexOStreamBuf::display(std::string& s)
                 gui_displayed = true;
                 continue;
             }
+#else
+            gui_displayed = true;
 #endif
 
             *cfg.os() << TermColor::esc_code_from_col(groups_[group_name_].color()) << name_
