@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
 import "goby/common/protobuf/app_base_config.proto";
 import "goby/acomms/protobuf/amac_config.proto";

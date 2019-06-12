@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "goby/middleware/protobuf/transporter_config.proto";
 import "google/protobuf/descriptor.proto";
 

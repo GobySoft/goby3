@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "dccl/option_extensions.proto";
 
 message GobyMessage

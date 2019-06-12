@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "goby/zeromq/protobuf/liaison_config.proto";
 
 package goby.moos.protobuf;

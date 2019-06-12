@@ -1,3 +1,4 @@
+syntax = "proto2";
 message BasicNodeReport
 {
     optional string Name = 1;

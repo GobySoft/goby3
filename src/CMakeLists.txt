@@ -16,9 +16,10 @@ include_directories(${PROTOBUF_INCLUDE_DIRS})
 
 if(${PROTOC_VERSION} VERSION_LESS 3.0.0) 
   message("libprotobuf < 3.0.0")
+  set(PROTOBUF_HAS_SYNTAX_VERSION FALSE PARENT_SCOPE)
 else()
   message("libprotobuf >= 3.0.0")
-  set(PROTOBUF_SYNTAX_VERSION "syntax = \"proto2\";" PARENT_SCOPE)
+  set(PROTOBUF_HAS_SYNTAX_VERSION TRUE PARENT_SCOPE)
 endif()
 
 #dccl

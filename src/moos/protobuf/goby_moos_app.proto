@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
 import "goby/util/protobuf/debug_logger.proto";
 import "goby/moos/protobuf/translator.proto";

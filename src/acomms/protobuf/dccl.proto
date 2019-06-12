@@ -1,3 +1,4 @@
+syntax = "proto2";
 // provides MessageFile
 import "goby/protobuf/option_extensions.proto";
 

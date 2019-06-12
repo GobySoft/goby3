@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "goby/acomms/protobuf/modem_message.proto";
 
 package goby.acomms.protobuf;

@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "goby/middleware/protobuf/app_config.proto";
 
 package goby.middleware.protobuf;

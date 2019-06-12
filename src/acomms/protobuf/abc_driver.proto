@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "goby/acomms/protobuf/driver_base.proto"; // load up message DriverBaseConfig
 
 message ABCDriverConfig

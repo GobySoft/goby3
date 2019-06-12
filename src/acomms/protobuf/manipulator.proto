@@ -1,3 +1,4 @@
+syntax = "proto2";
 package goby.acomms.protobuf;
 
 enum Manipulator

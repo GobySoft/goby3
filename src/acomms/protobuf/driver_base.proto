@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
 
 package goby.acomms.protobuf;

@@ -203,12 +203,14 @@ foreach(I ${BASE_INCLUDE_FILES} ${INCLUDE_FILES} ${PROTOBUF_FILES})
 endforeach()
 configure_file(${goby_SRC_DIR}/goby.h ${goby_INC_DIR}/goby.h @ONLY)
 
-# write the proto syntax version if required 
-foreach(I ${PROTOBUF_FILES})
-  file(READ ${goby_INC_DIR}/goby/${I} CONTENTS)
-  file(WRITE ${goby_INC_DIR}/goby/${I} "${PROTOBUF_SYNTAX_VERSION}\n${CONTENTS}")
-endforeach()
-
+if(NOT PROTOBUF_HAS_SYNTAX_VERSION)
+  # erase the proto syntax version if not supported (protobuf before 3.0)
+  foreach(I ${PROTOBUF_FILES})
+    file(READ ${goby_INC_DIR}/goby/${I} CONTENTS)
+    string(REGEX REPLACE "syntax *= *\\\"proto2\\\" *;" "" CONTENTS_OUTPUT "${CONTENTS}")
+    file(WRITE ${goby_INC_DIR}/goby/${I} "${CONTENTS_OUTPUT}")
+  endforeach()
+endif()
 
 ## copy to build/share
 file(GLOB SHARE_FILES RELATIVE ${goby_SRC_DIR} src/share/*)

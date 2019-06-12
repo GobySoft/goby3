@@ -1,3 +1,4 @@
+syntax = "proto2";
 message TestHDF5Message
 {
     repeated double a = 1;
