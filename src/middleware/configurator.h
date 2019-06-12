@@ -36,7 +36,7 @@ template <typename Config> class ConfiguratorInterface
     const Config& cfg() const { return cfg_; }
 
     // TODO: AppConfig will eventually not be a Protobuf Message, just a C++ struct
-    const goby::protobuf::AppConfig& app3_configuration() const { return app3_configuration_; }
+    const protobuf::AppConfig& app3_configuration() const { return app3_configuration_; }
     virtual void validate() const {}
     virtual void handle_config_error(middleware::ConfigException& e) const
     {
@@ -48,11 +48,11 @@ template <typename Config> class ConfiguratorInterface
   protected:
     // Derived classes can modify these as needed in their constructor
     Config& mutable_cfg() { return cfg_; }
-    goby::protobuf::AppConfig& mutable_app3_configuration() { return app3_configuration_; }
+    protobuf::AppConfig& mutable_app3_configuration() { return app3_configuration_; }
 
   private:
     Config cfg_;
-    goby::protobuf::AppConfig app3_configuration_;
+    protobuf::AppConfig app3_configuration_;
 };
 
 /// Implementation of ConfiguratorInterface for Google Protocol buffers
@@ -77,7 +77,7 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
                   << e.what() << std::endl;
     }
 
-    void merge_app_base_cfg(goby::protobuf::AppConfig* base_cfg,
+    void merge_app_base_cfg(protobuf::AppConfig* base_cfg,
                             const boost::program_options::variables_map& var_map);
 };
 
@@ -117,7 +117,8 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
 
 template <typename Config>
 void ProtobufConfigurator<Config>::merge_app_base_cfg(
-    goby::protobuf::AppConfig* base_cfg, const boost::program_options::variables_map& var_map)
+    goby::middleware::protobuf::AppConfig* base_cfg,
+    const boost::program_options::variables_map& var_map)
 {
     if (var_map.count("ncurses"))
     {

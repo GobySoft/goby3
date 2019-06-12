@@ -46,9 +46,9 @@ std::atomic<int> zmq_reqs(0);
 using goby::glog;
 using namespace goby::util::logger;
 
-extern constexpr goby::Group sample1{"Sample1"};
-extern constexpr goby::Group sample2{"Sample2"};
-extern constexpr goby::Group widget{"Widget"};
+extern constexpr goby::middleware::Group sample1{"Sample1"};
+extern constexpr goby::middleware::Group sample2{"Sample2"};
+extern constexpr goby::middleware::Group widget{"Widget"};
 
 // parent process - thread 1
 void publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)

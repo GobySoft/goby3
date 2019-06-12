@@ -56,7 +56,7 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
 
     // For hosting an InterVehiclePortal
     std::unique_ptr<InterProcessPortal<> > interprocess_;
-    std::unique_ptr<InterVehiclePortal<InterProcessPortal<> > > intervehicle_;
+    std::unique_ptr<middleware::InterVehiclePortal<InterProcessPortal<> > > intervehicle_;
 };
 } // namespace zeromq
 } // namespace goby
@@ -79,19 +79,20 @@ goby::zeromq::Daemon::Daemon()
 
     interprocess_.reset(new InterProcessPortal<>(app_cfg().interprocess()));
     if (app_cfg().has_intervehicle())
-        intervehicle_.reset(new InterVehiclePortal<InterProcessPortal<> >(
+        intervehicle_.reset(new middleware::InterVehiclePortal<InterProcessPortal<> >(
             *interprocess_, app_cfg().intervehicle()));
 
     // handle goby_terminate request
-    interprocess_->subscribe<groups::terminate_request, goby::protobuf::TerminateRequest>(
-        [this](const goby::protobuf::TerminateRequest& request) {
+    interprocess_->subscribe<middleware::groups::terminate_request,
+                             goby::middleware::protobuf::TerminateRequest>(
+        [this](const goby::middleware::protobuf::TerminateRequest& request) {
             bool match = false;
-            goby::protobuf::TerminateResponse resp;
+            goby::middleware::protobuf::TerminateResponse resp;
             std::tie(match, resp) =
-                goby::terminate::check_terminate(request, app_cfg().app().name());
+                goby::middleware::terminate::check_terminate(request, app_cfg().app().name());
             if (match)
             {
-                interprocess_->publish<groups::terminate_response>(resp);
+                interprocess_->publish<middleware::groups::terminate_response>(resp);
                 // as gobyd mediates all interprocess() comms; wait for a bit to hopefully get our response out before shutting down
                 sleep(1);
                 quit();
@@ -113,10 +114,10 @@ void goby::zeromq::Daemon::run()
     {
         intervehicle_->poll(std::chrono::milliseconds(200));
 
-        goby::protobuf::InterVehicleStatus status;
+        goby::middleware::protobuf::InterVehicleStatus status;
         status.set_tx_queue_size(intervehicle_->tx_queue_size());
 
-        interprocess_->publish<groups::intervehicle_outbound>(status);
+        interprocess_->publish<middleware::groups::intervehicle_outbound>(status);
     }
     else
     {

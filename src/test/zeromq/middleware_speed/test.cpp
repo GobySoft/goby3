@@ -42,8 +42,8 @@ int ipc_receive_count = {0};
 std::atomic<bool> forward(true);
 std::atomic<int> zmq_reqs(0);
 int test = 1;
-goby::InterThreadTransporter interthread1;
-goby::InterThreadTransporter interthread2;
+goby::middleware::InterThreadTransporter interthread1;
+goby::middleware::InterThreadTransporter interthread2;
 
 std::atomic<double> start(0);
 std::atomic<double> end(0);
@@ -55,10 +55,10 @@ using namespace goby::util::logger;
 
 struct TestGroups
 {
-    static constexpr goby::Group sample1_group{"Sample1"};
+    static constexpr goby::middleware::Group sample1_group{"Sample1"};
 };
 
-constexpr goby::Group TestGroups::sample1_group;
+constexpr goby::middleware::Group TestGroups::sample1_group;
 
 #ifdef LARGE_MESSAGE
 using Type = Large;

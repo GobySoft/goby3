@@ -31,6 +31,8 @@ using goby::glog;
 
 namespace goby
 {
+namespace middleware
+{
 class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
 {
   public:
@@ -54,12 +56,12 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
     std::ifstream f_in_;
     std::ofstream f_out_;
 };
-
+} // namespace middleware
 } // namespace goby
 
-int main(int argc, char* argv[]) { return goby::run<goby::LogTool>(argc, argv); }
+int main(int argc, char* argv[]) { return goby::run<goby::middleware::LogTool>(argc, argv); }
 
-goby::LogTool::LogTool()
+goby::middleware::LogTool::LogTool()
     : f_in_(app_cfg().input_file().c_str()),
       f_out_(app_cfg().output_file() == "-" ? "/dev/stdout" : app_cfg().output_file().c_str())
 {
@@ -71,8 +73,8 @@ goby::LogTool::LogTool()
         dl_handles_.push_back(lib_handle);
     }
 
-    plugins_[goby::MarshallingScheme::PROTOBUF].reset(new log::ProtobufPlugin);
-    plugins_[goby::MarshallingScheme::DCCL].reset(new log::DCCLPlugin);
+    plugins_[goby::middleware::MarshallingScheme::PROTOBUF].reset(new log::ProtobufPlugin);
+    plugins_[goby::middleware::MarshallingScheme::DCCL].reset(new log::DCCLPlugin);
 
     for (auto& p : plugins_) p.second->register_read_hooks(f_in_);
 
@@ -80,7 +82,7 @@ goby::LogTool::LogTool()
     {
         try
         {
-            goby::LogEntry log_entry;
+            goby::middleware::LogEntry log_entry;
             log_entry.parse(&f_in_);
             try
             {
@@ -120,9 +122,8 @@ goby::LogTool::LogTool()
         }
         catch (log::LogException& e)
         {
-            glog.is_warn() &&
-                glog << "Exception processing input log (will attempt to continue): " << e.what()
-                     << std::endl;
+            glog.is_warn() && glog << "Exception processing input log (will attempt to continue): "
+                                   << e.what() << std::endl;
         }
         catch (std::exception& e)
         {

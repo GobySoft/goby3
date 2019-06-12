@@ -36,11 +36,14 @@
 // tests InterProcessForwarder
 
 // avoid static initialization order problem
-goby::InterProcessForwarder<goby::InterThreadTransporter>& ipc_child()
+goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter>& ipc_child()
 {
-    static std::unique_ptr<goby::InterThreadTransporter> inner(new goby::InterThreadTransporter);
-    static std::unique_ptr<goby::InterProcessForwarder<goby::InterThreadTransporter> > p(
-        new goby::InterProcessForwarder<goby::InterThreadTransporter>(*inner));
+    static std::unique_ptr<goby::middleware::InterThreadTransporter> inner(
+        new goby::middleware::InterThreadTransporter);
+    static std::unique_ptr<
+        goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> >
+        p(new goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter>(
+            *inner));
     return *p;
 }
 
@@ -55,15 +58,15 @@ std::atomic<bool> zmq_ready(false);
 using goby::glog;
 using namespace goby::util::logger;
 
-extern constexpr goby::Group sample1{"Sample1"};
-extern constexpr goby::Group sample2{"Sample2"};
-extern constexpr goby::Group widget{"Widget"};
+constexpr goby::middleware::Group sample1{"Sample1"};
+constexpr goby::middleware::Group sample2{"Sample2"};
+constexpr goby::middleware::Group widget{"Widget"};
 
 // thread 1 - parent process
 void publisher()
 {
-    goby::InterThreadTransporter inproc1;
-    goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc1);
+    goby::middleware::InterThreadTransporter inproc1;
+    goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
     double a = 0;
     while (
         publish_count <
@@ -216,14 +219,14 @@ class ThreadSubscriber
     int receive_count1 = {0};
     int receive_count2 = {0};
     int receive_count3 = {0};
-    goby::InterThreadTransporter inproc2_;
+    goby::middleware::InterThreadTransporter inproc2_;
 };
 
 // thread 3
 void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 {
-    goby::InterThreadTransporter inproc3;
-    goby::zeromq::InterProcessPortal<goby::InterThreadTransporter> zmq(inproc3, cfg);
+    goby::middleware::InterThreadTransporter inproc3;
+    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(inproc3, cfg);
     zmq.subscribe<sample1, Sample>([&](const Sample& s) {
         glog.is(DEBUG1) && glog << "Portal Received1: " << s.DebugString() << std::endl;
         if (s.a() == 3 * max_publish / 4)

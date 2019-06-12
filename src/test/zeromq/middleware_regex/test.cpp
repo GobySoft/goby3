@@ -35,9 +35,9 @@
 
 // tests InterProcessForwarder
 
-goby::InterThreadTransporter inproc1;
-goby::InterThreadTransporter inproc2;
-goby::InterThreadTransporter inproc3;
+goby::middleware::InterThreadTransporter inproc1;
+goby::middleware::InterThreadTransporter inproc2;
+goby::middleware::InterThreadTransporter inproc3;
 
 int publish_count = 0;
 const int max_publish = 100;
@@ -49,14 +49,14 @@ std::atomic<bool> zmq_ready(false);
 using goby::glog;
 using namespace goby::util::logger;
 
-extern constexpr goby::Group sample1{"Sample1"};
-extern constexpr goby::Group sample2{"Sample2"};
-extern constexpr goby::Group widget{"Widget"};
+extern constexpr goby::middleware::Group sample1{"Sample1"};
+extern constexpr goby::middleware::Group sample2{"Sample2"};
+extern constexpr goby::middleware::Group widget{"Widget"};
 
 // thread 1 - parent process
 void publisher()
 {
-    goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc1);
+    goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
     double a = 0;
     while (publish_count < max_publish)
     {
@@ -75,7 +75,7 @@ void publisher()
 
 // thread 1 - child process
 void handle_all(const std::vector<unsigned char>& data, int scheme, const std::string& type,
-                const goby::Group& group)
+                const goby::middleware::Group& group)
 {
     glog.is(DEBUG1) && glog << "InterProcessForwarder received publication of " << data.size()
                             << " bytes from group: " << group << " of type: " << type
@@ -85,8 +85,8 @@ void handle_all(const std::vector<unsigned char>& data, int scheme, const std::s
 
 void subscriber()
 {
-    goby::InterProcessForwarder<goby::InterThreadTransporter> ipc(inproc1);
-    ipc.subscribe_regex(&handle_all, {goby::MarshallingScheme::ALL_SCHEMES});
+    goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
+    ipc.subscribe_regex(&handle_all, {goby::middleware::MarshallingScheme::ALL_SCHEMES});
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -101,17 +101,17 @@ void subscriber()
 // thread 3
 void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 {
-    goby::zeromq::InterProcessPortal<goby::InterThreadTransporter> ipc(inproc3, cfg);
+    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> ipc(inproc3, cfg);
     ipc.subscribe_regex(
         [&](const std::vector<unsigned char>& data, int scheme, const std::string& type,
-            const goby::Group& group) {
+            const goby::middleware::Group& group) {
             glog.is(DEBUG1) && glog << "InterProcessPortal received publication of " << data.size()
                                     << " bytes from group: " << group << " of type: " << type
                                     << " from scheme: " << scheme << std::endl;
             assert(type == "Sample");
-            assert(scheme == goby::MarshallingScheme::PROTOBUF);
+            assert(scheme == goby::middleware::MarshallingScheme::PROTOBUF);
         },
-        {goby::MarshallingScheme::PROTOBUF}, "Sample", "Sample1|Sample2");
+        {goby::middleware::MarshallingScheme::PROTOBUF}, "Sample", "Sample1|Sample2");
 
     zmq_ready = true;
     while (forward) { ipc.poll(std::chrono::milliseconds(100)); }

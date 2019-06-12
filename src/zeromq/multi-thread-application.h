@@ -31,7 +31,7 @@ namespace goby
 namespace zeromq
 {
 template <class Config>
-using MultiThreadApplication = goby::MultiThreadApplication<Config, InterProcessPortal>;
+using MultiThreadApplication = goby::middleware::MultiThreadApplication<Config, InterProcessPortal>;
 }
 } // namespace goby
 

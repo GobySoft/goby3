@@ -109,7 +109,7 @@ template <typename Config> class Application
   private:
     // sets configuration (before Application construction)
     static Config app_cfg_;
-    static goby::protobuf::AppConfig app3_base_configuration_;
+    static protobuf::AppConfig app3_base_configuration_;
 
     bool alive_;
     int return_value_;
@@ -127,7 +127,8 @@ std::vector<std::unique_ptr<std::ofstream> > goby::middleware::Application<Confi
 template <typename Config> Config goby::middleware::Application<Config>::app_cfg_;
 
 template <typename Config>
-goby::protobuf::AppConfig goby::middleware::Application<Config>::app3_base_configuration_;
+goby::middleware::protobuf::AppConfig
+    goby::middleware::Application<Config>::app3_base_configuration_;
 
 template <typename Config> goby::middleware::Application<Config>::Application() : alive_(true)
 {

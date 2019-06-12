@@ -30,9 +30,9 @@
 #include "test.pb.h"
 using goby::glog;
 
-extern constexpr goby::Group widget1{3};
-extern constexpr goby::Group widget2{"widget2"};
-extern constexpr goby::Group ready{"ready"};
+extern constexpr goby::middleware::Group widget1{3};
+extern constexpr goby::middleware::Group widget2{"widget2"};
+extern constexpr goby::middleware::Group ready{"ready"};
 
 const std::string platform_name{"multi_thread_app1"};
 
@@ -50,7 +50,7 @@ class TestConfigurator : public goby::middleware::ProtobufConfigurator<TestConfi
         cfg.mutable_interprocess()->set_platform(platform_name);
     }
 };
-class TestThreadRx : public goby::SimpleThread<TestConfig>
+class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
 {
   public:
     TestThreadRx(const TestConfig& cfg) : SimpleThread(cfg)

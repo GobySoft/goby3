@@ -5,7 +5,7 @@ package goby.zeromq.protobuf;
 
 message LoggerConfig
 {
-    optional goby.protobuf.AppConfig app = 1;
+    optional goby.middleware.protobuf.AppConfig app = 1;
     optional InterProcessPortalConfig interprocess = 2;
 
     required string log_dir = 3;

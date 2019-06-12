@@ -35,6 +35,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 namespace log
 {
 class LogException : public std::runtime_error
@@ -42,7 +44,7 @@ class LogException : public std::runtime_error
   public:
     LogException(const std::string& s) : std::runtime_error(s){};
 };
-}
+} // namespace log
 
 template <int Bytes> struct uint
 {
@@ -220,6 +222,7 @@ class LogEntry
     const std::string magic_{"GBY3"};
 };
 
+} // namespace middleware
 } // namespace goby
 
 #endif

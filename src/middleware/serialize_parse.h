@@ -35,6 +35,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 //
 // MarshallingScheme
 //
@@ -237,8 +239,9 @@ struct DCCLSerializerParserHelperBase
         return codec().id(begin, end);
     }
 
-    static void load_forwarded_subscription(const goby::protobuf::DCCLSubscription& sub);
-    static goby::protobuf::DCCLForwardedData unpack(const std::string& bytes);
+    static void
+    load_forwarded_subscription(const goby::middleware::protobuf::DCCLSubscription& sub);
+    static goby::middleware::protobuf::DCCLForwardedData unpack(const std::string& bytes);
 
     static void load_library(const std::string& library)
     {
@@ -354,7 +357,7 @@ template <typename T, typename Transporter> constexpr int transporter_scheme()
 template <typename T, typename std::enable_if<std::is_same<T, std::string>::value>::type* = nullptr>
 constexpr int scheme()
 {
-    return goby::MarshallingScheme::CSTR;
+    return goby::middleware::MarshallingScheme::CSTR;
 }
 
 namespace protobuf
@@ -379,12 +382,12 @@ template <typename T,
           typename std::enable_if<std::is_enum<typename T::DCCLParameters>::value>::type* = nullptr>
 constexpr int scheme_protobuf_or_dccl(dccl_selector)
 {
-    return goby::MarshallingScheme::DCCL;
+    return goby::middleware::MarshallingScheme::DCCL;
 }
 
 template <typename T> constexpr int scheme_protobuf_or_dccl(protobuf_selector)
 {
-    return goby::MarshallingScheme::PROTOBUF;
+    return goby::middleware::MarshallingScheme::PROTOBUF;
 }
 } // namespace detail
 } // namespace protobuf
@@ -395,6 +398,7 @@ constexpr int scheme()
 {
     return protobuf::detail::scheme_protobuf_or_dccl<T>(protobuf::detail::dccl_selector());
 }
+} // namespace goby
 } // namespace goby
 
 #endif

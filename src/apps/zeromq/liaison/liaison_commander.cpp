@@ -428,7 +428,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::send_message()
         commander_->post_to_comms([=]() {
             commander_->goby_thread()->interprocess().publish_dynamic<google::protobuf::Message>(
                 current_command->message_,
-                goby::DynamicGroup(current_command->group_line_->text().narrow()));
+                goby::middleware::DynamicGroup(current_command->group_line_->text().narrow()));
         });
 
         CommandEntry* command_entry = new CommandEntry;

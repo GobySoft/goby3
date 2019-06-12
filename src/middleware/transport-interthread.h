@@ -36,6 +36,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 class SubscriptionStoreBase
 {
   private:
@@ -174,7 +176,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
     }
 
     static void publish(std::shared_ptr<const Data> data, const Group& group,
-                        const goby::protobuf::TransporterConfig& transport_cfg)
+                        const goby::middleware::protobuf::TransporterConfig& transport_cfg)
     {
         // push new data
         // build up local vector of relevant condition variables while locked
@@ -350,7 +352,7 @@ template <typename Data>
 std::unordered_map<std::thread::id, typename SubscriptionStore<Data>::DataQueue>
     SubscriptionStore<Data>::data_;
 template <typename Data>
-std::unordered_multimap<goby::Group,
+std::unordered_multimap<goby::middleware::Group,
                         typename decltype(
                             SubscriptionStore<Data>::subscription_callbacks_)::const_iterator>
     SubscriptionStore<Data>::subscription_groups_;
@@ -375,8 +377,8 @@ class InterThreadTransporter
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group,
-                         const goby::protobuf::TransporterConfig& transport_cfg =
-                             goby::protobuf::TransporterConfig())
+                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                             goby::middleware::protobuf::TransporterConfig())
     {
         check_validity_runtime(group);
         std::shared_ptr<Data> data_ptr(new Data(data));
@@ -385,8 +387,8 @@ class InterThreadTransporter
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
-                         const goby::protobuf::TransporterConfig& transport_cfg =
-                             goby::protobuf::TransporterConfig())
+                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                             goby::middleware::protobuf::TransporterConfig())
     {
         check_validity_runtime(group);
         SubscriptionStore<Data>::publish(data, group, transport_cfg);
@@ -394,8 +396,8 @@ class InterThreadTransporter
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
-                         const goby::protobuf::TransporterConfig& transport_cfg =
-                             goby::protobuf::TransporterConfig())
+                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                             goby::middleware::protobuf::TransporterConfig())
     {
         publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, transport_cfg);
     }
@@ -440,6 +442,7 @@ class InterThreadTransporter
     std::shared_ptr<std::mutex> data_mutex_;
 };
 
+} // namespace middleware
 } // namespace goby
 
 #endif

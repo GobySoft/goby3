@@ -55,7 +55,8 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         namespace sp = std::placeholders;
         interprocess().subscribe_regex(
             std::bind(&Logger::log, this, sp::_1, sp::_2, sp::_3, sp::_4),
-            {goby::MarshallingScheme::ALL_SCHEMES}, cfg().type_regex(), cfg().group_regex());
+            {goby::middleware::MarshallingScheme::ALL_SCHEMES}, cfg().type_regex(),
+            cfg().group_regex());
 
         for (const auto& lib : cfg().load_shared_library())
         {
@@ -79,7 +80,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
     }
 
     void log(const std::vector<unsigned char>& data, int scheme, const std::string& type,
-             const Group& group);
+             const goby::middleware::Group& group);
     void loop() override
     {
         if (do_quit)
@@ -94,8 +95,8 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
 
     std::vector<void*> dl_handles_;
 
-    log::ProtobufPlugin pb_plugin_;
-    log::DCCLPlugin dccl_plugin_;
+    middleware::log::ProtobufPlugin pb_plugin_;
+    middleware::log::DCCLPlugin dccl_plugin_;
 };
 } // namespace zeromq
 } // namespace goby
@@ -134,12 +135,12 @@ int main(int argc, char* argv[])
 void signal_handler(int sig) { goby::zeromq::Logger::do_quit = true; }
 
 void goby::zeromq::Logger::log(const std::vector<unsigned char>& data, int scheme,
-                               const std::string& type, const Group& group)
+                               const std::string& type, const goby::middleware::Group& group)
 {
     glog.is_debug1() && glog << "Received " << data.size()
                              << " bytes to log to [scheme, type, group] = [" << scheme << ", "
                              << type << ", " << group << "]" << std::endl;
 
-    LogEntry entry(data, scheme, type, group);
+    middleware::LogEntry entry(data, scheme, type, group);
     entry.serialize(&log_);
 }

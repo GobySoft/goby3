@@ -27,6 +27,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 template <typename Transporter> class Poller : public PollerInterface
 {
   protected:
@@ -62,6 +64,7 @@ template <typename Transporter> class Poller : public PollerInterface
   private:
     PollerInterface* inner_poller_;
 };
+} // namespace goby
 } // namespace goby
 
 #endif

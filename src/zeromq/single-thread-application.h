@@ -31,7 +31,8 @@ namespace goby
 namespace zeromq
 {
 template <class Config>
-using SingleThreadApplication = goby::SingleThreadApplication<Config, InterProcessPortal>;
+using SingleThreadApplication =
+    goby::middleware::SingleThreadApplication<Config, InterProcessPortal>;
 }
 } // namespace goby
 

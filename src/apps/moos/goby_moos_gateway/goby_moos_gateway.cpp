@@ -27,7 +27,7 @@
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
 
 using AppBase = goby::zeromq::MultiThreadApplication<GobyMOOSGatewayConfig>;
-using ThreadBase = goby::SimpleThread<GobyMOOSGatewayConfig>;
+using ThreadBase = goby::middleware::SimpleThread<GobyMOOSGatewayConfig>;
 
 using goby::glog;
 using namespace goby::util::logger;

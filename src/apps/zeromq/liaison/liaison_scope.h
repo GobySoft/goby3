@@ -253,7 +253,8 @@ class ScopeCommsThread : public LiaisonCommsThread<LiaisonScope>
         : LiaisonCommsThread<LiaisonScope>(scope, config, index), scope_(scope)
     {
         auto subscription_handler = [this](const std::vector<unsigned char>& data, int scheme,
-                                           const std::string& type, const Group& group) {
+                                           const std::string& type,
+                                           const goby::middleware::Group& group) {
             std::string gr = group;
             try
             {
@@ -269,8 +270,8 @@ class ScopeCommsThread : public LiaisonCommsThread<LiaisonScope>
             }
         };
 
-        interprocess().subscribe_regex(subscription_handler, {goby::MarshallingScheme::PROTOBUF},
-                                       ".*", ".*");
+        interprocess().subscribe_regex(subscription_handler,
+                                       {goby::middleware::MarshallingScheme::PROTOBUF}, ".*", ".*");
     }
     ~ScopeCommsThread() {}
 

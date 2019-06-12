@@ -34,6 +34,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 template <class Config, template <class = NullTransporter> class InterProcessPortal>
 class SingleThreadApplication : public goby::middleware::Application<Config>,
                                 public Thread<Config, InterVehicleForwarder<InterProcessPortal<> > >
@@ -51,7 +53,8 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
     }
 
     SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : MainThread(this->app_cfg(), loop_freq), interprocess_(this->app_cfg().interprocess()),
+        : MainThread(this->app_cfg(), loop_freq),
+          interprocess_(this->app_cfg().interprocess()),
           intervehicle_(interprocess_)
     {
         this->set_transporter(&intervehicle_);
@@ -63,7 +66,7 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
                     bool match = false;
                     protobuf::TerminateResponse resp;
                     std::tie(match, resp) =
-                        goby::terminate::check_terminate(request, this->app_cfg().app().name());
+                        terminate::check_terminate(request, this->app_cfg().app().name());
                     if (match)
                     {
                         this->interprocess().template publish<groups::terminate_response>(resp);
@@ -82,6 +85,7 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
     void run() override { MainThread::run_once(); }
 };
 
+} // namespace middleware
 } // namespace goby
 
 #endif

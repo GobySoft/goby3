@@ -190,11 +190,11 @@ class LiaisonContainerWithComms : public LiaisonContainer
 };
 
 template <typename WtContainer>
-class LiaisonCommsThread : public goby::SimpleThread<protobuf::LiaisonConfig>
+class LiaisonCommsThread : public goby::middleware::SimpleThread<protobuf::LiaisonConfig>
 {
   public:
     LiaisonCommsThread(WtContainer* container, const protobuf::LiaisonConfig& config, int index)
-        : goby::SimpleThread<protobuf::LiaisonConfig>(
+        : goby::middleware::SimpleThread<protobuf::LiaisonConfig>(
               config, config.update_freq() * boost::units::si::hertz, index),
           container_(container)
     {

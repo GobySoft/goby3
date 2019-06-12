@@ -30,9 +30,9 @@
 #include "goby/util/debug_logger.h"
 #include "test.pb.h"
 
-extern constexpr goby::Group ctd{"CTD"};
-extern constexpr goby::Group ctd2{"CTD2"};
-extern constexpr goby::Group temp{"TEMP"};
+extern constexpr goby::middleware::Group ctd{"CTD"};
+extern constexpr goby::middleware::Group ctd2{"CTD2"};
+extern constexpr goby::middleware::Group temp{"TEMP"};
 
 int main(int argc, char* argv[])
 {
@@ -50,9 +50,9 @@ int main(int argc, char* argv[])
     std::thread t2([&] { manager.run(); });
 
     //    goby::ProtobufMarshaller pb;
-    goby::InterThreadTransporter inproc;
+    goby::middleware::InterThreadTransporter inproc;
     goby::zeromq::InterProcessPortal<> zmq_blank(zmq_cfg);
-    goby::InterProcessForwarder<decltype(inproc)> interprocess_default(inproc);
+    goby::middleware::InterProcessForwarder<decltype(inproc)> interprocess_default(inproc);
     goby::zeromq::InterProcessPortal<decltype(inproc)> zmq(inproc, zmq_cfg);
 
     CTDSample s;
@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
     sp->set_salinity(40.1);
 
     std::cout << "Should NOT be DCCL" << std::endl;
-    zmq.publish<ctd2, CTDSample, goby::MarshallingScheme::PROTOBUF>(sp);
+    zmq.publish<ctd2, CTDSample, goby::middleware::MarshallingScheme::PROTOBUF>(sp);
 
     std::cout << "Should NOT be DCCL" << std::endl;
     TempSample t;
@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
 
     inproc.publish_dynamic(sp, "CTD3");
 
-    goby::protobuf::InterVehiclePortalConfig slow_cfg;
+    goby::middleware::protobuf::InterVehiclePortalConfig slow_cfg;
     {
         slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
         goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
         //ctd_entry.set_protobuf_name("CTDSample");
     }
 
-    goby::InterVehiclePortal<decltype(zmq)> slow(zmq, slow_cfg);
+    goby::middleware::InterVehiclePortal<decltype(zmq)> slow(zmq, slow_cfg);
     int slow_group = 0;
     slow.publish_dynamic(s, slow_group);
 

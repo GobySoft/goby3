@@ -1,4 +1,4 @@
-package goby.protobuf;
+package goby.middleware.protobuf;
 
 message TerminateRequest
 {

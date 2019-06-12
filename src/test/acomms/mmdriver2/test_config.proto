@@ -7,7 +7,7 @@ package goby.test.protobuf;
 
 message MMDriverTest2Config
 {
-    optional goby.protobuf.AppConfig app = 1;
+    optional goby.middleware.protobuf.AppConfig app = 1;
 
     required goby.acomms.protobuf.DriverConfig mm1_cfg = 10
         [(goby.field).description = "Configure the transmitting modem"];

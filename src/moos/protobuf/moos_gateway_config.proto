@@ -3,7 +3,7 @@ import "goby/zeromq/protobuf/interprocess_config.proto";
 
 message GobyMOOSGatewayConfig
 {
-    optional goby.protobuf.AppConfig app = 1;
+    optional goby.middleware.protobuf.AppConfig app = 1;
     optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
 
     optional string moos_server = 3 [default = "localhost"];

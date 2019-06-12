@@ -29,13 +29,16 @@
 
 namespace goby
 {
+namespace middleware
+{
 namespace log
 {
-class DCCLPlugin : public ProtobufPluginBase<goby::MarshallingScheme::DCCL>
+class DCCLPlugin : public ProtobufPluginBase<goby::middleware::MarshallingScheme::DCCL>
 {
 };
 
 } // namespace log
+} // namespace middleware
 } // namespace goby
 
 #endif

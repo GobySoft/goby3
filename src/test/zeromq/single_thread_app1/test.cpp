@@ -31,7 +31,7 @@
 using goby::glog;
 using namespace goby::util::logger;
 
-extern constexpr goby::Group widget1{"Widget1"};
+extern constexpr goby::middleware::Group widget1{"Widget1"};
 
 using Base = goby::zeromq::SingleThreadApplication<TestConfig>;
 

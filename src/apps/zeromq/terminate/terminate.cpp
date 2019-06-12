@@ -46,49 +46,52 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
                 glog << "Error, must specify at least one --target_name or --target_pid"
                      << std::endl;
 
-        interprocess().subscribe<groups::terminate_response, goby::protobuf::TerminateResponse>(
-            [this](const goby::protobuf::TerminateResponse& response) {
-                auto pid_it = waiting_for_response_pids_.find(response.target_pid());
-                if (pid_it != waiting_for_response_pids_.end())
-                {
-                    glog.is_debug2() && glog << "Received terminate response from our target PID: "
-                                             << response.target_pid() << std::endl;
-                    waiting_for_response_pids_.erase(pid_it);
-                    // insert the PID so we can track when it completely quits
-                    running_pids_.insert(
-                        std::make_pair(response.target_pid(), response.target_name()));
-                }
+        interprocess()
+            .subscribe<middleware::groups::terminate_response,
+                       goby::middleware::protobuf::TerminateResponse>(
+                [this](const goby::middleware::protobuf::TerminateResponse& response) {
+                    auto pid_it = waiting_for_response_pids_.find(response.target_pid());
+                    if (pid_it != waiting_for_response_pids_.end())
+                    {
+                        glog.is_debug2() &&
+                            glog << "Received terminate response from our target PID: "
+                                 << response.target_pid() << std::endl;
+                        waiting_for_response_pids_.erase(pid_it);
+                        // insert the PID so we can track when it completely quits
+                        running_pids_.insert(
+                            std::make_pair(response.target_pid(), response.target_name()));
+                    }
 
-                std::string target_name = response.target_name();
-                auto name_it = waiting_for_response_names_.find(target_name);
-                if (name_it != waiting_for_response_names_.end())
-                {
-                    glog.is_debug2() && glog << "Received terminate response from our target: "
-                                             << target_name << std::endl;
-                    waiting_for_response_names_.erase(name_it);
-                    running_pids_.insert(
-                        std::make_pair(response.target_pid(), response.target_name()));
-                }
-            });
+                    std::string target_name = response.target_name();
+                    auto name_it = waiting_for_response_names_.find(target_name);
+                    if (name_it != waiting_for_response_names_.end())
+                    {
+                        glog.is_debug2() && glog << "Received terminate response from our target: "
+                                                 << target_name << std::endl;
+                        waiting_for_response_names_.erase(name_it);
+                        running_pids_.insert(
+                            std::make_pair(response.target_pid(), response.target_name()));
+                    }
+                });
 
         for (const auto& target_name : cfg().target_name())
         {
-            goby::protobuf::TerminateRequest req;
+            goby::middleware::protobuf::TerminateRequest req;
             req.set_target_name(target_name);
             waiting_for_response_names_.insert(target_name);
             glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString()
                                      << std::endl;
-            interprocess().publish<groups::terminate_request>(req);
+            interprocess().publish<middleware::groups::terminate_request>(req);
         }
 
         for (const auto& target_pid : cfg().target_pid())
         {
-            goby::protobuf::TerminateRequest req;
+            goby::middleware::protobuf::TerminateRequest req;
             req.set_target_pid(target_pid);
             waiting_for_response_pids_.insert(target_pid);
             glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString()
                                      << std::endl;
-            interprocess().publish<groups::terminate_request>(req);
+            interprocess().publish<middleware::groups::terminate_request>(req);
         }
     }
 

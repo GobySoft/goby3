@@ -31,14 +31,14 @@
 using goby::glog;
 using namespace goby::util::logger;
 
-extern constexpr goby::Group widget1{3};
+extern constexpr goby::middleware::Group widget1{3};
 
 using AppBase = goby::zeromq::MultiThreadApplication<TestConfig>;
 
 std::atomic<int> complete{0};
 std::atomic<int> ready{0};
 
-class TestThreadRx : public goby::SimpleThread<TestConfig>
+class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
 {
   public:
     TestThreadRx(const TestConfig& cfg, int index) : SimpleThread(cfg, 0, index)
@@ -72,7 +72,7 @@ class TestThreadRx : public goby::SimpleThread<TestConfig>
     int rx_count_{0};
 };
 
-class TestThreadTx : public goby::SimpleThread<TestConfig>
+class TestThreadTx : public goby::middleware::SimpleThread<TestConfig>
 {
   public:
     TestThreadTx(const TestConfig& cfg, int index) : SimpleThread(cfg, 100000, index)

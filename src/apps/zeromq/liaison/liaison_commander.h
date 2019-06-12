@@ -299,12 +299,13 @@ class CommanderCommsThread : public LiaisonCommsThread<LiaisonCommander>
         {
             interprocess().subscribe_regex(
                 [this](const std::vector<unsigned char>& data, int scheme, const std::string& type,
-                       const Group& group) {
+                       const goby::middleware::Group& group) {
                     std::string gr = group;
                     commander_->post_to_wt(
                         [=]() { commander_->display_notify_subscription(data, scheme, type, gr); });
                 },
-                {goby::MarshallingScheme::PROTOBUF}, notify.type_regex(), notify.group_regex());
+                {goby::middleware::MarshallingScheme::PROTOBUF}, notify.type_regex(),
+                notify.group_regex());
         }
     }
     ~CommanderCommsThread() {}

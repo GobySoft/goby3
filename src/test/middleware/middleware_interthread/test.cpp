@@ -28,17 +28,17 @@
 
 // tests InterThreadTransporter
 
-goby::InterThreadTransporter inproc1;
-goby::InterThreadTransporter inproc2;
+goby::middleware::InterThreadTransporter inproc1;
+goby::middleware::InterThreadTransporter inproc2;
 
 int publish_count = 0;
 const int max_publish = 100;
 
 std::atomic<int> ready(0);
 
-extern constexpr goby::Group sample1{"Sample1"};
-extern constexpr goby::Group sample2{"Sample2"};
-extern constexpr goby::Group widget{"Widget"};
+extern constexpr goby::middleware::Group sample1{"Sample1"};
+extern constexpr goby::middleware::Group sample2{"Sample2"};
+extern constexpr goby::middleware::Group widget{"Widget"};
 
 // thread 1
 void publisher()

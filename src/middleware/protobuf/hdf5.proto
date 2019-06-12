@@ -4,7 +4,7 @@ package goby.middleware.protobuf;
 
 message HDF5Config
 {
-    optional goby.protobuf.AppConfig app = 1;
+    optional goby.middleware.protobuf.AppConfig app = 1;
     
     required string output_file = 10;
     optional bool include_string_fields = 20 [default = false];

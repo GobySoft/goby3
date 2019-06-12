@@ -7,7 +7,7 @@ package goby.zeromq.protobuf;
 
 message LiaisonConfig
 {
-    optional goby.protobuf.AppConfig app = 1;
+    optional goby.middleware.protobuf.AppConfig app = 1;
     optional InterProcessPortalConfig interprocess = 2;
 
     optional string http_address = 10 [

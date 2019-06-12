@@ -45,10 +45,10 @@ using namespace goby::util::logger;
 
 // process 1
 void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
-                      const goby::protobuf::InterVehiclePortalConfig& slow_cfg)
+                      const goby::middleware::protobuf::InterVehiclePortalConfig& slow_cfg)
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
-    goby::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
+    goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
 
     double a = 0;
     while (publish_count < max_publish)
@@ -79,7 +79,7 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
 void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg)
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
-    goby::InterVehicleForwarder<decltype(zmq)> interplatform(zmq);
+    goby::middleware::InterVehicleForwarder<decltype(zmq)> interplatform(zmq);
     double a = 0;
     while (publish_count < max_publish)
     {
@@ -122,10 +122,10 @@ void handle_widget(std::shared_ptr<const Widget> w)
 }
 
 void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
-                       const goby::protobuf::InterVehiclePortalConfig& slow_cfg)
+                       const goby::middleware::protobuf::InterVehiclePortalConfig& slow_cfg)
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
-    goby::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
+    goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
 
     slt.subscribe_dynamic<Sample>(&handle_sample1, 2, [](const Sample& s) { return s.group(); });
     slt.subscribe_dynamic<Sample>(&handle_sample_indirect, 3,
@@ -156,7 +156,7 @@ void indirect_handle_sample_indirect(const Sample& sample)
 void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg)
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
-    goby::InterVehicleForwarder<decltype(zmq)> interplatform(zmq);
+    goby::middleware::InterVehicleForwarder<decltype(zmq)> interplatform(zmq);
     interplatform.subscribe_dynamic<Sample>(&indirect_handle_sample_indirect, 3,
                                             [](const Sample& s) { return s.group(); });
 
@@ -199,7 +199,7 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
 
-    goby::protobuf::InterVehiclePortalConfig slow_cfg;
+    goby::middleware::protobuf::InterVehiclePortalConfig slow_cfg;
     slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
     goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
     UDPDriverConfig::EndPoint* local_endpoint = driver_cfg.MutableExtension(UDPDriverConfig::local);

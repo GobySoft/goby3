@@ -24,6 +24,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 struct MyMarshallingScheme
 {
     enum MyMarshallingSchemeEnum
@@ -54,4 +56,5 @@ constexpr int scheme(typename std::enable_if<std::is_same<T, std::deque<char> >:
 {
     return MyMarshallingScheme::DEQUECHAR;
 }
+} // namespace middleware
 } // namespace goby

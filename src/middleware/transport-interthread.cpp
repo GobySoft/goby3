@@ -22,6 +22,6 @@
 
 #include "transport-interthread.h"
 
-std::unordered_map<std::thread::id, goby::SubscriptionStoreBase::StoresMap>
-    goby::SubscriptionStoreBase::stores_;
-std::shared_timed_mutex goby::SubscriptionStoreBase::stores_mutex_;
+std::unordered_map<std::thread::id, goby::middleware::SubscriptionStoreBase::StoresMap>
+    goby::middleware::SubscriptionStoreBase::stores_;
+std::shared_timed_mutex goby::middleware::SubscriptionStoreBase::stores_mutex_;

@@ -37,6 +37,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 class NullTransporter;
 
 template <typename Transporter, typename InnerTransporter> class StaticTransporterInterface
@@ -44,8 +46,9 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
   public:
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
-    void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg =
-                                       goby::protobuf::TransporterConfig())
+    void publish(const Data& data,
+                 const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                     goby::middleware::protobuf::TransporterConfig())
     {
         check_validity<group>();
         static_cast<Transporter*>(this)->template publish_dynamic<Data, scheme>(data, group,
@@ -56,8 +59,8 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void publish(std::shared_ptr<const Data> data,
-                 const goby::protobuf::TransporterConfig& transport_cfg =
-                     goby::protobuf::TransporterConfig())
+                 const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                     goby::middleware::protobuf::TransporterConfig())
     {
         check_validity<group>();
         static_cast<Transporter*>(this)->template publish_dynamic<Data, scheme>(data, group,
@@ -67,8 +70,8 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void publish(std::shared_ptr<Data> data,
-                 const goby::protobuf::TransporterConfig& transport_cfg =
-                     goby::protobuf::TransporterConfig())
+                 const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                     goby::middleware::protobuf::TransporterConfig())
     {
         publish<group, Data, scheme>(std::shared_ptr<const Data>(data), transport_cfg);
     }
@@ -139,15 +142,17 @@ class PollerInterface
     // signaled when there's no data for this thread to read during _poll()
     std::shared_ptr<std::condition_variable_any> cv_;
 };
+} // namespace middleware
 } // namespace goby
 
 template <class Clock, class Duration>
-int goby::PollerInterface::poll(const std::chrono::time_point<Clock, Duration>& timeout)
+int goby::middleware::PollerInterface::poll(const std::chrono::time_point<Clock, Duration>& timeout)
 {
     return _poll_all(timeout);
 }
 
-template <class Clock, class Duration> int goby::PollerInterface::poll(Duration wait_for)
+template <class Clock, class Duration>
+int goby::middleware::PollerInterface::poll(Duration wait_for)
 {
     if (wait_for == Duration::max())
         return poll();
@@ -156,7 +161,8 @@ template <class Clock, class Duration> int goby::PollerInterface::poll(Duration 
 }
 
 template <class Clock, class Duration>
-int goby::PollerInterface::_poll_all(const std::chrono::time_point<Clock, Duration>& timeout)
+int goby::middleware::PollerInterface::_poll_all(
+    const std::chrono::time_point<Clock, Duration>& timeout)
 {
     // hold this lock until either we find a polled item or we wait on the condition variable
     std::unique_ptr<std::unique_lock<std::timed_mutex> > lock(

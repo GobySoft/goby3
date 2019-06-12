@@ -23,7 +23,7 @@
 #include "moos_plugin_translator.h"
 
 goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
-    : goby::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
+    : goby::middleware::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
 {
     moos_comms_.SetOnConnectCallBack(TranslatorOnConnectCallBack, this);
     moos_comms_.Run(cfg().moos_server(), cfg().moos_port(), translator_name(),

@@ -8,7 +8,7 @@ package goby.zeromq.protobuf;
 message TerminateConfig
 {
     option (dccl.msg).unit_system = "si";
-    optional goby.protobuf.AppConfig app = 1;
+    optional goby.middleware.protobuf.AppConfig app = 1;
     optional InterProcessPortalConfig interprocess = 2;
     repeated string target_name = 3;
     repeated uint32 target_pid = 4;

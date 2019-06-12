@@ -1,6 +1,6 @@
 import "dccl/option_extensions.proto";
 
-package goby.protobuf;
+package goby.middleware.protobuf;
 
 message InterVehicleStatus
 {

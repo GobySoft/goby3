@@ -25,20 +25,20 @@
 
 #include "serialize_parse.h"
 
-std::map<int, std::string> goby::MarshallingScheme::e2s = {{CSTR, "CSTR"},
-                                                           {PROTOBUF, "PROTOBUF"},
-                                                           {DCCL, "DCCL"},
-                                                           {CAPTN_PROTO, "CAPTN_PROTO"},
-                                                           {MSGPACK, "MSGPACK"}};
+std::map<int, std::string> goby::middleware::MarshallingScheme::e2s = {{CSTR, "CSTR"},
+                                                                       {PROTOBUF, "PROTOBUF"},
+                                                                       {DCCL, "DCCL"},
+                                                                       {CAPTN_PROTO, "CAPTN_PROTO"},
+                                                                       {MSGPACK, "MSGPACK"}};
 
-std::unique_ptr<dccl::Codec> goby::DCCLSerializerParserHelperBase::codec_(nullptr);
+std::unique_ptr<dccl::Codec> goby::middleware::DCCLSerializerParserHelperBase::codec_(nullptr);
 std::unordered_map<const google::protobuf::Descriptor*,
-                   std::unique_ptr<goby::DCCLSerializerParserHelperBase::LoaderBase> >
-    goby::DCCLSerializerParserHelperBase::loader_map_;
-std::mutex goby::DCCLSerializerParserHelperBase::dccl_mutex_;
+                   std::unique_ptr<goby::middleware::DCCLSerializerParserHelperBase::LoaderBase> >
+    goby::middleware::DCCLSerializerParserHelperBase::loader_map_;
+std::mutex goby::middleware::DCCLSerializerParserHelperBase::dccl_mutex_;
 
-void goby::DCCLSerializerParserHelperBase::load_forwarded_subscription(
-    const goby::protobuf::DCCLSubscription& sub)
+void goby::middleware::DCCLSerializerParserHelperBase::load_forwarded_subscription(
+    const goby::middleware::protobuf::DCCLSubscription& sub)
 {
     std::lock_guard<std::mutex> lock(dccl_mutex_);
 
@@ -60,19 +60,19 @@ void goby::DCCLSerializerParserHelperBase::load_forwarded_subscription(
     }
 }
 
-goby::protobuf::DCCLForwardedData
-goby::DCCLSerializerParserHelperBase::unpack(const std::string& frame)
+goby::middleware::protobuf::DCCLForwardedData
+goby::middleware::DCCLSerializerParserHelperBase::unpack(const std::string& frame)
 {
     std::lock_guard<std::mutex> lock(dccl_mutex_);
 
-    goby::protobuf::DCCLForwardedData packets;
+    goby::middleware::protobuf::DCCLForwardedData packets;
 
     std::string::const_iterator frame_it = frame.begin(), frame_end = frame.end();
     while (frame_it < frame_end)
     {
         auto dccl_id = codec().id(frame_it, frame_end);
 
-        goby::protobuf::DCCLPacket& packet = *packets.add_frame();
+        goby::middleware::protobuf::DCCLPacket& packet = *packets.add_frame();
         packet.set_dccl_id(dccl_id);
 
         std::string::const_iterator next_frame_it;

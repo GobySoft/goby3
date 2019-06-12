@@ -33,6 +33,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 namespace terminate
 {
 /// \brief Checks if the terminate request is for this application, either by target_name or PID
@@ -68,6 +70,7 @@ check_terminate(const protobuf::TerminateRequest& request, const std::string& ap
     return std::make_pair(match, resp);
 }
 } // namespace terminate
+} // namespace middleware
 } // namespace goby
 
 #endif

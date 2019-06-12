@@ -1,7 +1,7 @@
 import "goby/protobuf/option_extensions.proto";
 import "goby/util/protobuf/debug_logger.proto";
 
-package goby.protobuf;
+package goby.middleware.protobuf;
 
 message AppConfig
 {

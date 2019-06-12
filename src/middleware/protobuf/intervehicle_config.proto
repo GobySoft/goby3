@@ -2,7 +2,7 @@ import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/amac_config.proto";
 
-package goby.protobuf;
+package goby.middleware.protobuf;
 
 message InterVehiclePortalConfig
 {

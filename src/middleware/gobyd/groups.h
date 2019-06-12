@@ -27,10 +27,13 @@
 
 namespace goby
 {
+namespace middleware
+{
 namespace groups
 {
-constexpr goby::Group intervehicle_outbound{"goby::intervehicle::outbound"};
-}
+constexpr goby::middleware::Group intervehicle_outbound{"goby::intervehicle::outbound"};
+} // namespace groups
+} // namespace middleware
 } // namespace goby
 
 #endif

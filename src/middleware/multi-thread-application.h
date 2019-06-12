@@ -36,6 +36,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 template <typename Config>
 class SimpleThread
     : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter> > >
@@ -89,7 +91,7 @@ class SimpleThread
 
 template <class Config, class Transporter>
 class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
-                                   public goby::Thread<Config, Transporter>
+                                   public goby::middleware::Thread<Config, Transporter>
 {
   private:
     struct ThreadManagement
@@ -102,11 +104,10 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
 
     std::map<std::type_index, std::map<int, ThreadManagement> > threads_;
     int running_thread_count_{0};
-
-    goby::InterThreadTransporter interthread_;
+    InterThreadTransporter interthread_;
 
   public:
-    using MainThreadBase = goby::Thread<Config, Transporter>;
+    using MainThreadBase = Thread<Config, Transporter>;
 
     MultiThreadApplicationBase(double loop_freq_hertz = 0)
         : MultiThreadApplicationBase(loop_freq_hertz * boost::units::si::hertz)
@@ -158,7 +159,7 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
     int running_thread_count() { return running_thread_count_; }
 
   protected:
-    goby::InterThreadTransporter& interthread() { return interthread_; }
+    InterThreadTransporter& interthread() { return interthread_; }
     virtual void finalize() override { join_all_threads(); }
 
     void join_all_threads()
@@ -237,7 +238,7 @@ class MultiThreadApplication
                     bool match = false;
                     protobuf::TerminateResponse resp;
                     std::tie(match, resp) =
-                        goby::terminate::check_terminate(request, this->app_cfg().app().name());
+                        terminate::check_terminate(request, this->app_cfg().app().name());
                     if (match)
                     {
                         this->interprocess().template publish<groups::terminate_response>(resp);
@@ -322,12 +323,12 @@ struct ThreadTypeSelector<ThreadType, ThreadConfig, true>
 
 template <class Config, class Transporter>
 std::exception_ptr
-    goby::MultiThreadApplicationBase<Config, Transporter>::thread_exception_(nullptr);
+    goby::middleware::MultiThreadApplicationBase<Config, Transporter>::thread_exception_(nullptr);
 
 template <class Config, class Transporter>
 template <typename ThreadType, typename ThreadConfig, bool has_index>
-void goby::MultiThreadApplicationBase<Config, Transporter>::_launch_thread(int index,
-                                                                           const ThreadConfig& cfg)
+void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_thread(
+    int index, const ThreadConfig& cfg)
 {
     std::type_index type_i = std::type_index(typeid(ThreadType));
 
@@ -360,7 +361,7 @@ void goby::MultiThreadApplicationBase<Config, Transporter>::_launch_thread(int i
 }
 
 template <class Config, class Transporter>
-void goby::MultiThreadApplicationBase<Config, Transporter>::_join_thread(
+void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_join_thread(
     const std::type_index& type_i, int index)
 {
     if (!threads_.count(type_i) || !threads_[type_i].count(index))
@@ -392,5 +393,6 @@ void goby::MultiThreadApplicationBase<Config, Transporter>::_join_thread(
                        << std::endl;
     }
 }
+} // namespace goby
 
 #endif
