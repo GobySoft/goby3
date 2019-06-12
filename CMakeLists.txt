@@ -110,8 +110,9 @@ add_custom_command(OUTPUT ShareLink COMMAND ${CMAKE_COMMAND} -E create_symlink $
 add_custom_target(share_link ALL DEPENDS ShareLink)
 
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall")
+set(GOBY_DEBUG_OPTIONS -Wall -Werror)
+add_compile_options("$<$<CONFIG:DEBUG>:${GOBY_DEBUG_OPTIONS}>")
+add_compile_options("$<$<CXX_COMPILER_ID:Clang>:-Wdocumentation>")
 
 ## set type of libraries
 option(BUILD_SHARED_LIBS "Build shared libraries (set OFF to build static libraries)." ON)
@@ -185,7 +186,6 @@ add_subdirectory(src)
 file(GLOB BASE_INCLUDE_FILES RELATIVE ${goby_SRC_DIR} src/*.h)
 file(GLOB_RECURSE INCLUDE_FILES RELATIVE ${goby_SRC_DIR} 
   src/acomms/*.h
-  src/common/*.h 
   src/middleware/*.h
   src/util/*.h 
   src/moos/*.h 

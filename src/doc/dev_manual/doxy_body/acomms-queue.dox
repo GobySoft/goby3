@@ -211,7 +211,7 @@ queue1/test.proto
 dccl3/test.proto
 \verbinclude dccl3/test.proto
 protobuf/header.proto
-\verbinclude protobuf/header.proto
+\verbinclude dccl3/header.proto
 
 \sa \ref queue2/test.cpp
 \sa \ref queue3/test.cpp

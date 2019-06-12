@@ -85,18 +85,17 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     //@{
     /// \brief Signals when it is time for this platform to begin transmission of an acoustic message at the start of its TDMA slot. Typically connected to ModemDriverBase::handle_initiate_transmission() using bind().
     ///
-    /// \param m a message containing details of the transmission to be initated.  (protobuf::ModemMsgBase defined in acomms_modem_message.proto)
+    /// "m": a message containing details of the transmission to be initated.  (protobuf::ModemMsgBase defined in acomms_modem_message.proto)
     boost::signals2::signal<void(const protobuf::ModemTransmission& m)>
         signal_initiate_transmission;
 
     /// \brief Signals the start of all transmissions (even when we don't transmit)
     ///
-    /// \param m a message containing details of the transmission to be initated.  (protobuf::ModemMsgBase defined in acomms_modem_message.proto)
+    /// "m": a message containing details of the transmission to be initated.  (protobuf::ModemMsgBase defined in acomms_modem_message.proto)
 
     boost::signals2::signal<void(const protobuf::ModemTransmission& m)> signal_slot_start;
 
     /// \example acomms/amac/amac_simple/amac_simple.cpp
-    /// \example acomms/chat/chat.cpp
 
     unsigned cycle_count() { return std::list<protobuf::ModemTransmission>::size(); }
     time::SystemClock::duration cycle_duration();

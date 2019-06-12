@@ -43,13 +43,13 @@ namespace transitional
 /// Enumeration of DCCL types used for sending messages. dccl_enum and dccl_string primarily map to cpp_string, dccl_bool to cpp_bool, dccl_int to cpp_long, dccl_float to cpp_double
 enum DCCLType
 {
-    dccl_static, /*!<  \ref tag_static */
-    dccl_bool,   /*!< \ref tag_bool */
-    dccl_int,    /*!< \ref tag_int */
-    dccl_float,  /*!< \ref tag_float */
-    dccl_enum,   /*!< \ref tag_enum */
-    dccl_string, /*!< \ref tag_string */
-    dccl_hex     /*!< \ref tag_hex */
+    dccl_static,
+    dccl_bool,
+    dccl_int,
+    dccl_float,
+    dccl_enum,
+    dccl_string,
+    dccl_hex
 };
 /// Enumeration of C++ types used in DCCL.
 enum DCCLCppType

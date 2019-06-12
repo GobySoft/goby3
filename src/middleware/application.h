@@ -41,8 +41,9 @@
 
 namespace goby
 {
-/// \brief Run a Goby application using the provided Configurator
-/// blocks caller until ```__run()``` returns
+/// \brief Run a Goby application using the provided Configurator.
+///
+/// Blocks caller until ```Application::quit()``` is called
 /// \param cfgtor Subclass of ConfiguratorInterface used to configure the App
 /// \tparam App Application subclass
 /// \return same as ```int main(int argc, char* argv)```

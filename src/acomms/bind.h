@@ -108,7 +108,7 @@ inline void unbind(ModemDriverBase& driver, QueueManager& queue_manager, MACMana
 
 // examples
 /// \example acomms/chat/chat.cpp
-/// chat.proo
+/// chat.proto
 /// \verbinclude chat.proto
 /// chat.cpp
 

@@ -209,8 +209,7 @@ class MMDriver : public ModemDriverBase
     // doxygen
 
     /// \example acomms/modemdriver/driver_simple/driver_simple.cpp
-
-    /// \example acomms/chat/chat.cpp
+    // \example acomms/chat/chat.cpp
 
   private:
     // for the serial connection ($CCCFG,BR1,3)
