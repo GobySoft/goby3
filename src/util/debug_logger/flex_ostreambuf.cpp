@@ -227,7 +227,8 @@ void goby::util::FlexOStreamBuf::display(std::string& s)
                 continue;
             }
 #else
-            gui_displayed = true;
+            // suppress -Wunused-but-set-variable
+            (void)gui_displayed;
 #endif
 
             *cfg.os() << TermColor::esc_code_from_col(groups_[group_name_].color()) << name_
