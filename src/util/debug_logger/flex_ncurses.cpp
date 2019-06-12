@@ -282,14 +282,15 @@ void goby::util::FlexNCurses::putline(const std::string& s, unsigned scrn,
         static const std::string esc = "\33[";
         static const std::string m = "m";
 
-        size_t esc_pos = -1, m_pos = -1, last_m_pos = -1;
+        size_t esc_pos = std::string::npos, m_pos = std::string::npos,
+               last_m_pos = std::string::npos;
         size_t length = s.length();
         while ((esc_pos = s.find(esc, esc_pos + 1)) != std::string::npos &&
                (m_pos = s.find(m, esc_pos)) != std::string::npos)
         {
             std::string esc_sequence = s.substr(esc_pos, m_pos - esc_pos + 1);
 
-            if (last_m_pos >= 0)
+            if (last_m_pos != std::string::npos)
                 waddstr(win, s.substr(last_m_pos + 1, esc_pos - last_m_pos - 1).c_str());
 
             // void kills compiler warning and doesn't do anything bad
@@ -366,6 +367,9 @@ bool goby::util::FlexNCurses::in_window(void* p, int y, int x)
     getbegyx(static_cast<WINDOW*>(p), ybeg, xbeg);
     getmaxyx(static_cast<WINDOW*>(p), ymax, xmax);
 
+    // for suppressing -Werror=unused-but-set-variable
+    (void)ymax;
+
     return (y < ybeg + ymax && y >= ybeg && x < xbeg + xmax && x >= xbeg);
 }
 
@@ -377,6 +381,10 @@ void goby::util::FlexNCurses::write_head_title(size_t i)
 
     int ymax, xmax;
     getmaxyx(win, ymax, xmax);
+
+    // for suppressing -Werror=unused-but-set-variable
+    (void)ymax;
+
     mvwhline(win, 0, 0, 0, xmax);
 
     if (panels_[i].selected())
@@ -484,6 +492,10 @@ size_t goby::util::FlexNCurses::right(size_t curr)
     int ymax, xmax;
     getbegyx(static_cast<WINDOW*>(panels_[curr].head_window()), ybeg, xbeg);
     getmaxyx(static_cast<WINDOW*>(panels_[curr].head_window()), ymax, xmax);
+
+    // for suppressing -Werror=unused-but-set-variable
+    (void)ymax;
+
     // cross the divider
     size_t next = find_containing_window(ybeg, xbeg + xmax + 2);
     return next;

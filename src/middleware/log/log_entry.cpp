@@ -121,7 +121,7 @@ void goby::middleware::LogEntry::parse(std::istream* s)
         crc.process_bytes(&magic_read[0], magic_.size());
 
         auto size(read_one<uint<size_bytes_>::type>(s, &crc));
-        auto fixed_field_size = scheme_bytes_ + group_bytes_ + type_bytes_ + crc_bytes_;
+        decltype(size) fixed_field_size = scheme_bytes_ + group_bytes_ + type_bytes_ + crc_bytes_;
 
         if (size < fixed_field_size)
             throw(log::LogException("Invalid size read: " + std::to_string(size) +
