@@ -117,7 +117,7 @@ void goby::util::FlexNCurses::cleanup()
     endwin();
 }
 
-void goby::util::FlexNCurses::add_win(const Group* g)
+void goby::util::FlexNCurses::add_win(const logger::Group* g)
 {
     int N_windows = panels_.size() + 1;
 
@@ -237,7 +237,7 @@ void goby::util::FlexNCurses::recalculate_win()
     }
 }
 
-void goby::util::FlexNCurses::insert(ptime t, const std::string& s, Group* g)
+void goby::util::FlexNCurses::insert(ptime t, const std::string& s, logger::Group* g)
 {
     size_t i = panel_from_group(g);
 
@@ -257,7 +257,7 @@ void goby::util::FlexNCurses::insert(ptime t, const std::string& s, Group* g)
     hist.insert(std::pair<ptime, std::string>(t, s));
 }
 
-size_t goby::util::FlexNCurses::panel_from_group(Group* g)
+size_t goby::util::FlexNCurses::panel_from_group(logger::Group* g)
 {
     for (size_t i = 0, n = panels_.size(); i < n; ++i)
     {

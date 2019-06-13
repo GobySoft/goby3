@@ -72,7 +72,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    else()
      set(GOBY_DIRTY_REV_STRING "-dirty")
    endif()
-   set(GOBY_VERSION_PATCH "${GOBY_VERSION_PATCH}+${GOBY_REVS_SINCE_TAG}+git${GOBY_LAST_REV}${GOBY_DIRTY_REV_STRING}")
+   set(GOBY_VERSION_PATCH "${GOBY_VERSION_PATCH}+${GOBY_REVS_SINCE_TAG}+g${GOBY_LAST_REV}${GOBY_DIRTY_REV_STRING}")
    
 else()
    message("Compiling from release tarball.")
@@ -119,10 +119,6 @@ add_compile_options("$<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_GREATER:$<CXX_COMP
 
 ## set type of libraries
 option(BUILD_SHARED_LIBS "Build shared libraries (set OFF to build static libraries)." ON)
-
-## build dynamic protobuf manager with ability to read from disk (requires
-## boost-filesystem)
-option(make_proto_runtime_compile "Allow runtime compilation of .proto files." ON)
 
 ## set the cmake defaults for libraries and binaries
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${goby_LIB_DIR} CACHE PATH 

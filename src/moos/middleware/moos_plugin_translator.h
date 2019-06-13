@@ -35,10 +35,11 @@ namespace moos
 {
 bool TranslatorOnConnectCallBack(void* Translator);
 
-class Translator : public goby::middleware::SimpleThread<GobyMOOSGatewayConfig>
+class Translator
+    : public goby::middleware::SimpleThread<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>
 {
   public:
-    Translator(const GobyMOOSGatewayConfig& config);
+    Translator(const goby::apps::moos::protobuf::GobyMOOSGatewayConfig& config);
 
   protected:
     virtual std::string translator_name()
@@ -48,7 +49,10 @@ class Translator : public goby::middleware::SimpleThread<GobyMOOSGatewayConfig>
     }
 
     // Goby
-    goby::middleware::SimpleThread<GobyMOOSGatewayConfig>& goby_comms() { return *this; }
+    goby::middleware::SimpleThread<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>& goby_comms()
+    {
+        return *this;
+    }
 
     // MOOS
     void add_moos_trigger(const std::string& moos_var) { moos_trigger_vars_.insert(moos_var); }

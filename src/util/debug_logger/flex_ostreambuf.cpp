@@ -59,7 +59,7 @@ goby::util::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
       parent_(parent)
 
 {
-    Group no_group("", "Ungrouped messages");
+    logger::Group no_group("", "Ungrouped messages");
     groups_[""] = no_group;
 }
 
@@ -109,7 +109,7 @@ void goby::util::FlexOStreamBuf::enable_gui()
     curses_->startup();
 
     // add any groups already on the screen as ncurses windows
-    typedef std::pair<std::string, Group> P;
+    typedef std::pair<std::string, logger::Group> P;
     for (const P& p : groups_) curses_->add_win(&groups_[p.first]);
 
     curses_->recalculate_win();
@@ -124,7 +124,7 @@ void goby::util::FlexOStreamBuf::enable_gui()
 #endif
 }
 
-void goby::util::FlexOStreamBuf::add_group(const std::string& name, Group g)
+void goby::util::FlexOStreamBuf::add_group(const std::string& name, logger::Group g)
 {
     //    if(groups_.count(name)) return;
 
@@ -240,7 +240,7 @@ void goby::util::FlexOStreamBuf::display(std::string& s)
         }
         else if (cfg.os() && current_verbosity_ <= cfg.verbosity())
         {
-            basic_log_header(*cfg.os(), group_name_);
+            goby::util::logger::basic_log_header(*cfg.os(), group_name_);
             strip_escapes(s);
             *cfg.os() << s << std::endl;
         }

@@ -204,7 +204,7 @@ extern util::FlexOstream glog;
 namespace util
 {
 // for compatibility with Goby1
-inline util::FlexOstream& glogger() { return goby::glog; }
+[[deprecated("Use goby::glog")]] inline util::FlexOstream& glogger() { return goby::glog; }
 
 class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
 {

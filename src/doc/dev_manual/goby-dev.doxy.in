@@ -25,7 +25,7 @@ DOXYFILE_ENCODING      = UTF-8
 # The PROJECT_NAME tag is a single word (or a sequence of words surrounded 
 # by quotes) that should identify the project.
 
-PROJECT_NAME           = "Goby v3"
+PROJECT_NAME           = "Goby3"
 
 # The PROJECT_NUMBER tag can be used to enter a project or revision number. 
 # This could be handy for archiving the generated documentation or 
@@ -612,9 +612,9 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT                  = @CMAKE_SOURCE_DIR@/src/doc/dev_manual/doxy_body/ \
-                         @CMAKE_SOURCE_DIR@/share/examples \
                          @goby_INC_DIR@ \
-                         @CMAKE_SOURCE_DIR@/src
+                         @CMAKE_SOURCE_DIR@/src 
+#                         @CMAKE_SOURCE_DIR@/share/examples \
                          
 
 # This tag can be used to specify the character encoding of the source files 
@@ -694,7 +694,7 @@ RECURSIVE              = YES
 # excluded from the INPUT source files. This way you can easily exclude a 
 # subdirectory from a directory tree whose root is specified with the INPUT tag.
 
-EXCLUDE                = 
+EXCLUDE                = @CMAKE_SOURCE_DIR@/src/share
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or 
 # directories that are symbolic links (a Unix filesystem feature) are excluded 
@@ -717,7 +717,6 @@ EXCLUDE_PATTERNS       = goby.h \
                          */src/protobuf/*.h \
                          */src/zeromq/*.h \
                          */src/*/*.proto \
-                         */src/share/doc/* \
                          *.pb.cc 
 
 # The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names 
@@ -1474,7 +1473,9 @@ HIDE_UNDOC_RELATIONS   = NO
 # toolkit from AT&T and Lucent Bell Labs. The other options in this section 
 # have no effect if this option is set to NO (the default)
 
-HAVE_DOT               = NO
+HAVE_DOT               = YES
+
+DOT_NUM_THREADS        = 8
 
 # By default doxygen will write a font called FreeSans.ttf to the output 
 # directory and reference it in all dot files that doxygen generates. This 
@@ -1516,25 +1517,25 @@ COLLABORATION_GRAPH    = NO
 # If the GROUP_GRAPHS and HAVE_DOT tags are set to YES then doxygen 
 # will generate a graph for groups, showing the direct groups dependencies
 
-GROUP_GRAPHS           = YES
+GROUP_GRAPHS           = NO
 
 # If the UML_LOOK tag is set to YES doxygen will generate inheritance and 
 # collaboration diagrams in a style similar to the OMG's Unified Modeling 
 # Language.
 
-UML_LOOK               = NO
+UML_LOOK               = YES
 
 # If set to YES, the inheritance and collaboration graphs will show the 
 # relations between templates and their instances.
 
-TEMPLATE_RELATIONS     = NO
+TEMPLATE_RELATIONS     = YES
 
 # If the ENABLE_PREPROCESSING, SEARCH_INCLUDES, INCLUDE_GRAPH, and HAVE_DOT 
 # tags are set to YES then doxygen will generate a graph for each documented 
 # file showing the direct and indirect include dependencies of the file with 
 # other documented files.
 
-INCLUDE_GRAPH          = YES
+INCLUDE_GRAPH          = NO
 
 # If the ENABLE_PREPROCESSING, SEARCH_INCLUDES, INCLUDED_BY_GRAPH, and 
 # HAVE_DOT tags are set to YES then doxygen will generate a graph for each 

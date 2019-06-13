@@ -60,9 +60,6 @@ inline std::ostream& debug2(std::ostream& os) { return (os << "D2: "); }
 /// label stream as "debug3"
 inline std::ostream& debug3(std::ostream& os) { return (os << "D3: "); }
 
-} // namespace logger
-} // namespace util
-} // namespace goby
 
 /// Defines a group of messages to be sent to the Goby logger. For Verbosity == verbose streams, all entries appear interleaved, but each group is offset with a different color. For Verbosity == gui streams, all groups have a separate subwindow.
 class Group
@@ -101,8 +98,6 @@ class Group
     bool enabled_;
 };
 
-std::ostream& operator<<(std::ostream& os, const Group& g);
-
 /// Helper class for enabling the group(std::string) manipulator
 class GroupSetter
 {
@@ -115,8 +110,10 @@ class GroupSetter
     std::string group_;
 };
 
-inline GroupSetter group(std::string n) { return (GroupSetter(n)); }
+/// used for non tty ostreams (everything but std::cout / std::cerr) as the header for every line
+std::ostream& basic_log_header(std::ostream& os, const std::string& group_name);
 
+std::ostream& operator<<(std::ostream& os, const Group& g);
 inline std::ostream& operator<<(std::ostream& os, const GroupSetter& gs)
 {
     gs(os);
@@ -125,7 +122,15 @@ inline std::ostream& operator<<(std::ostream& os, const GroupSetter& gs)
 
 goby::util::FlexOstream& operator<<(goby::util::FlexOstream& os, const GroupSetter& gs);
 
-/// used for non tty ostreams (everything but std::cout / std::cerr) as the header for every line
-std::ostream& basic_log_header(std::ostream& os, const std::string& group_name);
+} // namespace logger
+} // namespace util
+} // namespace goby
+
+using goby::util::logger::operator<<;
+
+inline goby::util::logger::GroupSetter group(std::string n)
+{
+    return (goby::util::logger::GroupSetter(n));
+}
 
 #endif

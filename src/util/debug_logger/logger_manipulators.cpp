@@ -24,16 +24,19 @@
 #include "flex_ostream.h"
 #include "goby/time.h"
 
-std::ostream& operator<<(std::ostream& os, const Group& g)
+std::ostream& goby::util::logger::operator<<(std::ostream& os, const goby::util::logger::Group& g)
 {
     os << "description: " << g.description() << std::endl;
     os << "color: " << goby::util::TermColor::str_from_col(g.color());
     return os;
 }
 
-void GroupSetter::operator()(goby::util::FlexOstream& os) const { os.set_group(group_); }
+void goby::util::logger::GroupSetter::operator()(goby::util::FlexOstream& os) const
+{
+    os.set_group(group_);
+}
 
-void GroupSetter::operator()(std::ostream& os) const
+void goby::util::logger::GroupSetter::operator()(std::ostream& os) const
 {
     try
     {
@@ -46,7 +49,7 @@ void GroupSetter::operator()(std::ostream& os) const
     }
 }
 
-std::ostream& basic_log_header(std::ostream& os, const std::string& group_name)
+std::ostream& goby::util::logger::basic_log_header(std::ostream& os, const std::string& group_name)
 {
     os << "[ " << goby::time::str() << " ]";
 
@@ -57,7 +60,8 @@ std::ostream& basic_log_header(std::ostream& os, const std::string& group_name)
     return os;
 }
 
-goby::util::FlexOstream& operator<<(goby::util::FlexOstream& os, const GroupSetter& gs)
+goby::util::FlexOstream& goby::util::logger::operator<<(goby::util::FlexOstream& os,
+                                                        const GroupSetter& gs)
 {
     os.set_unset_verbosity();
     gs(os);

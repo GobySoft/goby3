@@ -33,6 +33,9 @@
 
 #include "test.pb.h"
 
+using goby::test::acomms::protobuf::GobyMessage;
+using goby::test::acomms::protobuf::Header;
+
 boost::asio::io_service io1, io2;
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 goby::acomms::QueueManager q1, q2;
@@ -155,7 +158,7 @@ int main(int argc, char* argv[])
     qcfg1.set_minimum_ack_wait_seconds(.1);
 
     goby::acomms::protobuf::QueuedMessageEntry* q_entry = qcfg1.add_message_entry();
-    q_entry->set_protobuf_name("GobyMessage");
+    q_entry->set_protobuf_name("goby.test.acomms.protobuf.GobyMessage");
     q_entry->set_newest_first(true);
 
     goby::acomms::protobuf::QueuedMessageEntry::Role* src_role = q_entry->add_role();

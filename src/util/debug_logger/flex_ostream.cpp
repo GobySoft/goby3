@@ -47,12 +47,12 @@ void goby::util::FlexOstream::add_group(const std::string& name,
 
         if (description.empty())
         {
-            Group ng(name, name, color);
+            logger::Group ng(name, name, color);
             sb_.add_group(name, ng);
         }
         else
         {
-            Group ng(name, description, color);
+            logger::Group ng(name, description, color);
             sb_.add_group(name, ng);
         }
     }

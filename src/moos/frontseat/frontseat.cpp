@@ -72,7 +72,7 @@ void goby::moos::FrontSeatInterfaceBase::do_work()
         check_change_state();
         loop();
     }
-    catch (FrontSeatException& e)
+    catch (goby::moos::FrontSeatException& e)
     {
         if (e.is_helm_error())
         {
@@ -153,7 +153,7 @@ void goby::moos::FrontSeatInterfaceBase::check_error_states()
 {
     // helm in park is always an error
     if (helm_state() == gpb::HELM_PARK)
-        throw(FrontSeatException(gpb::ERROR_HELM_PARKED));
+        throw(goby::moos::FrontSeatException(gpb::ERROR_HELM_PARKED));
     // while in command, if the helm is not running, this is an error after
     // a configurable timeout, unless require_helm is false
     else if (cfg_.require_helm() &&
@@ -161,7 +161,7 @@ void goby::moos::FrontSeatInterfaceBase::check_error_states()
               (state_ == gpb::INTERFACE_COMMAND ||
                (start_time_ + cfg_.helm_running_timeout_with_units<MicroTime>() <
                 goby::time::SystemClock::now<MicroTime>()))))
-        throw(FrontSeatException(gpb::ERROR_HELM_NOT_RUNNING));
+        throw(goby::moos::FrontSeatException(gpb::ERROR_HELM_NOT_RUNNING));
 
     // frontseat not connected is an error except in standby, it's only
     // an error after a timeout
@@ -169,10 +169,10 @@ void goby::moos::FrontSeatInterfaceBase::check_error_states()
         (state_ != gpb::INTERFACE_STANDBY ||
          start_time_ + cfg_.frontseat_connected_timeout_with_units<MicroTime>() <
              goby::time::SystemClock::now<MicroTime>()))
-        throw(FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_CONNECTED));
+        throw(goby::moos::FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_CONNECTED));
     // frontseat must always provide data in either the listen or command states
     else if (!frontseat_providing_data() && state_ != gpb::INTERFACE_STANDBY)
-        throw(FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_PROVIDING_DATA));
+        throw(goby::moos::FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_PROVIDING_DATA));
 }
 
 void goby::moos::FrontSeatInterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg,

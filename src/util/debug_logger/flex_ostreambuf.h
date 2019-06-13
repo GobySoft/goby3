@@ -40,13 +40,16 @@
 
 #include "term_color.h"
 
-class Group;
-
 namespace goby
 {
 namespace util
 {
 class FlexNCurses;
+
+namespace logger
+{
+class Group;
+}
 
 namespace logger_lock
 {
@@ -118,7 +121,7 @@ class FlexOStreamBuf : public std::streambuf
     logger::Verbosity verbosity_depth() { return current_verbosity_; }
 
     /// add a new group
-    void add_group(const std::string& name, Group g);
+    void add_group(const std::string& name, logger::Group g);
 
     /// refresh the display (does nothing if !is_gui())
     void refresh();
@@ -154,7 +157,7 @@ class FlexOStreamBuf : public std::streambuf
     std::string name_;
     std::string group_name_;
 
-    std::map<std::string, Group> groups_;
+    std::map<std::string, logger::Group> groups_;
 
     std::atomic<bool> die_flag_;
     std::atomic<logger::Verbosity> current_verbosity_;

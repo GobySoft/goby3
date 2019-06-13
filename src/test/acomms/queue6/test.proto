@@ -1,6 +1,8 @@
 syntax = "proto2";
 import "dccl/option_extensions.proto";
 
+package goby.test.acomms.protobuf;
+
 message GobyMessage
 {
     option (dccl.msg).id = 4;

@@ -22,6 +22,8 @@
 
 #include "moos_plugin_translator.h"
 
+using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
+
 goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
     : goby::middleware::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
 {

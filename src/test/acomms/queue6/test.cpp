@@ -28,6 +28,7 @@
 #include "test.pb.h"
 
 // tests various manipulators' functionality
+using goby::test::acomms::protobuf::GobyMessage;
 
 goby::acomms::QueueManager q_manager;
 const int MY_MODEM_ID = 1;
@@ -47,7 +48,7 @@ int main(int argc, char* argv[])
     goby::acomms::protobuf::QueueManagerConfig cfg;
     cfg.set_modem_id(MY_MODEM_ID);
     goby::acomms::protobuf::QueuedMessageEntry* q_entry = cfg.add_message_entry();
-    q_entry->set_protobuf_name("GobyMessage");
+    q_entry->set_protobuf_name("goby.test.acomms.protobuf.GobyMessage");
     goby::acomms::protobuf::QueuedMessageEntry::Role* dest_role = q_entry->add_role();
     dest_role->set_type(goby::acomms::protobuf::QueuedMessageEntry::DESTINATION_ID);
     dest_role->set_field("dest");

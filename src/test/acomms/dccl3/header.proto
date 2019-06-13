@@ -2,6 +2,8 @@ syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
 import "dccl/option_extensions.proto";
 
+package goby.test.acomms.protobuf;
+
 // required fields will be filled in for you by ApplicationBase
 // if you choose not to do so yourself
 message Header

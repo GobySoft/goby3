@@ -29,6 +29,9 @@
 #include "test.pb.h"
 // tests basic DCCL queuing with non-BROADCAST destination
 
+using goby::test::acomms::protobuf::GobyMessage;
+using goby::test::acomms::protobuf::Header;
+
 int receive_count = 0;
 GobyMessage msg_in1;
 
@@ -45,7 +48,7 @@ int main(int argc, char* argv[])
     const int UNICORN_MODEM_ID = 3;
     cfg.set_modem_id(MY_MODEM_ID);
     goby::acomms::protobuf::QueuedMessageEntry* q_entry = cfg.add_message_entry();
-    q_entry->set_protobuf_name("GobyMessage");
+    q_entry->set_protobuf_name("goby.test.acomms.protobuf.GobyMessage");
     q_entry->set_newest_first(true);
 
     goby::acomms::protobuf::QueuedMessageEntry::Role* dest_role = q_entry->add_role();

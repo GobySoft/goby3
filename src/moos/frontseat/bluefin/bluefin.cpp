@@ -519,11 +519,11 @@ void goby::moos::BluefinFrontSeat::try_send()
             // will throw if fail counter exceeds nmea_resend_attempts
             ++nmea_present_fail_count_;
             if (nmea_present_fail_count_ >= bf_config_.nmea_resend_attempts())
-                throw(FrontSeatException(gpb::ERROR_FRONTSEAT_IGNORING_COMMANDS));
+                throw(goby::moos::FrontSeatException(gpb::ERROR_FRONTSEAT_IGNORING_COMMANDS));
             // assuming we're still ok, write the line again
             write(nmea);
         }
-        catch (FrontSeatException& e)
+        catch (goby::moos::FrontSeatException& e)
         {
             glog.is(DEBUG1) && glog << "Huxley did not respond to our command even after "
                                     << bf_config_.nmea_resend_attempts()

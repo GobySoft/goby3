@@ -3,6 +3,8 @@ import "goby/protobuf/option_extensions.proto";
 import "dccl/option_extensions.proto";
 import "goby/test/acomms/dccl3/header.proto";
 
+package goby.test.acomms.protobuf;
+
 message GobyMessage
 {
     option (dccl.msg).id = 4;

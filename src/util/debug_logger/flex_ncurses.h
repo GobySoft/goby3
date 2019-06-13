@@ -33,12 +33,15 @@
 
 #include "term_color.h"
 
-class Group;
-
 namespace goby
 {
 namespace util
 {
+namespace logger
+{
+class Group;
+}
+
 /// Enables the Verbosity == gui mode of the Goby logger and displays an NCurses gui for the logger content
 class FlexNCurses
 {
@@ -56,18 +59,18 @@ class FlexNCurses
     /// \name Initialization
     //@{
     void startup();
-    void add_win(const Group* title);
+    void add_win(const logger::Group* title);
     //@}
 
     /// \name Use
     //@{
     /// Add a string to the gui
-    void insert(boost::posix_time::ptime t, const std::string& s, Group* g);
+    void insert(boost::posix_time::ptime t, const std::string& s, logger::Group* g);
     //@}
 
     /// \name Utility
     //@{
-    size_t panel_from_group(Group* g);
+    size_t panel_from_group(logger::Group* g);
     void recalculate_win();
     void cleanup();
     void alive(bool alive);
@@ -176,15 +179,23 @@ class FlexNCurses
     class Panel
     {
       public:
-        Panel(const Group* group = 0)
-            : group_(group), window_(0), head_window_(0), minimized_(false), selected_(false),
-              locked_(false), col_(1), lines_from_beg_(0), original_order_(0), max_hist_(20000)
+        Panel(const logger::Group* group = 0)
+            : group_(group),
+              window_(0),
+              head_window_(0),
+              minimized_(false),
+              selected_(false),
+              locked_(false),
+              col_(1),
+              lines_from_beg_(0),
+              original_order_(0),
+              max_hist_(20000)
         {
         }
 
         void window(void* v) { window_ = v; }
         void head_window(void* v) { head_window_ = v; }
-        void group(const Group* g) { group_ = g; }
+        void group(const logger::Group* g) { group_ = g; }
         // returns number of lines to grow/shrink
         void set_minimized(bool b) { minimized_ = b; }
         int minimized(bool b);
@@ -211,7 +222,7 @@ class FlexNCurses
 
         void* window() const { return window_; }
         void* head_window() const { return head_window_; }
-        const Group* group() const { return group_; }
+        const logger::Group* group() const { return group_; }
         bool minimized() const { return minimized_; }
         bool selected() const { return selected_; }
         int ywidth() const { return ywidth_; }
@@ -224,7 +235,7 @@ class FlexNCurses
         const std::set<size_t>& combined() const { return combined_; }
 
       private:
-        const Group* group_;
+        const logger::Group* group_;
         void* window_;
         void* head_window_;
         bool minimized_;
