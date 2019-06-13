@@ -29,22 +29,24 @@
 using goby::glog;
 using namespace goby::util::logger;
 using goby::moos::operator<<;
+using goby::apps::moos::protobuf::pTranslatorConfig;
 
-pTranslatorConfig CpTranslator::cfg_;
-CpTranslator* CpTranslator::inst_ = 0;
+pTranslatorConfig goby::apps::moos::CpTranslator::cfg_;
+goby::apps::moos::CpTranslator* goby::apps::moos::CpTranslator::inst_ = 0;
 
-CpTranslator* CpTranslator::get_instance()
+goby::apps::moos::CpTranslator* goby::apps::moos::CpTranslator::get_instance()
 {
     if (!inst_)
-        inst_ = new CpTranslator();
+        inst_ = new goby::apps::moos::CpTranslator();
     return inst_;
 }
 
-void CpTranslator::delete_instance() { delete inst_; }
+void goby::apps::moos::CpTranslator::delete_instance() { delete inst_; }
 
-CpTranslator::CpTranslator()
-    : GobyMOOSApp(&cfg_), translator_(cfg_.translator_entry(), cfg_.common().lat_origin(),
-                                      cfg_.common().lon_origin(), cfg_.modem_id_lookup_path()),
+goby::apps::moos::CpTranslator::CpTranslator()
+    : goby::moos::GobyMOOSApp(&cfg_),
+      translator_(cfg_.translator_entry(), cfg_.common().lat_origin(), cfg_.common().lon_origin(),
+                  cfg_.modem_id_lookup_path()),
       work_(timer_io_service_)
 {
     dccl::DynamicProtobufManager::enable_compilation();
@@ -120,12 +122,12 @@ CpTranslator::CpTranslator()
     }
 }
 
-CpTranslator::~CpTranslator() {}
+goby::apps::moos::CpTranslator::~CpTranslator() {}
 
-void CpTranslator::loop() { timer_io_service_.poll(); }
+void goby::apps::moos::CpTranslator::loop() { timer_io_service_.poll(); }
 
-void CpTranslator::create_on_publish(const CMOOSMsg& trigger_msg,
-                                     const goby::moos::protobuf::TranslatorEntry& entry)
+void goby::apps::moos::CpTranslator::create_on_publish(
+    const CMOOSMsg& trigger_msg, const goby::moos::protobuf::TranslatorEntry& entry)
 {
     glog.is(VERBOSE) && glog << "Received trigger: " << trigger_msg << std::endl;
 
@@ -137,7 +139,7 @@ void CpTranslator::create_on_publish(const CMOOSMsg& trigger_msg,
             glog << "Message missing mandatory content for: " << entry.protobuf_name() << std::endl;
 }
 
-void CpTranslator::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
+void goby::apps::moos::CpTranslator::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
 {
     std::shared_ptr<google::protobuf::Message> msg = dynamic_parse_for_moos(moos_msg.GetString());
 
@@ -170,8 +172,9 @@ void CpTranslator::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
     }
 }
 
-void CpTranslator::create_on_timer(const boost::system::error_code& error,
-                                   const goby::moos::protobuf::TranslatorEntry& entry, Timer* timer)
+void goby::apps::moos::CpTranslator::create_on_timer(
+    const boost::system::error_code& error, const goby::moos::protobuf::TranslatorEntry& entry,
+    Timer* timer)
 {
     if (!error)
     {
@@ -199,7 +202,8 @@ void CpTranslator::create_on_timer(const boost::system::error_code& error,
     }
 }
 
-void CpTranslator::do_translation(const goby::moos::protobuf::TranslatorEntry& entry)
+void goby::apps::moos::CpTranslator::do_translation(
+    const goby::moos::protobuf::TranslatorEntry& entry)
 {
     std::shared_ptr<google::protobuf::Message> created_message =
         translator_.moos_to_protobuf<std::shared_ptr<google::protobuf::Message> >(
@@ -210,7 +214,8 @@ void CpTranslator::do_translation(const goby::moos::protobuf::TranslatorEntry& e
     do_publish(created_message);
 }
 
-void CpTranslator::do_publish(std::shared_ptr<google::protobuf::Message> created_message)
+void goby::apps::moos::CpTranslator::do_publish(
+    std::shared_ptr<google::protobuf::Message> created_message)
 {
     std::multimap<std::string, CMOOSMsg> out;
 

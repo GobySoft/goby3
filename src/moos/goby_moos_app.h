@@ -59,8 +59,6 @@ inline void protobuf_inbox(const CMOOSMsg& msg,
     parse_for_moos(msg.GetString(), &pb_msg);
     handler(pb_msg);
 }
-} // namespace moos
-} // namespace goby
 
 // shell implementation so we can call superclass methods for when
 // using AppCastingMOOSApp
@@ -292,7 +290,7 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
 
     std::vector<SynchronousLoop> synchronous_loops_;
 
-    GobyMOOSAppConfig common_cfg_;
+    protobuf::GobyMOOSAppConfig common_cfg_;
 
     bool ignore_stale_;
 
@@ -312,15 +310,19 @@ class GobyMOOSApp : public GobyMOOSAppSelector<>
     {
     }
 };
+} // namespace moos
+} // namespace goby
 
-template <class MOOSAppType> std::string GobyMOOSAppSelector<MOOSAppType>::mission_file_;
+template <class MOOSAppType>
+std::string goby::moos::GobyMOOSAppSelector<MOOSAppType>::mission_file_;
 
-template <class MOOSAppType> std::string GobyMOOSAppSelector<MOOSAppType>::application_name_;
+template <class MOOSAppType>
+std::string goby::moos::GobyMOOSAppSelector<MOOSAppType>::application_name_;
 
-template <class MOOSAppType> int GobyMOOSAppSelector<MOOSAppType>::argc_ = 0;
-template <class MOOSAppType> char** GobyMOOSAppSelector<MOOSAppType>::argv_ = 0;
+template <class MOOSAppType> int goby::moos::GobyMOOSAppSelector<MOOSAppType>::argc_ = 0;
+template <class MOOSAppType> char** goby::moos::GobyMOOSAppSelector<MOOSAppType>::argv_ = 0;
 
-template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::Iterate()
+template <class MOOSAppType> bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::Iterate()
 {
     MOOSAppType::Iterate();
 
@@ -374,7 +376,8 @@ template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::Iterate()
     return true;
 }
 
-template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::OnNewMail(MOOSMSG_LIST& NewMail)
+template <class MOOSAppType>
+bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::OnNewMail(MOOSMSG_LIST& NewMail)
 {
     // for AppCasting (otherwise no-op)
     MOOSAppType::OnNewMail(NewMail);
@@ -416,7 +419,8 @@ template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::OnNewMail(MO
     return true;
 }
 
-template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::OnDisconnectFromServer()
+template <class MOOSAppType>
+bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::OnDisconnectFromServer()
 {
     std::cout << MOOSAppType::m_MissionReader.GetAppName() << ", disconnected from server."
               << std::endl;
@@ -431,34 +435,35 @@ template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::OnDisconnect
     return true;
 }
 
-template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::OnConnectToServer()
+template <class MOOSAppType> bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::OnConnectToServer()
 {
     std::cout << MOOSAppType::m_MissionReader.GetAppName() << ", connected to server." << std::endl;
     connected_ = true;
     try_subscribing();
 
-    for (google::protobuf::RepeatedPtrField<GobyMOOSAppConfig::Initializer>::const_iterator
+    for (google::protobuf::RepeatedPtrField<
+             protobuf::GobyMOOSAppConfig::Initializer>::const_iterator
              it = common_cfg_.initializer().begin(),
              end = common_cfg_.initializer().end();
          it != end; ++it)
     {
-        const GobyMOOSAppConfig::Initializer& ini = *it;
+        const protobuf::GobyMOOSAppConfig::Initializer& ini = *it;
         if (ini.has_global_cfg_var())
         {
             std::string result;
             if (MOOSAppType::m_MissionReader.GetValue(ini.global_cfg_var(), result))
             {
-                if (ini.type() == GobyMOOSAppConfig::Initializer::INI_DOUBLE)
+                if (ini.type() == protobuf::GobyMOOSAppConfig::Initializer::INI_DOUBLE)
                     publish(ini.moos_var(), goby::util::as<double>(result));
-                else if (ini.type() == GobyMOOSAppConfig::Initializer::INI_STRING)
+                else if (ini.type() == protobuf::GobyMOOSAppConfig::Initializer::INI_STRING)
                     publish(ini.moos_var(), ini.trim() ? boost::trim_copy(result) : result);
             }
         }
         else
         {
-            if (ini.type() == GobyMOOSAppConfig::Initializer::INI_DOUBLE)
+            if (ini.type() == protobuf::GobyMOOSAppConfig::Initializer::INI_DOUBLE)
                 publish(ini.moos_var(), ini.dval());
-            else if (ini.type() == GobyMOOSAppConfig::Initializer::INI_STRING)
+            else if (ini.type() == protobuf::GobyMOOSAppConfig::Initializer::INI_STRING)
                 publish(ini.moos_var(), ini.trim() ? boost::trim_copy(ini.sval()) : ini.sval());
         }
     }
@@ -466,7 +471,7 @@ template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::OnConnectToS
     return true;
 }
 
-template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::OnStartUp()
+template <class MOOSAppType> bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::OnStartUp()
 {
     MOOSAppType::OnStartUp();
 
@@ -479,8 +484,9 @@ template <class MOOSAppType> bool GobyMOOSAppSelector<MOOSAppType>::OnStartUp()
 }
 
 template <class MOOSAppType>
-void GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var, InboxFunc handler,
-                                                 int blackout /* = 0 */)
+void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var,
+                                                             InboxFunc handler,
+                                                             int blackout /* = 0 */)
 {
     goby::glog.is(goby::util::logger::VERBOSE) &&
         goby::glog << "subscribing for MOOS variable: " << var << " @ " << blackout << std::endl;
@@ -496,9 +502,10 @@ void GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var, InboxFu
 }
 
 template <class MOOSAppType>
-void GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var_pattern,
-                                                 const std::string& app_pattern, InboxFunc handler,
-                                                 int blackout /* = 0 */)
+void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var_pattern,
+                                                             const std::string& app_pattern,
+                                                             InboxFunc handler,
+                                                             int blackout /* = 0 */)
 {
     goby::glog.is(goby::util::logger::VERBOSE) &&
         goby::glog << "wildcard subscribing for MOOS variable pattern: " << var_pattern
@@ -517,13 +524,13 @@ void GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var_pattern,
         wildcard_mail_handlers_[key]->connect(handler);
 }
 
-template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::try_subscribing()
+template <class MOOSAppType> void goby::moos::GobyMOOSAppSelector<MOOSAppType>::try_subscribing()
 {
     if (connected_ && started_up_)
         do_subscriptions();
 }
 
-template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::do_subscriptions()
+template <class MOOSAppType> void goby::moos::GobyMOOSAppSelector<MOOSAppType>::do_subscriptions()
 {
     MOOSAppType::RegisterVariables();
 
@@ -573,8 +580,8 @@ template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::do_subscript
 }
 
 template <class MOOSAppType>
-int GobyMOOSAppSelector<MOOSAppType>::fetch_moos_globals(google::protobuf::Message* msg,
-                                                         CMOOSFileReader& moos_file_reader)
+int goby::moos::GobyMOOSAppSelector<MOOSAppType>::fetch_moos_globals(
+    google::protobuf::Message* msg, CMOOSFileReader& moos_file_reader)
 {
     int globals = 0;
     const google::protobuf::Descriptor* desc = msg->GetDescriptor();
@@ -715,7 +722,8 @@ int GobyMOOSAppSelector<MOOSAppType>::fetch_moos_globals(google::protobuf::Messa
 }
 
 template <class MOOSAppType>
-void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Message* cfg)
+void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
+    google::protobuf::Message* cfg)
 {
     boost::filesystem::path launch_path(argv_[0]);
 
@@ -879,7 +887,8 @@ void GobyMOOSAppSelector<MOOSAppType>::read_configuration(google::protobuf::Mess
     }
 }
 
-template <class MOOSAppType> void GobyMOOSAppSelector<MOOSAppType>::process_configuration()
+template <class MOOSAppType>
+void goby::moos::GobyMOOSAppSelector<MOOSAppType>::process_configuration()
 {
     //
     // PROCESS CONFIGURATION

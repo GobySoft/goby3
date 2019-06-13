@@ -22,13 +22,19 @@
 #include "config.pb.h"
 #include "goby/moos/goby_moos_app.h"
 
-class GobyMOOSAppTest : public GobyMOOSApp
+namespace goby
+{
+namespace test
+{
+namespace moos
+{
+class GobyMOOSAppTest : public goby::moos::GobyMOOSApp
 {
   public:
     static GobyMOOSAppTest* get_instance();
 
   private:
-    GobyMOOSAppTest(AppConfig& cfg) : GobyMOOSApp(&cfg)
+    GobyMOOSAppTest(goby::test::moos::protobuf::AppConfig& cfg) : goby::moos::GobyMOOSApp(&cfg)
     {
         assert(!cfg.has_submessage());
         RequestQuit();
@@ -39,18 +45,24 @@ class GobyMOOSAppTest : public GobyMOOSApp
     void loop() {}
     static GobyMOOSAppTest* inst_;
 };
+} // namespace moos
+} // namespace test
+} // namespace goby
 
-std::shared_ptr<AppConfig> master_config;
-GobyMOOSAppTest* GobyMOOSAppTest::inst_ = 0;
+std::shared_ptr<goby::test::moos::protobuf::AppConfig> master_config;
+goby::test::moos::GobyMOOSAppTest* goby::test::moos::GobyMOOSAppTest::inst_ = 0;
 
-GobyMOOSAppTest* GobyMOOSAppTest::get_instance()
+goby::test::moos::GobyMOOSAppTest* goby::test::moos::GobyMOOSAppTest::get_instance()
 {
     if (!inst_)
     {
-        master_config.reset(new AppConfig);
-        inst_ = new GobyMOOSAppTest(*master_config);
+        master_config.reset(new goby::test::moos::protobuf::AppConfig);
+        inst_ = new goby::test::moos::GobyMOOSAppTest(*master_config);
     }
     return inst_;
 }
 
-int main(int argc, char* argv[]) { return goby::moos::run<GobyMOOSAppTest>(argc, argv); }
+int main(int argc, char* argv[])
+{
+    return goby::moos::run<goby::test::moos::GobyMOOSAppTest>(argc, argv);
+}

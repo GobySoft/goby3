@@ -3,9 +3,11 @@ import "goby/moos/protobuf/goby_moos_app.proto";
 import "goby/moos/protobuf/translator.proto";
 import "goby/protobuf/option_extensions.proto";
 
+package goby.apps.moos.protobuf;
+
 message pTranslatorConfig
 {
-    optional GobyMOOSAppConfig common = 1 [
+    optional goby.moos.protobuf.GobyMOOSAppConfig common = 1 [
         (goby.field).description =
             "Configuration common to all Goby MOOS applications"
     ];  // see goby_moos_app.proto

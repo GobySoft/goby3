@@ -54,15 +54,15 @@ int main(int argc, char* argv[])
             const char* (*name_function)(void) =
                 (const char* (*)(void))dlsym(handle, "goby_driver_name");
             if (name_function)
-                CpAcommsHandler::driver_plugins_.insert(
+                goby::apps::moos::CpAcommsHandler::driver_plugins_.insert(
                     std::make_pair(std::string((*name_function)()), handle));
         }
     }
 
-    int return_value = goby::moos::run<CpAcommsHandler>(argc, argv);
+    int return_value = goby::moos::run<goby::apps::moos::CpAcommsHandler>(argc, argv);
 
     goby::moos::transitional::DCCLAlgorithmPerformer::deleteInstance();
-    CpAcommsHandler::delete_instance();
+    goby::apps::moos::CpAcommsHandler::delete_instance();
     dccl::DynamicProtobufManager::protobuf_shutdown();
 
     for (int i = 0, n = plugin_handles_.size(); i < n; ++i) dlclose(plugin_handles_[i]);

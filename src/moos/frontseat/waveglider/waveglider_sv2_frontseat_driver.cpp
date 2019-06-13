@@ -39,18 +39,20 @@ const auto allowed_skew = std::chrono::seconds(30);
 // allows iFrontSeat to load our library
 extern "C"
 {
-    FrontSeatInterfaceBase* frontseat_driver_load(iFrontSeatConfig* cfg)
+    goby::moos::FrontSeatInterfaceBase*
+    frontseat_driver_load(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
     {
-        return new WavegliderSV2FrontSeat(*cfg);
+        return new goby::moos::WavegliderSV2FrontSeat(*cfg);
     }
 }
 
 uint16_t crc_compute_incrementally(uint16_t crc, char a);
 uint16_t crc_compute(const std::string& buffer, unsigned offset, unsigned count, uint16_t seed);
 
-WavegliderSV2FrontSeat::WavegliderSV2FrontSeat(const iFrontSeatConfig& cfg)
+goby::moos::WavegliderSV2FrontSeat::WavegliderSV2FrontSeat(
+    const apps::moos::protobuf::iFrontSeatConfig& cfg)
     : FrontSeatInterfaceBase(cfg),
-      waveglider_sv2_config_(cfg.GetExtension(waveglider_sv2_config)),
+      waveglider_sv2_config_(cfg.GetExtension(apps::moos::protobuf::waveglider_sv2_config)),
       frontseat_providing_data_(false),
       last_frontseat_data_time_(std::chrono::seconds(0)),
       frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED),
@@ -67,7 +69,7 @@ WavegliderSV2FrontSeat::WavegliderSV2FrontSeat(const iFrontSeatConfig& cfg)
     frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
 }
 
-void WavegliderSV2FrontSeat::loop()
+void goby::moos::WavegliderSV2FrontSeat::loop()
 {
     try
     {
@@ -85,7 +87,8 @@ void WavegliderSV2FrontSeat::loop()
         frontseat_providing_data_ = false;
 }
 
-void WavegliderSV2FrontSeat::send_command_to_frontseat(const gpb::CommandRequest& command)
+void goby::moos::WavegliderSV2FrontSeat::send_command_to_frontseat(
+    const gpb::CommandRequest& command)
 {
     if (command.has_desired_course())
     {
@@ -146,18 +149,24 @@ void WavegliderSV2FrontSeat::send_command_to_frontseat(const gpb::CommandRequest
     }
 }
 
-void WavegliderSV2FrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData& data) {}
+void goby::moos::WavegliderSV2FrontSeat::send_data_to_frontseat(
+    const gpb::FrontSeatInterfaceData& data)
+{
+}
 
-void WavegliderSV2FrontSeat::send_raw_to_frontseat(const gpb::FrontSeatRaw& data) {}
+void goby::moos::WavegliderSV2FrontSeat::send_raw_to_frontseat(const gpb::FrontSeatRaw& data) {}
 
-bool WavegliderSV2FrontSeat::frontseat_providing_data() const { return frontseat_providing_data_; }
+bool goby::moos::WavegliderSV2FrontSeat::frontseat_providing_data() const
+{
+    return frontseat_providing_data_;
+}
 
-goby::moos::protobuf::FrontSeatState WavegliderSV2FrontSeat::frontseat_state() const
+goby::moos::protobuf::FrontSeatState goby::moos::WavegliderSV2FrontSeat::frontseat_state() const
 {
     return frontseat_state_;
 }
 
-void WavegliderSV2FrontSeat::handle_sv2_message(const std::string& message)
+void goby::moos::WavegliderSV2FrontSeat::handle_sv2_message(const std::string& message)
 {
     enum
     {
@@ -230,7 +239,7 @@ void WavegliderSV2FrontSeat::handle_sv2_message(const std::string& message)
     }
 }
 
-void WavegliderSV2FrontSeat::check_crc(const std::string& message, uint16_t expected)
+void goby::moos::WavegliderSV2FrontSeat::check_crc(const std::string& message, uint16_t expected)
 {
     enum
     {
@@ -247,7 +256,7 @@ void WavegliderSV2FrontSeat::check_crc(const std::string& message, uint16_t expe
         glog.is(WARN) && glog << "Invalid CRC16" << std::endl;
 }
 
-void WavegliderSV2FrontSeat::add_crc(std::string* message)
+void goby::moos::WavegliderSV2FrontSeat::add_crc(std::string* message)
 {
     enum
     {
@@ -262,7 +271,7 @@ void WavegliderSV2FrontSeat::add_crc(std::string* message)
     glog.is(DEBUG2) && glog << "Computed CRC: " << std::hex << calculated << std::dec << std::endl;
 }
 
-void WavegliderSV2FrontSeat::handle_enumeration_request(
+void goby::moos::WavegliderSV2FrontSeat::handle_enumeration_request(
     const goby::moos::protobuf::SV2RequestEnumerate& request)
 {
     goby::moos::protobuf::SV2ReplyEnumerate reply;
@@ -314,7 +323,7 @@ void WavegliderSV2FrontSeat::handle_enumeration_request(
     encode_and_write(reply);
 }
 
-void WavegliderSV2FrontSeat::handle_request_status(
+void goby::moos::WavegliderSV2FrontSeat::handle_request_status(
     const goby::moos::protobuf::SV2RequestStatus& request)
 {
     goby::moos::protobuf::SV2ReplyStatus reply;
@@ -359,7 +368,7 @@ void WavegliderSV2FrontSeat::handle_request_status(
     encode_and_write(reply);
 }
 
-void WavegliderSV2FrontSeat::handle_request_queued_message(
+void goby::moos::WavegliderSV2FrontSeat::handle_request_queued_message(
     const goby::moos::protobuf::SV2RequestQueuedMessage& request)
 {
     if (queued_messages_.size())
@@ -378,7 +387,7 @@ void WavegliderSV2FrontSeat::handle_request_queued_message(
     }
 }
 
-void WavegliderSV2FrontSeat::encode_and_write(const google::protobuf::Message& message)
+void goby::moos::WavegliderSV2FrontSeat::encode_and_write(const google::protobuf::Message& message)
 {
     try
     {

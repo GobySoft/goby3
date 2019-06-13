@@ -33,10 +33,21 @@
 #include "goby/moos/protobuf/frontseat.pb.h"
 #include "goby/moos/protobuf/frontseat_config.pb.h"
 
+namespace goby
+{
+namespace apps
+{
+namespace moos
+{
+class FrontSeatLegacyTranslator;
+}
+} // namespace apps
+namespace moos
+{
 class FrontSeatInterfaceBase
 {
   public:
-    FrontSeatInterfaceBase(const iFrontSeatConfig& cfg);
+    FrontSeatInterfaceBase(const goby::apps::moos::protobuf::iFrontSeatConfig& cfg);
 
     virtual ~FrontSeatInterfaceBase() {}
 
@@ -82,12 +93,12 @@ class FrontSeatInterfaceBase
     boost::signals2::signal<void(const goby::moos::protobuf::FrontSeatRaw& data)>
         signal_raw_to_frontseat;
 
-    const iFrontSeatConfig& cfg() const { return cfg_; }
+    const goby::apps::moos::protobuf::iFrontSeatConfig& cfg() const { return cfg_; }
 
     void compute_missing(goby::moos::protobuf::CTDSample* ctd_sample);
     void compute_missing(goby::moos::protobuf::NodeStatus* status);
 
-    friend class FrontSeatLegacyTranslator; // to access the signal_state_change
+    friend class goby::apps::moos::FrontSeatLegacyTranslator; // to access the signal_state_change
   private:
     void check_error_states();
     void check_change_state();
@@ -105,7 +116,7 @@ class FrontSeatInterfaceBase
     void glog_raw(const goby::moos::protobuf::FrontSeatRaw& data, Direction direction);
 
   private:
-    const iFrontSeatConfig& cfg_;
+    const goby::apps::moos::protobuf::iFrontSeatConfig& cfg_;
     goby::moos::protobuf::HelmState helm_state_;
     goby::moos::protobuf::InterfaceState state_;
     goby::time::MicroTime start_time_;
@@ -116,5 +127,7 @@ class FrontSeatInterfaceBase
 
     std::string glog_out_group_, glog_in_group_;
 };
+} // namespace moos
+} // namespace goby
 
 #endif

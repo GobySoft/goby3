@@ -64,7 +64,13 @@ inline bool operator<(const shared_ptr<goby::acomms::ModemDriverBase>& lhs,
 }
 } // namespace boost
 
-class CpAcommsHandler : public GobyMOOSApp
+namespace goby
+{
+namespace apps
+{
+namespace moos
+{
+class CpAcommsHandler : public goby::moos::GobyMOOSApp
 {
   public:
     static CpAcommsHandler* get_instance();
@@ -115,10 +121,11 @@ class CpAcommsHandler : public GobyMOOSApp
 
     void driver_bind();
     void driver_unbind();
-    void driver_reset(std::shared_ptr<goby::acomms::ModemDriverBase> driver,
-                      const goby::acomms::ModemDriverException& e,
-                      pAcommsHandlerConfig::DriverFailureApproach::DriverFailureTechnique =
-                          cfg_.driver_failure_approach().technique());
+    void
+    driver_reset(std::shared_ptr<goby::acomms::ModemDriverBase> driver,
+                 const goby::acomms::ModemDriverException& e,
+                 protobuf::pAcommsHandlerConfig::DriverFailureApproach::DriverFailureTechnique =
+                     cfg_.driver_failure_approach().technique());
 
     void restart_drivers();
 
@@ -162,8 +169,11 @@ class CpAcommsHandler : public GobyMOOSApp
 
     std::set<const google::protobuf::Descriptor*> dccl_frontseat_forward_;
 
-    static pAcommsHandlerConfig cfg_;
+    static protobuf::pAcommsHandlerConfig cfg_;
     static CpAcommsHandler* inst_;
 };
+} // namespace moos
+} // namespace apps
+} // namespace goby
 
 #endif

@@ -25,10 +25,6 @@ if(build_pGobyMOOSAppTemplate)
   add_subdirectory(pGobyMOOSAppTemplate) 
 endif()
 
-#if(build_pb AND enable_zeromq)
-#  add_subdirectory(moos_gateway_g)
-#endif()
-
 if(build_zeromq)
   add_subdirectory(goby_moos_gateway)
 endif()

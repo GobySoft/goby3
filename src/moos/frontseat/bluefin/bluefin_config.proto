@@ -4,6 +4,8 @@ import "dccl/option_extensions.proto";
 import "goby/moos/protobuf/frontseat_config.proto";
 import "goby/protobuf/option_extensions.proto";
 
+package goby.apps.moos.protobuf;
+
 message BluefinFrontSeatConfig
 {
     option (dccl.msg).unit_system = "si";

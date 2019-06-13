@@ -35,7 +35,8 @@ using namespace goby::util::logger;
 using namespace goby::util::tcolor;
 using goby::time::MicroTime;
 
-FrontSeatInterfaceBase::FrontSeatInterfaceBase(const iFrontSeatConfig& cfg)
+goby::moos::FrontSeatInterfaceBase::FrontSeatInterfaceBase(
+    const goby::apps::moos::protobuf::iFrontSeatConfig& cfg)
     : cfg_(cfg),
       helm_state_(gpb::HELM_NOT_RUNNING),
       state_(gpb::INTERFACE_STANDBY),
@@ -64,7 +65,7 @@ FrontSeatInterfaceBase::FrontSeatInterfaceBase(const iFrontSeatConfig& cfg)
     goby::glog.add_group(glog_in_group_, goby::util::Colors::lt_blue);
 }
 
-void FrontSeatInterfaceBase::do_work()
+void goby::moos::FrontSeatInterfaceBase::do_work()
 {
     try
     {
@@ -89,7 +90,7 @@ void FrontSeatInterfaceBase::do_work()
             throw;
     }
 }
-void FrontSeatInterfaceBase::check_change_state()
+void goby::moos::FrontSeatInterfaceBase::check_change_state()
 {
     // check and change state
     gpb::InterfaceState previous_state = state_;
@@ -148,7 +149,7 @@ void FrontSeatInterfaceBase::check_change_state()
         signal_state_change(state_);
 }
 
-void FrontSeatInterfaceBase::check_error_states()
+void goby::moos::FrontSeatInterfaceBase::check_error_states()
 {
     // helm in park is always an error
     if (helm_state() == gpb::HELM_PARK)
@@ -174,7 +175,8 @@ void FrontSeatInterfaceBase::check_error_states()
         throw(FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_PROVIDING_DATA));
 }
 
-void FrontSeatInterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg, Direction direction)
+void goby::moos::FrontSeatInterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg,
+                                                  Direction direction)
 {
     if (direction == DIRECTION_TO_FRONTSEAT)
         glog << group(glog_out_group_);
@@ -194,7 +196,7 @@ void FrontSeatInterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg, Directio
     }
 };
 
-void FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
+void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
 {
     if (!ctd_sample->has_salinity())
     {
@@ -237,7 +239,7 @@ void FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
     }
 }
 
-void FrontSeatInterfaceBase::compute_missing(gpb::NodeStatus* status)
+void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::NodeStatus* status)
 {
     if (!status->has_name())
         status->set_name(cfg_.common().community());

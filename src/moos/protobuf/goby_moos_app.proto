@@ -3,6 +3,8 @@ import "goby/protobuf/option_extensions.proto";
 import "goby/util/protobuf/debug_logger.proto";
 import "goby/moos/protobuf/translator.proto";
 
+package goby.moos.protobuf;
+
 message GobyMOOSAppConfig
 {
     // Global moos variables (Specified outside "ProcessConfig" blocks)

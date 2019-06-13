@@ -31,8 +31,9 @@ using goby::glog;
 using goby::util::NMEASentence;
 using namespace goby::util::logger;
 using namespace goby::util::tcolor;
+using goby::apps::moos::protobuf::BluefinFrontSeatConfig;
 
-void BluefinFrontSeat::bfack(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfack(const goby::util::NMEASentence& nmea)
 {
     frontseat_providing_data_ = true;
     last_frontseat_data_time_ = gtime::SystemClock::now();
@@ -133,7 +134,7 @@ void BluefinFrontSeat::bfack(const goby::util::NMEASentence& nmea)
     waiting_for_huxley_ = false;
 }
 
-void BluefinFrontSeat::bfmsc(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfmsc(const goby::util::NMEASentence& nmea)
 {
     // TODO: See if there is something to the message contents
     // BF manual says: Arbitrary textual message. Semantics determined by the payload.
@@ -141,7 +142,7 @@ void BluefinFrontSeat::bfmsc(const goby::util::NMEASentence& nmea)
         frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
 }
 
-void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
 {
     frontseat_providing_data_ = true;
     last_frontseat_data_time_ = gtime::SystemClock::now();
@@ -206,7 +207,7 @@ void BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
     status_.mutable_pose()->set_pitch(nmea.as<double>(PITCH));
 }
 
-void BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
 {
     enum
     {
@@ -243,25 +244,25 @@ void BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
     signal_data_from_frontseat(data);
 }
 
-void BluefinFrontSeat::bfsvs(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfsvs(const goby::util::NMEASentence& nmea)
 {
     // If the Bluefin vehicle is equipped with a sound velocity sensor, this message will provide the raw output of that sensor. If not, then an estimated value will be provided.
 
     // We don't use this, choosing to calculate it ourselves from the CTD
 }
 
-void BluefinFrontSeat::bfrvl(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfrvl(const goby::util::NMEASentence& nmea)
 {
     // Vehicle velocity through water as estimated from thruster RPM, may be empty if no lookup table is implemented (m/s)
 }
 
-void BluefinFrontSeat::bfsht(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfsht(const goby::util::NMEASentence& nmea)
 {
     glog.is(WARN) && glog << "Bluefin sent us the SHT message: they are shutting down!"
                           << std::endl;
 }
 
-void BluefinFrontSeat::bfmbs(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfmbs(const goby::util::NMEASentence& nmea)
 {
     // This message is sent when the Bluefin vehicle is just beginning a new behavior in the current mission. It can be used by payloads for record-keeping or to synchronize actions with the current mission. Use of the (d--d) dive file field is considered deprecated in favor of getting the same information from BFMIS. See also the BFPLN message below.
 
@@ -278,7 +279,7 @@ void BluefinFrontSeat::bfmbs(const goby::util::NMEASentence& nmea)
     glog.is(DEBUG1) && glog << "Bluefin began frontseat mission: " << behavior_type << std::endl;
 }
 
-void BluefinFrontSeat::bfboy(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfboy(const goby::util::NMEASentence& nmea)
 {
     enum
     {
@@ -305,7 +306,7 @@ void BluefinFrontSeat::bfboy(const goby::util::NMEASentence& nmea)
     signal_data_from_frontseat(data);
 }
 
-void BluefinFrontSeat::bftrm(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bftrm(const goby::util::NMEASentence& nmea)
 {
     enum
     {
@@ -334,7 +335,7 @@ void BluefinFrontSeat::bftrm(const goby::util::NMEASentence& nmea)
     signal_data_from_frontseat(data);
 }
 
-void BluefinFrontSeat::bfmbe(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfmbe(const goby::util::NMEASentence& nmea)
 {
     enum
     {
@@ -350,18 +351,18 @@ void BluefinFrontSeat::bfmbe(const goby::util::NMEASentence& nmea)
     glog.is(DEBUG1) && glog << "Bluefin ended frontseat mission: " << behavior_type << std::endl;
 }
 
-void BluefinFrontSeat::bftop(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bftop(const goby::util::NMEASentence& nmea)
 {
     // Topside Message (Not Implemented)
     // Delivery of a message sent from the topside.
 }
 
-void BluefinFrontSeat::bfdvl(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfdvl(const goby::util::NMEASentence& nmea)
 {
     // Raw DVL Data
 }
 
-void BluefinFrontSeat::bfmis(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfmis(const goby::util::NMEASentence& nmea)
 {
     std::string running = nmea.at(3);
     if (running.find("Running") != std::string::npos)
@@ -387,7 +388,7 @@ void BluefinFrontSeat::bfmis(const goby::util::NMEASentence& nmea)
     }
 }
 
-void BluefinFrontSeat::bfctd(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfctd(const goby::util::NMEASentence& nmea)
 {
     gpb::FrontSeatInterfaceData data;
     goby::moos::protobuf::CTDSample* ctd_sample = data.mutable_ctd_sample();
@@ -413,7 +414,7 @@ void BluefinFrontSeat::bfctd(const goby::util::NMEASentence& nmea)
     signal_data_from_frontseat(data);
 }
 
-void BluefinFrontSeat::bfctl(const goby::util::NMEASentence& nmea)
+void goby::moos::BluefinFrontSeat::bfctl(const goby::util::NMEASentence& nmea)
 {
     if (bf_config_.accepting_commands_hook() == BluefinFrontSeatConfig::BFCTL_TRIGGER)
     {

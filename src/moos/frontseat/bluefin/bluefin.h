@@ -33,15 +33,15 @@
 #include "goby/moos/frontseat/bluefin/bluefin.pb.h"
 #include "goby/moos/frontseat/bluefin/bluefin_config.pb.h"
 
-extern "C"
+namespace goby
 {
-    FrontSeatInterfaceBase* frontseat_driver_load(iFrontSeatConfig*);
-}
+namespace moos
+{
 
 class BluefinFrontSeat : public FrontSeatInterfaceBase
 {
   public:
-    BluefinFrontSeat(const iFrontSeatConfig& cfg);
+    BluefinFrontSeat(const goby::apps::moos::protobuf::iFrontSeatConfig& cfg);
 
   private: // virtual methods from FrontSeatInterfaceBase
     void loop();
@@ -86,7 +86,7 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
     std::string unix_time2nmea_time(goby::time::SystemClock::time_point time);
 
   private:
-    const BluefinFrontSeatConfig bf_config_;
+    const apps::moos::protobuf::BluefinFrontSeatConfig bf_config_;
     goby::util::TCPClient tcp_;
     bool frontseat_providing_data_;
     goby::time::SystemClock::time_point last_frontseat_data_time_;
@@ -194,5 +194,7 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
     std::multimap<goby::time::MicroTime, goby::moos::protobuf::BluefinExtraData::PayloadStatus>
         payload_status_;
 };
+} // namespace moos
+} // namespace goby
 
 #endif

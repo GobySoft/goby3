@@ -53,21 +53,23 @@ using google::protobuf::uint32;
 
 using goby::glog;
 
-pAcommsHandlerConfig CpAcommsHandler::cfg_;
-CpAcommsHandler* CpAcommsHandler::inst_ = 0;
-std::map<std::string, void*> CpAcommsHandler::driver_plugins_;
+using goby::apps::moos::protobuf::pAcommsHandlerConfig;
 
-CpAcommsHandler* CpAcommsHandler::get_instance()
+pAcommsHandlerConfig goby::apps::moos::CpAcommsHandler::cfg_;
+goby::apps::moos::CpAcommsHandler* goby::apps::moos::CpAcommsHandler::inst_ = 0;
+std::map<std::string, void*> goby::apps::moos::CpAcommsHandler::driver_plugins_;
+
+goby::apps::moos::CpAcommsHandler* goby::apps::moos::CpAcommsHandler::get_instance()
 {
     if (!inst_)
-        inst_ = new CpAcommsHandler();
+        inst_ = new goby::apps::moos::CpAcommsHandler();
     return inst_;
 }
 
-void CpAcommsHandler::delete_instance() { delete inst_; }
+void goby::apps::moos::CpAcommsHandler::delete_instance() { delete inst_; }
 
-CpAcommsHandler::CpAcommsHandler()
-    : GobyMOOSApp(&cfg_),
+goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
+    : goby::moos::GobyMOOSApp(&cfg_),
       translator_(goby::moos::protobuf::TranslatorEntry(), cfg_.common().lat_origin(),
                   cfg_.common().lon_origin(), cfg_.modem_id_lookup_path()),
       dccl_(goby::acomms::DCCLCodec::get()),
@@ -141,9 +143,9 @@ CpAcommsHandler::CpAcommsHandler()
                  &CpAcommsHandler::handle_driver_cfg_update, this);
 }
 
-CpAcommsHandler::~CpAcommsHandler() {}
+goby::apps::moos::CpAcommsHandler::~CpAcommsHandler() {}
 
-void CpAcommsHandler::loop()
+void goby::apps::moos::CpAcommsHandler::loop()
 {
     timer_io_service_.poll();
 
@@ -179,7 +181,7 @@ void CpAcommsHandler::loop()
 // Mail Handlers
 //
 
-void CpAcommsHandler::handle_mac_cycle_update(const CMOOSMsg& msg)
+void goby::apps::moos::CpAcommsHandler::handle_mac_cycle_update(const CMOOSMsg& msg)
 {
     goby::acomms::protobuf::MACUpdate update_msg;
     parse_for_moos(msg.GetString(), &update_msg);
@@ -293,7 +295,7 @@ void CpAcommsHandler::handle_mac_cycle_update(const CMOOSMsg& msg)
     }
 }
 
-void CpAcommsHandler::handle_flush_queue(const CMOOSMsg& msg)
+void goby::apps::moos::CpAcommsHandler::handle_flush_queue(const CMOOSMsg& msg)
 {
     goby::acomms::protobuf::QueueFlush flush;
     parse_for_moos(msg.GetString(), &flush);
@@ -303,20 +305,21 @@ void CpAcommsHandler::handle_flush_queue(const CMOOSMsg& msg)
     queue_manager_.flush_queue(flush);
 }
 
-void CpAcommsHandler::handle_config_file_request(const CMOOSMsg&)
+void goby::apps::moos::CpAcommsHandler::handle_config_file_request(const CMOOSMsg&)
 {
     publish(cfg_.moos_var().prefix() + cfg_.moos_var().config_file(),
             dccl::b64_encode(cfg_.SerializeAsString()));
 }
 
-void CpAcommsHandler::handle_driver_reset(const CMOOSMsg& msg)
+void goby::apps::moos::CpAcommsHandler::handle_driver_reset(const CMOOSMsg& msg)
 {
     driver_reset(driver_,
                  goby::acomms::ModemDriverException(
                      "Manual reset", goby::acomms::protobuf::ModemDriverStatus::MANUAL_RESET));
 }
 
-void CpAcommsHandler::handle_driver_cfg_update(const goby::acomms::protobuf::DriverConfig& cfg)
+void goby::apps::moos::CpAcommsHandler::handle_driver_cfg_update(
+    const goby::acomms::protobuf::DriverConfig& cfg)
 {
     glog.is(VERBOSE) && glog << group("pAcommsHandler") << "Driver config update request: " << cfg
                              << std::endl;
@@ -340,7 +343,7 @@ void CpAcommsHandler::handle_driver_cfg_update(const goby::acomms::protobuf::Dri
                               << " to update";
 }
 
-void CpAcommsHandler::handle_external_initiate_transmission(const CMOOSMsg& msg)
+void goby::apps::moos::CpAcommsHandler::handle_external_initiate_transmission(const CMOOSMsg& msg)
 {
     // don't repost our own transmissions
     if (msg.GetSource() == CMOOSApp::GetAppName())
@@ -357,10 +360,10 @@ void CpAcommsHandler::handle_external_initiate_transmission(const CMOOSMsg& msg)
     }
 }
 
-void CpAcommsHandler::handle_goby_signal(const google::protobuf::Message& msg1,
-                                         const std::string& moos_var1,
-                                         const google::protobuf::Message& msg2,
-                                         const std::string& moos_var2)
+void goby::apps::moos::CpAcommsHandler::handle_goby_signal(const google::protobuf::Message& msg1,
+                                                           const std::string& moos_var1,
+                                                           const google::protobuf::Message& msg2,
+                                                           const std::string& moos_var2)
 
 {
     if (!moos_var1.empty())
@@ -370,8 +373,8 @@ void CpAcommsHandler::handle_goby_signal(const google::protobuf::Message& msg1,
         publish_pb(cfg_.moos_var().prefix() + moos_var2, msg2);
 }
 
-void CpAcommsHandler::handle_raw(const goby::acomms::protobuf::ModemRaw& msg,
-                                 const std::string& moos_var)
+void goby::apps::moos::CpAcommsHandler::handle_raw(const goby::acomms::protobuf::ModemRaw& msg,
+                                                   const std::string& moos_var)
 {
     publish(cfg_.moos_var().prefix() + moos_var, msg.raw());
 }
@@ -380,7 +383,7 @@ void CpAcommsHandler::handle_raw(const goby::acomms::protobuf::ModemRaw& msg,
 // READ CONFIGURATION
 //
 
-void CpAcommsHandler::process_configuration()
+void goby::apps::moos::CpAcommsHandler::process_configuration()
 {
     // create driver objects
     create_driver(driver_, cfg_.driver_type(), cfg_.mutable_driver_cfg(), &mac_);
@@ -544,10 +547,10 @@ void CpAcommsHandler::process_configuration()
     }
 }
 
-void CpAcommsHandler::create_driver(std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
-                                    goby::acomms::protobuf::DriverType driver_type,
-                                    goby::acomms::protobuf::DriverConfig* driver_cfg,
-                                    goby::acomms::MACManager* mac)
+void goby::apps::moos::CpAcommsHandler::create_driver(
+    std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
+    goby::acomms::protobuf::DriverType driver_type,
+    goby::acomms::protobuf::DriverConfig* driver_cfg, goby::acomms::MACManager* mac)
 {
     if (driver_cfg->has_driver_name())
     {
@@ -627,7 +630,7 @@ void CpAcommsHandler::create_driver(std::shared_ptr<goby::acomms::ModemDriverBas
     }
 }
 
-void CpAcommsHandler::handle_queue_receive(const google::protobuf::Message& msg)
+void goby::apps::moos::CpAcommsHandler::handle_queue_receive(const google::protobuf::Message& msg)
 {
     try
     {
@@ -671,7 +674,7 @@ void CpAcommsHandler::handle_queue_receive(const google::protobuf::Message& msg)
     }
 }
 
-void CpAcommsHandler::handle_encode_on_demand(
+void goby::apps::moos::CpAcommsHandler::handle_encode_on_demand(
     const goby::acomms::protobuf::ModemTransmission& request_msg,
     google::protobuf::Message* data_msg)
 {
@@ -685,8 +688,8 @@ void CpAcommsHandler::handle_encode_on_demand(
     data_msg->CopyFrom(*created_message);
 }
 
-void CpAcommsHandler::create_on_publish(const CMOOSMsg& trigger_msg,
-                                        const goby::moos::protobuf::TranslatorEntry& entry)
+void goby::apps::moos::CpAcommsHandler::create_on_publish(
+    const CMOOSMsg& trigger_msg, const goby::moos::protobuf::TranslatorEntry& entry)
 {
     glog.is(DEBUG2) && glog << group("pAcommsHandler")
                             << "Received trigger: " << trigger_msg.GetKey() << std::endl;
@@ -700,7 +703,7 @@ void CpAcommsHandler::create_on_publish(const CMOOSMsg& trigger_msg,
                  << "Message missing mandatory content for: " << entry.protobuf_name() << std::endl;
 }
 
-void CpAcommsHandler::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
+void goby::apps::moos::CpAcommsHandler::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
 {
     std::shared_ptr<google::protobuf::Message> msg = dynamic_parse_for_moos(moos_msg.GetString());
 
@@ -736,9 +739,9 @@ void CpAcommsHandler::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
     }
 }
 
-void CpAcommsHandler::create_on_timer(const boost::system::error_code& error,
-                                      const goby::moos::protobuf::TranslatorEntry& entry,
-                                      Timer* timer)
+void goby::apps::moos::CpAcommsHandler::create_on_timer(
+    const boost::system::error_code& error, const goby::moos::protobuf::TranslatorEntry& entry,
+    Timer* timer)
 {
     if (!error)
     {
@@ -769,7 +772,8 @@ void CpAcommsHandler::create_on_timer(const boost::system::error_code& error,
     }
 }
 
-void CpAcommsHandler::translate_and_push(const goby::moos::protobuf::TranslatorEntry& entry)
+void goby::apps::moos::CpAcommsHandler::translate_and_push(
+    const goby::moos::protobuf::TranslatorEntry& entry)
 {
     try
     {
@@ -789,7 +793,7 @@ void CpAcommsHandler::translate_and_push(const goby::moos::protobuf::TranslatorE
     }
 }
 
-void CpAcommsHandler::driver_reset(
+void goby::apps::moos::CpAcommsHandler::driver_reset(
     std::shared_ptr<goby::acomms::ModemDriverBase> driver,
     const goby::acomms::ModemDriverException& e,
     pAcommsHandlerConfig::DriverFailureApproach::DriverFailureTechnique
@@ -875,7 +879,7 @@ void CpAcommsHandler::driver_reset(
     }
 }
 
-void CpAcommsHandler::restart_drivers()
+void goby::apps::moos::CpAcommsHandler::restart_drivers()
 {
     double now = goby::time::SystemClock::now<goby::time::SITime>() / boost::units::si::seconds;
     std::set<std::shared_ptr<goby::acomms::ModemDriverBase> > drivers_to_start;
@@ -913,7 +917,7 @@ void CpAcommsHandler::restart_drivers()
     }
 }
 
-void CpAcommsHandler::driver_bind()
+void goby::apps::moos::CpAcommsHandler::driver_bind()
 {
     // bind the lower level pieces of goby-acomms together
     if (driver_)
@@ -946,7 +950,7 @@ void CpAcommsHandler::driver_bind()
     }
 }
 
-void CpAcommsHandler::driver_unbind()
+void goby::apps::moos::CpAcommsHandler::driver_unbind()
 {
     // unbind the lower level pieces of goby-acomms together
     if (driver_)

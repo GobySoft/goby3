@@ -40,15 +40,14 @@
 
 #include "iver_driver_config.pb.h"
 
-extern "C"
+namespace goby
 {
-    FrontSeatInterfaceBase* frontseat_driver_load(iFrontSeatConfig*);
-}
-
+namespace moos
+{
 class IverFrontSeat : public FrontSeatInterfaceBase
 {
   public:
-    IverFrontSeat(const iFrontSeatConfig& cfg);
+    IverFrontSeat(const goby::apps::moos::protobuf::iFrontSeatConfig& cfg);
 
   private: // virtual methods from FrontSeatInterfaceBase
     void loop();
@@ -85,7 +84,7 @@ class IverFrontSeat : public FrontSeatInterfaceBase
     }
 
   private:
-    const IverFrontSeatConfig iver_config_;
+    const apps::moos::protobuf::IverFrontSeatConfig iver_config_;
     goby::util::SerialClient serial_;
 
     std::shared_ptr<goby::util::SerialClient> ntp_serial_;
@@ -100,5 +99,7 @@ class IverFrontSeat : public FrontSeatInterfaceBase
 
     goby::moos::protobuf::NodeStatus status_;
 };
+} // namespace moos
+} // namespace goby
 
 #endif

@@ -2,6 +2,8 @@ syntax = "proto2";
 import "goby/moos/protobuf/frontseat_config.proto";
 import "goby/protobuf/option_extensions.proto";
 
+package goby.apps.moos.protobuf;
+
 message IverFrontSeatConfig
 {
     required string serial_port = 1;

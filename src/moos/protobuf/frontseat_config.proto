@@ -4,11 +4,13 @@ import "dccl/option_extensions.proto";
 import "goby/moos/protobuf/goby_moos_app.proto";
 import "goby/protobuf/option_extensions.proto";
 
+package goby.apps.moos.protobuf;
+
 message iFrontSeatConfig
 {
     option (dccl.msg).unit_system = "si";
     
-    optional GobyMOOSAppConfig common = 1;
+    optional goby.moos.protobuf.GobyMOOSAppConfig common = 1;
 
     optional bool require_helm = 10 [
         default = true,
