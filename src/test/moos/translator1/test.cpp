@@ -29,6 +29,8 @@
 #include "test.pb.h"
 
 using namespace goby::moos;
+using goby::test::moos::protobuf::BasicNodeReport;
+using namespace goby::test::acomms::protobuf;
 
 void populate_test_msg(TestMsg* msg_in);
 void run_one_in_one_out_test(MOOSTranslator& translator, int i, bool hex_encode);
@@ -39,7 +41,7 @@ int main(int argc, char* argv[])
     goby::glog.set_name(argv[0]);
 
     protobuf::TranslatorEntry entry;
-    entry.set_protobuf_name("TestMsg");
+    entry.set_protobuf_name("goby.test.acomms.protobuf.TestMsg");
 
     protobuf::TranslatorEntry::CreateParser* parser = entry.add_create();
     parser->set_technique(protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_TEXT_FORMAT);
@@ -64,7 +66,7 @@ int main(int argc, char* argv[])
     std::set<protobuf::TranslatorEntry> entries;
     {
         protobuf::TranslatorEntry entry;
-        entry.set_protobuf_name("TestMsg");
+        entry.set_protobuf_name("goby.test.acomms.protobuf.TestMsg");
 
         protobuf::TranslatorEntry::CreateParser* parser = entry.add_create();
         parser->set_technique(protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_NATIVE_ENCODED);
@@ -77,7 +79,7 @@ int main(int argc, char* argv[])
         entries.insert(entry);
     }
 
-    translator.clear_entry("TestMsg");
+    translator.clear_entry("goby.test.acomms.protobuf.TestMsg");
     translator.add_entry(entries);
 
     goby::glog << translator << std::endl;
@@ -85,7 +87,7 @@ int main(int argc, char* argv[])
 
     {
         protobuf::TranslatorEntry entry;
-        entry.set_protobuf_name("TestMsg");
+        entry.set_protobuf_name("goby.test.acomms.protobuf.TestMsg");
 
         protobuf::TranslatorEntry::CreateParser* parser = entry.add_create();
         parser->set_technique(
@@ -106,7 +108,7 @@ int main(int argc, char* argv[])
 
     {
         protobuf::TranslatorEntry entry;
-        entry.set_protobuf_name("TestMsg");
+        entry.set_protobuf_name("goby.test.acomms.protobuf.TestMsg");
 
         protobuf::TranslatorEntry::CreateParser* parser = entry.add_create();
         parser->set_technique(protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_HEX);
@@ -130,7 +132,7 @@ int main(int argc, char* argv[])
             format_str + ",REPEAT={%10.0%,%10.1%,%10.2%,%10.3%,%10.4%,%10.5%,%10.6%,%10.7%,%10.8%,%"
                          "10.9%,%10.10%,%10.11%}";
         protobuf::TranslatorEntry entry;
-        entry.set_protobuf_name("BasicNodeReport");
+        entry.set_protobuf_name("goby.test.moos.protobuf.BasicNodeReport");
 
         protobuf::TranslatorEntry::CreateParser* parser = entry.add_create();
         parser->set_technique(protobuf::TranslatorEntry::TECHNIQUE_FORMAT);
@@ -181,7 +183,8 @@ int main(int argc, char* argv[])
 
     typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
     GoogleProtobufMessagePointer report_out =
-        translator.moos_to_protobuf<GoogleProtobufMessagePointer>(moos_msgs, "BasicNodeReport");
+        translator.moos_to_protobuf<GoogleProtobufMessagePointer>(
+            moos_msgs, "goby.test.moos.protobuf.BasicNodeReport");
 
     goby::glog << "Message out: " << std::endl;
     goby::glog << report_out->DebugString() << std::endl;
@@ -189,7 +192,7 @@ int main(int argc, char* argv[])
 
     {
         protobuf::TranslatorEntry entry;
-        entry.set_protobuf_name("BasicNodeReport");
+        entry.set_protobuf_name("goby.test.moos.protobuf.BasicNodeReport");
 
         protobuf::TranslatorEntry::CreateParser* parser = entry.add_create();
         parser->set_technique(protobuf::TranslatorEntry::TECHNIQUE_FORMAT);
@@ -288,8 +291,8 @@ int main(int argc, char* argv[])
     moos_msgs.insert(
         std::make_pair("VEHICLE_NAME", CMOOSMsg(MOOS_NOTIFY, "VEHICLE_NAME", "UNICORN")));
 
-    report_out =
-        translator.moos_to_protobuf<GoogleProtobufMessagePointer>(moos_msgs, "BasicNodeReport");
+    report_out = translator.moos_to_protobuf<GoogleProtobufMessagePointer>(
+        moos_msgs, "goby.test.moos.protobuf.BasicNodeReport");
 
     report.clear_repeat();
 
@@ -358,7 +361,7 @@ int main(int argc, char* argv[])
     std::string sub_message_format_str = "em.val=%17:1%";
     {
         protobuf::TranslatorEntry entry;
-        entry.set_protobuf_name("TestMsg");
+        entry.set_protobuf_name("goby.test.acomms.protobuf.TestMsg");
 
         protobuf::TranslatorEntry::CreateParser* parser = entry.add_create();
         parser->set_technique(protobuf::TranslatorEntry::TECHNIQUE_FORMAT);
@@ -391,7 +394,8 @@ int main(int argc, char* argv[])
 
     typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
     GoogleProtobufMessagePointer embedded_test_out =
-        translator.moos_to_protobuf<GoogleProtobufMessagePointer>(moos_msgs, "TestMsg");
+        translator.moos_to_protobuf<GoogleProtobufMessagePointer>(
+            moos_msgs, "goby.test.acomms.protobuf.TestMsg");
 
     goby::glog << "Message out: " << std::endl;
     goby::glog << embedded_test_out->DebugString() << std::endl;
@@ -403,7 +407,7 @@ int main(int argc, char* argv[])
         "101.0%,dbl1=%101.1%,dbl2=%101.2%,dbl3=%101.3%,em0.em1.val=%37:2:1%";
     {
         protobuf::TranslatorEntry entry;
-        entry.set_protobuf_name("TestMsg");
+        entry.set_protobuf_name("goby.test.acomms.protobuf.TestMsg");
 
         protobuf::TranslatorEntry::CreateParser* parser = entry.add_create();
         parser->set_technique(protobuf::TranslatorEntry::TECHNIQUE_FORMAT);
@@ -442,8 +446,8 @@ int main(int argc, char* argv[])
     }
 
     typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
-    embedded_test_out =
-        translator.moos_to_protobuf<GoogleProtobufMessagePointer>(moos_msgs, "TestMsg");
+    embedded_test_out = translator.moos_to_protobuf<GoogleProtobufMessagePointer>(
+        moos_msgs, "goby.test.acomms.protobuf.TestMsg");
 
     goby::glog << "Message out: " << std::endl;
     goby::glog << embedded_test_out->DebugString() << std::endl;
@@ -532,7 +536,8 @@ void run_one_in_one_out_test(MOOSTranslator& translator, int i, bool hex_encode)
 
     typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
     GoogleProtobufMessagePointer msg_out =
-        translator.moos_to_protobuf<GoogleProtobufMessagePointer>(moos_msgs, "TestMsg");
+        translator.moos_to_protobuf<GoogleProtobufMessagePointer>(
+            moos_msgs, "goby.test.acomms.protobuf.TestMsg");
 
     goby::glog << "Message out: " << std::endl;
     goby::glog << msg_out->DebugString() << std::endl;

@@ -27,6 +27,9 @@
 
 #include "test.pb.h"
 
+using goby::test::middleware::protobuf::CTDSample;
+using goby::test::middleware::protobuf::TempSample;
+
 constexpr goby::middleware::Group tempgroup("groups::temp");
 constexpr goby::middleware::Group ctdgroup("groups::ctd");
 int nctd = 6;
@@ -43,12 +46,13 @@ void read_log(int test)
     goby::middleware::LogEntry::new_type_hook[goby::middleware::MarshallingScheme::DCCL] =
         [&](const std::string& type) {
             std::cout << "New type hook for DCCL: " << type << std::endl;
-            assert(type == "CTDSample");
+            assert(type == "goby.test.middleware.protobuf.CTDSample");
         };
     goby::middleware::LogEntry::new_type_hook[goby::middleware::MarshallingScheme::PROTOBUF] =
         [&](const std::string& type) {
             std::cout << "New type hook for PROTOBUF: " << type << std::endl;
-            assert(type == "TempSample" || type == "google.protobuf.FileDescriptorProto");
+            assert(type == "goby.test.middleware.protobuf.TempSample" ||
+                   type == "google.protobuf.FileDescriptorProto");
         };
 
     std::ifstream in_log_file("/tmp/goby3_test_log.goby");

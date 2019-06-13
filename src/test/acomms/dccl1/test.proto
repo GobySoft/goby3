@@ -1,6 +1,8 @@
 syntax = "proto2";
 import "dccl/option_extensions.proto";
 
+package goby.test.acomms.protobuf;
+
 enum Enum1
 {
     ENUM_A = 1;

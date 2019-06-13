@@ -30,6 +30,9 @@
 #include "goby/util/debug_logger.h"
 #include "test.pb.h"
 
+using goby::test::zeromq::protobuf::CTDSample;
+using goby::test::zeromq::protobuf::TempSample;
+
 extern constexpr goby::middleware::Group ctd{"CTD"};
 extern constexpr goby::middleware::Group ctd2{"CTD2"};
 extern constexpr goby::middleware::Group temp{"TEMP"};

@@ -29,6 +29,10 @@
 
 using namespace goby::test::middleware;
 
+using goby::test::acomms::protobuf::EmbeddedMsg1;
+using goby::test::acomms::protobuf::EmbeddedMsg2;
+using goby::test::acomms::protobuf::TestMsg;
+
 namespace goby
 {
 namespace test
@@ -180,7 +184,7 @@ void TestHDF5Plugin::fill_message(TestMsg& msg_in)
     msg_in.set_string_default_optional("abc123");
     msg_in.set_bytes_default_optional(goby::util::hex_decode("00112233aabbcc1234"));
 
-    msg_in.set_enum_default_optional(ENUM_C);
+    msg_in.set_enum_default_optional(goby::test::acomms::protobuf::ENUM_C);
     msg_in.mutable_msg_default_optional()->set_val(++i + 0.3);
     msg_in.mutable_msg_default_optional()->mutable_msg()->set_val(++i);
 
@@ -203,7 +207,7 @@ void TestHDF5Plugin::fill_message(TestMsg& msg_in)
     msg_in.set_string_default_required("abc123");
     msg_in.set_bytes_default_required(goby::util::hex_decode("00112233aabbcc1234"));
 
-    msg_in.set_enum_default_required(ENUM_C);
+    msg_in.set_enum_default_required(goby::test::acomms::protobuf::ENUM_C);
     msg_in.mutable_msg_default_required()->set_val(++i + 0.3);
     msg_in.mutable_msg_default_required()->mutable_msg()->set_val(++i);
 
@@ -232,7 +236,8 @@ void TestHDF5Plugin::fill_message(TestMsg& msg_in)
         else
             msg_in.add_bytes_default_repeat(goby::util::hex_decode("ffeedd12"));
 
-        msg_in.add_enum_default_repeat(static_cast<Enum1>((++i % 3) + 1));
+        msg_in.add_enum_default_repeat(
+            static_cast<goby::test::acomms::protobuf::Enum1>((++i % 3) + 1));
         EmbeddedMsg1* em_msg = msg_in.add_msg_default_repeat();
         em_msg->set_val(++i + 0.3);
         em_msg->mutable_msg()->set_val(++i);
