@@ -58,12 +58,16 @@ void goby::acomms::ABCDriver::startup(const protobuf::DriverConfig& cfg)
     // now set our special configuration values
     {
         std::stringstream raw;
-        raw << "CONF,FOO:" << driver_cfg_.GetExtension(ABCDriverConfig::enable_foo) << "\r\n";
+        raw << "CONF,FOO:"
+            << driver_cfg_.GetExtension(goby::acomms::abc::protobuf::ABCDriverConfig::enable_foo)
+            << "\r\n";
         signal_and_write(raw.str());
     }
     {
         std::stringstream raw;
-        raw << "CONF,BAR:" << driver_cfg_.GetExtension(ABCDriverConfig::enable_bar) << "\r\n";
+        raw << "CONF,BAR:"
+            << driver_cfg_.GetExtension(goby::acomms::abc::protobuf::ABCDriverConfig::enable_bar)
+            << "\r\n";
         signal_and_write(raw.str());
     }
 } // startup

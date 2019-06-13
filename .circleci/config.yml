@@ -337,7 +337,9 @@ jobs:
             apt-get update &&
             apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl3-dev dccl3-compiler
       - checkout
-      - run: *run-build
+      - run: 
+          name: Build
+          command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
       - run: *run-tests
       
   amd64-stretch-deb-build:

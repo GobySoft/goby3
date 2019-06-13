@@ -1,4 +1,7 @@
 syntax = "proto2";
+
+package goby.test.middleware.protobuf;
+
 message TestHDF5Message
 {
     repeated double a = 1;

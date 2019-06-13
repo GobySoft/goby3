@@ -27,6 +27,14 @@
 #include "test.pb.h"
 #include "test2.pb.h"
 
+using namespace goby::test::middleware;
+
+namespace goby
+{
+namespace test
+{
+namespace middleware
+{
 class TestHDF5Plugin : public goby::middleware::HDF5Plugin
 {
   public:
@@ -35,25 +43,30 @@ class TestHDF5Plugin : public goby::middleware::HDF5Plugin
   private:
     bool provide_entry(goby::middleware::HDF5ProtobufEntry* entry);
     void fill_message(TestMsg& msg_in);
-    void fill_message(TestHDF5Message& msg);
+    void fill_message(protobuf::TestHDF5Message& msg);
 
   private:
 };
+} // namespace middleware
+} // namespace test
+} // namespace goby
 
 extern "C"
 {
     goby::middleware::HDF5Plugin* goby_hdf5_load(const goby::middleware::protobuf::HDF5Config* cfg)
     {
-        return new TestHDF5Plugin(cfg);
+        return new goby::test::middleware::TestHDF5Plugin(cfg);
     }
 }
 
-TestHDF5Plugin::TestHDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg)
+goby::test::middleware::TestHDF5Plugin::TestHDF5Plugin(
+    const goby::middleware::protobuf::HDF5Config* cfg)
     : goby::middleware::HDF5Plugin(cfg)
 {
 }
 
-bool TestHDF5Plugin::provide_entry(goby::middleware::HDF5ProtobufEntry* entry)
+bool goby::test::middleware::TestHDF5Plugin::provide_entry(
+    goby::middleware::HDF5ProtobufEntry* entry)
 {
     static int entry_index = 0;
 
@@ -68,9 +81,9 @@ bool TestHDF5Plugin::provide_entry(goby::middleware::HDF5ProtobufEntry* entry)
     }
     else
     {
-        TestHDF5Message msg;
+        protobuf::TestHDF5Message msg;
         fill_message(msg);
-        entry->msg = std::shared_ptr<google::protobuf::Message>(new TestHDF5Message(msg));
+        entry->msg = std::shared_ptr<google::protobuf::Message>(new protobuf::TestHDF5Message(msg));
     }
 
     if (entry_index < 10)
@@ -89,8 +102,10 @@ bool TestHDF5Plugin::provide_entry(goby::middleware::HDF5ProtobufEntry* entry)
     return true;
 }
 
-void TestHDF5Plugin::fill_message(TestHDF5Message& msg)
+void goby::test::middleware::TestHDF5Plugin::fill_message(protobuf::TestHDF5Message& msg)
 {
+    using namespace goby::test::middleware::protobuf;
+
     static int i = 0;
     static int i2 = 0;
     static int i3 = 0;

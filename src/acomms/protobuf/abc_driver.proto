@@ -1,6 +1,8 @@
 syntax = "proto2";
 import "goby/acomms/protobuf/driver_base.proto"; // load up message DriverBaseConfig
 
+package goby.acomms.abc.protobuf;
+
 message ABCDriverConfig
 {
     extend goby.acomms.protobuf.DriverConfig

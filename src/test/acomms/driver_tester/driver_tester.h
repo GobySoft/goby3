@@ -25,6 +25,12 @@
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 
+namespace goby
+{
+namespace test
+{
+namespace acomms
+{
 class DriverTester
 {
   public:
@@ -68,3 +74,6 @@ class DriverTester
     std::string test_str0_, test_str1_, test_str2_, test_str3_;
     goby::acomms::protobuf::DriverType driver_type_;
 };
+} // namespace acomms
+} // namespace test
+} // namespace goby

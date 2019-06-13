@@ -31,6 +31,12 @@ inline std::ostream& stream_assert(std::ostream& os) { assert(false); }
 
 using namespace goby::util::logger;
 
+namespace goby
+{
+namespace test
+{
+namespace util
+{
 struct A
 {
     A() : i(0) {}
@@ -73,6 +79,11 @@ void spew(int n, int m, int run)
             break;
     }
 }
+} // namespace util
+} // namespace test
+} // namespace goby
+
+using namespace goby::test::util;
 
 int main()
 {
