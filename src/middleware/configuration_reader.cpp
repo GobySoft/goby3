@@ -156,7 +156,7 @@ void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
 
             glog.set_name(*application_name);
             glog.add_stream(util::protobuf::GLogConfig::VERBOSE, &std::cout);
-            FlexOStreamErrorCollector error_collector(protobuf_text);
+            goby::util::FlexOStreamErrorCollector error_collector(protobuf_text);
             parser.RecordErrorsTo(&error_collector);
             // maybe the command line will fill in the missing pieces
             parser.AllowPartialMessage(true);

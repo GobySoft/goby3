@@ -144,7 +144,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_
     static void parse(const std::string& in, google::protobuf::Message* out)
     {
         google::protobuf::TextFormat::Parser parser;
-        FlexOStreamErrorCollector error_collector(in);
+        goby::util::FlexOStreamErrorCollector error_collector(in);
         parser.RecordErrorsTo(&error_collector);
         parser.ParseFromString(in, out);
     }

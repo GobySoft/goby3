@@ -205,8 +205,6 @@ namespace util
 {
 // for compatibility with Goby1
 inline util::FlexOstream& glogger() { return goby::glog; }
-} // namespace util
-} // namespace goby
 
 class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
 {
@@ -267,5 +265,7 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
     bool has_warnings_;
     bool has_errors_;
 };
+} // namespace util
+} // namespace goby
 
 #endif

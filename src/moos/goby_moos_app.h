@@ -830,7 +830,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
             boost::algorithm::replace_all(protobuf_text, "//", "#");
 
             google::protobuf::TextFormat::Parser parser;
-            FlexOStreamErrorCollector error_collector(protobuf_text);
+            goby::util::FlexOStreamErrorCollector error_collector(protobuf_text);
             parser.RecordErrorsTo(&error_collector);
             parser.AllowPartialMessage(true);
             parser.ParseFromString(protobuf_text, cfg);
