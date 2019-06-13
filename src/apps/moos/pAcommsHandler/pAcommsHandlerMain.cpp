@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
 
     int return_value = goby::moos::run<CpAcommsHandler>(argc, argv);
 
-    goby::transitional::DCCLAlgorithmPerformer::deleteInstance();
+    goby::moos::transitional::DCCLAlgorithmPerformer::deleteInstance();
     CpAcommsHandler::delete_instance();
     dccl::DynamicProtobufManager::protobuf_shutdown();
 

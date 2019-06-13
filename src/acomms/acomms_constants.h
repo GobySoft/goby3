@@ -27,8 +27,10 @@
 #include <limits>
 #include <string>
 
+/// The global namespace for the Goby project
 namespace goby
 {
+/// Classes and functions pertaining to acoustic communications (acomms)
 namespace acomms
 {
 const unsigned BITS_IN_BYTE = 8;

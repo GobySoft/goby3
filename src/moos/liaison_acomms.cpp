@@ -56,7 +56,7 @@ const std::string STRIPE_EVEN_CLASS = "even";
 using namespace goby::util::logger;
 using namespace Wt;
 
-goby::util::LiaisonAcomms::LiaisonAcomms(ZeroMQService* zeromq_service,
+goby::moos::LiaisonAcomms::LiaisonAcomms(ZeroMQService* zeromq_service,
                                          const protobuf::LiaisonConfig& cfg,
                                          Wt::WContainerWidget* parent)
     : LiaisonContainer(parent),
@@ -178,7 +178,7 @@ goby::util::LiaisonAcomms::LiaisonAcomms(ZeroMQService* zeromq_service,
     set_name("MOOSAcomms");
 }
 
-void goby::util::LiaisonAcomms::loop()
+void goby::moos::LiaisonAcomms::loop()
 {
     while (zeromq_service_->poll(0)) {}
 
@@ -222,7 +222,7 @@ void goby::util::LiaisonAcomms::loop()
     }
 }
 
-void goby::util::LiaisonAcomms::update_driver_stats(int now,
+void goby::moos::LiaisonAcomms::update_driver_stats(int now,
                                                     LiaisonAcomms::DriverStats* driver_stats)
 {
     if (driver_stats->last_time > 0)
@@ -239,7 +239,7 @@ void goby::util::LiaisonAcomms::update_driver_stats(int now,
     }
 }
 
-void goby::util::LiaisonAcomms::dccl_analyze(const WMouseEvent& event)
+void goby::moos::LiaisonAcomms::dccl_analyze(const WMouseEvent& event)
 {
     if (dccl_analyze_text_->isHidden())
     {
@@ -253,7 +253,7 @@ void goby::util::LiaisonAcomms::dccl_analyze(const WMouseEvent& event)
     }
 }
 
-void goby::util::LiaisonAcomms::dccl_message(const WMouseEvent& event)
+void goby::moos::LiaisonAcomms::dccl_message(const WMouseEvent& event)
 {
     if (dccl_message_text_->isHidden())
     {
@@ -267,7 +267,7 @@ void goby::util::LiaisonAcomms::dccl_message(const WMouseEvent& event)
     }
 }
 
-void goby::util::LiaisonAcomms::dccl_select(WString msg)
+void goby::moos::LiaisonAcomms::dccl_select(WString msg)
 {
     std::string m = msg.narrow();
     m = m.substr(m.find(" ") + 1);
@@ -293,7 +293,7 @@ void goby::util::LiaisonAcomms::dccl_select(WString msg)
     }
 }
 
-void goby::util::LiaisonAcomms::moos_inbox(CMOOSMsg& msg)
+void goby::moos::LiaisonAcomms::moos_inbox(CMOOSMsg& msg)
 {
     using goby::moos::operator<<;
 
@@ -414,7 +414,7 @@ void goby::util::LiaisonAcomms::moos_inbox(CMOOSMsg& msg)
     }
 }
 
-void goby::util::LiaisonAcomms::handle_modem_message(LiaisonAcomms::DriverStats* driver_stats,
+void goby::moos::LiaisonAcomms::handle_modem_message(LiaisonAcomms::DriverStats* driver_stats,
                                                      bool good,
                                                      goby::acomms::protobuf::ModemTransmission& msg)
 {
@@ -428,7 +428,7 @@ void goby::util::LiaisonAcomms::handle_modem_message(LiaisonAcomms::DriverStats*
     driver_stats->last_msg_ = msg;
 }
 
-void goby::util::LiaisonAcomms::process_acomms_config()
+void goby::moos::LiaisonAcomms::process_acomms_config()
 {
     std::lock_guard<std::mutex> l(dccl_mutex_);
 
@@ -654,7 +654,7 @@ void goby::util::LiaisonAcomms::process_acomms_config()
     }
 }
 
-void goby::util::LiaisonAcomms::mm_check(int axis, int column, bool checked)
+void goby::moos::LiaisonAcomms::mm_check(int axis, int column, bool checked)
 {
     std::cout << "Axis: " << axis << ", column: " << column << ", check: " << checked << std::endl;
 
@@ -683,26 +683,26 @@ void goby::util::LiaisonAcomms::mm_check(int axis, int column, bool checked)
             .setVisible(axis_enabled[i]);
 }
 
-void goby::util::LiaisonAcomms::mm_range(double range)
+void goby::moos::LiaisonAcomms::mm_range(double range)
 {
     mm_rx_stats_range_ = range;
     mm_rx_stats_graph_->axis(Chart::XAxis).setRange(-mm_rx_stats_range_, 0);
     mm_rx_stats_graph_->axis(Chart::XAxis).setLabelInterval(mm_rx_stats_range_ / 5);
 }
 
-Wt::WString goby::util::QueueBar::text() const
+Wt::WString goby::moos::QueueBar::text() const
 {
     return std::string(goby::util::as<std::string>(value()) + "/" +
                        goby::util::as<std::string>(maximum()));
 }
 
-Wt::WString goby::util::MACBar::text() const
+Wt::WString goby::moos::MACBar::text() const
 {
     return std::string(goby::util::as<std::string>(value()) + "/" +
                        goby::util::as<std::string>(maximum()) + " s");
 }
 
-void goby::util::LiaisonAcomms::queue_info(const Wt::WMouseEvent& event, int id)
+void goby::moos::LiaisonAcomms::queue_info(const Wt::WMouseEvent& event, int id)
 {
     const google::protobuf::Descriptor* desc = 0;
     {
@@ -733,7 +733,7 @@ void goby::util::LiaisonAcomms::queue_info(const Wt::WMouseEvent& event, int id)
     if (dialog.exec() == WDialog::Accepted) {}
 }
 
-void goby::util::LiaisonAcomms::mac_info(const Wt::WMouseEvent& event, int id)
+void goby::moos::LiaisonAcomms::mac_info(const Wt::WMouseEvent& event, int id)
 {
     WDialog dialog("AMAC Slot Info for Slot #" + goby::util::as<std::string>(id));
     WContainerWidget* message_div = new WContainerWidget(dialog.contents());
@@ -750,7 +750,7 @@ void goby::util::LiaisonAcomms::mac_info(const Wt::WMouseEvent& event, int id)
     if (dialog.exec() == WDialog::Accepted) {}
 }
 
-void goby::util::LiaisonAcomms::driver_info(const Wt::WMouseEvent& event,
+void goby::moos::LiaisonAcomms::driver_info(const Wt::WMouseEvent& event,
                                             LiaisonAcomms::DriverStats* driver_stats)
 {
     WDialog dialog("Last Message " +
@@ -770,7 +770,7 @@ void goby::util::LiaisonAcomms::driver_info(const Wt::WMouseEvent& event,
     if (dialog.exec() == WDialog::Accepted) {}
 }
 
-void goby::util::LiaisonAcomms::queue_flush(const Wt::WMouseEvent& event, int id)
+void goby::moos::LiaisonAcomms::queue_flush(const Wt::WMouseEvent& event, int id)
 {
     goby::acomms::protobuf::QueueFlush flush;
     flush.set_dccl_id(id);
@@ -781,7 +781,7 @@ void goby::util::LiaisonAcomms::queue_flush(const Wt::WMouseEvent& event, int id
                    LIAISON_INTERNAL_PUBLISH_SOCKET);
 }
 
-std::string goby::util::LiaisonAcomms::format_seconds(int sec)
+std::string goby::moos::LiaisonAcomms::format_seconds(int sec)
 {
     if (sec < 60)
         return goby::util::as<std::string>(sec) + " s";

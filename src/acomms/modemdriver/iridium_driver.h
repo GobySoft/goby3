@@ -64,7 +64,7 @@ class IridiumDriver : public ModemDriverBase
     bool query_dtr();
 
   private:
-    fsm::IridiumDriverFSM fsm_;
+    iridium::fsm::IridiumDriverFSM fsm_;
     protobuf::DriverConfig driver_cfg_;
 
     std::shared_ptr<goby::util::TCPClient> debug_client_;

@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 {
     int return_value = goby::moos::run<CpTranslator>(argc, argv);
 
-    goby::transitional::DCCLAlgorithmPerformer::deleteInstance();
+    goby::moos::transitional::DCCLAlgorithmPerformer::deleteInstance();
     CpTranslator::delete_instance();
     dccl::DynamicProtobufManager::protobuf_shutdown();
 

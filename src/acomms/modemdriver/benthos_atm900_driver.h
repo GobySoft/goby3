@@ -59,7 +59,7 @@ class BenthosATM900Driver : public ModemDriverBase
     };
     static const std::string SERIAL_DELIMITER;
 
-    benthos_fsm::BenthosATM900FSM fsm_;
+    benthos::fsm::BenthosATM900FSM fsm_;
     protobuf::DriverConfig driver_cfg_; // configuration given to you at launch
 };
 

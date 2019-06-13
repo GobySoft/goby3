@@ -36,15 +36,15 @@
 using goby::glog;
 using namespace goby::util::logger;
 
-int goby::acomms::benthos_fsm::BenthosATM900FSM::count_ = 0;
+int goby::acomms::benthos::fsm::BenthosATM900FSM::count_ = 0;
 
-void goby::acomms::benthos_fsm::BenthosATM900FSM::buffer_data_out(
+void goby::acomms::benthos::fsm::BenthosATM900FSM::buffer_data_out(
     const goby::acomms::protobuf::ModemTransmission& msg)
 {
     data_out_.push_back(msg);
 }
 
-void goby::acomms::benthos_fsm::Active::in_state_react(const EvRxSerial& e)
+void goby::acomms::benthos::fsm::Active::in_state_react(const EvRxSerial& e)
 {
     std::string in = e.line;
     boost::trim(in);
@@ -74,7 +74,7 @@ void goby::acomms::benthos_fsm::Active::in_state_react(const EvRxSerial& e)
     }
 }
 
-goby::acomms::benthos_fsm::ReceiveData::ReceiveData(my_context ctx)
+goby::acomms::benthos::fsm::ReceiveData::ReceiveData(my_context ctx)
     : my_base(ctx), StateNotify("ReceiveData"), reported_size_(0)
 {
     try
@@ -112,7 +112,7 @@ goby::acomms::benthos_fsm::ReceiveData::ReceiveData(my_context ctx)
     }
 }
 
-void goby::acomms::benthos_fsm::ReceiveData::in_state_react(const EvRxSerial& e)
+void goby::acomms::benthos::fsm::ReceiveData::in_state_react(const EvRxSerial& e)
 {
     try
     {
@@ -257,7 +257,7 @@ void goby::acomms::benthos_fsm::ReceiveData::in_state_react(const EvRxSerial& e)
     }
 }
 
-void goby::acomms::benthos_fsm::Range::in_state_react(const EvRxSerial& e)
+void goby::acomms::benthos::fsm::Range::in_state_react(const EvRxSerial& e)
 {
     try
     {
@@ -279,7 +279,7 @@ void goby::acomms::benthos_fsm::Range::in_state_react(const EvRxSerial& e)
 
         if (in.compare(0, range.size(), range) == 0)
         {
-            protobuf::ModemTransmission range_msg;
+            goby::acomms::protobuf::ModemTransmission range_msg;
 
             // Range 1 to 2 : 1499.6 m  (Round-trip  1999.5 ms) speed  0.0 m/s
             // ^-range_pos  ^- col_pos  ^- rt_start_pos     ^- rt_end_pos
@@ -310,7 +310,7 @@ void goby::acomms::benthos_fsm::Range::in_state_react(const EvRxSerial& e)
             range_msg.set_src(boost::lexical_cast<unsigned>(src_dest[0]));
             range_msg.set_dest(boost::lexical_cast<unsigned>(src_dest[1]));
 
-            range_msg.set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
+            range_msg.set_type(goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC);
             range_msg.SetExtension(benthos::protobuf::type,
                                    benthos::protobuf::BENTHOS_TWO_WAY_PING);
 
@@ -336,7 +336,7 @@ void goby::acomms::benthos_fsm::Range::in_state_react(const EvRxSerial& e)
     }
 }
 
-void goby::acomms::benthos_fsm::Command::in_state_react(const EvTxSerial&)
+void goby::acomms::benthos::fsm::Command::in_state_react(const EvTxSerial&)
 {
     double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
@@ -377,9 +377,9 @@ void goby::acomms::benthos_fsm::Command::in_state_react(const EvTxSerial&)
     }
 }
 
-void goby::acomms::benthos_fsm::TransmitData::in_state_react(const EvTxSerial&)
+void goby::acomms::benthos::fsm::TransmitData::in_state_react(const EvTxSerial&)
 {
-    boost::circular_buffer<protobuf::ModemTransmission>& data_out =
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission>& data_out =
         context<BenthosATM900FSM>().data_out();
     if (!data_out.empty())
     {
@@ -392,7 +392,7 @@ void goby::acomms::benthos_fsm::TransmitData::in_state_react(const EvTxSerial&)
     }
 }
 
-void goby::acomms::benthos_fsm::TransmitData::in_state_react(const EvAck& e)
+void goby::acomms::benthos::fsm::TransmitData::in_state_react(const EvAck& e)
 {
     static const std::string forwarding_delay_up = "Forwarding Delay Up";
     if (e.response_.compare(0, forwarding_delay_up.size(), forwarding_delay_up) == 0)
@@ -401,7 +401,7 @@ void goby::acomms::benthos_fsm::TransmitData::in_state_react(const EvAck& e)
     }
 }
 
-void goby::acomms::benthos_fsm::Command::in_state_react(const EvAck& e)
+void goby::acomms::benthos::fsm::Command::in_state_react(const EvAck& e)
 {
     bool valid = false;
     if (!at_out().empty())

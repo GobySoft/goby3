@@ -26,6 +26,8 @@
 
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 
+using goby::acomms::iridium::protobuf::IridiumDriverConfig;
+
 int main(int argc, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);

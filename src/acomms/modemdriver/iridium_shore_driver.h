@@ -60,8 +60,9 @@ class IridiumShoreDriver : public ModemDriverBase
     void receive(const protobuf::ModemTransmission& msg);
     void send(const protobuf::ModemTransmission& msg);
 
-    void decode_mo(protobuf::DirectIPMOPreHeader* pre_header, protobuf::DirectIPMOHeader* header,
-                   protobuf::DirectIPMOPayload* body, const std::string& data);
+    void decode_mo(iridium::protobuf::DirectIPMOPreHeader* pre_header,
+                   iridium::protobuf::DirectIPMOHeader* header,
+                   iridium::protobuf::DirectIPMOPayload* body, const std::string& data);
     std::string create_sbd_mt_data_message(const std::string& payload, const std::string& imei);
     void receive_sbd_mo();
     void send_sbd_mt(const std::string& bytes, const std::string& imei);

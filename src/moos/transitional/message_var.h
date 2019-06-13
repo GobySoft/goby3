@@ -39,6 +39,8 @@
 #include "message_val.h"
 namespace goby
 {
+namespace moos
+{
 namespace transitional
 {
 class DCCLMessageVal;
@@ -171,5 +173,6 @@ class DCCLMessageVar
 };
 
 } // namespace transitional
+} // namespace moos
 } // namespace goby
 #endif

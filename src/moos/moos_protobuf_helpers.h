@@ -83,8 +83,8 @@ run_serialize_algorithms(const google::protobuf::Message& in,
             primary_val = modified_values[it->output_virtual_field()];
         }
 
-        goby::transitional::DCCLMessageVal val(primary_val);
-        std::vector<goby::transitional::DCCLMessageVal> ref;
+        goby::moos::transitional::DCCLMessageVal val(primary_val);
+        std::vector<goby::moos::transitional::DCCLMessageVal> ref;
         for (int i = 0, m = it->reference_field_size(); i < m; ++i)
         {
             const google::protobuf::FieldDescriptor* field_desc =
@@ -105,7 +105,8 @@ run_serialize_algorithms(const google::protobuf::Message& in,
             }
         }
 
-        transitional::DCCLAlgorithmPerformer::getInstance()->run_algorithm(it->name(), val, ref);
+        moos::transitional::DCCLAlgorithmPerformer::getInstance()->run_algorithm(it->name(), val,
+                                                                                 ref);
 
         val = std::string(val);
         modified_values[it->output_virtual_field()] = std::string(val);
@@ -446,12 +447,13 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
                         for (const_iterator it = algorithms.begin(), n = algorithms.end(); it != n;
                              ++it)
                         {
-                            goby::transitional::DCCLMessageVal extract_val(val);
+                            goby::moos::transitional::DCCLMessageVal extract_val(val);
 
                             if (it->primary_field() == field_desc->number())
-                                transitional::DCCLAlgorithmPerformer::getInstance()->run_algorithm(
-                                    it->name(), extract_val,
-                                    std::vector<goby::transitional::DCCLMessageVal>());
+                                moos::transitional::DCCLAlgorithmPerformer::getInstance()
+                                    ->run_algorithm(
+                                        it->name(), extract_val,
+                                        std::vector<goby::moos::transitional::DCCLMessageVal>());
 
                             val = std::string(extract_val);
                         }
@@ -1238,12 +1240,13 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                         for (const_iterator it = algorithms.begin(), n = algorithms.end(); it != n;
                              ++it)
                         {
-                            goby::transitional::DCCLMessageVal extract_val(extract);
+                            goby::moos::transitional::DCCLMessageVal extract_val(extract);
 
                             if (it->primary_field() == field_index)
-                                transitional::DCCLAlgorithmPerformer::getInstance()->run_algorithm(
-                                    it->name(), extract_val,
-                                    std::vector<goby::transitional::DCCLMessageVal>());
+                                moos::transitional::DCCLAlgorithmPerformer::getInstance()
+                                    ->run_algorithm(
+                                        it->name(), extract_val,
+                                        std::vector<goby::moos::transitional::DCCLMessageVal>());
 
                             extract = std::string(extract_val);
                         }

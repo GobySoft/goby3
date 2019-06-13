@@ -36,6 +36,7 @@
 /// All objects related to the Goby Underwater Autonomy Project
 namespace goby
 {
+/// Deprecated functions largely related to time handling (use goby::time for new work)
 namespace common
 {
 [[deprecated("use time::convert()")]] inline double
@@ -104,7 +105,6 @@ template <typename To, typename From>
 }
 } // namespace util
 
-/// Utility objects for performing functions such as logging, non-acoustic communication (ethernet / serial), time, scientific, string manipulation, etc.
 namespace common
 {
 template <typename ReturnType>

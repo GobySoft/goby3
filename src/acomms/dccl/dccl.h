@@ -32,10 +32,8 @@
 #include "dccl/field_codec_id.h"
 #include "dccl/internal/field_codec_message_stack.h"
 
-/// The global namespace for the Goby project.
 namespace goby
 {
-/// Objects pertaining to acoustic communications (acomms)
 namespace acomms
 {
 typedef dccl::Exception DCCLException;

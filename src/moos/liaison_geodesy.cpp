@@ -33,7 +33,7 @@
 
 using namespace Wt;
 
-goby::util::LiaisonGeodesy::LiaisonGeodesy(const protobuf::LiaisonConfig& cfg,
+goby::moos::LiaisonGeodesy::LiaisonGeodesy(const protobuf::LiaisonConfig& cfg,
                                            Wt::WContainerWidget* parent)
     : LiaisonContainer(parent),
       geodesy_config_(cfg.GetExtension(protobuf::geodesy_config)),
@@ -157,9 +157,9 @@ goby::util::LiaisonGeodesy::LiaisonGeodesy(const protobuf::LiaisonConfig& cfg,
     set_name("MOOSGeodesy");
 }
 
-void goby::util::LiaisonGeodesy::loop() {}
+void goby::moos::LiaisonGeodesy::loop() {}
 
-void goby::util::LiaisonGeodesy::convert_local_to_geo()
+void goby::moos::LiaisonGeodesy::convert_local_to_geo()
 {
     geodesy_.UTM2LatLong(goby::util::as<double>(boost::trim_copy(local_to_geo_x_->text().narrow())),
                          goby::util::as<double>(boost::trim_copy(local_to_geo_y_->text().narrow())),
@@ -167,7 +167,7 @@ void goby::util::LiaisonGeodesy::convert_local_to_geo()
     reformat();
 }
 
-void goby::util::LiaisonGeodesy::convert_geo_to_local()
+void goby::moos::LiaisonGeodesy::convert_geo_to_local()
 {
     double lat_deg =
                goby::util::as<double>(boost::trim_copy(geo_to_local_lat_deg_->text().narrow())),
@@ -221,7 +221,7 @@ void goby::util::LiaisonGeodesy::convert_geo_to_local()
     }
 }
 
-void goby::util::LiaisonGeodesy::change_mode()
+void goby::moos::LiaisonGeodesy::change_mode()
 {
     int mode = latlon_format_->currentIndex();
     mode_ = static_cast<LatLonMode>(mode);
@@ -282,7 +282,7 @@ void goby::util::LiaisonGeodesy::change_mode()
     convert_geo_to_local();
 }
 
-void goby::util::LiaisonGeodesy::reformat()
+void goby::moos::LiaisonGeodesy::reformat()
 {
     datum_lat_->setText(format(geodesy_config_.lat_origin(), mode_, LAT));
     datum_lon_->setText(format(geodesy_config_.lon_origin(), mode_, LON));
@@ -298,7 +298,7 @@ void goby::util::LiaisonGeodesy::reformat()
         local_to_geo_lon_->setText("---");
 }
 
-std::wstring goby::util::LiaisonGeodesy::format(double angle, LatLonMode mode, LatLon type)
+std::wstring goby::moos::LiaisonGeodesy::format(double angle, LatLonMode mode, LatLon type)
 {
     char pos = (type == LAT) ? 'N' : 'E';
     char neg = (type == LAT) ? 'S' : 'W';

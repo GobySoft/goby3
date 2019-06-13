@@ -33,11 +33,13 @@
 
 using namespace goby::util::logger;
 using goby::glog;
-using goby::acomms::protobuf::DirectIPMOHeader;
-using goby::acomms::protobuf::DirectIPMOPayload;
-using goby::acomms::protobuf::DirectIPMOPreHeader;
-using goby::acomms::protobuf::DirectIPMTHeader;
-using goby::acomms::protobuf::DirectIPMTPayload;
+using goby::acomms::iridium::protobuf::DirectIPMOHeader;
+using goby::acomms::iridium::protobuf::DirectIPMOPayload;
+using goby::acomms::iridium::protobuf::DirectIPMOPreHeader;
+using goby::acomms::iridium::protobuf::DirectIPMTHeader;
+using goby::acomms::iridium::protobuf::DirectIPMTPayload;
+using goby::acomms::iridium::protobuf::IridiumDriverConfig;
+using goby::acomms::iridium::protobuf::IridiumShoreDriverConfig;
 using goby::util::TCPConnection;
 
 goby::acomms::IridiumShoreDriver::IridiumShoreDriver() : next_frame_(0) { init_iridium_dccl(); }

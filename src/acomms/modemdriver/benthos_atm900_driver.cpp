@@ -57,7 +57,7 @@ void goby::acomms::BenthosATM900Driver::startup(const protobuf::DriverConfig& cf
     fsm_.initiate();
 
     int i = 0;
-    while (fsm_.state_cast<const benthos_fsm::Ready*>() == 0)
+    while (fsm_.state_cast<const benthos::fsm::Ready*>() == 0)
     {
         do_work();
 
@@ -75,17 +75,17 @@ void goby::acomms::BenthosATM900Driver::startup(const protobuf::DriverConfig& cf
 
 void goby::acomms::BenthosATM900Driver::shutdown()
 {
-    fsm_.process_event(benthos_fsm::EvReset());
+    fsm_.process_event(benthos::fsm::EvReset());
 
-    while (fsm_.state_cast<const benthos_fsm::Ready*>() == 0)
+    while (fsm_.state_cast<const benthos::fsm::Ready*>() == 0)
     {
         do_work();
         usleep(10000);
     }
 
-    fsm_.process_event(benthos_fsm::EvRequestLowPower());
+    fsm_.process_event(benthos::fsm::EvRequestLowPower());
 
-    while (fsm_.state_cast<const benthos_fsm::LowPower*>() == 0)
+    while (fsm_.state_cast<const benthos::fsm::LowPower*>() == 0)
     {
         do_work();
         usleep(10000);
@@ -125,7 +125,7 @@ void goby::acomms::BenthosATM900Driver::handle_initiate_transmission(
             switch (msg.GetExtension(benthos::protobuf::type))
             {
                 case benthos::protobuf::BENTHOS_TWO_WAY_PING:
-                    fsm_.process_event(benthos_fsm::EvRange(msg.dest()));
+                    fsm_.process_event(benthos::fsm::EvRange(msg.dest()));
                     break;
                 default:
                     glog.is(DEBUG1) &&
@@ -154,7 +154,7 @@ void goby::acomms::BenthosATM900Driver::do_work()
     std::string in;
     while (modem_read(&in))
     {
-        benthos_fsm::EvRxSerial data_event;
+        benthos::fsm::EvRxSerial data_event;
         data_event.line = in;
 
         glog.is(DEBUG1) &&
@@ -201,12 +201,12 @@ void goby::acomms::BenthosATM900Driver::send(const protobuf::ModemTransmission& 
 {
     glog.is(DEBUG2) && glog << group(glog_out_group()) << msg << std::endl;
     fsm_.buffer_data_out(msg);
-    fsm_.process_event(benthos_fsm::EvDial(msg.dest(), msg.rate()));
+    fsm_.process_event(benthos::fsm::EvDial(msg.dest(), msg.rate()));
 }
 
 void goby::acomms::BenthosATM900Driver::try_serial_tx()
 {
-    fsm_.process_event(benthos_fsm::EvTxSerial());
+    fsm_.process_event(benthos::fsm::EvTxSerial());
 
     while (!fsm_.serial_tx_buffer().empty())
     {

@@ -38,7 +38,7 @@
 
 namespace goby
 {
-namespace common
+namespace moos
 {
 class QueueBar : public Wt::WProgressBar
 {
@@ -177,7 +177,7 @@ class LiaisonAcomms : public LiaisonContainer, public goby::moos::MOOSNode
     goby::acomms::protobuf::ModemTransmission last_slot_;
 };
 
-} // namespace common
+} // namespace moos
 } // namespace goby
 
 #endif

@@ -97,13 +97,13 @@ inline void init_iridium_dccl()
 {
     dccl::FieldCodecManager::add<IridiumHeaderIdentifierCodec>("iridium_header_id");
     iridium_header_dccl_.reset(new dccl::Codec("iridium_header_id"));
-    iridium_header_dccl_->load<IridiumHeader>();
+    iridium_header_dccl_->load<goby::acomms::iridium::protobuf::IridiumHeader>();
 }
 
 inline void serialize_iridium_modem_message(std::string* out,
                                             const goby::acomms::protobuf::ModemTransmission& in)
 {
-    IridiumHeader header;
+    goby::acomms::iridium::protobuf::IridiumHeader header;
     header.set_src(in.src());
     header.set_dest(in.dest());
     if (in.has_rate())
@@ -124,7 +124,7 @@ inline void serialize_iridium_modem_message(std::string* out,
 inline void parse_iridium_modem_message(std::string in,
                                         goby::acomms::protobuf::ModemTransmission* out)
 {
-    IridiumHeader header;
+    goby::acomms::iridium::protobuf::IridiumHeader header;
     iridium_header_dccl_->decode(&in, &header);
 
     out->set_src(header.src());

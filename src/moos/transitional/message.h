@@ -51,6 +51,8 @@
 
 namespace goby
 {
+namespace moos
+{
 namespace transitional
 {
 // the DCCLMessage itself
@@ -120,7 +122,7 @@ class DCCLMessage
     unsigned repeat() const { return repeat_; }
 
     DCCLMessageVar& last_message_var() { return *layout_.back(); }
-    DCCLMessageVar& header_var(transitional::DCCLHeaderPart p) { return *header_[p]; }
+    DCCLMessageVar& header_var(moos::transitional::DCCLHeaderPart p) { return *header_[p]; }
     DCCLPublish& last_publish() { return publishes_.back(); }
 
     std::vector<std::shared_ptr<DCCLMessageVar> >& layout() { return layout_; }
@@ -208,5 +210,6 @@ class DCCLMessage
 
 //        std::ostream& operator<< (std::ostream& out, const DCCLMessage& message);
 } // namespace transitional
+} // namespace moos
 } // namespace goby
 #endif

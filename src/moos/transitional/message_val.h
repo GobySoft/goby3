@@ -29,6 +29,8 @@
 
 namespace goby
 {
+namespace moos
+{
 namespace transitional
 {
 /// defines a DCCL value
@@ -174,7 +176,7 @@ class DCCLMessageVal
 std::ostream& operator<<(std::ostream& os, const DCCLMessageVal& mv);
 std::ostream& operator<<(std::ostream& os, const std::vector<DCCLMessageVal>& vm);
 } // namespace transitional
-
+} // namespace moos
 } // namespace goby
 
 #endif

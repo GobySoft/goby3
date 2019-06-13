@@ -45,6 +45,8 @@ namespace goby
 {
 namespace acomms
 {
+namespace iridium
+{
 inline unsigned sbd_csum(const std::string& data)
 {
     unsigned int csum = 0;
@@ -188,9 +190,11 @@ struct SBDReceive;
 struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Active>
 {
   public:
-    IridiumDriverFSM(const protobuf::DriverConfig& driver_cfg)
-        : serial_tx_buffer_(SERIAL_BUFFER_CAPACITY), received_(RECEIVED_BUFFER_CAPACITY),
-          driver_cfg_(driver_cfg), data_out_(DATA_BUFFER_CAPACITY)
+    IridiumDriverFSM(const goby::acomms::protobuf::DriverConfig& driver_cfg)
+        : serial_tx_buffer_(SERIAL_BUFFER_CAPACITY),
+          received_(RECEIVED_BUFFER_CAPACITY),
+          driver_cfg_(driver_cfg),
+          data_out_(DATA_BUFFER_CAPACITY)
     {
         ++count_;
         glog_ir_group_ = "iridiumdriver::" + goby::util::as<std::string>(count_);
@@ -202,12 +206,18 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     boost::circular_buffer<std::string>& serial_tx_buffer() { return serial_tx_buffer_; }
 
     // received messages to be passed up out of the ModemDriver
-    boost::circular_buffer<protobuf::ModemTransmission>& received() { return received_; }
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission>& received()
+    {
+        return received_;
+    }
 
     // data that should (eventually) be sent out across the Iridium connection
-    boost::circular_buffer<protobuf::ModemTransmission>& data_out() { return data_out_; }
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission>& data_out()
+    {
+        return data_out_;
+    }
 
-    const protobuf::DriverConfig& driver_cfg() const { return driver_cfg_; }
+    const goby::acomms::protobuf::DriverConfig& driver_cfg() const { return driver_cfg_; }
 
     const std::string& glog_ir_group() const { return glog_ir_group_; }
 
@@ -222,14 +232,14 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     };
 
     boost::circular_buffer<std::string> serial_tx_buffer_;
-    boost::circular_buffer<protobuf::ModemTransmission> received_;
-    const protobuf::DriverConfig& driver_cfg_;
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission> received_;
+    const goby::acomms::protobuf::DriverConfig& driver_cfg_;
 
     enum
     {
         DATA_BUFFER_CAPACITY = 5
     };
-    boost::circular_buffer<protobuf::ModemTransmission> data_out_;
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission> data_out_;
 
     std::string glog_ir_group_;
 
@@ -311,12 +321,12 @@ struct Configure : boost::statechart::state<Configure, Command::orthogonal<0> >,
     {
         context<Command>().push_at_command("");
         for (int i = 0, n = context<IridiumDriverFSM>().driver_cfg().ExtensionSize(
-                            IridiumDriverConfig::config);
+                            protobuf::IridiumDriverConfig::config);
              i < n; ++i)
         {
             context<Command>().push_at_command(
-                context<IridiumDriverFSM>().driver_cfg().GetExtension(IridiumDriverConfig::config,
-                                                                      i));
+                context<IridiumDriverFSM>().driver_cfg().GetExtension(
+                    protobuf::IridiumDriverConfig::config, i));
         }
     }
 
@@ -723,6 +733,7 @@ struct SBDReceive : boost::statechart::state<SBDReceive, SBD>, StateNotify
 };
 
 } // namespace fsm
+} // namespace iridium
 } // namespace acomms
 } // namespace goby
 

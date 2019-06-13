@@ -35,6 +35,8 @@ using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
 
+namespace micromodem = goby::acomms::micromodem;
+
 goby::moos::UFldDriver::UFldDriver() : last_ccmpc_dest_(-1) {}
 
 void goby::moos::UFldDriver::startup(const goby::acomms::protobuf::DriverConfig& cfg)

@@ -717,6 +717,7 @@ EXCLUDE_PATTERNS       = goby.h \
                          */src/protobuf/*.h \
                          */src/zeromq/*.h \
                          */src/*/*.proto \
+                         */src/share/doc/* \
                          *.pb.cc 
 
 # The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names 

@@ -34,7 +34,7 @@
 
 namespace goby
 {
-namespace common
+namespace moos
 {
 class LiaisonGeodesy : public LiaisonContainer
 {
@@ -107,7 +107,7 @@ class LiaisonGeodesy : public LiaisonContainer
     double last_lat_, last_lon_, last_x_, last_y_;
 };
 
-} // namespace common
+} // namespace moos
 } // namespace goby
 
 #endif

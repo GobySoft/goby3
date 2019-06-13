@@ -33,6 +33,8 @@
 #include <boost/function.hpp>
 namespace goby
 {
+namespace moos
+{
 namespace transitional
 {
 class DCCLMessageVal;
@@ -76,6 +78,7 @@ class DCCLAlgorithmPerformer
     DCCLAlgorithmPerformer& operator=(const DCCLAlgorithmPerformer&);
 };
 } // namespace transitional
+} // namespace moos
 } // namespace goby
 
 #endif

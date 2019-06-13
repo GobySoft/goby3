@@ -34,7 +34,7 @@
 
 using goby::util::as;
 
-void goby::transitional::DCCLMessageVal::init()
+void goby::moos::transitional::DCCLMessageVal::init()
 {
     sval_ = "";
     dval_ = 0;
@@ -44,23 +44,23 @@ void goby::transitional::DCCLMessageVal::init()
     type_ = cpp_notype;
 }
 
-goby::transitional::DCCLMessageVal::DCCLMessageVal() { init(); }
+goby::moos::transitional::DCCLMessageVal::DCCLMessageVal() { init(); }
 
-goby::transitional::DCCLMessageVal::DCCLMessageVal(const std::string& s)
+goby::moos::transitional::DCCLMessageVal::DCCLMessageVal(const std::string& s)
 {
     init();
     sval_ = s;
     type_ = cpp_string;
 }
 
-goby::transitional::DCCLMessageVal::DCCLMessageVal(const char* s)
+goby::moos::transitional::DCCLMessageVal::DCCLMessageVal(const char* s)
 {
     init();
     sval_ = s;
     type_ = cpp_string;
 }
 
-goby::transitional::DCCLMessageVal::DCCLMessageVal(double d, int p /* = MAX_DBL_PRECISION*/)
+goby::moos::transitional::DCCLMessageVal::DCCLMessageVal(double d, int p /* = MAX_DBL_PRECISION*/)
 {
     init();
     dval_ = d;
@@ -68,35 +68,35 @@ goby::transitional::DCCLMessageVal::DCCLMessageVal(double d, int p /* = MAX_DBL_
     type_ = cpp_double;
 }
 
-goby::transitional::DCCLMessageVal::DCCLMessageVal(float f)
+goby::moos::transitional::DCCLMessageVal::DCCLMessageVal(float f)
 {
     init();
     dval_ = f;
     type_ = cpp_double;
 }
 
-goby::transitional::DCCLMessageVal::DCCLMessageVal(long l)
+goby::moos::transitional::DCCLMessageVal::DCCLMessageVal(long l)
 {
     init();
     lval_ = l;
     type_ = cpp_long;
 }
 
-goby::transitional::DCCLMessageVal::DCCLMessageVal(int i)
+goby::moos::transitional::DCCLMessageVal::DCCLMessageVal(int i)
 {
     init();
     lval_ = i;
     type_ = cpp_long;
 }
 
-goby::transitional::DCCLMessageVal::DCCLMessageVal(bool b)
+goby::moos::transitional::DCCLMessageVal::DCCLMessageVal(bool b)
 {
     init();
     bval_ = b;
     type_ = cpp_bool;
 }
 
-goby::transitional::DCCLMessageVal::DCCLMessageVal(const std::vector<DCCLMessageVal>& vm)
+goby::moos::transitional::DCCLMessageVal::DCCLMessageVal(const std::vector<DCCLMessageVal>& vm)
 {
     if (vm.size() != 1)
         throw(goby::acomms::DCCLException(
@@ -105,29 +105,30 @@ goby::transitional::DCCLMessageVal::DCCLMessageVal(const std::vector<DCCLMessage
         *this = vm[0];
 }
 
-void goby::transitional::DCCLMessageVal::set(std::string sval)
+void goby::moos::transitional::DCCLMessageVal::set(std::string sval)
 {
     sval_ = sval;
     type_ = cpp_string;
 }
-void goby::transitional::DCCLMessageVal::set(double dval, int precision /* = MAX_DBL_PRECISION */)
+void goby::moos::transitional::DCCLMessageVal::set(double dval,
+                                                   int precision /* = MAX_DBL_PRECISION */)
 {
     dval_ = dval;
     type_ = cpp_double;
     precision_ = precision;
 }
-void goby::transitional::DCCLMessageVal::set(long lval)
+void goby::moos::transitional::DCCLMessageVal::set(long lval)
 {
     lval_ = lval;
     type_ = cpp_long;
 }
-void goby::transitional::DCCLMessageVal::set(bool bval)
+void goby::moos::transitional::DCCLMessageVal::set(bool bval)
 {
     bval_ = bval;
     type_ = cpp_bool;
 }
 
-bool goby::transitional::DCCLMessageVal::get(std::string& s) const
+bool goby::moos::transitional::DCCLMessageVal::get(std::string& s) const
 {
     std::stringstream ss;
     switch (type_)
@@ -151,7 +152,7 @@ bool goby::transitional::DCCLMessageVal::get(std::string& s) const
     }
 }
 
-bool goby::transitional::DCCLMessageVal::get(bool& b) const
+bool goby::moos::transitional::DCCLMessageVal::get(bool& b) const
 {
     switch (type_)
     {
@@ -192,7 +193,7 @@ bool goby::transitional::DCCLMessageVal::get(bool& b) const
     }
 }
 
-bool goby::transitional::DCCLMessageVal::get(long& t) const
+bool goby::moos::transitional::DCCLMessageVal::get(long& t) const
 {
     switch (type_)
     {
@@ -232,7 +233,7 @@ bool goby::transitional::DCCLMessageVal::get(long& t) const
     }
 }
 
-bool goby::transitional::DCCLMessageVal::get(double& d) const
+bool goby::moos::transitional::DCCLMessageVal::get(double& d) const
 {
     switch (type_)
     {
@@ -271,7 +272,7 @@ bool goby::transitional::DCCLMessageVal::get(double& d) const
     }
 }
 
-goby::transitional::DCCLMessageVal::operator double() const
+goby::moos::transitional::DCCLMessageVal::operator double() const
 {
     double d;
     if (get(d))
@@ -280,7 +281,7 @@ goby::transitional::DCCLMessageVal::operator double() const
         return std::numeric_limits<double>::quiet_NaN();
 }
 
-goby::transitional::DCCLMessageVal::operator bool() const
+goby::moos::transitional::DCCLMessageVal::operator bool() const
 {
     bool b;
     if (get(b))
@@ -289,7 +290,7 @@ goby::transitional::DCCLMessageVal::operator bool() const
         return false;
 }
 
-goby::transitional::DCCLMessageVal::operator std::string() const
+goby::moos::transitional::DCCLMessageVal::operator std::string() const
 {
     std::string s;
     if (get(s))
@@ -298,7 +299,7 @@ goby::transitional::DCCLMessageVal::operator std::string() const
         return "";
 }
 
-goby::transitional::DCCLMessageVal::operator long() const
+goby::moos::transitional::DCCLMessageVal::operator long() const
 {
     long l;
     if (get(l))
@@ -307,18 +308,19 @@ goby::transitional::DCCLMessageVal::operator long() const
         return 0;
 }
 
-goby::transitional::DCCLMessageVal::operator int() const { return long(*this); }
+goby::moos::transitional::DCCLMessageVal::operator int() const { return long(*this); }
 
-goby::transitional::DCCLMessageVal::operator unsigned() const { return long(*this); }
+goby::moos::transitional::DCCLMessageVal::operator unsigned() const { return long(*this); }
 
-goby::transitional::DCCLMessageVal::operator float() const { return double(*this); }
+goby::moos::transitional::DCCLMessageVal::operator float() const { return double(*this); }
 
-goby::transitional::DCCLMessageVal::operator std::vector<goby::transitional::DCCLMessageVal>() const
+goby::moos::transitional::DCCLMessageVal::
+operator std::vector<goby::moos::transitional::DCCLMessageVal>() const
 {
     return std::vector<DCCLMessageVal>(1, *this);
 }
 
-bool goby::transitional::DCCLMessageVal::operator==(const DCCLMessageVal& mv) const
+bool goby::moos::transitional::DCCLMessageVal::operator==(const DCCLMessageVal& mv) const
 {
     switch (mv.type_)
     {
@@ -330,32 +332,32 @@ bool goby::transitional::DCCLMessageVal::operator==(const DCCLMessageVal& mv) co
     }
 }
 
-bool goby::transitional::DCCLMessageVal::operator==(const std::string& s) const
+bool goby::moos::transitional::DCCLMessageVal::operator==(const std::string& s) const
 {
     std::string us;
     return get(us) && us == s;
 }
 
-bool goby::transitional::DCCLMessageVal::operator==(double d) const
+bool goby::moos::transitional::DCCLMessageVal::operator==(double d) const
 {
     double us;
     return get(us) && us == d;
 }
 
-bool goby::transitional::DCCLMessageVal::operator==(long l) const
+bool goby::moos::transitional::DCCLMessageVal::operator==(long l) const
 {
     long us;
     return get(us) && us == l;
 }
 
-bool goby::transitional::DCCLMessageVal::operator==(bool b) const
+bool goby::moos::transitional::DCCLMessageVal::operator==(bool b) const
 {
     bool us;
     return get(us) && us == b;
 }
 
-std::ostream& goby::transitional::operator<<(std::ostream& os,
-                                             const goby::transitional::DCCLMessageVal& mv)
+std::ostream& goby::moos::transitional::
+operator<<(std::ostream& os, const goby::moos::transitional::DCCLMessageVal& mv)
 {
     switch (mv.type_)
     {
@@ -368,8 +370,8 @@ std::ostream& goby::transitional::operator<<(std::ostream& os,
     }
 }
 
-std::ostream& goby::transitional::
-operator<<(std::ostream& os, const std::vector<goby::transitional::DCCLMessageVal>& vm)
+std::ostream& goby::moos::transitional::
+operator<<(std::ostream& os, const std::vector<goby::moos::transitional::DCCLMessageVal>& vm)
 {
     int j = 0;
     for (const DCCLMessageVal& m : vm)

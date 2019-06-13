@@ -4,6 +4,8 @@ import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/modem_message.proto";
 import "dccl/option_extensions.proto";
 
+package goby.acomms.iridium.protobuf;
+
 message IridiumDriverConfig
 {
     message Remote

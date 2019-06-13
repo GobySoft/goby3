@@ -4,7 +4,7 @@ import "goby/acomms/protobuf/modem_message.proto";
 import "goby/protobuf/option_extensions.proto";
 import "dccl/option_extensions.proto";
 
-package micromodem.protobuf;
+package goby.acomms.micromodem.protobuf;
 
 message NarrowBandLBLParams
 {

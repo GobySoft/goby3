@@ -36,6 +36,8 @@
 
 namespace goby
 {
+namespace moos
+{
 namespace transitional
 {
 class DCCLMessage;
@@ -100,5 +102,6 @@ class DCCLPublish
     unsigned repeat_;
 };
 } // namespace transitional
+} // namespace goby
 } // namespace goby
 #endif

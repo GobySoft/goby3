@@ -45,10 +45,16 @@ class SBDMessageReader
 
     virtual bool data_ready() const = 0;
 
-    const goby::acomms::protobuf::DirectIPMOPreHeader& pre_header() const { return pre_header_; }
-    const goby::acomms::protobuf::DirectIPMOHeader& header() const { return header_; }
-    const goby::acomms::protobuf::DirectIPMOPayload& body() const { return body_; }
-    const goby::acomms::protobuf::DirectIPMTConfirmation& confirm() const { return confirm_; }
+    const goby::acomms::iridium::protobuf::DirectIPMOPreHeader& pre_header() const
+    {
+        return pre_header_;
+    }
+    const goby::acomms::iridium::protobuf::DirectIPMOHeader& header() const { return header_; }
+    const goby::acomms::iridium::protobuf::DirectIPMOPayload& body() const { return body_; }
+    const goby::acomms::iridium::protobuf::DirectIPMTConfirmation& confirm() const
+    {
+        return confirm_;
+    }
 
     enum
     {
@@ -160,10 +166,10 @@ class SBDMessageReader
     }
 
   private:
-    goby::acomms::protobuf::DirectIPMOPreHeader pre_header_;
-    goby::acomms::protobuf::DirectIPMOHeader header_;
-    goby::acomms::protobuf::DirectIPMOPayload body_;
-    goby::acomms::protobuf::DirectIPMTConfirmation confirm_;
+    goby::acomms::iridium::protobuf::DirectIPMOPreHeader pre_header_;
+    goby::acomms::iridium::protobuf::DirectIPMOHeader header_;
+    goby::acomms::iridium::protobuf::DirectIPMOPayload body_;
+    goby::acomms::iridium::protobuf::DirectIPMTConfirmation confirm_;
 
     boost::asio::ip::tcp::socket& socket_;
 
