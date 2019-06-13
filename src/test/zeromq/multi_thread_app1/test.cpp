@@ -30,6 +30,8 @@
 #include "test.pb.h"
 using goby::glog;
 
+using namespace goby::test::zeromq::protobuf;
+
 extern constexpr goby::middleware::Group widget1{3};
 extern constexpr goby::middleware::Group widget2{"widget2"};
 extern constexpr goby::middleware::Group ready{"ready"};
@@ -40,6 +42,12 @@ constexpr int num_messages{10};
 
 using AppBase = goby::zeromq::MultiThreadApplication<TestConfig>;
 
+namespace goby
+{
+namespace test
+{
+namespace zeromq
+{
 class TestConfigurator : public goby::middleware::ProtobufConfigurator<TestConfig>
 {
   public:
@@ -153,6 +161,9 @@ class TestAppTx : public AppBase
     int tx_count_{0};
     bool rx_ready_{false};
 };
+} // namespace zeromq
+} // namespace test
+} // namespace goby
 
 int main(int argc, char* argv[])
 {
@@ -187,7 +198,8 @@ int main(int argc, char* argv[])
         if (child2_pid != 0)
         {
             int wstatus;
-            int rc = goby::run<TestAppRx>(TestConfigurator(argc, argv));
+            int rc = goby::run<goby::test::zeromq::TestAppRx>(
+                goby::test::zeromq::TestConfigurator(argc, argv));
             wait(&wstatus);
             if (wstatus != 0)
                 exit(EXIT_FAILURE);
@@ -196,7 +208,8 @@ int main(int argc, char* argv[])
         else
         {
             usleep(100000);
-            return goby::run<TestAppTx>(TestConfigurator(argc, argv));
+            return goby::run<goby::test::zeromq::TestAppTx>(
+                goby::test::zeromq::TestConfigurator(argc, argv));
         }
     }
     std::cout << "All tests passed." << std::endl;

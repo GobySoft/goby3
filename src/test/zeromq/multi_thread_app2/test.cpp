@@ -30,6 +30,7 @@
 #include "test.pb.h"
 using goby::glog;
 using namespace goby::util::logger;
+using namespace goby::test::zeromq::protobuf;
 
 extern constexpr goby::middleware::Group widget1{3};
 
@@ -38,6 +39,12 @@ using AppBase = goby::zeromq::MultiThreadApplication<TestConfig>;
 std::atomic<int> complete{0};
 std::atomic<int> ready{0};
 
+namespace goby
+{
+namespace test
+{
+namespace zeromq
+{
 class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
 {
   public:
@@ -132,5 +139,8 @@ class TestApp : public AppBase
   private:
     goby::time::SystemClock::time_point start_{std::chrono::seconds(0)};
 };
+} // namespace zeromq
+} // namespace test
+} // namespace goby
 
-int main(int argc, char* argv[]) { goby::run<TestApp>(argc, argv); }
+int main(int argc, char* argv[]) { goby::run<goby::test::zeromq::TestApp>(argc, argv); }

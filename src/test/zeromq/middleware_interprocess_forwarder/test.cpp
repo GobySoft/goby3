@@ -33,6 +33,7 @@
 
 #include <zmq.hpp>
 
+using namespace goby::test::zeromq::protobuf;
 // tests InterProcessForwarder
 
 // avoid static initialization order problem
@@ -62,6 +63,12 @@ constexpr goby::middleware::Group sample1{"Sample1"};
 constexpr goby::middleware::Group sample2{"Sample2"};
 constexpr goby::middleware::Group widget{"Widget"};
 
+namespace goby
+{
+namespace test
+{
+namespace zeromq
+{
 // thread 1 - parent process
 void publisher()
 {
@@ -244,6 +251,9 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
     zmq_ready = true;
     while (forward) { zmq.poll(std::chrono::milliseconds(100)); }
 }
+} // namespace zeromq
+} // namespace test
+} // namespace goby
 
 int main(int argc, char* argv[])
 {
@@ -266,12 +276,13 @@ int main(int argc, char* argv[])
 
     //    std::thread t3(subscriber);
     const int max_subs = 3;
-    std::vector<ThreadSubscriber> thread_subscribers(max_subs, ThreadSubscriber());
+    std::vector<goby::test::zeromq::ThreadSubscriber> thread_subscribers(
+        max_subs, goby::test::zeromq::ThreadSubscriber());
     std::vector<std::thread> threads;
     for (int i = 0; i < max_subs; ++i)
     {
-        threads.push_back(
-            std::thread(std::bind(&ThreadSubscriber::run, &thread_subscribers.at(i))));
+        threads.push_back(std::thread(
+            std::bind(&goby::test::zeromq::ThreadSubscriber::run, &thread_subscribers.at(i))));
     }
 
     while (ready < max_subs) usleep(1e5);
@@ -281,9 +292,9 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> router_context;
     if (is_subscriber)
     {
-        std::thread t3([&] { zmq_forward(cfg); });
+        std::thread t3([&] { goby::test::zeromq::zmq_forward(cfg); });
         while (!zmq_ready) usleep(1e5);
-        std::thread t1(subscriber);
+        std::thread t1(goby::test::zeromq::subscriber);
         t1.join();
         for (int i = 0; i < max_subs; ++i) threads.at(i).join();
         forward = false;
@@ -300,9 +311,9 @@ int main(int argc, char* argv[])
         t5.reset(new std::thread([&] { manager.run(); }));
         sleep(1);
 
-        std::thread t3([&] { zmq_forward(cfg); });
+        std::thread t3([&] { goby::test::zeromq::zmq_forward(cfg); });
         while (!zmq_ready) usleep(1e5);
-        std::thread t1(publisher);
+        std::thread t1(goby::test::zeromq::publisher);
         t1.join();
         for (int i = 0; i < max_subs; ++i) threads.at(i).join();
         int wstatus;

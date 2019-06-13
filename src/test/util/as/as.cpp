@@ -21,13 +21,12 @@
 
 #include "goby/util/as.h"
 
+namespace goby
+{
 namespace test
 {
-bool isnan(double a) { return a != a; }
-} // namespace test
-
-using goby::util::as;
-
+namespace util
+{
 enum MyEnum
 {
     BAZ = 0,
@@ -63,6 +62,13 @@ std::ostream& operator<<(std::ostream& os, const MyClass& obj)
     return os;
 }
 
+} // namespace util
+} // namespace test
+} // namespace goby
+
+using namespace goby::test::util;
+using goby::util::as;
+
 template <typename A, typename B> void is_sane(A orig)
 {
     std::cout << "Checking type A: " << typeid(A).name() << " converting to B: " << typeid(B).name()
@@ -84,8 +90,8 @@ int main()
     assert(as<double>("12.7") == double(12.7));
     assert(as<float>("12.7") == float(12.7));
     assert(as<double>("1e3") == 1e3);
-    assert(test::isnan(as<double>("nan")));
-    assert(test::isnan(as<double>("PIG")));
+    assert(std::isnan(as<double>("nan")));
+    assert(std::isnan(as<double>("PIG")));
 
     // enums
     assert(as<MyEnum>("1") == FOO);

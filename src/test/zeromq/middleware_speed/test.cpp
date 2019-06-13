@@ -53,18 +53,14 @@ std::mutex cout_mutex;
 using goby::glog;
 using namespace goby::util::logger;
 
-struct TestGroups
-{
-    static constexpr goby::middleware::Group sample1_group{"Sample1"};
-};
-
-constexpr goby::middleware::Group TestGroups::sample1_group;
+constexpr goby::middleware::Group sample1_group{"Sample1"};
 
 #ifdef LARGE_MESSAGE
-using Type = Large;
+using Type = goby::test::zeromq::protobuf::Large;
 const int max_publish = 1000;
 #else
-using Type = Sample;
+
+using Type = goby::test::zeromq::protobuf::Sample;
 const int max_publish = 1000;
 #endif
 
@@ -92,7 +88,7 @@ void publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
             s->set_salinity(30.1);
             s->set_depth(5.2);
 #endif
-            interthread1.publish<TestGroups::sample1_group>(s);
+            interthread1.publish<sample1_group>(s);
             ++publish_count;
         }
 
@@ -120,7 +116,7 @@ void publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
             s.set_salinity(30.1);
             s.set_depth(5.2);
 #endif
-            zmq.publish<TestGroups::sample1_group>(s);
+            zmq.publish<sample1_group>(s);
 
             ++publish_count;
         }
@@ -163,7 +159,7 @@ void subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 {
     if (test == 0)
     {
-        interthread2.subscribe<TestGroups::sample1_group, Type>(&handle_sample1);
+        interthread2.subscribe<sample1_group, Type>(&handle_sample1);
 
         {
             std::lock_guard<decltype(cout_mutex)> lock(cout_mutex);
@@ -175,7 +171,7 @@ void subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
     else if (test == 1)
     {
         goby::zeromq::InterProcessPortal<> zmq(cfg);
-        zmq.subscribe<TestGroups::sample1_group, Type>(&handle_sample1);
+        zmq.subscribe<sample1_group, Type>(&handle_sample1);
         std::cout << "Subscribed. " << std::endl;
         while (ipc_receive_count < max_publish) { zmq.poll(); }
     }

@@ -33,6 +33,7 @@
 
 #include "test.pb.h"
 
+using goby::acomms::udp::protobuf::UDPDriverConfig;
 using goby::test::acomms::protobuf::GobyMessage;
 using goby::test::acomms::protobuf::Header;
 

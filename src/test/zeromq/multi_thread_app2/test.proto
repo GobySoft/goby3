@@ -3,6 +3,8 @@ import "dccl/option_extensions.proto";
 import "goby/middleware/protobuf/app_config.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
 
+package goby.test.zeromq.protobuf;
+
 message TestConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;

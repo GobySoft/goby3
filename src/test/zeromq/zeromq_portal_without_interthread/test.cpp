@@ -33,6 +33,8 @@
 
 #include <zmq.hpp>
 
+using namespace goby::test::zeromq::protobuf;
+
 // tests ZMQTransporter directly without InterThread
 
 // initially publish one, then wait for queues to be established

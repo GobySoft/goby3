@@ -34,10 +34,17 @@ using namespace goby::util::logger;
 using namespace goby::util::logger_lock;
 using goby::util::as;
 using namespace boost::posix_time;
+using goby::acomms::protobuf::ModemTransmission;
 
 std::mutex driver_mutex;
 int last_transmission_index = 0;
 
+namespace goby
+{
+namespace test
+{
+namespace acomms
+{
 class MMDriverTest2
     : public goby::middleware::Application<goby::test::protobuf::MMDriverTest2Config>
 {
@@ -49,11 +56,11 @@ class MMDriverTest2
 
     void run_driver(goby::acomms::MMDriver& modem, goby::acomms::protobuf::DriverConfig& cfg);
 
-    void handle_transmit_result1(const protobuf::ModemTransmission& msg);
-    void handle_data_receive1(const protobuf::ModemTransmission& msg);
+    void handle_transmit_result1(const ModemTransmission& msg);
+    void handle_data_receive1(const ModemTransmission& msg);
 
-    void handle_transmit_result2(const protobuf::ModemTransmission& msg);
-    void handle_data_receive2(const protobuf::ModemTransmission& msg);
+    void handle_transmit_result2(const ModemTransmission& msg);
+    void handle_data_receive2(const ModemTransmission& msg);
 
     void
     summary(const std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics> >& receive,
@@ -68,15 +75,18 @@ class MMDriverTest2
 
     bool modems_running_;
 };
+} // namespace acomms
+} // namespace test
+} // namespace goby
 
-MMDriverTest2::MMDriverTest2() : modems_running_(true)
+goby::test::acomms::MMDriverTest2::MMDriverTest2() : modems_running_(true)
 {
     goby::glog.set_lock_action(lock);
 
     goby::glog.is(VERBOSE) && goby::glog << "Running test: " << app_cfg() << std::endl;
 }
 
-void MMDriverTest2::run()
+void goby::test::acomms::MMDriverTest2::run()
 {
     goby::acomms::connect(&driver1.signal_receive, this, &MMDriverTest2::handle_data_receive1);
     goby::acomms::connect(&driver1.signal_transmit_result, this,
@@ -127,8 +137,8 @@ void MMDriverTest2::run()
     quit();
 }
 
-void MMDriverTest2::run_driver(goby::acomms::MMDriver& modem,
-                               goby::acomms::protobuf::DriverConfig& cfg)
+void goby::test::acomms::MMDriverTest2::run_driver(goby::acomms::MMDriver& modem,
+                                                   goby::acomms::protobuf::DriverConfig& cfg)
 {
     goby::glog.is(VERBOSE) && goby::glog << "Initializing modem" << std::endl;
     modem.startup(cfg);
@@ -145,7 +155,7 @@ void MMDriverTest2::run_driver(goby::acomms::MMDriver& modem,
     modem.shutdown();
 }
 
-void MMDriverTest2::handle_data_receive1(const protobuf::ModemTransmission& msg)
+void goby::test::acomms::MMDriverTest2::handle_data_receive1(const ModemTransmission& msg)
 {
     goby::glog.is(VERBOSE) && goby::glog << "modem 1 Received: " << msg << std::endl;
 
@@ -154,7 +164,7 @@ void MMDriverTest2::handle_data_receive1(const protobuf::ModemTransmission& msg)
             msg.GetExtension(micromodem::protobuf::receive_stat, i));
 }
 
-void MMDriverTest2::handle_data_receive2(const protobuf::ModemTransmission& msg)
+void goby::test::acomms::MMDriverTest2::handle_data_receive2(const ModemTransmission& msg)
 {
     goby::glog.is(VERBOSE) && goby::glog << "modem 2 Received: " << msg << std::endl;
 
@@ -163,17 +173,17 @@ void MMDriverTest2::handle_data_receive2(const protobuf::ModemTransmission& msg)
             msg.GetExtension(micromodem::protobuf::receive_stat, i));
 }
 
-void MMDriverTest2::handle_transmit_result1(const protobuf::ModemTransmission& msg)
+void goby::test::acomms::MMDriverTest2::handle_transmit_result1(const ModemTransmission& msg)
 {
     goby::glog.is(VERBOSE) && goby::glog << "modem 1 Transmitted: " << msg << std::endl;
 }
 
-void MMDriverTest2::handle_transmit_result2(const protobuf::ModemTransmission& msg)
+void goby::test::acomms::MMDriverTest2::handle_transmit_result2(const ModemTransmission& msg)
 {
     goby::glog.is(VERBOSE) && goby::glog << "modem 2 Transmitted: " << msg << std::endl;
 }
 
-void MMDriverTest2::summary(
+void goby::test::acomms::MMDriverTest2::summary(
     const std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics> >& receive,
     const goby::acomms::protobuf::DriverConfig& cfg)
 {
@@ -254,4 +264,4 @@ void MMDriverTest2::summary(
                                          << std::endl;
 }
 
-int main(int argc, char* argv[]) { goby::run<MMDriverTest2>(argc, argv); }
+int main(int argc, char* argv[]) { goby::run<goby::test::acomms::MMDriverTest2>(argc, argv); }

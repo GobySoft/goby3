@@ -47,6 +47,8 @@ using namespace goby::util::logger;
 using namespace goby::acomms;
 using goby::util::as;
 using namespace boost::posix_time;
+using goby::acomms::udp::protobuf::UDPDriverConfig;
+using goby::test::acomms::protobuf::RouteMessage;
 
 const int ID_0_1 = 1;
 const int ID_1_1 = (1 << 8) + 1;

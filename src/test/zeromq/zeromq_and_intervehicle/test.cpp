@@ -31,6 +31,9 @@
 
 #include "test.pb.h"
 
+using namespace goby::test::zeromq::protobuf;
+using goby::acomms::udp::protobuf::UDPDriverConfig;
+
 // tests InterVehiclePortal with InterProcessPortal
 
 int publish_count = 0;

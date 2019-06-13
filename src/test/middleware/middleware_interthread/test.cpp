@@ -28,6 +28,8 @@
 
 // tests InterThreadTransporter
 
+using namespace goby::test::middleware::protobuf;
+
 goby::middleware::InterThreadTransporter inproc1;
 goby::middleware::InterThreadTransporter inproc2;
 
@@ -40,6 +42,12 @@ extern constexpr goby::middleware::Group sample1{"Sample1"};
 extern constexpr goby::middleware::Group sample2{"Sample2"};
 extern constexpr goby::middleware::Group widget{"Widget"};
 
+namespace goby
+{
+namespace test
+{
+namespace middleware
+{
 // thread 1
 void publisher()
 {
@@ -111,6 +119,9 @@ class Subscriber
     int receive_count2 = {0};
     int receive_count3 = {0};
 };
+} // namespace middleware
+} // namespace test
+} // namespace goby
 
 int main(int argc, char* argv[])
 {
@@ -120,15 +131,19 @@ int main(int argc, char* argv[])
 
     //    std::thread t3(subscriber);
     const int max_subs = 10;
-    std::vector<Subscriber> subscribers(max_subs, Subscriber());
+    std::vector<goby::test::middleware::Subscriber> subscribers(
+        max_subs, goby::test::middleware::Subscriber());
     std::vector<std::thread> threads;
     for (int i = 0; i < max_subs; ++i)
-    { threads.push_back(std::thread(std::bind(&Subscriber::run, &subscribers.at(i)))); }
+    {
+        threads.push_back(
+            std::thread(std::bind(&goby::test::middleware::Subscriber::run, &subscribers.at(i))));
+    }
 
     while (ready < max_subs)
         usleep(1e5);
 
-    std::thread t1(publisher);
+    std::thread t1(goby::test::middleware::publisher);
 
     t1.join();
 

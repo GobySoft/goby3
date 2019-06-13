@@ -31,6 +31,7 @@ using namespace goby::util::logger;
 using namespace goby::acomms;
 using goby::util::as;
 using namespace boost::posix_time;
+using goby::acomms::udp::protobuf::UDPDriverConfig;
 
 boost::asio::io_service io1;
 std::shared_ptr<goby::acomms::UDPDriver> driver1;

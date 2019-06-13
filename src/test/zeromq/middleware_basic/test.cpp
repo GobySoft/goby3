@@ -30,6 +30,7 @@
 #include "goby/util/debug_logger.h"
 #include "test.pb.h"
 
+using goby::acomms::udp::protobuf::UDPDriverConfig;
 using goby::test::zeromq::protobuf::CTDSample;
 using goby::test::zeromq::protobuf::TempSample;
 

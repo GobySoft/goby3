@@ -25,6 +25,8 @@
 #include "goby/acomms/modemdriver/udp_driver.h"
 #include <cstdlib>
 
+using goby::acomms::udp::protobuf::UDPDriverConfig;
+
 boost::asio::io_service io1, io2;
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 

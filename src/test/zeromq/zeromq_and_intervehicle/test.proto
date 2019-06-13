@@ -1,6 +1,8 @@
 syntax = "proto2";
 import "dccl/option_extensions.proto";
 
+package goby.test.zeromq.protobuf;
+
 message Sample
 {
     option (dccl.msg).id = 127;

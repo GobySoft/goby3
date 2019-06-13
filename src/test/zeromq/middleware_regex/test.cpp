@@ -33,6 +33,8 @@
 
 #include <zmq.hpp>
 
+using namespace goby::test::zeromq::protobuf;
+
 // tests InterProcessForwarder
 
 goby::middleware::InterThreadTransporter inproc1;

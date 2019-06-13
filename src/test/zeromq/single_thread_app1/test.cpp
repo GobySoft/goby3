@@ -30,6 +30,7 @@
 #include "test.pb.h"
 using goby::glog;
 using namespace goby::util::logger;
+using namespace goby::test::zeromq::protobuf;
 
 extern constexpr goby::middleware::Group widget1{"Widget1"};
 
@@ -37,6 +38,12 @@ using Base = goby::zeromq::SingleThreadApplication<TestConfig>;
 
 const std::string platform_name{"single_thread_app1"};
 
+namespace goby
+{
+namespace test
+{
+namespace zeromq
+{
 class TestConfigurator : public goby::middleware::ProtobufConfigurator<TestConfig>
 {
   public:
@@ -91,6 +98,9 @@ class TestApp : public Base
     int tx_count_{0};
     int rx_count_{0};
 };
+} // namespace zeromq
+} // namespace test
+} // namespace goby
 
 int main(int argc, char* argv[])
 {
@@ -123,6 +133,7 @@ int main(int argc, char* argv[])
     {
         // wait for router to set up
         sleep(1);
-        return goby::run<TestApp>(TestConfigurator(argc, argv));
+        return goby::run<goby::test::zeromq::TestApp>(
+            goby::test::zeromq::TestConfigurator(argc, argv));
     }
 }

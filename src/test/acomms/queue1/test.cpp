@@ -28,6 +28,8 @@
 
 #include "test.pb.h"
 
+using goby::test::acomms::protobuf::TestMsg;
+
 // tests basic DCCL queuing
 
 int receive_count = 0;
@@ -44,7 +46,7 @@ int main(int argc, char* argv[])
     goby::acomms::protobuf::QueueManagerConfig cfg;
     const int MY_MODEM_ID = 1;
     cfg.set_modem_id(MY_MODEM_ID);
-    cfg.add_message_entry()->set_protobuf_name("TestMsg");
+    cfg.add_message_entry()->set_protobuf_name("goby.test.acomms.protobuf.TestMsg");
 
     q_manager.set_cfg(cfg);
 
