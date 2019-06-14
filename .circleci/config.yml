@@ -431,7 +431,9 @@ jobs:
       - run:
           name: Build with AddressSanitizer (and LeakSanitizer)
           command: mkdir -p build && cd build && cmake -DSANITIZE_ADDRESS=ON -Denable_testing=ON .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
-      - run: *run-tests
+      - run: &run-tests-sanitizers
+          name: Run tests
+          command: cd build && ctest --output-on-failure
   amd64+tsan-build:
     <<: *job-template-sanitizers
     steps:
@@ -440,7 +442,7 @@ jobs:
       - run: 
           name: Build with ThreadSanitizer
           command: mkdir -p build && cd build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
-      - run: *run-tests
+      - run: *run-tests-sanitizers
   amd64+ubsan-build:
     <<: *job-template-sanitizers
     steps:
@@ -449,7 +451,7 @@ jobs:
       - run:
           name: Build with UndefinedBehaviorSanitizer
           command: mkdir -p build && cd build && cmake -DSANITIZE_UNDEFINED=ON -Denable_testing=ON .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
-      - run: *run-tests
+      - run: *run-tests-sanitizers
   continuous-upload:
     <<: *job-template-upload
     environment:
