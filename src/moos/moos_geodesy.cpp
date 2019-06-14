@@ -20,135 +20,119 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <cmath>
 #include <iostream>
-#include <limits>
-#include <sstream>
+
+#include "goby/exception.h"
+#include "goby/util/geodesy.h"
 
 #include "moos_geodesy.h"
 
-CMOOSGeodesy::CMOOSGeodesy()
-    : m_sUTMZone(0), m_dOriginEasting(0), m_dOriginNorthing(0), m_dOriginLongitude(0),
-      m_dOriginLatitude(0), pj_utm_(0), pj_latlong_(0)
-{
-}
-
-CMOOSGeodesy::~CMOOSGeodesy()
-{
-    pj_free(pj_utm_);
-    pj_free(pj_latlong_);
-}
+CMOOSGeodesy::CMOOSGeodesy() {}
+CMOOSGeodesy::~CMOOSGeodesy() {}
 
 bool CMOOSGeodesy::Initialise(double lat, double lon)
 {
-    //Set the Origin of the local Grid Coordinate System
-    SetOriginLatitude(lat);
-    SetOriginLongitude(lon);
-
-    int zone = (static_cast<int>(std::floor((lon + 180) / 6)) + 1) % 60;
-
-    std::stringstream proj_utm;
-    proj_utm << "+proj=utm +ellps=WGS84 +zone=" << zone;
-
-    if (!(pj_utm_ = pj_init_plus(proj_utm.str().c_str())))
+    try
     {
-        std::cerr << "Failed to initiate utm proj" << std::endl;
+        geodesy_.reset(new goby::util::UTMGeodesy(
+            {lat * boost::units::degree::degrees, lon * boost::units::degree::degrees}));
+    }
+    catch (goby::Exception& e)
+    {
+        std::cerr << e.what();
         return false;
     }
-    if (!(pj_latlong_ = pj_init_plus("+proj=latlong +ellps=WGS84")))
-    {
-        std::cerr << "Failed to initiate latlong proj" << std::endl;
-        return false;
-    }
-
-    //Translate the Origin coordinates into Northings and Eastings
-    double tempNorth = lat * DEG_TO_RAD, tempEast = lon * DEG_TO_RAD;
-
-    int err;
-    if ((err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &tempEast, &tempNorth, NULL)))
-    {
-        std::cerr << "Failed to transform datum, reason: " << pj_strerrno(err) << std::endl;
-        return false;
-    }
-
-    //Then set the Origin for the Northing/Easting coordinate frame
-    //Also make a note of the UTM Zone we are operating in
-    SetOriginNorthing(tempNorth);
-    SetOriginEasting(tempEast);
-    SetUTMZone(zone);
-
     return true;
 }
 
-double CMOOSGeodesy::GetOriginLongitude() { return m_dOriginLongitude; }
+double CMOOSGeodesy::GetOriginLongitude()
+{
+    if (!geodesy_)
+        return std::numeric_limits<double>::quiet_NaN();
+    else
+        return geodesy_->origin_geo().lon / boost::units::degree::degrees;
+}
 
-double CMOOSGeodesy::GetOriginLatitude() { return m_dOriginLatitude; }
+double CMOOSGeodesy::GetOriginLatitude()
+{
+    if (!geodesy_)
+        return std::numeric_limits<double>::quiet_NaN();
+    else
+        return geodesy_->origin_geo().lat / boost::units::degree::degrees;
+}
 
-void CMOOSGeodesy::SetOriginLongitude(double lon) { m_dOriginLongitude = lon; }
-
-void CMOOSGeodesy::SetOriginLatitude(double lat) { m_dOriginLatitude = lat; }
-
-void CMOOSGeodesy::SetOriginNorthing(double North) { m_dOriginNorthing = North; }
-
-void CMOOSGeodesy::SetOriginEasting(double East) { m_dOriginEasting = East; }
-
-void CMOOSGeodesy::SetUTMZone(int zone) { m_sUTMZone = zone; }
-
-int CMOOSGeodesy::GetUTMZone() { return m_sUTMZone; }
+int CMOOSGeodesy::GetUTMZone()
+{
+    if (!geodesy_)
+        return -1;
+    else
+        return geodesy_->origin_utm_zone();
+}
 
 bool CMOOSGeodesy::LatLong2LocalUTM(double lat, double lon, double& MetersNorth, double& MetersEast)
 {
-    double tmpEast = lon * DEG_TO_RAD;
-    double tmpNorth = lat * DEG_TO_RAD;
-    MetersNorth = std::numeric_limits<double>::quiet_NaN();
-    MetersEast = std::numeric_limits<double>::quiet_NaN();
-
-    if (!pj_latlong_ || !pj_utm_)
+    if (!geodesy_)
     {
         std::cerr << "Must call Initialise before calling LatLong2LocalUTM" << std::endl;
         return false;
     }
 
-    int err;
-    if ((err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &tmpEast, &tmpNorth, NULL)))
+    MetersNorth = std::numeric_limits<double>::quiet_NaN();
+    MetersEast = std::numeric_limits<double>::quiet_NaN();
+
+    try
     {
-        std::cerr << "Failed to transform (lat,lon) = (" << lat << "," << lon
-                  << "), reason: " << pj_strerrno(err) << std::endl;
+        auto xy = geodesy_->convert(
+            {lat * boost::units::degree::degrees, lon * boost::units::degree::degrees});
+        MetersNorth = xy.y / boost::units::si::meters;
+        MetersEast = xy.x / boost::units::si::meters;
+    }
+    catch (goby::Exception& e)
+    {
+        std::cerr << e.what();
         return false;
     }
-
-    MetersNorth = tmpNorth - GetOriginNorthing();
-    MetersEast = tmpEast - GetOriginEasting();
     return true;
 }
 
-double CMOOSGeodesy::GetOriginEasting() { return m_dOriginEasting; }
+double CMOOSGeodesy::GetOriginEasting()
+{
+    if (!geodesy_)
+        return std::numeric_limits<double>::quiet_NaN();
+    else
+        return geodesy_->origin_utm().x / boost::units::si::meters;
+}
 
-double CMOOSGeodesy::GetOriginNorthing() { return m_dOriginNorthing; }
+double CMOOSGeodesy::GetOriginNorthing()
+{
+    if (!geodesy_)
+        return std::numeric_limits<double>::quiet_NaN();
+    else
+        return geodesy_->origin_utm().y / boost::units::si::meters;
+}
 
 bool CMOOSGeodesy::UTM2LatLong(double dfX, double dfY, double& dfLat, double& dfLong)
 {
-    double x = dfX + GetOriginEasting();
-    double y = dfY + GetOriginNorthing();
-
-    dfLat = std::numeric_limits<double>::quiet_NaN();
-    dfLong = std::numeric_limits<double>::quiet_NaN();
-
-    if (!pj_latlong_ || !pj_utm_)
+    if (!geodesy_)
     {
         std::cerr << "Must call Initialise before calling UTM2LatLong" << std::endl;
         return false;
     }
 
-    int err;
-    if ((err = pj_transform(pj_utm_, pj_latlong_, 1, 1, &x, &y, NULL)))
+    dfLat = std::numeric_limits<double>::quiet_NaN();
+    dfLong = std::numeric_limits<double>::quiet_NaN();
+
+    try
     {
-        std::cerr << "Failed to transform (x,y) = (" << dfX << "," << dfY
-                  << "), reason: " << pj_strerrno(err) << std::endl;
+        auto latlon =
+            geodesy_->convert({dfX * boost::units::si::meters, dfY * boost::units::si::meters});
+        dfLat = latlon.lat / boost::units::degree::degrees;
+        dfLong = latlon.lon / boost::units::degree::degrees;
+    }
+    catch (goby::Exception& e)
+    {
+        std::cerr << e.what();
         return false;
     }
-
-    dfLat = y * RAD_TO_DEG;
-    dfLong = x * RAD_TO_DEG;
     return true;
 }
