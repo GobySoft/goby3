@@ -30,11 +30,13 @@
 
 #include <boost/units/systems/si.hpp>
 
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 
 #include "group.h"
 
 namespace goby
+{
+namespace middleware
 {
 template <typename Config, typename TransporterType> class Thread
 {
@@ -116,20 +118,22 @@ template <typename Config, typename TransporterType> class Thread
 
     void thread_quit() { (*alive_) = false; }
 
-    static constexpr goby::Group shutdown_group_{"goby::ThreadShutdown"};
-    static constexpr goby::Group joinable_group_{"goby::ThreadJoinable"};
+    static constexpr goby::middleware::Group shutdown_group_{"goby::ThreadShutdown"};
+    static constexpr goby::middleware::Group joinable_group_{"goby::ThreadJoinable"};
 };
 
 } // namespace goby
 
 template <typename Config, typename TransporterType>
-constexpr goby::Group goby::Thread<Config, TransporterType>::shutdown_group_;
+constexpr goby::middleware::Group
+    goby::middleware::Thread<Config, TransporterType>::shutdown_group_;
 
 template <typename Config, typename TransporterType>
-constexpr goby::Group goby::Thread<Config, TransporterType>::joinable_group_;
+constexpr goby::middleware::Group
+    goby::middleware::Thread<Config, TransporterType>::joinable_group_;
 
 template <typename Config, typename TransporterType>
-void goby::Thread<Config, TransporterType>::run_once()
+void goby::middleware::Thread<Config, TransporterType>::run_once()
 {
     if (!transporter_)
         throw(goby::Exception("Null transporter"));
@@ -160,5 +164,6 @@ void goby::Thread<Config, TransporterType>::run_once()
         transporter_->poll();
     }
 }
+} // namespace goby
 
 #endif

@@ -1,11 +1,9 @@
-import "goby/common/protobuf/option_extensions.proto";
-
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
-import "goby/acomms/protobuf/queue.proto";
 import "goby/acomms/protobuf/amac_config.proto";
-import "goby/acomms/protobuf/modem_message.proto";
 
-package goby.protobuf;
+package goby.middleware.protobuf;
 
 message InterVehiclePortalConfig
 {

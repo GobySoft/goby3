@@ -27,7 +27,7 @@
 #include <boost/units/io.hpp>
 #include <boost/units/systems/si/plane_angle.hpp>
 
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 
 #include "geodesy.h"
 

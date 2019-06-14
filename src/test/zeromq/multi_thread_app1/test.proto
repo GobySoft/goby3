@@ -1,0 +1,22 @@
+syntax = "proto2";
+import "dccl/option_extensions.proto";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+
+package goby.test.zeromq.protobuf;
+
+message TestConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+}
+
+message Ready
+{
+    optional bool b = 1;
+}
+
+message Widget
+{
+    optional int32 b = 1;
+}

@@ -24,6 +24,8 @@
 #include "../driver_tester/driver_tester.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
 
+namespace micromodem = goby::acomms::micromodem;
+
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 
 int main(int argc, char* argv[])
@@ -36,12 +38,12 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     std::ofstream fout;
     if (argc >= 4)
     {
         fout.open(argv[3]);
-        goby::glog.add_stream(goby::common::logger::DEBUG3, &fout);
+        goby::glog.add_stream(goby::util::logger::DEBUG3, &fout);
     }
     int mm_version = 1;
     if (argc == 5)
@@ -95,7 +97,7 @@ int main(int argc, char* argv[])
     driver1.reset(new goby::acomms::MMDriver);
     driver2.reset(new goby::acomms::MMDriver);
 
-    DriverTester tester(driver1, driver2, cfg1, cfg2, tests_to_run,
-                        goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM);
+    goby::test::acomms::DriverTester tester(driver1, driver2, cfg1, cfg2, tests_to_run,
+                                            goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM);
     return tester.run();
 }

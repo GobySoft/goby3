@@ -199,7 +199,7 @@ Modem to Control Computer ($CA / $SN):
 <td>$CACYC</td>
 <td>
 If we did not send $CCCYC, buffer data for $CADRQ by augmenting the provided ModemTransmission and calling signal_data_request:<br>
-\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::common::goby_time<uint64>() <br>
+\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::util::goby_time<uint64>() <br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.src()\endlink = ADR1<br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.dest()\endlink = ADR2<br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.rate()\endlink = Packet Type<br>
@@ -211,7 +211,7 @@ If we did not send $CCCYC, buffer data for $CADRQ by augmenting the provided Mod
 <td>$CARXD</td>
 <td>
 only for the first $CARXD for a given packet (should match with the rest though): <br>
-\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::common::goby_time<uint64>() <br>
+\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::util::goby_time<uint64>() <br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.type() \endlink = goby::acomms::protobuf::ModemTransmission::DATA <br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.src()\endlink = SRC<br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.dest()\endlink = DEST<br>
@@ -231,7 +231,7 @@ Used only to detect BAD_CRC frames ($CAMSG,BAD_CRC...).
 <tr>
 <td>$CAACK</td>
 <td>
-\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::common::goby_time<uint64>() <br>
+\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::util::goby_time<uint64>() <br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.src()\endlink = SRC<br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.dest()\endlink = DEST<br>
 (first CAACK for a given packet) \link modem_message.proto goby::acomms::protobuf::ModemTransmission.acked_frame(0)\endlink = Frame#-1 (Goby starts counting at frame 0, WHOI starts with frame 1)<br>
@@ -245,7 +245,7 @@ Used only to detect BAD_CRC frames ($CAMSG,BAD_CRC...).
 <td>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.type()\endlink = goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC <br> 
  extension \link mm_driver.proto micromodem::protobuf::type\endlink = micromodem::protobuf::MICROMODEM_MINI_DATA <br>
-\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::common::goby_time<uint64>() <br>
+\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::util::goby_time<uint64>() <br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.src()\endlink = SRC<br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.dest()\endlink = DEST<br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.frame(0)\endlink = goby::util::hex_decode(HHHH) <br>
@@ -254,7 +254,7 @@ Used only to detect BAD_CRC frames ($CAMSG,BAD_CRC...).
 <tr>
 <td>$CAMPR</td>
 <td>
-\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::common::goby_time<uint64>() <br>
+\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::util::goby_time<uint64>() <br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.dest()\endlink = SRC (SRC and DEST flipped to be SRC and DEST of $CCMPC)<br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.src()\endlink = DEST<br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.type()\endlink = goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC <br> 
@@ -266,7 +266,7 @@ Used only to detect BAD_CRC frames ($CAMSG,BAD_CRC...).
 <tr>
 <td>$CAMPA</td>
 <td>
-\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::common::goby_time<uint64>() <br>
+\link modem_message.proto goby::acomms::protobuf::ModemTransmission.time()\endlink = goby::util::goby_time<uint64>() <br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.src()\endlink = SRC<br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.dest()\endlink = DEST<br>
 \link modem_message.proto goby::acomms::protobuf::ModemTransmission.type()\endlink = goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC <br> 

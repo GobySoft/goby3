@@ -23,12 +23,15 @@
 #include "goby/acomms/connect.h"
 #include "goby/acomms/dccl.h"
 #include "goby/acomms/queue.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
+
 #include "test.pb.h"
 // tests basic DCCL queuing with non-BROADCAST destination
 
-using goby::acomms::operator<<;
+using goby::test::acomms::protobuf::GobyMessage;
+using goby::test::acomms::protobuf::Header;
 
 int receive_count = 0;
 GobyMessage msg_in_macrura, msg_in_broadcast, msg_in_unicorn;
@@ -36,7 +39,8 @@ goby::acomms::protobuf::QueueManagerConfig cfg;
 const int MY_MODEM_ID = 1;
 const int UNICORN_MODEM_ID = 3;
 const int MACRURA_MODEM_ID = 4;
-boost::posix_time::ptime current_time = boost::posix_time::second_clock::universal_time();
+goby::time::MicroTime
+    current_time(boost::units::round(goby::time::SystemClock::now<goby::time::SITime>()));
 
 int goby_message_qsize = 0;
 
@@ -50,7 +54,7 @@ void handle_ack(const goby::acomms::protobuf::ModemTransmission& ack_msg,
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cout);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cout);
     goby::glog.set_name(argv[0]);
 
     goby::acomms::DCCLCodec* codec = goby::acomms::DCCLCodec::get();
@@ -63,7 +67,7 @@ int main(int argc, char* argv[])
     cfg.set_modem_id(MY_MODEM_ID);
 
     goby::acomms::protobuf::QueuedMessageEntry* q_entry = cfg.add_message_entry();
-    q_entry->set_protobuf_name("GobyMessage");
+    q_entry->set_protobuf_name("goby.test.acomms.protobuf.GobyMessage");
     q_entry->set_newest_first(true);
 
     goby::acomms::protobuf::QueuedMessageEntry::Role* src_role = q_entry->add_role();
@@ -85,19 +89,19 @@ int main(int argc, char* argv[])
     goby::acomms::connect(&q_manager.signal_ack, &handle_ack);
 
     msg_in_macrura.set_telegram("hello mac!");
-    msg_in_macrura.mutable_header()->set_time(goby::util::as<std::uint64_t>(current_time));
+    msg_in_macrura.mutable_header()->set_time_with_units(current_time);
     msg_in_macrura.mutable_header()->set_source_platform(MY_MODEM_ID);
     msg_in_macrura.mutable_header()->set_dest_platform(MACRURA_MODEM_ID);
     msg_in_macrura.mutable_header()->set_dest_type(Header::PUBLISH_OTHER);
 
     msg_in_broadcast.set_telegram("hello all!");
-    msg_in_broadcast.mutable_header()->set_time(goby::util::as<std::uint64_t>(current_time));
+    msg_in_broadcast.mutable_header()->set_time_with_units(current_time);
 
     msg_in_broadcast.mutable_header()->set_source_platform(MY_MODEM_ID);
     msg_in_broadcast.mutable_header()->set_dest_type(Header::PUBLISH_ALL);
 
     msg_in_unicorn.set_telegram("hello uni!");
-    msg_in_unicorn.mutable_header()->set_time(goby::util::as<std::uint64_t>(current_time));
+    msg_in_unicorn.mutable_header()->set_time_with_units(current_time);
     msg_in_unicorn.mutable_header()->set_source_platform(MY_MODEM_ID);
     msg_in_unicorn.mutable_header()->set_dest_platform(UNICORN_MODEM_ID);
     msg_in_unicorn.mutable_header()->set_dest_type(Header::PUBLISH_OTHER);
@@ -188,7 +192,7 @@ void handle_receive(const google::protobuf::Message& msg)
     GobyMessage typed_msg;
     typed_msg.CopyFrom(msg);
 
-    assert(typed_msg.header().time() == goby::util::as<std::uint64_t>(current_time));
+    assert(typed_msg.header().time_with_units() == current_time);
 
     if (!typed_msg.header().has_dest_platform())
         assert(typed_msg.SerializeAsString() == msg_in_broadcast.SerializeAsString());

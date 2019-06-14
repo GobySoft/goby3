@@ -27,11 +27,12 @@
 
 #include "goby/util/as.h"
 
-goby::transitional::DCCLAlgorithmPerformer* goby::transitional::DCCLAlgorithmPerformer::inst_ = 0;
+goby::moos::transitional::DCCLAlgorithmPerformer*
+    goby::moos::transitional::DCCLAlgorithmPerformer::inst_ = 0;
 
 // singleton class, use this to get pointer
-goby::transitional::DCCLAlgorithmPerformer*
-goby::transitional::DCCLAlgorithmPerformer::getInstance()
+goby::moos::transitional::DCCLAlgorithmPerformer*
+goby::moos::transitional::DCCLAlgorithmPerformer::getInstance()
 {
     if (!inst_)
         inst_ = new DCCLAlgorithmPerformer();
@@ -39,9 +40,9 @@ goby::transitional::DCCLAlgorithmPerformer::getInstance()
     return (inst_);
 }
 
-void goby::transitional::DCCLAlgorithmPerformer::deleteInstance() { delete inst_; }
+void goby::moos::transitional::DCCLAlgorithmPerformer::deleteInstance() { delete inst_; }
 
-void goby::transitional::DCCLAlgorithmPerformer::algorithm(
+void goby::moos::transitional::DCCLAlgorithmPerformer::algorithm(
     DCCLMessageVal& in, unsigned array_index, const std::string& algorithm,
     const std::map<std::string, std::vector<DCCLMessageVal> >& vals)
 {
@@ -76,7 +77,7 @@ void goby::transitional::DCCLAlgorithmPerformer::algorithm(
     run_algorithm(alg, in, tied_vals);
 }
 
-void goby::transitional::DCCLAlgorithmPerformer::run_algorithm(
+void goby::moos::transitional::DCCLAlgorithmPerformer::run_algorithm(
     const std::string& algorithm, DCCLMessageVal& in, const std::vector<DCCLMessageVal>& ref)
 {
     // short form for simple algorithms
@@ -92,8 +93,8 @@ void goby::transitional::DCCLAlgorithmPerformer::run_algorithm(
 }
 
 // check validity of algorithm name and references
-void goby::transitional::DCCLAlgorithmPerformer::check_algorithm(const std::string& alg,
-                                                                 const DCCLMessage& msg)
+void goby::moos::transitional::DCCLAlgorithmPerformer::check_algorithm(const std::string& alg,
+                                                                       const DCCLMessage& msg)
 {
     if (alg.empty())
         return;

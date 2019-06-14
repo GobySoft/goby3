@@ -1,3 +1,4 @@
+syntax = "proto2";
 
 // include the DCCL extensions to Google Protobuf
 import "dccl/option_extensions.proto";

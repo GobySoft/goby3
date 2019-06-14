@@ -39,35 +39,35 @@ namespace goby
 {
 namespace moos
 {
-void alg_power_to_dB(transitional::DCCLMessageVal& val_to_mod);
-void alg_dB_to_power(transitional::DCCLMessageVal& val_to_mod);
+void alg_power_to_dB(moos::transitional::DCCLMessageVal& val_to_mod);
+void alg_dB_to_power(moos::transitional::DCCLMessageVal& val_to_mod);
 
 // applied to "T" (temperature), references are "S" (salinity), then "D" (depth)
-void alg_TSD_to_soundspeed(transitional::DCCLMessageVal& val,
-                           const std::vector<transitional::DCCLMessageVal>& ref_vals);
+void alg_TSD_to_soundspeed(moos::transitional::DCCLMessageVal& val,
+                           const std::vector<moos::transitional::DCCLMessageVal>& ref_vals);
 
 // ref_vals subtracted from val
-void alg_subtract(transitional::DCCLMessageVal& val,
-                  const std::vector<transitional::DCCLMessageVal>& ref_vals);
+void alg_subtract(moos::transitional::DCCLMessageVal& val,
+                  const std::vector<moos::transitional::DCCLMessageVal>& ref_vals);
 
 // ref_vals added to val
-void alg_add(transitional::DCCLMessageVal& val,
-             const std::vector<transitional::DCCLMessageVal>& ref_vals);
+void alg_add(moos::transitional::DCCLMessageVal& val,
+             const std::vector<moos::transitional::DCCLMessageVal>& ref_vals);
 
-void alg_angle_0_360(transitional::DCCLMessageVal& angle);
-void alg_angle_n180_180(transitional::DCCLMessageVal& angle);
+void alg_angle_0_360(moos::transitional::DCCLMessageVal& angle);
+void alg_angle_n180_180(moos::transitional::DCCLMessageVal& angle);
 
-void alg_to_upper(transitional::DCCLMessageVal& val_to_mod);
-void alg_to_lower(transitional::DCCLMessageVal& val_to_mod);
+void alg_to_upper(moos::transitional::DCCLMessageVal& val_to_mod);
+void alg_to_lower(moos::transitional::DCCLMessageVal& val_to_mod);
 
-void alg_abs(transitional::DCCLMessageVal& val_to_mod);
-void alg_lat2hemisphere_initial(transitional::DCCLMessageVal& val_to_mod);
-void alg_lon2hemisphere_initial(transitional::DCCLMessageVal& val_to_mod);
+void alg_abs(moos::transitional::DCCLMessageVal& val_to_mod);
+void alg_lat2hemisphere_initial(moos::transitional::DCCLMessageVal& val_to_mod);
+void alg_lon2hemisphere_initial(moos::transitional::DCCLMessageVal& val_to_mod);
 
-void alg_unix_time2nmea_time(transitional::DCCLMessageVal& val_to_mod);
+void alg_unix_time2nmea_time(moos::transitional::DCCLMessageVal& val_to_mod);
 
-void alg_lat2nmea_lat(transitional::DCCLMessageVal& val_to_mod);
-void alg_lon2nmea_lon(transitional::DCCLMessageVal& val_to_mod);
+void alg_lat2nmea_lat(moos::transitional::DCCLMessageVal& val_to_mod);
+void alg_lon2nmea_lon(moos::transitional::DCCLMessageVal& val_to_mod);
 
 class MOOSTranslator
 {
@@ -172,21 +172,21 @@ class MOOSTranslator
                     double lon_origin = std::numeric_limits<double>::quiet_NaN(),
                     const std::string& modem_id_lookup_path = "");
 
-    void alg_lat2utm_y(transitional::DCCLMessageVal& mv,
-                       const std::vector<transitional::DCCLMessageVal>& ref_vals);
+    void alg_lat2utm_y(moos::transitional::DCCLMessageVal& mv,
+                       const std::vector<moos::transitional::DCCLMessageVal>& ref_vals);
 
-    void alg_lon2utm_x(transitional::DCCLMessageVal& mv,
-                       const std::vector<transitional::DCCLMessageVal>& ref_vals);
+    void alg_lon2utm_x(moos::transitional::DCCLMessageVal& mv,
+                       const std::vector<moos::transitional::DCCLMessageVal>& ref_vals);
 
-    void alg_utm_x2lon(transitional::DCCLMessageVal& mv,
-                       const std::vector<transitional::DCCLMessageVal>& ref_vals);
+    void alg_utm_x2lon(moos::transitional::DCCLMessageVal& mv,
+                       const std::vector<moos::transitional::DCCLMessageVal>& ref_vals);
 
-    void alg_utm_y2lat(transitional::DCCLMessageVal& mv,
-                       const std::vector<transitional::DCCLMessageVal>& ref_vals);
+    void alg_utm_y2lat(moos::transitional::DCCLMessageVal& mv,
+                       const std::vector<moos::transitional::DCCLMessageVal>& ref_vals);
 
-    void alg_modem_id2name(transitional::DCCLMessageVal& in);
-    void alg_modem_id2type(transitional::DCCLMessageVal& in);
-    void alg_name2modem_id(transitional::DCCLMessageVal& in);
+    void alg_modem_id2name(moos::transitional::DCCLMessageVal& in);
+    void alg_modem_id2type(moos::transitional::DCCLMessageVal& in);
+    void alg_name2modem_id(moos::transitional::DCCLMessageVal& in);
 
   private:
     std::map<std::string, goby::moos::protobuf::TranslatorEntry> dictionary_;

@@ -21,17 +21,22 @@
 
 #include <dlfcn.h>
 
-#include "goby/middleware/multi-thread-application.h"
 #include "goby/moos/middleware/moos_plugin_translator.h"
+#include "goby/zeromq/multi-thread-application.h"
 
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
 
-using AppBase = goby::MultiThreadApplication<GobyMOOSGatewayConfig>;
-using ThreadBase = goby::SimpleThread<GobyMOOSGatewayConfig>;
+using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
+using AppBase = goby::zeromq::MultiThreadApplication<GobyMOOSGatewayConfig>;
+using ThreadBase = goby::middleware::SimpleThread<GobyMOOSGatewayConfig>;
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
+namespace goby
+{
+namespace moos
+{
 class GobyMOOSGateway : public AppBase
 {
   public:
@@ -53,8 +58,7 @@ class GobyMOOSGateway : public AppBase
             else
             {
                 dl_handles_.push_back(handle);
-                using plugin_load_func =
-                    void (*)(goby::MultiThreadApplication<GobyMOOSGatewayConfig>*);
+                using plugin_load_func = void (*)(AppBase*);
                 plugin_load_func load_ptr =
                     (plugin_load_func)dlsym(handle, "goby3_moos_gateway_load");
 
@@ -62,8 +66,7 @@ class GobyMOOSGateway : public AppBase
                     glog.is(DIE) && glog << "Function goby3_moos_gateway_load in library: "
                                          << lib_path << " does not exist." << std::endl;
 
-                (*load_ptr)(
-                    static_cast<goby::MultiThreadApplication<GobyMOOSGatewayConfig>*>(this));
+                (*load_ptr)(static_cast<AppBase*>(this));
             }
         }
     }
@@ -72,14 +75,12 @@ class GobyMOOSGateway : public AppBase
     {
         for (void* handle : dl_handles_)
         {
-            using plugin_unload_func =
-                void (*)(goby::MultiThreadApplication<GobyMOOSGatewayConfig>*);
+            using plugin_unload_func = void (*)(AppBase*);
             plugin_unload_func unload_ptr =
                 (plugin_unload_func)dlsym(handle, "goby3_moos_gateway_unload");
 
             if (unload_ptr)
-                (*unload_ptr)(
-                    static_cast<goby::MultiThreadApplication<GobyMOOSGatewayConfig>*>(this));
+                (*unload_ptr)(static_cast<AppBase*>(this));
 
             dlclose(handle);
         }
@@ -88,5 +89,7 @@ class GobyMOOSGateway : public AppBase
   private:
     std::vector<void*> dl_handles_;
 };
+} // namespace moos
+} // namespace goby
 
-int main(int argc, char* argv[]) { return goby::run<GobyMOOSGateway>(argc, argv); }
+int main(int argc, char* argv[]) { return goby::run<goby::moos::GobyMOOSGateway>(argc, argv); }

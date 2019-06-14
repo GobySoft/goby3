@@ -25,9 +25,9 @@
 
 #include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"
 #include "goby/middleware/multi-thread-application.h"
-#include "goby/middleware/transport-interprocess-zeromq.h"
 #include "goby/middleware/transport-interthread.h"
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
+#include "goby/zeromq/transport-interprocess.h"
 
 namespace goby
 {
@@ -35,10 +35,11 @@ namespace moos
 {
 bool TranslatorOnConnectCallBack(void* Translator);
 
-class Translator : public goby::SimpleThread<GobyMOOSGatewayConfig>
+class Translator
+    : public goby::middleware::SimpleThread<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>
 {
   public:
-    Translator(const GobyMOOSGatewayConfig& config);
+    Translator(const goby::apps::moos::protobuf::GobyMOOSGatewayConfig& config);
 
   protected:
     virtual std::string translator_name()
@@ -48,7 +49,10 @@ class Translator : public goby::SimpleThread<GobyMOOSGatewayConfig>
     }
 
     // Goby
-    goby::SimpleThread<GobyMOOSGatewayConfig>& goby_comms() { return *this; }
+    goby::middleware::SimpleThread<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>& goby_comms()
+    {
+        return *this;
+    }
 
     // MOOS
     void add_moos_trigger(const std::string& moos_var) { moos_trigger_vars_.insert(moos_var); }

@@ -25,7 +25,7 @@
 
 #include "goby/acomms/protobuf/iridium_sbd_directip.pb.h"
 #include "goby/acomms/protobuf/rudics_shore.pb.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -45,10 +45,16 @@ class SBDMessageReader
 
     virtual bool data_ready() const = 0;
 
-    const goby::acomms::protobuf::DirectIPMOPreHeader& pre_header() const { return pre_header_; }
-    const goby::acomms::protobuf::DirectIPMOHeader& header() const { return header_; }
-    const goby::acomms::protobuf::DirectIPMOPayload& body() const { return body_; }
-    const goby::acomms::protobuf::DirectIPMTConfirmation& confirm() const { return confirm_; }
+    const goby::acomms::iridium::protobuf::DirectIPMOPreHeader& pre_header() const
+    {
+        return pre_header_;
+    }
+    const goby::acomms::iridium::protobuf::DirectIPMOHeader& header() const { return header_; }
+    const goby::acomms::iridium::protobuf::DirectIPMOPayload& body() const { return body_; }
+    const goby::acomms::iridium::protobuf::DirectIPMTConfirmation& confirm() const
+    {
+        return confirm_;
+    }
 
     enum
     {
@@ -160,10 +166,10 @@ class SBDMessageReader
     }
 
   private:
-    goby::acomms::protobuf::DirectIPMOPreHeader pre_header_;
-    goby::acomms::protobuf::DirectIPMOHeader header_;
-    goby::acomms::protobuf::DirectIPMOPayload body_;
-    goby::acomms::protobuf::DirectIPMTConfirmation confirm_;
+    goby::acomms::iridium::protobuf::DirectIPMOPreHeader pre_header_;
+    goby::acomms::iridium::protobuf::DirectIPMOHeader header_;
+    goby::acomms::iridium::protobuf::DirectIPMOPayload body_;
+    goby::acomms::iridium::protobuf::DirectIPMTConfirmation confirm_;
 
     boost::asio::ip::tcp::socket& socket_;
 
@@ -206,7 +212,7 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
     {
         remote_endpoint_str_ = boost::lexical_cast<std::string>(socket_.remote_endpoint());
 
-        connect_time_ = goby::common::goby_time<double>();
+        connect_time_ = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
         boost::asio::async_read(
             socket_, boost::asio::buffer(message_.data()),
             boost::asio::transfer_at_least(SBDMessageReader::PRE_HEADER_SIZE),
@@ -261,7 +267,7 @@ class SBDServer
     {
         if (!error)
         {
-            using namespace goby::common::logger;
+            using namespace goby::util::logger;
             using goby::glog;
 
             glog.is(DEBUG1) && glog << "Received SBD connection from: "

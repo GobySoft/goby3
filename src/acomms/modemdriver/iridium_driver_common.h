@@ -43,8 +43,12 @@ class OnCallBase
 {
   public:
     OnCallBase()
-        : last_tx_time_(goby::common::goby_time<double>()), last_rx_time_(0), bye_received_(false),
-          bye_sent_(false), total_bytes_sent_(0), last_bytes_sent_(0)
+        : last_tx_time_(time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1)),
+          last_rx_time_(0),
+          bye_received_(false),
+          bye_sent_(false),
+          total_bytes_sent_(0),
+          last_bytes_sent_(0)
     {
     }
     double last_rx_tx_time() const { return std::max(last_tx_time_, last_rx_time_); }
@@ -93,13 +97,13 @@ inline void init_iridium_dccl()
 {
     dccl::FieldCodecManager::add<IridiumHeaderIdentifierCodec>("iridium_header_id");
     iridium_header_dccl_.reset(new dccl::Codec("iridium_header_id"));
-    iridium_header_dccl_->load<IridiumHeader>();
+    iridium_header_dccl_->load<goby::acomms::iridium::protobuf::IridiumHeader>();
 }
 
 inline void serialize_iridium_modem_message(std::string* out,
                                             const goby::acomms::protobuf::ModemTransmission& in)
 {
-    IridiumHeader header;
+    goby::acomms::iridium::protobuf::IridiumHeader header;
     header.set_src(in.src());
     header.set_dest(in.dest());
     if (in.has_rate())
@@ -120,7 +124,7 @@ inline void serialize_iridium_modem_message(std::string* out,
 inline void parse_iridium_modem_message(std::string in,
                                         goby::acomms::protobuf::ModemTransmission* out)
 {
-    IridiumHeader header;
+    goby::acomms::iridium::protobuf::IridiumHeader header;
     iridium_header_dccl_->decode(&in, &header);
 
     out->set_src(header.src());

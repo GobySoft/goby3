@@ -22,13 +22,14 @@
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/queue.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
+
 #include "test.pb.h"
 
 // tests "encode_on_demand" functionality
-
-using goby::acomms::operator<<;
+using goby::test::acomms::protobuf::GobyMessage;
 
 int receive_count = 0;
 int encode_on_demand_count = 0;
@@ -52,7 +53,7 @@ void request_test(int request_bytes, int expected_encode_requests, int expected_
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
 
     goby::acomms::DCCLCodec* codec = goby::acomms::DCCLCodec::get();
@@ -60,7 +61,7 @@ int main(int argc, char* argv[])
     goby::acomms::protobuf::QueueManagerConfig cfg;
     cfg.set_modem_id(MY_MODEM_ID);
     goby::acomms::protobuf::QueuedMessageEntry* entry = cfg.add_message_entry();
-    entry->set_protobuf_name("GobyMessage");
+    entry->set_protobuf_name("goby.test.acomms.protobuf.GobyMessage");
     entry->set_newest_first(true);
     entry->add_manipulator(goby::acomms::protobuf::ON_DEMAND);
     cfg.set_on_demand_skew_seconds(0.1);

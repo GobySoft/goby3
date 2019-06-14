@@ -1,6 +1,16 @@
-
-file(GLOB PROTOS protobuf/*.proto)
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
+set(PROTOS 
+  protobuf/bluefin_driver.proto
+  protobuf/ctd_sample.proto
+  protobuf/desired_course.proto
+  protobuf/frontseat_config.proto
+  protobuf/frontseat.proto
+  protobuf/goby_moos_app.proto
+  protobuf/modem_id_lookup.proto
+  protobuf/node_status.proto
+  protobuf/pAcommsHandler_config.proto
+  protobuf/translator.proto
+  protobuf/ufield_sim_driver.proto
+  )
 
 set(SRC
    goby_moos_app.cpp
@@ -13,20 +23,34 @@ set(SRC
    transitional/message_algorithms.cpp
    moos_geodesy.cpp
    frontseat/frontseat.cpp
-   middleware/moos_plugin_translator.cpp
 )
+
+if(build_zeromq)
+  set(PROTOS ${PROTOS} 
+    protobuf/liaison_config.proto
+    protobuf/moos_gateway_config.proto
+    )
+  set(SRC ${SRC}
+    middleware/moos_plugin_translator.cpp
+    )
+endif()
+
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
+  ${PROTOS}
+  )
 
 add_library(goby_moos ${SRC} ${PROTO_SRCS} ${PROTO_HDRS})
 goby_install_lib(goby_moos moos)
 
 target_link_libraries(goby_moos
-  goby_util
-  goby_common 
-  goby_acomms
-  goby_middleware
+  goby
   proj
   ${MOOS_LIBRARIES} ${Boost_LIBRARIES} ${PROTOBUF_LIBRARY}
 )
+
+if(build_zeromq)
+  target_link_libraries(goby_moos goby_zeromq)
+endif()
 
 set_target_properties(goby_moos PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 

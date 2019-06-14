@@ -1,9 +1,10 @@
+syntax = "proto2";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/modem_message.proto";
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 import "dccl/option_extensions.proto";
 
-package micromodem.protobuf;
+package goby.acomms.micromodem.protobuf;
 
 message NarrowBandLBLParams
 {
@@ -159,12 +160,18 @@ enum PSKErrorCode
 // $CACST,0,223413.0000,0,1440,25,0175,0166,75,01,01,01,03,1,007,006,0,3,3,0,146,03,04,-100,-1,000,-1.2,45,10000,2000
 message ReceiveStatistics
 {
-    option (dccl.msg).id = 129;
-    option (dccl.msg).max_bytes = 32;
+    option (dccl.msg) = {
+        id: 129,
+        max_bytes: 32,
+        unit_system: "si"
+    };
 
     // including in "version 0", or the original CACST
     required ReceiveMode mode = 1;
-    required uint64 time = 2 [(dccl.field).codec = "_time"];
+    required uint64 time = 2 [(dccl.field) = {
+        codec: "_time",
+        units: {prefix: "micro" base_dimensions: "T"}
+    }];
     required ClockMode clock_mode = 3;
     optional int32 mfd_peak = 4 [(dccl.field).omit = true];
     required int32 mfd_power = 5

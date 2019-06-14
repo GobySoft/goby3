@@ -1,0 +1,23 @@
+syntax = "proto2";
+
+package goby.test.middleware.protobuf;
+
+message TestHDF5Message
+{
+    repeated double a = 1;
+    repeated B b = 2;
+}
+
+message B
+{
+    repeated double c = 2;
+    repeated double d = 3;
+    repeated int32 e = 4;
+    repeated F f = 5;
+}
+
+message F
+{
+    repeated double g = 1;
+    optional int32 h = 2;
+}

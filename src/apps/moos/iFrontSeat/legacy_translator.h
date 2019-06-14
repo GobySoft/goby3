@@ -28,6 +28,12 @@
 
 #include "goby/moos/frontseat/frontseat.h"
 
+namespace goby
+{
+namespace apps
+{
+namespace moos
+{
 class iFrontSeat;
 class FrontSeatLegacyTranslator
 {
@@ -69,5 +75,8 @@ class FrontSeatLegacyTranslator
     };
     int request_id_;
 };
+} // namespace moos
+} // namespace apps
+} // namespace goby
 
 #endif

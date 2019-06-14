@@ -23,25 +23,17 @@
 #ifndef DCCLCOMPAT20131116H
 #define DCCLCOMPAT20131116H
 
-#include "goby/acomms/acomms_helpers.h" // for operator<< of google::protobuf::Message
 #include "goby/acomms/protobuf/dccl.pb.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 #include "dccl/codec.h"
 #include "dccl/codecs2/field_codec_default.h"
 #include "dccl/field_codec_id.h"
 #include "dccl/internal/field_codec_message_stack.h"
 
-/// The global namespace for the Goby project.
 namespace goby
 {
-namespace util
-{
-class FlexOstream;
-}
-
-/// Objects pertaining to acoustic communications (acomms)
 namespace acomms
 {
 typedef dccl::Exception DCCLException;
@@ -247,8 +239,8 @@ class DCCLCodec
             {
                 out.push_back(decode<GoogleProtobufMessagePointer>(bytes));
                 unsigned last_size = size(*out.back());
-                glog.is(common::logger::DEBUG1) && glog << "last message size was: " << last_size
-                                                        << std::endl;
+                glog.is(util::logger::DEBUG1) && glog << "last message size was: " << last_size
+                                                      << std::endl;
                 bytes.erase(0, last_size);
             }
             catch (dccl::Exception& e)
@@ -257,7 +249,7 @@ class DCCLCodec
                     throw(e);
                 else
                 {
-                    glog.is(common::logger::WARN) &&
+                    glog.is(util::logger::WARN) &&
                         glog << "failed to decode " << goby::util::hex_encode(bytes)
                              << " but returning parts already decoded" << std::endl;
                     return out;
@@ -291,9 +283,9 @@ class DCCLCodec
             }
             catch (dccl::Exception& e)
             {
-                glog.is(common::logger::WARN) && glog << "Failed to reload " << (*it)->full_name()
-                                                      << " after ID codec change: " << e.what()
-                                                      << std::endl;
+                glog.is(util::logger::WARN) && glog << "Failed to reload " << (*it)->full_name()
+                                                    << " after ID codec change: " << e.what()
+                                                    << std::endl;
             }
         }
     }

@@ -66,12 +66,12 @@ job-template-amd64: &job-template-amd64
     - run: &run-update-apt
         name: Update apt packages
         command: apt-get update && apt-get dist-upgrade -y
-    - run:
+    - run: &run-build
         name: Build
-        command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
+        command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_doc=ON -Dbuild_doc_pdf=OFF -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -- -j4
     - run: &run-tests
         name: Run tests
-        command: cd build && ctest --output-on-failure        
+        command: cd build && ctest --output-on-failure -j4
 
 job-template-deb-amd64: &job-template-deb-amd64
   <<: *job-template-amd64
@@ -194,6 +194,8 @@ workflows:
           <<: *filter-template-non-master
       - amd64-bionic-build:
           <<: *filter-template-non-master
+      - amd64-bionic-minimal-build:
+          <<: *filter-template-non-master          
       
       - get-orig-source:
           <<: *filter-template-master-only
@@ -317,7 +319,29 @@ jobs:
     docker: *docker-base-bionic
     environment:
       <<: *environment-template-common
-  
+
+  amd64-bionic-minimal-build:
+    docker:
+      - image: ubuntu:bionic
+    working_directory: /root/goby3
+    steps:
+      - run:
+          name: Install packages server
+          command: |
+            apt-get update && apt-get -y install dirmngr ca-certificates && \
+            echo "deb http://packages.gobysoft.org/ubuntu/release/ bionic/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
+            apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE    
+      - run: 
+          name: Install apt packages
+          command: |
+            apt-get update &&
+            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl3-dev dccl3-compiler
+      - checkout
+      - run: 
+          name: Build
+          command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
+      - run: *run-tests
+      
   amd64-stretch-deb-build:
     <<: *job-template-deb-amd64
     docker: *docker-base-stretch

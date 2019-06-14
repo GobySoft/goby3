@@ -1,3 +1,4 @@
+syntax = "proto2";
 package goby.moos.protobuf;
 
 message ModemIdEntry

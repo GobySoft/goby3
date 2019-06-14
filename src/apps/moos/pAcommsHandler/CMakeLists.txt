@@ -1,13 +1,9 @@
-#file(GLOB PROTOS *.proto)
-#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
-
 add_executable(pAcommsHandler
   pAcommsHandlerMain.cpp
-  pAcommsHandler.cpp ${PROTO_SRCS} ${PROTO_HDRS})
+  pAcommsHandler.cpp)
   
 target_link_libraries(pAcommsHandler
-  goby_acomms
-  goby_util
+  goby
   goby_moos
   ${MOOS_LIBRARIES}
   ${MOOSGeodesy_LIBRARIES}

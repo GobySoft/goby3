@@ -24,19 +24,21 @@
 
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
 using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
-using namespace goby::common::logger;
-using goby::common::goby_time;
+using namespace goby::util::logger;
 
 const size_t UDP_MAX_PACKET_SIZE = 65507; // (16 bit length = 65535 - 8 byte UDP header -20 byte IP)
 
 goby::acomms::UDPDriver::UDPDriver(boost::asio::io_service* io_service)
-    : io_service_(io_service), socket_(*io_service), receive_buffer_(UDP_MAX_PACKET_SIZE),
+    : io_service_(io_service),
+      socket_(*io_service),
+      receive_buffer_(UDP_MAX_PACKET_SIZE),
       next_frame_(0)
 {
 }
@@ -47,11 +49,11 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 {
     driver_cfg_ = cfg;
 
-    const UDPDriverConfig::EndPoint& local = driver_cfg_.GetExtension(UDPDriverConfig::local);
+    const auto& local = driver_cfg_.GetExtension(udp::protobuf::UDPDriverConfig::local);
     socket_.open(boost::asio::ip::udp::v4());
     socket_.bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), local.port()));
 
-    const UDPDriverConfig::EndPoint& remote = driver_cfg_.GetExtension(UDPDriverConfig::remote);
+    const auto& remote = driver_cfg_.GetExtension(udp::protobuf::UDPDriverConfig::remote);
     boost::asio::ip::udp::resolver resolver(*io_service_);
     boost::asio::ip::udp::resolver::query query(boost::asio::ip::udp::v4(), remote.ip(),
                                                 goby::util::as<std::string>(remote.port()));
@@ -82,7 +84,8 @@ void goby::acomms::UDPDriver::handle_initiate_transmission(
     if (!msg.has_frame_start())
         msg.set_frame_start(next_frame_);
 
-    msg.set_max_frame_bytes(driver_cfg_.GetExtension(UDPDriverConfig::max_frame_size));
+    msg.set_max_frame_bytes(
+        driver_cfg_.GetExtension(udp::protobuf::UDPDriverConfig::max_frame_size));
     signal_data_request(&msg);
 
     glog.is(DEBUG1) && glog << group(glog_out_group())

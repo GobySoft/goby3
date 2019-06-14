@@ -23,13 +23,14 @@
 #include "abc_driver.h"
 #include "driver_exception.h"
 
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
 using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 goby::acomms::ABCDriver::ABCDriver()
 {
@@ -57,12 +58,16 @@ void goby::acomms::ABCDriver::startup(const protobuf::DriverConfig& cfg)
     // now set our special configuration values
     {
         std::stringstream raw;
-        raw << "CONF,FOO:" << driver_cfg_.GetExtension(ABCDriverConfig::enable_foo) << "\r\n";
+        raw << "CONF,FOO:"
+            << driver_cfg_.GetExtension(goby::acomms::abc::protobuf::ABCDriverConfig::enable_foo)
+            << "\r\n";
         signal_and_write(raw.str());
     }
     {
         std::stringstream raw;
-        raw << "CONF,BAR:" << driver_cfg_.GetExtension(ABCDriverConfig::enable_bar) << "\r\n";
+        raw << "CONF,BAR:"
+            << driver_cfg_.GetExtension(goby::acomms::abc::protobuf::ABCDriverConfig::enable_bar)
+            << "\r\n";
         signal_and_write(raw.str());
     }
 } // startup
@@ -131,7 +136,7 @@ void goby::acomms::ABCDriver::do_work()
             protobuf::ModemTransmission msg;
             msg.set_src(goby::util::as<std::int32_t>(parsed["FROM"]));
             msg.set_dest(goby::util::as<std::int32_t>(parsed["TO"]));
-            msg.set_time(goby::common::goby_time<std::uint64_t>());
+            msg.set_time_with_units(time::SystemClock::now<time::MicroTime>());
 
             glog.is(DEBUG1) && glog << group(glog_in_group()) << in << std::endl;
 

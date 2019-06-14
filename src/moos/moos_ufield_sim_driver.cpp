@@ -23,17 +23,19 @@
 #include "moos_ufield_sim_driver.h"
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/protobuf/mm_driver.pb.h"
-#include "goby/common/logger.h"
 #include "goby/moos/modem_id_convert.h"
 #include "goby/moos/moos_string.h"
 #include "goby/moos/protobuf/ufield_sim_driver.pb.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
 using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
-using namespace goby::common::logger;
-using goby::acomms::operator<<;
+using namespace goby::util::logger;
+
+namespace micromodem = goby::acomms::micromodem;
 
 goby::moos::UFldDriver::UFldDriver() : last_ccmpc_dest_(-1) {}
 
@@ -44,7 +46,7 @@ void goby::moos::UFldDriver::startup(const goby::acomms::protobuf::DriverConfig&
 
     driver_cfg_ = cfg;
 
-    goby::glog.is(goby::common::logger::DEBUG1) &&
+    goby::glog.is(goby::util::logger::DEBUG1) &&
         goby::glog << modem_lookup_.read_lookup_file(
                           driver_cfg_.GetExtension(protobuf::Config::modem_id_lookup_path))
                    << std::flush;

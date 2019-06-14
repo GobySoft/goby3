@@ -36,8 +36,8 @@
 
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modem_driver.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 #include <iostream>
 
@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
     cfg.set_modem_id(our_id);
 
     goby::glog.set_name(argv[0]);
-    goby::glog.add_stream(goby::common::logger::DEBUG2, &std::clog);
+    goby::glog.add_stream(goby::util::logger::DEBUG2, &std::clog);
 
     if (argc == 4)
     {

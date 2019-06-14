@@ -27,12 +27,11 @@
 #include <dccl/field_codec_fixed.h>
 #include <dccl/field_codec_manager.h>
 
-#include "goby/common/time.h"
+#include "goby/acomms/protobuf/benthos_atm900.pb.h"
+#include "goby/time.h"
 
 #include "benthos_atm900_driver_fsm.h"
 #include "driver_base.h"
-#include "goby/acomms/acomms_helpers.h"
-#include "goby/acomms/protobuf/benthos_atm900.pb.h"
 #include "rudics_packet.h"
 
 namespace goby
@@ -60,9 +59,8 @@ class BenthosATM900Driver : public ModemDriverBase
     };
     static const std::string SERIAL_DELIMITER;
 
-    benthos_fsm::BenthosATM900FSM fsm_;
+    benthos::fsm::BenthosATM900FSM fsm_;
     protobuf::DriverConfig driver_cfg_; // configuration given to you at launch
-    std::uint32_t next_frame_;
 };
 
 // placeholder id codec that uses no bits, since we're always sending just this message on the wire

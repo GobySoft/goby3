@@ -26,12 +26,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 #include "goby/middleware/protobuf/terminate.pb.h"
 #include "goby/middleware/terminate/groups.h"
 
 namespace goby
+{
+namespace middleware
 {
 namespace terminate
 {
@@ -68,6 +70,7 @@ check_terminate(const protobuf::TerminateRequest& request, const std::string& ap
     return std::make_pair(match, resp);
 }
 } // namespace terminate
+} // namespace middleware
 } // namespace goby
 
 #endif

@@ -25,6 +25,8 @@
 #include "goby/acomms/modemdriver/udp_driver.h"
 #include <cstdlib>
 
+using goby::acomms::udp::protobuf::UDPDriverConfig;
+
 boost::asio::io_service io1, io2;
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 
@@ -40,13 +42,13 @@ void handle_raw_outgoing(int driver, const goby::acomms::protobuf::ModemRaw& raw
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     std::ofstream fout;
 
     if (argc == 2)
     {
         fout.open(argv[1]);
-        goby::glog.add_stream(goby::common::logger::DEBUG3, &fout);
+        goby::glog.add_stream(goby::util::logger::DEBUG3, &fout);
     }
 
     goby::glog.set_name(argv[0]);
@@ -91,7 +93,7 @@ int main(int argc, char* argv[])
     tests_to_run.push_back(4);
     tests_to_run.push_back(5);
 
-    DriverTester tester(driver1, driver2, cfg1, cfg2, tests_to_run,
-                        goby::acomms::protobuf::DRIVER_UDP);
+    goby::test::acomms::DriverTester tester(driver1, driver2, cfg1, cfg2, tests_to_run,
+                                            goby::acomms::protobuf::DRIVER_UDP);
     return tester.run();
 }

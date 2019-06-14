@@ -23,6 +23,7 @@
 #ifndef TransportInterfaces20170808H
 #define TransportInterfaces20170808H
 
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -30,10 +31,13 @@
 #include "group.h"
 #include "serialize_parse.h"
 
-#include "goby/common/logger.h"
+#include "goby/exception.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"
+#include "goby/util/debug_logger.h"
 
 namespace goby
+{
+namespace middleware
 {
 class NullTransporter;
 
@@ -42,8 +46,9 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
   public:
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
-    void publish(const Data& data, const goby::protobuf::TransporterConfig& transport_cfg =
-                                       goby::protobuf::TransporterConfig())
+    void publish(const Data& data,
+                 const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                     goby::middleware::protobuf::TransporterConfig())
     {
         check_validity<group>();
         static_cast<Transporter*>(this)->template publish_dynamic<Data, scheme>(data, group,
@@ -54,8 +59,8 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void publish(std::shared_ptr<const Data> data,
-                 const goby::protobuf::TransporterConfig& transport_cfg =
-                     goby::protobuf::TransporterConfig())
+                 const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                     goby::middleware::protobuf::TransporterConfig())
     {
         check_validity<group>();
         static_cast<Transporter*>(this)->template publish_dynamic<Data, scheme>(data, group,
@@ -65,8 +70,8 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void publish(std::shared_ptr<Data> data,
-                 const goby::protobuf::TransporterConfig& transport_cfg =
-                     goby::protobuf::TransporterConfig())
+                 const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                     goby::middleware::protobuf::TransporterConfig())
     {
         publish<group, Data, scheme>(std::shared_ptr<const Data>(data), transport_cfg);
     }
@@ -113,9 +118,12 @@ class PollerInterface
     {
     }
 
-    int poll(const std::chrono::system_clock::time_point& timeout =
-                 std::chrono::system_clock::time_point::max());
-    int poll(std::chrono::system_clock::duration wait_for);
+    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
+    int poll(const std::chrono::time_point<Clock, Duration>& timeout =
+                 std::chrono::time_point<Clock, Duration>::max());
+
+    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
+    int poll(Duration wait_for);
 
     std::shared_ptr<std::timed_mutex> poll_mutex() { return poll_mutex_; }
     std::shared_ptr<std::condition_variable_any> cv() { return cv_; }
@@ -127,12 +135,67 @@ class PollerInterface
 
   private:
     // poll all the transporters for data, including a timeout (only called by the outside-most Poller)
-    int _poll_all(const std::chrono::system_clock::time_point& timeout);
+    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
+    int _poll_all(const std::chrono::time_point<Clock, Duration>& timeout);
 
     std::shared_ptr<std::timed_mutex> poll_mutex_;
     // signaled when there's no data for this thread to read during _poll()
     std::shared_ptr<std::condition_variable_any> cv_;
 };
+} // namespace middleware
 } // namespace goby
+
+template <class Clock, class Duration>
+int goby::middleware::PollerInterface::poll(const std::chrono::time_point<Clock, Duration>& timeout)
+{
+    return _poll_all(timeout);
+}
+
+template <class Clock, class Duration>
+int goby::middleware::PollerInterface::poll(Duration wait_for)
+{
+    if (wait_for == Duration::max())
+        return poll();
+    else
+        return poll(Clock::now() + wait_for);
+}
+
+template <class Clock, class Duration>
+int goby::middleware::PollerInterface::_poll_all(
+    const std::chrono::time_point<Clock, Duration>& timeout)
+{
+    // hold this lock until either we find a polled item or we wait on the condition variable
+    std::unique_ptr<std::unique_lock<std::timed_mutex> > lock(
+        new std::unique_lock<std::timed_mutex>(*poll_mutex_));
+    //    std::cout << std::this_thread::get_id() <<  " _poll_all locking: " << poll_mutex_.get() << std::endl;
+
+    int poll_items = _transporter_poll(lock);
+    while (poll_items == 0)
+    {
+        if (!lock)
+            throw(goby::Exception(
+                "Poller lock was released by poll() but no poll items were returned"));
+
+        if (timeout == Clock::time_point::max())
+        {
+            cv_->wait(*lock); // wait_until doesn't work well with time_point::max()
+            poll_items = _transporter_poll(lock);
+
+            if (poll_items == 0)
+                goby::glog.is(goby::util::logger::DEBUG3) &&
+                    goby::glog << "PollerInterface condition_variable: spurious wakeup"
+                               << std::endl;
+        }
+        else
+        {
+            if (cv_->wait_until(*lock, timeout) == std::cv_status::no_timeout)
+                poll_items = _transporter_poll(lock);
+            else
+                return poll_items;
+        }
+    }
+
+    return poll_items;
+}
 
 #endif

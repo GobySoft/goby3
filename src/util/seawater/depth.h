@@ -30,39 +30,46 @@
 
 #include <cmath>
 
-// Calculates Depth given the Pressure at some Latitude.
-// Taken directly from MATLAB OceansToolbox depth.m
+#include <boost/units/quantity.hpp>
+#include <boost/units/systems/angle/degrees.hpp>
+#include <boost/units/systems/si.hpp>
+#include <boost/units/systems/si/prefixes.hpp>
 
-inline double pressure2depth(double P, double LAT)
+#include "units.h"
+
+namespace goby
 {
-    // function DEPTH=depth(P,LAT);
-    /*
-    DEPTH   Computes depth given the pressure at some latitude
-    D=DEPTH(P,LAT) gives the depth D (m) for a pressure P (dbars)
-    at some latitude LAT (degrees).
-    
-    This probably works best in mid-latiude oceans, if anywhere!
+namespace util
+{
+namespace seawater
+{
+/// \brief Calculates depth from pressure and latitude
+/// Adapted from "Algorithms for computation of fundamental properties of seawater; UNESCO technical papers in marine science; Vol.:44; 1983"
+/// https://unesdoc.unesco.org/ark:/48223/pf0000059832
+/// \param pressure Pressure
+/// \param latitude Latitude
+/// \return computed depth
+template <typename PressureUnit = decltype(boost::units::si::deci* bar),
+          typename LatitudeUnit = boost::units::degree::plane_angle>
+boost::units::quantity<boost::units::si::length>
+depth(boost::units::quantity<PressureUnit> pressure, boost::units::quantity<LatitudeUnit> latitude)
+{
+    using namespace boost::units;
 
-    Ref: Saunders, Fofonoff, Deep Sea Res., 23 (1976), 109-111
-    
+    double P = quantity<decltype(si::deci * bar)>(pressure).value();
+    double LAT = quantity<degree::plane_angle>(latitude).value();
 
-    Notes: RP (WHOI) 2/Dec/91
-    I copied this directly from the UNESCO algorithms
-
-    CHECKVALUE: DEPTH = 9712.653 M FOR P=10000 DECIBARS, LATITUDE=30 DEG
-    ABOVE FOR STANDARD OCEAN: T=0 DEG. CELSUIS ; S=35 (IPSS-78)
-  */
-
-    using namespace std; // for math functions
-
-    double X = sin(LAT / 57.29578);
+    double X = std::sin(LAT / 57.29578);
     X = X * X;
     // GR= GRAVITY VARIATION WITH LATITUDE: ANON (1970) BULLETIN GEODESIQUE
     double GR = 9.780318 * (1.0 + (5.2788E-3 + 2.36E-5 * X) * X) + 1.092E-6 * P;
     double DEPTH = (((-1.82E-15 * P + 2.279E-10) * P - 2.2512E-5) * P + 9.72659) * P;
     DEPTH = DEPTH / GR;
 
-    return DEPTH;
+    return DEPTH * si::meters;
 }
+} // namespace seawater
+} // namespace util
+} // namespace goby
 
 #endif

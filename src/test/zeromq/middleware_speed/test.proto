@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+package goby.test.zeromq.protobuf;
+
+message Sample
+{
+    required double temperature = 1;
+    required double salinity = 2;
+    required double depth = 3;
+}
+
+message Large
+{
+    required bytes data = 1;
+}

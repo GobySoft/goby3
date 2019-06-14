@@ -1,0 +1,48 @@
+syntax = "proto2";
+import "google/protobuf/descriptor.proto";
+
+package goby;
+
+extend .google.protobuf.FieldOptions
+{
+    // Email from liujisi@google.com on 7.22.2011: Please use 1009 for all types
+    // of options.
+    // --------------------------------
+    // Project:  Goby Underwater Autonomy Project
+    // Contact:  Toby Schneider <tes@mit.edu>
+    // Web site: https://launchpad.net/goby
+    // Extensions: 1009 (all types)
+    // --------------------------------
+    optional GobyFieldOptions field = 1009;
+}
+
+extend .google.protobuf.MessageOptions
+{
+    optional GobyMessageOptions msg = 1009;
+}
+
+message GobyFieldOptions
+{
+    optional string description = 100;
+    optional string example = 101;
+
+    // used in goby_moos_app.proto
+    optional string moos_global = 102;
+
+    message ConfigurationOptions
+    {
+        optional string cli_short = 1;
+        enum ConfigAction
+        {
+            ALWAYS = 1;
+            NEVER = 2;
+            ADVANCED = 3;
+        }
+        optional ConfigAction action = 2 [default = ALWAYS];
+    }
+    optional ConfigurationOptions cfg = 200;
+}
+
+message GobyMessageOptions
+{
+}

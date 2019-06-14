@@ -22,13 +22,15 @@
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/queue.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
+
 #include "test.pb.h"
 
-// tests basic DCCL queuing
+using goby::test::acomms::protobuf::TestMsg;
 
-using goby::acomms::operator<<;
+// tests basic DCCL queuing
 
 int receive_count = 0;
 TestMsg test_msg1;
@@ -37,14 +39,14 @@ void handle_receive(const google::protobuf::Message& msg);
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
 
     goby::acomms::QueueManager q_manager;
     goby::acomms::protobuf::QueueManagerConfig cfg;
     const int MY_MODEM_ID = 1;
     cfg.set_modem_id(MY_MODEM_ID);
-    cfg.add_message_entry()->set_protobuf_name("TestMsg");
+    cfg.add_message_entry()->set_protobuf_name("goby.test.acomms.protobuf.TestMsg");
 
     q_manager.set_cfg(cfg);
 

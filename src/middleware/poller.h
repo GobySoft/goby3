@@ -27,6 +27,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 template <typename Transporter> class Poller : public PollerInterface
 {
   protected:
@@ -54,7 +56,7 @@ template <typename Transporter> class Poller : public PollerInterface
         if (!inner_poll_items)
             poll_items += static_cast<Transporter*>(this)->_poll(lock);
 
-        //            goby::glog.is(goby::common::logger::DEBUG3) && goby::glog << "Poller::transporter_poll(): " << typeid(*this).name() << " this: " << this << " (" << poll_items << " items) "<< " inner_poller_: " << inner_poller_ << " (" << inner_poll_items << " items) " << std::endl;
+        //            goby::glog.is(goby::util::logger::DEBUG3) && goby::glog << "Poller::transporter_poll(): " << typeid(*this).name() << " this: " << this << " (" << poll_items << " items) "<< " inner_poller_: " << inner_poller_ << " (" << inner_poll_items << " items) " << std::endl;
 
         return inner_poll_items + poll_items;
     }
@@ -62,6 +64,7 @@ template <typename Transporter> class Poller : public PollerInterface
   private:
     PollerInterface* inner_poller_;
 };
+} // namespace goby
 } // namespace goby
 
 #endif

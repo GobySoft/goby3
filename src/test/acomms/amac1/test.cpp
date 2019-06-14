@@ -23,7 +23,8 @@
 
 #include "goby/acomms/amac.h"
 #include "goby/acomms/connect.h"
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 #include "goby/util/sci.h"
 
 goby::acomms::MACManager mac;
@@ -32,19 +33,17 @@ int first_cycle = -1;
 int current_cycle = -1;
 int me = 1;
 
-using goby::acomms::operator<<;
-
 void initiate_transmission(const goby::acomms::protobuf::ModemTransmission& msg)
 {
     std::cout << "We were told to start transmission of " << msg << std::endl;
     assert(msg.src() == me);
-    double cycles_since_day =
-        (goby::common::goby_time().time_of_day().total_milliseconds() / 1000.0) /
-        mac.cycle_duration();
+    double cycles_since_day = goby::time::SystemClock::now<boost::posix_time::ptime>()
+                                  .time_of_day()
+                                  .total_microseconds() /
+                              (mac.cycle_duration() / std::chrono::microseconds(1));
 
     std::cout << std::setprecision(15) << cycles_since_day << std::endl;
-    std::cout << std::setprecision(15) << goby::util::unbiased_round(cycles_since_day, 0)
-              << std::endl;
+    std::cout << std::setprecision(15) << dccl::round(cycles_since_day, 0) << std::endl;
 
     current_cycle = cycles_since_day;
     if (first_cycle == -1)
@@ -52,13 +51,12 @@ void initiate_transmission(const goby::acomms::protobuf::ModemTransmission& msg)
 
     assert(mac.cycle_count() == 3);
 
-    assert(goby::util::unbiased_round(
-               cycles_since_day - goby::util::unbiased_round(cycles_since_day, 0), 1) == 0);
+    assert(dccl::round(cycles_since_day - dccl::round(cycles_since_day, 0), 1) == 0);
 }
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
 
     // add slots as part of cfg

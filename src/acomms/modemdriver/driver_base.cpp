@@ -23,13 +23,13 @@
 #include <boost/format.hpp>
 
 #include "goby/acomms/connect.h"
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 #include "driver_base.h"
 #include "driver_exception.h"
 
-using namespace goby::common::logger;
-using namespace goby::common::logger_lock;
+using namespace goby::util::logger;
+using namespace goby::util::logger_lock;
 
 int goby::acomms::ModemDriverBase::count_ = 0;
 
@@ -38,8 +38,8 @@ goby::acomms::ModemDriverBase::ModemDriverBase() : raw_fs_connections_made_(fals
     glog_out_group_ = "goby::acomms::modemdriver::out::" + goby::util::as<std::string>(order_);
     glog_in_group_ = "goby::acomms::modemdriver::in::" + goby::util::as<std::string>(order_);
 
-    goby::glog.add_group(glog_out_group_, common::Colors::lt_magenta);
-    goby::glog.add_group(glog_in_group_, common::Colors::lt_blue);
+    goby::glog.add_group(glog_out_group_, util::Colors::lt_magenta);
+    goby::glog.add_group(glog_in_group_, util::Colors::lt_blue);
 }
 
 goby::acomms::ModemDriverBase::~ModemDriverBase() { modem_close(); }

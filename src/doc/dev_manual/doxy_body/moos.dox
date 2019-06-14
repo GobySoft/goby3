@@ -127,12 +127,11 @@ We will show you how to a write a new driver by example. To do so, we have creat
 <li> examples/moos/abc_frontseat_driver/abc_frontseat_driver.h
 <li> examples/moos/abc_frontseat_driver/abc_frontseat_driver.cpp
 <li> examples/moos/abc_frontseat_driver/abc_frontseat_driver_config.proto
-</li>
-
+</ul>
 
 %A complete production driver is provided by BluefinFrontSeat for the Bluefin Robotics AUVs that conform to the Bluefin Standard Payload Interface version 1.8 and newer.
 
-The transport for the ABC frontseat is TCP: the simulator (frontseat) listens on a given port and the driver connects to that machine and port. The wire protocol is a simple ascii line-based protocol where lines are terminated by carriage-return and newline (<CR><NL> or "\r\n"). Each message has a name (key), followed by a number of comma-delimited, colon-separated fields:
+The transport for the ABC frontseat is TCP: the simulator (frontseat) listens on a given port and the driver connects to that machine and port. The wire protocol is a simple ascii line-based protocol where lines are terminated by carriage-return and newline (\verbatim<CR><NL>\endverbatim or "\r\n"). Each message has a name (key), followed by a number of comma-delimited, colon-separated fields:
 
 <table border=1>
   <tr>

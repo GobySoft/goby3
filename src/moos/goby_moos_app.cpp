@@ -20,4 +20,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "goby/version.h"
+
 #include "goby_moos_app.h"
+
+void goby::moos::write_version_message() { std::cout << goby::version_message() << std::endl; }

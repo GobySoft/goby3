@@ -25,19 +25,18 @@
 #include <boost/signals2.hpp>
 
 #include "goby/acomms/connect.h"
-#include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
+#include "goby/util/debug_logger.h"
 
 #include "iFrontSeat.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
-using goby::common::goby_time;
 
-iFrontSeatConfig iFrontSeat::cfg_;
-iFrontSeat* iFrontSeat::inst_ = 0;
-void* iFrontSeat::driver_library_handle_ = 0;
+goby::apps::moos::protobuf::iFrontSeatConfig goby::apps::moos::iFrontSeat::cfg_;
+goby::apps::moos::iFrontSeat* goby::apps::moos::iFrontSeat::inst_ = 0;
+void* goby::apps::moos::iFrontSeat::driver_library_handle_ = 0;
 
 int main(int argc, char* argv[])
 {
@@ -46,8 +45,8 @@ int main(int argc, char* argv[])
     if (driver_lib_path)
     {
         std::cerr << "Loading iFrontSeat driver library: " << driver_lib_path << std::endl;
-        iFrontSeat::driver_library_handle_ = dlopen(driver_lib_path, RTLD_LAZY);
-        if (!iFrontSeat::driver_library_handle_)
+        goby::apps::moos::iFrontSeat::driver_library_handle_ = dlopen(driver_lib_path, RTLD_LAZY);
+        if (!goby::apps::moos::iFrontSeat::driver_library_handle_)
         {
             std::cerr << "Failed to open library: " << driver_lib_path << std::endl;
             exit(EXIT_FAILURE);
@@ -61,28 +60,29 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    return goby::moos::run<iFrontSeat>(argc, argv);
+    return goby::moos::run<goby::apps::moos::iFrontSeat>(argc, argv);
 }
 
-iFrontSeat* iFrontSeat::get_instance()
+goby::apps::moos::iFrontSeat* goby::apps::moos::iFrontSeat::get_instance()
 {
     if (!inst_)
-        inst_ = new iFrontSeat();
+        inst_ = new goby::apps::moos::iFrontSeat();
     return inst_;
 }
 
-FrontSeatInterfaceBase* load_driver(iFrontSeatConfig* cfg)
+goby::moos::FrontSeatInterfaceBase* load_driver(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
 {
-    typedef FrontSeatInterfaceBase* (*driver_load_func)(iFrontSeatConfig*);
-    driver_load_func driver_load_ptr =
-        (driver_load_func)dlsym(iFrontSeat::driver_library_handle_, "frontseat_driver_load");
+    typedef goby::moos::FrontSeatInterfaceBase* (*driver_load_func)(
+        goby::apps::moos::protobuf::iFrontSeatConfig*);
+    driver_load_func driver_load_ptr = (driver_load_func)dlsym(
+        goby::apps::moos::iFrontSeat::driver_library_handle_, "frontseat_driver_load");
 
     if (!driver_load_ptr)
         glog.is(DIE) && glog << "Function frontseat_driver_load in library defined in "
                                 "IFRONTSEAT_DRIVER_LIBRARY does not exist."
                              << std::endl;
 
-    FrontSeatInterfaceBase* driver = (*driver_load_ptr)(cfg);
+    goby::moos::FrontSeatInterfaceBase* driver = (*driver_load_ptr)(cfg);
 
     if (!driver)
         glog.is(DIE) && glog << "Function frontseat_driver_load in library defined in "
@@ -92,7 +92,8 @@ FrontSeatInterfaceBase* load_driver(iFrontSeatConfig* cfg)
     return driver;
 }
 
-iFrontSeat::iFrontSeat() : GobyMOOSApp(&cfg_), frontseat_(load_driver(&cfg_)), translator_(this)
+goby::apps::moos::iFrontSeat::iFrontSeat()
+    : goby::moos::GobyMOOSApp(&cfg_), frontseat_(load_driver(&cfg_)), translator_(this)
 {
     // commands
     subscribe(cfg_.moos_var().prefix() + cfg_.moos_var().command_request(),
@@ -121,7 +122,7 @@ iFrontSeat::iFrontSeat() : GobyMOOSApp(&cfg_), frontseat_(load_driver(&cfg_)), t
     register_timer(cfg_.status_period(), boost::bind(&iFrontSeat::status_loop, this));
 }
 
-void iFrontSeat::loop()
+void goby::apps::moos::iFrontSeat::loop()
 {
     frontseat_->do_work();
 
@@ -134,13 +135,13 @@ void iFrontSeat::loop()
     }
 }
 
-void iFrontSeat::status_loop()
+void goby::apps::moos::iFrontSeat::status_loop()
 {
     glog.is(DEBUG1) && glog << "Status: " << frontseat_->status().ShortDebugString() << std::endl;
     publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().status(), frontseat_->status());
 }
 
-void iFrontSeat::handle_mail_command_request(const CMOOSMsg& msg)
+void goby::apps::moos::iFrontSeat::handle_mail_command_request(const CMOOSMsg& msg)
 {
     if (frontseat_->state() != gpb::INTERFACE_COMMAND)
     {
@@ -156,7 +157,7 @@ void iFrontSeat::handle_mail_command_request(const CMOOSMsg& msg)
     }
 }
 
-void iFrontSeat::handle_mail_data_to_frontseat(const CMOOSMsg& msg)
+void goby::apps::moos::iFrontSeat::handle_mail_data_to_frontseat(const CMOOSMsg& msg)
 {
     if (frontseat_->state() != gpb::INTERFACE_COMMAND &&
         frontseat_->state() != gpb::INTERFACE_LISTEN)
@@ -173,7 +174,7 @@ void iFrontSeat::handle_mail_data_to_frontseat(const CMOOSMsg& msg)
     }
 }
 
-void iFrontSeat::handle_mail_raw_out(const CMOOSMsg& msg)
+void goby::apps::moos::iFrontSeat::handle_mail_raw_out(const CMOOSMsg& msg)
 {
     // no recursively sending our own messages
     if (msg.GetSource() == GetAppName())
@@ -194,7 +195,7 @@ void iFrontSeat::handle_mail_raw_out(const CMOOSMsg& msg)
     }
 }
 
-void iFrontSeat::handle_mail_helm_state(const CMOOSMsg& msg)
+void goby::apps::moos::iFrontSeat::handle_mail_helm_state(const CMOOSMsg& msg)
 {
     std::string sval = msg.GetString();
     boost::trim(sval);
@@ -206,13 +207,13 @@ void iFrontSeat::handle_mail_helm_state(const CMOOSMsg& msg)
         frontseat_->set_helm_state(gpb::HELM_NOT_RUNNING);
 }
 
-void iFrontSeat::handle_driver_command_response(
+void goby::apps::moos::iFrontSeat::handle_driver_command_response(
     const goby::moos::protobuf::CommandResponse& response)
 {
     publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().command_response(), response);
 }
 
-void iFrontSeat::handle_driver_data_from_frontseat(
+void goby::apps::moos::iFrontSeat::handle_driver_data_from_frontseat(
     const goby::moos::protobuf::FrontSeatInterfaceData& data)
 {
     publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().data_from_frontseat(), data);
@@ -220,12 +221,14 @@ void iFrontSeat::handle_driver_data_from_frontseat(
         publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().node_status(), data.node_status());
 }
 
-void iFrontSeat::handle_driver_raw_in(const goby::moos::protobuf::FrontSeatRaw& data)
+void goby::apps::moos::iFrontSeat::handle_driver_raw_in(
+    const goby::moos::protobuf::FrontSeatRaw& data)
 {
     publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().raw_in(), data);
 }
 
-void iFrontSeat::handle_driver_raw_out(const goby::moos::protobuf::FrontSeatRaw& data)
+void goby::apps::moos::iFrontSeat::handle_driver_raw_out(
+    const goby::moos::protobuf::FrontSeatRaw& data)
 {
     publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().raw_out(), data);
 }

@@ -35,15 +35,14 @@
 #include "waveglider_sv2_frontseat_driver_config.pb.h"
 #include "waveglider_sv2_serial_client.h"
 
-extern "C"
+namespace goby
 {
-    FrontSeatInterfaceBase* frontseat_driver_load(iFrontSeatConfig*);
-}
-
+namespace moos
+{
 class WavegliderSV2FrontSeat : public FrontSeatInterfaceBase
 {
   public:
-    WavegliderSV2FrontSeat(const iFrontSeatConfig& cfg);
+    WavegliderSV2FrontSeat(const apps::moos::protobuf::iFrontSeatConfig& cfg);
 
   private: // virtual methods from FrontSeatInterfaceBase
     void loop();
@@ -67,10 +66,10 @@ class WavegliderSV2FrontSeat : public FrontSeatInterfaceBase
     void check_connection_state();
 
   private:
-    const WavegliderSV2FrontSeatConfig waveglider_sv2_config_;
+    const apps::moos::protobuf::WavegliderSV2FrontSeatConfig waveglider_sv2_config_;
 
     bool frontseat_providing_data_;
-    double last_frontseat_data_time_;
+    goby::time::SystemClock::time_point last_frontseat_data_time_;
     goby::moos::protobuf::FrontSeatState frontseat_state_;
 
     boost::asio::io_service io_;
@@ -81,5 +80,7 @@ class WavegliderSV2FrontSeat : public FrontSeatInterfaceBase
 
     dccl::Codec dccl_;
 };
+} // namespace moos
+} // namespace goby
 
 #endif

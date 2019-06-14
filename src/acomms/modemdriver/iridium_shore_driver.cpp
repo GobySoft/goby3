@@ -24,21 +24,22 @@
 
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/modemdriver/rudics_packet.h"
-#include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 #include "iridium_shore_driver.h"
 #include "iridium_shore_sbd.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::glog;
-using goby::acomms::protobuf::DirectIPMOHeader;
-using goby::acomms::protobuf::DirectIPMOPayload;
-using goby::acomms::protobuf::DirectIPMOPreHeader;
-using goby::acomms::protobuf::DirectIPMTHeader;
-using goby::acomms::protobuf::DirectIPMTPayload;
-using goby::common::goby_time;
+using goby::acomms::iridium::protobuf::DirectIPMOHeader;
+using goby::acomms::iridium::protobuf::DirectIPMOPayload;
+using goby::acomms::iridium::protobuf::DirectIPMOPreHeader;
+using goby::acomms::iridium::protobuf::DirectIPMTHeader;
+using goby::acomms::iridium::protobuf::DirectIPMTPayload;
+using goby::acomms::iridium::protobuf::IridiumDriverConfig;
+using goby::acomms::iridium::protobuf::IridiumShoreDriverConfig;
 using goby::util::TCPConnection;
 
 goby::acomms::IridiumShoreDriver::IridiumShoreDriver() : next_frame_(0) { init_iridium_dccl(); }
@@ -105,7 +106,7 @@ void goby::acomms::IridiumShoreDriver::do_work()
 {
     //   if(glog.is(DEBUG1))
     //    display_state_cfg(&glog);
-    double now = goby_time<double>();
+    double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
     for (std::map<ModemId, RemoteNode>::iterator it = remote_.begin(), end = remote_.end();
          it != end; ++it)
@@ -200,7 +201,8 @@ void goby::acomms::IridiumShoreDriver::send(const protobuf::ModemTransmission& m
         serialize_rudics_packet(bytes, &rudics_packet);
         rudics_send(rudics_packet, msg.dest());
         std::shared_ptr<OnCallBase> on_call_base = remote.on_call;
-        on_call_base->set_last_tx_time(goby_time<double>());
+        on_call_base->set_last_tx_time(time::SystemClock::now().time_since_epoch() /
+                                       std::chrono::seconds(1));
         on_call_base->set_last_bytes_sent(rudics_packet.size());
     }
     else if (msg.rate() == RATE_SBD)
@@ -318,7 +320,8 @@ void goby::acomms::IridiumShoreDriver::rudics_line(const std::string& data,
                 remote_[modem_msg.src()].on_call.reset(new OnCallBase);
             }
 
-            remote_[modem_msg.src()].on_call->set_last_rx_time(goby_time<double>());
+            remote_[modem_msg.src()].on_call->set_last_rx_time(
+                time::SystemClock::now<time::SITime>() / boost::units::si::seconds);
 
             receive(modem_msg);
         }
@@ -377,7 +380,8 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo()
             mo_sbd_server_->connections().erase(it++);
         }
         else if ((*it)->connect_time() > 0 &&
-                 (goby::common::goby_time<double>() > ((*it)->connect_time() + timeout)))
+                 (time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1) >
+                  ((*it)->connect_time() + timeout)))
         {
             glog.is(DEBUG1) && glog << "Removing SBD connection that has timed out:"
                                     << (*it)->remote_endpoint_str() << std::endl;
@@ -425,10 +429,12 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt(const std::string& bytes,
             boost::asio::transfer_at_least(SBDMessageReader::PRE_HEADER_SIZE),
             boost::bind(&SBDMessageReader::pre_header_handler, &message, _1, _2));
 
-        double start_time = goby::common::goby_time<double>();
+        double start_time = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
         const int timeout = 5;
 
-        while (!message.data_ready() && (start_time + timeout > goby::common::goby_time<double>()))
+        while (!message.data_ready() &&
+               (start_time + timeout >
+                time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1)))
             io_service.poll();
 
         if (message.data_ready())

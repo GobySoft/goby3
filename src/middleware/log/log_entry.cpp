@@ -22,24 +22,32 @@
 
 #include "log_entry.h"
 
-std::map<int, boost::bimap<std::string, goby::uint<goby::LogEntry::group_bytes_>::type> >
-    goby::LogEntry::groups_;
-std::map<int, boost::bimap<std::string, goby::uint<goby::LogEntry::type_bytes_>::type> >
-    goby::LogEntry::types_;
+using goby::middleware::log::LogEntry;
 
-std::map<int, std::function<void(const std::string& type)> > goby::LogEntry::new_type_hook;
-std::map<int, std::function<void(const goby::Group& group)> > goby::LogEntry::new_group_hook;
+std::map<int, boost::bimap<std::string,
+                           goby::middleware::log::uint<LogEntry::group_bytes_>::type> >
+    LogEntry::groups_;
+std::map<int, boost::bimap<std::string,
+                           goby::middleware::log::uint<LogEntry::type_bytes_>::type> >
+    LogEntry::types_;
 
-std::map<goby::LogFilter, std::function<void(const std::vector<unsigned char>& data)> >
-    goby::LogEntry::filter_hook;
+std::map<int, std::function<void(const std::string& type)> >
+    LogEntry::new_type_hook;
+std::map<int, std::function<void(const goby::middleware::Group& group)> >
+    LogEntry::new_group_hook;
 
-goby::uint<goby::LogEntry::group_bytes_>::type goby::LogEntry::group_index_(1);
-goby::uint<goby::LogEntry::type_bytes_>::type goby::LogEntry::type_index_(1);
+std::map<goby::middleware::log::LogFilter, std::function<void(const std::vector<unsigned char>& data)> >
+    LogEntry::filter_hook;
 
-goby::uint<goby::LogEntry::version_bytes_>::type
-    goby::LogEntry::version_(goby::LogEntry::invalid_version);
+goby::middleware::log::uint<LogEntry::group_bytes_>::type
+    LogEntry::group_index_(1);
+goby::middleware::log::uint<LogEntry::type_bytes_>::type
+    LogEntry::type_index_(1);
 
-void goby::LogEntry::parse_version(std::istream* s)
+goby::middleware::log::uint<LogEntry::version_bytes_>::type
+    LogEntry::version_(LogEntry::invalid_version);
+
+void LogEntry::parse_version(std::istream* s)
 {
     version_ = read_one<uint<version_bytes_>::type>(s);
 
@@ -53,19 +61,18 @@ void goby::LogEntry::parse_version(std::istream* s)
     }
     else if (version_ > current_version)
     {
-        glog.is_warn() &&
-            glog << "Version 0x" << std::hex << version_
-                 << " is invalid. Will try to read file using current version (" << std::dec
-                 << current_version << ")" << std::endl;
+        glog.is_warn() && glog << "Version 0x" << std::hex << version_
+                               << " is invalid. Will try to read file using current version ("
+                               << std::dec << current_version << ")" << std::endl;
         version_ = current_version;
     }
 
     glog.is_verbose() && glog << "File version is " << version_ << std::endl;
 }
 
-void goby::LogEntry::parse(std::istream* s)
+void LogEntry::parse(std::istream* s)
 {
-    using namespace goby::common::logger;
+    using namespace goby::util::logger;
     using goby::glog;
 
     if (version_ == invalid_version)
@@ -74,7 +81,7 @@ void goby::LogEntry::parse(std::istream* s)
     auto old_except_mask = s->exceptions();
     s->exceptions(std::ios::failbit | std::ios::badbit | std::ios::eofbit);
 
-    int legacy_scheme = goby::MarshallingScheme::NULL_SCHEME;
+    int legacy_scheme = goby::middleware::MarshallingScheme::NULL_SCHEME;
 
     uint<scheme_bytes_>::type scheme(0);
 
@@ -84,16 +91,17 @@ void goby::LogEntry::parse(std::istream* s)
         char next_char = s->peek();
         if (next_char != magic_[0])
         {
-            glog.is(WARN) &&
-                glog << "Next byte [0x" << std::hex << (static_cast<int>(next_char) & 0xFF)
-                     << std::dec << "] is not the start of the expected magic word [" << magic_
-                     << "]. Seeking until next magic word." << std::endl;
+            glog.is(WARN) && glog << "Next byte [0x" << std::hex
+                                  << (static_cast<int>(next_char) & 0xFF) << std::dec
+                                  << "] is not the start of the expected magic word [" << magic_
+                                  << "]. Seeking until next magic word." << std::endl;
         }
 
         std::string magic_read(magic_.size(), '\0');
         int discarded = 0;
 
-        for (;;) {
+        for (;;)
+        {
             s->read(&magic_read[0], magic_.size());
             if (magic_read == magic_)
             {
@@ -108,15 +116,14 @@ void goby::LogEntry::parse(std::istream* s)
         }
 
         if (discarded != 0)
-            glog.is(WARN) &&
-                glog << "Found next magic word after skipping " << discarded << " bytes"
-                     << std::endl;
+            glog.is(WARN) && glog << "Found next magic word after skipping " << discarded
+                                  << " bytes" << std::endl;
 
         boost::crc_32_type crc;
         crc.process_bytes(&magic_read[0], magic_.size());
 
         auto size(read_one<uint<size_bytes_>::type>(s, &crc));
-        auto fixed_field_size = scheme_bytes_ + group_bytes_ + type_bytes_ + crc_bytes_;
+        decltype(size) fixed_field_size = scheme_bytes_ + group_bytes_ + type_bytes_ + crc_bytes_;
 
         if (size < fixed_field_size)
             throw(log::LogException("Invalid size read: " + std::to_string(size) +
@@ -124,9 +131,8 @@ void goby::LogEntry::parse(std::istream* s)
                                     std::to_string(fixed_field_size) + " bytes long"));
 
         auto data_size = size - fixed_field_size;
-        glog.is(DEBUG2) &&
-            glog << "Reading entry of " << size << " bytes (" << data_size << " bytes data)"
-                 << std::endl;
+        glog.is(DEBUG2) && glog << "Reading entry of " << size << " bytes (" << data_size
+                                << " bytes data)" << std::endl;
 
         scheme = read_one<uint<scheme_bytes_>::type>(s, &crc);
         auto group_index(read_one<uint<group_bytes_>::type>(s, &crc));
@@ -148,9 +154,9 @@ void goby::LogEntry::parse(std::istream* s)
                 // return to where we started reading data as the size might have been corrupt
                 s->seekg(data_start_pos);
                 data_.clear();
-                throw(log::LogException("Invalid CRC on packet: given: " +
-                                        std::to_string(given_crc) + ", calculated: " +
-                                        std::to_string(calculated_crc)));
+                throw(
+                    log::LogException("Invalid CRC on packet: given: " + std::to_string(given_crc) +
+                                      ", calculated: " + std::to_string(calculated_crc)));
             }
         }
         catch (std::ios_base::failure& e)
@@ -174,9 +180,8 @@ void goby::LogEntry::parse(std::istream* s)
 
                     // The first type of .goby files that used a single mapping of type/group
                     // string for all schemes. This worked fine unless the two schemes are in use that had a common type name.
-                    glog.is(DEBUG1) &&
-                        glog << "Mapping group [" << group << "] to index: " << group_index
-                             << std::endl;
+                    glog.is(DEBUG1) && glog << "Mapping group [" << group
+                                            << "] to index: " << group_index << std::endl;
 
                     groups_[legacy_scheme].left.insert({group, group_index});
                     break;
@@ -189,13 +194,13 @@ void goby::LogEntry::parse(std::istream* s)
                         string_to_netint<uint<scheme_bytes_>::type>(group_scheme_str);
 
                     std::string group(data_.begin() + scheme_bytes_, data_.end());
-                    glog.is(DEBUG1) &&
-                        glog << "For scheme [" << group_scheme << "], mapping group [" << group
-                             << "] to index: " << group_index << std::endl;
+                    glog.is(DEBUG1) && glog << "For scheme [" << group_scheme
+                                            << "], mapping group [" << group
+                                            << "] to index: " << group_index << std::endl;
                     groups_[group_scheme].left.insert({group, group_index});
 
                     if (new_group_hook[group_scheme])
-                        new_group_hook[group_scheme](goby::DynamicGroup(group));
+                        new_group_hook[group_scheme](goby::middleware::DynamicGroup(group));
                     break;
                 }
             }
@@ -208,9 +213,8 @@ void goby::LogEntry::parse(std::istream* s)
                 case 1:
                 {
                     std::string type(data_.begin(), data_.end());
-                    glog.is(DEBUG1) &&
-                        glog << "Mapping type [" << type << "] to index: " << type_index
-                             << std::endl;
+                    glog.is(DEBUG1) && glog << "Mapping type [" << type
+                                            << "] to index: " << type_index << std::endl;
                     types_[legacy_scheme].left.insert({type, type_index});
                     break;
                 }
@@ -220,9 +224,8 @@ void goby::LogEntry::parse(std::istream* s)
                     auto type_scheme = string_to_netint<uint<scheme_bytes_>::type>(type_scheme_str);
 
                     std::string type(data_.begin() + scheme_bytes_, data_.end());
-                    glog.is(DEBUG1) &&
-                        glog << "For scheme [" << type_scheme << "], mapping type [" << type
-                             << "] to index: " << type_index << std::endl;
+                    glog.is(DEBUG1) && glog << "For scheme [" << type_scheme << "], mapping type ["
+                                            << type << "] to index: " << type_index << std::endl;
                     types_[type_scheme].left.insert({type, type_index});
 
                     if (new_type_hook[type_scheme])
@@ -254,8 +257,8 @@ void goby::LogEntry::parse(std::istream* s)
             if (type_it != type_end_it)
                 type = type_it->second;
             else
-                glog.is(WARN) &&
-                    glog << "No type entry in file for type index: " << type_index << std::endl;
+                glog.is(WARN) && glog << "No type entry in file for type index: " << type_index
+                                      << std::endl;
 
             type_ = type;
 
@@ -276,10 +279,10 @@ void goby::LogEntry::parse(std::istream* s)
             if (group_it != group_end_it)
                 group = group_it->second;
             else
-                glog.is(WARN) &&
-                    glog << "No group entry in file for group index: " << group_index << std::endl;
+                glog.is(WARN) && glog << "No group entry in file for group index: " << group_index
+                                      << std::endl;
 
-            group_ = goby::DynamicGroup(group);
+            group_ = goby::middleware::DynamicGroup(group);
 
             LogFilter filt{scheme_, group, type_};
             if (filter_hook.count(filt))
@@ -297,7 +300,7 @@ void goby::LogEntry::parse(std::istream* s)
     s->exceptions(old_except_mask);
 }
 
-void goby::LogEntry::serialize(std::ostream* s) const
+void LogEntry::serialize(std::ostream* s) const
 {
     auto old_except_mask = s->exceptions();
     s->exceptions(std::ios::failbit | std::ios::badbit | std::ios::eofbit);

@@ -25,7 +25,7 @@
 
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modem_driver.h"
-#include "goby/common/logger.h"
+#include "goby/util/debug_logger.h"
 
 #include <iostream>
 
@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
         return usage();
 
     goby::glog.set_name(argv[0]);
-    goby::glog.add_stream(goby::common::logger::DEBUG2, &std::clog);
+    goby::glog.add_stream(goby::util::logger::DEBUG2, &std::clog);
 
     //
     // 1. Create and initialize the Micro-Modem driver

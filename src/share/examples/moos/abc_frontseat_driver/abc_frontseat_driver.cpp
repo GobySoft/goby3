@@ -19,16 +19,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/logger.h"
 #include "goby/util/as.h"
+#include "goby/util/debug_logger.h"
 
 #include "abc_frontseat_driver.h"
 
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
-using goby::common::goby_time;
-using namespace goby::common::logger;
-using namespace goby::common::tcolor;
+using goby::util::goby_time;
+using namespace goby::util::logger;
+using namespace goby::util::tcolor;
 
 const int allowed_skew = 10;
 

@@ -24,16 +24,15 @@
 
 #include "iridium_driver.h"
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/modemdriver/rudics_packet.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
 using goby::glog;
-using namespace goby::common::logger;
-using goby::common::goby_time;
-using goby::acomms::operator<<;
+using namespace goby::util::logger;
+using goby::acomms::iridium::protobuf::IridiumDriverConfig;
 
 std::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
 
@@ -88,7 +87,7 @@ void goby::acomms::IridiumDriver::modem_init()
 
     int i = 0;
     bool dtr_set = false;
-    while (fsm_.state_cast<const fsm::Ready*>() == 0)
+    while (fsm_.state_cast<const iridium::fsm::Ready*>() == 0)
     {
         do_work();
 
@@ -153,11 +152,11 @@ void goby::acomms::IridiumDriver::hangup()
         sleep(1);
         set_dtr(true);
         // phone doesn't give "NO CARRIER" message after DTR disconnect
-        fsm_.process_event(fsm::EvNoCarrier());
+        fsm_.process_event(iridium::fsm::EvNoCarrier());
     }
     else
     {
-        fsm_.process_event(fsm::EvHangup());
+        fsm_.process_event(iridium::fsm::EvHangup());
     }
 }
 
@@ -165,7 +164,7 @@ void goby::acomms::IridiumDriver::shutdown()
 {
     hangup();
 
-    while (fsm_.state_cast<const fsm::OnCall*>() != 0)
+    while (fsm_.state_cast<const iridium::fsm::OnCall*>() != 0)
     {
         do_work();
         usleep(10000);
@@ -187,7 +186,7 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
 {
     signal_modify_transmission(&msg);
 
-    const static unsigned frame_max = IridiumHeader::descriptor()
+    const static unsigned frame_max = iridium::protobuf::IridiumHeader::descriptor()
                                           ->FindFieldByName("frame_start")
                                           ->options()
                                           .GetExtension(dccl::field)
@@ -208,13 +207,13 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
     if (!(msg.frame_size() == 0 || msg.frame(0).empty()))
     {
         if (dial && msg.rate() == RATE_RUDICS)
-            fsm_.process_event(fsm::EvDial());
+            fsm_.process_event(iridium::fsm::EvDial());
         send(msg);
     }
     else if (msg.rate() == RATE_SBD)
     {
         if (msg.GetExtension(IridiumDriverConfig::if_no_data_do_mailbox_check))
-            fsm_.process_event(fsm::EvSBDBeginData()); // mailbox check
+            fsm_.process_event(iridium::fsm::EvSBDBeginData()); // mailbox check
     }
 }
 
@@ -222,9 +221,9 @@ void goby::acomms::IridiumDriver::do_work()
 {
     //   if(glog.is(DEBUG1))
     //    display_state_cfg(&glog);
-    double now = goby_time<double>();
+    double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
-    const fsm::OnCall* on_call = fsm_.state_cast<const fsm::OnCall*>();
+    const iridium::fsm::OnCall* on_call = fsm_.state_cast<const iridium::fsm::OnCall*>();
 
     if (on_call)
     {
@@ -246,7 +245,7 @@ void goby::acomms::IridiumDriver::do_work()
                    driver_cfg_.GetExtension(IridiumDriverConfig::handshake_hangup_seconds)))
         {
             glog.is(DEBUG2) && glog << "Sending bye" << std::endl;
-            fsm_.process_event(fsm::EvSendBye());
+            fsm_.process_event(iridium::fsm::EvSendBye());
         }
 
         if ((on_call->bye_received() && on_call->bye_sent()) ||
@@ -262,7 +261,7 @@ void goby::acomms::IridiumDriver::do_work()
     std::string in;
     while (modem().active() && modem_read(&in))
     {
-        fsm::EvRxSerial data_event;
+        iridium::fsm::EvRxSerial data_event;
         data_event.line = in;
 
         glog.is(DEBUG1) &&
@@ -272,7 +271,7 @@ void goby::acomms::IridiumDriver::do_work()
                          : goby::util::hex_encode(in))
                  << std::endl;
 
-        if (debug_client_ && fsm_.state_cast<const fsm::OnCall*>() != 0)
+        if (debug_client_ && fsm_.state_cast<const iridium::fsm::OnCall*>() != 0)
         {
             debug_client_->write(in);
         }
@@ -292,7 +291,7 @@ void goby::acomms::IridiumDriver::do_work()
         while (debug_client_->readline(&line))
         {
             fsm_.serial_tx_buffer().push_back(line);
-            fsm_.process_event(fsm::EvDial());
+            fsm_.process_event(iridium::fsm::EvDial());
         }
     }
 
@@ -329,7 +328,7 @@ void goby::acomms::IridiumDriver::send(const protobuf::ModemTransmission& msg)
         fsm_.buffer_data_out(msg);
     else if (msg.rate() == RATE_SBD)
     {
-        bool on_call = (fsm_.state_cast<const fsm::OnCall*>() != 0);
+        bool on_call = (fsm_.state_cast<const iridium::fsm::OnCall*>() != 0);
         if (on_call) // if we're on a call send it via the call
             fsm_.buffer_data_out(msg);
         else
@@ -339,18 +338,18 @@ void goby::acomms::IridiumDriver::send(const protobuf::ModemTransmission& msg)
 
             std::string rudics_packet;
             serialize_rudics_packet(iridium_packet, &rudics_packet);
-            fsm_.process_event(fsm::EvSBDBeginData(rudics_packet));
+            fsm_.process_event(iridium::fsm::EvSBDBeginData(rudics_packet));
         }
     }
 }
 
 void goby::acomms::IridiumDriver::try_serial_tx()
 {
-    fsm_.process_event(fsm::EvTxSerial());
+    fsm_.process_event(iridium::fsm::EvTxSerial());
 
     while (!fsm_.serial_tx_buffer().empty())
     {
-        double now = goby_time<double>();
+        double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
         if (last_triple_plus_time_ + TRIPLE_PLUS_WAIT > now)
             return;
 
@@ -377,12 +376,12 @@ void goby::acomms::IridiumDriver::display_state_cfg(std::ostream* os)
 {
     char orthogonalRegion = 'a';
 
-    for (fsm::IridiumDriverFSM::state_iterator pLeafState = fsm_.state_begin();
+    for (iridium::fsm::IridiumDriverFSM::state_iterator pLeafState = fsm_.state_begin();
          pLeafState != fsm_.state_end(); ++pLeafState)
     {
         *os << "Orthogonal region " << orthogonalRegion << ": ";
 
-        const fsm::IridiumDriverFSM::state_base_type* pState = &*pLeafState;
+        const iridium::fsm::IridiumDriverFSM::state_base_type* pState = &*pLeafState;
 
         while (pState != 0)
         {

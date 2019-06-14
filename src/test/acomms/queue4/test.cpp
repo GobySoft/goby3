@@ -22,13 +22,16 @@
 #include "goby/acomms/connect.h"
 #include "goby/acomms/dccl.h"
 #include "goby/acomms/queue.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
+
 #include "test.pb.h"
 
 // tests multi-frame DCCL queuing with non-BROADCAST destination
 
-using goby::acomms::operator<<;
+using goby::test::acomms::protobuf::GobyMessage;
+using goby::test::acomms::protobuf::Header;
 
 int receive_count = 0;
 bool handle_ack_called = false;
@@ -44,7 +47,7 @@ void handle_receive(const google::protobuf::Message& msg);
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
 
     goby::acomms::QueueManager q_manager;
@@ -54,7 +57,7 @@ int main(int argc, char* argv[])
     cfg.set_modem_id(MY_MODEM_ID);
 
     goby::acomms::protobuf::QueuedMessageEntry* q_entry = cfg.add_message_entry();
-    q_entry->set_protobuf_name("GobyMessage");
+    q_entry->set_protobuf_name("goby.test.acomms.protobuf.GobyMessage");
     q_entry->set_newest_first(true);
 
     goby::acomms::protobuf::QueuedMessageEntry::Role* src_role = q_entry->add_role();
@@ -76,8 +79,8 @@ int main(int argc, char* argv[])
     goby::acomms::connect(&q_manager.signal_ack, &handle_ack);
 
     msg_in1.set_telegram("hello!");
-    msg_in1.mutable_header()->set_time(
-        goby::util::as<std::uint64_t>(boost::posix_time::second_clock::universal_time()));
+    msg_in1.mutable_header()->set_time_with_units(
+        goby::time::SystemClock::now<goby::time::MicroTime>());
     msg_in1.mutable_header()->set_source_platform(MY_MODEM_ID);
     msg_in1.mutable_header()->set_dest_platform(UNICORN_MODEM_ID);
     msg_in1.mutable_header()->set_dest_type(Header::PUBLISH_OTHER);

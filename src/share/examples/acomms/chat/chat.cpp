@@ -34,7 +34,7 @@
 #include "goby/acomms/dccl.h"
 #include "goby/acomms/modem_driver.h"
 #include "goby/acomms/queue.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/as.h"
 
 #include <boost/lexical_cast.hpp>
@@ -46,8 +46,8 @@
 // Uncomment to use the Micro-Modem ping $CCMPC instead of sending data
 //#define USE_TWO_WAY_PING
 
-using goby::common::goby_time;
 using goby::util::as;
+using goby::util::goby_time;
 
 int startup_failure();
 void received_data(const google::protobuf::Message&);
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
     //
     //  Initialize logging
     //
-    goby::glog.add_stream(goby::common::logger::DEBUG1, &fout_);
+    goby::glog.add_stream(goby::util::logger::DEBUG1, &fout_);
     goby::glog.set_name(argv[0]);
 
     // bind the signals of these libraries

@@ -19,13 +19,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
 #include "goby/acomms/protobuf/benthos_atm900.pb.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
+namespace goby
+{
+namespace test
+{
+namespace acomms
+{
 class DriverTester
 {
   public:
@@ -69,3 +74,6 @@ class DriverTester
     std::string test_str0_, test_str1_, test_str2_, test_str3_;
     goby::acomms::protobuf::DriverType driver_type_;
 };
+} // namespace acomms
+} // namespace test
+} // namespace goby

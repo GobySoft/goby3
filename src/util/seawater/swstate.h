@@ -30,11 +30,40 @@
 
 #include <cmath>
 
-// Calculate water density anomaly at a given Salinity, Temperature, Pressure using the seawater Equation of State.
-// Taken directly from MATLAB OceansToolbox swstate.m
+#include <boost/units/quantity.hpp>
+#include <boost/units/systems/si.hpp>
+#include <boost/units/systems/si/prefixes.hpp>
+#include <boost/units/systems/temperature/celsius.hpp>
 
-inline double density_anomaly(double S, double T, double P0)
+#include "units.h"
+
+namespace goby
 {
+namespace util
+{
+namespace seawater
+{
+/// Calculate water density anomaly at a given Salinity, Temperature, Pressure using the seawater Equation of State.
+/// Adapted from "Algorithms for computation of fundamental properties of seawater; UNESCO technical papers in marine science; Vol.:44; 1983"
+/// https://unesdoc.unesco.org/ark:/48223/pf0000059832
+/// \param salinity Salinity
+/// \param temperature Temperature
+/// \param pressure Pressure
+/// \return computed density anomaly
+template <typename DimensionlessUnit = boost::units::si::dimensionless,
+          typename TemperatureUnit = boost::units::celsius::temperature,
+          typename PressureUnit = decltype(boost::units::si::deci* bar)>
+boost::units::quantity<boost::units::si::mass_density>
+density_anomaly(boost::units::quantity<DimensionlessUnit> salinity,
+                boost::units::quantity<boost::units::absolute<TemperatureUnit> > temperature,
+                boost::units::quantity<PressureUnit> pressure)
+{
+    using namespace boost::units;
+
+    double S = salinity;
+    double T = quantity<absolute<celsius::temperature> >(temperature).value();
+    double P0 = quantity<decltype(si::deci * bar)>(pressure).value();
+
     /*
 
       SIGMA = density_anomaly(S,T,P) returns the density anomaly SIGMA (kg/m^3)
@@ -169,7 +198,29 @@ inline double density_anomaly(double S, double T, double P0)
     double DVAN = SVA / (V350P * (V350P + SVA));
     double SIGMA = DR350 + DR35P - DVAN; // Density anomaly
 
-    return SIGMA;
+    return SIGMA * si::kilograms_per_cubic_meter;
 }
+
+/// Calculate water density anomaly at a given Salinity, Temperature, Pressure using the seawater Equation of State (variant that uses plain double for salinity)
+/// Adapted from "Algorithms for computation of fundamental properties of seawater; UNESCO technical papers in marine science; Vol.:44; 1983"
+/// https://unesdoc.unesco.org/ark:/48223/pf0000059832
+/// \param salinity Salinity
+/// \param temperature Temperature
+/// \param pressure Pressure
+/// \return computed density anomaly
+template <typename TemperatureUnit = boost::units::celsius::temperature,
+          typename PressureUnit = decltype(boost::units::si::deci* bar)>
+boost::units::quantity<boost::units::si::mass_density>
+density_anomaly(double salinity,
+                boost::units::quantity<boost::units::absolute<TemperatureUnit> > temperature,
+                boost::units::quantity<PressureUnit> pressure)
+{
+    return density_anomaly(boost::units::quantity<boost::units::si::dimensionless>(salinity),
+                           temperature, pressure);
+}
+
+} // namespace seawater
+} // namespace util
+} // namespace goby
 
 #endif

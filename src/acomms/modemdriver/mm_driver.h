@@ -25,10 +25,9 @@
 
 #include <dccl.h>
 
-#include "goby/common/time.h"
+#include "goby/time.h"
 
 #include "driver_base.h"
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/protobuf/mm_driver.pb.h"
 
 namespace goby
@@ -210,8 +209,7 @@ class MMDriver : public ModemDriverBase
     // doxygen
 
     /// \example acomms/modemdriver/driver_simple/driver_simple.cpp
-
-    /// \example acomms/chat/chat.cpp
+    // \example acomms/chat/chat.cpp
 
   private:
     // for the serial connection ($CCCFG,BR1,3)
@@ -335,7 +333,7 @@ class MMDriver : public ModemDriverBase
 
     micromodem::protobuf::TransmissionType last_lbl_type_;
 
-    double last_keep_alive_time_;
+    time::SystemClock::time_point last_keep_alive_time_;
 
     struct MMRevision
     {

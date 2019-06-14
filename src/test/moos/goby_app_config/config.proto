@@ -1,8 +1,11 @@
+syntax = "proto2";
 import "goby/moos/protobuf/goby_moos_app.proto";
+
+package goby.test.moos.protobuf;
 
 message AppConfig
 {
-    optional GobyMOOSAppConfig common = 1;
+    optional goby.moos.protobuf.GobyMOOSAppConfig common = 1;
     optional SubMessageType submessage = 12;
 }
 message SubMessageType

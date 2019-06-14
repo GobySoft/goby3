@@ -23,11 +23,11 @@
 #include "transport-intervehicle.h"
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
-goby::ModemDriverThread::ModemDriverThread(const protobuf::InterVehiclePortalConfig& cfg,
-                                           std::atomic<bool>& alive,
-                                           std::shared_ptr<std::condition_variable_any> poller_cv)
+goby::middleware::ModemDriverThread::ModemDriverThread(
+    const protobuf::InterVehiclePortalConfig& cfg, std::atomic<bool>& alive,
+    std::shared_ptr<std::condition_variable_any> poller_cv)
     : cfg_(cfg), alive_(alive), poller_cv_(poller_cv)
 {
     switch (cfg_.driver_type())
@@ -73,7 +73,7 @@ goby::ModemDriverThread::ModemDriverThread(const protobuf::InterVehiclePortalCon
         DCCLSerializerParserHelperBase::load_library(lib_path);
 }
 
-void goby::ModemDriverThread::run()
+void goby::middleware::ModemDriverThread::run()
 {
     while (alive_)
     {
@@ -88,13 +88,14 @@ void goby::ModemDriverThread::run()
     }
 }
 
-void goby::ModemDriverThread::publish(const std::string& bytes)
+void goby::middleware::ModemDriverThread::publish(const std::string& bytes)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     sending_.push_back(bytes);
 }
 
-bool goby::ModemDriverThread::retrieve_message(goby::acomms::protobuf::ModemTransmission* msg)
+bool goby::middleware::ModemDriverThread::retrieve_message(
+    goby::acomms::protobuf::ModemTransmission* msg)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     if (received_.empty())
@@ -109,14 +110,16 @@ bool goby::ModemDriverThread::retrieve_message(goby::acomms::protobuf::ModemTran
     }
 }
 
-void goby::ModemDriverThread::_receive(const goby::acomms::protobuf::ModemTransmission& rx_msg)
+void goby::middleware::ModemDriverThread::_receive(
+    const goby::acomms::protobuf::ModemTransmission& rx_msg)
 {
     received_.push_back(rx_msg);
     poller_cv_->notify_all();
     glog.is(DEBUG1) && glog << "Received: " << rx_msg.ShortDebugString() << std::endl;
 }
 
-void goby::ModemDriverThread::_data_request(goby::acomms::protobuf::ModemTransmission* msg)
+void goby::middleware::ModemDriverThread::_data_request(
+    goby::acomms::protobuf::ModemTransmission* msg)
 {
     for (auto frame_number = msg->frame_start(),
               total_frames = msg->max_num_frames() + msg->frame_start();

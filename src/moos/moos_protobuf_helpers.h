@@ -32,10 +32,10 @@
 #include <google/protobuf/io/tokenizer.h>
 
 #include "dccl/dynamic_protobuf_manager.h"
-#include "goby/common/logger.h"
 #include "goby/moos/moos_string.h"
 #include "goby/util/as.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 #include "goby/util/primitive_types.h"
 
 #include "goby/moos/transitional/message_algorithms.h"
@@ -83,8 +83,8 @@ run_serialize_algorithms(const google::protobuf::Message& in,
             primary_val = modified_values[it->output_virtual_field()];
         }
 
-        goby::transitional::DCCLMessageVal val(primary_val);
-        std::vector<goby::transitional::DCCLMessageVal> ref;
+        goby::moos::transitional::DCCLMessageVal val(primary_val);
+        std::vector<goby::moos::transitional::DCCLMessageVal> ref;
         for (int i = 0, m = it->reference_field_size(); i < m; ++i)
         {
             const google::protobuf::FieldDescriptor* field_desc =
@@ -105,7 +105,8 @@ run_serialize_algorithms(const google::protobuf::Message& in,
             }
         }
 
-        transitional::DCCLAlgorithmPerformer::getInstance()->run_algorithm(it->name(), val, ref);
+        moos::transitional::DCCLAlgorithmPerformer::getInstance()->run_algorithm(it->name(), val,
+                                                                                 ref);
 
         val = std::string(val);
         modified_values[it->output_virtual_field()] = std::string(val);
@@ -143,7 +144,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_
     static void parse(const std::string& in, google::protobuf::Message* out)
     {
         google::protobuf::TextFormat::Parser parser;
-        FlexOStreamErrorCollector error_collector(in);
+        goby::util::FlexOStreamErrorCollector error_collector(in);
         parser.RecordErrorsTo(&error_collector);
         parser.ParseFromString(in, out);
     }
@@ -446,12 +447,13 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
                         for (const_iterator it = algorithms.begin(), n = algorithms.end(); it != n;
                              ++it)
                         {
-                            goby::transitional::DCCLMessageVal extract_val(val);
+                            goby::moos::transitional::DCCLMessageVal extract_val(val);
 
                             if (it->primary_field() == field_desc->number())
-                                transitional::DCCLAlgorithmPerformer::getInstance()->run_algorithm(
-                                    it->name(), extract_val,
-                                    std::vector<goby::transitional::DCCLMessageVal>());
+                                moos::transitional::DCCLAlgorithmPerformer::getInstance()
+                                    ->run_algorithm(
+                                        it->name(), extract_val,
+                                        std::vector<goby::moos::transitional::DCCLMessageVal>());
 
                             val = std::string(extract_val);
                         }
@@ -1238,12 +1240,13 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                         for (const_iterator it = algorithms.begin(), n = algorithms.end(); it != n;
                              ++it)
                         {
-                            goby::transitional::DCCLMessageVal extract_val(extract);
+                            goby::moos::transitional::DCCLMessageVal extract_val(extract);
 
                             if (it->primary_field() == field_index)
-                                transitional::DCCLAlgorithmPerformer::getInstance()->run_algorithm(
-                                    it->name(), extract_val,
-                                    std::vector<goby::transitional::DCCLMessageVal>());
+                                moos::transitional::DCCLAlgorithmPerformer::getInstance()
+                                    ->run_algorithm(
+                                        it->name(), extract_val,
+                                        std::vector<goby::moos::transitional::DCCLMessageVal>());
 
                             extract = std::string(extract_val);
                         }
@@ -1548,7 +1551,7 @@ inline bool serialize_for_moos(std::string* out, const google::protobuf::Message
                 serialize(out, msg);
             return false;
         default:
-            goby::glog.is(goby::common::logger::DIE) &&
+            goby::glog.is(goby::util::logger::DIE) &&
                 goby::glog
                     << "Non-PROTOBUF techniques are not supported for 'moos_parser_technique': "
                     << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(
@@ -1596,7 +1599,7 @@ inline void parse_for_moos(const std::string& in, google::protobuf::Message* msg
                                                                                             msg);
             break;
         default:
-            goby::glog.is(goby::common::logger::DIE) &&
+            goby::glog.is(goby::util::logger::DIE) &&
                 goby::glog
                     << "Non-PROTOBUF techniques are not supported for 'moos_parser_technique': "
                     << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(
@@ -1626,7 +1629,7 @@ inline std::shared_ptr<google::protobuf::Message> dynamic_parse_for_moos(const s
                 dynamic_parse(in);
 
         default:
-            goby::glog.is(goby::common::logger::DIE) &&
+            goby::glog.is(goby::util::logger::DIE) &&
                 goby::glog << "Non-PREFIX techniques are not supported when using "
                               "dynamic_parse_for_moos for 'moos_parser_technique': "
                            << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(

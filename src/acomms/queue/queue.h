@@ -36,10 +36,10 @@
 #include <boost/any.hpp>
 
 #include "goby/acomms/dccl/dccl.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/as.h"
 
-#include "goby/acomms/acomms_helpers.h"
+#include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/acomms/protobuf/queue.pb.h"
 
 namespace goby
@@ -94,7 +94,8 @@ class Queue
 
     boost::posix_time::ptime newest_msg_time() const
     {
-        return size() ? goby::util::as<boost::posix_time::ptime>(messages_.back().meta.time())
+        return size() ? goby::time::convert<boost::posix_time::ptime>(
+                            messages_.back().meta.time_with_units())
                       : boost::posix_time::ptime();
     }
 
@@ -121,6 +122,8 @@ class Queue
 
     void set_latest_metadata(const google::protobuf::FieldDescriptor* field,
                              const boost::any& field_value, const boost::any& wire_value);
+
+    double time_duration2double(boost::posix_time::time_duration time_of_day);
 
   private:
     Queue& operator=(const Queue&);

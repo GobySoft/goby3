@@ -23,32 +23,36 @@
 #include <boost/units/base_units/imperial/foot.hpp>
 #include <boost/units/base_units/metric/knot.hpp>
 
-#include "goby/common/logger.h"
 #include "goby/util/as.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 #include "goby/util/linebasedcomms/nmea_sentence.h"
 
 #include "iver_driver.h"
 
 namespace gpb = goby::moos::protobuf;
-using goby::glog;
-using goby::common::goby_time;
-using namespace goby::common::logger;
+namespace gtime = goby::time;
 
-const int allowed_skew = 10;
+using goby::glog;
+using namespace goby::util::logger;
+
+const auto allowed_skew = std::chrono::seconds(10);
 
 extern "C"
 {
-    FrontSeatInterfaceBase* frontseat_driver_load(iFrontSeatConfig* cfg)
+    goby::moos::FrontSeatInterfaceBase*
+    frontseat_driver_load(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
     {
-        return new IverFrontSeat(*cfg);
+        return new goby::moos::IverFrontSeat(*cfg);
     }
 }
 
-IverFrontSeat::IverFrontSeat(const iFrontSeatConfig& cfg)
-    : FrontSeatInterfaceBase(cfg), iver_config_(cfg.GetExtension(iver_config)),
+goby::moos::IverFrontSeat::IverFrontSeat(const apps::moos::protobuf::iFrontSeatConfig& cfg)
+    : FrontSeatInterfaceBase(cfg),
+      iver_config_(cfg.GetExtension(apps::moos::protobuf::iver_config)),
       serial_(iver_config_.serial_port(), iver_config_.serial_baud(), "\r\n"),
-      frontseat_providing_data_(false), last_frontseat_data_time_(0),
+      frontseat_providing_data_(false),
+      last_frontseat_data_time_(std::chrono::seconds(0)),
       frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED),
       reported_mission_mode_(gpb::IverState::IVER_MODE_UNKNOWN)
 {
@@ -64,21 +68,21 @@ IverFrontSeat::IverFrontSeat(const iFrontSeatConfig& cfg)
     }
 }
 
-void IverFrontSeat::loop()
+void goby::moos::IverFrontSeat::loop()
 {
     try_receive();
 
     goby::util::NMEASentence request_data("$OSD,G,C,S,P,,,,");
     write(request_data.message());
 
-    if (goby_time<double>() > last_frontseat_data_time_ + allowed_skew)
+    if (gtime::SystemClock::now() > last_frontseat_data_time_ + allowed_skew)
         frontseat_providing_data_ = false;
 
     std::string in;
     while (ntp_serial_ && ntp_serial_->readline(&in))
     { glog.is(DEBUG2) && glog << "NTP says: " << in << std::endl; } }
 
-void IverFrontSeat::try_receive()
+void goby::moos::IverFrontSeat::try_receive()
 {
     std::string in;
 
@@ -97,7 +101,7 @@ void IverFrontSeat::try_receive()
     }
 }
 
-void IverFrontSeat::process_receive(const std::string& s)
+void goby::moos::IverFrontSeat::process_receive(const std::string& s)
 {
     gpb::FrontSeatRaw raw_msg;
     raw_msg.set_raw(s);
@@ -137,7 +141,7 @@ void IverFrontSeat::process_receive(const std::string& s)
         {
             status_.Clear(); // $OSI clears the message, $C sends it
 
-            status_.set_time(goby::common::goby_time<double>());
+            status_.set_time_with_units(gtime::SystemClock::now<gtime::SITime>());
 
             enum OSIFields
             {
@@ -244,7 +248,7 @@ void IverFrontSeat::process_receive(const std::string& s)
             data.mutable_node_status()->CopyFrom(status_);
             signal_data_from_frontseat(data);
             frontseat_providing_data_ = true;
-            last_frontseat_data_time_ = goby_time<double>();
+            last_frontseat_data_time_ = gtime::SystemClock::now();
         }
         else
         {
@@ -257,7 +261,7 @@ void IverFrontSeat::process_receive(const std::string& s)
     }
 }
 
-void IverFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& command)
+void goby::moos::IverFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& command)
 {
     if (command.HasExtension(gpb::iver_command))
     {
@@ -324,21 +328,27 @@ void IverFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& command
     }
 }
 
-void IverFrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData& data)
+void goby::moos::IverFrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData& data)
 {
     // no data yet to send
 }
 
-void IverFrontSeat::send_raw_to_frontseat(const gpb::FrontSeatRaw& data) { write(data.raw()); }
+void goby::moos::IverFrontSeat::send_raw_to_frontseat(const gpb::FrontSeatRaw& data)
+{
+    write(data.raw());
+}
 
-bool IverFrontSeat::frontseat_providing_data() const { return frontseat_providing_data_; }
+bool goby::moos::IverFrontSeat::frontseat_providing_data() const
+{
+    return frontseat_providing_data_;
+}
 
-goby::moos::protobuf::FrontSeatState IverFrontSeat::frontseat_state() const
+goby::moos::protobuf::FrontSeatState goby::moos::IverFrontSeat::frontseat_state() const
 {
     return frontseat_state_;
 }
 
-void IverFrontSeat::write(const std::string& s)
+void goby::moos::IverFrontSeat::write(const std::string& s)
 {
     gpb::FrontSeatRaw raw_msg;
     raw_msg.set_raw(s);
@@ -347,8 +357,8 @@ void IverFrontSeat::write(const std::string& s)
     serial_.write(s + "\r\n");
 }
 
-boost::units::quantity<boost::units::si::time> IverFrontSeat::nmea_time_to_seconds(double nmea_time,
-                                                                                   int nmea_date)
+boost::units::quantity<boost::units::si::time>
+goby::moos::IverFrontSeat::nmea_time_to_seconds(double nmea_time, int nmea_date)
 {
     namespace si = boost::units::si;
 
@@ -410,7 +420,7 @@ boost::units::quantity<boost::units::si::time> IverFrontSeat::nmea_time_to_secon
 }
 
 boost::units::quantity<boost::units::degree::plane_angle>
-IverFrontSeat::nmea_geo_to_degrees(double nmea_geo, char hemi)
+goby::moos::IverFrontSeat::nmea_geo_to_degrees(double nmea_geo, char hemi)
 {
     // DDMM.MMMM
     double deg_int = std::floor(nmea_geo / 1e2);

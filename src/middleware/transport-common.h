@@ -29,7 +29,7 @@
 #include <thread>
 #include <unordered_map>
 
-#include "goby/common/exception.h"
+#include "goby/exception.h"
 #include "goby/util/binary.h"
 
 #include "poller.h"
@@ -38,6 +38,8 @@
 #include "goby/middleware/protobuf/interprocess_data.pb.h"
 
 namespace goby
+{
+namespace middleware
 {
 // a do nothing transporter that is always inside the last real transporter level.
 class NullTransporter : public StaticTransporterInterface<NullTransporter, NullTransporter>,
@@ -54,22 +56,22 @@ class NullTransporter : public StaticTransporterInterface<NullTransporter, NullT
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group,
-                         const goby::protobuf::TransporterConfig& transport_cfg =
-                             goby::protobuf::TransporterConfig())
+                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                             goby::middleware::protobuf::TransporterConfig())
     {
     }
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
-                         const goby::protobuf::TransporterConfig& transport_cfg =
-                             goby::protobuf::TransporterConfig())
+                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                             goby::middleware::protobuf::TransporterConfig())
     {
     }
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
-                         const goby::protobuf::TransporterConfig& transport_cfg =
-                             goby::protobuf::TransporterConfig())
+                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+                             goby::middleware::protobuf::TransporterConfig())
     {
     }
 
@@ -134,13 +136,15 @@ class SerializationSubscription : public SerializationSubscriptionBase
 {
   public:
     typedef std::function<void(std::shared_ptr<const Data> data,
-                               const goby::protobuf::TransporterConfig& transport_cfg)>
+                               const goby::middleware::protobuf::TransporterConfig& transport_cfg)>
         HandlerType;
 
     SerializationSubscription(HandlerType& handler, const Group& group,
                               std::function<Group(const Data&)> group_func)
-        : handler_(handler), type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
-          group_(group), group_func_(group_func)
+        : handler_(handler),
+          type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
+          group_(group),
+          group_func_(group_func)
     {
     }
 
@@ -178,7 +182,7 @@ class SerializationSubscription : public SerializationSubscriptionBase
             SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
 
         if (subscribed_group() == group_func_(*msg))
-            handler_(msg, goby::protobuf::TransporterConfig());
+            handler_(msg, goby::middleware::protobuf::TransporterConfig());
         return actual_end;
     }
 
@@ -250,11 +254,12 @@ class SerializationSubscriptionRegex
     bool post(CharIterator bytes_begin, CharIterator bytes_end, int scheme, const std::string& type,
               const std::string& group) const
     {
-        if ((schemes_.count(goby::MarshallingScheme::ALL_SCHEMES) || schemes_.count(scheme)) &&
+        if ((schemes_.count(goby::middleware::MarshallingScheme::ALL_SCHEMES) ||
+             schemes_.count(scheme)) &&
             std::regex_match(type, type_regex_) && std::regex_match(group, group_regex_))
         {
             std::vector<unsigned char> data(bytes_begin, bytes_end);
-            handler_(data, scheme, type, goby::DynamicGroup(group));
+            handler_(data, scheme, type, goby::middleware::DynamicGroup(group));
             return true;
         }
         else
@@ -282,12 +287,14 @@ class SerializationUnSubscribeAll
     const std::thread::id thread_id_{std::this_thread::get_id()};
 };
 
+} // namespace middleware
 } // namespace goby
+
 namespace std
 {
-template <> struct hash<goby::Group>
+template <> struct hash<goby::middleware::Group>
 {
-    size_t operator()(const goby::Group& group) const noexcept
+    size_t operator()(const goby::middleware::Group& group) const noexcept
     {
         return std::hash<std::string>{}(std::string(group));
     }

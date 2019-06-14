@@ -26,14 +26,20 @@
 
 #include "pGobyMOOSAppTemplate_config.pb.h"
 
-class GobyMOOSAppTemplate : public GobyMOOSApp
+namespace goby
+{
+namespace apps
+{
+namespace moos
+{
+class GobyMOOSAppTemplate : public goby::moos::GobyMOOSApp
 {
   public:
     static GobyMOOSAppTemplate* get_instance();
     static void delete_instance();
 
   private:
-    GobyMOOSAppTemplate(GobyMOOSAppTemplateConfig& cfg);
+    GobyMOOSAppTemplate(protobuf::GobyMOOSAppTemplateConfig& cfg);
     ~GobyMOOSAppTemplate();
 
     void loop(); // from GobyMOOSApp
@@ -41,8 +47,11 @@ class GobyMOOSAppTemplate : public GobyMOOSApp
     void handle_db_time(const CMOOSMsg& msg);
 
   private:
-    GobyMOOSAppTemplateConfig& cfg_;
+    protobuf::GobyMOOSAppTemplateConfig& cfg_;
     static GobyMOOSAppTemplate* inst_;
 };
+} // namespace moos
+} // namespace apps
+} // namespace goby
 
 #endif

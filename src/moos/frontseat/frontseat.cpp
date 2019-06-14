@@ -20,8 +20,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/logger.h"
-#include "goby/util/sci.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/seawater.h"
 
 #include "goby/util/seawater/depth.h"
 #include "goby/util/seawater/salinity.h"
@@ -31,14 +31,18 @@
 
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
-using goby::common::goby_time;
-using namespace goby::common::logger;
-using namespace goby::common::tcolor;
+using namespace goby::util::logger;
+using namespace goby::util::tcolor;
+using goby::time::MicroTime;
 
-FrontSeatInterfaceBase::FrontSeatInterfaceBase(const iFrontSeatConfig& cfg)
-    : cfg_(cfg), helm_state_(gpb::HELM_NOT_RUNNING), state_(gpb::INTERFACE_STANDBY),
-      start_time_(goby::common::goby_time<double>()),
-      last_frontseat_error_(gpb::ERROR_FRONTSEAT_NONE), last_helm_error_(gpb::ERROR_HELM_NONE)
+goby::moos::FrontSeatInterfaceBase::FrontSeatInterfaceBase(
+    const goby::apps::moos::protobuf::iFrontSeatConfig& cfg)
+    : cfg_(cfg),
+      helm_state_(gpb::HELM_NOT_RUNNING),
+      state_(gpb::INTERFACE_STANDBY),
+      start_time_(goby::time::SystemClock::now<MicroTime>()),
+      last_frontseat_error_(gpb::ERROR_FRONTSEAT_NONE),
+      last_helm_error_(gpb::ERROR_HELM_NONE)
 {
     if (glog.is(DEBUG1))
     {
@@ -57,18 +61,18 @@ FrontSeatInterfaceBase::FrontSeatInterfaceBase(const iFrontSeatConfig& cfg)
     glog_out_group_ = "FrontSeatInterfaceBase::raw::out";
     glog_in_group_ = "FrontSeatInterfaceBase::raw::in";
 
-    goby::glog.add_group(glog_out_group_, goby::common::Colors::lt_magenta);
-    goby::glog.add_group(glog_in_group_, goby::common::Colors::lt_blue);
+    goby::glog.add_group(glog_out_group_, goby::util::Colors::lt_magenta);
+    goby::glog.add_group(glog_in_group_, goby::util::Colors::lt_blue);
 }
 
-void FrontSeatInterfaceBase::do_work()
+void goby::moos::FrontSeatInterfaceBase::do_work()
 {
     try
     {
         check_change_state();
         loop();
     }
-    catch (FrontSeatException& e)
+    catch (goby::moos::FrontSeatException& e)
     {
         if (e.is_helm_error())
         {
@@ -86,7 +90,7 @@ void FrontSeatInterfaceBase::do_work()
             throw;
     }
 }
-void FrontSeatInterfaceBase::check_change_state()
+void goby::moos::FrontSeatInterfaceBase::check_change_state()
 {
     // check and change state
     gpb::InterfaceState previous_state = state_;
@@ -145,31 +149,34 @@ void FrontSeatInterfaceBase::check_change_state()
         signal_state_change(state_);
 }
 
-void FrontSeatInterfaceBase::check_error_states()
+void goby::moos::FrontSeatInterfaceBase::check_error_states()
 {
     // helm in park is always an error
     if (helm_state() == gpb::HELM_PARK)
-        throw(FrontSeatException(gpb::ERROR_HELM_PARKED));
+        throw(goby::moos::FrontSeatException(gpb::ERROR_HELM_PARKED));
     // while in command, if the helm is not running, this is an error after
     // a configurable timeout, unless require_helm is false
     else if (cfg_.require_helm() &&
              (helm_state() == gpb::HELM_NOT_RUNNING &&
               (state_ == gpb::INTERFACE_COMMAND ||
-               (start_time_ + cfg_.helm_running_timeout() < goby_time<double>()))))
-        throw(FrontSeatException(gpb::ERROR_HELM_NOT_RUNNING));
+               (start_time_ + cfg_.helm_running_timeout_with_units<MicroTime>() <
+                goby::time::SystemClock::now<MicroTime>()))))
+        throw(goby::moos::FrontSeatException(gpb::ERROR_HELM_NOT_RUNNING));
 
     // frontseat not connected is an error except in standby, it's only
     // an error after a timeout
     if (frontseat_state() == gpb::FRONTSEAT_NOT_CONNECTED &&
         (state_ != gpb::INTERFACE_STANDBY ||
-         start_time_ + cfg_.frontseat_connected_timeout() < goby_time<double>()))
-        throw(FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_CONNECTED));
+         start_time_ + cfg_.frontseat_connected_timeout_with_units<MicroTime>() <
+             goby::time::SystemClock::now<MicroTime>()))
+        throw(goby::moos::FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_CONNECTED));
     // frontseat must always provide data in either the listen or command states
     else if (!frontseat_providing_data() && state_ != gpb::INTERFACE_STANDBY)
-        throw(FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_PROVIDING_DATA));
+        throw(goby::moos::FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_PROVIDING_DATA));
 }
 
-void FrontSeatInterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg, Direction direction)
+void goby::moos::FrontSeatInterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg,
+                                                  Direction direction)
 {
     if (direction == DIRECTION_TO_FRONTSEAT)
         glog << group(glog_out_group_);
@@ -189,39 +196,50 @@ void FrontSeatInterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg, Directio
     }
 };
 
-void FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
+void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
 {
-    double pressure_dbar = ctd_sample->pressure() / 10000;
     if (!ctd_sample->has_salinity())
     {
-        double conductivity_mSiemens_cm = ctd_sample->conductivity() * 10;
-        double temperature_deg_C = ctd_sample->temperature();
-        ctd_sample->set_salinity(SalinityCalculator::salinity(conductivity_mSiemens_cm,
-                                                              temperature_deg_C, pressure_dbar));
+        ctd_sample->set_salinity_with_units(goby::util::seawater::salinity(
+            ctd_sample->conductivity_with_units(), ctd_sample->temperature_with_units(),
+            ctd_sample->pressure_with_units()));
         ctd_sample->set_salinity_algorithm(gpb::CTDSample::UNESCO_44_PREKIN_AND_LEWIS_1980);
     }
     if (!ctd_sample->has_depth())
     {
-        ctd_sample->set_depth(pressure2depth(pressure_dbar, ctd_sample->lat()));
+        ctd_sample->set_depth_with_units(goby::util::seawater::depth(
+            ctd_sample->pressure_with_units(), ctd_sample->lat_with_units()));
     }
     if (!ctd_sample->has_sound_speed())
     {
-        ctd_sample->set_sound_speed(goby::util::mackenzie_soundspeed(
-            ctd_sample->temperature(), ctd_sample->salinity(), ctd_sample->depth()));
+        try
+        {
+            ctd_sample->set_sound_speed_with_units(goby::util::seawater::mackenzie_soundspeed(
+                ctd_sample->temperature_with_units(), ctd_sample->salinity_with_units(),
+                ctd_sample->depth_with_units()));
+        }
+        catch (std::out_of_range& e)
+        {
+            glog.is_warn() && glog << "Out of range error calculating soundspeed: " << e.what()
+                                   << std::endl;
+            ctd_sample->set_sound_speed(std::numeric_limits<double>::quiet_NaN());
+        }
 
         ctd_sample->set_sound_speed_algorithm(gpb::CTDSample::MACKENZIE_1981);
     }
     if (!ctd_sample->has_density())
     {
-        ctd_sample->set_density(
-            density_anomaly(ctd_sample->salinity(), ctd_sample->temperature(), pressure_dbar) +
-            1000.0);
+        ctd_sample->set_density_with_units(
+            goby::util::seawater::density_anomaly(ctd_sample->salinity_with_units(),
+                                                  ctd_sample->temperature_with_units(),
+                                                  ctd_sample->pressure_with_units()) +
+            1000.0 * boost::units::si::kilograms_per_cubic_meter);
 
         ctd_sample->set_density_algorithm(gpb::CTDSample::UNESCO_38_MILLERO_AND_POISSON_1981);
     }
 }
 
-void FrontSeatInterfaceBase::compute_missing(gpb::NodeStatus* status)
+void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::NodeStatus* status)
 {
     if (!status->has_name())
         status->set_name(cfg_.common().community());

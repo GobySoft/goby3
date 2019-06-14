@@ -22,28 +22,31 @@
 #include <dlfcn.h>
 
 #include "goby/moos/moos_string.h"
+#include "goby/time/io.h"
 
 #include "pTranslator.h"
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::moos::operator<<;
+using goby::apps::moos::protobuf::pTranslatorConfig;
 
-pTranslatorConfig CpTranslator::cfg_;
-CpTranslator* CpTranslator::inst_ = 0;
+pTranslatorConfig goby::apps::moos::CpTranslator::cfg_;
+goby::apps::moos::CpTranslator* goby::apps::moos::CpTranslator::inst_ = 0;
 
-CpTranslator* CpTranslator::get_instance()
+goby::apps::moos::CpTranslator* goby::apps::moos::CpTranslator::get_instance()
 {
     if (!inst_)
-        inst_ = new CpTranslator();
+        inst_ = new goby::apps::moos::CpTranslator();
     return inst_;
 }
 
-void CpTranslator::delete_instance() { delete inst_; }
+void goby::apps::moos::CpTranslator::delete_instance() { delete inst_; }
 
-CpTranslator::CpTranslator()
-    : GobyMOOSApp(&cfg_), translator_(cfg_.translator_entry(), cfg_.common().lat_origin(),
-                                      cfg_.common().lon_origin(), cfg_.modem_id_lookup_path()),
+goby::apps::moos::CpTranslator::CpTranslator()
+    : goby::moos::GobyMOOSApp(&cfg_),
+      translator_(cfg_.translator_entry(), cfg_.common().lat_origin(), cfg_.common().lon_origin(),
+                  cfg_.modem_id_lookup_path()),
       work_(timer_io_service_)
 {
     dccl::DynamicProtobufManager::enable_compilation();
@@ -99,7 +102,7 @@ CpTranslator::CpTranslator()
             Timer& new_timer = *timers_.back();
 
             new_timer.expires_from_now(
-                boost::posix_time::seconds(cfg_.translator_entry(i).trigger().period()));
+                std::chrono::seconds(cfg_.translator_entry(i).trigger().period()));
             // Start an asynchronous wait.
             new_timer.async_wait(boost::bind(&CpTranslator::create_on_timer, this, _1,
                                              cfg_.translator_entry(i), &new_timer));
@@ -119,12 +122,12 @@ CpTranslator::CpTranslator()
     }
 }
 
-CpTranslator::~CpTranslator() {}
+goby::apps::moos::CpTranslator::~CpTranslator() {}
 
-void CpTranslator::loop() { timer_io_service_.poll(); }
+void goby::apps::moos::CpTranslator::loop() { timer_io_service_.poll(); }
 
-void CpTranslator::create_on_publish(const CMOOSMsg& trigger_msg,
-                                     const goby::moos::protobuf::TranslatorEntry& entry)
+void goby::apps::moos::CpTranslator::create_on_publish(
+    const CMOOSMsg& trigger_msg, const goby::moos::protobuf::TranslatorEntry& entry)
 {
     glog.is(VERBOSE) && glog << "Received trigger: " << trigger_msg << std::endl;
 
@@ -136,7 +139,7 @@ void CpTranslator::create_on_publish(const CMOOSMsg& trigger_msg,
             glog << "Message missing mandatory content for: " << entry.protobuf_name() << std::endl;
 }
 
-void CpTranslator::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
+void goby::apps::moos::CpTranslator::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
 {
     std::shared_ptr<google::protobuf::Message> msg = dynamic_parse_for_moos(moos_msg.GetString());
 
@@ -169,26 +172,25 @@ void CpTranslator::create_on_multiplex_publish(const CMOOSMsg& moos_msg)
     }
 }
 
-void CpTranslator::create_on_timer(const boost::system::error_code& error,
-                                   const goby::moos::protobuf::TranslatorEntry& entry, Timer* timer)
+void goby::apps::moos::CpTranslator::create_on_timer(
+    const boost::system::error_code& error, const goby::moos::protobuf::TranslatorEntry& entry,
+    Timer* timer)
 {
     if (!error)
     {
-        double skew_seconds = std::abs(goby::common::goby_time<double>() -
-                                       goby::util::as<double>(timer->expires_at()));
+        double skew_seconds = std::abs((goby::time::SystemClock::now() - timer->expires_at()) /
+                                       std::chrono::seconds(1));
         if (skew_seconds > ALLOWED_TIMER_SKEW_SECONDS)
         {
             glog.is(VERBOSE) && glog << "clock skew of " << skew_seconds
                                      << " seconds detected, resetting timer." << std::endl;
-            timer->expires_at(
-                goby::common::goby_time() +
-                boost::posix_time::seconds(boost::posix_time::seconds(entry.trigger().period())));
+            timer->expires_at(goby::time::SystemClock::now() +
+                              std::chrono::seconds(entry.trigger().period()));
         }
         else
         {
             // reset the timer
-            timer->expires_at(timer->expires_at() +
-                              boost::posix_time::seconds(entry.trigger().period()));
+            timer->expires_at(timer->expires_at() + std::chrono::seconds(entry.trigger().period()));
         }
 
         timer->async_wait(boost::bind(&CpTranslator::create_on_timer, this, _1, entry, timer));
@@ -200,7 +202,8 @@ void CpTranslator::create_on_timer(const boost::system::error_code& error,
     }
 }
 
-void CpTranslator::do_translation(const goby::moos::protobuf::TranslatorEntry& entry)
+void goby::apps::moos::CpTranslator::do_translation(
+    const goby::moos::protobuf::TranslatorEntry& entry)
 {
     std::shared_ptr<google::protobuf::Message> created_message =
         translator_.moos_to_protobuf<std::shared_ptr<google::protobuf::Message> >(
@@ -211,7 +214,8 @@ void CpTranslator::do_translation(const goby::moos::protobuf::TranslatorEntry& e
     do_publish(created_message);
 }
 
-void CpTranslator::do_publish(std::shared_ptr<google::protobuf::Message> created_message)
+void goby::apps::moos::CpTranslator::do_publish(
+    std::shared_ptr<google::protobuf::Message> created_message)
 {
     std::multimap<std::string, CMOOSMsg> out;
 

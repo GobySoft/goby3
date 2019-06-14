@@ -20,8 +20,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/logger.h"
 #include "goby/util/as.h"
+#include "goby/util/debug_logger.h"
 
 #include "tcp_client.h"
 
@@ -35,7 +35,7 @@ goby::util::TCPClient::TCPClient(const std::string& server, unsigned port,
 
 bool goby::util::TCPClient::start_specific()
 {
-    using namespace goby::common::logger;
+    using namespace goby::util::logger;
     using goby::glog;
 
     boost::asio::ip::tcp::resolver resolver(io_service_);

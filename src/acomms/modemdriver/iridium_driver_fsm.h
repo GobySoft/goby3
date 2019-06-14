@@ -39,10 +39,13 @@
 #include "goby/acomms/modemdriver/iridium_driver_common.h"
 #include "goby/acomms/protobuf/iridium_driver.pb.h"
 #include "goby/acomms/protobuf/modem_message.pb.h"
+#include "goby/util/as.h"
 
 namespace goby
 {
 namespace acomms
+{
+namespace iridium
 {
 inline unsigned sbd_csum(const std::string& data)
 {
@@ -58,13 +61,12 @@ struct StateNotify
 {
     StateNotify(const std::string& name) : name_(name)
     {
-        glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver") << name_
-                                                      << std::endl;
+        glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << name_ << std::endl;
     }
     ~StateNotify()
     {
-        glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver") << "~" << name_
-                                                      << std::endl;
+        glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << "~" << name_
+                                                    << std::endl;
     }
 
   private:
@@ -188,9 +190,11 @@ struct SBDReceive;
 struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Active>
 {
   public:
-    IridiumDriverFSM(const protobuf::DriverConfig& driver_cfg)
-        : serial_tx_buffer_(SERIAL_BUFFER_CAPACITY), received_(RECEIVED_BUFFER_CAPACITY),
-          driver_cfg_(driver_cfg), data_out_(DATA_BUFFER_CAPACITY)
+    IridiumDriverFSM(const goby::acomms::protobuf::DriverConfig& driver_cfg)
+        : serial_tx_buffer_(SERIAL_BUFFER_CAPACITY),
+          received_(RECEIVED_BUFFER_CAPACITY),
+          driver_cfg_(driver_cfg),
+          data_out_(DATA_BUFFER_CAPACITY)
     {
         ++count_;
         glog_ir_group_ = "iridiumdriver::" + goby::util::as<std::string>(count_);
@@ -202,12 +206,18 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     boost::circular_buffer<std::string>& serial_tx_buffer() { return serial_tx_buffer_; }
 
     // received messages to be passed up out of the ModemDriver
-    boost::circular_buffer<protobuf::ModemTransmission>& received() { return received_; }
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission>& received()
+    {
+        return received_;
+    }
 
     // data that should (eventually) be sent out across the Iridium connection
-    boost::circular_buffer<protobuf::ModemTransmission>& data_out() { return data_out_; }
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission>& data_out()
+    {
+        return data_out_;
+    }
 
-    const protobuf::DriverConfig& driver_cfg() const { return driver_cfg_; }
+    const goby::acomms::protobuf::DriverConfig& driver_cfg() const { return driver_cfg_; }
 
     const std::string& glog_ir_group() const { return glog_ir_group_; }
 
@@ -222,14 +232,14 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     };
 
     boost::circular_buffer<std::string> serial_tx_buffer_;
-    boost::circular_buffer<protobuf::ModemTransmission> received_;
-    const protobuf::DriverConfig& driver_cfg_;
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission> received_;
+    const goby::acomms::protobuf::DriverConfig& driver_cfg_;
 
     enum
     {
         DATA_BUFFER_CAPACITY = 5
     };
-    boost::circular_buffer<protobuf::ModemTransmission> data_out_;
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission> data_out_;
 
     std::string glog_ir_group_;
 
@@ -311,12 +321,12 @@ struct Configure : boost::statechart::state<Configure, Command::orthogonal<0> >,
     {
         context<Command>().push_at_command("");
         for (int i = 0, n = context<IridiumDriverFSM>().driver_cfg().ExtensionSize(
-                            IridiumDriverConfig::config);
+                            protobuf::IridiumDriverConfig::config);
              i < n; ++i)
         {
             context<Command>().push_at_command(
-                context<IridiumDriverFSM>().driver_cfg().GetExtension(IridiumDriverConfig::config,
-                                                                      i));
+                context<IridiumDriverFSM>().driver_cfg().GetExtension(
+                    protobuf::IridiumDriverConfig::config, i));
         }
     }
 
@@ -337,7 +347,7 @@ struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0> >, 
         }
         else
         {
-            glog.is(goby::common::logger::DEBUG1) &&
+            glog.is(goby::util::logger::DEBUG1) &&
                 glog << group("iridiumdriver") << "Not dialing since we are already on a call."
                      << std::endl;
             return discard_event();
@@ -372,7 +382,7 @@ struct PostDisconnected : boost::statechart::state<PostDisconnected, Command::or
   public:
     PostDisconnected(my_context ctx) : my_base(ctx), StateNotify("PostDisconnected")
     {
-        glog.is(goby::common::logger::DEBUG1) &&
+        glog.is(goby::util::logger::DEBUG1) &&
             glog << group("iridiumdriver") << "Disconnected; checking error details: " << std::endl;
         context<Command>().push_at_command("+CEER");
     }
@@ -450,9 +460,9 @@ struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateN
     ~OnCall()
     {
         // signal the disconnect event for the command state to handle
-        glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver") << "Sent "
-                                                      << total_bytes_sent()
-                                                      << " bytes on this call." << std::endl;
+        glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << "Sent "
+                                                    << total_bytes_sent() << " bytes on this call."
+                                                    << std::endl;
         post_event(EvDisconnect());
     }
 
@@ -551,14 +561,14 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
     {
         if (context<SBD>().data().empty())
         {
-            glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver")
-                                                          << "Mailbox Check." << std::endl;
+            glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver")
+                                                        << "Mailbox Check." << std::endl;
             post_event(EvSBDWriteComplete()); // Mailbox Check
         }
         else
         {
-            glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver")
-                                                          << "Writing data." << std::endl;
+            glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << "Writing data."
+                                                        << std::endl;
 
             const int csum_bytes = 2;
             context<Command>().push_at_command(
@@ -655,9 +665,9 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
 
         if (sbdi_fields.size() != 7)
         {
-            glog.is(goby::common::logger::DEBUG1) && glog << group("iridiumdriver")
-                                                          << "Invalid +SBDI response: " << e.sbdi_
-                                                          << std::endl;
+            glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver")
+                                                        << "Invalid +SBDI response: " << e.sbdi_
+                                                        << std::endl;
             return transit<SBDReady>();
         }
         else
@@ -688,14 +698,14 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
             int mo_status = goby::util::as<int>(sbdi_fields[MO_STATUS]);
             if (mo_status <= MO_STATUS_SUCCESS_MAX)
             {
-                glog.is(goby::common::logger::DEBUG1) &&
+                glog.is(goby::util::logger::DEBUG1) &&
                     glog << group("iridiumdriver")
                          << "Success sending SBDIX: " << mo_status_as_string(mo_status)
                          << std::endl;
             }
             else
             {
-                glog.is(goby::common::logger::WARN) &&
+                glog.is(goby::util::logger::WARN) &&
                     glog << group("iridiumdriver")
                          << "Error sending SBD packet: " << mo_status_as_string(mo_status)
                          << std::endl;
@@ -723,6 +733,7 @@ struct SBDReceive : boost::statechart::state<SBDReceive, SBD>, StateNotify
 };
 
 } // namespace fsm
+} // namespace iridium
 } // namespace acomms
 } // namespace goby
 

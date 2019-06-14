@@ -27,9 +27,10 @@
 
 namespace gpb = goby::moos::protobuf;
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
-FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs) : ifs_(fs), request_id_(0)
+goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs)
+    : ifs_(fs), request_id_(0)
 {
     if (ifs_->cfg_.legacy_cfg().subscribe_ctd())
     {
@@ -95,7 +96,7 @@ FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs) : ifs_(fs),
                               &FrontSeatLegacyTranslator::set_fs_bs_ready_flags);
     }
 }
-void FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(
+void goby::apps::moos::FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(
     const goby::moos::protobuf::FrontSeatInterfaceData& data)
 {
     if (data.has_node_status() && ifs_->cfg_.legacy_cfg().publish_nav())
@@ -174,7 +175,7 @@ void FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(
     }
 }
 
-void FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg& msg)
+void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg& msg)
 {
     const std::string& key = msg.GetKey();
     if (key == "CTD_CONDUCTIVITY")
@@ -216,7 +217,7 @@ void FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg& msg)
     }
 }
 
-void FrontSeatLegacyTranslator::handle_mail_desired_course(const CMOOSMsg& msg)
+void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_desired_course(const CMOOSMsg& msg)
 {
     const std::string& key = msg.GetKey();
     if (key == "DESIRED_SPEED")
@@ -257,8 +258,8 @@ void FrontSeatLegacyTranslator::handle_mail_desired_course(const CMOOSMsg& msg)
     }
 }
 
-void FrontSeatLegacyTranslator::handle_mail_modem_raw(const CMOOSMsg& msg,
-                                                      ModemRawDirection direction)
+void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_modem_raw(const CMOOSMsg& msg,
+                                                                        ModemRawDirection direction)
 {
     goby::acomms::protobuf::ModemRaw raw;
     parse_for_moos(msg.GetString(), &raw);
@@ -278,7 +279,8 @@ void FrontSeatLegacyTranslator::handle_mail_modem_raw(const CMOOSMsg& msg,
                      data);
 }
 
-void FrontSeatLegacyTranslator::set_fs_bs_ready_flags(goby::moos::protobuf::InterfaceState state)
+void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(
+    goby::moos::protobuf::InterfaceState state)
 {
     goby::moos::protobuf::FrontSeatInterfaceStatus status = ifs_->frontseat_->status();
     if (status.frontseat_state() == gpb::FRONTSEAT_ACCEPTING_COMMANDS)
@@ -292,7 +294,7 @@ void FrontSeatLegacyTranslator::set_fs_bs_ready_flags(goby::moos::protobuf::Inte
         ifs_->publish("BACKSEAT_READY", 0);
 }
 
-void FrontSeatLegacyTranslator::handle_mail_buoyancy_control(const CMOOSMsg& msg)
+void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_buoyancy_control(const CMOOSMsg& msg)
 {
     if (goby::util::as<bool>(boost::trim_copy(msg.GetString())))
     {
@@ -306,7 +308,7 @@ void FrontSeatLegacyTranslator::handle_mail_buoyancy_control(const CMOOSMsg& msg
     }
 }
 
-void FrontSeatLegacyTranslator::handle_mail_trim_control(const CMOOSMsg& msg)
+void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_trim_control(const CMOOSMsg& msg)
 {
     if (goby::util::as<bool>(boost::trim_copy(msg.GetString())))
     {
@@ -320,7 +322,7 @@ void FrontSeatLegacyTranslator::handle_mail_trim_control(const CMOOSMsg& msg)
     }
 }
 
-void FrontSeatLegacyTranslator::handle_mail_frontseat_bhvoff(const CMOOSMsg& msg)
+void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_frontseat_bhvoff(const CMOOSMsg& msg)
 {
     if (goby::util::as<bool>(boost::trim_copy(msg.GetString())))
     {
@@ -334,7 +336,7 @@ void FrontSeatLegacyTranslator::handle_mail_frontseat_bhvoff(const CMOOSMsg& msg
     }
 }
 
-void FrontSeatLegacyTranslator::handle_mail_frontseat_silent(const CMOOSMsg& msg)
+void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_frontseat_silent(const CMOOSMsg& msg)
 {
     gpb::CommandRequest command;
     command.set_response_requested(true);
@@ -350,7 +352,7 @@ void FrontSeatLegacyTranslator::handle_mail_frontseat_silent(const CMOOSMsg& msg
     publish_command(command);
 }
 
-void FrontSeatLegacyTranslator::handle_mail_backseat_abort(const CMOOSMsg& msg)
+void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_backseat_abort(const CMOOSMsg& msg)
 {
     gpb::CommandRequest command;
     command.set_response_requested(true);
@@ -366,7 +368,8 @@ void FrontSeatLegacyTranslator::handle_mail_backseat_abort(const CMOOSMsg& msg)
     publish_command(command);
 }
 
-void FrontSeatLegacyTranslator::publish_command(const gpb::CommandRequest& command)
+void goby::apps::moos::FrontSeatLegacyTranslator::publish_command(
+    const gpb::CommandRequest& command)
 {
     ifs_->publish_pb(ifs_->cfg_.moos_var().prefix() + ifs_->cfg_.moos_var().command_request(),
                      command);

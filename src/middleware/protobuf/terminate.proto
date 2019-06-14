@@ -1,4 +1,5 @@
-package goby.protobuf;
+syntax = "proto2";
+package goby.middleware.protobuf;
 
 message TerminateRequest
 {

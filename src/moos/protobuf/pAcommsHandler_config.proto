@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "goby/moos/protobuf/goby_moos_app.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/queue.proto";
@@ -5,11 +6,13 @@ import "goby/acomms/protobuf/amac_config.proto";
 import "goby/acomms/protobuf/dccl.proto";
 import "goby/acomms/protobuf/route.proto";
 import "goby/moos/protobuf/translator.proto";
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
+
+package goby.apps.moos.protobuf;
 
 message pAcommsHandlerConfig
 {
-    optional GobyMOOSAppConfig common = 1 [
+    optional goby.moos.protobuf.GobyMOOSAppConfig common = 1 [
         (goby.field).description =
             "Configuration common to all Goby MOOS applications"
     ];  // see goby_moos_app.proto

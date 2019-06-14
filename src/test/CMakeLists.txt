@@ -1,17 +1,10 @@
-if(build_acomms)
-  add_subdirectory(acomms)
-endif()
+add_subdirectory(time)
+add_subdirectory(acomms)
+add_subdirectory(util)
+add_subdirectory(middleware)
 
-if(build_common)
-  add_subdirectory(common)
-endif()
-
-if(build_util)
-  add_subdirectory(util)
-endif()
-
-if(build_middleware)
-  add_subdirectory(middleware)
+if(build_zeromq)
+  add_subdirectory(zeromq)
 endif()
 
 if(build_moos)

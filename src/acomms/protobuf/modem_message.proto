@@ -1,10 +1,13 @@
+syntax = "proto2";
 import "dccl/option_extensions.proto";
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 
 package goby.acomms.protobuf;
 
 message ModemTransmission
 {
+    option (dccl.msg).unit_system = "si";
+
     optional int32 src = 1 [
         (dccl.field).min = -1,
         (dccl.field).max = 30,
@@ -23,7 +26,10 @@ message ModemTransmission
         default = -1
     ];  //  0 (BROADCAST), 1-30, -1 (QUERY_DESTINATION_ID)
     optional uint64 time = 3 [
-        (dccl.field).omit = true,
+        (dccl.field) = {
+            omit: true,
+            units {prefix: "micro" base_dimensions: "T"}
+        },
         (goby.field).description =
             "timestamp (microseconds since UNIX (1970-01-01 00:00:00 UTC) of "
             "this transmission",
@@ -61,7 +67,8 @@ message ModemTransmission
     optional TransmissionType type = 7 [
         default = UNKNOWN,
         (goby.field).description =
-            "Type of this transmission. DRIVER_SPECIFIC types are enumerated "
+            "Type of this transmission. DRIVER_SPECIFIC types are "
+            "enumerated "
             "in the extensions for the selected driver."
     ];
 
@@ -70,18 +77,19 @@ message ModemTransmission
         (dccl.field).omit = true,
         default = 1
     ];  // set by the modem driver for the given rate
-    optional uint32 max_frame_bytes = 12 [
-        (dccl.field).omit = true
-    ];  // set by the modem driver for the given rate, omitted means no maximum
+    optional uint32 max_frame_bytes = 12
+        [(dccl.field).omit = true];  // set by the modem driver for the
+                                     // given rate, omitted means no maximum
     optional bool ack_requested = 13
         [default = true];  // acoustic acknowledgment requested
     repeated bytes frame = 14 [
         (dccl.field).omit = true,
         (goby.field).description =
-            "Data to transmit, represented as ASCII or octal bytes preceeded "
+            "Data to transmit, represented as ASCII or octal bytes "
+            "preceeded "
             "by a '\\' (e.g. \\000 is 0x00)"
-    ];  // if omitted, you will be queried for data on signal_data_request. You
-        // can also set some frames here and the rest will be filled by
+    ];  // if omitted, you will be queried for data on signal_data_request.
+        // You can also set some frames here and the rest will be filled by
         // signalling a data request
 
     optional uint32 frame_start = 15 [(dccl.field).omit = true, default = 0];
@@ -92,12 +100,11 @@ message ModemTransmission
 
     // for AMAC
     optional double slot_seconds = 30 [
-        (dccl.field).min = 0,
-        (dccl.field).max = 3600,
-        (dccl.field).precision = 1,
+        (dccl.field) =
+            {min: 0 max: 3600 precision: 1 units {base_dimensions: "T"}},
         default = 10
-    ];  // length of slot (in seconds) if this transmission is part of a TDMA
-        // cycle
+    ];  // length of slot (in seconds) if this transmission is part of a
+    // TDMA cycle
     optional uint32 unique_id = 31 [
         (dccl.field).min = 0,
         (dccl.field).max = 100,

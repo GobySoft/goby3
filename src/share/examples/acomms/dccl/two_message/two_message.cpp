@@ -19,7 +19,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/acomms/acomms_helpers.h" // for operator<< of google::protobuf::Message
 #include "goby/acomms/dccl.h"
 #include "goby/util/binary.h"
 

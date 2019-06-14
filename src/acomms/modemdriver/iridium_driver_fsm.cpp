@@ -24,26 +24,26 @@
 #include <boost/algorithm/string/classification.hpp>
 
 #include "goby/acomms/acomms_constants.h"
-#include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 #include "iridium_driver_fsm.h"
 #include "rudics_packet.h"
 
 using goby::glog;
-using namespace goby::common::logger;
-using goby::common::goby_time;
+using namespace goby::util::logger;
+using goby::acomms::iridium::protobuf::IridiumDriverConfig;
 
-int goby::acomms::fsm::IridiumDriverFSM::count_ = 0;
+int goby::acomms::iridium::fsm::IridiumDriverFSM::count_ = 0;
 
-void goby::acomms::fsm::IridiumDriverFSM::buffer_data_out(
+void goby::acomms::iridium::fsm::IridiumDriverFSM::buffer_data_out(
     const goby::acomms::protobuf::ModemTransmission& msg)
 {
     data_out_.push_back(msg);
 }
 
-void goby::acomms::fsm::Command::in_state_react(const EvRxSerial& e)
+void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
 {
     std::string in = e.line;
 
@@ -119,7 +119,7 @@ void goby::acomms::fsm::Command::in_state_react(const EvRxSerial& e)
     }
 }
 
-void goby::acomms::fsm::Command::handle_sbd_rx(const std::string& in)
+void goby::acomms::iridium::fsm::Command::handle_sbd_rx(const std::string& in)
 {
     enum
     {
@@ -152,7 +152,7 @@ void goby::acomms::fsm::Command::handle_sbd_rx(const std::string& in)
             std::string sbd_rx_data = sbd_rx_buffer_.substr(SBD_FIELD_SIZE_BYTES, sbd_rx_size);
             std::string bytes;
             parse_rudics_packet(&bytes, sbd_rx_data);
-            protobuf::ModemTransmission msg;
+            goby::acomms::protobuf::ModemTransmission msg;
             parse_iridium_modem_message(bytes, &msg);
             context<IridiumDriverFSM>().received().push_back(msg);
             at_out().pop_front();
@@ -165,9 +165,9 @@ void goby::acomms::fsm::Command::handle_sbd_rx(const std::string& in)
     }
 }
 
-void goby::acomms::fsm::Command::in_state_react(const EvTxSerial&)
+void goby::acomms::iridium::fsm::Command::in_state_react(const EvTxSerial&)
 {
-    double now = goby_time<double>();
+    double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
     if (!at_out_.empty())
     {
@@ -215,19 +215,19 @@ void goby::acomms::fsm::Command::in_state_react(const EvTxSerial&)
     }
 }
 
-void goby::acomms::fsm::Online::in_state_react(const EvRxSerial& e)
+void goby::acomms::iridium::fsm::Online::in_state_react(const EvRxSerial& e)
 {
     EvRxOnCallSerial eo;
     eo.line = e.line;
     post_event(eo);
 }
 
-void goby::acomms::fsm::Online::in_state_react(const EvTxSerial&)
+void goby::acomms::iridium::fsm::Online::in_state_react(const EvTxSerial&)
 {
     post_event(EvTxOnCallSerial());
 }
 
-void goby::acomms::fsm::Command::in_state_react(const EvAck& e)
+void goby::acomms::iridium::fsm::Command::in_state_react(const EvAck& e)
 {
     // deal with the numeric codes
     if (e.response_.size() > 0)
@@ -285,7 +285,7 @@ void goby::acomms::fsm::Command::in_state_react(const EvAck& e)
     }
 }
 
-boost::statechart::result goby::acomms::fsm::Dial::react(const EvNoCarrier& x)
+boost::statechart::result goby::acomms::iridium::fsm::Dial::react(const EvNoCarrier& x)
 {
     const int redial_wait_seconds = 2;
     glog.is(DEBUG1) && glog << group("iridiumdriver") << "Redialing in " << redial_wait_seconds
@@ -309,7 +309,7 @@ boost::statechart::result goby::acomms::fsm::Dial::react(const EvNoCarrier& x)
     }
 }
 
-void goby::acomms::fsm::Dial::dial()
+void goby::acomms::iridium::fsm::Dial::dial()
 {
     ++dial_attempts_;
     context<Command>().push_at_command("D" + context<IridiumDriverFSM>()
@@ -318,7 +318,7 @@ void goby::acomms::fsm::Dial::dial()
                                                  .iridium_number());
 }
 
-void goby::acomms::fsm::OnCall::in_state_react(const EvRxOnCallSerial& e)
+void goby::acomms::iridium::fsm::OnCall::in_state_react(const EvRxOnCallSerial& e)
 {
     std::string in = e.line;
 
@@ -346,10 +346,10 @@ void goby::acomms::fsm::OnCall::in_state_react(const EvRxOnCallSerial& e)
         {
             parse_rudics_packet(&bytes, in);
 
-            protobuf::ModemTransmission msg;
+            goby::acomms::protobuf::ModemTransmission msg;
             parse_iridium_modem_message(bytes, &msg);
             context<IridiumDriverFSM>().received().push_back(msg);
-            set_last_rx_time(goby_time<double>());
+            set_last_rx_time(time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1));
         }
         catch (RudicsPacketException& e)
         {
@@ -359,7 +359,7 @@ void goby::acomms::fsm::OnCall::in_state_react(const EvRxOnCallSerial& e)
     }
 }
 
-void goby::acomms::fsm::OnCall::in_state_react(const EvTxOnCallSerial&)
+void goby::acomms::iridium::fsm::OnCall::in_state_react(const EvTxOnCallSerial&)
 {
     const static double target_byte_rate = (context<IridiumDriverFSM>().driver_cfg().GetExtension(
                                                 IridiumDriverConfig::target_bit_rate) /
@@ -367,8 +367,8 @@ void goby::acomms::fsm::OnCall::in_state_react(const EvTxOnCallSerial&)
 
     const double send_wait = last_bytes_sent() / target_byte_rate;
 
-    double now = goby_time<double>();
-    boost::circular_buffer<protobuf::ModemTransmission>& data_out =
+    double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission>& data_out =
         context<IridiumDriverFSM>().data_out();
     if (!data_out.empty() && (now > last_tx_time() + send_wait))
     {
@@ -388,7 +388,7 @@ void goby::acomms::fsm::OnCall::in_state_react(const EvTxOnCallSerial&)
     }
 }
 
-void goby::acomms::fsm::OnCall::in_state_react(const EvSendBye&)
+void goby::acomms::iridium::fsm::OnCall::in_state_react(const EvSendBye&)
 {
     context<IridiumDriverFSM>().serial_tx_buffer().push_front("bye\r");
     set_bye_sent(true);

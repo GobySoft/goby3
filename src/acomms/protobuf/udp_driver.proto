@@ -1,5 +1,8 @@
-import "goby/common/protobuf/option_extensions.proto";
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto"; // load up message DriverBaseConfig
+
+package goby.acomms.udp.protobuf;
 
 message UDPDriverConfig
 {

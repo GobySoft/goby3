@@ -25,10 +25,12 @@
 #ifndef ACOMMSCOURTESY20100713H
 #define ACOMMSCOURTESY20100713H
 
+#include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/amac.h"
 #include "goby/acomms/bind.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/dccl.h"
+#include "goby/acomms/ip_codecs.h"
 #include "goby/acomms/modem_driver.h"
 #include "goby/acomms/queue.h"
 #include "goby/acomms/route.h"

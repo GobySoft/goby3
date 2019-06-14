@@ -29,6 +29,8 @@
 #include <boost/units/systems/si.hpp>
 #include <boost/units/systems/si/prefixes.hpp>
 
+#include <dccl/common.h>
+
 #include "goby/util/linebasedcomms/serial_client.h"
 #include "goby/util/primitive_types.h"
 #include "goby/util/sci.h"
@@ -38,15 +40,14 @@
 
 #include "iver_driver_config.pb.h"
 
-extern "C"
+namespace goby
 {
-    FrontSeatInterfaceBase* frontseat_driver_load(iFrontSeatConfig*);
-}
-
+namespace moos
+{
 class IverFrontSeat : public FrontSeatInterfaceBase
 {
   public:
-    IverFrontSeat(const iFrontSeatConfig& cfg);
+    IverFrontSeat(const goby::apps::moos::protobuf::iFrontSeatConfig& cfg);
 
   private: // virtual methods from FrontSeatInterfaceBase
     void loop();
@@ -78,18 +79,19 @@ class IverFrontSeat : public FrontSeatInterfaceBase
     std::string tenths_precision_str(double d)
     {
         std::stringstream ss;
-        ss << std::fixed << std::setprecision(1) << goby::util::unbiased_round(d, 1);
+        ss << std::fixed << std::setprecision(1) << dccl::round(d, 1);
         return ss.str();
     }
 
   private:
-    const IverFrontSeatConfig iver_config_;
+    const apps::moos::protobuf::IverFrontSeatConfig iver_config_;
     goby::util::SerialClient serial_;
 
     std::shared_ptr<goby::util::SerialClient> ntp_serial_;
 
     bool frontseat_providing_data_;
-    double last_frontseat_data_time_;
+    goby::time::SystemClock::time_point last_frontseat_data_time_;
+
     goby::moos::protobuf::FrontSeatState frontseat_state_;
     goby::moos::protobuf::IverState::IverMissionMode reported_mission_mode_;
 
@@ -97,5 +99,7 @@ class IverFrontSeat : public FrontSeatInterfaceBase
 
     goby::moos::protobuf::NodeStatus status_;
 };
+} // namespace moos
+} // namespace goby
 
 #endif

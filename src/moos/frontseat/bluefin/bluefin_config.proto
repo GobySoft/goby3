@@ -1,12 +1,20 @@
+syntax = "proto2";
+import "dccl/option_extensions.proto";
+
 import "goby/moos/protobuf/frontseat_config.proto";
-import "goby/common/protobuf/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
+
+package goby.apps.moos.protobuf;
 
 message BluefinFrontSeatConfig
 {
+    option (dccl.msg).unit_system = "si";
+    
     required string huxley_tcp_address = 1;
     optional uint32 huxley_tcp_port = 2 [default = 29500];
     optional uint32 reconnect_interval = 3 [
         default = 10,
+        (dccl.field).units.base_dimensions = "T",
         (goby.field).description =
             "How many seconds to wait between reconnects if the Huxley server "
             "disconnects."
@@ -18,6 +26,7 @@ message BluefinFrontSeatConfig
     ];
     optional uint32 nmea_resend_interval = 5 [
         default = 5,
+        (dccl.field).units.base_dimensions = "T",
         (goby.field).description =
             "How many seconds to wait between resend attempts"
     ];
@@ -29,12 +38,14 @@ message BluefinFrontSeatConfig
     ];
     optional uint32 allow_missing_nav_interval = 7 [
         default = 5,
+        (dccl.field).units.base_dimensions = "T",
         (goby.field).description =
             "How many seconds to allow without $BFNVG before declaring "
             "frontseat not providing us data."
     ];
     optional uint32 heartbeat_interval = 8 [
         default = 1,
+        (dccl.field).units.base_dimensions = "T",
         (goby.field).description =
             "How many seconds between heartbeats (BPSTS)."
     ];

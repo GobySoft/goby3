@@ -20,16 +20,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-// courtesy header for all the goby utility libraries
-
 #ifndef UTILCOURTESY20100713H
 #define UTILCOURTESY20100713H
 
-#include "goby/common/logger.h"
-#include "goby/common/time.h"
 #include "goby/util/as.h"
+#include "goby/util/base_convert.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/geodesy.h"
 #include "goby/util/linebasedcomms.h"
+#include "goby/util/primitive_types.h"
 #include "goby/util/sci.h"
+#include "goby/util/seawater.h"
 
 #endif

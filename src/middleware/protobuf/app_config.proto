@@ -1,0 +1,56 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "goby/util/protobuf/debug_logger.proto";
+
+package goby.middleware.protobuf;
+
+message AppConfig
+{
+    optional string name = 1 [
+        (goby.field).example = "myapp_g",
+        (goby.field).description =
+            "default is compiled name - change this to run multiple instances"
+    ];
+
+    optional goby.util.protobuf.GLogConfig glog_config = 10
+        [(goby.field).description =
+             "configure the Goby Logger (TTY terminal and file debugging "
+             "logger)"];
+
+    message SimulatorSettings
+    {
+        message Time
+        {
+            optional bool use_sim_time = 1 [
+                default = false,
+                (goby.field).description =
+                    "Enable the use of a different clock for all calls to "
+                    "goby::time::SystemClock::now<time::MicroTime>() and related"
+            ];
+            optional int32 warp_factor = 2 [
+                default = 1,
+                (goby.field).description =
+                    "Warp factor used to simulate faster-than-realtime "
+                    "missions. For example warp_factor: 10 means run the clock "
+                    "10x the real time."
+            ];
+            optional int64 reference_microtime = 3
+                [(goby.field).description =
+                     "Reference time to use when running with use_sim_time: "
+                     "true (defaults to 00:00 UTC on January 1 of the current "
+                     "year). The time difference between now and the reference "
+                     "time is multiplied by the warp factor to calculate the "
+                     "modified simulation time"];
+        }
+        optional Time time = 1;
+    }
+    optional SimulatorSettings simulation = 20
+        [(goby.field).description = "Simulation related settings"];
+
+    optional bool debug_cfg = 100 [
+        default = false,
+        (goby.field).description =
+            "If true, rather than launch the application, simply write the "
+            "parsed configuration to stdout and exit"
+    ];
+}

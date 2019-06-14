@@ -21,17 +21,17 @@
 
 // tests functionality of the UDPDriver
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using namespace goby::acomms;
-using goby::common::goby_time;
 using goby::util::as;
 using namespace boost::posix_time;
+using goby::acomms::udp::protobuf::UDPDriverConfig;
 
 boost::asio::io_service io1;
 std::shared_ptr<goby::acomms::UDPDriver> driver1;
@@ -43,7 +43,7 @@ void handle_data_receive1(const protobuf::ModemTransmission& msg);
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     std::ofstream fout;
 
     if (argc < 6)

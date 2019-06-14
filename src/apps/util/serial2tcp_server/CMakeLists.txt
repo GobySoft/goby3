@@ -1,2 +1,2 @@
 add_executable(goby_serial2tcp_server serial2tcp_server.cpp)
-target_link_libraries(goby_serial2tcp_server goby_util)
+target_link_libraries(goby_serial2tcp_server goby)

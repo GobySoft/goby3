@@ -20,14 +20,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/logger.h"
 #include "goby/util/as.h"
+#include "goby/util/debug_logger.h"
 
 #include "route.h"
 
 using goby::glog;
 using goby::util::as;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 void goby::acomms::RouteManager::set_cfg(const protobuf::RouteManagerConfig& cfg)
 {

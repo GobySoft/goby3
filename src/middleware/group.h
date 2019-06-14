@@ -38,6 +38,8 @@
 
 namespace goby
 {
+namespace middleware
+{
 class Group
 {
   public:
@@ -69,8 +71,9 @@ inline bool operator!=(const Group& a, const Group& b) { return !(a == b); }
 
 template <const Group& group> void check_validity()
 {
-    static_assert((group.numeric() != 0) || (group.c_str()[0] != '\0'),
-                  "goby::Group must have non-zero length string or non-zero integer value.");
+    static_assert(
+        (group.numeric() != 0) || (group.c_str()[0] != '\0'),
+        "goby::middleware::Group must have non-zero length string or non-zero integer value.");
 }
 
 inline void check_validity_runtime(const Group& group)
@@ -92,6 +95,7 @@ class DynamicGroup : public Group
     std::unique_ptr<const std::string> s_;
 };
 
+} // namespace middleware
 } // namespace goby
 
 #endif

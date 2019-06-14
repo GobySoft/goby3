@@ -38,9 +38,10 @@
 #include <iostream>
 
 #include "goby/acomms/acomms_constants.h"
-#include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
+#include "goby/util/as.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 #include "goby/acomms/protobuf/benthos_atm900.pb.h"
 #include "goby/acomms/protobuf/modem_message.pb.h"
@@ -49,7 +50,9 @@ namespace goby
 {
 namespace acomms
 {
-namespace benthos_fsm
+namespace benthos
+{
+namespace fsm
 {
 // events
 struct EvRxSerial : boost::statechart::event<EvRxSerial>
@@ -144,9 +147,11 @@ struct TransmitData;
 struct BenthosATM900FSM : boost::statechart::state_machine<BenthosATM900FSM, Active>
 {
   public:
-    BenthosATM900FSM(const protobuf::DriverConfig& driver_cfg)
-        : serial_tx_buffer_(SERIAL_BUFFER_CAPACITY), received_(RECEIVED_BUFFER_CAPACITY),
-          driver_cfg_(driver_cfg), data_out_(DATA_BUFFER_CAPACITY)
+    BenthosATM900FSM(const goby::acomms::protobuf::DriverConfig& driver_cfg)
+        : serial_tx_buffer_(SERIAL_BUFFER_CAPACITY),
+          received_(RECEIVED_BUFFER_CAPACITY),
+          driver_cfg_(driver_cfg),
+          data_out_(DATA_BUFFER_CAPACITY)
     {
         ++count_;
         glog_fsm_group_ = "benthosatm900::fsm::" + goby::util::as<std::string>(count_);
@@ -158,12 +163,18 @@ struct BenthosATM900FSM : boost::statechart::state_machine<BenthosATM900FSM, Act
     boost::circular_buffer<std::string>& serial_tx_buffer() { return serial_tx_buffer_; }
 
     // received messages to be passed up out of the ModemDriver
-    boost::circular_buffer<protobuf::ModemTransmission>& received() { return received_; }
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission>& received()
+    {
+        return received_;
+    }
 
     // data that should (eventually) be sent out across the connection
-    boost::circular_buffer<protobuf::ModemTransmission>& data_out() { return data_out_; }
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission>& data_out()
+    {
+        return data_out_;
+    }
 
-    const protobuf::DriverConfig& driver_cfg() const { return driver_cfg_; }
+    const goby::acomms::protobuf::DriverConfig& driver_cfg() const { return driver_cfg_; }
 
     const std::string& glog_fsm_group() const { return glog_fsm_group_; }
 
@@ -178,14 +189,14 @@ struct BenthosATM900FSM : boost::statechart::state_machine<BenthosATM900FSM, Act
     };
 
     boost::circular_buffer<std::string> serial_tx_buffer_;
-    boost::circular_buffer<protobuf::ModemTransmission> received_;
-    const protobuf::DriverConfig& driver_cfg_;
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission> received_;
+    const goby::acomms::protobuf::DriverConfig& driver_cfg_;
 
     enum
     {
         DATA_BUFFER_CAPACITY = 5
     };
-    boost::circular_buffer<protobuf::ModemTransmission> data_out_;
+    boost::circular_buffer<goby::acomms::protobuf::ModemTransmission> data_out_;
 
     std::string glog_fsm_group_;
 
@@ -196,13 +207,13 @@ struct StateNotify
 {
     StateNotify(const std::string& name) : name_(name)
     {
-        glog.is(goby::common::logger::DEBUG1) && glog << group("benthosatm900::fsm") << name_
-                                                      << std::endl;
+        glog.is(goby::util::logger::DEBUG1) && glog << group("benthosatm900::fsm") << name_
+                                                    << std::endl;
     }
     ~StateNotify()
     {
-        glog.is(goby::common::logger::DEBUG1) && glog << group("benthosatm900::fsm") << "~" << name_
-                                                      << std::endl;
+        glog.is(goby::util::logger::DEBUG1) && glog << group("benthosatm900::fsm") << "~" << name_
+                                                    << std::endl;
     }
 
   private:
@@ -239,7 +250,7 @@ struct ReceiveData : boost::statechart::state<ReceiveData, BenthosATM900FSM>, St
                                       boost::statechart::deep_history<Command> > >
         reactions;
 
-    protobuf::ModemTransmission rx_msg_;
+    goby::acomms::protobuf::ModemTransmission rx_msg_;
     unsigned reported_size_;
     std::string encoded_bytes_; // still base 255 encoded
 };
@@ -392,7 +403,7 @@ struct SetClock : boost::statechart::state<SetClock, Command>, StateNotify
 
     SetClock(my_context ctx) : my_base(ctx), StateNotify("SetClock")
     {
-        boost::posix_time::ptime p = goby::common::goby_time();
+        auto p = time::SystemClock::now<boost::posix_time::ptime>();
 
         std::string date_str = boost::str(boost::format("-d%02d/%02d/%04d") %
                                           (int)p.date().month() % p.date().day() % p.date().year());
@@ -526,7 +537,8 @@ struct TransmitData : boost::statechart::state<TransmitData, Online>, StateNotif
         reactions;
 };
 
-} // namespace benthos_fsm
+} // namespace fsm
+} // namespace benthos
 } // namespace acomms
 } // namespace goby
 

@@ -27,14 +27,14 @@
 
 extern "C"
 {
-    std::vector<goby::common::LiaisonContainer*>
-    goby_liaison_load(const goby::common::protobuf::LiaisonConfig& cfg)
+    std::vector<goby::util::LiaisonContainer*>
+    goby_liaison_load(const goby::util::protobuf::LiaisonConfig& cfg)
     {
-        std::vector<goby::common::LiaisonContainer*> containers;
-        //    ({ new goby::common::LiaisonCommander(cfg)//,
-        //               new goby::common::LiaisonScope(cfg),
-        //               new goby::common::LiaisonGeodesy(cfg),
-        //               new goby::common::LiaisonAcomms(cfg)
+        std::vector<goby::util::LiaisonContainer*> containers;
+        //    ({ new goby::util::LiaisonCommander(cfg)//,
+        //               new goby::util::LiaisonScope(cfg),
+        //               new goby::util::LiaisonGeodesy(cfg),
+        //               new goby::util::LiaisonAcomms(cfg)
         //            });
 
         return containers;

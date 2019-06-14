@@ -1,22 +1,23 @@
 // Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
 //                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
+//                     Community contributors (see AUTHORS file)
 //
 //
-// This file is part of the Goby Underwater Autonomy Project Binaries
-// ("The Goby Binaries").
+// This file is part of the Goby Underwater Autonomy Project Libraries
+// ("The Goby Libraries").
 //
-// The Goby Binaries are free software: you can redistribute them and/or modify
-// them under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
+// The Goby Libraries are free software: you can redistribute them and/or modify
+// them under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 2.1 of the License, or
 // (at your option) any later version.
 //
-// The Goby Binaries are distributed in the hope that they will be useful,
+// The Goby Libraries are distributed in the hope that they will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// GNU Lesser General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef PROTOBUF_LOGGER_20190123_H
@@ -29,24 +30,27 @@
 
 namespace goby
 {
+namespace middleware
+{
 namespace log
 {
-constexpr goby::Group file_desc_group{"goby::log::ProtobufFileDescriptor"};
+constexpr goby::middleware::Group file_desc_group{"goby::log::ProtobufFileDescriptor"};
 
 /// Implements hooks for Protobuf metadata
 template <int scheme> class ProtobufPluginBase : public LogPlugin
 {
-    static_assert(scheme == goby::MarshallingScheme::PROTOBUF ||
-                      scheme == goby::MarshallingScheme::DCCL,
+    static_assert(scheme == goby::middleware::MarshallingScheme::PROTOBUF ||
+                      scheme == goby::middleware::MarshallingScheme::DCCL,
                   "Scheme must be PROTOBUF or DCCL");
 
   public:
-    std::string debug_text_message(goby::LogEntry& log_entry) override
+    std::string debug_text_message(LogEntry& log_entry) override
     {
         auto msgs = parse_message(log_entry);
 
         std::stringstream ss;
-        for (typename decltype(msgs)::size_type i = 0, n = msgs.size(); i < n; ++i) {
+        for (typename decltype(msgs)::size_type i = 0, n = msgs.size(); i < n; ++i)
+        {
             if (n > 1)
                 ss << "[" << i << "]";
             ss << msgs[i]->ShortDebugString();
@@ -56,14 +60,14 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
 
     void register_read_hooks(const std::ifstream& in_log_file) override
     {
-        goby::LogEntry::filter_hook[{
+        LogEntry::filter_hook[{
             static_cast<int>(scheme), static_cast<std::string>(file_desc_group),
             google::protobuf::FileDescriptorProto::descriptor()->full_name()}] =
             [](const std::vector<unsigned char>& data) {
                 google::protobuf::FileDescriptorProto file_desc_proto;
                 file_desc_proto.ParseFromArray(&data[0], data.size());
-                goby::glog.is_debug1() &&
-                    goby::glog << "Adding: " << file_desc_proto.name() << std::endl;
+                goby::glog.is_debug1() && goby::glog << "Adding: " << file_desc_proto.name()
+                                                     << std::endl;
                 dccl::DynamicProtobufManager::add_protobuf_file(file_desc_proto);
             };
     }
@@ -76,14 +80,15 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
     }
 
     std::vector<std::shared_ptr<google::protobuf::Message> >
-    parse_message(goby::LogEntry& log_entry)
+    parse_message(LogEntry& log_entry)
     {
         std::vector<std::shared_ptr<google::protobuf::Message> > msgs;
 
         const auto& data = log_entry.data();
         auto bytes_begin = data.begin(), bytes_end = data.end(), actual_end = data.begin();
 
-        while (actual_end != bytes_end) {
+        while (actual_end != bytes_end)
+        {
             auto desc = dccl::DynamicProtobufManager::find_descriptor(log_entry.type());
 
             if (!desc)
@@ -127,16 +132,16 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             file_desc->CopyTo(&file_desc_proto);
             std::vector<unsigned char> data(file_desc_proto.ByteSize());
             file_desc_proto.SerializeToArray(&data[0], data.size());
-            goby::LogEntry entry(data, goby::MarshallingScheme::PROTOBUF,
-                                 google::protobuf::FileDescriptorProto::descriptor()->full_name(),
-                                 file_desc_group);
+            LogEntry entry(
+                data, goby::middleware::MarshallingScheme::PROTOBUF,
+                google::protobuf::FileDescriptorProto::descriptor()->full_name(), file_desc_group);
             entry.serialize(&out_log_file);
         }
         else
         {
-            goby::glog.is_debug2() &&
-                goby::glog << "Skipping already written file descriptor proto for: "
-                           << file_desc->name() << std::endl;
+            goby::glog.is_debug2() && goby::glog
+                                          << "Skipping already written file descriptor proto for: "
+                                          << file_desc->name() << std::endl;
         }
     }
 
@@ -145,8 +150,8 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
         auto desc = dccl::DynamicProtobufManager::find_descriptor(protobuf_type);
         if (!desc)
         {
-            goby::glog.is_warn() &&
-                goby::glog << "Unknown protobuf type: " << protobuf_type << std::endl;
+            goby::glog.is_warn() && goby::glog << "Unknown protobuf type: " << protobuf_type
+                                               << std::endl;
         }
         else
         {
@@ -158,11 +163,12 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
     std::set<const google::protobuf::FileDescriptor*> written_file_desc_;
 };
 
-class ProtobufPlugin : public ProtobufPluginBase<goby::MarshallingScheme::PROTOBUF>
+class ProtobufPlugin : public ProtobufPluginBase<goby::middleware::MarshallingScheme::PROTOBUF>
 {
 };
 
 } // namespace log
+} // namespace middleware
 } // namespace goby
 
 #endif

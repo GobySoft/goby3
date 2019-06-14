@@ -38,7 +38,7 @@ To get started using the goby-acomms libraries as quickly as possible:
     <li>A driver for interacting with the acoustic %modem firmware: \ref driver "modemdriver".</li>
     <li>Time division multiple access (TDMA) medium access control (MAC): \ref amac "amac".</li>
   </ul> 
-  <li> Look at the "simple" code examples that accompany each component (\ref acomms/dccl/dccl_simple/dccl_simple.cpp "dccl_simple.cpp", \ref acomms/queue/queue_simple/queue_simple.cpp "queue_simple.cpp", \ref acomms/modemdriver/driver_simple/driver_simple.cpp "driver_simple.cpp",  \ref acomms/amac/amac_simple/amac_simple.cpp "amac_simple.cpp"). Then look at the example that uses all the components together: \ref acomms/chat/chat.cpp "chat.cpp".  The full list of examples is given in \ref OSI_table "this table". </li>
+<!--  <li> Look at the "simple" code examples that accompany each component (\ref acomms/dccl/dccl_simple/dccl_simple.cpp "dccl_simple.cpp", \ref acomms/queue/queue_simple/queue_simple.cpp "queue_simple.cpp", \ref acomms/modemdriver/driver_simple/driver_simple.cpp "driver_simple.cpp",  \ref acomms/amac/amac_simple/amac_simple.cpp "amac_simple.cpp"). Then look at the example that uses all the components together: \ref acomms/chat/chat.cpp "chat.cpp".  The full list of examples is given in \ref OSI_table "this table". </li> -->
   <li> Refer to the rest of the documentation as needed.</li>
 </ol>
 
@@ -69,9 +69,9 @@ To start on some (hopefully) common ground, let's begin with an analogy to Open 
     <td>\ref dccl</td>
     <td>goby::acomms::DCCLCodec</td>
     <td>
-      \ref acomms/dccl/dccl_simple/dccl_simple.cpp "dccl_simple.cpp" <br>
+<!--      \ref acomms/dccl/dccl_simple/dccl_simple.cpp "dccl_simple.cpp" <br>
       \ref acomms/dccl/two_message/two_message.cpp "two_message.cpp" <br>
-      \ref acomms/chat/chat.cpp "chat.cpp" <br>
+      \ref acomms/chat/chat.cpp "chat.cpp" <br> -->
     </td>
   </tr>
   <tr>

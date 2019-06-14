@@ -1,4 +1,6 @@
-package goby.acomms.protobuf;
+syntax = "proto2";
+
+package goby.acomms.iridium.protobuf;
 
 message DirectIPMOPreHeader
 {

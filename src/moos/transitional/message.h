@@ -35,20 +35,23 @@
 
 #include "goby/acomms/protobuf/queue.pb.h"
 
+#include "goby/util/as.h"
 #include "message_var.h"
-#include "message_var_bool.h"
-#include "message_var_enum.h"
-#include "message_var_float.h"
-#include "message_var_head.h"
-#include "message_var_hex.h"
-#include "message_var_int.h"
-#include "message_var_static.h"
-#include "message_var_string.h"
+// #include "message_var_bool.h"
+// #include "message_var_enum.h"
+// #include "message_var_float.h"
+// #include "message_var_head.h"
+// #include "message_var_hex.h"
+// #include "message_var_int.h"
+// #include "message_var_static.h"
+// #include "message_var_string.h"
 
 #include "dccl_constants.h"
 #include "message_publish.h"
 
 namespace goby
+{
+namespace moos
 {
 namespace transitional
 {
@@ -119,7 +122,7 @@ class DCCLMessage
     unsigned repeat() const { return repeat_; }
 
     DCCLMessageVar& last_message_var() { return *layout_.back(); }
-    DCCLMessageVar& header_var(transitional::DCCLHeaderPart p) { return *header_[p]; }
+    DCCLMessageVar& header_var(moos::transitional::DCCLHeaderPart p) { return *header_[p]; }
     DCCLPublish& last_publish() { return publishes_.back(); }
 
     std::vector<std::shared_ptr<DCCLMessageVar> >& layout() { return layout_; }
@@ -207,5 +210,6 @@ class DCCLMessage
 
 //        std::ostream& operator<< (std::ostream& out, const DCCLMessage& message);
 } // namespace transitional
+} // namespace moos
 } // namespace goby
 #endif

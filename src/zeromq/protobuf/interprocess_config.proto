@@ -1,0 +1,24 @@
+syntax = "proto2";
+package goby.zeromq.protobuf;
+
+message InterProcessPortalConfig
+{
+    optional string platform = 1 [default = "default_goby_platform"];
+
+    enum Transport
+    {
+        IPC = 2;
+        TCP = 3;
+    };
+
+    optional Transport transport = 2 [default = IPC];
+    optional string socket_name = 3;
+    optional string ipv4_address = 4 [default = "127.0.0.1"];
+    optional uint32 tcp_port = 5 [default = 11144];
+
+    optional uint32 send_queue_size = 6 [default = 1000];
+    optional uint32 receive_queue_size = 7 [default = 1000];
+    optional uint32 zeromq_number_io_threads = 8 [default = 4];
+
+    optional uint32 manager_timeout_seconds = 10 [default = 1];
+}

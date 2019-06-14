@@ -23,8 +23,8 @@
 #ifndef ASIOLineBasedConnection20100715H
 #define ASIOLineBasedConnection20100715H
 
-#include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
+#include "goby/util/debug_logger.h"
 
 #include "interface.h"
 
@@ -75,7 +75,7 @@ template <typename ASIOAsyncReadStream> class LineBasedConnection
         }
         else if (error)
         {
-            //                    goby::glog.is(goby::common::logger::DEBUG2, goby::common::logger_lock::lock) &&
+            //                    goby::glog.is(goby::util::logger::DEBUG2, goby::util::logger_lock::lock) &&
             //                        goby::glog << "Error on reading from socket: " << error.message() << std::endl << unlock;
             return socket_close(error);
         }
@@ -88,7 +88,7 @@ template <typename ASIOAsyncReadStream> class LineBasedConnection
         if (!local_endpoint().empty())
             in_datagram_.set_dest(local_endpoint());
 
-        in_datagram_.set_time(goby::common::goby_time<double>());
+        in_datagram_.set_time(goby::time::SystemClock::now<goby::time::SITime>().value());
         char last = interface_->delimiter().at(interface_->delimiter().length() - 1);
         std::getline(is, line, last);
 
@@ -107,7 +107,7 @@ template <typename ASIOAsyncReadStream> class LineBasedConnection
         }
         else if (error)
         {
-            //                    goby::glog.is(goby::common::logger::DEBUG2, goby::common::logger_lock::lock) &&
+            //                    goby::glog.is(goby::util::logger::DEBUG2, goby::util::logger_lock::lock) &&
             //                        goby::glog << "Error on writing from socket: " << error.message() << std::endl << unlock;
 
             return socket_close(error);

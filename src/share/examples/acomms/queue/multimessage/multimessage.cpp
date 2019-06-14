@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
     //
     //  0. Initialize logging
     //
-    goby::glog.add_stream(goby::common::logger::VERBOSE, &std::cerr);
+    goby::glog.add_stream(goby::util::logger::VERBOSE, &std::cerr);
     goby::glog.set_name(argv[0]);
 
     //

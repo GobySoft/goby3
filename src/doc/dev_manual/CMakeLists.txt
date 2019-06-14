@@ -1,27 +1,9 @@
 file(GLOB doxy_body/* DOXY_SRC)
 
-if(build_common)
-  set(DOC_DEPENDS_LIBS goby_common)
-endif()
-
-if(build_acomms)
-  set(DOC_DEPENDS_LIBS "${DOC_DEPENDS_LIBS};goby_acomms")
-endif()
-
-if(build_util)
-  set(DOC_DEPENDS_LIBS "${DOC_DEPENDS_LIBS};goby_util")
-endif()
+set(DOC_DEPENDS_LIBS "${DOC_DEPENDS_LIBS};goby")
 
 if(build_moos)
   set(DOC_DEPENDS_LIBS "${DOC_DEPENDS_LIBS};goby_moos")
-endif()
-
-if(build_middleware)
-  set(DOC_DEPENDS_LIBS "${DOC_DEPENDS_LIBS};goby_middleware")
-endif()
-
-if(build_pb)
-  set(DOC_DEPENDS_LIBS "${DOC_DEPENDS_LIBS};goby_pb")
 endif()
 
 add_custom_command(OUTPUT ${goby_SHARE_DIR}/doc/goby-dev.pdf

@@ -24,11 +24,11 @@
 std::vector<void*> plugin_handles_;
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_group("pAcommsHandler", goby::common::Colors::yellow);
+    goby::glog.add_group("pAcommsHandler", goby::util::Colors::yellow);
 
     // load plugins from environmental variable
     char* plugins = getenv("PACOMMSHANDLER_PLUGINS");
@@ -54,15 +54,15 @@ int main(int argc, char* argv[])
             const char* (*name_function)(void) =
                 (const char* (*)(void))dlsym(handle, "goby_driver_name");
             if (name_function)
-                CpAcommsHandler::driver_plugins_.insert(
+                goby::apps::moos::CpAcommsHandler::driver_plugins_.insert(
                     std::make_pair(std::string((*name_function)()), handle));
         }
     }
 
-    int return_value = goby::moos::run<CpAcommsHandler>(argc, argv);
+    int return_value = goby::moos::run<goby::apps::moos::CpAcommsHandler>(argc, argv);
 
-    goby::transitional::DCCLAlgorithmPerformer::deleteInstance();
-    CpAcommsHandler::delete_instance();
+    goby::moos::transitional::DCCLAlgorithmPerformer::deleteInstance();
+    goby::apps::moos::CpAcommsHandler::delete_instance();
     dccl::DynamicProtobufManager::protobuf_shutdown();
 
     for (int i = 0, n = plugin_handles_.size(); i < n; ++i) dlclose(plugin_handles_[i]);

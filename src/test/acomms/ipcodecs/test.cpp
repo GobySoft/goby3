@@ -24,7 +24,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::glog;
 
 void ip_test(const std::string& hex, dccl::Codec& dccl_1)
@@ -50,7 +50,7 @@ void ip_test(const std::string& hex, dccl::Codec& dccl_1)
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::cerr);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
 
     dccl::FieldCodecManager::add<goby::acomms::IPGatewayEmptyIdentifierCodec<0xF001> >(

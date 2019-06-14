@@ -27,13 +27,15 @@
 #include <boost/crc.hpp>
 #include <cstdint>
 
-#include "goby/common/exception.h"
-#include "goby/common/logger.h"
+#include "goby/exception.h"
+#include "goby/util/debug_logger.h"
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/serialize_parse.h"
 
 namespace goby
+{
+namespace middleware
 {
 namespace log
 {
@@ -42,7 +44,6 @@ class LogException : public std::runtime_error
   public:
     LogException(const std::string& s) : std::runtime_error(s){};
 };
-}
 
 template <int Bytes> struct uint
 {
@@ -193,13 +194,13 @@ class LogEntry
     template <typename Unsigned> Unsigned string_to_netint(std::string s) const
     {
         Unsigned u(0);
-        auto size = std::numeric_limits<Unsigned>::digits / 8;
+        std::string::size_type size = std::numeric_limits<Unsigned>::digits / 8;
         if (s.size() > size)
             s.erase(0, s.size() - size);
         if (s.size() < size)
             s.insert(0, size - s.size(), '\0');
 
-        for (int i = 0; i < size; ++i) u |= (s[i] & 0xff) << ((size - (i + 1)) * 8);
+        for (decltype(size) i = 0; i < size; ++i) u |= (s[i] & 0xff) << ((size - (i + 1)) * 8);
         return u;
     }
 
@@ -220,6 +221,8 @@ class LogEntry
     const std::string magic_{"GBY3"};
 };
 
+} // namespace middleware
 } // namespace goby
+} // namespace log
 
 #endif

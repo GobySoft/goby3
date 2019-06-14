@@ -28,11 +28,14 @@
 
 namespace goby
 {
+namespace middleware
+{
 namespace groups
 {
-constexpr goby::Group terminate_request{"goby::terminate::request"};
-constexpr goby::Group terminate_response{"goby::terminate::response"};
+constexpr goby::middleware::Group terminate_request{"goby::terminate::request"};
+constexpr goby::middleware::Group terminate_response{"goby::terminate::response"};
 } // namespace groups
+} // namespace goby
 } // namespace goby
 
 #endif

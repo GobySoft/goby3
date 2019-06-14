@@ -26,27 +26,28 @@
 #include <boost/bind.hpp>
 #include <boost/date_time/gregorian/gregorian_types.hpp>
 
-#include "goby/acomms/acomms_helpers.h"
-#include "goby/common/logger.h"
+#include "goby/time/io.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
 
 #include "mac_manager.h"
 
-using goby::common::goby_time;
-using goby::util::as;
-using namespace goby::common::tcolor;
-using namespace goby::common::logger;
 using goby::glog;
+using namespace goby::util::logger;
+using namespace goby::util::tcolor;
 
 int goby::acomms::MACManager::count_;
 
 goby::acomms::MACManager::MACManager()
-    : timer_(io_), work_(io_), current_slot_(std::list<protobuf::ModemTransmission>::begin()),
+    : timer_(io_),
+      work_(io_),
+      current_slot_(std::list<protobuf::ModemTransmission>::begin()),
       started_up_(false)
 {
     ++count_;
 
-    glog_mac_group_ = "goby::acomms::amac::" + as<std::string>(count_);
-    goby::glog.add_group(glog_mac_group_, common::Colors::blue);
+    glog_mac_group_ = "goby::acomms::amac::" + goby::util::as<std::string>(count_);
+    goby::glog.add_group(glog_mac_group_, util::Colors::blue);
 }
 
 goby::acomms::MACManager::~MACManager() {}
@@ -56,7 +57,7 @@ void goby::acomms::MACManager::restart_timer()
     // cancel any old timer jobs waiting
     timer_.cancel();
     timer_.expires_at(next_slot_t_);
-    timer_.async_wait(boost::bind(&MACManager::begin_slot, this, _1));
+    timer_.async_wait([this](const boost::system::error_code& e) { begin_slot(e); });
 }
 
 void goby::acomms::MACManager::stop_timer() { timer_.cancel(); }
@@ -133,7 +134,8 @@ void goby::acomms::MACManager::begin_slot(const boost::system::error_code& e)
         return;
 
     // check skew
-    if (std::abs(goby_time<double>() - goby::util::as<double>(next_slot_t_)) > ALLOWED_SKEW_SECONDS)
+    if (std::abs((time::SystemClock::now() - next_slot_t_) / std::chrono::microseconds(1)) >
+        allowed_skew_ / std::chrono::microseconds(1))
     {
         glog.is(DEBUG1) && glog << group(glog_mac_group_) << warn
                                 << "Clock skew detected, updating MAC." << std::endl;
@@ -142,7 +144,7 @@ void goby::acomms::MACManager::begin_slot(const boost::system::error_code& e)
     }
 
     protobuf::ModemTransmission s = *current_slot_;
-    s.set_time(goby::util::as<std::uint64_t>(next_slot_t_));
+    s.set_time_with_units(time::convert<time::MicroTime>(next_slot_t_));
 
     bool we_are_transmitting = true;
     switch (cfg_.type())
@@ -207,8 +209,8 @@ void goby::acomms::MACManager::increment_slot()
     {
         case protobuf::MAC_FIXED_DECENTRALIZED:
         case protobuf::MAC_POLLED:
-            next_slot_t_ += boost::posix_time::microseconds(
-                static_cast<long>(current_slot_->slot_seconds() * 1e6));
+            next_slot_t_ += time::convert_duration<std::chrono::microseconds>(
+                current_slot_->slot_seconds_with_units());
 
             ++current_slot_;
             if (current_slot_ == std::list<protobuf::ModemTransmission>::end())
@@ -219,47 +221,46 @@ void goby::acomms::MACManager::increment_slot()
     }
 }
 
-boost::posix_time::ptime goby::acomms::MACManager::next_cycle_time()
+goby::time::SystemClock::time_point goby::acomms::MACManager::next_cycle_time()
 {
-    using namespace boost::gregorian;
-    using namespace boost::posix_time;
+    auto now = time::SystemClock::now();
 
-    ptime now = goby_time();
-
-    ptime reference;
+    decltype(now) reference;
     switch (cfg_.ref_time_type())
     {
         case protobuf::MACConfig::REFERENCE_START_OF_DAY:
-            reference = ptime(now.date(), seconds(0));
+            reference = time::convert<decltype(reference)>(
+                boost::posix_time::ptime(time::convert<boost::posix_time::ptime>(now).date(),
+                                         boost::posix_time::seconds(0)));
             break;
         case protobuf::MACConfig::REFERENCE_FIXED:
-            reference = goby::common::unix_double2ptime(cfg_.fixed_ref_time());
+            reference = time::convert<decltype(reference)>(cfg_.fixed_ref_time_with_units());
             break;
     }
 
-    time_duration duration_since_ref = now - reference;
-    std::int64_t microsec_since_reference =
-        duration_since_ref.total_seconds() * 1000000ll +
-        (duration_since_ref - seconds(duration_since_ref.total_seconds())).total_microseconds();
+    time::SystemClock::duration duration_since_ref = now - reference;
+
+    auto cycle_dur = cycle_duration();
+    cycles_since_reference_ = (duration_since_ref / cycle_dur) + 1;
 
     glog.is(DEBUG2) && glog << group(glog_mac_group_) << "reference: " << reference << std::endl;
 
-    glog.is(DEBUG2) && glog << group(glog_mac_group_)
-                            << "microseconds since reference: " << microsec_since_reference
-                            << std::endl;
+    glog.is(DEBUG2) &&
+        glog << group(glog_mac_group_) << "duration since reference: "
+             << std::chrono::duration_cast<std::chrono::microseconds>(duration_since_ref).count()
+             << " us" << std::endl;
 
-    glog.is(DEBUG2) && glog << group(glog_mac_group_) << "cycle duration: " << cycle_duration()
-                            << std::endl;
-
-    cycles_since_reference_ = microsec_since_reference / (cycle_duration() * 1000000) + 1;
+    glog.is(DEBUG2) &&
+        glog << group(glog_mac_group_) << "cycle duration: "
+             << std::chrono::duration_cast<std::chrono::microseconds>(cycle_dur).count() << " us"
+             << std::endl;
 
     glog.is(DEBUG2) && glog << group(glog_mac_group_)
                             << "cycles since reference: " << cycles_since_reference_ << std::endl;
 
-    double secs_to_next = cycles_since_reference_ * cycle_duration();
+    auto time_to_next = cycles_since_reference_ * cycle_dur;
 
-    return reference + seconds(static_cast<long>(secs_to_next)) +
-           microseconds(static_cast<long>((secs_to_next - floor(secs_to_next)) * 1000000));
+    return reference + time_to_next;
 }
 
 void goby::acomms::MACManager::update()
@@ -291,9 +292,9 @@ void goby::acomms::MACManager::update()
                                 << "Starting next available slot (in middle of cycle)" << std::endl;
 
         // step back a cycle
-        next_slot_t_ -= boost::posix_time::microseconds(static_cast<long>(cycle_duration() * 1e6));
+        next_slot_t_ -= cycle_duration();
 
-        boost::posix_time::ptime now = goby_time();
+        auto now = time::SystemClock::now();
 
         // skip slots until we're at a slot that is in the future
         while (next_slot_t_ < now) increment_slot();
@@ -306,10 +307,17 @@ void goby::acomms::MACManager::update()
         restart_timer();
 }
 
-double goby::acomms::MACManager::cycle_duration()
+goby::time::SystemClock::duration goby::acomms::MACManager::cycle_duration()
 {
-    double length = 0;
-    for (const protobuf::ModemTransmission& slot : *this) length += slot.slot_seconds();
+    time::MicroTime length = 0;
+    for (const protobuf::ModemTransmission& slot : *this)
+        length += slot.slot_seconds_with_units<time::MicroTime>();
+    return time::convert_duration<goby::time::SystemClock::duration>(length);
+}
 
-    return length;
+std::ostream& goby::acomms::operator<<(std::ostream& os, const MACManager& mac)
+{
+    for (std::list<protobuf::ModemTransmission>::const_iterator it = mac.begin(), n = mac.end();
+         it != n; ++it)
+    { os << *it; } return os;
 }

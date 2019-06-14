@@ -33,7 +33,7 @@
 #include "goby/acomms/protobuf/amac.pb.h"
 #include "goby/acomms/protobuf/amac_config.pb.h"
 #include "goby/acomms/protobuf/modem_message.pb.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/as.h"
 
 namespace goby
@@ -85,21 +85,20 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     //@{
     /// \brief Signals when it is time for this platform to begin transmission of an acoustic message at the start of its TDMA slot. Typically connected to ModemDriverBase::handle_initiate_transmission() using bind().
     ///
-    /// \param m a message containing details of the transmission to be initated.  (protobuf::ModemMsgBase defined in acomms_modem_message.proto)
+    /// "m": a message containing details of the transmission to be initated.  (protobuf::ModemMsgBase defined in acomms_modem_message.proto)
     boost::signals2::signal<void(const protobuf::ModemTransmission& m)>
         signal_initiate_transmission;
 
     /// \brief Signals the start of all transmissions (even when we don't transmit)
     ///
-    /// \param m a message containing details of the transmission to be initated.  (protobuf::ModemMsgBase defined in acomms_modem_message.proto)
+    /// "m": a message containing details of the transmission to be initated.  (protobuf::ModemMsgBase defined in acomms_modem_message.proto)
 
     boost::signals2::signal<void(const protobuf::ModemTransmission& m)> signal_slot_start;
 
     /// \example acomms/amac/amac_simple/amac_simple.cpp
-    /// \example acomms/chat/chat.cpp
 
     unsigned cycle_count() { return std::list<protobuf::ModemTransmission>::size(); }
-    double cycle_duration();
+    time::SystemClock::duration cycle_duration();
 
     boost::asio::io_service& get_io_service() { return io_; }
 
@@ -107,7 +106,7 @@ class MACManager : public std::list<protobuf::ModemTransmission>
 
   private:
     void begin_slot(const boost::system::error_code&);
-    boost::posix_time::ptime next_cycle_time();
+    time::SystemClock::time_point next_cycle_time();
 
     void increment_slot();
 
@@ -118,10 +117,8 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     void position_blank();
 
     // allowed offset from actual end of slot
-    enum
-    {
-        ALLOWED_SKEW_SECONDS = 2
-    };
+
+    const time::SystemClock::duration allowed_skew_{std::chrono::seconds(2)};
 
   private:
     MACManager(const MACManager&);
@@ -132,12 +129,14 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     // asynchronous timer
     boost::asio::io_service io_;
 
-    boost::asio::basic_deadline_timer<goby::common::GobyTime> timer_;
+    boost::asio::basic_waitable_timer<goby::time::SystemClock> timer_;
     // give the io_service some work to do forever
     boost::asio::io_service::work work_;
 
-    boost::posix_time::ptime next_cycle_t_;
-    boost::posix_time::ptime next_slot_t_;
+    // start of the next cycle (cycle = all slots)
+    time::SystemClock::time_point next_cycle_t_;
+    // start of the next slot
+    time::SystemClock::time_point next_slot_t_;
 
     std::list<protobuf::ModemTransmission>::iterator current_slot_;
 
@@ -157,12 +156,7 @@ inline bool operator==(const ModemTransmission& a, const ModemTransmission& b)
 }
 } // namespace protobuf
 
-inline std::ostream& operator<<(std::ostream& os, const MACManager& mac)
-{
-    for (std::list<protobuf::ModemTransmission>::const_iterator it = mac.begin(), n = mac.end();
-         it != n; ++it)
-    { os << *it; } return os;
-}
+std::ostream& operator<<(std::ostream& os, const MACManager& mac);
 
 } // namespace acomms
 } // namespace goby

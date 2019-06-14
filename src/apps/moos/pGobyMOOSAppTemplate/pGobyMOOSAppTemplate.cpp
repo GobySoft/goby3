@@ -22,27 +22,31 @@
 #include "pGobyMOOSAppTemplate.h"
 
 using goby::glog;
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using goby::moos::operator<<;
+using goby::apps::moos::protobuf::GobyMOOSAppTemplateConfig;
 
 std::shared_ptr<GobyMOOSAppTemplateConfig> master_config;
-GobyMOOSAppTemplate* GobyMOOSAppTemplate::inst_ = 0;
+goby::apps::moos::GobyMOOSAppTemplate* goby::apps::moos::GobyMOOSAppTemplate::inst_ = 0;
 
-int main(int argc, char* argv[]) { return goby::moos::run<GobyMOOSAppTemplate>(argc, argv); }
+int main(int argc, char* argv[])
+{
+    return goby::moos::run<goby::apps::moos::GobyMOOSAppTemplate>(argc, argv);
+}
 
-GobyMOOSAppTemplate* GobyMOOSAppTemplate::get_instance()
+goby::apps::moos::GobyMOOSAppTemplate* goby::apps::moos::GobyMOOSAppTemplate::get_instance()
 {
     if (!inst_)
     {
         master_config.reset(new GobyMOOSAppTemplateConfig);
-        inst_ = new GobyMOOSAppTemplate(*master_config);
+        inst_ = new goby::apps::moos::GobyMOOSAppTemplate(*master_config);
     }
     return inst_;
 }
 
-void GobyMOOSAppTemplate::delete_instance() { delete inst_; }
+void goby::apps::moos::GobyMOOSAppTemplate::delete_instance() { delete inst_; }
 
-GobyMOOSAppTemplate::GobyMOOSAppTemplate(GobyMOOSAppTemplateConfig& cfg)
+goby::apps::moos::GobyMOOSAppTemplate::GobyMOOSAppTemplate(GobyMOOSAppTemplateConfig& cfg)
     : GobyMOOSApp(&cfg), cfg_(cfg)
 {
     // example subscription -
@@ -50,15 +54,16 @@ GobyMOOSAppTemplate::GobyMOOSAppTemplate(GobyMOOSAppTemplateConfig& cfg)
     subscribe("DB_TIME", &GobyMOOSAppTemplate::handle_db_time, this);
 }
 
-GobyMOOSAppTemplate::~GobyMOOSAppTemplate() {}
+goby::apps::moos::GobyMOOSAppTemplate::~GobyMOOSAppTemplate() {}
 
-void GobyMOOSAppTemplate::loop()
+void goby::apps::moos::GobyMOOSAppTemplate::loop()
 {
     // example publication
     publish("TEST", MOOSTime());
+    publish("CONFIG_A", cfg_.config_a());
 }
 
-void GobyMOOSAppTemplate::handle_db_time(const CMOOSMsg& msg)
+void goby::apps::moos::GobyMOOSAppTemplate::handle_db_time(const CMOOSMsg& msg)
 {
     glog.is(VERBOSE) && glog << "Time is: " << std::setprecision(15) << msg.GetDouble()
                              << std::endl;

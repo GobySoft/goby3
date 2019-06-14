@@ -1,0 +1,11 @@
+add_subdirectory(middleware_basic)
+add_subdirectory(middleware_interprocess_forwarder)
+add_subdirectory(middleware_speed)
+add_subdirectory(middleware_regex)
+
+add_subdirectory(zeromq_and_intervehicle)
+add_subdirectory(zeromq_portal_without_interthread)
+
+add_subdirectory(single_thread_app1)
+add_subdirectory(multi_thread_app1)
+add_subdirectory(multi_thread_app2)

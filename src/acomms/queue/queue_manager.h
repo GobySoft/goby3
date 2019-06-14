@@ -46,6 +46,11 @@ namespace acomms
 /// \brief provides an API to the goby-acomms Queuing Library.
 /// \ingroup acomms_api
 /// \sa acomms_queue.proto and acomms_modem_message.proto for definition of Google Protocol Buffers messages (namespace goby::acomms::protobuf).
+
+/// \example acomms/queue/queue_simple/queue_simple.cpp
+/// simple.proto
+/// \verbinclude simple.proto
+/// queue_simple.cpp
 class QueueManager
 {
   public:
@@ -106,7 +111,6 @@ class QueueManager
     ///
     /// Data from the highest priority %queue(s) will be combined to form a message equal or less than the size requested in ModemMessage message_in. If using one of the classes inheriting ModemDriverBase, this method should be connected to ModemDriverBase::signal_data_request.
     /// \param msg The ModemTransmission containing information about the data request and is the place where the request data will be stored (in the repeated field ModemTransmission::frame).
-    /// \return true if successful in finding data to send, false if no data is available
     void handle_modem_data_request(protobuf::ModemTransmission* msg);
 
     /// \brief Receive incoming data from the %modem.
@@ -177,32 +181,33 @@ class QueueManager
     //@{
     /// \brief Signals when acknowledgment of proper message receipt has been received. This is only sent for queues with queue.ack == true with an explicit destination (ModemMessageBase::dest() != 0)
     ///
-    /// \param ack_msg a message containing details of the acknowledgment and the acknowledged transmission. (protobuf::ModemMsgAck is defined in acomms_modem_message.proto)
+    /// "ack_msg": a message containing details of the acknowledgment.
+    /// "orig_msg": the original message for which this acknowledgment applies.
     boost::signals2::signal<void(const protobuf::ModemTransmission& ack_msg,
                                  const google::protobuf::Message& orig_msg)>
         signal_ack;
 
     /// \brief Signals when a DCCL message is received.
     ///
-    /// \param msg the received transmission.
+    /// "msg": the received transmission.
     boost::signals2::signal<void(const google::protobuf::Message& msg)> signal_receive;
 
     /// \brief Signals when a message is expires (exceeds its time-to-live or ttl) before being sent (if queue.ack == false) or before being acknowledged (if queue.ack == true).
     ///
-    /// \param expire_msg the expired transmission. (protobuf::ModemDataExpire is defined in acomms_modem_message.proto)
+    /// "orig_msg": the original message which expired before transmission.
     boost::signals2::signal<void(const google::protobuf::Message& orig_msg)> signal_expire;
 
     /// \brief Forwards the data request to the application layer. This advanced feature is used when queue.encode_on_demand == true and allows for the application to provide data immediately before it is actually sent (for highly time sensitive data)
     ///
-    /// \param request_msg the details of the requested data. (protobuf::ModemDataRequest is defined in acomms_modem_message.proto)
-    /// \param data_msg pointer to store the supplied data. The message is of the type for this queue.
+    /// "request_msg": the details of the requested data. (protobuf::ModemDataRequest is defined in acomms_modem_message.proto)
+    /// "data_msg": pointer to store the supplied data. The message is of the type for this queue.
     boost::signals2::signal<void(const protobuf::ModemTransmission& request_msg,
                                  google::protobuf::Message* data_msg)>
         signal_data_on_demand;
 
     /// \brief Signals when any queue changes size (message is popped or pushed)
     ///
-    /// \param size message containing the queue that changed size and its new size (protobuf::QueueSize is defined in acomms_queue.proto).
+    /// "size": message containing the queue that changed size and its new size (protobuf::QueueSize is defined in queue.proto).
     boost::signals2::signal<void(protobuf::QueueSize size)> signal_queue_size_change;
     //@}
 
@@ -215,12 +220,6 @@ class QueueManager
     boost::signals2::signal<void(const protobuf::QueuedMessageMeta& meta,
                                  const google::protobuf::Message& data_msg, int modem_id)>
         signal_in_route;
-
-    /// \example acomms/queue/queue_simple/queue_simple.cpp
-    /// simple.proto
-    /// \verbinclude simple.proto
-    /// queue_simple.cpp
-    /// \example acomms/chat/chat.cpp
 
   private:
     QueueManager(const QueueManager&);

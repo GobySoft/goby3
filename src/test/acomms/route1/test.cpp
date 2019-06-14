@@ -31,24 +31,24 @@
 //         |                   v                  |
 //        in                 Driver  ------>    Driver
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/amac/mac_manager.h"
 #include "goby/acomms/bind.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
 #include "goby/acomms/route/route.h"
-#include "goby/common/logger.h"
-#include "goby/common/time.h"
+#include "goby/time.h"
 #include "goby/util/as.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 #include "test.pb.h"
 #include <cstdlib>
 
-using namespace goby::common::logger;
+using namespace goby::util::logger;
 using namespace goby::acomms;
-using goby::common::goby_time;
 using goby::util::as;
 using namespace boost::posix_time;
+using goby::acomms::udp::protobuf::UDPDriverConfig;
+using goby::test::acomms::protobuf::RouteMessage;
 
 const int ID_0_1 = 1;
 const int ID_1_1 = (1 << 8) + 1;
@@ -70,7 +70,7 @@ RouteMessage in_msg;
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     goby::glog.set_name(argv[0]);
 
     // set up queues
@@ -183,15 +183,15 @@ int main(int argc, char* argv[])
     // create a message
     in_msg.set_src(ID_0_1);
     in_msg.set_dest(ID_3_1);
-    in_msg.set_time(goby_time<std::uint64_t>() / 1000000 *
-                    1000000); // integer second for _time codec
+    in_msg.set_time_with_units(boost::units::round(
+        goby::time::SystemClock::now<goby::time::SITime>())); // integer second for _time codec
     in_msg.set_telegram("0-->3");
 
     // create transmission from message
     goby::acomms::protobuf::ModemTransmission initial_transmit;
     initial_transmit.set_src(ID_0_1);
     initial_transmit.set_dest(ID_1_1);
-    initial_transmit.set_time(goby_time<std::uint64_t>());
+    initial_transmit.set_time_with_units(goby::time::SystemClock::now<goby::time::MicroTime>());
     initial_transmit.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
 
     goby::acomms::DCCLCodec* dccl = goby::acomms::DCCLCodec::get();

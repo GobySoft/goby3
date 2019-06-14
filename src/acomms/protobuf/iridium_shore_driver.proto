@@ -1,5 +1,8 @@
-import "goby/common/protobuf/option_extensions.proto";
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
+
+package goby.acomms.iridium.protobuf;
 
 message IridiumShoreDriverConfig
 {

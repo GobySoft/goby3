@@ -21,25 +21,31 @@
 
 #include "driver_tester.h"
 
-using namespace goby::common::logger;
+#include "goby/util/protobuf/io.h"
+
+using namespace goby::util::logger;
 using namespace goby::acomms;
-using goby::common::goby_time;
 using goby::util::as;
 using namespace boost::posix_time;
 
-DriverTester::DriverTester(std::shared_ptr<goby::acomms::ModemDriverBase> driver1,
-                           std::shared_ptr<goby::acomms::ModemDriverBase> driver2,
-                           const goby::acomms::protobuf::DriverConfig& cfg1,
-                           const goby::acomms::protobuf::DriverConfig& cfg2,
-                           const std::vector<int>& tests_to_run,
-                           goby::acomms::protobuf::DriverType driver_type)
+goby::test::acomms::DriverTester::DriverTester(
+    std::shared_ptr<goby::acomms::ModemDriverBase> driver1,
+    std::shared_ptr<goby::acomms::ModemDriverBase> driver2,
+    const goby::acomms::protobuf::DriverConfig& cfg1,
+    const goby::acomms::protobuf::DriverConfig& cfg2, const std::vector<int>& tests_to_run,
+    goby::acomms::protobuf::DriverType driver_type)
 
-    : driver1_(driver1), driver2_(driver2), check_count_(0), tests_to_run_(tests_to_run),
-      tests_to_run_index_(0), test_number_(-1), driver_type_(driver_type)
+    : driver1_(driver1),
+      driver2_(driver2),
+      check_count_(0),
+      tests_to_run_(tests_to_run),
+      tests_to_run_index_(0),
+      test_number_(-1),
+      driver_type_(driver_type)
 {
-    goby::glog.add_group("test", goby::common::Colors::green);
-    goby::glog.add_group("driver1", goby::common::Colors::green);
-    goby::glog.add_group("driver2", goby::common::Colors::yellow);
+    goby::glog.add_group("test", goby::util::Colors::green);
+    goby::glog.add_group("driver1", goby::util::Colors::green);
+    goby::glog.add_group("driver2", goby::util::Colors::yellow);
 
     goby::acomms::connect(&driver1_->signal_receive, this, &DriverTester::handle_data_receive1);
     goby::acomms::connect(&driver1_->signal_transmit_result, this,
@@ -90,7 +96,7 @@ DriverTester::DriverTester(std::shared_ptr<goby::acomms::ModemDriverBase> driver
     test_number_ = tests_to_run_[tests_to_run_index_];
 }
 
-int DriverTester::run()
+int goby::test::acomms::DriverTester::run()
 {
     try
     {
@@ -133,7 +139,7 @@ int DriverTester::run()
     }
 }
 
-void DriverTester::handle_data_request1(protobuf::ModemTransmission* msg)
+void goby::test::acomms::DriverTester::handle_data_request1(protobuf::ModemTransmission* msg)
 {
     goby::glog << group("driver1") << "Data request: " << *msg << std::endl;
 
@@ -168,17 +174,18 @@ void DriverTester::handle_data_request1(protobuf::ModemTransmission* msg)
     goby::glog << group("driver1") << "Post data request: " << *msg << std::endl;
 }
 
-void DriverTester::handle_modify_transmission1(protobuf::ModemTransmission* msg)
+void goby::test::acomms::DriverTester::handle_modify_transmission1(protobuf::ModemTransmission* msg)
 {
     goby::glog << group("driver1") << "Can modify: " << *msg << std::endl;
 }
 
-void DriverTester::handle_transmit_result1(const protobuf::ModemTransmission& msg)
+void goby::test::acomms::DriverTester::handle_transmit_result1(
+    const protobuf::ModemTransmission& msg)
 {
     goby::glog << group("driver1") << "Completed transmit: " << msg << std::endl;
 }
 
-void DriverTester::handle_data_receive1(const protobuf::ModemTransmission& msg)
+void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::ModemTransmission& msg)
 {
     goby::glog << group("driver1") << "Received: " << msg << std::endl;
 
@@ -212,9 +219,9 @@ void DriverTester::handle_data_receive1(const protobuf::ModemTransmission& msg)
             assert(msg.src() == 1);
             assert(!msg.has_dest());
 
-            ptime now = goby_time();
-            ptime reported = as<ptime>(msg.time());
-            assert(reported < now && reported > now - seconds(2));
+            auto now = goby::time::SystemClock::now();
+            auto reported = goby::time::convert<decltype(now)>(msg.time_with_units());
+            assert(reported < now && reported > now - std::chrono::seconds(2));
             ++check_count_;
         }
         break;
@@ -228,9 +235,9 @@ void DriverTester::handle_data_receive1(const protobuf::ModemTransmission& msg)
             assert(msg.src() == 1);
             assert(!msg.has_dest());
 
-            ptime now = goby_time();
-            ptime reported = as<ptime>(msg.time());
-            assert(reported < now && reported > now - seconds(2));
+            auto now = goby::time::SystemClock::now();
+            auto reported = goby::time::convert<decltype(now)>(msg.time_with_units());
+            assert(reported < now && reported > now - std::chrono::seconds(2));
             ++check_count_;
         }
         break;
@@ -292,7 +299,7 @@ void DriverTester::handle_data_receive1(const protobuf::ModemTransmission& msg)
     }
 }
 
-void DriverTester::handle_data_request2(protobuf::ModemTransmission* msg)
+void goby::test::acomms::DriverTester::handle_data_request2(protobuf::ModemTransmission* msg)
 {
     goby::glog << group("driver2") << "Data request: " << *msg << std::endl;
 
@@ -332,17 +339,18 @@ void DriverTester::handle_data_request2(protobuf::ModemTransmission* msg)
     goby::glog << group("driver2") << "Post data request: " << *msg << std::endl;
 }
 
-void DriverTester::handle_modify_transmission2(protobuf::ModemTransmission* msg)
+void goby::test::acomms::DriverTester::handle_modify_transmission2(protobuf::ModemTransmission* msg)
 {
     goby::glog << group("driver2") << "Can modify: " << *msg << std::endl;
 }
 
-void DriverTester::handle_transmit_result2(const protobuf::ModemTransmission& msg)
+void goby::test::acomms::DriverTester::handle_transmit_result2(
+    const protobuf::ModemTransmission& msg)
 {
     goby::glog << group("driver2") << "Completed transmit: " << msg << std::endl;
 }
 
-void DriverTester::handle_data_receive2(const protobuf::ModemTransmission& msg)
+void goby::test::acomms::DriverTester::handle_data_receive2(const protobuf::ModemTransmission& msg)
 {
     goby::glog << group("driver2") << "Received: " << msg << std::endl;
 
@@ -389,7 +397,7 @@ void DriverTester::handle_data_receive2(const protobuf::ModemTransmission& msg)
     }
 }
 
-void DriverTester::test0()
+void goby::test::acomms::DriverTester::test0()
 {
     // ping test
     goby::glog << group("test") << "Ping test" << std::endl;
@@ -425,7 +433,7 @@ void DriverTester::test0()
         assert(check_count_ == 1); // no clear indication of ping on the pinged modem
 }
 
-void DriverTester::test1()
+void goby::test::acomms::DriverTester::test1()
 {
     goby::glog << group("test") << "Remus LBL test" << std::endl;
 
@@ -452,7 +460,7 @@ void DriverTester::test1()
     assert(check_count_ == 1);
 }
 
-void DriverTester::test2()
+void goby::test::acomms::DriverTester::test2()
 {
     goby::glog << group("test") << "Narrowband LBL test" << std::endl;
 
@@ -487,7 +495,7 @@ void DriverTester::test2()
     assert(check_count_ == 1);
 }
 
-void DriverTester::test3()
+void goby::test::acomms::DriverTester::test3()
 {
     goby::glog << group("test") << "Mini data test" << std::endl;
 
@@ -513,7 +521,7 @@ void DriverTester::test3()
     assert(check_count_ == 2);
 }
 
-void DriverTester::test4()
+void goby::test::acomms::DriverTester::test4()
 {
     goby::glog << group("test") << "Rate 0 test" << std::endl;
 
@@ -539,7 +547,7 @@ void DriverTester::test4()
     assert(check_count_ == 3);
 }
 
-void DriverTester::test5()
+void goby::test::acomms::DriverTester::test5()
 {
     goby::glog << group("test") << "Rate 2 test" << std::endl;
 
@@ -567,7 +575,7 @@ void DriverTester::test5()
     assert(check_count_ == 3);
 }
 
-void DriverTester::test6()
+void goby::test::acomms::DriverTester::test6()
 {
     goby::glog << group("test") << "FDP data test" << std::endl;
 

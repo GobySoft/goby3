@@ -22,8 +22,10 @@
 
 #include "moos_plugin_translator.h"
 
+using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
+
 goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
-    : goby::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
+    : goby::middleware::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
 {
     moos_comms_.SetOnConnectCallBack(TranslatorOnConnectCallBack, this);
     moos_comms_.Run(cfg().moos_server(), cfg().moos_port(), translator_name(),
@@ -33,7 +35,7 @@ goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
 void goby::moos::Translator::moos_on_connect()
 {
     using goby::glog;
-    using namespace goby::common::logger;
+    using namespace goby::util::logger;
 
     for (const std::string& moos_var : moos_trigger_vars_)
     {
@@ -51,7 +53,7 @@ void goby::moos::Translator::moos_on_connect()
 void goby::moos::Translator::loop()
 {
     using goby::glog;
-    using namespace goby::common::logger;
+    using namespace goby::util::logger;
 
     MOOSMSG_LIST moos_msgs;
     moos_comms_.Fetch(moos_msgs);

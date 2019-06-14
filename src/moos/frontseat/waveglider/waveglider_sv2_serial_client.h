@@ -79,7 +79,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
           message_(SV2_MAX_SIZE * 2) // leave room for escape chars (in theory, every byte)
     {
         using goby::glog;
-        using goby::common::logger::DIE;
+        using goby::util::logger::DIE;
         try
         {
             socket_.open(name);
@@ -108,7 +108,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
         if (error)
         {
             using goby::glog;
-            using goby::common::logger::WARN;
+            using goby::util::logger::WARN;
             glog.is(WARN) && glog << "Error writing to serial connection: " << error << std::endl;
         }
     }
@@ -117,9 +117,9 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
                      MessagePart part)
     {
         using goby::glog;
-        using goby::common::logger::DEBUG1;
-        using goby::common::logger::DEBUG2;
-        using goby::common::logger::WARN;
+        using goby::util::logger::DEBUG1;
+        using goby::util::logger::DEBUG2;
+        using goby::util::logger::WARN;
 
         if (!error)
         {
@@ -224,8 +224,8 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
     bool check_escapes(MessagePart part)
     {
         using goby::glog;
-        using goby::common::logger::DEBUG1;
-        using goby::common::logger::WARN;
+        using goby::util::logger::DEBUG1;
+        using goby::util::logger::WARN;
         int escape = std::count(message_.begin(), message_.end(), SV2_ESCAPE);
         if (escape != last_escape_)
         {

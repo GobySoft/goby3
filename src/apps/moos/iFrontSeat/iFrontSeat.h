@@ -29,15 +29,19 @@
 
 #include "legacy_translator.h"
 
-FrontSeatInterfaceBase* load_driver(iFrontSeatConfig*);
-
-class iFrontSeat : public GobyMOOSApp
+namespace goby
+{
+namespace apps
+{
+namespace moos
+{
+class iFrontSeat : public goby::moos::GobyMOOSApp
 {
   public:
     static void* driver_library_handle_;
     static iFrontSeat* get_instance();
 
-    friend class FrontSeatLegacyTranslator;
+    friend class goby::apps::moos::FrontSeatLegacyTranslator;
 
   private:
     iFrontSeat();
@@ -63,12 +67,15 @@ class iFrontSeat : public GobyMOOSApp
     void handle_driver_raw_out(const goby::moos::protobuf::FrontSeatRaw& data);
 
   private:
-    std::shared_ptr<FrontSeatInterfaceBase> frontseat_;
+    std::shared_ptr<goby::moos::FrontSeatInterfaceBase> frontseat_;
 
     FrontSeatLegacyTranslator translator_;
 
-    static iFrontSeatConfig cfg_;
+    static protobuf::iFrontSeatConfig cfg_;
     static iFrontSeat* inst_;
 };
+} // namespace moos
+} // namespace apps
+} // namespace goby
 
 #endif

@@ -32,14 +32,20 @@
 
 #include "pTranslator_config.pb.h"
 
-class CpTranslator : public GobyMOOSApp
+namespace goby
+{
+namespace apps
+{
+namespace moos
+{
+class CpTranslator : public goby::moos::GobyMOOSApp
 {
   public:
     static CpTranslator* get_instance();
     static void delete_instance();
 
   private:
-    typedef boost::asio::basic_deadline_timer<goby::common::GobyTime> Timer;
+    typedef boost::asio::basic_waitable_timer<goby::time::SystemClock> Timer;
     CpTranslator();
     ~CpTranslator();
 
@@ -68,8 +74,11 @@ class CpTranslator : public GobyMOOSApp
 
     std::vector<std::shared_ptr<Timer> > timers_;
 
-    static pTranslatorConfig cfg_;
+    static protobuf::pTranslatorConfig cfg_;
     static CpTranslator* inst_;
 };
+} // namespace moos
+} // namespace apps
+} // namespace goby
 
 #endif

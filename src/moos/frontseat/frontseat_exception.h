@@ -25,6 +25,10 @@
 
 #include "goby/moos/protobuf/frontseat.pb.h"
 
+namespace goby
+{
+namespace moos
+{
 class FrontSeatException : std::runtime_error
 {
   public:
@@ -63,7 +67,7 @@ class FrontSeatException : std::runtime_error
     bool is_fs_error_;
 };
 
-inline std::ostream& operator<<(std::ostream& os, const FrontSeatException& e)
+inline std::ostream& operator<<(std::ostream& os, const goby::moos::FrontSeatException& e)
 {
     if (e.is_helm_error())
         os << "Error in the Helm: " << goby::moos::protobuf::HelmError_Name(e.helm_err());
@@ -73,5 +77,7 @@ inline std::ostream& operator<<(std::ostream& os, const FrontSeatException& e)
         os << "Unknown error.";
     return os;
 };
+} // namespace moos
+} // namespace goby
 
 #endif

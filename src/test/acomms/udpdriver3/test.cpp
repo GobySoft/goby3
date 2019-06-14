@@ -21,16 +21,21 @@
 
 // tests functionality of the UDPDriver with respect to multiple frames & acknowledgments
 
-#include "goby/acomms/modemdriver/udp_driver.h"
+#include <cstdlib>
 
-#include "goby/acomms/acomms_helpers.h"
 #include "goby/acomms/bind.h"
 #include "goby/acomms/connect.h"
+#include "goby/acomms/modemdriver/udp_driver.h"
 #include "goby/acomms/queue.h"
-#include "goby/common/logger.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
+#include "goby/util/protobuf/io.h"
+
 #include "test.pb.h"
-#include <cstdlib>
+
+using goby::acomms::udp::protobuf::UDPDriverConfig;
+using goby::test::acomms::protobuf::GobyMessage;
+using goby::test::acomms::protobuf::Header;
 
 boost::asio::io_service io1, io2;
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
@@ -51,8 +56,8 @@ void handle_data_receive1(const protobuf::ModemTransmission& msg);
 void test5()
 {
     msg_in1.set_telegram("hello!");
-    msg_in1.mutable_header()->set_time(
-        goby::util::as<std::uint64_t>(boost::posix_time::second_clock::universal_time()));
+    msg_in1.mutable_header()->set_time_with_units(
+        goby::time::SystemClock::now<goby::time::MicroTime>());
     msg_in1.mutable_header()->set_source_platform(1);
     msg_in1.mutable_header()->set_dest_platform(2);
     msg_in1.mutable_header()->set_dest_type(Header::PUBLISH_OTHER);
@@ -104,13 +109,13 @@ void test5()
 
 int main(int argc, char* argv[])
 {
-    goby::glog.add_stream(goby::common::logger::DEBUG3, &std::clog);
+    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     std::ofstream fout;
 
     if (argc == 2)
     {
         fout.open(argv[1]);
-        goby::glog.add_stream(goby::common::logger::DEBUG3, &fout);
+        goby::glog.add_stream(goby::util::logger::DEBUG3, &fout);
     }
 
     goby::glog.set_name(argv[0]);
@@ -154,7 +159,7 @@ int main(int argc, char* argv[])
     qcfg1.set_minimum_ack_wait_seconds(.1);
 
     goby::acomms::protobuf::QueuedMessageEntry* q_entry = qcfg1.add_message_entry();
-    q_entry->set_protobuf_name("GobyMessage");
+    q_entry->set_protobuf_name("goby.test.acomms.protobuf.GobyMessage");
     q_entry->set_newest_first(true);
 
     goby::acomms::protobuf::QueuedMessageEntry::Role* src_role = q_entry->add_role();
@@ -175,9 +180,9 @@ int main(int argc, char* argv[])
     q1.set_cfg(qcfg1);
     q2.set_cfg(qcfg2);
 
-    goby::glog.add_group("test", goby::common::Colors::green);
-    goby::glog.add_group("driver1", goby::common::Colors::green);
-    goby::glog.add_group("driver2", goby::common::Colors::yellow);
+    goby::glog.add_group("test", goby::util::Colors::green);
+    goby::glog.add_group("driver1", goby::util::Colors::green);
+    goby::glog.add_group("driver2", goby::util::Colors::yellow);
 
     goby::acomms::connect(&q2.signal_receive, &handle_receive);
     goby::acomms::connect(&q1.signal_queue_size_change, &qsize);

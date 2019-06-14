@@ -1,4 +1,5 @@
-import "goby/common/protobuf/option_extensions.proto";
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
 import "dccl/option_extensions.proto";
 
 message ChatMessage

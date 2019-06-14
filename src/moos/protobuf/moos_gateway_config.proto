@@ -1,10 +1,13 @@
-import "goby/common/protobuf/app3.proto";
-import "goby/middleware/protobuf/interprocess_config.proto";
+syntax = "proto2";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+
+package goby.apps.moos.protobuf;
 
 message GobyMOOSGatewayConfig
 {
-    optional goby.protobuf.App3Config app = 1;
-    optional goby.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
 
     optional string moos_server = 3 [default = "localhost"];
     optional int32 moos_port = 4 [default = 9000];
