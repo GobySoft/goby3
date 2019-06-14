@@ -282,25 +282,23 @@ void goby::util::FlexNCurses::putline(const std::string& s, unsigned scrn,
         static const std::string esc = "\33[";
         static const std::string m = "m";
 
-        size_t esc_pos = std::string::npos, m_pos = std::string::npos,
-               last_m_pos = std::string::npos;
-        size_t length = s.length();
-        while ((esc_pos = s.find(esc, esc_pos + 1)) != std::string::npos &&
+        auto length = s.length();
+        decltype(length) esc_pos = std::string::npos, m_pos = std::string::npos, next_start_pos = 0;
+        while ((esc_pos = s.find(esc, next_start_pos)) != std::string::npos &&
                (m_pos = s.find(m, esc_pos)) != std::string::npos)
         {
             std::string esc_sequence = s.substr(esc_pos, m_pos - esc_pos + 1);
 
-            if (last_m_pos != std::string::npos)
-                waddstr(win, s.substr(last_m_pos + 1, esc_pos - last_m_pos - 1).c_str());
+            waddstr(win, s.substr(next_start_pos, esc_pos - next_start_pos).c_str());
 
             // void kills compiler warning and doesn't do anything bad
             (void)wattrset(win, color2attr_t(TermColor::from_esc_code(esc_sequence)));
 
-            last_m_pos = m_pos;
+            next_start_pos = m_pos + 1;
         }
 
-        if (last_m_pos + 1 < length)
-            waddstr(win, s.substr(last_m_pos + 1).c_str());
+        if (next_start_pos < length)
+            waddstr(win, s.substr(next_start_pos).c_str());
 
         if (refresh)
             wrefresh(win);
