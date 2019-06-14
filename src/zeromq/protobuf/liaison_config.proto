@@ -4,12 +4,12 @@ import "goby/middleware/protobuf/app_config.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
 import "goby/acomms/protobuf/network_ack.proto";
 
-package goby.zeromq.protobuf;
+package goby.apps.zeromq.protobuf;
 
 message LiaisonConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
-    optional InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
 
     optional string http_address = 10 [
         default = "localhost",

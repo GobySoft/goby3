@@ -4,12 +4,12 @@ import "goby/middleware/protobuf/app_config.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
 import "goby/middleware/protobuf/intervehicle_config.proto";
 
-package goby.zeromq.protobuf;
+package goby.apps.zeromq.protobuf;
 
 message GobyDaemonConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
     optional int32 router_threads = 2 [default = 10];
-    optional InterProcessPortalConfig interprocess = 3;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 3;
     optional goby.middleware.protobuf.InterVehiclePortalConfig intervehicle = 4;
 }

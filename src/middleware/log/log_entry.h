@@ -44,7 +44,6 @@ class LogException : public std::runtime_error
   public:
     LogException(const std::string& s) : std::runtime_error(s){};
 };
-} // namespace log
 
 template <int Bytes> struct uint
 {
@@ -224,5 +223,6 @@ class LogEntry
 
 } // namespace middleware
 } // namespace goby
+} // namespace log
 
 #endif

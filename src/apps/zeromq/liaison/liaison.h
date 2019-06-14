@@ -39,6 +39,8 @@
 
 namespace goby
 {
+namespace apps
+{
 namespace zeromq
 {
 class Liaison : public goby::zeromq::MultiThreadApplication<protobuf::LiaisonConfig>
@@ -64,5 +66,6 @@ class Liaison : public goby::zeromq::MultiThreadApplication<protobuf::LiaisonCon
 
 } // namespace zeromq
 } // namespace goby
+}
 
 #endif

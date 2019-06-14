@@ -47,11 +47,13 @@ class WStandardItemModel;
 
 namespace goby
 {
+namespace apps
+{
 namespace zeromq
 {
 class ScopeCommsThread;
 
-class LiaisonScope : public LiaisonContainerWithComms<LiaisonScope, ScopeCommsThread>
+class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope, ScopeCommsThread>
 {
   public:
     LiaisonScope(const protobuf::LiaisonConfig& cfg);
@@ -142,7 +144,7 @@ class LiaisonScope : public LiaisonContainerWithComms<LiaisonScope, ScopeCommsTh
 
         void handle_add_history();
         void handle_remove_history(std::string type);
-        void add_history(const goby::zeromq::protobuf::ProtobufScopeConfig::HistoryConfig& config);
+        void add_history(const protobuf::ProtobufScopeConfig::HistoryConfig& config);
         void toggle_history_plot(Wt::WWidget* plot);
         void display_message(const std::string& group, const google::protobuf::Message& msg);
         void flush_buffer();
@@ -246,7 +248,7 @@ class LiaisonScopeProtobufModel : public Wt::WStandardItemModel
                               Wt::WContainerWidget* parent = 0);
 };
 
-class ScopeCommsThread : public LiaisonCommsThread<LiaisonScope>
+class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
 {
   public:
     ScopeCommsThread(LiaisonScope* scope, const protobuf::LiaisonConfig& config, int index)
@@ -282,5 +284,6 @@ class ScopeCommsThread : public LiaisonCommsThread<LiaisonScope>
 
 } // namespace zeromq
 } // namespace goby
+}
 
 #endif

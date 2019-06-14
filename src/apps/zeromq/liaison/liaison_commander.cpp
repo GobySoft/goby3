@@ -45,10 +45,10 @@ using namespace goby::util::logger;
 using goby::glog;
 using goby::util::logger_lock::lock;
 
-std::mutex goby::zeromq::LiaisonCommander::dbo_mutex_;
-std::shared_ptr<Dbo::backend::Sqlite3> goby::zeromq::LiaisonCommander::sqlite3_;
-std::shared_ptr<Dbo::FixedSqlConnectionPool> goby::zeromq::LiaisonCommander::connection_pool_;
-boost::posix_time::ptime goby::zeromq::LiaisonCommander::last_db_update_time_(
+std::mutex goby::apps::zeromq::LiaisonCommander::dbo_mutex_;
+std::shared_ptr<Dbo::backend::Sqlite3> goby::apps::zeromq::LiaisonCommander::sqlite3_;
+std::shared_ptr<Dbo::FixedSqlConnectionPool> goby::apps::zeromq::LiaisonCommander::connection_pool_;
+boost::posix_time::ptime goby::apps::zeromq::LiaisonCommander::last_db_update_time_(
     goby::time::SystemClock::now<boost::posix_time::ptime>());
 
 const std::string MESSAGE_INCLUDE_TEXT = "include";
@@ -57,7 +57,7 @@ const std::string MESSAGE_REMOVE_TEXT = "remove";
 const std::string STRIPE_ODD_CLASS = "odd";
 const std::string STRIPE_EVEN_CLASS = "even";
 
-goby::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonConfig& cfg)
+goby::apps::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonConfig& cfg)
     : LiaisonContainerWithComms<LiaisonCommander, CommanderCommsThread>(cfg),
       pb_commander_config_(cfg.pb_commander_config()),
       commands_div_(new WStackedWidget),
@@ -76,7 +76,7 @@ goby::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonConfig& 
     set_name("Commander");
 }
 
-void goby::zeromq::LiaisonCommander::display_notify_subscription(
+void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
     const std::vector<unsigned char>& data, int scheme, const std::string& type,
     const std::string& group)
 {
@@ -123,7 +123,7 @@ void goby::zeromq::LiaisonCommander::display_notify_subscription(
     }
 }
 
-// void goby::zeromq::LiaisonCommander::moos_inbox(CMOOSMsg& msg)
+// void goby::apps::zeromq::LiaisonCommander::moos_inbox(CMOOSMsg& msg)
 // {
 //     glog.is(DEBUG1) && glog << "LiaisonCommander: Got message: " << msg <<  std::endl;
 
@@ -133,7 +133,7 @@ void goby::zeromq::LiaisonCommander::display_notify_subscription(
 //         goby::acomms::protobuf::NetworkAck ack;
 //         parse_for_moos(value, &ack);
 
-//         Dbo::ptr<CommandEntry> acked_command(static_cast<goby::zeromq::CommandEntry*>(0));
+//         Dbo::ptr<CommandEntry> acked_command(static_cast<CommandEntry*>(0));
 //         {
 //             std::lock_guard<std::mutex> slock(dbo_mutex_);
 //             Dbo::Transaction transaction(controls_div_->session_);
@@ -165,7 +165,7 @@ void goby::zeromq::LiaisonCommander::display_notify_subscription(
 //         }
 //     }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::increment_incoming_messages(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::increment_incoming_messages(
     const WMouseEvent& event)
 {
     int new_index = incoming_message_stack_->currentIndex() + 1;
@@ -175,7 +175,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::increment_incoming_messa
     incoming_message_stack_->setCurrentIndex(new_index);
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::decrement_incoming_messages(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::decrement_incoming_messages(
     const WMouseEvent& event)
 {
     int new_index = static_cast<int>(incoming_message_stack_->currentIndex()) - 1;
@@ -185,7 +185,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::decrement_incoming_messa
     incoming_message_stack_->setCurrentIndex(new_index);
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::remove_incoming_message(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::remove_incoming_message(
     const WMouseEvent& event)
 {
     WWidget* remove = incoming_message_stack_->currentWidget();
@@ -193,7 +193,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::remove_incoming_message(
     incoming_message_stack_->removeWidget(remove);
 }
 
-void goby::zeromq::LiaisonCommander::loop()
+void goby::apps::zeromq::LiaisonCommander::loop()
 {
     ControlsContainer::CommandContainer* current_command =
         dynamic_cast<ControlsContainer::CommandContainer*>(
@@ -222,7 +222,7 @@ void goby::zeromq::LiaisonCommander::loop()
     }
 }
 
-goby::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
+goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
     const protobuf::ProtobufCommanderConfig& pb_commander_config, WStackedWidget* commands_div,
     LiaisonCommander* parent)
     : WGroupBox("Controls", parent),
@@ -299,7 +299,7 @@ goby::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
     send_button_->clicked().connect(this, &ControlsContainer::send_message);
     clear_button_->clicked().connect(this, &ControlsContainer::clear_message);
 
-    Dbo::ptr<CommandEntry> last_command(static_cast<goby::zeromq::CommandEntry*>(0));
+    Dbo::ptr<CommandEntry> last_command(static_cast<CommandEntry*>(0));
     {
         std::lock_guard<std::mutex> slock(dbo_mutex_);
         Dbo::Transaction transaction(session_);
@@ -342,7 +342,7 @@ goby::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
     }
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::switch_command(int selection_index)
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::switch_command(int selection_index)
 {
     if (selection_index == 0)
     {
@@ -372,7 +372,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::switch_command(int selec
     //    master_field_info_stack_->setCurrentIndex(commands_[protobuf_name]);
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::clear_message()
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::clear_message()
 {
     WDialog dialog("Confirm clearing of message: " + command_selection_->currentText());
     WPushButton ok("Clear", dialog.contents());
@@ -391,7 +391,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::clear_message()
     }
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::send_message()
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 {
     glog.is(VERBOSE) && glog << "Message to be sent!" << std::endl;
 
@@ -459,7 +459,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::send_message()
     }
 }
 
-goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::CommandContainer(
+goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::CommandContainer(
     const protobuf::ProtobufCommanderConfig& pb_commander_config, const std::string& protobuf_name,
     Dbo::Session* session)
     //    WStackedWidget* master_field_info_stack)
@@ -541,7 +541,7 @@ goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::CommandCont
     generate_root();
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_database_double_click(const WModelIndex& index, const WMouseEvent& event)
 {
     glog.is(DEBUG1) && glog << "clicked: " << index.row() << "," << index.column() << std::endl;
@@ -600,7 +600,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     //     cancel.clicked().connect(&dialog, &WDialog::reject);
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::handle_database_dialog(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::handle_database_dialog(
     DatabaseDialogResponse response, std::shared_ptr<google::protobuf::Message> message,
     std::string group)
 {
@@ -625,7 +625,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::handle
     }
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_root()
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_root()
 {
     const google::protobuf::Descriptor* desc = message_->GetDescriptor();
 
@@ -644,7 +644,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::genera
     root->expand();
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree(
     WTreeTableNode* parent, google::protobuf::Message* message)
 {
     const google::protobuf::Descriptor* desc = message->GetDescriptor();
@@ -659,7 +659,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::genera
         generate_tree_row(parent, message, extensions[i]);
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree_row(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree_row(
     WTreeTableNode* parent, google::protobuf::Message* message,
     const google::protobuf::FieldDescriptor* field_desc)
 {
@@ -745,7 +745,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::genera
     }
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree_field(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree_field(
     WFormWidget*& value_field, google::protobuf::Message* message,
     const google::protobuf::FieldDescriptor* field_desc, int index /*= -1*/)
 {
@@ -942,7 +942,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::genera
 
     generate_field_info_box(value_field, field_desc);
 }
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_field_info_box(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_field_info_box(
     Wt::WFormWidget*& value_field, const google::protobuf::FieldDescriptor* field_desc)
 {
     //    if(!field_info_map_.count(field_desc))
@@ -991,7 +991,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::genera
     //  value_field->blurred().connect(boost::bind(&CommandContainer::handle_field_focus, this, 0));
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::handle_line_field_changed(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::handle_line_field_changed(
     google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field_desc,
     WLineEdit* field, int index)
 {
@@ -1081,7 +1081,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::handle
     }
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_combo_field_changed(google::protobuf::Message* message,
                                const google::protobuf::FieldDescriptor* field_desc,
                                WComboBox* field, int index)
@@ -1116,7 +1116,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     glog.is(DEBUG1) && glog << "The message is: " << message_->DebugString() << std::endl;
 }
 
-WLineEdit* goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+WLineEdit* goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     generate_single_line_edit_field(google::protobuf::Message* message,
                                     const google::protobuf::FieldDescriptor* field_desc,
                                     const std::string& current_value,
@@ -1147,7 +1147,7 @@ WLineEdit* goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 }
 
 WComboBox*
-goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_combo_box_field(
+goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_combo_box_field(
     google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field_desc,
     const std::vector<WString>& strings, int current_value, const std::string& default_value,
     int index /*= -1*/)
@@ -1174,7 +1174,7 @@ goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_co
     return combo_box;
 }
 
-// void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::queue_default_value_field(WFormWidget*& value_field,
+// void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::queue_default_value_field(WFormWidget*& value_field,
 //     const google::protobuf::FieldDescriptor* field_desc)
 // {
 // const QueueFieldOptions& queue_options = field_desc->options().GetExtension(goby::field).queue();
@@ -1198,7 +1198,7 @@ goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_co
 // }
 //}
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::set_time_field(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::set_time_field(
     WFormWidget* value_field, const google::protobuf::FieldDescriptor* field_desc)
 {
     if (WLineEdit* line_edit = dynamic_cast<WLineEdit*>(value_field))
@@ -1253,7 +1253,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::set_ti
     }
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::dccl_default_value_field(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::dccl_default_value_field(
     WFormWidget*& value_field, const google::protobuf::FieldDescriptor* field_desc)
 {
     const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
@@ -1309,7 +1309,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::dccl_d
     }
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::dccl_default_modify_field(
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::dccl_default_modify_field(
     WFormWidget*& modify_field, const google::protobuf::FieldDescriptor* field_desc)
 {
     const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
@@ -1322,7 +1322,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::dccl_d
 }
 
 std::string
-goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::string_from_dccl_double(
+goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::string_from_dccl_double(
     double* value, const google::protobuf::FieldDescriptor* field_desc)
 {
     const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
@@ -1340,12 +1340,12 @@ goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::string_from
     }
 }
 
-// void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::handle_field_focus(int field_info_index)
+// void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::handle_field_focus(int field_info_index)
 // {
 //     field_info_stack_->setCurrentIndex(field_info_index);
 // }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_repeated_size_change(int desired_size, google::protobuf::Message* message,
                                 const google::protobuf::FieldDescriptor* field_desc,
                                 WTreeTableNode* parent)
@@ -1399,7 +1399,7 @@ void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 }
 
-void goby::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_toggle_single_message(const WMouseEvent& mouse, google::protobuf::Message* message,
                                  const google::protobuf::FieldDescriptor* field_desc,
                                  WPushButton* button, WTreeTableNode* parent)

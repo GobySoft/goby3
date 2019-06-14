@@ -32,6 +32,8 @@ using goby::glog;
 
 namespace goby
 {
+namespace apps
+{
 namespace zeromq
 {
 class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::TerminateConfig>
@@ -172,5 +174,7 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
 };
 } // namespace zeromq
 } // namespace goby
+}
 
-int main(int argc, char* argv[]) { return goby::run<goby::zeromq::Terminate>(argc, argv); }
+
+int main(int argc, char* argv[]) { return goby::run<goby::apps::zeromq::Terminate>(argc, argv); }

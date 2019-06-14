@@ -33,6 +33,8 @@
 
 #include <dccl.h>
 
+#include "goby/middleware/detail/primitive_type.h"
+
 namespace goby
 {
 namespace middleware
@@ -333,24 +335,9 @@ struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL
 //
 // scheme
 //
-
-template <typename T> struct primitive_type
-{
-    typedef T type;
-};
-
-template <typename T> struct primitive_type<std::shared_ptr<T> >
-{
-    typedef T type;
-};
-
-template <typename T> struct primitive_type<std::shared_ptr<const T> >
-{
-    typedef T type;
-};
-
 template <typename T, typename Transporter> constexpr int transporter_scheme()
 {
+    using detail::primitive_type;
     return Transporter::template scheme<typename primitive_type<T>::type>();
 }
 

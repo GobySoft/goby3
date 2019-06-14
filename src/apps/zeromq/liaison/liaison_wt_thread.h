@@ -35,6 +35,8 @@
 
 namespace goby
 {
+namespace apps
+{
 namespace zeromq
 {
 class LiaisonWtThread : public Wt::WApplication
@@ -46,16 +48,17 @@ class LiaisonWtThread : public Wt::WApplication
     LiaisonWtThread(const LiaisonWtThread&) = delete;
     LiaisonWtThread& operator=(const LiaisonWtThread&) = delete;
 
-    void add_to_menu(Wt::WMenu* menu, LiaisonContainer* container);
+    void add_to_menu(Wt::WMenu* menu, goby::zeromq::LiaisonContainer* container);
     void handle_menu_selection(Wt::WMenuItem* item);
 
   private:
     Wt::WMenu* menu_;
     Wt::WStackedWidget* contents_stack_;
-    std::map<Wt::WMenuItem*, LiaisonContainer*> menu_contents_;
+    std::map<Wt::WMenuItem*, goby::zeromq::LiaisonContainer*> menu_contents_;
     protobuf::LiaisonConfig app_cfg_;
 };
 } // namespace zeromq
 } // namespace goby
+}
 
 #endif

@@ -42,7 +42,7 @@ class LogPlugin
     virtual void register_write_hooks(std::ofstream& out_log_file) = 0;
     virtual void register_read_hooks(const std::ifstream& in_log_file) = 0;
 
-    virtual std::string debug_text_message(goby::middleware::LogEntry& log_entry)
+    virtual std::string debug_text_message(LogEntry& log_entry)
     {
         throw(log::LogException("DEBUG_TEXT is not supported by the scheme's plugin"));
     }

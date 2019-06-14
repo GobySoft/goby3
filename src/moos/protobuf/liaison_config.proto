@@ -3,7 +3,7 @@ import "goby/zeromq/protobuf/liaison_config.proto";
 
 package goby.moos.protobuf;
 
-extend goby.zeromq.protobuf.LiaisonConfig
+extend goby.apps.zeromq.protobuf.LiaisonConfig
 {
     optional GeodesyConfig geodesy_config = 1002;
     optional AcommsConfig acomms_config = 1003;

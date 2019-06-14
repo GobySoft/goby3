@@ -66,6 +66,8 @@
 
 namespace goby
 {
+namespace apps
+{
 namespace zeromq
 {
 class LiaisonTreeTableNode : public Wt::WTreeTableNode
@@ -108,7 +110,7 @@ struct CommandEntry
 
 class CommanderCommsThread;
 
-class LiaisonCommander : public LiaisonContainerWithComms<LiaisonCommander, CommanderCommsThread>
+class LiaisonCommander : public goby::zeromq::LiaisonContainerWithComms<LiaisonCommander, CommanderCommsThread>
 {
   public:
     LiaisonCommander(const protobuf::LiaisonConfig& cfg);
@@ -288,7 +290,7 @@ class LiaisonCommander : public LiaisonContainerWithComms<LiaisonCommander, Comm
     static std::shared_ptr<Wt::Dbo::FixedSqlConnectionPool> connection_pool_;
 };
 
-class CommanderCommsThread : public LiaisonCommsThread<LiaisonCommander>
+class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonCommander>
 {
   public:
     CommanderCommsThread(LiaisonCommander* commander, const protobuf::LiaisonConfig& config,
@@ -317,5 +319,6 @@ class CommanderCommsThread : public LiaisonCommsThread<LiaisonCommander>
 
 } // namespace zeromq
 } // namespace goby
+}
 
 #endif

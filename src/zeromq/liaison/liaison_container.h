@@ -79,7 +79,7 @@ template <typename Derived, typename GobyThread>
 class LiaisonContainerWithComms : public LiaisonContainer
 {
   public:
-    LiaisonContainerWithComms(const protobuf::LiaisonConfig& cfg)
+    LiaisonContainerWithComms(const goby::apps::zeromq::protobuf::LiaisonConfig& cfg)
     {
         static std::atomic<int> index(0);
         index_ = index++;
@@ -190,11 +190,11 @@ class LiaisonContainerWithComms : public LiaisonContainer
 };
 
 template <typename WtContainer>
-class LiaisonCommsThread : public goby::middleware::SimpleThread<protobuf::LiaisonConfig>
+class LiaisonCommsThread : public goby::middleware::SimpleThread<goby::apps::zeromq::protobuf::LiaisonConfig>
 {
   public:
-    LiaisonCommsThread(WtContainer* container, const protobuf::LiaisonConfig& config, int index)
-        : goby::middleware::SimpleThread<protobuf::LiaisonConfig>(
+    LiaisonCommsThread(WtContainer* container, const goby::apps::zeromq::protobuf::LiaisonConfig& config, int index)
+        : goby::middleware::SimpleThread<goby::apps::zeromq::protobuf::LiaisonConfig>(
               config, config.update_freq() * boost::units::si::hertz, index),
           container_(container)
     {

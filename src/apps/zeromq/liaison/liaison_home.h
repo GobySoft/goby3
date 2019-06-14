@@ -32,9 +32,11 @@
 
 namespace goby
 {
+namespace apps
+{
 namespace zeromq
 {
-class LiaisonHome : public LiaisonContainer
+class LiaisonHome : public goby::zeromq::LiaisonContainer
 {
   public:
     LiaisonHome();
@@ -44,5 +46,6 @@ class LiaisonHome : public LiaisonContainer
 };
 } // namespace zeromq
 } // namespace goby
+}
 
 #endif

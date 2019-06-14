@@ -22,30 +22,32 @@
 
 #include "log_entry.h"
 
+using goby::middleware::log::LogEntry;
+
 std::map<int, boost::bimap<std::string,
-                           goby::middleware::uint<goby::middleware::LogEntry::group_bytes_>::type> >
-    goby::middleware::LogEntry::groups_;
+                           goby::middleware::log::uint<LogEntry::group_bytes_>::type> >
+    LogEntry::groups_;
 std::map<int, boost::bimap<std::string,
-                           goby::middleware::uint<goby::middleware::LogEntry::type_bytes_>::type> >
-    goby::middleware::LogEntry::types_;
+                           goby::middleware::log::uint<LogEntry::type_bytes_>::type> >
+    LogEntry::types_;
 
 std::map<int, std::function<void(const std::string& type)> >
-    goby::middleware::LogEntry::new_type_hook;
+    LogEntry::new_type_hook;
 std::map<int, std::function<void(const goby::middleware::Group& group)> >
-    goby::middleware::LogEntry::new_group_hook;
+    LogEntry::new_group_hook;
 
-std::map<goby::middleware::LogFilter, std::function<void(const std::vector<unsigned char>& data)> >
-    goby::middleware::LogEntry::filter_hook;
+std::map<goby::middleware::log::LogFilter, std::function<void(const std::vector<unsigned char>& data)> >
+    LogEntry::filter_hook;
 
-goby::middleware::uint<goby::middleware::LogEntry::group_bytes_>::type
-    goby::middleware::LogEntry::group_index_(1);
-goby::middleware::uint<goby::middleware::LogEntry::type_bytes_>::type
-    goby::middleware::LogEntry::type_index_(1);
+goby::middleware::log::uint<LogEntry::group_bytes_>::type
+    LogEntry::group_index_(1);
+goby::middleware::log::uint<LogEntry::type_bytes_>::type
+    LogEntry::type_index_(1);
 
-goby::middleware::uint<goby::middleware::LogEntry::version_bytes_>::type
-    goby::middleware::LogEntry::version_(goby::middleware::LogEntry::invalid_version);
+goby::middleware::log::uint<LogEntry::version_bytes_>::type
+    LogEntry::version_(LogEntry::invalid_version);
 
-void goby::middleware::LogEntry::parse_version(std::istream* s)
+void LogEntry::parse_version(std::istream* s)
 {
     version_ = read_one<uint<version_bytes_>::type>(s);
 
@@ -68,7 +70,7 @@ void goby::middleware::LogEntry::parse_version(std::istream* s)
     glog.is_verbose() && glog << "File version is " << version_ << std::endl;
 }
 
-void goby::middleware::LogEntry::parse(std::istream* s)
+void LogEntry::parse(std::istream* s)
 {
     using namespace goby::util::logger;
     using goby::glog;
@@ -298,7 +300,7 @@ void goby::middleware::LogEntry::parse(std::istream* s)
     s->exceptions(old_except_mask);
 }
 
-void goby::middleware::LogEntry::serialize(std::ostream* s) const
+void LogEntry::serialize(std::ostream* s) const
 {
     auto old_except_mask = s->exceptions();
     s->exceptions(std::ios::failbit | std::ios::badbit | std::ios::eofbit);

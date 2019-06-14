@@ -34,6 +34,8 @@ using goby::glog;
 
 namespace goby
 {
+namespace apps
+{
 namespace zeromq
 {
 class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
@@ -49,21 +51,22 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
     // for handling ZMQ Interprocess Communications
     std::unique_ptr<zmq::context_t> router_context_;
     std::unique_ptr<zmq::context_t> manager_context_;
-    Router router_;
-    Manager manager_;
+    goby::zeromq::Router router_;
+    goby::zeromq::Manager manager_;
     std::unique_ptr<std::thread> router_thread_;
     std::unique_ptr<std::thread> manager_thread_;
 
     // For hosting an InterVehiclePortal
-    std::unique_ptr<InterProcessPortal<> > interprocess_;
-    std::unique_ptr<middleware::InterVehiclePortal<InterProcessPortal<> > > intervehicle_;
+    std::unique_ptr<goby::zeromq::InterProcessPortal<> > interprocess_;
+    std::unique_ptr<goby::middleware::InterVehiclePortal<goby::zeromq::InterProcessPortal<> > > intervehicle_;
 };
 } // namespace zeromq
 } // namespace goby
+}
 
-int main(int argc, char* argv[]) { return goby::run<goby::zeromq::Daemon>(argc, argv); }
+int main(int argc, char* argv[]) { return goby::run<goby::apps::zeromq::Daemon>(argc, argv); }
 
-goby::zeromq::Daemon::Daemon()
+goby::apps::zeromq::Daemon::Daemon()
     : router_context_(new zmq::context_t(app_cfg().router_threads())),
       manager_context_(new zmq::context_t(1)),
       router_(*router_context_, app_cfg().interprocess()),
@@ -77,13 +80,13 @@ goby::zeromq::Daemon::Daemon()
                               << app_cfg().interprocess().platform() << std::endl;
     }
 
-    interprocess_.reset(new InterProcessPortal<>(app_cfg().interprocess()));
+    interprocess_.reset(new goby::zeromq::InterProcessPortal<>(app_cfg().interprocess()));
     if (app_cfg().has_intervehicle())
-        intervehicle_.reset(new middleware::InterVehiclePortal<InterProcessPortal<> >(
+        intervehicle_.reset(new goby::middleware::InterVehiclePortal<goby::zeromq::InterProcessPortal<> >(
             *interprocess_, app_cfg().intervehicle()));
 
     // handle goby_terminate request
-    interprocess_->subscribe<middleware::groups::terminate_request,
+    interprocess_->subscribe<goby::middleware::groups::terminate_request,
                              goby::middleware::protobuf::TerminateRequest>(
         [this](const goby::middleware::protobuf::TerminateRequest& request) {
             bool match = false;
@@ -92,7 +95,7 @@ goby::zeromq::Daemon::Daemon()
                 goby::middleware::terminate::check_terminate(request, app_cfg().app().name());
             if (match)
             {
-                interprocess_->publish<middleware::groups::terminate_response>(resp);
+                interprocess_->publish<goby::middleware::groups::terminate_response>(resp);
                 // as gobyd mediates all interprocess() comms; wait for a bit to hopefully get our response out before shutting down
                 sleep(1);
                 quit();
@@ -100,7 +103,7 @@ goby::zeromq::Daemon::Daemon()
         });
 }
 
-goby::zeromq::Daemon::~Daemon()
+goby::apps::zeromq::Daemon::~Daemon()
 {
     manager_context_.reset();
     router_context_.reset();
@@ -108,7 +111,7 @@ goby::zeromq::Daemon::~Daemon()
     router_thread_->join();
 }
 
-void goby::zeromq::Daemon::run()
+void goby::apps::zeromq::Daemon::run()
 {
     if (intervehicle_)
     {
@@ -117,7 +120,7 @@ void goby::zeromq::Daemon::run()
         goby::middleware::protobuf::InterVehicleStatus status;
         status.set_tx_queue_size(intervehicle_->tx_queue_size());
 
-        interprocess_->publish<middleware::groups::intervehicle_outbound>(status);
+        interprocess_->publish<goby::middleware::groups::intervehicle_outbound>(status);
     }
     else
     {

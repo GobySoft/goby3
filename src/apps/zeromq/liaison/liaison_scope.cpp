@@ -44,7 +44,7 @@ using namespace Wt;
 using namespace goby::util::logger_lock;
 using namespace goby::util::logger;
 
-goby::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cfg)
+goby::apps::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cfg)
     : LiaisonContainerWithComms<LiaisonScope, ScopeCommsThread>(cfg),
       pb_scope_config_(cfg.pb_scope_config()),
       history_model_(new Wt::WStringListModel(this)),
@@ -90,12 +90,12 @@ goby::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cfg)
     set_name("Scope");
 }
 
-void goby::zeromq::LiaisonScope::loop()
+void goby::apps::zeromq::LiaisonScope::loop()
 {
     glog.is(DEBUG2) && glog << "LiaisonScope: polling" << std::endl;
 }
 
-void goby::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WStandardItem*>& items,
+void goby::apps::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WStandardItem*>& items,
                                                 const google::protobuf::Message& pb_msg)
 {
     Wt::WStandardItem* key_item = items[protobuf::ProtobufScopeConfig::COLUMN_GROUP];
@@ -131,7 +131,7 @@ void goby::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WStandardI
 }
 
 std::vector<Wt::WStandardItem*>
-goby::zeromq::LiaisonScope::create_row(const std::string& group,
+goby::apps::zeromq::LiaisonScope::create_row(const std::string& group,
                                        const google::protobuf::Message& msg, bool do_attach_pb_rows)
 {
     std::vector<Wt::WStandardItem*> items;
@@ -142,7 +142,7 @@ goby::zeromq::LiaisonScope::create_row(const std::string& group,
     return items;
 }
 
-void goby::zeromq::LiaisonScope::update_row(const std::string& group,
+void goby::apps::zeromq::LiaisonScope::update_row(const std::string& group,
                                             const google::protobuf::Message& msg,
                                             const std::vector<WStandardItem*>& items,
                                             bool do_attach_pb_rows)
@@ -162,7 +162,7 @@ void goby::zeromq::LiaisonScope::update_row(const std::string& group,
         attach_pb_rows(items, msg);
 }
 
-void goby::zeromq::LiaisonScope::handle_global_key(Wt::WKeyEvent event)
+void goby::apps::zeromq::LiaisonScope::handle_global_key(Wt::WKeyEvent event)
 {
     switch (event.key())
     {
@@ -179,9 +179,9 @@ void goby::zeromq::LiaisonScope::handle_global_key(Wt::WKeyEvent event)
     }
 }
 
-void goby::zeromq::LiaisonScope::pause() { controls_div_->pause(); }
+void goby::apps::zeromq::LiaisonScope::pause() { controls_div_->pause(); }
 
-void goby::zeromq::LiaisonScope::resume()
+void goby::apps::zeromq::LiaisonScope::resume()
 {
     controls_div_->resume();
     // update with changes since the last we were playing
@@ -191,7 +191,7 @@ void goby::zeromq::LiaisonScope::resume()
     history_header_div_->flush_buffer();
 }
 
-void goby::zeromq::LiaisonScope::inbox(const std::string& group,
+void goby::apps::zeromq::LiaisonScope::inbox(const std::string& group,
                                        std::shared_ptr<const google::protobuf::Message> msg)
 {
     if (is_paused())
@@ -212,7 +212,7 @@ void goby::zeromq::LiaisonScope::inbox(const std::string& group,
     }
 }
 
-void goby::zeromq::LiaisonScope::handle_message(const std::string& group,
+void goby::apps::zeromq::LiaisonScope::handle_message(const std::string& group,
                                                 const google::protobuf::Message& msg,
                                                 bool fresh_message)
 {
@@ -243,7 +243,7 @@ void goby::zeromq::LiaisonScope::handle_message(const std::string& group,
     }
 }
 
-goby::zeromq::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(
+goby::apps::zeromq::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(
     const protobuf::ProtobufScopeConfig& pb_scope_config, int scope_height,
     Wt::WContainerWidget* parent /*= 0*/)
     : WTreeView(parent)
@@ -271,7 +271,7 @@ goby::zeromq::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(
     //    this->doubleClicked().connect(this, &LiaisonScopeProtobufTreeView::handle_double_click);
 }
 
-// void goby::zeromq::LiaisonScopeProtobufTreeView::handle_double_click(const Wt::WModelIndex& proxy_index, const Wt::WMouseEvent& event)
+// void goby::apps::zeromq::LiaisonScopeProtobufTreeView::handle_double_click(const Wt::WModelIndex& proxy_index, const Wt::WMouseEvent& event)
 // {
 
 //     const Wt::WAbstractProxyModel* proxy = dynamic_cast<const Wt::WAbstractProxyModel*>(this->model());
@@ -286,7 +286,7 @@ goby::zeromq::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(
 //     this->setExpanded(proxy_index, true);
 // }
 
-goby::zeromq::LiaisonScopeProtobufModel::LiaisonScopeProtobufModel(
+goby::apps::zeromq::LiaisonScopeProtobufModel::LiaisonScopeProtobufModel(
     const protobuf::ProtobufScopeConfig& pb_scope_config, Wt::WContainerWidget* parent /*= 0*/)
     : WStandardItemModel(0, protobuf::ProtobufScopeConfig::COLUMN_MAX + 1, parent)
 {
@@ -300,7 +300,7 @@ goby::zeromq::LiaisonScopeProtobufModel::LiaisonScopeProtobufModel(
                         std::string("Time"));
 }
 
-goby::zeromq::LiaisonScope::ControlsContainer::ControlsContainer(
+goby::apps::zeromq::LiaisonScope::ControlsContainer::ControlsContainer(
     Wt::WTimer* timer, bool start_paused, LiaisonScope* scope,
     SubscriptionsContainer* subscriptions_div, Wt::WContainerWidget* parent)
     : Wt::WContainerWidget(parent),
@@ -318,7 +318,7 @@ goby::zeromq::LiaisonScope::ControlsContainer::ControlsContainer(
     handle_play_pause(false);
 }
 
-goby::zeromq::LiaisonScope::ControlsContainer::~ControlsContainer()
+goby::apps::zeromq::LiaisonScope::ControlsContainer::~ControlsContainer()
 {
     // stop the paused mail thread before destroying
     is_paused_ = false;
@@ -326,7 +326,7 @@ goby::zeromq::LiaisonScope::ControlsContainer::~ControlsContainer()
     //        paused_mail_thread_->join();
 }
 
-void goby::zeromq::LiaisonScope::ControlsContainer::handle_play_pause(bool toggle_state)
+void goby::apps::zeromq::LiaisonScope::ControlsContainer::handle_play_pause(bool toggle_state)
 {
     if (toggle_state)
         is_paused_ = !(is_paused_);
@@ -339,7 +339,7 @@ void goby::zeromq::LiaisonScope::ControlsContainer::handle_play_pause(bool toggl
                                     : "Playing... [p] to pause");
 }
 
-void goby::zeromq::LiaisonScope::ControlsContainer::pause()
+void goby::apps::zeromq::LiaisonScope::ControlsContainer::pause()
 {
     // stop the Wt timer and pass control over to a local thread
     // (so we don't stop reading mail)
@@ -348,20 +348,20 @@ void goby::zeromq::LiaisonScope::ControlsContainer::pause()
     // paused_mail_thread_.reset(new std::thread(boost::bind(&ControlsContainer::run_paused_mail, this)));
 }
 
-void goby::zeromq::LiaisonScope::ControlsContainer::resume()
+void goby::apps::zeromq::LiaisonScope::ControlsContainer::resume()
 {
     is_paused_ = false;
     timer_->start();
 }
 
-goby::zeromq::LiaisonScope::SubscriptionsContainer::SubscriptionsContainer(
+goby::apps::zeromq::LiaisonScope::SubscriptionsContainer::SubscriptionsContainer(
     Wt::WStandardItemModel* model, Wt::WStringListModel* history_model,
     std::map<std::string, int>& msg_map, Wt::WContainerWidget* parent /*= 0*/)
     : WContainerWidget(parent), model_(model), history_model_(history_model), msg_map_(msg_map)
 {
 }
 
-goby::zeromq::LiaisonScope::HistoryContainer::HistoryContainer(
+goby::apps::zeromq::LiaisonScope::HistoryContainer::HistoryContainer(
     Wt::WVBoxLayout* main_layout, Wt::WAbstractItemModel* model,
     const protobuf::ProtobufScopeConfig& pb_scope_config, LiaisonScope* scope,
     WContainerWidget* parent)
@@ -379,16 +379,16 @@ goby::zeromq::LiaisonScope::HistoryContainer::HistoryContainer(
     history_button_->clicked().connect(this, &HistoryContainer::handle_add_history);
 }
 
-void goby::zeromq::LiaisonScope::HistoryContainer::handle_add_history()
+void goby::apps::zeromq::LiaisonScope::HistoryContainer::handle_add_history()
 {
     std::string selected_key = history_box_->currentText().narrow();
-    goby::zeromq::protobuf::ProtobufScopeConfig::HistoryConfig config;
+    protobuf::ProtobufScopeConfig::HistoryConfig config;
     config.set_group(selected_key);
     add_history(config);
 }
 
-void goby::zeromq::LiaisonScope::HistoryContainer::add_history(
-    const goby::zeromq::protobuf::ProtobufScopeConfig::HistoryConfig& config)
+void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
+    const protobuf::ProtobufScopeConfig::HistoryConfig& config)
 {
     const std::string& selected_key = config.group();
 
@@ -466,7 +466,7 @@ void goby::zeromq::LiaisonScope::HistoryContainer::add_history(
     }
 }
 
-void goby::zeromq::LiaisonScope::HistoryContainer::handle_remove_history(std::string key)
+void goby::apps::zeromq::LiaisonScope::HistoryContainer::handle_remove_history(std::string key)
 {
     glog.is(DEBUG2) && glog << "LiaisonScope: removing history for: " << key << std::endl;
 
@@ -478,7 +478,7 @@ void goby::zeromq::LiaisonScope::HistoryContainer::handle_remove_history(std::st
     history_models_.erase(key);
 }
 
-void goby::zeromq::LiaisonScope::HistoryContainer::toggle_history_plot(Wt::WWidget* plot)
+void goby::apps::zeromq::LiaisonScope::HistoryContainer::toggle_history_plot(Wt::WWidget* plot)
 {
     if (plot->isHidden())
         plot->show();
@@ -486,7 +486,7 @@ void goby::zeromq::LiaisonScope::HistoryContainer::toggle_history_plot(Wt::WWidg
         plot->hide();
 }
 
-void goby::zeromq::LiaisonScope::HistoryContainer::display_message(
+void goby::apps::zeromq::LiaisonScope::HistoryContainer::display_message(
     const std::string& group, const google::protobuf::Message& msg)
 {
     std::map<std::string, HistoryContainer::MVC>::iterator hist_it = history_models_.find(group);
@@ -504,13 +504,13 @@ void goby::zeromq::LiaisonScope::HistoryContainer::display_message(
     }
 }
 
-void goby::zeromq::LiaisonScope::HistoryContainer::flush_buffer()
+void goby::apps::zeromq::LiaisonScope::HistoryContainer::flush_buffer()
 {
     for (const auto& p : buffer_) display_message(p.first, *p.second);
     buffer_.clear();
 }
 
-goby::zeromq::LiaisonScope::RegexFilterContainer::RegexFilterContainer(
+goby::apps::zeromq::LiaisonScope::RegexFilterContainer::RegexFilterContainer(
     Wt::WStandardItemModel* model, Wt::WSortFilterProxyModel* proxy,
     const protobuf::ProtobufScopeConfig& pb_scope_config, Wt::WContainerWidget* parent /* = 0 */)
     : Wt::WContainerWidget(parent),
@@ -536,13 +536,13 @@ goby::zeromq::LiaisonScope::RegexFilterContainer::RegexFilterContainer(
     handle_set_regex_filter();
 }
 
-void goby::zeromq::LiaisonScope::RegexFilterContainer::handle_set_regex_filter()
+void goby::apps::zeromq::LiaisonScope::RegexFilterContainer::handle_set_regex_filter()
 {
     proxy_->setFilterKeyColumn(regex_column_select_->currentIndex());
     proxy_->setFilterRegExp(regex_filter_text_->text());
 }
 
-void goby::zeromq::LiaisonScope::RegexFilterContainer::handle_clear_regex_filter()
+void goby::apps::zeromq::LiaisonScope::RegexFilterContainer::handle_clear_regex_filter()
 {
     regex_filter_text_->setText(".*");
     handle_set_regex_filter();

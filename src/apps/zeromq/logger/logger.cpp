@@ -36,6 +36,8 @@ void signal_handler(int sig);
 
 namespace goby
 {
+namespace apps
+{
 namespace zeromq
 {
 class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConfig>
@@ -95,13 +97,14 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
 
     std::vector<void*> dl_handles_;
 
-    middleware::log::ProtobufPlugin pb_plugin_;
-    middleware::log::DCCLPlugin dccl_plugin_;
+    goby::middleware::log::ProtobufPlugin pb_plugin_;
+    goby::middleware::log::DCCLPlugin dccl_plugin_;
 };
 } // namespace zeromq
 } // namespace goby
+}
 
-std::atomic<bool> goby::zeromq::Logger::do_quit{false};
+std::atomic<bool> goby::apps::zeromq::Logger::do_quit{false};
 
 int main(int argc, char* argv[])
 {
@@ -111,7 +114,7 @@ int main(int argc, char* argv[])
     sigset_t old_mask;
     pthread_sigmask(SIG_BLOCK, &new_mask, &old_mask);
 
-    std::thread t([&argc, &argv]() { goby::run<goby::zeromq::Logger>(argc, argv); });
+    std::thread t([&argc, &argv]() { goby::run<goby::apps::zeromq::Logger>(argc, argv); });
 
     // unblock signals
     sigset_t empty_mask;
@@ -132,15 +135,15 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-void signal_handler(int sig) { goby::zeromq::Logger::do_quit = true; }
+void signal_handler(int sig) { goby::apps::zeromq::Logger::do_quit = true; }
 
-void goby::zeromq::Logger::log(const std::vector<unsigned char>& data, int scheme,
+void goby::apps::zeromq::Logger::log(const std::vector<unsigned char>& data, int scheme,
                                const std::string& type, const goby::middleware::Group& group)
 {
     glog.is_debug1() && glog << "Received " << data.size()
                              << " bytes to log to [scheme, type, group] = [" << scheme << ", "
                              << type << ", " << group << "]" << std::endl;
 
-    middleware::LogEntry entry(data, scheme, type, group);
+    goby::middleware::log::LogEntry entry(data, scheme, type, group);
     entry.serialize(&log_);
 }

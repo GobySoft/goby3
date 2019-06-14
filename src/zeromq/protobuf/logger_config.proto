@@ -2,12 +2,12 @@ syntax = "proto2";
 import "goby/middleware/protobuf/app_config.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
 
-package goby.zeromq.protobuf;
+package goby.apps.zeromq.protobuf;
 
 message LoggerConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
-    optional InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
 
     required string log_dir = 3;
 

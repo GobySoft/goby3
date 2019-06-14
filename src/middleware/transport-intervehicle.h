@@ -67,7 +67,7 @@ class InterVehicleTransporterBase
 
     template <typename Data> static constexpr int scheme()
     {
-        static_assert(goby::middleware::scheme<typename primitive_type<Data>::type>() ==
+        static_assert(goby::middleware::scheme<typename detail::primitive_type<Data>::type>() ==
                           MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
         return MarshallingScheme::DCCL;

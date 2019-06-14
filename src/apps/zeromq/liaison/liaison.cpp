@@ -39,7 +39,7 @@ using goby::glog;
 using namespace Wt;
 using namespace goby::util::logger;
 
-std::vector<void*> goby::zeromq::Liaison::plugin_handles_;
+std::vector<void*> goby::apps::zeromq::Liaison::plugin_handles_;
 
 int main(int argc, char* argv[])
 {
@@ -57,22 +57,22 @@ int main(int argc, char* argv[])
                                      << std::endl;
             void* handle = dlopen(plugin_vec[i].c_str(), RTLD_LAZY);
             if (handle)
-                goby::zeromq::Liaison::plugin_handles_.push_back(handle);
+                goby::apps::zeromq::Liaison::plugin_handles_.push_back(handle);
             else
                 glog.is(DIE) && glog << "Failed to open library: " << plugin_vec[i] << std::endl;
         }
     }
 
-    int return_value = goby::run<goby::zeromq::Liaison>(argc, argv);
+    int return_value = goby::run<goby::apps::zeromq::Liaison>(argc, argv);
     dccl::DynamicProtobufManager::protobuf_shutdown();
 
-    for (int i = 0, n = goby::zeromq::Liaison::plugin_handles_.size(); i < n; ++i)
-        dlclose(goby::zeromq::Liaison::plugin_handles_[i]);
+    for (int i = 0, n = goby::apps::zeromq::Liaison::plugin_handles_.size(); i < n; ++i)
+        dlclose(goby::apps::zeromq::Liaison::plugin_handles_[i]);
 
     return return_value;
 }
 
-goby::zeromq::Liaison::Liaison()
+goby::apps::zeromq::Liaison::Liaison()
 //    : MultiThreadApplication<protobuf::LiaisonConfig>(10*boost::units::si::hertz)
 {
     // load all shared libraries
@@ -179,7 +179,7 @@ goby::zeromq::Liaison::Liaison()
     expire_sessions_();
 }
 
-void goby::zeromq::Liaison::load_proto_file(const std::string& path)
+void goby::apps::zeromq::Liaison::load_proto_file(const std::string& path)
 {
 #if BOOST_FILESYSTEM_VERSION == 3
     boost::filesystem::path bpath = boost::filesystem::absolute(path);
@@ -194,7 +194,7 @@ void goby::zeromq::Liaison::load_proto_file(const std::string& path)
         glog.is(DIE) && glog << "Failed to load file." << std::endl;
 }
 
-void goby::zeromq::Liaison::loop()
+void goby::apps::zeromq::Liaison::loop()
 {
     glog.is(DEBUG1) && glog << "Liaison loop()" << std::endl;
 

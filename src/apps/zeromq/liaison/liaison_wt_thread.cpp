@@ -39,8 +39,9 @@
 using goby::glog;
 using namespace Wt;
 using namespace goby::util::logger;
+using goby::zeromq::LiaisonContainer;
 
-goby::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env,
+goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env,
                                                protobuf::LiaisonConfig app_cfg)
     : Wt::WApplication(env), app_cfg_(app_cfg)
 {
@@ -104,7 +105,7 @@ goby::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env,
     add_to_menu(menu_, new LiaisonCommander(app_cfg_));
 
     using liaison_load_func = std::vector<goby::zeromq::LiaisonContainer*> (*)(
-        const goby::zeromq::protobuf::LiaisonConfig& cfg);
+        const protobuf::LiaisonConfig& cfg);
 
     for (int i = 0, n = Liaison::plugin_handles_.size(); i < n; ++i)
     {
@@ -129,7 +130,7 @@ goby::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env,
     handle_menu_selection(menu_->currentItem());
 }
 
-goby::zeromq::LiaisonWtThread::~LiaisonWtThread()
+goby::apps::zeromq::LiaisonWtThread::~LiaisonWtThread()
 {
     // run on all children
     const std::vector<WMenuItem*>& items = menu_->items();
@@ -144,13 +145,13 @@ goby::zeromq::LiaisonWtThread::~LiaisonWtThread()
     }
 }
 
-void goby::zeromq::LiaisonWtThread::add_to_menu(WMenu* menu, LiaisonContainer* container)
+void goby::apps::zeromq::LiaisonWtThread::add_to_menu(WMenu* menu, LiaisonContainer* container)
 {
     Wt::WMenuItem* new_item = menu->addItem(container->name(), container);
     menu_contents_.insert(std::make_pair(new_item, container));
 }
 
-void goby::zeromq::LiaisonWtThread::handle_menu_selection(Wt::WMenuItem* item)
+void goby::apps::zeromq::LiaisonWtThread::handle_menu_selection(Wt::WMenuItem* item)
 {
     LiaisonContainer* contents = menu_contents_[item];
     if (contents)

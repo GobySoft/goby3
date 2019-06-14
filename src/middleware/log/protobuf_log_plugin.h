@@ -44,7 +44,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
                   "Scheme must be PROTOBUF or DCCL");
 
   public:
-    std::string debug_text_message(goby::middleware::LogEntry& log_entry) override
+    std::string debug_text_message(LogEntry& log_entry) override
     {
         auto msgs = parse_message(log_entry);
 
@@ -60,7 +60,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
 
     void register_read_hooks(const std::ifstream& in_log_file) override
     {
-        goby::middleware::LogEntry::filter_hook[{
+        LogEntry::filter_hook[{
             static_cast<int>(scheme), static_cast<std::string>(file_desc_group),
             google::protobuf::FileDescriptorProto::descriptor()->full_name()}] =
             [](const std::vector<unsigned char>& data) {
@@ -80,7 +80,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
     }
 
     std::vector<std::shared_ptr<google::protobuf::Message> >
-    parse_message(goby::middleware::LogEntry& log_entry)
+    parse_message(LogEntry& log_entry)
     {
         std::vector<std::shared_ptr<google::protobuf::Message> > msgs;
 
@@ -132,7 +132,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             file_desc->CopyTo(&file_desc_proto);
             std::vector<unsigned char> data(file_desc_proto.ByteSize());
             file_desc_proto.SerializeToArray(&data[0], data.size());
-            goby::middleware::LogEntry entry(
+            LogEntry entry(
                 data, goby::middleware::MarshallingScheme::PROTOBUF,
                 google::protobuf::FileDescriptorProto::descriptor()->full_name(), file_desc_group);
             entry.serialize(&out_log_file);

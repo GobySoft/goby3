@@ -23,7 +23,7 @@
 
 using namespace Wt;
 
-goby::zeromq::LiaisonHome::LiaisonHome() : main_layout_(new Wt::WVBoxLayout(this))
+goby::apps::zeromq::LiaisonHome::LiaisonHome() : main_layout_(new Wt::WVBoxLayout(this))
 {
     Wt::WContainerWidget* top_text = new Wt::WContainerWidget(this);
     main_layout_->addWidget(top_text);

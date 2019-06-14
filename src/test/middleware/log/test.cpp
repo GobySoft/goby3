@@ -29,6 +29,7 @@
 
 using goby::test::middleware::protobuf::CTDSample;
 using goby::test::middleware::protobuf::TempSample;
+using goby::middleware::log::LogEntry;
 
 constexpr goby::middleware::Group tempgroup("groups::temp");
 constexpr goby::middleware::Group ctdgroup("groups::ctd");
@@ -40,15 +41,15 @@ goby::middleware::log::DCCLPlugin dccl_plugin;
 
 void read_log(int test)
 {
-    goby::middleware::LogEntry::reset();
+    LogEntry::reset();
     dccl::DynamicProtobufManager::reset();
 
-    goby::middleware::LogEntry::new_type_hook[goby::middleware::MarshallingScheme::DCCL] =
+    LogEntry::new_type_hook[goby::middleware::MarshallingScheme::DCCL] =
         [&](const std::string& type) {
             std::cout << "New type hook for DCCL: " << type << std::endl;
             assert(type == "goby.test.middleware.protobuf.CTDSample");
         };
-    goby::middleware::LogEntry::new_type_hook[goby::middleware::MarshallingScheme::PROTOBUF] =
+    LogEntry::new_type_hook[goby::middleware::MarshallingScheme::PROTOBUF] =
         [&](const std::string& type) {
             std::cout << "New type hook for PROTOBUF: " << type << std::endl;
             assert(type == "goby.test.middleware.protobuf.TempSample" ||
@@ -61,7 +62,7 @@ void read_log(int test)
 
     try
     {
-        goby::middleware::LogEntry entry;
+        LogEntry entry;
         entry.parse(&in_log_file);
         assert(test != 3 && test != 4 && test != 5 && test != 6);
         assert(entry.scheme() == goby::middleware::MarshallingScheme::PROTOBUF);
@@ -81,7 +82,7 @@ void read_log(int test)
 
     if (test == 4)
     {
-        goby::middleware::LogEntry entry;
+        LogEntry entry;
         entry.parse(&in_log_file);
         assert(entry.scheme() == goby::middleware::MarshallingScheme::PROTOBUF);
         // corrupted index
@@ -91,7 +92,7 @@ void read_log(int test)
 
     for (int i = 0; i < nctd / 2; ++i)
     {
-        goby::middleware::LogEntry entry;
+        LogEntry entry;
         entry.parse(&in_log_file);
 
         assert(entry.scheme() == goby::middleware::MarshallingScheme::DCCL);
@@ -110,7 +111,7 @@ void read_log(int test)
     // eof
     try
     {
-        goby::middleware::LogEntry entry;
+        LogEntry entry;
         entry.parse(&in_log_file);
         bool expected_eof = false;
         assert(expected_eof);
@@ -123,7 +124,7 @@ void read_log(int test)
 
 void write_log(int test)
 {
-    goby::middleware::LogEntry::reset();
+    LogEntry::reset();
     std::ofstream out_log_file("/tmp/goby3_test_log.goby");
     pb_plugin.register_write_hooks(out_log_file);
     dccl_plugin.register_write_hooks(out_log_file);
@@ -142,7 +143,7 @@ void write_log(int test)
         t.set_temperature(500);
         std::vector<unsigned char> data(t.ByteSize());
         t.SerializeToArray(&data[0], data.size());
-        goby::middleware::LogEntry entry(data, goby::middleware::MarshallingScheme::PROTOBUF,
+        LogEntry entry(data, goby::middleware::MarshallingScheme::PROTOBUF,
                                          TempSample::descriptor()->full_name(), tempgroup);
         entry.serialize(&out_log_file);
     }
@@ -159,7 +160,7 @@ void write_log(int test)
             // corrupt the previous entry
             auto pos = out_log_file.tellp();
             out_log_file.seekp(pos -
-                               std::ios::streamoff(goby::middleware::LogEntry::crc_bytes_ + 2));
+                               std::ios::streamoff(LogEntry::crc_bytes_ + 2));
             out_log_file.put(0);
             out_log_file.seekp(pos);
             break;
@@ -169,11 +170,11 @@ void write_log(int test)
         {
             // corrupt the start (index) data
             auto pos = out_log_file.tellp();
-            out_log_file.seekp(goby::middleware::LogEntry::version_bytes_ +
-                                   goby::middleware::LogEntry::magic_bytes_ +
-                                   goby::middleware::LogEntry::size_bytes_ +
-                                   goby::middleware::LogEntry::scheme_bytes_ +
-                                   goby::middleware::LogEntry::group_bytes_ - 1,
+            out_log_file.seekp(LogEntry::version_bytes_ +
+                                   LogEntry::magic_bytes_ +
+                                   LogEntry::size_bytes_ +
+                                   LogEntry::scheme_bytes_ +
+                                   LogEntry::group_bytes_ - 1,
                                out_log_file.beg);
             out_log_file.put(0);
             out_log_file.seekp(pos);
@@ -186,11 +187,11 @@ void write_log(int test)
             auto pos = out_log_file.tellp();
 
             out_log_file.seekp(
-                pos - std::ios::streamoff(goby::middleware::LogEntry::crc_bytes_ + t.ByteSize() +
-                                          goby::middleware::LogEntry::type_bytes_ +
-                                          goby::middleware::LogEntry::group_bytes_ +
-                                          goby::middleware::LogEntry::scheme_bytes_ +
-                                          goby::middleware::LogEntry::size_bytes_ - 1));
+                pos - std::ios::streamoff(LogEntry::crc_bytes_ + t.ByteSize() +
+                                          LogEntry::type_bytes_ +
+                                          LogEntry::group_bytes_ +
+                                          LogEntry::scheme_bytes_ +
+                                          LogEntry::size_bytes_ - 1));
             out_log_file.put(0xFF);
             out_log_file.seekp(pos);
         }
@@ -201,10 +202,10 @@ void write_log(int test)
             auto pos = out_log_file.tellp();
 
             out_log_file.seekp(
-                pos - std::ios::streamoff(goby::middleware::LogEntry::crc_bytes_ + t.ByteSize() +
-                                          goby::middleware::LogEntry::type_bytes_ +
-                                          goby::middleware::LogEntry::group_bytes_ +
-                                          goby::middleware::LogEntry::scheme_bytes_ + 1));
+                pos - std::ios::streamoff(LogEntry::crc_bytes_ + t.ByteSize() +
+                                          LogEntry::type_bytes_ +
+                                          LogEntry::group_bytes_ +
+                                          LogEntry::scheme_bytes_ + 1));
             out_log_file.put(0x14);
             out_log_file.seekp(pos);
         }
@@ -225,7 +226,7 @@ void write_log(int test)
         std::string encoded = encoded1 + encoded2;
 
         std::vector<unsigned char> data(encoded.begin(), encoded.end());
-        goby::middleware::LogEntry entry(data, goby::middleware::MarshallingScheme::DCCL,
+        LogEntry entry(data, goby::middleware::MarshallingScheme::DCCL,
                                          CTDSample::descriptor()->full_name(), ctdgroup);
         entry.serialize(&out_log_file);
         ctds.push_back(ctd1);

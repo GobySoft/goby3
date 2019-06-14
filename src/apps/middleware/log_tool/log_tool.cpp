@@ -31,6 +31,8 @@ using goby::glog;
 
 namespace goby
 {
+namespace apps
+{
 namespace middleware
 {
 class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
@@ -51,17 +53,18 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
     std::vector<void*> dl_handles_;
 
     // scheme to plugin
-    std::map<int, std::unique_ptr<log::LogPlugin> > plugins_;
+    std::map<int, std::unique_ptr<goby::middleware::log::LogPlugin> > plugins_;
 
     std::ifstream f_in_;
     std::ofstream f_out_;
 };
 } // namespace middleware
+}
 } // namespace goby
 
-int main(int argc, char* argv[]) { return goby::run<goby::middleware::LogTool>(argc, argv); }
+int main(int argc, char* argv[]) { return goby::run<goby::apps::middleware::LogTool>(argc, argv); }
 
-goby::middleware::LogTool::LogTool()
+goby::apps::middleware::LogTool::LogTool()
     : f_in_(app_cfg().input_file().c_str()),
       f_out_(app_cfg().output_file() == "-" ? "/dev/stdout" : app_cfg().output_file().c_str())
 {
@@ -73,8 +76,8 @@ goby::middleware::LogTool::LogTool()
         dl_handles_.push_back(lib_handle);
     }
 
-    plugins_[goby::middleware::MarshallingScheme::PROTOBUF].reset(new log::ProtobufPlugin);
-    plugins_[goby::middleware::MarshallingScheme::DCCL].reset(new log::DCCLPlugin);
+    plugins_[goby::middleware::MarshallingScheme::PROTOBUF].reset(new goby::middleware::log::ProtobufPlugin);
+    plugins_[goby::middleware::MarshallingScheme::DCCL].reset(new goby::middleware::log::DCCLPlugin);
 
     for (auto& p : plugins_) p.second->register_read_hooks(f_in_);
 
@@ -82,13 +85,13 @@ goby::middleware::LogTool::LogTool()
     {
         try
         {
-            goby::middleware::LogEntry log_entry;
+            goby::middleware::log::LogEntry log_entry;
             log_entry.parse(&f_in_);
             try
             {
                 auto plugin = plugins_.find(log_entry.scheme());
                 if (plugin == plugins_.end())
-                    throw(log::LogException("No plugin available for scheme: " +
+                    throw(goby::middleware::log::LogException("No plugin available for scheme: " +
                                             std::to_string(log_entry.scheme())));
 
                 switch (app_cfg().format())
@@ -103,7 +106,7 @@ goby::middleware::LogTool::LogTool()
                 }
             }
 
-            catch (log::LogException& e)
+            catch (goby::middleware::log::LogException& e)
             {
                 glog.is_warn() && glog << "Failed to parse message (scheme: " << log_entry.scheme()
                                        << ", group: " << log_entry.group()
@@ -120,7 +123,7 @@ goby::middleware::LogTool::LogTool()
                 }
             }
         }
-        catch (log::LogException& e)
+        catch (goby::middleware::log::LogException& e)
         {
             glog.is_warn() && glog << "Exception processing input log (will attempt to continue): "
                                    << e.what() << std::endl;
