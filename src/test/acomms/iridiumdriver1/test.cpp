@@ -24,6 +24,10 @@
 #include "../../acomms/driver_tester/driver_tester.h"
 #include "goby/acomms/modemdriver/iridium_driver.h"
 
+///
+/// \todo FIX this test (iridiumdriver1), does not currently work
+///
+
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 
 int main(int argc, char* argv[])

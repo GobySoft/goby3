@@ -22,6 +22,8 @@
 #include "goby/util/base_convert.h"
 #include "goby/util/binary.h"
 
+#include "goby/acomms/modemdriver/rudics_packet.h"
+
 #include <cassert>
 #include <cstdlib>
 #include <iomanip>
@@ -105,6 +107,25 @@ int main()
              "00000"
              "d700eec35f2e82010000fcfce0e5e939e4984a6c62ff7a94584eb71cc471e1f53efd364000"),
          252);
+
+    std::string in = goby::util::hex_decode("000102030405060708090A0B0C0D0E0F10111213"), out,
+                rudics;
+    goby::acomms::serialize_rudics_packet(in, &rudics);
+    goby::acomms::parse_rudics_packet(&out, rudics);
+
+    std::cout << "in:  ";
+    intprint(in);
+    std::cout << "rudics: ";
+    intprint(rudics);
+    std::cout << "out: ";
+    intprint(out);
+    assert(in == out);
+
+    goby::acomms::parse_rudics_packet(
+        &out, goby::util::hex_decode("2d237296fc3f3060eae8b140a781d7804836985c3caf9179b7ee806aebc25"
+                                     "97f9569f71baf3b5d7d841f74010d"));
+    std::cout << "fixed: ";
+    intprint(out);
 
     std::cout << "all tests passed" << std::endl;
 
