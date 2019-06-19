@@ -32,7 +32,6 @@
 #include "test.pb.h"
 
 using namespace goby::test::zeromq::protobuf;
-using goby::acomms::udp::protobuf::UDPDriverConfig;
 
 // tests InterVehiclePortal with InterProcessPortal
 
@@ -205,10 +204,10 @@ int main(int argc, char* argv[])
     goby::middleware::protobuf::InterVehiclePortalConfig slow_cfg;
     slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
     goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
-    UDPDriverConfig::EndPoint* local_endpoint = driver_cfg.MutableExtension(UDPDriverConfig::local);
-    UDPDriverConfig::EndPoint* remote_endpoint =
-        driver_cfg.MutableExtension(UDPDriverConfig::remote);
-    driver_cfg.SetExtension(UDPDriverConfig::max_frame_size, 64);
+    auto* udp_driver_cfg = driver_cfg.MutableExtension(goby::acomms::udp::protobuf::config);
+    auto* local_endpoint = udp_driver_cfg->mutable_local();
+    auto* remote_endpoint = udp_driver_cfg->mutable_remote();
+    udp_driver_cfg->set_max_frame_size(64);
 
     goby::acomms::protobuf::MACConfig& mac_cfg = *slow_cfg.mutable_mac_cfg();
     mac_cfg.set_type(goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED);

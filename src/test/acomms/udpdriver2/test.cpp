@@ -31,7 +31,7 @@ using namespace goby::util::logger;
 using namespace goby::acomms;
 using goby::util::as;
 using namespace boost::posix_time;
-using goby::acomms::udp::protobuf::UDPDriverConfig;
+using goby::acomms::udp::protobuf::config;
 
 std::shared_ptr<goby::acomms::UDPDriver> driver1;
 
@@ -68,14 +68,15 @@ int main(int argc, char* argv[])
     driver1.reset(new goby::acomms::UDPDriver);
 
     goby::acomms::protobuf::DriverConfig cfg1;
+    auto* udp_cfg1 = cfg1.MutableExtension(config);
 
     cfg1.set_modem_id(local_id);
 
-    UDPDriverConfig::EndPoint* local_endpoint1 = cfg1.MutableExtension(UDPDriverConfig::local);
+    auto* local_endpoint1 = udp_cfg1->mutable_local();
 
     local_endpoint1->set_port(local_port);
 
-    UDPDriverConfig::EndPoint* remote_endpoint1 = cfg1.MutableExtension(UDPDriverConfig::remote);
+    auto* remote_endpoint1 = udp_cfg1->mutable_remote();
 
     remote_endpoint1->set_ip(remote_addr);
     remote_endpoint1->set_port(remote_port);

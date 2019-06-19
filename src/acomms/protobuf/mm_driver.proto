@@ -60,35 +60,37 @@ message GenericLBLParams
 
 message Config
 {
-    extend goby.acomms.protobuf.DriverConfig
-    {
-        // reset all NVRAM settings to factory before
-        // setting ours ($CCCFG,ALL,0)
-        optional bool reset_nvram = 1000 [default = false];
+    // reset all NVRAM settings to factory before
+    // setting ours ($CCCFG,ALL,0)
+    optional bool reset_nvram = 1000 [default = false];
 
-        // add NVRAM configuration sentences to send to the modem
-        // on startup (e.g. "$CACFG,SRC,1"). Omit the "$CACFG," here.
-        // To reinitialize all values to factory settings, send "ALL,0"
-        repeated string nvram_cfg = 1001;  // e.g. "SRC,3"
+    // add NVRAM configuration sentences to send to the modem
+    // on startup (e.g. "$CACFG,SRC,1"). Omit the "$CACFG," here.
+    // To reinitialize all values to factory settings, send "ALL,0"
+    repeated string nvram_cfg = 1001;  // e.g. "SRC,3"
 
-        // set to a non-zero value to indicate that we are using the hydroid
-        // gateway buoy which has a non-standard sentence structure (#M / !M
-        // prefixes) *do not set for the normal WHOI Micro-Modem*
-        optional uint32 hydroid_gateway_id = 1002 [default = 0];
+    // set to a non-zero value to indicate that we are using the hydroid
+    // gateway buoy which has a non-standard sentence structure (#M / !M
+    // prefixes) *do not set for the normal WHOI Micro-Modem*
+    optional uint32 hydroid_gateway_id = 1002 [default = 0];
 
-        // LBL parameters can be set globally here or on a per-transmission
-        // basis
-        optional NarrowBandLBLParams narrowband_lbl = 1003;
-        optional REMUSLBLParams remus_lbl = 1004;
+    // LBL parameters can be set globally here or on a per-transmission
+    // basis
+    optional NarrowBandLBLParams narrowband_lbl = 1003;
+    optional REMUSLBLParams remus_lbl = 1004;
 
-        optional int32 keep_alive_seconds = 1006 [default = 10];
+    optional int32 keep_alive_seconds = 1006 [default = 10];
 
-        optional int32 allowed_skew_ms = 1008 [default = 1000];
+    optional int32 allowed_skew_ms = 1008 [default = 1000];
 
-        optional bool use_application_acks = 1009 [default = false];
+    optional bool use_application_acks = 1009 [default = false];
 
-        optional GenericLBLParams generic_lbl = 1010;
-    }
+    optional GenericLBLParams generic_lbl = 1010;
+}
+
+extend goby.acomms.protobuf.DriverConfig
+{
+    optional Config config = 1000;
 }
 
 enum ClockMode

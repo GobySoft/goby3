@@ -101,12 +101,12 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
         driver_cfg_.set_serial_baud(DEFAULT_BAUD);
 
     // support the non-standard Hydroid gateway buoy
-    if (driver_cfg_.HasExtension(micromodem::protobuf::Config::hydroid_gateway_id))
+    if (driver_cfg_.GetExtension(micromodem::protobuf::config).has_hydroid_gateway_id())
         set_hydroid_gateway_prefix(
-            driver_cfg_.GetExtension(micromodem::protobuf::Config::hydroid_gateway_id));
+            driver_cfg_.GetExtension(micromodem::protobuf::config).hydroid_gateway_id());
 
     using_application_acks_ =
-        driver_cfg_.GetExtension(micromodem::protobuf::Config::use_application_acks);
+        driver_cfg_.GetExtension(micromodem::protobuf::config).use_application_acks();
     application_ack_max_frames_ = 32;
     if (using_application_acks_)
         dccl_.load<micromodem::protobuf::MMApplicationAck>();
@@ -197,8 +197,8 @@ bool goby::acomms::MMDriver::query_rts()
 
 void goby::acomms::MMDriver::update_cfg(const protobuf::DriverConfig& cfg)
 {
-    for (int i = 0, n = cfg.ExtensionSize(micromodem::protobuf::Config::nvram_cfg); i < n; ++i)
-        write_single_cfg(cfg.GetExtension(micromodem::protobuf::Config::nvram_cfg, i));
+    for (int i = 0, n = cfg.GetExtension(micromodem::protobuf::config).nvram_cfg_size(); i < n; ++i)
+        write_single_cfg(cfg.GetExtension(micromodem::protobuf::config).nvram_cfg(i));
 }
 
 void goby::acomms::MMDriver::initialize_talkers()
@@ -423,15 +423,16 @@ void goby::acomms::MMDriver::write_cfg()
     // reset nvram if requested and not a Hydroid buoy
     // as this resets the baud to 19200 and the buoy
     // requires 4800
-    if (!is_hydroid_gateway_ && driver_cfg_.GetExtension(micromodem::protobuf::Config::reset_nvram))
+    if (!is_hydroid_gateway_ &&
+        driver_cfg_.GetExtension(micromodem::protobuf::config).reset_nvram())
         write_single_cfg("ALL,0");
 
     // try to enforce CST to be enabled
     write_single_cfg("CST,1");
 
-    for (int i = 0, n = driver_cfg_.ExtensionSize(micromodem::protobuf::Config::nvram_cfg); i < n;
-         ++i)
-        write_single_cfg(driver_cfg_.GetExtension(micromodem::protobuf::Config::nvram_cfg, i));
+    for (int i = 0, n = driver_cfg_.GetExtension(micromodem::protobuf::config).nvram_cfg_size();
+         i < n; ++i)
+        write_single_cfg(driver_cfg_.GetExtension(micromodem::protobuf::config).nvram_cfg(i));
 
     // enforce SRC to be set the same as provided modem id. we need this for sanity...
     write_single_cfg("SRC," + as<std::string>(driver_cfg_.modem_id()));
@@ -498,8 +499,9 @@ void goby::acomms::MMDriver::do_work()
 
     // send a message periodically (query the source ID) to the local modem to ascertain that it is still alive
     auto now = time::SystemClock::now();
-    if (last_keep_alive_time_ + std::chrono::seconds(driver_cfg_.GetExtension(
-                                    micromodem::protobuf::Config::keep_alive_seconds)) <=
+    if (last_keep_alive_time_ +
+            std::chrono::seconds(
+                driver_cfg_.GetExtension(micromodem::protobuf::config).keep_alive_seconds()) <=
         now)
     {
         NMEASentence nmea("$CCCFQ", NMEASentence::IGNORE);
@@ -770,7 +772,7 @@ void goby::acomms::MMDriver::ccpdt(const protobuf::ModemTransmission& msg)
 
     // start with configuration parameters
     micromodem::protobuf::REMUSLBLParams params =
-        driver_cfg_.GetExtension(micromodem::protobuf::Config::remus_lbl);
+        driver_cfg_.GetExtension(micromodem::protobuf::config).remus_lbl();
     // merge (overwriting any duplicates) the parameters given in the request
     params.MergeFrom(msg.GetExtension(micromodem::protobuf::remus_lbl));
 
@@ -803,7 +805,7 @@ void goby::acomms::MMDriver::ccpnt(const protobuf::ModemTransmission& msg)
 
     // start with configuration parameters
     micromodem::protobuf::NarrowBandLBLParams params =
-        driver_cfg_.GetExtension(micromodem::protobuf::Config::narrowband_lbl);
+        driver_cfg_.GetExtension(micromodem::protobuf::config).narrowband_lbl();
     // merge (overwriting any duplicates) the parameters given in the request
     params.MergeFrom(msg.GetExtension(micromodem::protobuf::narrowband_lbl));
 
@@ -864,7 +866,7 @@ void goby::acomms::MMDriver::ccpgt(const protobuf::ModemTransmission& msg)
 
     // start with configuration parameters
     micromodem::protobuf::GenericLBLParams params =
-        driver_cfg_.GetExtension(micromodem::protobuf::Config::generic_lbl);
+        driver_cfg_.GetExtension(micromodem::protobuf::config).generic_lbl();
     // merge (overwriting any duplicates) the parameters given in the request
     params.MergeFrom(msg.GetExtension(micromodem::protobuf::generic_lbl));
 
@@ -1443,7 +1445,7 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
     // glog.is(DEBUG1) && glog << group(glog_in_group()) << "Difference: " << t_diff << std::endl;
 
     if (abs(int(t_diff.total_milliseconds())) <
-        driver_cfg_.GetExtension(micromodem::protobuf::Config::allowed_skew_ms))
+        driver_cfg_.GetExtension(micromodem::protobuf::config).allowed_skew_ms())
     {
         glog.is(DEBUG1) && glog << group(glog_out_group()) << "Micro-Modem clock acceptably set."
                                 << std::endl;

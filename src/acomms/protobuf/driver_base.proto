@@ -88,11 +88,11 @@ message DriverConfig
         [(goby.field).description = "Driver name to load from plugin library"];
 
     extensions 1000 to max;
-    // extensions 1000-1100 used by acomms_mm_driver.proto
-    // extensions 1201-1202 used by acomms_abc_driver.proto (example driver)
+    // extension 1000 used by acomms_mm_driver.proto
+    // extension 1201 used by acomms_abc_driver.proto (example driver)
     // extensions 1300-1320 used by ufield_sim_driver.proto
-    // extensions 1321-1340 used by pb_modem_driver.proto
-    // extensions 1341-1360 used by udp_driver.proto
+    // (removed) extensions 1321-1340 used by pb_modem_driver.proto
+    // extension 1341 used by udp_driver.proto
     // extensions 1361-1380 used by bluefin_sim_driver.proto
     // extensions 1381-1400 used by iridium_driver.proto
     // extensions 1401-1420 used by MOOSSafir (external)

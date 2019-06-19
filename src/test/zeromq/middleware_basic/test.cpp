@@ -30,7 +30,6 @@
 #include "goby/util/debug_logger.h"
 #include "test.pb.h"
 
-using goby::acomms::udp::protobuf::UDPDriverConfig;
 using goby::test::zeromq::protobuf::CTDSample;
 using goby::test::zeromq::protobuf::TempSample;
 
@@ -90,8 +89,8 @@ int main(int argc, char* argv[])
         slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
         goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
         driver_cfg.set_modem_id(1);
-        UDPDriverConfig::EndPoint* local_endpoint =
-            driver_cfg.MutableExtension(UDPDriverConfig::local);
+        auto* local_endpoint =
+            driver_cfg.MutableExtension(goby::acomms::udp::protobuf::config)->mutable_local();
         local_endpoint->set_port(11145);
         goby::acomms::protobuf::MACConfig& mac_cfg = *slow_cfg.mutable_mac_cfg();
         mac_cfg.set_modem_id(1);

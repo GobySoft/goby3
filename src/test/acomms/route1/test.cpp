@@ -47,7 +47,7 @@ using namespace goby::util::logger;
 using namespace goby::acomms;
 using goby::util::as;
 using namespace boost::posix_time;
-using goby::acomms::udp::protobuf::UDPDriverConfig;
+using goby::acomms::udp::protobuf::config;
 using goby::test::acomms::protobuf::RouteMessage;
 
 const int ID_0_1 = 1;
@@ -134,12 +134,12 @@ int main(int argc, char* argv[])
     int port1 = rand() % 1000 + 50020;
     int port2 = port1 + 1;
 
-    d_cfg2.MutableExtension(UDPDriverConfig::local)->set_port(port1);
-    d_cfg3.MutableExtension(UDPDriverConfig::local)->set_port(port2);
-    d_cfg2.MutableExtension(UDPDriverConfig::remote)
-        ->CopyFrom(d_cfg3.GetExtension(UDPDriverConfig::local));
-    d_cfg3.MutableExtension(UDPDriverConfig::remote)
-        ->CopyFrom(d_cfg2.GetExtension(UDPDriverConfig::local));
+    d_cfg2.MutableExtension(config)->mutable_local()->set_port(port1);
+    d_cfg3.MutableExtension(config)->mutable_local()->set_port(port2);
+    d_cfg2.MutableExtension(config)->mutable_remote()->CopyFrom(
+        d_cfg3.GetExtension(config).local());
+    d_cfg3.MutableExtension(config)->mutable_remote()->CopyFrom(
+        d_cfg2.GetExtension(config).local());
 
     driver2->startup(d_cfg2);
     driver3->startup(d_cfg3);
