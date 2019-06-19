@@ -64,8 +64,6 @@ class ModemDriverThread
 
     std::deque<std::string> sending_;
 
-    // for UDPDriver
-    std::vector<std::unique_ptr<boost::asio::io_service> > asio_service_;
     std::unique_ptr<goby::acomms::ModemDriverBase> driver_;
 
     goby::acomms::MACManager mac_;

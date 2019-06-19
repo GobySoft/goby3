@@ -61,7 +61,6 @@ void handle_receive3(const google::protobuf::Message& msg);
 
 void handle_modem_receive3(const protobuf::ModemTransmission& message);
 
-boost::asio::io_service io2, io3;
 std::shared_ptr<goby::acomms::UDPDriver> driver2, driver3;
 
 bool received_message = false;
@@ -124,8 +123,8 @@ int main(int argc, char* argv[])
     r_manager.set_cfg(r_cfg);
 
     // set up drivers
-    driver2.reset(new goby::acomms::UDPDriver(&io2));
-    driver3.reset(new goby::acomms::UDPDriver(&io3));
+    driver2.reset(new goby::acomms::UDPDriver);
+    driver3.reset(new goby::acomms::UDPDriver);
 
     goby::acomms::protobuf::DriverConfig d_cfg2, d_cfg3;
     d_cfg2.set_modem_id(ID_2_1);

@@ -37,7 +37,6 @@ using goby::acomms::udp::protobuf::UDPDriverConfig;
 using goby::test::acomms::protobuf::GobyMessage;
 using goby::test::acomms::protobuf::Header;
 
-boost::asio::io_service io1, io2;
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 goby::acomms::QueueManager q1, q2;
 GobyMessage msg_in1, msg_in2;
@@ -120,8 +119,8 @@ int main(int argc, char* argv[])
 
     goby::glog.set_name(argv[0]);
 
-    driver1.reset(new goby::acomms::UDPDriver(&io1));
-    driver2.reset(new goby::acomms::UDPDriver(&io2));
+    driver1.reset(new goby::acomms::UDPDriver);
+    driver2.reset(new goby::acomms::UDPDriver);
 
     goby::acomms::protobuf::DriverConfig cfg1, cfg2;
 

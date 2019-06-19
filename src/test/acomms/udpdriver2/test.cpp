@@ -33,7 +33,6 @@ using goby::util::as;
 using namespace boost::posix_time;
 using goby::acomms::udp::protobuf::UDPDriverConfig;
 
-boost::asio::io_service io1;
 std::shared_ptr<goby::acomms::UDPDriver> driver1;
 
 void handle_data_request1(protobuf::ModemTransmission* msg);
@@ -66,7 +65,7 @@ int main(int argc, char* argv[])
 
     goby::glog.set_name(argv[0]);
 
-    driver1.reset(new goby::acomms::UDPDriver(&io1));
+    driver1.reset(new goby::acomms::UDPDriver);
 
     goby::acomms::protobuf::DriverConfig cfg1;
 

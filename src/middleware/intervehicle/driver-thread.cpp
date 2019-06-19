@@ -52,11 +52,7 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
             driver_.reset(new goby::acomms::IridiumDriver);
             break;
 
-        case goby::acomms::protobuf::DRIVER_UDP:
-            asio_service_.push_back(
-                std::unique_ptr<boost::asio::io_service>(new boost::asio::io_service));
-            driver_.reset(new goby::acomms::UDPDriver(asio_service_.back().get()));
-            break;
+        case goby::acomms::protobuf::DRIVER_UDP: driver_.reset(new goby::acomms::UDPDriver); break;
 
         case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
             driver_.reset(new goby::acomms::IridiumShoreDriver);

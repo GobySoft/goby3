@@ -608,9 +608,7 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
                 break;
 
             case goby::acomms::protobuf::DRIVER_UDP:
-                asio_service_.push_back(
-                    std::shared_ptr<boost::asio::io_service>(new boost::asio::io_service));
-                driver.reset(new goby::acomms::UDPDriver(asio_service_.back().get()));
+                driver.reset(new goby::acomms::UDPDriver);
                 break;
 
             case goby::acomms::protobuf::DRIVER_BLUEFIN_MOOS:

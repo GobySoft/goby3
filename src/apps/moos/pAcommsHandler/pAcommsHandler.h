@@ -159,10 +159,6 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
 
     goby::acomms::RouteManager* router_;
 
-
-    // for UDPDriver
-    std::vector<std::shared_ptr<boost::asio::io_service> > asio_service_;
-
     std::vector<std::shared_ptr<Timer> > timers_;
 
     std::map<std::shared_ptr<goby::acomms::ModemDriverBase>, double> driver_restart_time_;

@@ -27,7 +27,6 @@
 
 using goby::acomms::udp::protobuf::UDPDriverConfig;
 
-boost::asio::io_service io1, io2;
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 
 void handle_raw_incoming(int driver, const goby::acomms::protobuf::ModemRaw& raw)
@@ -53,8 +52,8 @@ int main(int argc, char* argv[])
 
     goby::glog.set_name(argv[0]);
 
-    driver1.reset(new goby::acomms::UDPDriver(&io1));
-    driver2.reset(new goby::acomms::UDPDriver(&io2));
+    driver1.reset(new goby::acomms::UDPDriver);
+    driver2.reset(new goby::acomms::UDPDriver);
 
     goby::acomms::connect(&driver1->signal_raw_incoming, boost::bind(&handle_raw_incoming, 1, _1));
     goby::acomms::connect(&driver2->signal_raw_incoming, boost::bind(&handle_raw_incoming, 2, _1));

@@ -38,7 +38,7 @@ namespace acomms
 class UDPDriver : public ModemDriverBase
 {
   public:
-    UDPDriver(boost::asio::io_service* io_service);
+    UDPDriver();
     ~UDPDriver();
     void startup(const protobuf::DriverConfig& cfg);
     void shutdown();
@@ -54,7 +54,7 @@ class UDPDriver : public ModemDriverBase
 
   private:
     protobuf::DriverConfig driver_cfg_;
-    boost::asio::io_service* io_service_;
+    boost::asio::io_service io_service_;
     boost::asio::ip::udp::socket socket_;
     boost::asio::ip::udp::endpoint receiver_;
     boost::asio::ip::udp::endpoint sender_;
