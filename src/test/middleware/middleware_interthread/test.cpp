@@ -93,14 +93,14 @@ class Subscriber
   private:
     void handle_sample1(std::shared_ptr<const Sample> sample)
     {
-        std::thread::id this_id = std::this_thread::get_id();
+        //std::thread::id this_id = std::this_thread::get_id();
         //        std::cout << this_id << ": Received1: " << sample->DebugString() << std::endl;
         assert(sample->a() == receive_count1);
         ++receive_count1;
     }
     void handle_sample2(std::shared_ptr<const Sample> sample)
     {
-        std::thread::id this_id = std::this_thread::get_id();
+        //std::thread::id this_id = std::this_thread::get_id();
         //std::cout << this_id << ": Received2: " << sample->DebugString() << std::endl;
         assert(sample->a() == receive_count2 + 10);
         ++receive_count2;
@@ -108,7 +108,7 @@ class Subscriber
 
     void handle_widget1(std::shared_ptr<const Widget> widget)
     {
-        std::thread::id this_id = std::this_thread::get_id();
+        //std::thread::id this_id = std::this_thread::get_id();
         //std::cout << this_id << ": Received3: " << widget->DebugString() << std::endl;
         assert(widget->b() == receive_count3 - 8);
         ++receive_count3;

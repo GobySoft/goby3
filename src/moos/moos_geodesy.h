@@ -26,16 +26,25 @@
 #ifndef MOOSGeodesy20130916H
 #define MOOSGeodesy20130916H
 
-#include <proj_api.h>
+#include <memory>
+
+namespace goby
+{
+namespace util
+{
+class UTMGeodesy;
+}
+} // namespace goby
 
 class CMOOSGeodesy
 {
   public:
     CMOOSGeodesy();
-    virtual ~CMOOSGeodesy();
+    ~CMOOSGeodesy();
 
     double GetOriginLatitude();
     double GetOriginLongitude();
+
     double GetOriginNorthing();
     double GetOriginEasting();
     int GetUTMZone();
@@ -46,18 +55,7 @@ class CMOOSGeodesy
     bool Initialise(double lat, double lon);
 
   private:
-    int m_sUTMZone;
-    double m_dOriginEasting;
-    double m_dOriginNorthing;
-    double m_dOriginLongitude;
-    double m_dOriginLatitude;
-    projPJ pj_utm_, pj_latlong_;
-
-    void SetOriginLatitude(double lat);
-    void SetOriginLongitude(double lon);
-    void SetOriginEasting(double East);
-    void SetOriginNorthing(double North);
-    void SetUTMZone(int zone);
+    std::unique_ptr<goby::util::UTMGeodesy> geodesy_;
 };
 
 #endif
