@@ -12,10 +12,10 @@ message Config
         required uint32 port = 2;
     }
 
-    optional EndPoint local = 1 [(goby.field).description =
+    required EndPoint local = 1 [(goby.field).description =
                                     "The endpoint of the local machine "
                                     "(IP address can be omitted)"];
-    optional EndPoint remote = 2
+    required EndPoint remote = 2
             [(goby.field).description =
              "The endpoint of the receiving machine."];
     optional int32 max_frame_size = 3 [default = 65536];

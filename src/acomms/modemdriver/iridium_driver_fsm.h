@@ -218,6 +218,10 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     }
 
     const goby::acomms::protobuf::DriverConfig& driver_cfg() const { return driver_cfg_; }
+    const goby::acomms::iridium::protobuf::Config& iridium_driver_cfg() const
+    {
+        return driver_cfg_.GetExtension(protobuf::config);
+    }
 
     const std::string& glog_ir_group() const { return glog_ir_group_; }
 
@@ -320,15 +324,9 @@ struct Configure : boost::statechart::state<Configure, Command::orthogonal<0> >,
     Configure(my_context ctx) : my_base(ctx), StateNotify("Configure")
     {
         context<Command>().push_at_command("");
-        for (int i = 0, n = context<IridiumDriverFSM>().driver_cfg().ExtensionSize(
-                            protobuf::IridiumDriverConfig::config);
-             i < n; ++i)
-        {
-            context<Command>().push_at_command(
-                context<IridiumDriverFSM>().driver_cfg().GetExtension(
-                    protobuf::IridiumDriverConfig::config, i));
-        }
-    }
+        const auto& iridium_driver_config = context<IridiumDriverFSM>().iridium_driver_cfg();
+        for (int i = 0, n = iridium_driver_config.config_size(); i < n; ++i)
+        { context<Command>().push_at_command(iridium_driver_config.config(i)); } }
 
     ~Configure() { post_event(EvConfigured()); }
 };

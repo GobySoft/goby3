@@ -63,6 +63,11 @@ class IridiumDriver : public ModemDriverBase
     void set_dtr(bool state);
     bool query_dtr();
 
+    const iridium::protobuf::Config& iridium_driver_cfg()
+    {
+        return driver_cfg_.GetExtension(iridium::protobuf::config);
+    };
+
   private:
     iridium::fsm::IridiumDriverFSM fsm_;
     protobuf::DriverConfig driver_cfg_;

@@ -72,6 +72,16 @@ class IridiumShoreDriver : public ModemDriverBase
     void rudics_line(const std::string& line, std::shared_ptr<RUDICSConnection> connection);
     void rudics_connect(std::shared_ptr<RUDICSConnection> connection);
 
+    const iridium::protobuf::Config& iridium_driver_cfg() const
+    {
+        return driver_cfg_.GetExtension(iridium::protobuf::config);
+    }
+
+    const iridium::protobuf::ShoreConfig& iridium_shore_driver_cfg() const
+    {
+        return driver_cfg_.GetExtension(iridium::protobuf::shore_config);
+    }
+
   private:
     protobuf::DriverConfig driver_cfg_;
 

@@ -4,7 +4,7 @@ import "goby/acomms/protobuf/driver_base.proto";
 
 package goby.acomms.iridium.protobuf;
 
-message IridiumShoreDriverConfig
+message ShoreConfig
 {
     message ModemIDIMEIPair
     {
@@ -12,12 +12,14 @@ message IridiumShoreDriverConfig
         required string imei = 2;
     }
 
-    extend goby.acomms.protobuf.DriverConfig
-    {
-        optional uint32 rudics_server_port = 1421;
-        optional uint32 mo_sbd_server_port = 1422 [default = 40001];
-        optional string mt_sbd_server_address = 1423;
-        optional uint32 mt_sbd_server_port = 1424;
-        repeated ModemIDIMEIPair modem_id_to_imei = 1425;
-    }
+    required uint32 rudics_server_port = 1421;
+    optional uint32 mo_sbd_server_port = 1422 [default = 40001];
+    required string mt_sbd_server_address = 1423;
+    required uint32 mt_sbd_server_port = 1424;
+    repeated ModemIDIMEIPair modem_id_to_imei = 1425;
+}
+
+extend goby.acomms.protobuf.DriverConfig
+{
+    optional ShoreConfig shore_config = 1421;
 }

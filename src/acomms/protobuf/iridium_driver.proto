@@ -6,7 +6,7 @@ import "dccl/option_extensions.proto";
 
 package goby.acomms.iridium.protobuf;
 
-message IridiumDriverConfig
+message Config
 {
     message Remote
     {
@@ -14,25 +14,27 @@ message IridiumDriverConfig
         required int32 modem_id = 2;
     }
 
-    extend goby.acomms.protobuf.DriverConfig
-    {
-        optional Remote remote = 1381;
-        optional uint32 max_frame_size = 1382 [default = 1500];
-        optional int32 target_bit_rate = 1383 [default = 2400];
-        repeated string config = 1384;
-        optional int32 dial_attempts = 1385 [default = 3];
-        optional int32 debug_client_port = 1386;
+    optional Remote remote = 1;
+    optional uint32 max_frame_size = 2 [default = 1500];
+    optional int32 target_bit_rate = 3 [default = 2400];
+    repeated string config = 4;
+    optional int32 dial_attempts = 5 [default = 3];
+    optional int32 debug_client_port = 6;
 
-        optional int32 hangup_seconds_after_empty = 1388 [default = 30];
-        optional int32 start_timeout = 1389 [default = 20];
-        optional bool use_dtr = 1390 [default = false];
-        optional int32 handshake_hangup_seconds = 1392 [default = 5];
-    }
+    optional int32 hangup_seconds_after_empty = 8 [default = 30];
+    optional int32 start_timeout = 9 [default = 20];
+    optional bool use_dtr = 10 [default = false];
+    optional int32 handshake_hangup_seconds = 12 [default = 5];
+}
 
-    extend goby.acomms.protobuf.ModemTransmission
-    {
-        optional bool if_no_data_do_mailbox_check = 1381 [default = true];
-    }
+extend goby.acomms.protobuf.DriverConfig
+{
+    optional Config config = 1381;
+}
+
+extend goby.acomms.protobuf.ModemTransmission
+{
+    optional bool if_no_data_do_mailbox_check = 1381 [default = true];
 }
 
 // subset of goby.acomms.protobuf.ModemTransmission

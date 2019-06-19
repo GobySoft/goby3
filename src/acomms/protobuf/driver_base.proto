@@ -94,8 +94,8 @@ message DriverConfig
     // (removed) extensions 1321-1340 used by pb_modem_driver.proto
     // extension 1341 used by udp_driver.proto
     // extensions 1361-1380 used by bluefin_sim_driver.proto
-    // extensions 1381-1400 used by iridium_driver.proto
+    // extensions 1381 used by iridium_driver.proto
     // extensions 1401-1420 used by MOOSSafir (external)
-    // extensions 1421-1440 used by iridium_shore_driver.proto
+    // extensions 1421 used by iridium_shore_driver.proto
     // extensions 1441-1460 used by benthos_atm900.proto
 }

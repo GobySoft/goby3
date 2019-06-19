@@ -38,8 +38,6 @@ using goby::acomms::iridium::protobuf::DirectIPMOPayload;
 using goby::acomms::iridium::protobuf::DirectIPMOPreHeader;
 using goby::acomms::iridium::protobuf::DirectIPMTHeader;
 using goby::acomms::iridium::protobuf::DirectIPMTPayload;
-using goby::acomms::iridium::protobuf::IridiumDriverConfig;
-using goby::acomms::iridium::protobuf::IridiumShoreDriverConfig;
 using goby::util::TCPConnection;
 
 goby::acomms::IridiumShoreDriver::IridiumShoreDriver() : next_frame_(0) { init_iridium_dccl(); }
@@ -57,19 +55,16 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
     rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
     rudics_mac_msg_.set_rate(RATE_RUDICS);
 
-    rudics_server_.reset(new RUDICSServer(
-        rudics_io_, driver_cfg_.GetExtension(IridiumShoreDriverConfig::rudics_server_port)));
-    mo_sbd_server_.reset(new SBDServer(
-        sbd_io_, driver_cfg_.GetExtension(IridiumShoreDriverConfig::mo_sbd_server_port)));
+    rudics_server_.reset(
+        new RUDICSServer(rudics_io_, iridium_shore_driver_cfg().rudics_server_port()));
+    mo_sbd_server_.reset(new SBDServer(sbd_io_, iridium_shore_driver_cfg().mo_sbd_server_port()));
 
     rudics_server_->connect_signal.connect(
         boost::bind(&IridiumShoreDriver::rudics_connect, this, _1));
 
-    for (int i = 0, n = driver_cfg_.ExtensionSize(IridiumShoreDriverConfig::modem_id_to_imei);
-         i < n; ++i)
-        modem_id_to_imei_[driver_cfg_.GetExtension(IridiumShoreDriverConfig::modem_id_to_imei, i)
-                              .modem_id()] =
-            driver_cfg_.GetExtension(IridiumShoreDriverConfig::modem_id_to_imei, i).imei();
+    for (int i = 0, n = iridium_shore_driver_cfg().modem_id_to_imei_size(); i < n; ++i)
+        modem_id_to_imei_[iridium_shore_driver_cfg().modem_id_to_imei(i).modem_id()] =
+            iridium_shore_driver_cfg().modem_id_to_imei(i).imei();
 }
 
 void goby::acomms::IridiumShoreDriver::shutdown() {}
@@ -88,9 +83,8 @@ void goby::acomms::IridiumShoreDriver::process_transmission(protobuf::ModemTrans
         msg.set_frame_start(next_frame_);
 
     // set the frame size, if not set or if it exceeds the max configured
-    if (!msg.has_max_frame_bytes() ||
-        msg.max_frame_bytes() > driver_cfg_.GetExtension(IridiumDriverConfig::max_frame_size))
-        msg.set_max_frame_bytes(driver_cfg_.GetExtension(IridiumDriverConfig::max_frame_size));
+    if (!msg.has_max_frame_bytes() || msg.max_frame_bytes() > iridium_driver_cfg().max_frame_size())
+        msg.set_max_frame_bytes(iridium_driver_cfg().max_frame_size());
 
     signal_data_request(&msg);
 
@@ -121,8 +115,7 @@ void goby::acomms::IridiumShoreDriver::do_work()
             // if we're on a call, keep pushing data at the target rate
             const double send_wait =
                 on_call_base->last_bytes_sent() /
-                (driver_cfg_.GetExtension(IridiumDriverConfig::target_bit_rate) /
-                 static_cast<double>(BITS_IN_BYTE));
+                (iridium_driver_cfg().target_bit_rate() / static_cast<double>(BITS_IN_BYTE));
 
             if (now > (on_call_base->last_tx_time() + send_wait))
             {
@@ -135,7 +128,7 @@ void goby::acomms::IridiumShoreDriver::do_work()
 
             if (!on_call_base->bye_sent() &&
                 now > (on_call_base->last_tx_time() +
-                       driver_cfg_.GetExtension(IridiumDriverConfig::handshake_hangup_seconds)))
+                       iridium_driver_cfg().handshake_hangup_seconds()))
             {
                 glog.is(DEBUG1) && glog << "Sending bye" << std::endl;
                 rudics_send("bye\r", id);
@@ -144,7 +137,7 @@ void goby::acomms::IridiumShoreDriver::do_work()
 
             if ((on_call_base->bye_received() && on_call_base->bye_sent()) ||
                 (now > (on_call_base->last_rx_tx_time() +
-                        driver_cfg_.GetExtension(IridiumDriverConfig::hangup_seconds_after_empty))))
+                        iridium_driver_cfg().hangup_seconds_after_empty())))
             {
                 glog.is(DEBUG1) && glog << "Hanging up by disconnecting" << std::endl;
                 typedef boost::bimap<ModemId,
@@ -405,9 +398,8 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt(const std::string& bytes,
 
         tcp::resolver resolver(io_service);
         tcp::resolver::query query(
-            driver_cfg_.GetExtension(IridiumShoreDriverConfig::mt_sbd_server_address),
-            goby::util::as<std::string>(
-                driver_cfg_.GetExtension(IridiumShoreDriverConfig::mt_sbd_server_port)));
+            iridium_shore_driver_cfg().mt_sbd_server_address(),
+            goby::util::as<std::string>(iridium_shore_driver_cfg().mt_sbd_server_port()));
         tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
         tcp::resolver::iterator end;
 
