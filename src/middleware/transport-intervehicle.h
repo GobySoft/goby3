@@ -29,17 +29,11 @@
 #include <thread>
 #include <unistd.h>
 
-#include "goby/acomms/amac.h"
-#include "goby/acomms/bind.h"
-#include "goby/acomms/modem_driver.h"
-#include "goby/acomms/queue.h"
-
-#include "goby/acomms/modemdriver/iridium_driver.h"
-#include "goby/acomms/modemdriver/iridium_shore_driver.h"
-#include "goby/acomms/modemdriver/udp_driver.h"
-
 #include "goby/middleware/protobuf/intervehicle_config.pb.h"
-#include "transport-common.h"
+#include "goby/middleware/transport-common.h"
+#include "goby/middleware/transport-interthread.h" // used for InterVehiclePortal implementation
+
+#include "goby/middleware/intervehicle/driver-thread.h"
 
 namespace goby
 {
@@ -75,25 +69,24 @@ class InterVehicleTransporterBase
 
     // publish without a group
     template <typename Data>
-    void publish_no_group(const Data& data,
-                          const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                              goby::middleware::protobuf::TransporterConfig())
+    void publish_no_group(const Data& data, const protobuf::TransporterConfig& transport_cfg =
+                                                protobuf::TransporterConfig())
     {
         publish_dynamic<Data>(data, Group(), transport_cfg);
     }
 
     template <typename Data>
-    void publish_no_group(std::shared_ptr<const Data> data,
-                          const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                              goby::middleware::protobuf::TransporterConfig())
+    void publish_no_group(
+        std::shared_ptr<const Data> data,
+        const protobuf::TransporterConfig& transport_cfg = protobuf::TransporterConfig())
     {
         publish_dynamic<Data>(data, Group(), transport_cfg);
     }
 
     template <typename Data>
-    void publish_no_group(std::shared_ptr<Data> data,
-                          const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                              goby::middleware::protobuf::TransporterConfig())
+    void publish_no_group(
+        std::shared_ptr<Data> data,
+        const protobuf::TransporterConfig& transport_cfg = protobuf::TransporterConfig())
     {
         publish_no_group<Data>(std::shared_ptr<const Data>(data), transport_cfg);
     }
@@ -117,11 +110,11 @@ class InterVehicleTransporterBase
         subscribe_dynamic<Data>(func, Group(), group_func);
     }
 
-    // implements StaticTransporterInteface
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(const Data& data, const Group& group = Group(),
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+    // implements StaticTransporterInterface
+    template <typename Data, int scheme = goby::middleware::scheme<Data>()>
+    void publish_dynamic(
+        const Data& data, const Group& group = Group(),
+        const protobuf::TransporterConfig& transport_cfg = protobuf::TransporterConfig())
     {
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
@@ -130,10 +123,10 @@ class InterVehicleTransporterBase
                                                                            transport_cfg);
     }
 
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(std::shared_ptr<const Data> data, const Group& group = Group(),
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+    template <typename Data, int scheme = goby::middleware::scheme<Data>()>
+    void publish_dynamic(
+        std::shared_ptr<const Data> data, const Group& group = Group(),
+        const protobuf::TransporterConfig& transport_cfg = protobuf::TransporterConfig())
     {
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
@@ -145,15 +138,15 @@ class InterVehicleTransporterBase
         }
     }
 
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(std::shared_ptr<Data> data, const Group& group = Group(),
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+    template <typename Data, int scheme = goby::middleware::scheme<Data>()>
+    void publish_dynamic(
+        std::shared_ptr<Data> data, const Group& group = Group(),
+        const protobuf::TransporterConfig& transport_cfg = protobuf::TransporterConfig())
     {
         publish_dynamic<Data>(std::shared_ptr<const Data>(data), group, transport_cfg);
     }
 
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = goby::middleware::scheme<Data>()>
     void subscribe_dynamic(std::function<void(const Data&)> func, const Group& group = Group(),
                            std::function<Group(const Data&)> group_func = [](const Data&) {
                                return Group();
@@ -166,7 +159,7 @@ class InterVehicleTransporterBase
                                                                group_func);
     }
 
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = goby::middleware::scheme<Data>()>
     void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> func,
                            const Group& group = Group(),
                            std::function<Group(const Data&)> group_func = [](const Data&) {
@@ -204,11 +197,8 @@ class InterVehicleForwarder
 
     InterVehicleForwarder(InnerTransporter& inner) : Base(inner)
     {
-        Base::inner_.template subscribe<Base::forward_group_,
-                                        goby::middleware::protobuf::DCCLForwardedData>(
-            [this](const goby::middleware::protobuf::DCCLForwardedData& d) {
-                _receive_dccl_data_forwarded(d);
-            });
+        Base::inner_.template subscribe<Base::forward_group_, protobuf::DCCLForwardedData>(
+            [this](const protobuf::DCCLForwardedData& d) { _receive_dccl_data_forwarded(d); });
     }
 
     virtual ~InterVehicleForwarder() = default;
@@ -218,14 +208,14 @@ class InterVehicleForwarder
   private:
     template <typename Data>
     void _publish(const Data& d, const Group& group,
-                  const goby::middleware::protobuf::TransporterConfig& transport_cfg)
+                  const protobuf::TransporterConfig& transport_cfg)
     {
         // create and forward publication to edge
         std::vector<char> bytes(
             SerializerParserHelper<Data, MarshallingScheme::DCCL>::serialize(d));
         std::string* sbytes = new std::string(bytes.begin(), bytes.end());
-        std::shared_ptr<goby::middleware::protobuf::SerializerTransporterData> data =
-            std::make_shared<goby::middleware::protobuf::SerializerTransporterData>();
+        std::shared_ptr<protobuf::SerializerTransporterData> data =
+            std::make_shared<protobuf::SerializerTransporterData>();
 
         data->set_marshalling_scheme(MarshallingScheme::DCCL);
         data->set_type(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
@@ -244,9 +234,7 @@ class InterVehicleForwarder
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
 
         auto subscribe_lambda = [=](std::shared_ptr<const Data> d,
-                                    const goby::middleware::protobuf::TransporterConfig& t) {
-            func(d);
-        };
+                                    const protobuf::TransporterConfig& t) { func(d); };
         typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType
             subscribe_function(subscribe_lambda);
         auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
@@ -255,15 +243,14 @@ class InterVehicleForwarder
 
         subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
 
-        goby::middleware::protobuf::DCCLSubscription dccl_subscription;
+        protobuf::DCCLSubscription dccl_subscription;
         dccl_subscription.set_dccl_id(dccl_id);
         dccl_subscription.set_group(group.numeric());
         dccl_subscription.set_protobuf_name(
             SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
         _insert_file_desc_with_dependencies(Data::descriptor()->file(), &dccl_subscription);
-        Base::inner_
-            .template publish<Base::forward_group_, goby::middleware::protobuf::DCCLSubscription>(
-                dccl_subscription);
+        Base::inner_.template publish<Base::forward_group_, protobuf::DCCLSubscription>(
+            dccl_subscription);
     }
 
     // used to populated DCCLSubscription file_descriptor fields
@@ -280,7 +267,7 @@ class InterVehicleForwarder
 
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock) { return 0; }
 
-    void _receive_dccl_data_forwarded(const goby::middleware::protobuf::DCCLForwardedData& packets)
+    void _receive_dccl_data_forwarded(const protobuf::DCCLForwardedData& packets)
     {
         for (const auto& packet : packets.frame())
         {
@@ -296,57 +283,24 @@ class InterVehicleForwarder
         subscriptions_;
 };
 
-class ModemDriverThread
-{
-  public:
-    ModemDriverThread(const protobuf::InterVehiclePortalConfig& cfg, std::atomic<bool>& alive,
-                      std::shared_ptr<std::condition_variable_any> poller_cv);
-    void run();
-    void publish(const std::string& bytes);
-    bool retrieve_message(goby::acomms::protobuf::ModemTransmission* msg);
-    int tx_queue_size()
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return sending_.size();
-    }
-
-  private:
-    void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
-    void _data_request(goby::acomms::protobuf::ModemTransmission* msg);
-
-  private:
-    std::mutex mutex_;
-    const protobuf::InterVehiclePortalConfig& cfg_;
-    std::atomic<bool>& alive_;
-    std::shared_ptr<std::condition_variable_any> poller_cv_;
-
-    std::deque<std::string> sending_;
-    std::deque<goby::acomms::protobuf::ModemTransmission> received_;
-
-    // goby::acomms::QueueManager q_manager_;
-
-    // for UDPDriver
-    std::vector<std::unique_ptr<boost::asio::io_service> > asio_service_;
-    std::unique_ptr<goby::acomms::ModemDriverBase> driver_;
-
-    goby::acomms::MACManager mac_;
-};
-
-template <typename InnerTransporter = NullTransporter>
+template <typename InnerTransporter>
 class InterVehiclePortal
     : public InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>
 {
+    static_assert(
+        std::is_same<typename InnerTransporter::InnerTransporterType,
+                     InterThreadTransporter>::value,
+        "Currently InterVehiclePortal is implemented in a way that requires that its "
+        "InnerTransporter's InnerTransporter be goby::middleware::InterThreadTransporter, that is "
+        "InterVehicle<InterProcess<goby::middleware::InterThreadTransport>>");
+
   public:
     using Base =
         InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>;
 
-    InterVehiclePortal(const protobuf::InterVehiclePortalConfig& cfg)
-        : cfg_(cfg), driver_thread_(cfg, driver_thread_alive_, PollerInterface::cv())
-    {
-        _init();
-    }
+    InterVehiclePortal(const protobuf::InterVehiclePortalConfig& cfg) : cfg_(cfg) { _init(); }
     InterVehiclePortal(InnerTransporter& inner, const protobuf::InterVehiclePortalConfig& cfg)
-        : Base(inner), cfg_(cfg), driver_thread_(cfg, driver_thread_alive_, PollerInterface::cv())
+        : Base(inner), cfg_(cfg)
     {
         _init();
     }
@@ -358,18 +312,19 @@ class InterVehiclePortal
             modem_driver_thread_->join();
     }
 
-    int tx_queue_size() { return driver_thread_.tx_queue_size(); }
+    int tx_queue_size() { return driver_thread_->tx_queue_size(); }
 
     friend Base;
 
   private:
     template <typename Data>
     void _publish(const Data& data, const Group& group,
-                  const goby::middleware::protobuf::TransporterConfig& transport_cfg)
+                  const protobuf::TransporterConfig& transport_cfg)
     {
         std::vector<char> bytes(
             SerializerParserHelper<Data, MarshallingScheme::DCCL>::serialize(data));
-        driver_thread_.publish(std::string(bytes.begin(), bytes.end()));
+        Base::inner_.inner().template publish<intervehicle::groups::modem_data_out>(
+            std::string(bytes.begin(), bytes.end()));
     }
 
     template <typename Data>
@@ -379,9 +334,7 @@ class InterVehiclePortal
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
 
         auto subscribe_lambda = [=](std::shared_ptr<const Data> d,
-                                    const goby::middleware::protobuf::TransporterConfig& t) {
-            func(d);
-        };
+                                    const protobuf::TransporterConfig& t) { func(d); };
         typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType
             subscribe_function(subscribe_lambda);
         auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
@@ -395,9 +348,10 @@ class InterVehiclePortal
     {
         int items = 0;
         goby::acomms::protobuf::ModemTransmission msg;
-        while (driver_thread_.retrieve_message(&msg))
+        while (!received_.empty())
         {
-            _receive(msg);
+            _receive(received_.front());
+            received_.pop_front();
             ++items;
             if (lock)
                 lock.reset();
@@ -407,17 +361,32 @@ class InterVehiclePortal
 
     void _init()
     {
-        Base::inner_.template subscribe<Base::forward_group_,
-                                        goby::middleware::protobuf::SerializerTransporterData>(
-            [this](const goby::middleware::protobuf::SerializerTransporterData& d) {
+        Base::inner_.template subscribe<Base::forward_group_, protobuf::SerializerTransporterData>(
+            [this](const protobuf::SerializerTransporterData& d) {
                 _receive_publication_forwarded(d);
             });
-        Base::inner_
-            .template subscribe<Base::forward_group_, goby::middleware::protobuf::DCCLSubscription>(
-                [this](const goby::middleware::protobuf::DCCLSubscription& d) {
-                    _receive_subscription_forwarded(d);
+        Base::inner_.template subscribe<Base::forward_group_, protobuf::DCCLSubscription>(
+            [this](const protobuf::DCCLSubscription& d) { _receive_subscription_forwarded(d); });
+
+        Base::inner_.inner()
+            .template subscribe<intervehicle::groups::modem_data_in,
+                                goby::acomms::protobuf::ModemTransmission>(
+                [this](const goby::acomms::protobuf::ModemTransmission& msg) {
+                    received_.push_back(msg);
                 });
-        modem_driver_thread_.reset(new std::thread([this]() { driver_thread_.run(); }));
+
+        modem_driver_thread_.reset(new std::thread([this]() {
+            try
+            {
+                driver_thread_.reset(new intervehicle::ModemDriverThread(cfg_));
+                driver_thread_->run(driver_thread_alive_);
+            }
+            catch (std::exception& e)
+            {
+                goby::glog.is_warn() && goby::glog << "Modem driver thread had uncaught exception: "
+                                                   << e.what() << std::endl;
+            }
+        }));
     }
 
     void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg)
@@ -437,14 +406,13 @@ class InterVehiclePortal
         }
     }
 
-    void _receive_publication_forwarded(
-        const goby::middleware::protobuf::SerializerTransporterData& data)
+    void _receive_publication_forwarded(const protobuf::SerializerTransporterData& data)
     {
-        driver_thread_.publish(data.data());
+        Base::inner_.inner().template publish<intervehicle::groups::modem_data_out, std::string>(
+            data.data());
     }
 
-    void _receive_subscription_forwarded(
-        const goby::middleware::protobuf::DCCLSubscription& dccl_subscription)
+    void _receive_subscription_forwarded(const protobuf::DCCLSubscription& dccl_subscription)
     {
         auto group = dccl_subscription.group();
         forwarded_subscriptions_[dccl_subscription.dccl_id()].insert(
@@ -452,18 +420,20 @@ class InterVehiclePortal
         DCCLSerializerParserHelperBase::load_forwarded_subscription(dccl_subscription);
     }
 
-    const goby::middleware::protobuf::InterVehiclePortalConfig& cfg_;
+    const protobuf::InterVehiclePortalConfig& cfg_;
     std::unique_ptr<std::thread> modem_driver_thread_;
+    std::unique_ptr<intervehicle::ModemDriverThread> driver_thread_;
     std::atomic<bool> driver_thread_alive_{true};
-    ModemDriverThread driver_thread_;
+
+    std::deque<goby::acomms::protobuf::ModemTransmission> received_;
 
     // maps DCCL ID to map of Group->subscription
     std::unordered_map<
         int, std::unordered_multimap<std::string,
                                      std::shared_ptr<const SerializationSubscriptionBase> > >
         subscriptions_;
-    std::unordered_map<
-        int, std::unordered_multimap<Group, goby::middleware::protobuf::DCCLSubscription> >
+
+    std::unordered_map<int, std::unordered_multimap<Group, protobuf::DCCLSubscription> >
         forwarded_subscriptions_;
 };
 } // namespace middleware

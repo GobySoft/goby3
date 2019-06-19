@@ -50,7 +50,7 @@ using namespace goby::util::logger;
 void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
                       const goby::middleware::protobuf::InterVehiclePortalConfig& slow_cfg)
 {
-    goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
+    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
     goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
 
     double a = 0;
@@ -127,7 +127,7 @@ void handle_widget(std::shared_ptr<const Widget> w)
 void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
                        const goby::middleware::protobuf::InterVehiclePortalConfig& slow_cfg)
 {
-    goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
+    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
     goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
 
     slt.subscribe_dynamic<Sample>(&handle_sample1, 2, [](const Sample& s) { return s.group(); });
@@ -191,7 +191,7 @@ int main(int argc, char* argv[])
     std::string process_suffix =
         ((process_index >= 2) ? ("subscriber_" + std::to_string(process_index))
                               : ("publisher_" + std::to_string(process_index)));
-    std::string os_name = std::string("/tmp/goby_test_middleware5_") + process_suffix;
+    std::string os_name = std::string("/tmp/goby_test_intervehicle_") + process_suffix;
     std::ofstream os(os_name.c_str());
     goby::glog.add_stream(goby::util::logger::DEBUG3, &os);
     //    dccl::dlog.connect(dccl::logger::ALL, &os, true);

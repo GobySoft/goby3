@@ -20,17 +20,29 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "transport-intervehicle.h"
+#include "goby/acomms/bind.h"
+#include "goby/acomms/modem_driver.h"
+#include "goby/acomms/modemdriver/iridium_driver.h"
+#include "goby/acomms/modemdriver/iridium_shore_driver.h"
+#include "goby/acomms/modemdriver/udp_driver.h"
+
+#include "driver-thread.h"
 
 using goby::glog;
 using namespace goby::util::logger;
 
-goby::middleware::ModemDriverThread::ModemDriverThread(
-    const protobuf::InterVehiclePortalConfig& cfg, std::atomic<bool>& alive,
-    std::shared_ptr<std::condition_variable_any> poller_cv)
-    : cfg_(cfg), alive_(alive), poller_cv_(poller_cv)
+goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
+    const protobuf::InterVehiclePortalConfig& config)
+    : goby::middleware::Thread<protobuf::InterVehiclePortalConfig, InterThreadTransporter>(
+          config, 10 * boost::units::si::hertz)
 {
-    switch (cfg_.driver_type())
+    interthread_.reset(new InterThreadTransporter);
+    this->set_transporter(interthread_.get());
+
+    interthread_->subscribe<groups::modem_data_out, std::string>(
+        [this](const std::string& bytes) { sending_.push_back(bytes); });
+
+    switch (cfg().driver_type())
     {
         case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
             driver_.reset(new goby::acomms::MMDriver);
@@ -54,7 +66,7 @@ goby::middleware::ModemDriverThread::ModemDriverThread(
 
         default:
             throw(std::runtime_error("Unsupported driver type: " +
-                                     goby::acomms::protobuf::DriverType_Name(cfg_.driver_type())));
+                                     goby::acomms::protobuf::DriverType_Name(cfg().driver_type())));
             break;
     }
 
@@ -65,60 +77,28 @@ goby::middleware::ModemDriverThread::ModemDriverThread(
 
     goby::acomms::bind(mac_, *driver_);
 
-    //q_manager_.set_cfg(cfg_.queue_cfg());
-    mac_.startup(cfg_.mac_cfg());
-    driver_->startup(cfg_.driver_cfg());
+    //q_manager_.set_cfg(cfg().queue_cfg());
+    mac_.startup(cfg().mac_cfg());
+    driver_->startup(cfg().driver_cfg());
 
-    for (const auto& lib_path : cfg_.dccl_load_library())
+    for (const auto& lib_path : cfg().dccl_load_library())
         DCCLSerializerParserHelperBase::load_library(lib_path);
 }
 
-void goby::middleware::ModemDriverThread::run()
+void goby::middleware::intervehicle::ModemDriverThread::loop()
 {
-    while (alive_)
-    {
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            driver_->do_work();
-            mac_.do_work();
-            //q_manager_.do_work();
-        }
-        // run at ~10Hz
-        usleep(100000);
-    }
+    driver_->do_work();
+    mac_.do_work();
 }
 
-void goby::middleware::ModemDriverThread::publish(const std::string& bytes)
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    sending_.push_back(bytes);
-}
-
-bool goby::middleware::ModemDriverThread::retrieve_message(
-    goby::acomms::protobuf::ModemTransmission* msg)
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (received_.empty())
-    {
-        return false;
-    }
-    else
-    {
-        *msg = received_.front();
-        received_.pop_front();
-        return true;
-    }
-}
-
-void goby::middleware::ModemDriverThread::_receive(
+void goby::middleware::intervehicle::ModemDriverThread::_receive(
     const goby::acomms::protobuf::ModemTransmission& rx_msg)
 {
-    received_.push_back(rx_msg);
-    poller_cv_->notify_all();
+    interthread_->publish<groups::modem_data_in>(rx_msg);
     glog.is(DEBUG1) && glog << "Received: " << rx_msg.ShortDebugString() << std::endl;
 }
 
-void goby::middleware::ModemDriverThread::_data_request(
+void goby::middleware::intervehicle::ModemDriverThread::_data_request(
     goby::acomms::protobuf::ModemTransmission* msg)
 {
     for (auto frame_number = msg->frame_start(),

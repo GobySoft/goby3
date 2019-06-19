@@ -57,12 +57,13 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
     std::unique_ptr<std::thread> manager_thread_;
 
     // For hosting an InterVehiclePortal
-    std::unique_ptr<goby::zeromq::InterProcessPortal<> > interprocess_;
-    std::unique_ptr<goby::middleware::InterVehiclePortal<goby::zeromq::InterProcessPortal<> > > intervehicle_;
+    goby::middleware::InterThreadTransporter interthread_;
+    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> interprocess_;
+    std::unique_ptr<goby::middleware::InterVehiclePortal<decltype(interprocess_)> > intervehicle_;
 };
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
 
 int main(int argc, char* argv[]) { return goby::run<goby::apps::zeromq::Daemon>(argc, argv); }
 
@@ -72,7 +73,8 @@ goby::apps::zeromq::Daemon::Daemon()
       router_(*router_context_, app_cfg().interprocess()),
       manager_(*manager_context_, app_cfg().interprocess(), router_),
       router_thread_(new std::thread([&] { router_.run(); })),
-      manager_thread_(new std::thread([&] { manager_.run(); }))
+      manager_thread_(new std::thread([&] { manager_.run(); })),
+      interprocess_(app_cfg().interprocess())
 {
     if (!app_cfg().interprocess().has_platform())
     {
@@ -80,14 +82,13 @@ goby::apps::zeromq::Daemon::Daemon()
                               << app_cfg().interprocess().platform() << std::endl;
     }
 
-    interprocess_.reset(new goby::zeromq::InterProcessPortal<>(app_cfg().interprocess()));
     if (app_cfg().has_intervehicle())
-        intervehicle_.reset(new goby::middleware::InterVehiclePortal<goby::zeromq::InterProcessPortal<> >(
-            *interprocess_, app_cfg().intervehicle()));
+        intervehicle_.reset(new goby::middleware::InterVehiclePortal<decltype(interprocess_)>(
+            interprocess_, app_cfg().intervehicle()));
 
     // handle goby_terminate request
-    interprocess_->subscribe<goby::middleware::groups::terminate_request,
-                             goby::middleware::protobuf::TerminateRequest>(
+    interprocess_.subscribe<goby::middleware::groups::terminate_request,
+                            goby::middleware::protobuf::TerminateRequest>(
         [this](const goby::middleware::protobuf::TerminateRequest& request) {
             bool match = false;
             goby::middleware::protobuf::TerminateResponse resp;
@@ -95,7 +96,7 @@ goby::apps::zeromq::Daemon::Daemon()
                 goby::middleware::terminate::check_terminate(request, app_cfg().app().name());
             if (match)
             {
-                interprocess_->publish<goby::middleware::groups::terminate_response>(resp);
+                interprocess_.publish<goby::middleware::groups::terminate_response>(resp);
                 // as gobyd mediates all interprocess() comms; wait for a bit to hopefully get our response out before shutting down
                 sleep(1);
                 quit();
@@ -120,10 +121,10 @@ void goby::apps::zeromq::Daemon::run()
         goby::middleware::protobuf::InterVehicleStatus status;
         status.set_tx_queue_size(intervehicle_->tx_queue_size());
 
-        interprocess_->publish<goby::middleware::groups::intervehicle_outbound>(status);
+        interprocess_.publish<goby::middleware::groups::intervehicle_outbound>(status);
     }
     else
     {
-        interprocess_->poll();
+        interprocess_.poll();
     }
 }

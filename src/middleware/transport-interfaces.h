@@ -101,6 +101,7 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
 
     void unsubscribe_all() { static_cast<Transporter*>(this)->template unsubscribe_all(); }
 
+    using InnerTransporterType = InnerTransporter;
     InnerTransporter& inner()
     {
         static_assert(!std::is_same<InnerTransporter, NullTransporter>(),
