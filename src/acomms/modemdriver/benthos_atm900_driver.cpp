@@ -118,7 +118,7 @@ void goby::acomms::BenthosATM900Driver::handle_initiate_transmission(
 
         case protobuf::ModemTransmission::DRIVER_SPECIFIC:
         {
-            switch (msg.GetExtension(benthos::protobuf::type))
+            switch (msg.GetExtension(benthos::protobuf::tx_config).type())
             {
                 case benthos::protobuf::BENTHOS_TWO_WAY_PING:
                     fsm_.process_event(benthos::fsm::EvRange(msg.dest()));

@@ -203,7 +203,7 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
             else if (driver_type_ == goby::acomms::protobuf::DRIVER_BENTHOS_ATM900)
             {
                 assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-                       msg.GetExtension(benthos::protobuf::type) ==
+                       msg.GetExtension(benthos::protobuf::tx_config).type() ==
                            benthos::protobuf::BENTHOS_TWO_WAY_PING);
                 ++check_count_;
             }
@@ -410,7 +410,8 @@ void goby::test::acomms::DriverTester::test0()
         transmit.MutableExtension(micromodem::protobuf::tx_config)
             ->set_type(micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
     else if (driver_type_ == goby::acomms::protobuf::DRIVER_BENTHOS_ATM900)
-        transmit.SetExtension(benthos::protobuf::type, benthos::protobuf::BENTHOS_TWO_WAY_PING);
+        transmit.MutableExtension(benthos::protobuf::tx_config)
+            ->set_type(benthos::protobuf::BENTHOS_TWO_WAY_PING);
 
     transmit.set_src(1);
     transmit.set_dest(2);

@@ -92,13 +92,18 @@ message RangingReply
         [(dccl.field).units.unit = "si::second"];
 }
 
-extend goby.acomms.protobuf.ModemTransmission
+message TransmissionConfig
 {
-    optional TransmissionType type = 1401 [
+    optional TransmissionType type = 1 [
         (goby.field).description =
             "Type of transmission if base `type` == DRIVER_SPECIFIC",
         default = BASE_TYPE
     ];
-    optional ReceiveStatistics receive_stat = 1402;
-    optional RangingReply ranging_reply = 1403;
+    optional ReceiveStatistics receive_stat = 2;
+    optional RangingReply ranging_reply = 3;    
+}
+
+extend goby.acomms.protobuf.ModemTransmission
+{
+    optional TransmissionConfig tx_config = 1401;
 }

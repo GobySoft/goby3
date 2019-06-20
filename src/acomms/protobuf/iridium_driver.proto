@@ -32,9 +32,14 @@ extend goby.acomms.protobuf.DriverConfig
     optional Config config = 1381;
 }
 
+message TransmissionConfig
+{
+    optional bool if_no_data_do_mailbox_check = 1 [default = true];
+}
+
 extend goby.acomms.protobuf.ModemTransmission
 {
-    optional bool if_no_data_do_mailbox_check = 1381 [default = true];
+    optional TransmissionConfig tx_config = 1381;
 }
 
 // subset of goby.acomms.protobuf.ModemTransmission
