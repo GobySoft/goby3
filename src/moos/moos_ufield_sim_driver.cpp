@@ -133,9 +133,9 @@ void goby::moos::UFldDriver::handle_initiate_transmission(
 
         case goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC:
         {
-            if (msg.GetExtension(micromodem::protobuf::tx_config).has_type())
+            if (msg.GetExtension(micromodem::protobuf::transmission).has_type())
             {
-                switch (msg.GetExtension(micromodem::protobuf::tx_config).type())
+                switch (msg.GetExtension(micromodem::protobuf::transmission).type())
                 {
                     case micromodem::protobuf::MICROMODEM_TWO_WAY_PING: ccmpc(msg); break;
                     default:
@@ -252,13 +252,13 @@ void goby::moos::UFldDriver::do_work()
                         m.set_dest(last_ccmpc_dest_);
 
                         micromodem::protobuf::RangingReply* ranging_reply =
-                            m.MutableExtension(micromodem::protobuf::tx_config)
+                            m.MutableExtension(micromodem::protobuf::transmission)
                                 ->mutable_ranging_reply();
 
                         ranging_reply->add_one_way_travel_time(range / NOMINAL_SPEED_OF_SOUND);
 
                         m.set_type(goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC);
-                        m.MutableExtension(micromodem::protobuf::tx_config)
+                        m.MutableExtension(micromodem::protobuf::transmission)
                             ->set_type(micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
 
                         glog.is(DEBUG1) &&

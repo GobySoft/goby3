@@ -196,14 +196,14 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
             if (driver_type_ == goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM)
             {
                 assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-                       msg.GetExtension(micromodem::protobuf::tx_config).type() ==
+                       msg.GetExtension(micromodem::protobuf::transmission).type() ==
                            micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
                 ++check_count_;
             }
             else if (driver_type_ == goby::acomms::protobuf::DRIVER_BENTHOS_ATM900)
             {
                 assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-                       msg.GetExtension(benthos::protobuf::tx_config).type() ==
+                       msg.GetExtension(benthos::protobuf::transmission).type() ==
                            benthos::protobuf::BENTHOS_TWO_WAY_PING);
                 ++check_count_;
             }
@@ -213,7 +213,7 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
         case 1:
         {
             assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-                   msg.GetExtension(micromodem::protobuf::tx_config).type() ==
+                   msg.GetExtension(micromodem::protobuf::transmission).type() ==
                        micromodem::protobuf::MICROMODEM_REMUS_LBL_RANGING);
 
             assert(msg.src() == 1);
@@ -229,7 +229,7 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
         case 2:
         {
             assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-                   msg.GetExtension(micromodem::protobuf::tx_config).type() ==
+                   msg.GetExtension(micromodem::protobuf::transmission).type() ==
                        micromodem::protobuf::MICROMODEM_NARROWBAND_LBL_RANGING);
 
             assert(msg.src() == 1);
@@ -245,7 +245,7 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
         case 3:
         {
             assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-                   msg.GetExtension(micromodem::protobuf::tx_config).type() ==
+                   msg.GetExtension(micromodem::protobuf::transmission).type() ==
                        micromodem::protobuf::MICROMODEM_MINI_DATA);
 
             assert(msg.src() == 2);
@@ -280,7 +280,7 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
         case 6:
         {
             assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-                   msg.GetExtension(micromodem::protobuf::tx_config).type() ==
+                   msg.GetExtension(micromodem::protobuf::transmission).type() ==
                        micromodem::protobuf::MICROMODEM_FLEXIBLE_DATA);
 
             assert(msg.src() == 2);
@@ -362,7 +362,7 @@ void goby::test::acomms::DriverTester::handle_data_receive2(const protobuf::Mode
             if (driver_type_ == goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM)
             {
                 assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-                       msg.GetExtension(micromodem::protobuf::tx_config).type() ==
+                       msg.GetExtension(micromodem::protobuf::transmission).type() ==
                            micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
                 ++check_count_;
             }
@@ -407,10 +407,10 @@ void goby::test::acomms::DriverTester::test0()
     transmit.set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
 
     if (driver_type_ == goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM)
-        transmit.MutableExtension(micromodem::protobuf::tx_config)
+        transmit.MutableExtension(micromodem::protobuf::transmission)
             ->set_type(micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
     else if (driver_type_ == goby::acomms::protobuf::DRIVER_BENTHOS_ATM900)
-        transmit.MutableExtension(benthos::protobuf::tx_config)
+        transmit.MutableExtension(benthos::protobuf::transmission)
             ->set_type(benthos::protobuf::BENTHOS_TWO_WAY_PING);
 
     transmit.set_src(1);
@@ -441,11 +441,11 @@ void goby::test::acomms::DriverTester::test1()
     protobuf::ModemTransmission transmit;
 
     transmit.set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    transmit.MutableExtension(micromodem::protobuf::tx_config)
+    transmit.MutableExtension(micromodem::protobuf::transmission)
         ->set_type(micromodem::protobuf::MICROMODEM_REMUS_LBL_RANGING);
 
     transmit.set_src(1);
-    transmit.MutableExtension(micromodem::protobuf::tx_config)
+    transmit.MutableExtension(micromodem::protobuf::transmission)
         ->mutable_remus_lbl()
         ->set_lbl_max_range(1000);
 
@@ -470,12 +470,12 @@ void goby::test::acomms::DriverTester::test2()
     protobuf::ModemTransmission transmit;
 
     transmit.set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    transmit.MutableExtension(micromodem::protobuf::tx_config)
+    transmit.MutableExtension(micromodem::protobuf::transmission)
         ->set_type(micromodem::protobuf::MICROMODEM_NARROWBAND_LBL_RANGING);
     transmit.set_src(1);
 
     micromodem::protobuf::NarrowBandLBLParams* params =
-        transmit.MutableExtension(micromodem::protobuf::tx_config)->mutable_narrowband_lbl();
+        transmit.MutableExtension(micromodem::protobuf::transmission)->mutable_narrowband_lbl();
     params->set_lbl_max_range(1000);
     params->set_turnaround_ms(20);
     params->set_transmit_freq(26000);
@@ -505,7 +505,7 @@ void goby::test::acomms::DriverTester::test3()
     protobuf::ModemTransmission transmit;
 
     transmit.set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    transmit.MutableExtension(micromodem::protobuf::tx_config)
+    transmit.MutableExtension(micromodem::protobuf::transmission)
         ->set_type(micromodem::protobuf::MICROMODEM_MINI_DATA);
 
     transmit.set_src(2);
@@ -586,7 +586,7 @@ void goby::test::acomms::DriverTester::test6()
     protobuf::ModemTransmission transmit;
 
     transmit.set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    transmit.MutableExtension(micromodem::protobuf::tx_config)
+    transmit.MutableExtension(micromodem::protobuf::transmission)
         ->set_type(micromodem::protobuf::MICROMODEM_FLEXIBLE_DATA);
 
     dynamic_cast<goby::acomms::MMDriver*>(driver1_.get())

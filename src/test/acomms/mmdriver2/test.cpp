@@ -159,18 +159,18 @@ void goby::test::acomms::MMDriverTest2::handle_data_receive1(const ModemTransmis
 {
     goby::glog.is(VERBOSE) && goby::glog << "modem 1 Received: " << msg << std::endl;
 
-    const auto& mm_tx_config = msg.GetExtension(micromodem::protobuf::tx_config);
-    for (int i = 0, n = mm_tx_config.receive_stat_size(); i < n; ++i)
-        driver1_receive[last_transmission_index].push_back(mm_tx_config.receive_stat(i));
+    const auto& mm_transmission = msg.GetExtension(micromodem::protobuf::transmission);
+    for (int i = 0, n = mm_transmission.receive_stat_size(); i < n; ++i)
+        driver1_receive[last_transmission_index].push_back(mm_transmission.receive_stat(i));
 }
 
 void goby::test::acomms::MMDriverTest2::handle_data_receive2(const ModemTransmission& msg)
 {
     goby::glog.is(VERBOSE) && goby::glog << "modem 2 Received: " << msg << std::endl;
 
-    const auto& mm_tx_config = msg.GetExtension(micromodem::protobuf::tx_config);
-    for (int i = 0, n = mm_tx_config.receive_stat_size(); i < n; ++i)
-        driver2_receive[last_transmission_index].push_back(mm_tx_config.receive_stat(i));
+    const auto& mm_transmission = msg.GetExtension(micromodem::protobuf::transmission);
+    for (int i = 0, n = mm_transmission.receive_stat_size(); i < n; ++i)
+        driver2_receive[last_transmission_index].push_back(mm_transmission.receive_stat(i));
 }
 
 void goby::test::acomms::MMDriverTest2::handle_transmit_result1(const ModemTransmission& msg)

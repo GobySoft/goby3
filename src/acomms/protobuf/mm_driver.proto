@@ -353,7 +353,7 @@ message HardwareControlCommand
     optional HardwareControl control = 5;
 }
 
-message TransmissionConfig
+message Transmission
 {
     optional TransmissionType type = 1 [
         (goby.field).description =
@@ -386,7 +386,7 @@ message TransmissionConfig
 
 extend goby.acomms.protobuf.ModemTransmission
 {
-    optional TransmissionConfig tx_config = 1000;
+    optional Transmission transmission = 1000;
 }
 
 message MMApplicationAck
