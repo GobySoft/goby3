@@ -65,8 +65,7 @@ void goby::acomms::BenthosATM900Driver::startup(const protobuf::DriverConfig& cf
         usleep(pause_ms * 1000);
         ++i;
 
-        const int start_timeout =
-            driver_cfg_.GetExtension(benthos::protobuf::BenthosATM900DriverConfig::start_timeout);
+        const int start_timeout = benthos_driver_cfg().start_timeout();
         if (i / (1000 / pause_ms) > start_timeout)
             throw(ModemDriverException("Failed to startup.",
                                        protobuf::ModemDriverStatus::STARTUP_FAILED));
@@ -107,11 +106,8 @@ void goby::acomms::BenthosATM900Driver::handle_initiate_transmission(
         {
             // set the frame size, if not set or if it exceeds the max configured
             if (!msg.has_max_frame_bytes() ||
-                msg.max_frame_bytes() >
-                    driver_cfg_.GetExtension(
-                        benthos::protobuf::BenthosATM900DriverConfig::max_frame_size))
-                msg.set_max_frame_bytes(driver_cfg_.GetExtension(
-                    benthos::protobuf::BenthosATM900DriverConfig::max_frame_size));
+                msg.max_frame_bytes() > benthos_driver_cfg().max_frame_size())
+                msg.set_max_frame_bytes(benthos_driver_cfg().max_frame_size());
 
             signal_data_request(&msg);
 

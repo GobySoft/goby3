@@ -101,12 +101,10 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
         driver_cfg_.set_serial_baud(DEFAULT_BAUD);
 
     // support the non-standard Hydroid gateway buoy
-    if (driver_cfg_.GetExtension(micromodem::protobuf::config).has_hydroid_gateway_id())
-        set_hydroid_gateway_prefix(
-            driver_cfg_.GetExtension(micromodem::protobuf::config).hydroid_gateway_id());
+    if (mm_driver_cfg().has_hydroid_gateway_id())
+        set_hydroid_gateway_prefix(mm_driver_cfg().hydroid_gateway_id());
 
-    using_application_acks_ =
-        driver_cfg_.GetExtension(micromodem::protobuf::config).use_application_acks();
+    using_application_acks_ = mm_driver_cfg().use_application_acks();
     application_ack_max_frames_ = 32;
     if (using_application_acks_)
         dccl_.load<micromodem::protobuf::MMApplicationAck>();
@@ -423,16 +421,14 @@ void goby::acomms::MMDriver::write_cfg()
     // reset nvram if requested and not a Hydroid buoy
     // as this resets the baud to 19200 and the buoy
     // requires 4800
-    if (!is_hydroid_gateway_ &&
-        driver_cfg_.GetExtension(micromodem::protobuf::config).reset_nvram())
+    if (!is_hydroid_gateway_ && mm_driver_cfg().reset_nvram())
         write_single_cfg("ALL,0");
 
     // try to enforce CST to be enabled
     write_single_cfg("CST,1");
 
-    for (int i = 0, n = driver_cfg_.GetExtension(micromodem::protobuf::config).nvram_cfg_size();
-         i < n; ++i)
-        write_single_cfg(driver_cfg_.GetExtension(micromodem::protobuf::config).nvram_cfg(i));
+    for (int i = 0, n = mm_driver_cfg().nvram_cfg_size(); i < n; ++i)
+        write_single_cfg(mm_driver_cfg().nvram_cfg(i));
 
     // enforce SRC to be set the same as provided modem id. we need this for sanity...
     write_single_cfg("SRC," + as<std::string>(driver_cfg_.modem_id()));
@@ -499,10 +495,7 @@ void goby::acomms::MMDriver::do_work()
 
     // send a message periodically (query the source ID) to the local modem to ascertain that it is still alive
     auto now = time::SystemClock::now();
-    if (last_keep_alive_time_ +
-            std::chrono::seconds(
-                driver_cfg_.GetExtension(micromodem::protobuf::config).keep_alive_seconds()) <=
-        now)
+    if (last_keep_alive_time_ + std::chrono::seconds(mm_driver_cfg().keep_alive_seconds()) <= now)
     {
         NMEASentence nmea("$CCCFQ", NMEASentence::IGNORE);
         nmea.push_back("SRC");
@@ -566,7 +559,7 @@ void goby::acomms::MMDriver::handle_initiate_transmission(const protobuf::ModemT
             case protobuf::ModemTransmission::DATA: cccyc(&transmit_msg_); break;
             case protobuf::ModemTransmission::DRIVER_SPECIFIC:
             {
-                switch (transmit_msg_.GetExtension(micromodem::protobuf::type))
+                switch (transmit_msg_.GetExtension(micromodem::protobuf::tx_config).type())
                 {
                     case micromodem::protobuf::MICROMODEM_MINI_DATA: ccmuc(&transmit_msg_); break;
                     case micromodem::protobuf::MICROMODEM_FLEXIBLE_DATA:
@@ -771,10 +764,9 @@ void goby::acomms::MMDriver::ccpdt(const protobuf::ModemTransmission& msg)
     last_lbl_type_ = micromodem::protobuf::MICROMODEM_REMUS_LBL_RANGING;
 
     // start with configuration parameters
-    micromodem::protobuf::REMUSLBLParams params =
-        driver_cfg_.GetExtension(micromodem::protobuf::config).remus_lbl();
+    micromodem::protobuf::REMUSLBLParams params = mm_driver_cfg().remus_lbl();
     // merge (overwriting any duplicates) the parameters given in the request
-    params.MergeFrom(msg.GetExtension(micromodem::protobuf::remus_lbl));
+    params.MergeFrom(msg.GetExtension(micromodem::protobuf::tx_config).remus_lbl());
 
     std::uint32_t tat = params.turnaround_ms();
     if (static_cast<unsigned>(nvram_cfg_["TAT"]) != tat)
@@ -804,10 +796,9 @@ void goby::acomms::MMDriver::ccpnt(const protobuf::ModemTransmission& msg)
     last_lbl_type_ = micromodem::protobuf::MICROMODEM_NARROWBAND_LBL_RANGING;
 
     // start with configuration parameters
-    micromodem::protobuf::NarrowBandLBLParams params =
-        driver_cfg_.GetExtension(micromodem::protobuf::config).narrowband_lbl();
+    micromodem::protobuf::NarrowBandLBLParams params = mm_driver_cfg().narrowband_lbl();
     // merge (overwriting any duplicates) the parameters given in the request
-    params.MergeFrom(msg.GetExtension(micromodem::protobuf::narrowband_lbl));
+    params.MergeFrom(msg.GetExtension(micromodem::protobuf::tx_config).narrowband_lbl());
 
     std::uint32_t tat = params.turnaround_ms();
     if (static_cast<unsigned>(nvram_cfg_["TAT"]) != tat)
@@ -843,7 +834,8 @@ void goby::acomms::MMDriver::ccmec(const protobuf::ModemTransmission& msg)
     glog.is(DEBUG1) && glog << group(glog_out_group())
                             << "\tthis is a MICROMODEM_HARDWARE_CONTROL transmission" << std::endl;
 
-    micromodem::protobuf::HardwareControl params = msg.GetExtension(micromodem::protobuf::hw_ctl);
+    micromodem::protobuf::HardwareControl params =
+        msg.GetExtension(micromodem::protobuf::tx_config).hw_ctl();
 
     // $CCMEC,source,dest,line,mode,arg*CS
     NMEASentence nmea("$CCMEC", NMEASentence::IGNORE);
@@ -865,10 +857,9 @@ void goby::acomms::MMDriver::ccpgt(const protobuf::ModemTransmission& msg)
     last_lbl_type_ = micromodem::protobuf::MICROMODEM_GENERIC_LBL_RANGING;
 
     // start with configuration parameters
-    micromodem::protobuf::GenericLBLParams params =
-        driver_cfg_.GetExtension(micromodem::protobuf::config).generic_lbl();
+    micromodem::protobuf::GenericLBLParams params = mm_driver_cfg().generic_lbl();
     // merge (overwriting any duplicates) the parameters given in the request
-    params.MergeFrom(msg.GetExtension(micromodem::protobuf::generic_lbl));
+    params.MergeFrom(msg.GetExtension(micromodem::protobuf::tx_config).generic_lbl());
 
     std::uint32_t tat = params.turnaround_ms();
     if (static_cast<unsigned>(nvram_cfg_["TAT"]) != tat)
@@ -1161,11 +1152,11 @@ void goby::acomms::MMDriver::camer(const NMEASentence& nmea, protobuf::ModemTran
     m->set_src(as<std::uint32_t>(nmea[src_field]));
     m->set_dest(as<std::uint32_t>(nmea[dest_field]));
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    m->SetExtension(micromodem::protobuf::type,
-                    micromodem::protobuf::MICROMODEM_HARDWARE_CONTROL_REPLY);
+    m->MutableExtension(micromodem::protobuf::tx_config)
+        ->set_type(micromodem::protobuf::MICROMODEM_HARDWARE_CONTROL_REPLY);
 
     micromodem::protobuf::HardwareControl* hw_ctl =
-        m->MutableExtension(micromodem::protobuf::hw_ctl);
+        m->MutableExtension(micromodem::protobuf::tx_config)->mutable_hw_ctl();
 
     hw_ctl->set_line(nmea.as<micromodem::protobuf::HardwareLine>(3));
     hw_ctl->set_mode(nmea.as<micromodem::protobuf::HardwareControlMode>(4));
@@ -1221,7 +1212,8 @@ void goby::acomms::MMDriver::camsg(const NMEASentence& nmea, protobuf::ModemTran
     if ((nmea.as<std::string>(1) == "BAD_CRC" || nmea.as<std::string>(1) == "Bad CRC") &&
         !frames_waiting_to_receive_.empty()) // it's not a bad CRC on the CCCYC
     {
-        m->AddExtension(micromodem::protobuf::frame_with_bad_crc, m->frame_size());
+        m->MutableExtension(micromodem::protobuf::tx_config)
+            ->add_frame_with_bad_crc(m->frame_size());
         // add a blank (placeholder) frame
         m->add_frame();
         // assume it's for the next frame
@@ -1279,7 +1271,8 @@ void goby::acomms::MMDriver::camua(const NMEASentence& nmea, protobuf::ModemTran
     m->set_src(as<std::uint32_t>(nmea[1]));
     m->set_dest(as<std::uint32_t>(nmea[2]));
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    m->SetExtension(micromodem::protobuf::type, micromodem::protobuf::MICROMODEM_MINI_DATA);
+    m->MutableExtension(micromodem::protobuf::tx_config)
+        ->set_type(micromodem::protobuf::MICROMODEM_MINI_DATA);
 
     m->add_frame(goby::util::hex_decode(nmea[3]));
 
@@ -1310,7 +1303,8 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
     m->set_dest(as<std::uint32_t>(nmea[DEST]));
     m->set_rate(as<std::uint32_t>(nmea[RATE]));
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    m->SetExtension(micromodem::protobuf::type, micromodem::protobuf::MICROMODEM_FLEXIBLE_DATA);
+    m->MutableExtension(micromodem::protobuf::tx_config)
+        ->set_type(micromodem::protobuf::MICROMODEM_FLEXIBLE_DATA);
 
     std::vector<std::string> frames, frames_data;
 
@@ -1346,7 +1340,7 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
 
     if (bad_frame)
     {
-        m->AddExtension(micromodem::protobuf::frame_with_bad_crc, 0);
+        m->MutableExtension(micromodem::protobuf::tx_config)->add_frame_with_bad_crc(0);
         m->add_frame();
     }
     else
@@ -1444,8 +1438,7 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
 
     // glog.is(DEBUG1) && glog << group(glog_in_group()) << "Difference: " << t_diff << std::endl;
 
-    if (abs(int(t_diff.total_milliseconds())) <
-        driver_cfg_.GetExtension(micromodem::protobuf::config).allowed_skew_ms())
+    if (abs(int(t_diff.total_milliseconds())) < mm_driver_cfg().allowed_skew_ms())
     {
         glog.is(DEBUG1) && glog << group(glog_out_group()) << "Micro-Modem clock acceptably set."
                                 << std::endl;
@@ -1464,7 +1457,7 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
 void goby::acomms::MMDriver::caxst(const NMEASentence& nmea, protobuf::ModemTransmission* m)
 {
     micromodem::protobuf::TransmitStatistics* xst =
-        m->AddExtension(micromodem::protobuf::transmit_stat);
+        m->MutableExtension(micromodem::protobuf::tx_config)->add_transmit_stat();
 
     // old XST has date as first field, and we'll assume all dates are
     // greater than UNIX epoch
@@ -1546,13 +1539,14 @@ void goby::acomms::MMDriver::campr(const NMEASentence& nmea, protobuf::ModemTran
     m->set_dest(as<std::uint32_t>(nmea[2]));
 
     micromodem::protobuf::RangingReply* ranging_reply =
-        m->MutableExtension(micromodem::protobuf::ranging_reply);
+        m->MutableExtension(micromodem::protobuf::tx_config)->mutable_ranging_reply();
 
     if (nmea.size() > 3)
         ranging_reply->add_one_way_travel_time(as<double>(nmea[3]));
 
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    m->SetExtension(micromodem::protobuf::type, micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
+    m->MutableExtension(micromodem::protobuf::tx_config)
+        ->set_type(micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
 
     glog.is(DEBUG1) &&
         glog << group(glog_in_group()) << "Received MICROMODEM_TWO_WAY_PING response from "
@@ -1574,7 +1568,8 @@ void goby::acomms::MMDriver::campa(const NMEASentence& nmea, protobuf::ModemTran
     m->set_dest(as<std::uint32_t>(nmea[2]));
 
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    m->SetExtension(micromodem::protobuf::type, micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
+    m->MutableExtension(micromodem::protobuf::tx_config)
+        ->set_type(micromodem::protobuf::MICROMODEM_TWO_WAY_PING);
 
     // if enabled cacst will signal_receive
     if (!nvram_cfg_["CST"])
@@ -1586,7 +1581,7 @@ void goby::acomms::MMDriver::sntta(const NMEASentence& nmea, protobuf::ModemTran
     //    m->Clear();
 
     micromodem::protobuf::RangingReply* ranging_reply =
-        m->MutableExtension(micromodem::protobuf::ranging_reply);
+        m->MutableExtension(micromodem::protobuf::tx_config)->mutable_ranging_reply();
 
     ranging_reply->add_one_way_travel_time(as<double>(nmea[1]));
     ranging_reply->add_one_way_travel_time(as<double>(nmea[2]));
@@ -1594,7 +1589,7 @@ void goby::acomms::MMDriver::sntta(const NMEASentence& nmea, protobuf::ModemTran
     ranging_reply->add_one_way_travel_time(as<double>(nmea[4]));
 
     m->set_type(protobuf::ModemTransmission::DRIVER_SPECIFIC);
-    m->SetExtension(micromodem::protobuf::type, last_lbl_type_);
+    m->MutableExtension(micromodem::protobuf::tx_config)->set_type(last_lbl_type_);
 
     m->set_src(driver_cfg_.modem_id());
     m->set_time_with_units(time::convert_from_nmea<time::MicroTime>(nmea[5]));
@@ -1828,7 +1823,7 @@ void goby::acomms::MMDriver::validate_transmission_start(const protobuf::ModemTr
 void goby::acomms::MMDriver::cacst(const NMEASentence& nmea, protobuf::ModemTransmission* m)
 {
     micromodem::protobuf::ReceiveStatistics* cst =
-        m->AddExtension(micromodem::protobuf::receive_stat);
+        m->MutableExtension(micromodem::protobuf::tx_config)->add_receive_stat();
 
     cst->set_version(nmea.as<int>(1) < 6 ? 0 : nmea.as<int>(1));
 
@@ -1915,7 +1910,7 @@ void goby::acomms::MMDriver::cacst(const NMEASentence& nmea, protobuf::ModemTran
         clk_mode_ == micromodem::protobuf::SYNC_TO_PPS_AND_CCCLK_BAD)
     {
         micromodem::protobuf::RangingReply* ranging_reply =
-            m->MutableExtension(micromodem::protobuf::ranging_reply);
+            m->MutableExtension(micromodem::protobuf::tx_config)->mutable_ranging_reply();
         auto toa = time::convert<boost::posix_time::ptime>(cst->time_with_units());
         double frac_sec =
             double(toa.time_of_day().fractional_seconds()) / toa.time_of_day().ticks_per_second();

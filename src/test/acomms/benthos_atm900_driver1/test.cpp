@@ -45,6 +45,8 @@ int main(int argc, char* argv[])
     driver2.reset(new goby::acomms::BenthosATM900Driver);
 
     goby::acomms::protobuf::DriverConfig modem1_cfg, modem2_cfg;
+    auto* modem1_benthos_cfg = modem1_cfg.MutableExtension(benthos::protobuf::config);
+    auto* modem2_benthos_cfg = modem2_cfg.MutableExtension(benthos::protobuf::config);
 
     modem1_cfg.set_modem_id(1);
     modem2_cfg.set_modem_id(2);
@@ -53,18 +55,16 @@ int main(int argc, char* argv[])
     modem2_cfg.set_serial_port("/dev/ttyUSB1");
 
     // add some simulated delay
-    modem1_cfg.AddExtension(benthos::protobuf::BenthosATM900DriverConfig::config, "@SimAcDly=1000");
-    modem2_cfg.AddExtension(benthos::protobuf::BenthosATM900DriverConfig::config, "@SimAcDly=1000");
+    modem1_benthos_cfg->add_config("@SimAcDly=1000");
+    modem2_benthos_cfg->add_config("@SimAcDly=1000");
 
     // turn down TxPower to minimum
-    modem1_cfg.AddExtension(benthos::protobuf::BenthosATM900DriverConfig::config, "@TxPower=1");
-    modem2_cfg.AddExtension(benthos::protobuf::BenthosATM900DriverConfig::config, "@TxPower=1");
+    modem1_benthos_cfg->add_config("@TxPower=1");
+    modem2_benthos_cfg->add_config("@TxPower=1");
 
     // go to lowpower quickly to test this
-    modem1_cfg.AddExtension(benthos::protobuf::BenthosATM900DriverConfig::config,
-                            "@IdleTimer=00:00:05");
-    modem2_cfg.AddExtension(benthos::protobuf::BenthosATM900DriverConfig::config,
-                            "@IdleTimer=00:00:05");
+    modem1_benthos_cfg->add_config("@IdleTimer=00:00:05");
+    modem2_benthos_cfg->add_config("@IdleTimer=00:00:05");
 
     std::vector<int> tests_to_run;
     tests_to_run.push_back(0);

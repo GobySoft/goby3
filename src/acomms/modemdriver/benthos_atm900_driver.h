@@ -52,6 +52,11 @@ class BenthosATM900Driver : public ModemDriverBase
     void send(const protobuf::ModemTransmission& msg);
     void try_serial_tx();
 
+    const benthos::protobuf::Config& benthos_driver_cfg() const
+    {
+        return driver_cfg_.GetExtension(benthos::protobuf::config);
+    }
+
   private:
     enum
     {

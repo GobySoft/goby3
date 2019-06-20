@@ -171,7 +171,6 @@ void goby::moos::BluefinCommsDriver::handle_initiate_transmission(
         }
         break;
 
-        case goby::acomms::protobuf::ModemTransmission::UNKNOWN:
         case goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC:
         case goby::acomms::protobuf::ModemTransmission::ACK:
             glog.is(DEBUG1) && glog << group(glog_out_group())

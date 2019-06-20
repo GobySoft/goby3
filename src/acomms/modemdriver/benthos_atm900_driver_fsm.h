@@ -175,6 +175,10 @@ struct BenthosATM900FSM : boost::statechart::state_machine<BenthosATM900FSM, Act
     }
 
     const goby::acomms::protobuf::DriverConfig& driver_cfg() const { return driver_cfg_; }
+    const goby::acomms::benthos::protobuf::Config& benthos_driver_cfg() const
+    {
+        return driver_cfg_.GetExtension(goby::acomms::benthos::protobuf::config);
+    }
 
     const std::string& glog_fsm_group() const { return glog_fsm_group_; }
 
@@ -341,25 +345,20 @@ struct Configure : boost::statechart::state<Configure, Command>, StateNotify
         // disable local echo to avoid confusing our parser
         context<Command>().push_clam_command("@P1EchoChar=Dis");
 
-        if (context<BenthosATM900FSM>().driver_cfg().GetExtension(
-                benthos::protobuf::BenthosATM900DriverConfig::factory_reset))
+        if (context<BenthosATM900FSM>().benthos_driver_cfg().factory_reset())
             context<Command>().push_clam_command("factory_reset");
 
-        if (context<BenthosATM900FSM>().driver_cfg().HasExtension(
-                benthos::protobuf::BenthosATM900DriverConfig::config_load))
+        if (context<BenthosATM900FSM>().benthos_driver_cfg().has_config_load())
         {
             context<Command>().push_clam_command(
-                "cfg load " + context<BenthosATM900FSM>().driver_cfg().GetExtension(
-                                  benthos::protobuf::BenthosATM900DriverConfig::config_load));
+                "cfg load " + context<BenthosATM900FSM>().benthos_driver_cfg().config_load());
         }
 
-        for (int i = 0, n = context<BenthosATM900FSM>().driver_cfg().ExtensionSize(
-                            benthos::protobuf::BenthosATM900DriverConfig::config);
-             i < n; ++i)
+        for (int i = 0, n = context<BenthosATM900FSM>().benthos_driver_cfg().config_size(); i < n;
+             ++i)
         {
             context<Command>().push_clam_command(
-                context<BenthosATM900FSM>().driver_cfg().GetExtension(
-                    benthos::protobuf::BenthosATM900DriverConfig::config, i));
+                context<BenthosATM900FSM>().benthos_driver_cfg().config(i));
         }
 
         // ensure serial output is the format we expect
