@@ -176,7 +176,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
     }
 
     static void publish(std::shared_ptr<const Data> data, const Group& group,
-                        const goby::middleware::protobuf::TransporterConfig& transport_cfg)
+                        const Publisher<Data>& publisher)
     {
         // push new data
         // build up local vector of relevant condition variables while locked
@@ -190,7 +190,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
                 std::thread::id thread_id = it->second->first;
 
                 // don't store a copy if publisher == subscriber, and echo is false
-                if (thread_id != std::this_thread::get_id() || transport_cfg.echo())
+                if (thread_id != std::this_thread::get_id() || publisher.transport_cfg().echo())
                 {
                     // protect the DataQueue we are writing to
                     std::unique_lock<std::mutex> lock(
@@ -377,33 +377,31 @@ class InterThreadTransporter
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
         check_validity_runtime(group);
         std::shared_ptr<Data> data_ptr(new Data(data));
-        publish_dynamic<Data>(data_ptr, group, transport_cfg);
+        publish_dynamic<Data>(data_ptr, group, publisher);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
         check_validity_runtime(group);
-        SubscriptionStore<Data>::publish(data, group, transport_cfg);
+        SubscriptionStore<Data>::publish(data, group, publisher);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
-        publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, transport_cfg);
+        publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, publisher);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
+    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
+                           const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         check_validity_runtime(group);
         SubscriptionStore<Data>::subscribe([=](std::shared_ptr<const Data> pd) { f(*pd); }, group,
@@ -413,7 +411,8 @@ class InterThreadTransporter
     }
 
     template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
+    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
+                           const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         check_validity_runtime(group);
         SubscriptionStore<Data>::subscribe(f, group, std::this_thread::get_id(), data_mutex_,

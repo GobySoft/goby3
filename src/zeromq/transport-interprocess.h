@@ -185,7 +185,7 @@ class InterProcessPortal
 
     template <typename Data, int scheme>
     void _publish(const Data& d, const goby::middleware::Group& group,
-                  const goby::middleware::protobuf::TransporterConfig& transport_cfg)
+                  const middleware::Publisher<Data>& publisher)
     {
         std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
         std::string identifier = _make_fully_qualified_identifier<Data, scheme>(group) + '\0';
@@ -194,20 +194,21 @@ class InterProcessPortal
 
     template <typename Data, int scheme>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f,
-                    const goby::middleware::Group& group)
+                    const goby::middleware::Group& group,
+                    const middleware::Subscriber<Data>& subscriber)
     {
         std::string identifier =
             _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
         auto subscribe_lambda = [=](std::shared_ptr<const Data> d,
-                                    const goby::middleware::protobuf::TransporterConfig& t) {
-            f(d);
-        };
+                                    const middleware::Publisher<Data>& p) { f(d); };
         typename middleware::SerializationSubscription<Data, scheme>::HandlerType
             subscribe_function(subscribe_lambda);
 
         auto subscription = std::shared_ptr<middleware::SerializationSubscriptionBase>(
             new middleware::SerializationSubscription<Data, scheme>(
-                subscribe_function, group, [=](const Data& d) { return group; }));
+                subscribe_function, group,
+                middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
+                                             [=](const Data& d) { return group; })));
 
         if (forwarder_subscriptions_.count(identifier) == 0 &&
             portal_subscriptions_.count(identifier) == 0)
@@ -433,10 +434,15 @@ class InterProcessPortal
     template <typename Data, int scheme>
     std::string _make_fully_qualified_identifier(const goby::middleware::Group& group)
     {
-        // make all but the thread part once and reuse
-        static const std::string id(
-            _make_identifier<Data, scheme>(group, IdentifierWildcard::THREAD_WILDCARD));
-        return id + id_component(std::this_thread::get_id(), threads_);
+        auto it = id_map_.find(group);
+        if (it == id_map_.end())
+        {
+            auto p = id_map_.insert(std::make_pair(
+                group, _make_identifier<Data, scheme>(group, IdentifierWildcard::THREAD_WILDCARD)));
+            it = p.first;
+        }
+
+        return it->second + id_component(std::this_thread::get_id(), threads_);
     }
 
     template <typename Data, int scheme>
@@ -527,6 +533,9 @@ class InterProcessPortal
     std::string process_{std::to_string(getpid())};
     std::unordered_map<int, std::string> schemes_;
     std::unordered_map<std::thread::id, std::string> threads_;
+
+    // make all but the thread part once and reuse
+    std::unordered_map<goby::middleware::Group, std::string> id_map_;
 };
 
 class Router

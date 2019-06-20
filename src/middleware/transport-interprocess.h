@@ -65,49 +65,47 @@ class InterProcessTransporterBase
     // RUNTIME groups
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
         check_validity_runtime(group);
-        static_cast<Derived*>(this)->template _publish<Data, scheme>(data, group, transport_cfg);
-        inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+        static_cast<Derived*>(this)->template _publish<Data, scheme>(data, group, publisher);
+        inner_.template publish_dynamic<Data, scheme>(data, group, publisher);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
         if (data)
         {
             check_validity_runtime(group);
-            static_cast<Derived*>(this)->template _publish<Data, scheme>(*data, group,
-                                                                         transport_cfg);
-            inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+            static_cast<Derived*>(this)->template _publish<Data, scheme>(*data, group, publisher);
+            inner_.template publish_dynamic<Data, scheme>(data, group, publisher);
         }
     }
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
-        publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, transport_cfg);
+        publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, publisher);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
+    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
+                           const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         check_validity_runtime(group);
         static_cast<Derived*>(this)->template _subscribe<Data, scheme>(
-            [=](std::shared_ptr<const Data> d) { f(*d); }, group);
+            [=](std::shared_ptr<const Data> d) { f(*d); }, group, subscriber);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
+    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
+                           const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         check_validity_runtime(group);
-        static_cast<Derived*>(this)->template _subscribe<Data, scheme>(f, group);
+        static_cast<Derived*>(this)->template _subscribe<Data, scheme>(f, group, subscriber);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
@@ -171,8 +169,7 @@ class InterProcessForwarder
 
   private:
     template <typename Data, int scheme>
-    void _publish(const Data& d, const Group& group,
-                  const goby::middleware::protobuf::TransporterConfig& transport_cfg)
+    void _publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
         // create and forward publication to edge
         std::vector<char> bytes(SerializerParserHelper<Data, scheme>::serialize(d));
@@ -185,28 +182,30 @@ class InterProcessForwarder
         data->set_group(std::string(group));
         data->set_allocated_data(sbytes);
 
-        *data->mutable_cfg() = transport_cfg;
+        *data->mutable_cfg() = publisher.transport_cfg();
 
         Base::inner_.template publish<Base::forward_group_>(data);
     }
 
     template <typename Data, int scheme>
-    void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f, const Group& group)
+    void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f, const Group& group,
+                    const Subscriber<Data>& subscriber)
     {
         Base::inner_.template subscribe_dynamic<Data, scheme>(f, group);
 
         // forward subscription to edge
-        auto inner_publication_lambda =
-            [=](std::shared_ptr<const Data> d,
-                const goby::middleware::protobuf::TransporterConfig& t) {
-                Base::inner_.template publish_dynamic<Data, scheme>(d, group, t);
-            };
+        auto inner_publication_lambda = [=](std::shared_ptr<const Data> d,
+                                            const Publisher<Data>& p) {
+            Base::inner_.template publish_dynamic<Data, scheme>(d, group, p);
+        };
         typename SerializationSubscription<Data, scheme>::HandlerType inner_publication_function(
             inner_publication_lambda);
 
         auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
-            new SerializationSubscription<Data, scheme>(inner_publication_function, group,
-                                                        [=](const Data& d) { return group; }));
+            new SerializationSubscription<Data, scheme>(
+                inner_publication_function, group,
+                middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
+                                             [=](const Data& d) { return group; })));
 
         Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase>(
             subscription);

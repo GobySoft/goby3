@@ -42,8 +42,10 @@ namespace middleware
 {
 class Group
 {
+    static constexpr const char* null_group{"null_group"};
+
   public:
-    constexpr Group(const char* c = "") : c_(c) {}
+    constexpr Group(const char* c = null_group, int i = 0) : c_(c), i_(i) {}
     constexpr Group(int i) : i_(i) {}
 
     constexpr int numeric() const { return i_; }
@@ -61,19 +63,25 @@ class Group
     void set_c_str(const char* c) { c_ = c; }
 
   private:
-    int i_{0};
     const char* c_{nullptr};
+    int i_{0};
 };
 
-inline bool operator==(const Group& a, const Group& b) { return std::string(a) == std::string(b); }
+inline bool operator==(const Group& a, const Group& b)
+{
+    if (a.c_str() != nullptr && b.c_str() != nullptr)
+        return std::string(a.c_str()) == std::string(b.c_str());
+    else
+        return a.numeric() == b.numeric();
+}
 
 inline bool operator!=(const Group& a, const Group& b) { return !(a == b); }
 
 template <const Group& group> void check_validity()
 {
-    static_assert(
-        (group.numeric() != 0) || (group.c_str()[0] != '\0'),
-        "goby::middleware::Group must have non-zero length string or non-zero integer value.");
+    //    static_assert(
+    //  (group.numeric() != 0) || (group.c_str() == nullptr) || (group.c_str()[0] != '\0'),
+    //  "goby::middleware::Group must have non-zero length string or non-zero integer value.");
 }
 
 inline void check_validity_runtime(const Group& group)

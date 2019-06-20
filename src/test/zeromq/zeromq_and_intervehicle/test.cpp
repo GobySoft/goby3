@@ -45,6 +45,12 @@ std::atomic<int> zmq_reqs(0);
 using goby::glog;
 using namespace goby::util::logger;
 
+constexpr goby::middleware::Group group1{"group1", 1};
+constexpr goby::middleware::Group group2{2};
+constexpr goby::middleware::Group group3{3};
+
+constexpr goby::middleware::Group null;
+
 // process 1
 void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
                       const goby::middleware::protobuf::InterVehiclePortalConfig& slow_cfg)
@@ -57,17 +63,20 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a - 10);
-        s1->set_group(1);
-        slt.publish_dynamic(s1, s1->group());
+
+        goby::middleware::Publisher<Sample> sample_publisher(
+            [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); });
+        slt.publish<group1>(s1, sample_publisher);
+        glog.is(DEBUG1) && glog << "Published group1: " << s1->ShortDebugString() << std::endl;
 
         auto s2 = std::make_shared<Sample>();
         s2->set_a(a++);
-        s2->set_group(2);
-        slt.publish_dynamic(s2, s2->group());
+        slt.publish<group2>(s2, sample_publisher);
+        glog.is(DEBUG1) && glog << "Published group2: " << s2->ShortDebugString() << std::endl;
 
         Widget w;
         w.set_b(a - 2);
-        slt.publish_no_group(w);
+        slt.publish<null>(w);
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
@@ -87,8 +96,9 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++ - 10);
-        s1->set_group(3);
-        interplatform.publish_dynamic(s1, s1->group());
+        goby::middleware::Publisher<Sample> sample_publisher(
+            [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); });
+        interplatform.publish<group3>(s1, sample_publisher);
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
@@ -129,10 +139,12 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
     goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
 
-    slt.subscribe_dynamic<Sample>(&handle_sample1, 2, [](const Sample& s) { return s.group(); });
-    slt.subscribe_dynamic<Sample>(&handle_sample_indirect, 3,
-                                  [](const Sample& s) { return s.group(); });
-    slt.subscribe_no_group<Widget>(&handle_widget);
+    goby::middleware::Subscriber<Sample> sample_subscriber(
+        [](const Sample& s) { return s.group(); });
+    slt.subscribe<group2, Sample>(&handle_sample1, sample_subscriber);
+    slt.subscribe<group3, Sample>(&handle_sample_indirect, sample_subscriber);
+
+    slt.subscribe<null, Widget>(&handle_widget);
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -159,8 +171,10 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
     goby::middleware::InterVehicleForwarder<decltype(zmq)> interplatform(zmq);
-    interplatform.subscribe_dynamic<Sample>(&indirect_handle_sample_indirect, 3,
-                                            [](const Sample& s) { return s.group(); });
+    interplatform.subscribe_dynamic<Sample>(
+        &indirect_handle_sample_indirect, 3,
+        goby::middleware::Subscriber<Sample>(goby::middleware::protobuf::TransporterConfig(),
+                                             [](const Sample& s) { return s.group(); }));
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -207,6 +221,7 @@ int main(int argc, char* argv[])
     auto* udp_multicast_driver_cfg =
         driver_cfg.MutableExtension(goby::acomms::udp_multicast::protobuf::config);
     udp_multicast_driver_cfg->set_max_frame_size(64);
+    udp_multicast_driver_cfg->set_multicast_port(60000);
 
     goby::acomms::protobuf::MACConfig& mac_cfg = *slow_cfg.mutable_mac_cfg();
     mac_cfg.set_type(goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED);

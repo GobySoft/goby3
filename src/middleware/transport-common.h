@@ -56,32 +56,31 @@ class NullTransporter : public StaticTransporterInterface<NullTransporter, NullT
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
     }
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
     }
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
     }
 
     template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
+    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
+                           const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
     }
 
     template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
+    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
+                           const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
     }
 
@@ -140,11 +139,11 @@ class SerializationSubscription : public SerializationSubscriptionBase
         HandlerType;
 
     SerializationSubscription(HandlerType& handler, const Group& group,
-                              std::function<Group(const Data&)> group_func)
+                              const Subscriber<Data>& subscriber)
         : handler_(handler),
           type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
           group_(group),
-          group_func_(group_func)
+          subscriber_(subscriber)
     {
     }
 
@@ -181,7 +180,7 @@ class SerializationSubscription : public SerializationSubscriptionBase
         auto msg = std::make_shared<const Data>(
             SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
 
-        if (subscribed_group() == group_func_(*msg))
+        if (subscribed_group() == subscriber_.group(*msg))
             handler_(msg, goby::middleware::protobuf::TransporterConfig());
         return actual_end;
     }
@@ -190,7 +189,7 @@ class SerializationSubscription : public SerializationSubscriptionBase
     HandlerType handler_;
     const std::string type_name_;
     const Group group_;
-    std::function<Group(const Data&)> group_func_;
+    Subscriber<Data> subscriber_;
 };
 
 template <typename Data, int scheme_id>

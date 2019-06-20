@@ -67,108 +67,66 @@ class InterVehicleTransporterBase
         return MarshallingScheme::DCCL;
     }
 
-    // publish without a group
-    template <typename Data>
-    void publish_no_group(const Data& data, const protobuf::TransporterConfig& transport_cfg =
-                                                protobuf::TransporterConfig())
-    {
-        publish_dynamic<Data>(data, Group(), transport_cfg);
-    }
-
-    template <typename Data>
-    void publish_no_group(
-        std::shared_ptr<const Data> data,
-        const protobuf::TransporterConfig& transport_cfg = protobuf::TransporterConfig())
-    {
-        publish_dynamic<Data>(data, Group(), transport_cfg);
-    }
-
-    template <typename Data>
-    void publish_no_group(
-        std::shared_ptr<Data> data,
-        const protobuf::TransporterConfig& transport_cfg = protobuf::TransporterConfig())
-    {
-        publish_no_group<Data>(std::shared_ptr<const Data>(data), transport_cfg);
-    }
-
-    //subscribe without a group
-    template <typename Data>
-    void subscribe_no_group(std::function<void(const Data&)> func,
-                            std::function<Group(const Data&)> group_func = [](const Data&) {
-                                return Group();
-                            })
-    {
-        subscribe_dynamic<Data>(func, Group(), group_func);
-    }
-
-    template <typename Data>
-    void subscribe_no_group(std::function<void(std::shared_ptr<const Data>)> func,
-                            std::function<Group(const Data&)> group_func = [](const Data&) {
-                                return Group();
-                            })
-    {
-        subscribe_dynamic<Data>(func, Group(), group_func);
-    }
-
     // implements StaticTransporterInterface
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
-    void publish_dynamic(
-        const Data& data, const Group& group = Group(),
-        const protobuf::TransporterConfig& transport_cfg = protobuf::TransporterConfig())
+    void publish_dynamic(const Data& data, const Group& group = Group(),
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
-        static_cast<Derived*>(this)->template _publish<Data>(data, group, transport_cfg);
-        inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data, group,
-                                                                           transport_cfg);
+
+        Data data_with_group = data;
+        publisher.add_group(data_with_group, group);
+
+        static_cast<Derived*>(this)->template _publish<Data>(data_with_group, group, publisher);
+        inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data_with_group, group,
+                                                                           publisher);
     }
 
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
-    void publish_dynamic(
-        std::shared_ptr<const Data> data, const Group& group = Group(),
-        const protobuf::TransporterConfig& transport_cfg = protobuf::TransporterConfig())
+    void publish_dynamic(std::shared_ptr<const Data> data, const Group& group = Group(),
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
         if (data)
         {
-            static_cast<Derived*>(this)->template _publish<Data>(*data, group, transport_cfg);
-            inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data, group,
-                                                                               transport_cfg);
+            std::shared_ptr<Data> data_with_group(new Data(*data));
+            publisher.add_group(*data_with_group, group);
+
+            static_cast<Derived*>(this)->template _publish<Data>(*data_with_group, group,
+                                                                 publisher);
+            inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data_with_group,
+                                                                               group, publisher);
         }
     }
 
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
-    void publish_dynamic(
-        std::shared_ptr<Data> data, const Group& group = Group(),
-        const protobuf::TransporterConfig& transport_cfg = protobuf::TransporterConfig())
+    void publish_dynamic(std::shared_ptr<Data> data, const Group& group = Group(),
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
-        publish_dynamic<Data>(std::shared_ptr<const Data>(data), group, transport_cfg);
+        publish_dynamic<Data>(std::shared_ptr<const Data>(data), group, publisher);
     }
 
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
     void subscribe_dynamic(std::function<void(const Data&)> func, const Group& group = Group(),
-                           std::function<Group(const Data&)> group_func = [](const Data&) {
-                               return Group();
-                           })
+                           const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
         auto pointer_ref_lambda = [=](std::shared_ptr<const Data> d) { func(*d); };
         static_cast<Derived*>(this)->template _subscribe<Data>(pointer_ref_lambda, group,
-                                                               group_func);
+                                                               subscriber);
     }
 
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
     void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> func,
                            const Group& group = Group(),
-                           std::function<Group(const Data&)> group_func = [](const Data&) {
-                               return Group();
-                           })
+                           const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
-        static_cast<Derived*>(this)->template _subscribe<Data>(func, group, group_func);
+        static_cast<Derived*>(this)->template _subscribe<Data>(func, group, subscriber);
     }
 
     std::unique_ptr<InnerTransporter> own_inner_;
@@ -207,8 +165,7 @@ class InterVehicleForwarder
 
   private:
     template <typename Data>
-    void _publish(const Data& d, const Group& group,
-                  const protobuf::TransporterConfig& transport_cfg)
+    void _publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
         // create and forward publication to edge
         std::vector<char> bytes(
@@ -222,24 +179,25 @@ class InterVehicleForwarder
         data->set_group(std::string(group));
         data->set_allocated_data(sbytes);
 
-        *data->mutable_cfg() = transport_cfg;
+        *data->mutable_cfg() = publisher.transport_cfg();
 
         Base::inner_.template publish<Base::forward_group_>(data);
     }
 
     template <typename Data>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                    std::function<Group(const Data&)> group_func)
+                    const Subscriber<Data>& subscriber)
     {
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
 
-        auto subscribe_lambda = [=](std::shared_ptr<const Data> d,
-                                    const protobuf::TransporterConfig& t) { func(d); };
+        auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const Publisher<Data>& p) {
+            func(d);
+        };
         typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType
             subscribe_function(subscribe_lambda);
         auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
             new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group,
-                                                                         group_func));
+                                                                         subscriber));
 
         subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
 
@@ -318,8 +276,7 @@ class InterVehiclePortal
 
   private:
     template <typename Data>
-    void _publish(const Data& data, const Group& group,
-                  const protobuf::TransporterConfig& transport_cfg)
+    void _publish(const Data& data, const Group& group, const Publisher<Data>& publisher)
     {
         std::vector<char> bytes(
             SerializerParserHelper<Data, MarshallingScheme::DCCL>::serialize(data));
@@ -329,17 +286,18 @@ class InterVehiclePortal
 
     template <typename Data>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                    std::function<Group(const Data&)> group_func)
+                    const Subscriber<Data>& subscriber)
     {
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
 
-        auto subscribe_lambda = [=](std::shared_ptr<const Data> d,
-                                    const protobuf::TransporterConfig& t) { func(d); };
+        auto subscribe_lambda = [=](std::shared_ptr<const Data> d, const Publisher<Data>& p) {
+            func(d);
+        };
         typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType
             subscribe_function(subscribe_lambda);
         auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
             new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group,
-                                                                         group_func));
+                                                                         subscriber));
 
         subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
     }
