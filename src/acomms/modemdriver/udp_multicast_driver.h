@@ -20,26 +20,25 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UDPModemDriver20120409H
-#define UDPModemDriver20120409H
+#ifndef UDPMulticastModemDriver20190620H
+#define UDPMulticastModemDriver20190620H
 
 #include "goby/time.h"
 
 #include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/acomms/protobuf/udp_driver.pb.h"
+#include "goby/acomms/protobuf/udp_multicast_driver.pb.h"
 
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
 
 namespace goby
 {
 namespace acomms
 {
-class UDPDriver : public ModemDriverBase
+class UDPMulticastDriver : public ModemDriverBase
 {
   public:
-    UDPDriver();
-    ~UDPDriver();
+    UDPMulticastDriver();
+    ~UDPMulticastDriver();
 
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;
@@ -52,6 +51,11 @@ class UDPDriver : public ModemDriverBase
     void start_receive();
     void receive_complete(const boost::system::error_code& error, std::size_t bytes_transferred);
     void receive_message(const protobuf::ModemTransmission& m);
+
+    const udp_multicast::protobuf::Config& multicast_driver_cfg() const
+    {
+        return driver_cfg_.GetExtension(udp_multicast::protobuf::config);
+    }
 
   private:
     protobuf::DriverConfig driver_cfg_;

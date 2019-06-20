@@ -16,10 +16,11 @@ enum DriverType
     DRIVER_IRIDIUM = 8;
     DRIVER_IRIDIUM_SHORE = 9;
     DRIVER_BENTHOS_ATM900 = 10;
+    DRIVER_UDP_MULTICAST = 11;
 }
 
 message DriverConfig
-{
+{    
     optional int32 modem_id = 1 [
         (goby.field).description = "Unique number 1-31 to identify this node",
         (goby.field).example = "1"
@@ -93,6 +94,7 @@ message DriverConfig
     // extensions 1300-1320 used by ufield_sim_driver.proto
     // (removed) extensions 1321-1340 used by pb_modem_driver.proto
     // extension 1341 used by udp_driver.proto
+    // extension 1342 used by udp_multicast_driver.proto
     // extensions 1361-1380 used by bluefin_sim_driver.proto
     // extensions 1381 used by iridium_driver.proto
     // extensions 1401-1420 used by MOOSSafir (external)

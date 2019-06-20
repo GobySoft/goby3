@@ -1,0 +1,18 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "goby/acomms/protobuf/driver_base.proto"; // load up message DriverBaseConfig
+
+package goby.acomms.udp_multicast.protobuf;
+
+message Config
+{
+    optional string listen_address = 1 [default = "0.0.0.0"];
+    optional string multicast_address = 2 [default = "239.142.0.1"];
+    optional uint32 multicast_port = 3 [default = 50021];
+    optional int32 max_frame_size = 4 [default = 1400];
+}
+
+extend goby.acomms.protobuf.DriverConfig
+{
+    optional Config config = 1342;
+}

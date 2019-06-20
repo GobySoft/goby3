@@ -611,6 +611,10 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
                 driver.reset(new goby::acomms::UDPDriver);
                 break;
 
+            case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
+                driver.reset(new goby::acomms::UDPMulticastDriver);
+                break;
+
             case goby::acomms::protobuf::DRIVER_BLUEFIN_MOOS:
                 driver.reset(new goby::moos::BluefinCommsDriver(mac));
                 driver_cfg->SetExtension(goby::moos::protobuf::BluefinConfig::moos_server,

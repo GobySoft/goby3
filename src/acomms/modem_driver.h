@@ -42,7 +42,10 @@
 // Iridium shore-side RUDICS/SBD driver
 #include "goby/acomms/modemdriver/iridium_shore_driver.h"
 
-// User Datagram Protocol (UDP) driver
+// User Datagram Protocol (UDP) driver (point-to-point only)
 #include "goby/acomms/modemdriver/udp_driver.h"
+
+// UDP Multicast driver
+#include "goby/acomms/modemdriver/udp_multicast_driver.h"
 
 #endif

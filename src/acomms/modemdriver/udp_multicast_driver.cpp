@@ -20,10 +20,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "udp_driver.h"
+#include "udp_multicast_driver.h"
 
 #include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/acomms/modemdriver/mm_driver.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
@@ -33,39 +32,38 @@ using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
 
-goby::acomms::UDPDriver::UDPDriver() {}
-goby::acomms::UDPDriver::~UDPDriver() {}
+goby::acomms::UDPMulticastDriver::UDPMulticastDriver() {}
+goby::acomms::UDPMulticastDriver::~UDPMulticastDriver() {}
 
-void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
+void goby::acomms::UDPMulticastDriver::startup(const protobuf::DriverConfig& cfg)
 {
     driver_cfg_ = cfg;
 
-    const auto& local = driver_cfg_.GetExtension(udp::protobuf::config).local();
-    socket_.open(boost::asio::ip::udp::v4());
-    socket_.bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), local.port()));
+    boost::asio::ip::udp::endpoint listen_endpoint(
+        boost::asio::ip::address::from_string(multicast_driver_cfg().listen_address()),
+        multicast_driver_cfg().multicast_port());
+    socket_.open(listen_endpoint.protocol());
+    socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
+    socket_.bind(listen_endpoint);
 
-    const auto& remote = driver_cfg_.GetExtension(udp::protobuf::config).remote();
-    boost::asio::ip::udp::resolver resolver(io_service_);
-    boost::asio::ip::udp::resolver::query query(boost::asio::ip::udp::v4(), remote.ip(),
-                                                goby::util::as<std::string>(remote.port()));
-    boost::asio::ip::udp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-    receiver_ = *endpoint_iterator;
+    auto multicast_address =
+        boost::asio::ip::address::from_string(multicast_driver_cfg().multicast_address());
 
-    glog.is(DEBUG1) && glog << group(glog_out_group())
-                            << "Receiver endpoint is: " << receiver_.address().to_string() << ":"
-                            << receiver_.port() << std::endl;
+    socket_.set_option(boost::asio::ip::multicast::join_group(multicast_address));
+
+    receiver_ =
+        boost::asio::ip::udp::endpoint(multicast_address, multicast_driver_cfg().multicast_port());
 
     start_receive();
-    io_service_.reset();
 }
 
-void goby::acomms::UDPDriver::shutdown()
+void goby::acomms::UDPMulticastDriver::shutdown()
 {
     io_service_.stop();
     socket_.close();
 }
 
-void goby::acomms::UDPDriver::handle_initiate_transmission(
+void goby::acomms::UDPMulticastDriver::handle_initiate_transmission(
     const protobuf::ModemTransmission& orig_msg)
 {
     // buffer the message
@@ -76,7 +74,8 @@ void goby::acomms::UDPDriver::handle_initiate_transmission(
         msg.set_frame_start(next_frame_);
 
     if (!msg.has_max_frame_bytes())
-        msg.set_max_frame_bytes(driver_cfg_.GetExtension(udp::protobuf::config).max_frame_size());
+        msg.set_max_frame_bytes(multicast_driver_cfg().max_frame_size());
+
     signal_data_request(&msg);
 
     glog.is(DEBUG1) && glog << group(glog_out_group())
@@ -89,10 +88,14 @@ void goby::acomms::UDPDriver::handle_initiate_transmission(
         start_send(msg);
 }
 
-void goby::acomms::UDPDriver::do_work() { io_service_.poll(); }
+void goby::acomms::UDPMulticastDriver::do_work() { io_service_.poll(); }
 
-void goby::acomms::UDPDriver::receive_message(const protobuf::ModemTransmission& msg)
+void goby::acomms::UDPMulticastDriver::receive_message(const protobuf::ModemTransmission& msg)
 {
+    // reject messages to ourselves
+    if (msg.src() == driver_cfg_.modem_id())
+        return;
+
     if (msg.type() == protobuf::ModemTransmission::DATA && msg.ack_requested() &&
         msg.dest() != BROADCAST_ID)
     {
@@ -109,7 +112,7 @@ void goby::acomms::UDPDriver::receive_message(const protobuf::ModemTransmission&
     signal_receive(msg);
 }
 
-void goby::acomms::UDPDriver::start_send(const google::protobuf::Message& msg)
+void goby::acomms::UDPMulticastDriver::start_send(const google::protobuf::Message& msg)
 {
     // send the message
     std::string bytes;
@@ -122,12 +125,13 @@ void goby::acomms::UDPDriver::start_send(const google::protobuf::Message& msg)
     raw_msg.set_raw(bytes);
     signal_raw_outgoing(raw_msg);
 
-    socket_.async_send_to(boost::asio::buffer(bytes), receiver_,
-                          boost::bind(&UDPDriver::send_complete, this, _1, _2));
+    socket_.async_send_to(
+        boost::asio::buffer(bytes), receiver_,
+        [this](boost::system::error_code ec, std::size_t length) { send_complete(ec, length); });
 }
 
-void goby::acomms::UDPDriver::send_complete(const boost::system::error_code& error,
-                                            std::size_t bytes_transferred)
+void goby::acomms::UDPMulticastDriver::send_complete(const boost::system::error_code& error,
+                                                     std::size_t bytes_transferred)
 {
     if (error)
     {
@@ -140,14 +144,15 @@ void goby::acomms::UDPDriver::send_complete(const boost::system::error_code& err
                             << std::endl;
 }
 
-void goby::acomms::UDPDriver::start_receive()
+void goby::acomms::UDPMulticastDriver::start_receive()
 {
-    socket_.async_receive_from(boost::asio::buffer(receive_buffer_), sender_,
-                               boost::bind(&UDPDriver::receive_complete, this, _1, _2));
+    socket_.async_receive_from(
+        boost::asio::buffer(receive_buffer_), sender_,
+        [this](boost::system::error_code ec, std::size_t length) { receive_complete(ec, length); });
 }
 
-void goby::acomms::UDPDriver::receive_complete(const boost::system::error_code& error,
-                                               std::size_t bytes_transferred)
+void goby::acomms::UDPMulticastDriver::receive_complete(const boost::system::error_code& error,
+                                                        std::size_t bytes_transferred)
 {
     if (error)
     {

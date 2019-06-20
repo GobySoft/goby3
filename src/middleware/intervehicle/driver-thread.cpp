@@ -54,13 +54,23 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
 
         case goby::acomms::protobuf::DRIVER_UDP: driver_.reset(new goby::acomms::UDPDriver); break;
 
+        case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
+            driver_.reset(new goby::acomms::UDPMulticastDriver);
+            break;
+
         case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
             driver_.reset(new goby::acomms::IridiumShoreDriver);
             break;
 
+        case goby::acomms::protobuf::DRIVER_BENTHOS_ATM900:
+            driver_.reset(new goby::acomms::BenthosATM900Driver);
+            break;
+
         case goby::acomms::protobuf::DRIVER_NONE: break;
 
-        default:
+        case goby::acomms::protobuf::DRIVER_ABC_EXAMPLE_MODEM:
+        case goby::acomms::protobuf::DRIVER_UFIELD_SIM_DRIVER:
+        case goby::acomms::protobuf::DRIVER_BLUEFIN_MOOS:
             throw(std::runtime_error("Unsupported driver type: " +
                                      goby::acomms::protobuf::DriverType_Name(cfg().driver_type())));
             break;

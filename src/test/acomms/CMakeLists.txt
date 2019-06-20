@@ -20,3 +20,5 @@ add_subdirectory(iridiumdriver1)
 add_subdirectory(benthos_atm900_driver1)
 
 add_subdirectory(ipcodecs)
+
+add_subdirectory(udp_multicast_driver1)
