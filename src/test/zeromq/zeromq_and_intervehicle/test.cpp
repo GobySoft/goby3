@@ -202,12 +202,11 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> router_context;
 
     goby::middleware::protobuf::InterVehiclePortalConfig slow_cfg;
-    slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
+    slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP_MULTICAST);
     goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
-    auto* udp_driver_cfg = driver_cfg.MutableExtension(goby::acomms::udp::protobuf::config);
-    auto* local_endpoint = udp_driver_cfg->mutable_local();
-    auto* remote_endpoint = udp_driver_cfg->mutable_remote();
-    udp_driver_cfg->set_max_frame_size(64);
+    auto* udp_multicast_driver_cfg =
+        driver_cfg.MutableExtension(goby::acomms::udp_multicast::protobuf::config);
+    udp_multicast_driver_cfg->set_max_frame_size(64);
 
     goby::acomms::protobuf::MACConfig& mac_cfg = *slow_cfg.mutable_mac_cfg();
     mac_cfg.set_type(goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED);
@@ -227,12 +226,9 @@ int main(int argc, char* argv[])
     if (process_index == 0)
     {
         driver_cfg.set_modem_id(1);
-        local_endpoint->set_port(60011);
         mac_cfg.set_modem_id(1);
         slot.set_src(1);
         //queue_cfg.set_modem_id(1);
-        remote_endpoint->set_ip("127.0.0.1");
-        remote_endpoint->set_port(60012);
 
         goby::zeromq::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle1");
@@ -281,12 +277,9 @@ int main(int argc, char* argv[])
     else if (process_index == 2)
     {
         driver_cfg.set_modem_id(2);
-        local_endpoint->set_port(60012);
         mac_cfg.set_modem_id(2);
         slot.set_src(2);
         //queue_cfg.set_modem_id(2);
-        remote_endpoint->set_ip("127.0.0.1");
-        remote_endpoint->set_port(60011);
 
         goby::zeromq::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle2");
