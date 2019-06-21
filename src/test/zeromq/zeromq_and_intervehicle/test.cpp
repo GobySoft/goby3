@@ -216,14 +216,16 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> router_context;
 
     goby::middleware::protobuf::InterVehiclePortalConfig slow_cfg;
-    slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP_MULTICAST);
-    goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
+
+    auto& link_cfg = *slow_cfg.add_link();
+    goby::acomms::protobuf::DriverConfig& driver_cfg = *link_cfg.mutable_driver();
+    driver_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP_MULTICAST);
     auto* udp_multicast_driver_cfg =
         driver_cfg.MutableExtension(goby::acomms::udp_multicast::protobuf::config);
     udp_multicast_driver_cfg->set_max_frame_size(64);
     udp_multicast_driver_cfg->set_multicast_port(60000);
 
-    goby::acomms::protobuf::MACConfig& mac_cfg = *slow_cfg.mutable_mac_cfg();
+    goby::acomms::protobuf::MACConfig& mac_cfg = *link_cfg.mutable_mac();
     mac_cfg.set_type(goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED);
     goby::acomms::protobuf::ModemTransmission& slot = *mac_cfg.add_slot();
     slot.set_slot_seconds(0.2);
@@ -240,8 +242,7 @@ int main(int argc, char* argv[])
 
     if (process_index == 0)
     {
-        driver_cfg.set_modem_id(1);
-        mac_cfg.set_modem_id(1);
+        link_cfg.set_modem_id(1);
         slot.set_src(1);
         //queue_cfg.set_modem_id(1);
 
@@ -291,8 +292,7 @@ int main(int argc, char* argv[])
     }
     else if (process_index == 2)
     {
-        driver_cfg.set_modem_id(2);
-        mac_cfg.set_modem_id(2);
+        link_cfg.set_modem_id(2);
         slot.set_src(2);
         //queue_cfg.set_modem_id(2);
 

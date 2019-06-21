@@ -7,24 +7,24 @@ package goby.middleware.protobuf;
 
 message InterVehiclePortalConfig
 {
-    optional goby.acomms.protobuf.DriverType driver_type = 10 [
-        default = DRIVER_NONE,
-        (goby.field).description =
-            "Corresponding primary driver for the type of physical acoustic "
-            "modem used (used for sending and receiving)"
-    ];
-    optional goby.acomms.protobuf.DriverConfig driver_cfg = 11
-        [(goby.field).description =
-             "Configure the primary acoustic modem driver (used for sending "
-             "and receiving)"];
-
-    optional goby.acomms.protobuf.MACConfig mac_cfg = 12
-        [(goby.field).description =
+    message LinkConfig
+    {
+        required uint32 modem_id = 1;
+        
+        required goby.acomms.protobuf.DriverConfig driver = 11
+            [(goby.field).description =
+         "Configure the modem driver(s) in use by this portal"];
+        
+        optional goby.acomms.protobuf.MACConfig mac = 12
+            [(goby.field).description =
              "Configure the acoustic Medium Access Control"];
+        
+        //    optional goby.acomms.protobuf.QueueManagerConfig queue_cfg = 13
+        //    [(goby.field).description="Configure the Priority Queuing layer"];
+    }
 
-    //    optional goby.acomms.protobuf.QueueManagerConfig queue_cfg = 13
-    //    [(goby.field).description="Configure the Priority Queuing layer"];
-
+    repeated LinkConfig link = 1;
+    
     repeated string dccl_load_library = 20
         [(goby.field).description = "Load DCCL libraries"];
 }

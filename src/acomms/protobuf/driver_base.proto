@@ -20,8 +20,19 @@ enum DriverType
 }
 
 message DriverConfig
-{    
-    optional int32 modem_id = 1 [
+{
+    oneof driver
+    {
+        goby.acomms.protobuf.DriverType driver_type = 1 [
+            default = DRIVER_NONE,
+            (goby.field).description =
+                "Driver for the type of physical link used"
+        ];
+        string driver_name = 2 [(goby.field).description =
+                                    "Driver name to load from plugin library"];
+    }
+
+    optional int32 modem_id = 10 [
         (goby.field).description = "Unique number 1-31 to identify this node",
         (goby.field).example = "1"
     ];
@@ -36,30 +47,30 @@ message DriverConfig
             3;  // Modem is connected by ethernet and expects us to serve it
     }
 
-    optional ConnectionType connection_type = 2 [
+    optional ConnectionType connection_type = 20 [
         default = CONNECTION_SERIAL,
         (goby.field).description =
             "Physical connection type from this computer (running Goby) to the "
             "acoustic modem"
     ];
-    optional string line_delimiter = 3 [
+    optional string line_delimiter = 21 [
         default = "\r\n",
         (goby.field).description =
             "String used to delimit new lines for this acoustic modem"
     ];  // delimits lines on the serial or tcp interface
 
     // required if connection_type == CONNECTION_SERIAL
-    optional string serial_port = 4 [
+    optional string serial_port = 22 [
         (goby.field).description = "Serial port for CONNECTION_SERIAL",
         (goby.field).example = "/dev/ttyS0"
     ];
-    optional uint32 serial_baud = 5 [
+    optional uint32 serial_baud = 23 [
         (goby.field).description = "Baud rate for CONNECTION_SERIAL",
         (goby.field).example = "19200"
     ];
 
     // required if connection_type == CONNECTION_TCP_AS_CLIENT
-    optional string tcp_server = 6 [
+    optional string tcp_server = 24 [
         (goby.field).description =
             "IP Address or domain name for the server if "
             "CONNECTION_TCP_AS_CLIENT",
@@ -68,25 +79,22 @@ message DriverConfig
 
     // required if connection_type == CONNECTION_TCP_AS_CLIENT or
     // CONNECTION_TCP_AS_SERVER
-    optional uint32 tcp_port = 7 [
+    optional uint32 tcp_port = 25 [
         (goby.field).description =
             "Port to serve on (for CONNECTION_TCP_AS_SERVER) or to connect to "
             "(for CONNECTION_TCP_AS_CLIENT)",
         (goby.field).example = "50010"
     ];
 
-    optional uint32 reconnect_interval = 8 [
+    optional uint32 reconnect_interval = 26 [
         (goby.field).description = "Seconds between TCP reconnect attempts",
         default = 10
     ];
 
-    optional string raw_log = 9
+    optional string raw_log = 30
         [(goby.field).description =
              "File to write raw modem log to. If %1% is present, is replaced "
              "with the current timestamp."];
-
-    optional string driver_name = 10
-        [(goby.field).description = "Driver name to load from plugin library"];
 
     extensions 1000 to max;
     // extension 1000 used by acomms_mm_driver.proto

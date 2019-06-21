@@ -386,7 +386,7 @@ void goby::apps::moos::CpAcommsHandler::handle_raw(const goby::acomms::protobuf:
 void goby::apps::moos::CpAcommsHandler::process_configuration()
 {
     // create driver objects
-    create_driver(driver_, cfg_.driver_type(), cfg_.mutable_driver_cfg(), &mac_);
+    create_driver(driver_, cfg_.mutable_driver_cfg(), &mac_);
     if (driver_)
         drivers_.insert(std::make_pair(driver_, cfg_.mutable_driver_cfg()));
 
@@ -396,7 +396,7 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
         for (int i = 0, n = cfg_.listen_driver_type_size(); i < n; ++i)
         {
             std::shared_ptr<goby::acomms::ModemDriverBase> driver;
-            create_driver(driver, cfg_.listen_driver_type(i), cfg_.mutable_listen_driver_cfg(i), 0);
+            create_driver(driver, cfg_.mutable_listen_driver_cfg(i), 0);
             drivers_.insert(std::make_pair(driver, cfg_.mutable_listen_driver_cfg(i)));
         }
     }
@@ -549,7 +549,6 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
 
 void goby::apps::moos::CpAcommsHandler::create_driver(
     std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
-    goby::acomms::protobuf::DriverType driver_type,
     goby::acomms::protobuf::DriverConfig* driver_cfg, goby::acomms::MACManager* mac)
 {
     if (driver_cfg->has_driver_name())
@@ -583,7 +582,7 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
     }
     else
     {
-        switch (driver_type)
+        switch (driver_cfg->driver_type())
         {
             case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
                 driver.reset(new goby::acomms::MMDriver);

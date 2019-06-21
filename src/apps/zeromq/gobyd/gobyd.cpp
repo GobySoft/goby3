@@ -118,10 +118,9 @@ void goby::apps::zeromq::Daemon::run()
     {
         intervehicle_->poll(std::chrono::milliseconds(200));
 
-        goby::middleware::protobuf::InterVehicleStatus status;
-        status.set_tx_queue_size(intervehicle_->tx_queue_size());
-
-        interprocess_.publish<goby::middleware::groups::intervehicle_outbound>(status);
+        //        goby::middleware::protobuf::InterVehicleStatus status;
+        //        status.set_tx_queue_size(intervehicle_->tx_queue_size());
+        //        interprocess_.publish<goby::middleware::groups::intervehicle_outbound>(status);
     }
     else
     {

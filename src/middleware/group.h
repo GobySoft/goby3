@@ -98,4 +98,15 @@ class DynamicGroup : public Group
 } // namespace middleware
 } // namespace goby
 
+namespace std
+{
+template <> struct hash<goby::middleware::Group>
+{
+    size_t operator()(const goby::middleware::Group& group) const noexcept
+    {
+        return std::hash<std::string>{}(std::string(group));
+    }
+};
+} // namespace std
+
 #endif

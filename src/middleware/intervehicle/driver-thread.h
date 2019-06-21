@@ -48,10 +48,11 @@ constexpr Group modem_data_in{"goby::middleware::intervehicle::modem_data_in"};
 } // namespace groups
 
 class ModemDriverThread
-    : public goby::middleware::Thread<protobuf::InterVehiclePortalConfig, InterThreadTransporter>
+    : public goby::middleware::Thread<protobuf::InterVehiclePortalConfig::LinkConfig,
+                                      InterThreadTransporter>
 {
   public:
-    ModemDriverThread(const protobuf::InterVehiclePortalConfig& cfg);
+    ModemDriverThread(const protobuf::InterVehiclePortalConfig::LinkConfig& cfg);
     void loop() override;
     int tx_queue_size() { return sending_.size(); }
 

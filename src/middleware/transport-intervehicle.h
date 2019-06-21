@@ -272,12 +272,15 @@ class InterVehiclePortal
 
     ~InterVehiclePortal()
     {
-        driver_thread_alive_ = false;
-        if (modem_driver_thread_)
-            modem_driver_thread_->join();
+        for (auto& modem_driver_data : modem_drivers_)
+        {
+            modem_driver_data->driver_thread_alive = false;
+            if (modem_driver_data->underlying_thread)
+                modem_driver_data->underlying_thread->join();
+        }
     }
 
-    int tx_queue_size() { return driver_thread_->tx_queue_size(); }
+    //int tx_queue_size() { return driver_thread_->tx_queue_size(); }
 
     friend Base;
 
@@ -340,18 +343,33 @@ class InterVehiclePortal
                     received_.push_back(msg);
                 });
 
-        modem_driver_thread_.reset(new std::thread([this]() {
-            try
-            {
-                driver_thread_.reset(new intervehicle::ModemDriverThread(cfg_));
-                driver_thread_->run(driver_thread_alive_);
-            }
-            catch (std::exception& e)
-            {
-                goby::glog.is_warn() && goby::glog << "Modem driver thread had uncaught exception: "
-                                                   << e.what() << std::endl;
-            }
-        }));
+        for (const auto& lib_path : cfg_.dccl_load_library())
+            DCCLSerializerParserHelperBase::load_library(lib_path);
+
+        for (int i = 0, n = cfg_.link_size(); i < n; ++i)
+        {
+            auto* link = cfg_.mutable_link(i);
+
+            link->mutable_driver()->set_modem_id(link->modem_id());
+            link->mutable_mac()->set_modem_id(link->modem_id());
+
+            modem_drivers_.emplace_back(new ModemDriverData);
+            ModemDriverData& data = *modem_drivers_.back();
+
+            data.underlying_thread.reset(new std::thread([&data, link]() {
+                try
+                {
+                    data.modem_driver_thread.reset(new intervehicle::ModemDriverThread(*link));
+                    data.modem_driver_thread->run(data.driver_thread_alive);
+                }
+                catch (std::exception& e)
+                {
+                    goby::glog.is_warn() &&
+                        goby::glog << "Modem driver thread had uncaught exception: " << e.what()
+                                   << std::endl;
+                }
+            }));
+        }
     }
 
     void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg)
@@ -385,10 +403,15 @@ class InterVehiclePortal
         DCCLSerializerParserHelperBase::load_forwarded_subscription(dccl_subscription);
     }
 
-    const protobuf::InterVehiclePortalConfig& cfg_;
-    std::unique_ptr<std::thread> modem_driver_thread_;
-    std::unique_ptr<intervehicle::ModemDriverThread> driver_thread_;
-    std::atomic<bool> driver_thread_alive_{true};
+    protobuf::InterVehiclePortalConfig cfg_;
+
+    struct ModemDriverData
+    {
+        std::unique_ptr<std::thread> underlying_thread;
+        std::unique_ptr<intervehicle::ModemDriverThread> modem_driver_thread;
+        std::atomic<bool> driver_thread_alive{true};
+    };
+    std::vector<std::unique_ptr<ModemDriverData> > modem_drivers_;
 
     std::deque<goby::acomms::protobuf::ModemTransmission> received_;
 

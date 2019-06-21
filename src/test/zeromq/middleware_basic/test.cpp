@@ -86,13 +86,15 @@ int main(int argc, char* argv[])
 
     goby::middleware::protobuf::InterVehiclePortalConfig slow_cfg;
     {
-        slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
-        goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
+        auto& link_cfg = *slow_cfg.add_link();
+
+        goby::acomms::protobuf::DriverConfig& driver_cfg = *link_cfg.mutable_driver();
+        driver_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
         driver_cfg.set_modem_id(1);
         auto* local_endpoint =
             driver_cfg.MutableExtension(goby::acomms::udp::protobuf::config)->mutable_local();
         local_endpoint->set_port(11145);
-        goby::acomms::protobuf::MACConfig& mac_cfg = *slow_cfg.mutable_mac_cfg();
+        goby::acomms::protobuf::MACConfig& mac_cfg = *link_cfg.mutable_mac();
         mac_cfg.set_modem_id(1);
         mac_cfg.set_type(goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED);
         goby::acomms::protobuf::ModemTransmission& slot = *mac_cfg.add_slot();

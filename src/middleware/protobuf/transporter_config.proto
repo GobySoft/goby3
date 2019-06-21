@@ -1,16 +1,63 @@
 syntax = "proto2";
+
+import "dccl/option_extensions.proto";
+
 package goby.middleware.protobuf;
 
 message InterVehicleTransporterConfig
 {
-    optional int32 ttl = 1;
-    optional int32 value_base = 2;
+    message QueueConfig
+    {
+        option (dccl.msg) = {
+            unit_system: "si"
+        };
+
+        // publisher and/or subscriber can set
+
+        // true takes precedence over false
+        optional bool ack_required = 2 [default = true];
+        // lowest value takes precedence
+        optional uint32 blackout_time = 3 [
+            default = 0,
+            (dccl.field) = {min: 0 max: 3600 units {base_dimensions: "T"}}
+        ];
+        // larger value takes precedence
+        optional uint32 max_queue = 4
+            [default = 100, (dccl.field) = {min: 1 max: 1000}];
+        // true takes precedence over false
+        optional bool newest_first = 5 [default = true];
+        // use average of values
+        optional int32 ttl = 6 [
+            default = 1800,
+            (dccl.field) = {min: 1 max: 86400 units {base_dimensions: "T"}}
+        ];
+        // use average of values
+        optional int32 value_base = 7
+            [default = 100, (dccl.field) = {min: 1 max: 1000}];
+    }
+
+    optional QueueConfig queue = 1;
+
+    message LinkConfig
+    {
+        enum LinkPolicy
+        {
+            // send to all links (until one acknowledges)
+            LINK_POLICY_FLOOD_ALL = 1;
+
+            // try the highest priority link for some period of time, then
+            // try the next LINK_POLICY_PRIORITY_TIMEOUT = 2;
+        }
+        optional LinkPolicy policy = 1;
+    }
+
+    optional LinkConfig link = 2;
 }
 
 message TransporterConfig
 {
     // if the publisher is also subscribed, should it receive a copy?
-    // TODO: implement at the interprocess layer
+    // TODO: implement at the interprocess and intervehicle layers
     optional bool echo = 1 [default = false];
 
     optional InterVehicleTransporterConfig intervehicle = 10;

@@ -86,7 +86,6 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
 
     void process_configuration();
     void create_driver(std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
-                       goby::acomms::protobuf::DriverType driver_type,
                        goby::acomms::protobuf::DriverConfig* driver_cfg,
                        goby::acomms::MACManager* mac);
 

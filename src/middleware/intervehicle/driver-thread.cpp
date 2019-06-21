@@ -32,9 +32,9 @@ using goby::glog;
 using namespace goby::util::logger;
 
 goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
-    const protobuf::InterVehiclePortalConfig& config)
-    : goby::middleware::Thread<protobuf::InterVehiclePortalConfig, InterThreadTransporter>(
-          config, 10 * boost::units::si::hertz)
+    const protobuf::InterVehiclePortalConfig::LinkConfig& config)
+    : goby::middleware::Thread<protobuf::InterVehiclePortalConfig::LinkConfig,
+                               InterThreadTransporter>(config, 10 * boost::units::si::hertz)
 {
     interthread_.reset(new InterThreadTransporter);
     this->set_transporter(interthread_.get());
@@ -42,38 +42,48 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     interthread_->subscribe<groups::modem_data_out, std::string>(
         [this](const std::string& bytes) { sending_.push_back(bytes); });
 
-    switch (cfg().driver_type())
+    if (cfg().driver().has_driver_name())
     {
-        case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
-            driver_.reset(new goby::acomms::MMDriver);
-            break;
+        throw(goby::Exception("Driver plugins not yet supported by InterVehicle transporters: use "
+                              "driver_type enumerations."));
+    }
+    else
+    {
+        switch (cfg().driver().driver_type())
+        {
+            case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
+                driver_.reset(new goby::acomms::MMDriver);
+                break;
 
-        case goby::acomms::protobuf::DRIVER_IRIDIUM:
-            driver_.reset(new goby::acomms::IridiumDriver);
-            break;
+            case goby::acomms::protobuf::DRIVER_IRIDIUM:
+                driver_.reset(new goby::acomms::IridiumDriver);
+                break;
 
-        case goby::acomms::protobuf::DRIVER_UDP: driver_.reset(new goby::acomms::UDPDriver); break;
+            case goby::acomms::protobuf::DRIVER_UDP:
+                driver_.reset(new goby::acomms::UDPDriver);
+                break;
 
-        case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
-            driver_.reset(new goby::acomms::UDPMulticastDriver);
-            break;
+            case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
+                driver_.reset(new goby::acomms::UDPMulticastDriver);
+                break;
 
-        case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
-            driver_.reset(new goby::acomms::IridiumShoreDriver);
-            break;
+            case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
+                driver_.reset(new goby::acomms::IridiumShoreDriver);
+                break;
 
-        case goby::acomms::protobuf::DRIVER_BENTHOS_ATM900:
-            driver_.reset(new goby::acomms::BenthosATM900Driver);
-            break;
+            case goby::acomms::protobuf::DRIVER_BENTHOS_ATM900:
+                driver_.reset(new goby::acomms::BenthosATM900Driver);
+                break;
 
-        case goby::acomms::protobuf::DRIVER_NONE: break;
-
-        case goby::acomms::protobuf::DRIVER_ABC_EXAMPLE_MODEM:
-        case goby::acomms::protobuf::DRIVER_UFIELD_SIM_DRIVER:
-        case goby::acomms::protobuf::DRIVER_BLUEFIN_MOOS:
-            throw(std::runtime_error("Unsupported driver type: " +
-                                     goby::acomms::protobuf::DriverType_Name(cfg().driver_type())));
-            break;
+            case goby::acomms::protobuf::DRIVER_NONE:
+            case goby::acomms::protobuf::DRIVER_ABC_EXAMPLE_MODEM:
+            case goby::acomms::protobuf::DRIVER_UFIELD_SIM_DRIVER:
+            case goby::acomms::protobuf::DRIVER_BLUEFIN_MOOS:
+                throw(goby::Exception(
+                    "Unsupported driver type: " +
+                    goby::acomms::protobuf::DriverType_Name(cfg().driver().driver_type())));
+                break;
+        }
     }
 
     driver_->signal_receive.connect(
@@ -84,11 +94,8 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     goby::acomms::bind(mac_, *driver_);
 
     //q_manager_.set_cfg(cfg().queue_cfg());
-    mac_.startup(cfg().mac_cfg());
-    driver_->startup(cfg().driver_cfg());
-
-    for (const auto& lib_path : cfg().dccl_load_library())
-        DCCLSerializerParserHelperBase::load_library(lib_path);
+    mac_.startup(cfg().mac());
+    driver_->startup(cfg().driver());
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::loop()
