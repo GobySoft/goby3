@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 usage()
 {
     echo -e "Usage: goby_launch"    
@@ -165,7 +164,18 @@ if [ -z "$gobyd_line" ]; then
     use_goby_terminate=false
 else
     gobyd_escline=$(echo "$gobyd_line" | sed 's/"/\\"/g')
-    gobyd_interprocess=$(bash -c "$gobyd_escline --app 'debug_cfg: true'" | sed -n "/^ *interprocess/,/}/p;")
+    echo $gobyd_escline
+
+    gobyd_interprocess=$(bash -c "$gobyd_line --app 'debug_cfg: true'" | sed -n "/^ *interprocess/,/}/p;")
+    echo $gobyd_interprocess
+    
+    gobyd_platform=$(echo "$gobyd_interprocess" | grep platform | sed 's/.*platform: \"\(.*\)\".*/\1/')
+    echo $gobyd_platform
+
+    if [ ! -z "$gobyd_platform" ]; then
+        platform="$gobyd_platform"
+        echo "Setting platform to [$gobyd_platform] from gobyd interprocess configuration"
+    fi
 fi
 
 # actually launch the lines

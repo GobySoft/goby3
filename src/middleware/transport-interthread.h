@@ -375,6 +375,19 @@ class InterThreadTransporter
 
     template <typename Data> static constexpr int scheme() { return MarshallingScheme::CXX_OBJECT; }
 
+    template <const Group& group> void check_validity()
+    {
+        static_assert((group.c_str() != nullptr) && (group.c_str()[0] != '\0'),
+                      "goby::middleware::Group must have non-zero length string to publish on the "
+                      "InterThread layer");
+    }
+
+    void check_validity_runtime(const Group& group)
+    {
+        if ((group.c_str() == nullptr) || (group.c_str()[0] == '\0'))
+            throw(goby::Exception("Group must have a non-empty string for use on InterThread"));
+    }
+
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group,
                          const Publisher<Data>& publisher = Publisher<Data>())

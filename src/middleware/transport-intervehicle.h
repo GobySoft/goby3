@@ -67,6 +67,13 @@ class InterVehicleTransporterBase
         return MarshallingScheme::DCCL;
     }
 
+    template <const Group& group> void check_validity()
+    {
+        static_assert(group.numeric() != Group::invalid_numeric_group,
+                      "goby::middleware::Group must have non-zero numeric "
+                      "value to publish on the InterVehicle layer");
+    }
+
     // implements StaticTransporterInterface
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group = Group(),

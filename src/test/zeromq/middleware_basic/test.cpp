@@ -105,8 +105,7 @@ int main(int argc, char* argv[])
     }
 
     goby::middleware::InterVehiclePortal<decltype(zmq)> slow(zmq, slow_cfg);
-    int slow_group = 0;
-    slow.publish_dynamic(s, slow_group);
+    slow.publish_dynamic(s, {"slow", 1});
 
     router_context.reset();
     manager_context.reset();

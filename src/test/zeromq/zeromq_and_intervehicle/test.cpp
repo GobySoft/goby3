@@ -46,10 +46,10 @@ using goby::glog;
 using namespace goby::util::logger;
 
 constexpr goby::middleware::Group group1{"group1", 1};
-constexpr goby::middleware::Group group2{2};
-constexpr goby::middleware::Group group3{3};
+constexpr goby::middleware::Group group2{"group2", 2};
+constexpr goby::middleware::Group group3{"group3", 3};
 
-constexpr goby::middleware::Group null;
+constexpr goby::middleware::Group null{"broadcast_group", goby::middleware::Group::broadcast_group};
 
 // process 1
 void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,

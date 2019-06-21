@@ -32,7 +32,7 @@ using goby::glog;
 
 using namespace goby::test::zeromq::protobuf;
 
-extern constexpr goby::middleware::Group widget1{3};
+extern constexpr goby::middleware::Group widget1{"widget1", 1};
 extern constexpr goby::middleware::Group widget2{"widget2"};
 extern constexpr goby::middleware::Group ready{"ready"};
 

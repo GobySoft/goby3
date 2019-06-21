@@ -54,6 +54,8 @@ class NullTransporter : public StaticTransporterInterface<NullTransporter, NullT
         return MarshallingScheme::NULL_SCHEME;
     }
 
+    template <const Group& group> void check_validity() {}
+
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group,
                          const Publisher<Data>& publisher = Publisher<Data>())
