@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+import "dccl/option_extensions.proto";
+import "goby/middleware/protobuf/transporter_config.proto";
+
+package goby.middleware.protobuf;
+
+message InterVehicleSubscription
+{
+    option (dccl.msg) = {
+        codec_version: 3
+        id: 2
+        max_bytes: 32
+        unit_system: "si"
+    };
+
+    required uint32 dccl_id = 1 [(dccl.field) = {min: 1 max: 32767}];
+    optional InterVehicleTransporterConfig intervehicle = 10;
+}
