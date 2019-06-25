@@ -292,13 +292,13 @@ BOOST_FIXTURE_TEST_CASE(arbitrary_erase, DynamicBufferFixture)
     buffer.push(std::make_tuple("B", now, "2"));
 
     BOOST_CHECK_EQUAL(buffer.size(), 4);
-    BOOST_CHECK(buffer.erase({"A", now, "1"}));
+    BOOST_CHECK(buffer.erase(std::make_tuple("A", now, "1")));
     BOOST_CHECK_EQUAL(buffer.size(), 3);
-    BOOST_CHECK(buffer.erase({"A", now, "2"}));
+    BOOST_CHECK(buffer.erase(std::make_tuple("A", now, "2")));
     BOOST_CHECK_EQUAL(buffer.size(), 2);
-    BOOST_CHECK(buffer.erase({"B", now, "1"}));
+    BOOST_CHECK(buffer.erase(std::make_tuple("B", now, "1")));
     BOOST_CHECK_EQUAL(buffer.size(), 1);
-    BOOST_CHECK(buffer.erase({"B", now, "2"}));
+    BOOST_CHECK(buffer.erase(std::make_tuple("B", now, "2")));
     BOOST_CHECK_EQUAL(buffer.size(), 0);
 }
 
@@ -330,10 +330,10 @@ BOOST_FIXTURE_TEST_CASE(check_max_queue, DynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
 
-    BOOST_CHECK_EQUAL(buffer.push({"A", now, "1"}).size(), 0);
-    BOOST_CHECK_EQUAL(buffer.push({"A", now, "2"}).size(), 0);
-    BOOST_CHECK_EQUAL(buffer.push({"B", now, "1"}).size(), 0);
-    BOOST_CHECK_EQUAL(buffer.push({"B", now, "2"}).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push(std::make_tuple("A", now, "1")).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push(std::make_tuple("A", now, "2")).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push(std::make_tuple("B", now, "1")).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push(std::make_tuple("B", now, "2")).size(), 0);
 
     // newest first = true pushes out oldest
     {
