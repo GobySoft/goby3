@@ -39,8 +39,10 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     interthread_.reset(new InterThreadTransporter);
     this->set_transporter(interthread_.get());
 
-    interthread_->subscribe<groups::modem_data_out, std::string>(
-        [this](const std::string& bytes) { sending_.push_back(bytes); });
+    interthread_->subscribe<groups::modem_data_out, protobuf::SerializerTransporterMessage>(
+        [this](std::shared_ptr<const protobuf::SerializerTransporterMessage> msg) {
+            _buffer_message(msg);
+        });
 
     if (cfg().driver().has_driver_name())
     {
@@ -86,8 +88,10 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
         }
     }
 
-    driver_->signal_receive.connect(
-        [&](const goby::acomms::protobuf::ModemTransmission& rx_msg) { this->_receive(rx_msg); });
+    driver_->signal_receive.connect([&](const goby::acomms::protobuf::ModemTransmission& rx_msg) {
+        interthread_->publish<groups::modem_data_in>(rx_msg);
+        glog.is(DEBUG1) && glog << "Received: " << rx_msg.ShortDebugString() << std::endl;
+    });
     driver_->signal_data_request.connect(
         [&](goby::acomms::protobuf::ModemTransmission* msg) { this->_data_request(msg); });
 
@@ -96,19 +100,15 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     //q_manager_.set_cfg(cfg().queue_cfg());
     mac_.startup(cfg().mac());
     driver_->startup(cfg().driver());
+
+    goby::glog.is_debug1() && goby::glog << "Driver ready" << std::endl;
+    interthread_->publish<groups::modem_driver_ready, bool>(true);
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::loop()
 {
     driver_->do_work();
     mac_.do_work();
-}
-
-void goby::middleware::intervehicle::ModemDriverThread::_receive(
-    const goby::acomms::protobuf::ModemTransmission& rx_msg)
-{
-    interthread_->publish<groups::modem_data_in>(rx_msg);
-    glog.is(DEBUG1) && glog << "Received: " << rx_msg.ShortDebugString() << std::endl;
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_data_request(
@@ -118,15 +118,40 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
               total_frames = msg->max_num_frames() + msg->frame_start();
          frame_number < total_frames; ++frame_number)
     {
-        if (sending_.empty())
-            break;
-
         std::string* frame = msg->add_frame();
-        while (!sending_.empty() &&
-               (frame->size() + sending_.front().size() <= msg->max_frame_bytes()))
+
+        while (frame->size() < msg->max_frame_bytes())
         {
-            *frame += sending_.front();
-            sending_.pop_front();
+            try
+            {
+                auto buffer_value = buffer_.top(msg->max_frame_bytes() - frame->size());
+                *frame += std::get<2>(buffer_value);
+
+                // to do: replace with ack
+                buffer_.erase(buffer_value);
+            }
+            catch (goby::acomms::DynamicBufferNoDataException&)
+            {
+                break;
+            }
         }
+    }
+}
+
+void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
+    std::shared_ptr<const protobuf::SerializerTransporterMessage> msg)
+{
+    auto buffer_id = create_buffer_id(msg->key());
+    if (!publisher_buffer_cfg_.count(buffer_id))
+    {
+        buffer_.create(buffer_id, msg->key().cfg().intervehicle().buffer());
+        publisher_buffer_cfg_.insert(std::make_pair(buffer_id, msg));
+    }
+
+    auto exceeded = buffer_.push(buffer_id, msg->data());
+    if (!exceeded.empty())
+    {
+        glog.is_warn() && glog << "Send buffer exceeded for " << msg->key().ShortDebugString()
+                               << std::endl;
     }
 }

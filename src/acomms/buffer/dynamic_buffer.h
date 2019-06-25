@@ -117,15 +117,31 @@ template <typename T> class DynamicSubBuffer
         return c_.front();
     }
 
+    enum class ValueResult
+    {
+        VALUE_PROVIDED,
+        EMPTY,
+        IN_BLACKOUT,
+        NEXT_MESSAGE_TOO_LARGE
+    };
+
     /// \brief Provides the numerical priority value based on this subbuffer's base priority, time-to-live (ttl) and time since last access (last call to top())
     ///
     /// \param reference time point to use for current reference when calculating this priority value (defaults to current time)
+    /// \param max_bytes the maximum number of bytes requested
     /// \return priority value for this sub buffer
-    double
-    top_value(goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now()) const
+    std::pair<double, ValueResult>
+    top_value(goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now(),
+              size_type max_bytes = std::numeric_limits<size_type>::max()) const
     {
-        if (empty() || in_blackout(reference))
-            return -std::numeric_limits<double>::infinity();
+        if (empty())
+            return std::make_pair(-std::numeric_limits<double>::infinity(), ValueResult::EMPTY);
+        else if (in_blackout(reference))
+            return std::make_pair(-std::numeric_limits<double>::infinity(),
+                                  ValueResult::IN_BLACKOUT);
+        else if (c_.front().second.size() > max_bytes)
+            return std::make_pair(-std::numeric_limits<double>::infinity(),
+                                  ValueResult::NEXT_MESSAGE_TOO_LARGE);
 
         using Duration = std::chrono::microseconds;
 
@@ -133,7 +149,8 @@ template <typename T> class DynamicSubBuffer
         double ttl = goby::time::convert_duration<Duration>(cfg_.ttl_with_units()).count();
         double v_b = cfg_.value_base();
 
-        return v_b * dt / ttl;
+        double v = v_b * dt / ttl;
+        return std::make_pair(v, ValueResult::VALUE_PROVIDED);
     }
 
     /// \brief Returns if buffer is in blackout
@@ -239,6 +256,13 @@ template <typename T> class DynamicSubBuffer
     goby::time::SteadyClock::time_point last_access_{goby::time::SteadyClock::now()};
 };
 
+class DynamicBufferNoDataException : goby::Exception
+{
+  public:
+    DynamicBufferNoDataException() : goby::Exception("No queues have data available") {}
+    ~DynamicBufferNoDataException() {}
+};
+
 /// Represents a time-dependent priority queue for several groups of messages (multiple DynamicSubBuffers)
 template <typename T> class DynamicBuffer
 {
@@ -321,6 +345,7 @@ template <typename T> class DynamicBuffer
     /// \param t the data to push
     /// \return vector of values removed due to max_queue being exceeded
     /// \param tp the time to record for pushing the data (defaults to the current time)
+    /// \throw DynamicBufferNoDataException no data available to send
     std::vector<full_value_type>
     push(const subbuffer_id_type& sub_id, const T& t,
          const goby::time::SteadyClock::time_point& tp = goby::time::SteadyClock::now())
@@ -350,7 +375,7 @@ template <typename T> class DynamicBuffer
     /// \brief Returns the top value in a priority contest between all subbuffers
     ///
     /// \return Value with the highest priority (DynamicSubBuffer::top_value()) of all the subbuffers
-    full_value_type top()
+    full_value_type top(size_type max_bytes = std::numeric_limits<size_type>::max())
     {
         using goby::glog;
 
@@ -363,16 +388,26 @@ template <typename T> class DynamicBuffer
         auto now = goby::time::SteadyClock::now();
         for (auto it = sub_.begin(), end = sub_.end(); it != end; ++it)
         {
-            double value = it->second.top_value(now);
+            double value;
+            typename DynamicSubBuffer<T>::ValueResult result;
+            std::tie(value, result) = it->second.top_value(now, max_bytes);
 
-            std::string value_or_reason = std::to_string(value);
-
-            if (value == -std::numeric_limits<double>::infinity())
+            std::string value_or_reason;
+            switch (result)
             {
-                if (it->second.empty())
-                    value_or_reason = "empty";
-                else if (it->second.in_blackout(now))
+                case DynamicSubBuffer<T>::ValueResult::VALUE_PROVIDED:
+                    value_or_reason = std::to_string(value);
+                    break;
+
+                case DynamicSubBuffer<T>::ValueResult::EMPTY: value_or_reason = "empty"; break;
+
+                case DynamicSubBuffer<T>::ValueResult::IN_BLACKOUT:
                     value_or_reason = "blackout";
+                    break;
+
+                case DynamicSubBuffer<T>::ValueResult::NEXT_MESSAGE_TOO_LARGE:
+                    value_or_reason = "too large";
+                    break;
             }
 
             glog.is_debug1() && glog << group(glog_priority_group_) << "\t" << it->first << "["
@@ -386,7 +421,7 @@ template <typename T> class DynamicBuffer
         }
 
         if (winning_value == -std::numeric_limits<double>::infinity())
-            throw(goby::Exception("No queues have data available to send"));
+            throw(DynamicBufferNoDataException());
 
         glog.is_debug1() && glog << group(glog_priority_group_)
                                  << "Winner: " << last_winning_sub_->first << std::endl;

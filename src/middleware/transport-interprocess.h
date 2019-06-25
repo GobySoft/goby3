@@ -171,10 +171,9 @@ class InterProcessForwarder
     InterProcessForwarder(InnerTransporter& inner) : Base(inner)
     {
         Base::inner_.template subscribe<Base::regex_group_,
-                                        goby::middleware::protobuf::SerializerTransporterData>(
-            [this](std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterData> d) {
-                _receive_regex_data_forwarded(d);
-            });
+                                        goby::middleware::protobuf::SerializerTransporterMessage>(
+            [this](std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage>
+                       msg) { _receive_regex_data_forwarded(msg); });
     }
     virtual ~InterProcessForwarder() { this->unsubscribe_all(); }
 
@@ -187,17 +186,17 @@ class InterProcessForwarder
         // create and forward publication to edge
         std::vector<char> bytes(SerializerParserHelper<Data, scheme>::serialize(d));
         std::string* sbytes = new std::string(bytes.begin(), bytes.end());
-        std::shared_ptr<goby::middleware::protobuf::SerializerTransporterData> data =
-            std::make_shared<goby::middleware::protobuf::SerializerTransporterData>();
+        auto msg = std::make_shared<goby::middleware::protobuf::SerializerTransporterMessage>();
+        auto* key = msg->mutable_key();
 
-        data->set_marshalling_scheme(scheme);
-        data->set_type(SerializerParserHelper<Data, scheme>::type_name(d));
-        data->set_group(std::string(group));
-        data->set_allocated_data(sbytes);
+        key->set_marshalling_scheme(scheme);
+        key->set_type(SerializerParserHelper<Data, scheme>::type_name(d));
+        key->set_group(std::string(group));
+        msg->set_allocated_data(sbytes);
 
-        *data->mutable_cfg() = publisher.transport_cfg();
+        *key->mutable_cfg() = publisher.transport_cfg();
 
-        Base::inner_.template publish<Base::forward_group_>(data);
+        Base::inner_.template publish<Base::forward_group_>(msg);
     }
 
     template <typename Data, int scheme>
@@ -249,15 +248,13 @@ class InterProcessForwarder
     {
         auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme,
                                             const std::string& type, const Group& group) {
-            std::shared_ptr<goby::middleware::protobuf::SerializerTransporterData> forwarded_data(
-                new goby::middleware::protobuf::SerializerTransporterData);
-            forwarded_data->set_marshalling_scheme(scheme);
-            forwarded_data->set_type(type);
-            forwarded_data->set_group(group);
+            std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
+                forwarded_data(new goby::middleware::protobuf::SerializerTransporterMessage);
+            forwarded_data->mutable_key()->set_marshalling_scheme(scheme);
+            forwarded_data->mutable_key()->set_type(type);
+            forwarded_data->mutable_key()->set_group(group);
             forwarded_data->set_data(std::string(data.begin(), data.end()));
-            Base::inner_.template publish<Base::regex_group_,
-                                          goby::middleware::protobuf::SerializerTransporterData>(
-                forwarded_data);
+            Base::inner_.template publish<Base::regex_group_>(forwarded_data);
         };
 
         typename SerializationSubscriptionRegex::HandlerType inner_publication_function(
@@ -275,12 +272,12 @@ class InterProcessForwarder
     }
 
     void _receive_regex_data_forwarded(
-        std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterData> data)
+        std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage> msg)
     {
-        const auto& bytes = data->data();
+        const auto& bytes = msg->data();
         for (auto& sub : regex_subscriptions_)
-            sub->post(bytes.begin(), bytes.end(), data->marshalling_scheme(), data->type(),
-                      data->group());
+            sub->post(bytes.begin(), bytes.end(), msg->key().marshalling_scheme(),
+                      msg->key().type(), msg->key().group());
     }
 
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock)

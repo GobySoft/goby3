@@ -140,9 +140,9 @@ class InterProcessPortal
     {
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
-        using goby::middleware::protobuf::SerializerTransporterData;
-        Base::inner_.template subscribe<Base::forward_group_, SerializerTransporterData>(
-            [this](std::shared_ptr<const SerializerTransporterData> d) {
+        using goby::middleware::protobuf::SerializerTransporterMessage;
+        Base::inner_.template subscribe<Base::forward_group_, SerializerTransporterMessage>(
+            [this](std::shared_ptr<const SerializerTransporterMessage> d) {
                 _receive_publication_forwarded(d);
             });
 
@@ -332,12 +332,13 @@ class InterProcessPortal
     }
 
     void _receive_publication_forwarded(
-        std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterData> data)
+        std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage> msg)
     {
-        std::string identifier = _make_identifier(data->type(), data->marshalling_scheme(),
-                                                  data->group(), IdentifierWildcard::NO_WILDCARDS) +
-                                 '\0';
-        auto& bytes = data->data();
+        std::string identifier =
+            _make_identifier(msg->key().type(), msg->key().marshalling_scheme(), msg->key().group(),
+                             IdentifierWildcard::NO_WILDCARDS) +
+            '\0';
+        auto& bytes = msg->data();
         zmq_main_.publish(identifier, &bytes[0], bytes.size());
     }
 

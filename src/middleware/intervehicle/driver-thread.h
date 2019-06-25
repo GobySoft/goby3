@@ -24,6 +24,7 @@
 #define DriverThread20190619H
 
 #include "goby/acomms/amac.h"
+#include "goby/acomms/buffer/dynamic_buffer.h"
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/protobuf/intervehicle_config.pb.h"
@@ -45,6 +46,7 @@ namespace groups
 {
 constexpr Group modem_data_out{"goby::middleware::intervehicle::modem_data_out"};
 constexpr Group modem_data_in{"goby::middleware::intervehicle::modem_data_in"};
+constexpr Group modem_driver_ready{"goby::middleware::intervehicle::modem_driver_ready"};
 } // namespace groups
 
 class ModemDriverThread
@@ -57,16 +59,27 @@ class ModemDriverThread
     int tx_queue_size() { return sending_.size(); }
 
   private:
-    void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
     void _data_request(goby::acomms::protobuf::ModemTransmission* msg);
+    void _buffer_message(std::shared_ptr<const protobuf::SerializerTransporterMessage> msg);
+
+    goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type
+    create_buffer_id(const protobuf::SerializerTransporterKey& key)
+    {
+        goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type id(key.SerializeAsString());
+        return id;
+    }
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
 
+    std::map<goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type,
+             std::shared_ptr<const protobuf::SerializerTransporterMessage> >
+        publisher_buffer_cfg_;
+    goby::acomms::DynamicBuffer<std::string> buffer_;
+
     std::deque<std::string> sending_;
 
     std::unique_ptr<goby::acomms::ModemDriverBase> driver_;
-
     goby::acomms::MACManager mac_;
 };
 

@@ -64,7 +64,12 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a - 10);
 
+        goby::middleware::protobuf::TransporterConfig sample_publisher_cfg;
+        auto* sample_buffer_cfg = sample_publisher_cfg.mutable_intervehicle()->mutable_buffer();
+        sample_buffer_cfg->set_newest_first(false);
+
         goby::middleware::Publisher<Sample> sample_publisher(
+            sample_publisher_cfg,
             [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); });
         slt.publish<group1>(s1, sample_publisher);
         glog.is(DEBUG1) && glog << "Published group1: " << s1->ShortDebugString() << std::endl;
@@ -74,9 +79,13 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
         slt.publish<group2>(s2, sample_publisher);
         glog.is(DEBUG1) && glog << "Published group2: " << s2->ShortDebugString() << std::endl;
 
+        goby::middleware::protobuf::TransporterConfig widget_publisher_cfg;
+        auto* widget_buffer_cfg = widget_publisher_cfg.mutable_intervehicle()->mutable_buffer();
+        widget_buffer_cfg->set_newest_first(false);
+
         Widget w;
         w.set_b(a - 2);
-        slt.publish<null>(w);
+        slt.publish<null>(w, {widget_publisher_cfg});
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
@@ -96,7 +105,13 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++ - 10);
+
+        goby::middleware::protobuf::TransporterConfig sample_publisher_cfg;
+        auto* sample_buffer_cfg = sample_publisher_cfg.mutable_intervehicle()->mutable_buffer();
+        sample_buffer_cfg->set_newest_first(false);
+
         goby::middleware::Publisher<Sample> sample_publisher(
+            sample_publisher_cfg,
             [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); });
         interplatform.publish<group3>(s1, sample_publisher);
 

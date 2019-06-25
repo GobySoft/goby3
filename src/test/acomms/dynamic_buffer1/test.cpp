@@ -105,7 +105,7 @@ BOOST_AUTO_TEST_CASE(check_top_value)
     cfg.set_value_base(1000);
 
     goby::acomms::DynamicSubBuffer<std::string> buffer(cfg);
-    BOOST_CHECK_EQUAL(buffer.top_value(), -std::numeric_limits<double>::infinity());
+    BOOST_CHECK_EQUAL(buffer.top_value().first, -std::numeric_limits<double>::infinity());
 
     buffer.push("foo");
 
@@ -117,20 +117,25 @@ BOOST_AUTO_TEST_CASE(check_top_value)
         buffer.top();
         int us_dt = i * 10000; // 10*i ms
         usleep(us_dt);
-        double v = buffer.top_value();
+        double v;
+        typename goby::acomms::DynamicSubBuffer<std::string>::ValueResult result;
+        std::tie(v, result) = buffer.top_value();
         BOOST_CHECK_MESSAGE(close_enough(v, i * 1.0, 0), "Expected " << i * 1.0 << ", got: " << v);
     }
 
-    goby::time::SimulatorSettings::using_sim_time = true;
-    goby::time::SimulatorSettings::warp_factor = 2;
+    {
+        goby::time::SimulatorSettings::using_sim_time = true;
+        goby::time::SimulatorSettings::warp_factor = 2;
+        buffer.top();
+        int us_dt = 10000; // 10 ms
+        usleep(us_dt);
+        double v;
+        typename goby::acomms::DynamicSubBuffer<std::string>::ValueResult result;
+        std::tie(v, result) = buffer.top_value();
+        BOOST_CHECK_MESSAGE(close_enough(v, 2 * 1.0, 0), "Expected " << 2 * 1.0 << ", got: " << v);
 
-    buffer.top();
-    int us_dt = 10000; // 10 ms
-    usleep(us_dt);
-    double v = buffer.top_value();
-    BOOST_CHECK_MESSAGE(close_enough(v, 2 * 1.0, 0), "Expected " << 2 * 1.0 << ", got: " << v);
-
-    goby::time::SimulatorSettings::using_sim_time = false;
+        goby::time::SimulatorSettings::using_sim_time = false;
+    }
 }
 
 BOOST_AUTO_TEST_CASE(check_order)
@@ -386,5 +391,30 @@ BOOST_FIXTURE_TEST_CASE(check_blackout_time, DynamicBufferFixture)
         auto vp = buffer.top();
         BOOST_CHECK_EQUAL(std::get<0>(vp), "A");
         BOOST_CHECK_EQUAL(std::get<2>(vp), "1");
+    }
+}
+
+BOOST_FIXTURE_TEST_CASE(check_size, DynamicBufferFixture)
+{
+    auto now = goby::time::SteadyClock::now();
+
+    goby::acomms::protobuf::DynamicBufferConfig cfg = buffer.sub("A").cfg();
+    cfg.set_value_base(100);
+    buffer.replace("A", cfg);
+
+    buffer.push(std::make_tuple("A", now, "1234567890"));
+    buffer.push(std::make_tuple("B", now, "1"));
+
+    // would be A but it is too large
+    {
+        auto vp = buffer.top(3);
+        BOOST_CHECK_EQUAL(std::get<0>(vp), "B");
+        BOOST_CHECK_EQUAL(std::get<2>(vp), "1");
+    }
+
+    {
+        auto vp = buffer.top(15);
+        BOOST_CHECK_EQUAL(std::get<0>(vp), "A");
+        BOOST_CHECK_EQUAL(std::get<2>(vp), "1234567890");
     }
 }
