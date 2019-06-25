@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+import "dccl/option_extensions.proto";
+
+package goby.middleware.protobuf;
+
+message InterVehicleHeader
+{
+    required int32 src = 1 [(dccl.field) = {min: 1 max: 127}];
+    repeated int32 dest = 2 [(dccl.field) = {min: 1 max: 127 max_repeat: 8}];
+}
