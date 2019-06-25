@@ -21,6 +21,8 @@
 
 #include <deque>
 #include <type_traits>
+#include <unordered_map>
+#include <vector>
 
 #include "goby/acomms/protobuf/buffer.pb.h"
 #include "goby/exception.h"
@@ -122,7 +124,7 @@ template <typename T> class DynamicSubBuffer
     double
     top_value(goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now()) const
     {
-        if (empty())
+        if (empty() || in_blackout(reference))
             return -std::numeric_limits<double>::infinity();
 
         using Duration = std::chrono::microseconds;
@@ -134,6 +136,17 @@ template <typename T> class DynamicSubBuffer
         return v_b * dt / ttl;
     }
 
+    /// \brief Returns if buffer is in blackout
+    ///
+    /// \param reference time point to use for current reference when calculating blackout
+    bool in_blackout(
+        goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now()) const
+    {
+        auto blackout = goby::time::convert_duration<goby::time::SteadyClock::duration>(
+            cfg_.blackout_time_with_units());
+
+        return reference <= (last_access_ + blackout);
+    }
     /// \brief Returns if this queue is empty
     bool empty() const { return c_.empty(); }
 
@@ -169,16 +182,16 @@ template <typename T> class DynamicSubBuffer
     /// \brief Erase any values that have exceeded their time-to-live
     ///
     /// \return Vector of values that have expired and have been erased
-    std::vector<full_value_type> expire()
+    std::vector<full_value_type>
+    expire(goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now())
     {
         std::vector<full_value_type> expired;
 
-        auto now = goby::time::SteadyClock::now();
         auto ttl =
             goby::time::convert_duration<goby::time::SteadyClock::duration>(cfg_.ttl_with_units());
         if (cfg_.newest_first())
         {
-            while (!c_.empty() && now > (c_.back().first + ttl))
+            while (!c_.empty() && reference > (c_.back().first + ttl))
             {
                 expired.push_back(c_.back());
                 c_.pop_back();
@@ -186,7 +199,7 @@ template <typename T> class DynamicSubBuffer
         }
         else
         {
-            while (!c_.empty() && now > (c_.front().first + ttl))
+            while (!c_.empty() && reference > (c_.front().first + ttl))
             {
                 expired.push_back(c_.front());
                 c_.pop_front();
@@ -266,9 +279,31 @@ template <typename T> class DynamicBuffer
         sub_.insert(std::make_pair(sub_id, DynamicSubBuffer<T>(cfgs)));
     }
 
+    /// \brief Replace an existing subbuffer with the given configuration (any messages in the subbuffer will be erased)
+    ///
+    /// \param sub_id An identifier for this subbuffer
+    /// \param cfg The configuration for this replacement subbuffer
+    void replace(const subbuffer_id_type& sub_id,
+                 const goby::acomms::protobuf::DynamicBufferConfig& cfg)
+    {
+        replace(sub_id, std::vector<goby::acomms::protobuf::DynamicBufferConfig>(1, cfg));
+    }
+
+    /// \brief Create a new subbuffer merging the given configuration (See DynamicSubBuffer() for details)
+    ///
+    /// This must be called before using functions that reference this subbuffer ID (e.g. push(...), erase(...))
+    /// \param sub_id An identifier for this subbuffer
+    /// \param cfgs The configuration for this new subbuffer
+    void replace(const subbuffer_id_type& sub_id,
+                 const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs)
+    {
+        sub_.erase(sub_id);
+        create(sub_id, cfgs);
+    }
+
     /// \brief Push a new message to the buffer
     ///
-    /// \value fvt Full tuple giving subbuffer id, time, and value
+    /// \param fvt Full tuple giving subbuffer id, time, and value
     /// \return vector of values removed due to max_queue being exceeded
     /// \throw goby::Exception If subbuffer doesn't exist
     std::vector<full_value_type> push(const full_value_type& fvt)
@@ -323,14 +358,25 @@ template <typename T> class DynamicBuffer
                                  << "Starting priority contest:" << std::endl;
 
         auto last_winning_sub_ = sub_.begin();
-        double winning_value = 0;
+        double winning_value = -std::numeric_limits<double>::infinity();
 
         auto now = goby::time::SteadyClock::now();
         for (auto it = sub_.begin(), end = sub_.end(); it != end; ++it)
         {
             double value = it->second.top_value(now);
+
+            std::string value_or_reason = std::to_string(value);
+
+            if (value == -std::numeric_limits<double>::infinity())
+            {
+                if (it->second.empty())
+                    value_or_reason = "empty";
+                else if (it->second.in_blackout(now))
+                    value_or_reason = "blackout";
+            }
+
             glog.is_debug1() && glog << group(glog_priority_group_) << "\t" << it->first << "["
-                                     << it->second.size() << "]: " << value << std::endl;
+                                     << it->second.size() << "]: " << value_or_reason << std::endl;
 
             if (value > winning_value)
             {
@@ -338,6 +384,9 @@ template <typename T> class DynamicBuffer
                 last_winning_sub_ = it;
             }
         }
+
+        if (winning_value == -std::numeric_limits<double>::infinity())
+            throw(goby::Exception("No queues have data available to send"));
 
         glog.is_debug1() && glog << group(glog_priority_group_)
                                  << "Winner: " << last_winning_sub_->first << std::endl;
@@ -362,10 +411,11 @@ template <typename T> class DynamicBuffer
     /// \return Vector of values that have expired and have been erased
     std::vector<full_value_type> expire()
     {
+        auto now = goby::time::SteadyClock::now();
         std::vector<full_value_type> expired;
         for (auto& sub_p : sub_)
         {
-            auto sub_expired = sub_p.second.expire();
+            auto sub_expired = sub_p.second.expire(now);
             for (const auto& e : sub_expired)
                 expired.push_back(std::make_tuple(sub_p.first, e.first, e.second));
         }
@@ -384,7 +434,7 @@ template <typename T> class DynamicBuffer
     }
 
   private:
-    std::map<subbuffer_id_type, DynamicSubBuffer<T> > sub_;
+    std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T> > sub_;
     typename decltype(sub_)::iterator last_winning_sub_{sub_.end()};
 
     std::string glog_priority_group_;

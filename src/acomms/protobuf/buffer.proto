@@ -15,9 +15,9 @@ message DynamicBufferConfig
     // true takes precedence over false
     optional bool ack_required = 2 [default = true];
     // lowest value takes precedence
-    optional uint32 blackout_time = 3 [
+    optional double blackout_time = 3 [
         default = 0,
-        (dccl.field) = {min: 0 max: 3600 units {base_dimensions: "T"}}
+        (dccl.field) = {min: 0 max: 3600 precision: 0 units {base_dimensions: "T"}}
     ];
     // larger value takes precedence
     optional uint32 max_queue = 4

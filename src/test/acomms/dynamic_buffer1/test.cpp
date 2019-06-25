@@ -355,3 +355,36 @@ BOOST_FIXTURE_TEST_CASE(check_max_queue, DynamicBufferFixture)
         BOOST_CHECK_EQUAL(std::get<2>(exceeded[0]), "3");
     }
 }
+
+BOOST_FIXTURE_TEST_CASE(check_blackout_time, DynamicBufferFixture)
+{
+    auto now = goby::time::SteadyClock::now();
+
+    using boost::units::si::milli;
+    using boost::units::si::seconds;
+    goby::acomms::protobuf::DynamicBufferConfig cfg1;
+    cfg1.set_ack_required(false);
+    cfg1.set_ttl_with_units(10.0 * milli * seconds);
+    cfg1.set_value_base(100);
+    cfg1.set_blackout_time_with_units(10.0 * milli * seconds);
+    cfg1.set_max_queue(2);
+    cfg1.set_newest_first(true);
+    buffer.replace("A", cfg1);
+
+    buffer.push({"A", now, "1"});
+    buffer.push({"B", now, "1"});
+
+    // would be A but it is in blackout
+    {
+        auto vp = buffer.top();
+        BOOST_CHECK_EQUAL(std::get<0>(vp), "B");
+        BOOST_CHECK_EQUAL(std::get<2>(vp), "1");
+    }
+    usleep(10000); // 10 ms
+    // now it's A since we're not in blackout any more
+    {
+        auto vp = buffer.top();
+        BOOST_CHECK_EQUAL(std::get<0>(vp), "A");
+        BOOST_CHECK_EQUAL(std::get<2>(vp), "1");
+    }
+}
