@@ -240,10 +240,10 @@ BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
 
-    buffer.push({"A", now, "1"});
-    buffer.push({"B", now, "1"});
-    buffer.push({"A", now, "2"});
-    buffer.push({"B", now, "2"});
+    buffer.push(std::make_tuple("A", now, "1"));
+    buffer.push(std::make_tuple("B", now, "1"));
+    buffer.push(std::make_tuple("A", now, "2"));
+    buffer.push(std::make_tuple("B", now, "2"));
 
     // will be "A" because it was created first (and last access is initialized to creation time)
     {
@@ -286,10 +286,10 @@ BOOST_FIXTURE_TEST_CASE(arbitrary_erase, DynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
 
-    buffer.push({"A", now, "1"});
-    buffer.push({"B", now, "1"});
-    buffer.push({"A", now, "2"});
-    buffer.push({"B", now, "2"});
+    buffer.push(std::make_tuple("A", now, "1"));
+    buffer.push(std::make_tuple("B", now, "1"));
+    buffer.push(std::make_tuple("A", now, "2"));
+    buffer.push(std::make_tuple("B", now, "2"));
 
     BOOST_CHECK_EQUAL(buffer.size(), 4);
     BOOST_CHECK(buffer.erase({"A", now, "1"}));
@@ -305,11 +305,11 @@ BOOST_FIXTURE_TEST_CASE(arbitrary_erase, DynamicBufferFixture)
 BOOST_FIXTURE_TEST_CASE(check_expire, DynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
-    buffer.push({"A", now, "first"});
-    buffer.push({"B", now, "first"});
+    buffer.push(std::make_tuple("A", now, "first"));
+    buffer.push(std::make_tuple("B", now, "first"));
     BOOST_CHECK_EQUAL(buffer.size(), 2);
-    buffer.push({"A", now + std::chrono::milliseconds(5), "second"});
-    buffer.push({"B", now + std::chrono::milliseconds(5), "second"});
+    buffer.push(std::make_tuple("A", now + std::chrono::milliseconds(5), "second"));
+    buffer.push(std::make_tuple("B", now + std::chrono::milliseconds(5), "second"));
     BOOST_CHECK_EQUAL(buffer.size(), 4);
     usleep(10000); // 10 ms
     auto exp1 = buffer.expire();
@@ -337,7 +337,7 @@ BOOST_FIXTURE_TEST_CASE(check_max_queue, DynamicBufferFixture)
 
     // newest first = true pushes out oldest
     {
-        auto exceeded = buffer.push({"A", now, "3"});
+        auto exceeded = buffer.push(std::make_tuple("A", now, "3"));
         BOOST_CHECK_EQUAL(exceeded.size(), 1);
         BOOST_CHECK_EQUAL(std::get<0>(exceeded[0]), "A");
         BOOST_CHECK_EQUAL(std::get<1>(exceeded[0]), now);
@@ -346,7 +346,7 @@ BOOST_FIXTURE_TEST_CASE(check_max_queue, DynamicBufferFixture)
 
     // newest first = false pushes out newest (value just pushed)
     {
-        auto exceeded = buffer.push({"B", now, "3"});
+        auto exceeded = buffer.push(std::make_tuple("B", now, "3"));
 
         // newest first pushes out oldest
         BOOST_CHECK_EQUAL(exceeded.size(), 1);
@@ -371,8 +371,8 @@ BOOST_FIXTURE_TEST_CASE(check_blackout_time, DynamicBufferFixture)
     cfg1.set_newest_first(true);
     buffer.replace("A", cfg1);
 
-    buffer.push({"A", now, "1"});
-    buffer.push({"B", now, "1"});
+    buffer.push(std::make_tuple("A", now, "1"));
+    buffer.push(std::make_tuple("B", now, "1"));
 
     // would be A but it is in blackout
     {
