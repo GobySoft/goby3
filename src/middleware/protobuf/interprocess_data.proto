@@ -13,16 +13,16 @@ message SerializerTransporterData
     optional TransporterConfig cfg = 5;
 }
 
-message DCCLSubscription
-{
-    required int32 dccl_id = 1;
-    required int32 group = 2;
-    // defines the DCCL message for the Portal (edge)
-    required string protobuf_name = 3;
-    repeated google.protobuf.FileDescriptorProto file_descriptor = 4;
+// message DCCLSubscription
+// {
+//     required int32 dccl_id = 1;
+//     required int32 group = 2;
+//     // defines the DCCL message for the Portal (edge)
+//     required string protobuf_name = 3;
+//     repeated google.protobuf.FileDescriptorProto file_descriptor = 4;
 
-    optional TransporterConfig cfg = 5;
-}
+//     optional TransporterConfig cfg = 5;
+// }
 
 message DCCLPacket
 {

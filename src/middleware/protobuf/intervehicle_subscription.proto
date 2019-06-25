@@ -2,6 +2,8 @@ syntax = "proto2";
 
 import "dccl/option_extensions.proto";
 import "goby/middleware/protobuf/transporter_config.proto";
+import "goby/middleware/protobuf/intervehicle_header.proto";
+import "google/protobuf/descriptor.proto";
 
 package goby.middleware.protobuf;
 
@@ -14,6 +16,28 @@ message InterVehicleSubscription
         unit_system: "si"
     };
 
-    required uint32 dccl_id = 1 [(dccl.field) = {min: 1 max: 32767}];
+    required InterVehicleHeader header = 1;
+    required uint32 dccl_id = 5 [(dccl.field) = {min: 1 max: 32767}];
+    required uint32 group = 6 [(dccl.field) = {min: 0 max: 255}];
+    optional InterVehicleTransporterConfig intervehicle = 10;
+
+    // defines the DCCL message for the Portal (edge) internally on interprocess
+    optional string protobuf_name = 20 [(dccl.field).omit = true];
+    repeated google.protobuf.FileDescriptorProto file_descriptor = 4
+        [(dccl.field).omit = true];
+}
+
+message InterVehicleSubscriptionResponse
+{
+    option (dccl.msg) = {
+        codec_version: 3
+        id: 3
+        max_bytes: 32
+        unit_system: "si"
+    };
+
+    required InterVehicleHeader header = 1;
+    required uint32 dccl_id = 5 [(dccl.field) = {min: 1 max: 32767}];
+    required uint32 group = 6 [(dccl.field) = {min: 0 max: 255}];
     optional InterVehicleTransporterConfig intervehicle = 10;
 }

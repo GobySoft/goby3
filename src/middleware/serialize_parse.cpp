@@ -21,6 +21,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/middleware/protobuf/interprocess_data.pb.h"
+#include "goby/middleware/protobuf/intervehicle_subscription.pb.h"
 #include "goby/util/debug_logger.h"
 
 #include "serialize_parse.h"
@@ -38,7 +39,7 @@ std::unordered_map<const google::protobuf::Descriptor*,
 std::mutex goby::middleware::DCCLSerializerParserHelperBase::dccl_mutex_;
 
 void goby::middleware::DCCLSerializerParserHelperBase::load_forwarded_subscription(
-    const goby::middleware::protobuf::DCCLSubscription& sub)
+    const goby::middleware::protobuf::InterVehicleSubscription& sub)
 {
     std::lock_guard<std::mutex> lock(dccl_mutex_);
 

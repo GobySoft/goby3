@@ -7,8 +7,9 @@ package goby.middleware.protobuf;
 
 message InterVehicleTransporterConfig
 {
-    optional goby.acomms.protobuf.DynamicBufferConfig buffer = 1;
-
+    repeated int32 publisher_id = 1 [(dccl.field) = { min: 1 max: 30 max_repeat: 8}];
+    
+    optional goby.acomms.protobuf.DynamicBufferConfig buffer = 10;
     message LinkConfig
     {
         enum LinkPolicy
@@ -22,7 +23,7 @@ message InterVehicleTransporterConfig
         optional LinkPolicy policy = 1;
     }
 
-    optional LinkConfig link = 2;
+    optional LinkConfig link = 20;
 }
 
 message TransporterConfig

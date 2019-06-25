@@ -164,7 +164,7 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
 
 namespace protobuf
 {
-class DCCLSubscription;
+class InterVehicleSubscription;
 class DCCLForwardedData;
 } // namespace protobuf
 struct DCCLSerializerParserHelperBase
@@ -242,7 +242,7 @@ struct DCCLSerializerParserHelperBase
     }
 
     static void
-    load_forwarded_subscription(const goby::middleware::protobuf::DCCLSubscription& sub);
+    load_forwarded_subscription(const goby::middleware::protobuf::InterVehicleSubscription& sub);
     static goby::middleware::protobuf::DCCLForwardedData unpack(const std::string& bytes);
 
     static void load_library(const std::string& library)
