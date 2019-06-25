@@ -138,10 +138,21 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
     }
 }
 
+goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type
+goby::middleware::intervehicle::ModemDriverThread::_create_buffer_id(
+    const protobuf::SerializerTransporterKey& key)
+{
+    std::string id;
+    google::protobuf::TextFormat::Printer printer;
+    printer.SetSingleLineMode(true);
+    printer.PrintToString(key, &id);
+    return id;
+}
+
 void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
     std::shared_ptr<const protobuf::SerializerTransporterMessage> msg)
 {
-    auto buffer_id = create_buffer_id(msg->key());
+    auto buffer_id = _create_buffer_id(msg->key());
     if (!publisher_buffer_cfg_.count(buffer_id))
     {
         buffer_.create(buffer_id, msg->key().cfg().intervehicle().buffer());

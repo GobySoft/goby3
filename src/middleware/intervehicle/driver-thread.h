@@ -63,11 +63,7 @@ class ModemDriverThread
     void _buffer_message(std::shared_ptr<const protobuf::SerializerTransporterMessage> msg);
 
     goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type
-    create_buffer_id(const protobuf::SerializerTransporterKey& key)
-    {
-        goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type id(key.SerializeAsString());
-        return id;
-    }
+    _create_buffer_id(const protobuf::SerializerTransporterKey& key);
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
