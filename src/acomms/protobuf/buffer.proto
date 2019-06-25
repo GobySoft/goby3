@@ -1,0 +1,36 @@
+syntax = "proto2";
+
+import "dccl/option_extensions.proto";
+
+package goby.acomms.protobuf;
+
+message DynamicBufferConfig
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    // publisher and/or subscriber can set
+
+    // true takes precedence over false
+    optional bool ack_required = 2 [default = true];
+    // lowest value takes precedence
+    optional uint32 blackout_time = 3 [
+        default = 0,
+        (dccl.field) = {min: 0 max: 3600 units {base_dimensions: "T"}}
+    ];
+    // larger value takes precedence
+    optional uint32 max_queue = 4
+        [default = 100, (dccl.field) = {min: 1 max: 1000}];
+    // true takes precedence over false
+    optional bool newest_first = 5 [default = true];
+    // use average of values
+    optional double ttl = 6 [
+        default = 1800,
+        (dccl.field) =
+            {min: 1 max: 86400 precision: 0 units {base_dimensions: "T"}}
+    ];
+    // use average of values
+    optional int32 value_base = 7
+        [default = 100, (dccl.field) = {min: 1 max: 1000}];
+}
