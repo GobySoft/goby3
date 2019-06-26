@@ -3,6 +3,7 @@ import "dccl/option_extensions.proto";
 import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/amac_config.proto";
+import "goby/acomms/protobuf/buffer.proto";
 
 package goby.middleware.protobuf;
 
@@ -23,6 +24,10 @@ message InterVehiclePortalConfig
         optional goby.acomms.protobuf.MACConfig mac = 12
             [(goby.field).description =
                  "Configure the acoustic Medium Access Control"];
+
+        optional goby.acomms.protobuf.DynamicBufferConfig subscription_buffer =
+            13 [(goby.field).description =
+                    "Buffer configuration for subscription forwarding"];
 
         optional double ack_timeout = 20 [
             default = 1.0,

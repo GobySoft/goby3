@@ -44,6 +44,18 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
             _buffer_message(msg);
         });
 
+    interthread_
+        ->subscribe<groups::modem_subscription_forward_tx, protobuf::InterVehicleSubscription>(
+            [this](std::shared_ptr<const protobuf::InterVehicleSubscription> subscription) {
+                _forward_subscription(*subscription);
+            });
+
+    interthread_
+        ->subscribe<groups::modem_subscription_forward_rx, protobuf::InterVehicleSubscription>(
+            [this](std::shared_ptr<const protobuf::InterVehicleSubscription> subscription) {
+                _accept_subscription(*subscription);
+            });
+
     if (cfg().driver().has_driver_name())
     {
         throw(goby::Exception("Driver plugins not yet supported by InterVehicle transporters: use "
@@ -96,9 +108,12 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
 
     goby::acomms::bind(mac_, *driver_);
 
-    //q_manager_.set_cfg(cfg().queue_cfg());
     mac_.startup(cfg().mac());
     driver_->startup(cfg().driver());
+
+    subscription_key_.set_marshalling_scheme(MarshallingScheme::DCCL);
+    subscription_key_.set_type(protobuf::InterVehicleSubscription::descriptor()->full_name());
+    subscription_key_.set_group_numeric(Group::broadcast_group);
 
     goby::glog.is_debug1() && goby::glog << "Driver ready" << std::endl;
     interthread_->publish<groups::modem_driver_ready, bool>(true);
@@ -110,6 +125,27 @@ void goby::middleware::intervehicle::ModemDriverThread::loop()
     buffer_.expire();
     driver_->do_work();
     mac_.do_work();
+}
+
+void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
+    protobuf::InterVehicleSubscription subscription)
+{
+    subscription.mutable_header()->set_src(cfg().driver().modem_id());
+    for (auto dest : subscription.header().dest())
+    {
+        auto buffer_id = _create_buffer_id(subscription_key_);
+        if (!subscription_subbuffers_.count(dest))
+        {
+            buffer_.create(dest, buffer_id, cfg().subscription_buffer());
+            subscription_subbuffers_.insert(dest);
+        }
+
+        std::vector<char> bytes(
+            SerializerParserHelper<protobuf::InterVehicleSubscription,
+                                   MarshallingScheme::DCCL>::serialize(subscription));
+        std::string sbytes(bytes.begin(), bytes.end());
+        buffer_.push(std::make_tuple(dest, buffer_id, goby::time::SteadyClock::now(), sbytes));
+    }
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_data_request(
@@ -124,6 +160,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
         it = pending_ack_.erase(it);
     }
 
+    int dest = msg->dest();
     for (auto frame_number = msg->frame_start(),
               total_frames = msg->max_num_frames() + msg->frame_start();
          frame_number < total_frames; ++frame_number)
@@ -135,12 +172,16 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
             try
             {
                 auto buffer_value =
-                    buffer_.top(msg->max_frame_bytes() - frame->size(),
+                    buffer_.top(dest, msg->max_frame_bytes() - frame->size(),
                                 goby::time::convert_duration<std::chrono::microseconds>(
                                     cfg().ack_timeout_with_units()));
-                *frame += std::get<2>(buffer_value);
+                dest = std::get<0>(buffer_value);
+                *frame += std::get<3>(buffer_value);
 
-                bool ack_required = buffer_.sub(std::get<0>(buffer_value)).cfg().ack_required();
+                bool ack_required =
+                    buffer_.sub(std::get<0>(buffer_value), std::get<1>(buffer_value))
+                        .cfg()
+                        .ack_required();
 
                 if (!ack_required)
                 {
@@ -158,17 +199,57 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
             }
         }
     }
+    msg->set_dest(dest);
 }
 
-goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type
-goby::middleware::intervehicle::ModemDriverThread::_create_buffer_id(
-    const protobuf::SerializerTransporterKey& key)
+goby::middleware::intervehicle::ModemDriverThread::subbuffer_id_type
+goby::middleware::intervehicle::ModemDriverThread::_create_buffer_id(unsigned dccl_id,
+                                                                     unsigned group)
 {
-    std::string id;
-    google::protobuf::TextFormat::Printer printer;
-    printer.SetSingleLineMode(true);
-    printer.PrintToString(key, &id);
-    return id;
+    return "/group:" + std::to_string(group) + "/id:" + std::to_string(dccl_id) + "/";
+}
+
+void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
+    const protobuf::InterVehicleSubscription& subscription)
+{
+    auto buffer_id = _create_buffer_id(subscription);
+
+    glog.is_debug2() &&
+        glog << "Received new forwarded subscription: " << subscription.ShortDebugString()
+             << ", buffer_id: " << buffer_id << std::endl;
+
+    auto dest = subscription.header().src();
+    // TODO see if there's a change to the buffer configuration with this subscription
+    if (!subscriber_buffer_cfg_[dest].count(buffer_id))
+    {
+        subscriber_buffer_cfg_[dest].insert(std::make_pair(buffer_id, subscription));
+
+        // check if there's a publisher already, if so create the buffer
+        auto pub_it = publisher_buffer_cfg_.find(buffer_id);
+        if (pub_it != publisher_buffer_cfg_.end())
+        {
+            _create_buffer(dest, buffer_id,
+                           {pub_it->second.cfg().intervehicle().buffer(),
+                            subscription.intervehicle().buffer()});
+        }
+    }
+    else
+    {
+        glog.is_debug2() && glog << "Subscription configuration exists for " << buffer_id
+                                 << std::endl;
+    }
+}
+
+void goby::middleware::intervehicle::ModemDriverThread::_create_buffer(
+    modem_id_type dest_id, subbuffer_id_type buffer_id,
+    const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs)
+{
+    // TODO create broadcast buffers if the configuration is not ack_required
+
+    buffer_.create(dest_id, buffer_id, cfgs);
+    subbuffers_created_[buffer_id].insert(dest_id);
+    glog.is_debug2() && glog << "Created buffer for dest: " << dest_id << " for id: " << buffer_id
+                             << std::endl;
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
@@ -177,15 +258,35 @@ void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
     auto buffer_id = _create_buffer_id(msg->key());
     if (!publisher_buffer_cfg_.count(buffer_id))
     {
-        buffer_.create(buffer_id, msg->key().cfg().intervehicle().buffer());
-        publisher_buffer_cfg_.insert(std::make_pair(buffer_id, msg));
+        publisher_buffer_cfg_.insert(std::make_pair(buffer_id, msg->key()));
+
+        // check for new subbuffers
+        // TODO see if there's a change to the buffer configuration with this publication
+        for (const auto& sub_id_p : subscriber_buffer_cfg_)
+        {
+            const auto& sub_map = sub_id_p.second;
+            auto sub_it = sub_map.find(buffer_id);
+            if (sub_it != sub_map.end())
+            {
+                auto dest_id = sub_id_p.first;
+                const auto& intervehicle_subscription = sub_it->second;
+                _create_buffer(dest_id, buffer_id,
+                               {msg->key().cfg().intervehicle().buffer(),
+                                intervehicle_subscription.intervehicle().buffer()});
+            }
+        }
     }
 
-    auto exceeded = buffer_.push(buffer_id, msg->data());
-    if (!exceeded.empty())
+    // push to all subscribed buffers
+    for (auto dest_id : subbuffers_created_[buffer_id])
     {
-        glog.is_warn() && glog << "Send buffer exceeded for " << msg->key().ShortDebugString()
-                               << std::endl;
+        auto exceeded = buffer_.push(
+            std::make_tuple(dest_id, buffer_id, goby::time::SteadyClock::now(), msg->data()));
+        if (!exceeded.empty())
+        {
+            glog.is_warn() && glog << "Send buffer exceeded for " << msg->key().ShortDebugString()
+                                   << std::endl;
+        }
     }
 }
 
@@ -217,11 +318,16 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
                                         << " acks for frame: " << frame_number << std::endl;
                 for (const auto& value : values_to_ack_it->second) { buffer_.erase(value); }
                 pending_ack_.erase(values_to_ack_it);
+                // TODO publish acks for other drivers to erase the same piece of data (if they have it)
             }
         }
     }
     else
     {
-        interthread_->publish<groups::modem_data_in>(rx_msg);
+        if (rx_msg.dest() == goby::acomms::BROADCAST_ID ||
+            rx_msg.dest() == cfg().driver().modem_id())
+        {
+            interthread_->publish<groups::modem_data_in>(rx_msg);
+        }
     }
 }

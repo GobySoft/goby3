@@ -28,6 +28,7 @@
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/protobuf/intervehicle_config.pb.h"
+#include "goby/middleware/protobuf/intervehicle_subscription.pb.h"
 #include "goby/middleware/thread.h"
 #include "goby/middleware/transport-interthread.h"
 
@@ -46,6 +47,10 @@ namespace groups
 {
 constexpr Group modem_data_out{"goby::middleware::intervehicle::modem_data_out"};
 constexpr Group modem_data_in{"goby::middleware::intervehicle::modem_data_in"};
+constexpr Group modem_subscription_forward_tx{
+    "goby::middleware::intervehicle::modem_subscription_forward_tx"};
+constexpr Group modem_subscription_forward_rx{
+    "goby::middleware::intervehicle::modem_subscription_forward_rx"};
 constexpr Group modem_driver_ready{"goby::middleware::intervehicle::modem_driver_ready"};
 } // namespace groups
 
@@ -54,6 +59,9 @@ class ModemDriverThread
                                       InterThreadTransporter>
 {
   public:
+    using modem_id_type = goby::acomms::DynamicBuffer<std::string>::modem_id_type;
+    using subbuffer_id_type = goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type;
+
     ModemDriverThread(const protobuf::InterVehiclePortalConfig::LinkConfig& cfg);
     void loop() override;
     int tx_queue_size() { return sending_.size(); }
@@ -62,16 +70,38 @@ class ModemDriverThread
     void _data_request(goby::acomms::protobuf::ModemTransmission* msg);
     void _buffer_message(std::shared_ptr<const protobuf::SerializerTransporterMessage> msg);
     void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
+    void _forward_subscription(protobuf::InterVehicleSubscription subscription);
+    void _accept_subscription(const protobuf::InterVehicleSubscription& subscription);
 
-    goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type
-    _create_buffer_id(const protobuf::SerializerTransporterKey& key);
+    subbuffer_id_type _create_buffer_id(unsigned dccl_id, unsigned group);
+
+    subbuffer_id_type _create_buffer_id(const protobuf::SerializerTransporterKey& key)
+    {
+        return _create_buffer_id(DCCLSerializerParserHelperBase::id(key.type()),
+                                 key.group_numeric());
+    }
+
+    subbuffer_id_type _create_buffer_id(const protobuf::InterVehicleSubscription& subscription)
+    {
+        return _create_buffer_id(subscription.dccl_id(), subscription.group());
+    }
+
+    void _create_buffer(modem_id_type dest_id, subbuffer_id_type buffer_id,
+                        const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs);
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
 
-    std::map<goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type,
-             std::shared_ptr<const protobuf::SerializerTransporterMessage> >
-        publisher_buffer_cfg_;
+    std::map<subbuffer_id_type, protobuf::SerializerTransporterKey> publisher_buffer_cfg_;
+
+    std::map<modem_id_type, std::map<subbuffer_id_type, protobuf::InterVehicleSubscription> >
+        subscriber_buffer_cfg_;
+
+    std::map<subbuffer_id_type, std::set<modem_id_type> > subbuffers_created_;
+
+    protobuf::SerializerTransporterKey subscription_key_;
+    std::set<modem_id_type> subscription_subbuffers_;
+
     goby::acomms::DynamicBuffer<std::string> buffer_;
 
     using frame_type = int;

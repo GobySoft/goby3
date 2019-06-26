@@ -58,6 +58,9 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
     goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
 
+    // give time for the subscriptions to come across
+    for (int i = 0; i < 20; ++i) slt.poll(std::chrono::milliseconds(100));
+
     double a = 0;
     while (publish_count < max_publish)
     {
@@ -157,12 +160,19 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
     goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
 
+    goby::middleware::protobuf::TransporterConfig sample_subscriber_cfg;
+    sample_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
+
     goby::middleware::Subscriber<Sample> sample_subscriber(
-        [](const Sample& s) { return s.group(); });
+        sample_subscriber_cfg, [](const Sample& s) { return s.group(); });
+
     slt.subscribe<group2, Sample>(&handle_sample1, sample_subscriber);
     slt.subscribe<group3, Sample>(&handle_sample_indirect, sample_subscriber);
 
-    slt.subscribe<null, Widget>(&handle_widget);
+    goby::middleware::protobuf::TransporterConfig widget_subscriber_cfg;
+    widget_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
+    goby::middleware::Subscriber<Widget> widget_subscriber(widget_subscriber_cfg);
+    slt.subscribe<null, Widget>(&handle_widget, widget_subscriber_cfg);
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);

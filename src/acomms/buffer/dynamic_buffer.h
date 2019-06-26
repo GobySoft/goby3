@@ -1,4 +1,5 @@
-// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)//                     GobySoft, LLC (2013-)
+// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
+//                     GobySoft, LLC (2013-)
 //                     Massachusetts Institute of Technology (2007-2014)
 //                     Community contributors (see AUTHORS file)
 //
@@ -24,6 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/protobuf/buffer.pb.h"
 #include "goby/exception.h"
 #include "goby/time/convert.h"
@@ -317,53 +319,59 @@ template <typename T> class DynamicBuffer
 
     using subbuffer_id_type = std::string;
     using size_type = typename DynamicSubBuffer<T>::size_type;
-    using full_value_type = std::tuple<subbuffer_id_type, goby::time::SteadyClock::time_point, T>;
+    using modem_id_type = int;
+    using full_value_type =
+        std::tuple<modem_id_type, subbuffer_id_type, goby::time::SteadyClock::time_point, T>;
 
     /// \brief Create a new subbuffer with the given configuration
     ///
     /// This must be called before using functions that reference this subbuffer ID (e.g. push(...), erase(...))
+    /// \param dest_id The modem id destination for these messages
     /// \param sub_id An identifier for this subbuffer
     /// \param cfg The configuration for this new subbuffer
-    void create(const subbuffer_id_type& sub_id,
+    void create(modem_id_type dest_id, const subbuffer_id_type& sub_id,
                 const goby::acomms::protobuf::DynamicBufferConfig& cfg)
     {
-        create(sub_id, std::vector<goby::acomms::protobuf::DynamicBufferConfig>(1, cfg));
+        create(dest_id, sub_id, std::vector<goby::acomms::protobuf::DynamicBufferConfig>(1, cfg));
     }
 
     /// \brief Create a new subbuffer merging the given configuration (See DynamicSubBuffer() for details)
     ///
     /// This must be called before using functions that reference this subbuffer ID (e.g. push(...), erase(...))
+    /// \param dest_id The modem id destination for these messages
     /// \param sub_id An identifier for this subbuffer
     /// \param cfgs The configuration for this new subbuffer
-    void create(const subbuffer_id_type& sub_id,
+    void create(modem_id_type dest_id, const subbuffer_id_type& sub_id,
                 const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs)
     {
-        if (sub_.count(sub_id))
+        if (sub_.count(dest_id) && sub_.at(dest_id).count(sub_id))
             throw(goby::Exception("Subbuffer ID: " + sub_id + " already exists."));
 
-        sub_.insert(std::make_pair(sub_id, DynamicSubBuffer<T>(cfgs)));
+        sub_[dest_id].insert(std::make_pair(sub_id, DynamicSubBuffer<T>(cfgs)));
     }
 
     /// \brief Replace an existing subbuffer with the given configuration (any messages in the subbuffer will be erased)
     ///
+    /// \param dest_id The modem id destination for these messages
     /// \param sub_id An identifier for this subbuffer
     /// \param cfg The configuration for this replacement subbuffer
-    void replace(const subbuffer_id_type& sub_id,
+    void replace(modem_id_type dest_id, const subbuffer_id_type& sub_id,
                  const goby::acomms::protobuf::DynamicBufferConfig& cfg)
     {
-        replace(sub_id, std::vector<goby::acomms::protobuf::DynamicBufferConfig>(1, cfg));
+        replace(dest_id, sub_id, std::vector<goby::acomms::protobuf::DynamicBufferConfig>(1, cfg));
     }
 
     /// \brief Create a new subbuffer merging the given configuration (See DynamicSubBuffer() for details)
     ///
     /// This must be called before using functions that reference this subbuffer ID (e.g. push(...), erase(...))
+    /// \param dest_id The modem id destination for these messages
     /// \param sub_id An identifier for this subbuffer
     /// \param cfgs The configuration for this new subbuffer
-    void replace(const subbuffer_id_type& sub_id,
+    void replace(modem_id_type dest_id, const subbuffer_id_type& sub_id,
                  const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs)
     {
-        sub_.erase(sub_id);
-        create(sub_id, cfgs);
+        sub_[dest_id].erase(sub_id);
+        create(dest_id, sub_id, cfgs);
     }
 
     /// \brief Push a new message to the buffer
@@ -374,34 +382,26 @@ template <typename T> class DynamicBuffer
     std::vector<full_value_type> push(const full_value_type& fvt)
     {
         std::vector<full_value_type> exceeded;
-        auto sub_exceeded = sub(std::get<0>(fvt)).push(std::get<2>(fvt), std::get<1>(fvt));
+        auto sub_exceeded =
+            sub(std::get<0>(fvt), std::get<1>(fvt)).push(std::get<3>(fvt), std::get<2>(fvt));
         for (const auto& e : sub_exceeded)
-            exceeded.push_back(std::make_tuple(std::get<0>(fvt), e.first, e.second));
+            exceeded.push_back(
+                std::make_tuple(std::get<0>(fvt), std::get<1>(fvt), e.first, e.second));
         return exceeded;
-    }
-
-    /// \brief Push a new message to the buffer (overload allowing for time to be automatically calculated)
-    ///
-    /// \param sub_id The identifier for the subbuffer for which these data should be pushed
-    /// \param t the data to push
-    /// \return vector of values removed due to max_queue being exceeded
-    /// \param tp the time to record for pushing the data (defaults to the current time)
-    /// \throw DynamicBufferNoDataException no data available to send
-    std::vector<full_value_type>
-    push(const subbuffer_id_type& sub_id, const T& t,
-         const goby::time::SteadyClock::time_point& tp = goby::time::SteadyClock::now())
-    {
-        return push(std::make_tuple(sub_id, tp, t));
     }
 
     /// \brief Is this buffer empty (that is, are all subbuffers empty)?
     bool empty() const
     {
-        for (const auto& sub_p : sub_)
+        for (const auto& sub_id_p : sub_)
         {
-            if (!sub_p.second.empty())
-                return false;
+            for (const auto& sub_p : sub_id_p.second)
+            {
+                if (!sub_p.second.empty())
+                    return false;
+            }
         }
+
         return true;
     }
 
@@ -409,15 +409,20 @@ template <typename T> class DynamicBuffer
     size_type size() const
     {
         size_type size = 0;
-        for (const auto& sub_p : sub_) size += sub_p.second.size();
+        for (const auto& sub_id_p : sub_)
+        {
+            for (const auto& sub_p : sub_id_p.second) size += sub_p.second.size();
+        }
         return size;
     }
 
     /// \brief Returns the top value in a priority contest between all subbuffers
     ///
+    /// \param dest_id Modem id for this packet (can be QUERY_DESTINATION_ID to query all possible destinations)
     /// \return Value with the highest priority (DynamicSubBuffer::top_value()) of all the subbuffers
     full_value_type
-    top(size_type max_bytes = std::numeric_limits<size_type>::max(),
+    top(modem_id_type dest_id = goby::acomms::QUERY_DESTINATION_ID,
+        size_type max_bytes = std::numeric_limits<size_type>::max(),
         goby::time::SteadyClock::duration ack_timeout = std::chrono::microseconds(0))
     {
         using goby::glog;
@@ -425,56 +430,73 @@ template <typename T> class DynamicBuffer
         glog.is_debug1() && glog << group(glog_priority_group_)
                                  << "Starting priority contest:" << std::endl;
 
-        auto last_winning_sub_ = sub_.begin();
+        typename std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T> >::iterator winning_sub;
         double winning_value = -std::numeric_limits<double>::infinity();
 
         auto now = goby::time::SteadyClock::now();
-        for (auto it = sub_.begin(), end = sub_.end(); it != end; ++it)
+
+        if (dest_id != goby::acomms::QUERY_DESTINATION_ID && !sub_.count(dest_id))
+            throw(DynamicBufferNoDataException());
+
+        // if QUERY_DESTINATION_ID, search all subbuffers, otherwise just search the ones that were specified by dest_id
+        for (auto sub_id_it = (dest_id == goby::acomms::QUERY_DESTINATION_ID) ? sub_.begin()
+                                                                              : sub_.find(dest_id),
+                  sub_id_end = (dest_id == goby::acomms::QUERY_DESTINATION_ID)
+                                   ? sub_.end()
+                                   : ++sub_.find(dest_id);
+             sub_id_it != sub_id_end; ++sub_id_it)
         {
-            double value;
-            typename DynamicSubBuffer<T>::ValueResult result;
-            std::tie(value, result) = it->second.top_value(now, max_bytes, ack_timeout);
-
-            std::string value_or_reason;
-            switch (result)
+            for (auto sub_it = sub_id_it->second.begin(), sub_end = sub_id_it->second.end();
+                 sub_it != sub_end; ++sub_it)
             {
-                case DynamicSubBuffer<T>::ValueResult::VALUE_PROVIDED:
-                    value_or_reason = std::to_string(value);
-                    break;
+                double value;
+                typename DynamicSubBuffer<T>::ValueResult result;
+                std::tie(value, result) = sub_it->second.top_value(now, max_bytes, ack_timeout);
 
-                case DynamicSubBuffer<T>::ValueResult::EMPTY: value_or_reason = "empty"; break;
+                std::string value_or_reason;
+                switch (result)
+                {
+                    case DynamicSubBuffer<T>::ValueResult::VALUE_PROVIDED:
+                        value_or_reason = std::to_string(value);
+                        break;
 
-                case DynamicSubBuffer<T>::ValueResult::IN_BLACKOUT:
-                    value_or_reason = "blackout";
-                    break;
+                    case DynamicSubBuffer<T>::ValueResult::EMPTY: value_or_reason = "empty"; break;
 
-                case DynamicSubBuffer<T>::ValueResult::NEXT_MESSAGE_TOO_LARGE:
-                    value_or_reason = "too large";
-                    break;
+                    case DynamicSubBuffer<T>::ValueResult::IN_BLACKOUT:
+                        value_or_reason = "blackout";
+                        break;
 
-                case DynamicSubBuffer<T>::ValueResult::ALL_MESSAGES_WAITING_FOR_ACK:
-                    value_or_reason = "ack wait";
-                    break;
-            }
+                    case DynamicSubBuffer<T>::ValueResult::NEXT_MESSAGE_TOO_LARGE:
+                        value_or_reason = "too large";
+                        break;
 
-            glog.is_debug1() && glog << group(glog_priority_group_) << "\t" << it->first << "["
-                                     << it->second.size() << "]: " << value_or_reason << std::endl;
+                    case DynamicSubBuffer<T>::ValueResult::ALL_MESSAGES_WAITING_FOR_ACK:
+                        value_or_reason = "ack wait";
+                        break;
+                }
 
-            if (value > winning_value)
-            {
-                winning_value = value;
-                last_winning_sub_ = it;
+                glog.is_debug1() && glog << group(glog_priority_group_) << "\t" << sub_it->first
+                                         << " [dest: " << sub_id_it->first
+                                         << ", n: " << sub_it->second.size()
+                                         << "]: " << value_or_reason << std::endl;
+
+                if (value > winning_value)
+                {
+                    winning_value = value;
+                    winning_sub = sub_it;
+                    dest_id = sub_id_it->first;
+                }
             }
         }
 
         if (winning_value == -std::numeric_limits<double>::infinity())
             throw(DynamicBufferNoDataException());
 
-        glog.is_debug1() && glog << group(glog_priority_group_)
-                                 << "Winner: " << last_winning_sub_->first << std::endl;
+        glog.is_debug1() && glog << group(glog_priority_group_) << "Winner: " << winning_sub->first
+                                 << std::endl;
 
-        const auto& top_p = last_winning_sub_->second.top(now, ack_timeout);
-        return std::make_tuple(last_winning_sub_->first, top_p.first, top_p.second);
+        const auto& top_p = winning_sub->second.top(now, ack_timeout);
+        return std::make_tuple(dest_id, winning_sub->first, top_p.first, top_p.second);
     }
 
     /// \brief Erase a value
@@ -484,8 +506,8 @@ template <typename T> class DynamicBuffer
     /// \throw goby::Exception If subbuffer doesn't exist
     bool erase(const full_value_type& value)
     {
-        return sub(std::get<0>(value))
-            .erase(std::make_pair(std::get<1>(value), std::get<2>(value)));
+        return sub(std::get<0>(value), std::get<1>(value))
+            .erase(std::make_pair(std::get<2>(value), std::get<3>(value)));
     }
 
     /// \brief Erase any values that have exceeded their time-to-live
@@ -495,11 +517,15 @@ template <typename T> class DynamicBuffer
     {
         auto now = goby::time::SteadyClock::now();
         std::vector<full_value_type> expired;
-        for (auto& sub_p : sub_)
+        for (auto& sub_id_p : sub_)
         {
-            auto sub_expired = sub_p.second.expire(now);
-            for (const auto& e : sub_expired)
-                expired.push_back(std::make_tuple(sub_p.first, e.first, e.second));
+            for (auto& sub_p : sub_id_p.second)
+            {
+                auto sub_expired = sub_p.second.expire(now);
+                for (const auto& e : sub_expired)
+                    expired.push_back(
+                        std::make_tuple(sub_id_p.first, sub_p.first, e.first, e.second));
+            }
         }
         return expired;
     }
@@ -507,17 +533,17 @@ template <typename T> class DynamicBuffer
     /// \brief Reference a given subbuffer
     ///
     /// \throw goby::Exception If subbuffer doesn't exist
-    DynamicSubBuffer<T>& sub(const subbuffer_id_type& sub_id)
+    DynamicSubBuffer<T>& sub(modem_id_type dest_id, const subbuffer_id_type& sub_id)
     {
-        if (!sub_.count(sub_id))
+        if (!sub_.count(dest_id) || !sub_.at(dest_id).count(sub_id))
             throw(goby::Exception("Subbuffer ID: " + sub_id +
                                   " does not exist, must call create(...) first."));
-        return sub_.at(sub_id);
+        return sub_.at(dest_id).at(sub_id);
     }
 
   private:
-    std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T> > sub_;
-    typename decltype(sub_)::iterator last_winning_sub_{sub_.end()};
+    // destination -> subbuffer id (group/type) -> subbuffer
+    std::map<modem_id_type, std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T> > > sub_;
 
     std::string glog_priority_group_;
 

@@ -9,7 +9,8 @@ message SerializerTransporterKey
     required int32 marshalling_scheme = 1;
     required string type = 2;
     required string group = 3;
-    optional TransporterConfig cfg = 4;
+    optional uint32 group_numeric = 4;
+    optional TransporterConfig cfg = 10;
 }
 
 

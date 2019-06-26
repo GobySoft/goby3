@@ -241,6 +241,16 @@ struct DCCLSerializerParserHelperBase
         return codec().id(begin, end);
     }
 
+    static unsigned id(const std::string full_name)
+    {
+        std::lock_guard<std::mutex> lock(dccl_mutex_);
+        auto* desc = dccl::DynamicProtobufManager::find_descriptor(full_name);
+        if (desc)
+            return codec().id(desc);
+        else
+            return 0;
+    }
+
     static void
     load_forwarded_subscription(const goby::middleware::protobuf::InterVehicleSubscription& sub);
     static goby::middleware::protobuf::DCCLForwardedData unpack(const std::string& bytes);
@@ -385,7 +395,7 @@ constexpr int scheme()
 {
     return protobuf::detail::scheme_protobuf_or_dccl<T>(protobuf::detail::dccl_selector());
 }
-} // namespace goby
+} // namespace middleware
 } // namespace goby
 
 #endif

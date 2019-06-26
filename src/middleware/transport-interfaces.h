@@ -66,7 +66,7 @@ template <typename Data> class Publisher
     void add_group(Data& data, const Group& group) const { add_group_func_(data, group); };
 
   private:
-    const goby::middleware::protobuf::TransporterConfig& transport_cfg_;
+    goby::middleware::protobuf::TransporterConfig transport_cfg_;
     std::function<void(Data&, const Group&)> add_group_func_;
 };
 
@@ -96,7 +96,7 @@ template <typename Data> class Subscriber
     Group group(const Data& data) const { return group_func_(data); }
 
   private:
-    const goby::middleware::protobuf::TransporterConfig& transport_cfg_;
+    goby::middleware::protobuf::TransporterConfig transport_cfg_;
     std::function<Group(const Data&)> group_func_;
 };
 
