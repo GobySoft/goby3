@@ -34,6 +34,13 @@ namespace goby
 {
 namespace acomms
 {
+class DynamicBufferNoDataException : goby::Exception
+{
+  public:
+    DynamicBufferNoDataException() : goby::Exception("No queues have data available") {}
+    ~DynamicBufferNoDataException() {}
+};
+
 /// Represents a time-dependent priority queue for a single group of messages (e.g. for a single DCCL ID)
 template <typename T> class DynamicSubBuffer
 {
@@ -110,11 +117,41 @@ template <typename T> class DynamicSubBuffer
     /// \brief Return the aggregate configuration
     const goby::acomms::protobuf::DynamicBufferConfig& cfg() const { return cfg_; }
 
-    /// \brief Returns the value at the top of the queue
-    full_value_type& top()
+    /// \brief Returns the value at the top of the queue that hasn't been sent wihin ack_timeout
+    ///
+    /// \param reference Current time reference (defaults to now)
+    /// \param ack_timeout Duration to wait before resending a value
+    /// \return Value to send
+    /// \throw DynamicBufferNoDataException no data to (re)send
+    full_value_type&
+    top(goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now(),
+        goby::time::SteadyClock::duration ack_timeout = std::chrono::microseconds(0))
     {
-        last_access_ = goby::time::SteadyClock::now();
-        return c_.front();
+        for (auto& datum_pair : data_)
+        {
+            auto& datum_last_access = datum_pair.first;
+            if (datum_last_access == zero_point_ || datum_last_access + ack_timeout < reference)
+            {
+                last_access_ = reference;
+                datum_last_access = last_access_;
+                return datum_pair.second;
+            }
+        }
+        throw(DynamicBufferNoDataException());
+    }
+
+    /// \brief returns true if all messages have been sent within ack_timeout of the reference provided and thus none are available for resending yet
+    bool all_waiting_for_ack(
+        goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now(),
+        goby::time::SteadyClock::duration ack_timeout = std::chrono::microseconds(0)) const
+    {
+        for (const auto& datum_pair : data_)
+        {
+            const auto& datum_last_access = datum_pair.first;
+            if (datum_last_access == zero_point_ || datum_last_access + ack_timeout < reference)
+                return false;
+        }
+        return true;
     }
 
     enum class ValueResult
@@ -122,26 +159,32 @@ template <typename T> class DynamicSubBuffer
         VALUE_PROVIDED,
         EMPTY,
         IN_BLACKOUT,
-        NEXT_MESSAGE_TOO_LARGE
+        NEXT_MESSAGE_TOO_LARGE,
+        ALL_MESSAGES_WAITING_FOR_ACK
     };
 
     /// \brief Provides the numerical priority value based on this subbuffer's base priority, time-to-live (ttl) and time since last access (last call to top())
     ///
     /// \param reference time point to use for current reference when calculating this priority value (defaults to current time)
     /// \param max_bytes the maximum number of bytes requested
+    /// \param ack_timeout how long to wait before resending the same value again
     /// \return priority value for this sub buffer
     std::pair<double, ValueResult>
     top_value(goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now(),
-              size_type max_bytes = std::numeric_limits<size_type>::max()) const
+              size_type max_bytes = std::numeric_limits<size_type>::max(),
+              goby::time::SteadyClock::duration ack_timeout = std::chrono::microseconds(0)) const
     {
         if (empty())
             return std::make_pair(-std::numeric_limits<double>::infinity(), ValueResult::EMPTY);
         else if (in_blackout(reference))
             return std::make_pair(-std::numeric_limits<double>::infinity(),
                                   ValueResult::IN_BLACKOUT);
-        else if (c_.front().second.size() > max_bytes)
+        else if (data_.front().second.second.size() > max_bytes)
             return std::make_pair(-std::numeric_limits<double>::infinity(),
                                   ValueResult::NEXT_MESSAGE_TOO_LARGE);
+        else if (all_waiting_for_ack(reference, ack_timeout))
+            return std::make_pair(-std::numeric_limits<double>::infinity(),
+                                  ValueResult::ALL_MESSAGES_WAITING_FOR_ACK);
 
         using Duration = std::chrono::microseconds;
 
@@ -165,13 +208,13 @@ template <typename T> class DynamicSubBuffer
         return reference <= (last_access_ + blackout);
     }
     /// \brief Returns if this queue is empty
-    bool empty() const { return c_.empty(); }
+    bool empty() const { return data_.empty(); }
 
     /// \brief Retrieves the size of the queue
-    size_type size() const { return c_.size(); }
+    size_type size() const { return data_.size(); }
 
     /// \brief Pop the value on the top of the queue
-    void pop() { c_.pop_front(); }
+    void pop() { data_.pop_front(); }
 
     /// \brief Push a value to the queue
     ///
@@ -184,14 +227,14 @@ template <typename T> class DynamicSubBuffer
         std::vector<full_value_type> exceeded;
 
         if (cfg_.newest_first())
-            c_.push_front(std::make_pair(reference, t));
+            data_.push_front(std::make_pair(zero_point_, std::make_pair(reference, t)));
         else
-            c_.push_back(std::make_pair(reference, t));
+            data_.push_back(std::make_pair(zero_point_, std::make_pair(reference, t)));
 
-        if (c_.size() > cfg_.max_queue())
+        if (data_.size() > cfg_.max_queue())
         {
-            exceeded.push_back(c_.back());
-            c_.pop_back();
+            exceeded.push_back(data_.back().second);
+            data_.pop_back();
         }
         return exceeded;
     }
@@ -208,18 +251,18 @@ template <typename T> class DynamicSubBuffer
             goby::time::convert_duration<goby::time::SteadyClock::duration>(cfg_.ttl_with_units());
         if (cfg_.newest_first())
         {
-            while (!c_.empty() && reference > (c_.back().first + ttl))
+            while (!data_.empty() && reference > (data_.back().second.first + ttl))
             {
-                expired.push_back(c_.back());
-                c_.pop_back();
+                expired.push_back(data_.back().second);
+                data_.pop_back();
             }
         }
         else
         {
-            while (!c_.empty() && reference > (c_.front().first + ttl))
+            while (!data_.empty() && reference > (data_.front().second.first + ttl))
             {
-                expired.push_back(c_.front());
-                c_.pop_front();
+                expired.push_back(data_.front().second);
+                data_.pop_front();
             }
         }
         return expired;
@@ -233,18 +276,19 @@ template <typename T> class DynamicSubBuffer
     {
         // start at the beginning as we are most likely to want to erase elements we recently asked for with top()
 
-        for (auto it = c_.begin(), end = c_.end(); it != end; ++it)
+        for (auto it = data_.begin(), end = data_.end(); it != end; ++it)
         {
-            if (*it == value)
+            const auto& datum_pair = it->second;
+            if (datum_pair == value)
             {
-                c_.erase(it);
+                data_.erase(it);
                 return true;
             }
 
             // if these are true, we're not going to find it so stop looking
-            if (cfg_.newest_first() && it->first < value.first)
+            if (cfg_.newest_first() && datum_pair.first < value.first)
                 break;
-            else if (!cfg_.newest_first() && it->first > value.first)
+            else if (!cfg_.newest_first() && datum_pair.first > value.first)
                 break;
         }
         return false;
@@ -252,15 +296,12 @@ template <typename T> class DynamicSubBuffer
 
   private:
     goby::acomms::protobuf::DynamicBufferConfig cfg_;
-    typename std::deque<full_value_type> c_;
-    goby::time::SteadyClock::time_point last_access_{goby::time::SteadyClock::now()};
-};
 
-class DynamicBufferNoDataException : goby::Exception
-{
-  public:
-    DynamicBufferNoDataException() : goby::Exception("No queues have data available") {}
-    ~DynamicBufferNoDataException() {}
+    // pair of last send -> value
+    std::deque<std::pair<goby::time::SteadyClock::time_point, full_value_type> > data_;
+    goby::time::SteadyClock::time_point last_access_{goby::time::SteadyClock::now()};
+
+    goby::time::SteadyClock::time_point zero_point_{std::chrono::seconds(0)};
 };
 
 /// Represents a time-dependent priority queue for several groups of messages (multiple DynamicSubBuffers)
@@ -375,7 +416,9 @@ template <typename T> class DynamicBuffer
     /// \brief Returns the top value in a priority contest between all subbuffers
     ///
     /// \return Value with the highest priority (DynamicSubBuffer::top_value()) of all the subbuffers
-    full_value_type top(size_type max_bytes = std::numeric_limits<size_type>::max())
+    full_value_type
+    top(size_type max_bytes = std::numeric_limits<size_type>::max(),
+        goby::time::SteadyClock::duration ack_timeout = std::chrono::microseconds(0))
     {
         using goby::glog;
 
@@ -390,7 +433,7 @@ template <typename T> class DynamicBuffer
         {
             double value;
             typename DynamicSubBuffer<T>::ValueResult result;
-            std::tie(value, result) = it->second.top_value(now, max_bytes);
+            std::tie(value, result) = it->second.top_value(now, max_bytes, ack_timeout);
 
             std::string value_or_reason;
             switch (result)
@@ -407,6 +450,10 @@ template <typename T> class DynamicBuffer
 
                 case DynamicSubBuffer<T>::ValueResult::NEXT_MESSAGE_TOO_LARGE:
                     value_or_reason = "too large";
+                    break;
+
+                case DynamicSubBuffer<T>::ValueResult::ALL_MESSAGES_WAITING_FOR_ACK:
+                    value_or_reason = "ack wait";
                     break;
             }
 
@@ -426,7 +473,7 @@ template <typename T> class DynamicBuffer
         glog.is_debug1() && glog << group(glog_priority_group_)
                                  << "Winner: " << last_winning_sub_->first << std::endl;
 
-        const auto& top_p = last_winning_sub_->second.top();
+        const auto& top_p = last_winning_sub_->second.top(now, ack_timeout);
         return std::make_tuple(last_winning_sub_->first, top_p.first, top_p.second);
     }
 

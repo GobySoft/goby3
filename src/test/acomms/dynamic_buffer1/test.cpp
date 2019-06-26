@@ -418,3 +418,34 @@ BOOST_FIXTURE_TEST_CASE(check_size, DynamicBufferFixture)
         BOOST_CHECK_EQUAL(std::get<2>(vp), "1234567890");
     }
 }
+
+BOOST_FIXTURE_TEST_CASE(check_ack_timeout, DynamicBufferFixture)
+{
+    auto now = goby::time::SteadyClock::now();
+
+    BOOST_CHECK_EQUAL(buffer.push(std::make_tuple("A", now, "1")).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push(std::make_tuple("A", now, "2")).size(), 0);
+
+    int max_bytes = 100;
+    {
+        auto vp = buffer.top(max_bytes, std::chrono::milliseconds(10));
+        BOOST_CHECK_EQUAL(std::get<0>(vp), "A");
+        BOOST_CHECK_EQUAL(std::get<2>(vp), "2");
+    }
+    {
+        auto vp = buffer.top(max_bytes, std::chrono::milliseconds(10));
+        BOOST_CHECK_EQUAL(std::get<0>(vp), "A");
+        BOOST_CHECK_EQUAL(std::get<2>(vp), "1");
+    }
+
+    {
+        BOOST_CHECK_THROW(auto vp = buffer.top(max_bytes, std::chrono::milliseconds(10)),
+                          goby::acomms::DynamicBufferNoDataException);
+    }
+    usleep(10000); // 10 ms
+    {
+        auto vp = buffer.top(max_bytes, std::chrono::milliseconds(10));
+        BOOST_CHECK_EQUAL(std::get<0>(vp), "A");
+        BOOST_CHECK_EQUAL(std::get<2>(vp), "2");
+    }
+}

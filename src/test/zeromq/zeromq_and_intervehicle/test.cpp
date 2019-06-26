@@ -67,6 +67,7 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
         goby::middleware::protobuf::TransporterConfig sample_publisher_cfg;
         auto* sample_buffer_cfg = sample_publisher_cfg.mutable_intervehicle()->mutable_buffer();
         sample_buffer_cfg->set_newest_first(false);
+        sample_buffer_cfg->set_ack_required(true);
 
         goby::middleware::Publisher<Sample> sample_publisher(
             sample_publisher_cfg,
@@ -82,6 +83,7 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
         goby::middleware::protobuf::TransporterConfig widget_publisher_cfg;
         auto* widget_buffer_cfg = widget_publisher_cfg.mutable_intervehicle()->mutable_buffer();
         widget_buffer_cfg->set_newest_first(false);
+        widget_buffer_cfg->set_ack_required(false);
 
         Widget w;
         w.set_b(a - 2);
@@ -109,6 +111,7 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
         goby::middleware::protobuf::TransporterConfig sample_publisher_cfg;
         auto* sample_buffer_cfg = sample_publisher_cfg.mutable_intervehicle()->mutable_buffer();
         sample_buffer_cfg->set_newest_first(false);
+        sample_buffer_cfg->set_ack_required(true);
 
         goby::middleware::Publisher<Sample> sample_publisher(
             sample_publisher_cfg,

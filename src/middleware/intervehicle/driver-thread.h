@@ -61,6 +61,7 @@ class ModemDriverThread
   private:
     void _data_request(goby::acomms::protobuf::ModemTransmission* msg);
     void _buffer_message(std::shared_ptr<const protobuf::SerializerTransporterMessage> msg);
+    void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
 
     goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type
     _create_buffer_id(const protobuf::SerializerTransporterKey& key);
@@ -72,6 +73,10 @@ class ModemDriverThread
              std::shared_ptr<const protobuf::SerializerTransporterMessage> >
         publisher_buffer_cfg_;
     goby::acomms::DynamicBuffer<std::string> buffer_;
+
+    using frame_type = int;
+    std::map<frame_type, std::vector<goby::acomms::DynamicBuffer<std::string>::full_value_type> >
+        pending_ack_;
 
     std::deque<std::string> sending_;
 

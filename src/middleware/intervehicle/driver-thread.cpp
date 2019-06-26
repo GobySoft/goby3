@@ -88,10 +88,9 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
         }
     }
 
-    driver_->signal_receive.connect([&](const goby::acomms::protobuf::ModemTransmission& rx_msg) {
-        interthread_->publish<groups::modem_data_in>(rx_msg);
-        glog.is(DEBUG1) && glog << "Received: " << rx_msg.ShortDebugString() << std::endl;
-    });
+    driver_->signal_receive.connect(
+        [&](const goby::acomms::protobuf::ModemTransmission& rx_msg) { _receive(rx_msg); });
+
     driver_->signal_data_request.connect(
         [&](goby::acomms::protobuf::ModemTransmission* msg) { this->_data_request(msg); });
 
@@ -107,6 +106,8 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
 
 void goby::middleware::intervehicle::ModemDriverThread::loop()
 {
+    // add notification for expired messages
+    buffer_.expire();
     driver_->do_work();
     mac_.do_work();
 }
@@ -114,6 +115,15 @@ void goby::middleware::intervehicle::ModemDriverThread::loop()
 void goby::middleware::intervehicle::ModemDriverThread::_data_request(
     goby::acomms::protobuf::ModemTransmission* msg)
 {
+    // erase any pending acks with greater frame numbers (we never received these)
+    auto it = pending_ack_.lower_bound(msg->frame_start()), end = pending_ack_.end();
+    while (it != end)
+    {
+        goby::glog << "Erasing " << it->second.size() << " values not acked for frame " << it->first
+                   << std::endl;
+        it = pending_ack_.erase(it);
+    }
+
     for (auto frame_number = msg->frame_start(),
               total_frames = msg->max_num_frames() + msg->frame_start();
          frame_number < total_frames; ++frame_number)
@@ -124,11 +134,23 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
         {
             try
             {
-                auto buffer_value = buffer_.top(msg->max_frame_bytes() - frame->size());
+                auto buffer_value =
+                    buffer_.top(msg->max_frame_bytes() - frame->size(),
+                                goby::time::convert_duration<std::chrono::microseconds>(
+                                    cfg().ack_timeout_with_units()));
                 *frame += std::get<2>(buffer_value);
 
-                // to do: replace with ack
-                buffer_.erase(buffer_value);
+                bool ack_required = buffer_.sub(std::get<0>(buffer_value)).cfg().ack_required();
+
+                if (!ack_required)
+                {
+                    buffer_.erase(buffer_value);
+                }
+                else
+                {
+                    msg->set_ack_requested(true);
+                    pending_ack_[frame_number].push_back(buffer_value);
+                }
             }
             catch (goby::acomms::DynamicBufferNoDataException&)
             {
@@ -164,5 +186,42 @@ void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
     {
         glog.is_warn() && glog << "Send buffer exceeded for " << msg->key().ShortDebugString()
                                << std::endl;
+    }
+}
+
+void goby::middleware::intervehicle::ModemDriverThread::_receive(
+    const goby::acomms::protobuf::ModemTransmission& rx_msg)
+{
+    glog.is(DEBUG1) && glog << "Received: " << rx_msg.ShortDebugString() << std::endl;
+    if (rx_msg.type() == goby::acomms::protobuf::ModemTransmission::ACK)
+    {
+        if (rx_msg.dest() != cfg().driver().modem_id())
+        {
+            glog.is(WARN) && glog << "ignoring ack for modem_id = " << rx_msg.dest() << std::endl;
+            return;
+        }
+        for (int i = 0, n = rx_msg.acked_frame_size(); i < n; ++i)
+        {
+            int frame_number = rx_msg.acked_frame(i);
+            if (!pending_ack_.count(frame_number))
+            {
+                glog.is(DEBUG1) && glog << "got ack but we were not expecting one from "
+                                        << rx_msg.src() << " for frame " << frame_number
+                                        << std::endl;
+                continue;
+            }
+            else
+            {
+                auto values_to_ack_it = pending_ack_.find(frame_number);
+                glog.is(DEBUG1) && glog << "processing " << values_to_ack_it->second.size()
+                                        << " acks for frame: " << frame_number << std::endl;
+                for (const auto& value : values_to_ack_it->second) { buffer_.erase(value); }
+                pending_ack_.erase(values_to_ack_it);
+            }
+        }
+    }
+    else
+    {
+        interthread_->publish<groups::modem_data_in>(rx_msg);
     }
 }

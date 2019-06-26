@@ -102,7 +102,7 @@ void goby::acomms::UDPMulticastDriver::receive_message(const protobuf::ModemTran
         // make any acks
         protobuf::ModemTransmission ack;
         ack.set_type(goby::acomms::protobuf::ModemTransmission::ACK);
-        ack.set_src(msg.dest());
+        ack.set_src(driver_cfg_.modem_id());
         ack.set_dest(msg.src());
         for (int i = msg.frame_start(), n = msg.frame_size() + msg.frame_start(); i < n; ++i)
             ack.add_acked_frame(i);

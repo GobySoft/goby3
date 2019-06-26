@@ -229,8 +229,8 @@ class InterVehicleForwarder
             SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
         _insert_file_desc_with_dependencies(Data::descriptor()->file(), &dccl_subscription);
         *dccl_subscription.mutable_intervehicle() = subscriber.transport_cfg().intervehicle();
-        Base::inner_.template publish<Base::forward_group_, protobuf::InterVehicleSubscription>(
-            dccl_subscription);
+        Base::inner_.template publish<Base::forward_group_, protobuf::InterVehicleSubscription,
+                                      MarshallingScheme::PROTOBUF>(dccl_subscription);
     }
 
     // used to populated InterVehicleSubscription file_descriptor fields
@@ -347,7 +347,8 @@ class InterVehiclePortal
                         msg);
                 });
 
-        Base::inner_.template subscribe<Base::forward_group_, protobuf::InterVehicleSubscription>(
+        Base::inner_.template subscribe<Base::forward_group_, protobuf::InterVehicleSubscription,
+                                        MarshallingScheme::PROTOBUF>(
             [this](const protobuf::InterVehicleSubscription& d) {
                 auto group = d.group();
                 forwarded_subscriptions_[d.dccl_id()].insert(std::make_pair(group, d));

@@ -1,4 +1,5 @@
 syntax = "proto2";
+import "dccl/option_extensions.proto";
 import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/amac_config.proto";
@@ -7,24 +8,32 @@ package goby.middleware.protobuf;
 
 message InterVehiclePortalConfig
 {
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
     message LinkConfig
     {
         required uint32 modem_id = 1;
-        
+
         required goby.acomms.protobuf.DriverConfig driver = 11
             [(goby.field).description =
-         "Configure the modem driver(s) in use by this portal"];
-        
+                 "Configure the modem driver(s) in use by this portal"];
+
         optional goby.acomms.protobuf.MACConfig mac = 12
             [(goby.field).description =
-             "Configure the acoustic Medium Access Control"];
-        
-        //    optional goby.acomms.protobuf.QueueManagerConfig queue_cfg = 13
-        //    [(goby.field).description="Configure the Priority Queuing layer"];
+                 "Configure the acoustic Medium Access Control"];
+
+        optional double ack_timeout = 20 [
+            default = 1.0,
+            (goby.field).description =
+                "Time to wait before resending the same data (ARQ wait).",
+            (dccl.field) = {units {base_dimensions: "T"}}
+        ];
     }
 
     repeated LinkConfig link = 1;
-    
+
     repeated string dccl_load_library = 20
         [(goby.field).description = "Load DCCL libraries"];
 }
