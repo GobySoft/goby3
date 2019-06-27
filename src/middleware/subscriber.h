@@ -36,7 +36,7 @@ template <typename Data> class Subscriber
   public:
     using group_func_type = std::function<Group(const Data&)>;
     using subscribed_func_type =
-        typename Publisher<protobuf::InterVehicleSubscription>::acked_func_type;
+        typename Publisher<intervehicle::protobuf::Subscription>::acked_func_type;
 
     Subscriber(const goby::middleware::protobuf::TransporterConfig& transport_cfg =
                    goby::middleware::protobuf::TransporterConfig(),
@@ -67,7 +67,7 @@ template <typename Data> class Subscriber
             return Group(Group::broadcast_group);
     }
 
-    void subscribed(const protobuf::InterVehicleSubscription& sub,
+    void subscribed(const intervehicle::protobuf::Subscription& sub,
                     const goby::acomms::protobuf::ModemTransmission& ack_msg) const
     {
         if (subscribed_func_)

@@ -1,0 +1,21 @@
+syntax = "proto2";
+import "goby/middleware/protobuf/transporter_config.proto";
+
+package goby.middleware.protobuf;
+
+message SerializerTransporterKey
+{
+    required int32 marshalling_scheme = 1;
+    required string type = 2;
+    required string group = 3;
+    optional uint32 group_numeric = 4;
+    optional TransporterConfig cfg = 10;
+}
+
+
+message SerializerTransporterMessage
+{
+    required SerializerTransporterKey key = 1;
+    optional bytes data = 4;
+}
+

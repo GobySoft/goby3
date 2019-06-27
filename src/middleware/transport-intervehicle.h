@@ -29,8 +29,7 @@
 #include <thread>
 #include <unistd.h>
 
-#include "goby/middleware/protobuf/intervehicle_config.pb.h"
-#include "goby/middleware/protobuf/intervehicle_subscription.pb.h"
+#include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/transport-common.h"
 #include "goby/middleware/transport-interthread.h" // used for InterVehiclePortal implementation
 
@@ -175,11 +174,11 @@ class InterVehicleTransporterBase
     }
 
     template <typename Data>
-    std::shared_ptr<protobuf::InterVehicleSubscription>
+    std::shared_ptr<intervehicle::protobuf::Subscription>
     _serialize_subscription(const Group& group, const Subscriber<Data>& subscriber)
     {
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
-        auto dccl_subscription = std::make_shared<protobuf::InterVehicleSubscription>();
+        auto dccl_subscription = std::make_shared<intervehicle::protobuf::Subscription>();
         dccl_subscription->mutable_header()->set_src(0);
 
         for (auto id : subscriber.transport_cfg().intervehicle().publisher_id())
@@ -203,7 +202,7 @@ class InterVehicleTransporterBase
 
     // used to populated InterVehicleSubscription file_descriptor fields
     void _insert_file_desc_with_dependencies(const google::protobuf::FileDescriptor* file_desc,
-                                             protobuf::InterVehicleSubscription* subscription)
+                                             intervehicle::protobuf::Subscription* subscription)
     {
         for (int i = 0, n = file_desc->dependency_count(); i < n; ++i)
             _insert_file_desc_with_dependencies(file_desc->dependency(i), subscription);
@@ -228,8 +227,11 @@ class InterVehicleForwarder
 
     InterVehicleForwarder(InnerTransporter& inner) : Base(inner)
     {
-        Base::inner_.template subscribe<Base::forward_group_, protobuf::DCCLForwardedData>(
-            [this](const protobuf::DCCLForwardedData& d) { _receive_dccl_data_forwarded(d); });
+        Base::inner_
+            .template subscribe<Base::forward_group_, intervehicle::protobuf::DCCLForwardedData>(
+                [this](const intervehicle::protobuf::DCCLForwardedData& d) {
+                    _receive_dccl_data_forwarded(d);
+                });
     }
 
     virtual ~InterVehicleForwarder() = default;
@@ -261,13 +263,13 @@ class InterVehicleForwarder
         subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
 
         auto dccl_subscription = this->template _serialize_subscription<Data>(group, subscriber);
-        Base::inner_.template publish<Base::forward_group_, protobuf::InterVehicleSubscription,
+        Base::inner_.template publish<Base::forward_group_, intervehicle::protobuf::Subscription,
                                       MarshallingScheme::PROTOBUF>(dccl_subscription);
     }
 
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock) { return 0; }
 
-    void _receive_dccl_data_forwarded(const protobuf::DCCLForwardedData& packets)
+    void _receive_dccl_data_forwarded(const intervehicle::protobuf::DCCLForwardedData& packets)
     {
         for (const auto& packet : packets.frame())
         {
@@ -297,8 +299,8 @@ class InterVehiclePortal
     using Base =
         InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>;
 
-    InterVehiclePortal(const protobuf::InterVehiclePortalConfig& cfg) : cfg_(cfg) { _init(); }
-    InterVehiclePortal(InnerTransporter& inner, const protobuf::InterVehiclePortalConfig& cfg)
+    InterVehiclePortal(const intervehicle::protobuf::PortalConfig& cfg) : cfg_(cfg) { _init(); }
+    InterVehiclePortal(InnerTransporter& inner, const intervehicle::protobuf::PortalConfig& cfg)
         : Base(inner), cfg_(cfg)
     {
         _init();
@@ -394,9 +396,9 @@ class InterVehiclePortal
                         msg);
                 });
 
-        Base::inner_.template subscribe<Base::forward_group_, protobuf::InterVehicleSubscription,
+        Base::inner_.template subscribe<Base::forward_group_, intervehicle::protobuf::Subscription,
                                         MarshallingScheme::PROTOBUF>(
-            [this](const protobuf::InterVehicleSubscription& d) {
+            [this](const intervehicle::protobuf::Subscription& d) {
                 auto group = d.group();
                 forwarded_subscriptions_[d.dccl_id()].insert(std::make_pair(group, d));
                 DCCLSerializerParserHelperBase::load_forwarded_subscription(d);
@@ -411,21 +413,19 @@ class InterVehiclePortal
         // set up reception of forwarded (via acoustic) subscriptions,
         // then re-publish to driver threads
         {
-            using protobuf::InterVehicleSubscription;
-            auto subscribe_lambda = [=](std::shared_ptr<const InterVehicleSubscription> d) {
+            using intervehicle::protobuf::Subscription;
+            auto subscribe_lambda = [=](std::shared_ptr<const Subscription> d) {
                 Base::inner_.inner()
                     .template publish<intervehicle::groups::modem_subscription_forward_rx>(d);
             };
 
-            typename SerializationSubscription<InterVehicleSubscription,
-                                               MarshallingScheme::DCCL>::HandlerType
+            typename SerializationSubscription<Subscription, MarshallingScheme::DCCL>::HandlerType
                 subscribe_function(subscribe_lambda);
             auto subscription = std::shared_ptr<SerializationHandlerBase<> >(
-                new SerializationSubscription<InterVehicleSubscription, MarshallingScheme::DCCL>(
+                new SerializationSubscription<Subscription, MarshallingScheme::DCCL>(
                     subscribe_function));
 
-            auto dccl_id =
-                SerializerParserHelper<InterVehicleSubscription, MarshallingScheme::DCCL>::id();
+            auto dccl_id = SerializerParserHelper<Subscription, MarshallingScheme::DCCL>::id();
             subscriptions_[dccl_id].insert(
                 std::make_pair(subscription->subscribed_group(), subscription));
         }
@@ -504,7 +504,7 @@ class InterVehiclePortal
         {
             for (auto& frame : rx_msg.frame())
             {
-                const protobuf::DCCLForwardedData packets(
+                const intervehicle::protobuf::DCCLForwardedData packets(
                     DCCLSerializerParserHelperBase::unpack(frame));
                 for (const auto& packet : packets.frame())
                 {
@@ -518,7 +518,7 @@ class InterVehiclePortal
         }
     }
 
-    protobuf::InterVehiclePortalConfig cfg_;
+    intervehicle::protobuf::PortalConfig cfg_;
 
     struct ModemDriverData
     {
@@ -536,7 +536,7 @@ class InterVehiclePortal
                                 std::string, std::shared_ptr<const SerializationHandlerBase<> > > >
         subscriptions_;
 
-    std::unordered_map<int, std::unordered_multimap<Group, protobuf::InterVehicleSubscription> >
+    std::unordered_map<int, std::unordered_multimap<Group, intervehicle::protobuf::Subscription> >
         forwarded_subscriptions_;
 
     std::unordered_map<

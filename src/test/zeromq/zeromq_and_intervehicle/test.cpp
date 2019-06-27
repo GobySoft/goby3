@@ -55,7 +55,7 @@ constexpr goby::middleware::Group null{"broadcast_group", goby::middleware::Grou
 
 // process 1
 void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
-                      const goby::middleware::protobuf::InterVehiclePortalConfig& slow_cfg)
+                      const goby::middleware::intervehicle::protobuf::PortalConfig& slow_cfg)
 {
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
     goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
@@ -168,7 +168,7 @@ void handle_widget(std::shared_ptr<const Widget> w)
 }
 
 void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
-                       const goby::middleware::protobuf::InterVehiclePortalConfig& slow_cfg)
+                       const goby::middleware::intervehicle::protobuf::PortalConfig& slow_cfg)
 {
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
     goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
@@ -260,7 +260,7 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
 
-    goby::middleware::protobuf::InterVehiclePortalConfig slow_cfg;
+    goby::middleware::intervehicle::protobuf::PortalConfig slow_cfg;
 
     auto& link_cfg = *slow_cfg.add_link();
     goby::acomms::protobuf::DriverConfig& driver_cfg = *link_cfg.mutable_driver();

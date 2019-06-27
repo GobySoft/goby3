@@ -27,29 +27,28 @@
 
 using goby::glog;
 using namespace goby::util::logger;
+using goby::middleware::protobuf::SerializerTransporterMessage;
 
 goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
-    const protobuf::InterVehiclePortalConfig::LinkConfig& config)
-    : goby::middleware::Thread<protobuf::InterVehiclePortalConfig::LinkConfig,
+    const intervehicle::protobuf::PortalConfig::LinkConfig& config)
+    : goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
                                InterThreadTransporter>(config, 10 * boost::units::si::hertz)
 {
     interthread_.reset(new InterThreadTransporter);
     this->set_transporter(interthread_.get());
 
-    interthread_->subscribe<groups::modem_data_out, protobuf::SerializerTransporterMessage>(
-        [this](std::shared_ptr<const protobuf::SerializerTransporterMessage> msg) {
-            _buffer_message(msg);
-        });
+    interthread_->subscribe<groups::modem_data_out, SerializerTransporterMessage>(
+        [this](std::shared_ptr<const SerializerTransporterMessage> msg) { _buffer_message(msg); });
 
     interthread_
-        ->subscribe<groups::modem_subscription_forward_tx, protobuf::InterVehicleSubscription>(
-            [this](std::shared_ptr<const protobuf::InterVehicleSubscription> subscription) {
+        ->subscribe<groups::modem_subscription_forward_tx, intervehicle::protobuf::Subscription>(
+            [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
                 _forward_subscription(*subscription);
             });
 
     interthread_
-        ->subscribe<groups::modem_subscription_forward_rx, protobuf::InterVehicleSubscription>(
-            [this](std::shared_ptr<const protobuf::InterVehicleSubscription> subscription) {
+        ->subscribe<groups::modem_subscription_forward_rx, intervehicle::protobuf::Subscription>(
+            [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
                 _accept_subscription(*subscription);
             });
 
@@ -109,7 +108,7 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     driver_->startup(cfg().driver());
 
     subscription_key_.set_marshalling_scheme(MarshallingScheme::DCCL);
-    subscription_key_.set_type(protobuf::InterVehicleSubscription::descriptor()->full_name());
+    subscription_key_.set_type(intervehicle::protobuf::Subscription::descriptor()->full_name());
     subscription_key_.set_group_numeric(Group::broadcast_group);
 
     goby::glog.is_debug1() && goby::glog << "Driver ready" << std::endl;
@@ -125,7 +124,7 @@ void goby::middleware::intervehicle::ModemDriverThread::loop()
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
-    protobuf::InterVehicleSubscription subscription)
+    intervehicle::protobuf::Subscription subscription)
 {
     subscription.mutable_header()->set_src(cfg().driver().modem_id());
     for (auto dest : subscription.header().dest())
@@ -140,15 +139,15 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
         glog.is_debug1() && glog << "Forwarding subscription acoustically: "
                                  << _create_buffer_id(subscription) << std::endl;
 
-        protobuf::SerializerTransporterMessage subscription_publication;
+        SerializerTransporterMessage subscription_publication;
         auto* key = subscription_publication.mutable_key();
         key->set_marshalling_scheme(MarshallingScheme::DCCL);
-        key->set_type(SerializerParserHelper<protobuf::SerializerTransporterMessage,
+        key->set_type(SerializerParserHelper<SerializerTransporterMessage,
                                              MarshallingScheme::DCCL>::type_name());
         key->set_group("");
         key->set_group_numeric(Group::broadcast_group);
         std::vector<char> bytes(
-            SerializerParserHelper<protobuf::InterVehicleSubscription,
+            SerializerParserHelper<intervehicle::protobuf::Subscription,
                                    MarshallingScheme::DCCL>::serialize(subscription));
         std::string* sbytes = new std::string(bytes.begin(), bytes.end());
         subscription_publication.set_allocated_data(sbytes);
@@ -218,7 +217,7 @@ goby::middleware::intervehicle::ModemDriverThread::_create_buffer_id(unsigned dc
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
-    const protobuf::InterVehicleSubscription& subscription)
+    const intervehicle::protobuf::Subscription& subscription)
 {
     auto buffer_id = _create_buffer_id(subscription);
 
@@ -261,7 +260,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_create_buffer(
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
-    std::shared_ptr<const protobuf::SerializerTransporterMessage> msg)
+    std::shared_ptr<const SerializerTransporterMessage> msg)
 {
     auto buffer_id = _create_buffer_id(msg->key());
     if (!publisher_buffer_cfg_.count(buffer_id))

@@ -36,7 +36,7 @@
 #include "transport-interfaces.h"
 #include "transport-null.h"
 
-#include "goby/middleware/protobuf/interprocess_data.pb.h"
+#include "goby/middleware/protobuf/serializer_transporter.pb.h"
 
 namespace goby
 {
@@ -98,7 +98,7 @@ class SerializationHandlerBase : public SerializationHandlerPostSelector<Metadat
     };
     virtual SubscriptionAction action() const = 0;
 
-    virtual void notify_subscribed(const protobuf::InterVehicleSubscription& subscription,
+    virtual void notify_subscribed(const intervehicle::protobuf::Subscription& subscription,
                                    const goby::acomms::protobuf::ModemTransmission& ack_msg)
     {
     }
@@ -153,7 +153,7 @@ class SerializationSubscription : public SerializationHandlerBase<>
         return SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE;
     }
 
-    void notify_subscribed(const protobuf::InterVehicleSubscription& subscription,
+    void notify_subscribed(const intervehicle::protobuf::Subscription& subscription,
                            const goby::acomms::protobuf::ModemTransmission& ack_msg) override
     {
         subscriber_.subscribed(subscription, ack_msg);

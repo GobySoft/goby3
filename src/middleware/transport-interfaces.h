@@ -32,6 +32,7 @@
 #include "serialize_parse.h"
 
 #include "goby/exception.h"
+#include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"
 #include "goby/middleware/publisher.h"
 #include "goby/middleware/subscriber.h"

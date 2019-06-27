@@ -34,6 +34,7 @@
 #include <dccl.h>
 
 #include "goby/middleware/detail/primitive_type.h"
+#include "goby/middleware/protobuf/intervehicle.pb.h"
 
 namespace goby
 {
@@ -252,8 +253,9 @@ struct DCCLSerializerParserHelperBase
     }
 
     static void
-    load_forwarded_subscription(const goby::middleware::protobuf::InterVehicleSubscription& sub);
-    static goby::middleware::protobuf::DCCLForwardedData unpack(const std::string& bytes);
+    load_forwarded_subscription(const goby::middleware::intervehicle::protobuf::Subscription& sub);
+    static goby::middleware::intervehicle::protobuf::DCCLForwardedData
+    unpack(const std::string& bytes);
 
     static void load_library(const std::string& library)
     {

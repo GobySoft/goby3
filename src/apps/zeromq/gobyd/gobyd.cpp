@@ -21,7 +21,7 @@
 
 #include "goby/middleware/application.h"
 #include "goby/middleware/gobyd/groups.h"
-#include "goby/middleware/protobuf/intervehicle_status.pb.h"
+#include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/transport-intervehicle.h"
 #include "goby/zeromq/transport-interprocess.h"
 
@@ -118,7 +118,7 @@ void goby::apps::zeromq::Daemon::run()
     {
         intervehicle_->poll(std::chrono::milliseconds(200));
 
-        //        goby::middleware::protobuf::InterVehicleStatus status;
+        //        goby::middleware::intervehicle::protobuf::Status status;
         //        status.set_tx_queue_size(intervehicle_->tx_queue_size());
         //        interprocess_.publish<goby::middleware::groups::intervehicle_outbound>(status);
     }

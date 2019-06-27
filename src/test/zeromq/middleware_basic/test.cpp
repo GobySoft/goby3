@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 
     inproc.publish_dynamic(sp, "CTD3");
 
-    goby::middleware::protobuf::InterVehiclePortalConfig slow_cfg;
+    goby::middleware::intervehicle::protobuf::PortalConfig slow_cfg;
     {
         auto& link_cfg = *slow_cfg.add_link();
 

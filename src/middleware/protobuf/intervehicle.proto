@@ -4,10 +4,12 @@ import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/amac_config.proto";
 import "goby/acomms/protobuf/buffer.proto";
+import "google/protobuf/descriptor.proto";
+import "goby/middleware/protobuf/intervehicle_transporter_config.proto";
 
-package goby.middleware.protobuf;
+package goby.middleware.intervehicle.protobuf;
 
-message InterVehiclePortalConfig
+message PortalConfig
 {
     option (dccl.msg) = {
         unit_system: "si"
@@ -41,4 +43,46 @@ message InterVehiclePortalConfig
 
     repeated string dccl_load_library = 20
         [(goby.field).description = "Load DCCL libraries"];
+}
+
+message Status
+{
+    required int32 tx_queue_size = 1;
+}
+
+message Subscription
+{
+    option (dccl.msg) = {
+        codec_version: 3
+        id: 2
+        max_bytes: 32
+        unit_system: "si"
+    };
+
+    required Header header = 1;
+    required uint32 dccl_id = 5 [(dccl.field) = {min: 1 max: 32767}];
+    required uint32 group = 6 [(dccl.field) = {min: 0 max: 255}];
+    optional TransporterConfig intervehicle = 10;
+
+    // defines the DCCL message for the Portal (edge) internally on interprocess
+    optional string protobuf_name = 20 [(dccl.field).omit = true];
+    repeated google.protobuf.FileDescriptorProto file_descriptor = 4
+        [(dccl.field).omit = true];
+}
+
+message Header
+{
+    required int32 src = 1 [(dccl.field) = {min: 1 max: 127}];
+    repeated int32 dest = 2 [(dccl.field) = {min: 1 max: 127 max_repeat: 8}];
+}
+
+message DCCLPacket
+{
+    required int32 dccl_id = 1;
+    required bytes data = 2;
+}
+
+message DCCLForwardedData
+{
+    repeated DCCLPacket frame = 1;
 }

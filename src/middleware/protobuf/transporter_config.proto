@@ -1,30 +1,9 @@
 syntax = "proto2";
 
 import "dccl/option_extensions.proto";
-import "goby/acomms/protobuf/buffer.proto";
+import "goby/middleware/protobuf/intervehicle_transporter_config.proto";
 
 package goby.middleware.protobuf;
-
-message InterVehicleTransporterConfig
-{
-    repeated int32 publisher_id = 1 [(dccl.field) = { min: 1 max: 30 max_repeat: 8 omit: true}];
-    
-    optional goby.acomms.protobuf.DynamicBufferConfig buffer = 10;
-    message LinkConfig
-    {
-        enum LinkPolicy
-        {
-            // send to all links (until one acknowledges)
-            LINK_POLICY_FLOOD_ALL = 1;
-
-            // try the highest priority link for some period of time, then
-            // try the next LINK_POLICY_PRIORITY_TIMEOUT = 2;
-        }
-        optional LinkPolicy policy = 1;
-    }
-
-    optional LinkConfig link = 20;
-}
 
 message TransporterConfig
 {
@@ -32,5 +11,5 @@ message TransporterConfig
     // TODO: implement at the interprocess and intervehicle layers
     optional bool echo = 1 [default = false];
 
-    optional InterVehicleTransporterConfig intervehicle = 10;
+    optional intervehicle.protobuf.TransporterConfig intervehicle = 10;
 }
