@@ -146,10 +146,11 @@ class InterProcessPortal
                 _receive_publication_forwarded(d);
             });
 
-        Base::inner_.template subscribe<Base::forward_group_, middleware::SerializationHandlerBase>(
-            [this](std::shared_ptr<const middleware::SerializationHandlerBase> s) {
-                _receive_subscription_forwarded(s);
-            });
+        Base::inner_
+            .template subscribe<Base::forward_group_, middleware::SerializationHandlerBase<> >(
+                [this](std::shared_ptr<const middleware::SerializationHandlerBase<> > s) {
+                    _receive_subscription_forwarded(s);
+                });
 
         Base::inner_
             .template subscribe<Base::forward_group_, middleware::SerializationSubscriptionRegex>(
@@ -202,7 +203,7 @@ class InterProcessPortal
         typename middleware::SerializationSubscription<Data, scheme>::HandlerType
             subscribe_function(subscribe_lambda);
 
-        auto subscription = std::shared_ptr<middleware::SerializationHandlerBase>(
+        auto subscription = std::shared_ptr<middleware::SerializationHandlerBase<> >(
             new middleware::SerializationSubscription<Data, scheme>(
                 subscribe_function, group,
                 middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
@@ -288,8 +289,8 @@ class InterProcessPortal
                     std::string identifier = _make_identifier(
                         type, scheme, group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
-                    // build a set so if any of the handlers unsubscribes, we still have a pointer to the middleware::SerializationHandlerBase
-                    std::vector<std::weak_ptr<const middleware::SerializationHandlerBase> >
+                    // build a set so if any of the handlers unsubscribes, we still have a pointer to the middleware::SerializationHandlerBase<>
+                    std::vector<std::weak_ptr<const middleware::SerializationHandlerBase<> > >
                         subs_to_post;
                     auto portal_range = portal_subscriptions_.equal_range(identifier);
                     for (auto it = portal_range.first; it != portal_range.second; ++it)
@@ -341,7 +342,7 @@ class InterProcessPortal
     }
 
     void _receive_subscription_forwarded(
-        std::shared_ptr<const middleware::SerializationHandlerBase> subscription)
+        std::shared_ptr<const middleware::SerializationHandlerBase<> > subscription)
     {
         std::string identifier = _make_identifier(subscription->type_name(), subscription->scheme(),
                                                   subscription->subscribed_group(),
@@ -349,7 +350,7 @@ class InterProcessPortal
 
         switch (subscription->action())
         {
-            case middleware::SerializationHandlerBase::SubscriptionAction::SUBSCRIBE:
+            case middleware::SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE:
             {
                 // insert if this thread hasn't already subscribed
                 if (forwarder_subscription_identifiers_[subscription->thread_id()].count(
@@ -371,7 +372,7 @@ class InterProcessPortal
             }
             break;
 
-            case middleware::SerializationHandlerBase::SubscriptionAction::UNSUBSCRIBE:
+            case middleware::SerializationHandlerBase<>::SubscriptionAction::UNSUBSCRIBE:
             {
                 _forwarder_unsubscribe(subscription->thread_id(), identifier);
             }
@@ -516,10 +517,10 @@ class InterProcessPortal
 
     // maps identifier to subscription
     std::unordered_multimap<std::string,
-                            std::shared_ptr<const middleware::SerializationHandlerBase> >
+                            std::shared_ptr<const middleware::SerializationHandlerBase<> > >
         portal_subscriptions_;
     // only one subscription for each forwarded identifier
-    std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase> >
+    std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<> > >
         forwarder_subscriptions_;
     std::unordered_map<
         std::thread::id,

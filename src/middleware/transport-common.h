@@ -42,17 +42,49 @@ namespace goby
 {
 namespace middleware
 {
-class SerializationHandlerBase
+template <typename Metadata, typename Enable = void> class SerializationHandlerPostSelector
+{
+};
+
+template <typename Metadata>
+class SerializationHandlerPostSelector<Metadata,
+                                       typename std::enable_if_t<std::is_void<Metadata>::value> >
 {
   public:
-    SerializationHandlerBase() = default;
-    virtual ~SerializationHandlerBase() = default;
+    SerializationHandlerPostSelector() = default;
+    virtual ~SerializationHandlerPostSelector() = default;
 
     virtual std::string::const_iterator post(std::string::const_iterator b,
                                              std::string::const_iterator e) const = 0;
     virtual std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
                                                    std::vector<char>::const_iterator e) const = 0;
     virtual const char* post(const char* b, const char* e) const = 0;
+};
+
+template <typename Metadata>
+class SerializationHandlerPostSelector<Metadata,
+                                       typename std::enable_if_t<!std::is_void<Metadata>::value> >
+{
+  public:
+    SerializationHandlerPostSelector() = default;
+    virtual ~SerializationHandlerPostSelector() = default;
+
+    virtual std::string::const_iterator post(std::string::const_iterator b,
+                                             std::string::const_iterator e,
+                                             const Metadata& metadata) const = 0;
+    virtual std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
+                                                   std::vector<char>::const_iterator e,
+                                                   const Metadata& metadata) const = 0;
+    virtual const char* post(const char* b, const char* e, const Metadata& metadata) const = 0;
+};
+
+template <typename Metadata = void>
+class SerializationHandlerBase : public SerializationHandlerPostSelector<Metadata>
+{
+  public:
+    SerializationHandlerBase() = default;
+    virtual ~SerializationHandlerBase() = default;
+
     virtual const std::string& type_name() const = 0;
     virtual const Group& subscribed_group() const = 0;
 
@@ -77,14 +109,16 @@ class SerializationHandlerBase
     const std::thread::id thread_id_{std::this_thread::get_id()};
 };
 
-inline bool operator==(const SerializationHandlerBase& s1, const SerializationHandlerBase& s2)
+template <typename Metadata>
+bool operator==(const SerializationHandlerBase<Metadata>& s1,
+                const SerializationHandlerBase<Metadata>& s2)
 {
     return s1.scheme() == s2.scheme() && s1.type_name() == s2.type_name() &&
            s1.subscribed_group() == s2.subscribed_group() && s1.action() == s2.action();
 }
 
 template <typename Data, int scheme_id>
-class SerializationSubscription : public SerializationHandlerBase
+class SerializationSubscription : public SerializationHandlerBase<>
 {
   public:
     typedef std::function<void(std::shared_ptr<const Data> data)> HandlerType;
@@ -114,9 +148,9 @@ class SerializationSubscription : public SerializationHandlerBase
 
     const char* post(const char* b, const char* e) const override { return _post(b, e); }
 
-    SerializationHandlerBase::SubscriptionAction action() const override
+    SerializationHandlerBase<>::SubscriptionAction action() const override
     {
-        return SerializationHandlerBase::SubscriptionAction::SUBSCRIBE;
+        return SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE;
     }
 
     void notify_subscribed(const protobuf::InterVehicleSubscription& subscription,
@@ -151,10 +185,11 @@ class SerializationSubscription : public SerializationHandlerBase
     Subscriber<Data> subscriber_;
 };
 
-template <typename Data, int scheme_id> class PublisherCallback : public SerializationHandlerBase
+template <typename Data, int scheme_id, typename Metadata>
+class PublisherCallback : public SerializationHandlerBase<Metadata>
 {
   public:
-    typedef std::function<void(std::shared_ptr<const Data> data)> HandlerType;
+    typedef std::function<void(std::shared_ptr<const Data> data, const Metadata& md)> HandlerType;
 
     PublisherCallback(HandlerType& handler)
         : handler_(handler), type_name_(SerializerParserHelper<Data, scheme_id>::type_name())
@@ -162,23 +197,27 @@ template <typename Data, int scheme_id> class PublisherCallback : public Seriali
     }
 
     // handle an incoming message
-    std::string::const_iterator post(std::string::const_iterator b,
-                                     std::string::const_iterator e) const override
+    std::string::const_iterator post(std::string::const_iterator b, std::string::const_iterator e,
+                                     const Metadata& md) const override
     {
-        return _post(b, e);
+        return _post(b, e, md);
     }
 
     std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
-                                           std::vector<char>::const_iterator e) const override
+                                           std::vector<char>::const_iterator e,
+                                           const Metadata& md) const override
     {
-        return _post(b, e);
+        return _post(b, e, md);
     }
 
-    const char* post(const char* b, const char* e) const override { return _post(b, e); }
-
-    SerializationHandlerBase::SubscriptionAction action() const override
+    const char* post(const char* b, const char* e, const Metadata& md) const override
     {
-        return SerializationHandlerBase::SubscriptionAction::PUBLISHER_CALLBACK;
+        return _post(b, e, md);
+    }
+
+    typename SerializationHandlerBase<Metadata>::SubscriptionAction action() const override
+    {
+        return SerializationHandlerBase<Metadata>::SubscriptionAction::PUBLISHER_CALLBACK;
     }
 
     // getters
@@ -188,13 +227,13 @@ template <typename Data, int scheme_id> class PublisherCallback : public Seriali
 
   private:
     template <typename CharIterator>
-    CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end) const
+    CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end, const Metadata& md) const
     {
         CharIterator actual_end;
         auto msg = std::make_shared<const Data>(
             SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
 
-        handler_(msg);
+        handler_(msg, md);
         return actual_end;
     }
 
@@ -205,7 +244,7 @@ template <typename Data, int scheme_id> class PublisherCallback : public Seriali
 };
 
 template <typename Data, int scheme_id>
-class SerializationUnSubscription : public SerializationHandlerBase
+class SerializationUnSubscription : public SerializationHandlerBase<>
 {
   public:
     SerializationUnSubscription(const Group& group)
@@ -230,9 +269,9 @@ class SerializationUnSubscription : public SerializationHandlerBase
         throw(goby::Exception("Cannot call post on an UnSubscription"));
     }
 
-    SerializationHandlerBase::SubscriptionAction action() const override
+    SerializationHandlerBase<>::SubscriptionAction action() const override
     {
-        return SerializationHandlerBase::SubscriptionAction::UNSUBSCRIBE;
+        return SerializationHandlerBase<>::SubscriptionAction::UNSUBSCRIBE;
     }
 
     // getters
