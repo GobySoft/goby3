@@ -37,18 +37,25 @@ template <typename Data> class Subscriber
     using group_func_type = std::function<Group(const Data&)>;
     using subscribed_func_type =
         typename Publisher<intervehicle::protobuf::Subscription>::acked_func_type;
+    using subscribe_expired_func_type =
+        typename Publisher<intervehicle::protobuf::Subscription>::expired_func_type;
 
     Subscriber(const goby::middleware::protobuf::TransporterConfig& transport_cfg =
                    goby::middleware::protobuf::TransporterConfig(),
                group_func_type group_func = group_func_type(),
-               subscribed_func_type subscribed_func = subscribed_func_type())
-        : transport_cfg_(transport_cfg), group_func_(group_func), subscribed_func_(subscribed_func)
+               subscribed_func_type subscribed_func = subscribed_func_type(),
+               subscribe_expired_func_type subscribe_expired_func = subscribe_expired_func_type())
+        : transport_cfg_(transport_cfg),
+          group_func_(group_func),
+          subscribed_func_(subscribed_func),
+          subscribe_expired_func_(subscribe_expired_func)
     {
     }
 
     Subscriber(const goby::middleware::protobuf::TransporterConfig& transport_cfg,
-               subscribed_func_type subscribed_func)
-        : Subscriber(transport_cfg, group_func_type(), subscribed_func)
+               subscribed_func_type subscribed_func,
+               subscribe_expired_func_type subscribe_expired_func = subscribe_expired_func_type())
+        : Subscriber(transport_cfg, group_func_type(), subscribed_func, subscribe_expired_func)
     {
     }
 
@@ -67,17 +74,14 @@ template <typename Data> class Subscriber
             return Group(Group::broadcast_group);
     }
 
-    void subscribed(std::shared_ptr<const intervehicle::protobuf::Subscription> sub,
-                    const intervehicle::protobuf::AckData& ack_msg) const
-    {
-        if (subscribed_func_)
-            subscribed_func_(sub, ack_msg);
-    }
+    subscribed_func_type subscribed_func() const { return subscribed_func_; }
+    subscribe_expired_func_type subscribe_expired_func() const { return subscribe_expired_func_; }
 
   private:
     goby::middleware::protobuf::TransporterConfig transport_cfg_;
     group_func_type group_func_;
     subscribed_func_type subscribed_func_;
+    subscribe_expired_func_type subscribe_expired_func_;
 };
 } // namespace middleware
 } // namespace goby

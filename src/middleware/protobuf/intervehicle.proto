@@ -118,8 +118,16 @@ message ExpireData
         (dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}
     ];
 
-    required int32 transmit_attempts = 3
-        [(goby.field).description =
-             "the number of times this message was transmitted"];
+    enum ExpireReason
+    {
+        EXPIRED_NO_SUBSCRIBERS = 1;
+        EXPIRED_TIME_TO_LIVE_EXCEEDED = 2;
+        EXPIRED_BUFFER_OVERFLOW = 3;
+    }
+    required ExpireReason reason = 3;
+    
+    //required int32 transmit_attempts = 4
+    //    [(goby.field).description =
+    //         "the number of times this message was transmitted"];
 
 }

@@ -75,15 +75,34 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
         sample_buffer_cfg->set_newest_first(false);
         sample_buffer_cfg->set_ack_required(true);
 
+        auto ack_callback = [&](std::shared_ptr<const Sample> s,
+                                const goby::middleware::intervehicle::protobuf::AckData& ack) {
+            glog.is_debug1() && glog << "Ack for " << s->ShortDebugString()
+                                     << ", ack msg: " << ack.ShortDebugString() << std::endl;
+            ++direct_ack_receive_count[s->group() - 1];
+        };
+
+        auto expire_callback = [&](std::shared_ptr<const Sample> s,
+                                   const goby::middleware::intervehicle::protobuf::ExpireData&
+                                       expire) {
+            glog.is_debug1() && glog << "Expire for " << s->ShortDebugString()
+                                     << ", expire msg: " << expire.ShortDebugString() << std::endl;
+
+            switch (expire.reason())
+            {
+                case goby::middleware::intervehicle::protobuf::ExpireData::EXPIRED_NO_SUBSCRIBERS:
+                    ++direct_no_sub_receive_count[s->group() - 1];
+                    break;
+
+                default: assert(false); break;
+            }
+        };
+
         goby::middleware::Publisher<Sample> sample_publisher(
             sample_publisher_cfg,
             [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); },
-            [&](std::shared_ptr<const Sample> s,
-                const goby::middleware::intervehicle::protobuf::AckData& ack) {
-                glog.is_debug1() && glog << "Ack for " << s->ShortDebugString()
-                                         << ", ack msg: " << ack.ShortDebugString() << std::endl;
-                ++direct_ack_receive_count[s->group() - 1];
-            });
+            ack_callback, expire_callback);
+
         slt.publish<group1>(s1, sample_publisher);
         glog.is(DEBUG1) && glog << "Published group1: " << s1->ShortDebugString() << std::endl;
 
@@ -110,9 +129,11 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
 
     // no subscriber
     assert(direct_ack_receive_count[0] == 0);
+    assert(direct_no_sub_receive_count[0] == max_publish);
 
     // one subscriber
     assert(direct_ack_receive_count[1] == max_publish);
+    assert(direct_no_sub_receive_count[1] == 0);
 }
 
 // process 2

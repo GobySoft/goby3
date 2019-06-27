@@ -54,13 +54,34 @@ inline bool operator==(const SerializerTransporterMessage& a, const SerializerTr
 
 namespace intervehicle
 {
+template <typename Data>
+std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
+serialize_publication(const Data& d, const Group& group, const Publisher<Data>& publisher)
+{
+    std::vector<char> bytes(SerializerParserHelper<Data, MarshallingScheme::DCCL>::serialize(d));
+    std::string* sbytes = new std::string(bytes.begin(), bytes.end());
+    auto msg = std::make_shared<goby::middleware::protobuf::SerializerTransporterMessage>();
+
+    auto* key = msg->mutable_key();
+    key->set_marshalling_scheme(MarshallingScheme::DCCL);
+    key->set_type(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
+    key->set_group(std::string(group));
+    key->set_group_numeric(group.numeric());
+    *key->mutable_cfg() = publisher.transport_cfg();
+
+    msg->set_allocated_data(sbytes);
+    return msg;
+}
+
 namespace groups
 {
+constexpr Group subscription_forward{"goby::middleware::intervehicle::subscription_forward",
+                                     Group::broadcast_group};
+
 constexpr Group modem_data_out{"goby::middleware::intervehicle::modem_data_out"};
 constexpr Group modem_data_in{"goby::middleware::intervehicle::modem_data_in"};
 constexpr Group modem_ack_in{"goby::middleware::intervehicle::modem_ack_in"};
 constexpr Group modem_expire_in{"goby::middleware::intervehicle::modem_expire_in"};
-constexpr Group modem_no_sub_in{"goby::middleware::intervehicle::modem_no_sub_in"};
 
 constexpr Group modem_subscription_forward_tx{
     "goby::middleware::intervehicle::modem_subscription_forward_tx"};
@@ -89,6 +110,9 @@ class ModemDriverThread
     void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
     void _forward_subscription(intervehicle::protobuf::Subscription subscription);
     void _accept_subscription(const intervehicle::protobuf::Subscription& subscription);
+    void _expire_value(const goby::time::SteadyClock::time_point now,
+                       const goby::acomms::DynamicBuffer<buffer_data_type>::Value& value,
+                       intervehicle::protobuf::ExpireData::ExpireReason reason);
 
     subbuffer_id_type _create_buffer_id(unsigned dccl_id, unsigned group);
 

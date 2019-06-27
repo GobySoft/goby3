@@ -117,10 +117,34 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
 
 void goby::middleware::intervehicle::ModemDriverThread::loop()
 {
-    // add notification for expired messages
-    buffer_.expire();
+    auto expired = buffer_.expire();
+
+    if (!expired.empty())
+    {
+        auto now = goby::time::SteadyClock::now();
+        for (const auto& value : expired)
+            _expire_value(now, value,
+                          intervehicle::protobuf::ExpireData::EXPIRED_TIME_TO_LIVE_EXCEEDED);
+    }
+
     driver_->do_work();
     mac_.do_work();
+}
+
+void goby::middleware::intervehicle::ModemDriverThread::_expire_value(
+    const goby::time::SteadyClock::time_point now,
+    const goby::acomms::DynamicBuffer<buffer_data_type>::Value& value,
+    intervehicle::protobuf::ExpireData::ExpireReason reason)
+{
+    protobuf::ExpireData expire_data;
+    expire_data.mutable_header()->set_src(goby::acomms::BROADCAST_ID);
+    expire_data.mutable_header()->add_dest(value.modem_id);
+
+    expire_data.set_latency_with_units(
+        goby::time::convert_duration<goby::time::MicroTime>(now - value.push_time));
+    expire_data.set_reason(reason);
+
+    interthread_->publish<groups::modem_expire_in>(std::make_pair(value.data, expire_data));
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
@@ -139,20 +163,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
         glog.is_debug1() && glog << "Forwarding subscription acoustically: "
                                  << _create_buffer_id(subscription) << std::endl;
 
-        SerializerTransporterMessage subscription_publication;
-        auto* key = subscription_publication.mutable_key();
-        key->set_marshalling_scheme(MarshallingScheme::DCCL);
-        key->set_type(SerializerParserHelper<SerializerTransporterMessage,
-                                             MarshallingScheme::DCCL>::type_name());
-        key->set_group("");
-        key->set_group_numeric(Group::broadcast_group);
-        std::vector<char> bytes(
-            SerializerParserHelper<intervehicle::protobuf::Subscription,
-                                   MarshallingScheme::DCCL>::serialize(subscription));
-        std::string* sbytes = new std::string(bytes.begin(), bytes.end());
-        subscription_publication.set_allocated_data(sbytes);
+        auto subscription_publication = serialize_publication(
+            subscription, groups::subscription_forward, Publisher<decltype(subscription)>());
 
-        buffer_.push({dest, buffer_id, goby::time::SteadyClock::now(), subscription_publication});
+        buffer_.push({dest, buffer_id, goby::time::SteadyClock::now(), *subscription_publication});
     }
 }
 
@@ -284,15 +298,27 @@ void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
         }
     }
 
-    // push to all subscribed buffers
-    for (auto dest_id : subbuffers_created_[buffer_id])
+    if (!subbuffers_created_[buffer_id].empty())
     {
-        auto exceeded = buffer_.push({dest_id, buffer_id, goby::time::SteadyClock::now(), *msg});
-        if (!exceeded.empty())
+        // push to all subscribed buffers
+        for (auto dest_id : subbuffers_created_[buffer_id])
         {
-            glog.is_warn() && glog << "Send buffer exceeded for " << msg->key().ShortDebugString()
-                                   << std::endl;
+            auto exceeded =
+                buffer_.push({dest_id, buffer_id, goby::time::SteadyClock::now(), *msg});
+            if (!exceeded.empty())
+            {
+                auto now = goby::time::SteadyClock::now();
+                for (const auto& value : exceeded)
+                    _expire_value(now, value,
+                                  intervehicle::protobuf::ExpireData::EXPIRED_BUFFER_OVERFLOW);
+            }
         }
+    }
+    else
+    {
+        auto now = goby::time::SteadyClock::now();
+        _expire_value(now, {goby::acomms::BROADCAST_ID, buffer_id, now, *msg},
+                      intervehicle::protobuf::ExpireData::EXPIRED_NO_SUBSCRIBERS);
     }
 }
 

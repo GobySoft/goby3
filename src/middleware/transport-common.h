@@ -157,7 +157,8 @@ class SerializationSubscription : public SerializationHandlerBase<>
     void notify_subscribed(std::shared_ptr<const intervehicle::protobuf::Subscription> subscription,
                            const intervehicle::protobuf::AckData& ack_msg) override
     {
-        subscriber_.subscribed(subscription, ack_msg);
+        if (subscriber_.subscribed_func())
+            subscriber_.subscribed_func()(subscription, ack_msg);
     }
 
     // getters
@@ -173,7 +174,7 @@ class SerializationSubscription : public SerializationHandlerBase<>
         auto msg = std::make_shared<const Data>(
             SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
 
-        if (subscribed_group() == subscriber_.group(*msg))
+        if (subscribed_group() == subscriber_.group(*msg) && handler_)
             handler_(msg);
 
         return actual_end;
