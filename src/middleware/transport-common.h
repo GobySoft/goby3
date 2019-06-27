@@ -119,6 +119,9 @@ class SerializationSubscriptionBase
     };
     virtual SubscriptionAction action() const = 0;
 
+    virtual void notify_subscribed(const protobuf::InterVehicleSubscription& subscription,
+                                   const goby::acomms::protobuf::ModemTransmission& ack_msg) = 0;
+
     std::thread::id thread_id() const { return thread_id_; }
 
   private:
@@ -167,6 +170,12 @@ class SerializationSubscription : public SerializationSubscriptionBase
     SerializationSubscriptionBase::SubscriptionAction action() const override
     {
         return SerializationSubscriptionBase::SubscriptionAction::SUBSCRIBE;
+    }
+
+    void notify_subscribed(const protobuf::InterVehicleSubscription& subscription,
+                           const goby::acomms::protobuf::ModemTransmission& ack_msg) override
+    {
+        subscriber_.subscribed(subscription, ack_msg);
     }
 
     // getters

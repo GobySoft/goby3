@@ -37,10 +37,22 @@ namespace goby
 namespace acomms
 {
 class ModemDriverBase;
+
 } // namespace acomms
 
 namespace middleware
 {
+namespace protobuf
+{
+size_t data_size(const SerializerTransporterMessage& msg) { return msg.data().size(); }
+
+bool operator==(const SerializerTransporterMessage& a, const SerializerTransporterMessage& b)
+{
+    return a.SerializeAsString() == b.SerializeAsString();
+}
+
+} // namespace protobuf
+
 namespace intervehicle
 {
 namespace groups
@@ -59,12 +71,13 @@ class ModemDriverThread
                                       InterThreadTransporter>
 {
   public:
-    using modem_id_type = goby::acomms::DynamicBuffer<std::string>::modem_id_type;
-    using subbuffer_id_type = goby::acomms::DynamicBuffer<std::string>::subbuffer_id_type;
+    using buffer_data_type = protobuf::SerializerTransporterMessage;
+    using modem_id_type = goby::acomms::DynamicBuffer<buffer_data_type>::modem_id_type;
+    using subbuffer_id_type = goby::acomms::DynamicBuffer<buffer_data_type>::subbuffer_id_type;
 
     ModemDriverThread(const protobuf::InterVehiclePortalConfig::LinkConfig& cfg);
     void loop() override;
-    int tx_queue_size() { return sending_.size(); }
+    int tx_queue_size() { return buffer_.size(); }
 
   private:
     void _data_request(goby::acomms::protobuf::ModemTransmission* msg);
@@ -102,13 +115,11 @@ class ModemDriverThread
     protobuf::SerializerTransporterKey subscription_key_;
     std::set<modem_id_type> subscription_subbuffers_;
 
-    goby::acomms::DynamicBuffer<std::string> buffer_;
+    goby::acomms::DynamicBuffer<buffer_data_type> buffer_;
 
     using frame_type = int;
-    std::map<frame_type, std::vector<goby::acomms::DynamicBuffer<std::string>::full_value_type> >
+    std::map<frame_type, std::vector<goby::acomms::DynamicBuffer<buffer_data_type>::Value> >
         pending_ack_;
-
-    std::deque<std::string> sending_;
 
     std::unique_ptr<goby::acomms::ModemDriverBase> driver_;
     goby::acomms::MACManager mac_;

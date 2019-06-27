@@ -22,9 +22,6 @@
 
 #include "goby/acomms/bind.h"
 #include "goby/acomms/modem_driver.h"
-#include "goby/acomms/modemdriver/iridium_driver.h"
-#include "goby/acomms/modemdriver/iridium_shore_driver.h"
-#include "goby/acomms/modemdriver/udp_driver.h"
 
 #include "driver-thread.h"
 
@@ -140,11 +137,23 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
             subscription_subbuffers_.insert(dest);
         }
 
+        glog.is_debug1() && glog << "Forwarding subscription acoustically: "
+                                 << _create_buffer_id(subscription) << std::endl;
+
+        protobuf::SerializerTransporterMessage subscription_publication;
+        auto* key = subscription_publication.mutable_key();
+        key->set_marshalling_scheme(MarshallingScheme::DCCL);
+        key->set_type(SerializerParserHelper<protobuf::SerializerTransporterMessage,
+                                             MarshallingScheme::DCCL>::type_name());
+        key->set_group("");
+        key->set_group_numeric(Group::broadcast_group);
         std::vector<char> bytes(
             SerializerParserHelper<protobuf::InterVehicleSubscription,
                                    MarshallingScheme::DCCL>::serialize(subscription));
-        std::string sbytes(bytes.begin(), bytes.end());
-        buffer_.push(std::make_tuple(dest, buffer_id, goby::time::SteadyClock::now(), sbytes));
+        std::string* sbytes = new std::string(bytes.begin(), bytes.end());
+        subscription_publication.set_allocated_data(sbytes);
+
+        buffer_.push({dest, buffer_id, goby::time::SteadyClock::now(), subscription_publication});
     }
 }
 
@@ -175,13 +184,12 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
                     buffer_.top(dest, msg->max_frame_bytes() - frame->size(),
                                 goby::time::convert_duration<std::chrono::microseconds>(
                                     cfg().ack_timeout_with_units()));
-                dest = std::get<0>(buffer_value);
-                *frame += std::get<3>(buffer_value);
+                dest = buffer_value.modem_id;
+                *frame += buffer_value.data.data();
 
-                bool ack_required =
-                    buffer_.sub(std::get<0>(buffer_value), std::get<1>(buffer_value))
-                        .cfg()
-                        .ack_required();
+                bool ack_required = buffer_.sub(buffer_value.modem_id, buffer_value.subbuffer_id)
+                                        .cfg()
+                                        .ack_required();
 
                 if (!ack_required)
                 {
@@ -280,8 +288,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
     // push to all subscribed buffers
     for (auto dest_id : subbuffers_created_[buffer_id])
     {
-        auto exceeded = buffer_.push(
-            std::make_tuple(dest_id, buffer_id, goby::time::SteadyClock::now(), msg->data()));
+        auto exceeded = buffer_.push({dest_id, buffer_id, goby::time::SteadyClock::now(), *msg});
         if (!exceeded.empty())
         {
             glog.is_warn() && glog << "Send buffer exceeded for " << msg->key().ShortDebugString()
@@ -316,7 +323,11 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
                 auto values_to_ack_it = pending_ack_.find(frame_number);
                 glog.is(DEBUG1) && glog << "processing " << values_to_ack_it->second.size()
                                         << " acks for frame: " << frame_number << std::endl;
-                for (const auto& value : values_to_ack_it->second) { buffer_.erase(value); }
+                for (const auto& value : values_to_ack_it->second)
+                {
+                    //                    interthread_->publish<groups::modem_ack_in>(std::make_pair(std::get<3>(value), rx_msg));
+                    buffer_.erase(value);
+                }
                 pending_ack_.erase(values_to_ack_it);
                 // TODO publish acks for other drivers to erase the same piece of data (if they have it)
             }

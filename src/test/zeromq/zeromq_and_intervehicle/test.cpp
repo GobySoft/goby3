@@ -199,9 +199,13 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
     goby::middleware::InterVehicleForwarder<decltype(zmq)> interplatform(zmq);
+
+    goby::middleware::protobuf::TransporterConfig sample_indirect_subscriber_cfg;
+    sample_indirect_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
+
     interplatform.subscribe_dynamic<Sample>(
         &indirect_handle_sample_indirect, 3,
-        goby::middleware::Subscriber<Sample>(goby::middleware::protobuf::TransporterConfig(),
+        goby::middleware::Subscriber<Sample>(sample_indirect_subscriber_cfg,
                                              [](const Sample& s) { return s.group(); }));
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();

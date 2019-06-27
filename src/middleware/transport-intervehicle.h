@@ -84,7 +84,7 @@ class InterVehicleTransporterBase
                       "Can only use DCCL messages with InterVehicleTransporters");
 
         Data data_with_group = data;
-        publisher.add_group(data_with_group, group);
+        publisher.set_group(data_with_group, group);
 
         static_cast<Derived*>(this)->template _publish<Data>(data_with_group, group, publisher);
         inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data_with_group, group,
@@ -100,7 +100,7 @@ class InterVehicleTransporterBase
         if (data)
         {
             std::shared_ptr<Data> data_with_group(new Data(*data));
-            publisher.add_group(*data_with_group, group);
+            publisher.set_group(*data_with_group, group);
 
             static_cast<Derived*>(this)->template _publish<Data>(*data_with_group, group,
                                                                  publisher);
@@ -369,11 +369,15 @@ class InterVehiclePortal
                 forwarded_subscriptions_[d.dccl_id()].insert(std::make_pair(group, d));
                 DCCLSerializerParserHelperBase::load_forwarded_subscription(d);
 
+                goby::glog.is_debug1() && goby::glog << "Received subscription from local Forwarder"
+                                                     << std::endl;
+
                 Base::inner_.inner()
                     .template publish<intervehicle::groups::modem_subscription_forward_tx>(d);
             });
 
-        // set up reception of forwarded (via acoustic) subscriptions, then re-publish to driver threads
+        // set up reception of forwarded (via acoustic) subscriptions,
+        // then re-publish to driver threads
         {
             using protobuf::InterVehicleSubscription;
             auto subscribe_lambda = [=](std::shared_ptr<const InterVehicleSubscription> d,
@@ -445,18 +449,22 @@ class InterVehiclePortal
 
     void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg)
     {
-        for (auto& frame : rx_msg.frame())
+        if (rx_msg.type() == goby::acomms::protobuf::ModemTransmission::ACK) {}
+        else
         {
-            const protobuf::DCCLForwardedData packets(
-                DCCLSerializerParserHelperBase::unpack(frame));
-            for (const auto& packet : packets.frame())
+            for (auto& frame : rx_msg.frame())
             {
-                for (auto p : subscriptions_[packet.dccl_id()])
-                    p.second->post(packet.data().begin(), packet.data().end());
-            }
+                const protobuf::DCCLForwardedData packets(
+                    DCCLSerializerParserHelperBase::unpack(frame));
+                for (const auto& packet : packets.frame())
+                {
+                    for (auto p : subscriptions_[packet.dccl_id()])
+                        p.second->post(packet.data().begin(), packet.data().end());
+                }
 
-            // send back to Forwarders
-            Base::inner_.template publish<Base::forward_group_>(packets);
+                // send back to Forwarders
+                Base::inner_.template publish<Base::forward_group_>(packets);
+            }
         }
     }
 

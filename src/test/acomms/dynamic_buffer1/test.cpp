@@ -148,9 +148,9 @@ BOOST_AUTO_TEST_CASE(check_order)
         buffer.push("first");
         buffer.push("second");
 
-        BOOST_CHECK_EQUAL(buffer.top().second, "second");
+        BOOST_CHECK_EQUAL(buffer.top().data, "second");
         buffer.pop();
-        BOOST_CHECK_EQUAL(buffer.top().second, "first");
+        BOOST_CHECK_EQUAL(buffer.top().data, "first");
     }
 
     {
@@ -161,9 +161,9 @@ BOOST_AUTO_TEST_CASE(check_order)
         buffer.push("first");
         buffer.push("second");
 
-        BOOST_CHECK_EQUAL(buffer.top().second, "first");
+        BOOST_CHECK_EQUAL(buffer.top().data, "first");
         buffer.pop();
-        BOOST_CHECK_EQUAL(buffer.top().second, "second");
+        BOOST_CHECK_EQUAL(buffer.top().data, "second");
     }
 }
 
@@ -192,9 +192,9 @@ BOOST_AUTO_TEST_CASE(check_subbuffer_expire)
 
         BOOST_CHECK(buffer.empty());
         BOOST_REQUIRE_EQUAL(exp1.size(), 1);
-        BOOST_REQUIRE_EQUAL(exp1[0].second, "first");
+        BOOST_REQUIRE_EQUAL(exp1[0].data, "first");
         BOOST_REQUIRE_EQUAL(exp2.size(), 1);
-        BOOST_REQUIRE_EQUAL(exp2[0].second, "second");
+        BOOST_REQUIRE_EQUAL(exp2[0].data, "second");
     }
 }
 
@@ -231,13 +231,12 @@ BOOST_FIXTURE_TEST_CASE(create_buffer, DynamicBufferFixture)
     BOOST_CHECK(buffer.empty());
     BOOST_CHECK_EQUAL(buffer.size(), 0);
 
-    buffer.push(
-        std::make_tuple(goby::acomms::BROADCAST_ID, "A", goby::time::SteadyClock::now(), "first"));
+    buffer.push({goby::acomms::BROADCAST_ID, "A", goby::time::SteadyClock::now(), "first"});
 
     auto vp = buffer.top();
-    BOOST_CHECK_EQUAL(std::get<0>(vp), goby::acomms::BROADCAST_ID);
-    BOOST_CHECK_EQUAL(std::get<1>(vp), "A");
-    BOOST_CHECK_EQUAL(std::get<3>(vp), "first");
+    BOOST_CHECK_EQUAL(vp.modem_id, goby::acomms::BROADCAST_ID);
+    BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+    BOOST_CHECK_EQUAL(vp.data, "first");
 
     BOOST_CHECK(buffer.erase(vp));
     BOOST_CHECK(buffer.empty());
@@ -247,16 +246,16 @@ BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
 
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "1"));
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "1"));
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "2"));
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "2"));
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "2"});
 
     // will be "A" because it was created first (and last access is initialized to creation time)
     {
         auto vp = buffer.top();
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "A");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "2");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "2");
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 3);
     }
@@ -264,8 +263,8 @@ BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
     // now it will be "B"
     {
         auto vp = buffer.top();
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "B");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "1");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
+        BOOST_CHECK_EQUAL(vp.data, "1");
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 2);
     }
@@ -273,8 +272,8 @@ BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
     // A
     {
         auto vp = buffer.top();
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "A");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "1");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "1");
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 1);
     }
@@ -282,8 +281,8 @@ BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
     // B
     {
         auto vp = buffer.top();
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "B");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "2");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
+        BOOST_CHECK_EQUAL(vp.data, "2");
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 0);
     }
@@ -293,32 +292,30 @@ BOOST_FIXTURE_TEST_CASE(arbitrary_erase, DynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
 
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "1"));
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "1"));
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "2"));
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "2"));
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "2"});
 
     BOOST_CHECK_EQUAL(buffer.size(), 4);
-    BOOST_CHECK(buffer.erase(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "1")));
+    BOOST_CHECK(buffer.erase({goby::acomms::BROADCAST_ID, "A", now, "1"}));
     BOOST_CHECK_EQUAL(buffer.size(), 3);
-    BOOST_CHECK(buffer.erase(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "2")));
+    BOOST_CHECK(buffer.erase({goby::acomms::BROADCAST_ID, "A", now, "2"}));
     BOOST_CHECK_EQUAL(buffer.size(), 2);
-    BOOST_CHECK(buffer.erase(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "1")));
+    BOOST_CHECK(buffer.erase({goby::acomms::BROADCAST_ID, "B", now, "1"}));
     BOOST_CHECK_EQUAL(buffer.size(), 1);
-    BOOST_CHECK(buffer.erase(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "2")));
+    BOOST_CHECK(buffer.erase({goby::acomms::BROADCAST_ID, "B", now, "2"}));
     BOOST_CHECK_EQUAL(buffer.size(), 0);
 }
 
 BOOST_FIXTURE_TEST_CASE(check_expire, DynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "first"));
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "first"));
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "first"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "first"});
     BOOST_CHECK_EQUAL(buffer.size(), 2);
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now + std::chrono::milliseconds(5),
-                                "second"));
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now + std::chrono::milliseconds(5),
-                                "second"));
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now + std::chrono::milliseconds(5), "second"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now + std::chrono::milliseconds(5), "second"});
     BOOST_CHECK_EQUAL(buffer.size(), 4);
     usleep(10000); // 10 ms
     auto exp1 = buffer.expire();
@@ -328,44 +325,40 @@ BOOST_FIXTURE_TEST_CASE(check_expire, DynamicBufferFixture)
 
     BOOST_CHECK(buffer.empty());
     BOOST_REQUIRE_EQUAL(exp1.size(), 2);
-    BOOST_REQUIRE_EQUAL(std::get<3>(exp1[0]), "first");
-    BOOST_REQUIRE_EQUAL(std::get<3>(exp1[1]), "first");
+    BOOST_REQUIRE_EQUAL(exp1[0].data, "first");
+    BOOST_REQUIRE_EQUAL(exp1[1].data, "first");
     BOOST_REQUIRE_EQUAL(exp2.size(), 2);
-    BOOST_REQUIRE_EQUAL(std::get<3>(exp2[0]), "second");
-    BOOST_REQUIRE_EQUAL(std::get<3>(exp2[1]), "second");
+    BOOST_REQUIRE_EQUAL(exp2[0].data, "second");
+    BOOST_REQUIRE_EQUAL(exp2[1].data, "second");
 }
 
 BOOST_FIXTURE_TEST_CASE(check_max_queue, DynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
 
-    BOOST_CHECK_EQUAL(
-        buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "1")).size(), 0);
-    BOOST_CHECK_EQUAL(
-        buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "2")).size(), 0);
-    BOOST_CHECK_EQUAL(
-        buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "1")).size(), 0);
-    BOOST_CHECK_EQUAL(
-        buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "2")).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"}).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"}).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"}).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push({goby::acomms::BROADCAST_ID, "B", now, "2"}).size(), 0);
 
     // newest first = true pushes out oldest
     {
-        auto exceeded = buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "3"));
+        auto exceeded = buffer.push({goby::acomms::BROADCAST_ID, "A", now, "3"});
         BOOST_CHECK_EQUAL(exceeded.size(), 1);
-        BOOST_CHECK_EQUAL(std::get<1>(exceeded[0]), "A");
-        BOOST_CHECK_EQUAL(std::get<2>(exceeded[0]), now);
-        BOOST_CHECK_EQUAL(std::get<3>(exceeded[0]), "1");
+        BOOST_CHECK_EQUAL(exceeded[0].subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(exceeded[0].push_time, now);
+        BOOST_CHECK_EQUAL(exceeded[0].data, "1");
     }
 
     // newest first = false pushes out newest (value just pushed)
     {
-        auto exceeded = buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "3"));
+        auto exceeded = buffer.push({goby::acomms::BROADCAST_ID, "B", now, "3"});
 
         // newest first pushes out oldest
         BOOST_CHECK_EQUAL(exceeded.size(), 1);
-        BOOST_CHECK_EQUAL(std::get<1>(exceeded[0]), "B");
-        BOOST_CHECK_EQUAL(std::get<2>(exceeded[0]), now);
-        BOOST_CHECK_EQUAL(std::get<3>(exceeded[0]), "3");
+        BOOST_CHECK_EQUAL(exceeded[0].subbuffer_id, "B");
+        BOOST_CHECK_EQUAL(exceeded[0].push_time, now);
+        BOOST_CHECK_EQUAL(exceeded[0].data, "3");
     }
 }
 
@@ -384,21 +377,21 @@ BOOST_FIXTURE_TEST_CASE(check_blackout_time, DynamicBufferFixture)
     cfg1.set_newest_first(true);
     buffer.replace(goby::acomms::BROADCAST_ID, "A", cfg1);
 
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "1"));
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "1"));
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"});
 
     // would be A but it is in blackout
     {
         auto vp = buffer.top();
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "B");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "1");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
+        BOOST_CHECK_EQUAL(vp.data, "1");
     }
     usleep(10000); // 10 ms
     // now it's A since we're not in blackout any more
     {
         auto vp = buffer.top();
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "A");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "1");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "1");
     }
 }
 
@@ -411,20 +404,20 @@ BOOST_FIXTURE_TEST_CASE(check_size, DynamicBufferFixture)
     cfg.set_value_base(100);
     buffer.replace(goby::acomms::BROADCAST_ID, "A", cfg);
 
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "1234567890"));
-    buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "B", now, "1"));
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1234567890"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"});
 
     // would be A but it is too large
     {
         auto vp = buffer.top(goby::acomms::BROADCAST_ID, 3);
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "B");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "1");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
+        BOOST_CHECK_EQUAL(vp.data, "1");
     }
 
     {
         auto vp = buffer.top(goby::acomms::BROADCAST_ID, 15);
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "A");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "1234567890");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "1234567890");
     }
 }
 
@@ -432,21 +425,19 @@ BOOST_FIXTURE_TEST_CASE(check_ack_timeout, DynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
 
-    BOOST_CHECK_EQUAL(
-        buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "1")).size(), 0);
-    BOOST_CHECK_EQUAL(
-        buffer.push(std::make_tuple(goby::acomms::BROADCAST_ID, "A", now, "2")).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"}).size(), 0);
+    BOOST_CHECK_EQUAL(buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"}).size(), 0);
 
     int max_bytes = 100;
     {
         auto vp = buffer.top(goby::acomms::BROADCAST_ID, max_bytes, std::chrono::milliseconds(10));
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "A");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "2");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "2");
     }
     {
         auto vp = buffer.top(goby::acomms::BROADCAST_ID, max_bytes, std::chrono::milliseconds(10));
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "A");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "1");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "1");
     }
 
     {
@@ -457,8 +448,8 @@ BOOST_FIXTURE_TEST_CASE(check_ack_timeout, DynamicBufferFixture)
     usleep(10000); // 10 ms
     {
         auto vp = buffer.top(goby::acomms::BROADCAST_ID, max_bytes, std::chrono::milliseconds(10));
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "A");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "2");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "2");
     }
 }
 
@@ -494,16 +485,16 @@ BOOST_FIXTURE_TEST_CASE(two_destination_contest, MultiIDDynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
 
-    buffer.push(std::make_tuple(1, "A", now, "1"));
-    buffer.push(std::make_tuple(2, "B", now, "1"));
-    buffer.push(std::make_tuple(1, "A", now, "2"));
-    buffer.push(std::make_tuple(2, "B", now, "2"));
+    buffer.push({1, "A", now, "1"});
+    buffer.push({2, "B", now, "1"});
+    buffer.push({1, "A", now, "2"});
+    buffer.push({2, "B", now, "2"});
 
     // will be "A" because it was created first (and last access is initialized to creation time)
     {
         auto vp = buffer.top();
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "A");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "2");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "2");
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 3);
     }
@@ -511,8 +502,8 @@ BOOST_FIXTURE_TEST_CASE(two_destination_contest, MultiIDDynamicBufferFixture)
     // now it will be "B"
     {
         auto vp = buffer.top();
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "B");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "1");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
+        BOOST_CHECK_EQUAL(vp.data, "1");
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 2);
     }
@@ -520,8 +511,8 @@ BOOST_FIXTURE_TEST_CASE(two_destination_contest, MultiIDDynamicBufferFixture)
     // A, but we ask for dest 2, so B
     {
         auto vp = buffer.top(2);
-        BOOST_CHECK_EQUAL(std::get<1>(vp), "B");
-        BOOST_CHECK_EQUAL(std::get<3>(vp), "2");
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
+        BOOST_CHECK_EQUAL(vp.data, "2");
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 1);
     }

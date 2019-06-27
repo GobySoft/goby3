@@ -33,6 +33,8 @@
 
 #include "goby/exception.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"
+#include "goby/middleware/publisher.h"
+#include "goby/middleware/subscriber.h"
 #include "goby/util/debug_logger.h"
 
 namespace goby
@@ -41,64 +43,6 @@ namespace middleware
 {
 class NullTransporter;
 
-template <typename Data> class Publisher
-{
-  public:
-    Publisher(const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                  goby::middleware::protobuf::TransporterConfig(),
-              std::function<void(Data&, const Group&)> add_group_func = [](Data&, const Group&) {})
-        : transport_cfg_(transport_cfg), add_group_func_(add_group_func)
-    {
-    }
-
-    Publisher(std::function<void(Data&, const Group&)> add_group_func)
-        : Publisher(goby::middleware::protobuf::TransporterConfig(), add_group_func)
-    {
-    }
-
-    ~Publisher() {}
-
-    const goby::middleware::protobuf::TransporterConfig& transport_cfg() const
-    {
-        return transport_cfg_;
-    }
-
-    void add_group(Data& data, const Group& group) const { add_group_func_(data, group); };
-
-  private:
-    goby::middleware::protobuf::TransporterConfig transport_cfg_;
-    std::function<void(Data&, const Group&)> add_group_func_;
-};
-
-template <typename Data> class Subscriber
-{
-  public:
-    Subscriber(const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                   goby::middleware::protobuf::TransporterConfig(),
-               std::function<Group(const Data&)> group_func =
-                   [](const Data&) { return Group(Group::broadcast_group); })
-        : transport_cfg_(transport_cfg), group_func_(group_func)
-    {
-    }
-
-    Subscriber(std::function<Group(const Data&)> group_func)
-        : Subscriber(goby::middleware::protobuf::TransporterConfig(), group_func)
-    {
-    }
-
-    ~Subscriber() {}
-
-    const goby::middleware::protobuf::TransporterConfig& transport_cfg() const
-    {
-        return transport_cfg_;
-    }
-
-    Group group(const Data& data) const { return group_func_(data); }
-
-  private:
-    goby::middleware::protobuf::TransporterConfig transport_cfg_;
-    std::function<Group(const Data&)> group_func_;
-};
 
 template <typename Transporter, typename InnerTransporter> class StaticTransporterInterface
 {
