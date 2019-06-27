@@ -199,8 +199,23 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
     goby::middleware::protobuf::TransporterConfig sample_subscriber_cfg;
     sample_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
 
+    using goby::middleware::intervehicle::protobuf::Subscription;
+    auto ack_callback = [&](std::shared_ptr<const Subscription> s,
+                            const goby::middleware::intervehicle::protobuf::AckData& ack) {
+        glog.is_debug1() && glog << "Subscription Ack for " << s->ShortDebugString()
+                                 << ", ack msg: " << ack.ShortDebugString() << std::endl;
+    };
+
+    auto expire_callback = [&](std::shared_ptr<const Subscription> s,
+                               const goby::middleware::intervehicle::protobuf::ExpireData& expire) {
+        glog.is_debug1() && glog << "Subscription Expire for " << s->ShortDebugString()
+                                 << ", expire msg: " << expire.ShortDebugString() << std::endl;
+        assert(false);
+    };
+
     goby::middleware::Subscriber<Sample> sample_subscriber(
-        sample_subscriber_cfg, [](const Sample& s) { return s.group(); });
+        sample_subscriber_cfg, [](const Sample& s) { return s.group(); }, ack_callback,
+        expire_callback);
 
     slt.subscribe<group2, Sample>(&handle_sample1, sample_subscriber);
     slt.subscribe<group3, Sample>(&handle_sample_indirect, sample_subscriber);

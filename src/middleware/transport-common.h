@@ -235,7 +235,8 @@ class PublisherCallback : public SerializationHandlerBase<Metadata>
         auto msg = std::make_shared<const Data>(
             SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
 
-        handler_(msg, md);
+        if (handler_)
+            handler_(msg, md);
         return actual_end;
     }
 
