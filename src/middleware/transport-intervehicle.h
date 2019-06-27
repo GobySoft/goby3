@@ -531,22 +531,18 @@ class InterVehiclePortal
 
     void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg)
     {
-        if (rx_msg.type() == goby::acomms::protobuf::ModemTransmission::ACK) {}
-        else
+        for (auto& frame : rx_msg.frame())
         {
-            for (auto& frame : rx_msg.frame())
+            const intervehicle::protobuf::DCCLForwardedData packets(
+                DCCLSerializerParserHelperBase::unpack(frame));
+            for (const auto& packet : packets.frame())
             {
-                const intervehicle::protobuf::DCCLForwardedData packets(
-                    DCCLSerializerParserHelperBase::unpack(frame));
-                for (const auto& packet : packets.frame())
-                {
-                    for (auto p : subscriptions_[packet.dccl_id()])
-                        p.second->post(packet.data().begin(), packet.data().end());
-                }
-
-                // send back to Forwarders
-                Base::inner_.template publish<Base::forward_group_>(packets);
+                for (auto p : subscriptions_[packet.dccl_id()])
+                    p.second->post(packet.data().begin(), packet.data().end());
             }
+
+            // send back to Forwarders
+            Base::inner_.template publish<Base::forward_group_>(packets);
         }
     }
 

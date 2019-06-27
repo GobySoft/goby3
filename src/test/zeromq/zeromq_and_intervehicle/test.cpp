@@ -42,6 +42,8 @@ std::array<int, 3> ipc_receive_count = {{0, 0, 0}};
 std::array<int, 2> direct_ack_receive_count = {{0, 0}};
 std::array<int, 2> direct_no_sub_receive_count = {{0, 0}};
 
+int direct_subscriber_ack = 0;
+
 std::atomic<bool> forward(true);
 std::atomic<int> zmq_reqs(0);
 
@@ -168,6 +170,8 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
 // process 3
 void handle_sample1(const Sample& sample)
 {
+    assert(direct_subscriber_ack == 2);
+
     glog.is(DEBUG1) && glog << "InterVehiclePortal received publication sample1: "
                             << sample.ShortDebugString() << std::endl;
     assert(sample.a() == ipc_receive_count[0]);
@@ -176,6 +180,8 @@ void handle_sample1(const Sample& sample)
 
 void handle_sample_indirect(const Sample& sample)
 {
+    assert(direct_subscriber_ack == 2);
+
     glog.is(DEBUG1) && glog << "InterVehiclePortal received indirect sample: "
                             << sample.ShortDebugString() << std::endl;
     assert(sample.a() == ipc_receive_count[1] - 10);
@@ -204,6 +210,7 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
                             const goby::middleware::intervehicle::protobuf::AckData& ack) {
         glog.is_debug1() && glog << "Subscription Ack for " << s->ShortDebugString()
                                  << ", ack msg: " << ack.ShortDebugString() << std::endl;
+        ++direct_subscriber_ack;
     };
 
     auto expire_callback = [&](std::shared_ptr<const Subscription> s,
