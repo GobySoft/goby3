@@ -419,6 +419,8 @@ template <typename T> class DynamicBuffer
     /// \brief Returns the top value in a priority contest between all subbuffers
     ///
     /// \param dest_id Modem id for this packet (can be QUERY_DESTINATION_ID to query all possible destinations)
+    /// \param max_bytes Maximum number of bytes in the returned message
+    /// \param ack_timeout Duration to wait before resending a value
     /// \return Value with the highest priority (DynamicSubBuffer::top_value()) of all the subbuffers
     full_value_type
     top(modem_id_type dest_id = goby::acomms::QUERY_DESTINATION_ID,
