@@ -212,24 +212,23 @@ class InterProcessForwarder
         typename SerializationSubscription<Data, scheme>::HandlerType inner_publication_function(
             inner_publication_lambda);
 
-        auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
-            new SerializationSubscription<Data, scheme>(
+        auto subscription =
+            std::shared_ptr<SerializationHandlerBase>(new SerializationSubscription<Data, scheme>(
                 inner_publication_function, group,
                 middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
                                              [=](const Data& d) { return group; })));
 
-        Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase>(
-            subscription);
+        Base::inner_.template publish<Base::forward_group_, SerializationHandlerBase>(subscription);
     }
 
     template <typename Data, int scheme> void _unsubscribe(const Group& group)
     {
         Base::inner_.template unsubscribe_dynamic<Data, scheme>(group);
 
-        auto unsubscription = std::shared_ptr<SerializationSubscriptionBase>(
+        auto unsubscription = std::shared_ptr<SerializationHandlerBase>(
             new SerializationUnSubscription<Data, scheme>(group));
 
-        Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase>(
+        Base::inner_.template publish<Base::forward_group_, SerializationHandlerBase>(
             unsubscription);
     }
 

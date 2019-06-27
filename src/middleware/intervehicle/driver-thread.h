@@ -44,9 +44,9 @@ namespace middleware
 {
 namespace protobuf
 {
-size_t data_size(const SerializerTransporterMessage& msg) { return msg.data().size(); }
+inline size_t data_size(const SerializerTransporterMessage& msg) { return msg.data().size(); }
 
-bool operator==(const SerializerTransporterMessage& a, const SerializerTransporterMessage& b)
+inline bool operator==(const SerializerTransporterMessage& a, const SerializerTransporterMessage& b)
 {
     return a.SerializeAsString() == b.SerializeAsString();
 }

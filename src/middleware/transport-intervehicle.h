@@ -254,7 +254,7 @@ class InterVehicleForwarder
         auto subscribe_lambda = [=](std::shared_ptr<const Data> d) { func(d); };
         typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType
             subscribe_function(subscribe_lambda);
-        auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
+        auto subscription = std::shared_ptr<SerializationHandlerBase>(
             new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group,
                                                                          subscriber));
 
@@ -277,9 +277,8 @@ class InterVehicleForwarder
     }
 
   private:
-    std::unordered_map<
-        int, std::unordered_multimap<std::string,
-                                     std::shared_ptr<const SerializationSubscriptionBase> > >
+    std::unordered_map<int, std::unordered_multimap<
+                                std::string, std::shared_ptr<const SerializationHandlerBase> > >
         subscriptions_;
 };
 
@@ -333,7 +332,7 @@ class InterVehiclePortal
             typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType
                 acked_function(acked_lambda);
 
-            auto ack_handler = std::shared_ptr<SerializationSubscriptionBase>(
+            auto ack_handler = std::shared_ptr<SerializationHandlerBase>(
                 new PublisherCallback<Data, MarshallingScheme::DCCL>(acked_function));
 
             goby::glog.is_debug1() &&
@@ -356,7 +355,7 @@ class InterVehiclePortal
         auto subscribe_lambda = [=](std::shared_ptr<const Data> d) { func(d); };
         typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType
             subscribe_function(subscribe_lambda);
-        auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
+        auto subscription = std::shared_ptr<SerializationHandlerBase>(
             new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group,
                                                                          subscriber));
 
@@ -418,7 +417,7 @@ class InterVehiclePortal
             typename SerializationSubscription<InterVehicleSubscription,
                                                MarshallingScheme::DCCL>::HandlerType
                 subscribe_function(subscribe_lambda);
-            auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
+            auto subscription = std::shared_ptr<SerializationHandlerBase>(
                 new SerializationSubscription<InterVehicleSubscription, MarshallingScheme::DCCL>(
                     subscribe_function));
 
@@ -530,16 +529,15 @@ class InterVehiclePortal
     std::deque<goby::acomms::protobuf::ModemTransmission> received_;
 
     // maps DCCL ID to map of Group->subscription
-    std::unordered_map<
-        int, std::unordered_multimap<std::string,
-                                     std::shared_ptr<const SerializationSubscriptionBase> > >
+    std::unordered_map<int, std::unordered_multimap<
+                                std::string, std::shared_ptr<const SerializationHandlerBase> > >
         subscriptions_;
 
     std::unordered_map<int, std::unordered_multimap<Group, protobuf::InterVehicleSubscription> >
         forwarded_subscriptions_;
 
     std::unordered_map<protobuf::SerializerTransporterMessage,
-                       std::shared_ptr<SerializationSubscriptionBase> >
+                       std::shared_ptr<SerializationHandlerBase> >
         pending_ack_;
 };
 } // namespace middleware

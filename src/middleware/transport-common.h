@@ -42,11 +42,11 @@ namespace goby
 {
 namespace middleware
 {
-class SerializationSubscriptionBase
+class SerializationHandlerBase
 {
   public:
-    SerializationSubscriptionBase() = default;
-    virtual ~SerializationSubscriptionBase() = default;
+    SerializationHandlerBase() = default;
+    virtual ~SerializationHandlerBase() = default;
 
     virtual std::string::const_iterator post(std::string::const_iterator b,
                                              std::string::const_iterator e) const = 0;
@@ -77,15 +77,14 @@ class SerializationSubscriptionBase
     const std::thread::id thread_id_{std::this_thread::get_id()};
 };
 
-inline bool operator==(const SerializationSubscriptionBase& s1,
-                       const SerializationSubscriptionBase& s2)
+inline bool operator==(const SerializationHandlerBase& s1, const SerializationHandlerBase& s2)
 {
     return s1.scheme() == s2.scheme() && s1.type_name() == s2.type_name() &&
            s1.subscribed_group() == s2.subscribed_group() && s1.action() == s2.action();
 }
 
 template <typename Data, int scheme_id>
-class SerializationSubscription : public SerializationSubscriptionBase
+class SerializationSubscription : public SerializationHandlerBase
 {
   public:
     typedef std::function<void(std::shared_ptr<const Data> data)> HandlerType;
@@ -115,9 +114,9 @@ class SerializationSubscription : public SerializationSubscriptionBase
 
     const char* post(const char* b, const char* e) const override { return _post(b, e); }
 
-    SerializationSubscriptionBase::SubscriptionAction action() const override
+    SerializationHandlerBase::SubscriptionAction action() const override
     {
-        return SerializationSubscriptionBase::SubscriptionAction::SUBSCRIBE;
+        return SerializationHandlerBase::SubscriptionAction::SUBSCRIBE;
     }
 
     void notify_subscribed(const protobuf::InterVehicleSubscription& subscription,
@@ -152,8 +151,7 @@ class SerializationSubscription : public SerializationSubscriptionBase
     Subscriber<Data> subscriber_;
 };
 
-template <typename Data, int scheme_id>
-class PublisherCallback : public SerializationSubscriptionBase
+template <typename Data, int scheme_id> class PublisherCallback : public SerializationHandlerBase
 {
   public:
     typedef std::function<void(std::shared_ptr<const Data> data)> HandlerType;
@@ -178,9 +176,9 @@ class PublisherCallback : public SerializationSubscriptionBase
 
     const char* post(const char* b, const char* e) const override { return _post(b, e); }
 
-    SerializationSubscriptionBase::SubscriptionAction action() const override
+    SerializationHandlerBase::SubscriptionAction action() const override
     {
-        return SerializationSubscriptionBase::SubscriptionAction::PUBLISHER_CALLBACK;
+        return SerializationHandlerBase::SubscriptionAction::PUBLISHER_CALLBACK;
     }
 
     // getters
@@ -207,7 +205,7 @@ class PublisherCallback : public SerializationSubscriptionBase
 };
 
 template <typename Data, int scheme_id>
-class SerializationUnSubscription : public SerializationSubscriptionBase
+class SerializationUnSubscription : public SerializationHandlerBase
 {
   public:
     SerializationUnSubscription(const Group& group)
@@ -232,9 +230,9 @@ class SerializationUnSubscription : public SerializationSubscriptionBase
         throw(goby::Exception("Cannot call post on an UnSubscription"));
     }
 
-    SerializationSubscriptionBase::SubscriptionAction action() const override
+    SerializationHandlerBase::SubscriptionAction action() const override
     {
-        return SerializationSubscriptionBase::SubscriptionAction::UNSUBSCRIBE;
+        return SerializationHandlerBase::SubscriptionAction::UNSUBSCRIBE;
     }
 
     // getters
