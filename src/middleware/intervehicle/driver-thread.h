@@ -59,6 +59,10 @@ namespace groups
 {
 constexpr Group modem_data_out{"goby::middleware::intervehicle::modem_data_out"};
 constexpr Group modem_data_in{"goby::middleware::intervehicle::modem_data_in"};
+constexpr Group modem_ack_in{"goby::middleware::intervehicle::modem_ack_in"};
+constexpr Group modem_expire_in{"goby::middleware::intervehicle::modem_expire_in"};
+constexpr Group modem_no_sub_in{"goby::middleware::intervehicle::modem_no_sub_in"};
+
 constexpr Group modem_subscription_forward_tx{
     "goby::middleware::intervehicle::modem_subscription_forward_tx"};
 constexpr Group modem_subscription_forward_rx{

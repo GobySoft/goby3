@@ -325,7 +325,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
                                         << " acks for frame: " << frame_number << std::endl;
                 for (const auto& value : values_to_ack_it->second)
                 {
-                    //                    interthread_->publish<groups::modem_ack_in>(std::make_pair(std::get<3>(value), rx_msg));
+                    goby::glog.is_debug1() && goby::glog << "Publishing ack for "
+                                                         << value.subbuffer_id << std::endl;
+
+                    interthread_->publish<groups::modem_ack_in>(std::make_pair(value.data, rx_msg));
                     buffer_.erase(value);
                 }
                 pending_ack_.erase(values_to_ack_it);

@@ -34,6 +34,7 @@
 
 #include "poller.h"
 #include "transport-interfaces.h"
+#include "transport-null.h"
 
 #include "goby/middleware/protobuf/interprocess_data.pb.h"
 
@@ -41,61 +42,6 @@ namespace goby
 {
 namespace middleware
 {
-// a do nothing transporter that is always inside the last real transporter level.
-class NullTransporter : public StaticTransporterInterface<NullTransporter, NullTransporter>,
-                        public Poller<NullTransporter>
-{
-  public:
-    NullTransporter() = default;
-    virtual ~NullTransporter() = default;
-
-    template <typename Data> static constexpr int scheme()
-    {
-        return MarshallingScheme::NULL_SCHEME;
-    }
-
-    template <const Group& group> void check_validity() {}
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(const Data& data, const Group& group,
-                         const Publisher<Data>& publisher = Publisher<Data>())
-    {
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
-                         const Publisher<Data>& publisher = Publisher<Data>())
-    {
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
-                         const Publisher<Data>& publisher = Publisher<Data>())
-    {
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
-                           const Subscriber<Data>& subscriber = Subscriber<Data>())
-    {
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
-                           const Subscriber<Data>& subscriber = Subscriber<Data>())
-    {
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void unsubscribe_dynamic(const Group& group)
-    {
-    }
-
-  private:
-    friend Poller<NullTransporter>;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock) { return 0; }
-};
-
 class SerializationSubscriptionBase
 {
   public:
@@ -115,12 +61,15 @@ class SerializationSubscriptionBase
     enum class SubscriptionAction
     {
         SUBSCRIBE,
-        UNSUBSCRIBE
+        UNSUBSCRIBE,
+        PUBLISHER_CALLBACK
     };
     virtual SubscriptionAction action() const = 0;
 
     virtual void notify_subscribed(const protobuf::InterVehicleSubscription& subscription,
-                                   const goby::acomms::protobuf::ModemTransmission& ack_msg) = 0;
+                                   const goby::acomms::protobuf::ModemTransmission& ack_msg)
+    {
+    }
 
     std::thread::id thread_id() const { return thread_id_; }
 
@@ -139,12 +88,11 @@ template <typename Data, int scheme_id>
 class SerializationSubscription : public SerializationSubscriptionBase
 {
   public:
-    typedef std::function<void(std::shared_ptr<const Data> data,
-                               const goby::middleware::protobuf::TransporterConfig& transport_cfg)>
-        HandlerType;
+    typedef std::function<void(std::shared_ptr<const Data> data)> HandlerType;
 
-    SerializationSubscription(HandlerType& handler, const Group& group,
-                              const Subscriber<Data>& subscriber)
+    SerializationSubscription(HandlerType& handler,
+                              const Group& group = Group(Group::broadcast_group),
+                              const Subscriber<Data>& subscriber = Subscriber<Data>())
         : handler_(handler),
           type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
           group_(group),
@@ -192,7 +140,8 @@ class SerializationSubscription : public SerializationSubscriptionBase
             SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
 
         if (subscribed_group() == subscriber_.group(*msg))
-            handler_(msg, goby::middleware::protobuf::TransporterConfig());
+            handler_(msg);
+
         return actual_end;
     }
 
@@ -201,6 +150,60 @@ class SerializationSubscription : public SerializationSubscriptionBase
     const std::string type_name_;
     const Group group_;
     Subscriber<Data> subscriber_;
+};
+
+template <typename Data, int scheme_id>
+class PublisherCallback : public SerializationSubscriptionBase
+{
+  public:
+    typedef std::function<void(std::shared_ptr<const Data> data)> HandlerType;
+
+    PublisherCallback(HandlerType& handler)
+        : handler_(handler), type_name_(SerializerParserHelper<Data, scheme_id>::type_name())
+    {
+    }
+
+    // handle an incoming message
+    std::string::const_iterator post(std::string::const_iterator b,
+                                     std::string::const_iterator e) const override
+    {
+        return _post(b, e);
+    }
+
+    std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
+                                           std::vector<char>::const_iterator e) const override
+    {
+        return _post(b, e);
+    }
+
+    const char* post(const char* b, const char* e) const override { return _post(b, e); }
+
+    SerializationSubscriptionBase::SubscriptionAction action() const override
+    {
+        return SerializationSubscriptionBase::SubscriptionAction::PUBLISHER_CALLBACK;
+    }
+
+    // getters
+    const std::string& type_name() const override { return type_name_; }
+    const Group& subscribed_group() const override { return group_; }
+    int scheme() const override { return scheme_id; }
+
+  private:
+    template <typename CharIterator>
+    CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end) const
+    {
+        CharIterator actual_end;
+        auto msg = std::make_shared<const Data>(
+            SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
+
+        handler_(msg);
+        return actual_end;
+    }
+
+  private:
+    HandlerType handler_;
+    const std::string type_name_;
+    Group group_{Group(Group::broadcast_group)};
 };
 
 template <typename Data, int scheme_id>

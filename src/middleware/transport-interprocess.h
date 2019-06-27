@@ -206,9 +206,8 @@ class InterProcessForwarder
         Base::inner_.template subscribe_dynamic<Data, scheme>(f, group);
 
         // forward subscription to edge
-        auto inner_publication_lambda = [=](std::shared_ptr<const Data> d,
-                                            const Publisher<Data>& p) {
-            Base::inner_.template publish_dynamic<Data, scheme>(d, group, p);
+        auto inner_publication_lambda = [=](std::shared_ptr<const Data> d) {
+            Base::inner_.template publish_dynamic<Data, scheme>(d, group);
         };
         typename SerializationSubscription<Data, scheme>::HandlerType inner_publication_function(
             inner_publication_lambda);

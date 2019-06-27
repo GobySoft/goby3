@@ -199,8 +199,7 @@ class InterProcessPortal
     {
         std::string identifier =
             _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
-        auto subscribe_lambda = [=](std::shared_ptr<const Data> d,
-                                    const middleware::Publisher<Data>& p) { f(d); };
+        auto subscribe_lambda = [=](std::shared_ptr<const Data> d) { f(d); };
         typename middleware::SerializationSubscription<Data, scheme>::HandlerType
             subscribe_function(subscribe_lambda);
 
@@ -378,6 +377,8 @@ class InterProcessPortal
                 _forwarder_unsubscribe(subscription->thread_id(), identifier);
             }
             break;
+
+            default: break;
         }
     }
 
