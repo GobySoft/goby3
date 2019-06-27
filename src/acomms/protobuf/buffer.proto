@@ -21,7 +21,7 @@ message DynamicBufferConfig
     ];
     // larger value takes precedence
     optional uint32 max_queue = 4
-        [default = 100, (dccl.field) = {min: 1 max: 1000}];
+        [default = 1000, (dccl.field) = {min: 1 max: 1000}];
     // true takes precedence over false
     optional bool newest_first = 5 [default = true];
     // use average of values

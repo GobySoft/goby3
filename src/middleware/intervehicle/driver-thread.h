@@ -29,6 +29,7 @@
 #include "goby/middleware/group.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/thread.h"
+#include "goby/middleware/transport-interprocess.h"
 #include "goby/middleware/transport-interthread.h"
 
 namespace goby
@@ -92,7 +93,7 @@ constexpr Group modem_driver_ready{"goby::middleware::intervehicle::modem_driver
 
 class ModemDriverThread
     : public goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
-                                      InterThreadTransporter>
+                                      InterProcessForwarder<InterThreadTransporter> >
 {
   public:
     using buffer_data_type = goby::middleware::protobuf::SerializerTransporterMessage;
@@ -133,6 +134,7 @@ class ModemDriverThread
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
+    std::unique_ptr<InterProcessForwarder<InterThreadTransporter> > interprocess_;
 
     std::map<subbuffer_id_type, goby::middleware::protobuf::SerializerTransporterKey>
         publisher_buffer_cfg_;

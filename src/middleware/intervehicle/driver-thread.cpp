@@ -32,21 +32,23 @@ using goby::middleware::protobuf::SerializerTransporterMessage;
 goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     const intervehicle::protobuf::PortalConfig::LinkConfig& config)
     : goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
-                               InterThreadTransporter>(config, 10 * boost::units::si::hertz)
+                               InterProcessForwarder<InterThreadTransporter> >(
+          config, 10 * boost::units::si::hertz)
 {
     interthread_.reset(new InterThreadTransporter);
-    this->set_transporter(interthread_.get());
+    interprocess_.reset(new InterProcessForwarder<InterThreadTransporter>(*interthread_));
+    this->set_transporter(interprocess_.get());
 
-    interthread_->subscribe<groups::modem_data_out, SerializerTransporterMessage>(
+    interprocess_->subscribe<groups::modem_data_out, SerializerTransporterMessage>(
         [this](std::shared_ptr<const SerializerTransporterMessage> msg) { _buffer_message(msg); });
 
-    interthread_
+    interprocess_
         ->subscribe<groups::modem_subscription_forward_tx, intervehicle::protobuf::Subscription>(
             [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
                 _forward_subscription(*subscription);
             });
 
-    interthread_
+    interprocess_
         ->subscribe<groups::modem_subscription_forward_rx, intervehicle::protobuf::Subscription>(
             [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
                 _accept_subscription(*subscription);
@@ -136,7 +138,8 @@ void goby::middleware::intervehicle::ModemDriverThread::_expire_value(
     const goby::acomms::DynamicBuffer<buffer_data_type>::Value& value,
     intervehicle::protobuf::ExpireData::ExpireReason reason)
 {
-    protobuf::ExpireData expire_data;
+    protobuf::ExpireMessagePair expire_pair;
+    protobuf::ExpireData& expire_data = *expire_pair.mutable_expire();
     expire_data.mutable_header()->set_src(goby::acomms::BROADCAST_ID);
     expire_data.mutable_header()->add_dest(value.modem_id);
 
@@ -144,7 +147,8 @@ void goby::middleware::intervehicle::ModemDriverThread::_expire_value(
         goby::time::convert_duration<goby::time::MicroTime>(now - value.push_time));
     expire_data.set_reason(reason);
 
-    interthread_->publish<groups::modem_expire_in>(std::make_pair(value.data, expire_data));
+    *expire_pair.mutable_serializer() = value.data;
+    interprocess_->publish<groups::modem_expire_in>(expire_pair);
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
@@ -345,7 +349,8 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
             }
             else
             {
-                protobuf::AckData ack_data;
+                protobuf::AckMessagePair ack_pair;
+                protobuf::AckData& ack_data = *ack_pair.mutable_ack();
                 ack_data.mutable_header()->set_src(rx_msg.src());
                 ack_data.mutable_header()->add_dest(rx_msg.dest());
                 auto now = goby::time::SteadyClock::now();
@@ -361,8 +366,8 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
                     ack_data.set_latency_with_units(
                         goby::time::convert_duration<goby::time::MicroTime>(now - value.push_time));
 
-                    interthread_->publish<groups::modem_ack_in>(
-                        std::make_pair(value.data, ack_data));
+                    *ack_pair.mutable_serializer() = value.data;
+                    interprocess_->publish<groups::modem_ack_in>(ack_pair);
                     buffer_.erase(value);
                 }
                 pending_ack_.erase(values_to_ack_it);
@@ -375,7 +380,12 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
         if (rx_msg.dest() == goby::acomms::BROADCAST_ID ||
             rx_msg.dest() == cfg().driver().modem_id())
         {
-            interthread_->publish<groups::modem_data_in>(rx_msg);
+            for (auto& frame : rx_msg.frame())
+            {
+                const intervehicle::protobuf::DCCLForwardedData packets(
+                    DCCLSerializerParserHelperBase::unpack(frame));
+                interprocess_->publish<groups::modem_data_in>(packets);
+            }
         }
     }
 }

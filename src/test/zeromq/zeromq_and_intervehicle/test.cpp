@@ -40,6 +40,7 @@ const int max_publish = 100;
 std::array<int, 3> ipc_receive_count = {{0, 0, 0}};
 
 std::array<int, 2> direct_ack_receive_count = {{0, 0}};
+int indirect_ack_receive_count = 0;
 std::array<int, 2> direct_no_sub_receive_count = {{0, 0}};
 
 int direct_subscriber_ack = 0;
@@ -154,9 +155,30 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
         sample_buffer_cfg->set_newest_first(false);
         sample_buffer_cfg->set_ack_required(true);
 
+        auto ack_callback = [&](std::shared_ptr<const Sample> s,
+                                const goby::middleware::intervehicle::protobuf::AckData& ack) {
+            glog.is_debug1() && glog << "Ack for " << s->ShortDebugString()
+                                     << ", ack msg: " << ack.ShortDebugString() << std::endl;
+            ++indirect_ack_receive_count;
+        };
+
+        auto expire_callback =
+            [&](std::shared_ptr<const Sample> s,
+                const goby::middleware::intervehicle::protobuf::ExpireData& expire) {
+                glog.is_debug1() && glog << "Expire for " << s->ShortDebugString()
+                                         << ", expire msg: " << expire.ShortDebugString()
+                                         << std::endl;
+
+                switch (expire.reason())
+                {
+                    default: assert(false); break;
+                }
+            };
+
         goby::middleware::Publisher<Sample> sample_publisher(
             sample_publisher_cfg,
-            [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); });
+            [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); },
+            ack_callback, expire_callback);
         interplatform.publish<group3>(s1, sample_publisher);
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
@@ -164,8 +186,8 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
         ++publish_count;
     }
 
-    while (forward) { interplatform.poll(std::chrono::milliseconds(100)); }
-}
+    while (indirect_ack_receive_count != max_publish || forward)
+    { interplatform.poll(std::chrono::milliseconds(100)); } }
 
 // process 3
 void handle_sample1(const Sample& sample)

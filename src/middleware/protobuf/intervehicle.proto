@@ -6,6 +6,7 @@ import "goby/acomms/protobuf/amac_config.proto";
 import "goby/acomms/protobuf/buffer.proto";
 import "google/protobuf/descriptor.proto";
 import "goby/middleware/protobuf/intervehicle_transporter_config.proto";
+import "goby/middleware/protobuf/serializer_transporter.proto";
 
 package goby.middleware.intervehicle.protobuf;
 
@@ -82,6 +83,8 @@ message DCCLPacket
     required bytes data = 2;
 }
 
+// have to split this at the Portal as the Forwarders may not have all the DCCL
+// IDs loaded
 message DCCLForwardedData
 {
     repeated DCCLPacket frame = 1;
@@ -111,8 +114,8 @@ message ExpireData
 
     required Header header = 1
         [(goby.field).description =
-         "dest is the local modem that expired this message"];
-    
+             "dest is the local modem that expired this message"];
+
     required int64 latency = 2 [
         (goby.field).description = "Time between queuing and expiration",
         (dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}
@@ -125,9 +128,22 @@ message ExpireData
         EXPIRED_BUFFER_OVERFLOW = 3;
     }
     required ExpireReason reason = 3;
-    
-    //required int32 transmit_attempts = 4
+
+    // required int32 transmit_attempts = 4
     //    [(goby.field).description =
     //         "the number of times this message was transmitted"];
+}
 
+message AckMessagePair
+{
+    required goby.middleware.protobuf.SerializerTransporterMessage serializer =
+        1;
+    required AckData ack = 2;
+}
+
+message ExpireMessagePair
+{
+    required goby.middleware.protobuf.SerializerTransporterMessage serializer =
+        1;
+    required ExpireData expire = 2;
 }
