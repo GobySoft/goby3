@@ -253,12 +253,9 @@ class InterVehicleForwarder
     {
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
 
-        auto subscribe_lambda = [=](std::shared_ptr<const Data> d) { func(d); };
-        typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType
-            subscribe_function(subscribe_lambda);
-        auto subscription = std::shared_ptr<SerializationHandlerBase<> >(
-            new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group,
-                                                                         subscriber));
+        auto subscription =
+            std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL> >(func, group,
+                                                                                        subscriber);
 
         subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
 
@@ -327,18 +324,11 @@ class InterVehiclePortal
         if (publisher.transport_cfg().intervehicle().buffer().ack_required() &&
             publisher.acked_func())
         {
-            using goby::acomms::protobuf::ModemTransmission;
-            auto acked_lambda = [=](std::shared_ptr<const Data> d,
-                                    const ModemTransmission& ack_msg) {
-                publisher.acked(*d, ack_msg);
-            };
+            using intervehicle::protobuf::AckData;
 
-            typename PublisherCallback<Data, MarshallingScheme::DCCL,
-                                       ModemTransmission>::HandlerType acked_function(acked_lambda);
-
-            auto ack_handler = std::shared_ptr<SerializationHandlerBase<ModemTransmission> >(
-                new PublisherCallback<Data, MarshallingScheme::DCCL, ModemTransmission>(
-                    acked_function));
+            auto ack_handler =
+                std::make_shared<PublisherCallback<Data, MarshallingScheme::DCCL, AckData> >(
+                    publisher.acked_func());
 
             goby::glog.is_debug1() &&
                 goby::glog << "Inserting ack handler for id: "
@@ -356,18 +346,12 @@ class InterVehiclePortal
                     const Subscriber<Data>& subscriber)
     {
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
-
-        auto subscribe_lambda = [=](std::shared_ptr<const Data> d) { func(d); };
-        typename SerializationSubscription<Data, MarshallingScheme::DCCL>::HandlerType
-            subscribe_function(subscribe_lambda);
-        auto subscription = std::shared_ptr<SerializationHandlerBase<> >(
-            new SerializationSubscription<Data, MarshallingScheme::DCCL>(subscribe_function, group,
-                                                                         subscriber));
+        auto subscription =
+            std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL> >(func, group,
+                                                                                        subscriber);
 
         subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
-
         auto dccl_subscription = this->template _serialize_subscription<Data>(group, subscriber);
-
         Base::inner_.inner().template publish<intervehicle::groups::modem_subscription_forward_tx>(
             dccl_subscription);
     }
@@ -418,12 +402,9 @@ class InterVehiclePortal
                 Base::inner_.inner()
                     .template publish<intervehicle::groups::modem_subscription_forward_rx>(d);
             };
-
-            typename SerializationSubscription<Subscription, MarshallingScheme::DCCL>::HandlerType
-                subscribe_function(subscribe_lambda);
-            auto subscription = std::shared_ptr<SerializationHandlerBase<> >(
-                new SerializationSubscription<Subscription, MarshallingScheme::DCCL>(
-                    subscribe_function));
+            auto subscription =
+                std::make_shared<SerializationSubscription<Subscription, MarshallingScheme::DCCL> >(
+                    subscribe_lambda);
 
             auto dccl_id = SerializerParserHelper<Subscription, MarshallingScheme::DCCL>::id();
             subscriptions_[dccl_id].insert(
@@ -438,8 +419,8 @@ class InterVehiclePortal
                 });
 
         {
-            using ack_pair_type = std::pair<protobuf::SerializerTransporterMessage,
-                                            goby::acomms::protobuf::ModemTransmission>;
+            using ack_pair_type =
+                std::pair<protobuf::SerializerTransporterMessage, intervehicle::protobuf::AckData>;
 
             Base::inner_.inner()
                 .template subscribe<intervehicle::groups::modem_ack_in, ack_pair_type>(
@@ -539,9 +520,8 @@ class InterVehiclePortal
     std::unordered_map<int, std::unordered_multimap<Group, intervehicle::protobuf::Subscription> >
         forwarded_subscriptions_;
 
-    std::unordered_map<
-        protobuf::SerializerTransporterMessage,
-        std::shared_ptr<SerializationHandlerBase<goby::acomms::protobuf::ModemTransmission> > >
+    std::unordered_map<protobuf::SerializerTransporterMessage,
+                       std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::AckData> > >
         pending_ack_;
 };
 } // namespace middleware

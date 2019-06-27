@@ -199,15 +199,11 @@ class InterProcessPortal
     {
         std::string identifier =
             _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
-        auto subscribe_lambda = [=](std::shared_ptr<const Data> d) { f(d); };
-        typename middleware::SerializationSubscription<Data, scheme>::HandlerType
-            subscribe_function(subscribe_lambda);
 
-        auto subscription = std::shared_ptr<middleware::SerializationHandlerBase<> >(
-            new middleware::SerializationSubscription<Data, scheme>(
-                subscribe_function, group,
-                middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
-                                             [=](const Data& d) { return group; })));
+        auto subscription = std::make_shared<middleware::SerializationSubscription<Data, scheme> >(
+            f, group,
+            middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
+                                         [=](const Data& d) { return group; }));
 
         if (forwarder_subscriptions_.count(identifier) == 0 &&
             portal_subscriptions_.count(identifier) == 0)

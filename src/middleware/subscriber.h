@@ -67,8 +67,8 @@ template <typename Data> class Subscriber
             return Group(Group::broadcast_group);
     }
 
-    void subscribed(const intervehicle::protobuf::Subscription& sub,
-                    const goby::acomms::protobuf::ModemTransmission& ack_msg) const
+    void subscribed(std::shared_ptr<const intervehicle::protobuf::Subscription> sub,
+                    const intervehicle::protobuf::AckData& ack_msg) const
     {
         if (subscribed_func_)
             subscribed_func_(sub, ack_msg);

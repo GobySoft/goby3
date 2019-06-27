@@ -98,8 +98,9 @@ class SerializationHandlerBase : public SerializationHandlerPostSelector<Metadat
     };
     virtual SubscriptionAction action() const = 0;
 
-    virtual void notify_subscribed(const intervehicle::protobuf::Subscription& subscription,
-                                   const goby::acomms::protobuf::ModemTransmission& ack_msg)
+    virtual void
+    notify_subscribed(std::shared_ptr<const intervehicle::protobuf::Subscription> subscription,
+                      const intervehicle::protobuf::AckData& ack_msg)
     {
     }
 
@@ -123,7 +124,7 @@ class SerializationSubscription : public SerializationHandlerBase<>
   public:
     typedef std::function<void(std::shared_ptr<const Data> data)> HandlerType;
 
-    SerializationSubscription(HandlerType& handler,
+    SerializationSubscription(HandlerType handler,
                               const Group& group = Group(Group::broadcast_group),
                               const Subscriber<Data>& subscriber = Subscriber<Data>())
         : handler_(handler),
@@ -153,8 +154,8 @@ class SerializationSubscription : public SerializationHandlerBase<>
         return SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE;
     }
 
-    void notify_subscribed(const intervehicle::protobuf::Subscription& subscription,
-                           const goby::acomms::protobuf::ModemTransmission& ack_msg) override
+    void notify_subscribed(std::shared_ptr<const intervehicle::protobuf::Subscription> subscription,
+                           const intervehicle::protobuf::AckData& ack_msg) override
     {
         subscriber_.subscribed(subscription, ack_msg);
     }
@@ -191,7 +192,7 @@ class PublisherCallback : public SerializationHandlerBase<Metadata>
   public:
     typedef std::function<void(std::shared_ptr<const Data> data, const Metadata& md)> HandlerType;
 
-    PublisherCallback(HandlerType& handler)
+    PublisherCallback(HandlerType handler)
         : handler_(handler), type_name_(SerializerParserHelper<Data, scheme_id>::type_name())
     {
     }
@@ -291,7 +292,7 @@ class SerializationSubscriptionRegex
                                const std::string& type, const Group& group)>
         HandlerType;
 
-    SerializationSubscriptionRegex(HandlerType& handler, const std::set<int>& schemes,
+    SerializationSubscriptionRegex(HandlerType handler, const std::set<int>& schemes,
                                    const std::string& type_regex = ".*",
                                    const std::string& group_regex = ".*")
         : handler_(handler), schemes_(schemes), type_regex_(type_regex), group_regex_(group_regex)

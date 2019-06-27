@@ -319,6 +319,11 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
             }
             else
             {
+                protobuf::AckData ack_data;
+                ack_data.mutable_header()->set_src(rx_msg.src());
+                ack_data.mutable_header()->add_dest(rx_msg.dest());
+                auto now = goby::time::SteadyClock::now();
+
                 auto values_to_ack_it = pending_ack_.find(frame_number);
                 glog.is(DEBUG1) && glog << "processing " << values_to_ack_it->second.size()
                                         << " acks for frame: " << frame_number << std::endl;
@@ -327,7 +332,11 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
                     goby::glog.is_debug1() && goby::glog << "Publishing ack for "
                                                          << value.subbuffer_id << std::endl;
 
-                    interthread_->publish<groups::modem_ack_in>(std::make_pair(value.data, rx_msg));
+                    ack_data.set_latency_with_units(
+                        goby::time::convert_duration<goby::time::MicroTime>(now - value.push_time));
+
+                    interthread_->publish<groups::modem_ack_in>(
+                        std::make_pair(value.data, ack_data));
                     buffer_.erase(value);
                 }
                 pending_ack_.erase(values_to_ack_it);

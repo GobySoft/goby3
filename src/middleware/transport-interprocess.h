@@ -209,14 +209,11 @@ class InterProcessForwarder
         auto inner_publication_lambda = [=](std::shared_ptr<const Data> d) {
             Base::inner_.template publish_dynamic<Data, scheme>(d, group);
         };
-        typename SerializationSubscription<Data, scheme>::HandlerType inner_publication_function(
-            inner_publication_lambda);
 
-        auto subscription = std::shared_ptr<SerializationHandlerBase<> >(
-            new SerializationSubscription<Data, scheme>(
-                inner_publication_function, group,
-                middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
-                                             [=](const Data& d) { return group; })));
+        auto subscription = std::make_shared<SerializationSubscription<Data, scheme> >(
+            inner_publication_lambda, group,
+            middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
+                                         [=](const Data& d) { return group; }));
 
         Base::inner_.template publish<Base::forward_group_, SerializationHandlerBase<> >(
             subscription);
@@ -256,12 +253,8 @@ class InterProcessForwarder
             Base::inner_.template publish<Base::regex_group_>(forwarded_data);
         };
 
-        typename SerializationSubscriptionRegex::HandlerType inner_publication_function(
-            inner_publication_lambda);
-
-        auto portal_subscription =
-            std::shared_ptr<SerializationSubscriptionRegex>(new SerializationSubscriptionRegex(
-                inner_publication_function, schemes, type_regex, group_regex));
+        auto portal_subscription = std::make_shared<SerializationSubscriptionRegex>(
+            inner_publication_lambda, schemes, type_regex, group_regex);
         Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionRegex>(
             portal_subscription);
 

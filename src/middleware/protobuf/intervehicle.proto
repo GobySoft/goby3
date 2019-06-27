@@ -86,3 +86,40 @@ message DCCLForwardedData
 {
     repeated DCCLPacket frame = 1;
 }
+
+message AckData
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+    required Header header = 1
+        [(goby.field).description =
+             "src is the modem from which the ack originated. dest is the "
+             "local modem that received the ack"];
+
+    required int64 latency = 2 [
+        (goby.field).description = "Time between queuing and acknowledgement",
+        (dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}
+    ];
+}
+
+message ExpireData
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    required Header header = 1
+        [(goby.field).description =
+         "dest is the local modem that expired this message"];
+    
+    required int64 latency = 2 [
+        (goby.field).description = "Time between queuing and expiration",
+        (dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}
+    ];
+
+    required int32 transmit_attempts = 3
+        [(goby.field).description =
+             "the number of times this message was transmitted"];
+
+}

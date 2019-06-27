@@ -36,19 +36,30 @@ template <typename Data> class Publisher
   public:
     using set_group_func_type = std::function<void(Data&, const Group&)>;
     using acked_func_type =
-        std::function<void(const Data&, const goby::acomms::protobuf::ModemTransmission&)>;
+        std::function<void(std::shared_ptr<const Data>, const intervehicle::protobuf::AckData&)>;
+    using expired_func_type =
+        std::function<void(std::shared_ptr<const Data>, const intervehicle::protobuf::ExpireData&)>;
+    using no_subscriber_func_type = std::function<void(std::shared_ptr<const Data>)>;
 
     Publisher(const goby::middleware::protobuf::TransporterConfig& transport_cfg =
                   goby::middleware::protobuf::TransporterConfig(),
               set_group_func_type set_group_func = set_group_func_type(),
-              acked_func_type acked_func = acked_func_type())
-        : transport_cfg_(transport_cfg), set_group_func_(set_group_func), acked_func_(acked_func)
+              acked_func_type acked_func = acked_func_type(),
+              expired_func_type expired_func = expired_func_type(),
+              no_subscriber_func_type no_subscriber_func = no_subscriber_func_type())
+        : transport_cfg_(transport_cfg),
+          set_group_func_(set_group_func),
+          acked_func_(acked_func),
+          expired_func_(expired_func),
+          no_subscriber_func_(no_subscriber_func)
     {
     }
 
     Publisher(const goby::middleware::protobuf::TransporterConfig& transport_cfg,
-              acked_func_type acked_func)
-        : Publisher(transport_cfg, set_group_func_type(), acked_func)
+              acked_func_type acked_func, expired_func_type expired_func = expired_func_type(),
+              no_subscriber_func_type no_subscriber_func = no_subscriber_func_type())
+        : Publisher(transport_cfg, set_group_func_type(), acked_func, expired_func,
+                    no_subscriber_func)
     {
     }
 
@@ -65,11 +76,11 @@ template <typename Data> class Publisher
             set_group_func_(data, group);
     };
 
-    void acked(const Data& original, const goby::acomms::protobuf::ModemTransmission& ack_msg) const
-    {
-        if (acked_func_)
-            acked_func_(original, ack_msg);
-    }
+    //    void acked(std::shared_ptr<const Data> original, const intervehicle::protobuf::AckData& ack_msg) const
+    //    {
+    //   if (acked_func_)
+    //        acked_func_(original, ack_msg);
+    //}
 
     acked_func_type acked_func() const { return acked_func_; }
 
@@ -77,6 +88,8 @@ template <typename Data> class Publisher
     goby::middleware::protobuf::TransporterConfig transport_cfg_;
     set_group_func_type set_group_func_;
     acked_func_type acked_func_;
+    expired_func_type expired_func_;
+    no_subscriber_func_type no_subscriber_func_;
 };
 
 } // namespace middleware

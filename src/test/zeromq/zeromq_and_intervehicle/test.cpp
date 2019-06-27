@@ -40,6 +40,7 @@ const int max_publish = 100;
 std::array<int, 3> ipc_receive_count = {{0, 0, 0}};
 
 std::array<int, 2> direct_ack_receive_count = {{0, 0}};
+std::array<int, 2> direct_no_sub_receive_count = {{0, 0}};
 
 std::atomic<bool> forward(true);
 std::atomic<int> zmq_reqs(0);
@@ -77,10 +78,11 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
         goby::middleware::Publisher<Sample> sample_publisher(
             sample_publisher_cfg,
             [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); },
-            [&](const Sample& s, const goby::acomms::protobuf::ModemTransmission& ack) {
-                glog.is_debug1() && glog << "Ack for " << s.ShortDebugString()
+            [&](std::shared_ptr<const Sample> s,
+                const goby::middleware::intervehicle::protobuf::AckData& ack) {
+                glog.is_debug1() && glog << "Ack for " << s->ShortDebugString()
                                          << ", ack msg: " << ack.ShortDebugString() << std::endl;
-                ++direct_ack_receive_count[s.group() - 1];
+                ++direct_ack_receive_count[s->group() - 1];
             });
         slt.publish<group1>(s1, sample_publisher);
         glog.is(DEBUG1) && glog << "Published group1: " << s1->ShortDebugString() << std::endl;
