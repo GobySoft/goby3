@@ -8,7 +8,7 @@ package goby.middleware.intervehicle.protobuf;
 message TransporterConfig
 {
     repeated int32 publisher_id = 1
-        [(dccl.field) = {min: 1 max: 30 max_repeat: 8 omit: true}];
+        [(dccl.field) = {min: 1 max: 30 max_repeat: 8}];
 
     optional goby.acomms.protobuf.DynamicBufferConfig buffer = 10;
     message LinkConfig

@@ -42,17 +42,17 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     interprocess_->subscribe<groups::modem_data_out, SerializerTransporterMessage>(
         [this](std::shared_ptr<const SerializerTransporterMessage> msg) { _buffer_message(msg); });
 
-    interprocess_
-        ->subscribe<groups::modem_subscription_forward_tx, intervehicle::protobuf::Subscription>(
-            [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
-                _forward_subscription(*subscription);
-            });
+    interprocess_->subscribe<groups::modem_subscription_forward_tx,
+                             intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
+        [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
+            _forward_subscription(*subscription);
+        });
 
-    interprocess_
-        ->subscribe<groups::modem_subscription_forward_rx, intervehicle::protobuf::Subscription>(
-            [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
-                _accept_subscription(*subscription);
-            });
+    interprocess_->subscribe<groups::modem_subscription_forward_rx,
+                             intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
+        [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
+            _accept_subscription(*subscription);
+        });
 
     if (cfg().driver().has_driver_name())
     {
@@ -139,7 +139,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_expire_value(
     intervehicle::protobuf::ExpireData::ExpireReason reason)
 {
     protobuf::ExpireMessagePair expire_pair;
-    protobuf::ExpireData& expire_data = *expire_pair.mutable_expire();
+    protobuf::ExpireData& expire_data = *expire_pair.mutable_data();
     expire_data.mutable_header()->set_src(goby::acomms::BROADCAST_ID);
     expire_data.mutable_header()->add_dest(value.modem_id);
 
@@ -169,6 +169,9 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
 
         auto subscription_publication = serialize_publication(
             subscription, groups::subscription_forward, Publisher<decltype(subscription)>());
+
+        // overwrite serialize_time to ensure mapping with InterVehicle portals
+        subscription_publication->mutable_key()->set_serialize_time(subscription.time());
 
         buffer_.push({dest, buffer_id, goby::time::SteadyClock::now(), *subscription_publication});
     }
@@ -350,7 +353,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
             else
             {
                 protobuf::AckMessagePair ack_pair;
-                protobuf::AckData& ack_data = *ack_pair.mutable_ack();
+                protobuf::AckData& ack_data = *ack_pair.mutable_data();
                 ack_data.mutable_header()->set_src(rx_msg.src());
                 ack_data.mutable_header()->add_dest(rx_msg.dest());
                 auto now = goby::time::SteadyClock::now();
@@ -371,7 +374,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
                     buffer_.erase(value);
                 }
                 pending_ack_.erase(values_to_ack_it);
-                // TODO publish acks for other drivers to erase the same piece of data (if they have it)
+                // TODO publish acks for other drivers to erase the same piece of data (if they have it and the ack'ing party is the same vehicle - need a distinction between modem_id and vehicle_id ?)
             }
         }
     }

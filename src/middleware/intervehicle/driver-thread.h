@@ -68,6 +68,7 @@ serialize_publication(const Data& d, const Group& group, const Publisher<Data>& 
     key->set_type(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
     key->set_group(std::string(group));
     key->set_group_numeric(group.numeric());
+    key->set_serialize_time_with_units(goby::time::SystemClock::now<goby::time::MicroTime>());
     *key->mutable_cfg() = publisher.transport_cfg();
 
     msg->set_allocated_data(sbytes);

@@ -43,6 +43,7 @@ std::array<int, 2> direct_ack_receive_count = {{0, 0}};
 int indirect_ack_receive_count = 0;
 std::array<int, 2> direct_no_sub_receive_count = {{0, 0}};
 
+int indirect_subscriber_ack = 0;
 int direct_subscriber_ack = 0;
 
 std::atomic<bool> forward(true);
@@ -269,6 +270,8 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
 
 void indirect_handle_sample_indirect(const Sample& sample)
 {
+    assert(indirect_subscriber_ack == 1);
+
     glog.is(DEBUG1) && glog << "InterVehicleForwarder received indirect sample: "
                             << sample.ShortDebugString() << std::endl;
     assert(sample.a() == ipc_receive_count[0] - 10);
@@ -283,10 +286,26 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
     goby::middleware::protobuf::TransporterConfig sample_indirect_subscriber_cfg;
     sample_indirect_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
 
+    using goby::middleware::intervehicle::protobuf::Subscription;
+    auto ack_callback = [&](std::shared_ptr<const Subscription> s,
+                            const goby::middleware::intervehicle::protobuf::AckData& ack) {
+        glog.is_debug1() && glog << "Subscription Ack for " << s->ShortDebugString()
+                                 << ", ack msg: " << ack.ShortDebugString() << std::endl;
+        ++indirect_subscriber_ack;
+    };
+
+    auto expire_callback = [&](std::shared_ptr<const Subscription> s,
+                               const goby::middleware::intervehicle::protobuf::ExpireData& expire) {
+        glog.is_debug1() && glog << "Subscription Expire for " << s->ShortDebugString()
+                                 << ", expire msg: " << expire.ShortDebugString() << std::endl;
+        assert(false);
+    };
+
     interplatform.subscribe_dynamic<Sample>(
         &indirect_handle_sample_indirect, 3,
         goby::middleware::Subscriber<Sample>(sample_indirect_subscriber_cfg,
-                                             [](const Sample& s) { return s.group(); }));
+                                             [](const Sample& s) { return s.group(); },
+                                             ack_callback, expire_callback));
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
