@@ -50,6 +50,11 @@ template <typename Data> class Publisher
           acked_func_(acked_func),
           expired_func_(expired_func)
     {
+        // if an ack function is set, we asuume we require an ack
+        if (acked_func_ && !cfg_.intervehicle().buffer().has_ack_required())
+        {
+            cfg_.mutable_intervehicle()->mutable_buffer()->set_ack_required(true);
+        }
     }
 
     Publisher(const goby::middleware::protobuf::TransporterConfig& cfg, acked_func_type acked_func,

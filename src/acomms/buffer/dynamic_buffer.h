@@ -319,8 +319,8 @@ template <typename T> class DynamicBuffer
   public:
     DynamicBuffer()
     {
-        ++count_;
-        glog_priority_group_ = "goby::acomms::buffer::priority::" + std::to_string(count_);
+        int order(++count_);
+        glog_priority_group_ = "goby::acomms::buffer::priority::" + std::to_string(order);
         goby::glog.add_group(glog_priority_group_, util::Colors::yellow);
     }
     ~DynamicBuffer() {}

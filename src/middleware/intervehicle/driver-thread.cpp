@@ -176,7 +176,8 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
             subscription, groups::subscription_forward, Publisher<decltype(subscription)>());
 
         // overwrite serialize_time to ensure mapping with InterVehicle portals
-        subscription_publication->mutable_key()->set_serialize_time(subscription.time());
+        auto subscribe_time = subscription.time_with_units();
+        subscription_publication->mutable_key()->set_serialize_time_with_units(subscribe_time);
 
         buffer_.push({dest, buffer_id, goby::time::SteadyClock::now(), *subscription_publication});
     }
@@ -252,6 +253,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
              << ", buffer_id: " << buffer_id << std::endl;
 
     auto dest = subscription.header().src();
+
+    if (!_dest_is_in_subnet(dest))
+        return;
+
     // TODO see if there's a change to the buffer configuration with this subscription
     if (!subscriber_buffer_cfg_[dest].count(buffer_id))
     {
@@ -332,7 +337,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
     else
     {
         auto now = goby::time::SteadyClock::now();
-        _expire_value(now, {goby::acomms::BROADCAST_ID, buffer_id, now, *msg},
+        _expire_value(now, {cfg().driver().modem_id(), buffer_id, now, *msg},
                       intervehicle::protobuf::ExpireData::EXPIRED_NO_SUBSCRIBERS);
     }
 }

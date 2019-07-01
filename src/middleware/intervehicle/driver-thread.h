@@ -48,7 +48,24 @@ inline size_t data_size(const SerializerTransporterMessage& msg) { return msg.da
 
 inline bool operator==(const SerializerTransporterMessage& a, const SerializerTransporterMessage& b)
 {
-    return a.SerializeAsString() == b.SerializeAsString();
+    return (a.key().serialize_time() == b.key().serialize_time() &&
+            a.key().marshalling_scheme() == b.key().marshalling_scheme() &&
+            a.key().type() == b.key().type() && a.key().group() == b.key().group() &&
+            a.data() == b.data());
+}
+
+inline bool operator<(const SerializerTransporterMessage& a, const SerializerTransporterMessage& b)
+{
+    if (a.key().serialize_time() != b.key().serialize_time())
+        return a.key().serialize_time() < b.key().serialize_time();
+    else if (a.key().marshalling_scheme() != b.key().marshalling_scheme())
+        return a.key().marshalling_scheme() < b.key().marshalling_scheme();
+    else if (a.key().type() != b.key().type())
+        return a.key().type() < b.key().type();
+    else if (a.key().group() != b.key().group())
+        return a.key().group() < b.key().group();
+    else
+        return a.data() < b.data();
 }
 
 } // namespace protobuf
@@ -68,9 +85,9 @@ serialize_publication(const Data& d, const Group& group, const Publisher<Data>& 
     key->set_type(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
     key->set_group(std::string(group));
     key->set_group_numeric(group.numeric());
-    key->set_serialize_time_with_units(goby::time::SystemClock::now<goby::time::MicroTime>());
+    auto now = goby::time::SystemClock::now<goby::time::MicroTime>();
+    key->set_serialize_time_with_units(now);
     *key->mutable_cfg() = publisher.cfg();
-
     msg->set_allocated_data(sbytes);
     return msg;
 }

@@ -35,18 +35,6 @@
 
 #include "goby/middleware/intervehicle/driver-thread.h"
 
-namespace std
-{
-template <> struct hash<goby::middleware::protobuf::SerializerTransporterMessage>
-{
-    size_t
-    operator()(const goby::middleware::protobuf::SerializerTransporterMessage& msg) const noexcept
-    {
-        return std::hash<std::string>{}(msg.SerializeAsString());
-    }
-};
-} // namespace std
-
 namespace goby
 {
 namespace middleware
@@ -197,8 +185,9 @@ class InterVehicleTransporterBase
             *dccl_subscription, intervehicle::groups::subscription_forward,
             Publisher<Subscription>());
 
-        // overwrite serialize_time to ensure mapping with driver threads
-        subscription_publication->mutable_key()->set_serialize_time(dccl_subscription->time());
+        // overwrite timestamps to ensure mapping with driver threads
+        auto subscribe_time = dccl_subscription->time_with_units();
+        subscription_publication->mutable_key()->set_serialize_time_with_units(subscribe_time);
 
         auto ack_handler = std::make_shared<PublisherCallback<Subscription, MarshallingScheme::DCCL,
                                                               intervehicle::protobuf::AckData> >(
@@ -213,8 +202,8 @@ class InterVehicleTransporterBase
                                              << subscription_publication->ShortDebugString()
                                              << std::endl;
 
-        this->pending_subscription_.insert(std::make_pair(
-            *subscription_publication, std::make_tuple(ack_handler, expire_handler)));
+        this->pending_ack_.insert(std::make_pair(*subscription_publication,
+                                                 std::make_tuple(ack_handler, expire_handler)));
 
         return dccl_subscription;
     }
@@ -227,7 +216,6 @@ class InterVehicleTransporterBase
         bool is_subscription = original.key().marshalling_scheme() == MarshallingScheme::DCCL &&
                                original.key().type() ==
                                    intervehicle::protobuf::Subscription::descriptor()->full_name();
-        auto& pending_ack = (is_subscription) ? pending_subscription_ : pending_ack_;
 
         if (is_subscription)
         {
@@ -245,8 +233,8 @@ class InterVehicleTransporterBase
             original.set_allocated_data(sbytes);
         }
 
-        auto it = pending_ack.find(original);
-        if (it != pending_ack.end())
+        auto it = pending_ack_.find(original);
+        if (it != pending_ack_.end())
         {
             goby::glog.is_debug3() && goby::glog << ack_or_expire_msg.GetDescriptor()->name()
                                                  << " for: " << original.ShortDebugString() << ", "
@@ -256,9 +244,6 @@ class InterVehicleTransporterBase
             std::get<tuple_index>(it->second)
                 ->post(original.data().begin(), original.data().end(), ack_or_expire_msg);
 
-            // leave subscriptions for further modem ids to ack
-            if (!is_subscription)
-                pending_ack.erase(it);
         }
         else
         {
@@ -318,26 +303,12 @@ class InterVehicleTransporterBase
                                 std::string, std::shared_ptr<const SerializationHandlerBase<> > > >
         subscriptions_;
 
-    // maps data with ack_requested onto callbacks for when the data are acknowledged or expire
-    std::unordered_map<
-        protobuf::SerializerTransporterMessage,
-        std::tuple<
-            std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::AckData> >,
-            std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::ExpireData> > > >
-        pending_ack_;
-
-    // maps subscription data onto callbacks for when the subscription is acknowledged or expires
-    std::unordered_map<
-        protobuf::SerializerTransporterMessage,
-        std::tuple<
-            std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::AckData> >,
-            std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::ExpireData> > > >
-        pending_subscription_;
-
   private:
     friend PollerType;
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock)
     {
+        _expire_pending_ack();
+
         return static_cast<Derived*>(this)->_poll(lock);
     }
 
@@ -352,6 +323,50 @@ class InterVehicleTransporterBase
             subscription->add_file_descriptor();
         file_desc->CopyTo(file_desc_proto);
     }
+
+    // expire any pending_ack entries that are no longer relevant
+    void _expire_pending_ack()
+    {
+        auto now = goby::time::SystemClock::now<goby::time::MicroTime>();
+        for (auto it = pending_ack_.begin(), end = pending_ack_.end(); it != end;)
+        {
+            decltype(now) max_ttl(goby::acomms::protobuf::DynamicBufferConfig::descriptor()
+                                      ->FindFieldByName("ttl")
+                                      ->options()
+                                      .GetExtension(dccl::field)
+                                      .max() *
+                                  acomms::protobuf::DynamicBufferConfig::ttl_unit());
+
+            decltype(now) serialize_time(it->first.key().serialize_time_with_units());
+            decltype(now) expire_time(serialize_time + max_ttl);
+
+            // time to let any expire messages from the drivers propagate through the interprocess layer before we remove this
+            const decltype(now) interprocess_wait(1.0 * boost::units::si::seconds);
+
+            // loop through pending ack, and clear any at the front that can be removed
+
+            if (now > expire_time + interprocess_wait)
+            {
+                goby::glog.is_debug3() && goby::glog << "Erasing pending ack for "
+                                                     << it->first.ShortDebugString() << std::endl;
+                it = pending_ack_.erase(it);
+            }
+            else
+            {
+                // pending_ack_ is ordered by serialize time, so we can bail now
+                break;
+            }
+        }
+    }
+
+  private:
+    // maps data with ack_requested onto callbacks for when the data are acknowledged or expire
+    // ordered by serialize time
+    std::map<protobuf::SerializerTransporterMessage,
+             std::tuple<
+                 std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::AckData> >,
+                 std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::ExpireData> > > >
+        pending_ack_;
 };
 
 template <typename InnerTransporter>
