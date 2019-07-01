@@ -40,31 +40,28 @@ template <typename Data> class Subscriber
     using subscribe_expired_func_type =
         typename Publisher<intervehicle::protobuf::Subscription>::expired_func_type;
 
-    Subscriber(const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+    Subscriber(const goby::middleware::protobuf::TransporterConfig& cfg =
                    goby::middleware::protobuf::TransporterConfig(),
                group_func_type group_func = group_func_type(),
                subscribed_func_type subscribed_func = subscribed_func_type(),
                subscribe_expired_func_type subscribe_expired_func = subscribe_expired_func_type())
-        : transport_cfg_(transport_cfg),
+        : cfg_(cfg),
           group_func_(group_func),
           subscribed_func_(subscribed_func),
           subscribe_expired_func_(subscribe_expired_func)
     {
     }
 
-    Subscriber(const goby::middleware::protobuf::TransporterConfig& transport_cfg,
+    Subscriber(const goby::middleware::protobuf::TransporterConfig& cfg,
                subscribed_func_type subscribed_func,
                subscribe_expired_func_type subscribe_expired_func = subscribe_expired_func_type())
-        : Subscriber(transport_cfg, group_func_type(), subscribed_func, subscribe_expired_func)
+        : Subscriber(cfg, group_func_type(), subscribed_func, subscribe_expired_func)
     {
     }
 
     ~Subscriber() {}
 
-    const goby::middleware::protobuf::TransporterConfig& transport_cfg() const
-    {
-        return transport_cfg_;
-    }
+    const goby::middleware::protobuf::TransporterConfig& cfg() const { return cfg_; }
 
     Group group(const Data& data) const
     {
@@ -78,7 +75,7 @@ template <typename Data> class Subscriber
     subscribe_expired_func_type subscribe_expired_func() const { return subscribe_expired_func_; }
 
   private:
-    goby::middleware::protobuf::TransporterConfig transport_cfg_;
+    goby::middleware::protobuf::TransporterConfig cfg_;
     group_func_type group_func_;
     subscribed_func_type subscribed_func_;
     subscribe_expired_func_type subscribe_expired_func_;

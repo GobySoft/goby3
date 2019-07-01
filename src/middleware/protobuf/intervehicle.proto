@@ -19,7 +19,8 @@ message PortalConfig
     message LinkConfig
     {
         required uint32 modem_id = 1;
-
+        optional uint32 subnet_mask = 2 [default = 0xF0];
+        
         required goby.acomms.protobuf.DriverConfig driver = 11
             [(goby.field).description =
                  "Configure the modem driver(s) in use by this portal"];
@@ -77,8 +78,8 @@ message Subscription
 
 message Header
 {
-    required int32 src = 1 [(dccl.field) = {min: 0 max: 127}];
-    repeated int32 dest = 2 [(dccl.field) = {min: 1 max: 127 max_repeat: 8}];
+    required int32 src = 1 [(dccl.field) = {min: 0 max: 255}];
+    repeated int32 dest = 2 [(dccl.field) = {min: 0 max: 255 max_repeat: 4}];
 }
 
 message DCCLPacket

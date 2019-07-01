@@ -79,23 +79,23 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
         sample_buffer_cfg->set_newest_first(false);
         sample_buffer_cfg->set_ack_required(true);
 
-        auto ack_callback = [&](std::shared_ptr<const Sample> s,
+        auto ack_callback = [&](const Sample& s,
                                 const goby::middleware::intervehicle::protobuf::AckData& ack) {
-            glog.is_debug1() && glog << "Ack for " << s->ShortDebugString()
+            glog.is_debug1() && glog << "Ack for " << s.ShortDebugString()
                                      << ", ack msg: " << ack.ShortDebugString() << std::endl;
-            ++direct_ack_receive_count[s->group() - 1];
+            ++direct_ack_receive_count[s.group() - 1];
         };
 
-        auto expire_callback = [&](std::shared_ptr<const Sample> s,
+        auto expire_callback = [&](const Sample& s,
                                    const goby::middleware::intervehicle::protobuf::ExpireData&
                                        expire) {
-            glog.is_debug1() && glog << "Expire for " << s->ShortDebugString()
+            glog.is_debug1() && glog << "Expire for " << s.ShortDebugString()
                                      << ", expire msg: " << expire.ShortDebugString() << std::endl;
 
             switch (expire.reason())
             {
                 case goby::middleware::intervehicle::protobuf::ExpireData::EXPIRED_NO_SUBSCRIBERS:
-                    ++direct_no_sub_receive_count[s->group() - 1];
+                    ++direct_no_sub_receive_count[s.group() - 1];
                     break;
 
                 default: assert(false); break;
@@ -156,17 +156,17 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
         sample_buffer_cfg->set_newest_first(false);
         sample_buffer_cfg->set_ack_required(true);
 
-        auto ack_callback = [&](std::shared_ptr<const Sample> s,
+        auto ack_callback = [&](const Sample& s,
                                 const goby::middleware::intervehicle::protobuf::AckData& ack) {
-            glog.is_debug1() && glog << "Ack for " << s->ShortDebugString()
+            glog.is_debug1() && glog << "Ack for " << s.ShortDebugString()
                                      << ", ack msg: " << ack.ShortDebugString() << std::endl;
             ++indirect_ack_receive_count;
         };
 
         auto expire_callback =
-            [&](std::shared_ptr<const Sample> s,
+            [&](const Sample& s,
                 const goby::middleware::intervehicle::protobuf::ExpireData& expire) {
-                glog.is_debug1() && glog << "Expire for " << s->ShortDebugString()
+                glog.is_debug1() && glog << "Expire for " << s.ShortDebugString()
                                          << ", expire msg: " << expire.ShortDebugString()
                                          << std::endl;
 
@@ -229,16 +229,16 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
     sample_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
 
     using goby::middleware::intervehicle::protobuf::Subscription;
-    auto ack_callback = [&](std::shared_ptr<const Subscription> s,
+    auto ack_callback = [&](const Subscription& s,
                             const goby::middleware::intervehicle::protobuf::AckData& ack) {
-        glog.is_debug1() && glog << "Subscription Ack for " << s->ShortDebugString()
+        glog.is_debug1() && glog << "Subscription Ack for " << s.ShortDebugString()
                                  << ", ack msg: " << ack.ShortDebugString() << std::endl;
         ++direct_subscriber_ack;
     };
 
-    auto expire_callback = [&](std::shared_ptr<const Subscription> s,
+    auto expire_callback = [&](const Subscription& s,
                                const goby::middleware::intervehicle::protobuf::ExpireData& expire) {
-        glog.is_debug1() && glog << "Subscription Expire for " << s->ShortDebugString()
+        glog.is_debug1() && glog << "Subscription Expire for " << s.ShortDebugString()
                                  << ", expire msg: " << expire.ShortDebugString() << std::endl;
         assert(false);
     };
@@ -287,16 +287,16 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
     sample_indirect_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
 
     using goby::middleware::intervehicle::protobuf::Subscription;
-    auto ack_callback = [&](std::shared_ptr<const Subscription> s,
+    auto ack_callback = [&](const Subscription& s,
                             const goby::middleware::intervehicle::protobuf::AckData& ack) {
-        glog.is_debug1() && glog << "Subscription Ack for " << s->ShortDebugString()
+        glog.is_debug1() && glog << "Subscription Ack for " << s.ShortDebugString()
                                  << ", ack msg: " << ack.ShortDebugString() << std::endl;
         ++indirect_subscriber_ack;
     };
 
-    auto expire_callback = [&](std::shared_ptr<const Subscription> s,
+    auto expire_callback = [&](const Subscription& s,
                                const goby::middleware::intervehicle::protobuf::ExpireData& expire) {
-        glog.is_debug1() && glog << "Subscription Expire for " << s->ShortDebugString()
+        glog.is_debug1() && glog << "Subscription Expire for " << s.ShortDebugString()
                                  << ", expire msg: " << expire.ShortDebugString() << std::endl;
         assert(false);
     };

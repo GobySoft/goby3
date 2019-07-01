@@ -98,12 +98,6 @@ class SerializationHandlerBase : public SerializationHandlerPostSelector<Metadat
     };
     virtual SubscriptionAction action() const = 0;
 
-    virtual void
-    notify_subscribed(std::shared_ptr<const intervehicle::protobuf::Subscription> subscription,
-                      const intervehicle::protobuf::AckData& ack_msg)
-    {
-    }
-
     std::thread::id thread_id() const { return thread_id_; }
 
   private:
@@ -154,13 +148,6 @@ class SerializationSubscription : public SerializationHandlerBase<>
         return SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE;
     }
 
-    void notify_subscribed(std::shared_ptr<const intervehicle::protobuf::Subscription> subscription,
-                           const intervehicle::protobuf::AckData& ack_msg) override
-    {
-        if (subscriber_.subscribed_func())
-            subscriber_.subscribed_func()(subscription, ack_msg);
-    }
-
     // getters
     const std::string& type_name() const override { return type_name_; }
     const Group& subscribed_group() const override { return group_; }
@@ -191,7 +178,7 @@ template <typename Data, int scheme_id, typename Metadata>
 class PublisherCallback : public SerializationHandlerBase<Metadata>
 {
   public:
-    typedef std::function<void(std::shared_ptr<const Data> data, const Metadata& md)> HandlerType;
+    typedef std::function<void(const Data& data, const Metadata& md)> HandlerType;
 
     PublisherCallback(HandlerType handler)
         : handler_(handler), type_name_(SerializerParserHelper<Data, scheme_id>::type_name())
@@ -232,8 +219,8 @@ class PublisherCallback : public SerializationHandlerBase<Metadata>
     CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end, const Metadata& md) const
     {
         CharIterator actual_end;
-        auto msg = std::make_shared<const Data>(
-            SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
+        auto msg =
+            SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end);
 
         if (handler_)
             handler_(msg, md);

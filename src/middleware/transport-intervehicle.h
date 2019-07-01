@@ -158,7 +158,7 @@ class InterVehicleTransporterBase
     {
         auto data = intervehicle::serialize_publication(d, group, publisher);
 
-        if (publisher.transport_cfg().intervehicle().buffer().ack_required())
+        if (publisher.cfg().intervehicle().buffer().ack_required())
         {
             auto ack_handler = std::make_shared<
                 PublisherCallback<Data, MarshallingScheme::DCCL, intervehicle::protobuf::AckData> >(
@@ -248,7 +248,7 @@ class InterVehicleTransporterBase
         auto it = pending_ack.find(original);
         if (it != pending_ack.end())
         {
-            goby::glog.is_debug1() && goby::glog << ack_or_expire_msg.GetDescriptor()->name()
+            goby::glog.is_debug3() && goby::glog << ack_or_expire_msg.GetDescriptor()->name()
                                                  << " for: " << original.ShortDebugString() << ", "
                                                  << ack_or_expire_msg.ShortDebugString()
                                                  << std::endl;
@@ -262,7 +262,7 @@ class InterVehicleTransporterBase
         }
         else
         {
-            goby::glog.is_debug1() && goby::glog << "No pending Ack/Expire for "
+            goby::glog.is_debug3() && goby::glog << "No pending Ack/Expire for "
                                                  << (is_subscription ? "subscription: " : "data: ")
                                                  << original.ShortDebugString() << std::endl;
         }
@@ -285,7 +285,7 @@ class InterVehicleTransporterBase
         auto dccl_subscription = std::make_shared<intervehicle::protobuf::Subscription>();
         dccl_subscription->mutable_header()->set_src(0);
 
-        for (auto id : subscriber.transport_cfg().intervehicle().publisher_id())
+        for (auto id : subscriber.cfg().intervehicle().publisher_id())
             dccl_subscription->mutable_header()->add_dest(id);
 
         dccl_subscription->set_dccl_id(dccl_id);
@@ -295,7 +295,7 @@ class InterVehicleTransporterBase
         dccl_subscription->set_protobuf_name(
             SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
         _insert_file_desc_with_dependencies(Data::descriptor()->file(), dccl_subscription.get());
-        *dccl_subscription->mutable_intervehicle() = subscriber.transport_cfg().intervehicle();
+        *dccl_subscription->mutable_intervehicle() = subscriber.cfg().intervehicle();
         return dccl_subscription;
     }
 
@@ -305,7 +305,7 @@ class InterVehicleTransporterBase
         std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::ExpireData> >
             expire_handler)
     {
-        goby::glog.is_debug1() && goby::glog << "Inserting ack handler for "
+        goby::glog.is_debug3() && goby::glog << "Inserting ack handler for "
                                              << data->ShortDebugString() << std::endl;
 
         this->pending_ack_.insert(

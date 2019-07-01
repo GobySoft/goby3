@@ -36,34 +36,31 @@ template <typename Data> class Publisher
   public:
     using set_group_func_type = std::function<void(Data&, const Group&)>;
     using acked_func_type =
-        std::function<void(std::shared_ptr<const Data>, const intervehicle::protobuf::AckData&)>;
+        std::function<void(const Data&, const intervehicle::protobuf::AckData&)>;
     using expired_func_type =
-        std::function<void(std::shared_ptr<const Data>, const intervehicle::protobuf::ExpireData&)>;
+        std::function<void(const Data&, const intervehicle::protobuf::ExpireData&)>;
 
-    Publisher(const goby::middleware::protobuf::TransporterConfig& transport_cfg =
+    Publisher(const goby::middleware::protobuf::TransporterConfig& cfg =
                   goby::middleware::protobuf::TransporterConfig(),
               set_group_func_type set_group_func = set_group_func_type(),
               acked_func_type acked_func = acked_func_type(),
               expired_func_type expired_func = expired_func_type())
-        : transport_cfg_(transport_cfg),
+        : cfg_(cfg),
           set_group_func_(set_group_func),
           acked_func_(acked_func),
           expired_func_(expired_func)
     {
     }
 
-    Publisher(const goby::middleware::protobuf::TransporterConfig& transport_cfg,
-              acked_func_type acked_func, expired_func_type expired_func = expired_func_type())
-        : Publisher(transport_cfg, set_group_func_type(), acked_func, expired_func)
+    Publisher(const goby::middleware::protobuf::TransporterConfig& cfg, acked_func_type acked_func,
+              expired_func_type expired_func = expired_func_type())
+        : Publisher(cfg, set_group_func_type(), acked_func, expired_func)
     {
     }
 
     ~Publisher() {}
 
-    const goby::middleware::protobuf::TransporterConfig& transport_cfg() const
-    {
-        return transport_cfg_;
-    }
+    const goby::middleware::protobuf::TransporterConfig& cfg() const { return cfg_; }
 
     void set_group(Data& data, const Group& group) const
     {
@@ -75,7 +72,7 @@ template <typename Data> class Publisher
     expired_func_type expired_func() const { return expired_func_; }
 
   private:
-    goby::middleware::protobuf::TransporterConfig transport_cfg_;
+    goby::middleware::protobuf::TransporterConfig cfg_;
     set_group_func_type set_group_func_;
     acked_func_type acked_func_;
     expired_func_type expired_func_;

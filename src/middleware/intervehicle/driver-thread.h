@@ -69,7 +69,7 @@ serialize_publication(const Data& d, const Group& group, const Publisher<Data>& 
     key->set_group(std::string(group));
     key->set_group_numeric(group.numeric());
     key->set_serialize_time_with_units(goby::time::SystemClock::now<goby::time::MicroTime>());
-    *key->mutable_cfg() = publisher.transport_cfg();
+    *key->mutable_cfg() = publisher.cfg();
 
     msg->set_allocated_data(sbytes);
     return msg;
@@ -132,6 +132,11 @@ class ModemDriverThread
 
     void _create_buffer(modem_id_type dest_id, subbuffer_id_type buffer_id,
                         const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs);
+
+    bool _dest_is_in_subnet(modem_id_type dest_id)
+    {
+        return (dest_id & cfg().subnet_mask()) == (cfg().modem_id() & cfg().subnet_mask());
+    }
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;

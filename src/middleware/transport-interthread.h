@@ -190,7 +190,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
                 std::thread::id thread_id = it->second->first;
 
                 // don't store a copy if publisher == subscriber, and echo is false
-                if (thread_id != std::this_thread::get_id() || publisher.transport_cfg().echo())
+                if (thread_id != std::this_thread::get_id() || publisher.cfg().echo())
                 {
                     // protect the DataQueue we are writing to
                     std::unique_lock<std::mutex> lock(

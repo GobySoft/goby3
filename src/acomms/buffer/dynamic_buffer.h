@@ -319,7 +319,8 @@ template <typename T> class DynamicBuffer
   public:
     DynamicBuffer()
     {
-        glog_priority_group_ = "goby::acomms::buffer::priority";
+        ++count_;
+        glog_priority_group_ = "goby::acomms::buffer::priority::" + std::to_string(count_);
         goby::glog.add_group(glog_priority_group_, util::Colors::yellow);
     }
     ~DynamicBuffer() {}
@@ -556,8 +557,11 @@ template <typename T> class DynamicBuffer
     std::map<modem_id_type, std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T> > > sub_;
 
     std::string glog_priority_group_;
+    static std::atomic<int> count_;
 
 }; // namespace acomms
+
+template <typename T> std::atomic<int> DynamicBuffer<T>::count_(0);
 
 } // namespace acomms
 } // namespace goby

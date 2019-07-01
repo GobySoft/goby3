@@ -43,8 +43,8 @@ namespace middleware
 class Group
 {
   public:
-    static constexpr std::uint8_t broadcast_group{255};
-    static constexpr std::uint8_t invalid_numeric_group{0};
+    static constexpr std::uint8_t broadcast_group{0};
+    static constexpr std::uint8_t invalid_numeric_group{255};
 
     constexpr Group(const char* c, std::uint8_t i = invalid_numeric_group) : c_(c), i_(i) {}
     constexpr Group(std::uint8_t i = invalid_numeric_group) : i_(i) {}

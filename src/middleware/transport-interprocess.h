@@ -194,7 +194,7 @@ class InterProcessForwarder
         key->set_group(std::string(group));
         msg->set_allocated_data(sbytes);
 
-        *key->mutable_cfg() = publisher.transport_cfg();
+        *key->mutable_cfg() = publisher.cfg();
 
         Base::inner_.template publish<Base::forward_group_>(msg);
     }

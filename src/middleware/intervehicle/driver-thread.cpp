@@ -154,9 +154,14 @@ void goby::middleware::intervehicle::ModemDriverThread::_expire_value(
 void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
     intervehicle::protobuf::Subscription subscription)
 {
+    DCCLSerializerParserHelperBase::load_forwarded_subscription(subscription);
+
     subscription.mutable_header()->set_src(cfg().driver().modem_id());
     for (auto dest : subscription.header().dest())
     {
+        if (!_dest_is_in_subnet(dest))
+            continue;
+
         auto buffer_id = _create_buffer_id(subscription_key_);
         if (!subscription_subbuffers_.count(dest))
         {
@@ -310,6 +315,9 @@ void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
         // push to all subscribed buffers
         for (auto dest_id : subbuffers_created_[buffer_id])
         {
+            if (!_dest_is_in_subnet(dest_id))
+                continue;
+
             auto exceeded =
                 buffer_.push({dest_id, buffer_id, goby::time::SteadyClock::now(), *msg});
             if (!exceeded.empty())
