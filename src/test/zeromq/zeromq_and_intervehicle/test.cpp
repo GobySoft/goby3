@@ -193,8 +193,6 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
 // process 3
 void handle_sample1(const Sample& sample)
 {
-    assert(direct_subscriber_ack == 2);
-
     glog.is(DEBUG1) && glog << "InterVehiclePortal received publication sample1: "
                             << sample.ShortDebugString() << std::endl;
     assert(sample.a() == ipc_receive_count[0]);
@@ -203,8 +201,6 @@ void handle_sample1(const Sample& sample)
 
 void handle_sample_indirect(const Sample& sample)
 {
-    assert(direct_subscriber_ack == 2);
-
     glog.is(DEBUG1) && glog << "InterVehiclePortal received indirect sample: "
                             << sample.ShortDebugString() << std::endl;
     assert(sample.a() == ipc_receive_count[1] - 10);
@@ -264,14 +260,14 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
         if (std::chrono::system_clock::now() > timeout)
             glog.is(DIE) && glog << "InterVehiclePortal timed out waiting for data" << std::endl;
     }
+
+    assert(direct_subscriber_ack == 2);
 }
 
 // process 4
 
 void indirect_handle_sample_indirect(const Sample& sample)
 {
-    assert(indirect_subscriber_ack == 1);
-
     glog.is(DEBUG1) && glog << "InterVehicleForwarder received indirect sample: "
                             << sample.ShortDebugString() << std::endl;
     assert(sample.a() == ipc_receive_count[0] - 10);
@@ -315,6 +311,8 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
         if (std::chrono::system_clock::now() > timeout)
             glog.is(DIE) && glog << "InterVehicleTransport timed out waiting for data" << std::endl;
     }
+
+    assert(indirect_subscriber_ack == 1);
 }
 
 int main(int argc, char* argv[])
