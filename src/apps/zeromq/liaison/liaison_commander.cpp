@@ -311,21 +311,36 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
 
     command_selection_->activated().connect(this, &ControlsContainer::switch_command);
 
-    for (int i = 0, n = pb_commander_config.load_protobuf_name_size(); i < n; ++i)
+    for (int i = 0, n = pb_commander_config.load_protobuf_size(); i < n; ++i)
     {
-        const google::protobuf::Descriptor* desc = dccl::DynamicProtobufManager::find_descriptor(
-            pb_commander_config.load_protobuf_name(i));
+        const auto& protobuf_name = pb_commander_config.load_protobuf(i).name();
+        const google::protobuf::Descriptor* desc =
+            dccl::DynamicProtobufManager::find_descriptor(protobuf_name);
 
         if (!desc)
         {
             glog.is(WARN) &&
-                glog << "Could not find protobuf name " << pb_commander_config.load_protobuf_name(i)
+                glog << "Could not find protobuf name " << protobuf_name
                      << " to load for Protobuf Commander (configuration line `load_protobuf_name`)"
                      << std::endl;
         }
         else
         {
-            command_selection_->addItem(pb_commander_config.load_protobuf_name(i));
+            command_selection_->addItem(protobuf_name);
+
+            if (!commands_.count(protobuf_name))
+            {
+                CommandContainer* new_command =
+                    new CommandContainer(pb_commander_config_, protobuf_name, &session_);
+
+                //master_field_info_stack_);
+                commands_div_->addWidget(new_command);
+                // index of the newly added widget
+                commands_[protobuf_name] = commands_div_->count() - 1;
+
+                for (const auto& group : pb_commander_config.load_protobuf(i).group())
+                    new_command->group_selection_->addItem(group);
+            }
         }
     }
 
@@ -357,17 +372,6 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::switch_command(int
     comment_line_->setDisabled(false);
 
     std::string protobuf_name = command_selection_->itemText(selection_index).narrow();
-
-    if (!commands_.count(protobuf_name))
-    {
-        CommandContainer* new_command =
-            new CommandContainer(pb_commander_config_, protobuf_name, &session_);
-
-        //master_field_info_stack_);
-        commands_div_->addWidget(new_command);
-        // index of the newly added widget
-        commands_[protobuf_name] = commands_div_->count() - 1;
-    }
     commands_div_->setCurrentIndex(commands_[protobuf_name]);
     //    master_field_info_stack_->setCurrentIndex(commands_[protobuf_name]);
 }
@@ -428,7 +432,10 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         commander_->post_to_comms([=]() {
             commander_->goby_thread()->interprocess().publish_dynamic<google::protobuf::Message>(
                 current_command->message_,
-                goby::middleware::DynamicGroup(current_command->group_line_->text().narrow()));
+                goby::middleware::DynamicGroup(
+                    current_command->group_selection_
+                        ->itemText(current_command->group_selection_->currentIndex())
+                        .narrow()));
         });
 
         CommandEntry* command_entry = new CommandEntry;
@@ -437,7 +444,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         current_command->message_->SerializeToArray(&command_entry->bytes[0],
                                                     command_entry->bytes.size());
         command_entry->address = wApp->environment().clientAddress();
-        command_entry->group = current_command->group_line_->text().narrow();
+        command_entry->group = current_command->group_selection_
+                                   ->itemText(current_command->group_selection_->currentIndex())
+                                   .narrow();
 
         boost::posix_time::ptime now = goby::time::SystemClock::now<boost::posix_time::ptime>();
         command_entry->time.setPosixTime(now);
@@ -469,7 +478,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
       latest_time_(0),
       group_div_(new WContainerWidget(this)),
       group_label_(new WLabel("Group: ", group_div_)),
-      group_line_(new WLineEdit(group_div_)),
+      group_selection_(new WComboBox(group_div_)),
       tree_box_(new WGroupBox("Contents", this)),
       tree_table_(new WTreeTable(tree_box_)),
       //      field_info_stack_(new WStackedWidget(master_field_info_stack)),
@@ -533,7 +542,10 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     {
         const Dbo::ptr<CommandEntry>& entry = query_model_->resultRow(0);
         message_->ParseFromArray(&entry->bytes[0], entry->bytes.size());
-        group_line_->setText(entry->group);
+
+        int group_index = group_selection_->findText(entry->group);
+        if (group_index >= 0)
+            group_selection_->setCurrentIndex(group_index);
     }
 
     glog.is(DEBUG1) && glog << "Model has " << query_model_->rowCount() << " rows" << std::endl;
@@ -544,7 +556,11 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_database_double_click(const WModelIndex& index, const WMouseEvent& event)
 {
-    glog.is(DEBUG1) && glog << "clicked: " << index.row() << "," << index.column() << std::endl;
+    glog.is(DEBUG1) && glog << "clicked: " << index.row() << "," << index.column()
+                            << ", is_valid: " << index.isValid() << std::endl;
+
+    if (!index.isValid())
+        return;
 
     const Dbo::ptr<CommandEntry>& entry = query_model_->resultRow(index.row());
 
@@ -600,26 +616,40 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     //     cancel.clicked().connect(&dialog, &WDialog::reject);
 }
 
-void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::handle_database_dialog(
-    DatabaseDialogResponse response, std::shared_ptr<google::protobuf::Message> message,
-    std::string group)
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    handle_database_dialog(DatabaseDialogResponse response,
+                           std::shared_ptr<google::protobuf::Message> message, std::string group)
 {
     switch (response)
     {
         case RESPONSE_EDIT:
+        {
             message_->CopyFrom(*message);
-            group_line_->setText(group);
+            int group_index = group_selection_->findText(group);
+
+            glog.is_debug1() && glog << "Group: " << group << ", index: " << group_index
+                                     << std::endl;
+            if (group_index >= 0)
+                group_selection_->setCurrentIndex(group_index);
+
             generate_root();
             database_dialog_->accept();
             break;
+        }
 
         case RESPONSE_MERGE:
+        {
             message->MergeFrom(*message_);
             message_->CopyFrom(*message);
-            group_line_->setText(group);
+
+            int group_index = group_selection_->findText(group);
+            if (group_index >= 0)
+                group_selection_->setCurrentIndex(group_index);
+
             generate_root();
             database_dialog_->accept();
             break;
+        }
 
         case RESPONSE_CANCEL: database_dialog_->reject(); break;
     }
@@ -942,8 +972,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
     generate_field_info_box(value_field, field_desc);
 }
-void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_field_info_box(
-    Wt::WFormWidget*& value_field, const google::protobuf::FieldDescriptor* field_desc)
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    generate_field_info_box(Wt::WFormWidget*& value_field,
+                            const google::protobuf::FieldDescriptor* field_desc)
 {
     //    if(!field_info_map_.count(field_desc))
     //    {
@@ -991,9 +1022,10 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     //  value_field->blurred().connect(boost::bind(&CommandContainer::handle_field_focus, this, 0));
 }
 
-void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::handle_line_field_changed(
-    google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field_desc,
-    WLineEdit* field, int index)
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    handle_line_field_changed(google::protobuf::Message* message,
+                              const google::protobuf::FieldDescriptor* field_desc, WLineEdit* field,
+                              int index)
 {
     std::string value = field->text().narrow();
 
@@ -1253,8 +1285,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 }
 
-void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::dccl_default_value_field(
-    WFormWidget*& value_field, const google::protobuf::FieldDescriptor* field_desc)
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    dccl_default_value_field(WFormWidget*& value_field,
+                             const google::protobuf::FieldDescriptor* field_desc)
 {
     const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
 
@@ -1309,8 +1342,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 }
 
-void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::dccl_default_modify_field(
-    WFormWidget*& modify_field, const google::protobuf::FieldDescriptor* field_desc)
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    dccl_default_modify_field(WFormWidget*& modify_field,
+                              const google::protobuf::FieldDescriptor* field_desc)
 {
     const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
 

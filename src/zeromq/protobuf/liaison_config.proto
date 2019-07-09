@@ -63,8 +63,13 @@ message LiaisonConfig
 
 message ProtobufCommanderConfig
 {
-    repeated string load_protobuf_name = 1;
-
+    message LoadProtobuf
+    {
+        required string name = 1;
+        repeated string group = 2;
+    }
+    repeated LoadProtobuf load_protobuf = 1;
+    
     optional int32 value_width_pixels = 10 [default = 500];
     optional int32 modify_width_pixels = 11 [default = 100];
 
@@ -119,8 +124,6 @@ message ProtobufCommanderConfig
 
 message ProtobufScopeConfig
 {
-    repeated string subscription = 1;
-
     enum Column
     {
         option allow_alias = true;

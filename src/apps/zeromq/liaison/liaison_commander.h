@@ -233,7 +233,7 @@ class LiaisonCommander : public goby::zeromq::LiaisonContainerWithComms<LiaisonC
 
             Wt::WContainerWidget* group_div_;
             Wt::WLabel* group_label_;
-            Wt::WLineEdit* group_line_;
+            Wt::WComboBox* group_selection_;
 
             Wt::WGroupBox* tree_box_;
             Wt::WTreeTable* tree_table_;
