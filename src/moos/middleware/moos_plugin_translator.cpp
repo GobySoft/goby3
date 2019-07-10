@@ -27,54 +27,58 @@ using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
 goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
     : goby::middleware::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
 {
-    moos_comms_.SetOnConnectCallBack(TranslatorOnConnectCallBack, this);
-    moos_comms_.Run(cfg().moos_server(), cfg().moos_port(), translator_name(),
-                    cfg().poll_frequency());
+    moos_.comms().SetOnConnectCallBack(TranslatorOnConnectCallBack, this);
+    moos_.comms().Run(cfg().moos_server(), cfg().moos_port(), translator_name(),
+                      cfg().poll_frequency());
 }
 
-void goby::moos::Translator::moos_on_connect()
+void goby::moos::Translator::loop() { moos_.loop(); }
+
+bool goby::moos::TranslatorOnConnectCallBack(void* translator)
+{
+    reinterpret_cast<goby::moos::Translator*>(translator)->moos().on_connect();
+    return true;
+}
+
+void goby::moos::Translator::MOOSInterface::on_connect()
 {
     using goby::glog;
     using namespace goby::util::logger;
 
-    for (const std::string& moos_var : moos_trigger_vars_)
+    for (const auto& var_func_pair : trigger_vars_)
     {
-        moos_comms_.Register(moos_var);
+        const std::string& moos_var = var_func_pair.first;
+        comms_.Register(moos_var);
         glog.is(DEBUG1) && glog << "Subscribed for MOOS variable: " << moos_var << std::endl;
     }
 
-    for (const std::string& moos_var : moos_buffer_vars_)
+    for (const std::string& moos_var : buffer_vars_)
     {
-        moos_comms_.Register(moos_var);
+        comms_.Register(moos_var);
         glog.is(DEBUG1) && glog << "Subscribed for MOOS variable: " << moos_var << std::endl;
     }
 }
 
-void goby::moos::Translator::loop()
+void goby::moos::Translator::MOOSInterface::loop()
 {
     using goby::glog;
     using namespace goby::util::logger;
 
     MOOSMSG_LIST moos_msgs;
-    moos_comms_.Fetch(moos_msgs);
+    comms_.Fetch(moos_msgs);
     // buffer all then trigger
     for (const CMOOSMsg& msg : moos_msgs)
     {
-        if (moos_buffer_vars_.count(msg.GetKey()))
+        if (buffer_vars_.count(msg.GetKey()))
         {
             const auto& key = msg.GetKey();
-            moos_buffer_[key] = msg;
+            buffer_[key] = msg;
         }
     }
     for (const CMOOSMsg& msg : moos_msgs)
     {
-        if (moos_trigger_vars_.count(msg.GetKey()))
-            moos_to_goby(msg);
+        auto it = trigger_vars_.find(msg.GetKey());
+        if (it != trigger_vars_.end())
+            it->second(msg);
     }
-}
-
-bool goby::moos::TranslatorOnConnectCallBack(void* translator)
-{
-    reinterpret_cast<goby::moos::Translator*>(translator)->moos_on_connect();
-    return true;
 }
