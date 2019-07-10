@@ -55,7 +55,7 @@ class InterProcessPortalMainThread
     zmq::socket_t control_socket_;
     zmq::socket_t publish_socket_;
     bool publish_socket_configured_{false};
-    std::deque<std::pair<std::string, std::vector<char> > >
+    std::deque<std::pair<std::string, std::vector<char>>>
         publish_queue_; //used before publish_socket_configured_ == true
 };
 
@@ -147,8 +147,8 @@ class InterProcessPortal
             });
 
         Base::inner_
-            .template subscribe<Base::forward_group_, middleware::SerializationHandlerBase<> >(
-                [this](std::shared_ptr<const middleware::SerializationHandlerBase<> > s) {
+            .template subscribe<Base::forward_group_, middleware::SerializationHandlerBase<>>(
+                [this](std::shared_ptr<const middleware::SerializationHandlerBase<>> s) {
                     _receive_subscription_forwarded(s);
                 });
 
@@ -200,7 +200,7 @@ class InterProcessPortal
         std::string identifier =
             _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
-        auto subscription = std::make_shared<middleware::SerializationSubscription<Data, scheme> >(
+        auto subscription = std::make_shared<middleware::SerializationSubscription<Data, scheme>>(
             f, group,
             middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
                                          [=](const Data& d) { return group; }));
@@ -263,7 +263,7 @@ class InterProcessPortal
         }
     }
 
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
         int items = 0;
         protobuf::InprocControl control_msg;
@@ -286,7 +286,7 @@ class InterProcessPortal
                         type, scheme, group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
                     // build a set so if any of the handlers unsubscribes, we still have a pointer to the middleware::SerializationHandlerBase<>
-                    std::vector<std::weak_ptr<const middleware::SerializationHandlerBase<> > >
+                    std::vector<std::weak_ptr<const middleware::SerializationHandlerBase<>>>
                         subs_to_post;
                     auto portal_range = portal_subscriptions_.equal_range(identifier);
                     for (auto it = portal_range.first; it != portal_range.second; ++it)
@@ -309,12 +309,19 @@ class InterProcessPortal
                     if (!regex_subscriptions_.empty())
                     {
                         auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
+
+                        bool forwarder_subscription_posted = false;
                         for (auto& sub : regex_subscriptions_)
                         {
-                            // only post at most once, the threads will filter
+                            // only post at most once for forwarders as the threads will filter
+                            bool is_forwarded_sub = sub.first != std::this_thread::get_id();
+                            if (is_forwarded_sub && forwarder_subscription_posted)
+                                continue;
+
                             if (sub.second->post(null_delim_it + 1, data.end(), scheme, type,
-                                                 group))
-                                break;
+                                                 group) &&
+                                is_forwarded_sub)
+                                forwarder_subscription_posted = true;
                         }
                     }
                 }
@@ -338,7 +345,7 @@ class InterProcessPortal
     }
 
     void _receive_subscription_forwarded(
-        std::shared_ptr<const middleware::SerializationHandlerBase<> > subscription)
+        std::shared_ptr<const middleware::SerializationHandlerBase<>> subscription)
     {
         std::string identifier = _make_identifier(subscription->type_name(), subscription->scheme(),
                                                   subscription->subscribed_group(),
@@ -513,19 +520,19 @@ class InterProcessPortal
 
     // maps identifier to subscription
     std::unordered_multimap<std::string,
-                            std::shared_ptr<const middleware::SerializationHandlerBase<> > >
+                            std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         portal_subscriptions_;
     // only one subscription for each forwarded identifier
-    std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<> > >
+    std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         forwarder_subscriptions_;
     std::unordered_map<
         std::thread::id,
         std::unordered_map<std::string,
-                           typename decltype(forwarder_subscriptions_)::const_iterator> >
+                           typename decltype(forwarder_subscriptions_)::const_iterator>>
         forwarder_subscription_identifiers_;
 
     std::unordered_multimap<std::thread::id,
-                            std::shared_ptr<const middleware::SerializationSubscriptionRegex> >
+                            std::shared_ptr<const middleware::SerializationSubscriptionRegex>>
         regex_subscriptions_;
     std::string process_{std::to_string(getpid())};
     std::unordered_map<int, std::string> schemes_;

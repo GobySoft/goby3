@@ -40,9 +40,9 @@ template <typename Derived, typename InnerTransporter>
 class InterProcessTransporterBase
     : public StaticTransporterInterface<InterProcessTransporterBase<Derived, InnerTransporter>,
                                         InnerTransporter>,
-      public Poller<InterProcessTransporterBase<Derived, InnerTransporter> >
+      public Poller<InterProcessTransporterBase<Derived, InnerTransporter>>
 {
-    using PollerType = Poller<InterProcessTransporterBase<Derived, InnerTransporter> >;
+    using PollerType = Poller<InterProcessTransporterBase<Derived, InnerTransporter>>;
 
   public:
     InterProcessTransporterBase(InnerTransporter& inner) : PollerType(&inner), inner_(inner) {}
@@ -140,6 +140,20 @@ class InterProcessTransporterBase
         static_cast<Derived*>(this)->_subscribe_regex(f, schemes, type_regex, group_regex);
     }
 
+    template <const Group& group, typename Data, int scheme = scheme<Data>()>
+    void subscribe_regex(std::function<void(const std::vector<unsigned char>&, int schme,
+                                            const std::string& type, const Group& grp)>
+                             f,
+                         const std::string& type_regex = ".*")
+    {
+        std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
+        std::string sanitized_group =
+            std::regex_replace(std::string(group), special_chars, R"(\$&)");
+
+        static_cast<Derived*>(this)->_subscribe_regex(f, {scheme}, type_regex,
+                                                      "^" + sanitized_group + "$");
+    }
+
     std::unique_ptr<InnerTransporter> own_inner_;
     InnerTransporter& inner_;
     static constexpr Group forward_group_{"goby::InterProcessForwarder"};
@@ -147,7 +161,7 @@ class InterProcessTransporterBase
 
   private:
     friend PollerType;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
         return static_cast<Derived*>(this)->_poll(lock);
     }
@@ -210,12 +224,12 @@ class InterProcessForwarder
             Base::inner_.template publish_dynamic<Data, scheme>(d, group);
         };
 
-        auto subscription = std::make_shared<SerializationSubscription<Data, scheme> >(
+        auto subscription = std::make_shared<SerializationSubscription<Data, scheme>>(
             inner_publication_lambda, group,
             middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
                                          [=](const Data& d) { return group; }));
 
-        Base::inner_.template publish<Base::forward_group_, SerializationHandlerBase<> >(
+        Base::inner_.template publish<Base::forward_group_, SerializationHandlerBase<>>(
             subscription);
     }
 
@@ -223,10 +237,10 @@ class InterProcessForwarder
     {
         Base::inner_.template unsubscribe_dynamic<Data, scheme>(group);
 
-        auto unsubscription = std::shared_ptr<SerializationHandlerBase<> >(
+        auto unsubscription = std::shared_ptr<SerializationHandlerBase<>>(
             new SerializationUnSubscription<Data, scheme>(group));
 
-        Base::inner_.template publish<Base::forward_group_, SerializationHandlerBase<> >(
+        Base::inner_.template publish<Base::forward_group_, SerializationHandlerBase<>>(
             unsubscription);
     }
 
@@ -272,13 +286,13 @@ class InterProcessForwarder
                       msg->key().type(), msg->key().group());
     }
 
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
         return 0;
     } // A forwarder is a shell, only the inner Transporter has data
 
   private:
-    std::set<std::shared_ptr<const SerializationSubscriptionRegex> > regex_subscriptions_;
+    std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
 };
 
 } // namespace middleware

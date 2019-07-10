@@ -51,9 +51,10 @@ std::atomic<bool> zmq_ready(false);
 using goby::glog;
 using namespace goby::util::logger;
 
-extern constexpr goby::middleware::Group sample1{"Sample1"};
-extern constexpr goby::middleware::Group sample2{"Sample2"};
-extern constexpr goby::middleware::Group widget{"Widget"};
+constexpr goby::middleware::Group sample1{"Sample1"};
+constexpr goby::middleware::Group sample2{"Sample2"};
+constexpr goby::middleware::Group widget{"Widget"};
+constexpr goby::middleware::Group sample_special_chars{"[Sample]()"};
 
 // thread 1 - parent process
 void publisher()
@@ -65,6 +66,8 @@ void publisher()
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++);
         ipc.publish<sample1>(s1);
+        ipc.publish<sample_special_chars>(s1);
+
         auto s2 = std::make_shared<Sample>();
         s2->set_a(s1->a() + 10);
         ipc.publish<sample2>(s2);
@@ -92,7 +95,7 @@ void subscriber()
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
-    while (ipc_receive_count < 3 * max_publish)
+    while (ipc_receive_count < 4 * max_publish)
     {
         ipc.poll(std::chrono::seconds(1));
         if (std::chrono::system_clock::now() > timeout)
@@ -103,6 +106,10 @@ void subscriber()
 // thread 3
 void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 {
+    bool non_template_receive = false;
+    bool template_receive = false;
+    bool special_chars_receive = false;
+
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> ipc(inproc3, cfg);
     ipc.subscribe_regex(
         [&](const std::vector<unsigned char>& data, int scheme, const std::string& type,
@@ -110,13 +117,46 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
             glog.is(DEBUG1) && glog << "InterProcessPortal received publication of " << data.size()
                                     << " bytes from group: " << group << " of type: " << type
                                     << " from scheme: " << scheme << std::endl;
-            assert(type == "Sample");
+            assert(type == "goby.test.zeromq.protobuf.Sample");
             assert(scheme == goby::middleware::MarshallingScheme::PROTOBUF);
+            non_template_receive = true;
         },
-        {goby::middleware::MarshallingScheme::PROTOBUF}, "Sample", "Sample1|Sample2");
+        {goby::middleware::MarshallingScheme::PROTOBUF}, ".*Sample", "Sample1|Sample2");
+
+    ipc.subscribe_regex<sample1, google::protobuf::Message>(
+        [&](const std::vector<unsigned char>& data, int scheme, const std::string& type,
+            const goby::middleware::Group& group) {
+            glog.is(DEBUG1) && glog << "(template) InterProcessPortal received publication of "
+                                    << data.size() << " bytes from group: " << group
+                                    << " of type: " << type << " from scheme: " << scheme
+                                    << std::endl;
+            assert(type == "goby.test.zeromq.protobuf.Sample");
+            assert(group == "Sample1");
+            assert(scheme == goby::middleware::MarshallingScheme::PROTOBUF);
+            template_receive = true;
+        },
+        ".*Sample");
+
+    ipc.subscribe_regex<sample_special_chars, google::protobuf::Message>(
+        [&](const std::vector<unsigned char>& data, int scheme, const std::string& type,
+            const goby::middleware::Group& group) {
+            glog.is(DEBUG1) && glog << "(special chars) InterProcessPortal received publication of "
+                                    << data.size() << " bytes from group: " << group
+                                    << " of type: " << type << " from scheme: " << scheme
+                                    << std::endl;
+            assert(type == "goby.test.zeromq.protobuf.Sample");
+            assert(group == "[Sample]()");
+            assert(scheme == goby::middleware::MarshallingScheme::PROTOBUF);
+            special_chars_receive = true;
+        },
+        ".*Sample");
 
     zmq_ready = true;
     while (forward) { ipc.poll(std::chrono::milliseconds(100)); }
+
+    assert(non_template_receive);
+    assert(template_receive);
+    assert(special_chars_receive);
 }
 
 int main(int argc, char* argv[])
