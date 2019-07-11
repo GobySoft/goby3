@@ -308,18 +308,21 @@ jobs:
     docker: *docker-base-stretch
     environment:
       <<: *environment-template-common
+      <<: *environment-template-stretch
 
   amd64-xenial-build:
     <<: *job-template-amd64
     docker: *docker-base-xenial
     environment:
       <<: *environment-template-common
+      <<: *environment-template-xenial
 
   amd64-bionic-build:
     <<: *job-template-amd64
     docker: *docker-base-bionic
     environment:
       <<: *environment-template-common
+      <<: *environment-template-bionic
 
   amd64-bionic-minimal-build:
     docker:
