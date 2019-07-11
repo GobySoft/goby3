@@ -63,6 +63,12 @@ job-template-amd64: &job-template-amd64
   working_directory: /root/goby3
   steps:
     - checkout
+    - run: &run-add-continuous-packages
+        name: Add continuous build package sources.list (if not a tagged release)
+        command: |
+          [ -z "${CIRCLE_TAG}" ] &&
+          echo "deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/" >> /etc/apt/sources.list.d/gobysoft_continuous.list ||
+          true
     - run: &run-update-apt
         name: Update apt packages
         command: apt-get update && apt-get dist-upgrade -y
@@ -76,12 +82,7 @@ job-template-amd64: &job-template-amd64
 job-template-deb-amd64: &job-template-deb-amd64
   <<: *job-template-amd64
   steps:
-    - run:
-        name: Add continuous build package sources.list (if not a tagged release)
-        command: |
-          [ -z "${CIRCLE_TAG}" ] &&
-          echo "deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/" >> /etc/apt/sources.list.d/gobysoft_continuous.list ||
-          true
+    - run: *run-add-continuous-packages
     - run: *run-update-apt
     - run: &run-import-gpg
         name: Import GPG key
