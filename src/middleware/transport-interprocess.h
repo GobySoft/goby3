@@ -141,16 +141,23 @@ class InterProcessTransporterBase
     }
 
     template <const Group& group, typename Data, int scheme = scheme<Data>()>
-    void subscribe_regex(std::function<void(const std::vector<unsigned char>&, int schme,
-                                            const std::string& type, const Group& grp)>
-                             f,
-                         const std::string& type_regex = ".*")
+    void subscribe_type_regex(
+        std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
+        const std::string& type_regex = ".*")
     {
         std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
         std::string sanitized_group =
             std::regex_replace(std::string(group), special_chars, R"(\$&)");
 
-        static_cast<Derived*>(this)->_subscribe_regex(f, {scheme}, type_regex,
+        auto regex_lambda = [=](const std::vector<unsigned char>& data, int schm,
+                                const std::string& type, const Group& grp) {
+            auto data_begin = data.begin(), data_end = data.end(), actual_end = data.end();
+            auto msg = SerializerParserHelper<Data, scheme>::parse_dynamic(data_begin, data_end,
+                                                                           actual_end, type);
+            f(msg, type);
+        };
+
+        static_cast<Derived*>(this)->_subscribe_regex(regex_lambda, {scheme}, type_regex,
                                                       "^" + sanitized_group + "$");
     }
 

@@ -65,12 +65,19 @@ void publisher()
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++);
+        s1->set_group(sample1);
         ipc.publish<sample1>(s1);
-        ipc.publish<sample_special_chars>(s1);
+
+        auto ssc = std::make_shared<Sample>();
+        ssc->set_a(a);
+        ssc->set_group(sample_special_chars);
+        ipc.publish<sample_special_chars>(ssc);
 
         auto s2 = std::make_shared<Sample>();
         s2->set_a(s1->a() + 10);
+        s2->set_group(sample2);
         ipc.publish<sample2>(s2);
+
         auto w1 = std::make_shared<Widget>();
         w1->set_b(s1->a() - 8);
         ipc.publish<widget>(w1);
@@ -93,16 +100,14 @@ void subscriber()
     goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
     ipc.subscribe_regex(&handle_all, {goby::middleware::MarshallingScheme::ALL_SCHEMES});
 
-    ipc.subscribe_regex<sample1, google::protobuf::Message>(
-        [&](const std::vector<unsigned char>& data, int scheme, const std::string& type,
-            const goby::middleware::Group& group) {
-            glog.is(DEBUG1) && glog << "(template) InterProcessForwarder received publication of "
-                                    << data.size() << " bytes from group: " << group
-                                    << " of type: " << type << " from scheme: " << scheme
-                                    << std::endl;
+    ipc.subscribe_type_regex<sample1, google::protobuf::Message>(
+        [&](std::shared_ptr<const google::protobuf::Message> msg, const std::string& type) {
+            glog.is(DEBUG1) &&
+                glog << "(template) InterProcessForwarder received publication of type: " << type
+                     << " with values: " << msg->ShortDebugString() << std::endl;
             assert(type == "goby.test.zeromq.protobuf.Sample");
-            assert(group == "Sample1");
-            assert(scheme == goby::middleware::MarshallingScheme::PROTOBUF);
+            auto* s = dynamic_cast<const Sample*>(msg.get());
+            assert(s->group() == std::string(sample1));
         },
         ".*Sample");
 
@@ -136,30 +141,26 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         },
         {goby::middleware::MarshallingScheme::PROTOBUF}, ".*Sample", "Sample1|Sample2");
 
-    ipc.subscribe_regex<sample1, google::protobuf::Message>(
-        [&](const std::vector<unsigned char>& data, int scheme, const std::string& type,
-            const goby::middleware::Group& group) {
-            glog.is(DEBUG1) && glog << "(template) InterProcessPortal received publication of "
-                                    << data.size() << " bytes from group: " << group
-                                    << " of type: " << type << " from scheme: " << scheme
-                                    << std::endl;
+    ipc.subscribe_type_regex<sample1, google::protobuf::Message>(
+        [&](std::shared_ptr<const google::protobuf::Message> msg, const std::string& type) {
+            glog.is(DEBUG1) &&
+                glog << "(template) InterProcessPortal received publication of type: " << type
+                     << " with values: " << msg->ShortDebugString() << std::endl;
             assert(type == "goby.test.zeromq.protobuf.Sample");
-            assert(group == "Sample1");
-            assert(scheme == goby::middleware::MarshallingScheme::PROTOBUF);
+            auto* s = dynamic_cast<const Sample*>(msg.get());
+            assert(s->group() == std::string(sample1));
             template_receive = true;
         },
         ".*Sample");
 
-    ipc.subscribe_regex<sample_special_chars, google::protobuf::Message>(
-        [&](const std::vector<unsigned char>& data, int scheme, const std::string& type,
-            const goby::middleware::Group& group) {
-            glog.is(DEBUG1) && glog << "(special chars) InterProcessPortal received publication of "
-                                    << data.size() << " bytes from group: " << group
-                                    << " of type: " << type << " from scheme: " << scheme
-                                    << std::endl;
+    ipc.subscribe_type_regex<sample_special_chars, google::protobuf::Message>(
+        [&](std::shared_ptr<const google::protobuf::Message> msg, const std::string& type) {
+            glog.is(DEBUG1) &&
+                glog << "(special chars) InterProcessPortal received publication of type: " << type
+                     << " with values: " << msg->ShortDebugString() << std::endl;
             assert(type == "goby.test.zeromq.protobuf.Sample");
-            assert(group == "[Sample]()");
-            assert(scheme == goby::middleware::MarshallingScheme::PROTOBUF);
+            auto* s = dynamic_cast<const Sample*>(msg.get());
+            assert(s->group() == std::string(sample_special_chars));
             special_chars_receive = true;
         },
         ".*Sample");

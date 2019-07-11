@@ -155,8 +155,8 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
 
     template <typename CharIterator>
     static std::shared_ptr<google::protobuf::Message>
-    parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-          const std::string& type)
+    parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
+                  const std::string& type)
     {
         auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
             std::shared_ptr<google::protobuf::Message>>(type);
@@ -331,8 +331,8 @@ struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL
 
     template <typename CharIterator>
     static std::shared_ptr<google::protobuf::Message>
-    parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-          const std::string& type)
+    parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
+                  const std::string& type)
     {
         auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
             std::shared_ptr<google::protobuf::Message>>(type);
