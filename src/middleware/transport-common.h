@@ -274,7 +274,7 @@ class SerializationUnSubscription : public SerializationHandlerBase<>
     const Group group_;
 };
 
-template <typename Foo = int> class SerializationSubscriptionRegex
+class SerializationSubscriptionRegex
 {
   public:
     typedef std::function<void(const std::vector<unsigned char>&, int scheme,
