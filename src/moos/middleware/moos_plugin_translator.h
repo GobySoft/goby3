@@ -89,6 +89,7 @@ class Translator
   private:
     MOOSInterface moos_;
 };
+
 } // namespace moos
 } // namespace goby
 

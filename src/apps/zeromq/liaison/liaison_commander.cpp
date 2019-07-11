@@ -34,7 +34,6 @@
 #include "dccl/dynamic_protobuf_manager.h"
 #include "dccl/protobuf/option_extensions.pb.h"
 #include "goby/acomms/protobuf/network_ack.pb.h"
-#include "goby/middleware/liaison/groups.h"
 #include "goby/util/binary.h"
 #include "goby/util/sci.h"
 
