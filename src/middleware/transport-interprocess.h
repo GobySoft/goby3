@@ -274,9 +274,6 @@ class InterProcessForwarder
             Base::inner_.template publish<Base::regex_group_>(forwarded_data);
         };
 
-        std::cout << "Forwarding regex subscription for type: " << type_regex
-                  << " and group: " << group_regex << std::endl;
-
         auto portal_subscription = std::make_shared<SerializationSubscriptionRegex>(
             inner_publication_lambda, schemes, type_regex, group_regex);
         Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionRegex>(

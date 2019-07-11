@@ -950,13 +950,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::process_configuration()
         }
     }
 
-    if (common_cfg_.has_moos_parser_technique())
-        goby::moos::moos_technique = common_cfg_.moos_parser_technique();
-    else if (common_cfg_.has_use_binary_protobuf())
-        goby::moos::moos_technique =
-            common_cfg_.use_binary_protobuf()
-                ? goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED
-                : goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT;
+    goby::moos::set_moos_technique(common_cfg_);
 
     if (common_cfg_.time_warp_multiplier() != 1)
     {

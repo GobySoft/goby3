@@ -43,44 +43,62 @@ class GobyMOOSGateway
     GobyMOOSGateway();
     ~GobyMOOSGateway();
 
+    static std::vector<void*> dl_handles_;
+
   private:
-    std::vector<void*> dl_handles_;
 };
 } // namespace moos
 } // namespace goby
 
-int main(int argc, char* argv[]) { return goby::run<goby::moos::GobyMOOSGateway>(argc, argv); }
+std::vector<void*> goby::moos::GobyMOOSGateway::dl_handles_;
+
+int main(int argc, char* argv[])
+{
+    // load plugins from environmental variable
+    char* plugins = getenv("GOBY_MOOS_GATEWAY_PLUGINS");
+    if (plugins)
+    {
+        std::string s_plugins(plugins);
+        std::vector<std::string> plugin_vec;
+        boost::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
+
+        for (const auto& plugin : plugin_vec)
+        {
+            glog.is(VERBOSE) && glog << "Loading plugin library: " << plugin << std::endl;
+            void* handle = dlopen(plugin.c_str(), RTLD_LAZY);
+            if (handle)
+                goby::moos::GobyMOOSGateway::dl_handles_.push_back(handle);
+            else
+                glog.is(DIE) && glog << "Failed to open library: " << plugin
+                                     << ", reason: " << dlerror() << std::endl;
+
+            if (!dlsym(handle, "goby3_moos_gateway_load"))
+            {
+                glog.is(DIE) && glog << "Function goby3_moos_gateway_load in library: " << plugin
+                                     << " does not exist." << std::endl;
+            }
+        }
+    }
+    else
+    {
+        glog.is_die() && glog << "Must define at least one plugin library in "
+                                 "GOBY_MOOS_GATEWAY_PLUGINS environmental variable"
+                              << std::endl;
+    }
+
+    return goby::run<goby::moos::GobyMOOSGateway>(argc, argv);
+}
 
 goby::moos::GobyMOOSGateway::GobyMOOSGateway()
 {
     const auto& app_cfg = this->app_cfg();
     std::cout << "main: &app_cfg_: " << &app_cfg << std::endl;
 
-    for (const std::string& lib_path : cfg().plugin_library())
+    for (void* handle : dl_handles_)
     {
-        glog.is(VERBOSE) && glog << "Loading shared library: " << lib_path << std::endl;
-
-        void* handle = dlopen(lib_path.c_str(), RTLD_LAZY);
-
-        if (!handle)
-        {
-            glog.is(DIE) &&
-                glog << "Failed loading shared library: " << lib_path
-                     << ". Check path provided or add to /etc/ld.so.conf or LD_LIBRARY_PATH"
-                     << std::endl;
-        }
-        else
-        {
-            dl_handles_.push_back(handle);
-            using plugin_load_func = void (*)(AppBase*);
-            plugin_load_func load_ptr = (plugin_load_func)dlsym(handle, "goby3_moos_gateway_load");
-
-            if (!load_ptr)
-                glog.is(DIE) && glog << "Function goby3_moos_gateway_load in library: " << lib_path
-                                     << " does not exist." << std::endl;
-
-            (*load_ptr)(this);
-        }
+        using plugin_load_func = void (*)(AppBase*);
+        plugin_load_func load_ptr = (plugin_load_func)dlsym(handle, "goby3_moos_gateway_load");
+        (*load_ptr)(this);
     }
 }
 

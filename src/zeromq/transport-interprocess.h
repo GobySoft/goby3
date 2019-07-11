@@ -351,9 +351,6 @@ class InterProcessPortal
                                                   subscription->subscribed_group(),
                                                   IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
-        std::cout << "Received forwarded subscription from thread " << subscription->thread_id()
-                  << ", identifier: " << identifier << std::endl;
-
         switch (subscription->action())
         {
             case middleware::SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE:
@@ -421,9 +418,6 @@ class InterProcessPortal
     void _receive_regex_subscription_forwarded(
         std::shared_ptr<const middleware::SerializationSubscriptionRegex> subscription)
     {
-        std::cout << "Received forwarded regex subscription from thread "
-                  << subscription->thread_id() << std::endl;
-
         _subscribe_regex(subscription);
     }
 

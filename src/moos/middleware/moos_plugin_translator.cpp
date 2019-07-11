@@ -21,15 +21,24 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "moos_plugin_translator.h"
+#include "goby/moos/moos_translator.h"
+#include "goby/moos/protobuf/goby_moos_app.pb.h"
 
 using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
 
 goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
     : goby::middleware::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
 {
+    goby::moos::protobuf::GobyMOOSAppConfig moos_cfg;
+    if (cfg().moos().has_use_binary_protobuf())
+        moos_cfg.set_use_binary_protobuf(cfg().moos().use_binary_protobuf());
+    if (cfg().moos().moos_parser_technique())
+        moos_cfg.set_moos_parser_technique(cfg().moos().moos_parser_technique());
+    goby::moos::set_moos_technique(moos_cfg);
+
     moos_.comms().SetOnConnectCallBack(TranslatorOnConnectCallBack, this);
 
-    moos_.comms().Run(cfg().moos_server(), cfg().moos_port(), translator_name(),
+    moos_.comms().Run(cfg().moos().server(), cfg().moos().port(), translator_name(),
                       cfg().poll_frequency());
 }
 
