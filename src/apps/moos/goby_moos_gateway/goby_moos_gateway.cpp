@@ -37,16 +37,35 @@ namespace goby
 {
 namespace moos
 {
+class TestTranslation : public goby::moos::Translator
+{
+  public:
+    TestTranslation(const goby::apps::moos::protobuf::GobyMOOSGatewayConfig& cfg)
+        : goby::moos::Translator(cfg)
+    {
+        this->goby().interprocess().subscribe_regex(
+            [&](const std::vector<unsigned char>& data, int scheme, const std::string& type,
+                const goby::middleware::Group& group) {
+                std::cout << "Received: " << data.size() << " bytes from scheme: " << scheme
+                          << ", type: " << type << ", group: " << group << std::endl;
+            },
+            {goby::middleware::MarshallingScheme::ALL_SCHEMES});
+    }
+};
+
 class GobyMOOSGateway : public AppBase
 {
   public:
     GobyMOOSGateway()
     {
+        //        sleep(2);
+        // launch_thread<TestTranslation>();
+
         for (const std::string& lib_path : cfg().plugin_library())
         {
             glog.is(VERBOSE) && glog << "Loading shared library: " << lib_path << std::endl;
 
-            void* handle = dlopen(lib_path.c_str(), RTLD_LAZY);
+            void* handle = dlopen(lib_path.c_str(), RTLD_NOW | RTLD_GLOBAL);
 
             if (!handle)
             {
@@ -92,4 +111,15 @@ class GobyMOOSGateway : public AppBase
 } // namespace moos
 } // namespace goby
 
-int main(int argc, char* argv[]) { return goby::run<goby::moos::GobyMOOSGateway>(argc, argv); }
+int main(int argc, char* argv[])
+{
+    std::cout
+        << "main: middleware::SerializationSubscriptionRegex: "
+        << std::type_index(typeid(goby::middleware::SerializationSubscriptionRegex<>)).hash_code()
+        << std::endl;
+    std::cout << "main: middleware::SerializationHandlerBase<>: "
+              << std::type_index(typeid(goby::middleware::SerializationHandlerBase<>)).hash_code()
+              << std::endl;
+
+    return goby::run<goby::moos::GobyMOOSGateway>(argc, argv);
+}

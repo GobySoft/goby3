@@ -93,6 +93,19 @@ void subscriber()
     goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
     ipc.subscribe_regex(&handle_all, {goby::middleware::MarshallingScheme::ALL_SCHEMES});
 
+    ipc.subscribe_regex<sample1, google::protobuf::Message>(
+        [&](const std::vector<unsigned char>& data, int scheme, const std::string& type,
+            const goby::middleware::Group& group) {
+            glog.is(DEBUG1) && glog << "(template) InterProcessForwarder received publication of "
+                                    << data.size() << " bytes from group: " << group
+                                    << " of type: " << type << " from scheme: " << scheme
+                                    << std::endl;
+            assert(type == "goby.test.zeromq.protobuf.Sample");
+            assert(group == "Sample1");
+            assert(scheme == goby::middleware::MarshallingScheme::PROTOBUF);
+        },
+        ".*Sample");
+
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
     while (ipc_receive_count < 4 * max_publish)

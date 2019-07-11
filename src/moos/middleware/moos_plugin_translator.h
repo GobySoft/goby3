@@ -45,8 +45,9 @@ class Translator
   protected:
     virtual std::string translator_name()
     {
-        return std::string("goby::moos::Translator::" +
-                           std::to_string(reinterpret_cast<uintptr_t>(this)));
+        std::stringstream ss;
+        ss << std::this_thread::get_id();
+        return std::string("goby::moos::Translator::" + ss.str());
     }
 
     // Goby
@@ -73,7 +74,7 @@ class Translator
         void on_connect();
 
       private:
-        std::map<std::string, std::function<void(const CMOOSMsg&)> > trigger_vars_;
+        std::map<std::string, std::function<void(const CMOOSMsg&)>> trigger_vars_;
         std::set<std::string> buffer_vars_;
         std::map<std::string, CMOOSMsg> buffer_;
         MOOS::MOOSAsyncCommClient comms_;

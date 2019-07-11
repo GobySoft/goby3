@@ -48,7 +48,7 @@ template <typename Metadata, typename Enable = void> class SerializationHandlerP
 
 template <typename Metadata>
 class SerializationHandlerPostSelector<Metadata,
-                                       typename std::enable_if_t<std::is_void<Metadata>::value> >
+                                       typename std::enable_if_t<std::is_void<Metadata>::value>>
 {
   public:
     SerializationHandlerPostSelector() = default;
@@ -63,7 +63,7 @@ class SerializationHandlerPostSelector<Metadata,
 
 template <typename Metadata>
 class SerializationHandlerPostSelector<Metadata,
-                                       typename std::enable_if_t<!std::is_void<Metadata>::value> >
+                                       typename std::enable_if_t<!std::is_void<Metadata>::value>>
 {
   public:
     SerializationHandlerPostSelector() = default;
@@ -158,8 +158,8 @@ class SerializationSubscription : public SerializationHandlerBase<>
     CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end) const
     {
         CharIterator actual_end;
-        auto msg = std::make_shared<const Data>(
-            SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
+        auto msg =
+            SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end);
 
         if (subscribed_group() == subscriber_.group(*msg) && handler_)
             handler_(msg);
@@ -223,7 +223,7 @@ class PublisherCallback : public SerializationHandlerBase<Metadata>
             SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end);
 
         if (handler_)
-            handler_(msg, md);
+            handler_(*msg, md);
         return actual_end;
     }
 
@@ -274,7 +274,7 @@ class SerializationUnSubscription : public SerializationHandlerBase<>
     const Group group_;
 };
 
-class SerializationSubscriptionRegex
+template <typename Foo = int> class SerializationSubscriptionRegex
 {
   public:
     typedef std::function<void(const std::vector<unsigned char>&, int scheme,

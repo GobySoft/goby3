@@ -90,18 +90,17 @@ template <typename DataType> struct SerializerParserHelper<DataType, Marshalling
     static std::string type_name(const DataType& d) { return type_name(); }
 
     template <typename CharIterator>
-    static DataType parse(CharIterator bytes_begin, CharIterator bytes_end,
-                          CharIterator& actual_end)
+    static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
+                                           CharIterator& actual_end)
     {
         actual_end = bytes_end;
         if (bytes_begin != bytes_end)
         {
-            DataType msg(bytes_begin, bytes_end - 1);
-            return msg;
+            return std::make_shared<DataType>(bytes_begin, bytes_end - 1);
         }
         else
         {
-            return DataType();
+            return std::make_shared<DataType>();
         }
     }
 };
@@ -110,7 +109,7 @@ template <typename DataType> struct SerializerParserHelper<DataType, Marshalling
 template <typename DataType>
 struct SerializerParserHelper<
     DataType, MarshallingScheme::PROTOBUF,
-    std::enable_if_t<!std::is_same<DataType, google::protobuf::Message>::value> >
+    std::enable_if_t<!std::is_same<DataType, google::protobuf::Message>::value>>
 {
     static std::vector<char> serialize(const DataType& msg)
     {
@@ -123,12 +122,12 @@ struct SerializerParserHelper<
     static std::string type_name(const DataType& d) { return type_name(); }
 
     template <typename CharIterator>
-    static DataType parse(CharIterator bytes_begin, CharIterator bytes_end,
-                          CharIterator& actual_end)
+    static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
+                                           CharIterator& actual_end)
     {
-        DataType msg;
-        msg.ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
-        actual_end = bytes_begin + msg.ByteSize();
+        auto msg = std::make_shared<DataType>();
+        msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
+        actual_end = bytes_begin + msg->ByteSize();
         return msg;
     }
 };
@@ -155,11 +154,16 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
     }
 
     template <typename CharIterator>
-    static void parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-                      google::protobuf::Message* msg)
+    static std::shared_ptr<google::protobuf::Message>
+    parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
+          const std::string& type)
     {
+        auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
+            std::shared_ptr<google::protobuf::Message>>(type);
+
         msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
         actual_end = bytes_begin + msg->ByteSize();
+        return msg;
     }
 };
 
@@ -200,7 +204,7 @@ struct DCCLSerializerParserHelperBase
         const google::protobuf::Descriptor* desc_;
     };
 
-    static std::unordered_map<const google::protobuf::Descriptor*, std::unique_ptr<LoaderBase> >
+    static std::unordered_map<const google::protobuf::Descriptor*, std::unique_ptr<LoaderBase>>
         loader_map_;
 
     template <typename DataType> static void check_load()
@@ -282,13 +286,13 @@ struct SerializerParserHelper<DataType, MarshallingScheme::DCCL>
     static std::string type_name(const DataType& d) { return type_name(); }
 
     template <typename CharIterator>
-    static DataType parse(CharIterator bytes_begin, CharIterator bytes_end,
-                          CharIterator& actual_end)
+    static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
+                                           CharIterator& actual_end)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         check_load<DataType>();
-        DataType msg;
-        actual_end = codec().decode(bytes_begin, bytes_end, &msg);
+        auto msg = std::make_shared<DataType>();
+        actual_end = codec().decode(bytes_begin, bytes_end, msg.get());
         return msg;
     }
 
@@ -326,12 +330,17 @@ struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL
     }
 
     template <typename CharIterator>
-    static void parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-                      google::protobuf::Message* msg)
+    static std::shared_ptr<google::protobuf::Message>
+    parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
+          const std::string& type)
     {
+        auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
+            std::shared_ptr<google::protobuf::Message>>(type);
+
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         check_load(msg->GetDescriptor());
-        actual_end = codec().decode(bytes_begin, bytes_end, msg);
+        actual_end = codec().decode(bytes_begin, bytes_end, msg.get());
+        return msg;
     }
 
     static unsigned id(const google::protobuf::Descriptor* desc)

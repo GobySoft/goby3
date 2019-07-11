@@ -153,8 +153,8 @@ class InterProcessPortal
                 });
 
         Base::inner_
-            .template subscribe<Base::forward_group_, middleware::SerializationSubscriptionRegex>(
-                [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s) {
+            .template subscribe<Base::forward_group_, middleware::SerializationSubscriptionRegex<>>(
+                [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex<>> s) {
                     _receive_regex_subscription_forwarded(s);
                 });
 
@@ -217,7 +217,7 @@ class InterProcessPortal
             f,
         const std::set<int>& schemes, const std::string& type_regex, const std::string& group_regex)
     {
-        auto new_sub = std::make_shared<middleware::SerializationSubscriptionRegex>(
+        auto new_sub = std::make_shared<middleware::SerializationSubscriptionRegex<>>(
             f, schemes, type_regex, group_regex);
         _subscribe_regex(new_sub);
     }
@@ -351,6 +351,9 @@ class InterProcessPortal
                                                   subscription->subscribed_group(),
                                                   IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
+        std::cout << "Received forwarded subscription from thread " << subscription->thread_id()
+                  << ", identifier: " << identifier << std::endl;
+
         switch (subscription->action())
         {
             case middleware::SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE:
@@ -416,12 +419,16 @@ class InterProcessPortal
     }
 
     void _receive_regex_subscription_forwarded(
-        std::shared_ptr<const middleware::SerializationSubscriptionRegex> subscription)
+        std::shared_ptr<const middleware::SerializationSubscriptionRegex<>> subscription)
     {
+        std::cout << "Received forwarded regex subscription from thread "
+                  << subscription->thread_id() << std::endl;
+
         _subscribe_regex(subscription);
     }
 
-    void _subscribe_regex(std::shared_ptr<const middleware::SerializationSubscriptionRegex> new_sub)
+    void
+    _subscribe_regex(std::shared_ptr<const middleware::SerializationSubscriptionRegex<>> new_sub)
     {
         if (regex_subscriptions_.empty())
             zmq_main_.subscribe("/");
@@ -532,7 +539,7 @@ class InterProcessPortal
         forwarder_subscription_identifiers_;
 
     std::unordered_multimap<std::thread::id,
-                            std::shared_ptr<const middleware::SerializationSubscriptionRegex>>
+                            std::shared_ptr<const middleware::SerializationSubscriptionRegex<>>>
         regex_subscriptions_;
     std::string process_{std::to_string(getpid())};
     std::unordered_map<int, std::string> schemes_;

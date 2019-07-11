@@ -98,7 +98,7 @@ template <typename Config> class Application
     }
 
     /// \brief Accesses configuration object passed at launch
-    const Config& app_cfg() const { return app_cfg_; }
+    const Config& app_cfg() const { return our_app_cfg_; }
 
   private:
     template <typename App>
@@ -111,6 +111,10 @@ template <typename Config> class Application
     // sets configuration (before Application construction)
     static Config app_cfg_;
     static protobuf::AppConfig app3_base_configuration_;
+
+    // copy these so that they can passed correctly to shared libraries (statics do not)
+    const Config our_app_cfg_{app_cfg_};
+    const protobuf::AppConfig our_app3_base_configuration_{app3_base_configuration_};
 
     bool alive_;
     int return_value_;
@@ -137,19 +141,19 @@ template <typename Config> goby::middleware::Application<Config>::Application() 
     using namespace goby::util::logger;
 
     // set up the logger
-    glog.set_name(app3_base_configuration_.name());
+    glog.set_name(our_app3_base_configuration_.name());
     glog.add_stream(static_cast<util::logger::Verbosity>(
-                        app3_base_configuration_.glog_config().tty_verbosity()),
+                        our_app3_base_configuration_.glog_config().tty_verbosity()),
                     &std::cout);
 
-    if (app3_base_configuration_.glog_config().show_gui())
+    if (our_app3_base_configuration_.glog_config().show_gui())
         glog.enable_gui();
 
-    fout_.resize(app3_base_configuration_.glog_config().file_log_size());
-    for (int i = 0, n = app3_base_configuration_.glog_config().file_log_size(); i < n; ++i)
+    fout_.resize(our_app3_base_configuration_.glog_config().file_log_size());
+    for (int i = 0, n = our_app3_base_configuration_.glog_config().file_log_size(); i < n; ++i)
     {
         const auto& file_format_str =
-            app3_base_configuration_.glog_config().file_log(i).file_name();
+            our_app3_base_configuration_.glog_config().file_log(i).file_name();
         boost::format file_format(file_format_str);
 
         if (file_format_str.find("%1") == std::string::npos)
@@ -162,8 +166,9 @@ template <typename Config> goby::middleware::Application<Config>::Application() 
                                (boost::io::too_many_args_bit | boost::io::too_few_args_bit));
 
         std::string file_name =
-            (file_format % goby::time::file_str() % app3_base_configuration_.name()).str();
-        std::string file_symlink = (file_format % "latest" % app3_base_configuration_.name()).str();
+            (file_format % goby::time::file_str() % our_app3_base_configuration_.name()).str();
+        std::string file_symlink =
+            (file_format % "latest" % our_app3_base_configuration_.name()).str();
 
         glog.is(VERBOSE) && glog << "logging output to file: " << file_name << std::endl;
 
@@ -181,15 +186,15 @@ template <typename Config> goby::middleware::Application<Config>::Application() 
                 glog << "Cannot create symlink to latest file. Continuing onwards anyway"
                      << std::endl;
 
-        glog.add_stream(app3_base_configuration_.glog_config().file_log(i).verbosity(),
+        glog.add_stream(our_app3_base_configuration_.glog_config().file_log(i).verbosity(),
                         fout_[i].get());
     }
 
-    if (!app3_base_configuration_.IsInitialized())
+    if (!our_app3_base_configuration_.IsInitialized())
         throw(middleware::ConfigException("Invalid base configuration"));
 
     glog.is(DEBUG2) && glog << "Application: constructed with PID: " << getpid() << std::endl;
-    glog.is(DEBUG1) && glog << "App name is " << app3_base_configuration_.name() << std::endl;
+    glog.is(DEBUG1) && glog << "App name is " << our_app3_base_configuration_.name() << std::endl;
     glog.is(DEBUG2) && glog << "Configuration is: " << app_cfg_.DebugString() << std::endl;
 }
 

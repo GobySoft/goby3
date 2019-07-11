@@ -60,9 +60,8 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
 
     void register_read_hooks(const std::ifstream& in_log_file) override
     {
-        LogEntry::filter_hook[{
-            static_cast<int>(scheme), static_cast<std::string>(file_desc_group),
-            google::protobuf::FileDescriptorProto::descriptor()->full_name()}] =
+        LogEntry::filter_hook[{static_cast<int>(scheme), static_cast<std::string>(file_desc_group),
+                               google::protobuf::FileDescriptorProto::descriptor()->full_name()}] =
             [](const std::vector<unsigned char>& data) {
                 google::protobuf::FileDescriptorProto file_desc_proto;
                 file_desc_proto.ParseFromArray(&data[0], data.size());
@@ -79,34 +78,26 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
         };
     }
 
-    std::vector<std::shared_ptr<google::protobuf::Message> >
-    parse_message(LogEntry& log_entry)
+    std::vector<std::shared_ptr<google::protobuf::Message>> parse_message(LogEntry& log_entry)
     {
-        std::vector<std::shared_ptr<google::protobuf::Message> > msgs;
+        std::vector<std::shared_ptr<google::protobuf::Message>> msgs;
 
         const auto& data = log_entry.data();
         auto bytes_begin = data.begin(), bytes_end = data.end(), actual_end = data.begin();
 
         while (actual_end != bytes_end)
         {
-            auto desc = dccl::DynamicProtobufManager::find_descriptor(log_entry.type());
-
-            if (!desc)
-                throw(log::LogException("Failed to find Descriptor for Protobuf message of type: " +
-                                        log_entry.type()));
-
-            auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                std::shared_ptr<google::protobuf::Message> >(desc);
-
-            if (!msg)
+            try
+            {
+                auto msg = SerializerParserHelper<google::protobuf::Message, scheme>::parse(
+                    bytes_begin, bytes_end, actual_end, log_entry.type());
+                msgs.push_back(msg);
+            }
+            catch (std::exception& e)
+            {
                 throw(log::LogException("Failed to create Protobuf message of type: " +
-                                        desc->full_name()));
-
-            SerializerParserHelper<google::protobuf::Message, scheme>::parse(bytes_begin, bytes_end,
-                                                                             actual_end, msg.get());
-
-            msgs.push_back(msg);
-
+                                        log_entry.type() + ", reason: " + e.what()));
+            }
             bytes_begin = actual_end;
         }
 
@@ -132,9 +123,9 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             file_desc->CopyTo(&file_desc_proto);
             std::vector<unsigned char> data(file_desc_proto.ByteSize());
             file_desc_proto.SerializeToArray(&data[0], data.size());
-            LogEntry entry(
-                data, goby::middleware::MarshallingScheme::PROTOBUF,
-                google::protobuf::FileDescriptorProto::descriptor()->full_name(), file_desc_group);
+            LogEntry entry(data, goby::middleware::MarshallingScheme::PROTOBUF,
+                           google::protobuf::FileDescriptorProto::descriptor()->full_name(),
+                           file_desc_group);
             entry.serialize(&out_log_file);
         }
         else

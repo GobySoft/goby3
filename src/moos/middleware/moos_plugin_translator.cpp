@@ -28,6 +28,7 @@ goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
     : goby::middleware::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
 {
     moos_.comms().SetOnConnectCallBack(TranslatorOnConnectCallBack, this);
+
     moos_.comms().Run(cfg().moos_server(), cfg().moos_port(), translator_name(),
                       cfg().poll_frequency());
 }

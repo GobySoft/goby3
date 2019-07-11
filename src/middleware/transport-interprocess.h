@@ -267,13 +267,16 @@ class InterProcessForwarder
             Base::inner_.template publish<Base::regex_group_>(forwarded_data);
         };
 
-        auto portal_subscription = std::make_shared<SerializationSubscriptionRegex>(
+        std::cout << "Forwarding regex subscription for type: " << type_regex
+                  << " and group: " << group_regex << std::endl;
+
+        auto portal_subscription = std::make_shared<SerializationSubscriptionRegex<>>(
             inner_publication_lambda, schemes, type_regex, group_regex);
-        Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionRegex>(
+        Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionRegex<>>(
             portal_subscription);
 
-        auto local_subscription = std::shared_ptr<SerializationSubscriptionRegex>(
-            new SerializationSubscriptionRegex(f, schemes, type_regex, group_regex));
+        auto local_subscription = std::shared_ptr<SerializationSubscriptionRegex<>>(
+            new SerializationSubscriptionRegex<>(f, schemes, type_regex, group_regex));
         regex_subscriptions_.insert(local_subscription);
     }
 
@@ -292,7 +295,7 @@ class InterProcessForwarder
     } // A forwarder is a shell, only the inner Transporter has data
 
   private:
-    std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
+    std::set<std::shared_ptr<const SerializationSubscriptionRegex<>>> regex_subscriptions_;
 };
 
 } // namespace middleware
