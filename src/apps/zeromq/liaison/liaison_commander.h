@@ -110,7 +110,8 @@ struct CommandEntry
 
 class CommanderCommsThread;
 
-class LiaisonCommander : public goby::zeromq::LiaisonContainerWithComms<LiaisonCommander, CommanderCommsThread>
+class LiaisonCommander
+    : public goby::zeromq::LiaisonContainerWithComms<LiaisonCommander, CommanderCommsThread>
 {
   public:
     LiaisonCommander(const protobuf::LiaisonConfig& cfg);
@@ -123,7 +124,9 @@ class LiaisonCommander : public goby::zeromq::LiaisonContainerWithComms<LiaisonC
 
     friend class CommanderCommsThread;
     void display_notify_subscription(const std::vector<unsigned char>& data, int scheme,
-                                     const std::string& type, const std::string& group);
+                                     const std::string& type, const std::string& group,
+                                     const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::
+                                         NotificationSubscription::Color& background_color);
 
   private:
     const protobuf::ProtobufCommanderConfig& pb_commander_config_;
@@ -242,7 +245,7 @@ class LiaisonCommander : public goby::zeromq::LiaisonContainerWithComms<LiaisonC
             //                    std::map<const google::protobuf::FieldDescriptor*, int> field_info_map_;
 
             Wt::Dbo::Session* session_;
-            Wt::Dbo::QueryModel<Wt::Dbo::ptr<CommandEntry> >* query_model_;
+            Wt::Dbo::QueryModel<Wt::Dbo::ptr<CommandEntry>>* query_model_;
 
             Wt::WGroupBox* query_box_;
             Wt::WTreeView* query_table_;
@@ -300,11 +303,21 @@ class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonComm
         for (const auto& notify : cfg().pb_commander_config().notify_subscribe())
         {
             interprocess().subscribe_regex(
-                [this](const std::vector<unsigned char>& data, int scheme, const std::string& type,
-                       const goby::middleware::Group& group) {
+                [this, notify](const std::vector<unsigned char>& data, int scheme,
+                               const std::string& type, const goby::middleware::Group& group) {
                     std::string gr = group;
-                    commander_->post_to_wt(
-                        [=]() { commander_->display_notify_subscription(data, scheme, type, gr); });
+                    commander_->post_to_wt([=]() {
+                        auto background_color = notify.background_color();
+                        if (!notify.has_background_color())
+                        {
+                            background_color.set_r(255);
+                            background_color.set_g(255);
+                            background_color.set_b(255);
+                        }
+
+                        commander_->display_notify_subscription(data, scheme, type, gr,
+                                                                background_color);
+                    });
                 },
                 {goby::middleware::MarshallingScheme::PROTOBUF}, notify.type_regex(),
                 notify.group_regex());
@@ -318,7 +331,7 @@ class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonComm
 };
 
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
 
 #endif

@@ -32,16 +32,16 @@
 #include <google/protobuf/io/tokenizer.h>
 
 #include "dccl/dynamic_protobuf_manager.h"
+
 #include "goby/moos/moos_string.h"
+#include "goby/moos/protobuf/goby_moos_app.pb.h"
+#include "goby/moos/protobuf/translator.pb.h"
+#include "goby/moos/transitional/message_algorithms.h"
+#include "goby/moos/transitional/message_val.h"
 #include "goby/util/as.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/primitive_types.h"
-
-#include "goby/moos/transitional/message_algorithms.h"
-#include "goby/moos/transitional/message_val.h"
-
-#include "goby/moos/protobuf/translator.pb.h"
 
 namespace goby
 {
@@ -259,7 +259,7 @@ class MOOSPrefixTranslation
             try
             {
                 auto return_message = dccl::DynamicProtobufManager::new_protobuf_message<
-                    std::shared_ptr<google::protobuf::Message> >(name);
+                    std::shared_ptr<google::protobuf::Message>>(name);
                 if (in.size() > end_bracket_pos + 1)
                     goby::moos::MOOSTranslation<base_technique>::parse(
                         in.substr(end_bracket_pos + 1), return_message.get());
@@ -1516,7 +1516,19 @@ namespace goby
 namespace moos
 {
 extern goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique moos_technique;
+
+inline void set_moos_technique(const goby::moos::protobuf::GobyMOOSAppConfig& cfg)
+{
+    if (cfg.has_moos_parser_technique())
+        goby::moos::moos_technique = cfg.moos_parser_technique();
+    else if (cfg.has_use_binary_protobuf())
+        goby::moos::moos_technique =
+            cfg.use_binary_protobuf()
+                ? goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED
+                : goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT;
 }
+
+} // namespace moos
 } // namespace goby
 
 inline bool serialize_for_moos(std::string* out, const google::protobuf::Message& msg)

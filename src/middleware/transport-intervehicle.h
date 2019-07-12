@@ -226,9 +226,9 @@ class InterVehicleTransporterBase
             using Helper = SerializerParserHelper<intervehicle::protobuf::Subscription,
                                                   MarshallingScheme::DCCL>;
             auto subscription = Helper::parse(bytes_begin, bytes_end, actual_end);
-            subscription.mutable_header()->set_src(0);
+            subscription->mutable_header()->set_src(0);
 
-            std::vector<char> bytes(Helper::serialize(subscription));
+            std::vector<char> bytes(Helper::serialize(*subscription));
             std::string* sbytes = new std::string(bytes.begin(), bytes.end());
             original.set_allocated_data(sbytes);
         }

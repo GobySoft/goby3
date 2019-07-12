@@ -34,7 +34,6 @@
 #include "dccl/dynamic_protobuf_manager.h"
 #include "dccl/protobuf/option_extensions.pb.h"
 #include "goby/acomms/protobuf/network_ack.pb.h"
-#include "goby/middleware/liaison/groups.h"
 #include "goby/util/binary.h"
 #include "goby/util/sci.h"
 
@@ -78,7 +77,9 @@ goby::apps::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonCo
 
 void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
     const std::vector<unsigned char>& data, int scheme, const std::string& type,
-    const std::string& group)
+    const std::string& group,
+    const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::NotificationSubscription::Color&
+        background_color)
 {
     WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
 
@@ -94,10 +95,13 @@ void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
                               goby::time::SystemClock::now<boost::posix_time::ptime>()),
                       new_div);
 
+    new_div->decorationStyle().setBackgroundColor(Wt::WColor(
+        background_color.r(), background_color.g(), background_color.b(), background_color.a()));
+
     try
     {
         auto pb_msg = dccl::DynamicProtobufManager::new_protobuf_message<
-            std::unique_ptr<google::protobuf::Message> >(type);
+            std::unique_ptr<google::protobuf::Message>>(type);
         pb_msg->ParseFromArray(&data[0], data.size());
 
         glog.is(DEBUG1) && glog << "Received notify msg: " << pb_msg->ShortDebugString()
@@ -355,6 +359,10 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
             switch_command(command_selection_->currentIndex());
         }
     }
+    else
+    {
+        switch_command(0);
+    }
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::switch_command(int selection_index)
@@ -364,9 +372,11 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::switch_command(int
         send_button_->setDisabled(true);
         clear_button_->setDisabled(true);
         comment_line_->setDisabled(true);
+        commands_div_->hide();
         return;
     }
 
+    commands_div_->show();
     send_button_->setDisabled(false);
     clear_button_->setDisabled(false);
     comment_line_->setDisabled(false);
@@ -474,7 +484,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     //    WStackedWidget* master_field_info_stack)
     : WGroupBox(protobuf_name),
       message_(dccl::DynamicProtobufManager::new_protobuf_message<
-               std::shared_ptr<google::protobuf::Message> >(protobuf_name)),
+               std::shared_ptr<google::protobuf::Message>>(protobuf_name)),
       latest_time_(0),
       group_div_(new WContainerWidget(this)),
       group_label_(new WLabel("Group: ", group_div_)),
@@ -483,7 +493,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
       tree_table_(new WTreeTable(tree_box_)),
       //      field_info_stack_(new WStackedWidget(master_field_info_stack)),
       session_(session),
-      query_model_(new Dbo::QueryModel<Dbo::ptr<CommandEntry> >(this)),
+      query_model_(new Dbo::QueryModel<Dbo::ptr<CommandEntry>>(this)),
       query_box_(new WGroupBox("Sent message log (click for details)", this)),
       query_table_(new WTreeView(query_box_)),
       last_reload_time_(boost::posix_time::neg_infin),

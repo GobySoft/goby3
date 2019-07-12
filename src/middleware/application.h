@@ -57,7 +57,7 @@ int run(const goby::middleware::ConfiguratorInterface<typename App::ConfigType>&
 /// \tparam Configurator Configurator object that has a constructor such as ```Configurator(int argc, char* argv)```
 /// \return same as ```int main(int argc, char* argv)```
 template <typename App,
-          typename Configurator = middleware::ProtobufConfigurator<typename App::ConfigType> >
+          typename Configurator = middleware::ProtobufConfigurator<typename App::ConfigType>>
 int run(int argc, char* argv[])
 {
     return run<App>(Configurator(argc, argv));
@@ -98,7 +98,7 @@ template <typename Config> class Application
     }
 
     /// \brief Accesses configuration object passed at launch
-    const Config& app_cfg() const { return app_cfg_; }
+    const Config& app_cfg() { return app_cfg_; }
 
   private:
     template <typename App>
@@ -116,14 +116,14 @@ template <typename Config> class Application
     int return_value_;
 
     // static here allows fout_ to live until program exit to log glog output
-    static std::vector<std::unique_ptr<std::ofstream> > fout_;
+    static std::vector<std::unique_ptr<std::ofstream>> fout_;
 };
 } // namespace middleware
 
 } // namespace goby
 
 template <typename Config>
-std::vector<std::unique_ptr<std::ofstream> > goby::middleware::Application<Config>::fout_;
+std::vector<std::unique_ptr<std::ofstream>> goby::middleware::Application<Config>::fout_;
 
 template <typename Config> Config goby::middleware::Application<Config>::app_cfg_;
 

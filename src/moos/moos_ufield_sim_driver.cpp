@@ -25,7 +25,6 @@
 #include "goby/acomms/protobuf/mm_driver.pb.h"
 #include "goby/moos/modem_id_convert.h"
 #include "goby/moos/moos_string.h"
-#include "goby/moos/protobuf/ufield_sim_driver.pb.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
@@ -45,10 +44,10 @@ void goby::moos::UFldDriver::startup(const goby::acomms::protobuf::DriverConfig&
                             << "Goby MOOS uField Toolbox driver starting up." << std::endl;
 
     driver_cfg_ = cfg;
+    ufld_driver_cfg_ = driver_cfg_.GetExtension(goby::moos::ufld::protobuf::config);
 
     goby::glog.is(goby::util::logger::DEBUG1) &&
-        goby::glog << modem_lookup_.read_lookup_file(
-                          driver_cfg_.GetExtension(protobuf::Config::modem_id_lookup_path))
+        goby::glog << modem_lookup_.read_lookup_file(ufld_driver_cfg_.modem_id_lookup_path())
                    << std::flush;
 
     // for(int i = 0, n = driver_cfg_.ExtensionSize(protobuf::Config::id_entry);
@@ -60,8 +59,8 @@ void goby::moos::UFldDriver::startup(const goby::acomms::protobuf::DriverConfig&
     //     modem_id2name_.left.insert(std::make_pair(entry.modem_id(), entry.name()));
     // }
 
-    const std::string& moos_server = driver_cfg_.GetExtension(protobuf::Config::moos_server);
-    int moos_port = driver_cfg_.GetExtension(protobuf::Config::moos_port);
+    const std::string& moos_server = ufld_driver_cfg_.moos_server();
+    int moos_port = ufld_driver_cfg_.moos_port();
     moos_client_.Run(moos_server.c_str(), moos_port, "goby.moos.UFldDriver");
 
     int i = 0;
@@ -73,9 +72,8 @@ void goby::moos::UFldDriver::startup(const goby::acomms::protobuf::DriverConfig&
     }
     glog.is(DEBUG1) && glog << group(glog_out_group()) << "Connected to MOOSDB." << std::endl;
 
-    moos_client_.Register(driver_cfg_.GetExtension(protobuf::Config::incoming_moos_var), 0);
-    moos_client_.Register(
-        driver_cfg_.GetExtension(protobuf::Config::micromodem_mimic).range_report_var(), 0);
+    moos_client_.Register(ufld_driver_cfg_.incoming_moos_var(), 0);
+    moos_client_.Register(ufld_driver_cfg_.micromodem_mimic().range_report_var(), 0);
 }
 
 void goby::moos::UFldDriver::shutdown() { moos_client_.Close(); }
@@ -97,9 +95,8 @@ void goby::moos::UFldDriver::handle_initiate_transmission(
             {
                 // this is our transmission
 
-                if (msg.rate() < driver_cfg_.ExtensionSize(protobuf::Config::rate_to_bytes))
-                    msg.set_max_frame_bytes(
-                        driver_cfg_.GetExtension(protobuf::Config::rate_to_bytes, msg.rate()));
+                if (msg.rate() < ufld_driver_cfg_.rate_to_bytes_size())
+                    msg.set_max_frame_bytes(ufld_driver_cfg_.rate_to_bytes(msg.rate()));
                 else
                     msg.set_max_frame_bytes(DEFAULT_PACKET_SIZE);
 
@@ -116,15 +113,16 @@ void goby::moos::UFldDriver::handle_initiate_transmission(
             else
             {
                 // send thirdparty "poll"
-                msg.SetExtension(goby::moos::protobuf::poll_src, msg.src());
-                msg.SetExtension(goby::moos::protobuf::poll_dest, msg.dest());
+                auto& ufld_transmission =
+                    *msg.MutableExtension(goby::moos::ufld::protobuf::transmission);
+                ufld_transmission.set_poll_src(msg.src());
+                ufld_transmission.set_poll_dest(msg.dest());
 
                 msg.set_dest(msg.src());
                 msg.set_src(driver_cfg_.modem_id());
 
                 msg.set_type(goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC);
-                msg.SetExtension(goby::moos::protobuf::type,
-                                 goby::moos::protobuf::UFIELD_DRIVER_POLL);
+                ufld_transmission.set_type(goby::moos::ufld::protobuf::UFIELD_DRIVER_POLL);
 
                 send_message(msg);
             }
@@ -176,21 +174,19 @@ void goby::moos::UFldDriver::send_message(const goby::acomms::protobuf::ModemTra
 
     std::stringstream out_ss;
     out_ss << "src_node=" << src << ",dest_node=" << dest
-           << ",var_name=" << driver_cfg_.GetExtension(protobuf::Config::incoming_moos_var)
-           << ",string_val=" << hex;
+           << ",var_name=" << ufld_driver_cfg_.incoming_moos_var() << ",string_val=" << hex;
 
     goby::acomms::protobuf::ModemRaw out_raw;
     out_raw.set_raw(out_ss.str());
     ModemDriverBase::signal_raw_outgoing(out_raw);
 
-    const std::string& out_moos_var = driver_cfg_.GetExtension(protobuf::Config::outgoing_moos_var);
+    const std::string& out_moos_var = ufld_driver_cfg_.outgoing_moos_var();
 
     glog.is(DEBUG1) && glog << group(glog_out_group()) << out_moos_var << ": " << hex << std::endl;
 
     moos_client_.Notify(out_moos_var, hex);
 
-    const std::string& out_ufield_moos_var =
-        driver_cfg_.GetExtension(protobuf::Config::ufield_outgoing_moos_var);
+    const std::string& out_ufield_moos_var = ufld_driver_cfg_.ufield_outgoing_moos_var();
 
     glog.is(DEBUG1) && glog << group(glog_out_group()) << out_ufield_moos_var << ": "
                             << out_ss.str() << std::endl;
@@ -205,8 +201,7 @@ void goby::moos::UFldDriver::do_work()
     {
         for (MOOSMSG_LIST::iterator it = msgs.begin(), end = msgs.end(); it != end; ++it)
         {
-            const std::string& in_moos_var =
-                driver_cfg_.GetExtension(protobuf::Config::incoming_moos_var);
+            const std::string& in_moos_var = ufld_driver_cfg_.incoming_moos_var();
             if (it->GetKey() == in_moos_var)
             {
                 const std::string& value = it->GetString();
@@ -221,8 +216,7 @@ void goby::moos::UFldDriver::do_work()
                 msg.ParseFromString(hex_decode(value));
                 receive_message(msg);
             }
-            else if (it->GetKey() == driver_cfg_.GetExtension(protobuf::Config::micromodem_mimic)
-                                         .range_report_var())
+            else if (it->GetKey() == ufld_driver_cfg_.micromodem_mimic().range_report_var())
             {
                 // response to our modem "ping"
                 // e.g "range=1722.3869,target=resolution,time=1364413337.272"
@@ -286,18 +280,17 @@ void goby::moos::UFldDriver::do_work()
 
 void goby::moos::UFldDriver::receive_message(const goby::acomms::protobuf::ModemTransmission& msg)
 {
+    const auto& ufld_transmission = msg.GetExtension(goby::moos::ufld::protobuf::transmission);
+
     if (msg.type() == goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC &&
-        msg.GetExtension(goby::moos::protobuf::type) == goby::moos::protobuf::UFIELD_DRIVER_POLL)
+        ufld_transmission.type() == goby::moos::ufld::protobuf::UFIELD_DRIVER_POLL)
     {
         goby::acomms::protobuf::ModemTransmission data_msg = msg;
         data_msg.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
-        data_msg.set_src(msg.GetExtension(goby::moos::protobuf::poll_src));
-        data_msg.set_dest(msg.GetExtension(goby::moos::protobuf::poll_dest));
+        data_msg.set_src(ufld_transmission.poll_src());
+        data_msg.set_dest(ufld_transmission.poll_dest());
 
-        data_msg.ClearExtension(goby::moos::protobuf::type);
-        data_msg.ClearExtension(goby::moos::protobuf::poll_dest);
-        data_msg.ClearExtension(goby::moos::protobuf::poll_src);
-
+        data_msg.ClearExtension(goby::moos::ufld::protobuf::transmission);
         handle_initiate_transmission(data_msg);
     }
     else
@@ -327,7 +320,5 @@ void goby::moos::UFldDriver::ccmpc(const goby::acomms::protobuf::ModemTransmissi
 
     std::string src = modem_lookup_.get_name_from_id(msg.src());
     last_ccmpc_dest_ = msg.dest();
-    moos_client_.Notify(
-        driver_cfg_.GetExtension(protobuf::Config::micromodem_mimic).range_request_var(),
-        "name=" + src);
+    moos_client_.Notify(ufld_driver_cfg_.micromodem_mimic().range_request_var(), "name=" + src);
 }

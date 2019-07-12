@@ -86,7 +86,7 @@ message GobyMOOSAppConfig
         default = false,
         (goby.field).moos_global = "use_binary_protobuf",
         (goby.field).description =
-            "Use TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED for parse_for_moos "
+            "If true, use TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED for parse_for_moos "
             "and serialize_for_moos"
     ];
 

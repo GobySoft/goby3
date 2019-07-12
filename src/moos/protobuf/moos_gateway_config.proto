@@ -1,6 +1,8 @@
 syntax = "proto2";
 import "goby/middleware/protobuf/app_config.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
+import "goby/moos/protobuf/translator.proto";
+import "goby/protobuf/option_extensions.proto";
 
 package goby.apps.moos.protobuf;
 
@@ -9,12 +11,27 @@ message GobyMOOSGatewayConfig
     optional goby.middleware.protobuf.AppConfig app = 1;
     optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
 
-    optional string moos_server = 3 [default = "localhost"];
-    optional int32 moos_port = 4 [default = 9000];
-
-    repeated string plugin_library = 10;
+    message MOOSConfig
+    {
+        optional string server = 3 [default = "localhost"];
+        optional int32 port = 4 [default = 9000];
+        optional bool use_binary_protobuf = 109 [
+            default = false,
+            (goby.field).description =
+                "If true, use TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED for "
+                "parse_for_moos "
+                "and serialize_for_moos"
+        ];
+        optional goby.moos.protobuf.TranslatorEntry.ParserSerializerTechnique
+            moos_parser_technique = 110
+            [default = TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT];
+    }
+    optional MOOSConfig moos = 3;
 
     // frequency at which MOOS Fetch() is called - this allows us to interleave
     // with Goby without thread access management in the user plugins
     optional float poll_frequency = 20 [default = 10];
+
+    extensions 1000 to max;
+    // 1000: LAMSS
 }

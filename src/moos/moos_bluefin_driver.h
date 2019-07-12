@@ -31,6 +31,7 @@
 
 #include "goby/acomms/amac.h"
 #include "goby/acomms/modemdriver/driver_base.h"
+#include "goby/moos/protobuf/bluefin_driver.pb.h"
 
 #include "goby/moos/modem_id_convert.h"
 
@@ -59,6 +60,8 @@ class BluefinCommsDriver : public goby::acomms::ModemDriverBase
   private:
     CMOOSCommClient moos_client_;
     goby::acomms::protobuf::DriverConfig driver_cfg_; // configuration given to you at launch
+    goby::moos::bluefin::protobuf::Config bluefin_driver_cfg_;
+
     std::string current_modem_;
     double end_of_mac_window_;
 

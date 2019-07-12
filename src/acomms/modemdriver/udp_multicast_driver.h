@@ -69,6 +69,8 @@ class UDPMulticastDriver : public ModemDriverBase
 
     std::array<char, UDP_MAX_PACKET_SIZE> receive_buffer_;
     std::uint32_t next_frame_{0};
+
+    std::map<int, int> rate_to_bytes_;
 };
 } // namespace acomms
 } // namespace goby
