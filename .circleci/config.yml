@@ -413,6 +413,7 @@ jobs:
     <<: *job-template-sanitizers
     steps:
       - checkout
+      - run: *run-add-continuous-packages
       - run: *run-update-apt
       - run:
           name: Build with static analyzer
@@ -431,6 +432,7 @@ jobs:
     <<: *job-template-sanitizers
     steps:
       - checkout
+      - run: *run-add-continuous-packages
       - run: *run-update-apt
       - run:
           name: Build with AddressSanitizer (and LeakSanitizer)
@@ -442,6 +444,7 @@ jobs:
     <<: *job-template-sanitizers
     steps:
       - checkout
+      - run: *run-add-continuous-packages
       - run: *run-update-apt
       - run: 
           name: Build with ThreadSanitizer
@@ -451,6 +454,7 @@ jobs:
     <<: *job-template-sanitizers
     steps:
       - checkout
+      - run: *run-add-continuous-packages
       - run: *run-update-apt
       - run:
           name: Build with UndefinedBehaviorSanitizer
