@@ -25,7 +25,6 @@
 #include "goby/acomms/protobuf/mm_driver.pb.h"
 #include "goby/moos/moos_protobuf_helpers.h"
 #include "goby/moos/moos_string.h"
-#include "goby/moos/protobuf/bluefin_driver.pb.h"
 #include "goby/time.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
@@ -50,29 +49,26 @@ void goby::moos::BluefinCommsDriver::startup(const goby::acomms::protobuf::Drive
                             << "Goby MOOS Bluefin Comms driver starting up." << std::endl;
 
     driver_cfg_ = cfg;
+    bluefin_driver_cfg_ = cfg.GetExtension(goby::moos::bluefin::protobuf::config);
 
     modem_to_rate_to_bytes_.clear();
-    for (int i = 0, n = driver_cfg_.ExtensionSize(protobuf::BluefinConfig::hardware_to_rate); i < n;
-         ++i)
+    for (int i = 0, n = bluefin_driver_cfg_.hardware_to_rate_size(); i < n; ++i)
     {
-        const protobuf::HardwareRatePair& hardware_to_rate =
-            driver_cfg_.GetExtension(protobuf::BluefinConfig::hardware_to_rate, i);
+        const auto& hardware_to_rate = bluefin_driver_cfg_.hardware_to_rate(i);
         modem_to_rate_to_bytes_[hardware_to_rate.hardware_name()][hardware_to_rate.rate()] =
             hardware_to_rate.packet_bytes();
     }
 
     goby_to_bluefin_id_.clear();
-    for (int i = 0, n = driver_cfg_.ExtensionSize(protobuf::BluefinConfig::modem_lookup); i < n;
-         ++i)
+    for (int i = 0, n = bluefin_driver_cfg_.modem_lookup_size(); i < n; ++i)
     {
-        const protobuf::BluefinModemIdLookUp& modem_lookup =
-            driver_cfg_.GetExtension(protobuf::BluefinConfig::modem_lookup, i);
+        const auto& modem_lookup = bluefin_driver_cfg_.modem_lookup(i);
         goby_to_bluefin_id_.left.insert(
             std::make_pair(modem_lookup.goby_id(), modem_lookup.bluefin_id()));
     }
 
-    const std::string& moos_server = driver_cfg_.GetExtension(protobuf::BluefinConfig::moos_server);
-    int moos_port = driver_cfg_.GetExtension(protobuf::BluefinConfig::moos_port);
+    const std::string& moos_server = bluefin_driver_cfg_.moos_server();
+    int moos_port = bluefin_driver_cfg_.moos_port();
     moos_client_.Run(moos_server.c_str(), moos_port, "goby.moos.BluefinCommsDriver");
 
     int i = 0;
@@ -84,7 +80,7 @@ void goby::moos::BluefinCommsDriver::startup(const goby::acomms::protobuf::Drive
     }
     glog.is(DEBUG1) && glog << group(glog_out_group()) << "Connected to MOOSDB." << std::endl;
 
-    moos_client_.Register(driver_cfg_.GetExtension(protobuf::BluefinConfig::nmea_in_moos_var), 0);
+    moos_client_.Register(bluefin_driver_cfg_.nmea_in_moos_var(), 0);
 }
 
 void goby::moos::BluefinCommsDriver::shutdown() { moos_client_.Close(); }
@@ -158,8 +154,7 @@ void goby::moos::BluefinCommsDriver::handle_initiate_transmission(
                     out_raw.set_raw(ss.str());
                     ModemDriverBase::signal_raw_outgoing(out_raw);
 
-                    const std::string& out_moos_var =
-                        driver_cfg_.GetExtension(protobuf::BluefinConfig::nmea_out_moos_var);
+                    const std::string& out_moos_var = bluefin_driver_cfg_.nmea_out_moos_var();
 
                     glog.is(DEBUG1) && glog << group(glog_out_group()) << out_moos_var << ": "
                                             << ss.str() << std::endl;
@@ -191,8 +186,7 @@ void goby::moos::BluefinCommsDriver::do_work()
     {
         for (MOOSMSG_LIST::iterator it = msgs.begin(), end = msgs.end(); it != end; ++it)
         {
-            const std::string& in_moos_var =
-                driver_cfg_.GetExtension(protobuf::BluefinConfig::nmea_in_moos_var);
+            const std::string& in_moos_var = bluefin_driver_cfg_.nmea_in_moos_var();
             const std::string& s_val = it->GetString();
 
             const std::string raw = "raw: \"";

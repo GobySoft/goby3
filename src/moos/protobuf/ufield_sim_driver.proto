@@ -3,7 +3,7 @@ import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/modem_message.proto";
 import "dccl/option_extensions.proto";
 
-package goby.moos.protobuf;
+package goby.moos.ufld.protobuf;
 
 message MicroModemMimic
 {
@@ -13,27 +13,28 @@ message MicroModemMimic
 
 message Config
 {
-    extend goby.acomms.protobuf.DriverConfig
-    {
-        optional string moos_server = 1300 [default = "localhost"];
-        optional int32 moos_port = 1301 [default = 9000];
+    optional string moos_server = 1 [default = "localhost"];
+    optional int32 moos_port = 2 [default = 9000];
 
-        optional string incoming_moos_var = 1302
-            [default = "ACOMMS_UFIELD_DRIVER_IN"];
-        optional string outgoing_moos_var = 1303
-            [default = "ACOMMS_UFIELD_DRIVER_OUT"];
+    optional string incoming_moos_var = 3 [default = "ACOMMS_UFIELD_DRIVER_IN"];
+    optional string outgoing_moos_var = 4
+        [default = "ACOMMS_UFIELD_DRIVER_OUT"];
 
-        optional string ufield_outgoing_moos_var = 1304
-            [default = "NODE_MESSAGE_LOCAL"];
+    optional string ufield_outgoing_moos_var = 5
+        [default = "NODE_MESSAGE_LOCAL"];
 
-        repeated int32 rate_to_bytes = 1305;
+    repeated int32 rate_to_bytes = 6;
 
-        optional string modem_id_lookup_path = 1306;
+    optional string modem_id_lookup_path = 7;
 
-        optional MicroModemMimic micromodem_mimic = 1307;
+    optional MicroModemMimic micromodem_mimic = 8;
 
-        // repeated ModemIdEntry id_entry = 1306;
-    }
+    // repeated ModemIdEntry id_entry = 9;
+}
+
+extend goby.acomms.protobuf.DriverConfig
+{
+    optional Config config = 1300;
 }
 
 enum TransmissionType
@@ -42,11 +43,16 @@ enum TransmissionType
     UFIELD_DRIVER_POLL = 1;
 }
 
-extend goby.acomms.protobuf.ModemTransmission
+message Transmission
 {
-    optional TransmissionType type = 1300 [default = BASE_TYPE];
+    optional TransmissionType type = 1 [default = BASE_TYPE];
 
     // used in UFIELD_DRIVER_POLL message
-    optional int32 poll_src = 1301 [(dccl.field).omit = true];
-    optional int32 poll_dest = 1302 [(dccl.field).omit = true];
+    optional int32 poll_src = 2 [(dccl.field).omit = true];
+    optional int32 poll_dest = 3 [(dccl.field).omit = true];
+}
+
+extend goby.acomms.protobuf.ModemTransmission
+{
+    optional Transmission transmission = 1300;
 };

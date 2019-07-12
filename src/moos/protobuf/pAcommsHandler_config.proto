@@ -24,21 +24,11 @@ message pAcommsHandlerConfig
         (goby.field).example = "1"
     ];
 
-    optional goby.acomms.protobuf.DriverType driver_type = 3 [
-        default = DRIVER_NONE,
-        (goby.field).description =
-            "Corresponding primary driver for the type of physical acoustic "
-            "modem used (used for sending and receiving)"
-    ];
     optional goby.acomms.protobuf.DriverConfig driver_cfg = 4
         [(goby.field).description =
              "Configure the primary acoustic modem driver (used for sending "
              "and receiving)"];
 
-    repeated goby.acomms.protobuf.DriverType listen_driver_type = 30
-        [(goby.field).description =
-             "Optionally, add one or more additional drivers for listening "
-             "(receiving) only."];
     repeated goby.acomms.protobuf.DriverConfig listen_driver_cfg = 31
         [(goby.field).description =
              "Configuration for the additional drivers."];
