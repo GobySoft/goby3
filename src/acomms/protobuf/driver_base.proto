@@ -99,13 +99,13 @@ message DriverConfig
     extensions 1000 to max;
     // extension 1000 used by acomms_mm_driver.proto
     // extension 1201 used by acomms_abc_driver.proto (example driver)
-    // extensions 1300-1320 used by ufield_sim_driver.proto
+    // extension 1300 used by ufield_sim_driver.proto
     // (removed) extensions 1321-1340 used by pb_modem_driver.proto
     // extension 1341 used by udp_driver.proto
     // extension 1342 used by udp_multicast_driver.proto
-    // extensions 1361-1380 used by bluefin_sim_driver.proto
-    // extensions 1381 used by iridium_driver.proto
+    // extension 1361 used by bluefin_sim_driver.proto
+    // extension 1381 used by iridium_driver.proto
     // extensions 1401-1420 used by MOOSSafir (external)
-    // extensions 1421 used by iridium_shore_driver.proto
-    // extensions 1441 used by benthos_atm900.proto
+    // extension 1421 used by iridium_shore_driver.proto
+    // extension 1441 used by benthos_atm900.proto
 }
