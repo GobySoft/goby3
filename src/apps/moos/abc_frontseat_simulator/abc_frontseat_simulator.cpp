@@ -45,7 +45,7 @@ double current_z = 0;
 double current_v = 0;
 double current_hdg = 0;
 
-CMOOSGeodesy geodesy;
+goby::moos::CMOOSGeodesy geodesy;
 
 void parse_in(const std::string& in, std::map<std::string, std::string>* out);
 bool started() { return !std::isnan(datum_lat) && !std::isnan(datum_lon); }

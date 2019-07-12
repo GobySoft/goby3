@@ -10,6 +10,14 @@ message Config
     optional string multicast_address = 2 [default = "239.142.0.1"];
     optional uint32 multicast_port = 3 [default = 50021];
     optional int32 max_frame_size = 4 [default = 1400];
+
+    message RateBytesPair
+    {
+        required int32 rate = 1;
+        required int32 bytes = 2;
+    }
+    repeated RateBytesPair rate_to_bytes = 5 [(goby.field).description="Mapping for rate to maximum packet size (bytes) for simulating different modem packet sizes using UDP multicast"];
+    
 }
 
 extend goby.acomms.protobuf.DriverConfig

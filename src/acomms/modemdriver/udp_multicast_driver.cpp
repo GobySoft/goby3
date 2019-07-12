@@ -39,6 +39,11 @@ void goby::acomms::UDPMulticastDriver::startup(const protobuf::DriverConfig& cfg
 {
     driver_cfg_ = cfg;
 
+    rate_to_bytes_.clear();
+
+    for (const auto& rate_bytes_pair : multicast_driver_cfg().rate_to_bytes())
+        rate_to_bytes_[rate_bytes_pair.rate()] = rate_bytes_pair.bytes();
+
     boost::asio::ip::udp::endpoint listen_endpoint(
         boost::asio::ip::address::from_string(multicast_driver_cfg().listen_address()),
         multicast_driver_cfg().multicast_port());
@@ -74,7 +79,12 @@ void goby::acomms::UDPMulticastDriver::handle_initiate_transmission(
         msg.set_frame_start(next_frame_);
 
     if (!msg.has_max_frame_bytes())
-        msg.set_max_frame_bytes(multicast_driver_cfg().max_frame_size());
+    {
+        if (rate_to_bytes_.count(msg.rate()))
+            msg.set_max_frame_bytes(rate_to_bytes_[msg.rate()]);
+        else
+            msg.set_max_frame_bytes(multicast_driver_cfg().max_frame_size());
+    }
 
     signal_data_request(&msg);
 
@@ -92,10 +102,6 @@ void goby::acomms::UDPMulticastDriver::do_work() { io_service_.poll(); }
 
 void goby::acomms::UDPMulticastDriver::receive_message(const protobuf::ModemTransmission& msg)
 {
-    // reject messages to ourselves
-    if (msg.src() == driver_cfg_.modem_id())
-        return;
-
     if (msg.type() == protobuf::ModemTransmission::DATA && msg.ack_requested() &&
         msg.dest() != BROADCAST_ID)
     {
@@ -166,13 +172,18 @@ void goby::acomms::UDPMulticastDriver::receive_complete(const boost::system::err
     raw_msg.set_raw(std::string(&receive_buffer_[0], bytes_transferred));
     signal_raw_incoming(raw_msg);
 
-    glog.is(DEBUG1) && glog << group(glog_in_group()) << "Received " << bytes_transferred
-                            << " bytes from " << sender_.address().to_string() << ":"
-                            << sender_.port() << std::endl;
-
     protobuf::ModemTransmission msg;
     msg.ParseFromArray(&receive_buffer_[0], bytes_transferred);
-    receive_message(msg);
+
+    // reject messages to ourselves
+    if (msg.src() != driver_cfg_.modem_id())
+    {
+        glog.is(DEBUG1) && glog << group(glog_in_group()) << "Received " << bytes_transferred
+                                << " bytes from " << sender_.address().to_string() << ":"
+                                << sender_.port() << std::endl;
+
+        receive_message(msg);
+    }
 
     start_receive();
 }
