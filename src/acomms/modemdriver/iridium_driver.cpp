@@ -32,7 +32,6 @@
 
 using goby::glog;
 using namespace goby::util::logger;
-using goby::acomms::iridium::protobuf::IridiumDriverConfig;
 
 std::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
 
@@ -55,22 +54,24 @@ void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
 
     driver_cfg_.set_line_delimiter("\r");
 
-    if (driver_cfg_.HasExtension(IridiumDriverConfig::debug_client_port))
+    auto* mutable_iridium_driver_cfg = driver_cfg_.MutableExtension(iridium::protobuf::config);
+
+    if (iridium_driver_cfg().has_debug_client_port())
     {
         debug_client_.reset(new goby::util::TCPClient(
-            "localhost", driver_cfg_.GetExtension(IridiumDriverConfig::debug_client_port), "\r"));
+            "localhost", mutable_iridium_driver_cfg->debug_client_port(), "\r"));
         debug_client_->start();
     }
 
-    if (!driver_cfg_.HasExtension(IridiumDriverConfig::use_dtr) &&
+    if (!iridium_driver_cfg().has_use_dtr() &&
         driver_cfg_.connection_type() == protobuf::DriverConfig::CONNECTION_SERIAL)
     {
-        driver_cfg_.SetExtension(IridiumDriverConfig::use_dtr, true);
+        mutable_iridium_driver_cfg->set_use_dtr(true);
     }
 
     // dtr low hangs up
-    if (driver_cfg_.GetExtension(IridiumDriverConfig::use_dtr))
-        driver_cfg_.AddExtension(IridiumDriverConfig::config, "&D2");
+    if (iridium_driver_cfg().use_dtr())
+        mutable_iridium_driver_cfg->add_config("&D2");
 
     rudics_mac_msg_.set_src(driver_cfg_.modem_id());
     rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
@@ -91,7 +92,7 @@ void goby::acomms::IridiumDriver::modem_init()
     {
         do_work();
 
-        if (driver_cfg_.GetExtension(IridiumDriverConfig::use_dtr) && modem().active() && !dtr_set)
+        if (iridium_driver_cfg().use_dtr() && modem().active() && !dtr_set)
         {
             serial_fd_ = dynamic_cast<util::SerialClient&>(modem()).socket().native_handle();
             set_dtr(true);
@@ -104,7 +105,7 @@ void goby::acomms::IridiumDriver::modem_init()
         usleep(pause_ms * 1000);
         ++i;
 
-        const int start_timeout = driver_cfg_.GetExtension(IridiumDriverConfig::start_timeout);
+        const int start_timeout = iridium_driver_cfg().start_timeout();
         if (i / (1000 / pause_ms) > start_timeout)
             throw(ModemDriverException("Failed to startup.",
                                        protobuf::ModemDriverStatus::STARTUP_FAILED));
@@ -146,7 +147,7 @@ bool goby::acomms::IridiumDriver::query_dtr()
 
 void goby::acomms::IridiumDriver::hangup()
 {
-    if (driver_cfg_.GetExtension(IridiumDriverConfig::use_dtr))
+    if (iridium_driver_cfg().use_dtr())
     {
         set_dtr(false);
         sleep(1);
@@ -170,7 +171,7 @@ void goby::acomms::IridiumDriver::shutdown()
         usleep(10000);
     }
 
-    if (driver_cfg_.GetExtension(IridiumDriverConfig::use_dtr))
+    if (iridium_driver_cfg().use_dtr())
         set_dtr(false);
 
     modem_close();
@@ -196,9 +197,8 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
         msg.set_frame_start(next_frame_ % frame_max);
 
     // set the frame size, if not set or if it exceeds the max configured
-    if (!msg.has_max_frame_bytes() ||
-        msg.max_frame_bytes() > driver_cfg_.GetExtension(IridiumDriverConfig::max_frame_size))
-        msg.set_max_frame_bytes(driver_cfg_.GetExtension(IridiumDriverConfig::max_frame_size));
+    if (!msg.has_max_frame_bytes() || msg.max_frame_bytes() > iridium_driver_cfg().max_frame_size())
+        msg.set_max_frame_bytes(iridium_driver_cfg().max_frame_size());
 
     signal_data_request(&msg);
 
@@ -212,7 +212,7 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
     }
     else if (msg.rate() == RATE_SBD)
     {
-        if (msg.GetExtension(IridiumDriverConfig::if_no_data_do_mailbox_check))
+        if (msg.GetExtension(iridium::protobuf::transmission).if_no_data_do_mailbox_check())
             fsm_.process_event(iridium::fsm::EvSBDBeginData()); // mailbox check
     }
 }
@@ -228,9 +228,9 @@ void goby::acomms::IridiumDriver::do_work()
     if (on_call)
     {
         // if we're on a call, keep pushing data at the target rate
-        const double send_wait = on_call->last_bytes_sent() /
-                                 (driver_cfg_.GetExtension(IridiumDriverConfig::target_bit_rate) /
-                                  static_cast<double>(BITS_IN_BYTE));
+        const double send_wait =
+            on_call->last_bytes_sent() /
+            (iridium_driver_cfg().target_bit_rate() / static_cast<double>(BITS_IN_BYTE));
 
         if (fsm_.data_out().empty() && (now > (on_call->last_tx_time() + send_wait)))
         {
@@ -241,16 +241,15 @@ void goby::acomms::IridiumDriver::do_work()
         }
 
         if (!on_call->bye_sent() &&
-            now > (on_call->last_tx_time() +
-                   driver_cfg_.GetExtension(IridiumDriverConfig::handshake_hangup_seconds)))
+            now > (on_call->last_tx_time() + iridium_driver_cfg().handshake_hangup_seconds()))
         {
             glog.is(DEBUG2) && glog << "Sending bye" << std::endl;
             fsm_.process_event(iridium::fsm::EvSendBye());
         }
 
         if ((on_call->bye_received() && on_call->bye_sent()) ||
-            (now > (on_call->last_rx_tx_time() +
-                    driver_cfg_.GetExtension(IridiumDriverConfig::hangup_seconds_after_empty))))
+            (now >
+             (on_call->last_rx_tx_time() + iridium_driver_cfg().hangup_seconds_after_empty())))
         {
             hangup();
         }

@@ -32,7 +32,6 @@
 #include "test.pb.h"
 
 using namespace goby::test::zeromq::protobuf;
-using goby::acomms::udp::protobuf::UDPDriverConfig;
 
 // tests InterVehiclePortal with InterProcessPortal
 
@@ -40,35 +39,90 @@ int publish_count = 0;
 const int max_publish = 100;
 std::array<int, 3> ipc_receive_count = {{0, 0, 0}};
 
+std::array<int, 2> direct_ack_receive_count = {{0, 0}};
+int indirect_ack_receive_count = 0;
+std::array<int, 2> direct_no_sub_receive_count = {{0, 0}};
+
+int indirect_subscriber_ack = 0;
+int direct_subscriber_ack = 0;
+
 std::atomic<bool> forward(true);
 std::atomic<int> zmq_reqs(0);
 
 using goby::glog;
 using namespace goby::util::logger;
 
+constexpr goby::middleware::Group group1{"group1", 1};
+constexpr goby::middleware::Group group2{"group2", 2};
+constexpr goby::middleware::Group group3{"group3", 3};
+
+constexpr goby::middleware::Group null{"broadcast_group", goby::middleware::Group::broadcast_group};
+
 // process 1
 void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
-                      const goby::middleware::protobuf::InterVehiclePortalConfig& slow_cfg)
+                      const goby::middleware::intervehicle::protobuf::PortalConfig& slow_cfg)
 {
-    goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
+    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
     goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
+
+    // give time for the subscriptions to come across
+    for (int i = 0; i < 20; ++i) slt.poll(std::chrono::milliseconds(100));
 
     double a = 0;
     while (publish_count < max_publish)
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a - 10);
-        s1->set_group(1);
-        slt.publish_dynamic(s1, s1->group());
+
+        goby::middleware::protobuf::TransporterConfig sample_publisher_cfg;
+        auto* sample_buffer_cfg = sample_publisher_cfg.mutable_intervehicle()->mutable_buffer();
+        sample_buffer_cfg->set_newest_first(false);
+        sample_buffer_cfg->set_ack_required(true);
+
+        auto ack_callback = [&](const Sample& s,
+                                const goby::middleware::intervehicle::protobuf::AckData& ack) {
+            glog.is_debug1() && glog << "Ack for " << s.ShortDebugString()
+                                     << ", ack msg: " << ack.ShortDebugString() << std::endl;
+            ++direct_ack_receive_count[s.group() - 1];
+        };
+
+        auto expire_callback = [&](const Sample& s,
+                                   const goby::middleware::intervehicle::protobuf::ExpireData&
+                                       expire) {
+            glog.is_debug1() && glog << "Expire for " << s.ShortDebugString()
+                                     << ", expire msg: " << expire.ShortDebugString() << std::endl;
+
+            switch (expire.reason())
+            {
+                case goby::middleware::intervehicle::protobuf::ExpireData::EXPIRED_NO_SUBSCRIBERS:
+                    ++direct_no_sub_receive_count[s.group() - 1];
+                    break;
+
+                default: assert(false); break;
+            }
+        };
+
+        goby::middleware::Publisher<Sample> sample_publisher(
+            sample_publisher_cfg,
+            [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); },
+            ack_callback, expire_callback);
+
+        slt.publish<group1>(s1, sample_publisher);
+        glog.is(DEBUG1) && glog << "Published group1: " << s1->ShortDebugString() << std::endl;
 
         auto s2 = std::make_shared<Sample>();
         s2->set_a(a++);
-        s2->set_group(2);
-        slt.publish_dynamic(s2, s2->group());
+        slt.publish<group2>(s2, sample_publisher);
+        glog.is(DEBUG1) && glog << "Published group2: " << s2->ShortDebugString() << std::endl;
+
+        goby::middleware::protobuf::TransporterConfig widget_publisher_cfg;
+        auto* widget_buffer_cfg = widget_publisher_cfg.mutable_intervehicle()->mutable_buffer();
+        widget_buffer_cfg->set_newest_first(false);
+        widget_buffer_cfg->set_ack_required(false);
 
         Widget w;
         w.set_b(a - 2);
-        slt.publish_no_group(w);
+        slt.publish<null>(w, {widget_publisher_cfg});
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
@@ -76,6 +130,14 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
     }
 
     while (forward) { slt.poll(std::chrono::milliseconds(100)); }
+
+    // no subscriber
+    assert(direct_ack_receive_count[0] == 0);
+    assert(direct_no_sub_receive_count[0] == max_publish);
+
+    // one subscriber
+    assert(direct_ack_receive_count[1] == max_publish);
+    assert(direct_no_sub_receive_count[1] == 0);
 }
 
 // process 2
@@ -88,16 +150,45 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++ - 10);
-        s1->set_group(3);
-        interplatform.publish_dynamic(s1, s1->group());
+
+        goby::middleware::protobuf::TransporterConfig sample_publisher_cfg;
+        auto* sample_buffer_cfg = sample_publisher_cfg.mutable_intervehicle()->mutable_buffer();
+        sample_buffer_cfg->set_newest_first(false);
+        sample_buffer_cfg->set_ack_required(true);
+
+        auto ack_callback = [&](const Sample& s,
+                                const goby::middleware::intervehicle::protobuf::AckData& ack) {
+            glog.is_debug1() && glog << "Ack for " << s.ShortDebugString()
+                                     << ", ack msg: " << ack.ShortDebugString() << std::endl;
+            ++indirect_ack_receive_count;
+        };
+
+        auto expire_callback =
+            [&](const Sample& s,
+                const goby::middleware::intervehicle::protobuf::ExpireData& expire) {
+                glog.is_debug1() && glog << "Expire for " << s.ShortDebugString()
+                                         << ", expire msg: " << expire.ShortDebugString()
+                                         << std::endl;
+
+                switch (expire.reason())
+                {
+                    default: assert(false); break;
+                }
+            };
+
+        goby::middleware::Publisher<Sample> sample_publisher(
+            sample_publisher_cfg,
+            [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); },
+            ack_callback, expire_callback);
+        interplatform.publish<group3>(s1, sample_publisher);
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
         ++publish_count;
     }
 
-    while (forward) { interplatform.poll(std::chrono::milliseconds(100)); }
-}
+    while (indirect_ack_receive_count != max_publish || forward)
+    { interplatform.poll(std::chrono::milliseconds(100)); } }
 
 // process 3
 void handle_sample1(const Sample& sample)
@@ -125,15 +216,40 @@ void handle_widget(std::shared_ptr<const Widget> w)
 }
 
 void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
-                       const goby::middleware::protobuf::InterVehiclePortalConfig& slow_cfg)
+                       const goby::middleware::intervehicle::protobuf::PortalConfig& slow_cfg)
 {
-    goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
+    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
     goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
 
-    slt.subscribe_dynamic<Sample>(&handle_sample1, 2, [](const Sample& s) { return s.group(); });
-    slt.subscribe_dynamic<Sample>(&handle_sample_indirect, 3,
-                                  [](const Sample& s) { return s.group(); });
-    slt.subscribe_no_group<Widget>(&handle_widget);
+    goby::middleware::protobuf::TransporterConfig sample_subscriber_cfg;
+    sample_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
+
+    using goby::middleware::intervehicle::protobuf::Subscription;
+    auto ack_callback = [&](const Subscription& s,
+                            const goby::middleware::intervehicle::protobuf::AckData& ack) {
+        glog.is_debug1() && glog << "Subscription Ack for " << s.ShortDebugString()
+                                 << ", ack msg: " << ack.ShortDebugString() << std::endl;
+        ++direct_subscriber_ack;
+    };
+
+    auto expire_callback = [&](const Subscription& s,
+                               const goby::middleware::intervehicle::protobuf::ExpireData& expire) {
+        glog.is_debug1() && glog << "Subscription Expire for " << s.ShortDebugString()
+                                 << ", expire msg: " << expire.ShortDebugString() << std::endl;
+        assert(false);
+    };
+
+    goby::middleware::Subscriber<Sample> sample_subscriber(
+        sample_subscriber_cfg, [](const Sample& s) { return s.group(); }, ack_callback,
+        expire_callback);
+
+    slt.subscribe<group2, Sample>(&handle_sample1, sample_subscriber);
+    slt.subscribe<group3, Sample>(&handle_sample_indirect, sample_subscriber);
+
+    goby::middleware::protobuf::TransporterConfig widget_subscriber_cfg;
+    widget_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
+    goby::middleware::Subscriber<Widget> widget_subscriber(widget_subscriber_cfg);
+    slt.subscribe<null, Widget>(&handle_widget, widget_subscriber_cfg);
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -144,6 +260,8 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
         if (std::chrono::system_clock::now() > timeout)
             glog.is(DIE) && glog << "InterVehiclePortal timed out waiting for data" << std::endl;
     }
+
+    assert(direct_subscriber_ack == 2);
 }
 
 // process 4
@@ -160,8 +278,30 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
     goby::middleware::InterVehicleForwarder<decltype(zmq)> interplatform(zmq);
-    interplatform.subscribe_dynamic<Sample>(&indirect_handle_sample_indirect, 3,
-                                            [](const Sample& s) { return s.group(); });
+
+    goby::middleware::protobuf::TransporterConfig sample_indirect_subscriber_cfg;
+    sample_indirect_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
+
+    using goby::middleware::intervehicle::protobuf::Subscription;
+    auto ack_callback = [&](const Subscription& s,
+                            const goby::middleware::intervehicle::protobuf::AckData& ack) {
+        glog.is_debug1() && glog << "Subscription Ack for " << s.ShortDebugString()
+                                 << ", ack msg: " << ack.ShortDebugString() << std::endl;
+        ++indirect_subscriber_ack;
+    };
+
+    auto expire_callback = [&](const Subscription& s,
+                               const goby::middleware::intervehicle::protobuf::ExpireData& expire) {
+        glog.is_debug1() && glog << "Subscription Expire for " << s.ShortDebugString()
+                                 << ", expire msg: " << expire.ShortDebugString() << std::endl;
+        assert(false);
+    };
+
+    interplatform.subscribe_dynamic<Sample>(
+        &indirect_handle_sample_indirect, 3,
+        goby::middleware::Subscriber<Sample>(sample_indirect_subscriber_cfg,
+                                             [](const Sample& s) { return s.group(); },
+                                             ack_callback, expire_callback));
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -171,6 +311,8 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
         if (std::chrono::system_clock::now() > timeout)
             glog.is(DIE) && glog << "InterVehicleTransport timed out waiting for data" << std::endl;
     }
+
+    assert(indirect_subscriber_ack == 1);
 }
 
 int main(int argc, char* argv[])
@@ -191,7 +333,7 @@ int main(int argc, char* argv[])
     std::string process_suffix =
         ((process_index >= 2) ? ("subscriber_" + std::to_string(process_index))
                               : ("publisher_" + std::to_string(process_index)));
-    std::string os_name = std::string("/tmp/goby_test_middleware5_") + process_suffix;
+    std::string os_name = std::string("/tmp/goby_test_intervehicle_") + process_suffix;
     std::ofstream os(os_name.c_str());
     goby::glog.add_stream(goby::util::logger::DEBUG3, &os);
     //    dccl::dlog.connect(dccl::logger::ALL, &os, true);
@@ -202,15 +344,17 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
 
-    goby::middleware::protobuf::InterVehiclePortalConfig slow_cfg;
-    slow_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP);
-    goby::acomms::protobuf::DriverConfig& driver_cfg = *slow_cfg.mutable_driver_cfg();
-    UDPDriverConfig::EndPoint* local_endpoint = driver_cfg.MutableExtension(UDPDriverConfig::local);
-    UDPDriverConfig::EndPoint* remote_endpoint =
-        driver_cfg.MutableExtension(UDPDriverConfig::remote);
-    driver_cfg.SetExtension(UDPDriverConfig::max_frame_size, 64);
+    goby::middleware::intervehicle::protobuf::PortalConfig slow_cfg;
 
-    goby::acomms::protobuf::MACConfig& mac_cfg = *slow_cfg.mutable_mac_cfg();
+    auto& link_cfg = *slow_cfg.add_link();
+    goby::acomms::protobuf::DriverConfig& driver_cfg = *link_cfg.mutable_driver();
+    driver_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_UDP_MULTICAST);
+    auto* udp_multicast_driver_cfg =
+        driver_cfg.MutableExtension(goby::acomms::udp_multicast::protobuf::config);
+    udp_multicast_driver_cfg->set_max_frame_size(64);
+    udp_multicast_driver_cfg->set_multicast_port(60000);
+
+    goby::acomms::protobuf::MACConfig& mac_cfg = *link_cfg.mutable_mac();
     mac_cfg.set_type(goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED);
     goby::acomms::protobuf::ModemTransmission& slot = *mac_cfg.add_slot();
     slot.set_slot_seconds(0.2);
@@ -227,13 +371,9 @@ int main(int argc, char* argv[])
 
     if (process_index == 0)
     {
-        driver_cfg.set_modem_id(1);
-        local_endpoint->set_port(60011);
-        mac_cfg.set_modem_id(1);
+        link_cfg.set_modem_id(1);
         slot.set_src(1);
         //queue_cfg.set_modem_id(1);
-        remote_endpoint->set_ip("127.0.0.1");
-        remote_endpoint->set_port(60012);
 
         goby::zeromq::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle1");
@@ -281,13 +421,9 @@ int main(int argc, char* argv[])
     }
     else if (process_index == 2)
     {
-        driver_cfg.set_modem_id(2);
-        local_endpoint->set_port(60012);
-        mac_cfg.set_modem_id(2);
+        link_cfg.set_modem_id(2);
         slot.set_src(2);
         //queue_cfg.set_modem_id(2);
-        remote_endpoint->set_ip("127.0.0.1");
-        remote_endpoint->set_port(60011);
 
         goby::zeromq::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle2");

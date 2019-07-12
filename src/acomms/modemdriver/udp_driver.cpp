@@ -33,28 +33,19 @@ using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
 
-const size_t UDP_MAX_PACKET_SIZE = 65507; // (16 bit length = 65535 - 8 byte UDP header -20 byte IP)
-
-goby::acomms::UDPDriver::UDPDriver(boost::asio::io_service* io_service)
-    : io_service_(io_service),
-      socket_(*io_service),
-      receive_buffer_(UDP_MAX_PACKET_SIZE),
-      next_frame_(0)
-{
-}
-
+goby::acomms::UDPDriver::UDPDriver() {}
 goby::acomms::UDPDriver::~UDPDriver() {}
 
 void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 {
     driver_cfg_ = cfg;
 
-    const auto& local = driver_cfg_.GetExtension(udp::protobuf::UDPDriverConfig::local);
+    const auto& local = driver_cfg_.GetExtension(udp::protobuf::config).local();
     socket_.open(boost::asio::ip::udp::v4());
     socket_.bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), local.port()));
 
-    const auto& remote = driver_cfg_.GetExtension(udp::protobuf::UDPDriverConfig::remote);
-    boost::asio::ip::udp::resolver resolver(*io_service_);
+    const auto& remote = driver_cfg_.GetExtension(udp::protobuf::config).remote();
+    boost::asio::ip::udp::resolver resolver(io_service_);
     boost::asio::ip::udp::resolver::query query(boost::asio::ip::udp::v4(), remote.ip(),
                                                 goby::util::as<std::string>(remote.port()));
     boost::asio::ip::udp::resolver::iterator endpoint_iterator = resolver.resolve(query);
@@ -65,12 +56,12 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
                             << receiver_.port() << std::endl;
 
     start_receive();
-    io_service_->reset();
+    io_service_.reset();
 }
 
 void goby::acomms::UDPDriver::shutdown()
 {
-    io_service_->stop();
+    io_service_.stop();
     socket_.close();
 }
 
@@ -84,8 +75,8 @@ void goby::acomms::UDPDriver::handle_initiate_transmission(
     if (!msg.has_frame_start())
         msg.set_frame_start(next_frame_);
 
-    msg.set_max_frame_bytes(
-        driver_cfg_.GetExtension(udp::protobuf::UDPDriverConfig::max_frame_size));
+    if (!msg.has_max_frame_bytes())
+        msg.set_max_frame_bytes(driver_cfg_.GetExtension(udp::protobuf::config).max_frame_size());
     signal_data_request(&msg);
 
     glog.is(DEBUG1) && glog << group(glog_out_group())
@@ -98,7 +89,7 @@ void goby::acomms::UDPDriver::handle_initiate_transmission(
         start_send(msg);
 }
 
-void goby::acomms::UDPDriver::do_work() { io_service_->poll(); }
+void goby::acomms::UDPDriver::do_work() { io_service_.poll(); }
 
 void goby::acomms::UDPDriver::receive_message(const protobuf::ModemTransmission& msg)
 {

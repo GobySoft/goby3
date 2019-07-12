@@ -386,25 +386,16 @@ void goby::apps::moos::CpAcommsHandler::handle_raw(const goby::acomms::protobuf:
 void goby::apps::moos::CpAcommsHandler::process_configuration()
 {
     // create driver objects
-    create_driver(driver_, cfg_.driver_type(), cfg_.mutable_driver_cfg(), &mac_);
+    create_driver(driver_, cfg_.mutable_driver_cfg(), &mac_);
     if (driver_)
         drivers_.insert(std::make_pair(driver_, cfg_.mutable_driver_cfg()));
 
     // create receive only (listener) drivers
-    if (cfg_.listen_driver_type_size() == cfg_.listen_driver_cfg_size())
+    for (int i = 0, n = cfg_.listen_driver_cfg_size(); i < n; ++i)
     {
-        for (int i = 0, n = cfg_.listen_driver_type_size(); i < n; ++i)
-        {
-            std::shared_ptr<goby::acomms::ModemDriverBase> driver;
-            create_driver(driver, cfg_.listen_driver_type(i), cfg_.mutable_listen_driver_cfg(i), 0);
-            drivers_.insert(std::make_pair(driver, cfg_.mutable_listen_driver_cfg(i)));
-        }
-    }
-    else
-    {
-        glog.is(DIE) && glog << "You must specify the same number of listen_driver_type fields to "
-                                "correspond with the listen_driver_cfg fields."
-                             << std::endl;
+        std::shared_ptr<goby::acomms::ModemDriverBase> driver;
+        create_driver(driver, cfg_.mutable_listen_driver_cfg(i), 0);
+        drivers_.insert(std::make_pair(driver, cfg_.mutable_listen_driver_cfg(i)));
     }
 
     if (cfg_.has_route_cfg() && cfg_.route_cfg().route().hop_size() > 0)
@@ -549,7 +540,6 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
 
 void goby::apps::moos::CpAcommsHandler::create_driver(
     std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
-    goby::acomms::protobuf::DriverType driver_type,
     goby::acomms::protobuf::DriverConfig* driver_cfg, goby::acomms::MACManager* mac)
 {
     if (driver_cfg->has_driver_name())
@@ -583,7 +573,7 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
     }
     else
     {
-        switch (driver_type)
+        switch (driver_cfg->driver_type())
         {
             case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
                 driver.reset(new goby::acomms::MMDriver);
@@ -599,8 +589,8 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
 
             case goby::acomms::protobuf::DRIVER_UFIELD_SIM_DRIVER:
                 driver.reset(new goby::moos::UFldDriver);
-                driver_cfg->SetExtension(goby::moos::protobuf::Config::modem_id_lookup_path,
-                                         cfg_.modem_id_lookup_path());
+                driver_cfg->MutableExtension(goby::moos::ufld::protobuf::config)
+                    ->set_modem_id_lookup_path(cfg_.modem_id_lookup_path());
                 break;
 
             case goby::acomms::protobuf::DRIVER_IRIDIUM:
@@ -608,17 +598,19 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
                 break;
 
             case goby::acomms::protobuf::DRIVER_UDP:
-                asio_service_.push_back(
-                    std::shared_ptr<boost::asio::io_service>(new boost::asio::io_service));
-                driver.reset(new goby::acomms::UDPDriver(asio_service_.back().get()));
+                driver.reset(new goby::acomms::UDPDriver);
+                break;
+
+            case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
+                driver.reset(new goby::acomms::UDPMulticastDriver);
                 break;
 
             case goby::acomms::protobuf::DRIVER_BLUEFIN_MOOS:
                 driver.reset(new goby::moos::BluefinCommsDriver(mac));
-                driver_cfg->SetExtension(goby::moos::protobuf::BluefinConfig::moos_server,
-                                         cfg_.common().server_host());
-                driver_cfg->SetExtension(goby::moos::protobuf::BluefinConfig::moos_port,
-                                         cfg_.common().server_port());
+                driver_cfg->MutableExtension(goby::moos::bluefin::protobuf::config)
+                    ->set_moos_server(cfg_.common().server_host());
+                driver_cfg->MutableExtension(goby::moos::bluefin::protobuf::config)
+                    ->set_moos_port(cfg_.common().server_port());
                 break;
 
             case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
@@ -682,7 +674,7 @@ void goby::apps::moos::CpAcommsHandler::handle_encode_on_demand(
                              << "Received encode on demand request: " << request_msg << std::endl;
 
     std::shared_ptr<google::protobuf::Message> created_message =
-        translator_.moos_to_protobuf<std::shared_ptr<google::protobuf::Message> >(
+        translator_.moos_to_protobuf<std::shared_ptr<google::protobuf::Message>>(
             dynamic_vars().all(), data_msg->GetDescriptor()->full_name());
 
     data_msg->CopyFrom(*created_message);
@@ -778,7 +770,7 @@ void goby::apps::moos::CpAcommsHandler::translate_and_push(
     try
     {
         std::shared_ptr<google::protobuf::Message> created_message =
-            translator_.moos_to_protobuf<std::shared_ptr<google::protobuf::Message> >(
+            translator_.moos_to_protobuf<std::shared_ptr<google::protobuf::Message>>(
                 dynamic_vars().all(), entry.protobuf_name());
 
         glog.is(DEBUG2) && glog << group("pAcommsHandler") << "Created message: \n"
@@ -882,7 +874,7 @@ void goby::apps::moos::CpAcommsHandler::driver_reset(
 void goby::apps::moos::CpAcommsHandler::restart_drivers()
 {
     double now = goby::time::SystemClock::now<goby::time::SITime>() / boost::units::si::seconds;
-    std::set<std::shared_ptr<goby::acomms::ModemDriverBase> > drivers_to_start;
+    std::set<std::shared_ptr<goby::acomms::ModemDriverBase>> drivers_to_start;
 
     for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>, double>::iterator it =
              driver_restart_time_.begin();
@@ -899,7 +891,7 @@ void goby::apps::moos::CpAcommsHandler::restart_drivers()
         }
     }
 
-    for (std::set<std::shared_ptr<goby::acomms::ModemDriverBase> >::iterator
+    for (std::set<std::shared_ptr<goby::acomms::ModemDriverBase>>::iterator
              it = drivers_to_start.begin(),
              end = drivers_to_start.end();
          it != end; ++it)

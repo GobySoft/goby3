@@ -29,6 +29,7 @@
 #include <boost/asio/time_traits.hpp>
 #include <boost/date_time.hpp>
 
+#include "goby/time/convert.h"
 #include "goby/time/system_clock.h"
 #include "goby/util/as.h"
 #include "goby/util/primitive_types.h"

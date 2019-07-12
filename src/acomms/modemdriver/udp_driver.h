@@ -38,12 +38,13 @@ namespace acomms
 class UDPDriver : public ModemDriverBase
 {
   public:
-    UDPDriver(boost::asio::io_service* io_service);
+    UDPDriver();
     ~UDPDriver();
-    void startup(const protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+
+    void startup(const protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
 
   private:
     void start_send(const google::protobuf::Message& msg);
@@ -54,12 +55,16 @@ class UDPDriver : public ModemDriverBase
 
   private:
     protobuf::DriverConfig driver_cfg_;
-    boost::asio::io_service* io_service_;
-    boost::asio::ip::udp::socket socket_;
+    boost::asio::io_service io_service_;
+    boost::asio::ip::udp::socket socket_{io_service_};
     boost::asio::ip::udp::endpoint receiver_;
     boost::asio::ip::udp::endpoint sender_;
-    std::vector<char> receive_buffer_;
-    std::uint32_t next_frame_;
+
+    // (16 bit length = 65535 - 8 byte UDP header - 20 byte IP
+    static constexpr size_t UDP_MAX_PACKET_SIZE = 65507;
+
+    std::array<char, UDP_MAX_PACKET_SIZE> receive_buffer_;
+    std::uint32_t next_frame_{0};
 };
 } // namespace acomms
 } // namespace goby

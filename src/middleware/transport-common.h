@@ -34,78 +34,57 @@
 
 #include "poller.h"
 #include "transport-interfaces.h"
+#include "transport-null.h"
 
-#include "goby/middleware/protobuf/interprocess_data.pb.h"
+#include "goby/middleware/protobuf/serializer_transporter.pb.h"
 
 namespace goby
 {
 namespace middleware
 {
-// a do nothing transporter that is always inside the last real transporter level.
-class NullTransporter : public StaticTransporterInterface<NullTransporter, NullTransporter>,
-                        public Poller<NullTransporter>
+template <typename Metadata, typename Enable = void> class SerializationHandlerPostSelector
 {
-  public:
-    NullTransporter() = default;
-    virtual ~NullTransporter() = default;
-
-    template <typename Data> static constexpr int scheme()
-    {
-        return MarshallingScheme::NULL_SCHEME;
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(const Data& data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
-    {
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
-    {
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
-    {
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
-    {
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
-    {
-    }
-
-    template <typename Data, int scheme = scheme<Data>()>
-    void unsubscribe_dynamic(const Group& group)
-    {
-    }
-
-  private:
-    friend Poller<NullTransporter>;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock) { return 0; }
 };
 
-class SerializationSubscriptionBase
+template <typename Metadata>
+class SerializationHandlerPostSelector<Metadata,
+                                       typename std::enable_if_t<std::is_void<Metadata>::value>>
 {
   public:
-    SerializationSubscriptionBase() = default;
-    virtual ~SerializationSubscriptionBase() = default;
+    SerializationHandlerPostSelector() = default;
+    virtual ~SerializationHandlerPostSelector() = default;
 
     virtual std::string::const_iterator post(std::string::const_iterator b,
                                              std::string::const_iterator e) const = 0;
     virtual std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
                                                    std::vector<char>::const_iterator e) const = 0;
     virtual const char* post(const char* b, const char* e) const = 0;
+};
+
+template <typename Metadata>
+class SerializationHandlerPostSelector<Metadata,
+                                       typename std::enable_if_t<!std::is_void<Metadata>::value>>
+{
+  public:
+    SerializationHandlerPostSelector() = default;
+    virtual ~SerializationHandlerPostSelector() = default;
+
+    virtual std::string::const_iterator post(std::string::const_iterator b,
+                                             std::string::const_iterator e,
+                                             const Metadata& metadata) const = 0;
+    virtual std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
+                                                   std::vector<char>::const_iterator e,
+                                                   const Metadata& metadata) const = 0;
+    virtual const char* post(const char* b, const char* e, const Metadata& metadata) const = 0;
+};
+
+template <typename Metadata = void>
+class SerializationHandlerBase : public SerializationHandlerPostSelector<Metadata>
+{
+  public:
+    SerializationHandlerBase() = default;
+    virtual ~SerializationHandlerBase() = default;
+
     virtual const std::string& type_name() const = 0;
     virtual const Group& subscribed_group() const = 0;
 
@@ -114,7 +93,8 @@ class SerializationSubscriptionBase
     enum class SubscriptionAction
     {
         SUBSCRIBE,
-        UNSUBSCRIBE
+        UNSUBSCRIBE,
+        PUBLISHER_CALLBACK
     };
     virtual SubscriptionAction action() const = 0;
 
@@ -124,27 +104,27 @@ class SerializationSubscriptionBase
     const std::thread::id thread_id_{std::this_thread::get_id()};
 };
 
-inline bool operator==(const SerializationSubscriptionBase& s1,
-                       const SerializationSubscriptionBase& s2)
+template <typename Metadata>
+bool operator==(const SerializationHandlerBase<Metadata>& s1,
+                const SerializationHandlerBase<Metadata>& s2)
 {
     return s1.scheme() == s2.scheme() && s1.type_name() == s2.type_name() &&
            s1.subscribed_group() == s2.subscribed_group() && s1.action() == s2.action();
 }
 
 template <typename Data, int scheme_id>
-class SerializationSubscription : public SerializationSubscriptionBase
+class SerializationSubscription : public SerializationHandlerBase<>
 {
   public:
-    typedef std::function<void(std::shared_ptr<const Data> data,
-                               const goby::middleware::protobuf::TransporterConfig& transport_cfg)>
-        HandlerType;
+    typedef std::function<void(std::shared_ptr<const Data> data)> HandlerType;
 
-    SerializationSubscription(HandlerType& handler, const Group& group,
-                              std::function<Group(const Data&)> group_func)
+    SerializationSubscription(HandlerType handler,
+                              const Group& group = Group(Group::broadcast_group),
+                              const Subscriber<Data>& subscriber = Subscriber<Data>())
         : handler_(handler),
           type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
           group_(group),
-          group_func_(group_func)
+          subscriber_(subscriber)
     {
     }
 
@@ -163,9 +143,9 @@ class SerializationSubscription : public SerializationSubscriptionBase
 
     const char* post(const char* b, const char* e) const override { return _post(b, e); }
 
-    SerializationSubscriptionBase::SubscriptionAction action() const override
+    SerializationHandlerBase<>::SubscriptionAction action() const override
     {
-        return SerializationSubscriptionBase::SubscriptionAction::SUBSCRIBE;
+        return SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE;
     }
 
     // getters
@@ -178,11 +158,12 @@ class SerializationSubscription : public SerializationSubscriptionBase
     CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end) const
     {
         CharIterator actual_end;
-        auto msg = std::make_shared<const Data>(
-            SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end));
+        auto msg =
+            SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end);
 
-        if (subscribed_group() == group_func_(*msg))
-            handler_(msg, goby::middleware::protobuf::TransporterConfig());
+        if (subscribed_group() == subscriber_.group(*msg) && handler_)
+            handler_(msg);
+
         return actual_end;
     }
 
@@ -190,11 +171,70 @@ class SerializationSubscription : public SerializationSubscriptionBase
     HandlerType handler_;
     const std::string type_name_;
     const Group group_;
-    std::function<Group(const Data&)> group_func_;
+    Subscriber<Data> subscriber_;
+};
+
+template <typename Data, int scheme_id, typename Metadata>
+class PublisherCallback : public SerializationHandlerBase<Metadata>
+{
+  public:
+    typedef std::function<void(const Data& data, const Metadata& md)> HandlerType;
+
+    PublisherCallback(HandlerType handler)
+        : handler_(handler), type_name_(SerializerParserHelper<Data, scheme_id>::type_name())
+    {
+    }
+
+    // handle an incoming message
+    std::string::const_iterator post(std::string::const_iterator b, std::string::const_iterator e,
+                                     const Metadata& md) const override
+    {
+        return _post(b, e, md);
+    }
+
+    std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
+                                           std::vector<char>::const_iterator e,
+                                           const Metadata& md) const override
+    {
+        return _post(b, e, md);
+    }
+
+    const char* post(const char* b, const char* e, const Metadata& md) const override
+    {
+        return _post(b, e, md);
+    }
+
+    typename SerializationHandlerBase<Metadata>::SubscriptionAction action() const override
+    {
+        return SerializationHandlerBase<Metadata>::SubscriptionAction::PUBLISHER_CALLBACK;
+    }
+
+    // getters
+    const std::string& type_name() const override { return type_name_; }
+    const Group& subscribed_group() const override { return group_; }
+    int scheme() const override { return scheme_id; }
+
+  private:
+    template <typename CharIterator>
+    CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end, const Metadata& md) const
+    {
+        CharIterator actual_end;
+        auto msg =
+            SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end);
+
+        if (handler_)
+            handler_(*msg, md);
+        return actual_end;
+    }
+
+  private:
+    HandlerType handler_;
+    const std::string type_name_;
+    Group group_{Group(Group::broadcast_group)};
 };
 
 template <typename Data, int scheme_id>
-class SerializationUnSubscription : public SerializationSubscriptionBase
+class SerializationUnSubscription : public SerializationHandlerBase<>
 {
   public:
     SerializationUnSubscription(const Group& group)
@@ -219,9 +259,9 @@ class SerializationUnSubscription : public SerializationSubscriptionBase
         throw(goby::Exception("Cannot call post on an UnSubscription"));
     }
 
-    SerializationSubscriptionBase::SubscriptionAction action() const override
+    SerializationHandlerBase<>::SubscriptionAction action() const override
     {
-        return SerializationSubscriptionBase::SubscriptionAction::UNSUBSCRIBE;
+        return SerializationHandlerBase<>::SubscriptionAction::UNSUBSCRIBE;
     }
 
     // getters
@@ -241,7 +281,7 @@ class SerializationSubscriptionRegex
                                const std::string& type, const Group& group)>
         HandlerType;
 
-    SerializationSubscriptionRegex(HandlerType& handler, const std::set<int>& schemes,
+    SerializationSubscriptionRegex(HandlerType handler, const std::set<int>& schemes,
                                    const std::string& type_regex = ".*",
                                    const std::string& group_regex = ".*")
         : handler_(handler), schemes_(schemes), type_regex_(type_regex), group_regex_(group_regex)
@@ -289,16 +329,5 @@ class SerializationUnSubscribeAll
 
 } // namespace middleware
 } // namespace goby
-
-namespace std
-{
-template <> struct hash<goby::middleware::Group>
-{
-    size_t operator()(const goby::middleware::Group& group) const noexcept
-    {
-        return std::hash<std::string>{}(std::string(group));
-    }
-};
-} // namespace std
 
 #endif

@@ -40,9 +40,9 @@ template <typename Derived, typename InnerTransporter>
 class InterProcessTransporterBase
     : public StaticTransporterInterface<InterProcessTransporterBase<Derived, InnerTransporter>,
                                         InnerTransporter>,
-      public Poller<InterProcessTransporterBase<Derived, InnerTransporter> >
+      public Poller<InterProcessTransporterBase<Derived, InnerTransporter>>
 {
-    using PollerType = Poller<InterProcessTransporterBase<Derived, InnerTransporter> >;
+    using PollerType = Poller<InterProcessTransporterBase<Derived, InnerTransporter>>;
 
   public:
     InterProcessTransporterBase(InnerTransporter& inner) : PollerType(&inner), inner_(inner) {}
@@ -62,52 +62,63 @@ class InterProcessTransporterBase
         return goby::middleware::scheme<Data>();
     }
 
+    template <const Group& group> void check_validity()
+    {
+        static_assert((group.c_str() != nullptr) && (group.c_str()[0] != '\0'),
+                      "goby::middleware::Group must have non-zero length string to publish on the "
+                      "InterProcess layer");
+    }
+
+    void check_validity_runtime(const Group& group)
+    {
+        if ((group.c_str() == nullptr) || (group.c_str()[0] == '\0'))
+            throw(goby::Exception("Group must have a non-empty string for use on InterProcess"));
+    }
+
     // RUNTIME groups
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
         check_validity_runtime(group);
-        static_cast<Derived*>(this)->template _publish<Data, scheme>(data, group, transport_cfg);
-        inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+        static_cast<Derived*>(this)->template _publish<Data, scheme>(data, group, publisher);
+        inner_.template publish_dynamic<Data, scheme>(data, group, publisher);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
         if (data)
         {
             check_validity_runtime(group);
-            static_cast<Derived*>(this)->template _publish<Data, scheme>(*data, group,
-                                                                         transport_cfg);
-            inner_.template publish_dynamic<Data, scheme>(data, group, transport_cfg);
+            static_cast<Derived*>(this)->template _publish<Data, scheme>(*data, group, publisher);
+            inner_.template publish_dynamic<Data, scheme>(data, group, publisher);
         }
     }
 
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
-                         const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                             goby::middleware::protobuf::TransporterConfig())
+                         const Publisher<Data>& publisher = Publisher<Data>())
     {
-        publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, transport_cfg);
+        publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, publisher);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group)
+    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
+                           const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         check_validity_runtime(group);
         static_cast<Derived*>(this)->template _subscribe<Data, scheme>(
-            [=](std::shared_ptr<const Data> d) { f(*d); }, group);
+            [=](std::shared_ptr<const Data> d) { f(*d); }, group, subscriber);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group)
+    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
+                           const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         check_validity_runtime(group);
-        static_cast<Derived*>(this)->template _subscribe<Data, scheme>(f, group);
+        static_cast<Derived*>(this)->template _subscribe<Data, scheme>(f, group, subscriber);
     }
 
     template <typename Data, int scheme = scheme<Data>()>
@@ -129,6 +140,27 @@ class InterProcessTransporterBase
         static_cast<Derived*>(this)->_subscribe_regex(f, schemes, type_regex, group_regex);
     }
 
+    template <const Group& group, typename Data, int scheme = scheme<Data>()>
+    void subscribe_type_regex(
+        std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
+        const std::string& type_regex = ".*")
+    {
+        std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
+        std::string sanitized_group =
+            std::regex_replace(std::string(group), special_chars, R"(\$&)");
+
+        auto regex_lambda = [=](const std::vector<unsigned char>& data, int schm,
+                                const std::string& type, const Group& grp) {
+            auto data_begin = data.begin(), data_end = data.end(), actual_end = data.end();
+            auto msg = SerializerParserHelper<Data, scheme>::parse_dynamic(data_begin, data_end,
+                                                                           actual_end, type);
+            f(msg, type);
+        };
+
+        static_cast<Derived*>(this)->_subscribe_regex(regex_lambda, {scheme}, type_regex,
+                                                      "^" + sanitized_group + "$");
+    }
+
     std::unique_ptr<InnerTransporter> own_inner_;
     InnerTransporter& inner_;
     static constexpr Group forward_group_{"goby::InterProcessForwarder"};
@@ -136,7 +168,7 @@ class InterProcessTransporterBase
 
   private:
     friend PollerType;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
         return static_cast<Derived*>(this)->_poll(lock);
     }
@@ -160,10 +192,9 @@ class InterProcessForwarder
     InterProcessForwarder(InnerTransporter& inner) : Base(inner)
     {
         Base::inner_.template subscribe<Base::regex_group_,
-                                        goby::middleware::protobuf::SerializerTransporterData>(
-            [this](std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterData> d) {
-                _receive_regex_data_forwarded(d);
-            });
+                                        goby::middleware::protobuf::SerializerTransporterMessage>(
+            [this](std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage>
+                       msg) { _receive_regex_data_forwarded(msg); });
     }
     virtual ~InterProcessForwarder() { this->unsubscribe_all(); }
 
@@ -171,44 +202,41 @@ class InterProcessForwarder
 
   private:
     template <typename Data, int scheme>
-    void _publish(const Data& d, const Group& group,
-                  const goby::middleware::protobuf::TransporterConfig& transport_cfg)
+    void _publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
         // create and forward publication to edge
         std::vector<char> bytes(SerializerParserHelper<Data, scheme>::serialize(d));
         std::string* sbytes = new std::string(bytes.begin(), bytes.end());
-        std::shared_ptr<goby::middleware::protobuf::SerializerTransporterData> data =
-            std::make_shared<goby::middleware::protobuf::SerializerTransporterData>();
+        auto msg = std::make_shared<goby::middleware::protobuf::SerializerTransporterMessage>();
+        auto* key = msg->mutable_key();
 
-        data->set_marshalling_scheme(scheme);
-        data->set_type(SerializerParserHelper<Data, scheme>::type_name(d));
-        data->set_group(std::string(group));
-        data->set_allocated_data(sbytes);
+        key->set_marshalling_scheme(scheme);
+        key->set_type(SerializerParserHelper<Data, scheme>::type_name(d));
+        key->set_group(std::string(group));
+        msg->set_allocated_data(sbytes);
 
-        *data->mutable_cfg() = transport_cfg;
+        *key->mutable_cfg() = publisher.cfg();
 
-        Base::inner_.template publish<Base::forward_group_>(data);
+        Base::inner_.template publish<Base::forward_group_>(msg);
     }
 
     template <typename Data, int scheme>
-    void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f, const Group& group)
+    void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f, const Group& group,
+                    const Subscriber<Data>& subscriber)
     {
         Base::inner_.template subscribe_dynamic<Data, scheme>(f, group);
 
         // forward subscription to edge
-        auto inner_publication_lambda =
-            [=](std::shared_ptr<const Data> d,
-                const goby::middleware::protobuf::TransporterConfig& t) {
-                Base::inner_.template publish_dynamic<Data, scheme>(d, group, t);
-            };
-        typename SerializationSubscription<Data, scheme>::HandlerType inner_publication_function(
-            inner_publication_lambda);
+        auto inner_publication_lambda = [=](std::shared_ptr<const Data> d) {
+            Base::inner_.template publish_dynamic<Data, scheme>(d, group);
+        };
 
-        auto subscription = std::shared_ptr<SerializationSubscriptionBase>(
-            new SerializationSubscription<Data, scheme>(inner_publication_function, group,
-                                                        [=](const Data& d) { return group; }));
+        auto subscription = std::make_shared<SerializationSubscription<Data, scheme>>(
+            inner_publication_lambda, group,
+            middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
+                                         [=](const Data& d) { return group; }));
 
-        Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase>(
+        Base::inner_.template publish<Base::forward_group_, SerializationHandlerBase<>>(
             subscription);
     }
 
@@ -216,10 +244,10 @@ class InterProcessForwarder
     {
         Base::inner_.template unsubscribe_dynamic<Data, scheme>(group);
 
-        auto unsubscription = std::shared_ptr<SerializationSubscriptionBase>(
+        auto unsubscription = std::shared_ptr<SerializationHandlerBase<>>(
             new SerializationUnSubscription<Data, scheme>(group));
 
-        Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionBase>(
+        Base::inner_.template publish<Base::forward_group_, SerializationHandlerBase<>>(
             unsubscription);
     }
 
@@ -237,23 +265,17 @@ class InterProcessForwarder
     {
         auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme,
                                             const std::string& type, const Group& group) {
-            std::shared_ptr<goby::middleware::protobuf::SerializerTransporterData> forwarded_data(
-                new goby::middleware::protobuf::SerializerTransporterData);
-            forwarded_data->set_marshalling_scheme(scheme);
-            forwarded_data->set_type(type);
-            forwarded_data->set_group(group);
+            std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
+                forwarded_data(new goby::middleware::protobuf::SerializerTransporterMessage);
+            forwarded_data->mutable_key()->set_marshalling_scheme(scheme);
+            forwarded_data->mutable_key()->set_type(type);
+            forwarded_data->mutable_key()->set_group(group);
             forwarded_data->set_data(std::string(data.begin(), data.end()));
-            Base::inner_.template publish<Base::regex_group_,
-                                          goby::middleware::protobuf::SerializerTransporterData>(
-                forwarded_data);
+            Base::inner_.template publish<Base::regex_group_>(forwarded_data);
         };
 
-        typename SerializationSubscriptionRegex::HandlerType inner_publication_function(
-            inner_publication_lambda);
-
-        auto portal_subscription =
-            std::shared_ptr<SerializationSubscriptionRegex>(new SerializationSubscriptionRegex(
-                inner_publication_function, schemes, type_regex, group_regex));
+        auto portal_subscription = std::make_shared<SerializationSubscriptionRegex>(
+            inner_publication_lambda, schemes, type_regex, group_regex);
         Base::inner_.template publish<Base::forward_group_, SerializationSubscriptionRegex>(
             portal_subscription);
 
@@ -263,21 +285,21 @@ class InterProcessForwarder
     }
 
     void _receive_regex_data_forwarded(
-        std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterData> data)
+        std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage> msg)
     {
-        const auto& bytes = data->data();
+        const auto& bytes = msg->data();
         for (auto& sub : regex_subscriptions_)
-            sub->post(bytes.begin(), bytes.end(), data->marshalling_scheme(), data->type(),
-                      data->group());
+            sub->post(bytes.begin(), bytes.end(), msg->key().marshalling_scheme(),
+                      msg->key().type(), msg->key().group());
     }
 
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
         return 0;
     } // A forwarder is a shell, only the inner Transporter has data
 
   private:
-    std::set<std::shared_ptr<const SerializationSubscriptionRegex> > regex_subscriptions_;
+    std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
 };
 
 } // namespace middleware

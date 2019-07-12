@@ -24,9 +24,11 @@
 #include "../../acomms/driver_tester/driver_tester.h"
 #include "goby/acomms/modemdriver/iridium_driver.h"
 
-std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
+///
+/// \todo FIX this test (iridiumdriver1), does not currently work
+///
 
-using goby::acomms::iridium::protobuf::IridiumDriverConfig;
+std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 
 int main(int argc, char* argv[])
 {
@@ -52,18 +54,20 @@ int main(int argc, char* argv[])
     glider_cfg.set_tcp_server("127.0.0.1");
     glider_cfg.set_reconnect_interval(1);
     glider_cfg.set_tcp_port(4001);
-    IridiumDriverConfig::Remote* shore = glider_cfg.MutableExtension(IridiumDriverConfig::remote);
-    shore->set_iridium_number("6001");
+    auto* shore =
+        glider_cfg.MutableExtension(goby::acomms::iridium::protobuf::config)->mutable_remote();
+    shore->set_iridium_number("6002");
     shore->set_modem_id(2);
-    glider_cfg.AddExtension(IridiumDriverConfig::config, "+GSN");
+    glider_cfg.MutableExtension(goby::acomms::iridium::protobuf::config)->add_config("+GSN");
 
     // at-duck2
     shore_cfg.set_modem_id(2);
     shore_cfg.set_connection_type(goby::acomms::protobuf::DriverConfig::CONNECTION_TCP_AS_CLIENT);
     shore_cfg.set_tcp_server("127.0.0.1");
     shore_cfg.set_reconnect_interval(1);
-    shore_cfg.set_tcp_port(4002);
-    IridiumDriverConfig::Remote* gumstix = shore_cfg.MutableExtension(IridiumDriverConfig::remote);
+    shore_cfg.set_tcp_port(4001);
+    auto* gumstix =
+        shore_cfg.MutableExtension(goby::acomms::iridium::protobuf::config)->mutable_remote();
     gumstix->set_iridium_number("6001");
     gumstix->set_modem_id(2);
     //    shore_cfg.AddExtension(IridiumDriverConfig::config, "+GSN");
@@ -104,6 +108,10 @@ int main(int argc, char* argv[])
     std::vector<int> tests_to_run;
     tests_to_run.push_back(4);
     tests_to_run.push_back(5);
+
+    driver1->signal_modify_transmission.connect([](goby::acomms::protobuf::ModemTransmission* msg) {
+        msg->set_rate(goby::acomms::RATE_RUDICS);
+    });
 
     goby::test::acomms::DriverTester tester(driver1, driver2, glider_cfg, shore_cfg, tests_to_run,
                                             goby::acomms::protobuf::DRIVER_IRIDIUM);

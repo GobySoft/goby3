@@ -1,0 +1,26 @@
+syntax = "proto2";
+import "dccl/option_extensions.proto";
+import "goby/middleware/protobuf/transporter_config.proto";
+
+package goby.middleware.protobuf;
+
+message SerializerTransporterKey
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    required int32 marshalling_scheme = 1;
+    required string type = 2;
+    required string group = 3;
+    optional uint32 group_numeric = 4;
+    optional uint64 serialize_time = 5
+        [(dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}];
+    optional TransporterConfig cfg = 10;
+}
+
+message SerializerTransporterMessage
+{
+    required SerializerTransporterKey key = 1;
+    optional bytes data = 4;
+}

@@ -37,7 +37,6 @@ namespace goby
 {
 namespace time
 {
-
 /// \brief Convert between time representations (this function works for tautological conversions)
 template <typename ToTimeType, typename FromTimeType,
           typename std::enable_if<std::is_same<ToTimeType, FromTimeType>{}, int>::type = 0>
@@ -77,8 +76,8 @@ ToTimeType convert(FromTimeType from_time)
     std::int64_t microsecs_since_epoch =
         from_time.time_since_epoch() / std::chrono::microseconds(1);
     {
-        using namespace boost::units::si;
-        return ToTimeType(microsecs_since_epoch * micro * seconds);
+        return ToTimeType(microsecs_since_epoch * boost::units::si::micro *
+                          boost::units::si::seconds);
     }
 }
 

@@ -33,7 +33,6 @@
 
 using goby::glog;
 using namespace goby::util::logger;
-using goby::acomms::iridium::protobuf::IridiumDriverConfig;
 
 int goby::acomms::iridium::fsm::IridiumDriverFSM::count_ = 0;
 
@@ -293,8 +292,7 @@ boost::statechart::result goby::acomms::iridium::fsm::Dial::react(const EvNoCarr
 
     sleep(redial_wait_seconds);
 
-    const int max_attempts =
-        context<IridiumDriverFSM>().driver_cfg().GetExtension(IridiumDriverConfig::dial_attempts);
+    const int max_attempts = context<IridiumDriverFSM>().iridium_driver_cfg().dial_attempts();
     if (dial_attempts_ < max_attempts)
     {
         dial();
@@ -312,10 +310,8 @@ boost::statechart::result goby::acomms::iridium::fsm::Dial::react(const EvNoCarr
 void goby::acomms::iridium::fsm::Dial::dial()
 {
     ++dial_attempts_;
-    context<Command>().push_at_command("D" + context<IridiumDriverFSM>()
-                                                 .driver_cfg()
-                                                 .GetExtension(IridiumDriverConfig::remote)
-                                                 .iridium_number());
+    context<Command>().push_at_command(
+        "D" + context<IridiumDriverFSM>().iridium_driver_cfg().remote().iridium_number());
 }
 
 void goby::acomms::iridium::fsm::OnCall::in_state_react(const EvRxOnCallSerial& e)
@@ -361,9 +357,9 @@ void goby::acomms::iridium::fsm::OnCall::in_state_react(const EvRxOnCallSerial& 
 
 void goby::acomms::iridium::fsm::OnCall::in_state_react(const EvTxOnCallSerial&)
 {
-    const static double target_byte_rate = (context<IridiumDriverFSM>().driver_cfg().GetExtension(
-                                                IridiumDriverConfig::target_bit_rate) /
-                                            static_cast<double>(goby::acomms::BITS_IN_BYTE));
+    const static double target_byte_rate =
+        (context<IridiumDriverFSM>().iridium_driver_cfg().target_bit_rate() /
+         static_cast<double>(goby::acomms::BITS_IN_BYTE));
 
     const double send_wait = last_bytes_sent() / target_byte_rate;
 

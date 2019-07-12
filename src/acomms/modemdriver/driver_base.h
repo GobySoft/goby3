@@ -158,7 +158,7 @@ class ModemDriverBase
 
     //@}
   protected:
-    static int count_;
+    static std::atomic<int> count_;
 
   private:
     void write_raw(const protobuf::ModemRaw& msg, bool rx);

@@ -23,6 +23,8 @@
 #ifndef SOUNDSPEED_20190606H
 #define SOUNDSPEED_20190606H
 
+#include <stdexcept>
+
 #include <boost/units/quantity.hpp>
 #include <boost/units/systems/si.hpp>
 #include <boost/units/systems/temperature/celsius.hpp>

@@ -1,0 +1,154 @@
+syntax = "proto2";
+import "dccl/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
+import "goby/acomms/protobuf/driver_base.proto";
+import "goby/acomms/protobuf/amac_config.proto";
+import "goby/acomms/protobuf/buffer.proto";
+import "google/protobuf/descriptor.proto";
+import "goby/middleware/protobuf/intervehicle_transporter_config.proto";
+import "goby/middleware/protobuf/serializer_transporter.proto";
+
+package goby.middleware.intervehicle.protobuf;
+
+message PortalConfig
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    message LinkConfig
+    {
+        required uint32 modem_id = 1;
+        optional uint32 subnet_mask = 2 [default = 0xF0];
+        
+        required goby.acomms.protobuf.DriverConfig driver = 11
+            [(goby.field).description =
+                 "Configure the modem driver(s) in use by this portal"];
+
+        optional goby.acomms.protobuf.MACConfig mac = 12
+            [(goby.field).description =
+                 "Configure the acoustic Medium Access Control"];
+
+        optional goby.acomms.protobuf.DynamicBufferConfig subscription_buffer =
+            13 [(goby.field).description =
+                    "Buffer configuration for subscription forwarding"];
+
+        optional double ack_timeout = 20 [
+            default = 1.0,
+            (goby.field).description =
+                "Time to wait before resending the same data (ARQ wait).",
+            (dccl.field) = {units {base_dimensions: "T"}}
+        ];
+    }
+
+    repeated LinkConfig link = 1;
+
+    repeated string dccl_load_library = 20
+        [(goby.field).description = "Load DCCL libraries"];
+}
+
+message Status
+{
+    required int32 tx_queue_size = 1;
+}
+
+message Subscription
+{
+    option (dccl.msg) = {
+        codec_version: 3
+        id: 2
+        max_bytes: 32
+        unit_system: "si"
+    };
+
+    required Header header = 1;
+    optional uint64 time = 2 [(dccl.field) = {
+        omit: true
+        units {prefix: "micro" base_dimensions: "T"}
+    }];
+    required uint32 dccl_id = 5 [(dccl.field) = {min: 1 max: 32767}];
+    required uint32 group = 6 [(dccl.field) = {min: 0 max: 255}];
+    optional TransporterConfig intervehicle = 10;
+
+    // defines the DCCL message for the Portal (edge) internally on interprocess
+    optional string protobuf_name = 20 [(dccl.field).omit = true];
+    repeated google.protobuf.FileDescriptorProto file_descriptor = 4
+        [(dccl.field).omit = true];
+}
+
+message Header
+{
+    required int32 src = 1 [(dccl.field) = {min: 0 max: 255}];
+    repeated int32 dest = 2 [(dccl.field) = {min: 0 max: 255 max_repeat: 4}];
+}
+
+message DCCLPacket
+{
+    required int32 dccl_id = 1;
+    required bytes data = 2;
+}
+
+// have to split this at the Portal as the Forwarders may not have all the DCCL
+// IDs loaded
+message DCCLForwardedData
+{
+    repeated DCCLPacket frame = 1;
+}
+
+message AckData
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+    required Header header = 1
+        [(goby.field).description =
+             "src is the modem from which the ack originated. dest is the "
+             "local modem that received the ack"];
+
+    required int64 latency = 2 [
+        (goby.field).description = "Time between queuing and acknowledgement",
+        (dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}
+    ];
+}
+
+message ExpireData
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    required Header header = 1
+        [(goby.field).description =
+             "dest is the local modem that expired this message"];
+
+    required int64 latency = 2 [
+        (goby.field).description = "Time between queuing and expiration",
+        (dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}
+    ];
+
+    enum ExpireReason
+    {
+        EXPIRED_NO_SUBSCRIBERS = 1;
+        EXPIRED_TIME_TO_LIVE_EXCEEDED = 2;
+        EXPIRED_BUFFER_OVERFLOW = 3;
+    }
+    required ExpireReason reason = 3;
+
+    // required int32 transmit_attempts = 4
+    //    [(goby.field).description =
+    //         "the number of times this message was transmitted"];
+}
+
+message AckMessagePair
+{
+    required goby.middleware.protobuf.SerializerTransporterMessage serializer =
+        1;
+    required AckData data = 2;
+}
+
+message ExpireMessagePair
+{
+    required goby.middleware.protobuf.SerializerTransporterMessage serializer =
+        1;
+    required ExpireData data = 2;
+}

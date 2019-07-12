@@ -58,14 +58,13 @@ message ModemTransmission
     enum TransmissionType
     {
         // General (DriverBase) types
-        UNKNOWN = 0;
         DATA = 1;
         ACK = 2;
         DRIVER_SPECIFIC = 10;
     }
 
     optional TransmissionType type = 7 [
-        default = UNKNOWN,
+        default = DATA,
         (goby.field).description =
             "Type of this transmission. DRIVER_SPECIFIC types are "
             "enumerated "

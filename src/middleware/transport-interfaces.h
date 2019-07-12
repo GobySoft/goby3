@@ -32,7 +32,10 @@
 #include "serialize_parse.h"
 
 #include "goby/exception.h"
+#include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"
+#include "goby/middleware/publisher.h"
+#include "goby/middleware/subscriber.h"
 #include "goby/util/debug_logger.h"
 
 namespace goby
@@ -41,66 +44,67 @@ namespace middleware
 {
 class NullTransporter;
 
+
 template <typename Transporter, typename InnerTransporter> class StaticTransporterInterface
 {
   public:
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
-    void publish(const Data& data,
-                 const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                     goby::middleware::protobuf::TransporterConfig())
+    void publish(const Data& data, const Publisher<Data>& publisher = Publisher<Data>())
     {
-        check_validity<group>();
+        static_cast<Transporter*>(this)->template check_validity<group>();
         static_cast<Transporter*>(this)->template publish_dynamic<Data, scheme>(data, group,
-                                                                                transport_cfg);
+                                                                                publisher);
     }
 
     // need both const and non-const shared_ptr overload to ensure that the const& overload isn't preferred to these.
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void publish(std::shared_ptr<const Data> data,
-                 const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                     goby::middleware::protobuf::TransporterConfig())
+                 const Publisher<Data>& publisher = Publisher<Data>())
     {
-        check_validity<group>();
+        static_cast<Transporter*>(this)->template check_validity<group>();
         static_cast<Transporter*>(this)->template publish_dynamic<Data, scheme>(data, group,
-                                                                                transport_cfg);
+                                                                                publisher);
     }
 
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
-    void publish(std::shared_ptr<Data> data,
-                 const goby::middleware::protobuf::TransporterConfig& transport_cfg =
-                     goby::middleware::protobuf::TransporterConfig())
+    void publish(std::shared_ptr<Data> data, const Publisher<Data>& publisher = Publisher<Data>())
     {
-        publish<group, Data, scheme>(std::shared_ptr<const Data>(data), transport_cfg);
+        publish<group, Data, scheme>(std::shared_ptr<const Data>(data), publisher);
     }
 
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
-    void subscribe(std::function<void(const Data&)> f)
+    void subscribe(std::function<void(const Data&)> f,
+                   const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
-        check_validity<group>();
-        static_cast<Transporter*>(this)->template subscribe_dynamic<Data, scheme>(f, group);
+        static_cast<Transporter*>(this)->template check_validity<group>();
+        static_cast<Transporter*>(this)->template subscribe_dynamic<Data, scheme>(f, group,
+                                                                                  subscriber);
     }
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
-    void subscribe(std::function<void(std::shared_ptr<const Data>)> f)
+    void subscribe(std::function<void(std::shared_ptr<const Data>)> f,
+                   const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
-        check_validity<group>();
-        static_cast<Transporter*>(this)->template subscribe_dynamic<Data, scheme>(f, group);
+        static_cast<Transporter*>(this)->template check_validity<group>();
+        static_cast<Transporter*>(this)->template subscribe_dynamic<Data, scheme>(f, group,
+                                                                                  subscriber);
     }
 
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void unsubscribe()
     {
-        check_validity<group>();
+        static_cast<Transporter*>(this)->template check_validity<group>();
         static_cast<Transporter*>(this)->template unsubscribe_dynamic<Data, scheme>(group);
     }
 
     void unsubscribe_all() { static_cast<Transporter*>(this)->template unsubscribe_all(); }
 
+    using InnerTransporterType = InnerTransporter;
     InnerTransporter& inner()
     {
         static_assert(!std::is_same<InnerTransporter, NullTransporter>(),

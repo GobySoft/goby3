@@ -22,6 +22,8 @@
 #include "goby/util/base_convert.h"
 #include "goby/util/binary.h"
 
+#include "goby/acomms/modemdriver/rudics_packet.h"
+
 #include <cassert>
 #include <cstdlib>
 #include <iomanip>
@@ -35,7 +37,7 @@ void intprint(const std::string& s)
     std::cout << std::endl;
 }
 
-void test255(const std::string& in, bool output = true)
+void test(const std::string& in, bool output = true, int other_base = 255)
 {
     if (output)
     {
@@ -45,7 +47,7 @@ void test255(const std::string& in, bool output = true)
 
     std::string out;
 
-    goby::util::base_convert(in, &out, 256, 255);
+    goby::util::base_convert(in, &out, 256, other_base);
     if (output)
     {
         std::cout << "out: ";
@@ -54,7 +56,7 @@ void test255(const std::string& in, bool output = true)
 
     std::string in2;
 
-    goby::util::base_convert(out, &in2, 255, 256);
+    goby::util::base_convert(out, &in2, other_base, 256);
     if (output)
     {
         std::cout << "in2: ";
@@ -90,19 +92,40 @@ int main()
         assert(out == std::string(chout, 5));
     }
 
-    test255("TOMcat");
-    test255(std::string(4, 0xff));
+    test("TOMcat");
+    test(std::string(4, 0xff));
 
-    test255(randstring(125));
-    test255(randstring(255));
-    test255(randstring(1500));
-    test255(randstring(15000), false);
+    test(randstring(125));
+    test(randstring(255));
+    test(randstring(1500), 252);
+    test(randstring(15000), false);
 
-    test255(goby::util::hex_decode("01020000"));
+    test(goby::util::hex_decode("01020000"));
 
-    test255(goby::util::hex_decode(
-        "080e100a300138016040680172400ecf026800793cac69341a8d46a3d16834da376bcf2f0f21fef979e3000000"
-        "d700eec35f2e82010000fcfce0e5e939e4984a6c62ff7a94584eb71cc471e1f53efd364000"));
+    test(goby::util::hex_decode(
+             "080e100a300138016040680172400ecf026800793cac69341a8d46a3d16834da376bcf2f0f21fef979e30"
+             "00000"
+             "d700eec35f2e82010000fcfce0e5e939e4984a6c62ff7a94584eb71cc471e1f53efd364000"),
+         252);
+
+    std::string in = goby::util::hex_decode("000102030405060708090A0B0C0D0E0F10111213"), out,
+                rudics;
+    goby::acomms::serialize_rudics_packet(in, &rudics);
+    goby::acomms::parse_rudics_packet(&out, rudics);
+
+    std::cout << "in:  ";
+    intprint(in);
+    std::cout << "rudics: ";
+    intprint(rudics);
+    std::cout << "out: ";
+    intprint(out);
+    assert(in == out);
+
+    goby::acomms::parse_rudics_packet(
+        &out, goby::util::hex_decode("2d237296fc3f3060eae8b140a781d7804836985c3caf9179b7ee806aebc25"
+                                     "97f9569f71baf3b5d7d841f74010d"));
+    std::cout << "fixed: ";
+    intprint(out);
 
     std::cout << "all tests passed" << std::endl;
 

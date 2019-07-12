@@ -23,8 +23,8 @@
 // This file uses the same basic API provided by MOOS pre-v10
 // (C) Paul Newman, released GPL v3
 
-#ifndef MOOSGeodesy20130916H
-#define MOOSGeodesy20130916H
+#ifndef GobyMOOSGeodesy20130916H
+#define GobyMOOSGeodesy20130916H
 
 #include <memory>
 
@@ -36,6 +36,10 @@ class UTMGeodesy;
 }
 } // namespace goby
 
+namespace goby
+{
+namespace moos
+{
 class CMOOSGeodesy
 {
   public:
@@ -57,5 +61,7 @@ class CMOOSGeodesy
   private:
     std::unique_ptr<goby::util::UTMGeodesy> geodesy_;
 };
+} // namespace moos
+} // namespace goby
 
 #endif

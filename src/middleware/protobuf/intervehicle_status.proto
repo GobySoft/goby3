@@ -1,9 +1,0 @@
-syntax = "proto2";
-import "dccl/option_extensions.proto";
-
-package goby.middleware.protobuf;
-
-message InterVehicleStatus
-{
-    required int32 tx_queue_size = 1;
-}

@@ -43,10 +43,13 @@ namespace middleware
 class Group
 {
   public:
-    constexpr Group(const char* c = "") : c_(c) {}
-    constexpr Group(int i) : i_(i) {}
+    static constexpr std::uint8_t broadcast_group{0};
+    static constexpr std::uint8_t invalid_numeric_group{255};
 
-    constexpr int numeric() const { return i_; }
+    constexpr Group(const char* c, std::uint8_t i = invalid_numeric_group) : c_(c), i_(i) {}
+    constexpr Group(std::uint8_t i = invalid_numeric_group) : i_(i) {}
+
+    constexpr std::uint8_t numeric() const { return i_; }
     constexpr const char* c_str() const { return c_; }
 
     operator std::string() const
@@ -61,35 +64,32 @@ class Group
     void set_c_str(const char* c) { c_ = c; }
 
   private:
-    int i_{0};
     const char* c_{nullptr};
+    std::uint8_t i_{invalid_numeric_group};
 };
 
-inline bool operator==(const Group& a, const Group& b) { return std::string(a) == std::string(b); }
+inline bool operator==(const Group& a, const Group& b)
+{
+    if (a.c_str() != nullptr && b.c_str() != nullptr)
+        return std::string(a.c_str()) == std::string(b.c_str());
+    else
+        return a.numeric() == b.numeric();
+}
 
 inline bool operator!=(const Group& a, const Group& b) { return !(a == b); }
-
-template <const Group& group> void check_validity()
-{
-    static_assert(
-        (group.numeric() != 0) || (group.c_str()[0] != '\0'),
-        "goby::middleware::Group must have non-zero length string or non-zero integer value.");
-}
-
-inline void check_validity_runtime(const Group& group)
-{
-    // currently no-op - InterVehicleTransporterBase allows empty groups
-    // TODO - check if there's anything we can check for here
-}
 
 inline std::ostream& operator<<(std::ostream& os, const Group& g) { return (os << std::string(g)); }
 
 class DynamicGroup : public Group
 {
   public:
-    DynamicGroup(const std::string& s) : s_(new std::string(s)) { Group::set_c_str(s_->c_str()); }
+    DynamicGroup(const std::string& s, std::uint8_t i = Group::invalid_numeric_group)
+        : Group(i), s_(new std::string(s))
+    {
+        Group::set_c_str(s_->c_str());
+    }
 
-    DynamicGroup(int i) : Group(i) {}
+    DynamicGroup(std::uint8_t i) : Group(i) {}
 
   private:
     std::unique_ptr<const std::string> s_;
@@ -97,5 +97,16 @@ class DynamicGroup : public Group
 
 } // namespace middleware
 } // namespace goby
+
+namespace std
+{
+template <> struct hash<goby::middleware::Group>
+{
+    size_t operator()(const goby::middleware::Group& group) const noexcept
+    {
+        return std::hash<std::string>{}(std::string(group));
+    }
+};
+} // namespace std
 
 #endif

@@ -22,6 +22,8 @@ protobuf_generate_cpp(ACOMMS_PROTO_SRCS ACOMMS_PROTO_HDRS
   acomms/protobuf/store_server.proto
   acomms/protobuf/time_update.proto
   acomms/protobuf/udp_driver.proto
+  acomms/protobuf/udp_multicast_driver.proto
+  acomms/protobuf/buffer.proto
   )
 
 set(ACOMMS_SRC
@@ -34,6 +36,7 @@ set(ACOMMS_SRC
   acomms/modemdriver/driver_base.cpp
   acomms/modemdriver/mm_driver.cpp
   acomms/modemdriver/udp_driver.cpp
+  acomms/modemdriver/udp_multicast_driver.cpp
   acomms/modemdriver/rudics_packet.cpp
   acomms/modemdriver/iridium_driver.cpp
   acomms/modemdriver/iridium_driver_fsm.cpp

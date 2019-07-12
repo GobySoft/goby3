@@ -6,6 +6,7 @@ package goby.test.zeromq.protobuf;
 message Sample
 {
     optional int32 a = 1;
+    optional string group = 2;
 }
 
 message Widget

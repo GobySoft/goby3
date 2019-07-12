@@ -124,7 +124,7 @@ void goby::acomms::benthos::fsm::ReceiveData::in_state_react(const EvRxSerial& e
         if (in == "<EOP>")
         {
             const benthos::protobuf::ReceiveStatistics& rx_stats =
-                rx_msg_.GetExtension(benthos::protobuf::receive_stat);
+                rx_msg_.GetExtension(benthos::protobuf::transmission).receive_stat();
 
             if (rx_stats.crc() == benthos::protobuf::ReceiveStatistics::CRC_PASS)
                 parse_benthos_modem_message(encoded_bytes_, &rx_msg_);
@@ -174,7 +174,7 @@ void goby::acomms::benthos::fsm::ReceiveData::in_state_react(const EvRxSerial& e
         else if (in.compare(0, crc.size(), crc) == 0)
         {
             benthos::protobuf::ReceiveStatistics& rx_stats =
-                *rx_msg_.MutableExtension(benthos::protobuf::receive_stat);
+                *rx_msg_.MutableExtension(benthos::protobuf::transmission)->mutable_receive_stat();
 
             // CRC:Pass MPD:03.2 SNR:31.3 AGC:91 SPD:+00.0 CCERR:013
             std::vector<std::string> stats;
@@ -311,14 +311,15 @@ void goby::acomms::benthos::fsm::Range::in_state_react(const EvRxSerial& e)
             range_msg.set_dest(boost::lexical_cast<unsigned>(src_dest[1]));
 
             range_msg.set_type(goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC);
-            range_msg.SetExtension(benthos::protobuf::type,
-                                   benthos::protobuf::BENTHOS_TWO_WAY_PING);
+            range_msg.MutableExtension(benthos::protobuf::transmission)
+                ->set_type(benthos::protobuf::BENTHOS_TWO_WAY_PING);
 
             std::string rt_ms = in.substr(rt_start_pos + roundtrip.size(),
                                           rt_end_pos - (rt_start_pos + roundtrip.size()));
             boost::trim(rt_ms);
 
-            range_msg.MutableExtension(benthos::protobuf::ranging_reply)
+            range_msg.MutableExtension(benthos::protobuf::transmission)
+                ->mutable_ranging_reply()
                 ->set_one_way_travel_time_with_units(boost::lexical_cast<double>(rt_ms) / 2 *
                                                      boost::units::si::milli *
                                                      boost::units::si::seconds);

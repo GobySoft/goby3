@@ -24,6 +24,7 @@
 #define UFieldSimDriver20120214H
 
 #include "goby/moos/moos_header.h"
+#include "goby/moos/protobuf/ufield_sim_driver.pb.h"
 
 //#include <boost/bimap.hpp>
 
@@ -67,6 +68,7 @@ class UFldDriver : public goby::acomms::ModemDriverBase
     };
     CMOOSCommClient moos_client_;
     goby::acomms::protobuf::DriverConfig driver_cfg_; // configuration given to you at launch
+    goby::moos::ufld::protobuf::Config ufld_driver_cfg_;
 
     //boost::bimap<int, std::string> modem_id2name_;
     goby::moos::ModemIdConvert modem_lookup_;

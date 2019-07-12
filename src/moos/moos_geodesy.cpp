@@ -27,10 +27,10 @@
 
 #include "moos_geodesy.h"
 
-CMOOSGeodesy::CMOOSGeodesy() {}
-CMOOSGeodesy::~CMOOSGeodesy() {}
+goby::moos::CMOOSGeodesy::CMOOSGeodesy() {}
+goby::moos::CMOOSGeodesy::~CMOOSGeodesy() {}
 
-bool CMOOSGeodesy::Initialise(double lat, double lon)
+bool goby::moos::CMOOSGeodesy::Initialise(double lat, double lon)
 {
     try
     {
@@ -45,7 +45,7 @@ bool CMOOSGeodesy::Initialise(double lat, double lon)
     return true;
 }
 
-double CMOOSGeodesy::GetOriginLongitude()
+double goby::moos::CMOOSGeodesy::GetOriginLongitude()
 {
     if (!geodesy_)
         return std::numeric_limits<double>::quiet_NaN();
@@ -53,7 +53,7 @@ double CMOOSGeodesy::GetOriginLongitude()
         return geodesy_->origin_geo().lon / boost::units::degree::degrees;
 }
 
-double CMOOSGeodesy::GetOriginLatitude()
+double goby::moos::CMOOSGeodesy::GetOriginLatitude()
 {
     if (!geodesy_)
         return std::numeric_limits<double>::quiet_NaN();
@@ -61,7 +61,7 @@ double CMOOSGeodesy::GetOriginLatitude()
         return geodesy_->origin_geo().lat / boost::units::degree::degrees;
 }
 
-int CMOOSGeodesy::GetUTMZone()
+int goby::moos::CMOOSGeodesy::GetUTMZone()
 {
     if (!geodesy_)
         return -1;
@@ -69,7 +69,8 @@ int CMOOSGeodesy::GetUTMZone()
         return geodesy_->origin_utm_zone();
 }
 
-bool CMOOSGeodesy::LatLong2LocalUTM(double lat, double lon, double& MetersNorth, double& MetersEast)
+bool goby::moos::CMOOSGeodesy::LatLong2LocalUTM(double lat, double lon, double& MetersNorth,
+                                                double& MetersEast)
 {
     if (!geodesy_)
     {
@@ -95,7 +96,7 @@ bool CMOOSGeodesy::LatLong2LocalUTM(double lat, double lon, double& MetersNorth,
     return true;
 }
 
-double CMOOSGeodesy::GetOriginEasting()
+double goby::moos::CMOOSGeodesy::GetOriginEasting()
 {
     if (!geodesy_)
         return std::numeric_limits<double>::quiet_NaN();
@@ -103,7 +104,7 @@ double CMOOSGeodesy::GetOriginEasting()
         return geodesy_->origin_utm().x / boost::units::si::meters;
 }
 
-double CMOOSGeodesy::GetOriginNorthing()
+double goby::moos::CMOOSGeodesy::GetOriginNorthing()
 {
     if (!geodesy_)
         return std::numeric_limits<double>::quiet_NaN();
@@ -111,7 +112,7 @@ double CMOOSGeodesy::GetOriginNorthing()
         return geodesy_->origin_utm().y / boost::units::si::meters;
 }
 
-bool CMOOSGeodesy::UTM2LatLong(double dfX, double dfY, double& dfLat, double& dfLong)
+bool goby::moos::CMOOSGeodesy::UTM2LatLong(double dfX, double dfY, double& dfLat, double& dfLong)
 {
     if (!geodesy_)
     {

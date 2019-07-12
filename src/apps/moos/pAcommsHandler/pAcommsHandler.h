@@ -86,7 +86,6 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
 
     void process_configuration();
     void create_driver(std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
-                       goby::acomms::protobuf::DriverType driver_type,
                        goby::acomms::protobuf::DriverConfig* driver_cfg,
                        goby::acomms::MACManager* mac);
 
@@ -158,10 +157,6 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
     boost::asio::io_service::work work_;
 
     goby::acomms::RouteManager* router_;
-
-
-    // for UDPDriver
-    std::vector<std::shared_ptr<boost::asio::io_service> > asio_service_;
 
     std::vector<std::shared_ptr<Timer> > timers_;
 

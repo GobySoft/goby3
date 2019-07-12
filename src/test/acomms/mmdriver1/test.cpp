@@ -54,21 +54,22 @@ int main(int argc, char* argv[])
     goby::glog.set_name(argv[0]);
 
     goby::acomms::protobuf::DriverConfig cfg1, cfg2;
+    auto* mm_cfg1 = cfg1.MutableExtension(micromodem::protobuf::config);
+    auto* mm_cfg2 = cfg2.MutableExtension(micromodem::protobuf::config);
 
     cfg1.set_serial_port(argv[1]);
     cfg1.set_modem_id(1);
     // 0111
-    cfg1.MutableExtension(micromodem::protobuf::Config::remus_lbl)->set_enable_beacons(7);
+    mm_cfg1->mutable_remus_lbl()->set_enable_beacons(7);
 
-    if (mm_version != 2)
-        cfg1.SetExtension(micromodem::protobuf::Config::reset_nvram, true);
-    cfg2.SetExtension(micromodem::protobuf::Config::reset_nvram, true);
+    mm_cfg1->set_reset_nvram(true);
+    mm_cfg2->set_reset_nvram(true);
 
     // so we can play with the emulator box BNC cables and expect bad CRC'S (otherwise crosstalk is enough to receive everything ok!)
-    cfg1.AddExtension(micromodem::protobuf::Config::nvram_cfg, "AGC,0");
-    cfg2.AddExtension(micromodem::protobuf::Config::nvram_cfg, "AGC,0");
-    cfg1.AddExtension(micromodem::protobuf::Config::nvram_cfg, "AGN,0");
-    cfg2.AddExtension(micromodem::protobuf::Config::nvram_cfg, "AGN,0");
+    mm_cfg1->add_nvram_cfg("AGC,0");
+    mm_cfg2->add_nvram_cfg("AGC,0");
+    mm_cfg1->add_nvram_cfg("AGN,0");
+    mm_cfg2->add_nvram_cfg("AGN,0");
 
     cfg2.set_serial_port(argv[2]);
     cfg2.set_modem_id(2);
@@ -90,8 +91,8 @@ int main(int argc, char* argv[])
     if (mm_version == 2)
     {
         tests_to_run.push_back(6);
-        cfg1.AddExtension(micromodem::protobuf::Config::nvram_cfg, "psk.packet.mod_hdr_version,0");
-        cfg2.AddExtension(micromodem::protobuf::Config::nvram_cfg, "psk.packet.mod_hdr_version,0");
+        mm_cfg1->add_nvram_cfg("psk.packet.mod_hdr_version,0");
+        mm_cfg2->add_nvram_cfg("psk.packet.mod_hdr_version,0");
     }
 
     driver1.reset(new goby::acomms::MMDriver);

@@ -32,7 +32,7 @@ using goby::glog;
 using namespace goby::util::logger;
 using namespace goby::test::zeromq::protobuf;
 
-extern constexpr goby::middleware::Group widget1{3};
+extern constexpr goby::middleware::Group widget1{"widget1", 1};
 
 using AppBase = goby::zeromq::MultiThreadApplication<TestConfig>;
 

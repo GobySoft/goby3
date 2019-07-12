@@ -33,11 +33,10 @@
 
 #include "test.pb.h"
 
-using goby::acomms::udp::protobuf::UDPDriverConfig;
+using goby::acomms::udp::protobuf::config;
 using goby::test::acomms::protobuf::GobyMessage;
 using goby::test::acomms::protobuf::Header;
 
-boost::asio::io_service io1, io2;
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 goby::acomms::QueueManager q1, q2;
 GobyMessage msg_in1, msg_in2;
@@ -120,10 +119,12 @@ int main(int argc, char* argv[])
 
     goby::glog.set_name(argv[0]);
 
-    driver1.reset(new goby::acomms::UDPDriver(&io1));
-    driver2.reset(new goby::acomms::UDPDriver(&io2));
+    driver1.reset(new goby::acomms::UDPDriver);
+    driver2.reset(new goby::acomms::UDPDriver);
 
     goby::acomms::protobuf::DriverConfig cfg1, cfg2;
+    auto* udp_cfg1 = cfg1.MutableExtension(config);
+    auto* udp_cfg2 = cfg2.MutableExtension(config);
 
     cfg1.set_modem_id(1);
 
@@ -132,27 +133,27 @@ int main(int argc, char* argv[])
     int port2 = port1 + 1;
 
     //gumstix
-    UDPDriverConfig::EndPoint* local_endpoint1 = cfg1.MutableExtension(UDPDriverConfig::local);
+    auto* local_endpoint1 = udp_cfg1->mutable_local();
     local_endpoint1->set_port(port1);
 
     cfg2.set_modem_id(2);
 
     // shore
-    UDPDriverConfig::EndPoint* local_endpoint2 = cfg2.MutableExtension(UDPDriverConfig::local);
+    auto* local_endpoint2 = udp_cfg2->mutable_local();
     local_endpoint2->set_port(port2);
 
-    UDPDriverConfig::EndPoint* remote_endpoint1 = cfg1.MutableExtension(UDPDriverConfig::remote);
+    auto* remote_endpoint1 = udp_cfg1->mutable_remote();
 
     remote_endpoint1->set_ip("localhost");
     remote_endpoint1->set_port(port2);
 
-    UDPDriverConfig::EndPoint* remote_endpoint2 = cfg2.MutableExtension(UDPDriverConfig::remote);
+    auto* remote_endpoint2 = udp_cfg2->mutable_remote();
 
     remote_endpoint2->set_ip("127.0.0.1");
     remote_endpoint2->set_port(port1);
 
-    cfg1.SetExtension(UDPDriverConfig::max_frame_size, 15);
-    cfg2.SetExtension(UDPDriverConfig::max_frame_size, 15);
+    udp_cfg1->set_max_frame_size(15);
+    udp_cfg2->set_max_frame_size(15);
 
     goby::acomms::protobuf::QueueManagerConfig qcfg1, qcfg2;
     qcfg1.set_modem_id(1);

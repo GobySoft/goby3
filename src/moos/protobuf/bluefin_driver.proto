@@ -2,7 +2,7 @@ syntax = "proto2";
 import "goby/acomms/protobuf/driver_base.proto";
 import "dccl/option_extensions.proto";
 
-package goby.moos.protobuf;
+package goby.moos.bluefin.protobuf;
 
 message HardwareRatePair
 {
@@ -17,18 +17,20 @@ message BluefinModemIdLookUp
     required int32 bluefin_id = 2;
 }
 
-message BluefinConfig
+message Config
 {
-    extend goby.acomms.protobuf.DriverConfig
-    {
-        optional string moos_server = 1361 [default = "localhost"];
-        optional int32 moos_port = 1362 [default = 9000];
+    optional string moos_server = 1 [default = "localhost"];
+    optional int32 moos_port = 2 [default = 9000];
 
-        optional string nmea_in_moos_var = 1363 [default = "IFS_RAW_IN"];
-        optional string nmea_out_moos_var = 1364 [default = "IFS_RAW_OUT"];
+    optional string nmea_in_moos_var = 3 [default = "IFS_RAW_IN"];
+    optional string nmea_out_moos_var = 4 [default = "IFS_RAW_OUT"];
 
-        repeated HardwareRatePair hardware_to_rate = 1365;
+    repeated HardwareRatePair hardware_to_rate = 5;
 
-        repeated BluefinModemIdLookUp modem_lookup = 1366;
-    }
+    repeated BluefinModemIdLookUp modem_lookup = 6;
+}
+
+extend goby.acomms.protobuf.DriverConfig
+{
+    optional Config config = 1361;
 }

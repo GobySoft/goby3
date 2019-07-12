@@ -24,6 +24,7 @@
 #define TIME_IO_20190530H
 
 #include "goby/time/convert.h"
+#include "goby/time/steady_clock.h"
 #include "goby/time/system_clock.h"
 
 namespace goby
@@ -34,6 +35,20 @@ inline std::ostream& operator<<(std::ostream& out, const goby::time::SystemClock
 {
     return (out << goby::time::convert<boost::posix_time::ptime>(time));
 }
+inline std::ostream& operator<<(std::ostream& out, const goby::time::SteadyClock::time_point& time)
+{
+    return (out << std::chrono::duration_cast<std::chrono::microseconds>(time.time_since_epoch())
+                       .count()
+                << " us");
+}
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const goby::time::SystemClock::duration& duration)
+{
+    return (out << std::chrono::duration_cast<std::chrono::microseconds>(duration).count()
+                << " us");
+}
+
 } // namespace time
 } // namespace goby
 

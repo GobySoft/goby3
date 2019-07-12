@@ -1,11 +1,15 @@
 syntax = "proto2";
+
+import "dccl/option_extensions.proto";
+import "goby/middleware/protobuf/intervehicle_transporter_config.proto";
+
 package goby.middleware.protobuf;
 
 message TransporterConfig
 {
     // if the publisher is also subscribed, should it receive a copy?
-    // TODO: implement at the interprocess layer
+    // TODO: implement at the interprocess and intervehicle layers
     optional bool echo = 1 [default = false];
 
-    optional int32 ttl = 10;
+    optional intervehicle.protobuf.TransporterConfig intervehicle = 10;
 }

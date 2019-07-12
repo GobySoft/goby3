@@ -27,6 +27,7 @@
 #include "goby/middleware/multi-thread-application.h"
 #include "goby/middleware/transport-interthread.h"
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
+#include "goby/zeromq/multi-thread-application.h"
 #include "goby/zeromq/transport-interprocess.h"
 
 namespace goby
@@ -44,39 +45,51 @@ class Translator
   protected:
     virtual std::string translator_name()
     {
-        return std::string("goby::moos::Translator::" +
-                           std::to_string(reinterpret_cast<uintptr_t>(this)));
+        std::stringstream ss;
+        ss << std::this_thread::get_id();
+        return std::string("goby::moos::Translator::" + ss.str());
     }
 
     // Goby
-    goby::middleware::SimpleThread<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>& goby_comms()
+    goby::middleware::SimpleThread<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>& goby()
     {
         return *this;
     }
 
-    // MOOS
-    void add_moos_trigger(const std::string& moos_var) { moos_trigger_vars_.insert(moos_var); }
+    class MOOSInterface
+    {
+      public:
+        // MOOS
+        void add_trigger(const std::string& moos_var, std::function<void(const CMOOSMsg&)> func)
+        {
+            trigger_vars_.insert(std::make_pair(moos_var, func));
+        }
+        void add_buffer(const std::string& moos_var) { buffer_vars_.insert(moos_var); }
+        std::map<std::string, CMOOSMsg>& buffer() { return buffer_; }
+        CMOOSCommClient& comms() { return comms_; }
+        void loop();
 
-    void add_moos_buffer(const std::string& moos_var) { moos_buffer_vars_.insert(moos_var); }
+      private:
+        friend bool TranslatorOnConnectCallBack(void* Translator);
+        void on_connect();
 
-    virtual void moos_to_goby(const CMOOSMsg& moos_msg) = 0;
-
-    CMOOSCommClient& moos_comms() { return moos_comms_; }
-
-    std::map<std::string, CMOOSMsg>& moos_buffer() { return moos_buffer_; }
+      private:
+        std::map<std::string, std::function<void(const CMOOSMsg&)>> trigger_vars_;
+        std::set<std::string> buffer_vars_;
+        std::map<std::string, CMOOSMsg> buffer_;
+        MOOS::MOOSAsyncCommClient comms_;
+    };
 
     friend bool TranslatorOnConnectCallBack(void* Translator);
-    void moos_on_connect();
+    MOOSInterface& moos() { return moos_; }
 
   private:
     void loop() override;
 
   private:
-    MOOS::MOOSAsyncCommClient moos_comms_;
-    std::set<std::string> moos_trigger_vars_;
-    std::set<std::string> moos_buffer_vars_;
-    std::map<std::string, CMOOSMsg> moos_buffer_;
+    MOOSInterface moos_;
 };
+
 } // namespace moos
 } // namespace goby
 

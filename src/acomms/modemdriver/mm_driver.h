@@ -206,6 +206,11 @@ class MMDriver : public ModemDriverBase
     void set_rts(bool state);
     bool query_rts();
 
+    const micromodem::protobuf::Config& mm_driver_cfg() const
+    {
+        return driver_cfg_.GetExtension(micromodem::protobuf::config);
+    }
+
     // doxygen
 
     /// \example acomms/modemdriver/driver_simple/driver_simple.cpp
