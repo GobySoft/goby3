@@ -69,7 +69,7 @@ message ProtobufCommanderConfig
         repeated string group = 2;
     }
     repeated LoadProtobuf load_protobuf = 1;
-    
+
     optional int32 value_width_pixels = 10 [default = 500];
     optional int32 modify_width_pixels = 11 [default = 100];
 
@@ -113,6 +113,16 @@ message ProtobufCommanderConfig
     {
         required string type_regex = 1;
         required string group_regex = 2;
+
+        message Color
+        {
+            required int32 r = 1;
+            required int32 g = 2;
+            required int32 b = 3;
+            optional int32 a = 4 [default = 255];
+        }
+
+        optional Color background_color = 3;
     }
 
     repeated NotificationSubscription notify_subscribe = 30;

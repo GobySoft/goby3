@@ -86,8 +86,9 @@ goby::apps::zeromq::Liaison::Liaison()
 
         if (!handle)
         {
-            glog.is(DIE) && glog << "Failed ... check path provided or add to /etc/ld.so.conf "
-                                 << "or LD_LIBRARY_PATH" << std::endl;
+            glog.is(DIE) &&
+                glog << "Failed to load shared library: " << cfg().load_shared_library(i)
+                     << " (dlerror: " << dlerror() << ")" << std::endl;
         }
     }
 
