@@ -47,7 +47,7 @@ endif()
 
 set(GOBY_VERSION_MAJOR "3")
 set(GOBY_VERSION_MINOR "0")
-set(GOBY_VERSION_PATCH "0~alpha17")
+set(GOBY_VERSION_PATCH "0~beta1")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    message("Compiling in Git source tree.")
@@ -76,7 +76,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    
 else()
    message("Compiling from release tarball.")
-   set(GOBY_VERSION_DATE "2019.04.25")
+   set(GOBY_VERSION_DATE "2019.07.15")
 endif()
 
 set(GOBY_VERSION "${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}")

@@ -1,6 +1,13 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.0~beta*
+
+### Middleware
+
+Increasingly stable look at the new Goby3 nested communications middleware. See examples at https://github.com/GobySoft/goby3-examples.
+
+****************
 Version 3.0.0~alpha*
 
 ### Middleware
