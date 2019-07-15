@@ -158,8 +158,14 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
     parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
                   const std::string& type)
     {
-        auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
-            std::shared_ptr<google::protobuf::Message>>(type);
+        std::shared_ptr<google::protobuf::Message> msg;
+
+        {
+            static std::mutex dynamic_protobuf_manager_mutex;
+            std::lock_guard<std::mutex> lock(dynamic_protobuf_manager_mutex);
+            msg = dccl::DynamicProtobufManager::new_protobuf_message<
+                std::shared_ptr<google::protobuf::Message>>(type);
+        }
 
         msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
         actual_end = bytes_begin + msg->ByteSize();
@@ -334,10 +340,11 @@ struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL
     parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
                   const std::string& type)
     {
+        std::lock_guard<std::mutex> lock(dccl_mutex_);
+
         auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
             std::shared_ptr<google::protobuf::Message>>(type);
 
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
         check_load(msg->GetDescriptor());
         actual_end = codec().decode(bytes_begin, bytes_end, msg.get());
         return msg;
