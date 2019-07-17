@@ -23,13 +23,14 @@
 #ifndef PRIMITIVE_TYPE_20190614H
 #define PRIMITIVE_TYPE_20190614H
 
+#include <memory>
+
 namespace goby
 {
 namespace middleware
 {
 namespace detail
 {
-
 template <typename T> struct primitive_type
 {
     typedef T type;

@@ -21,6 +21,7 @@
 
 #include <deque>
 
+#include "goby/middleware/serialize_parse_cstr.h"
 #include "goby/middleware/serialize_parse_dccl.h"
 #include "goby/middleware/serialize_parse_protobuf.h"
 

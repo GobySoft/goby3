@@ -27,6 +27,8 @@
 
 #include <google/protobuf/message.h>
 
+#include <dccl.h>
+
 #include "goby/middleware/protobuf/intervehicle.pb.h"
 
 namespace goby

@@ -29,8 +29,6 @@
 #include <typeindex>
 #include <unordered_map>
 
-#include <dccl.h>
-
 #include "goby/middleware/detail/primitive_type.h"
 
 namespace goby
@@ -74,35 +72,6 @@ template <typename DataType, int scheme, class Enable = void> struct SerializerP
 {
 };
 
-template <typename DataType> struct SerializerParserHelper<DataType, MarshallingScheme::CSTR>
-{
-    static std::vector<char> serialize(const DataType& msg)
-    {
-        std::vector<char> bytes(msg.begin(), msg.end());
-        bytes.push_back('\0');
-        return bytes;
-    }
-
-    static std::string type_name() { return "CSTR"; }
-
-    static std::string type_name(const DataType& d) { return type_name(); }
-
-    template <typename CharIterator>
-    static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
-                                           CharIterator& actual_end)
-    {
-        actual_end = bytes_end;
-        if (bytes_begin != bytes_end)
-        {
-            return std::make_shared<DataType>(bytes_begin, bytes_end - 1);
-        }
-        else
-        {
-            return std::make_shared<DataType>();
-        }
-    }
-};
-
 //
 // scheme
 //
@@ -112,10 +81,12 @@ template <typename T, typename Transporter> constexpr int transporter_scheme()
     return Transporter::template scheme<typename primitive_type<T>::type>();
 }
 
-template <typename T, typename std::enable_if<std::is_same<T, std::string>::value>::type* = nullptr>
+// placeholder to provide an interface for the scheme() function family
+template <typename T, typename std::enable_if<std::is_same<T, void>::value>::type* = nullptr>
 constexpr int scheme()
 {
-    return goby::middleware::MarshallingScheme::CSTR;
+    static_assert(std::is_same<T, void>::value, "Null scheme instantiated");
+    return goby::middleware::MarshallingScheme::NULL_SCHEME;
 }
 
 } // namespace middleware
