@@ -22,8 +22,8 @@
 #include "goby/middleware/application.h"
 #include "goby/middleware/gobyd/groups.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"
-#include "goby/middleware/transport-intervehicle.h"
-#include "goby/zeromq/transport-interprocess.h"
+#include "goby/middleware/transport/intervehicle.h"
+#include "goby/zeromq/transport/interprocess.h"
 
 #include "goby/zeromq/protobuf/gobyd_config.pb.h"
 

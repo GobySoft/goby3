@@ -25,7 +25,7 @@
 
 #include <vector>
 
-#include "serialize_parse.h"
+#include "interface.h"
 
 namespace goby
 {

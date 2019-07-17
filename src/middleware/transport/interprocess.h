@@ -30,7 +30,7 @@
 #include <tuple>
 #include <unistd.h>
 
-#include "transport-common.h"
+#include "common.h"
 
 namespace goby
 {

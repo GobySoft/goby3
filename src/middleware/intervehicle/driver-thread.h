@@ -26,13 +26,13 @@
 #include "goby/acomms/amac.h"
 #include "goby/acomms/buffer/dynamic_buffer.h"
 
-#include "goby/middleware/serialize_parse_dccl.h"
+#include "goby/middleware/marshalling/dccl.h"
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/thread.h"
-#include "goby/middleware/transport-interprocess.h"
-#include "goby/middleware/transport-interthread.h"
+#include "goby/middleware/transport/interprocess.h"
+#include "goby/middleware/transport/interthread.h"
 
 namespace goby
 {

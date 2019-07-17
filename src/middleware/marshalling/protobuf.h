@@ -23,7 +23,7 @@
 #ifndef SerializeParseProtobuf20190717H
 #define SerializeParseProtobuf20190717H
 
-#include "serialize_parse.h"
+#include "interface.h"
 
 #include <google/protobuf/message.h>
 

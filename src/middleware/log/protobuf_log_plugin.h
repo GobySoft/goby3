@@ -24,8 +24,8 @@
 #define PROTOBUF_LOGGER_20190123_H
 
 #include "goby/middleware/log.h"
+#include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
-#include "goby/middleware/serialize_parse_protobuf.h"
 #include "log_plugin.h"
 
 namespace goby

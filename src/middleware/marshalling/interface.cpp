@@ -20,12 +20,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Transport20160607H
-#define Transport20160607H
+#include "interface.h"
 
-#include "transport-common.h"
-#include "transport-interprocess.h"
-#include "transport-interthread.h"
-#include "transport-intervehicle.h"
-
-#endif
+std::map<int, std::string> goby::middleware::MarshallingScheme::e2s = {
+    {CSTR, "CSTR"}, {PROTOBUF, "PROTOBUF"}, {DCCL, "DCCL"}, {MAVLINK, "MAVLINK"}};

@@ -20,7 +20,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "serialize_parse.h"
+#include "interthread.h"
 
-std::map<int, std::string> goby::middleware::MarshallingScheme::e2s = {
-    {CSTR, "CSTR"}, {PROTOBUF, "PROTOBUF"}, {DCCL, "DCCL"}, {MAVLINK, "MAVLINK"}};
+std::unordered_map<std::thread::id, goby::middleware::SubscriptionStoreBase::StoresMap>
+    goby::middleware::SubscriptionStoreBase::stores_;
+std::shared_timed_mutex goby::middleware::SubscriptionStoreBase::stores_mutex_;

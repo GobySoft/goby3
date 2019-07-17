@@ -21,15 +21,15 @@
 
 #include <deque>
 
-#include "goby/middleware/serialize_parse_cstr.h"
-#include "goby/middleware/serialize_parse_dccl.h"
-#include "goby/middleware/serialize_parse_protobuf.h"
+#include "goby/middleware/marshalling/cstr.h"
+#include "goby/middleware/marshalling/dccl.h"
+#include "goby/middleware/marshalling/protobuf.h"
 
 // plugin new serialization/parse scheme
 #include "test-scheme.h"
 
 #include "goby/middleware/transport.h"
-#include "goby/zeromq/transport-interprocess.h"
+#include "goby/zeromq/transport/interprocess.h"
 
 #include "goby/util/debug_logger.h"
 #include "test.pb.h"

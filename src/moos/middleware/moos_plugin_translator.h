@@ -25,10 +25,10 @@
 
 #include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"
 #include "goby/middleware/multi-thread-application.h"
-#include "goby/middleware/transport-interthread.h"
+#include "goby/middleware/transport/interthread.h"
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
 #include "goby/zeromq/multi-thread-application.h"
-#include "goby/zeromq/transport-interprocess.h"
+#include "goby/zeromq/transport/interprocess.h"
 
 namespace goby
 {

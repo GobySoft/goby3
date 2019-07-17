@@ -24,8 +24,8 @@
 #define LOG_PLUGIN_20190123_H
 
 #include "goby/middleware/log/log_entry.h"
+#include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
-#include "goby/middleware/serialize_parse.h"
 
 namespace goby
 {

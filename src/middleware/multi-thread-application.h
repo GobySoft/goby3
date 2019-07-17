@@ -28,9 +28,9 @@
 #include "goby/exception.h"
 #include "goby/middleware/application.h"
 #include "goby/middleware/thread.h"
-#include "goby/middleware/transport-interprocess.h"
-#include "goby/middleware/transport-interthread.h"
-#include "goby/middleware/transport-intervehicle.h"
+#include "goby/middleware/transport/interprocess.h"
+#include "goby/middleware/transport/interthread.h"
+#include "goby/middleware/transport/intervehicle.h"
 
 #include "goby/middleware/terminate/terminate.h"
 

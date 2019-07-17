@@ -8,7 +8,7 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   )
 
 set(SRC
-  transport-interprocess.cpp
+  transport/interprocess.cpp
 )
 
 add_library(goby_zeromq ${SRC} ${PROTO_SRCS} ${PROTO_HDRS})

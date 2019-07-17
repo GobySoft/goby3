@@ -25,7 +25,7 @@
 
 #include <dccl/codec.h>
 
-#include "goby/middleware/serialize_parse_dccl.h"
+#include "goby/middleware/marshalling/dccl.h"
 
 #include "protobuf_log_plugin.h"
 

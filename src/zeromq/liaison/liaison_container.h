@@ -31,7 +31,7 @@
 #include <Wt/WTimer>
 
 #include "goby/middleware/group.h"
-#include "goby/middleware/serialize_parse_protobuf.h"
+#include "goby/middleware/marshalling/protobuf.h"
 #include "goby/zeromq/multi-thread-application.h"
 #include "goby/zeromq/protobuf/liaison_config.pb.h"
 

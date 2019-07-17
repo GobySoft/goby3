@@ -26,7 +26,7 @@
 #include <tuple>
 #include <zmq.hpp>
 
-#include "goby/middleware/transport-interprocess.h"
+#include "goby/middleware/transport/interprocess.h"
 #include "goby/zeromq/protobuf/interprocess_config.pb.h"
 #include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"
 

@@ -19,7 +19,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/serialize_parse.h"
+#include "goby/middleware/marshalling/interface.h"
 #include <vector>
 
 namespace goby

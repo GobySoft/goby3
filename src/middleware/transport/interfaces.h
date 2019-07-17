@@ -28,8 +28,8 @@
 #include <memory>
 #include <mutex>
 
-#include "group.h"
-#include "serialize_parse.h"
+#include "goby/middleware/group.h"
+#include "goby/middleware/marshalling/interface.h"
 
 #include "goby/exception.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"

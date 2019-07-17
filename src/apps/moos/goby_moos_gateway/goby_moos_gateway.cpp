@@ -21,7 +21,7 @@
 
 #include <dlfcn.h>
 
-#include "goby/middleware/serialize_parse_protobuf.h"
+#include "goby/middleware/marshalling/protobuf.h"
 #include "goby/moos/middleware/moos_plugin_translator.h"
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
 #include "goby/zeromq/multi-thread-application.h"

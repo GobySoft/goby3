@@ -24,7 +24,7 @@
 #include "goby/middleware/protobuf/serializer_transporter.pb.h"
 #include "goby/util/debug_logger.h"
 
-#include "serialize_parse_dccl.h"
+#include "dccl.h"
 
 std::unique_ptr<dccl::Codec> goby::middleware::DCCLSerializerParserHelperBase::codec_(nullptr);
 std::unordered_map<const google::protobuf::Descriptor*,
