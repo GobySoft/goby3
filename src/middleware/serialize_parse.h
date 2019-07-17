@@ -29,12 +29,9 @@
 #include <typeindex>
 #include <unordered_map>
 
-#include <google/protobuf/message.h>
-
 #include <dccl.h>
 
 #include "goby/middleware/detail/primitive_type.h"
-#include "goby/middleware/protobuf/intervehicle.pb.h"
 
 namespace goby
 {
@@ -53,9 +50,10 @@ struct MarshallingScheme
         CSTR = 0,
         PROTOBUF = 1,
         DCCL = 2,
-        CAPTN_PROTO = 3,
-        MSGPACK = 4,
-        CXX_OBJECT = 5
+        //        CAPTN_PROTO = 3,
+        //        MSGPACK = 4,
+        CXX_OBJECT = 5,
+        MAVLINK = 6
     };
 
     static std::string as_string(int e)
@@ -105,261 +103,6 @@ template <typename DataType> struct SerializerParserHelper<DataType, Marshalling
     }
 };
 
-// user protobuf (static), e.g. DataType == Foo for "message Foo"
-template <typename DataType>
-struct SerializerParserHelper<
-    DataType, MarshallingScheme::PROTOBUF,
-    std::enable_if_t<!std::is_same<DataType, google::protobuf::Message>::value>>
-{
-    static std::vector<char> serialize(const DataType& msg)
-    {
-        std::vector<char> bytes(msg.ByteSize(), 0);
-        msg.SerializeToArray(bytes.data(), bytes.size());
-        return bytes;
-    }
-
-    static std::string type_name() { return DataType::descriptor()->full_name(); }
-    static std::string type_name(const DataType& d) { return type_name(); }
-
-    template <typename CharIterator>
-    static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
-                                           CharIterator& actual_end)
-    {
-        auto msg = std::make_shared<DataType>();
-        msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
-        actual_end = bytes_begin + msg->ByteSize();
-        return msg;
-    }
-};
-
-// runtime introspection google::protobuf::Message (publish only)
-template <> struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::PROTOBUF>
-{
-    static std::vector<char> serialize(const google::protobuf::Message& msg)
-    {
-        std::vector<char> bytes(msg.ByteSize(), 0);
-        msg.SerializeToArray(bytes.data(), bytes.size());
-        return bytes;
-    }
-
-    static std::string type_name(const google::protobuf::Message& d)
-    {
-        return d.GetDescriptor()->full_name();
-    }
-
-    // Must subscribe to the actual type (or use subscribe_regex())
-    static std::string type_name(const google::protobuf::Descriptor* desc)
-    {
-        return desc->full_name();
-    }
-
-    template <typename CharIterator>
-    static std::shared_ptr<google::protobuf::Message>
-    parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-                  const std::string& type)
-    {
-        std::shared_ptr<google::protobuf::Message> msg;
-
-        {
-            static std::mutex dynamic_protobuf_manager_mutex;
-            std::lock_guard<std::mutex> lock(dynamic_protobuf_manager_mutex);
-            msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                std::shared_ptr<google::protobuf::Message>>(type);
-        }
-
-        msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
-        actual_end = bytes_begin + msg->ByteSize();
-        return msg;
-    }
-};
-
-namespace protobuf
-{
-class InterVehicleSubscription;
-class DCCLForwardedData;
-} // namespace protobuf
-struct DCCLSerializerParserHelperBase
-{
-  private:
-    static std::unique_ptr<dccl::Codec> codec_;
-
-  protected:
-    static std::mutex dccl_mutex_;
-
-    struct LoaderBase
-    {
-        LoaderBase() = default;
-        virtual ~LoaderBase() = default;
-    };
-
-    template <typename DataType> struct Loader : public LoaderBase
-    {
-        Loader() { codec().load<DataType>(); }
-        ~Loader() { codec().unload<DataType>(); }
-    };
-
-    struct LoaderDynamic : public LoaderBase
-    {
-        LoaderDynamic(const google::protobuf::Descriptor* desc) : desc_(desc)
-        {
-            codec().load(desc_);
-        }
-        ~LoaderDynamic() { codec().unload(desc_); }
-
-      private:
-        const google::protobuf::Descriptor* desc_;
-    };
-
-    static std::unordered_map<const google::protobuf::Descriptor*, std::unique_ptr<LoaderBase>>
-        loader_map_;
-
-    template <typename DataType> static void check_load()
-    {
-        const auto* desc = DataType::descriptor();
-        if (!loader_map_.count(desc))
-            loader_map_.insert(
-                std::make_pair(desc, std::unique_ptr<LoaderBase>(new Loader<DataType>())));
-    }
-
-    static void check_load(const google::protobuf::Descriptor* desc)
-    {
-        if (!loader_map_.count(desc))
-            loader_map_.insert(
-                std::make_pair(desc, std::unique_ptr<LoaderBase>(new LoaderDynamic(desc))));
-    }
-
-    static dccl::Codec& codec()
-    {
-        if (!codec_)
-            codec_.reset(new dccl::Codec);
-        return *codec_;
-    }
-
-    static dccl::Codec& set_codec(dccl::Codec* new_codec)
-    {
-        codec_.reset(new_codec);
-        loader_map_.clear();
-        return *new_codec;
-    }
-
-  public:
-    DCCLSerializerParserHelperBase() = default;
-    virtual ~DCCLSerializerParserHelperBase() = default;
-
-    template <typename CharIterator> static unsigned id(CharIterator begin, CharIterator end)
-    {
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
-        return codec().id(begin, end);
-    }
-
-    static unsigned id(const std::string full_name)
-    {
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
-        auto* desc = dccl::DynamicProtobufManager::find_descriptor(full_name);
-        if (desc)
-            return codec().id(desc);
-        else
-            return 0;
-    }
-
-    static void
-    load_forwarded_subscription(const goby::middleware::intervehicle::protobuf::Subscription& sub);
-    static goby::middleware::intervehicle::protobuf::DCCLForwardedData
-    unpack(const std::string& bytes);
-
-    static void load_library(const std::string& library)
-    {
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
-        codec().load_library(library);
-    }
-};
-
-template <typename DataType>
-struct SerializerParserHelper<DataType, MarshallingScheme::DCCL>
-    : public DCCLSerializerParserHelperBase
-{
-  public:
-    static std::vector<char> serialize(const DataType& msg)
-    {
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
-        check_load<DataType>();
-        std::vector<char> bytes(codec().size(msg), 0);
-        codec().encode(bytes.data(), bytes.size(), msg);
-        return bytes;
-    }
-
-    static std::string type_name() { return DataType::descriptor()->full_name(); }
-    static std::string type_name(const DataType& d) { return type_name(); }
-
-    template <typename CharIterator>
-    static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
-                                           CharIterator& actual_end)
-    {
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
-        check_load<DataType>();
-        auto msg = std::make_shared<DataType>();
-        actual_end = codec().decode(bytes_begin, bytes_end, msg.get());
-        return msg;
-    }
-
-    static unsigned id()
-    {
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
-        check_load<DataType>();
-        return codec().template id<DataType>();
-    }
-
-  private:
-};
-
-template <>
-struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL>
-    : public DCCLSerializerParserHelperBase
-{
-  public:
-    static std::vector<char> serialize(const google::protobuf::Message& msg)
-    {
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
-        check_load(msg.GetDescriptor());
-        std::vector<char> bytes(codec().size(msg), 0);
-        codec().encode(bytes.data(), bytes.size(), msg);
-        return bytes;
-    }
-
-    static std::string type_name(const google::protobuf::Descriptor* desc)
-    {
-        return desc->full_name();
-    }
-    static std::string type_name(const google::protobuf::Message& d)
-    {
-        return type_name(d.GetDescriptor());
-    }
-
-    template <typename CharIterator>
-    static std::shared_ptr<google::protobuf::Message>
-    parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-                  const std::string& type)
-    {
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
-
-        auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
-            std::shared_ptr<google::protobuf::Message>>(type);
-
-        check_load(msg->GetDescriptor());
-        actual_end = codec().decode(bytes_begin, bytes_end, msg.get());
-        return msg;
-    }
-
-    static unsigned id(const google::protobuf::Descriptor* desc)
-    {
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
-        check_load(desc);
-        return codec().id(desc);
-    }
-
-  private:
-};
-
 //
 // scheme
 //
@@ -375,44 +118,6 @@ constexpr int scheme()
     return goby::middleware::MarshallingScheme::CSTR;
 }
 
-namespace protobuf
-{
-namespace detail
-{
-// used to select between DCCL messages (with added DCCLParameters Enumeration)
-// and normal Protobuf messages
-// in the DCCL case, both "scheme_protobuf_or_dccl" functions are valid, but the one
-// with "dccl_selector" as the argument is chosen because this doesn't require
-// upcasting to "protobuf_selector"
-// in the plain Protobuf case, just the "scheme_protobuf_or_dccl(protobuf_selector)" function
-// is chosen by template resolution, so this one is used.
-struct protobuf_selector
-{
-};
-struct dccl_selector : protobuf_selector
-{
-};
-
-template <typename T,
-          typename std::enable_if<std::is_enum<typename T::DCCLParameters>::value>::type* = nullptr>
-constexpr int scheme_protobuf_or_dccl(dccl_selector)
-{
-    return goby::middleware::MarshallingScheme::DCCL;
-}
-
-template <typename T> constexpr int scheme_protobuf_or_dccl(protobuf_selector)
-{
-    return goby::middleware::MarshallingScheme::PROTOBUF;
-}
-} // namespace detail
-} // namespace protobuf
-
-template <typename T, typename std::enable_if<
-                          std::is_base_of<google::protobuf::Message, T>::value>::type* = nullptr>
-constexpr int scheme()
-{
-    return protobuf::detail::scheme_protobuf_or_dccl<T>(protobuf::detail::dccl_selector());
-}
 } // namespace middleware
 } // namespace goby
 

@@ -25,7 +25,7 @@
 
 #include "goby/middleware/log.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
-#include "goby/middleware/serialize_parse.h"
+#include "goby/middleware/serialize_parse_protobuf.h"
 #include "log_plugin.h"
 
 namespace goby

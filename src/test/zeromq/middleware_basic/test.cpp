@@ -21,6 +21,9 @@
 
 #include <deque>
 
+#include "goby/middleware/serialize_parse_dccl.h"
+#include "goby/middleware/serialize_parse_protobuf.h"
+
 // plugin new serialization/parse scheme
 #include "test-scheme.h"
 

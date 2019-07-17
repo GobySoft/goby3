@@ -27,6 +27,7 @@
 
 #include <boost/units/io.hpp>
 
+#include "goby/middleware/serialize_parse_protobuf.h"
 #include "goby/middleware/transport.h"
 #include "goby/util/debug_logger.h"
 #include "goby/zeromq/transport-interprocess.h"

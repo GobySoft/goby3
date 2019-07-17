@@ -33,6 +33,7 @@
 #include <Wt/WString>
 #include <Wt/WTimer>
 
+#include "goby/middleware/serialize_parse_protobuf.h"
 #include "goby/zeromq/liaison/liaison_container.h"
 #include "goby/zeromq/multi-thread-application.h"
 #include "goby/zeromq/protobuf/liaison_config.pb.h"

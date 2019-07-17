@@ -11,6 +11,7 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
 
 set(MIDDLEWARE_SRC
   middleware/serialize_parse.cpp
+  middleware/serialize_parse_dccl.cpp 
   middleware/transport-interthread.cpp
   middleware/intervehicle/driver-thread.cpp
   middleware/configuration_reader.cpp

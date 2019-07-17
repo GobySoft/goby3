@@ -31,6 +31,7 @@
 #include <Wt/WTimer>
 
 #include "goby/middleware/group.h"
+#include "goby/middleware/serialize_parse_protobuf.h"
 #include "goby/zeromq/multi-thread-application.h"
 #include "goby/zeromq/protobuf/liaison_config.pb.h"
 
@@ -173,9 +174,9 @@ class LiaisonContainerWithComms : public LiaisonContainer
   private:
     // for comms
     std::mutex comms_to_wt_mutex;
-    std::queue<std::function<void()> > comms_to_wt_queue;
+    std::queue<std::function<void()>> comms_to_wt_queue;
     std::mutex wt_to_comms_mutex;
-    std::queue<std::function<void()> > wt_to_comms_queue;
+    std::queue<std::function<void()>> wt_to_comms_queue;
 
     // only protects the unique_ptr, not the underlying thread
     std::mutex goby_thread_mutex;
@@ -190,10 +191,12 @@ class LiaisonContainerWithComms : public LiaisonContainer
 };
 
 template <typename WtContainer>
-class LiaisonCommsThread : public goby::middleware::SimpleThread<goby::apps::zeromq::protobuf::LiaisonConfig>
+class LiaisonCommsThread
+    : public goby::middleware::SimpleThread<goby::apps::zeromq::protobuf::LiaisonConfig>
 {
   public:
-    LiaisonCommsThread(WtContainer* container, const goby::apps::zeromq::protobuf::LiaisonConfig& config, int index)
+    LiaisonCommsThread(WtContainer* container,
+                       const goby::apps::zeromq::protobuf::LiaisonConfig& config, int index)
         : goby::middleware::SimpleThread<goby::apps::zeromq::protobuf::LiaisonConfig>(
               config, config.update_freq() * boost::units::si::hertz, index),
           container_(container)

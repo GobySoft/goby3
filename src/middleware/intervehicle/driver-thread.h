@@ -26,6 +26,8 @@
 #include "goby/acomms/amac.h"
 #include "goby/acomms/buffer/dynamic_buffer.h"
 
+#include "goby/middleware/serialize_parse_dccl.h"
+
 #include "goby/middleware/group.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/thread.h"
@@ -111,7 +113,7 @@ constexpr Group modem_driver_ready{"goby::middleware::intervehicle::modem_driver
 
 class ModemDriverThread
     : public goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
-                                      InterProcessForwarder<InterThreadTransporter> >
+                                      InterProcessForwarder<InterThreadTransporter>>
 {
   public:
     using buffer_data_type = goby::middleware::protobuf::SerializerTransporterMessage;
@@ -157,15 +159,15 @@ class ModemDriverThread
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
-    std::unique_ptr<InterProcessForwarder<InterThreadTransporter> > interprocess_;
+    std::unique_ptr<InterProcessForwarder<InterThreadTransporter>> interprocess_;
 
     std::map<subbuffer_id_type, goby::middleware::protobuf::SerializerTransporterKey>
         publisher_buffer_cfg_;
 
-    std::map<modem_id_type, std::map<subbuffer_id_type, intervehicle::protobuf::Subscription> >
+    std::map<modem_id_type, std::map<subbuffer_id_type, intervehicle::protobuf::Subscription>>
         subscriber_buffer_cfg_;
 
-    std::map<subbuffer_id_type, std::set<modem_id_type> > subbuffers_created_;
+    std::map<subbuffer_id_type, std::set<modem_id_type>> subbuffers_created_;
 
     goby::middleware::protobuf::SerializerTransporterKey subscription_key_;
     std::set<modem_id_type> subscription_subbuffers_;
@@ -173,7 +175,7 @@ class ModemDriverThread
     goby::acomms::DynamicBuffer<buffer_data_type> buffer_;
 
     using frame_type = int;
-    std::map<frame_type, std::vector<goby::acomms::DynamicBuffer<buffer_data_type>::Value> >
+    std::map<frame_type, std::vector<goby::acomms::DynamicBuffer<buffer_data_type>::Value>>
         pending_ack_;
 
     std::unique_ptr<goby::acomms::ModemDriverBase> driver_;
