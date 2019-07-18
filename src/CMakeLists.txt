@@ -182,6 +182,20 @@ if(enable_ncurses)
   target_link_libraries(goby ${CURSES_LIBRARIES})
 endif()
 
+
+## Mavlink
+set(MAVLINK_DOC_STRING "Build the MAVLink marshalling language support library (requires MavLink C++11 v2.0 headers)")
+find_package(MAVLINK QUIET)
+if(MAVLINK_FOUND)
+  include_directories(${MAVLINK_INCLUDE_DIR})
+  message("Using MAVLink in ${MAVLINK_INCLUDE_DIR}")
+  option(enable_mavlink ${MAVLINK_DOC_STRING} ON)
+else()
+  option(enable_mavlink ${MAVLINK_DOC_STRING} OFF)
+  message(">> setting enable_mavlink to OFF ... if you need this functionality: 1) install MAVLink v2.0 C++11 headers; 2) run cmake -Denable_mavlink=ON")
+endif()  
+
+
 set_target_properties(goby PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
 goby_install_lib(goby core)
@@ -209,6 +223,7 @@ if(build_zeromq)
   export(TARGETS ${GOBY_ZEROMQ_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_zeromq-config.cmake)
 endif()
 
+## MOOS 
 #first try to find v10 MOOS
 find_package(MOOS 10 QUIET NO_MODULE)
 set(MOOS_DOC_STRING "Build the Acoustic Communications MOOS apps (pAcommsHandler, etc.)")

@@ -18,3 +18,10 @@ set(MIDDLEWARE_SRC
   middleware/log/log_entry.cpp
   ${MIDDLEWARE_PROTO_SRCS} ${MIDDLEWARE_PROTO_HDRS} 
   )
+
+if(enable_mavlink)
+  set(MIDDLEWARE_SRC
+    middleware/marshalling/mavlink.cpp
+    ${MIDDLEWARE_SRC}
+    )
+endif()
