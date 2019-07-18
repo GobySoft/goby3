@@ -54,9 +54,10 @@ class match_regex
 };
 
 /// \brief Reads/Writes strings from/to serial port using a line-based (typically ASCII) protocol with a defined end-of-line regex.
-/// \tparam line_in_group goby::Group to publish to after receiving data from the serial port
-/// \tparam line_out_group goby::Group to subcribe to for data to send to the serial port
-template <const goby::Group& line_in_group, const goby::Group& line_out_group>
+/// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the serial port
+/// \tparam line_out_group goby::middleware::Group to subcribe to for data to send to the serial port
+template <const goby::middleware::Group& line_in_group,
+          const goby::middleware::Group& line_out_group>
 class SerialThreadLineBased : public SerialThread<line_in_group, line_out_group>
 {
     using Base = SerialThread<line_in_group, line_out_group>;
@@ -93,7 +94,8 @@ template <> struct is_match_condition<goby::middleware::io::match_regex> : publi
 } // namespace asio
 } // namespace boost
 
-template <const goby::Group& line_in_group, const goby::Group& line_out_group>
+template <const goby::middleware::Group& line_in_group,
+          const goby::middleware::Group& line_out_group>
 void goby::middleware::io::SerialThreadLineBased<line_in_group, line_out_group>::async_read()
 {
     boost::asio::async_read_until(

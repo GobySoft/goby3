@@ -23,6 +23,8 @@
 #ifndef SerializeParseDCCL20190717H
 #define SerializeParseDCCL20190717H
 
+#include <dccl/codec.h>
+
 #include "protobuf.h"
 
 namespace goby

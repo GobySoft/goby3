@@ -54,14 +54,21 @@ struct MarshallingScheme
         MAVLINK = 6
     };
 
-    static std::string as_string(int e)
+    static std::string to_string(int e)
     {
         auto it = e2s.find(e);
         return it != e2s.end() ? it->second : std::to_string(e);
     }
 
+    static int from_string(std::string s)
+    {
+        auto it = s2e.find(s);
+        return it != s2e.end() ? it->second : std::stoi(s);
+    }
+
   private:
-    static std::map<int, std::string> e2s;
+    static const std::map<int, std::string> e2s;
+    static const std::map<std::string, int> s2e;
 };
 
 //

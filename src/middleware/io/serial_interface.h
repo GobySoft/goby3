@@ -30,8 +30,12 @@
 #include <boost/asio/write.hpp>
 #include <boost/units/systems/si/prefixes.hpp>
 
-#include <goby/common/time.h>
-#include <goby/middleware/application/multi_thread.h>
+#include "goby/exception.h"
+#include "goby/middleware/application/multi_thread.h"
+#include "goby/middleware/io/groups.h"
+#include "goby/middleware/protobuf/io.pb.h"
+#include "goby/middleware/protobuf/serial_config.pb.h"
+#include "goby/time/steady_clock.h"
 
 namespace goby
 {
@@ -39,10 +43,11 @@ namespace middleware
 {
 namespace io
 {
-template <const goby::Group& line_in_group, const goby::Group& line_out_group>
-class SerialThread : public goby::SimpleThread<goby::middleware::protobuf::SerialConfig>
+template <const goby::middleware::Group& line_in_group,
+          const goby::middleware::Group& line_out_group>
+class SerialThread : public goby::middleware::SimpleThread<goby::middleware::protobuf::SerialConfig>
 {
-    using Base = goby::SimpleThread<goby::middleware::protobuf::SerialConfig>;
+    using Base = goby::middleware::SimpleThread<goby::middleware::protobuf::SerialConfig>;
 
   public:
     /// \brief Constructs the thread.
@@ -97,7 +102,7 @@ class SerialThread : public goby::SimpleThread<goby::middleware::protobuf::Seria
         static bool io_group_added = false;
         if (!io_group_added)
         {
-            goby::glog.add_group("i/o", goby::common::Colors::red);
+            goby::glog.add_group("i/o", goby::util::Colors::red);
             io_group_added = true;
         }
     }
@@ -120,7 +125,7 @@ class SerialThread : public goby::SimpleThread<goby::middleware::protobuf::Seria
     void handle_read_success(std::size_t bytes_transferred, const std::string& bytes)
     {
         auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();
-        *io_msg->data() = bytes;
+        *io_msg->mutable_data() = bytes;
 
         goby::glog.is_debug2() && goby::glog << group("i/o") << "(" << bytes_transferred << "B) > "
                                              << io_msg->ShortDebugString() << std::endl;
@@ -140,7 +145,7 @@ class SerialThread : public goby::SimpleThread<goby::middleware::protobuf::Seria
         if (serial_port_)
             return *serial_port_;
         else
-            throw IOError("Attempted to access null serial_port");
+            throw goby::Exception("Attempted to access null serial_port");
     }
 
     /// \brief Starts an asynchronous read on the serial port.
@@ -164,19 +169,17 @@ class SerialThread : public goby::SimpleThread<goby::middleware::protobuf::Seria
     boost::asio::system_timer timer_;
     std::unique_ptr<boost::asio::serial_port> serial_port_;
 
-    const boost::units::quantity<boost::units::si::time> min_backoff_interval_{
-        1 * boost::units::si::seconds};
-    const boost::units::quantity<boost::units::si::time> max_backoff_interval_{
-        128 * boost::units::si::seconds};
-    boost::units::quantity<boost::units::si::time> backoff_interval_{min_backoff_interval_};
-    boost::units::quantity<boost::units::si::time> next_open_attempt_{0 *
-                                                                      boost::units::si::seconds};
+    const goby::time::SteadyClock::duration min_backoff_interval_{std::chrono::seconds(1)};
+    const goby::time::SteadyClock::duration max_backoff_interval_{std::chrono::seconds(128)};
+    goby::time::SteadyClock::duration backoff_interval_{min_backoff_interval_};
+    goby::time::SteadyClock::time_point next_open_attempt_{goby::time::SteadyClock::now()};
 };
 } // namespace io
 } // namespace middleware
 } // namespace goby
 
-template <const goby::Group& line_in_group, const goby::Group& line_out_group>
+template <const goby::middleware::Group& line_in_group,
+          const goby::middleware::Group& line_out_group>
 void goby::middleware::io::SerialThread<line_in_group, line_out_group>::try_open()
 {
     try
@@ -229,24 +232,24 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::try_open
         error.set_text(e.what() + std::string(": config (") + cfg().ShortDebugString() + ")");
         Base::interthread().template publish<goby::middleware::io::groups::status>(status);
 
-        goby::glog.is(goby::common::logger::WARN) &&
-            goby::glog << group("i/o")
-                       << "Failed to open/configure serial port: " << error.ShortDebugString()
-                       << std::endl;
+        goby::glog.is_warn() && goby::glog << group("i/o")
+                                           << "Failed to open/configure serial port: "
+                                           << error.ShortDebugString() << std::endl;
 
         if (backoff_interval_ < max_backoff_interval_)
             backoff_interval_ *= 2.0;
 
-        decltype(next_open_attempt_) now(goby::time::now());
+        decltype(next_open_attempt_) now(goby::time::SteadyClock::now());
         next_open_attempt_ = now + backoff_interval_;
 
-        goby::glog.is(goby::common::logger::WARN) &&
-            goby::glog << group("i/o") << "Will retry in "
-                       << backoff_interval_ / boost::units::si::seconds << " seconds" << std::endl;
+        goby::glog.is_warn() && goby::glog << group("i/o") << "Will retry in "
+                                           << backoff_interval_ / std::chrono::seconds(1)
+                                           << " seconds" << std::endl;
     }
 }
 
-template <const goby::Group& line_in_group, const goby::Group& line_out_group>
+template <const goby::middleware::Group& line_in_group,
+          const goby::middleware::Group& line_out_group>
 void goby::middleware::io::SerialThread<line_in_group, line_out_group>::set_timer()
 {
     // when the timer expires, stop the io_service to enable loop() to exit, and thus check any mail we may have
@@ -255,7 +258,8 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::set_time
     timer_.async_wait([this](const boost::system::error_code& ec) { set_timer(); });
 }
 
-template <const goby::Group& line_in_group, const goby::Group& line_out_group>
+template <const goby::middleware::Group& line_in_group,
+          const goby::middleware::Group& line_out_group>
 void goby::middleware::io::SerialThread<line_in_group, line_out_group>::loop()
 {
     if (serial_port_ && serial_port_->is_open())
@@ -266,7 +270,7 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::loop()
     }
     else
     {
-        decltype(next_open_attempt_) now(goby::time::now());
+        decltype(next_open_attempt_) now(goby::time::SteadyClock::now());
         if (now > next_open_attempt_)
             try_open();
         else
@@ -274,7 +278,8 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::loop()
     }
 }
 
-template <const goby::Group& line_in_group, const goby::Group& line_out_group>
+template <const goby::middleware::Group& line_in_group,
+          const goby::middleware::Group& line_out_group>
 void goby::middleware::io::SerialThread<line_in_group, line_out_group>::async_write(
     const std::string& bytes)
 {
@@ -297,7 +302,8 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::async_wr
         });
 }
 
-template <const goby::Group& line_in_group, const goby::Group& line_out_group>
+template <const goby::middleware::Group& line_in_group,
+          const goby::middleware::Group& line_out_group>
 void goby::middleware::io::SerialThread<line_in_group, line_out_group>::handle_read_error(
     const boost::system::error_code& ec)
 {
@@ -308,15 +314,14 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::handle_r
     error.set_text(ec.message());
     Base::interthread().template publish<goby::middleware::io::groups::status>(status);
 
-    goby::glog.is(goby::common::logger::WARN) &&
-        goby::glog << group("i/o")
-                   << "Failed to read from the serial port: " << error.ShortDebugString()
-                   << std::endl;
+    goby::glog.is_warn() && goby::glog << group("i/o") << "Failed to read from the serial port: "
+                                       << error.ShortDebugString() << std::endl;
 
     serial_port_.reset();
 }
 
-template <const goby::Group& line_in_group, const goby::Group& line_out_group>
+template <const goby::middleware::Group& line_in_group,
+          const goby::middleware::Group& line_out_group>
 void goby::middleware::io::SerialThread<line_in_group, line_out_group>::handle_write_error(
     const boost::system::error_code& ec)
 {
@@ -327,10 +332,8 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::handle_w
     error.set_text(ec.message());
     Base::interthread().template publish<goby::middleware::io::groups::status>(status);
 
-    goby::glog.is(goby::common::logger::WARN) &&
-        goby::glog << group("i/o")
-                   << "Failed to write to the serial port: " << error.ShortDebugString()
-                   << std::endl;
+    goby::glog.is_warn() && goby::glog << group("i/o") << "Failed to write to the serial port: "
+                                       << error.ShortDebugString() << std::endl;
     serial_port_.reset();
 }
 

@@ -27,7 +27,7 @@
 
 #include <google/protobuf/message.h>
 
-#include <dccl.h>
+#include <dccl/dynamic_protobuf_manager.h>
 
 #include "goby/middleware/protobuf/intervehicle.pb.h"
 
