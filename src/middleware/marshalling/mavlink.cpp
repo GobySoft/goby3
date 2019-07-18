@@ -32,6 +32,11 @@ void goby::middleware::MAVLinkRegistry::register_default_dialects()
     register_dialect_entries(mavlink::standard::MESSAGE_ENTRIES);
 }
 
+namespace mavlink
+{
+const mavlink_msg_entry_t* mavlink_get_msg_entry(uint32_t msgid);
+}
+
 const mavlink::mavlink_msg_entry_t* mavlink::mavlink_get_msg_entry(uint32_t msgid)
 {
     return goby::middleware::MAVLinkRegistry::get_msg_entry(msgid);
