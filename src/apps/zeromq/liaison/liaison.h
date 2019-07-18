@@ -34,8 +34,8 @@
 #include <Wt/WTimer>
 
 #include "goby/middleware/marshalling/protobuf.h"
+#include "goby/zeromq/application/multi_thread.h"
 #include "goby/zeromq/liaison/liaison_container.h"
-#include "goby/zeromq/multi-thread-application.h"
 #include "goby/zeromq/protobuf/liaison_config.pb.h"
 
 namespace goby

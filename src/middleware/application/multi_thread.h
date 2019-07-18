@@ -26,7 +26,7 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/exception.h"
-#include "goby/middleware/application.h"
+#include "goby/middleware/application/interface.h"
 #include "goby/middleware/thread.h"
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"

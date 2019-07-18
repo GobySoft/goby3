@@ -22,7 +22,7 @@
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/time.h"
 #include "goby/time/io.h"
-#include "goby/zeromq/single-thread-application.h"
+#include "goby/zeromq/application/single_thread.h"
 
 #include <boost/units/io.hpp>
 #include <sys/types.h>

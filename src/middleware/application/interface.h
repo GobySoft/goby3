@@ -37,7 +37,7 @@
 #include "goby/time.h"
 #include "goby/util/debug_logger.h"
 
-#include "configurator.h"
+#include "goby/middleware/application/configurator.h"
 
 namespace goby
 {

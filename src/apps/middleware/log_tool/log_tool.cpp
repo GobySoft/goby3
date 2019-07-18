@@ -19,7 +19,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/application.h"
+#include "goby/middleware/application/interface.h"
 
 #include "goby/middleware/log.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"

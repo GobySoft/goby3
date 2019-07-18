@@ -20,19 +20,23 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ZEROMQ_MULTI_THREAD_APPLICATION20190605H
-#define ZEROMQ_MULTI_THREAD_APPLICATION20190605H
+#ifndef IO_GROUPS_20190718H
+#define IO_GROUPS_20190718H
 
-#include "goby/middleware/multi-thread-application.h"
-#include "goby/zeromq/transport/interprocess.h"
+#include "goby/middleware/group.h"
 
 namespace goby
 {
-namespace zeromq
+namespace middleware
 {
-template <class Config>
-using MultiThreadApplication = goby::middleware::MultiThreadApplication<Config, InterProcessPortal>;
+namespace io
+{
+namespace groups
+{
+constexpr goby::middleware::Group status{"goby::middleware::io::status"};
 }
+} // namespace io
+} // namespace middleware
 } // namespace goby
 
 #endif

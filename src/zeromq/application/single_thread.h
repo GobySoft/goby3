@@ -23,7 +23,7 @@
 #ifndef ZEROMQ_SINGLE_THREAD_APPLICATION20190605H
 #define ZEROMQ_SINGLE_THREAD_APPLICATION20190605H
 
-#include "goby/middleware/single-thread-application.h"
+#include "goby/middleware/application/single_thread.h"
 #include "goby/zeromq/transport/interprocess.h"
 
 namespace goby

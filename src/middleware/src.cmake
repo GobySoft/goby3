@@ -7,6 +7,8 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/intervehicle_transporter_config.proto
   middleware/protobuf/log_tool_config.proto
   middleware/protobuf/terminate.proto
+  middleware/protobuf/io.proto
+  middleware/protobuf/serial_config.proto
   )
 
 set(MIDDLEWARE_SRC
@@ -14,7 +16,7 @@ set(MIDDLEWARE_SRC
   middleware/marshalling/dccl.cpp 
   middleware/transport/interthread.cpp
   middleware/intervehicle/driver-thread.cpp
-  middleware/configuration_reader.cpp
+  middleware/application/configuration_reader.cpp
   middleware/log/log_entry.cpp
   ${MIDDLEWARE_PROTO_SRCS} ${MIDDLEWARE_PROTO_HDRS} 
   )

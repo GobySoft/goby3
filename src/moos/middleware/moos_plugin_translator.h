@@ -24,10 +24,10 @@
 #define MOOS_PLUGIN_TRANSLATOR_20171020H
 
 #include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"
-#include "goby/middleware/multi-thread-application.h"
+#include "goby/middleware/application/multi_thread.h"
 #include "goby/middleware/transport/interthread.h"
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
-#include "goby/zeromq/multi-thread-application.h"
+#include "goby/zeromq/application/multi_thread.h"
 #include "goby/zeromq/transport/interprocess.h"
 
 namespace goby

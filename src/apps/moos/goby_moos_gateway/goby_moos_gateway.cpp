@@ -24,7 +24,7 @@
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/moos/middleware/moos_plugin_translator.h"
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
-#include "goby/zeromq/multi-thread-application.h"
+#include "goby/zeromq/application/multi_thread.h"
 
 using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
 using AppBase = goby::zeromq::MultiThreadApplication<GobyMOOSGatewayConfig>;
