@@ -26,7 +26,6 @@
 #include <deque>
 
 #include "goby/middleware/marshalling/protobuf.h"
-#include "goby/middleware/transport.h"
 #include "goby/zeromq/transport/interprocess.h"
 
 #include "goby/util/debug_logger.h"

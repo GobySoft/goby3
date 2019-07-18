@@ -28,7 +28,8 @@
 // plugin new serialization/parse scheme
 #include "test-scheme.h"
 
-#include "goby/middleware/transport.h"
+#include "goby/middleware/transport/interthread.h"
+#include "goby/middleware/transport/intervehicle.h"
 #include "goby/zeromq/transport/interprocess.h"
 
 #include "goby/util/debug_logger.h"

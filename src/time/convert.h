@@ -31,7 +31,7 @@
 #include <boost/units/cmath.hpp>
 
 #include "goby/time/system_clock.h"
-#include "goby/time/typedefs.h"
+#include "goby/time/types.h"
 
 namespace goby
 {
