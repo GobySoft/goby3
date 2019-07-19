@@ -54,8 +54,7 @@ struct MAVLinkRegistry
         if (it != entries_.end())
             return &it->second;
         else
-            throw(goby::Exception("No MAVLink message id: " + std::to_string(msgid) +
-                                  " in MAVLinkRegistry"));
+            return nullptr;
     }
 
     static void register_default_dialects();

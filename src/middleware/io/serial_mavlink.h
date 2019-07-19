@@ -87,12 +87,31 @@ void goby::middleware::io::SerialThreadMAVLink<line_in_group, line_out_group>::a
                                                                       *c, &msg_, &status_);
                         switch (res)
                         {
+                            case mavlink::MAVLINK_FRAMING_BAD_CRC:
+                                if (status_.parse_state != mavlink::MAVLINK_PARSE_STATE_IDLE)
+                                {
+                                    break; // keep parsing
+                                }
+                                else if (mavlink::mavlink_get_msg_entry(msg_.msgid) == nullptr)
+                                {
+                                    goby::glog.is_debug3() &&
+                                        goby::glog << "BAD CRC decoding MAVLink msg, but "
+                                                      "forwarding because we don't know this msgid"
+                                                   << std::endl;
+                                    // forward anyway as it might be a msgid we don't know
+                                    // so flow through here (no break) is intentional!!
+                                }
+                                else
+                                {
+                                    goby::glog.is_warn() &&
+                                        goby::glog << "BAD CRC decoding MAVLink msg" << std::endl;
+                                    break;
+                                }
+
                             case mavlink::MAVLINK_FRAMING_OK:
                             {
-                                goby::glog.is_debug3() &&
-                                    goby::glog
-                                        << "Successfully parsed message of id: " << msg_.msgid
-                                        << std::endl;
+                                goby::glog.is_debug3() && goby::glog << "Parsed message of id: "
+                                                                     << msg_.msgid << std::endl;
 
                                 this->interprocess().template publish<line_in_group>(msg_);
 
@@ -106,22 +125,15 @@ void goby::middleware::io::SerialThreadMAVLink<line_in_group, line_out_group>::a
 
                             case mavlink::MAVLINK_FRAMING_INCOMPLETE: break;
 
-                            case mavlink::MAVLINK_FRAMING_BAD_CRC:
-                                goby::glog.is_warn() && goby::glog << "BAD CRC decoding MAVLink msg"
-                                                                   << std::endl;
-                                clear_buffers();
-                                break;
                             case mavlink::MAVLINK_FRAMING_BAD_SIGNATURE:
                                 goby::glog.is_warn() &&
                                     goby::glog << "BAD SIGNATURE decoding MAVLink msg" << std::endl;
-                                clear_buffers();
                                 break;
                             default:
                                 goby::glog.is_warn() &&
                                     goby::glog << "Unknown value " << res
                                                << " returned while decoding MAVLink msg"
                                                << std::endl;
-                                clear_buffers();
                                 break;
                         }
                     }
