@@ -131,7 +131,6 @@ class SerialThread : public goby::middleware::SimpleThread<goby::middleware::pro
                                              << io_msg->ShortDebugString() << std::endl;
 
         this->interprocess().template publish<line_in_group>(io_msg);
-        this->async_read();
     }
 
     void handle_write_success(std::size_t bytes_transferred) {}

@@ -1,0 +1,2 @@
+add_executable(goby_mavlink_serial_gateway mavlink_serial_gateway.cpp)
+target_link_libraries(goby_mavlink_serial_gateway goby goby_zeromq)

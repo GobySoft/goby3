@@ -107,6 +107,7 @@ void goby::middleware::io::SerialThreadLineBased<line_in_group, line_out_group>:
                 std::istream is(&buffer_);
                 is.read(&bytes[0], bytes_transferred);
                 this->handle_read_success(bytes_transferred, bytes);
+                this->async_read();
             }
             else
             {

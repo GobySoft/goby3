@@ -28,7 +28,7 @@
 #include "goby/exception.h"
 #include "goby/util/debug_logger.h"
 
-#include "mavlink/v2.0/standard/standard.hpp"
+#include <mavlink/v2.0/standard/standard.hpp>
 
 namespace goby
 {
