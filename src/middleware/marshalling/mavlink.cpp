@@ -27,8 +27,6 @@ std::mutex goby::middleware::MAVLinkRegistry::mavlink_registry_mutex_;
 
 void goby::middleware::MAVLinkRegistry::register_default_dialects()
 {
-    std::cout << "Registering default dialects" << std::endl;
-
     register_dialect_entries(mavlink::standard::MESSAGE_ENTRIES);
 }
 

@@ -34,6 +34,9 @@ namespace io
 namespace groups
 {
 constexpr goby::middleware::Group status{"goby::middleware::io::status"};
+
+constexpr goby::middleware::Group mavlink_raw_in{"goby::apps::zeromq::mavlink_raw_in"};
+constexpr goby::middleware::Group mavlink_raw_out{"goby::apps::zeromq::mavlink_raw_out"};
 }
 } // namespace io
 } // namespace middleware

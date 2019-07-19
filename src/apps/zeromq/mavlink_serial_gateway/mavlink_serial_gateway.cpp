@@ -24,19 +24,25 @@ namespace apps
 {
 namespace zeromq
 {
-namespace groups
-{
-constexpr goby::middleware::Group mavlink_raw_in{"goby::apps::zeromq::mavlink_raw_in"};
-constexpr goby::middleware::Group mavlink_raw_out{"goby::apps::zeromq::mavlink_raw_out"};
-} // namespace groups
-
 class MAVLinkSerialGateway : public AppBase
 {
   public:
     using SerialThread =
-        goby::middleware::io::SerialThreadMAVLink<groups::mavlink_raw_in, groups::mavlink_raw_out>;
+        goby::middleware::io::SerialThreadMAVLink<goby::middleware::io::groups::mavlink_raw_in,
+                                                  goby::middleware::io::groups::mavlink_raw_out>;
 
-    MAVLinkSerialGateway() { launch_thread<SerialThread>(cfg().serial()); }
+    MAVLinkSerialGateway()
+    {
+        interprocess()
+            .subscribe<goby::middleware::io::groups::mavlink_raw_in,
+                       mavlink::common::msg::HEARTBEAT>(
+                [](const mavlink::common::msg::HEARTBEAT& hb) {
+                    goby::glog.is_debug1() && goby::glog << "Received heartbeat: " << hb.to_yaml()
+                                                         << std::endl;
+                });
+
+        launch_thread<SerialThread>(cfg().serial());
+    }
 };
 
 class MAVLinkSerialGatewayConfigurator

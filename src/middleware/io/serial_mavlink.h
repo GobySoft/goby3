@@ -23,6 +23,8 @@
 #ifndef SerialMAVLink20190719H
 #define SerialMAVLink20190719H
 
+#include "goby/middleware/marshalling/mavlink.h"
+
 #include "serial_interface.h"
 
 #include <mavlink/v2.0/standard/standard.hpp>
@@ -87,6 +89,13 @@ void goby::middleware::io::SerialThreadMAVLink<line_in_group, line_out_group>::a
                         {
                             case mavlink::MAVLINK_FRAMING_OK:
                             {
+                                goby::glog.is_debug3() &&
+                                    goby::glog
+                                        << "Successfully parsed message of id: " << msg_.msgid
+                                        << std::endl;
+
+                                this->interprocess().template publish<line_in_group>(msg_);
+
                                 std::array<uint8_t, MAVLINK_MAX_PACKET_LEN> buffer;
                                 auto length =
                                     mavlink::mavlink_msg_to_send_buffer(&buffer[0], &msg_);
