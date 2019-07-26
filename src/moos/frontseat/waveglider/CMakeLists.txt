@@ -9,5 +9,7 @@ target_link_libraries(goby_frontseat_waveglider_sv2
   goby_moos
   ${PROTOBUF_LIBRARIES})
 
+set_target_properties(goby_frontseat_waveglider_sv2 PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
+
 configure_file(iFrontSeat_waveglider.in ${goby_BIN_DIR}/iFrontSeat_waveglider @ONLY)
 goby_install_lib(goby_frontseat_waveglider_sv2 moos)
