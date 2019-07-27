@@ -251,11 +251,6 @@ void goby::moos::BluefinFrontSeat::bfsvs(const goby::util::NMEASentence& nmea)
     // We don't use this, choosing to calculate it ourselves from the CTD
 }
 
-void goby::moos::BluefinFrontSeat::bfrvl(const goby::util::NMEASentence& nmea)
-{
-    // Vehicle velocity through water as estimated from thruster RPM, may be empty if no lookup table is implemented (m/s)
-}
-
 void goby::moos::BluefinFrontSeat::bfsht(const goby::util::NMEASentence& nmea)
 {
     glog.is(WARN) && glog << "Bluefin sent us the SHT message: they are shutting down!"
@@ -359,7 +354,84 @@ void goby::moos::BluefinFrontSeat::bftop(const goby::util::NMEASentence& nmea)
 
 void goby::moos::BluefinFrontSeat::bfdvl(const goby::util::NMEASentence& nmea)
 {
-    // Raw DVL Data
+    // $BFDVL,hhmmss.ss,x.x,y.y,z.z,r1,r2,r3,r4,t.t,hhmmss.ss*hh
+    //hhmmss.ss Timestamp (when message is sent)
+    //x.x X velocity (m/s) positive is forward
+    //y.y Y velocity (m/s) positive is to starboard
+    //z.z Z velocity (m/s) positive is down
+    //r1-r4 Beam ranges (m/s) - ???
+    //t.t Temperature (C)
+    //hhmmss.ss Timestamp (when DVL data was received)
+    enum
+    {
+        TIMESTAMP = 1,
+        X_VEL = 2,
+        Y_VEL = 3,
+        Z_VEL = 4,
+        R1 = 5,
+        R2 = 6,
+        R3 = 7,
+        R4 = 8,
+        TEMPERATURE = 9,
+        DVL_TIMESTAMP = 10
+    };
+
+    gpb::FrontSeatInterfaceData data;
+
+    auto& dvl_data = *data.MutableExtension(gpb::bluefin_data)->mutable_dvl();
+
+    using boost::units::si::meters_per_second;
+    if (!nmea.at(X_VEL).empty())
+        dvl_data.set_u_with_units(nmea.as<double>(X_VEL) * meters_per_second);
+    if (!nmea.at(Y_VEL).empty())
+        dvl_data.set_v_with_units(nmea.as<double>(Y_VEL) * meters_per_second);
+    if (!nmea.at(Z_VEL).empty())
+        dvl_data.set_w_with_units(nmea.as<double>(Z_VEL) * meters_per_second);
+
+    // TODO: check units on ranges
+    using boost::units::si::meters;
+    if (!nmea.at(R1).empty())
+        dvl_data.set_beam1_range_with_units(nmea.as<double>(R1) * meters);
+    if (!nmea.at(R2).empty())
+        dvl_data.set_beam2_range_with_units(nmea.as<double>(R2) * meters);
+    if (!nmea.at(R3).empty())
+        dvl_data.set_beam3_range_with_units(nmea.as<double>(R3) * meters);
+    if (!nmea.at(R4).empty())
+        dvl_data.set_beam4_range_with_units(nmea.as<double>(R4) * meters);
+
+    using boost::units::absolute;
+    if (!nmea.at(TEMPERATURE).empty())
+        dvl_data.set_temperature_with_units(nmea.as<double>(TEMPERATURE) *
+                                            absolute<boost::units::celsius::temperature>());
+
+    if (!nmea.at(DVL_TIMESTAMP).empty())
+        dvl_data.set_dvl_time_with_units(nmea.as<double>(DVL_TIMESTAMP) *
+                                         boost::units::si::seconds);
+
+    signal_data_from_frontseat(data);
+}
+
+void goby::moos::BluefinFrontSeat::bfrvl(const goby::util::NMEASentence& nmea)
+{
+    // Vehicle velocity through water as estimated from thruster RPM, may be empty if no lookup table is implemented (m/s)
+    enum
+    {
+        TIMESTAMP = 1,
+        THRUSTER_RPM = 2,
+        SPEED_FROM_LOOKUP_TABLE = 3
+    };
+
+    gpb::FrontSeatInterfaceData data;
+
+    auto& thruster_data = *data.MutableExtension(gpb::bluefin_data)->mutable_thruster();
+    thruster_data.set_rotation_with_units(nmea.as<double>(THRUSTER_RPM) *
+                                          goby::util::units::rpm::rpms_omega);
+
+    if (!nmea.at(SPEED_FROM_LOOKUP_TABLE).empty())
+        thruster_data.set_speed_from_lookup_table_with_units(
+            nmea.as<double>(SPEED_FROM_LOOKUP_TABLE) * boost::units::si::meters_per_second);
+
+    signal_data_from_frontseat(data);
 }
 
 void goby::moos::BluefinFrontSeat::bfmis(const goby::util::NMEASentence& nmea)

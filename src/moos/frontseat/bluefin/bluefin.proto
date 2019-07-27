@@ -79,25 +79,25 @@ message BluefinExtraData
     message RawDVL
     {
         option (dccl.msg).unit_system = "si";
-        required double dvl_time = 1
+        optional double dvl_time = 1
             [(dccl.field).units.derived_dimensions = "time"];
-        required double u = 2 [(dccl.field).units.derived_dimensions =
+        optional double u = 2 [(dccl.field).units.derived_dimensions =
                                    "velocity"];  // positive forward
-        required double v = 3 [(dccl.field).units.derived_dimensions =
+        optional double v = 3 [(dccl.field).units.derived_dimensions =
                                    "velocity"];  // positive starboard
-        required double w = 4 [(dccl.field).units.derived_dimensions =
+        optional double w = 4 [(dccl.field).units.derived_dimensions =
                                    "velocity"];  // positive down
 
-        required double beam1_range = 5
+        optional double beam1_range = 5
             [(dccl.field).units.derived_dimensions = "length"];
-        required double beam2_range = 6
+        optional double beam2_range = 6
             [(dccl.field).units.derived_dimensions = "length"];
-        required double beam3_range = 7
+        optional double beam3_range = 7
             [(dccl.field).units.derived_dimensions = "length"];
-        required double beam4_range = 8
+        optional double beam4_range = 8
             [(dccl.field).units.derived_dimensions = "length"];
 
-        required double temperature = 9 [(dccl.field).units = {
+        optional double temperature = 9 [(dccl.field).units = {
             system: "celsius"
             derived_dimensions: "temperature"
         }];
@@ -107,8 +107,11 @@ message BluefinExtraData
 
     message RawThrusterRotation
     {
-        required double rotation = 1 [(dccl.field).units = { system: "goby::util::units::rpm::system" derived_dimensions: "angular_velocity" }];
-        optional double speed_lookup_table = 2
+        required double rotation = 1 [(dccl.field).units = {
+            system: "goby::util::units::rpm::system"
+            derived_dimensions: "angular_velocity"
+        }];
+        optional double speed_from_lookup_table = 2
             [(dccl.field).units.derived_dimensions = "velocity"];
     }
 
