@@ -118,11 +118,14 @@ goby::apps::zeromq::Liaison::Liaison()
     {
         std::string doc_root;
 
+        boost::system::error_code ec;
         if (cfg().has_docroot())
             doc_root = cfg().docroot();
-        else if (boost::filesystem::exists(boost::filesystem::path(GOBY_LIAISON_COMPILED_DOCROOT)))
+        else if (boost::filesystem::exists(boost::filesystem::path(GOBY_LIAISON_COMPILED_DOCROOT),
+                                           ec))
             doc_root = GOBY_LIAISON_COMPILED_DOCROOT;
-        else if (boost::filesystem::exists(boost::filesystem::path(GOBY_LIAISON_INSTALLED_DOCROOT)))
+        else if (boost::filesystem::exists(boost::filesystem::path(GOBY_LIAISON_INSTALLED_DOCROOT),
+                                           ec))
             doc_root = GOBY_LIAISON_INSTALLED_DOCROOT;
         else
             throw(std::runtime_error("No valid docroot found for Goby Liaison. Set docroot to the "
