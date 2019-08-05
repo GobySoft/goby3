@@ -20,19 +20,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ZEROMQ_MULTI_THREAD_APPLICATION20190605H
-#define ZEROMQ_MULTI_THREAD_APPLICATION20190605H
+#include "interface.h"
 
-#include "goby/middleware/multi-thread-application.h"
-#include "goby/zeromq/transport-interprocess.h"
+const std::map<int, std::string> goby::middleware::MarshallingScheme::e2s = {
+    {CSTR, "CSTR"}, {PROTOBUF, "PROTOBUF"}, {DCCL, "DCCL"}, {MAVLINK, "MAVLINK"}};
 
-namespace goby
+std::map<std::string, int> invert_map(const std::map<int, std::string>& e2s)
 {
-namespace zeromq
-{
-template <class Config>
-using MultiThreadApplication = goby::middleware::MultiThreadApplication<Config, InterProcessPortal>;
+    std::map<std::string, int> s2e;
+    for (auto p : e2s) s2e.insert(std::make_pair(p.second, p.first));
+    return s2e;
 }
-} // namespace goby
-
-#endif
+const std::map<std::string, int> goby::middleware::MarshallingScheme::s2e(invert_map(e2s));

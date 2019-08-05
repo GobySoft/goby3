@@ -1,0 +1,47 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
+
+package goby.middleware.protobuf;
+
+message SerialConfig
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    required string port = 1 [(goby.field) = {
+        example: "/dev/ttyUSB0"
+        description: "Serial port path"
+    }];
+    required uint32 baud = 2
+        [(goby.field) = {example: "57600" description: "Serial baud"}];
+    optional string end_of_line = 3 [
+        default = "\n",
+        (goby.field) = {
+            description: "End of line string. Can also be a std::regex"
+        }
+    ];
+
+    enum FlowControl
+    {
+        NONE = 0;
+        SOFTWARE = 1;
+        HARDWARE = 2;
+    }
+    optional FlowControl flow_control = 4 [
+        default = NONE,
+        (goby.field).description =
+            "Flow control: NONE, SOFTWARE (aka XON/XOFF), HARDWARE (aka "
+            "RTS/CTS)"
+    ];
+
+    optional uint32 out_mail_max_interval_ms = 10 [
+        default = 100,
+        (dccl.field) = {units {derived_dimensions: "time" prefix: "milli"}},
+        (goby.field).description =
+            "Maximum delay in checking for outbound serial data if no incoming "
+            "serial data. A lower value will improve transmit latency at the "
+            "expense of increasing receive latency."
+    ];
+}

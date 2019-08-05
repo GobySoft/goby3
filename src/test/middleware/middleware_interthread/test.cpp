@@ -22,7 +22,7 @@
 #include <atomic>
 #include <deque>
 
-#include "goby/middleware/transport.h"
+#include "goby/middleware/transport/interthread.h"
 #include "goby/util/debug_logger.h"
 #include "test.pb.h"
 

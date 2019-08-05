@@ -23,8 +23,9 @@
 #ifndef TransportNull20190627H
 #define TransportNull20190627H
 
-#include "poller.h"
-#include "transport-interfaces.h"
+#include "goby/middleware/poller.h"
+
+#include "interfaces.h"
 
 namespace goby
 {

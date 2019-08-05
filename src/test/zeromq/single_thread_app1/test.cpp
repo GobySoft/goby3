@@ -19,9 +19,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "goby/middleware/marshalling/protobuf.h"
 #include "goby/time.h"
 #include "goby/time/io.h"
-#include "goby/zeromq/single-thread-application.h"
+#include "goby/zeromq/application/single_thread.h"
 
 #include <boost/units/io.hpp>
 #include <sys/types.h>

@@ -22,7 +22,7 @@
 #include "goby/middleware/log.h"
 #include "goby/middleware/log/dccl_log_plugin.h"
 #include "goby/middleware/log/protobuf_log_plugin.h"
-#include "goby/middleware/serialize_parse.h"
+#include "goby/middleware/marshalling/interface.h"
 #include "goby/util/debug_logger.h"
 
 #include "test.pb.h"

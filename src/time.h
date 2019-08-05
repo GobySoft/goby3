@@ -27,7 +27,7 @@
 #include "goby/time/simulation.h"
 #include "goby/time/steady_clock.h"
 #include "goby/time/system_clock.h"
-#include "goby/time/typedefs.h"
+#include "goby/time/types.h"
 
 // do not include legacy.h or io.h - user must include as needed
 

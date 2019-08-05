@@ -19,42 +19,23 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/marshalling/interface.h"
-#include <vector>
+#include "mavlink.h"
 
-namespace goby
-{
-namespace middleware
-{
-struct MyMarshallingScheme
-{
-    enum MyMarshallingSchemeEnum
-    {
-        DEQUECHAR = 1000
-    };
-};
+std::unordered_map<uint32_t, mavlink::mavlink_msg_entry_t>
+    goby::middleware::MAVLinkRegistry::entries_;
+std::mutex goby::middleware::MAVLinkRegistry::mavlink_registry_mutex_;
 
-template <typename DataType> struct SerializerParserHelper<DataType, MyMarshallingScheme::DEQUECHAR>
+void goby::middleware::MAVLinkRegistry::register_default_dialects()
 {
-    static std::vector<char> serialize(const DataType& msg)
-    {
-        std::vector<char> bytes(msg.begin(), msg.end());
-        return bytes;
-    }
-
-    static std::string type_name() { return "DEQUECHAR"; }
-
-    static DataType parse(const std::vector<char>& bytes)
-    {
-        if (bytes.size())
-            DataType msg(bytes.begin(), bytes.end() - 1);
-    }
-};
-
-template <typename T>
-constexpr int scheme(typename std::enable_if<std::is_same<T, std::deque<char> >::value>::type* = 0)
-{
-    return MyMarshallingScheme::DEQUECHAR;
+    register_dialect_entries(mavlink::standard::MESSAGE_ENTRIES);
 }
-} // namespace middleware
-} // namespace goby
+
+namespace mavlink
+{
+const mavlink_msg_entry_t* mavlink_get_msg_entry(uint32_t msgid);
+}
+
+const mavlink::mavlink_msg_entry_t* mavlink::mavlink_get_msg_entry(uint32_t msgid)
+{
+    return goby::middleware::MAVLinkRegistry::get_msg_entry(msgid);
+}

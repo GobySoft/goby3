@@ -23,7 +23,7 @@
 
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
-#include "goby/middleware/application.h"
+#include "goby/middleware/application/interface.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"

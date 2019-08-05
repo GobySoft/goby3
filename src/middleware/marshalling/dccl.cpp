@@ -24,17 +24,11 @@
 #include "goby/middleware/protobuf/serializer_transporter.pb.h"
 #include "goby/util/debug_logger.h"
 
-#include "serialize_parse.h"
-
-std::map<int, std::string> goby::middleware::MarshallingScheme::e2s = {{CSTR, "CSTR"},
-                                                                       {PROTOBUF, "PROTOBUF"},
-                                                                       {DCCL, "DCCL"},
-                                                                       {CAPTN_PROTO, "CAPTN_PROTO"},
-                                                                       {MSGPACK, "MSGPACK"}};
+#include "dccl.h"
 
 std::unique_ptr<dccl::Codec> goby::middleware::DCCLSerializerParserHelperBase::codec_(nullptr);
 std::unordered_map<const google::protobuf::Descriptor*,
-                   std::unique_ptr<goby::middleware::DCCLSerializerParserHelperBase::LoaderBase> >
+                   std::unique_ptr<goby::middleware::DCCLSerializerParserHelperBase::LoaderBase>>
     goby::middleware::DCCLSerializerParserHelperBase::loader_map_;
 std::mutex goby::middleware::DCCLSerializerParserHelperBase::dccl_mutex_;
 
@@ -89,7 +83,7 @@ goby::middleware::DCCLSerializerParserHelperBase::unpack(const std::string& fram
 
         const auto* desc = codec().loaded().at(dccl_id);
         auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
-            std::unique_ptr<google::protobuf::Message> >(desc);
+            std::unique_ptr<google::protobuf::Message>>(desc);
 
         next_frame_it = codec().decode(frame_it, frame_end, msg.get());
         packet.set_data(std::string(frame_it, next_frame_it));

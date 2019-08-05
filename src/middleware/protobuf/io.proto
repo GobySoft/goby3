@@ -1,0 +1,48 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
+
+package goby.middleware.protobuf;
+
+message IOData
+{
+    optional bytes data = 10;
+}
+
+message SerialCommand
+{
+    enum Command
+    {
+        SEND_BREAK = 1;
+        RTS_HIGH = 2;
+        RTS_LOW = 3;
+    }
+    required Command command = 1;
+}
+
+enum IOState
+{
+    IO__STATE_UNKNOWN = -1;
+    IO__LINK_OPEN = 1;
+    IO__LINK_CLOSED = 2;
+    IO__CRITICAL_FAILURE = 3;
+}
+
+message IOError
+{
+    enum ErrorCode
+    {
+        IO__SERIAL_PORT_INIT_FAILURE = 1;
+        IO__SERIAL_PORT_READ_FAILURE = 2;
+        IO__SERIAL_PORT_WRITE_FAILURE = 3;
+        IO__SERIAL_DATA_TIMEOUT = 4;
+    }
+    required ErrorCode code = 1;
+    optional string text = 2;
+}
+
+message IOStatus
+{
+    required IOState state = 1;
+    optional IOError error = 2;
+}

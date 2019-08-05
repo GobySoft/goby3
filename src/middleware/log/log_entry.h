@@ -31,7 +31,7 @@
 #include "goby/util/debug_logger.h"
 
 #include "goby/middleware/group.h"
-#include "goby/middleware/serialize_parse.h"
+#include "goby/middleware/marshalling/interface.h"
 
 namespace goby
 {

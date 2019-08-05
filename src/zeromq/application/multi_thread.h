@@ -20,27 +20,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCL_LOG_20190123_H
-#define DCCL_LOG_20190123_H
+#ifndef ZEROMQ_MULTI_THREAD_APPLICATION20190605H
+#define ZEROMQ_MULTI_THREAD_APPLICATION20190605H
 
-#include <dccl/codec.h>
-
-#include "goby/middleware/marshalling/dccl.h"
-
-#include "protobuf_log_plugin.h"
+#include "goby/middleware/application/multi_thread.h"
+#include "goby/zeromq/transport/interprocess.h"
 
 namespace goby
 {
-namespace middleware
+namespace zeromq
 {
-namespace log
-{
-class DCCLPlugin : public ProtobufPluginBase<goby::middleware::MarshallingScheme::DCCL>
-{
-};
-
-} // namespace log
-} // namespace middleware
+template <class Config>
+using MultiThreadApplication = goby::middleware::MultiThreadApplication<Config, InterProcessPortal>;
+}
 } // namespace goby
 
 #endif

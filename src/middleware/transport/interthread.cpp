@@ -20,7 +20,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "transport-interthread.h"
+#include "interthread.h"
 
 std::unordered_map<std::thread::id, goby::middleware::SubscriptionStoreBase::StoresMap>
     goby::middleware::SubscriptionStoreBase::stores_;

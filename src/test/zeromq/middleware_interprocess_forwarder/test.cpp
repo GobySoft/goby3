@@ -25,8 +25,9 @@
 #include <atomic>
 #include <deque>
 
-#include "goby/middleware/transport.h"
-#include "goby/zeromq/transport-interprocess.h"
+#include "goby/middleware/marshalling/protobuf.h"
+#include "goby/middleware/transport/interthread.h"
+#include "goby/zeromq/transport/interprocess.h"
 
 #include "goby/util/debug_logger.h"
 #include "test.pb.h"
@@ -42,7 +43,7 @@ goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter
     static std::unique_ptr<goby::middleware::InterThreadTransporter> inner(
         new goby::middleware::InterThreadTransporter);
     static std::unique_ptr<
-        goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> >
+        goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter>>
         p(new goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter>(
             *inner));
     return *p;

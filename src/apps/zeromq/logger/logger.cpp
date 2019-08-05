@@ -27,8 +27,8 @@
 #include "goby/middleware/log/dccl_log_plugin.h"
 #include "goby/middleware/log/protobuf_log_plugin.h"
 #include "goby/time.h"
+#include "goby/zeromq/application/single_thread.h"
 #include "goby/zeromq/protobuf/logger_config.pb.h"
-#include "goby/zeromq/single-thread-application.h"
 
 using goby::glog;
 

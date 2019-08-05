@@ -25,9 +25,11 @@
 #include <atomic>
 #include <deque>
 
-#include "goby/middleware/transport.h"
+#include "goby/middleware/marshalling/dccl.h"
+#include "goby/middleware/marshalling/protobuf.h"
+#include "goby/middleware/transport/intervehicle.h"
 #include "goby/util/debug_logger.h"
-#include "goby/zeromq/transport-interprocess.h"
+#include "goby/zeromq/transport/interprocess.h"
 
 #include "test.pb.h"
 

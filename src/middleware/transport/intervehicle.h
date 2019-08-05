@@ -30,8 +30,8 @@
 #include <unistd.h>
 
 #include "goby/middleware/protobuf/intervehicle.pb.h"
-#include "goby/middleware/transport-common.h"
-#include "goby/middleware/transport-interthread.h" // used for InterVehiclePortal implementation
+#include "goby/middleware/transport/common.h"
+#include "goby/middleware/transport/interthread.h" // used for InterVehiclePortal implementation
 
 #include "goby/middleware/intervehicle/driver-thread.h"
 

@@ -20,12 +20,20 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Transport20160607H
-#define Transport20160607H
+#ifndef ZEROMQ_SINGLE_THREAD_APPLICATION20190605H
+#define ZEROMQ_SINGLE_THREAD_APPLICATION20190605H
 
-#include "transport-common.h"
-#include "transport-interprocess.h"
-#include "transport-interthread.h"
-#include "transport-intervehicle.h"
+#include "goby/middleware/application/single_thread.h"
+#include "goby/zeromq/transport/interprocess.h"
+
+namespace goby
+{
+namespace zeromq
+{
+template <class Config>
+using SingleThreadApplication =
+    goby::middleware::SingleThreadApplication<Config, InterProcessPortal>;
+}
+} // namespace goby
 
 #endif

@@ -34,7 +34,7 @@
 
 #include "dynamic_moos_vars.h"
 #include "goby/exception.h"
-#include "goby/middleware/configuration_reader.h"
+#include "goby/middleware/application/configuration_reader.h"
 #include "goby/moos/moos_header.h"
 #include "goby/moos/moos_translator.h"
 #include "goby/moos/protobuf/goby_moos_app.pb.h"
