@@ -29,6 +29,7 @@
 
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/transport/interthread.h"
+#include "goby/time/convert.h"
 #include "goby/time/system_clock.h"
 #include "goby/time/types.h"
 #include "goby/util/debug_logger.h"
