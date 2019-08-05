@@ -17,7 +17,6 @@ message NodeStatus
     optional string name = 2 [(dccl.field).omit = true];
     optional uint32 modem_id = 12 [(dccl.field).min = 1, (dccl.field).max = 31];
 
-    // defined in goby/core/proto/config.proto
     optional VehicleType type = 3;
 
     // lat, lon, depth

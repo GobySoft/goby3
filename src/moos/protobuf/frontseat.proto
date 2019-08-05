@@ -85,6 +85,7 @@ message FrontSeatInterfaceData
     optional bytes dccl_message = 3;
 
     extensions 1000 to max;
+    // 1000 - Bluefin
     // 1001 - Iver
 }
 

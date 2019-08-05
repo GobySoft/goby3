@@ -75,6 +75,47 @@ message BluefinExtraData
     }
 
     repeated PayloadStatus payload_status = 30;
+
+    message RawDVL
+    {
+        option (dccl.msg).unit_system = "si";
+        optional double dvl_time = 1
+            [(dccl.field).units.derived_dimensions = "time"];
+        optional double u = 2 [(dccl.field).units.derived_dimensions =
+                                   "velocity"];  // positive forward
+        optional double v = 3 [(dccl.field).units.derived_dimensions =
+                                   "velocity"];  // positive starboard
+        optional double w = 4 [(dccl.field).units.derived_dimensions =
+                                   "velocity"];  // positive down
+
+        optional double beam1_range = 5
+            [(dccl.field).units.derived_dimensions = "length"];
+        optional double beam2_range = 6
+            [(dccl.field).units.derived_dimensions = "length"];
+        optional double beam3_range = 7
+            [(dccl.field).units.derived_dimensions = "length"];
+        optional double beam4_range = 8
+            [(dccl.field).units.derived_dimensions = "length"];
+
+        optional double temperature = 9 [(dccl.field).units = {
+            system: "celsius"
+            derived_dimensions: "temperature"
+        }];
+    }
+
+    optional RawDVL dvl = 40;
+
+    message RawThrusterRotation
+    {
+        required double rotation = 1 [(dccl.field).units = {
+            system: "goby::util::units::rpm::system"
+            derived_dimensions: "angular_velocity"
+        }];
+        optional double speed_from_lookup_table = 2
+            [(dccl.field).units.derived_dimensions = "velocity"];
+    }
+
+    optional RawThrusterRotation thruster = 50;
 }
 
 extend FrontSeatInterfaceData
