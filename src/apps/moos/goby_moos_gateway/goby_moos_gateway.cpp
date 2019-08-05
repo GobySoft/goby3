@@ -21,10 +21,10 @@
 
 #include <dlfcn.h>
 
+#include "goby/middleware/marshalling/protobuf.h"
 #include "goby/moos/middleware/moos_plugin_translator.h"
-#include "goby/zeromq/multi-thread-application.h"
-
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
+#include "goby/zeromq/application/multi_thread.h"
 
 using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
 using AppBase = goby::zeromq::MultiThreadApplication<GobyMOOSGatewayConfig>;
@@ -81,9 +81,10 @@ int main(int argc, char* argv[])
     }
     else
     {
-        glog.is_die() && glog << "Must define at least one plugin library in "
-                                 "GOBY_MOOS_GATEWAY_PLUGINS environmental variable"
-                              << std::endl;
+        std::cerr << "Must define at least one plugin library in "
+                     "GOBY_MOOS_GATEWAY_PLUGINS environmental variable"
+                  << std::endl;
+        exit(EXIT_FAILURE);
     }
 
     return goby::run<goby::moos::GobyMOOSGateway>(argc, argv);

@@ -23,10 +23,11 @@
 #include <signal.h>
 #include <sys/types.h>
 
+#include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/terminate.pb.h"
 #include "goby/middleware/terminate/groups.h"
+#include "goby/zeromq/application/single_thread.h"
 #include "goby/zeromq/protobuf/terminate_config.pb.h"
-#include "goby/zeromq/single-thread-application.h"
 
 using goby::glog;
 

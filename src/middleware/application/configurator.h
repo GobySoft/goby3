@@ -23,7 +23,7 @@
 #ifndef CONFIGURATOR_20181205H
 #define CONFIGURATOR_20181205H
 
-#include "goby/middleware/configuration_reader.h"
+#include "goby/middleware/application/configuration_reader.h"
 #include "goby/middleware/protobuf/app_config.pb.h"
 
 namespace goby

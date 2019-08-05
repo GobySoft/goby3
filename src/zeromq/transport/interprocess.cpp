@@ -22,7 +22,7 @@
 
 #include "goby/time/system_clock.h"
 
-#include "transport-interprocess.h"
+#include "interprocess.h"
 
 using goby::glog;
 using namespace goby::util::logger;

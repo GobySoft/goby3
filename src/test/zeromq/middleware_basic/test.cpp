@@ -21,11 +21,16 @@
 
 #include <deque>
 
+#include "goby/middleware/marshalling/cstr.h"
+#include "goby/middleware/marshalling/dccl.h"
+#include "goby/middleware/marshalling/protobuf.h"
+
 // plugin new serialization/parse scheme
 #include "test-scheme.h"
 
-#include "goby/middleware/transport.h"
-#include "goby/zeromq/transport-interprocess.h"
+#include "goby/middleware/transport/interthread.h"
+#include "goby/middleware/transport/intervehicle.h"
+#include "goby/zeromq/transport/interprocess.h"
 
 #include "goby/util/debug_logger.h"
 #include "test.pb.h"
@@ -62,6 +67,7 @@ int main(int argc, char* argv[])
     s.set_salinity(38.5);
 
     std::cout << "Should be DCCL" << std::endl;
+    assert(zmq_blank.scheme<decltype(s)>() == goby::middleware::MarshallingScheme::DCCL);
     zmq_blank.publish<ctd>(s);
 
     std::shared_ptr<CTDSample> sp(new CTDSample);

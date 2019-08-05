@@ -32,11 +32,11 @@
 #include "goby/exception.h"
 #include "goby/util/binary.h"
 
-#include "poller.h"
-#include "transport-interfaces.h"
-#include "transport-null.h"
-
+#include "goby/middleware/poller.h"
 #include "goby/middleware/protobuf/serializer_transporter.pb.h"
+
+#include "interfaces.h"
+#include "null.h"
 
 namespace goby
 {

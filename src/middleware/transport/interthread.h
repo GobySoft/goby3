@@ -32,7 +32,7 @@
 #include <thread>
 #include <typeindex>
 
-#include "transport-common.h"
+#include "common.h"
 
 namespace goby
 {

@@ -5,10 +5,11 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/logger_config.proto
   protobuf/liaison_config.proto
   protobuf/terminate_config.proto
+  protobuf/mavlink_serial_gateway_config.proto
   )
 
 set(SRC
-  transport-interprocess.cpp
+  transport/interprocess.cpp
 )
 
 add_library(goby_zeromq ${SRC} ${PROTO_SRCS} ${PROTO_HDRS})

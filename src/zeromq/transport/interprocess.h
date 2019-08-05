@@ -26,7 +26,7 @@
 #include <tuple>
 #include <zmq.hpp>
 
-#include "goby/middleware/transport-interprocess.h"
+#include "goby/middleware/transport/interprocess.h"
 #include "goby/zeromq/protobuf/interprocess_config.pb.h"
 #include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"
 
@@ -487,8 +487,8 @@ class InterProcessPortal
             elem.push_back(identifier.substr(previous_slash + 1, slash_pos - (previous_slash + 1)));
             previous_slash = slash_pos;
         }
-        return std::make_tuple(elem[0], std::stoi(elem[1]), elem[2], std::stoi(elem[3]),
-                               std::stoull(elem[4]));
+        return std::make_tuple(elem[0], middleware::MarshallingScheme::from_string(elem[1]),
+                               elem[2], std::stoi(elem[3]), std::stoull(elem[4]));
     }
 
     template <typename Key>
@@ -507,7 +507,9 @@ class InterProcessPortal
     {
         return std::to_string(std::hash<std::thread::id>{}(i));
     }
-    std::string to_string(int i) { return std::to_string(i); }
+
+    // used by scheme
+    std::string to_string(int i) { return middleware::MarshallingScheme::to_string(i); }
 
   private:
     const protobuf::InterProcessPortalConfig& cfg_;
