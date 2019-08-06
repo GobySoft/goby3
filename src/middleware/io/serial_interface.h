@@ -67,10 +67,7 @@ class SerialThread : public goby::middleware::SimpleThread<goby::middleware::pro
     {
         auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
-                goby::glog.is_debug2() && goby::glog << group("i/o") << "(" << io_msg->data().size()
-                                                     << "B) < " << io_msg->ShortDebugString()
-                                                     << std::endl;
-                this->async_write(io_msg->data());
+                write(io_msg);
             };
 
         auto command_out_callback =
@@ -154,6 +151,13 @@ class SerialThread : public goby::middleware::SimpleThread<goby::middleware::pro
     }
 
   protected:
+    void write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
+    {
+        goby::glog.is_debug2() && goby::glog << group("i/o") << "(" << io_msg->data().size()
+                                             << "B) < " << io_msg->ShortDebugString() << std::endl;
+        this->async_write(io_msg->data());
+    }
+
     void handle_read_success(std::size_t bytes_transferred, const std::string& bytes)
     {
         auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();

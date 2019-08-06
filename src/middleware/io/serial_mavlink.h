@@ -49,7 +49,29 @@ class SerialThreadMAVLink
     using Base = SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>;
 
   public:
-    SerialThreadMAVLink(const goby::middleware::protobuf::SerialConfig& config) : Base(config) {}
+    SerialThreadMAVLink(const goby::middleware::protobuf::SerialConfig& config) : Base(config)
+    {
+        // subscribe directly to mavlink_message_t as well
+        if (subscribe_layer == SerialLinePubSubLayer::INTERPROCESS)
+        {
+            auto msg_out_callback = [this](std::shared_ptr<const mavlink::mavlink_message_t> msg,
+                                           const std::string& type) {
+                goby::glog.is_debug2() &&
+                    goby::glog << "writing msg [sysid: " << static_cast<int>(msg->sysid)
+                               << ", compid: " << static_cast<int>(msg->compid)
+                               << "] of msgid: " << static_cast<int>(msg->msgid) << std::endl;
+                auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();
+                auto data = SerializerParserHelper<mavlink::mavlink_message_t,
+                                                   MarshallingScheme::MAVLINK>::serialize(*msg);
+                io_msg->set_data(&data[0], data.size());
+                this->write(io_msg);
+            };
+
+            this->interprocess()
+                .template subscribe_type_regex<line_out_group, mavlink::mavlink_message_t>(
+                    msg_out_callback);
+        }
+    }
 
     ~SerialThreadMAVLink() {}
 

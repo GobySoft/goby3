@@ -64,7 +64,7 @@ struct MAVLinkRegistry
     static std::mutex mavlink_registry_mutex_;
 };
 
-// runtime introspection google::protobuf::Message (publish only)
+// runtime introspection (publish and subscribe_type_regex only)
 template <> struct SerializerParserHelper<mavlink::mavlink_message_t, MarshallingScheme::MAVLINK>
 {
     static std::vector<char> serialize(const mavlink::mavlink_message_t& msg)
@@ -141,10 +141,11 @@ struct MAVLinkTupleIndices
 };
 
 // user mavlink (static), e.g. DataType == HEARTBEAT, with tuple of <sysid, compid, msg>
-template <typename DataType>
-struct SerializerParserHelper<std::tuple<int, int, DataType>, MarshallingScheme::MAVLINK>
+template <typename DataType, typename Integer>
+struct SerializerParserHelper<std::tuple<Integer, Integer, DataType>, MarshallingScheme::MAVLINK>
 {
-    static std::vector<char> serialize(const std::tuple<int, int, DataType>& packet_with_metadata)
+    static std::vector<char>
+    serialize(const std::tuple<Integer, Integer, DataType>& packet_with_metadata)
     {
         mavlink::mavlink_message_t msg{};
         mavlink::MsgMap map(msg);
@@ -160,10 +161,13 @@ struct SerializerParserHelper<std::tuple<int, int, DataType>, MarshallingScheme:
 
     // use numeric type name since that's all we have with mavlink_message_t alone
     static std::string type_name() { return std::to_string(DataType::MSG_ID); }
-    static std::string type_name(const std::tuple<int, int, DataType>& d) { return type_name(); }
+    static std::string type_name(const std::tuple<Integer, Integer, DataType>& d)
+    {
+        return type_name();
+    }
 
     template <typename CharIterator>
-    static std::shared_ptr<std::tuple<int, int, DataType>>
+    static std::shared_ptr<std::tuple<Integer, Integer, DataType>>
     parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end)
     {
         auto msg =
@@ -171,7 +175,7 @@ struct SerializerParserHelper<std::tuple<int, int, DataType>, MarshallingScheme:
                                    MarshallingScheme::MAVLINK>::parse_dynamic(bytes_begin,
                                                                               bytes_end, actual_end,
                                                                               type_name());
-        auto packet_with_metadata = std::make_shared<std::tuple<int, int, DataType>>();
+        auto packet_with_metadata = std::make_shared<std::tuple<Integer, Integer, DataType>>();
         DataType* packet = &std::get<MAVLinkTupleIndices::PACKET_INDEX>(*packet_with_metadata);
         mavlink::MsgMap map(msg.get());
         packet->deserialize(map);
