@@ -43,8 +43,18 @@ namespace middleware
 {
 namespace io
 {
+enum class SerialLinePubSubLayer
+{
+    INTERTHREAD,
+    INTERPROCESS
+};
+
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
+          const goby::middleware::Group& line_out_group,
+          // by default publish all incoming traffic to interprocess for logging
+          SerialLinePubSubLayer publish_layer = SerialLinePubSubLayer::INTERPROCESS,
+          // but only subscribe on interthread for outgoing traffic
+          SerialLinePubSubLayer subscribe_layer = SerialLinePubSubLayer::INTERTHREAD>
 class SerialThread : public goby::middleware::SimpleThread<goby::middleware::protobuf::SerialConfig>
 {
     using Base = goby::middleware::SimpleThread<goby::middleware::protobuf::SerialConfig>;
@@ -55,49 +65,71 @@ class SerialThread : public goby::middleware::SimpleThread<goby::middleware::pro
     SerialThread(const goby::middleware::protobuf::SerialConfig& config)
         : Base(config, this->loop_max_frequency()), timer_(io_)
     {
-        // messages to write to the serial port
-        this->interthread().template subscribe<line_out_group, goby::middleware::protobuf::IOData>(
+        auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
                 goby::glog.is_debug2() && goby::glog << group("i/o") << "(" << io_msg->data().size()
                                                      << "B) < " << io_msg->ShortDebugString()
                                                      << std::endl;
                 this->async_write(io_msg->data());
-            });
+            };
 
-        this->interthread()
-            .template subscribe<line_out_group, goby::middleware::protobuf::SerialCommand>(
-                [this](std::shared_ptr<const goby::middleware::protobuf::SerialCommand> cmd) {
-                    goby::glog.is_debug2() && goby::glog << group("i/o") << "< [Command] "
-                                                         << cmd->ShortDebugString() << std::endl;
-                    switch (cmd->command())
-                    {
-                        case protobuf::SerialCommand::SEND_BREAK:
-                            if (serial_port_ && serial_port_->is_open())
-                                serial_port_->send_break();
-                            break;
+        auto command_out_callback =
+            [this](std::shared_ptr<const goby::middleware::protobuf::SerialCommand> cmd) {
+                goby::glog.is_debug2() && goby::glog << group("i/o") << "< [Command] "
+                                                     << cmd->ShortDebugString() << std::endl;
+                switch (cmd->command())
+                {
+                    case protobuf::SerialCommand::SEND_BREAK:
+                        if (serial_port_ && serial_port_->is_open())
+                            serial_port_->send_break();
+                        break;
 
-                            // sets RTS high, needed for PHSEN and PCO2W comms
-                        case protobuf::SerialCommand::RTS_HIGH:
-                            if (serial_port_ && serial_port_->is_open())
-                            {
-                                int fd = serial_port_->native_handle();
-                                int RTS_flag = TIOCM_RTS;
-                                // TIOCMBIS - set bit
-                                ioctl(fd, TIOCMBIS, &RTS_flag);
-                            }
-                            break;
+                        // sets RTS high, needed for PHSEN and PCO2W comms
+                    case protobuf::SerialCommand::RTS_HIGH:
+                        if (serial_port_ && serial_port_->is_open())
+                        {
+                            int fd = serial_port_->native_handle();
+                            int RTS_flag = TIOCM_RTS;
+                            // TIOCMBIS - set bit
+                            ioctl(fd, TIOCMBIS, &RTS_flag);
+                        }
+                        break;
 
-                        case protobuf::SerialCommand::RTS_LOW:
-                            if (serial_port_ && serial_port_->is_open())
-                            {
-                                int fd = serial_port_->native_handle();
-                                int RTS_flag = TIOCM_RTS;
-                                // TIOCMBIC - clear bit
-                                ioctl(fd, TIOCMBIC, &RTS_flag);
-                            }
-                            break;
-                    }
-                });
+                    case protobuf::SerialCommand::RTS_LOW:
+                        if (serial_port_ && serial_port_->is_open())
+                        {
+                            int fd = serial_port_->native_handle();
+                            int RTS_flag = TIOCM_RTS;
+                            // TIOCMBIC - clear bit
+                            ioctl(fd, TIOCMBIC, &RTS_flag);
+                        }
+                        break;
+                }
+            };
+
+        switch (subscribe_layer)
+        {
+            case SerialLinePubSubLayer::INTERTHREAD:
+                // messages to write to the serial port
+                this->interthread()
+                    .template subscribe<line_out_group, goby::middleware::protobuf::IOData>(
+                        data_out_callback);
+
+                // commands that act on the serial port
+                this->interthread()
+                    .template subscribe<line_out_group, goby::middleware::protobuf::SerialCommand>(
+                        command_out_callback);
+                break;
+            case SerialLinePubSubLayer::INTERPROCESS:
+                this->interprocess()
+                    .template subscribe<line_out_group, goby::middleware::protobuf::IOData>(
+                        data_out_callback);
+
+                this->interprocess()
+                    .template subscribe<line_out_group, goby::middleware::protobuf::SerialCommand>(
+                        command_out_callback);
+                break;
+        }
 
         static bool io_group_added = false;
         if (!io_group_added)
@@ -130,7 +162,16 @@ class SerialThread : public goby::middleware::SimpleThread<goby::middleware::pro
         goby::glog.is_debug2() && goby::glog << group("i/o") << "(" << bytes_transferred << "B) > "
                                              << io_msg->ShortDebugString() << std::endl;
 
-        this->interprocess().template publish<line_in_group>(io_msg);
+        switch (publish_layer)
+        {
+            case SerialLinePubSubLayer::INTERTHREAD:
+                this->interthread().template publish<line_in_group>(io_msg);
+                break;
+
+            case SerialLinePubSubLayer::INTERPROCESS:
+                this->interprocess().template publish<line_in_group>(io_msg);
+                break;
+        }
     }
 
     void handle_write_success(std::size_t bytes_transferred) {}
@@ -178,8 +219,11 @@ class SerialThread : public goby::middleware::SimpleThread<goby::middleware::pro
 } // namespace goby
 
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
-void goby::middleware::io::SerialThread<line_in_group, line_out_group>::try_open()
+          const goby::middleware::Group& line_out_group,
+          goby::middleware::io::SerialLinePubSubLayer publish_layer,
+          goby::middleware::io::SerialLinePubSubLayer subscribe_layer>
+void goby::middleware::io::SerialThread<line_in_group, line_out_group, publish_layer,
+                                        subscribe_layer>::try_open()
 {
     try
     {
@@ -248,8 +292,11 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::try_open
 }
 
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
-void goby::middleware::io::SerialThread<line_in_group, line_out_group>::set_timer()
+          const goby::middleware::Group& line_out_group,
+          goby::middleware::io::SerialLinePubSubLayer publish_layer,
+          goby::middleware::io::SerialLinePubSubLayer subscribe_layer>
+void goby::middleware::io::SerialThread<line_in_group, line_out_group, publish_layer,
+                                        subscribe_layer>::set_timer()
 {
     // when the timer expires, stop the io_service to enable loop() to exit, and thus check any mail we may have
     // this ensures outgoing commands are sent eventually even if the serial port doesn't receive any data
@@ -258,8 +305,11 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::set_time
 }
 
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
-void goby::middleware::io::SerialThread<line_in_group, line_out_group>::loop()
+          const goby::middleware::Group& line_out_group,
+          goby::middleware::io::SerialLinePubSubLayer publish_layer,
+          goby::middleware::io::SerialLinePubSubLayer subscribe_layer>
+void goby::middleware::io::SerialThread<line_in_group, line_out_group, publish_layer,
+                                        subscribe_layer>::loop()
 {
     if (serial_port_ && serial_port_->is_open())
     {
@@ -278,9 +328,11 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::loop()
 }
 
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
-void goby::middleware::io::SerialThread<line_in_group, line_out_group>::async_write(
-    const std::string& bytes)
+          const goby::middleware::Group& line_out_group,
+          goby::middleware::io::SerialLinePubSubLayer publish_layer,
+          goby::middleware::io::SerialLinePubSubLayer subscribe_layer>
+void goby::middleware::io::SerialThread<line_in_group, line_out_group, publish_layer,
+                                        subscribe_layer>::async_write(const std::string& bytes)
 {
     if (bytes.empty())
         return;
@@ -302,9 +354,12 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::async_wr
 }
 
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
-void goby::middleware::io::SerialThread<line_in_group, line_out_group>::handle_read_error(
-    const boost::system::error_code& ec)
+          const goby::middleware::Group& line_out_group,
+          goby::middleware::io::SerialLinePubSubLayer publish_layer,
+          goby::middleware::io::SerialLinePubSubLayer subscribe_layer>
+void goby::middleware::io::SerialThread<
+    line_in_group, line_out_group, publish_layer,
+    subscribe_layer>::handle_read_error(const boost::system::error_code& ec)
 {
     protobuf::IOStatus status;
     status.set_state(protobuf::IO__CRITICAL_FAILURE);
@@ -320,9 +375,12 @@ void goby::middleware::io::SerialThread<line_in_group, line_out_group>::handle_r
 }
 
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
-void goby::middleware::io::SerialThread<line_in_group, line_out_group>::handle_write_error(
-    const boost::system::error_code& ec)
+          const goby::middleware::Group& line_out_group,
+          goby::middleware::io::SerialLinePubSubLayer publish_layer,
+          goby::middleware::io::SerialLinePubSubLayer subscribe_layer>
+void goby::middleware::io::SerialThread<
+    line_in_group, line_out_group, publish_layer,
+    subscribe_layer>::handle_write_error(const boost::system::error_code& ec)
 {
     protobuf::IOStatus status;
     status.set_state(protobuf::IO__CRITICAL_FAILURE);

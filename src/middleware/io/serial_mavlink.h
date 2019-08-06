@@ -38,11 +38,15 @@ namespace io
 /// \brief Reads/Writes MAVLink message packages from/to serial port
 /// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the serial port
 /// \tparam line_out_group goby::middleware::Group to subcribe to for data to send to the serial port
+
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
-class SerialThreadMAVLink : public SerialThread<line_in_group, line_out_group>
+          const goby::middleware::Group& line_out_group,
+          SerialLinePubSubLayer publish_layer = SerialLinePubSubLayer::INTERPROCESS,
+          SerialLinePubSubLayer subscribe_layer = SerialLinePubSubLayer::INTERTHREAD>
+class SerialThreadMAVLink
+    : public SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>
 {
-    using Base = SerialThread<line_in_group, line_out_group>;
+    using Base = SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>;
 
   public:
     SerialThreadMAVLink(const goby::middleware::protobuf::SerialConfig& config) : Base(config) {}
@@ -69,8 +73,11 @@ class SerialThreadMAVLink : public SerialThread<line_in_group, line_out_group>
 } // namespace goby
 
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
-void goby::middleware::io::SerialThreadMAVLink<line_in_group, line_out_group>::async_read()
+          const goby::middleware::Group& line_out_group,
+          goby::middleware::io::SerialLinePubSubLayer publish_layer,
+          goby::middleware::io::SerialLinePubSubLayer subscribe_layer>
+void goby::middleware::io::SerialThreadMAVLink<line_in_group, line_out_group, publish_layer,
+                                               subscribe_layer>::async_read()
 {
     boost::asio::async_read(
         this->mutable_serial_port(), boost::asio::buffer(buffer_),
@@ -113,7 +120,16 @@ void goby::middleware::io::SerialThreadMAVLink<line_in_group, line_out_group>::a
                                 goby::glog.is_debug3() && goby::glog << "Parsed message of id: "
                                                                      << msg_.msgid << std::endl;
 
-                                this->interprocess().template publish<line_in_group>(msg_);
+                                switch (publish_layer)
+                                {
+                                    case SerialLinePubSubLayer::INTERTHREAD:
+                                        this->interthread().template publish<line_in_group>(msg_);
+                                        break;
+
+                                    case SerialLinePubSubLayer::INTERPROCESS:
+                                        this->interprocess().template publish<line_in_group>(msg_);
+                                        break;
+                                }
 
                                 std::array<uint8_t, MAVLINK_MAX_PACKET_LEN> buffer;
                                 auto length =

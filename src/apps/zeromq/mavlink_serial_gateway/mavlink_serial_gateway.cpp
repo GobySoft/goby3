@@ -27,18 +27,23 @@ namespace zeromq
 class MAVLinkSerialGateway : public AppBase
 {
   public:
-    using SerialThread =
-        goby::middleware::io::SerialThreadMAVLink<goby::middleware::io::groups::mavlink_raw_in,
-                                                  goby::middleware::io::groups::mavlink_raw_out>;
+    using SerialThread = goby::middleware::io::SerialThreadMAVLink<
+        goby::middleware::io::groups::mavlink_raw_in, goby::middleware::io::groups::mavlink_raw_out,
+        goby::middleware::io::SerialLinePubSubLayer::INTERPROCESS,
+        goby::middleware::io::SerialLinePubSubLayer::INTERPROCESS>;
 
     MAVLinkSerialGateway()
     {
         interprocess()
             .subscribe<goby::middleware::io::groups::mavlink_raw_in,
-                       mavlink::common::msg::HEARTBEAT>(
-                [](const mavlink::common::msg::HEARTBEAT& hb) {
-                    goby::glog.is_debug1() && goby::glog << "Received heartbeat: " << hb.to_yaml()
-                                                         << std::endl;
+                       std::tuple<int, int, mavlink::common::msg::HEARTBEAT>>(
+                [](const std::tuple<int, int, mavlink::common::msg::HEARTBEAT>& hb_with_metadata) {
+                    int sysid, compid;
+                    mavlink::common::msg::HEARTBEAT hb;
+                    std::tie(sysid, compid, hb) = hb_with_metadata;
+                    goby::glog.is_debug1() && goby::glog << "Received heartbeat [sysid: " << sysid
+                                                         << ", compid: " << compid
+                                                         << "]: " << hb.to_yaml() << std::endl;
                 });
 
         launch_thread<SerialThread>(cfg().serial());
