@@ -104,8 +104,17 @@ template <> struct SerializerParserHelper<mavlink::mavlink_message_t, Marshallin
                 }
 
                 case mavlink::MAVLINK_FRAMING_BAD_CRC:
-                    goby::glog.is_warn() && goby::glog << "BAD CRC decoding MAVLink type: " << type
-                                                       << std::endl;
+                    if (!MAVLinkRegistry::get_msg_entry(msg->msgid))
+                    {
+                        goby::glog.is_debug2() &&
+                            goby::glog << "MAVLink msg type: " << type
+                                       << " is unknown, so unable to validate CRC" << std::endl;
+                    }
+                    else
+                    {
+                        goby::glog.is_warn() &&
+                            goby::glog << "BAD CRC decoding MAVLink type: " << type << std::endl;
+                    }
                     goto fail;
                     break;
                 case mavlink::MAVLINK_FRAMING_BAD_SIGNATURE:
