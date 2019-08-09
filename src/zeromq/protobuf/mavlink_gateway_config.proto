@@ -5,7 +5,7 @@ import "goby/zeromq/protobuf/interprocess_config.proto";
 
 package goby.apps.zeromq.protobuf;
 
-message MAVLinkSerialGatewayConfig
+message MAVLinkGatewayConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
     optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;

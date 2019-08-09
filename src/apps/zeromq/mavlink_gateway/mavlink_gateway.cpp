@@ -8,12 +8,12 @@
 
 #include "goby/middleware/io/serial_mavlink.h"
 #include "goby/zeromq/application/multi_thread.h"
-#include "goby/zeromq/protobuf/mavlink_serial_gateway_config.pb.h"
+#include "goby/zeromq/protobuf/mavlink_gateway_config.pb.h"
 
 using AppBase =
-    goby::zeromq::MultiThreadApplication<goby::apps::zeromq::protobuf::MAVLinkSerialGatewayConfig>;
+    goby::zeromq::MultiThreadApplication<goby::apps::zeromq::protobuf::MAVLinkGatewayConfig>;
 using ThreadBase =
-    goby::middleware::SimpleThread<goby::apps::zeromq::protobuf::MAVLinkSerialGatewayConfig>;
+    goby::middleware::SimpleThread<goby::apps::zeromq::protobuf::MAVLinkGatewayConfig>;
 namespace si = boost::units::si;
 
 using goby::glog;
@@ -24,7 +24,7 @@ namespace apps
 {
 namespace zeromq
 {
-class MAVLinkSerialGateway : public AppBase
+class MAVLinkGateway : public AppBase
 {
   public:
     using SerialThread = goby::middleware::io::SerialThreadMAVLink<
@@ -32,7 +32,7 @@ class MAVLinkSerialGateway : public AppBase
         goby::middleware::io::SerialLinePubSubLayer::INTERPROCESS,
         goby::middleware::io::SerialLinePubSubLayer::INTERPROCESS>;
 
-    MAVLinkSerialGateway()
+    MAVLinkGateway()
     {
         interprocess()
             .subscribe<goby::middleware::io::groups::mavlink_raw_in,
@@ -50,16 +50,15 @@ class MAVLinkSerialGateway : public AppBase
     }
 };
 
-class MAVLinkSerialGatewayConfigurator
-    : public goby::middleware::ProtobufConfigurator<
-          goby::apps::zeromq::protobuf::MAVLinkSerialGatewayConfig>
+class MAVLinkGatewayConfigurator : public goby::middleware::ProtobufConfigurator<
+                                       goby::apps::zeromq::protobuf::MAVLinkGatewayConfig>
 {
   public:
-    MAVLinkSerialGatewayConfigurator(int argc, char* argv[])
+    MAVLinkGatewayConfigurator(int argc, char* argv[])
         : goby::middleware::ProtobufConfigurator<
-              goby::apps::zeromq::protobuf::MAVLinkSerialGatewayConfig>(argc, argv)
+              goby::apps::zeromq::protobuf::MAVLinkGatewayConfig>(argc, argv)
     {
-        goby::apps::zeromq::protobuf::MAVLinkSerialGatewayConfig& cfg = mutable_cfg();
+        goby::apps::zeromq::protobuf::MAVLinkGatewayConfig& cfg = mutable_cfg();
         goby::middleware::protobuf::SerialConfig& serial_cfg = *cfg.mutable_serial();
 
         // set default baud
@@ -73,6 +72,6 @@ class MAVLinkSerialGatewayConfigurator
 
 int main(int argc, char* argv[])
 {
-    return goby::run<goby::apps::zeromq::MAVLinkSerialGateway>(
-        goby::apps::zeromq::MAVLinkSerialGatewayConfigurator(argc, argv));
+    return goby::run<goby::apps::zeromq::MAVLinkGateway>(
+        goby::apps::zeromq::MAVLinkGatewayConfigurator(argc, argv));
 }
