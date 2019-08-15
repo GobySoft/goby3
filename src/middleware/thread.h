@@ -77,6 +77,7 @@ template <typename Config, typename TransporterType> class Thread
     void run(std::atomic<bool>& alive)
     {
         alive_ = &alive;
+        initialize();
         while (alive) { run_once(); }
     }
 
@@ -85,7 +86,9 @@ template <typename Config, typename TransporterType> class Thread
   protected:
     Thread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
            int index = -1)
-        : loop_frequency_(loop_freq), loop_time_(std::chrono::system_clock::now()), cfg_(cfg),
+        : loop_frequency_(loop_freq),
+          loop_time_(std::chrono::system_clock::now()),
+          cfg_(cfg),
           index_(index)
     {
         if (loop_frequency_hertz() > 0 &&
@@ -116,13 +119,25 @@ template <typename Config, typename TransporterType> class Thread
 
     const Config& cfg() const { return cfg_; }
 
-    void thread_quit() { (*alive_) = false; }
+    // called after alive() is true, but before run()
+    virtual void initialize() {}
+
+    // called after alive() is false
+    virtual void finalize() {}
+
+    void thread_quit()
+    {
+        (*alive_) = false;
+        finalize();
+    }
+
+    bool alive() { return alive_ && *alive_; }
 
     static constexpr goby::middleware::Group shutdown_group_{"goby::ThreadShutdown"};
     static constexpr goby::middleware::Group joinable_group_{"goby::ThreadJoinable"};
 };
 
-} // namespace goby
+} // namespace middleware
 
 template <typename Config, typename TransporterType>
 constexpr goby::middleware::Group

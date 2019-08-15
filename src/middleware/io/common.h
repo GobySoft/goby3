@@ -24,7 +24,6 @@
 #define IO_COMMON_20190815H
 
 #include <boost/asio/io_service.hpp>
-#include <boost/asio/system_timer.hpp>
 
 #include "goby/exception.h"
 #include "goby/middleware/application/multi_thread.h"
@@ -98,9 +97,9 @@ class IOThread
 {
   public:
     /// \brief Constructs the thread.
-    /// \param config A reference to the Protocol Buffers config read by the main application at launch
+    /// \param config A reference to the configuration read by the main application at launch
     IOThread(const IOConfig& config)
-        : goby::middleware::SimpleThread<IOConfig>(config, this->loop_max_frequency()), timer_(io_)
+        : goby::middleware::SimpleThread<IOConfig>(config, this->loop_max_frequency())
     {
         auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
@@ -117,6 +116,30 @@ class IOThread
             goby::glog.add_group("i/o", goby::util::Colors::red);
             io_group_added = true;
         }
+    }
+
+    void initialize() override
+    {
+        // thread to handle synchonization between boost::asio and goby condition_variable signaling
+        incoming_mail_notify_thread_.reset(new std::thread([this]() {
+            while (this->alive())
+            {
+                std::unique_lock<std::mutex> lock(incoming_mail_notify_mutex_);
+                this->interthread().cv()->wait(lock);
+                // post empty handler to cause loop() to return and allow incoming mail to be handled
+                io_.post([]() {});
+            }
+        }));
+    }
+
+    void finalize() override
+    {
+        // join incoming mail thread
+        {
+            std::lock_guard<std::mutex> l(incoming_mail_notify_mutex_);
+            this->interthread().cv()->notify_all();
+        }
+        incoming_mail_notify_thread_->join();
     }
 
     ~IOThread()
@@ -186,21 +209,20 @@ class IOThread
     /// \brief Tries to open the socket, and if fails publishes an error
     void try_open();
 
-    /// \brief Sets a timer used to ensure that messages are sent to the serial device occasionally, even if no data is read
-    void set_timer();
-
-    /// \brief If the socket is not open, try to open it. Otherwise, block until either 1) data is read or 2) the timer expires.
+    /// \brief If the socket is not open, try to open it. Otherwise, block until either 1) data is read or 2) we have incoming mail
     void loop() override;
 
   private:
     boost::asio::io_service io_;
-    boost::asio::system_timer timer_;
     std::unique_ptr<SocketType> socket_;
 
     const goby::time::SteadyClock::duration min_backoff_interval_{std::chrono::seconds(1)};
     const goby::time::SteadyClock::duration max_backoff_interval_{std::chrono::seconds(128)};
     goby::time::SteadyClock::duration backoff_interval_{min_backoff_interval_};
     goby::time::SteadyClock::time_point next_open_attempt_{goby::time::SteadyClock::now()};
+
+    std::mutex incoming_mail_notify_mutex_;
+    std::unique_ptr<std::thread> incoming_mail_notify_thread_;
 }; // namespace io
 
 template <const goby::middleware::Group& line_in_group,
@@ -214,7 +236,6 @@ void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer
     {
         socket_.reset(new SocketType(io_));
         open_socket();
-        set_timer();
 
         // messages read from the socket
         this->async_read();
@@ -256,25 +277,13 @@ template <const goby::middleware::Group& line_in_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
 void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                    IOConfig, SocketType>::set_timer()
-{
-    // when the timer expires, stop the io_service to enable loop() to exit, and thus check any mail we may have
-    // this ensures outgoing commands are sent eventually even if the socket doesn't receive any data
-    timer_.expires_from_now(std::chrono::milliseconds(this->cfg().out_mail_max_interval_ms()));
-    timer_.async_wait([this](const boost::system::error_code& ec) { set_timer(); });
-}
-
-template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
-void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
                                     IOConfig, SocketType>::loop()
 {
     if (socket_ && socket_->is_open())
     {
-        // run the io service (until either we read something
-        // from the socket or the timer expires)
+        // run the io service (blocks until either we read something
+        // from the socket or a subscription is available
+        // as signaled from an empty handler in the incoming_mail_notify_thread)
         io_.run_one();
     }
     else
@@ -283,7 +292,7 @@ void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer
         if (now > next_open_attempt_)
             try_open();
         else
-            usleep(10000); // avoid pegging CPU
+            usleep(10000); // avoid pegging CPU while waiting to attempt reopening socket
     }
 }
 

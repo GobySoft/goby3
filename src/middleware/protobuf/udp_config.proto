@@ -14,13 +14,4 @@ message UDPPointToPointConfig
 
     required string remote_address = 5 [(goby.field) = { description: "Remote address to transfer data to" example: "192.168.1.1" }];
     required uint32 remote_port = 6 [(goby.field) = { description: "UDP port for remote endpoint" example: "50001" }];
-
-    optional uint32 out_mail_max_interval_ms = 10 [
-        default = 10,
-        (dccl.field) = {units {derived_dimensions: "time" prefix: "milli"}},
-        (goby.field).description =
-            "Maximum delay in checking for outbound serial data if no incoming "
-            "serial data. A lower value will improve transmit latency at the "
-            "expense of increasing receive latency."
-    ];
 }
