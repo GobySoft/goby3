@@ -134,16 +134,7 @@ void goby::middleware::io::IOThreadMAVLink<line_in_group, line_out_group, publis
                     goby::glog.is_debug3() && goby::glog << "Parsed message of id: " << msg_.msgid
                                                          << std::endl;
 
-                    switch (publish_layer)
-                    {
-                        case PubSubLayer::INTERTHREAD:
-                            this->interthread().template publish<line_in_group>(msg_);
-                            break;
-
-                        case PubSubLayer::INTERPROCESS:
-                            this->interprocess().template publish<line_in_group>(msg_);
-                            break;
-                    }
+                    this->publish_transporter().template publish<line_in_group>(msg_);
 
                     std::array<uint8_t, MAVLINK_MAX_PACKET_LEN> buffer;
                     auto length = mavlink::mavlink_msg_to_send_buffer(&buffer[0], &msg_);

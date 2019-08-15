@@ -1,0 +1,26 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
+
+package goby.middleware.protobuf;
+
+message UDPPointToPointConfig
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    required uint32 bind_port = 2 [(goby.field) = { description: "UDP Port to bind on" example: "50000" }];
+
+    required string remote_address = 5 [(goby.field) = { description: "Remote address to transfer data to" example: "192.168.1.1" }];
+    required uint32 remote_port = 6 [(goby.field) = { description: "UDP port for remote endpoint" example: "50001" }];
+
+    optional uint32 out_mail_max_interval_ms = 10 [
+        default = 100,
+        (dccl.field) = {units {derived_dimensions: "time" prefix: "milli"}},
+        (goby.field).description =
+            "Maximum delay in checking for outbound serial data if no incoming "
+            "serial data. A lower value will improve transmit latency at the "
+            "expense of increasing receive latency."
+    ];
+}

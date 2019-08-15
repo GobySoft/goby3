@@ -44,39 +44,72 @@ enum class PubSubLayer
     INTERPROCESS
 };
 
+template <class Derived, PubSubLayer layer> struct IOPublishTransporter
+{
+};
+
+template <class Derived> struct IOPublishTransporter<Derived, PubSubLayer::INTERTHREAD>
+{
+    InterThreadTransporter& publish_transporter()
+    {
+        return static_cast<Derived*>(this)->interthread();
+    }
+};
+
+template <class Derived> struct IOPublishTransporter<Derived, PubSubLayer::INTERPROCESS>
+{
+    InterProcessForwarder<InterThreadTransporter>& publish_transporter()
+    {
+        return static_cast<Derived*>(this)->interprocess();
+    }
+};
+
+template <class Derived, PubSubLayer layer> struct IOSubscribeTransporter
+{
+};
+
+template <class Derived> struct IOSubscribeTransporter<Derived, PubSubLayer::INTERTHREAD>
+{
+    InterThreadTransporter& subscribe_transporter()
+    {
+        return static_cast<Derived*>(this)->interthread();
+    }
+};
+
+template <class Derived> struct IOSubscribeTransporter<Derived, PubSubLayer::INTERPROCESS>
+{
+    InterProcessForwarder<InterThreadTransporter>& subscribe_transporter()
+    {
+        return static_cast<Derived*>(this)->interprocess();
+    }
+};
+
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
           PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
-class IOThread : public goby::middleware::SimpleThread<IOConfig>
+class IOThread
+    : public goby::middleware::SimpleThread<IOConfig>,
+      public IOPublishTransporter<IOThread<line_in_group, line_out_group, publish_layer,
+                                           subscribe_layer, IOConfig, SocketType>,
+                                  publish_layer>,
+      public IOSubscribeTransporter<IOThread<line_in_group, line_out_group, publish_layer,
+                                             subscribe_layer, IOConfig, SocketType>,
+                                    subscribe_layer>
 {
-    using Base = goby::middleware::SimpleThread<IOConfig>;
-
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    IOThread(const IOConfig& config) : Base(config, this->loop_max_frequency()), timer_(io_)
+    IOThread(const IOConfig& config)
+        : goby::middleware::SimpleThread<IOConfig>(config, this->loop_max_frequency()), timer_(io_)
     {
         auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
                 write(io_msg);
             };
 
-        switch (subscribe_layer)
-        {
-            case PubSubLayer::INTERTHREAD:
-                // messages to write to the socket
-                this->interthread()
-                    .template subscribe<line_out_group, goby::middleware::protobuf::IOData>(
-                        data_out_callback);
-
-                break;
-            case PubSubLayer::INTERPROCESS:
-                this->interprocess()
-                    .template subscribe<line_out_group, goby::middleware::protobuf::IOData>(
-                        data_out_callback);
-
-                break;
-        }
+        this->subscribe_transporter()
+            .template subscribe<line_out_group, goby::middleware::protobuf::IOData>(
+                data_out_callback);
 
         static bool io_group_added = false;
         if (!io_group_added)
@@ -92,20 +125,10 @@ class IOThread : public goby::middleware::SimpleThread<IOConfig>
 
         protobuf::IOStatus status;
         status.set_state(protobuf::IO__LINK_CLOSED);
-        Base::interthread().template publish<goby::middleware::io::groups::status>(status);
+        this->interthread().template publish<goby::middleware::io::groups::status>(status);
 
-        switch (subscribe_layer)
-        {
-            case PubSubLayer::INTERTHREAD:
-                this->interthread()
-                    .template unsubscribe<line_out_group, goby::middleware::protobuf::IOData>();
-                break;
-
-            case PubSubLayer::INTERPROCESS:
-                this->interprocess()
-                    .template unsubscribe<line_out_group, goby::middleware::protobuf::IOData>();
-                break;
-        }
+        this->subscribe_transporter()
+            .template unsubscribe<line_out_group, goby::middleware::protobuf::IOData>();
     }
 
   protected:
@@ -129,20 +152,10 @@ class IOThread : public goby::middleware::SimpleThread<IOConfig>
         goby::glog.is_debug2() && goby::glog << group("i/o") << "(" << bytes_transferred << "B) > "
                                              << io_msg->ShortDebugString() << std::endl;
 
-        switch (publish_layer)
-        {
-            case PubSubLayer::INTERTHREAD:
-                this->interthread().template publish<line_in_group>(io_msg);
-                break;
-
-            case PubSubLayer::INTERPROCESS:
-                this->interprocess().template publish<line_in_group>(io_msg);
-                break;
-        }
+        this->publish_transporter().template publish<line_in_group>(io_msg);
     }
 
     void handle_write_success(std::size_t bytes_transferred) {}
-
     void handle_read_error(const boost::system::error_code& ec);
     void handle_write_error(const boost::system::error_code& ec);
 
@@ -188,7 +201,7 @@ class IOThread : public goby::middleware::SimpleThread<IOConfig>
     const goby::time::SteadyClock::duration max_backoff_interval_{std::chrono::seconds(128)};
     goby::time::SteadyClock::duration backoff_interval_{min_backoff_interval_};
     goby::time::SteadyClock::time_point next_open_attempt_{goby::time::SteadyClock::now()};
-};
+}; // namespace io
 
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
@@ -211,7 +224,7 @@ void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer
 
         protobuf::IOStatus status;
         status.set_state(protobuf::IO__LINK_OPEN);
-        Base::interthread().template publish<goby::middleware::io::groups::status>(status);
+        this->interthread().template publish<goby::middleware::io::groups::status>(status);
     }
     catch (const boost::system::system_error& e)
     {
@@ -220,7 +233,7 @@ void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer
         goby::middleware::protobuf::IOError& error = *status.mutable_error();
         error.set_code(goby::middleware::protobuf::IOError::IO__INIT_FAILURE);
         error.set_text(e.what() + std::string(": config (") + this->cfg().ShortDebugString() + ")");
-        Base::interthread().template publish<goby::middleware::io::groups::status>(status);
+        this->interthread().template publish<goby::middleware::io::groups::status>(status);
 
         goby::glog.is_warn() && goby::glog << group("i/o")
                                            << "Failed to open/configure socket/serial_port: "
@@ -287,7 +300,7 @@ void goby::middleware::io::IOThread<
     goby::middleware::protobuf::IOError& error = *status.mutable_error();
     error.set_code(goby::middleware::protobuf::IOError::IO__READ_FAILURE);
     error.set_text(ec.message());
-    Base::interthread().template publish<goby::middleware::io::groups::status>(status);
+    this->interthread().template publish<goby::middleware::io::groups::status>(status);
 
     goby::glog.is_warn() && goby::glog << group("i/o")
                                        << "Failed to read from the socket/serial_port: "
@@ -309,7 +322,7 @@ void goby::middleware::io::IOThread<
     goby::middleware::protobuf::IOError& error = *status.mutable_error();
     error.set_code(goby::middleware::protobuf::IOError::IO__WRITE_FAILURE);
     error.set_text(ec.message());
-    Base::interthread().template publish<goby::middleware::io::groups::status>(status);
+    this->interthread().template publish<goby::middleware::io::groups::status>(status);
 
     goby::glog.is_warn() && goby::glog << group("i/o")
                                        << "Failed to write to the socket/serial_port: "

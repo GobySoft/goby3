@@ -89,37 +89,15 @@ class SerialThread
                 }
             };
 
-        switch (subscribe_layer)
-        {
-            case PubSubLayer::INTERTHREAD:
-                // commands that act on the serial port
-                this->interthread()
-                    .template subscribe<line_out_group, goby::middleware::protobuf::SerialCommand>(
-                        command_out_callback);
-                break;
-            case PubSubLayer::INTERPROCESS:
-                this->interprocess()
-                    .template subscribe<line_out_group, goby::middleware::protobuf::SerialCommand>(
-                        command_out_callback);
-                break;
-        }
+        this->subscribe_transporter()
+            .template subscribe<line_out_group, goby::middleware::protobuf::SerialCommand>(
+                command_out_callback);
     }
 
     ~SerialThread()
     {
-        switch (subscribe_layer)
-        {
-            case PubSubLayer::INTERTHREAD:
-                this->interthread()
-                    .template unsubscribe<line_out_group,
-                                          goby::middleware::protobuf::SerialCommand>();
-                break;
-            case PubSubLayer::INTERPROCESS:
-                this->interprocess()
-                    .template unsubscribe<line_out_group,
-                                          goby::middleware::protobuf::SerialCommand>();
-                break;
-        }
+        this->subscribe_transporter()
+            .template unsubscribe<line_out_group, goby::middleware::protobuf::SerialCommand>();
     }
 
   protected:
