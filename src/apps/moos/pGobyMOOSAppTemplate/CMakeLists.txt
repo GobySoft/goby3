@@ -8,7 +8,6 @@ add_executable(pGobyMOOSAppTemplate
 target_link_libraries(pGobyMOOSAppTemplate
   goby_moos
   ${MOOS_LIBRARIES}
-  ${MOOSGeodesy_LIBRARIES}
   ${Boost_LIBRARIES}
   ${PROTOBUF_LIBRARY}
   ${CMAKE_DL_LIBS})
