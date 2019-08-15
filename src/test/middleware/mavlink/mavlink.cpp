@@ -56,6 +56,41 @@ MAVLinkMessage run_serialize_parse(const MAVLinkMessage& packet_in)
     return *packet_out;
 }
 
+template <typename MAVLinkMessage>
+std::tuple<int, int, MAVLinkMessage> run_serialize_parse_with_metadata(
+    const std::tuple<int, int, MAVLinkMessage>& packet_in_with_metadata)
+{
+    auto write_tuple =
+        [](const std::tuple<int, int, MAVLinkMessage>& packet_with_metadata) -> std::string {
+        return "sysid: " +
+               std::to_string(std::get<goby::middleware::MAVLinkTupleIndices::SYSTEM_ID_INDEX>(
+                   packet_with_metadata)) +
+               ", compid: " +
+               std::to_string(std::get<goby::middleware::MAVLinkTupleIndices::COMPONENT_ID_INDEX>(
+                   packet_with_metadata)) +
+               ", " +
+               std::get<goby::middleware::MAVLinkTupleIndices::PACKET_INDEX>(packet_with_metadata)
+                   .to_yaml();
+    };
+
+    std::cout << "In: " << write_tuple(packet_in_with_metadata) << std::endl;
+
+    auto bytes =
+        SerializerParserHelper<std::tuple<int, int, MAVLinkMessage>,
+                               goby::middleware::scheme<std::tuple<int, int, MAVLinkMessage>>()>::
+            serialize(packet_in_with_metadata);
+
+    auto bytes_begin = bytes.begin(), bytes_end = bytes.end(), actual_end = bytes.begin();
+    auto packet_out_with_metadata = SerializerParserHelper<
+        std::tuple<int, int, MAVLinkMessage>,
+        goby::middleware::scheme<std::tuple<int, int, MAVLinkMessage>>()>::parse(bytes_begin,
+                                                                                 bytes_end,
+                                                                                 actual_end);
+
+    std::cout << "Out: " << write_tuple(*packet_out_with_metadata) << std::endl;
+    return *packet_out_with_metadata;
+}
+
 BOOST_AUTO_TEST_CASE(mavlink_common_heartbeat)
 {
     constexpr auto scheme = goby::middleware::scheme<mavlink::common::msg::HEARTBEAT>();
@@ -78,6 +113,19 @@ BOOST_AUTO_TEST_CASE(mavlink_common_heartbeat)
     BOOST_CHECK_EQUAL(packet_in.custom_mode, packet_out.custom_mode);
     BOOST_CHECK_EQUAL(packet_in.system_status, packet_out.system_status);
     //    BOOST_CHECK_EQUAL(packet_in.mavlink_version, packet_out.mavlink_version);
+
+    auto packet_out_with_metadata =
+        run_serialize_parse_with_metadata(std::make_tuple(2, 3, packet_in));
+    BOOST_CHECK_EQUAL(
+        std::get<goby::middleware::MAVLinkTupleIndices::SYSTEM_ID_INDEX>(packet_out_with_metadata),
+        2);
+    BOOST_CHECK_EQUAL(std::get<goby::middleware::MAVLinkTupleIndices::COMPONENT_ID_INDEX>(
+                          packet_out_with_metadata),
+                      3);
+    BOOST_CHECK_EQUAL(
+        std::get<goby::middleware::MAVLinkTupleIndices::PACKET_INDEX>(packet_out_with_metadata)
+            .to_yaml(),
+        packet_out.to_yaml());
 }
 
 BOOST_AUTO_TEST_CASE(mavlink_common_sys_status)

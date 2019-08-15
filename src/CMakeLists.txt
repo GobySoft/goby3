@@ -149,14 +149,29 @@ endmacro()
 goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
 include_directories(${Boost_INCLUDE_DIRS})
 
-include(acomms/src.cmake)
-include(util/src.cmake)
-include(time/src.cmake)
-include(middleware/src.cmake)
+
+## Mavlink
+set(MAVLINK_DOC_STRING "Build the MAVLink marshalling language support library (requires MavLink C++11 v2.0 headers)")
+find_package(MAVLINK QUIET)
+if(MAVLINK_FOUND)
+  include_directories(SYSTEM ${MAVLINK_INCLUDE_DIR})
+  message("Using MAVLink in ${MAVLINK_INCLUDE_DIR}")
+  option(enable_mavlink ${MAVLINK_DOC_STRING} ON)
+else()
+  option(enable_mavlink ${MAVLINK_DOC_STRING} OFF)
+  message(">> setting enable_mavlink to OFF ... if you need this functionality: 1) install MAVLink v2.0 C++11 headers; 2) run cmake -Denable_mavlink=ON")
+endif()  
+
 
 protobuf_generate_cpp(BASE_PROTO_SRCS BASE_PROTO_HDRS 
   protobuf/option_extensions.proto
   )
+
+
+include(acomms/src.cmake)
+include(util/src.cmake)
+include(time/src.cmake)
+include(middleware/src.cmake)
 
 add_library(goby
   ${BASE_PROTO_SRCS} ${BASE_PROTO_HDRS}
@@ -182,24 +197,9 @@ if(enable_ncurses)
   target_link_libraries(goby ${CURSES_LIBRARIES})
 endif()
 
-
-## Mavlink
-set(MAVLINK_DOC_STRING "Build the MAVLink marshalling language support library (requires MavLink C++11 v2.0 headers)")
-find_package(MAVLINK QUIET)
-if(MAVLINK_FOUND)
-  include_directories(SYSTEM ${MAVLINK_INCLUDE_DIR})
-  message("Using MAVLink in ${MAVLINK_INCLUDE_DIR}")
-  option(enable_mavlink ${MAVLINK_DOC_STRING} ON)
-else()
-  option(enable_mavlink ${MAVLINK_DOC_STRING} OFF)
-  message(">> setting enable_mavlink to OFF ... if you need this functionality: 1) install MAVLink v2.0 C++11 headers; 2) run cmake -Denable_mavlink=ON")
-endif()  
-
-
 set_target_properties(goby PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
 goby_install_lib(goby core)
-
 
 ## zeromq
 find_package(ZeroMQ QUIET)
@@ -237,6 +237,7 @@ else()
   option(build_moos ${MOOS_DOC_STRING} OFF)
   message(">> setting build_moos to OFF ... if you need this functionality: 1) install MOOS and libproj-dev; 2) run cmake -Dbuild_moos=ON")
 endif()
+
 
 if(build_moos)
   goby_find_required_package(MOOS 10 NO_MODULE)

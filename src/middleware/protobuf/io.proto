@@ -32,10 +32,10 @@ message IOError
 {
     enum ErrorCode
     {
-        IO__SERIAL_PORT_INIT_FAILURE = 1;
-        IO__SERIAL_PORT_READ_FAILURE = 2;
-        IO__SERIAL_PORT_WRITE_FAILURE = 3;
-        IO__SERIAL_DATA_TIMEOUT = 4;
+        IO__INIT_FAILURE = 1;
+        IO__READ_FAILURE = 2;
+        IO__WRITE_FAILURE = 3;
+        IO__DATA_TIMEOUT = 4;
     }
     required ErrorCode code = 1;
     optional string text = 2;

@@ -7,5 +7,5 @@ if(enable_wt)
 endif()
 
 if(enable_mavlink)
-  add_subdirectory(mavlink_serial_gateway)
+  add_subdirectory(mavlink_gateway)
 endif()

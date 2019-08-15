@@ -64,7 +64,7 @@ struct MAVLinkRegistry
     static std::mutex mavlink_registry_mutex_;
 };
 
-// runtime introspection google::protobuf::Message (publish only)
+// runtime introspection (publish and subscribe_type_regex only)
 template <> struct SerializerParserHelper<mavlink::mavlink_message_t, MarshallingScheme::MAVLINK>
 {
     static std::vector<char> serialize(const mavlink::mavlink_message_t& msg)
@@ -104,8 +104,17 @@ template <> struct SerializerParserHelper<mavlink::mavlink_message_t, Marshallin
                 }
 
                 case mavlink::MAVLINK_FRAMING_BAD_CRC:
-                    goby::glog.is_warn() && goby::glog << "BAD CRC decoding MAVLink type: " << type
-                                                       << std::endl;
+                    if (!MAVLinkRegistry::get_msg_entry(msg->msgid))
+                    {
+                        goby::glog.is_debug2() &&
+                            goby::glog << "MAVLink msg type: " << type
+                                       << " is unknown, so unable to validate CRC" << std::endl;
+                    }
+                    else
+                    {
+                        goby::glog.is_warn() &&
+                            goby::glog << "BAD CRC decoding MAVLink type: " << type << std::endl;
+                    }
                     goto fail;
                     break;
                 case mavlink::MAVLINK_FRAMING_BAD_SIGNATURE:
@@ -130,40 +139,97 @@ template <> struct SerializerParserHelper<mavlink::mavlink_message_t, Marshallin
     }
 };
 
-// user mavlink (static), e.g. DataType == HEARTBEAT
-template <typename DataType> struct SerializerParserHelper<DataType, MarshallingScheme::MAVLINK>
+struct MAVLinkTupleIndices
 {
-    static std::vector<char> serialize(const DataType& packet)
+    enum
+    {
+        SYSTEM_ID_INDEX = 0,
+        COMPONENT_ID_INDEX = 1,
+        PACKET_INDEX = 2
+    };
+};
+
+// user mavlink (static), e.g. DataType == HEARTBEAT, with tuple of <sysid, compid, msg>
+template <typename DataType, typename Integer>
+struct SerializerParserHelper<std::tuple<Integer, Integer, DataType>, MarshallingScheme::MAVLINK>
+{
+    static std::vector<char>
+    serialize(const std::tuple<Integer, Integer, DataType>& packet_with_metadata)
     {
         mavlink::mavlink_message_t msg{};
         mavlink::MsgMap map(msg);
+        const DataType& packet = std::get<MAVLinkTupleIndices::PACKET_INDEX>(packet_with_metadata);
         packet.serialize(map);
-        mavlink::mavlink_finalize_message(&msg, 1, 1, packet.MIN_LENGTH, packet.LENGTH,
-                                          packet.CRC_EXTRA);
+        mavlink::mavlink_finalize_message(
+            &msg, std::get<MAVLinkTupleIndices::SYSTEM_ID_INDEX>(packet_with_metadata),
+            std::get<MAVLinkTupleIndices::COMPONENT_ID_INDEX>(packet_with_metadata),
+            packet.MIN_LENGTH, packet.LENGTH, packet.CRC_EXTRA);
         return SerializerParserHelper<mavlink::mavlink_message_t,
                                       MarshallingScheme::MAVLINK>::serialize(msg);
     }
 
     // use numeric type name since that's all we have with mavlink_message_t alone
     static std::string type_name() { return std::to_string(DataType::MSG_ID); }
-    static std::string type_name(const DataType& d) { return type_name(); }
+    static std::string type_name(const std::tuple<Integer, Integer, DataType>& d)
+    {
+        return type_name();
+    }
 
     template <typename CharIterator>
-    static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
-                                           CharIterator& actual_end)
+    static std::shared_ptr<std::tuple<Integer, Integer, DataType>>
+    parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end)
     {
         auto msg =
             SerializerParserHelper<mavlink::mavlink_message_t,
                                    MarshallingScheme::MAVLINK>::parse_dynamic(bytes_begin,
                                                                               bytes_end, actual_end,
                                                                               type_name());
-        auto packet = std::make_shared<DataType>();
+        auto packet_with_metadata = std::make_shared<std::tuple<Integer, Integer, DataType>>();
+        DataType* packet = &std::get<MAVLinkTupleIndices::PACKET_INDEX>(*packet_with_metadata);
         mavlink::MsgMap map(msg.get());
         packet->deserialize(map);
-        return packet;
+        std::get<MAVLinkTupleIndices::SYSTEM_ID_INDEX>(*packet_with_metadata) = msg->sysid;
+        std::get<MAVLinkTupleIndices::COMPONENT_ID_INDEX>(*packet_with_metadata) = msg->compid;
+        return packet_with_metadata;
+    }
+};
+
+// user mavlink (static), e.g. DataType == HEARTBEAT, with runtime or default sysid / compid
+template <typename DataType> struct SerializerParserHelper<DataType, MarshallingScheme::MAVLINK>
+{
+    static std::vector<char> serialize(const DataType& packet, int sysid = 1, int compid = 1)
+    {
+        return SerializerParserHelper<std::tuple<int, int, DataType>, MarshallingScheme::MAVLINK>::
+            serialize(std::make_tuple(sysid, compid, packet));
     }
 
-}; // namespace middleware
+    static std::string type_name()
+    {
+        return SerializerParserHelper<std::tuple<int, int, DataType>,
+                                      MarshallingScheme::MAVLINK>::type_name();
+    }
+    static std::string type_name(const DataType& d) { return type_name(); }
+
+    template <typename CharIterator>
+    static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
+                                           CharIterator& actual_end)
+    {
+        auto packet_with_metadata =
+            SerializerParserHelper<std::tuple<int, int, DataType>,
+                                   MarshallingScheme::MAVLINK>::parse(bytes_begin, bytes_end,
+                                                                      actual_end);
+        return std::make_shared<DataType>(
+            std::get<MAVLinkTupleIndices::PACKET_INDEX>(*packet_with_metadata));
+    }
+};
+
+template <typename Tuple,
+          typename T = typename std::tuple_element<MAVLinkTupleIndices::PACKET_INDEX, Tuple>::type,
+          typename std::enable_if<std::is_base_of<mavlink::Message, T>::value>::type* = nullptr>
+constexpr int scheme()
+{
+    return goby::middleware::MarshallingScheme::MAVLINK;
+}
 
 template <typename T, typename std::enable_if<
                           std::is_base_of<mavlink::Message, T>::value ||

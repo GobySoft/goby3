@@ -40,10 +40,10 @@ namespace middleware
 {
 template <typename Config>
 class SimpleThread
-    : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter> > >
+    : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
 {
     using SimpleThreadBase =
-        Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter> > >;
+        Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>;
 
   public:
     SimpleThread(const Config& cfg, double loop_freq_hertz = 0, int index = -1)
@@ -58,7 +58,7 @@ class SimpleThread
         interthread_.reset(new InterThreadTransporter);
         interprocess_.reset(new InterProcessForwarder<InterThreadTransporter>(*interthread_));
         intervehicle_.reset(
-            new InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter> >(
+            new InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>(
                 *interprocess_));
 
         this->set_transporter(intervehicle_.get());
@@ -70,7 +70,7 @@ class SimpleThread
             });
     }
 
-    InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter> >& intervehicle()
+    InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>& intervehicle()
     {
         return this->transporter();
     }
@@ -84,8 +84,8 @@ class SimpleThread
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
-    std::unique_ptr<InterProcessForwarder<InterThreadTransporter> > interprocess_;
-    std::unique_ptr<InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter> > >
+    std::unique_ptr<InterProcessForwarder<InterThreadTransporter>> interprocess_;
+    std::unique_ptr<InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
         intervehicle_;
 };
 
@@ -102,7 +102,7 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
 
     static std::exception_ptr thread_exception_;
 
-    std::map<std::type_index, std::map<int, ThreadManagement> > threads_;
+    std::map<std::type_index, std::map<int, ThreadManagement>> threads_;
     int running_thread_count_{0};
     InterThreadTransporter interthread_;
 
@@ -122,7 +122,7 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
         interthread_
-            .template subscribe<MainThreadBase::joinable_group_, std::pair<std::type_index, int> >(
+            .template subscribe<MainThreadBase::joinable_group_, std::pair<std::type_index, int>>(
                 [this](const std::pair<std::type_index, int>& joinable) {
                     _join_thread(joinable.first, joinable.second);
                 });
@@ -212,13 +212,13 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
 template <class Config, template <class> class InterProcessPortal>
 class MultiThreadApplication
     : public MultiThreadApplicationBase<
-          Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter> > >
+          Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>
 {
   private:
     InterProcessPortal<InterThreadTransporter> interprocess_;
-    InterVehicleForwarder<InterProcessPortal<InterThreadTransporter> > intervehicle_;
+    InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>> intervehicle_;
     using Base = MultiThreadApplicationBase<
-        Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter> > >;
+        Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>;
 
   public:
     MultiThreadApplication(double loop_freq_hertz = 0)
@@ -252,7 +252,7 @@ class MultiThreadApplication
   protected:
     InterThreadTransporter& interthread() { return interprocess_.inner(); }
     InterProcessPortal<InterThreadTransporter>& interprocess() { return interprocess_; }
-    InterVehicleForwarder<InterProcessPortal<InterThreadTransporter> >& intervehicle()
+    InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>& intervehicle()
     {
         return intervehicle_;
     }
@@ -319,7 +319,7 @@ struct ThreadTypeSelector<ThreadType, ThreadConfig, true>
         return std::make_shared<ThreadType>(cfg, index);
     };
 };
-} // namespace goby
+} // namespace middleware
 
 template <class Config, class Transporter>
 std::exception_ptr
