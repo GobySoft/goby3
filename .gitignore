@@ -1,4 +1,5 @@
 *~
+*.bak
 /bin
 /lib
 /include
