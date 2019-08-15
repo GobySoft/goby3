@@ -188,7 +188,7 @@ class InterProcessPortal
                   const middleware::Publisher<Data>& publisher)
     {
         std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
-        std::string identifier = _make_fully_qualified_identifier<Data, scheme>(group) + '\0';
+        std::string identifier = _make_fully_qualified_identifier<Data, scheme>(d, group) + '\0';
         zmq_main_.publish(identifier, &bytes[0], bytes.size());
     }
 
@@ -437,23 +437,25 @@ class InterProcessPortal
     };
 
     template <typename Data, int scheme>
-    std::string _make_fully_qualified_identifier(const goby::middleware::Group& group)
-    {
-        auto it = id_map_.find(group);
-        if (it == id_map_.end())
-        {
-            auto p = id_map_.insert(std::make_pair(
-                group, _make_identifier<Data, scheme>(group, IdentifierWildcard::THREAD_WILDCARD)));
-            it = p.first;
-        }
-
-        return it->second + id_component(std::this_thread::get_id(), threads_);
-    }
-
-    template <typename Data, int scheme>
     std::string _make_identifier(const goby::middleware::Group& group, IdentifierWildcard wildcard)
     {
         return _make_identifier(middleware::SerializerParserHelper<Data, scheme>::type_name(),
+                                scheme, group, wildcard);
+    }
+
+    template <typename Data, int scheme>
+    std::string _make_fully_qualified_identifier(const Data& d,
+                                                 const goby::middleware::Group& group)
+    {
+        return _make_identifier<Data, scheme>(d, group, IdentifierWildcard::THREAD_WILDCARD) +
+               id_component(std::this_thread::get_id(), threads_);
+    }
+
+    template <typename Data, int scheme>
+    std::string _make_identifier(const Data& d, const goby::middleware::Group& group,
+                                 IdentifierWildcard wildcard)
+    {
+        return _make_identifier(middleware::SerializerParserHelper<Data, scheme>::type_name(d),
                                 scheme, group, wildcard);
     }
 
@@ -540,8 +542,6 @@ class InterProcessPortal
     std::unordered_map<int, std::string> schemes_;
     std::unordered_map<std::thread::id, std::string> threads_;
 
-    // make all but the thread part once and reuse
-    std::unordered_map<goby::middleware::Group, std::string> id_map_;
 };
 
 class Router

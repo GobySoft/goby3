@@ -34,9 +34,9 @@ struct MyMarshallingScheme
     };
 };
 
-template <typename DataType> struct SerializerParserHelper<DataType, MyMarshallingScheme::DEQUECHAR>
+template <> struct SerializerParserHelper<std::deque<char>, MyMarshallingScheme::DEQUECHAR>
 {
-    static std::vector<char> serialize(const DataType& msg)
+    static std::vector<char> serialize(const std::deque<char>& msg)
     {
         std::vector<char> bytes(msg.begin(), msg.end());
         return bytes;
@@ -44,10 +44,14 @@ template <typename DataType> struct SerializerParserHelper<DataType, MyMarshalli
 
     static std::string type_name() { return "DEQUECHAR"; }
 
-    static DataType parse(const std::vector<char>& bytes)
+    static std::string type_name(const std::deque<char>& d) { return type_name(); }
+
+    static std::deque<char> parse(const std::vector<char>& bytes)
     {
         if (bytes.size())
-            DataType msg(bytes.begin(), bytes.end() - 1);
+            return std::deque<char>(bytes.begin(), bytes.end() - 1);
+        else
+            return std::deque<char>();
     }
 };
 
