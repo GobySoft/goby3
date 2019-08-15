@@ -7,6 +7,8 @@
 #include "goby/middleware/marshalling/protobuf.h"
 
 #include "goby/middleware/io/serial_mavlink.h"
+#include "goby/middleware/io/udp_mavlink.h"
+
 #include "goby/zeromq/application/multi_thread.h"
 #include "goby/zeromq/protobuf/mavlink_gateway_config.pb.h"
 
@@ -27,10 +29,17 @@ namespace zeromq
 class MAVLinkGateway : public AppBase
 {
   public:
-    using SerialThread = goby::middleware::io::SerialThreadMAVLink<
-        goby::middleware::io::groups::mavlink_raw_in, goby::middleware::io::groups::mavlink_raw_out,
-        goby::middleware::io::SerialLinePubSubLayer::INTERPROCESS,
-        goby::middleware::io::SerialLinePubSubLayer::INTERPROCESS>;
+    using SerialThread =
+        goby::middleware::io::SerialThreadMAVLink<goby::middleware::io::groups::mavlink_raw_in,
+                                                  goby::middleware::io::groups::mavlink_raw_out,
+                                                  goby::middleware::io::PubSubLayer::INTERPROCESS,
+                                                  goby::middleware::io::PubSubLayer::INTERPROCESS>;
+
+    using UDPThread =
+        goby::middleware::io::UDPThreadMAVLink<goby::middleware::io::groups::mavlink_raw_in,
+                                               goby::middleware::io::groups::mavlink_raw_out,
+                                               goby::middleware::io::PubSubLayer::INTERPROCESS,
+                                               goby::middleware::io::PubSubLayer::INTERPROCESS>;
 
     MAVLinkGateway()
     {
@@ -46,7 +55,15 @@ class MAVLinkGateway : public AppBase
                                                          << "]: " << hb.to_yaml() << std::endl;
                 });
 
-        launch_thread<SerialThread>(cfg().serial());
+        switch (cfg().connection_type())
+        {
+            case protobuf::MAVLinkGatewayConfig::CONNECTION_SERIAL:
+                launch_thread<SerialThread>(cfg().serial());
+                break;
+            case protobuf::MAVLinkGatewayConfig::CONNECTION_UDP:
+                launch_thread<UDPThread>(cfg().udp());
+                break;
+        }
     }
 };
 
@@ -59,11 +76,14 @@ class MAVLinkGatewayConfigurator : public goby::middleware::ProtobufConfigurator
               goby::apps::zeromq::protobuf::MAVLinkGatewayConfig>(argc, argv)
     {
         goby::apps::zeromq::protobuf::MAVLinkGatewayConfig& cfg = mutable_cfg();
-        goby::middleware::protobuf::SerialConfig& serial_cfg = *cfg.mutable_serial();
 
-        // set default baud
-        if (!serial_cfg.has_baud())
-            serial_cfg.set_baud(57600);
+        if (cfg.connection_type() == protobuf::MAVLinkGatewayConfig::CONNECTION_SERIAL)
+        {
+            goby::middleware::protobuf::SerialConfig& serial_cfg = *cfg.mutable_serial();
+            // set default baud
+            if (!serial_cfg.has_baud())
+                serial_cfg.set_baud(57600);
+        }
     }
 };
 } // namespace zeromq

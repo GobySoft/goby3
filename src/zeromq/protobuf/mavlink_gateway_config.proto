@@ -1,6 +1,7 @@
 syntax = "proto2";
 import "goby/middleware/protobuf/app_config.proto";
 import "goby/middleware/protobuf/serial_config.proto";
+import "goby/middleware/protobuf/udp_config.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
 
 package goby.apps.zeromq.protobuf;
@@ -10,5 +11,14 @@ message MAVLinkGatewayConfig
     optional goby.middleware.protobuf.AppConfig app = 1;
     optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
 
-    required goby.middleware.protobuf.SerialConfig serial = 10;
+    enum ConnectionType 
+    {
+        CONNECTION_SERIAL = 1;
+        CONNECTION_UDP = 2;
+    }
+
+    optional ConnectionType connection_type = 5 [default = CONNECTION_SERIAL];
+    
+    optional goby.middleware.protobuf.SerialConfig serial = 10;
+    optional goby.middleware.protobuf.UDPPointToPointConfig udp = 11;
 }

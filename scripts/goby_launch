@@ -66,7 +66,7 @@ do_kill()
 
         if [ "$sig" = "goby_terminate" ]; then
             # run goby_terminate to cleanly shutdown processes
-            printf "goby_terminate: $p (was $cmd)"
+            echo -n "goby_terminate: $p (was $cmd)"
             if goby_terminate --response_timeout ${sigterm_delay} --target_pid $p <(echo ${gobyd_interprocess});
             then
                 echo -e " .... success"
@@ -78,7 +78,7 @@ do_kill()
             echo -e "\n=== WARNING ===: Process $p did not respond to goby_terminate, sending $sig"
         fi
         
-        printf "$sig: $p (was $cmd)"
+        echo -n "$sig: $p (was $cmd)"
         kill -$sig $p
 
         elapsed_ms=0
@@ -88,7 +88,7 @@ do_kill()
             # if necessary, escalate to SIGKILL
             if (($elapsed_ms > $sigkill_delay)); then
                 echo -e "\n====== WARNING ======: Process $p did not respond to SIGTERM after $sigkill_delay ms, sending SIGKILL"
-                printf "SIGKILL: $p (was $cmd)"
+                echo -n "SIGKILL: $p (was $cmd)"
                 kill -SIGKILL $p
                 break;
             fi
@@ -164,14 +164,8 @@ if [ -z "$gobyd_line" ]; then
     use_goby_terminate=false
 else
     gobyd_escline=$(echo "$gobyd_line" | sed 's/"/\\"/g')
-    echo $gobyd_escline
-
-    gobyd_interprocess=$(bash -c "$gobyd_line --app 'debug_cfg: true'" | sed -n "/^ *interprocess/,/}/p;")
-    echo $gobyd_interprocess
-    
+    gobyd_interprocess=$(bash -c "$gobyd_line --app 'debug_cfg: true'" | sed -n "/^ *interprocess/,/}/p;")    
     gobyd_platform=$(echo "$gobyd_interprocess" | grep platform | sed 's/.*platform: \"\(.*\)\".*/\1/')
-    echo $gobyd_platform
-
     if [ ! -z "$gobyd_platform" ]; then
         platform="$gobyd_platform"
         echo "Setting platform to [$gobyd_platform] from gobyd interprocess configuration"
