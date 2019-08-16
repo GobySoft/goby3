@@ -43,7 +43,7 @@ class Translator
     Translator(const goby::apps::moos::protobuf::GobyMOOSGatewayConfig& config);
 
   protected:
-    virtual std::string translator_name()
+    std::string translator_name()
     {
         std::stringstream ss;
         ss << std::this_thread::get_id();
@@ -78,6 +78,7 @@ class Translator
         std::set<std::string> buffer_vars_;
         std::map<std::string, CMOOSMsg> buffer_;
         MOOS::MOOSAsyncCommClient comms_;
+        goby::time::SystemClock::time_point next_time_publish_{goby::time::SystemClock::now()};
     };
 
     friend bool TranslatorOnConnectCallBack(void* Translator);

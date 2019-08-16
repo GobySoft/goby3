@@ -120,7 +120,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_driver_data_from_fronts
         const double pi = 3.14159;
         if (status.pose().has_heading())
         {
-            double yaw = -status.pose().heading() * pi / 180.0;
+            double yaw = status.pose().heading() * pi / 180.0;
             while (yaw < -pi) yaw += 2 * pi;
             while (yaw >= pi) yaw -= 2 * pi;
             ifs_->publish("NAV_YAW", yaw);
