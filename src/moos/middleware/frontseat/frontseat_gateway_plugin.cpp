@@ -172,6 +172,8 @@ void goby::moos::FrontSeatTranslation::convert_desired_setpoints()
     glog.is_debug2() && glog << "Posting to Goby: Desired: " << desired_setpoints.DebugString()
                              << std::endl;
 
-    goby().interprocess().publish<goby::middleware::frontseat::groups::desired_course>(
-        desired_setpoints);
+    goby()
+        .interprocess()
+        .publish<goby::middleware::frontseat::groups::desired_course, decltype(desired_setpoints),
+                 goby::middleware::MarshallingScheme::PROTOBUF>(desired_setpoints);
 }
