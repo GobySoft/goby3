@@ -52,6 +52,7 @@ const boost::posix_time::time_duration
 const std::string goby::acomms::MMDriver::SERIAL_DELIMITER = "\r";
 const unsigned goby::acomms::MMDriver::PACKET_FRAME_COUNT[] = {1, 3, 3, 2, 2, 8};
 const unsigned goby::acomms::MMDriver::PACKET_SIZE[] = {32, 64, 64, 256, 256, 256};
+std::mutex goby::acomms::MMDriver::dccl_mutex_;
 
 //
 // INITIALIZATION
@@ -106,8 +107,18 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
 
     using_application_acks_ = mm_driver_cfg().use_application_acks();
     application_ack_max_frames_ = 32;
+
     if (using_application_acks_)
-        dccl_.load<micromodem::protobuf::MMApplicationAck>();
+    {
+        application_ack_ids_.insert(driver_cfg_.modem_id());
+        // allow application acks for additional modem ids (for spoofing another ID)
+        for (unsigned id : mm_driver_cfg().additional_application_ack_modem_id())
+            application_ack_ids_.insert(id);
+
+        std::lock_guard<std::mutex> l(dccl_mutex_);
+        dccl_.reset(new dccl::Codec);
+        dccl_->load<micromodem::protobuf::MMApplicationAck>();
+    }
 
     modem_start(driver_cfg_);
 
@@ -1361,23 +1372,28 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
 
 void goby::acomms::MMDriver::process_incoming_app_ack(protobuf::ModemTransmission* m)
 {
-    if (dccl_.id(m->frame(0)) == dccl_.id<micromodem::protobuf::MMApplicationAck>())
+    std::lock_guard<std::mutex> l(dccl_mutex_);
+    if (dccl_->id(m->frame(0)) == dccl_->id<micromodem::protobuf::MMApplicationAck>())
     {
         micromodem::protobuf::MMApplicationAck acks;
-        dccl_.decode(m->mutable_frame(0), &acks);
+        dccl_->decode(m->mutable_frame(0), &acks);
         glog.is(DEBUG1) && glog << group(glog_in_group()) << "Received ACKS " << acks.DebugString()
                                 << std::endl;
 
         // this data message requires a future ACK from us
-        if (m->dest() == driver_cfg_.modem_id() && acks.ack_requested())
+        if (application_ack_ids_.count(m->dest()) && acks.ack_requested())
         {
+            glog.is(DEBUG1) && glog << group(glog_in_group())
+                                    << "Caching pending ACK for frame: " << acks.frame_start()
+                                    << std::endl;
+
             frames_to_ack_[m->src()].insert(acks.frame_start());
         }
 
         // process any acks that were included in this message
         for (int i = 0, n = acks.part_size(); i < n; ++i)
         {
-            if (acks.part(i).ack_dest() == driver_cfg_.modem_id())
+            if (application_ack_ids_.count(acks.part(i).ack_dest()))
             {
                 for (int j = 0, o = application_ack_max_frames_; j < o; ++j)
                 {
@@ -1762,11 +1778,13 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
     }
     else
     {
+        std::lock_guard<std::mutex> l(dccl_mutex_);
+
         // build up message to ack
         micromodem::protobuf::MMApplicationAck acks;
 
-        for (std::map<unsigned, std::set<unsigned> >::const_iterator it = frames_to_ack_.begin(),
-                                                                     end = frames_to_ack_.end();
+        for (std::map<unsigned, std::set<unsigned>>::const_iterator it = frames_to_ack_.begin(),
+                                                                    end = frames_to_ack_.end();
              it != end; ++it)
         {
             micromodem::protobuf::MMApplicationAck::AckPart& acks_part = *acks.add_part();
@@ -1785,8 +1803,11 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
         acks.set_frame_start(next_frame_);
         msg->set_frame_start(next_frame_);
 
+        glog.is(DEBUG2) && glog << group(glog_out_group())
+                                << "Created app ack: " << acks.ShortDebugString() << std::endl;
+
         // calculate size of ack message
-        unsigned ack_size = dccl_.size(acks);
+        unsigned ack_size = dccl_->size(acks);
 
         // insert placeholder
         msg->add_frame()->resize(ack_size, 0);
@@ -1797,7 +1818,7 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
         // now that we know if an ack is requested, set that
         acks.set_ack_requested(msg->ack_requested());
         std::string ack_bytes;
-        dccl_.encode(&ack_bytes, acks);
+        dccl_->encode(&ack_bytes, acks);
         // insert real ack message
         msg->mutable_frame(0)->replace(0, ack_size, ack_bytes);
 

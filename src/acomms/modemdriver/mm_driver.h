@@ -351,12 +351,18 @@ class MMDriver : public ModemDriverBase
 
     bool using_application_acks_;
     int application_ack_max_frames_;
+
+    // ids we are providing acks for, normally just our modem_id()
+    std::set<unsigned> application_ack_ids_;
+
     int next_frame_;
 
     // modem id to frames
     std::map<unsigned, std::set<unsigned> > frames_to_ack_;
 
-    dccl::Codec dccl_;
+    std::unique_ptr<dccl::Codec> dccl_;
+    // DCCL requires full memory barrier...
+    static std::mutex dccl_mutex_;
 
     int serial_fd_;
 };

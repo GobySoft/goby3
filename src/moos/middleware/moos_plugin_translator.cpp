@@ -45,8 +45,6 @@ goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
     moos_.comms().SetOnConnectCallBack(TranslatorOnConnectCallBack, this);
 
     moos_.comms().Run(cfg().moos().server(), cfg().moos().port(), translator_name());
-    while (moos_.comms().WaitUntilConnected(1000 /*ms*/))
-        ;
 }
 
 void goby::moos::Translator::loop() { moos_.loop(); }
