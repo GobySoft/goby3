@@ -71,7 +71,7 @@ goby::acomms::MMDriver::MMDriver()
       expected_remaining_cacst_(0),
       expected_ack_destination_(0),
       local_cccyc_(false),
-      last_keep_alive_time_(std::chrono::seconds(0)),
+      last_keep_alive_time_(0 * boost::units::si::seconds),
       using_application_acks_(false),
       application_ack_max_frames_(0),
       next_frame_(0),
@@ -505,13 +505,26 @@ void goby::acomms::MMDriver::do_work()
         set_clock();
 
     // send a message periodically (query the source ID) to the local modem to ascertain that it is still alive
-    auto now = time::SystemClock::now();
-    if (last_keep_alive_time_ + std::chrono::seconds(mm_driver_cfg().keep_alive_seconds()) <= now)
+    auto now = time::SystemClock::now<goby::time::SITime>();
+    if (last_keep_alive_time_ + mm_driver_cfg().keep_alive_seconds() * boost::units::si::seconds <=
+        now)
     {
-        NMEASentence nmea("$CCCFQ", NMEASentence::IGNORE);
-        nmea.push_back("SRC");
-        append_to_write_queue(nmea);
-        last_keep_alive_time_ = now;
+        if (revision_.mm_major >= 2)
+        {
+            NMEASentence nmea("$CCTMQ", NMEASentence::IGNORE);
+            nmea.push_back("0");
+            append_to_write_queue(nmea);
+
+            // we want to send this at the start of the second to get a reasonable response
+            last_keep_alive_time_ = boost::units::round(now);
+        }
+        else
+        {
+            NMEASentence nmea("$CCCFQ", NMEASentence::IGNORE);
+            nmea.push_back("SRC");
+            append_to_write_queue(nmea);
+            last_keep_alive_time_ = now;
+        }
     }
 
     // keep trying to send stuff to the modem
@@ -1445,6 +1458,13 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
         std::istringstream iso_time(t);
         iso_time.imbue(std::locale(std::locale::classic(), tif));
         iso_time >> reported;
+
+        if (sentence_id == TMQ)
+        {
+            // Micro-Modem takes 0.5 second to respond to TMQ
+            const auto tmq_delay(boost::posix_time::milliseconds(500));
+            reported += tmq_delay;
+        }
     }
     // glog.is(DEBUG1) && glog << group(glog_in_group()) << "Micro-Modem reported time: " << reported << std::endl;
 
@@ -1452,7 +1472,7 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
     // we may end up oversetting the clock, but better safe than sorry...
     boost::posix_time::time_duration t_diff = (reported - expected);
 
-    // glog.is(DEBUG1) && glog << group(glog_in_group()) << "Difference: " << t_diff << std::endl;
+    glog.is(DEBUG1) && glog << group(glog_in_group()) << "Time Difference: " << t_diff << std::endl;
 
     if (abs(int(t_diff.total_milliseconds())) < mm_driver_cfg().allowed_skew_ms())
     {
@@ -1869,12 +1889,73 @@ void goby::acomms::MMDriver::cacst(const NMEASentence& nmea, protobuf::ModemTran
         cst->set_time_with_units(
             time::convert_from_nmea<time::MicroTime>(nmea.as<std::string>(2 + version_offset)));
 
-        micromodem::protobuf::ClockMode clock_mode =
-            micromodem::protobuf::ClockMode_IsValid(nmea.as<int>(3 + version_offset))
-                ? nmea.as<micromodem::protobuf::ClockMode>(3 + version_offset)
-                : micromodem::protobuf::INVALID_CLOCK_MODE;
+        // switch to bit field in 2.0.26038+
+        // Bits 0:1: RTC source
+        // 0 None
+        // 1 Onboard RTC
+        // 2 User Command (e.g. CLK)
+        // 3 User GPS (e.g. GPRMC)
+        // Bits 2:4 PPS Source
+        // 0 None
+        // 1 RTC
+        // 2 CAL (future)
+        // 3 EXT (from external pin)
+        // 4 EXT_SYNC (from RTC synchronized to the last EXT PPS pulse)
+        if (revision_.mm_major == 2 &&
+            (revision_.mm_minor > 0 || (revision_.mm_minor == 0 && revision_.mm_patch >= 26038)))
+        {
+            int mode = nmea.as<int>(3 + version_offset);
 
-        cst->set_clock_mode(clock_mode);
+            int rtc_source = mode & 0x3;
+            int pps_source = (mode >> 2) & 0x7;
+
+            micromodem::protobuf::ClockMode clock_mode = micromodem::protobuf::INVALID_CLOCK_MODE;
+            switch (pps_source)
+            {
+                case 0:
+                case 1:
+                case 2:
+                case 4:
+                    switch (rtc_source)
+                    {
+                        case 0:
+                        case 1:
+                            clock_mode = micromodem::protobuf::NO_SYNC_TO_PPS_AND_CCCLK_BAD;
+                            break;
+                        case 2:
+                        case 3:
+                            clock_mode = micromodem::protobuf::NO_SYNC_TO_PPS_AND_CCCLK_GOOD;
+                            break;
+                    }
+                    break;
+
+                case 3:
+                    switch (rtc_source)
+                    {
+                        case 0:
+                        case 1: clock_mode = micromodem::protobuf::SYNC_TO_PPS_AND_CCCLK_BAD; break;
+                        case 2:
+                        case 3:
+                            clock_mode = micromodem::protobuf::SYNC_TO_PPS_AND_CCCLK_GOOD;
+                            break;
+                    }
+                    break;
+
+                default: break;
+            }
+
+            cst->set_clock_mode(clock_mode);
+        }
+        else
+        {
+            micromodem::protobuf::ClockMode clock_mode =
+                micromodem::protobuf::ClockMode_IsValid(nmea.as<int>(3 + version_offset))
+                    ? nmea.as<micromodem::protobuf::ClockMode>(3 + version_offset)
+                    : micromodem::protobuf::INVALID_CLOCK_MODE;
+
+            cst->set_clock_mode(clock_mode);
+        }
+
         cst->set_mfd_peak(nmea.as<double>(4 + version_offset));
         cst->set_mfd_power(nmea.as<double>(5 + version_offset));
         cst->set_mfd_ratio(nmea.as<double>(6 + version_offset));
