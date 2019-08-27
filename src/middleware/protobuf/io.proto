@@ -6,6 +6,7 @@ package goby.middleware.protobuf;
 
 message IOData
 {
+    optional int32 index = 1 [default = -1];    
     optional bytes data = 10;
 }
 

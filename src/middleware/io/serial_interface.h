@@ -53,7 +53,8 @@ class SerialThread
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    SerialThread(const goby::middleware::protobuf::SerialConfig& config) : Base(config)
+    SerialThread(const goby::middleware::protobuf::SerialConfig& config, int index = -1)
+        : Base(config, index)
     {
         auto command_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::SerialCommand> cmd) {

@@ -98,12 +98,13 @@ class IOThread
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the configuration read by the main application at launch
-    IOThread(const IOConfig& config)
-        : goby::middleware::SimpleThread<IOConfig>(config, this->loop_max_frequency())
+    IOThread(const IOConfig& config, int index = -1)
+        : goby::middleware::SimpleThread<IOConfig>(config, this->loop_max_frequency(), index)
     {
         auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
-                write(io_msg);
+                if (io_msg->index() == this->index())
+                    write(io_msg);
             };
 
         this->subscribe_transporter()
@@ -157,8 +158,10 @@ class IOThread
   protected:
     void write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
     {
-        goby::glog.is_debug2() && goby::glog << group("i/o") << "(" << io_msg->data().size()
-                                             << "B) < " << io_msg->ShortDebugString() << std::endl;
+        goby::glog.is_debug2() &&
+            goby::glog << group("i/o") << "(" << io_msg->data().size() << "B) <"
+                       << ((this->index() == -1) ? std::string() : std::to_string(this->index()))
+                       << " " << io_msg->ShortDebugString() << std::endl;
         if (io_msg->data().empty())
             return;
         if (!socket_ || !socket_->is_open())
@@ -172,8 +175,13 @@ class IOThread
         auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();
         *io_msg->mutable_data() = bytes;
 
-        goby::glog.is_debug2() && goby::glog << group("i/o") << "(" << bytes_transferred << "B) > "
-                                             << io_msg->ShortDebugString() << std::endl;
+        goby::glog.is_debug2() &&
+            goby::glog << group("i/o") << "(" << bytes_transferred << "B) >"
+                       << ((this->index() == -1) ? std::string() : std::to_string(this->index()))
+                       << " " << io_msg->ShortDebugString() << std::endl;
+
+        if (this->index() != -1)
+            io_msg->set_index(this->index());
 
         this->publish_transporter().template publish<line_in_group>(io_msg);
     }
