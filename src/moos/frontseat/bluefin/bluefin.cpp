@@ -651,7 +651,7 @@ void goby::moos::BluefinFrontSeat::load_nmea_mappings()
             {"SIL", SIL}, {"BOY", BOY}, {"SUS", SUS}, {"CON", CON}, {"RES", RES}, {"SPD", SPD},
             {"SAN", SAN}, {"GHP", GHP}, {"GBP", GBP}, {"RNS", RNS}, {"RBO", RBO}, {"CMA", CMA},
             {"NVR", NVR}, {"TEL", TEL}, {"CTL", CTL}, {"DCL", DCL}};
-        sentence_id_map_ = decltype(sentence_id_map_)(v.begin(), v.end());
+        sentence_id_map_ = boost::bimap<std::string, SentenceIDs>(v.begin(), v.end());
     }
 
     talker_id_map_ = {{"BF", BF}, {"BP", BP}};
