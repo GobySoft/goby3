@@ -167,7 +167,7 @@ class IOThread
         if (!socket_ || !socket_->is_open())
             return;
 
-        this->async_write(io_msg->data());
+        this->async_write(io_msg);
     }
 
     void handle_read_success(std::size_t bytes_transferred, const std::string& bytes)
@@ -175,13 +175,19 @@ class IOThread
         auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();
         *io_msg->mutable_data() = bytes;
 
+        handle_read_success(bytes_transferred, io_msg);
+    }
+
+    void handle_read_success(std::size_t bytes_transferred,
+                             std::shared_ptr<goby::middleware::protobuf::IOData> io_msg)
+    {
+        if (this->index() != -1)
+            io_msg->set_index(this->index());
+
         goby::glog.is_debug2() &&
             goby::glog << group("i/o") << "(" << bytes_transferred << "B) >"
                        << ((this->index() == -1) ? std::string() : std::to_string(this->index()))
                        << " " << io_msg->ShortDebugString() << std::endl;
-
-        if (this->index() != -1)
-            io_msg->set_index(this->index());
 
         this->publish_transporter().template publish<line_in_group>(io_msg);
     }
@@ -211,7 +217,18 @@ class IOThread
     virtual void async_read() = 0;
 
     /// \brief Starts an asynchronous write from data published
-    virtual void async_write(const std::string& bytes) = 0;
+    virtual void async_write(const std::string& bytes)
+    {
+        throw(goby::Exception(
+            "Must overload async_write(const std::string& bytes) if not overloading "
+            "async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)"));
+    }
+
+    /// \brief Starts an asynchronous write from data published
+    virtual void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
+    {
+        async_write(io_msg->data());
+    }
 
   private:
     /// \brief Tries to open the socket, and if fails publishes an error

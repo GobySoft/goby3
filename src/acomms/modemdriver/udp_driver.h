@@ -64,6 +64,10 @@ class UDPDriver : public ModemDriverBase
     static constexpr size_t UDP_MAX_PACKET_SIZE = 65507;
 
     std::array<char, UDP_MAX_PACKET_SIZE> receive_buffer_;
+
+    // ids we are providing acks for, normally just our modem_id()
+    std::set<unsigned> application_ack_ids_;
+
     std::uint32_t next_frame_{0};
 };
 } // namespace acomms

@@ -55,6 +55,12 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
                             << "Receiver endpoint is: " << receiver_.address().to_string() << ":"
                             << receiver_.port() << std::endl;
 
+    application_ack_ids_.insert(driver_cfg_.modem_id());
+    // allow application acks for additional modem ids (for spoofing another ID)
+    for (unsigned id :
+         driver_cfg_.GetExtension(udp::protobuf::config).additional_application_ack_modem_id())
+        application_ack_ids_.insert(id);
+
     start_receive();
     io_service_.reset();
 }
@@ -93,8 +99,8 @@ void goby::acomms::UDPDriver::do_work() { io_service_.poll(); }
 
 void goby::acomms::UDPDriver::receive_message(const protobuf::ModemTransmission& msg)
 {
-    if (msg.type() == protobuf::ModemTransmission::DATA && msg.ack_requested() &&
-        msg.dest() != BROADCAST_ID)
+    if (msg.type() != protobuf::ModemTransmission::ACK && msg.ack_requested() &&
+        application_ack_ids_.count(msg.dest()))
     {
         // make any acks
         protobuf::ModemTransmission ack;

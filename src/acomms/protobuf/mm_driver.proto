@@ -107,13 +107,15 @@ message RangingReply
 {
     option (dccl.msg).id = 128;
     option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).unit_system = "si";
 
     // seconds
     repeated double one_way_travel_time = 1 [
         (dccl.field).min = 0,
         (dccl.field).max = 30,
         (dccl.field).precision = 3,
-        (dccl.field).max_repeat = 4
+        (dccl.field).max_repeat = 4,
+        (dccl.field).units = {base_dimensions: "T"}
     ];
     enum OWTTAmbiguity
     {
@@ -364,8 +366,7 @@ message Transmission
 
     // LBL parameters will be merged with configuration parameters. If a
     // parameter is set in both places, the ones set here take precedence.
-    optional NarrowBandLBLParams narrowband_lbl = 2
-        [(dccl.field).omit = true];
+    optional NarrowBandLBLParams narrowband_lbl = 2 [(dccl.field).omit = true];
     optional REMUSLBLParams remus_lbl = 3 [(dccl.field).omit = true];
 
     optional RangingReply ranging_reply = 4
@@ -381,9 +382,8 @@ message Transmission
 
     optional HardwareControl hw_ctl = 8 [(dccl.field).omit = true];
 
-    optional GenericLBLParams generic_lbl = 9 [(dccl.field).omit = true];    
+    optional GenericLBLParams generic_lbl = 9 [(dccl.field).omit = true];
 }
-
 
 extend goby.acomms.protobuf.ModemTransmission
 {

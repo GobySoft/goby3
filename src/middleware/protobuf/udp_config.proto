@@ -4,6 +4,18 @@ import "dccl/option_extensions.proto";
 
 package goby.middleware.protobuf;
 
+message UDPOneToManyConfig
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    required uint32 bind_port = 2 [(goby.field) = { description: "UDP Port to bind on" example: "50000" }];
+    
+    optional bool set_reuseaddr = 10 [default = false];
+    optional bool set_broadcast = 11 [default = false];
+}
+
 message UDPPointToPointConfig
 {
     option (dccl.msg) = {
@@ -14,4 +26,8 @@ message UDPPointToPointConfig
 
     required string remote_address = 5 [(goby.field) = { description: "Remote address to transfer data to" example: "192.168.1.1" }];
     required uint32 remote_port = 6 [(goby.field) = { description: "UDP port for remote endpoint" example: "50001" }];
+
+    optional bool set_reuseaddr = 10 [default = false];
+    optional bool set_broadcast = 11 [default = false];
+    
 }
