@@ -98,6 +98,7 @@ class IOThread
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the configuration read by the main application at launch
+    /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
     IOThread(const IOConfig& config, int index = -1)
         : goby::middleware::SimpleThread<IOConfig>(config, this->loop_max_frequency(), index)
     {

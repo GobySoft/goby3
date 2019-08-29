@@ -68,6 +68,7 @@ class SerialThreadLineBased
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
+    /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
     SerialThreadLineBased(const goby::middleware::protobuf::SerialConfig& config, int index = -1)
         : Base(config, index), eol_matcher_(this->cfg().end_of_line())
     {
