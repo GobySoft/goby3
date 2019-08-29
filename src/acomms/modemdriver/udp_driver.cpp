@@ -105,6 +105,7 @@ void goby::acomms::UDPDriver::receive_message(const protobuf::ModemTransmission&
         // make any acks
         protobuf::ModemTransmission ack;
         ack.set_type(goby::acomms::protobuf::ModemTransmission::ACK);
+        ack.set_time_with_units(goby::time::SystemClock::now<goby::time::MicroTime>());
         ack.set_src(msg.dest());
         ack.set_dest(msg.src());
         for (int i = msg.frame_start(), n = msg.frame_size() + msg.frame_start(); i < n; ++i)
