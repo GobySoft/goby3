@@ -23,7 +23,11 @@
 #include "interface.h"
 
 const std::map<int, std::string> goby::middleware::MarshallingScheme::e2s = {
-    {CSTR, "CSTR"}, {PROTOBUF, "PROTOBUF"}, {DCCL, "DCCL"}, {MAVLINK, "MAVLINK"}};
+    {CSTR, "CSTR"},
+    {PROTOBUF, "PROTOBUF"},
+    {DCCL, "DCCL"},
+    {CXX_OBJECT, "CXX_OBJECT"},
+    {MAVLINK, "MAVLINK"}};
 
 std::map<std::string, int> invert_map(const std::map<int, std::string>& e2s)
 {

@@ -55,12 +55,12 @@ class UTMGeodesy
     UTMGeodesy(LatLonPoint origin);
     virtual ~UTMGeodesy();
 
-    LatLonPoint origin_geo() { return origin_geo_; }
-    XYPoint origin_utm() { return origin_utm_; }
-    int origin_utm_zone() { return origin_zone_; }
+    LatLonPoint origin_geo() const { return origin_geo_; }
+    XYPoint origin_utm() const { return origin_utm_; }
+    int origin_utm_zone() const { return origin_zone_; }
 
-    LatLonPoint convert(XYPoint utm);
-    XYPoint convert(LatLonPoint geo);
+    LatLonPoint convert(XYPoint utm) const;
+    XYPoint convert(LatLonPoint geo) const;
 
   private:
     LatLonPoint origin_geo_;

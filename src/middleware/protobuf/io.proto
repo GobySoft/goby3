@@ -4,9 +4,27 @@ import "dccl/option_extensions.proto";
 
 package goby.middleware.protobuf;
 
+message UDPEndPoint
+{
+    required string addr = 1;
+    required uint32 port = 2;
+}
+
 message IOData
 {
-    optional bytes data = 10;
+    optional int32 index = 1 [default = -1];
+
+    oneof src
+    {
+        UDPEndPoint udp_src = 10;
+    }
+    
+    oneof dest
+    {
+        UDPEndPoint udp_dest = 20;
+    }
+
+    optional bytes data = 30;
 }
 
 message SerialCommand

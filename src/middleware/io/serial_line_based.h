@@ -57,16 +57,20 @@ class match_regex
 /// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the serial port
 /// \tparam line_out_group goby::middleware::Group to subcribe to for data to send to the serial port
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
-class SerialThreadLineBased : public SerialThread<line_in_group, line_out_group>
+          const goby::middleware::Group& line_out_group,
+          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
+          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
+class SerialThreadLineBased
+    : public SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>
 {
-    using Base = SerialThread<line_in_group, line_out_group>;
+    using Base = SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>;
 
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    SerialThreadLineBased(const goby::middleware::protobuf::SerialConfig& config)
-        : Base(config), eol_matcher_(this->cfg().end_of_line())
+    /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
+    SerialThreadLineBased(const goby::middleware::protobuf::SerialConfig& config, int index = -1)
+        : Base(config, index), eol_matcher_(this->cfg().end_of_line())
     {
     }
 
@@ -95,8 +99,11 @@ template <> struct is_match_condition<goby::middleware::io::match_regex> : publi
 } // namespace boost
 
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group>
-void goby::middleware::io::SerialThreadLineBased<line_in_group, line_out_group>::async_read()
+          const goby::middleware::Group& line_out_group,
+          goby::middleware::io::PubSubLayer publish_layer,
+          goby::middleware::io::PubSubLayer subscribe_layer>
+void goby::middleware::io::SerialThreadLineBased<line_in_group, line_out_group, publish_layer,
+                                                 subscribe_layer>::async_read()
 {
     boost::asio::async_read_until(
         this->mutable_serial_port(), buffer_, eol_matcher_,

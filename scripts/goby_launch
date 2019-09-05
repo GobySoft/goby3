@@ -195,7 +195,7 @@ do
         do
             directive=${directives[$i]}
             key=$(echo "$directive" | cut -d "=" -f 1)
-            value=$(echo "$directive" | cut -d "=" -f 2)
+            value=$(echo "$directive" | cut -d "=" -f 2-)
             case $key in
                 kill)
                     kill_signal=$value
@@ -203,6 +203,10 @@ do
                         echo "Invalid kill=$kill_signal signal \"$kill_signal\": use \"goby_terminate\" (default), \"SIGTERM\", \"SIGINT\", or \"SIGKILL\"";
                         exit 1
                     fi
+                    ;;
+                env)
+                    echo "Exporting $value"
+                    export $value
                     ;;
                 *)
                     echo "Invalid [$key=$value]: directive key: " $key
@@ -219,7 +223,7 @@ do
     name=$platform.${bin##*/}
     case $launch in
         normal)            
-            bash -c "$esccmd"&
+            bash -c "$cmd"&
             pid=$!
             echo "Launched ($pid) $cmd"
             ppid+=($pid)

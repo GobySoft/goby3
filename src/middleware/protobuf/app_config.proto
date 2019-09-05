@@ -1,11 +1,14 @@
 syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
 import "goby/util/protobuf/debug_logger.proto";
+import "dccl/option_extensions.proto";
 
 package goby.middleware.protobuf;
 
 message AppConfig
 {
+    option (dccl.msg).unit_system = "si";
+
     optional string name = 1 [
         (goby.field).example = "myapp_g",
         (goby.field).description =
@@ -25,7 +28,8 @@ message AppConfig
                 default = false,
                 (goby.field).description =
                     "Enable the use of a different clock for all calls to "
-                    "goby::time::SystemClock::now<time::MicroTime>() and related"
+                    "goby::time::SystemClock::now<time::MicroTime>() and "
+                    "related"
             ];
             optional int32 warp_factor = 2 [
                 default = 1,
@@ -34,18 +38,34 @@ message AppConfig
                     "missions. For example warp_factor: 10 means run the clock "
                     "10x the real time."
             ];
-            optional int64 reference_microtime = 3
-                [(goby.field).description =
-                     "Reference time to use when running with use_sim_time: "
-                     "true (defaults to 00:00 UTC on January 1 of the current "
-                     "year). The time difference between now and the reference "
-                     "time is multiplied by the warp factor to calculate the "
-                     "modified simulation time"];
+            optional int64 reference_microtime = 3 [
+                (goby.field).description =
+                    "Reference time to use when running with use_sim_time: "
+                    "true (defaults to 00:00 UTC on January 1 of the current "
+                    "year). The time difference between now and the reference "
+                    "time is multiplied by the warp factor to calculate the "
+                    "modified simulation time",
+                (dccl.field).units = {prefix: "micro" base_dimensions: "T"}
+            ];
         }
         optional Time time = 1;
     }
     optional SimulatorSettings simulation = 20
         [(goby.field).description = "Simulation related settings"];
+
+    message Geodesy
+    {
+        required double lat_origin = 1 [(dccl.field).units = {
+            system: "angle::degree"
+            derived_dimensions: "plane_angle"
+        }];
+        required double lon_origin = 2 [(dccl.field).units = {
+            system: "angle::degree"
+            derived_dimensions: "plane_angle"
+        }];
+    }
+    optional Geodesy geodesy = 30
+        [(goby.field).description = "Geodesy related settings"];
 
     optional bool debug_cfg = 100 [
         default = false,

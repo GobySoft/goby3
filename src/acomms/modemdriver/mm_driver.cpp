@@ -52,6 +52,7 @@ const boost::posix_time::time_duration
 const std::string goby::acomms::MMDriver::SERIAL_DELIMITER = "\r";
 const unsigned goby::acomms::MMDriver::PACKET_FRAME_COUNT[] = {1, 3, 3, 2, 2, 8};
 const unsigned goby::acomms::MMDriver::PACKET_SIZE[] = {32, 64, 64, 256, 256, 256};
+std::mutex goby::acomms::MMDriver::dccl_mutex_;
 
 //
 // INITIALIZATION
@@ -70,7 +71,7 @@ goby::acomms::MMDriver::MMDriver()
       expected_remaining_cacst_(0),
       expected_ack_destination_(0),
       local_cccyc_(false),
-      last_keep_alive_time_(std::chrono::seconds(0)),
+      last_keep_alive_time_(0 * boost::units::si::seconds),
       using_application_acks_(false),
       application_ack_max_frames_(0),
       next_frame_(0),
@@ -106,8 +107,18 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
 
     using_application_acks_ = mm_driver_cfg().use_application_acks();
     application_ack_max_frames_ = 32;
+
     if (using_application_acks_)
-        dccl_.load<micromodem::protobuf::MMApplicationAck>();
+    {
+        application_ack_ids_.insert(driver_cfg_.modem_id());
+        // allow application acks for additional modem ids (for spoofing another ID)
+        for (unsigned id : mm_driver_cfg().additional_application_ack_modem_id())
+            application_ack_ids_.insert(id);
+
+        std::lock_guard<std::mutex> l(dccl_mutex_);
+        dccl_.reset(new dccl::Codec);
+        dccl_->load<micromodem::protobuf::MMApplicationAck>();
+    }
 
     modem_start(driver_cfg_);
 
@@ -494,13 +505,26 @@ void goby::acomms::MMDriver::do_work()
         set_clock();
 
     // send a message periodically (query the source ID) to the local modem to ascertain that it is still alive
-    auto now = time::SystemClock::now();
-    if (last_keep_alive_time_ + std::chrono::seconds(mm_driver_cfg().keep_alive_seconds()) <= now)
+    auto now = time::SystemClock::now<goby::time::SITime>();
+    if (last_keep_alive_time_ + mm_driver_cfg().keep_alive_seconds() * boost::units::si::seconds <=
+        now)
     {
-        NMEASentence nmea("$CCCFQ", NMEASentence::IGNORE);
-        nmea.push_back("SRC");
-        append_to_write_queue(nmea);
-        last_keep_alive_time_ = now;
+        if (revision_.mm_major >= 2)
+        {
+            NMEASentence nmea("$CCTMQ", NMEASentence::IGNORE);
+            nmea.push_back("0");
+            append_to_write_queue(nmea);
+
+            // we want to send this at the start of the second to get a reasonable response
+            last_keep_alive_time_ = boost::units::round(now);
+        }
+        else
+        {
+            NMEASentence nmea("$CCCFQ", NMEASentence::IGNORE);
+            nmea.push_back("SRC");
+            append_to_write_queue(nmea);
+            last_keep_alive_time_ = now;
+        }
     }
 
     // keep trying to send stuff to the modem
@@ -1361,23 +1385,28 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
 
 void goby::acomms::MMDriver::process_incoming_app_ack(protobuf::ModemTransmission* m)
 {
-    if (dccl_.id(m->frame(0)) == dccl_.id<micromodem::protobuf::MMApplicationAck>())
+    std::lock_guard<std::mutex> l(dccl_mutex_);
+    if (dccl_->id(m->frame(0)) == dccl_->id<micromodem::protobuf::MMApplicationAck>())
     {
         micromodem::protobuf::MMApplicationAck acks;
-        dccl_.decode(m->mutable_frame(0), &acks);
+        dccl_->decode(m->mutable_frame(0), &acks);
         glog.is(DEBUG1) && glog << group(glog_in_group()) << "Received ACKS " << acks.DebugString()
                                 << std::endl;
 
         // this data message requires a future ACK from us
-        if (m->dest() == driver_cfg_.modem_id() && acks.ack_requested())
+        if (application_ack_ids_.count(m->dest()) && acks.ack_requested())
         {
+            glog.is(DEBUG1) && glog << group(glog_in_group())
+                                    << "Caching pending ACK for frame: " << acks.frame_start()
+                                    << std::endl;
+
             frames_to_ack_[m->src()].insert(acks.frame_start());
         }
 
         // process any acks that were included in this message
         for (int i = 0, n = acks.part_size(); i < n; ++i)
         {
-            if (acks.part(i).ack_dest() == driver_cfg_.modem_id())
+            if (application_ack_ids_.count(acks.part(i).ack_dest()))
             {
                 for (int j = 0, o = application_ack_max_frames_; j < o; ++j)
                 {
@@ -1429,6 +1458,13 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
         std::istringstream iso_time(t);
         iso_time.imbue(std::locale(std::locale::classic(), tif));
         iso_time >> reported;
+
+        if (sentence_id == TMQ)
+        {
+            // Micro-Modem takes 0.5 second to respond to TMQ
+            const auto tmq_delay(boost::posix_time::milliseconds(500));
+            reported += tmq_delay;
+        }
     }
     // glog.is(DEBUG1) && glog << group(glog_in_group()) << "Micro-Modem reported time: " << reported << std::endl;
 
@@ -1436,7 +1472,7 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
     // we may end up oversetting the clock, but better safe than sorry...
     boost::posix_time::time_duration t_diff = (reported - expected);
 
-    // glog.is(DEBUG1) && glog << group(glog_in_group()) << "Difference: " << t_diff << std::endl;
+    glog.is(DEBUG1) && glog << group(glog_in_group()) << "Time Difference: " << t_diff << std::endl;
 
     if (abs(int(t_diff.total_milliseconds())) < mm_driver_cfg().allowed_skew_ms())
     {
@@ -1762,11 +1798,13 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
     }
     else
     {
+        std::lock_guard<std::mutex> l(dccl_mutex_);
+
         // build up message to ack
         micromodem::protobuf::MMApplicationAck acks;
 
-        for (std::map<unsigned, std::set<unsigned> >::const_iterator it = frames_to_ack_.begin(),
-                                                                     end = frames_to_ack_.end();
+        for (std::map<unsigned, std::set<unsigned>>::const_iterator it = frames_to_ack_.begin(),
+                                                                    end = frames_to_ack_.end();
              it != end; ++it)
         {
             micromodem::protobuf::MMApplicationAck::AckPart& acks_part = *acks.add_part();
@@ -1785,8 +1823,11 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
         acks.set_frame_start(next_frame_);
         msg->set_frame_start(next_frame_);
 
+        glog.is(DEBUG2) && glog << group(glog_out_group())
+                                << "Created app ack: " << acks.ShortDebugString() << std::endl;
+
         // calculate size of ack message
-        unsigned ack_size = dccl_.size(acks);
+        unsigned ack_size = dccl_->size(acks);
 
         // insert placeholder
         msg->add_frame()->resize(ack_size, 0);
@@ -1797,7 +1838,7 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
         // now that we know if an ack is requested, set that
         acks.set_ack_requested(msg->ack_requested());
         std::string ack_bytes;
-        dccl_.encode(&ack_bytes, acks);
+        dccl_->encode(&ack_bytes, acks);
         // insert real ack message
         msg->mutable_frame(0)->replace(0, ack_size, ack_bytes);
 
@@ -1848,12 +1889,73 @@ void goby::acomms::MMDriver::cacst(const NMEASentence& nmea, protobuf::ModemTran
         cst->set_time_with_units(
             time::convert_from_nmea<time::MicroTime>(nmea.as<std::string>(2 + version_offset)));
 
-        micromodem::protobuf::ClockMode clock_mode =
-            micromodem::protobuf::ClockMode_IsValid(nmea.as<int>(3 + version_offset))
-                ? nmea.as<micromodem::protobuf::ClockMode>(3 + version_offset)
-                : micromodem::protobuf::INVALID_CLOCK_MODE;
+        // switch to bit field in 2.0.26038+
+        // Bits 0:1: RTC source
+        // 0 None
+        // 1 Onboard RTC
+        // 2 User Command (e.g. CLK)
+        // 3 User GPS (e.g. GPRMC)
+        // Bits 2:4 PPS Source
+        // 0 None
+        // 1 RTC
+        // 2 CAL (future)
+        // 3 EXT (from external pin)
+        // 4 EXT_SYNC (from RTC synchronized to the last EXT PPS pulse)
+        if (revision_.mm_major == 2 &&
+            (revision_.mm_minor > 0 || (revision_.mm_minor == 0 && revision_.mm_patch >= 26038)))
+        {
+            int mode = nmea.as<int>(3 + version_offset);
 
-        cst->set_clock_mode(clock_mode);
+            int rtc_source = mode & 0x3;
+            int pps_source = (mode >> 2) & 0x7;
+
+            micromodem::protobuf::ClockMode clock_mode = micromodem::protobuf::INVALID_CLOCK_MODE;
+            switch (pps_source)
+            {
+                case 0:
+                case 1:
+                case 2:
+                case 4:
+                    switch (rtc_source)
+                    {
+                        case 0:
+                        case 1:
+                            clock_mode = micromodem::protobuf::NO_SYNC_TO_PPS_AND_CCCLK_BAD;
+                            break;
+                        case 2:
+                        case 3:
+                            clock_mode = micromodem::protobuf::NO_SYNC_TO_PPS_AND_CCCLK_GOOD;
+                            break;
+                    }
+                    break;
+
+                case 3:
+                    switch (rtc_source)
+                    {
+                        case 0:
+                        case 1: clock_mode = micromodem::protobuf::SYNC_TO_PPS_AND_CCCLK_BAD; break;
+                        case 2:
+                        case 3:
+                            clock_mode = micromodem::protobuf::SYNC_TO_PPS_AND_CCCLK_GOOD;
+                            break;
+                    }
+                    break;
+
+                default: break;
+            }
+
+            cst->set_clock_mode(clock_mode);
+        }
+        else
+        {
+            micromodem::protobuf::ClockMode clock_mode =
+                micromodem::protobuf::ClockMode_IsValid(nmea.as<int>(3 + version_offset))
+                    ? nmea.as<micromodem::protobuf::ClockMode>(3 + version_offset)
+                    : micromodem::protobuf::INVALID_CLOCK_MODE;
+
+            cst->set_clock_mode(clock_mode);
+        }
+
         cst->set_mfd_peak(nmea.as<double>(4 + version_offset));
         cst->set_mfd_power(nmea.as<double>(5 + version_offset));
         cst->set_mfd_ratio(nmea.as<double>(6 + version_offset));

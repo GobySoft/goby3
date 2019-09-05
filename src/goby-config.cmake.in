@@ -7,7 +7,6 @@ endif()
 
 # moos requires zeromq
 if("moos" IN_LIST GOBY_FIND_COMPONENTS)
-  message("inserting moos into list")
   list(INSERT GOBY_FIND_COMPONENTS 0 "zeromq")
 endif()
 

@@ -36,6 +36,7 @@
 
 #include "goby/time.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/geodesy.h"
 
 #include "goby/middleware/application/configurator.h"
 
@@ -100,12 +101,23 @@ template <typename Config> class Application
     /// \brief Accesses configuration object passed at launch
     const Config& app_cfg() { return app_cfg_; }
 
+    const util::UTMGeodesy& geodesy()
+    {
+        if (geodesy_)
+            return *geodesy_;
+        else
+            throw(goby::Exception("No lat_origin and lon_origin defined for requested UTMGeodesy"));
+    }
+
   private:
     template <typename App>
     friend int ::goby::run(
         const goby::middleware::ConfiguratorInterface<typename App::ConfigType>&);
     // main loop that exits on quit(); returns the desired return value
     int __run();
+
+    void configure_logger();
+    void configure_geodesy();
 
   private:
     // sets configuration (before Application construction)
@@ -117,6 +129,8 @@ template <typename Config> class Application
 
     // static here allows fout_ to live until program exit to log glog output
     static std::vector<std::unique_ptr<std::ofstream>> fout_;
+
+    std::unique_ptr<goby::util::UTMGeodesy> geodesy_;
 };
 } // namespace middleware
 
@@ -134,7 +148,22 @@ goby::middleware::protobuf::AppConfig
 template <typename Config> goby::middleware::Application<Config>::Application() : alive_(true)
 {
     using goby::glog;
-    using namespace goby::util::logger;
+
+    configure_logger();
+    if (app3_base_configuration_.has_geodesy())
+        configure_geodesy();
+
+    if (!app3_base_configuration_.IsInitialized())
+        throw(middleware::ConfigException("Invalid base configuration"));
+
+    glog.is_debug2() && glog << "Application: constructed with PID: " << getpid() << std::endl;
+    glog.is_debug1() && glog << "App name is " << app3_base_configuration_.name() << std::endl;
+    glog.is_debug2() && glog << "Configuration is: " << app_cfg_.DebugString() << std::endl;
+}
+
+template <typename Config> void goby::middleware::Application<Config>::configure_logger()
+{
+    using goby::glog;
 
     // set up the logger
     glog.set_name(app3_base_configuration_.name());
@@ -153,7 +182,7 @@ template <typename Config> goby::middleware::Application<Config>::Application() 
         boost::format file_format(file_format_str);
 
         if (file_format_str.find("%1") == std::string::npos)
-            glog.is(DIE) &&
+            glog.is_die() &&
                 glog << "file_name string must contain \"%1%\" which is expanded to the current "
                         "application start time (e.g. 20190201T184925). Erroneous file_name is: "
                      << file_format_str << std::endl;
@@ -165,32 +194,31 @@ template <typename Config> goby::middleware::Application<Config>::Application() 
             (file_format % goby::time::file_str() % app3_base_configuration_.name()).str();
         std::string file_symlink = (file_format % "latest" % app3_base_configuration_.name()).str();
 
-        glog.is(VERBOSE) && glog << "logging output to file: " << file_name << std::endl;
+        glog.is_verbose() && glog << "logging output to file: " << file_name << std::endl;
 
         fout_[i].reset(new std::ofstream(file_name.c_str()));
 
         if (!fout_[i]->is_open())
-            glog.is(DIE) && glog << die
-                                 << "cannot write glog output to requested file: " << file_name
-                                 << std::endl;
+            glog.is_die() && glog << "cannot write glog output to requested file: " << file_name
+                                  << std::endl;
 
         remove(file_symlink.c_str());
         int result = symlink(realpath(file_name.c_str(), NULL), file_symlink.c_str());
         if (result != 0)
-            glog.is(WARN) &&
+            glog.is_warn() &&
                 glog << "Cannot create symlink to latest file. Continuing onwards anyway"
                      << std::endl;
 
         glog.add_stream(app3_base_configuration_.glog_config().file_log(i).verbosity(),
                         fout_[i].get());
     }
+}
 
-    if (!app3_base_configuration_.IsInitialized())
-        throw(middleware::ConfigException("Invalid base configuration"));
-
-    glog.is(DEBUG2) && glog << "Application: constructed with PID: " << getpid() << std::endl;
-    glog.is(DEBUG1) && glog << "App name is " << app3_base_configuration_.name() << std::endl;
-    glog.is(DEBUG2) && glog << "Configuration is: " << app_cfg_.DebugString() << std::endl;
+template <typename Config> void goby::middleware::Application<Config>::configure_geodesy()
+{
+    geodesy_.reset(
+        new goby::util::UTMGeodesy({app3_base_configuration_.geodesy().lat_origin_with_units(),
+                                    app3_base_configuration_.geodesy().lon_origin_with_units()}));
 }
 
 template <typename Config> int goby::middleware::Application<Config>::__run()

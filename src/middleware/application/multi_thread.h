@@ -96,6 +96,16 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
   private:
     struct ThreadManagement
     {
+        ThreadManagement() = default;
+        ~ThreadManagement()
+        {
+            if (thread)
+            {
+                alive = false;
+                thread->join();
+            }
+        }
+
         std::atomic<bool> alive{true};
         std::unique_ptr<std::thread> thread;
     };
@@ -341,11 +351,10 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
 
     // copy configuration
     auto thread_lambda = [this, type_i, index, cfg, &thread_manager]() {
-        std::shared_ptr<ThreadType> goby_thread(
-            ThreadTypeSelector<ThreadType, ThreadConfig, has_index>::thread(cfg, index));
-
         try
         {
+            std::shared_ptr<ThreadType> goby_thread(
+                ThreadTypeSelector<ThreadType, ThreadConfig, has_index>::thread(cfg, index));
             goby_thread->run(thread_manager.alive);
         }
         catch (...)

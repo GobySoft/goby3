@@ -22,14 +22,15 @@
 
 #include "goby/middleware/marshalling/protobuf.h"
 
-#include "moos_plugin_translator.h"
 #include "goby/moos/moos_translator.h"
 #include "goby/moos/protobuf/goby_moos_app.pb.h"
+#include "moos_plugin_translator.h"
 
 using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
 
 goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
-    : goby::middleware::SimpleThread<GobyMOOSGatewayConfig>(config, config.poll_frequency())
+    : goby::middleware::SimpleThread<GobyMOOSGatewayConfig>(
+          config, 10 * boost::units::si::hertz) // config.poll_frequency())
 {
     goby::moos::protobuf::GobyMOOSAppConfig moos_cfg;
     if (cfg().moos().has_use_binary_protobuf())
@@ -38,10 +39,12 @@ goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
         moos_cfg.set_moos_parser_technique(cfg().moos().moos_parser_technique());
     goby::moos::set_moos_technique(moos_cfg);
 
+    if (config.app().simulation().time().use_sim_time())
+        SetMOOSTimeWarp(config.app().simulation().time().warp_factor());
+
     moos_.comms().SetOnConnectCallBack(TranslatorOnConnectCallBack, this);
 
-    moos_.comms().Run(cfg().moos().server(), cfg().moos().port(), translator_name(),
-                      cfg().poll_frequency());
+    moos_.comms().Run(cfg().moos().server(), cfg().moos().port(), translator_name());
 }
 
 void goby::moos::Translator::loop() { moos_.loop(); }
@@ -75,6 +78,18 @@ void goby::moos::Translator::MOOSInterface::loop()
 {
     using goby::glog;
     using namespace goby::util::logger;
+
+    auto now = goby::time::SystemClock::now();
+    if (now > next_time_publish_)
+    {
+        // older MOOSDBs disconnect on time warp without regular comms
+        std::stringstream ss;
+        ss << std::setprecision(std::numeric_limits<double>::digits10) << "moostime=" << MOOSTime()
+           << ",gobytime=" << goby::time::SystemClock::now<goby::time::SITime>().value()
+           << std::endl;
+        comms_.Notify("GOBY_MOOS_TRANSLATOR_TIME", ss.str());
+        next_time_publish_ += std::chrono::seconds(1);
+    }
 
     MOOSMSG_LIST moos_msgs;
     comms_.Fetch(moos_msgs);
