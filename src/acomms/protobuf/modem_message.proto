@@ -126,6 +126,6 @@ message ModemTransmission
 
 message ModemRaw
 {
-    required string raw = 7;          // "$CARXD,..."
+    required bytes raw = 7;          // "$CARXD,..."
     optional string description = 8;  // "Incoming hexadecimal data"
 }
