@@ -109,48 +109,54 @@ template <typename To, typename From>
 namespace common
 {
 template <typename ReturnType>
-[[deprecated("use time::SystemClock::now()")]] ReturnType goby_time() {
+[[deprecated("use goby::time::SystemClock::now()")]] ReturnType goby_time() {
     static_assert(sizeof(ReturnType) == 0, "Invalid ReturnType for goby_time<>()");
 }
 
 template <>
-[[deprecated("use time::SystemClock::now()")]] inline std::uint64_t goby_time<std::uint64_t>()
+[[deprecated("use goby::time::SystemClock::now<goby::time::MicroTime>().value()")]] inline std::
+    uint64_t goby_time<std::uint64_t>()
 {
     return goby::time::SystemClock::now<time::MicroTime>().value();
 }
 
-template <>[[deprecated("use time::SystemClock::now()")]] inline double goby_time<double>()
+template <>
+[[deprecated("use goby::time::SystemClock::now<goby::time::SITime>().value()")]] inline double
+goby_time<double>()
 {
     return static_cast<double>(goby_time<std::uint64_t>()) / 1.0e6;
 }
 
 template <>
-[[deprecated("use time::SystemClock::now()")]] inline boost::posix_time::ptime
-goby_time<boost::posix_time::ptime>()
+[[deprecated("use goby::time::SystemClock::now<boost::posix_time::ptime>()")]] inline boost::
+    posix_time::ptime
+    goby_time<boost::posix_time::ptime>()
 {
     return util::as<boost::posix_time::ptime>(goby_time<std::uint64_t>());
 }
 
-[[deprecated("use time::SystemClock::now()")]] inline boost::posix_time::ptime goby_time()
+[[deprecated("use goby::time::SystemClock::now<boost::posix_time::ptime>()")]] inline boost::
+    posix_time::ptime
+    goby_time()
 {
     return goby_time<boost::posix_time::ptime>();
 }
 
 /// \brief Returns current UTC time as a human-readable string
-template <>[[deprecated("use time::str()")]] inline std::string goby_time<std::string>()
+template <>[[deprecated("use goby::time::str()")]] inline std::string goby_time<std::string>()
 {
     return goby::util::as<std::string>(goby_time<boost::posix_time::ptime>());
 }
 
 /// Simple string representation of goby_time()
-[[deprecated("use time::str()")]] inline std::string
+[[deprecated("use goby::time::str()")]] inline std::string
 goby_time_as_string(const boost::posix_time::ptime& t = goby_time())
 {
     return goby::util::as<std::string>(t);
 }
 
 /// ISO string representation of goby_time()
-[[deprecated("use time::file_str()")]] inline std::string goby_file_timestamp()
+[[deprecated("use goby::time::file_str()")]] inline std::string goby_file_timestamp()
 {
     using namespace boost::posix_time;
     return to_iso_string(second_clock::universal_time());
