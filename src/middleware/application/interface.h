@@ -99,7 +99,7 @@ template <typename Config> class Application
     }
 
     /// \brief Accesses configuration object passed at launch
-    const Config& app_cfg() { return app_cfg_; }
+    const Config& app_cfg() { return *app_cfg_; }
 
     const util::UTMGeodesy& geodesy()
     {
@@ -121,8 +121,8 @@ template <typename Config> class Application
 
   private:
     // sets configuration (before Application construction)
-    static Config app_cfg_;
-    static protobuf::AppConfig app3_base_configuration_;
+    static std::unique_ptr<Config> app_cfg_;
+    static std::unique_ptr<protobuf::AppConfig> app3_base_configuration_;
 
     bool alive_;
     int return_value_;
@@ -139,10 +139,10 @@ template <typename Config> class Application
 template <typename Config>
 std::vector<std::unique_ptr<std::ofstream>> goby::middleware::Application<Config>::fout_;
 
-template <typename Config> Config goby::middleware::Application<Config>::app_cfg_;
+template <typename Config> std::unique_ptr<Config> goby::middleware::Application<Config>::app_cfg_;
 
 template <typename Config>
-goby::middleware::protobuf::AppConfig
+std::unique_ptr<goby::middleware::protobuf::AppConfig>
     goby::middleware::Application<Config>::app3_base_configuration_;
 
 template <typename Config> goby::middleware::Application<Config>::Application() : alive_(true)
@@ -150,15 +150,15 @@ template <typename Config> goby::middleware::Application<Config>::Application() 
     using goby::glog;
 
     configure_logger();
-    if (app3_base_configuration_.has_geodesy())
+    if (app3_base_configuration_->has_geodesy())
         configure_geodesy();
 
-    if (!app3_base_configuration_.IsInitialized())
+    if (!app3_base_configuration_->IsInitialized())
         throw(middleware::ConfigException("Invalid base configuration"));
 
     glog.is_debug2() && glog << "Application: constructed with PID: " << getpid() << std::endl;
-    glog.is_debug1() && glog << "App name is " << app3_base_configuration_.name() << std::endl;
-    glog.is_debug2() && glog << "Configuration is: " << app_cfg_.DebugString() << std::endl;
+    glog.is_debug1() && glog << "App name is " << app3_base_configuration_->name() << std::endl;
+    glog.is_debug2() && glog << "Configuration is: " << app_cfg_->DebugString() << std::endl;
 }
 
 template <typename Config> void goby::middleware::Application<Config>::configure_logger()
@@ -166,19 +166,19 @@ template <typename Config> void goby::middleware::Application<Config>::configure
     using goby::glog;
 
     // set up the logger
-    glog.set_name(app3_base_configuration_.name());
+    glog.set_name(app3_base_configuration_->name());
     glog.add_stream(static_cast<util::logger::Verbosity>(
-                        app3_base_configuration_.glog_config().tty_verbosity()),
+                        app3_base_configuration_->glog_config().tty_verbosity()),
                     &std::cout);
 
-    if (app3_base_configuration_.glog_config().show_gui())
+    if (app3_base_configuration_->glog_config().show_gui())
         glog.enable_gui();
 
-    fout_.resize(app3_base_configuration_.glog_config().file_log_size());
-    for (int i = 0, n = app3_base_configuration_.glog_config().file_log_size(); i < n; ++i)
+    fout_.resize(app3_base_configuration_->glog_config().file_log_size());
+    for (int i = 0, n = app3_base_configuration_->glog_config().file_log_size(); i < n; ++i)
     {
         const auto& file_format_str =
-            app3_base_configuration_.glog_config().file_log(i).file_name();
+            app3_base_configuration_->glog_config().file_log(i).file_name();
         boost::format file_format(file_format_str);
 
         if (file_format_str.find("%1") == std::string::npos)
@@ -191,8 +191,9 @@ template <typename Config> void goby::middleware::Application<Config>::configure
                                (boost::io::too_many_args_bit | boost::io::too_few_args_bit));
 
         std::string file_name =
-            (file_format % goby::time::file_str() % app3_base_configuration_.name()).str();
-        std::string file_symlink = (file_format % "latest" % app3_base_configuration_.name()).str();
+            (file_format % goby::time::file_str() % app3_base_configuration_->name()).str();
+        std::string file_symlink =
+            (file_format % "latest" % app3_base_configuration_->name()).str();
 
         glog.is_verbose() && glog << "logging output to file: " << file_name << std::endl;
 
@@ -209,7 +210,7 @@ template <typename Config> void goby::middleware::Application<Config>::configure
                 glog << "Cannot create symlink to latest file. Continuing onwards anyway"
                      << std::endl;
 
-        glog.add_stream(app3_base_configuration_.glog_config().file_log(i).verbosity(),
+        glog.add_stream(app3_base_configuration_->glog_config().file_log(i).verbosity(),
                         fout_[i].get());
     }
 }
@@ -217,8 +218,8 @@ template <typename Config> void goby::middleware::Application<Config>::configure
 template <typename Config> void goby::middleware::Application<Config>::configure_geodesy()
 {
     geodesy_.reset(
-        new goby::util::UTMGeodesy({app3_base_configuration_.geodesy().lat_origin_with_units(),
-                                    app3_base_configuration_.geodesy().lon_origin_with_units()}));
+        new goby::util::UTMGeodesy({app3_base_configuration_->geodesy().lat_origin_with_units(),
+                                    app3_base_configuration_->geodesy().lon_origin_with_units()}));
 }
 
 template <typename Config> int goby::middleware::Application<Config>::__run()
@@ -261,19 +262,20 @@ int goby::run(const goby::middleware::ConfiguratorInterface<typename App::Config
         }
 
         // set configuration
-        App::app_cfg_ = cfgtor.cfg();
-        App::app3_base_configuration_ = cfgtor.app3_configuration();
+        App::app_cfg_.reset(new typename App::ConfigType(cfgtor.cfg()));
+        App::app3_base_configuration_.reset(
+            new goby::middleware::protobuf::AppConfig(cfgtor.app3_configuration()));
 
         // set up simulation time
-        if (App::app3_base_configuration_.simulation().time().use_sim_time())
+        if (App::app3_base_configuration_->simulation().time().use_sim_time())
         {
             goby::time::SimulatorSettings::using_sim_time = true;
             goby::time::SimulatorSettings::warp_factor =
-                App::app3_base_configuration_.simulation().time().warp_factor();
-            if (App::app3_base_configuration_.simulation().time().has_reference_microtime())
+                App::app3_base_configuration_->simulation().time().warp_factor();
+            if (App::app3_base_configuration_->simulation().time().has_reference_microtime())
                 goby::time::SimulatorSettings::reference_time =
                     std::chrono::system_clock::time_point(std::chrono::microseconds(
-                        App::app3_base_configuration_.simulation().time().reference_microtime()));
+                        App::app3_base_configuration_->simulation().time().reference_microtime()));
         }
 
         // instantiate the application (with the configuration already set)
