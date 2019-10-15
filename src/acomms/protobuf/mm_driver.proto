@@ -45,7 +45,7 @@ message GenericLBLParams
     optional uint32 n_bits =
         2;  // number of bits to use from the signal sequence, same for outgoing
             // as well as incoming pings
-    optional uint64 tranmit_seq_code =
+    optional uint64 transmit_seq_code =
         3;  // outgoing sequence bits, packed into a 64 bit int
     optional uint32 receive_freq =
         4;  // in hertz, first element (0) == beacon A, etc.
