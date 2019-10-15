@@ -303,12 +303,12 @@ if [ "$background" = false ]; then
     while (($(num_running_proc) > 0))
     do
         if (($(num_running_proc) == ${#spid[@]})); then
-            echo "All processes running"
+            echo `date +%T`": All processes running"
         else
             for ((i=0; i<${#spid[@]}; ++i)); do 
                 p=${spid[i]}
                 cmd=${spid_cmd[i]}
-                [ $(ps --pid $p -o pid=) ] || echo "Missing PID: $p (was: $cmd)"
+                [ $(ps --pid $p -o pid=) ] || echo `date +%T`": Missing PID: $p (was: $cmd)"
             done
         fi
         sleep 5            
