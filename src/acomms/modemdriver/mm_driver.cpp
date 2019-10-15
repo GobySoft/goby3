@@ -898,7 +898,7 @@ void goby::acomms::MMDriver::ccpgt(const protobuf::ModemTransmission& msg)
     NMEASentence nmea("$CCPGT", NMEASentence::IGNORE);
     nmea.push_back(params.transmit_freq());
     nmea.push_back(params.n_bits());
-    nmea.push_back(params.tranmit_seq_code());
+    nmea.push_back(params.transmit_seq_code());
     // REMUS LBL is 50 ms turn-around time, assume 1500 m/s speed of sound
     nmea.push_back(int((params.lbl_max_range() * 2.0 / ROUGH_SPEED_OF_SOUND) * 1000 + tat));
     nmea.push_back(params.receive_freq());
