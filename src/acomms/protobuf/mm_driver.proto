@@ -58,6 +58,27 @@ message GenericLBLParams
     optional uint32 lbl_max_range = 8 [default = 2000];
 }
 
+message FMSweepParams
+{
+    // for MICROMODEM_FM_SWEEP
+    required double start_freq = 1;
+    required double stop_freq = 2;
+    required double duration_ms = 3;
+    optional uint32 number_repetitions = 4 [default = 1];
+    optional double repetition_period_ms = 5 [default = 1000];
+}
+
+message MSequenceParams
+{
+    // for MICROMODEM_M_SEQUENCE
+    required uint32 seqlen_bits =
+        1;  // Sequence length, bits. Should be 2k-1, where k={4...16}
+    required uint32 number_repetitions =
+        2;  // number of repetitions, between 3 to 60.
+    required uint32 carrier_cycles_per_chip = 3;
+    required uint32 carrier_freq = 4;  // carrier, Hz
+}
+
 message Config
 {
     // reset all NVRAM settings to factory before
@@ -84,6 +105,9 @@ message Config
     optional int32 allowed_skew_ms = 7 [default = 1000];
 
     optional GenericLBLParams generic_lbl = 8;
+
+    optional FMSweepParams fm_sweep = 9;
+    optional MSequenceParams m_sequence = 10;
 
     optional bool use_application_acks = 20 [default = false];
     repeated uint32 additional_application_ack_modem_id = 21;
@@ -277,6 +301,8 @@ enum TransmissionType
         7;  // $CAMER response to writing hardware lines
     MICROMODEM_GENERIC_LBL_RANGING =
         8;  // $CCPGT Ping Generic Transponder from host to modem
+    MICROMODEM_FM_SWEEP = 9;     // $CCSWP Send an FM sweep
+    MICROMODEM_M_SEQUENCE = 10;  // $CCMSQ Send a maximal-length sequence
 }
 
 enum HardwareLine
@@ -383,6 +409,8 @@ message Transmission
     optional HardwareControl hw_ctl = 8 [(dccl.field).omit = true];
 
     optional GenericLBLParams generic_lbl = 9 [(dccl.field).omit = true];
+    optional FMSweepParams fm_sweep = 10 [(dccl.field).omit = true];
+    optional MSequenceParams m_sequence = 11 [(dccl.field).omit = true];
 }
 
 extend goby.acomms.protobuf.ModemTransmission

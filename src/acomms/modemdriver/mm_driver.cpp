@@ -221,7 +221,7 @@ void goby::acomms::MMDriver::initialize_talkers()
         {"AGC", AGC}, {"BBD", BBD}, {"CFR", CFR}, {"CST", CST}, {"MSG", MSG}, {"REV", REV},
         {"DQF", DQF}, {"SHF", SHF}, {"MFD", MFD}, {"SNR", SNR}, {"DOP", DOP}, {"DBG", DBG},
         {"FFL", FFL}, {"FST", FST}, {"ERR", ERR}, {"TOA", TOA}, {"XST", XST}, {"TDP", TDP},
-        {"RDP", RDP}, {"TMS", TMS}, {"TMQ", TMQ}, {"TMG", TMG}};
+        {"RDP", RDP}, {"TMS", TMS}, {"TMQ", TMQ}, {"TMG", TMG}, {"SWP", SWP}, {"MSQ", MSQ}};
 
     talker_id_map_ = {{"CC", CC}, {"CA", CA}, {"SN", SN}, {"GP", GP}};
 
@@ -293,7 +293,9 @@ void goby::acomms::MMDriver::initialize_talkers()
         {"$CCTMQ", "Query modem time command (Micro-Modem 2)"},
         {"$CATMQ", "Response to time query (CCTMQ) command (Micro-Modem 2)"},
         {"$CATMG", "Informational message about timing source, printed when timing sources change "
-                   "(Micro-Modem 2)"}};
+                   "(Micro-Modem 2)"},
+        {"$CCSWP", "Send an FM sweep"},
+        {"$CCMSQ", "Send a maximal-length sequence"}};
 
     // from Micro-Modem Software Interface Guide v. 3.04
     cfg_map_ = {
@@ -602,6 +604,8 @@ void goby::acomms::MMDriver::handle_initiate_transmission(const protobuf::ModemT
                     case micromodem::protobuf::MICROMODEM_GENERIC_LBL_RANGING:
                         ccpgt(transmit_msg_);
                         break;
+                    case micromodem::protobuf::MICROMODEM_FM_SWEEP: ccswp(transmit_msg_); break;
+                    case micromodem::protobuf::MICROMODEM_M_SEQUENCE: ccmsq(transmit_msg_); break;
                     default:
                         glog.is(DEBUG1) &&
                             glog << group(glog_out_group()) << warn
@@ -912,6 +916,44 @@ void goby::acomms::MMDriver::ccpgt(const protobuf::ModemTransmission& msg)
 
     nmea.push_back(params.bandwidth());
     nmea.push_back(0); // reserved
+    append_to_write_queue(nmea);
+}
+
+void goby::acomms::MMDriver::ccswp(const protobuf::ModemTransmission& msg)
+{
+    glog.is(DEBUG1) && glog << group(glog_out_group())
+                            << "\tthis is a MICROMODEM_FM_SWEEP transmission" << std::endl;
+
+    micromodem::protobuf::FMSweepParams params = mm_driver_cfg().fm_sweep();
+    params.MergeFrom(msg.GetExtension(micromodem::protobuf::transmission).fm_sweep());
+
+    // $CCSWP,start_freqx10, stop_freqx10, bw_Hz, duration_msx10, nreps, reptime_msx10*CS
+    NMEASentence nmea("$CCSWP", NMEASentence::IGNORE);
+    nmea.push_back(static_cast<int>(params.start_freq() * 10));
+    nmea.push_back(static_cast<int>(params.stop_freq() * 10));
+    nmea.push_back(static_cast<int>(std::abs(params.start_freq() - params.stop_freq())));
+    nmea.push_back(static_cast<int>(params.duration_ms() * 10));
+    nmea.push_back(params.number_repetitions());
+    nmea.push_back(static_cast<int>(params.repetition_period_ms() * 10));
+
+    append_to_write_queue(nmea);
+}
+
+void goby::acomms::MMDriver::ccmsq(const protobuf::ModemTransmission& msg)
+{
+    glog.is(DEBUG1) && glog << group(glog_out_group())
+                            << "\tthis is a MICROMODEM_M_SEQUENCE transmission" << std::endl;
+
+    micromodem::protobuf::MSequenceParams params = mm_driver_cfg().m_sequence();
+    params.MergeFrom(msg.GetExtension(micromodem::protobuf::transmission).m_sequence());
+
+    // $CCMSQ,seqlen_bits,nreps,cycles_per_chip,carrier_Hz*CS
+    NMEASentence nmea("$CCMSQ", NMEASentence::IGNORE);
+    nmea.push_back(params.seqlen_bits());
+    nmea.push_back(params.number_repetitions());
+    nmea.push_back(params.carrier_cycles_per_chip());
+    nmea.push_back(params.carrier_freq());
+
     append_to_write_queue(nmea);
 }
 
