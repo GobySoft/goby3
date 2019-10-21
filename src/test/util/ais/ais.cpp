@@ -25,6 +25,8 @@
 #include <boost/units/io.hpp>
 #include <boost/units/systems/si/prefixes.hpp>
 
+#include <google/protobuf/text_format.h>
+
 #include <iomanip>
 #include <iostream>
 
@@ -69,6 +71,7 @@ BOOST_AUTO_TEST_CASE(ais_decode_18_1)
     BOOST_CHECK_CLOSE(pos.course_over_ground(), 79.6, eps_pct);
     // 511, no true heading
     BOOST_CHECK(!pos.has_true_heading());
+    BOOST_CHECK(pos.raim());
 }
 
 BOOST_AUTO_TEST_CASE(ais_decode_18_2)
@@ -95,4 +98,21 @@ BOOST_AUTO_TEST_CASE(ais_decode_18_2)
     BOOST_CHECK_CLOSE(pos.course_over_ground(), 171.6, eps_pct);
     // 511, no true heading
     BOOST_CHECK(!pos.has_true_heading());
+    BOOST_CHECK(pos.raim());
+}
+
+BOOST_AUTO_TEST_CASE(ais_encode_18)
+{
+    goby::util::ais::protobuf::Position pos;
+    std::string pos_str(
+        "message_id: 18 mmsi: 338087471 speed_over_ground: 0.051444445 lat: 40.68454 lon: "
+        "-74.072131666666664 course_over_ground: 79.6 report_second: 49 raim: true");
+
+    google::protobuf::TextFormat::ParseFromString(pos_str, &pos);
+
+    Encoder encoder(pos);
+
+    auto nmeas = encoder.as_nmea();
+    BOOST_REQUIRE_EQUAL(nmeas.size(), 1);
+    BOOST_CHECK_EQUAL(nmeas[0].message(), "!AIVDM,1,1,,A,B52K>;h00Fc>jpUlNV@ikwpUoP06,0*4C");
 }

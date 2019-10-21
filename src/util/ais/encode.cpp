@@ -59,7 +59,7 @@ goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Voyage voy)
 std::vector<goby::util::NMEASentence> goby::util::ais::Encoder::as_nmea()
 {
     std::vector<goby::util::NMEASentence> nmeas;
-    NMEASentence nmea;
+    NMEASentence nmea("!AIVDM", NMEASentence::IGNORE);
     nmeas.push_back(nmea);
     return nmeas;
 }
