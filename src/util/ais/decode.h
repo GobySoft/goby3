@@ -112,6 +112,10 @@ class Decoder
             pos.set_true_heading_with_units(ais.true_heading * degree::degrees);
         pos.set_report_second_with_units(ais.timestamp * si::seconds);
         pos.set_raim(ais.raim);
+
+        if (protobuf::Position::PositionAccuracy_IsValid(ais.position_accuracy))
+            pos_.set_position_accuracy(
+                static_cast<protobuf::Position::PositionAccuracy>(ais.position_accuracy));
     }
 
     void decode_position();

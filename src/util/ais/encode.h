@@ -23,6 +23,7 @@
 #ifndef AIS_ENCODE_20191021H
 #define AIS_ENCODE_20191021H
 
+#include <atomic>
 #include <cstdint>
 
 #include <boost/dynamic_bitset.hpp>
@@ -48,23 +49,73 @@ class Encoder
     Encoder(goby::util::ais::protobuf::Position pos);
     Encoder(goby::util::ais::protobuf::Voyage voy);
 
-    boost::dynamic_bitset<std::uint8_t> as_bitset() { return bits_; }
+    boost::dynamic_bitset<std::uint8_t> as_bitset() const { return bits_; }
 
-    std::vector<std::uint8_t> as_bytes()
-    {
-        auto bits = as_bitset();
-        std::vector<std::uint8_t> bytes(bits.num_blocks());
-        boost::to_block_range(bits, bytes.begin());
-        return bytes;
-    }
-
-    std::vector<NMEASentence> as_nmea();
+    std::vector<NMEASentence> as_nmea() const;
 
   private:
     void encode_msg_18(goby::util::ais::protobuf::Position pos);
 
+    boost::units::quantity<boost::units::degree::plane_angle>
+    wrap_0_360(boost::units::quantity<boost::units::degree::plane_angle> in)
+    {
+        auto full_revolution = 360 * boost::units::degree::degrees;
+        while (in < 0 * boost::units::degree::degrees) in += full_revolution;
+        while (in >= full_revolution) in -= full_revolution;
+        return in;
+    }
+
+    // lat/lon as 1/10000 minutes
+    template <typename AngleType, typename ValueType>
+    std::uint32_t ais_latlon(boost::units::quantity<AngleType, ValueType> ll)
+    {
+        return std::round(boost::units::quantity<boost::units::degree::plane_angle>(ll).value() *
+                          600000.0);
+    }
+
+    // 0 - 360 as tenths
+    template <typename AngleType, typename ValueType>
+    std::uint32_t ais_angle(boost::units::quantity<AngleType, ValueType> a)
+    {
+        return std::round(
+            wrap_0_360(boost::units::quantity<boost::units::degree::plane_angle>(a)).value() * 10);
+    }
+
+    // 1/10 knots
+    template <typename SpeedType, typename ValueType>
+    std::uint32_t ais_speed(boost::units::quantity<SpeedType, ValueType> s)
+    {
+        return std::round(
+            boost::units::quantity<boost::units::metric::knot_base_unit::unit_type>(s).value() *
+            10);
+    }
+
   private:
+    struct AISField
+    {
+        std::uint8_t len{0};
+        std::uint32_t u{0};
+        std::string s{};
+        bool is_string{false};
+
+        boost::dynamic_bitset<std::uint8_t> as_bitset() const
+        {
+            if (is_string)
+                assert(false); // todo implement
+            else
+                return boost::dynamic_bitset<std::uint8_t>(len, u);
+        }
+    };
+
     boost::dynamic_bitset<std::uint8_t> bits_;
+    enum class RadioChannel
+    {
+        CLASS_A,
+        CLASS_B
+    };
+    RadioChannel channel_{RadioChannel::CLASS_B};
+
+    static std::atomic<int> sequence_id_;
 };
 
 } // namespace ais

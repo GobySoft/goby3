@@ -61,11 +61,11 @@ message Position
     }];
     enum PositionAccuracy
     {
-        ACCURACY_LOW__ABOVE_10_METERS = 0;
-        ACCURACY_HIGH__BELOW_10_METERS = 1;
+        ACCURACY__LOW__ABOVE_10_METERS = 0;
+        ACCURACY__HIGH__BELOW_10_METERS = 1;
     }
     optional PositionAccuracy position_accuracy = 8
-        [default = ACCURACY_LOW__ABOVE_10_METERS];
+        [default = ACCURACY__LOW__ABOVE_10_METERS];
 
     optional double lat = 9 [(dccl.field) = {
         min: -90

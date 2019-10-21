@@ -98,10 +98,6 @@ void goby::util::ais::Decoder::decode_position()
                     pos_.set_turn_rate_with_units(ais.rot * degree::degrees / si::seconds);
                     break;
             }
-
-            if (Position::PositionAccuracy_IsValid(ais.position_accuracy))
-                pos_.set_position_accuracy(
-                    static_cast<Position::PositionAccuracy>(ais.position_accuracy));
         }
 
         break;
