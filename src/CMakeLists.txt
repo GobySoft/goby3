@@ -122,6 +122,31 @@ if(enable_wt)
   add_custom_target(wt_link ALL DEPENDS WtResourcesLink)
 endif()  
 
+## Mavlink
+set(MAVLINK_DOC_STRING "Build the MAVLink marshalling language support library (requires MavLink C++11 v2.0 headers)")
+find_package(MAVLINK QUIET)
+if(MAVLINK_FOUND)
+  include_directories(SYSTEM ${MAVLINK_INCLUDE_DIR})
+  message("Using MAVLink in ${MAVLINK_INCLUDE_DIR}")
+  option(enable_mavlink ${MAVLINK_DOC_STRING} ON)
+else()
+  option(enable_mavlink ${MAVLINK_DOC_STRING} OFF)
+  message(">> setting enable_mavlink to OFF ... if you need this functionality: 1) install MAVLink v2.0 C++11 headers; 2) run cmake -Denable_mavlink=ON")
+endif()
+
+## AIS library
+set(AIS_DOC_STRING "Build the Automatic Identification System (AIS) parsing components (requires libais-dev)")
+find_package(AIS QUIET)
+if(AIS_FOUND)
+  include_directories(SYSTEM ${AIS_INCLUDE_DIR})
+  message("Using libais in ${AIS_INCLUDE_DIR}")
+  option(enable_ais ${AIS_DOC_STRING} ON)
+else()
+  option(enable_ais ${AIS_DOC_STRING} OFF)
+  message(">> setting enable_ais to OFF ... if you need this functionality: 1) install libais (\"apt install libais-dev\" from packages.gobysoft.org or from source at https://github.com/GobySoft/libais); 2) run cmake -Denable_ais=ON")
+endif()
+
+
 ## set flags
 macro(goby_install_lib target_lib component)
   set_property(TARGET ${target_lib} APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
@@ -140,28 +165,9 @@ macro(goby_install_lib target_lib component)
   set(${library_list} ${${library_list}} CACHE INTERNAL "${library_list}")
 endmacro()
 
-#module dependencies
-#you can optionally build up to any point in this chain
-#common->util->acomms->moos
-#->middleware
-
 ## boost
 goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
 include_directories(${Boost_INCLUDE_DIRS})
-
-
-## Mavlink
-set(MAVLINK_DOC_STRING "Build the MAVLink marshalling language support library (requires MavLink C++11 v2.0 headers)")
-find_package(MAVLINK QUIET)
-if(MAVLINK_FOUND)
-  include_directories(SYSTEM ${MAVLINK_INCLUDE_DIR})
-  message("Using MAVLink in ${MAVLINK_INCLUDE_DIR}")
-  option(enable_mavlink ${MAVLINK_DOC_STRING} ON)
-else()
-  option(enable_mavlink ${MAVLINK_DOC_STRING} OFF)
-  message(">> setting enable_mavlink to OFF ... if you need this functionality: 1) install MAVLink v2.0 C++11 headers; 2) run cmake -Denable_mavlink=ON")
-endif()  
-
 
 protobuf_generate_cpp(BASE_PROTO_SRCS BASE_PROTO_HDRS 
   protobuf/option_extensions.proto
@@ -195,6 +201,10 @@ endif()
 
 if(enable_ncurses)
   target_link_libraries(goby ${CURSES_LIBRARIES})
+endif()
+
+if(enable_ais)
+  target_link_libraries(goby ${AIS_LIBRARIES})
 endif()
 
 set_target_properties(goby PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")

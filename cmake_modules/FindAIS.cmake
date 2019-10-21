@@ -1,0 +1,14 @@
+find_path(AIS_INCLUDE_DIR ais.h)
+
+find_library(AIS_LIBRARY NAMES ais DOC "The AIS parsing library")
+
+mark_as_advanced(AIS_INCLUDE_DIR AIS_LIBRARY)
+
+include(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(AIS DEFAULT_MSG AIS_LIBRARY AIS_INCLUDE_DIR)
+
+set(AIS_FOUND ${AIS_FOUND}) 
+if(AIS_FOUND)
+  set(AIS_INCLUDE_DIRS ${AIS_INCLUDE_DIR})
+  set(AIS_LIBRARIES    ${AIS_LIBRARY})
+endif()

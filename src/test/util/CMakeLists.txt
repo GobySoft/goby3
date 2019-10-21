@@ -7,3 +7,7 @@ add_subdirectory(base255)
 add_subdirectory(geodesy)
 add_subdirectory(debug_logger)
 add_subdirectory(units)
+
+if(enable_ais)
+  add_subdirectory(ais)
+endif()

@@ -1,0 +1,257 @@
+import "dccl/option_extensions.proto";
+
+package goby.util.ais.protobuf;
+
+enum Status
+{
+    AIS_STATUS__UNDER_WAY_USING_ENGINE = 0;
+    AIS_STATUS__AT_ANCHOR = 1;
+    AIS_STATUS__NOT_UNDER_COMMAND = 2;
+    AIS_STATUS__RESTRICTED_MANOEUVERABILITY = 3;
+    AIS_STATUS__CONSTRAINED_BY_HER_DRAUGHT = 4;
+    AIS_STATUS__MOORED = 5;
+    AIS_STATUS__AGROUND = 6;
+    AIS_STATUS__ENGAGED_IN_FISHING = 7;
+    AIS_STATUS__UNDER_WAY_SAILING = 8;
+    AIS_STATUS__RESERVED_FOR_HIGH_SPEED_CRAFT = 9;
+    AIS_STATUS__RESERVED_FOR_WING_IN_GROUND = 10;
+    AIS_STATUS__RESERVED_11 = 11;
+    AIS_STATUS__RESERVED_12 = 12;
+    AIS_STATUS__RESERVED_13 = 13;
+    AIS_STATUS__SART_IS_ACTIVE = 14;
+    AIS_STATUS__NOT_DEFINED = 15;
+}
+
+// Used for AIS messages 1,2,3,18,and 19 (Class A and B Position Report)
+message Position
+{
+    option (dccl.msg) = {
+        id: 518
+        codec_version: 3
+        max_bytes: 1500
+        unit_system: "si"
+    };
+
+    optional int32 message_id = 2 [(dccl.field) = {min: 1 max: 27}, default = 0];    // 1,2,3,18,19
+    
+    optional int32 mmsi = 3 [(dccl.field) = {min: 201000000 max: 775999999}];
+    optional Status nav_status = 4 [default = AIS_STATUS__NOT_DEFINED];
+
+    enum TurnInfo
+    {
+        TURN_INFO__NOT_TURNING = 0;
+        TURN_INFO__TURNING_AT_GIVEN_RATE = 1;
+        TURN_INFO__TURNING_RIGHT_AT_MORE_THAN_5_DEG_PER_30_SEC = 127;
+        TURN_INFO__TURNING_LEFT_AT_MORE_THAN_5_DEG_PER_30_SEC = -127;
+        TURN_INFO__NO_TURN_INFORMATION = 0x80;
+    }
+
+    optional TurnInfo turn_info = 5 [default = TURN_INFO__NO_TURN_INFORMATION];
+    optional float turn_rate = 6 [(dccl.field) = {
+        min: -0.21
+        max: 0.21
+        precision: 3
+        units {derived_dimensions: "angular_velocity"}
+    }];
+    optional float speed_over_ground = 7 [(dccl.field) = {
+        min: 0
+        max: 52.6
+        precision: 1
+        units {derived_dimensions: "velocity"}
+    }];
+    enum PositionAccuracy
+    {
+        ACCURACY_LOW__ABOVE_10_METERS = 0;
+        ACCURACY_HIGH__BELOW_10_METERS = 1;
+    }
+    optional PositionAccuracy position_accuracy = 8
+        [default = ACCURACY_LOW__ABOVE_10_METERS];
+
+    optional double lat = 9 [(dccl.field) = {
+        min: -90
+        max: 90
+        precision: 6
+        units {derived_dimensions: "plane_angle" system: "angle::degree"}
+    }];
+    optional double lon = 10 [(dccl.field) = {
+        min: -180
+        max: 180
+        precision: 6
+        units {derived_dimensions: "plane_angle" system: "angle::degree"}
+    }];
+
+    optional float course_over_ground = 11 [(dccl.field) = {
+        min: 0
+        max: 360
+        precision: 0
+        units {derived_dimensions: "plane_angle" system: "angle::degree"}
+    }];
+    optional float true_heading = 12 [(dccl.field) = {
+        min: 0
+        max: 360
+        units {derived_dimensions: "plane_angle" system: "angle::degree"}
+    }];
+    optional int32 report_second = 13
+        [(dccl.field) = {omit: true units {derived_dimensions: "time"}}];
+    optional bool raim = 14
+        [(dccl.field).omit =
+             true];  // Receiver Autonomous Integrity Monitoring (RAIM)
+}
+
+// Used for AIS message 5 and 24 (Class A and B Static and Voyage Related Data)
+message Voyage
+{
+    option (dccl.msg) = {
+        id: 519
+        codec_version: 3
+        max_bytes: 1500
+        unit_system: "si"
+    };
+
+    optional int32 message_id = 2 [(dccl.field) = {min: 1 max: 27}, default = 0]; // 5,24
+
+    optional int32 mmsi = 3 [(dccl.field) = {min: 201000000 max: 775999999}];
+
+    optional int32 imo = 4 [(dccl.field).omit = true];
+    optional string callsign = 5 [(dccl.field).max_length = 7];
+    optional string name = 6 [(dccl.field).max_length = 20];
+
+    enum ShipType
+    {
+        TYPE__NOT_AVAILABLE = 0;
+        TYPE__RESERVED_1 = 1;
+        TYPE__RESERVED_2 = 2;
+        TYPE__RESERVED_3 = 3;
+        TYPE__RESERVED_4 = 4;
+        TYPE__RESERVED_5 = 5;
+        TYPE__RESERVED_6 = 6;
+        TYPE__RESERVED_7 = 7;
+        TYPE__RESERVED_8 = 8;
+        TYPE__RESERVED_9 = 9;
+        TYPE__RESERVED_10 = 10;
+        TYPE__RESERVED_11 = 11;
+        TYPE__RESERVED_12 = 12;
+        TYPE__RESERVED_13 = 13;
+        TYPE__RESERVED_14 = 14;
+        TYPE__RESERVED_15 = 15;
+        TYPE__RESERVED_16 = 16;
+        TYPE__RESERVED_17 = 17;
+        TYPE__RESERVED_18 = 18;
+        TYPE__RESERVED_19 = 19;
+        TYPE__WING_IN_GROUND = 20;
+        TYPE__WING_IN_GROUND_HAZARDOUS_CATEGORY_A = 21;
+        TYPE__WING_IN_GROUND_HAZARDOUS_CATEGORY_B = 22;
+        TYPE__WING_IN_GROUND_HAZARDOUS_CATEGORY_C = 23;
+        TYPE__WING_IN_GROUND_HAZARDOUS_CATEGORY_D = 24;
+        TYPE__WING_IN_GROUND_RESERVED_25 = 25;
+        TYPE__WING_IN_GROUND_RESERVED_26 = 26;
+        TYPE__WING_IN_GROUND_RESERVED_27 = 27;
+        TYPE__WING_IN_GROUND_RESERVED_28 = 28;
+        TYPE__WING_IN_GROUND_RESERVED_29 = 29;
+        TYPE__FISHING = 30;
+        TYPE__TOWING = 31;
+        TYPE__TOWING_LENGTH_EXCEEDS_200M_OR_BREADTH_EXCEEDS_25M = 32;
+        TYPE__DREDGING_OR_UNDERWATER_OPS = 33;
+        TYPE__DIVING_OPS = 34;
+        TYPE__MILITARY_OPS = 35;
+        TYPE__SAILING = 36;
+        TYPE__PLEASURE_CRAFT = 37;
+        TYPE__RESERVED_38 = 38;
+        TYPE__RESERVED_39 = 39;
+        TYPE__HIGH_SPEED_CRAFT = 40;
+        TYPE__HIGH_SPEED_CRAFT_HAZARDOUS_CATEGORY_A = 41;
+        TYPE__HIGH_SPEED_CRAFT_HAZARDOUS_CATEGORY_B = 42;
+        TYPE__HIGH_SPEED_CRAFT_HAZARDOUS_CATEGORY_C = 43;
+        TYPE__HIGH_SPEED_CRAFT_HAZARDOUS_CATEGORY_D = 44;
+        TYPE__HIGH_SPEED_CRAFT_RESERVED_45 = 45;
+        TYPE__HIGH_SPEED_CRAFT_RESERVED_46 = 46;
+        TYPE__HIGH_SPEED_CRAFT_RESERVED_47 = 47;
+        TYPE__HIGH_SPEED_CRAFT_RESERVED_48 = 48;
+        TYPE__HIGH_SPEED_CRAFT_NO_ADDITIONAL_INFORMATION = 49;
+        TYPE__PILOT_VESSEL = 50;
+        TYPE__SEARCH_AND_RESCUE_VESSEL = 51;
+        TYPE__TUG = 52;
+        TYPE__PORT_TENDER = 53;
+        TYPE__ANTI_POLLUTION_EQUIPMENT = 54;
+        TYPE__LAW_ENFORCEMENT = 55;
+        TYPE__SPARE56_LOCAL_VESSEL = 56;
+        TYPE__SPARE57_LOCAL_VESSEL = 57;
+        TYPE__MEDICAL_TRANSPORT = 58;
+        TYPE__NONCOMBATANT_SHIP_ACCORDING_TO_RR_RESOLUTION_NO_18 = 59;
+        TYPE__PASSENGER = 60;
+        TYPE__PASSENGER_HAZARDOUS_CATEGORY_A = 61;
+        TYPE__PASSENGER_HAZARDOUS_CATEGORY_B = 62;
+        TYPE__PASSENGER_HAZARDOUS_CATEGORY_C = 63;
+        TYPE__PASSENGER_HAZARDOUS_CATEGORY_D = 64;
+        TYPE__PASSENGER_RESERVED_65 = 65;
+        TYPE__PASSENGER_RESERVED_66 = 66;
+        TYPE__PASSENGER_RESERVED_67 = 67;
+        TYPE__PASSENGER_RESERVED_68 = 68;
+        TYPE__PASSENGER_NO_ADDITIONAL_INFORMATION = 69;
+        TYPE__CARGO = 70;
+        TYPE__CARGO_HAZARDOUS_CATEGORY_A = 71;
+        TYPE__CARGO_HAZARDOUS_CATEGORY_B = 72;
+        TYPE__CARGO_HAZARDOUS_CATEGORY_C = 73;
+        TYPE__CARGO_HAZARDOUS_CATEGORY_D = 74;
+        TYPE__CARGO_RESERVED_65 = 75;
+        TYPE__CARGO_RESERVED_66 = 76;
+        TYPE__CARGO_RESERVED_67 = 77;
+        TYPE__CARGO_RESERVED_68 = 78;
+        TYPE__CARGO_NO_ADDITIONAL_INFORMATION = 79;
+        TYPE__TANKER = 80;
+        TYPE__TANKER_HAZARDOUS_CATEGORY_A = 81;
+        TYPE__TANKER_HAZARDOUS_CATEGORY_B = 82;
+        TYPE__TANKER_HAZARDOUS_CATEGORY_C = 83;
+        TYPE__TANKER_HAZARDOUS_CATEGORY_D = 84;
+        TYPE__TANKER_RESERVED_65 = 85;
+        TYPE__TANKER_RESERVED_66 = 86;
+        TYPE__TANKER_RESERVED_67 = 87;
+        TYPE__TANKER_RESERVED_68 = 88;
+        TYPE__TANKER_NO_ADDITIONAL_INFORMATION = 89;
+        TYPE__OTHER = 90;
+        TYPE__OTHER_HAZARDOUS_CATEGORY_A = 91;
+        TYPE__OTHER_HAZARDOUS_CATEGORY_B = 92;
+        TYPE__OTHER_HAZARDOUS_CATEGORY_C = 93;
+        TYPE__OTHER_HAZARDOUS_CATEGORY_D = 94;
+        TYPE__OTHER_RESERVED_65 = 95;
+        TYPE__OTHER_RESERVED_66 = 96;
+        TYPE__OTHER_RESERVED_67 = 97;
+        TYPE__OTHER_RESERVED_68 = 98;
+        TYPE__OTHER_NO_ADDITIONAL_INFORMATION = 99;
+    }
+
+    optional ShipType type = 7 [default = TYPE__NOT_AVAILABLE];
+    optional uint32 to_bow = 8
+        [(dccl.field) = {min: 0 max: 511 units {derived_dimensions: "length"}}];
+    optional uint32 to_stern = 9
+        [(dccl.field) = {min: 0 max: 511 units {derived_dimensions: "length"}}];
+    optional uint32 to_port = 10
+        [(dccl.field) = {min: 0 max: 63 units {derived_dimensions: "length"}}];
+    optional uint32 to_starboard = 11
+        [(dccl.field) = {min: 0 max: 63 units {derived_dimensions: "length"}}];
+
+    enum FixType
+    {
+        FIX__UNDEFINED = 0;
+        FIX__GPS = 1;
+        FIX__GLONASS = 2;
+        FIX__COMBINED_GPS_AND_GLONASS = 3;
+        FIX__LORAN_C = 4;
+        FIX__CHAYKA = 5;
+        FIX__INTEGRATED_NAVIGATION_SYSTEM = 6;
+        FIX__SURVEYED = 7;
+        FIX__GALILEO = 8;
+    }
+    optional FixType fix_type = 12 [default = FIX__UNDEFINED];
+    optional uint32 eta_month = 13 [(dccl.field) = {min: 1 max: 12}];
+    optional uint32 eta_day = 14 [(dccl.field) = {min: 1 max: 31}];
+    optional uint32 eta_hour = 15 [(dccl.field) = {min: 0 max: 23}];
+    optional uint32 eta_minute = 16 [(dccl.field) = {min: 0 max: 59}];
+    optional float draught = 17 [(dccl.field) = {
+        min: 0
+        max: 25.5
+        precision: 1
+        units {derived_dimensions: "length"}
+    }];
+    optional string destination = 18 [(dccl.field).max_length = 20];
+}
