@@ -50,9 +50,9 @@ goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Voyage voy)
     switch (voy.message_id())
     {
         case 5:
-        case 24:
             throw(EncoderException("Message type: " + std::to_string(voy.message_id()) +
                                    " is not yet supported by Encoder"));
+            // case 24: encode_msg_24(voy); break;
 
         default:
             throw(EncoderException("Message type: " + std::to_string(voy.message_id()) +

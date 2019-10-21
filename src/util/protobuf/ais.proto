@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "dccl/option_extensions.proto";
 
 package goby.util.ais.protobuf;
@@ -107,7 +108,7 @@ message Voyage
         max_bytes: 1500
         unit_system: "si"
     };
-
+    
     optional int32 message_id = 2 [(dccl.field) = {min: 1 max: 27}, default = 0]; // 5,24
 
     optional int32 mmsi = 3 [(dccl.field) = {min: 201000000 max: 775999999}];

@@ -122,5 +122,43 @@ void goby::util::ais::Decoder::decode_position()
 
 void goby::util::ais::Decoder::decode_voyage()
 {
-    // todo
+    using namespace boost::units;
+
+    switch (message_id())
+    {
+        case 5: break;
+
+        case 24:
+        {
+            const auto& ais = dynamic_cast<const libais::Ais24&>(as_libais_msg());
+
+            voy_.set_message_id(ais.message_id);
+            voy_.set_mmsi(ais.mmsi);
+
+            if (ais.part_num == 0)
+            {
+                std::string name = ais.name;
+                boost::trim_if(name,
+                               boost::algorithm::is_space() || boost::algorithm::is_any_of("@"));
+                if (!name.empty())
+                    voy_.set_name(name);
+            }
+            else if (ais.part_num == 1)
+            {
+                std::string callsign = ais.callsign;
+                boost::trim_if(callsign,
+                               boost::algorithm::is_space() || boost::algorithm::is_any_of("@"));
+                voy_.set_callsign(callsign);
+                if (protobuf::Voyage::ShipType_IsValid(ais.type_and_cargo))
+                    voy_.set_type(static_cast<protobuf::Voyage::ShipType>(ais.type_and_cargo));
+                voy_.set_to_bow_with_units(ais.dim_a * si::meters);
+                voy_.set_to_stern_with_units(ais.dim_b * si::meters);
+                voy_.set_to_port_with_units(ais.dim_c * si::meters);
+                voy_.set_to_starboard_with_units(ais.dim_d * si::meters);
+            }
+        }
+        break;
+
+        default: break;
+    }
 }

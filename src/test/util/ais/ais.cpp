@@ -101,6 +101,48 @@ BOOST_AUTO_TEST_CASE(ais_decode_18_2)
     BOOST_CHECK(pos.raim());
 }
 
+BOOST_AUTO_TEST_CASE(ais_decode_24_1)
+{
+    NMEASentence nmea("!AIVDM,1,1,,A,H42O55i18tMET00000000000000,2*6D");
+    std::cout << "IN: " << nmea.message() << std::endl;
+
+    Decoder decoder(nmea);
+    BOOST_REQUIRE(decoder.complete());
+    BOOST_CHECK_EQUAL(decoder.message_id(), 24);
+    BOOST_CHECK_EQUAL(decoder.parsed_type(), Decoder::ParsedType::VOYAGE);
+
+    auto voy = decoder.as_voyage();
+    std::cout << "OUT: " << voy.ShortDebugString() << std::endl;
+
+    BOOST_CHECK_EQUAL(voy.message_id(), 24);
+    BOOST_CHECK_EQUAL(voy.mmsi(), 271041815);
+    BOOST_CHECK_EQUAL(voy.name(), "PROGUY");
+}
+
+BOOST_AUTO_TEST_CASE(ais_decode_24_2)
+{
+    NMEASentence nmea("!AIVDM,1,1,,A,H42O55lti4hhhilD3nink000?050,0*40");
+    std::cout << "IN: " << nmea.message() << std::endl;
+
+    Decoder decoder(nmea);
+    BOOST_REQUIRE(decoder.complete());
+    BOOST_CHECK_EQUAL(decoder.message_id(), 24);
+    BOOST_CHECK_EQUAL(decoder.parsed_type(), Decoder::ParsedType::VOYAGE);
+
+    auto voy = decoder.as_voyage();
+    std::cout << "OUT: " << voy.ShortDebugString() << std::endl;
+
+    BOOST_CHECK_EQUAL(voy.message_id(), 24);
+    BOOST_CHECK_EQUAL(voy.mmsi(), 271041815);
+    BOOST_CHECK(!voy.has_name());
+    BOOST_CHECK_EQUAL(voy.callsign(), "TC6163");
+    BOOST_CHECK(voy.type() == goby::util::ais::protobuf::Voyage::TYPE__PASSENGER);
+    BOOST_CHECK_EQUAL(voy.to_bow(), 0);
+    BOOST_CHECK_EQUAL(voy.to_stern(), 15);
+    BOOST_CHECK_EQUAL(voy.to_port(), 0);
+    BOOST_CHECK_EQUAL(voy.to_starboard(), 5);
+}
+
 BOOST_AUTO_TEST_CASE(ais_encode_18)
 {
     goby::util::ais::protobuf::Position pos;
