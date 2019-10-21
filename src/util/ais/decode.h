@@ -97,6 +97,42 @@ class Decoder
     }
 
   private:
+    std::string trim_ais_string(std::string in)
+    {
+        boost::trim_if(in, boost::algorithm::is_space() || boost::algorithm::is_any_of("@"));
+        return in;
+    }
+
+    template <typename LibAisMessage>
+    void set_shared_fields(goby::util::ais::protobuf::Voyage& voy, const LibAisMessage& ais,
+                           int part_num)
+    {
+        using namespace boost::units;
+
+        voy_.set_message_id(ais.message_id);
+        voy_.set_mmsi(ais.mmsi);
+
+        if (part_num == 0)
+        {
+            std::string name = trim_ais_string(ais.name);
+            if (!name.empty())
+                voy_.set_name(name);
+        }
+        else if (part_num == 1)
+        {
+            std::string callsign = trim_ais_string(ais.callsign);
+            if (!callsign.empty())
+                voy_.set_callsign(callsign);
+
+            if (protobuf::Voyage::ShipType_IsValid(ais.type_and_cargo))
+                voy_.set_type(static_cast<protobuf::Voyage::ShipType>(ais.type_and_cargo));
+            voy_.set_to_bow_with_units(ais.dim_a * si::meters);
+            voy_.set_to_stern_with_units(ais.dim_b * si::meters);
+            voy_.set_to_port_with_units(ais.dim_c * si::meters);
+            voy_.set_to_starboard_with_units(ais.dim_d * si::meters);
+        }
+    }
+
     template <typename LibAisMessage>
     void set_shared_fields(goby::util::ais::protobuf::Position& pos, const LibAisMessage& ais)
     {

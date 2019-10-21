@@ -126,36 +126,34 @@ void goby::util::ais::Decoder::decode_voyage()
 
     switch (message_id())
     {
-        case 5: break;
+        case 5:
+        {
+            const auto& ais = dynamic_cast<const libais::Ais5&>(as_libais_msg());
+
+            // type 5 contains values that are split across type 24 parts 0 and 1
+            set_shared_fields(voy_, ais, 0);
+            set_shared_fields(voy_, ais, 1);
+
+            voy_.set_imo(ais.imo_num);
+
+            if (protobuf::Voyage::FixType_IsValid(ais.fix_type))
+                voy_.set_fix_type(static_cast<protobuf::Voyage::FixType>(ais.fix_type));
+            voy_.set_eta_month(ais.eta_month);
+            voy_.set_eta_day(ais.eta_day);
+            voy_.set_eta_hour(ais.eta_hour);
+            voy_.set_eta_minute(ais.eta_minute);
+            voy_.set_draught_with_units(ais.draught * si::meters);
+
+            std::string dest = trim_ais_string(ais.destination);
+            if (!dest.empty())
+                voy_.set_destination(dest);
+        }
+        break;
 
         case 24:
         {
             const auto& ais = dynamic_cast<const libais::Ais24&>(as_libais_msg());
-
-            voy_.set_message_id(ais.message_id);
-            voy_.set_mmsi(ais.mmsi);
-
-            if (ais.part_num == 0)
-            {
-                std::string name = ais.name;
-                boost::trim_if(name,
-                               boost::algorithm::is_space() || boost::algorithm::is_any_of("@"));
-                if (!name.empty())
-                    voy_.set_name(name);
-            }
-            else if (ais.part_num == 1)
-            {
-                std::string callsign = ais.callsign;
-                boost::trim_if(callsign,
-                               boost::algorithm::is_space() || boost::algorithm::is_any_of("@"));
-                voy_.set_callsign(callsign);
-                if (protobuf::Voyage::ShipType_IsValid(ais.type_and_cargo))
-                    voy_.set_type(static_cast<protobuf::Voyage::ShipType>(ais.type_and_cargo));
-                voy_.set_to_bow_with_units(ais.dim_a * si::meters);
-                voy_.set_to_stern_with_units(ais.dim_b * si::meters);
-                voy_.set_to_port_with_units(ais.dim_c * si::meters);
-                voy_.set_to_starboard_with_units(ais.dim_d * si::meters);
-            }
+            set_shared_fields(voy_, ais, ais.part_num);
         }
         break;
 

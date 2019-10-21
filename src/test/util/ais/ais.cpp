@@ -47,6 +47,46 @@ bool close_enough(double a, double b, int precision)
 
 constexpr double eps_pct{0.001};
 
+BOOST_AUTO_TEST_CASE(ais_decode_5)
+{
+    std::vector<NMEASentence> nmeas{
+        {"!AIVDM,2,1,1,A,55?MbV02;H;s<HtKR20EHE:0@T4@Dn2222222216L961O5Gf0NSQEp6ClRp8,0*1C"},
+        {"!AIVDM,2,2,1,A,88888888880,2*25"}};
+
+    std::cout << "IN: " << nmeas[0].message() << std::endl;
+    std::cout << "IN: " << nmeas[1].message() << std::endl;
+
+    Decoder decoder(nmeas);
+    BOOST_REQUIRE(decoder.complete());
+    BOOST_CHECK_EQUAL(decoder.message_id(), 5);
+    BOOST_CHECK_EQUAL(decoder.parsed_type(), Decoder::ParsedType::VOYAGE);
+
+    auto voy = decoder.as_voyage();
+    std::cout << "OUT: " << voy.ShortDebugString() << std::endl;
+
+    BOOST_CHECK_EQUAL(voy.message_id(), 5);
+    BOOST_CHECK_EQUAL(voy.mmsi(), 351759000);
+    BOOST_CHECK_EQUAL(voy.imo(), 9134270);
+    BOOST_CHECK_EQUAL(voy.name(), "EVER DIADEM");
+    BOOST_CHECK_EQUAL(voy.callsign(), "3FOF8");
+    BOOST_CHECK_EQUAL(voy.type(), 70);
+    BOOST_CHECK_EQUAL(voy.to_bow(), 225);
+    BOOST_CHECK_EQUAL(voy.to_stern(), 70);
+    BOOST_CHECK_EQUAL(voy.to_port(), 1);
+    BOOST_CHECK_EQUAL(voy.to_starboard(), 31);
+
+    BOOST_CHECK_EQUAL(voy.fix_type(), 1);
+    BOOST_CHECK_EQUAL(voy.eta_month(), 5);
+    BOOST_CHECK_EQUAL(voy.eta_day(), 15);
+    BOOST_CHECK_EQUAL(
+        voy.eta_hour(),
+        14); // using https://www.maritec.co.za/aisvdmvdodecoding1.php, differs from gpsd sample
+    BOOST_CHECK_EQUAL(voy.eta_minute(), 0); // https://www.maritec.co.za/aisvdmvdodecoding1.php
+    BOOST_CHECK_CLOSE(voy.draught(), 12.2, eps_pct);
+
+    BOOST_CHECK_EQUAL(voy.destination(), "NEW YORK");
+}
+
 BOOST_AUTO_TEST_CASE(ais_decode_18_1)
 {
     NMEASentence nmea("!AIVDM,1,1,,A,B52K>;h00Fc>jpUlNV@ikwpUoP06,0*4C");
@@ -148,7 +188,8 @@ BOOST_AUTO_TEST_CASE(ais_encode_18)
     goby::util::ais::protobuf::Position pos;
     std::string pos_str(
         "message_id: 18 mmsi: 338087471 speed_over_ground: 0.051444445 lat: 40.68454 lon: "
-        "-74.072131666666664 position_accuracy: ACCURACY__LOW__ABOVE_10_METERS course_over_ground: "
+        "-74.072131666666664 position_accuracy: ACCURACY__LOW__ABOVE_10_METERS "
+        "course_over_ground: "
         "79.6 report_second: 49 raim: true");
 
     google::protobuf::TextFormat::ParseFromString(pos_str, &pos);
