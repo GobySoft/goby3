@@ -28,6 +28,10 @@ environment-template-stretch: &environment-template-stretch
   DISTRO_RELEASE_CODENAME: "stretch"
   DISTRO_RELEASE_VERSION: "debian9"
 
+environment-template-buster: &environment-template-buster
+  DISTRO_RELEASE_CODENAME: "buster"
+  DISTRO_RELEASE_VERSION: "debian10"
+  
 environment-template-xenial: &environment-template-xenial
   DISTRO_RELEASE_CODENAME: "xenial"
   DISTRO_RELEASE_VERSION: "ubuntu16.04"
@@ -44,6 +48,13 @@ docker-arm64-stretch: &docker-arm64-stretch
 docker-armhf-stretch: &docker-armhf-stretch
   - image: gobysoft/goby3-debian-build-armhf:9.1
 
+docker-base-buster: &docker-base-buster
+  - image: gobysoft/goby3-debian-build-base:10.1
+docker-arm64-buster: &docker-arm64-buster
+  - image: gobysoft/goby3-debian-build-arm64:10.1
+docker-armhf-buster: &docker-armhf-buster
+  - image: gobysoft/goby3-debian-build-armhf:10.1
+    
 docker-base-xenial: &docker-base-xenial
   - image: gobysoft/goby3-ubuntu-build-base:16.04.1
 docker-arm64-xenial: &docker-arm64-xenial
@@ -191,6 +202,8 @@ workflows:
     jobs:
       - amd64-stretch-build:
           <<: *filter-template-non-master
+      - amd64-buster-build:
+          <<: *filter-template-non-master
       - amd64-xenial-build:
           <<: *filter-template-non-master
       - amd64-bionic-build:
@@ -212,6 +225,20 @@ workflows:
           <<: *filter-template-master-only
           requires:
             - arm64-stretch-deb-build
+
+      - amd64-buster-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - arm64-buster-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - amd64-buster-deb-build
+      - armhf-buster-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - arm64-buster-deb-build
+
             
       - amd64-xenial-deb-build:
           <<: *filter-template-master-only
@@ -243,6 +270,7 @@ workflows:
       - continuous-upload:
           requires:
             - armhf-stretch-deb-build
+            - armhf-buster-deb-build
             - armhf-bionic-deb-build
             - armhf-xenial-deb-build
 
@@ -255,6 +283,7 @@ workflows:
               ignore: /.*/
           requires:
             - armhf-stretch-deb-build
+            - armhf-buster-deb-build
             - armhf-bionic-deb-build
             - armhf-xenial-deb-build
             
@@ -310,6 +339,14 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-stretch
 
+  amd64-buster-build:
+    <<: *job-template-amd64
+    docker: *docker-base-buster
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-buster
+
+      
   amd64-xenial-build:
     <<: *job-template-amd64
     docker: *docker-base-xenial
@@ -366,6 +403,27 @@ jobs:
     environment:
       <<: *environment-template-common
       <<: *environment-template-stretch
+      <<: *environment-template-armhf
+  amd64-buster-deb-build:
+    <<: *job-template-deb-amd64
+    docker: *docker-base-buster
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-buster
+      <<: *environment-template-amd64
+  arm64-buster-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-arm64-buster
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-buster
+      <<: *environment-template-arm64
+  armhf-buster-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-armhf-buster
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-buster
       <<: *environment-template-armhf
   amd64-xenial-deb-build:
     <<: *job-template-deb-amd64
