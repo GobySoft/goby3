@@ -45,14 +45,14 @@ goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Position pos)
     }
 }
 
-goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Voyage voy)
+goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Voyage voy, int part_num)
 {
     switch (voy.message_id())
     {
         case 5:
             throw(EncoderException("Message type: " + std::to_string(voy.message_id()) +
                                    " is not yet supported by Encoder"));
-            // case 24: encode_msg_24(voy); break;
+        case 24: encode_msg_24(voy, part_num); break;
 
         default:
             throw(EncoderException("Message type: " + std::to_string(voy.message_id()) +
@@ -140,26 +140,64 @@ void goby::util::ais::Encoder::encode_msg_18(goby::util::ais::protobuf::Position
         {12, pos.has_course_over_ground() ? ais_angle(pos.course_over_ground_with_units())
                                           : 511}, // cog in 0.1 degrees
         {9, pos.has_true_heading() ? ais_angle(pos.true_heading_with_units())
-                                   : 511}, // heading in 0.1 degrees
-        {6, static_cast<uint32_t>(pos.report_second())},
-        {2},             // regional reserved
-        {1, 1},          // CS Unit,  1 = Class B "CS" unit
-        {1},             // Display flag
-        {1},             // DSC flag
-        {1},             // Band flag
-        {1},             // Message 22 flag
-        {1},             // Assigned mode
-        {1, pos.raim()}, // RAIM
-        {1, 1},          // (always "1" for Class-B "CS")
+                                   : 511},               // heading in 0.1 degrees
+        {6, static_cast<uint32_t>(pos.report_second())}, // report sec
+        {2},                                             // regional reserved
+        {1, 1},                                          // CS Unit,  1 = Class B "CS" unit
+        {1},                                             // Display flag
+        {1},                                             // DSC flag
+        {1},                                             // Band flag
+        {1},                                             // Message 22 flag
+        {1},                                             // Assigned mode
+        {1, pos.raim()},                                 // RAIM
+        {1, 1},                                          // (always "1" for Class-B "CS")
         {19,
          393222} // Because Class B "CS" does not use any Communication State information, this field shall be filled with the following value: 1100000000000000110.
     };
 
-    for (auto it = fields.rbegin(), end = fields.rend(); it != end; ++it)
-    {
-        auto fb = it->as_bitset();
-        for (int i = 0, n = fb.size(); i < n; ++i) bits_.push_back(fb[i]);
-    }
-
+    concatenate_bitset(fields);
     assert(bits_.size() == 168);
+}
+
+void goby::util::ais::Encoder::encode_msg_24(goby::util::ais::protobuf::Voyage voy,
+                                             std::uint32_t part_num)
+{
+    channel_ = RadioChannel::CLASS_B;
+
+    if (part_num == 0)
+    {
+        std::vector<AISField> fields{
+            {6, 24},                                      // message type
+            {2},                                          // repeat indicator
+            {30, static_cast<std::uint32_t>(voy.mmsi())}, // mmsi
+            {2, part_num},                                // part num
+            {120, 0, voy.name(), true},                   // name
+            {8}                                           // spare
+        };
+
+        concatenate_bitset(fields);
+        assert(bits_.size() == 168);
+    }
+    else
+    {
+        std::vector<AISField> fields{
+            {6, 24},                                      // message type
+            {2},                                          // repeat indicator
+            {30, static_cast<std::uint32_t>(voy.mmsi())}, // mmsi
+            {2, part_num},                                // part num
+            {8, voy.type()},                              // ship type
+            {18, 0, "XXX", true},                         // vendor ID
+            {4, 0},                                       // unit model code
+            {20, 0},                                      // serial number
+            {42, 0, voy.callsign(), true},                // callsign
+            {9, voy.to_bow()},                            // dimA
+            {9, voy.to_stern()},                          // dimB
+            {6, voy.to_port()},                           // dimC
+            {6, voy.to_starboard()},                      // dimD
+            {6}                                           // spare
+        };
+
+        concatenate_bitset(fields);
+        assert(bits_.size() == 168);
+    }
 }

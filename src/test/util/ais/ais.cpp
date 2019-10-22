@@ -211,3 +211,54 @@ BOOST_AUTO_TEST_CASE(ais_encode_18)
 
     BOOST_CHECK(pos.SerializeAsString() == pos_out.SerializeAsString());
 }
+
+BOOST_AUTO_TEST_CASE(ais_encode_24_1)
+{
+    goby::util::ais::protobuf::Voyage voy;
+
+    std::string voy_str("message_id: 24 mmsi: 271041815 name: \"PROGUY\"");
+    google::protobuf::TextFormat::ParseFromString(voy_str, &voy);
+
+    Encoder encoder(voy, 0);
+
+    auto nmeas = encoder.as_nmea();
+    BOOST_REQUIRE_EQUAL(nmeas.size(), 1);
+
+    std::cout << "encoder OUT: " << nmeas[0].message() << std::endl;
+
+    Decoder decoder(nmeas);
+    BOOST_REQUIRE(decoder.complete());
+    BOOST_CHECK_EQUAL(decoder.message_id(), 24);
+    BOOST_CHECK_EQUAL(decoder.parsed_type(), Decoder::ParsedType::VOYAGE);
+
+    auto voy_out = decoder.as_voyage();
+    std::cout << "decoder OUT: " << voy_out.ShortDebugString() << std::endl;
+
+    BOOST_CHECK(voy.SerializeAsString() == voy_out.SerializeAsString());
+}
+
+BOOST_AUTO_TEST_CASE(ais_encode_24_2)
+{
+    goby::util::ais::protobuf::Voyage voy;
+
+    std::string voy_str("message_id: 24 mmsi: 271041815 callsign: \"TC6163\" type: TYPE__PASSENGER "
+                        "to_bow: 0 to_stern: 15 to_port: 0 to_starboard: 5");
+    google::protobuf::TextFormat::ParseFromString(voy_str, &voy);
+
+    Encoder encoder(voy, 1);
+
+    auto nmeas = encoder.as_nmea();
+    BOOST_REQUIRE_EQUAL(nmeas.size(), 1);
+
+    std::cout << "encoder OUT: " << nmeas[0].message() << std::endl;
+
+    Decoder decoder(nmeas);
+    BOOST_REQUIRE(decoder.complete());
+    BOOST_CHECK_EQUAL(decoder.message_id(), 24);
+    BOOST_CHECK_EQUAL(decoder.parsed_type(), Decoder::ParsedType::VOYAGE);
+
+    auto voy_out = decoder.as_voyage();
+    std::cout << "decoder OUT: " << voy_out.ShortDebugString() << std::endl;
+
+    BOOST_CHECK(voy.SerializeAsString() == voy_out.SerializeAsString());
+}

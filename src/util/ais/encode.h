@@ -47,7 +47,7 @@ class Encoder
 {
   public:
     Encoder(goby::util::ais::protobuf::Position pos);
-    Encoder(goby::util::ais::protobuf::Voyage voy);
+    Encoder(goby::util::ais::protobuf::Voyage voy, int part_num = 0);
 
     boost::dynamic_bitset<std::uint8_t> as_bitset() const { return bits_; }
 
@@ -55,6 +55,7 @@ class Encoder
 
   private:
     void encode_msg_18(goby::util::ais::protobuf::Position pos);
+    void encode_msg_24(goby::util::ais::protobuf::Voyage voy, std::uint32_t part_num);
 
     boost::units::quantity<boost::units::degree::plane_angle>
     wrap_0_360(boost::units::quantity<boost::units::degree::plane_angle> in)
@@ -90,6 +91,16 @@ class Encoder
             10);
     }
 
+    struct AISField;
+    void concatenate_bitset(const std::vector<AISField>& fields)
+    {
+        for (auto it = fields.rbegin(), end = fields.rend(); it != end; ++it)
+        {
+            auto fb = it->as_bitset();
+            for (int i = 0, n = fb.size(); i < n; ++i) bits_.push_back(fb[i]);
+        }
+    }
+
   private:
     struct AISField
     {
@@ -101,9 +112,33 @@ class Encoder
         boost::dynamic_bitset<std::uint8_t> as_bitset() const
         {
             if (is_string)
-                assert(false); // todo implement
+            {
+                constexpr int ais_bits_per_char = 6;
+                std::string ms = s;
+                ms.resize(len / ais_bits_per_char, '@');
+                boost::to_upper(ms);
+
+                boost::dynamic_bitset<std::uint8_t> bits(len, 0);
+                for (int i = 0, n = ms.size(); i < n; ++i)
+                {
+                    char c = ms[i];
+
+                    if (c >= '@' && c <= '_')
+                        c -= '@';
+                    else if (c >= ' ' && c <= '?')
+                        ; // no change from ascii value
+                    else  // other values that can't be represented
+                        c = '@';
+
+                    boost::dynamic_bitset<std::uint8_t> char_bits(len, c & 0x3F);
+                    bits |= (char_bits << (n - i - 1) * ais_bits_per_char);
+                }
+                return bits;
+            }
             else
+            {
                 return boost::dynamic_bitset<std::uint8_t>(len, u);
+            }
         }
     };
 
