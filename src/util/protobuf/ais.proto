@@ -94,6 +94,7 @@ message Position
     }];
     optional int32 report_second = 13
         [(dccl.field) = {omit: true units {derived_dimensions: "time"}}];
+    
     optional bool raim = 14
         [(dccl.field).omit =
              true];  // Receiver Autonomous Integrity Monitoring (RAIM)

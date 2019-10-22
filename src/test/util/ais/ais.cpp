@@ -190,7 +190,7 @@ BOOST_AUTO_TEST_CASE(ais_encode_18)
         "message_id: 18 mmsi: 338087471 speed_over_ground: 0.051444445 lat: 40.68454 lon: "
         "-74.072131666666664 position_accuracy: ACCURACY__LOW__ABOVE_10_METERS "
         "course_over_ground: "
-        "79.6 report_second: 49 raim: true");
+        "79.6 report_second: 49 raim: true true_heading: 45");
 
     google::protobuf::TextFormat::ParseFromString(pos_str, &pos);
 

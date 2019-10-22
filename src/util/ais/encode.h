@@ -76,10 +76,11 @@ class Encoder
 
     // 0 - 360 as tenths
     template <typename AngleType, typename ValueType>
-    std::uint32_t ais_angle(boost::units::quantity<AngleType, ValueType> a)
+    std::uint32_t ais_angle(boost::units::quantity<AngleType, ValueType> a, int precision)
     {
         return std::round(
-            wrap_0_360(boost::units::quantity<boost::units::degree::plane_angle>(a)).value() * 10);
+            wrap_0_360(boost::units::quantity<boost::units::degree::plane_angle>(a)).value() *
+            std::pow(10, precision));
     }
 
     // 1/10 knots

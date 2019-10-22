@@ -137,10 +137,10 @@ void goby::util::ais::Encoder::encode_msg_18(goby::util::ais::protobuf::Position
         {1, pos.position_accuracy()},           // position accuracy (0 = GNSS fix), (1 = DGPS)
         {28, ais_latlon(pos.lon_with_units())}, // 1/10000 minutes
         {27, ais_latlon(pos.lat_with_units())}, // same as lon
-        {12, pos.has_course_over_ground() ? ais_angle(pos.course_over_ground_with_units())
-                                          : 511}, // cog in 0.1 degrees
-        {9, pos.has_true_heading() ? ais_angle(pos.true_heading_with_units())
-                                   : 511},               // heading in 0.1 degrees
+        {12, pos.has_course_over_ground() ? ais_angle(pos.course_over_ground_with_units(), 1)
+                                          : 3600}, // cog in 0.1 degrees
+        {9, pos.has_true_heading() ? ais_angle(pos.true_heading_with_units(), 0)
+                                   : 511},               // heading in 1 degree
         {6, static_cast<uint32_t>(pos.report_second())}, // report sec
         {2},                                             // regional reserved
         {1, 1},                                          // CS Unit,  1 = Class B "CS" unit
