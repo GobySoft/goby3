@@ -6,6 +6,10 @@ if(build_moos)
   set(DOC_DEPENDS_LIBS "${DOC_DEPENDS_LIBS};goby_moos")
 endif()
 
+if(build_zeromq)
+  set(DOC_DEPENDS_LIBS "${DOC_DEPENDS_LIBS};goby_zeromq")
+endif()
+
 add_custom_command(OUTPUT ${goby_SHARE_DIR}/doc/goby-dev.pdf
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/doxy2pdf.sh
   ARGS ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${goby_SHARE_DIR}/doc/goby-dev.pdf
