@@ -18,6 +18,7 @@ RUN apt-get update && \
 
 # Comment out troublesome (not fully multi-arch compatible) dependencies
 RUN sed -i 's/^\(.*\)clang/#\1clang/' debian/control && \
+    sed -i 's/^\(.*\)lld/#\1lld/' debian/control && \
     sed -i 's/^\(.*\)lmodern/#\1lmodern/' debian/control && \
     sed -i 's/^\(.*\)libwt/#\1libwt/' debian/control && \
     sed -i 's/^\(.*\)libhdf/#\1libhdf/' debian/control && \
