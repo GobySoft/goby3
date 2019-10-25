@@ -45,6 +45,18 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     endif()
 endif()
 
+# If we're using clang, use lld as well
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+  find_program(LDD_BINARY lld)
+  if(LDD_BINARY)
+    message("Using Clang, setting to also use ldd")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+  else()
+    message("Using Clang, but lld is not installed, so using system default (probably ld)")    
+  endif()
+endif()
+  
+
 set(GOBY_VERSION_MAJOR "3")
 set(GOBY_VERSION_MINOR "0")
 set(GOBY_VERSION_PATCH "0~beta4")

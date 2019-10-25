@@ -615,10 +615,11 @@ WARN_LOGFILE           =
 INPUT                  = @CMAKE_SOURCE_DIR@/src/doc/dev_manual/doxy_body/ \
                          @goby_INC_DIR@ \
                          @CMAKE_SOURCE_DIR@/src \
-                         /usr/include/google/protobuf/message.h \
+                         /usr/include/google/protobuf/arena.h \
                          /usr/include/google/protobuf/message_lite.h \
+                         /usr/include/google/protobuf/message.h \
                          /usr/include/boost/statechart/simple_state.hpp \
-                         /usr/include/boost/statechart/state.hpp \                         
+                         /usr/include/boost/statechart/state.hpp \
                          /usr/include/boost/statechart/event.hpp \    
                          /usr/include/boost/statechart/state_machine.hpp \    
 #                         @CMAKE_SOURCE_DIR@/share/examples \
