@@ -154,7 +154,15 @@ class ModemDriverThread
 
     bool _dest_is_in_subnet(modem_id_type dest_id)
     {
-        return (dest_id & cfg().subnet_mask()) == (cfg().modem_id() & cfg().subnet_mask());
+        bool dest_in_subnet =
+            (dest_id & cfg().subnet_mask()) == (cfg().modem_id() & cfg().subnet_mask());
+        if (!dest_in_subnet)
+            goby::glog.is_debug3() && goby::glog
+                                          << "Dest: " << dest_id
+                                          << " is not in subnet (our id: " << cfg().modem_id()
+                                          << ", mask: " << cfg().subnet_mask();
+
+        return dest_in_subnet;
     }
 
   private:

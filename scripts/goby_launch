@@ -158,8 +158,13 @@ fi
 
 # search for gobyd so we can use the same interprocess { } configuration for goby_terminate
 gobyd_line=$(cat "$launchfile" | egrep "^ *[/a-zA-Z0-9_]*gobyd")
+num_gobyd=$(echo "$gobyd_line" | wc -l)
+
 use_goby_terminate=true
-if [ -z "$gobyd_line" ]; then
+if [[ "$num_gobyd" != "1" ]]; then
+    echo "Warning: multiple instances of 'gobyd' found - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
+    use_goby_terminate=false
+elif [[ "$gobyd_line"  == "" ]]; then
     echo "Warning: failed to find line for launching 'gobyd' - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
     use_goby_terminate=false
 else
@@ -168,10 +173,11 @@ else
     gobyd_platform=$(echo "$gobyd_interprocess" | grep platform | sed 's/.*platform: \"\(.*\)\".*/\1/')
     if [ ! -z "$gobyd_platform" ]; then
         platform="$gobyd_platform"
-        echo "Setting platform to [$gobyd_platform] from gobyd interprocess configuration"
+        echo "Setting platform to [$gobyd_platform] from gobyd interprocess configuration"       
     fi
 fi
 
+     
 # actually launch the lines
 gnterm=()
 while IFS= read -r line

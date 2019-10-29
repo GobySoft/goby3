@@ -161,6 +161,8 @@ class InterVehicleTransporterBase
                                       data, ack_handler, expire_handler);
         }
 
+        goby::glog.is_debug3() &&
+            goby::glog << "Set up publishing for: " << data->ShortDebugString() << std::endl;
         return data;
     }
 

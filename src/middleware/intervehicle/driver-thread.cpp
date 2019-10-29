@@ -273,6 +273,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
                            {pub_it->second.cfg().intervehicle().buffer(),
                             subscription.intervehicle().buffer()});
         }
+        else
+        {
+            glog.is_debug2() && glog << "No publisher yet for this subscription" << std::endl;
+        }
     }
     else
     {
@@ -297,6 +301,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
     std::shared_ptr<const SerializerTransporterMessage> msg)
 {
     auto buffer_id = _create_buffer_id(msg->key());
+
+    glog.is_debug3() && glog << "Buffering message with id: " << buffer_id << " from "
+                             << msg->ShortDebugString() << std::endl;
+
     if (!publisher_buffer_cfg_.count(buffer_id))
     {
         publisher_buffer_cfg_.insert(std::make_pair(buffer_id, msg->key()));

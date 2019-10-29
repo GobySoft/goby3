@@ -25,6 +25,8 @@
 
 #include <dccl/codec.h>
 
+#include "goby/util/debug_logger.h"
+
 #include "protobuf.h"
 
 namespace goby
@@ -115,9 +117,15 @@ struct DCCLSerializerParserHelperBase
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         auto* desc = dccl::DynamicProtobufManager::find_descriptor(full_name);
         if (desc)
+        {
             return codec().id(desc);
+        }
         else
+        {
+            goby::glog.is_warn() && goby::glog << "No DCCL message found with name: " << full_name
+                                               << std::endl;
             return 0;
+        }
     }
 
     static void
