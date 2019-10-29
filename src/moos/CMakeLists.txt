@@ -55,4 +55,7 @@ endif()
 set_target_properties(goby_moos PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
 add_subdirectory(frontseat)
-add_subdirectory(middleware)
+
+if(build_zeromq)
+  add_subdirectory(middleware)
+endif()
