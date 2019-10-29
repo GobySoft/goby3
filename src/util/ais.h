@@ -20,29 +20,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IO_GROUPS_20190718H
-#define IO_GROUPS_20190718H
+#ifndef AIS_20191021H
+#define AIS_20191021H
 
-#include "goby/middleware/group.h"
-
-namespace goby
-{
-namespace middleware
-{
-namespace io
-{
-namespace groups
-{
-constexpr goby::middleware::Group status{"goby::middleware::io::status"};
-
-constexpr goby::middleware::Group mavlink_raw_in{"goby::apps::zeromq::mavlink_raw_in"};
-constexpr goby::middleware::Group mavlink_raw_out{"goby::apps::zeromq::mavlink_raw_out"};
-
-constexpr goby::middleware::Group nmea0183_in{"goby::middleware::io::nmea0183_in"};
-constexpr goby::middleware::Group nmea0183_out{"goby::middleware::io::nmea0183_out"};
-}
-} // namespace io
-} // namespace middleware
-} // namespace goby
+#include "ais/decode.h"
+#include "ais/encode.h"
 
 #endif

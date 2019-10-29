@@ -12,7 +12,7 @@ if(CRYPTOPP_PATH_USES_PLUS_SIGN)
 endif()
 
 find_library(Cryptopp_LIBRARY NAMES cryptopp crypto++
-  DOC "The Cryptopp Encrpytion library")
+  DOC "The Cryptopp Encryption library")
 
 mark_as_advanced(Cryptopp_INCLUDE_DIR
   Cryptopp_LIBRARY)
