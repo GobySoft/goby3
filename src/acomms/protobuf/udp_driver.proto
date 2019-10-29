@@ -8,17 +8,17 @@ message Config
 {
     message EndPoint
     {
-        optional string ip = 1 [default = "127.0.0.1"];
-        required uint32 port = 2;
+        optional uint32 modem_id = 1 [default = 0];
+        optional string ip = 2 [default = "127.0.0.1"];
+        required uint32 port = 3;
     }
 
     required EndPoint local = 1 [(goby.field).description =
-                                    "The endpoint of the local machine "
-                                    "(IP address can be omitted)"];
-    required EndPoint remote = 2
-            [(goby.field).description =
-             "The endpoint of the receiving machine."];
-    optional int32 max_frame_size = 3 [default = 65536];
+                                     "The endpoint of the local machine "
+                                     "(IP address can be omitted)"];
+    repeated EndPoint remote = 2
+        [(goby.field).description = "An endpoint of the receiving machine."];
+    optional int32 max_frame_size = 3 [default = 1400];
 
     repeated uint32 additional_application_ack_modem_id = 21;
 }
@@ -27,4 +27,3 @@ extend goby.acomms.protobuf.DriverConfig
 {
     optional Config config = 1341;
 }
-

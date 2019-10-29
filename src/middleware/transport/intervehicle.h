@@ -43,9 +43,9 @@ template <typename Derived, typename InnerTransporter>
 class InterVehicleTransporterBase
     : public StaticTransporterInterface<InterVehicleTransporterBase<Derived, InnerTransporter>,
                                         InnerTransporter>,
-      public Poller<InterVehicleTransporterBase<Derived, InnerTransporter> >
+      public Poller<InterVehicleTransporterBase<Derived, InnerTransporter>>
 {
-    using PollerType = Poller<InterVehicleTransporterBase<Derived, InnerTransporter> >;
+    using PollerType = Poller<InterVehicleTransporterBase<Derived, InnerTransporter>>;
 
   public:
     InterVehicleTransporterBase(InnerTransporter& inner) : PollerType(&inner), inner_(inner) {}
@@ -149,12 +149,12 @@ class InterVehicleTransporterBase
         if (publisher.cfg().intervehicle().buffer().ack_required())
         {
             auto ack_handler = std::make_shared<
-                PublisherCallback<Data, MarshallingScheme::DCCL, intervehicle::protobuf::AckData> >(
+                PublisherCallback<Data, MarshallingScheme::DCCL, intervehicle::protobuf::AckData>>(
                 publisher.acked_func());
 
             auto expire_handler =
                 std::make_shared<PublisherCallback<Data, MarshallingScheme::DCCL,
-                                                   intervehicle::protobuf::ExpireData> >(
+                                                   intervehicle::protobuf::ExpireData>>(
                     publisher.expired_func());
 
             this->_insert_pending_ack(SerializerParserHelper<Data, MarshallingScheme::DCCL>::id(),
@@ -172,15 +172,14 @@ class InterVehicleTransporterBase
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
 
         auto subscription =
-            std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL> >(func, group,
-                                                                                        subscriber);
+            std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(func, group,
+                                                                                       subscriber);
 
         this->subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
 
         auto dccl_subscription = this->template _serialize_subscription<Data>(group, subscriber);
         using intervehicle::protobuf::Subscription;
         // insert pending subscription
-
         auto subscription_publication = intervehicle::serialize_publication(
             *dccl_subscription, intervehicle::groups::subscription_forward,
             Publisher<Subscription>());
@@ -190,12 +189,12 @@ class InterVehicleTransporterBase
         subscription_publication->mutable_key()->set_serialize_time_with_units(subscribe_time);
 
         auto ack_handler = std::make_shared<PublisherCallback<Subscription, MarshallingScheme::DCCL,
-                                                              intervehicle::protobuf::AckData> >(
+                                                              intervehicle::protobuf::AckData>>(
             subscriber.subscribed_func());
 
         auto expire_handler =
             std::make_shared<PublisherCallback<Subscription, MarshallingScheme::DCCL,
-                                               intervehicle::protobuf::ExpireData> >(
+                                               intervehicle::protobuf::ExpireData>>(
                 subscriber.subscribe_expired_func());
 
         goby::glog.is_debug1() && goby::glog << "Inserting subscription ack handler for "
@@ -243,7 +242,6 @@ class InterVehicleTransporterBase
 
             std::get<tuple_index>(it->second)
                 ->post(original.data().begin(), original.data().end(), ack_or_expire_msg);
-
         }
         else
         {
@@ -286,8 +284,8 @@ class InterVehicleTransporterBase
 
     void _insert_pending_ack(
         int dccl_id, std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage> data,
-        std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::AckData> > ack_handler,
-        std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::ExpireData> >
+        std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::AckData>> ack_handler,
+        std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::ExpireData>>
             expire_handler)
     {
         goby::glog.is_debug3() && goby::glog << "Inserting ack handler for "
@@ -300,12 +298,12 @@ class InterVehicleTransporterBase
   protected:
     // maps DCCL ID to map of Group->subscription
     std::unordered_map<int, std::unordered_multimap<
-                                std::string, std::shared_ptr<const SerializationHandlerBase<> > > >
+                                std::string, std::shared_ptr<const SerializationHandlerBase<>>>>
         subscriptions_;
 
   private:
     friend PollerType;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
         _expire_pending_ack();
 
@@ -362,10 +360,10 @@ class InterVehicleTransporterBase
   private:
     // maps data with ack_requested onto callbacks for when the data are acknowledged or expire
     // ordered by serialize time
-    std::map<protobuf::SerializerTransporterMessage,
-             std::tuple<
-                 std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::AckData> >,
-                 std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::ExpireData> > > >
+    std::map<
+        protobuf::SerializerTransporterMessage,
+        std::tuple<std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::AckData>>,
+                   std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::ExpireData>>>>
         pending_ack_;
 };
 
@@ -418,7 +416,7 @@ class InterVehicleForwarder
                 this->_set_up_subscribe(func, group, subscriber));
     }
 
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock) { return 0; }
+    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) { return 0; }
 };
 
 template <typename InnerTransporter>
@@ -473,7 +471,7 @@ class InterVehiclePortal
             dccl_subscription);
     }
 
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
         int items = 0;
         goby::acomms::protobuf::ModemTransmission msg;
@@ -501,7 +499,7 @@ class InterVehiclePortal
                                       MarshallingScheme::PROTOBUF>(d);
             };
             auto subscription =
-                std::make_shared<SerializationSubscription<Subscription, MarshallingScheme::DCCL> >(
+                std::make_shared<SerializationSubscription<Subscription, MarshallingScheme::DCCL>>(
                     subscribe_lambda);
 
             auto dccl_id = SerializerParserHelper<Subscription, MarshallingScheme::DCCL>::id();
@@ -581,7 +579,7 @@ class InterVehiclePortal
         std::unique_ptr<intervehicle::ModemDriverThread> modem_driver_thread;
         std::atomic<bool> driver_thread_alive{true};
     };
-    std::vector<std::unique_ptr<ModemDriverData> > modem_drivers_;
+    std::vector<std::unique_ptr<ModemDriverData>> modem_drivers_;
     unsigned drivers_ready_{0};
 
     std::deque<intervehicle::protobuf::DCCLForwardedData> received_;

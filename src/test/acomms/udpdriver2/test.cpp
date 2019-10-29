@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
 
     local_endpoint1->set_port(local_port);
 
-    auto* remote_endpoint1 = udp_cfg1->mutable_remote();
+    auto* remote_endpoint1 = udp_cfg1->add_remote();
 
     remote_endpoint1->set_ip(remote_addr);
     remote_endpoint1->set_port(remote_port);

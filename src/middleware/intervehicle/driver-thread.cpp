@@ -165,7 +165,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
         auto buffer_id = _create_buffer_id(subscription_key_);
         if (!subscription_subbuffers_.count(dest))
         {
-            buffer_.create(dest, buffer_id, cfg().subscription_buffer());
+            auto subscription_buffer_cfg = cfg().subscription_buffer();
+            if (!subscription_buffer_cfg.has_ack_required())
+                subscription_buffer_cfg.set_ack_required(true);
+            buffer_.create(dest, buffer_id, subscription_buffer_cfg);
             subscription_subbuffers_.insert(dest);
         }
 

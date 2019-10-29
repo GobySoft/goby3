@@ -47,7 +47,7 @@ class UDPDriver : public ModemDriverBase
     void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
 
   private:
-    void start_send(const google::protobuf::Message& msg);
+    void start_send(const protobuf::ModemTransmission& msg);
     void send_complete(const boost::system::error_code& error, std::size_t bytes_transferred);
     void start_receive();
     void receive_complete(const boost::system::error_code& error, std::size_t bytes_transferred);
@@ -57,7 +57,8 @@ class UDPDriver : public ModemDriverBase
     protobuf::DriverConfig driver_cfg_;
     boost::asio::io_service io_service_;
     boost::asio::ip::udp::socket socket_{io_service_};
-    boost::asio::ip::udp::endpoint receiver_;
+    // modem id to endpoint
+    std::multimap<int, boost::asio::ip::udp::endpoint> receivers_;
     boost::asio::ip::udp::endpoint sender_;
 
     // (16 bit length = 65535 - 8 byte UDP header - 20 byte IP

@@ -44,16 +44,22 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
     socket_.open(boost::asio::ip::udp::v4());
     socket_.bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), local.port()));
 
-    const auto& remote = driver_cfg_.GetExtension(udp::protobuf::config).remote();
-    boost::asio::ip::udp::resolver resolver(io_service_);
-    boost::asio::ip::udp::resolver::query query(boost::asio::ip::udp::v4(), remote.ip(),
-                                                goby::util::as<std::string>(remote.port()));
-    boost::asio::ip::udp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-    receiver_ = *endpoint_iterator;
+    for (const auto& remote : driver_cfg_.GetExtension(udp::protobuf::config).remote())
+    {
+        glog.is(DEBUG1) && glog << group(glog_out_group())
+                                << "Resolving receiver: " << remote.ShortDebugString() << std::endl;
 
-    glog.is(DEBUG1) && glog << group(glog_out_group())
-                            << "Receiver endpoint is: " << receiver_.address().to_string() << ":"
-                            << receiver_.port() << std::endl;
+        boost::asio::ip::udp::resolver resolver(io_service_);
+        boost::asio::ip::udp::resolver::query query(boost::asio::ip::udp::v4(), remote.ip(),
+                                                    goby::util::as<std::string>(remote.port()));
+        boost::asio::ip::udp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+        const boost::asio::ip::udp::endpoint& receiver = *endpoint_iterator;
+        receivers_.insert(std::make_pair(remote.modem_id(), receiver));
+
+        glog.is(DEBUG1) && glog << group(glog_out_group())
+                                << "Receiver endpoint is: " << receiver.address().to_string() << ":"
+                                << receiver.port() << std::endl;
+    }
 
     application_ack_ids_.insert(driver_cfg_.modem_id());
     // allow application acks for additional modem ids (for spoofing another ID)
@@ -116,7 +122,7 @@ void goby::acomms::UDPDriver::receive_message(const protobuf::ModemTransmission&
     signal_receive(msg);
 }
 
-void goby::acomms::UDPDriver::start_send(const google::protobuf::Message& msg)
+void goby::acomms::UDPDriver::start_send(const protobuf::ModemTransmission& msg)
 {
     // send the message
     std::string bytes;
@@ -129,8 +135,21 @@ void goby::acomms::UDPDriver::start_send(const google::protobuf::Message& msg)
     raw_msg.set_raw(bytes);
     signal_raw_outgoing(raw_msg);
 
-    socket_.async_send_to(boost::asio::buffer(bytes), receiver_,
-                          boost::bind(&UDPDriver::send_complete, this, _1, _2));
+    auto send = [&](const boost::asio::ip::udp::endpoint& receiver) {
+        socket_.async_send_to(boost::asio::buffer(bytes), receiver,
+                              boost::bind(&UDPDriver::send_complete, this, _1, _2));
+    };
+
+    auto broadcast_receivers = receivers_.equal_range(goby::acomms::BROADCAST_ID);
+    for (auto it = broadcast_receivers.first; it != broadcast_receivers.second; ++it)
+        send(it->second);
+
+    if (msg.has_dest() && msg.dest() != goby::acomms::BROADCAST_ID)
+    {
+        auto directed_receivers = receivers_.equal_range(msg.dest());
+        for (auto it = directed_receivers.first; it != directed_receivers.second; ++it)
+            send(it->second);
+    }
 }
 
 void goby::acomms::UDPDriver::send_complete(const boost::system::error_code& error,

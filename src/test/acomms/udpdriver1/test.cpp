@@ -80,12 +80,12 @@ int main(int argc, char* argv[])
     auto* local_endpoint2 = udp_cfg2->mutable_local();
     local_endpoint2->set_port(port2);
 
-    auto* remote_endpoint1 = udp_cfg1->mutable_remote();
+    auto* remote_endpoint1 = udp_cfg1->add_remote();
 
     remote_endpoint1->set_ip("localhost");
     remote_endpoint1->set_port(port2);
 
-    auto* remote_endpoint2 = udp_cfg2->mutable_remote();
+    auto* remote_endpoint2 = udp_cfg2->add_remote();
 
     remote_endpoint2->set_ip("127.0.0.1");
     remote_endpoint2->set_port(port1);

@@ -136,10 +136,8 @@ int main(int argc, char* argv[])
 
     d_cfg2.MutableExtension(config)->mutable_local()->set_port(port1);
     d_cfg3.MutableExtension(config)->mutable_local()->set_port(port2);
-    d_cfg2.MutableExtension(config)->mutable_remote()->CopyFrom(
-        d_cfg3.GetExtension(config).local());
-    d_cfg3.MutableExtension(config)->mutable_remote()->CopyFrom(
-        d_cfg2.GetExtension(config).local());
+    d_cfg2.MutableExtension(config)->add_remote()->CopyFrom(d_cfg3.GetExtension(config).local());
+    d_cfg3.MutableExtension(config)->add_remote()->CopyFrom(d_cfg2.GetExtension(config).local());
 
     driver2->startup(d_cfg2);
     driver3->startup(d_cfg3);

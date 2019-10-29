@@ -13,7 +13,7 @@ message DynamicBufferConfig
     // publisher and/or subscriber can set
 
     // true takes precedence over false
-    optional bool ack_required = 2 [default = true];
+    optional bool ack_required = 2 [default = false];
     // lowest value takes precedence
     optional double blackout_time = 3 [
         default = 0,
