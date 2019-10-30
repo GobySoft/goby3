@@ -9,7 +9,7 @@ package goby.apps.moos.protobuf;
 message BluefinFrontSeatConfig
 {
     option (dccl.msg).unit_system = "si";
-    
+
     required string huxley_tcp_address = 1;
     optional uint32 huxley_tcp_port = 2 [default = 29500];
     optional uint32 reconnect_interval = 3 [
@@ -86,6 +86,21 @@ message BluefinFrontSeatConfig
             "mission) that contains the word 'Running' indicates that Huxley "
             "is receiving our commands."
     ];
+
+    optional bool use_rpm_table_for_speed = 20 [
+        default = false,
+        (goby.field).description =
+            "If true, use a direct linear mapping from speed to RPM as defined "
+            "by the 'rpm_table' entries, rather than commanding a desired "
+            "speed"
+    ];
+    message RPMSpeedEntry
+    {
+        required double speed = 1
+            [(dccl.field).units = {derived_dimensions: "velocity"}];
+        required int32 rpm = 2;
+    }
+    repeated RPMSpeedEntry rpm_table = 21;
 }
 
 extend iFrontSeatConfig

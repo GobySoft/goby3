@@ -193,6 +193,9 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
     // maps status expire time to payload status
     std::multimap<goby::time::MicroTime, goby::moos::protobuf::BluefinExtraData::PayloadStatus>
         payload_status_;
+
+    // maps speed to rpm value
+    std::map<double, int> speed_to_rpm_;
 };
 } // namespace moos
 } // namespace goby
