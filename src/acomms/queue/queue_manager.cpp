@@ -521,7 +521,7 @@ goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& 
                                              const std::string& data, bool first_user_frame)
 {
     // competition between variable about who gets to send
-    double winning_priority;
+    double winning_priority = 0;
     boost::posix_time::ptime winning_last_send_time;
 
     Queue* winning_queue = 0;
