@@ -37,9 +37,9 @@ namespace acomms
 class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
 {
   public:
-    static std::shared_ptr<RUDICSConnection> create(boost::asio::io_service& io_service)
+    static std::shared_ptr<RUDICSConnection> create(boost::asio::executor executor)
     {
-        return std::shared_ptr<RUDICSConnection>(new RUDICSConnection(io_service));
+        return std::shared_ptr<RUDICSConnection>(new RUDICSConnection(executor));
     }
 
     boost::asio::ip::tcp::socket& socket() { return socket_; }
@@ -96,8 +96,8 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
     const std::string& remote_endpoint_str() { return remote_endpoint_str_; }
 
   private:
-    RUDICSConnection(boost::asio::io_service& io_service)
-        : socket_(io_service), remote_endpoint_str_("Unknown"), packet_failures_(0)
+    RUDICSConnection(boost::asio::executor& executor)
+        : socket_(executor), remote_endpoint_str_("Unknown"), packet_failures_(0)
     {
     }
 
@@ -171,7 +171,7 @@ class RUDICSServer
     void start_accept()
     {
         std::shared_ptr<RUDICSConnection> new_connection =
-            RUDICSConnection::create(acceptor_.get_io_service());
+            RUDICSConnection::create(acceptor_.get_executor());
         acceptor_.async_accept(new_connection->socket(),
                                boost::bind(&RUDICSServer::handle_accept, this, new_connection,
                                            boost::asio::placeholders::error));

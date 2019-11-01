@@ -201,9 +201,9 @@ class SBDMTConfirmationMessageReader : public SBDMessageReader
 class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
 {
   public:
-    static std::shared_ptr<SBDConnection> create(boost::asio::io_service& io_service)
+    static std::shared_ptr<SBDConnection> create(boost::asio::executor executor)
     {
-        return std::shared_ptr<SBDConnection>(new SBDConnection(io_service));
+        return std::shared_ptr<SBDConnection>(new SBDConnection(executor));
     }
 
     boost::asio::ip::tcp::socket& socket() { return socket_; }
@@ -227,8 +227,8 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
     const std::string& remote_endpoint_str() { return remote_endpoint_str_; }
 
   private:
-    SBDConnection(boost::asio::io_service& io_service)
-        : socket_(io_service), connect_time_(-1), message_(socket_), remote_endpoint_str_("Unknown")
+    SBDConnection(boost::asio::executor executor)
+        : socket_(executor), connect_time_(-1), message_(socket_), remote_endpoint_str_("Unknown")
     {
     }
 
@@ -253,7 +253,7 @@ class SBDServer
     void start_accept()
     {
         std::shared_ptr<SBDConnection> new_connection =
-            SBDConnection::create(acceptor_.get_io_service());
+            SBDConnection::create(acceptor_.get_executor());
 
         connections_.insert(new_connection);
 

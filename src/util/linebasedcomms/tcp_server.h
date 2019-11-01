@@ -105,16 +105,16 @@ class TCPConnection : public boost::enable_shared_from_this<TCPConnection>,
 
     boost::asio::ip::tcp::socket& socket() { return socket_; }
 
-    void start() { socket_.get_io_service().post(boost::bind(&TCPConnection::read_start, this)); }
+    void start() { boost::asio::post(socket_.get_executor(), boost::bind(&TCPConnection::read_start, this)); }
 
     void write(const protobuf::Datagram& msg)
     {
-        socket_.get_io_service().post(boost::bind(&TCPConnection::socket_write, this, msg));
+        boost::asio::post(socket_.get_executor(), boost::bind(&TCPConnection::socket_write, this, msg));
     }
 
     void close(const boost::system::error_code& error)
     {
-        socket_.get_io_service().post(boost::bind(&TCPConnection::socket_close, this, error));
+        boost::asio::post(socket_.get_executor(), boost::bind(&TCPConnection::socket_close, this, error));
     }
 
     std::string local_endpoint() { return goby::util::as<std::string>(socket_.local_endpoint()); }
