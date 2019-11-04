@@ -141,24 +141,24 @@ class InterProcessPortal
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
         using goby::middleware::protobuf::SerializerTransporterMessage;
-        Base::inner_.template subscribe<Base::forward_group_, SerializerTransporterMessage>(
+        this->inner().template subscribe<Base::forward_group_, SerializerTransporterMessage>(
             [this](std::shared_ptr<const SerializerTransporterMessage> d) {
                 _receive_publication_forwarded(d);
             });
 
-        Base::inner_
+        this->inner()
             .template subscribe<Base::forward_group_, middleware::SerializationHandlerBase<>>(
                 [this](std::shared_ptr<const middleware::SerializationHandlerBase<>> s) {
                     _receive_subscription_forwarded(s);
                 });
 
-        Base::inner_
+        this->inner()
             .template subscribe<Base::forward_group_, middleware::SerializationSubscriptionRegex>(
                 [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s) {
                     _receive_regex_subscription_forwarded(s);
                 });
 
-        Base::inner_
+        this->inner()
             .template subscribe<Base::forward_group_, middleware::SerializationUnSubscribeAll>(
                 [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s) {
                     _unsubscribe_all(s->thread_id());

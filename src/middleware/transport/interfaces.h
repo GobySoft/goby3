@@ -44,11 +44,108 @@ namespace middleware
 {
 class NullTransporter;
 
+/// \brief Recursive inner layer transporter storage or generator
+///
+/// Can either be passed a reference to an inner transporter, in which case this reference is stored, or else the inner layer is instantiated.
+/// \tparam Transporter This tranporter type
+/// \tparam InnerTransporter The inner transporter type
+/// \tparam Enable SFINAE enable/disable type
+template <typename Transporter, typename InnerTransporter, typename Enable = void>
+class InnerTransporterInterface
+{
+};
+
+/// \brief Recursive inner layer transporter storage or generator for real (non-null) transporters
+template <typename Transporter, typename InnerTransporter>
+class InnerTransporterInterface<
+    Transporter, InnerTransporter,
+    typename std::enable_if_t<!(std::is_same<Transporter, NullTransporter>::value &&
+                                std::is_same<InnerTransporter, NullTransporter>::value)>>
+{
+  public:
+    /// \brief the InnerTransporter type (accessible for other uses)
+    using InnerTransporterType = InnerTransporter;
+    /// \return Reference to the inner transporter
+    InnerTransporter& inner() { return inner_; }
+
+  protected:
+    /// \brief Pass in an external inner transporter for use
+    InnerTransporterInterface(InnerTransporter& inner) : inner_(inner) {}
+    /// \brief Generate a local instantiation of the inner transporter
+    InnerTransporterInterface() : own_inner_(new InnerTransporter), inner_(*own_inner_) {}
+
+  private:
+    std::shared_ptr<InnerTransporter> own_inner_;
+    InnerTransporter& inner_;
+};
+
+/// \brief End recursion when both Transporter and InnerTransporter are NullTransporter
+template <typename Transporter, typename InnerTransporter>
+class InnerTransporterInterface<
+    Transporter, InnerTransporter,
+    typename std::enable_if_t<std::is_same<Transporter, NullTransporter>::value &&
+                              std::is_same<InnerTransporter, NullTransporter>::value>>
+{
+};
+
+/// \brief Defines the common interface for polling for data on Goby transporters
+class PollerInterface
+{
+  public:
+    /// \brief poll for data. Blocks until a data event occurs or a timeout when a particular time has been reached
+    ///
+    /// \param timeout timeout defined using a SystemClock or std::chrono::system_clock time_point. Defaults to never timing out
+    /// \return the number of poll events or zero if the timeout was reached
+    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
+    int poll(const std::chrono::time_point<Clock, Duration>& timeout =
+                 std::chrono::time_point<Clock, Duration>::max());
+
+    /// \brief poll for data. Blocks until a data event occurs or a certain duration of time elapses (timeout)
+    ///
+    /// \param wait_for timeout duration
+    /// \return the number of poll events or zero if the timeout was reached
+    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
+    int poll(Duration wait_for);
+
+    /// \brief access the mutex used for poll synchronization
+    ///
+    /// \return pointer to the mutex used for polling
+    std::shared_ptr<std::timed_mutex> poll_mutex() { return poll_mutex_; }
+
+    /// \brief access the condition variable used for poll synchronization
+    ///
+    /// Notifications on this condition variable will cause the poll() loop to assume there is incoming data available (typically this is notified by the publishing thread in InterThreadTransporter, but can be used to synchronize the Goby poller infrastructure with other synchronous events, such as boost::asio, file descriptors, etc. For an example, see io::IOThread)
+    /// \return pointer to the condition variable used for polling
+    std::shared_ptr<std::condition_variable_any> cv() { return cv_; }
+
+  protected:
+    PollerInterface(std::shared_ptr<std::timed_mutex> poll_mutex,
+                    std::shared_ptr<std::condition_variable_any> cv)
+        : poll_mutex_(poll_mutex), cv_(cv)
+    {
+    }
+
+  private:
+    template <typename Transporter> friend class Poller;
+    // poll the transporter for data
+    virtual int _transporter_poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) = 0;
+
+  private:
+    // poll all the transporters for data, including a timeout (only called by the outside-most Poller)
+    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
+    int _poll_all(const std::chrono::time_point<Clock, Duration>& timeout);
+
+    std::shared_ptr<std::timed_mutex> poll_mutex_;
+    // signaled when there's no data for this thread to read during _poll()
+    std::shared_ptr<std::condition_variable_any> cv_;
+};
+
 /// \brief Defines the common interface for publishing and subscribing data using static (constexpr) groups on Goby transporters
 ///
 /// \tparam Transporter The transporter for which this interface applies (derived class)
 /// \tparam InnerTransporter The inner layer transporter type (or NullTransporter if this is the innermost layer)
-template <typename Transporter, typename InnerTransporter> class StaticTransporterInterface
+template <typename Transporter, typename InnerTransporter>
+class StaticTransporterInterface : public InnerTransporterInterface<Transporter, InnerTransporter>
 {
   public:
     /// \brief Publish a message (const reference variant)
@@ -150,68 +247,14 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
     /// \brief Unsubscribe to all messages that this transporter has subscribed to
     void unsubscribe_all() { static_cast<Transporter*>(this)->template unsubscribe_all(); }
 
-    using InnerTransporterType = InnerTransporter;
-
-    /// \return Reference to the inner transporter
-    InnerTransporter& inner()
-    {
-        static_assert(!std::is_same<InnerTransporter, NullTransporter>(),
-                      "This transporter has no inner() transporter layer");
-        return static_cast<Transporter*>(this)->inner_;
-    }
-};
-
-/// \brief Defines the common interface for polling for data on Goby transporters
-class PollerInterface
-{
-  public:
-    /// \brief poll for data. Blocks until a data event occurs or a timeout when a particular time has been reached
-    ///
-    /// \param timeout timeout defined using a SystemClock or std::chrono::system_clock time_point. Defaults to never timing out
-    /// \return the number of poll events or zero if the timeout was reached
-    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
-    int poll(const std::chrono::time_point<Clock, Duration>& timeout =
-                 std::chrono::time_point<Clock, Duration>::max());
-
-    /// \brief poll for data. Blocks until a data event occurs or a certain duration of time elapses (timeout)
-    ///
-    /// \param wait_for timeout duration
-    /// \return the number of poll events or zero if the timeout was reached
-    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
-    int poll(Duration wait_for);
-
-    /// \brief access the mutex used for poll synchronization
-    ///
-    /// \return pointer to the mutex used for polling
-    std::shared_ptr<std::timed_mutex> poll_mutex() { return poll_mutex_; }
-
-    /// \brief access the condition variable used for poll synchronization
-    ///
-    /// Notifications on this condition variable will cause the poll() loop to assume there is incoming data available (typically this is notified by the publishing thread in InterThreadTransporter, but can be used to synchronize the Goby poller infrastructure with other synchronous events, such as boost::asio, file descriptors, etc. For an example, see io::IOThread)
-    /// \return pointer to the condition variable used for polling
-    std::shared_ptr<std::condition_variable_any> cv() { return cv_; }
-
   protected:
-    PollerInterface(std::shared_ptr<std::timed_mutex> poll_mutex,
-                    std::shared_ptr<std::condition_variable_any> cv)
-        : poll_mutex_(poll_mutex), cv_(cv)
+    StaticTransporterInterface(InnerTransporter& inner)
+        : InnerTransporterInterface<Transporter, InnerTransporter>(inner)
     {
     }
-
-  private:
-    template <typename Transporter> friend class Poller;
-    // poll the transporter for data
-    virtual int _transporter_poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) = 0;
-
-  private:
-    // poll all the transporters for data, including a timeout (only called by the outside-most Poller)
-    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
-    int _poll_all(const std::chrono::time_point<Clock, Duration>& timeout);
-
-    std::shared_ptr<std::timed_mutex> poll_mutex_;
-    // signaled when there's no data for this thread to read during _poll()
-    std::shared_ptr<std::condition_variable_any> cv_;
+    StaticTransporterInterface() {}
 };
+
 } // namespace middleware
 } // namespace goby
 

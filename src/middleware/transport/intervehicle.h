@@ -45,17 +45,18 @@ class InterVehicleTransporterBase
                                         InnerTransporter>,
       public Poller<InterVehicleTransporterBase<Derived, InnerTransporter>>
 {
+    using InterfaceType =
+        StaticTransporterInterface<InterVehicleTransporterBase<Derived, InnerTransporter>,
+                                   InnerTransporter>;
+
     using PollerType = Poller<InterVehicleTransporterBase<Derived, InnerTransporter>>;
 
   public:
-    InterVehicleTransporterBase(InnerTransporter& inner) : PollerType(&inner), inner_(inner) {}
-    InterVehicleTransporterBase(InnerTransporter* inner_ptr = new InnerTransporter,
-                                bool base_owns_inner = true)
-        : PollerType(inner_ptr),
-          own_inner_(base_owns_inner ? inner_ptr : nullptr),
-          inner_(*inner_ptr)
+    InterVehicleTransporterBase(InnerTransporter& inner)
+        : InterfaceType(inner), PollerType(&this->inner())
     {
     }
+    InterVehicleTransporterBase() : PollerType(&this->inner()) {}
 
     virtual ~InterVehicleTransporterBase() = default;
 
@@ -86,8 +87,8 @@ class InterVehicleTransporterBase
         publisher.set_group(data_with_group, group);
 
         static_cast<Derived*>(this)->template _publish<Data>(data_with_group, group, publisher);
-        inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data_with_group, group,
-                                                                           publisher);
+        this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data_with_group,
+                                                                                  group, publisher);
     }
 
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
@@ -103,8 +104,8 @@ class InterVehicleTransporterBase
 
             static_cast<Derived*>(this)->template _publish<Data>(*data_with_group, group,
                                                                  publisher);
-            inner_.template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data_with_group,
-                                                                               group, publisher);
+            this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(
+                data_with_group, group, publisher);
         }
     }
 
@@ -135,9 +136,6 @@ class InterVehicleTransporterBase
                       "Can only use DCCL messages with InterVehicleTransporters");
         static_cast<Derived*>(this)->template _subscribe<Data>(func, group, subscriber);
     }
-
-    std::unique_ptr<InnerTransporter> own_inner_;
-    InnerTransporter& inner_;
 
   protected:
     template <typename Data>
@@ -377,18 +375,21 @@ class InterVehicleForwarder
 
     InterVehicleForwarder(InnerTransporter& inner) : Base(inner)
     {
-        Base::inner_.template subscribe<intervehicle::groups::modem_data_in,
-                                        intervehicle::protobuf::DCCLForwardedData>(
-            [this](const intervehicle::protobuf::DCCLForwardedData& msg) { this->_receive(msg); });
+        this->inner()
+            .template subscribe<intervehicle::groups::modem_data_in,
+                                intervehicle::protobuf::DCCLForwardedData>(
+                [this](const intervehicle::protobuf::DCCLForwardedData& msg) {
+                    this->_receive(msg);
+                });
 
         using ack_pair_type = intervehicle::protobuf::AckMessagePair;
-        Base::inner_.template subscribe<intervehicle::groups::modem_ack_in, ack_pair_type>(
+        this->inner().template subscribe<intervehicle::groups::modem_ack_in, ack_pair_type>(
             [this](const ack_pair_type& ack_pair) {
                 this->template _handle_ack_or_expire<0>(ack_pair);
             });
 
         using expire_pair_type = intervehicle::protobuf::ExpireMessagePair;
-        Base::inner_.template subscribe<intervehicle::groups::modem_expire_in, expire_pair_type>(
+        this->inner().template subscribe<intervehicle::groups::modem_expire_in, expire_pair_type>(
             [this](const expire_pair_type& expire_pair) {
                 this->template _handle_ack_or_expire<1>(expire_pair);
             });
@@ -402,7 +403,7 @@ class InterVehicleForwarder
     template <typename Data>
     void _publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
-        Base::inner_.template publish<intervehicle::groups::modem_data_out>(
+        this->inner().template publish<intervehicle::groups::modem_data_out>(
             this->_set_up_publish(d, group, publisher));
     }
 
@@ -410,7 +411,7 @@ class InterVehicleForwarder
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
                     const Subscriber<Data>& subscriber)
     {
-        Base::inner_
+        this->inner()
             .template publish<intervehicle::groups::modem_subscription_forward_tx,
                               intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
                 this->_set_up_subscribe(func, group, subscriber));
@@ -457,7 +458,7 @@ class InterVehiclePortal
     template <typename Data>
     void _publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
-        Base::inner_.inner().template publish<intervehicle::groups::modem_data_out>(
+        this->inner().inner().template publish<intervehicle::groups::modem_data_out>(
             this->_set_up_publish(d, group, publisher));
     }
 
@@ -467,7 +468,7 @@ class InterVehiclePortal
     {
         auto dccl_subscription = this->_set_up_subscribe(func, group, subscriber);
 
-        Base::inner_.inner().template publish<intervehicle::groups::modem_subscription_forward_tx>(
+        this->inner().inner().template publish<intervehicle::groups::modem_subscription_forward_tx>(
             dccl_subscription);
     }
 
@@ -493,7 +494,8 @@ class InterVehiclePortal
         {
             using intervehicle::protobuf::Subscription;
             auto subscribe_lambda = [=](std::shared_ptr<const Subscription> d) {
-                Base::inner_.inner()
+                this->inner()
+                    .inner()
                     .template publish<intervehicle::groups::modem_subscription_forward_rx,
                                       intervehicle::protobuf::Subscription,
                                       MarshallingScheme::PROTOBUF>(d);
@@ -507,7 +509,8 @@ class InterVehiclePortal
                 std::make_pair(subscription->subscribed_group(), subscription));
         }
 
-        Base::inner_.inner()
+        this->inner()
+            .inner()
             .template subscribe<intervehicle::groups::modem_data_in,
                                 intervehicle::protobuf::DCCLForwardedData>(
                 [this](const intervehicle::protobuf::DCCLForwardedData& msg) {
@@ -518,19 +521,20 @@ class InterVehiclePortal
         // post the correct callback (ack for [1] and expire for [2-4])
         // and remove the pending ack message
         using ack_pair_type = intervehicle::protobuf::AckMessagePair;
-        Base::inner_.inner().template subscribe<intervehicle::groups::modem_ack_in, ack_pair_type>(
+        this->inner().inner().template subscribe<intervehicle::groups::modem_ack_in, ack_pair_type>(
             [this](const ack_pair_type& ack_pair) {
                 this->template _handle_ack_or_expire<0>(ack_pair);
             });
 
         using expire_pair_type = intervehicle::protobuf::ExpireMessagePair;
-        Base::inner_.inner()
+        this->inner()
+            .inner()
             .template subscribe<intervehicle::groups::modem_expire_in, expire_pair_type>(
                 [this](const expire_pair_type& expire_pair) {
                     this->template _handle_ack_or_expire<1>(expire_pair);
                 });
 
-        Base::inner_.inner().template subscribe<intervehicle::groups::modem_driver_ready, bool>(
+        this->inner().inner().template subscribe<intervehicle::groups::modem_driver_ready, bool>(
             [this](const bool& ready) {
                 goby::glog.is_debug1() && goby::glog << "Received driver ready" << std::endl;
                 ++drivers_ready_;
