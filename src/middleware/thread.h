@@ -38,6 +38,11 @@ namespace goby
 {
 namespace middleware
 {
+/// \brief Represents a thread of execution within the Goby middleware, interleaving periodic events (loop()) with asynchronous receipt of data. Most user code should inherit from SimpleThread, not from Thread directly.
+///
+/// A Thread can represent the main thread of an application or a thread that was launched after startup.
+/// \tparam Config Type of the configuration for thie code running in this Thread
+/// \tparam TransporterType Type of the underlying transporter used for publish/subscribe from this thread
 template <typename Config, typename TransporterType> class Thread
 {
   private:
@@ -53,18 +58,35 @@ template <typename Config, typename TransporterType> class Thread
   public:
     using Transporter = TransporterType;
 
-    // zero or negative frequency means loop() is never called
+    /// \brief Construct a thread with a given configuration, underlying transporter, and index (for multiple instantiations), but without any loop() frequency
+    ///
+    /// \param cfg Data to configure the code running in this thread
+    /// \param transporter Underlying transporter
+    /// \param index Numeric index to identify this instantiation of the Thread (only necessary if multiple Threads of the same type are created)
+    /// Note: loop() will never be called when using this constructor
     Thread(const Config& cfg, TransporterType* transporter, int index)
         : Thread(cfg, transporter, 0 * boost::units::si::hertz, index)
     {
     }
 
+    /// \brief Construct a thread with all possible metadata (using double to specify frequency in Hertz)
+    ///
+    /// \param cfg Data to configure the code running in this thread
+    /// \param transporter Underlying transporter
+    /// \param loop_freq_hertz The frequency at which to attempt to call loop(), assuming the thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks)
+    /// \param index Numeric index to identify this instantiation of the Thread (only necessary if multiple Threads of the same type are created)
     Thread(const Config& cfg, TransporterType* transporter, double loop_freq_hertz = 0,
            int index = -1)
         : Thread(cfg, transporter, loop_freq_hertz * boost::units::si::hertz, index)
     {
     }
 
+    /// \brief Construct a thread with all possible metadata (using boost::units to specify frequency)
+    ///
+    /// \param cfg Data to configure the code running in this thread
+    /// \param transporter Underlying transporter
+    /// \param loop_freq The frequency at which to attempt to call loop(), assuming the thread isn't blocked handling transporter callbacks (i.e. subscribe callbacks)
+    /// \param index Numeric index to identify this instantiation of the Thread (only necessary if multiple Threads of the same type are created)
     Thread(const Config& cfg, TransporterType* transporter,
            boost::units::quantity<boost::units::si::frequency> loop_freq, int index = -1)
         : Thread(cfg, loop_freq, index)
@@ -74,6 +96,9 @@ template <typename Config, typename TransporterType> class Thread
 
     virtual ~Thread() {}
 
+    /// \brief Run the thread until the boolean reference passed is set false. This call blocks, and should be run in a std::thread by the caller.
+    ///
+    /// \param alive Reference to an atomic boolean. While alive is true, the thread will run; when alive is set false, the thread will complete (and become joinable), assuming nothing is blocking loop() or any transporter callback.
     void run(std::atomic<bool>& alive)
     {
         alive_ = &alive;
@@ -81,6 +106,7 @@ template <typename Config, typename TransporterType> class Thread
         while (alive) { run_once(); }
     }
 
+    /// \return the Thread index (for multiple instantiations)
     int index() const { return index_; }
 
   protected:

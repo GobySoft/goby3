@@ -31,6 +31,7 @@ namespace goby
 {
 namespace middleware
 {
+/// \brief Class that holds additional metadata and callback functions related to a subscription (and is optionally provided as a parameter to StaticTransporterInterface::subscribe). Use of this class is generally unnecessary on interprocess and inner layers.
 template <typename Data> class Subscriber
 {
   public:
@@ -40,6 +41,12 @@ template <typename Data> class Subscriber
     using subscribe_expired_func_type =
         typename Publisher<intervehicle::protobuf::Subscription>::expired_func_type;
 
+    /// \brief Construct a Subscriber with all available metadata and callbacks
+    ///
+    /// \param cfg Additional metadata for this subscribe
+    /// \param group_func Callback function for retrieving the group from a given data type if not provided in the parameters to the subscribe call. This is typically used when the group is defined or inferred from data in the message itself, and thus using this callback avoids duplicated data on the slow links used in the intervehicle and outer layers.
+    /// \param subscribed_func Callback function for when a subscription request reaches a publisher for this data type
+    /// \param subscribe_expired_func Callback function for when a subscription request expires without reaching any publishers (either because none exist or because the link(s) failed to transfer the request within the time to live).
     Subscriber(const goby::middleware::protobuf::TransporterConfig& cfg =
                    goby::middleware::protobuf::TransporterConfig(),
                group_func_type group_func = group_func_type(),
@@ -52,6 +59,7 @@ template <typename Data> class Subscriber
     {
     }
 
+    /// \brief Construct a Subscriber but without the group_func callback
     Subscriber(const goby::middleware::protobuf::TransporterConfig& cfg,
                subscribed_func_type subscribed_func,
                subscribe_expired_func_type subscribe_expired_func = subscribe_expired_func_type())
@@ -61,8 +69,10 @@ template <typename Data> class Subscriber
 
     ~Subscriber() {}
 
+    /// \return the metadata configuration
     const goby::middleware::protobuf::TransporterConfig& cfg() const { return cfg_; }
 
+    /// \return the group for this subscribe call using the group_func. Only intended to be called by the various transporters.
     Group group(const Data& data) const
     {
         if (group_func_)
@@ -71,7 +81,9 @@ template <typename Data> class Subscriber
             return Group(Group::broadcast_group);
     }
 
+    /// \return the subscription successful callback (or an empty function if none is set)
     subscribed_func_type subscribed_func() const { return subscribed_func_; }
+    /// \return the subscription request expired callback (or an empty function if none is set)
     subscribe_expired_func_type subscribe_expired_func() const { return subscribe_expired_func_; }
 
   private:

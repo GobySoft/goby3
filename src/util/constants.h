@@ -22,12 +22,16 @@
 #ifndef CONSTANTS_20190606H
 #define CONSTANTS_20190606H
 
+#include <limits>
+
 namespace goby
 {
 namespace util
 {
 template <class T> constexpr T pi = T(3.1415926535897932385L);
 template <class T> constexpr T e = T(2.7182818284590452354L);
+
+template <class T> constexpr T NaN{std::numeric_limits<T>::quiet_NaN()};
 
 } // namespace util
 } // namespace goby

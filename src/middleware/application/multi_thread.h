@@ -38,6 +38,10 @@ namespace goby
 {
 namespace middleware
 {
+/// \brief Implements Thread for a three layer middleware setup ([ intervehicle [ interprocess [ interthread ] ] ]) based around InterVehicleForwarder.
+///
+/// \tparam Config Configuration type
+/// Derive from this class to create standalone threads that can be launched and joined by MultiThreadApplication's launch_thread and join_thread methods.
 template <typename Config>
 class SimpleThread
     : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
@@ -46,11 +50,21 @@ class SimpleThread
         Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>;
 
   public:
+    /// \brief Construct a thread with a given configuration, optionally a loop frequency and/or index
+    ///
+    /// \param cfg Data to configure the code running in this thread
+    /// \param loop_freq_hertz The frequency at which to attempt to call loop(), assuming the thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
+    /// \param index Numeric index to identify this instantiation of the SimpleThread (only necessary if multiple Threads of the same type are created)
     SimpleThread(const Config& cfg, double loop_freq_hertz = 0, int index = -1)
         : SimpleThread(cfg, loop_freq_hertz * boost::units::si::hertz, index)
     {
     }
 
+    /// \brief Construct a thread with a given configuration, a loop frequency (using boost::units) and optionally an index
+    ///
+    /// \param cfg Data to configure the code running in this thread
+    /// \param loop_freq The frequency at which to attempt to call loop(), assuming the thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
+    /// \param index Numeric index to identify this instantiation of the SimpleThread (only necessary if multiple Threads of the same type are created)
     SimpleThread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
                  int index = -1)
         : SimpleThreadBase(cfg, loop_freq, index)
@@ -70,16 +84,19 @@ class SimpleThread
             });
     }
 
+    /// \brief Access the transporter on the intervehicle layer (which wraps interprocess and interthread)
     InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>& intervehicle()
     {
         return this->transporter();
     }
 
+    /// \brief Access the transporter on the interprocess layer (which wraps interthread)
     InterProcessForwarder<InterThreadTransporter>& interprocess()
     {
         return this->transporter().inner();
     }
 
+    /// \brief Access the transporter on the interthread layer (this is the innermost transporter)
     InterThreadTransporter& interthread() { return this->transporter().inner().inner(); }
 
   private:
@@ -89,6 +106,10 @@ class SimpleThread
         intervehicle_;
 };
 
+/// \brief Base class for creating multiple thread applications
+///
+/// \tparam Config Configuration type
+/// \tparam Transporter Transporter type
 template <class Config, class Transporter>
 class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
                                    public goby::middleware::Thread<Config, Transporter>
@@ -117,29 +138,6 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
     InterThreadTransporter interthread_;
 
   public:
-    using MainThreadBase = Thread<Config, Transporter>;
-
-    MultiThreadApplicationBase(double loop_freq_hertz = 0)
-        : MultiThreadApplicationBase(loop_freq_hertz * boost::units::si::hertz)
-    {
-    }
-
-    MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq,
-                               Transporter* transporter)
-        : goby::middleware::Application<Config>(),
-          MainThreadBase(this->app_cfg(), transporter, loop_freq)
-    {
-        goby::glog.set_lock_action(goby::util::logger_lock::lock);
-
-        interthread_
-            .template subscribe<MainThreadBase::joinable_group_, std::pair<std::type_index, int>>(
-                [this](const std::pair<std::type_index, int>& joinable) {
-                    _join_thread(joinable.first, joinable.second);
-                });
-    }
-
-    virtual ~MultiThreadApplicationBase() {}
-
     template <typename ThreadType> void launch_thread()
     {
         _launch_thread<ThreadType, Config, false>(-1, this->app_cfg());
@@ -169,6 +167,24 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
     int running_thread_count() { return running_thread_count_; }
 
   protected:
+    using MainThreadBase = Thread<Config, Transporter>;
+
+    MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq,
+                               Transporter* transporter)
+        : goby::middleware::Application<Config>(),
+          MainThreadBase(this->app_cfg(), transporter, loop_freq)
+    {
+        goby::glog.set_lock_action(goby::util::logger_lock::lock);
+
+        interthread_
+            .template subscribe<MainThreadBase::joinable_group_, std::pair<std::type_index, int>>(
+                [this](const std::pair<std::type_index, int>& joinable) {
+                    _join_thread(joinable.first, joinable.second);
+                });
+    }
+
+    virtual ~MultiThreadApplicationBase() {}
+
     InterThreadTransporter& interthread() { return interthread_; }
     virtual void finalize() override { join_all_threads(); }
 
@@ -219,6 +235,10 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
     void _join_thread(const std::type_index& type_i, int index);
 };
 
+/// \brief Base class for building multithreaded applications for a given implementation of the InterProcessPortal. This class isn't used directly by user applications, for that use a specific implementation, e.g. zeromq::MultiThreadApplication
+///
+/// \tparam Config Configuration type
+/// \tparam InterProcessPortal the interprocess portal type to use (e.g. zeromq::InterProcessPortal).
 template <class Config, template <class> class InterProcessPortal>
 class MultiThreadApplication
     : public MultiThreadApplicationBase<
@@ -231,11 +251,17 @@ class MultiThreadApplication
         Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>;
 
   public:
+    /// \brief Construct the application calling loop() at the given frequency (double overload)
+    ///
+    /// \param loop_freq_hertz The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     MultiThreadApplication(double loop_freq_hertz = 0)
         : MultiThreadApplication(loop_freq_hertz * boost::units::si::hertz)
     {
     }
 
+    /// \brief Construct the application calling loop() at the given frequency (boost::units overload)
+    ///
+    /// \param loop_freq The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : Base(loop_freq, &intervehicle_),
           interprocess_(Base::interthread(), this->app_cfg().interprocess()),
@@ -268,6 +294,9 @@ class MultiThreadApplication
     }
 };
 
+/// \brief Base class for building multithreaded Goby applications that do not have perform any interprocess (or outer) communications, but only communicate internally via the InterThreadTransporter
+///
+/// \tparam Config Configuration type
 template <class Config>
 class MultiThreadStandaloneApplication
     : public MultiThreadApplicationBase<Config, InterThreadTransporter>
@@ -276,11 +305,17 @@ class MultiThreadStandaloneApplication
     using Base = MultiThreadApplicationBase<Config, InterThreadTransporter>;
 
   public:
+    /// \brief Construct the application calling loop() at the given frequency (double overload)
+    ///
+    /// \param loop_freq_hertz The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     MultiThreadStandaloneApplication(double loop_freq_hertz = 0)
         : MultiThreadStandaloneApplication(loop_freq_hertz * boost::units::si::hertz)
     {
     }
 
+    /// \brief Construct the application calling loop() at the given frequency (boost::units overload)
+    ///
+    /// \param loop_freq The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     MultiThreadStandaloneApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : Base(loop_freq, &Base::interthread())
     {
@@ -290,12 +325,18 @@ class MultiThreadStandaloneApplication
   protected:
 };
 
+/// \brief Base class for building multithreaded Goby tests that do not have perform any interprocess (or outer) communications, but only communicate internally via the InterThreadTransporter. The only difference with this class and MultiThreadStandaloneApplication is that the interprocess() and intervehicle() methods are implemented here (as dummy calls to interthread()) to allow this to be a drop-in replacement for testing interthread comms on existing MultiThreadApplication subclasses.
+///
+/// \tparam Config Configuration type
 template <class Config> class MultiThreadTest : public MultiThreadStandaloneApplication<Config>
 {
   private:
     using Base = MultiThreadStandaloneApplication<Config>;
 
   public:
+    /// \brief Construct the test running at the given frequency
+    ///
+    /// \param loop_freq The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     MultiThreadTest(
         boost::units::quantity<boost::units::si::frequency> loop_freq = 0 * boost::units::si::hertz)
         : Base(loop_freq)
@@ -309,10 +350,12 @@ template <class Config> class MultiThreadTest : public MultiThreadStandaloneAppl
     InterThreadTransporter& intervehicle() { return Base::interthread(); }
 };
 
-// selects which constructor to use based on whether the thread is launched with an index or not
+/// \brief Selects which constructor to use based on whether the thread is launched with an index or not (that is, index == -1). Not directly called by user code.
 template <typename ThreadType, typename ThreadConfig, bool has_index> struct ThreadTypeSelector
 {
 };
+
+/// \brief ThreadTypeSelector instantiation for calling a constructor \e without an index parameter, e.g. "MyThread(const MyConfig& cfg)"
 template <typename ThreadType, typename ThreadConfig>
 struct ThreadTypeSelector<ThreadType, ThreadConfig, false>
 {
@@ -321,6 +364,8 @@ struct ThreadTypeSelector<ThreadType, ThreadConfig, false>
         return std::make_shared<ThreadType>(cfg);
     };
 };
+
+/// \brief ThreadTypeSelector instantiation for calling a constructor \e with an index parameter, e.g. "MyThread(const MyConfig& cfg, int index)"
 template <typename ThreadType, typename ThreadConfig>
 struct ThreadTypeSelector<ThreadType, ThreadConfig, true>
 {

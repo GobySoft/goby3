@@ -29,9 +29,13 @@ namespace goby
 {
 namespace middleware
 {
+/// \brief Utility class for allowing the various Goby middleware transporters to poll the underlying transport code for data
+///
+/// This class is recursively instantiated with each inner poller passed as a parameter to the next outer poller. This allows the outermost Poller to poll all inner Poller instantiations as well as itself.
 template <typename Transporter> class Poller : public PollerInterface
 {
   protected:
+    /// Construct this Poller with a pointer to the inner Poller (unless this is the innermost Poller)
     Poller(PollerInterface* inner_poller = nullptr)
         : // we want the same mutex and cv all the way up
           PollerInterface(
@@ -41,6 +45,7 @@ template <typename Transporter> class Poller : public PollerInterface
     {
     }
 
+    /// \return Pointer to the inner Poller
     PollerInterface* inner_poller() { return inner_poller_; }
 
   private:

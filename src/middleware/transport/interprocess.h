@@ -36,6 +36,10 @@ namespace goby
 {
 namespace middleware
 {
+/// \brief Base class for implementing transporters for the interprocess layer
+///
+/// \tparam Derived derived class (curiously recurring template pattern)
+/// \tparam InnerTransporter inner layer transporter type
 template <typename Derived, typename InnerTransporter>
 class InterProcessTransporterBase
     : public StaticTransporterInterface<InterProcessTransporterBase<Derived, InnerTransporter>,
@@ -43,6 +47,9 @@ class InterProcessTransporterBase
       public Poller<InterProcessTransporterBase<Derived, InnerTransporter>>
 {
     using PollerType = Poller<InterProcessTransporterBase<Derived, InnerTransporter>>;
+
+  private:
+    std::unique_ptr<InnerTransporter> own_inner_;
 
   public:
     InterProcessTransporterBase(InnerTransporter& inner) : PollerType(&inner), inner_(inner) {}
@@ -56,24 +63,6 @@ class InterProcessTransporterBase
     }
 
     virtual ~InterProcessTransporterBase() {}
-
-    template <typename Data> static constexpr int scheme()
-    {
-        return goby::middleware::scheme<Data>();
-    }
-
-    template <const Group& group> void check_validity()
-    {
-        static_assert((group.c_str() != nullptr) && (group.c_str()[0] != '\0'),
-                      "goby::middleware::Group must have non-zero length string to publish on the "
-                      "InterProcess layer");
-    }
-
-    void check_validity_runtime(const Group& group)
-    {
-        if ((group.c_str() == nullptr) || (group.c_str()[0] == '\0'))
-            throw(goby::Exception("Group must have a non-empty string for use on InterProcess"));
-    }
 
     // RUNTIME groups
     template <typename Data, int scheme = scheme<Data>()>
@@ -161,8 +150,32 @@ class InterProcessTransporterBase
                                                       "^" + sanitized_group + "$");
     }
 
-    std::unique_ptr<InnerTransporter> own_inner_;
+    /// \brief returns the marshalling scheme id for a given data type on this layer
+    ///
+    /// \tparam Data data type
+    /// \return marshalling scheme id
+    template <typename Data> static constexpr int scheme()
+    {
+        return goby::middleware::scheme<Data>();
+    }
+
+    /// \brief checks the validity of the Group for use on this layer
+    template <const Group& group> void check_validity()
+    {
+        static_assert((group.c_str() != nullptr) && (group.c_str()[0] != '\0'),
+                      "goby::middleware::Group must have non-zero length string to publish on the "
+                      "InterProcess layer");
+    }
+
+    void check_validity_runtime(const Group& group)
+    {
+        if ((group.c_str() == nullptr) || (group.c_str()[0] == '\0'))
+            throw(goby::Exception("Group must have a non-empty string for use on InterProcess"));
+    }
+
     InnerTransporter& inner_;
+
+  protected:
     static constexpr Group forward_group_{"goby::InterProcessForwarder"};
     static constexpr Group regex_group_{"goby::InterProcessRegexData"};
 

@@ -42,10 +42,12 @@ namespace goby
 {
 namespace middleware
 {
+/// \brief Selector class for enabling SerializationHandlerBase::post() override signature based on whether the Metadata exists (e.g. Publisher or Subscriber) or not (that is, Metadata = void).
 template <typename Metadata, typename Enable = void> class SerializationHandlerPostSelector
 {
 };
 
+/// \brief Selects the SerializationHandlerBase::post() signatures without metadata
 template <typename Metadata>
 class SerializationHandlerPostSelector<Metadata,
                                        typename std::enable_if_t<std::is_void<Metadata>::value>>
@@ -61,6 +63,7 @@ class SerializationHandlerPostSelector<Metadata,
     virtual const char* post(const char* b, const char* e) const = 0;
 };
 
+/// \brief Selects the SerializationHandlerBase::post() signatures with metadata (e.g. Publisher or Subscriber)
 template <typename Metadata>
 class SerializationHandlerPostSelector<Metadata,
                                        typename std::enable_if_t<!std::is_void<Metadata>::value>>
@@ -78,6 +81,9 @@ class SerializationHandlerPostSelector<Metadata,
     virtual const char* post(const char* b, const char* e, const Metadata& metadata) const = 0;
 };
 
+/// \brief Base class for handling posting callbacks for serialized data types (interprocess and outer)
+///
+/// \tparam Metadata metadata type (e.g. Publisher or Subscriber)
 template <typename Metadata = void>
 class SerializationHandlerBase : public SerializationHandlerPostSelector<Metadata>
 {
@@ -112,6 +118,10 @@ bool operator==(const SerializationHandlerBase<Metadata>& s1,
            s1.subscribed_group() == s2.subscribed_group() && s1.action() == s2.action();
 }
 
+/// \brief Represents a subscription to a serialized data type (interprocess and outer layers).
+///
+/// \tparam Data Subscribed data type
+/// \tparam scheme_id Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum).
 template <typename Data, int scheme_id>
 class SerializationSubscription : public SerializationHandlerBase<>
 {
@@ -174,6 +184,7 @@ class SerializationSubscription : public SerializationHandlerBase<>
     Subscriber<Data> subscriber_;
 };
 
+/// \brief Represents a callback for a published data type (e.g. acked_func or expired_func)
 template <typename Data, int scheme_id, typename Metadata>
 class PublisherCallback : public SerializationHandlerBase<Metadata>
 {
@@ -233,6 +244,10 @@ class PublisherCallback : public SerializationHandlerBase<Metadata>
     Group group_{Group(Group::broadcast_group)};
 };
 
+/// \brief Represents an unsubscription to a serialized data type (interprocess and outer layers).
+///
+/// \tparam Data Subscribed data type
+/// \tparam scheme_id Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum).
 template <typename Data, int scheme_id>
 class SerializationUnSubscription : public SerializationHandlerBase<>
 {
@@ -274,6 +289,7 @@ class SerializationUnSubscription : public SerializationHandlerBase<>
     const Group group_;
 };
 
+/// \brief Represents a regex subscription to a serialized data type (interprocess and outer layers).
 class SerializationSubscriptionRegex
 {
   public:
@@ -318,6 +334,7 @@ class SerializationSubscriptionRegex
     const std::thread::id thread_id_{std::this_thread::get_id()};
 };
 
+/// \brief Represents an unsubscription to all subscribed data for a given thread
 class SerializationUnSubscribeAll
 {
   public:

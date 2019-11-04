@@ -38,6 +38,11 @@ namespace goby
 namespace time
 {
 /// \brief Convert between time representations (this function works for tautological conversions)
+///
+/// \tparam ToTimeType The type of the returned (converted) time
+/// \tparam FromTimeType The type of the input time
+/// \param from_time Time to convert
+/// \return Converted time
 template <typename ToTimeType, typename FromTimeType,
           typename std::enable_if<std::is_same<ToTimeType, FromTimeType>{}, int>::type = 0>
 ToTimeType convert(FromTimeType from_time)
@@ -45,7 +50,12 @@ ToTimeType convert(FromTimeType from_time)
     return from_time;
 };
 
-/// \brief Convert between time representations (this function converts between two boost::units::quantity of time)
+/// \brief Convert between time representations (this function converts between two different boost::units::quantity of time)
+///
+/// \tparam ToTimeType The type of the returned (converted) time
+/// \tparam FromTimeType The type of the input time
+/// \param from_time Time to convert
+/// \return Converted time
 template <
     typename ToTimeType, typename FromTimeType,
     typename ToUnitType = typename ToTimeType::unit_type,
@@ -62,7 +72,12 @@ ToTimeType convert(FromTimeType from_time)
     return ToTimeType(from_time);
 };
 
-/// \brief Convert between time representations (this function converts to a boost::units::quantity of time from either a chrono::system_clock or a goby::time::SystemClock)
+/// \brief Convert between time representations (this function converts to a boost::units::quantity of time from either a chrono::system_clock::time_point or a goby::time::SystemClock::time_point)
+///
+/// \tparam ToTimeType The type of the returned (converted) time
+/// \tparam FromTimeType The type of the input time
+/// \param from_time Time to convert
+/// \return Converted time
 template <typename ToTimeType, typename FromTimeType,
           typename ToUnitType = typename ToTimeType::unit_type,
           typename ToValueType = typename ToTimeType::value_type,
@@ -81,7 +96,12 @@ ToTimeType convert(FromTimeType from_time)
     }
 }
 
-/// \brief Convert between time representations (this function converts to either a chrono::system_clock or a goby::time::SystemClock from a boost::units::quantity of time)
+/// \brief Convert between time representations (this function converts to either a chrono::system_clock::time_point or a goby::time::SystemClock::time_point from a boost::units::quantity of time)
+///
+/// \tparam ToTimeType The type of the returned (converted) time
+/// \tparam FromTimeType The type of the input time
+/// \param from_time Time to convert
+/// \return Converted time
 template <
     typename ToTimeType, typename FromTimeType,
     typename FromUnitType = typename FromTimeType::unit_type,
@@ -100,6 +120,11 @@ ToTimeType convert(FromTimeType from_time)
 }
 
 /// \brief Convert between time representations (this function converts from a time type supported by the other convert functions to a boost::posix_time::ptime)
+///
+/// \tparam ToTimeType The type of the returned (converted) time
+/// \tparam FromTimeType The type of the input time
+/// \param from_time Time to convert
+/// \return Converted time
 template <typename ToTimeType, typename FromTimeType,
           typename std::enable_if<!std::is_same<ToTimeType, FromTimeType>{} &&
                                       std::is_same<ToTimeType, boost::posix_time::ptime>{},
@@ -125,6 +150,11 @@ ToTimeType convert(FromTimeType from_time)
 }
 
 /// \brief Convert between time representations (this function converts from a boost::posix_time::ptime to a time type supported by the other convert functions)
+///
+/// \tparam ToTimeType The type of the returned (converted) time
+/// \tparam FromTimeType The type of the input time
+/// \param from_time Time to convert
+/// \return Converted time
 template <typename ToTimeType, typename FromTimeType,
           typename std::enable_if<!std::is_same<ToTimeType, FromTimeType>{} &&
                                       std::is_same<FromTimeType, boost::posix_time::ptime>{},
@@ -153,7 +183,11 @@ ToTimeType convert(FromTimeType from_time)
     }
 }
 
-/// \brief Returns the provided (or current time if omitted) time as a human-readable string
+/// \brief Returns the provided time (or current time if omitted) as a human-readable string
+///
+/// \tparam TimeType The type of the input time
+/// \param value Time to convert
+/// \return Time formatted as a human readable string (e.g. for debug logging)
 template <typename TimeType = SystemClock::time_point>
 inline std::string str(TimeType value = SystemClock::now<TimeType>())
 {
@@ -162,7 +196,11 @@ inline std::string str(TimeType value = SystemClock::now<TimeType>())
     return ss.str();
 }
 
-/// \brief Returns the provided (or current time if omitted) time as an ISO string suitable for file names (no spaces or special characters, e.g. 20180322T215258)
+/// \brief Returns the provided time (or current time if omitted) as an ISO string suitable for file names (no spaces or special characters, e.g. 20180322T215258)
+///
+/// \tparam TimeType The type of the input time
+/// \param value Time to convert
+/// \return Time formatted in a way suitable for file names
 template <typename TimeType = SystemClock::time_point>
 inline std::string file_str(TimeType value = SystemClock::now<TimeType>())
 {
@@ -171,6 +209,11 @@ inline std::string file_str(TimeType value = SystemClock::now<TimeType>())
 }
 
 /// \brief Convert between duration representations (this function works for tautological conversions)
+///
+/// \tparam ToDurationType The type of the returned (converted) duration
+/// \tparam FromDurationType The type of the input duration
+/// \param from_duration Duration to convert
+/// \return Converted duration
 template <typename ToDurationType, typename FromDurationType,
           typename std::enable_if<std::is_same<ToDurationType, FromDurationType>{}, int>::type = 0>
 ToDurationType convert_duration(FromDurationType from_duration)
@@ -178,7 +221,12 @@ ToDurationType convert_duration(FromDurationType from_duration)
     return from_duration;
 };
 
-/// \brief Convert between duration representations (this function converts between two boost::units::quantity of time)
+/// \brief Convert between duration representations (this function converts between two different boost::units::quantity of time)
+///
+/// \tparam ToDurationType The type of the returned (converted) duration
+/// \tparam FromDurationType The type of the input duration
+/// \param from_duration Duration to convert
+/// \return Converted duration
 template <
     typename ToDurationType, typename FromDurationType,
     typename ToUnitType = typename ToDurationType::unit_type,
@@ -196,6 +244,11 @@ ToDurationType convert_duration(FromDurationType from_duration)
 };
 
 /// \brief Convert between duration representations (this function converts from std::chrono::duration to boost::units::quantity of time)
+///
+/// \tparam ToDurationType The type of the returned (converted) duration
+/// \tparam FromDurationType The type of the input duration
+/// \param from_duration Duration to convert
+/// \return Converted duration
 template <
     typename ToDurationType, typename FromDurationType,
     typename ToUnitType = typename ToDurationType::unit_type,
@@ -214,6 +267,11 @@ ToDurationType convert_duration(FromDurationType from_duration)
 };
 
 /// \brief Convert between duration representations (this function converts from boost::units::quantity of time to std::chrono::duration
+///
+/// \tparam ToDurationType The type of the returned (converted) duration
+/// \tparam FromDurationType The type of the input duration
+/// \param from_duration Duration to convert
+/// \return Converted duration
 template <
     typename ToDurationType, typename FromDurationType,
     typename ToRepType = typename ToDurationType::rep,
@@ -232,7 +290,16 @@ ToDurationType convert_duration(FromDurationType from_duration)
         std::chrono::microseconds(microtime_duration.value()));
 };
 
-template <typename ToTimeType> ToTimeType convert_from_nmea(const std::string& mt)
+/// \brief Convert from NMEA0183 time representations (i.e. "HHMMSS[.SSSS]") to any time format supported by the goby::time::convert function family. This function assumes the time is from the current day.
+///
+/// \tparam ToTimeType The type of the returned (converted) time
+/// \param mt NMEA0183 time of day as string (e.g. "124511" or "12.4511.1234" with variable fractional seconds up and including microsecond precision
+/// \param return_date Date assigned to the input time when returned as a time point (defaults to the current day in UTC)
+/// \return Converted time
+template <typename ToTimeType>
+ToTimeType
+convert_from_nmea(const std::string& mt,
+                  boost::gregorian::date return_date = boost::gregorian::day_clock::universal_day())
 {
     using namespace boost::posix_time;
     using namespace boost::gregorian;
@@ -261,7 +328,6 @@ template <typename ToTimeType> ToTimeType convert_from_nmea(const std::string& m
             int sec = boost::lexical_cast<int>(s_sec);
             int micro_sec = boost::lexical_cast<int>(s_fs) * pow(10, 6 - s_fs.size());
 
-            boost::gregorian::date return_date(boost::gregorian::day_clock::universal_day());
             boost::posix_time::time_duration return_duration(
                 boost::posix_time::time_duration(hour, min, sec, 0) + microseconds(micro_sec));
             boost::posix_time::ptime return_time(return_date, return_duration);

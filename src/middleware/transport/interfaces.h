@@ -44,10 +44,20 @@ namespace middleware
 {
 class NullTransporter;
 
-
+/// \brief Defines the common interface for publishing and subscribing data using static (constexpr) groups on Goby transporters
+///
+/// \tparam Transporter The transporter for which this interface applies (derived class)
+/// \tparam InnerTransporter The inner layer transporter type (or NullTransporter if this is the innermost layer)
 template <typename Transporter, typename InnerTransporter> class StaticTransporterInterface
 {
   public:
+    /// \brief Publish a message (const reference variant)
+    ///
+    /// \tparam group group to publish this message to (reference to constexpr Group)
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param data Message to publish
+    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void publish(const Data& data, const Publisher<Data>& publisher = Publisher<Data>())
@@ -57,7 +67,16 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
                                                                                 publisher);
     }
 
-    // need both const and non-const shared_ptr overload to ensure that the const& overload isn't preferred to these.
+    /// \brief Publish a message (shared pointer to const data variant)
+    ///
+    /// \tparam group group to publish this message to (reference to constexpr Group)
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param data Shared pointer to message to publish
+    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
+    ///
+    /// The shared pointer variants will likely be more efficient than the const reference variant when using interthread comms as no copy of the data is necessary.
+    /// Note: need both const and non-const shared_ptr overload to ensure that the const& overload isn't preferred to these.
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void publish(std::shared_ptr<const Data> data,
@@ -68,6 +87,16 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
                                                                                 publisher);
     }
 
+    /// \brief Publish a message (shared pointer to mutable data variant)
+    ///
+    /// \tparam group group to publish this message to (reference to constexpr Group)
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param data Shared pointer to message to publish
+    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
+    ///
+    /// The shared pointer variants will likely be more efficient than the const reference variant when using interthread comms as no copy of the data is necessary.
+    /// Note: need both const and non-const shared_ptr overload to ensure that the const& overload isn't preferred to these.
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void publish(std::shared_ptr<Data> data, const Publisher<Data>& publisher = Publisher<Data>())
@@ -75,6 +104,13 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
         publish<group, Data, scheme>(std::shared_ptr<const Data>(data), publisher);
     }
 
+    /// \brief Subscribe to a specific group and data type (const reference variant)
+    ///
+    /// \tparam group group to subscribe to (reference to constexpr Group)
+    /// \tparam Data data type to subscribe to.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param f Callback function or lambda that is called upon receipt of the subscribed data
+    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void subscribe(std::function<void(const Data&)> f,
@@ -84,6 +120,14 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
         static_cast<Transporter*>(this)->template subscribe_dynamic<Data, scheme>(f, group,
                                                                                   subscriber);
     }
+
+    /// \brief Subscribe to a specific group and data type (shared pointer variant)
+    ///
+    /// \tparam group group to subscribe to (reference to constexpr Group)
+    /// \tparam Data data type to subscribe to.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param f Callback function or lambda that is called upon receipt of the subscribed data
+    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void subscribe(std::function<void(std::shared_ptr<const Data>)> f,
@@ -94,6 +138,7 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
                                                                                   subscriber);
     }
 
+    /// \brief Unsubscribe to a specific group and data type
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void unsubscribe()
@@ -102,9 +147,12 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
         static_cast<Transporter*>(this)->template unsubscribe_dynamic<Data, scheme>(group);
     }
 
+    /// \brief Unsubscribe to all messages that this transporter has subscribed to
     void unsubscribe_all() { static_cast<Transporter*>(this)->template unsubscribe_all(); }
 
     using InnerTransporterType = InnerTransporter;
+
+    /// \return Reference to the inner transporter
     InnerTransporter& inner()
     {
         static_assert(!std::is_same<InnerTransporter, NullTransporter>(),
@@ -113,29 +161,47 @@ template <typename Transporter, typename InnerTransporter> class StaticTransport
     }
 };
 
+/// \brief Defines the common interface for polling for data on Goby transporters
 class PollerInterface
 {
   public:
+    /// \brief poll for data. Blocks until a data event occurs or a timeout when a particular time has been reached
+    ///
+    /// \param timeout timeout defined using a SystemClock or std::chrono::system_clock time_point. Defaults to never timing out
+    /// \return the number of poll events or zero if the timeout was reached
+    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
+    int poll(const std::chrono::time_point<Clock, Duration>& timeout =
+                 std::chrono::time_point<Clock, Duration>::max());
+
+    /// \brief poll for data. Blocks until a data event occurs or a certain duration of time elapses (timeout)
+    ///
+    /// \param wait_for timeout duration
+    /// \return the number of poll events or zero if the timeout was reached
+    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
+    int poll(Duration wait_for);
+
+    /// \brief access the mutex used for poll synchronization
+    ///
+    /// \return pointer to the mutex used for polling
+    std::shared_ptr<std::timed_mutex> poll_mutex() { return poll_mutex_; }
+
+    /// \brief access the condition variable used for poll synchronization
+    ///
+    /// Notifications on this condition variable will cause the poll() loop to assume there is incoming data available (typically this is notified by the publishing thread in InterThreadTransporter, but can be used to synchronize the Goby poller infrastructure with other synchronous events, such as boost::asio, file descriptors, etc. For an example, see io::IOThread)
+    /// \return pointer to the condition variable used for polling
+    std::shared_ptr<std::condition_variable_any> cv() { return cv_; }
+
+  protected:
     PollerInterface(std::shared_ptr<std::timed_mutex> poll_mutex,
                     std::shared_ptr<std::condition_variable_any> cv)
         : poll_mutex_(poll_mutex), cv_(cv)
     {
     }
 
-    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
-    int poll(const std::chrono::time_point<Clock, Duration>& timeout =
-                 std::chrono::time_point<Clock, Duration>::max());
-
-    template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
-    int poll(Duration wait_for);
-
-    std::shared_ptr<std::timed_mutex> poll_mutex() { return poll_mutex_; }
-    std::shared_ptr<std::condition_variable_any> cv() { return cv_; }
-
   private:
     template <typename Transporter> friend class Poller;
     // poll the transporter for data
-    virtual int _transporter_poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock) = 0;
+    virtual int _transporter_poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) = 0;
 
   private:
     // poll all the transporters for data, including a timeout (only called by the outside-most Poller)
@@ -169,7 +235,7 @@ int goby::middleware::PollerInterface::_poll_all(
     const std::chrono::time_point<Clock, Duration>& timeout)
 {
     // hold this lock until either we find a polled item or we wait on the condition variable
-    std::unique_ptr<std::unique_lock<std::timed_mutex> > lock(
+    std::unique_ptr<std::unique_lock<std::timed_mutex>> lock(
         new std::unique_lock<std::timed_mutex>(*poll_mutex_));
     //    std::cout << std::this_thread::get_id() <<  " _poll_all locking: " << poll_mutex_.get() << std::endl;
 

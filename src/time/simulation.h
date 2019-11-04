@@ -29,10 +29,14 @@ namespace goby
 {
 namespace time
 {
+/// \brief Parameters for enabling and configuring simulation time
 struct SimulatorSettings
 {
+    /// \brief Enables simulation time if true (if false, none of the remaining parameters are used)
     static bool using_sim_time;
+    /// \brief Warp factor to speed up (or slow time) the time values returned by SteadyClock::now() and SystemClock::now(). For example, to double the speed of the clocks, set this value to 2.
     static int warp_factor;
+    /// \brief Reference time when calculating SystemClock::now(). If this is unset, the default is 1 January of the current year.
     static std::chrono::system_clock::time_point reference_time;
 };
 

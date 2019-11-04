@@ -36,6 +36,10 @@ namespace goby
 {
 namespace middleware
 {
+/// \brief Implements an Application for a two layer middleware setup ([ intervehicle [ interprocess ] ]) based around InterVehicleForwarder without any interthread communications layer. This class isn't used directly by user applications, for that use a specific implementation, e.g. zeromq::SingleThreadApplication
+///
+/// \tparam Config Configuration type
+/// \tparam InterProcessPortal the interprocess portal type to use (e.g. zeromq::InterProcessPortal)
 template <class Config, template <class = NullTransporter> class InterProcessPortal>
 class SingleThreadApplication : public goby::middleware::Application<Config>,
                                 public Thread<Config, InterVehicleForwarder<InterProcessPortal<> > >
@@ -47,11 +51,17 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
     InterVehicleForwarder<InterProcessPortal<> > intervehicle_;
 
   public:
+    /// \brief Construct the application calling loop() at the given frequency (double overload)
+    ///
+    /// \param loop_freq_hertz The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     SingleThreadApplication(double loop_freq_hertz = 0)
         : SingleThreadApplication(loop_freq_hertz * boost::units::si::hertz)
     {
     }
 
+    /// \brief Construct the application calling loop() at the given frequency (boost::units overload)
+    ///
+    /// \param loop_freq The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : MainThread(this->app_cfg(), loop_freq),
           interprocess_(this->app_cfg().interprocess()),

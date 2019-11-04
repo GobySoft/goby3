@@ -66,6 +66,7 @@ int run(int argc, char* argv[])
 
 namespace middleware
 {
+/// \brief Base class for Goby applications. Generally you will want to use SingleThreadApplication or MultiThreadApplication rather than instantiating this class directly.
 template <typename Config> class Application
 {
   public:
@@ -79,14 +80,12 @@ template <typename Config> class Application
 
   protected:
     /// \brief Perform any initialize tasks that couldn't be done in the constructor
-    ///
-    /// For example, you now have access to the state machine
     virtual void initialize(){};
 
-    /// \brief Runs continously until quit() is called
+    /// \brief Runs continuously until quit() is called
     virtual void run() = 0;
 
-    /// \brief Perform any final actions before the destructor is called
+    /// \brief Perform any final cleanup actions just before the destructor is called
     virtual void finalize(){};
 
     /// \brief Requests a clean exit.
@@ -101,6 +100,7 @@ template <typename Config> class Application
     /// \brief Accesses configuration object passed at launch
     const Config& app_cfg() { return *app_cfg_; }
 
+    /// \brief Accesses the geodetic conversion tool if lat_origin and lon_origin were provided.
     const util::UTMGeodesy& geodesy()
     {
         if (geodesy_)
@@ -255,7 +255,7 @@ int goby::run(const goby::middleware::ConfiguratorInterface<typename App::Config
         }
 
         // simply print the configuration and exit
-        if (cfgtor.app3_configuration().debug_cfg())
+        if (cfgtor.app_configuration().debug_cfg())
         {
             std::cout << cfgtor.str() << std::endl;
             exit(EXIT_SUCCESS);
@@ -264,7 +264,7 @@ int goby::run(const goby::middleware::ConfiguratorInterface<typename App::Config
         // set configuration
         App::app_cfg_.reset(new typename App::ConfigType(cfgtor.cfg()));
         App::app3_base_configuration_.reset(
-            new goby::middleware::protobuf::AppConfig(cfgtor.app3_configuration()));
+            new goby::middleware::protobuf::AppConfig(cfgtor.app_configuration()));
 
         // set up simulation time
         if (App::app3_base_configuration_->simulation().time().use_sim_time())
