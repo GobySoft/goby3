@@ -39,8 +39,10 @@ namespace middleware
 // MarshallingScheme
 //
 
+/// \brief Enumeration and helper functions for marshalling scheme identification
 struct MarshallingScheme
 {
+    /// \brief Marshalilng schemes implemented in Goby
     enum MarshallingSchemeEnum
     {
         ALL_SCHEMES = -2,
@@ -54,6 +56,10 @@ struct MarshallingScheme
         MAVLINK = 6
     };
 
+    /// \brief Convert a known marshalling scheme to a human-readable string or an unknown scheme to the string representation of its numeric value
+    ///
+    /// \param e Marshalling scheme id to convert
+    /// \return Marshalling scheme as string (e.g. "PROTOBUF" if e == 1 or "450" if e == 450)
     static std::string to_string(int e)
     {
         auto it = e2s.find(e);

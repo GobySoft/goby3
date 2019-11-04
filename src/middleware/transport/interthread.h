@@ -25,6 +25,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -32,7 +33,9 @@
 #include <thread>
 #include <typeindex>
 
-#include "common.h"
+#include "goby/middleware/group.h"
+#include "goby/middleware/transport/null.h"
+#include "goby/middleware/transport/poller.h"
 
 namespace goby
 {

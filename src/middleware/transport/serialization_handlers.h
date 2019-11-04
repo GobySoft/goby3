@@ -20,8 +20,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportCommon20160607H
-#define TransportCommon20160607H
+#ifndef SerializationHandlers20191104H
+#define SerializationHandlers20191104H
 
 #include <chrono>
 #include <memory>
@@ -32,10 +32,9 @@
 #include "goby/exception.h"
 #include "goby/util/binary.h"
 
-#include "goby/middleware/poller.h"
 #include "goby/middleware/protobuf/serializer_transporter.pb.h"
 
-#include "interfaces.h"
+#include "interface.h"
 #include "null.h"
 
 namespace goby

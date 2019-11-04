@@ -23,15 +23,15 @@
 #ifndef TransportNull20190627H
 #define TransportNull20190627H
 
-#include "goby/middleware/poller.h"
+#include "goby/middleware/transport/poller.h"
 
-#include "interfaces.h"
+#include "interface.h"
 
 namespace goby
 {
 namespace middleware
 {
-// a do nothing transporter that is always inside the last real transporter level.
+/// \brief A do-nothing transporter that is always inside the last real transporter level. You will never directly instantiate a NullTransporter if you want it to do anything.
 class NullTransporter : public StaticTransporterInterface<NullTransporter, NullTransporter>,
                         public Poller<NullTransporter>
 {

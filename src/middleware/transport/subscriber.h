@@ -25,7 +25,7 @@
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"
-#include "goby/middleware/publisher.h"
+#include "goby/middleware/transport/publisher.h"
 
 namespace goby
 {

@@ -23,7 +23,7 @@
 #ifndef Poller20171107H
 #define Poller20171107H
 
-#include "transport/interfaces.h"
+#include "interface.h"
 
 namespace goby
 {

@@ -30,7 +30,11 @@
 #include <tuple>
 #include <unistd.h>
 
-#include "common.h"
+#include "goby/middleware/group.h"
+
+#include "goby/middleware/transport/null.h"
+#include "goby/middleware/transport/poller.h"
+#include "goby/middleware/transport/serialization_handlers.h"
 
 namespace goby
 {

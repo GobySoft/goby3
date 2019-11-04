@@ -32,7 +32,7 @@
 
 #include "goby/exception.h"
 
-#include "group.h"
+#include "goby/middleware/group.h"
 
 namespace goby
 {

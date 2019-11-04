@@ -28,9 +28,9 @@
 
 #include "goby/middleware/marshalling/dccl.h"
 
+#include "goby/middleware/application/thread.h"
 #include "goby/middleware/group.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"
-#include "goby/middleware/thread.h"
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 
