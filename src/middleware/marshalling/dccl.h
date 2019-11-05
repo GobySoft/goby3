@@ -36,6 +36,8 @@ namespace protobuf
 class InterVehicleSubscription;
 class DCCLForwardedData;
 } // namespace protobuf
+
+/// \brief Wraps a dccl::Codec in a thread-safe way to make it usable by SerializerParserHelper
 struct DCCLSerializerParserHelperBase
 {
   private:
@@ -132,11 +134,15 @@ struct DCCLSerializerParserHelperBase
     }
 };
 
+/// \brief Specialization for DCCL message types that are fully qualified Protobuf message types (static), e.g. DataType == Foo for "message Foo"
+///
+/// DCCL is defined as distinct from the PROTOBUF Marshalling scheme if the DataTYpe has the DCCLParameters enumeration, as output by the \c protoc-gen-dccl plugin to \c protoc. If this plugin isn't used when compiling your .proto files, DCCL types will be identified as Protobuf types.
 template <typename DataType>
 struct SerializerParserHelper<DataType, MarshallingScheme::DCCL>
     : public DCCLSerializerParserHelperBase
 {
   public:
+    /// \brief Serialize message using DCCL encoding
     static std::vector<char> serialize(const DataType& msg)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
@@ -146,9 +152,21 @@ struct SerializerParserHelper<DataType, MarshallingScheme::DCCL>
         return bytes;
     }
 
-    static std::string type_name() { return DataType::descriptor()->full_name(); }
-    static std::string type_name(const DataType& d) { return type_name(); }
+    /// \brief Full protobuf Message name (identical to Protobuf specialization)
+    ///
+    /// For example, returns "foo.Bar" for the following .proto:
+    /// \code
+    /// package foo
+    /// message Bar { ... }
+    /// \endcode
+    static std::string type_name(const DataType& d = DataType())
+    {
+        return DataType::descriptor()->full_name();
+    }
 
+    /// \brief Parse one DCCL message.
+    ///
+    /// If DCCL messages are concatentated, you can pass "actual_end" back into parse() as the new "bytes_begin" until it reaches "bytes_end"
     template <typename CharIterator>
     static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
                                            CharIterator& actual_end)
@@ -160,6 +178,15 @@ struct SerializerParserHelper<DataType, MarshallingScheme::DCCL>
         return msg;
     }
 
+    /// \brief Returns the DCCL ID
+    ///
+    /// This is the ID as defined in the protobuf message, e.g. 5 for
+    /// \code
+    /// message Foo
+    /// {
+    ///   option (dccl.msg).id = 5;
+    /// }
+    /// \endcode
     static unsigned id()
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
@@ -170,11 +197,13 @@ struct SerializerParserHelper<DataType, MarshallingScheme::DCCL>
   private:
 };
 
+/// \brief Specialization for runtime introspection of DCCL messages using google::protobuf::Message base class (works for publish and subscribe_regex only)
 template <>
 struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL>
     : public DCCLSerializerParserHelperBase
 {
   public:
+    /// Serialize DCCL/Protobuf message (using DCCL encoding)
     static std::vector<char> serialize(const google::protobuf::Message& msg)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
@@ -184,15 +213,29 @@ struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL
         return bytes;
     }
 
-    static std::string type_name(const google::protobuf::Descriptor* desc)
-    {
-        return desc->full_name();
-    }
+    /// \brief Full protobuf name from message instantiation, including package (if one is defined).
+    ///
+    /// \param d Protobuf message
     static std::string type_name(const google::protobuf::Message& d)
     {
         return type_name(d.GetDescriptor());
     }
 
+    /// \brief Full protobuf name from descriptor, including package (if one is defined).
+    ///
+    /// \param desc Protobuf descriptor
+    static std::string type_name(const google::protobuf::Descriptor* desc)
+    {
+        return desc->full_name();
+    }
+
+    /// \brief Parse DCCL/Protobuf message (using DCCL decoding) given the Protobuf type name and assuming the message descriptor is loaded into dccl::DynamicProtobufManage
+    ///
+    /// \tparam CharIterator an iterator to a container of bytes (char), e.g. std::vector<char>::iterator, or std::string::iterator
+    /// \param bytes_begin Iterator to the beginning of a container of bytes
+    /// \param bytes_end Iterator to the end of a container of bytes
+    /// \param actual_end Will be set to the actual end of parsing. Useful for concatenated messages as you can pass "actual_end" of one call into "bytes_begin" of the next
+    /// \return Parsed Protobuf message
     template <typename CharIterator>
     static std::shared_ptr<google::protobuf::Message>
     parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
@@ -208,12 +251,16 @@ struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL
         return msg;
     }
 
+    /// \brief Returns the DCCL ID given a Protobuf Descriptor
     static unsigned id(const google::protobuf::Descriptor* desc)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         check_load(desc);
         return codec().id(desc);
     }
+
+    /// \brief Returns the DCCL ID given an instantiated message
+    static unsigned id(const google::protobuf::Message& d) { return id(d.GetDescriptor()); }
 
   private:
 };

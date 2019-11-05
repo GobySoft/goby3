@@ -35,12 +35,13 @@ namespace goby
 {
 namespace middleware
 {
-// user protobuf (static), e.g. DataType == Foo for "message Foo"
+/// \brief Specialization for fully qualified Protobuf message types (static), e.g. DataType == Foo for "message Foo"
 template <typename DataType>
 struct SerializerParserHelper<
     DataType, MarshallingScheme::PROTOBUF,
     std::enable_if_t<!std::is_same<DataType, google::protobuf::Message>::value>>
 {
+    /// Serialize Protobuf message (standard Protobuf encoding)
     static std::vector<char> serialize(const DataType& msg)
     {
         std::vector<char> bytes(msg.ByteSize(), 0);
@@ -48,9 +49,19 @@ struct SerializerParserHelper<
         return bytes;
     }
 
-    static std::string type_name() { return DataType::descriptor()->full_name(); }
-    static std::string type_name(const DataType& d) { return type_name(); }
+    /// \brief Full protobuf Message name, including package (if one is defined).
+    ///
+    /// For example, returns "foo.Bar" for the following .proto:
+    /// \code
+    /// package foo
+    /// message Bar { ... }
+    /// \endcode
+    static std::string type_name(const DataType& d = DataType())
+    {
+        return DataType::descriptor()->full_name();
+    }
 
+    /// \brief Parse Protobuf message (using standard Protobuf decoding)
     template <typename CharIterator>
     static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
                                            CharIterator& actual_end)
@@ -62,9 +73,10 @@ struct SerializerParserHelper<
     }
 };
 
-// runtime introspection google::protobuf::Message (publish only)
+/// \brief Specialization for runtime introspection using google::protobuf::Message base class (works for publish and subscribe_type_regex only)
 template <> struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::PROTOBUF>
 {
+    /// Serialize Protobuf message (standard Protobuf encoding)
     static std::vector<char> serialize(const google::protobuf::Message& msg)
     {
         std::vector<char> bytes(msg.ByteSize(), 0);
@@ -72,17 +84,29 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
         return bytes;
     }
 
+    /// \brief Full protobuf name from message instantiation, including package (if one is defined).
+    ///
+    /// \param d Protobuf message
     static std::string type_name(const google::protobuf::Message& d)
     {
         return d.GetDescriptor()->full_name();
     }
 
-    // Must subscribe to the actual type (or use subscribe_regex())
+    /// \brief Full protobuf name from descriptor, including package (if one is defined).
+    ///
+    /// \param desc Protobuf descriptor
     static std::string type_name(const google::protobuf::Descriptor* desc)
     {
         return desc->full_name();
     }
 
+    /// \brief Parse Protobuf message (using standard Protobuf decoding) given the Protobuf type name and assuming the message descriptor is loaded into dccl::DynamicProtobufManage
+    ///
+    /// \tparam CharIterator an iterator to a container of bytes (char), e.g. std::vector<char>::iterator, or std::string::iterator
+    /// \param bytes_begin Iterator to the beginning of a container of bytes
+    /// \param bytes_end Iterator to the end of a container of bytes
+    /// \param actual_end Will be set to the actual end of parsing.
+    /// \return Parsed Protobuf message
     template <typename CharIterator>
     static std::shared_ptr<google::protobuf::Message>
     parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
