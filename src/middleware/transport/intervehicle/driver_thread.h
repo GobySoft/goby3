@@ -140,7 +140,7 @@ class ModemDriverThread
     subbuffer_id_type
     _create_buffer_id(const goby::middleware::protobuf::SerializerTransporterKey& key)
     {
-        return _create_buffer_id(DCCLSerializerParserHelperBase::id(key.type()),
+        return _create_buffer_id(detail::DCCLSerializerParserHelperBase::id(key.type()),
                                  key.group_numeric());
     }
 

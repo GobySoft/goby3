@@ -30,7 +30,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "goby/middleware/detail/primitive_type.h"
+#include "goby/middleware/marshalling/detail/primitive_type.h"
 
 namespace goby
 {

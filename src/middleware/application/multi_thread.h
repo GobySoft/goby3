@@ -26,8 +26,10 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/exception.h"
+#include "goby/middleware/application/detail/thread_type_selector.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/thread.h"
+
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 #include "goby/middleware/transport/intervehicle.h"
@@ -350,30 +352,6 @@ template <class Config> class MultiThreadTest : public MultiThreadStandaloneAppl
     InterThreadTransporter& intervehicle() { return Base::interthread(); }
 };
 
-/// \brief Selects which constructor to use based on whether the thread is launched with an index or not (that is, index == -1). Not directly called by user code.
-template <typename ThreadType, typename ThreadConfig, bool has_index> struct ThreadTypeSelector
-{
-};
-
-/// \brief ThreadTypeSelector instantiation for calling a constructor \e without an index parameter, e.g. "MyThread(const MyConfig& cfg)"
-template <typename ThreadType, typename ThreadConfig>
-struct ThreadTypeSelector<ThreadType, ThreadConfig, false>
-{
-    static std::shared_ptr<ThreadType> thread(const ThreadConfig& cfg, int index = -1)
-    {
-        return std::make_shared<ThreadType>(cfg);
-    };
-};
-
-/// \brief ThreadTypeSelector instantiation for calling a constructor \e with an index parameter, e.g. "MyThread(const MyConfig& cfg, int index)"
-template <typename ThreadType, typename ThreadConfig>
-struct ThreadTypeSelector<ThreadType, ThreadConfig, true>
-{
-    static std::shared_ptr<ThreadType> thread(const ThreadConfig& cfg, int index)
-    {
-        return std::make_shared<ThreadType>(cfg, index);
-    };
-};
 } // namespace middleware
 
 template <class Config, class Transporter>
@@ -399,7 +377,8 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
         try
         {
             std::shared_ptr<ThreadType> goby_thread(
-                ThreadTypeSelector<ThreadType, ThreadConfig, has_index>::thread(cfg, index));
+                detail::ThreadTypeSelector<ThreadType, ThreadConfig, has_index>::thread(cfg,
+                                                                                        index));
             goby_thread->run(thread_manager.alive);
         }
         catch (...)

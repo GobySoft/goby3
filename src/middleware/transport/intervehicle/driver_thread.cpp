@@ -23,7 +23,7 @@
 #include "goby/acomms/bind.h"
 #include "goby/acomms/modem_driver.h"
 
-#include "driver-thread.h"
+#include "driver_thread.h"
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -154,7 +154,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_expire_value(
 void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
     intervehicle::protobuf::Subscription subscription)
 {
-    DCCLSerializerParserHelperBase::load_forwarded_subscription(subscription);
+    detail::DCCLSerializerParserHelperBase::load_forwarded_subscription(subscription);
 
     subscription.mutable_header()->set_src(cfg().driver().modem_id());
     for (auto dest : subscription.header().dest())
@@ -402,7 +402,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
             for (auto& frame : rx_msg.frame())
             {
                 const intervehicle::protobuf::DCCLForwardedData packets(
-                    DCCLSerializerParserHelperBase::unpack(frame));
+                    detail::DCCLSerializerParserHelperBase::unpack(frame));
                 interprocess_->publish<groups::modem_data_in>(packets);
             }
         }

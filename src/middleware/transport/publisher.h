@@ -23,6 +23,8 @@
 #ifndef Publisher20190627H
 #define Publisher20190627H
 
+#include <functional>
+
 #include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/middleware/group.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"

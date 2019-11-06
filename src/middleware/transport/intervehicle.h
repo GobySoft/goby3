@@ -30,15 +30,19 @@
 #include <unistd.h>
 
 #include "goby/middleware/protobuf/intervehicle.pb.h"
-#include "goby/middleware/transport/interthread.h" // used for InterVehiclePortal implementation
-#include "goby/middleware/transport/serialization_handlers.h"
 
-#include "goby/middleware/intervehicle/driver-thread.h"
+#include "goby/middleware/transport/interthread.h" // used for InterVehiclePortal implementation
+#include "goby/middleware/transport/intervehicle/driver_thread.h"
+#include "goby/middleware/transport/serialization_handlers.h"
 
 namespace goby
 {
 namespace middleware
 {
+/// \brief Base class for implementing transporters (both portal and forwarder) for the intervehicle layer
+///
+/// \tparam Derived derived class (curiously recurring template pattern)
+/// \tparam InnerTransporter inner layer transporter type
 template <typename Derived, typename InnerTransporter>
 class InterVehicleTransporterBase
     : public StaticTransporterInterface<InterVehicleTransporterBase<Derived, InnerTransporter>,
@@ -60,6 +64,7 @@ class InterVehicleTransporterBase
 
     virtual ~InterVehicleTransporterBase() = default;
 
+    /// \brief returns the marshalling scheme id for a given data type on this layer. Only MarshallingScheme::DCCL is currently supported
     template <typename Data> static constexpr int scheme()
     {
         static_assert(goby::middleware::scheme<typename detail::primitive_type<Data>::type>() ==
@@ -68,6 +73,9 @@ class InterVehicleTransporterBase
         return MarshallingScheme::DCCL;
     }
 
+    /// \brief Check validity of the Group for interthread use (at compile time)
+    ///
+    /// The layer requires a valid numeric group
     template <const Group& group> void check_validity()
     {
         static_assert(group.numeric() != Group::invalid_numeric_group,
@@ -75,7 +83,13 @@ class InterVehicleTransporterBase
                       "value to publish on the InterVehicle layer");
     }
 
-    // implements StaticTransporterInterface
+    /// \brief Publish a message using a run-time defined DynamicGroup (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
+    ///
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param data Message to publish
+    /// \param group group to publish this message to (typically a DynamicGroup). If a Publisher is provided, the group will be set in the data using Publisher::set_group()
+    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result.
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group = Group(),
                          const Publisher<Data>& publisher = Publisher<Data>())
@@ -91,6 +105,13 @@ class InterVehicleTransporterBase
                                                                                   group, publisher);
     }
 
+    /// \brief Publish a message using a run-time defined DynamicGroup (shared pointer to const data variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
+    ///
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param data Message to publish
+    /// \param group group to publish this message to (typically a DynamicGroup). If a Publisher is provided, the group will be set in the data using Publisher::set_group()
+    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result.
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
     void publish_dynamic(std::shared_ptr<const Data> data, const Group& group = Group(),
                          const Publisher<Data>& publisher = Publisher<Data>())
@@ -109,6 +130,13 @@ class InterVehicleTransporterBase
         }
     }
 
+    /// \brief Publish a message using a run-time defined DynamicGroup (shared pointer to mutable data variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
+    ///
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param data Message to publish
+    /// \param group group to publish this message to (typically a DynamicGroup). If a Publisher is provided, the group will be set in the data using Publisher::set_group()
+    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result.
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
     void publish_dynamic(std::shared_ptr<Data> data, const Group& group = Group(),
                          const Publisher<Data>& publisher = Publisher<Data>())
@@ -116,25 +144,39 @@ class InterVehicleTransporterBase
         publish_dynamic<Data>(std::shared_ptr<const Data>(data), group, publisher);
     }
 
+    /// \brief Subscribe to a specific run-time defined group and data type (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
+    ///
+    /// \tparam Data data type to subscribe to.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param f Callback function or lambda that is called upon receipt of the subscribed data
+    /// \param group group to subscribe to (typically a DynamicGroup)
+    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
-    void subscribe_dynamic(std::function<void(const Data&)> func, const Group& group = Group(),
+    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group = Group(),
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
-        auto pointer_ref_lambda = [=](std::shared_ptr<const Data> d) { func(*d); };
+        auto pointer_ref_lambda = [=](std::shared_ptr<const Data> d) { f(*d); };
         static_cast<Derived*>(this)->template _subscribe<Data>(pointer_ref_lambda, group,
                                                                subscriber);
     }
 
+    /// \brief Subscribe to a specific run-time defined group and data type (shared pointer variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
+    ///
+    /// \tparam Data data type to subscribe to.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param f Callback function or lambda that is called upon receipt of the subscribed data
+    /// \param group group to subscribe to (typically a DynamicGroup)
+    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = goby::middleware::scheme<Data>()>
-    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> func,
+    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f,
                            const Group& group = Group(),
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
-        static_cast<Derived*>(this)->template _subscribe<Data>(func, group, subscriber);
+        static_cast<Derived*>(this)->template _subscribe<Data>(f, group, subscriber);
     }
 
   protected:
@@ -365,6 +407,10 @@ class InterVehicleTransporterBase
         pending_ack_;
 };
 
+/// \brief Implements the forwarder concept for the intervehicle layer
+///
+/// This forwarder is used by applications that do not directly communicate with other vehicles, but are connected on the interprocess layer. For example, \c gobyd instantiates a portal and other processes running on the vehicle can transmit and receive data through that portal via the use of this forwarder.
+/// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
 template <typename InnerTransporter>
 class InterVehicleForwarder
     : public InterVehicleTransporterBase<InterVehicleForwarder<InnerTransporter>, InnerTransporter>
@@ -373,6 +419,9 @@ class InterVehicleForwarder
     using Base =
         InterVehicleTransporterBase<InterVehicleForwarder<InnerTransporter>, InnerTransporter>;
 
+    /// \brief Construct a forwarder for the intervehicle layer
+    ///
+    /// \param inner A reference to the inner transporter used to forward messages to and from the portal
     InterVehicleForwarder(InnerTransporter& inner) : Base(inner)
     {
         this->inner()
@@ -420,6 +469,9 @@ class InterVehicleForwarder
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) { return 0; }
 };
 
+/// \brief Implements a portal for the intervehicle layer based on Goby Acomms.
+///
+/// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node. This portal uses goby::middleware::InterThreadTransport internally, so the inner transporter of InnerTransporter (two layers in) must be goby::middleware::InterThreadTransport. This allows for use of any InterProcessPortal, as long as that InterProcessPortal has an inner transporter of goby::middleware::InterThreadTransport.
 template <typename InnerTransporter>
 class InterVehiclePortal
     : public InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>
@@ -427,7 +479,7 @@ class InterVehiclePortal
     static_assert(
         std::is_same<typename InnerTransporter::InnerTransporterType,
                      InterThreadTransporter>::value,
-        "Currently InterVehiclePortal is implemented in a way that requires that its "
+        "InterVehiclePortal is implemented in a way that requires that its "
         "InnerTransporter's InnerTransporter be goby::middleware::InterThreadTransporter, that is "
         "InterVehicle<InterProcess<goby::middleware::InterThreadTransport>>");
 
@@ -435,7 +487,15 @@ class InterVehiclePortal
     using Base =
         InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>;
 
+    /// \brief Instantiate a portal with the given configuration (with the portal owning the inner transporter)
+    ///
+    /// \param cfg Configuration of physical modem links to use, etc.
     InterVehiclePortal(const intervehicle::protobuf::PortalConfig& cfg) : cfg_(cfg) { _init(); }
+
+    /// \brief Instantiate a portal with the given configuration and a reference to an external inner transporter
+    ///
+    /// \param inner Reference to the inner transporter to use
+    /// \param cfg Configuration of physical modem links to use, etc.
     InterVehiclePortal(InnerTransporter& inner, const intervehicle::protobuf::PortalConfig& cfg)
         : Base(inner), cfg_(cfg)
     {
@@ -541,7 +601,7 @@ class InterVehiclePortal
             });
 
         for (const auto& lib_path : cfg_.dccl_load_library())
-            DCCLSerializerParserHelperBase::load_library(lib_path);
+            detail::DCCLSerializerParserHelperBase::load_library(lib_path);
 
         for (int i = 0, n = cfg_.link_size(); i < n; ++i)
         {

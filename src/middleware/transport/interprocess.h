@@ -40,7 +40,7 @@ namespace goby
 {
 namespace middleware
 {
-/// \brief Base class for implementing transporters for the interprocess layer
+/// \brief Base class for implementing transporters (both portal and forwarder) for the interprocess layer
 ///
 /// \tparam Derived derived class (curiously recurring template pattern)
 /// \tparam InnerTransporter inner layer transporter type
@@ -65,7 +65,13 @@ class InterProcessTransporterBase
 
     virtual ~InterProcessTransporterBase() {}
 
-    // RUNTIME groups
+    /// \brief Publish a message using a run-time defined DynamicGroup (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
+    ///
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param data Message to publish
+    /// \param group group to publish this message to (typically a DynamicGroup)
+    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group,
                          const Publisher<Data>& publisher = Publisher<Data>())
@@ -75,6 +81,13 @@ class InterProcessTransporterBase
         this->inner().template publish_dynamic<Data, scheme>(data, group, publisher);
     }
 
+    /// \brief Publish a message using a run-time defined DynamicGroup (shared pointer to const data variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
+    ///
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param data Message to publish
+    /// \param group group to publish this message to (typically a DynamicGroup)
+    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
                          const Publisher<Data>& publisher = Publisher<Data>())
@@ -87,6 +100,13 @@ class InterProcessTransporterBase
         }
     }
 
+    /// \brief Publish a message using a run-time defined DynamicGroup (shared pointer to mutable data variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
+    ///
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param data Message to publish
+    /// \param group group to publish this message to (typically a DynamicGroup)
+    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = scheme<Data>()>
     void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
                          const Publisher<Data>& publisher = Publisher<Data>())
@@ -94,6 +114,13 @@ class InterProcessTransporterBase
         publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, publisher);
     }
 
+    /// \brief Subscribe to a specific run-time defined group and data type (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
+    ///
+    /// \tparam Data data type to subscribe to.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param f Callback function or lambda that is called upon receipt of the subscribed data
+    /// \param group group to subscribe to (typically a DynamicGroup)
+    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = scheme<Data>()>
     void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
@@ -103,6 +130,13 @@ class InterProcessTransporterBase
             [=](std::shared_ptr<const Data> d) { f(*d); }, group, subscriber);
     }
 
+    /// \brief Subscribe to a specific run-time defined group and data type (shared pointer variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
+    ///
+    /// \tparam Data data type to subscribe to.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param f Callback function or lambda that is called upon receipt of the subscribed data
+    /// \param group group to subscribe to (typically a DynamicGroup)
+    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = scheme<Data>()>
     void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
@@ -111,6 +145,11 @@ class InterProcessTransporterBase
         static_cast<Derived*>(this)->template _subscribe<Data, scheme>(f, group, subscriber);
     }
 
+    /// \brief Unsubscribe to a specific run-time defined group and data type. Where possible, prefer the static variant in StaticTransporterInterface::unsubscribe()
+    ///
+    /// \tparam Data data type to unsubscribe from.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param group group to unsubscribe from (typically a DynamicGroup)
     template <typename Data, int scheme = scheme<Data>()>
     void unsubscribe_dynamic(const Group& group)
     {
@@ -118,9 +157,15 @@ class InterProcessTransporterBase
         static_cast<Derived*>(this)->template _unsubscribe<Data, scheme>(group);
     }
 
+    /// \brief Unsubscribe from all current subscriptions
     void unsubscribe_all() { static_cast<Derived*>(this)->_unsubscribe_all(); }
 
-    // Wildcards
+    /// \brief Subscribe to multiple groups and/or types at once using regular expressions
+    ///
+    /// \param f Callback function or lambda that is called upon receipt of any messages matching the group regex and type regex
+    /// \param schemes Set of marshalling schemes to match
+    /// \param type_regex C++ regex to match type names (within one or more of the given schemes)
+    /// \param group_regex C++ regex to match group names
     void subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme,
                                             const std::string& type, const Group& group)>
                              f,
@@ -130,6 +175,14 @@ class InterProcessTransporterBase
         static_cast<Derived*>(this)->_subscribe_regex(f, schemes, type_regex, group_regex);
     }
 
+    /// \brief Subscribe to a number of types within a given group and scheme using a regular expression
+    ///
+    /// The marshalling scheme must implement SerializerParserHelper::parse_dynamic() to use this method.
+    /// \tparam group group to publish this message to (reference to constexpr Group)
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param f Callback function or lambda that is called upon receipt of any messages matching the given group and type regex
+    /// \param type_regex C++ regex to match type names (within the given scheme)
     template <const Group& group, typename Data, int scheme = scheme<Data>()>
     void subscribe_type_regex(
         std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
@@ -160,7 +213,9 @@ class InterProcessTransporterBase
         return goby::middleware::scheme<Data>();
     }
 
-    /// \brief checks the validity of the Group for use on this layer
+    /// \brief Check validity of the Group for interthread use (at compile time)
+    ///
+    /// This layer requires a valid string group
     template <const Group& group> void check_validity()
     {
         static_assert((group.c_str() != nullptr) && (group.c_str()[0] != '\0'),
@@ -168,6 +223,7 @@ class InterProcessTransporterBase
                       "InterProcess layer");
     }
 
+    /// \brief Check validity of the Group for interthread use (for DynamicGroup at run time)
     void check_validity_runtime(const Group& group)
     {
         if ((group.c_str() == nullptr) || (group.c_str()[0] == '\0'))
@@ -193,6 +249,10 @@ template <typename Derived, typename InnerTransporter>
 constexpr goby::middleware::Group
     InterProcessTransporterBase<Derived, InnerTransporter>::regex_group_;
 
+/// \brief Implements the forwarder concept for the interprocess layer
+///
+/// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer. For example, the main thread might instantiate a portal and then spawn several threads that instantiate forwarders. These auxiliary threads can then communicate on the interprocess layer as if they had a direct connection to other interprocess nodes.
+/// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
 template <typename InnerTransporter>
 class InterProcessForwarder
     : public InterProcessTransporterBase<InterProcessForwarder<InnerTransporter>, InnerTransporter>
@@ -201,6 +261,9 @@ class InterProcessForwarder
     using Base =
         InterProcessTransporterBase<InterProcessForwarder<InnerTransporter>, InnerTransporter>;
 
+    /// \brief Construct a forwarder for the interprocess layer
+    ///
+    /// \param inner A reference to the inner transporter used to forward messages to and from the portal
     InterProcessForwarder(InnerTransporter& inner) : Base(inner)
     {
         this->inner()

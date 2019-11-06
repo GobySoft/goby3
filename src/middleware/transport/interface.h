@@ -46,13 +46,21 @@ class NullTransporter;
 
 /// \brief Recursive inner layer transporter storage or generator
 ///
-/// Can either be passed a reference to an inner transporter, in which case this reference is stored, or else the inner layer is instantiated.
+/// Can either be passed a reference to an inner transporter, in which case this reference is stored, or else the inner layer is instantiated and stored within this class.
 /// \tparam Transporter This tranporter type
 /// \tparam InnerTransporter The inner transporter type
 /// \tparam Enable SFINAE enable/disable type
 template <typename Transporter, typename InnerTransporter, typename Enable = void>
 class InnerTransporterInterface
 {
+  public:
+    /// \brief the InnerTransporter type (accessible for other uses)
+    using InnerTransporterType = InnerTransporter;
+    /// \return Reference to the inner transporter
+    InnerTransporter& inner()
+    {
+        static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
+    }
 };
 
 /// \brief Recursive inner layer transporter storage or generator for real (non-null) transporters
@@ -236,6 +244,10 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
     }
 
     /// \brief Unsubscribe to a specific group and data type
+    ///
+    /// \tparam group group to unsubscribe from (reference to constexpr Group)
+    /// \tparam Data data type to unsubscribe from.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
     void unsubscribe()
