@@ -56,8 +56,8 @@ struct SystemClock
 
     /// \brief Returns the current system time unless SimulatorSettings::using_sim_time is set to true, in which case a simulated time is returned that is sped up by the SimulatorSettings::warp_factor
     ///
-    /// When using simulated time, the returned time (\f$t_sim$) is computed relative to SimulatorSettings::reference_time (\f$t_0$) with an accelerated progression by a factor of the SimulatorSettings::warp_time (\f$w$) such that:
-    /// \f$t_sim = (t-t_0)*w + t_0
+    /// When using simulated time, the returned time (t_sim) is computed relative to SimulatorSettings::reference_time (t_0) with an accelerated progression by a factor of the SimulatorSettings::warp_time (w) such that:
+    /// t_sim = (t-t_0)*w + t_0
     /// A note when using MOOS middleware's MOOSTimeWarp: the value returned by this function is the same as MOOSTime() when \code SimulatorSettings::reference_time == 0 \endcode
     static time_point now() noexcept
     {

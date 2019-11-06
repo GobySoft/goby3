@@ -1,15 +1,14 @@
-x
 /*! \mainpage Goby Underwater Autonomy Project
  
  \image html gobysoft_logo_image_only_medium.png
 
- The Goby Underwater Autonomy Project aims to create a unified framework for autonomous marine vehicle collaboration, seamlessly incorporating acoustic, ethernet, wifi, and serial communications. The Goby libraries are licensed under the GNU Lesser General Public License v3 <http://www.gnu.org/licenses/lgpl.html> and the applications are licensed under the GNU General Public License v3 <http://www.gnu.org/licenses/gpl.html>.
+ The Goby Underwater Autonomy Project aims to create a unified framework for autonomous marine vehicle collaboration, seamlessly incorporating efficient intervehicle (acoustic, satellite, etc.), flexible interprocess (ethernet, local sockets, etc.), and intuitive interthread (shared pointer) communications. In addition, Goby provides a variety of useful tools for interacting with other marine-related middlewares, as well as marine engineering and oceanographic data. The Goby libraries are licensed under the <a href="http://www.gnu.org/licenses/lgpl.html">GNU Lesser General Public License</a> and the applications (binaries) are licensed under the <a href="http://www.gnu.org/licenses/gpl.html">GNU General Public License</a>.
 
   \section main_resources Resources
   <ul>
   <li> Home page, code, bug tracking, and wiki: <https://github.com/GobySoft/goby3>.</li>
   <li> User Manual: <a href=http://gobysoft.org/dl/goby3-user-manual.pdf>(pdf)</a>.</li>
-  <li> Developers' Manual: <a href=http://gobysoft.org/doc/3.0>(html)</a> <a href=http://gobysoft.org/dl/goby3-dev.pdf>(pdf)</a>.</li>
+  <li> Developers' Manual: <a href=http://gobysoft.org/doc/3.0>(html)</a> <a href=http://gobysoft.org/dl/goby3-dev.pdf>(pdf)</a> or <tt>apt install goby3-doc</tt></li>
   </ul>
 
   \section main_manual Developer manual

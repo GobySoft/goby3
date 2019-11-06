@@ -27,6 +27,7 @@
 
 #include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/middleware/group.h"
+#include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"
 
 namespace goby

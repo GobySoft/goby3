@@ -31,6 +31,10 @@
 #include <shared_mutex>
 #include <thread>
 #include <typeindex>
+#include <unordered_map>
+#include <vector>
+
+#include "goby/middleware/transport/publisher.h"
 
 namespace goby
 {

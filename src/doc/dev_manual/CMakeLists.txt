@@ -1,4 +1,7 @@
-file(GLOB doxy_body/* DOXY_SRC)
+file(GLOB DOXY_SRC doxy_body/*)
+
+file(GLOB MD_SRC ../markdown/*.md)
+
 
 set(DOC_DEPENDS_LIBS "${DOC_DEPENDS_LIBS};goby")
 
@@ -13,13 +16,13 @@ endif()
 add_custom_command(OUTPUT ${goby_SHARE_DIR}/doc/goby-dev.pdf
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/doxy2pdf.sh
   ARGS ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${goby_SHARE_DIR}/doc/goby-dev.pdf
-  DEPENDS ${DOC_DEPENDS_LIBS} ${DOXY_SRC}
+  DEPENDS ${DOC_DEPENDS_LIBS} ${DOXY_SRC} ${MD_SRC}
 )
 
 add_custom_command(OUTPUT ${goby_SHARE_DIR}/doc/html/index.html
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/doxy2html.sh
   ARGS ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
-  DEPENDS ${DOC_DEPENDS_LIBS} goby-dev.doxy.in ${DOXY_SRC}
+  DEPENDS ${DOC_DEPENDS_LIBS} goby-dev.doxy.in ${DOXY_SRC} ${MD_SRC}
 )
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/goby-dev.doxy.in ${CMAKE_CURRENT_BINARY_DIR}/goby-dev.doxy @ONLY)
