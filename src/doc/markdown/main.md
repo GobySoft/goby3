@@ -27,7 +27,7 @@ Along with each of those libraries, Goby provides a number of related applicatio
 
 The core `libgoby.so` is comprised of several conceptual components:
 
-  * [acomms](doc100_acomms.md) - tackle the extremely rate limited acoustic networking problem. This part of Goby was designed with four modules that can operate independently for a developer looking integrate a specific component (e.g. just encoding/decoding) without committing to the entire goby-acomms stack.
+  * [acomms](doc100_acomms.md) - tackle the extremely rate limited acoustic networking problem. This part of Goby was designed with modules that can operate independently for a developer looking to integrate a specific component (e.g. just encoding/decoding) without committing to the entire goby-acomms stack.
   * [middleware](doc200_middleware.md) - (*new for Goby 3*) nested publish/subscribe middleware based on interthread, interprocess, and intervehicle communications.
   * [util](doc300_util.md) - provide utility functions for tasks such as logging, scientific calculations, string parsing, and serial device i/o. Goby also relies on the [Boost](http://www.boost.org) libraries for many utility tasks to fill in areas where the C++ Standard Library is insufficient or unelegant.
 
