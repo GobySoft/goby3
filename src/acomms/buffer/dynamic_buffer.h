@@ -375,9 +375,8 @@ template <typename T> class DynamicBuffer
         replace(dest_id, sub_id, std::vector<goby::acomms::protobuf::DynamicBufferConfig>(1, cfg));
     }
 
-    /// \brief Create a new subbuffer merging the given configuration (See DynamicSubBuffer() for details)
+    /// \brief Replace an existing subbuffer merging the given configuration (See DynamicSubBuffer() for details)
     ///
-    /// This must be called before using functions that reference this subbuffer ID (e.g. push(...), erase(...))
     /// \param dest_id The modem id destination for these messages
     /// \param sub_id An identifier for this subbuffer
     /// \param cfgs The configuration for this new subbuffer

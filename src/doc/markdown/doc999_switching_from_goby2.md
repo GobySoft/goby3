@@ -29,3 +29,5 @@
 
  - Use UDPMulticastDriver instead of PBDriver for pure software simulations
  - `micromodem.protobuf` moved to `goby.acomms.micromodem.protobuf`, and similar for other drivers
+ - extensions to goby::acomms::protobuf::DriverConfig are a single Config object for each driver, rather than multiple extensions per driver. For example, goby::acomms::micromodem::protobuf::Config contains all the fields that were previously their own extension (e.g. micromodem::protobuf::Config::reset_nvram).
+ - extensions to goby::acomms::protobuf::ModemTransmission are also a single Transmission object for each driver. For example, goby::acomms::micromodem::protobuf::Transmission contains all the fields that were previously their own extension (e.g. micromodem::protobuf::type).

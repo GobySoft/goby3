@@ -40,9 +40,7 @@ The "law of diminishing returns" means that at some point, if we try to optimize
 A relatively simple component model for the goby-acomms library showing the interface classes:
 ![](../images/goby-acomms-overview.png)
 
-\latexonly
 \image latex goby-acomms-overview.eps "Basic overview of goby-acomms libraries."
-\endlatexonly
 
 ## dccl: Encoding and decoding
 
@@ -177,12 +175,9 @@ Clearly the .proto representation is more compact and amenable to easy modificat
 Model that gives the sequence for sending a message with goby-acomms (using the :
 
 ![](../images/goby-acomms-send-message-sequence.png)
-
 \image latex goby-acomms-send-message-sequence.eps "UML model that gives the sequence of calls required in sending a message using goby-acomms. The WHOI Micro-Modem is used as example firmware but the specific modemdriver-firmware interaction will depend on the acoustic modem used." width=\textwidth
 
 Model that shows the commands needed to start and keep goby-acomms running:
 
 ![](../images/goby-acomms-background-sequence.png)
-
-\image latex goby-acomms-background-sequence.eps "UML model that illustrates the set of commands needed to start up goby-acomms and keep it running." width=\textwidth
-
+\image latex goby-acomms-send-message-sequence.eps "UML model that gives the sequence of calls required in sending a message using goby-acomms. The WHOI Micro-Modem is used as example firmware but the specific modemdriver-firmware interaction will depend on the acoustic modem used." width=\textwidth
