@@ -1,2 +1,0 @@
-add_subdirectory(driver_simple)
-add_subdirectory(whoi_ranging)

@@ -1,3 +1,0 @@
-To build the examples, simply run (in goby/share/examples):
-> cmake .
-> make

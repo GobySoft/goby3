@@ -52,12 +52,12 @@ The AIS system is used by surface boats and ships to broadcast position and othe
 
 Goby can decode and encode a subset of the AIS serial messages to and from the goby::util::ais::protobuf::Voyage and goby::util::ais::protobuf::Position protocol buffers messages.
 
-Decode (uses [libais](https://github.com/schwehr/libais)):
+Decode (uses [libais](https://github.com/schwehr/libais)) using goby::util::ais::Decoder:
 
 * AIS Messages 1, 2, 3, 18, and 19 to goby::util::ais::protobuf::Position
 * AIS Messages 5 and 24 to goby::util::ais::protobuf::Voyage
 
-Encode:
+Encode using goby::util::ais::Encoder:
 
 * goby::util::ais::protobuf::Position to AIS Message 18
 * goby::util::ais::protobuf::Voyage to AIS Message 24
