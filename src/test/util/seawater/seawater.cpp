@@ -149,6 +149,27 @@ BOOST_AUTO_TEST_CASE(depth_additional_values)
     }
 }
 
+BOOST_AUTO_TEST_CASE(pressure_check_value)
+{
+    using boost::units::si::deci;
+    using goby::util::seawater::bar;
+
+    auto depth = 7321.45 * si::meters;
+    auto latitude = 30.0 * degree::degrees;
+
+    auto calculated_pressure = goby::util::seawater::pressure(depth, latitude);
+    auto expected_pressure = 7500.006 * deci * bar;
+    int expected_precision = 3;
+
+    std::cout << "CHECK [pressure] expected: " << std::fixed
+              << std::setprecision(expected_precision) << expected_pressure
+              << ", calculated: " << calculated_pressure << " for D = " << depth
+              << ", Lat = " << latitude << std::endl;
+
+    BOOST_CHECK(
+        close_enough(calculated_pressure.value(), expected_pressure.value(), expected_precision));
+}
+
 BOOST_AUTO_TEST_CASE(salinity_check_value)
 {
     using boost::units::si::deci;

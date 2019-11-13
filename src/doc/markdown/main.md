@@ -7,6 +7,7 @@ The Goby Underwater Autonomy Project aims to create a unified framework for auto
 ## Resources
 
   * Home page, code, bug tracking, and wiki: https://github.com/GobySoft/goby3.
+  * Examples: <https://github.com/GobySoft/goby3-examples>
   * User Manual: [(pdf)](http://gobysoft.org/dl/goby3-user-manual.pdf)
   * Developers' Manual: [(html)](http://gobysoft.org/doc/3.0) [(pdf)](http://gobysoft.org/dl/goby3-dev.pdf)
   * Both user and developer documentation for a particular release as a Debian package:
