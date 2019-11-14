@@ -135,7 +135,7 @@ When using goby::glog in this mode, it is essential that every call to goby::uti
 
 ## TCP and Serial port communications - linebasedcomms
 
-*Note:* linebasedcomms will be deprecated at some point in favor of the more full-featured subclasses of goby::middleware::io::IOThread (e.g. goby::middleware::io::SerialThreadLineBased). Linebasedcomms will be included in Goby until all the existing modem drivers have been converted.
+*Note:* linebasedcomms will be deprecated at some point in favor of the more full-featured [I/O in goby-middleware](doc240_middleware-io.md) (subclasses of goby::middleware::io::IOThread, e.g. goby::middleware::io::SerialThreadLineBased). Linebasedcomms will be included in Goby until all the existing modem drivers have been converted.
 
 Linebasedcomms provides a common interface (goby::util::LineBasedInterface) for line-based (defined as blocks of text offset by a common delimiter such as "\\r\\n" or "\\n") text communications over a TCP or serial connection. Linebasedcomms uses the boost::asio library to perform the actual communications.
 

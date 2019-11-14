@@ -1,7 +1,7 @@
 # goby-acomms: modemdriver (Driver to interact with modem firmware)
 
 ## Abstract class: ModemDriverBase
-        
+
 goby::acomms::ModemDriverBase defines the core functionality for an acoustic modem. It provides
 
 * **A serial or serial-like (over TCP) reader/writer**. This is an instantiation of an appropriate derivative of the goby::util::LineBasedInterface class which reads the physical interface (serial or TCP) to the acoustic modem. The data (assumed to be ASCII lines offset by a delimiter such as NMEA0183 or the Hayes command set [AT]) are read into a buffer for use by the goby::acomms::ModemDriverBase derived class (e.g. goby::acomms::MMDriver). The type of interface is configured using a goby::acomms::protobuf::DriverConfig. The modem is accessed by the derived class using goby::acomms::ModemDriverBase::modem_start, goby::acomms::ModemDriverBase::modem_read, goby::acomms::ModemDriverBase::modem_write, and goby::acomms::ModemDriverBase::modem_close.
@@ -415,35 +415,35 @@ hexdata = goby::acomms::hex_encode(goby::acomms::protobuf::ModemTransmission::fr
 
 FSK (rate 0) data transmission
 ![](../images/goby-acomms-mmdriver-rate0.png)
-\image latex goby-acomms-mmdriver-rate0.eps "FSK (rate 0) data transmission"
+\image latex ../images/goby-acomms-mmdriver-rate0.eps "FSK (rate 0) data transmission"
 
 
 PSK (rate 2 shown, others are similar) data transmission
 ![](../images/goby-acomms-mmdriver-rate2.png)
-\image latex goby-acomms-mmdriver-rate2.eps "PSK (rate 2 shown, others are similar) data transmission"
+\image latex ../images/goby-acomms-mmdriver-rate2.eps "PSK (rate 2 shown, others are similar) data transmission"
 
 
 Narrowband transponder LBL ping
 ![](../images/goby-acomms-mmdriver-pnt.png)
-\image latex goby-acomms-mmdriver-pnt.eps "Narrowband transponder LBL ping"
+\image latex ../images/goby-acomms-mmdriver-pnt.eps "Narrowband transponder LBL ping"
 
 
 REMUS transponder LBL ping
 ![](../images/goby-acomms-mmdriver-pdt.png)
-\image latex goby-acomms-mmdriver-pdt.eps "REMUS transponder LBL ping"
+\image latex ../images/goby-acomms-mmdriver-pdt.eps "REMUS transponder LBL ping"
 
 User mini-packet 13 bit data transmission
 ![](../images/goby-acomms-mmdriver-muc.png)
-\image latex goby-acomms-mmdriver-muc.eps "User mini-packet 13 bit data transmission"
+\image latex ../images/goby-acomms-mmdriver-muc.eps "User mini-packet 13 bit data transmission"
 
 
 Two way ping
 ![](../images/goby-acomms-mmdriver-mpc.png)
-\image latex goby-acomms-mmdriver-mpc.eps "Two way ping"
+\image latex ../images/goby-acomms-mmdriver-mpc.eps "Two way ping"
 
 Flexible Data Protocol (Micro-Modem 2)
 ![](../images/goby-acomms-mmdriver-tdp.png)
-\image latex goby-acomms-mmdriver-tdp.eps "Flexible Data Protocol"
+\image latex ../images/goby-acomms-mmdriver-tdp.eps "Flexible Data Protocol"
 
 
 
