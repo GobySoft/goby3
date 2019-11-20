@@ -28,13 +28,13 @@
 #include "goby/exception.h"
 #include "goby/util/debug_logger.h"
 
-#include <mavlink/v2.0/standard/standard.hpp>
+#include <mavlink/v2.0/common/common.hpp>
 
 namespace goby
 {
 namespace middleware
 {
-// must register the MESSAGE_ENTRIES for the dialect(s) you're using with this registry, if other than standard and minimal
+// must register the MESSAGE_ENTRIES for the dialect(s) you're using with this registry, if other than common and minimal
 struct MAVLinkRegistry
 {
     template <std::size_t Size>
