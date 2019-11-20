@@ -53,6 +53,26 @@ int main()
 
     assert(double_cmp(unbiased_round(4.123, 2), 4.12, 2));
 
+    std::map<double, double> table = {{0.0, 0}, {1.0, 300}, {1.1, 320}, {2.0, 500}};
+
+    // exceeding bounds
+    assert(std::round(linear_interpolate(-1.0, table)) == 0);
+    assert(std::round(linear_interpolate(3.0, table)) == 500);
+
+    // linear
+    assert(std::round(linear_interpolate(0.0, table)) == 0);
+    assert(std::round(linear_interpolate(1.0, table)) == 300);
+    assert(std::round(linear_interpolate(1.1, table)) == 320);
+    assert(std::round(linear_interpolate(1.2, table)) == 340);
+    assert(std::round(linear_interpolate(1.3, table)) == 360);
+    assert(std::round(linear_interpolate(1.4, table)) == 380);
+    assert(std::round(linear_interpolate(1.5, table)) == 400);
+    assert(std::round(linear_interpolate(1.6, table)) == 420);
+    assert(std::round(linear_interpolate(1.7, table)) == 440);
+    assert(std::round(linear_interpolate(1.8, table)) == 460);
+    assert(std::round(linear_interpolate(1.9, table)) == 480);
+    assert(std::round(linear_interpolate(2.0, table)) == 500);
+
     std::cout << "all tests passed" << std::endl;
     return 0;
 }

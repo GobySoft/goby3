@@ -26,6 +26,7 @@
 
 #include "goby/util/as.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/sci.h"
 
 #include "dccl/binary.h"
 
@@ -67,6 +68,18 @@ goby::moos::BluefinFrontSeat::BluefinFrontSeat(
       last_heartbeat_time_(std::chrono::seconds(0))
 {
     load_nmea_mappings();
+
+    if (bf_config_.use_rpm_table_for_speed())
+    {
+        if (bf_config_.rpm_table_size() < 2)
+            glog.is(DIE) && glog << "Must define at least two entries in the 'rpm_table' when "
+                                    "using 'use_rpm_table_for_speed == true'"
+                                 << std::endl;
+
+        for (auto entry : bf_config_.rpm_table())
+            speed_to_rpm_.insert(std::make_pair(entry.speed(), entry.rpm()));
+    }
+
     glog.is(VERBOSE) && glog << "Trying to connect to Huxley server @ "
                              << bf_config_.huxley_tcp_address() << ":"
                              << bf_config_.huxley_tcp_port() << std::endl;
@@ -272,8 +285,19 @@ void goby::moos::BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandR
                 nmea.push_back(desired_course.heading());
                 nmea.push_back(desired_course.depth());
                 nmea.push_back(0); // previous field is a depth (not altitude [1] or pitch [2])
-                nmea.push_back(desired_course.speed());
-                nmea.push_back(1); // previous field is a speed (not rpm [0])
+
+                if (bf_config_.use_rpm_table_for_speed())
+                {
+                    auto rpm =
+                        goby::util::linear_interpolate(desired_course.speed(), speed_to_rpm_);
+                    nmea.push_back(rpm);
+                    nmea.push_back(0); // previous field is an rpm value (not speed [1])
+                }
+                else
+                {
+                    nmea.push_back(desired_course.speed());
+                    nmea.push_back(1); // previous field is a speed (not rpm [0])
+                }
                 nmea.push_back(0); // first field is a heading (not rudder adjustment [1])
             }
 
