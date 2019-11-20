@@ -123,7 +123,7 @@ if(enable_wt)
 endif()  
 
 ## Mavlink
-set(MAVLINK_DOC_STRING "Build the MAVLink marshalling language support library (requires MavLink C++11 v2.0 headers)")
+set(MAVLINK_DOC_STRING "Build the MAVLink marshalling language support library (requires MavLink C++11 v2.0 headers, libmavlink-dev)")
 find_package(MAVLINK QUIET)
 if(MAVLINK_FOUND)
   include_directories(SYSTEM ${MAVLINK_INCLUDE_DIR})
@@ -131,7 +131,7 @@ if(MAVLINK_FOUND)
   option(enable_mavlink ${MAVLINK_DOC_STRING} ON)
 else()
   option(enable_mavlink ${MAVLINK_DOC_STRING} OFF)
-  message(">> setting enable_mavlink to OFF ... if you need this functionality: 1) install MAVLink v2.0 C++11 headers; 2) run cmake -Denable_mavlink=ON")
+  message(">> setting enable_mavlink to OFF ... if you need this functionality: 1) install MAVLink v2.0 C++11 headers (\"apt install libmavlink-dev\" from packages.gobysoft.org); 2) run cmake -Denable_mavlink=ON")
 endif()
 
 ## AIS library
