@@ -93,7 +93,7 @@ std::vector<goby::util::NMEASentence> goby::util::ais::Encoder::as_nmea() const
 
         std::string payload;
 
-        boost::dynamic_bitset<std::uint8_t> mask(bits_.size(), 0x3F);
+        boost::dynamic_bitset<> mask(bits_.size(), 0x3F);
         for (int block_i = 0; block_i < number_blocks; ++block_i)
         {
             // 6-bit unsigned int

@@ -49,7 +49,7 @@ class Encoder
     Encoder(goby::util::ais::protobuf::Position pos);
     Encoder(goby::util::ais::protobuf::Voyage voy, int part_num = 0);
 
-    boost::dynamic_bitset<std::uint8_t> as_bitset() const { return bits_; }
+    boost::dynamic_bitset<> as_bitset() const { return bits_; }
 
     std::vector<NMEASentence> as_nmea() const;
 
@@ -110,7 +110,7 @@ class Encoder
         std::string s{};
         bool is_string{false};
 
-        boost::dynamic_bitset<std::uint8_t> as_bitset() const
+        boost::dynamic_bitset<> as_bitset() const
         {
             if (is_string)
             {
@@ -119,7 +119,7 @@ class Encoder
                 ms.resize(len / ais_bits_per_char, '@');
                 boost::to_upper(ms);
 
-                boost::dynamic_bitset<std::uint8_t> bits(len, 0);
+                boost::dynamic_bitset<> bits(len, 0);
                 for (int i = 0, n = ms.size(); i < n; ++i)
                 {
                     char c = ms[i];
@@ -131,19 +131,19 @@ class Encoder
                     else  // other values that can't be represented
                         c = '@';
 
-                    boost::dynamic_bitset<std::uint8_t> char_bits(len, c & 0x3F);
+                    boost::dynamic_bitset<> char_bits(len, c & 0x3F);
                     bits |= (char_bits << (n - i - 1) * ais_bits_per_char);
                 }
                 return bits;
             }
             else
             {
-                return boost::dynamic_bitset<std::uint8_t>(len, u);
+                return boost::dynamic_bitset<>(len, u);
             }
         }
     };
 
-    boost::dynamic_bitset<std::uint8_t> bits_;
+    boost::dynamic_bitset<> bits_;
     enum class RadioChannel
     {
         CLASS_A,

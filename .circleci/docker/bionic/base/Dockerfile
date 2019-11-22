@@ -27,6 +27,7 @@ RUN sed -i 's/^\(.*\)clang/#\1clang/' debian/control && \
     sed -i 's/^\(.*\)libboost-regex/#\1libboost-regex/' debian/control && \
     sed -i 's/^\(.*\)libdccl/#\1libdccl/' debian/control && \
     sed -i 's/^\(.*\)libgmp3/#\1libgmp3/' debian/control && \
+    sed -i 's/^\(.*\)libmavlink/#\1libmavlink/' debian/control && \
     cat debian/control
 
 RUN apt-get update && \
