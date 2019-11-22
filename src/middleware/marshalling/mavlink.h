@@ -28,7 +28,7 @@
 #include "goby/exception.h"
 #include "goby/util/debug_logger.h"
 
-#include <mavlink/v2.0/standard/standard.hpp>
+#include <mavlink/v2.0/common/common.hpp>
 
 namespace goby
 {
@@ -36,7 +36,7 @@ namespace middleware
 {
 /// \brief A registry of mavlink types used for decoding
 ///
-/// You should register the MESSAGE_ENTRIES for the dialect(s) you're using with this registry, if other than standard and minimal. Parsing and serialization will still work if you don't, but you will get CRC errors for the unknown types.
+/// You should register the MESSAGE_ENTRIES for the dialect(s) you're using with this registry, if other than common and minimal. Parsing and serialization will still work if you don't, but you will get CRC errors for the unknown types.
 struct MAVLinkRegistry
 {
     /// \brief Register a new Mavlink dialect

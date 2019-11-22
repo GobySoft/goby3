@@ -23,7 +23,7 @@
 #ifndef MAVLinkCommon20190815H
 #define MAVLinkCommon20190815H
 
-#include <mavlink/v2.0/standard/standard.hpp>
+#include <mavlink/v2.0/common/common.hpp>
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/marshalling/mavlink.h"
