@@ -25,12 +25,12 @@ Once these are received, the application can receive data by subscribing using Z
 
 ## Wire protocol
 
-The protocol for Goby messages on ZeroMQ consistes of an identifier followed by the encoded data.
+The protocol for Goby messages on ZeroMQ consists of an identifier followed by the encoded data. The identifier is variable length but null-terminated, which is what separates it from the data. From ZeroMQ's standpoint this is a single-part message (not a multipart message as you may see referenced in the ZeroMQ documentation).
 
-The identifier is a "/" delimited string (analogous to a file path) using the following structure:
+The identifier is a null-terminated '/' delimited string (analogous to a file path) using the following structure:
 
 ```
-/group/scheme/type/process/thread
+/group/scheme/type/process/thread/\0
 ```
 
 These parts are as follows:
@@ -38,13 +38,36 @@ These parts are as follows:
 * group: The string representation of the goby::middleware::Group
 * scheme: The string representation of the scheme if one is defined in goby::middleware::MarshallingScheme::e2s, otherwsie the numeric value as a string (std::to_string)
 * type: The type name as returned by goby::middleware::SerializerParserHelper::type_name() for the given message
-* process: string representation of the process id (std::to_string(getpid())).
-* 
+* process: string representation of the publishing process id (`std::to_string(getpid())`).
+* thread: string representation of the publishing thread id (`std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()))`).
 
 Since ZMQ allows wildcard subscription based on substrings, you can subscribe at any point for more messages (don't forget the ending slash or you may get unintended messages if you wanted "Foo" but not "FooBar"):
 
 * "/" subscribes to all messages
 * "/group/scheme/" subscribes to all messages of a given group and scheme (from all processes and all threads)
 * "/group/scheme/type/" subscribes to all messages of a given group, scheme, and type, but from any process or thread (this is what is typically used by InterProcessPortal).
-* "/group/scheme/type/process/" subscribes to a fully qualified message from a particular process name
+* "/group/scheme/type/process/" subscribes to a fully qualified message from a particular process pid.
+
+The rest of the message is binary data encoded using the given scheme and type (using goby::middleware::SerializerParserHelper<Data, scheme>::serialize()).
+
+## Applications
+
+The goby::zeromq::SingleThreadApplication and goby::zeromq::MultiThreadApplication provides a good starting point for writing applications using the ZeroMQ Portal implementation. The use of these applications is described in the general [Applications](doc230_application.md) page.
+
+The minimal configuration Protobuf message passed to either of these base classes needs to be:
+
+```
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+
+message BasicApplicationConfig
+{
+    // required parameters for ApplicationBase3 class
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    // required parameters for connecting to 'gobyd'
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+}
+```
+
+goby::middleware::Application reads the `app` field, and goby::zeromq::InterProcessPortal reads the `interprocess` field. Don't be confused by the use of `optional` here: these fields could be omitted from the instantiated configuration (and defaults will be used), but the fields must always be present in the Protobuf message descriptor (.proto file).
 

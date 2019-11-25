@@ -47,4 +47,4 @@ User applications can inherit from goby::middleware::SimpleThread to create addi
 
 All these threads use goby::middleware::Thread so they all have access to the goby::middleware::Thread::loop() method.
 
-Writing thread-safe applications is now as a simple as ensuring that the various SimpleThread subclasses only share data via the publish/subscribe interface. This is easily accomplished by having each SimpleThread only access data within the class (no global or static variables) or data that has arrived via subscription callbacks.
+Writing thread-safe applications is now as a simple as ensuring that the various SimpleThread subclasses only share data via the publish/subscribe interface. This is easily accomplished by having each SimpleThread only access data within the class (no global or static variables) or data that has arrived via subscription callbacks.****
