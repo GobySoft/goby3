@@ -1,0 +1,45 @@
+syntax = "proto2";
+package goby.middleware.protobuf;
+
+message HealthRequest
+{
+}
+
+
+enum HealthState
+{
+    HEALTH__OK = 1;
+    HEALTH__DEGRADED = 2;
+    HEALTH__FAILED = 3;
+}
+
+enum Error
+{
+    ERROR__PROCESS_DIED = 1;
+}
+
+message ThreadHealth
+{
+    required string name = 1;
+    optional string thread_id = 2;
+    required HealthState state = 10;
+    repeated ThreadHealth child = 11;
+    optional Error error = 20;
+    optional string error_message = 21;
+}
+
+message ProcessHealth
+{
+    required string name = 1;
+    optional uint32 pid = 2;
+
+    required ThreadHealth main = 10;
+}
+
+message VehicleHealth
+{
+    required string platform = 1;
+    
+    required HealthState state = 10;
+    repeated ProcessHealth process = 11;
+}
