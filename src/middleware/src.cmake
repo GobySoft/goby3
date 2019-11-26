@@ -10,6 +10,7 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/io.proto
   middleware/protobuf/serial_config.proto
   middleware/protobuf/udp_config.proto
+  middleware/protobuf/coroner.proto
   )
 
 set(MIDDLEWARE_SRC

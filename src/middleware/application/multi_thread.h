@@ -34,6 +34,7 @@
 #include "goby/middleware/transport/interthread.h"
 #include "goby/middleware/transport/intervehicle.h"
 
+#include "goby/middleware/coroner/coroner.h"
 #include "goby/middleware/terminate/terminate.h"
 
 namespace goby
@@ -283,6 +284,16 @@ class MultiThreadApplication
                         this->quit();
                     }
                 });
+
+        // handle goby_coroner request
+        this->interprocess().template subscribe<groups::health_request, protobuf::HealthRequest>(
+            [this](const protobuf::HealthRequest& request) {
+                protobuf::ProcessHealth resp;
+                resp.set_name(this->app_name());
+                resp.set_pid(getpid());
+                this->thread_health(*resp.mutable_main());
+                this->interprocess().template publish<groups::health_response>(resp);
+            });
     }
 
     virtual ~MultiThreadApplication() {}
@@ -294,7 +305,14 @@ class MultiThreadApplication
     {
         return intervehicle_;
     }
-};
+
+    virtual void health(goby::middleware::protobuf::ThreadHealth& health) override
+    {
+        health.set_name(this->app_name());
+        health.set_state(goby::middleware::protobuf::HEALTH__OK);
+    }
+
+}; // namespace middleware
 
 /// \brief Base class for building multithreaded Goby applications that do not have perform any interprocess (or outer) communications, but only communicate internally via the InterThreadTransporter
 ///

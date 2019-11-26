@@ -109,6 +109,8 @@ template <typename Config> class Application
             throw(goby::Exception("No lat_origin and lon_origin defined for requested UTMGeodesy"));
     }
 
+    std::string app_name() { return app3_base_configuration_->name(); }
+
   private:
     template <typename App>
     friend int ::goby::run(

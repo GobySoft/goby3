@@ -30,6 +30,7 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/intervehicle.h"
 
+#include "goby/middleware/coroner/coroner.h"
 #include "goby/middleware/terminate/terminate.h"
 
 namespace goby
@@ -42,13 +43,13 @@ namespace middleware
 /// \tparam InterProcessPortal the interprocess portal type to use (e.g. zeromq::InterProcessPortal)
 template <class Config, template <class = NullTransporter> class InterProcessPortal>
 class SingleThreadApplication : public goby::middleware::Application<Config>,
-                                public Thread<Config, InterVehicleForwarder<InterProcessPortal<> > >
+                                public Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>
 {
   private:
-    using MainThread = Thread<Config, InterVehicleForwarder<InterProcessPortal<> > >;
+    using MainThread = Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>;
 
     InterProcessPortal<> interprocess_;
-    InterVehicleForwarder<InterProcessPortal<> > intervehicle_;
+    InterVehicleForwarder<InterProcessPortal<>> intervehicle_;
 
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)
@@ -83,13 +84,29 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
                         this->quit();
                     }
                 });
+
+        // handle goby_coroner request
+        this->interprocess().template subscribe<groups::health_request, protobuf::HealthRequest>(
+            [this](const protobuf::HealthRequest& request) {
+                protobuf::ProcessHealth resp;
+                resp.set_name(this->app_name());
+                resp.set_pid(getpid());
+                this->thread_health(*resp.mutable_main());
+                this->interprocess().template publish<groups::health_response>(resp);
+            });
     }
 
     virtual ~SingleThreadApplication() {}
 
   protected:
     InterProcessPortal<>& interprocess() { return interprocess_; }
-    InterVehicleForwarder<InterProcessPortal<> >& intervehicle() { return intervehicle_; }
+    InterVehicleForwarder<InterProcessPortal<>>& intervehicle() { return intervehicle_; }
+
+    virtual void health(goby::middleware::protobuf::ThreadHealth& health) override
+    {
+        health.set_name(this->app_name());
+        health.set_state(goby::middleware::protobuf::HEALTH__OK);
+    }
 
   private:
     void run() override { MainThread::run_once(); }
