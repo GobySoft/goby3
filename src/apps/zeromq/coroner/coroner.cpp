@@ -82,6 +82,7 @@ class Coroner : public goby::zeromq::SingleThreadApplication<protobuf::CoronerCo
             waiting_for_response_ = false;
 
             middleware::protobuf::VehicleHealth report;
+            report.set_time_with_units(goby::time::SystemClock::now<goby::time::MicroTime>());
             goby::middleware::protobuf::HealthState health_state =
                 goby::middleware::protobuf::HEALTH__OK;
             for (const std::string& expected : tracked_names_)

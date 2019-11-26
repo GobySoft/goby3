@@ -1,10 +1,12 @@
 syntax = "proto2";
+
+import "dccl/option_extensions.proto";
+
 package goby.middleware.protobuf;
 
 message HealthRequest
 {
 }
-
 
 enum HealthState
 {
@@ -38,8 +40,11 @@ message ProcessHealth
 
 message VehicleHealth
 {
-    required string platform = 1;
-    
+    option (dccl.msg).unit_system = "si";
+
+    required uint64 time = 1 [(dccl.field).units = {prefix: "micro" base_dimensions: "T"}];
+    required string platform = 2;
+
     required HealthState state = 10;
     repeated ProcessHealth process = 11;
 }
