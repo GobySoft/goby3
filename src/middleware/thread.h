@@ -31,6 +31,7 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/exception.h"
+#include "goby/middleware/protobuf/coroner.pb.h"
 
 #include "group.h"
 
@@ -124,6 +125,22 @@ template <typename Config, typename TransporterType> class Thread
 
     // called after alive() is false
     virtual void finalize() {}
+
+    void thread_health(goby::middleware::protobuf::ThreadHealth& health)
+    {
+        health.set_thread_id(
+            std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+        health.set_name(health.thread_id());
+        this->health(health);
+    }
+
+    /// \brief Called when HealthRequest is made by goby_coroner
+    ///
+    /// Override to implement thread specific health response
+    virtual void health(goby::middleware::protobuf::ThreadHealth& health)
+    {
+        health.set_state(goby::middleware::protobuf::HEALTH__OK);
+    }
 
     void thread_quit()
     {
