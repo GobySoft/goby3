@@ -453,6 +453,10 @@ BOOST_FIXTURE_TEST_CASE(check_ack_timeout, DynamicBufferFixture)
     }
 }
 
+namespace goby
+{
+namespace test
+{
 struct MultiIDDynamicBufferFixture
 {
     MultiIDDynamicBufferFixture()
@@ -480,8 +484,10 @@ struct MultiIDDynamicBufferFixture
 
     goby::acomms::DynamicBuffer<std::string> buffer;
 };
+} // namespace test
+} // namespace goby
 
-BOOST_FIXTURE_TEST_CASE(two_destination_contest, MultiIDDynamicBufferFixture)
+BOOST_FIXTURE_TEST_CASE(two_destination_contest, goby::test::MultiIDDynamicBufferFixture)
 {
     auto now = goby::time::SteadyClock::now();
 

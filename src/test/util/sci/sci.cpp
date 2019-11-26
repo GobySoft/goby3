@@ -20,6 +20,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/util/sci.h"
+#include "goby/util/constants.h"
 #include <cassert>
 #include <iostream>
 
@@ -72,6 +73,9 @@ int main()
     assert(std::round(linear_interpolate(1.8, table)) == 460);
     assert(std::round(linear_interpolate(1.9, table)) == 480);
     assert(std::round(linear_interpolate(2.0, table)) == 500);
+
+    assert(std::isnan(goby::util::NaN<double>));
+    assert(std::isnan(goby::util::NaN<float>));
 
     std::cout << "all tests passed" << std::endl;
     return 0;

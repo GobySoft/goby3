@@ -36,14 +36,19 @@ namespace goby
 {
 namespace middleware
 {
+/// \brief Represents an entry in a HDF5 scientific data file converted from a Google Protocol Buffers message
 struct HDF5ProtobufEntry
 {
+    /// Channel (or Group) name
     std::string channel;
+    /// Time of the message
     time::MicroTime time{0 * boost::units::si::seconds};
+    /// Actual message contents
     std::shared_ptr<google::protobuf::Message> msg;
 
     HDF5ProtobufEntry() {}
 
+    /// Clear the values
     void clear()
     {
         channel.clear();
@@ -64,12 +69,19 @@ inline std::ostream& operator<<(std::ostream& os, const HDF5ProtobufEntry& entry
     return os;
 }
 
+/// \brief Superclass for implementing plugins for the goby_hdf5 tool for converting from Google Protocol Buffers messages to an HDF5 scientific data file.
+///
+/// Various plugins can read the Protobuf messages from different formats.
 class HDF5Plugin
 {
   public:
     HDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg) {}
     virtual ~HDF5Plugin() {}
 
+    /// \brief Implement this function in the plugin to provide a single Protobuf message and related metadata to the goby_hdf5 tool.
+    ///
+    /// \param entry Pointer to HDF5ProtobufEntry that should be populated by the overriding method (in the plugin)
+    /// \return true if more data are available, false if no more data are available (end-of-file) or similar. goby_hdf5 will continue to call this method until it returns false.
     virtual bool provide_entry(HDF5ProtobufEntry* entry) = 0;
 };
 } // namespace middleware
