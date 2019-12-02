@@ -615,32 +615,35 @@ void goby::moos::BluefinFrontSeat::process_receive(const NMEASentence& nmea)
     nmea_demerits_ = 0;
 
     // look at the sentence id (last three characters of the NMEA 0183 talker)
-    switch (sentence_id_map_.left.at(nmea.sentence_id()))
+    if (sentence_id_map_.left.count(nmea.sentence_id()))
     {
-        case ACK: bfack(nmea); break; // nmea ack
+        switch (sentence_id_map_.left.at(nmea.sentence_id()))
+        {
+            case ACK: bfack(nmea); break; // nmea ack
 
-        case NVG: bfnvg(nmea); break; // navigation
-        case NVR: bfnvr(nmea); break; // velocity and rate
-        case RVL: bfrvl(nmea); break; // raw vehicle speed
+            case NVG: bfnvg(nmea); break; // navigation
+            case NVR: bfnvr(nmea); break; // velocity and rate
+            case RVL: bfrvl(nmea); break; // raw vehicle speed
 
-        case DVL: bfdvl(nmea); break; // raw DVL data
-        case CTD: bfctd(nmea); break; // raw CTD sensor data
-        case SVS: bfsvs(nmea); break; // sound velocity
+            case DVL: bfdvl(nmea); break; // raw DVL data
+            case CTD: bfctd(nmea); break; // raw CTD sensor data
+            case SVS: bfsvs(nmea); break; // sound velocity
 
-        case MSC: bfmsc(nmea); break; // payload mission command
-        case SHT: bfsht(nmea); break; // payload shutdown
+            case MSC: bfmsc(nmea); break; // payload mission command
+            case SHT: bfsht(nmea); break; // payload shutdown
 
-        case MBS: bfmbs(nmea); break; // begin new behavior
-        case MIS: bfmis(nmea); break; // mission status
-        case MBE: bfmbe(nmea); break; // end behavior
+            case MBS: bfmbs(nmea); break; // begin new behavior
+            case MIS: bfmis(nmea); break; // mission status
+            case MBE: bfmbe(nmea); break; // end behavior
 
-        case CTL: bfctl(nmea); break; // backseat control message (SPI 1.10+)
+            case CTL: bfctl(nmea); break; // backseat control message (SPI 1.10+)
 
-        case BOY: bfboy(nmea); break; // buoyancy status
-        case TRM: bftrm(nmea); break; // trim status
+            case BOY: bfboy(nmea); break; // buoyancy status
+            case TRM: bftrm(nmea); break; // trim status
 
-        case TOP: bftop(nmea); break; // request to send data topside
-        default: break;
+            case TOP: bftop(nmea); break; // request to send data topside
+            default: break;
+        }
     }
 }
 
@@ -674,7 +677,7 @@ void goby::moos::BluefinFrontSeat::load_nmea_mappings()
             {"KIL", KIL}, {"MSG", MSG}, {"RMP", RMP}, {"SEM", SEM}, {"NPU", NPU}, {"CPD", CPD},
             {"SIL", SIL}, {"BOY", BOY}, {"SUS", SUS}, {"CON", CON}, {"RES", RES}, {"SPD", SPD},
             {"SAN", SAN}, {"GHP", GHP}, {"GBP", GBP}, {"RNS", RNS}, {"RBO", RBO}, {"CMA", CMA},
-            {"NVR", NVR}, {"TEL", TEL}, {"CTL", CTL}, {"DCL", DCL}};
+            {"NVR", NVR}, {"TEL", TEL}, {"CTL", CTL}, {"DCL", DCL}, {"VEL", VEL}};
         sentence_id_map_ = boost::bimap<std::string, SentenceIDs>(v.begin(), v.end());
     }
 
@@ -750,5 +753,6 @@ void goby::moos::BluefinFrontSeat::load_nmea_mappings()
                         {"$BFCPR", "Communications Packet Received Data"},
                         {"$BPCPD", "Communications Packet Data"},
                         {"$BFCTL", "Backseat Control"},
-                        {"$BPDCL", "Forward DCCL message to Huxley from Payload"}};
+                        {"$BPDCL", "Forward DCCL message to Huxley from Payload"},
+                        {"$BPVEL", "Corrected velocity measurements"}};
 }
