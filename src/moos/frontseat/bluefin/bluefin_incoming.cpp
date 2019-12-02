@@ -107,14 +107,17 @@ void goby::moos::BluefinFrontSeat::bfack(const goby::util::NMEASentence& nmea)
     if (status != REQUEST_PENDING)
     {
         gpb::BluefinExtraCommands::BluefinCommand type = gpb::BluefinExtraCommands::UNKNOWN_COMMAND;
-        switch (sentence_id_map_.left.at(acked_sentence))
+        if (sentence_id_map_.left.count(acked_sentence))
         {
-            case RMB: type = gpb::BluefinExtraCommands::DESIRED_COURSE; break;
-            case BOY: type = gpb::BluefinExtraCommands::BUOYANCY_ADJUST; break;
-            case TRM: type = gpb::BluefinExtraCommands::TRIM_ADJUST; break;
-            case SIL: type = gpb::BluefinExtraCommands::SILENT_MODE; break;
-            case RCB: type = gpb::BluefinExtraCommands::CANCEL_CURRENT_BEHAVIOR; break;
-            default: break;
+            switch (sentence_id_map_.left.at(acked_sentence))
+            {
+                case RMB: type = gpb::BluefinExtraCommands::DESIRED_COURSE; break;
+                case BOY: type = gpb::BluefinExtraCommands::BUOYANCY_ADJUST; break;
+                case TRM: type = gpb::BluefinExtraCommands::TRIM_ADJUST; break;
+                case SIL: type = gpb::BluefinExtraCommands::SILENT_MODE; break;
+                case RCB: type = gpb::BluefinExtraCommands::CANCEL_CURRENT_BEHAVIOR; break;
+                default: break;
+            }
         }
 
         if (outstanding_requests_.count(type))

@@ -175,7 +175,8 @@ class BluefinFrontSeat : public FrontSeatInterfaceBase
         NVR,
         TEL,
         CTL,
-        DCL
+        DCL,
+        VEL
     };
 
     std::map<std::string, TalkerIDs> talker_id_map_;
