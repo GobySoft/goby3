@@ -165,8 +165,11 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
         usleep(100000); // 10 Hz
     }
 
-    // so that we know what the Micro-Modem has for all the NVRAM values, not just the ones we set
-    query_all_cfg();
+    if (mm_driver_cfg().query_cfg_on_startup())
+    {
+        // so that we know what the Micro-Modem has for all the NVRAM values, not just the ones we set
+        query_all_cfg();
+    }
 
     startup_done_ = true;
 }
