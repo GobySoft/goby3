@@ -45,6 +45,8 @@ using namespace goby::util::logger_lock;
 
 const boost::posix_time::time_duration goby::acomms::MMDriver::MODEM_WAIT =
     boost::posix_time::seconds(5);
+const goby::time::SystemClock::duration goby::acomms::MMDriver::MULTI_REPLY_WAIT =
+    std::chrono::seconds(2);
 const boost::posix_time::time_duration goby::acomms::MMDriver::WAIT_AFTER_REBOOT =
     boost::posix_time::seconds(2);
 const boost::posix_time::time_duration
@@ -61,6 +63,7 @@ std::mutex goby::acomms::MMDriver::dccl_mutex_;
 goby::acomms::MMDriver::MMDriver()
     : last_write_time_(time::SystemClock::now<boost::posix_time::ptime>()),
       waiting_for_modem_(false),
+      waiting_for_multimsg_(false),
       startup_done_(false),
       global_fail_count_(0),
       present_fail_count_(0),
@@ -72,6 +75,7 @@ goby::acomms::MMDriver::MMDriver()
       expected_ack_destination_(0),
       local_cccyc_(false),
       last_keep_alive_time_(0 * boost::units::si::seconds),
+      last_multimsg_rx_time_(std::chrono::seconds(0)),
       using_application_acks_(false),
       application_ack_max_frames_(0),
       next_frame_(0),
@@ -472,6 +476,8 @@ void goby::acomms::MMDriver::write_single_cfg(const std::string& s)
 
 void goby::acomms::MMDriver::query_all_cfg()
 {
+    waiting_for_multimsg_ = true;
+    last_multimsg_rx_time_ = time::SystemClock::now();
     if (revision_.mm_major >= 2)
     {
         NMEASentence nmea("$CCCFQ,TOP", NMEASentence::IGNORE);
@@ -508,6 +514,17 @@ void goby::acomms::MMDriver::do_work()
     // we can send
     if (!clock_set_ && out_.empty())
         set_clock();
+
+    // check if multimsg reply has timed out
+    if (waiting_for_multimsg_ &&
+        (last_multimsg_rx_time_ + MULTI_REPLY_WAIT <= time::SystemClock::now()))
+    {
+        glog.is(DEBUG1) && glog << group(glog_out_group())
+                                << "No more multi-msg replies expected. Removing from queue."
+                                << std::endl;
+        waiting_for_multimsg_ = false;
+        pop_out();
+    }
 
     // send a message periodically (query the source ID) to the local modem to ascertain that it is still alive
     auto now = time::SystemClock::now<goby::time::SITime>();
@@ -978,7 +995,7 @@ void goby::acomms::MMDriver::try_send()
     const util::NMEASentence& nmea = out_.front();
 
     bool resend =
-        waiting_for_modem_ &&
+        waiting_for_modem_ && !waiting_for_multimsg_ &&
         (last_write_time_ <= (time::SystemClock::now<boost::posix_time::ptime>() - MODEM_WAIT));
     if (!waiting_for_modem_)
     {
@@ -1086,6 +1103,8 @@ void goby::acomms::MMDriver::process_receive(const NMEASentence& nmea)
 
     signal_raw_incoming(raw_msg);
 
+    // if we're receiving messages the modem is still alive
+    last_keep_alive_time_ = time::SystemClock::now<goby::time::SITime>();
     global_fail_count_ = 0;
 
     // look at the sentence id (last three characters of the NMEA 0183 talker)
@@ -1145,7 +1164,15 @@ void goby::acomms::MMDriver::process_receive(const NMEASentence& nmea)
         else if (out_.front().sentence_id() == "CFQ" &&
                  nmea.sentence_id() == "CFG") // special case CFG acks CFQ
         {
-            pop_out();
+            if (waiting_for_multimsg_)
+            {
+                // micromodem 2 with coprocessor card outputs a lot of cfg variables
+                // the message should only be popped once all messages are received
+                // CAREV sentence can be received midway through CFG messages
+                last_multimsg_rx_time_ = time::SystemClock::now();
+            }
+            else
+                pop_out();
         }
         else if (out_.front().sentence_id() == "MSC" &&
                  (nmea.sentence_id() == "REV" || nmea.sentence_id() == "MSC"))

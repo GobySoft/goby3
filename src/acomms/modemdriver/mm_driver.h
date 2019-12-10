@@ -247,6 +247,9 @@ class MMDriver : public ModemDriverBase
     static const boost::posix_time::time_duration WAIT_AFTER_REBOOT;
     // allowed time diff in millisecs between our clock and the modem clock
     static const int ALLOWED_MS_DIFF;
+    // seconds to wait for modem to respond
+    static const goby::time::SystemClock::duration MULTI_REPLY_WAIT;
+
 
     static const std::string SERIAL_DELIMITER;
     // number of frames for a given packet type
@@ -266,6 +269,9 @@ class MMDriver : public ModemDriverBase
 
     // are we waiting for a command ack (CA) from the modem or can we send another output?
     bool waiting_for_modem_;
+
+    // are we waiting for a multi-message reply
+    bool waiting_for_multimsg_;
 
     // set after the startup routines finish once. we can't startup on instantiation because
     // the base class sets some of our references (from the MOOS file)
@@ -343,6 +349,9 @@ class MMDriver : public ModemDriverBase
     micromodem::protobuf::TransmissionType last_lbl_type_;
 
     goby::time::SITime last_keep_alive_time_;
+
+    // time of the last multi-message reply received. we timeout and pop after MULTI_REPLY_WAIT seconds
+    goby::time::SystemClock::time_point last_multimsg_rx_time_;
 
     struct MMRevision
     {
