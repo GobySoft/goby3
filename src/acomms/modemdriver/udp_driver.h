@@ -56,7 +56,7 @@ class UDPDriver : public ModemDriverBase
   private:
     protobuf::DriverConfig driver_cfg_;
     boost::asio::io_service io_service_;
-    boost::asio::ip::udp::socket socket_{io_service_};
+    std::unique_ptr<boost::asio::ip::udp::socket> socket_;
     // modem id to endpoint
     std::multimap<int, boost::asio::ip::udp::endpoint> receivers_;
     boost::asio::ip::udp::endpoint sender_;
