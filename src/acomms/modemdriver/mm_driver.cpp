@@ -43,14 +43,14 @@ using namespace goby::util::tcolor;
 using namespace goby::util::logger;
 using namespace goby::util::logger_lock;
 
-const boost::posix_time::time_duration goby::acomms::MMDriver::MODEM_WAIT =
-    boost::posix_time::seconds(5);
+const goby::time::SystemClock::duration goby::acomms::MMDriver::MODEM_WAIT =
+    std::chrono::seconds(5);
 const goby::time::SystemClock::duration goby::acomms::MMDriver::MULTI_REPLY_WAIT =
     std::chrono::seconds(2);
-const boost::posix_time::time_duration goby::acomms::MMDriver::WAIT_AFTER_REBOOT =
-    boost::posix_time::seconds(2);
-const boost::posix_time::time_duration
-    goby::acomms::MMDriver::HYDROID_GATEWAY_GPS_REQUEST_INTERVAL = boost::posix_time::seconds(30);
+const goby::time::SystemClock::duration goby::acomms::MMDriver::WAIT_AFTER_REBOOT =
+    std::chrono::seconds(2);
+const goby::time::SystemClock::duration
+    goby::acomms::MMDriver::HYDROID_GATEWAY_GPS_REQUEST_INTERVAL = std::chrono::seconds(30);
 const std::string goby::acomms::MMDriver::SERIAL_DELIMITER = "\r";
 const unsigned goby::acomms::MMDriver::PACKET_FRAME_COUNT[] = {1, 3, 3, 2, 2, 8};
 const unsigned goby::acomms::MMDriver::PACKET_SIZE[] = {32, 64, 64, 256, 256, 256};
@@ -61,20 +61,20 @@ std::mutex goby::acomms::MMDriver::dccl_mutex_;
 //
 
 goby::acomms::MMDriver::MMDriver()
-    : last_write_time_(time::SystemClock::now<boost::posix_time::ptime>()),
+    : last_write_time_(time::SystemClock::now()),
       waiting_for_modem_(false),
       waiting_for_multimsg_(false),
       startup_done_(false),
       global_fail_count_(0),
       present_fail_count_(0),
       clock_set_(false),
-      last_hydroid_gateway_gps_request_(time::SystemClock::now<boost::posix_time::ptime>()),
+      last_hydroid_gateway_gps_request_(time::SystemClock::now()),
       is_hydroid_gateway_(false),
       expected_remaining_caxst_(0),
       expected_remaining_cacst_(0),
       expected_ack_destination_(0),
       local_cccyc_(false),
-      last_keep_alive_time_(0 * boost::units::si::seconds),
+      last_keep_alive_time_(std::chrono::seconds(0)),
       last_multimsg_rx_time_(std::chrono::seconds(0)),
       using_application_acks_(false),
       application_ack_max_frames_(0),
@@ -173,6 +173,12 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
     {
         // so that we know what the Micro-Modem has for all the NVRAM values, not just the ones we set
         query_all_cfg();
+    }
+
+    while (!out_.empty())
+    {
+        do_work();
+        usleep(100000); // 10 Hz
     }
 
     startup_done_ = true;
@@ -527,9 +533,8 @@ void goby::acomms::MMDriver::do_work()
     }
 
     // send a message periodically (query the source ID) to the local modem to ascertain that it is still alive
-    auto now = time::SystemClock::now<goby::time::SITime>();
-    if (last_keep_alive_time_ + mm_driver_cfg().keep_alive_seconds() * boost::units::si::seconds <=
-        now)
+    auto now = time::SystemClock::now();
+    if (last_keep_alive_time_ + std::chrono::seconds(mm_driver_cfg().keep_alive_seconds()) <= now)
     {
         if (revision_.mm_major >= 2)
         {
@@ -538,7 +543,7 @@ void goby::acomms::MMDriver::do_work()
             append_to_write_queue(nmea);
 
             // we want to send this at the start of the second to get a reasonable response
-            last_keep_alive_time_ = boost::units::round(now);
+            last_keep_alive_time_ = std::chrono::time_point_cast<std::chrono::seconds>(now);
         }
         else
         {
@@ -577,10 +582,10 @@ void goby::acomms::MMDriver::do_work()
     // if we're using a hydroid buoy query it for its GPS position
     if (is_hydroid_gateway_ &&
         last_hydroid_gateway_gps_request_ + HYDROID_GATEWAY_GPS_REQUEST_INTERVAL <
-            time::SystemClock::now<boost::posix_time::ptime>())
+            time::SystemClock::now())
     {
         modem_write(hydroid_gateway_gps_request_);
-        last_hydroid_gateway_gps_request_ = time::SystemClock::now<boost::posix_time::ptime>();
+        last_hydroid_gateway_gps_request_ = time::SystemClock::now();
     }
 }
 
@@ -994,20 +999,20 @@ void goby::acomms::MMDriver::try_send()
 
     const util::NMEASentence& nmea = out_.front();
 
-    bool resend =
-        waiting_for_modem_ && !waiting_for_multimsg_ &&
-        (last_write_time_ <= (time::SystemClock::now<boost::posix_time::ptime>() - MODEM_WAIT));
+    bool resend = waiting_for_modem_ && !waiting_for_multimsg_ &&
+                  (last_write_time_ <= (time::SystemClock::now() - MODEM_WAIT));
     if (!waiting_for_modem_)
     {
         mm_write(nmea);
     }
     else if (resend)
     {
-        glog.is(DEBUG1) &&
-            glog << group(glog_out_group()) << "resending last command; no serial ack in "
-                 << (time::SystemClock::now<boost::posix_time::ptime>() - last_write_time_)
-                        .total_seconds()
-                 << " second(s). " << std::endl;
+        glog.is(DEBUG1) && glog << group(glog_out_group())
+                                << "resending last command; no serial ack in "
+                                << std::chrono::duration_cast<std::chrono::seconds>(
+                                       (time::SystemClock::now() - last_write_time_))
+                                       .count()
+                                << " second(s). " << std::endl;
         ++global_fail_count_;
 
         if (global_fail_count_ == MAX_FAILS_BEFORE_DEAD)
@@ -1048,7 +1053,7 @@ void goby::acomms::MMDriver::mm_write(const util::NMEASentence& nmea)
     modem_write(hydroid_gateway_modem_prefix_ + raw_msg.raw() + "\r\n");
 
     waiting_for_modem_ = true;
-    last_write_time_ = time::SystemClock::now<boost::posix_time::ptime>();
+    last_write_time_ = time::SystemClock::now();
 }
 
 void goby::acomms::MMDriver::increment_present_fail()
@@ -1104,7 +1109,7 @@ void goby::acomms::MMDriver::process_receive(const NMEASentence& nmea)
     signal_raw_incoming(raw_msg);
 
     // if we're receiving messages the modem is still alive
-    last_keep_alive_time_ = time::SystemClock::now<goby::time::SITime>();
+    last_keep_alive_time_ = time::SystemClock::now();
     global_fail_count_ = 0;
 
     // look at the sentence id (last three characters of the NMEA 0183 talker)
@@ -1721,7 +1726,7 @@ void goby::acomms::MMDriver::carev(const NMEASentence& nmea)
     {
         glog.is(DEBUG1) && glog << group(glog_in_group()) << "Micro-Modem rebooted." << std::endl;
         // reboot
-        sleep(WAIT_AFTER_REBOOT.total_seconds());
+        sleep(std::chrono::duration_cast<std::chrono::seconds>(WAIT_AFTER_REBOOT).count());
         clock_set_ = false;
     }
     else if (nmea[2] == "AUV")
