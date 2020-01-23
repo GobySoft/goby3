@@ -111,6 +111,8 @@ message Config
 
     optional bool use_application_acks = 20 [default = false];
     repeated uint32 additional_application_ack_modem_id = 21;
+    
+    optional bool query_cfg_on_startup = 22 [default = true];
 }
 
 extend goby.acomms.protobuf.DriverConfig
