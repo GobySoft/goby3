@@ -4,7 +4,6 @@ import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/amac_config.proto";
 import "goby/acomms/protobuf/buffer.proto";
-import "google/protobuf/descriptor.proto";
 import "goby/middleware/protobuf/intervehicle_transporter_config.proto";
 import "goby/middleware/protobuf/serializer_transporter.proto";
 
@@ -42,9 +41,6 @@ message PortalConfig
     }
 
     repeated LinkConfig link = 1;
-
-    repeated string dccl_load_library = 20
-        [(goby.field).description = "Load DCCL libraries"];
 }
 
 message Status
@@ -69,11 +65,7 @@ message Subscription
     required uint32 dccl_id = 5 [(dccl.field) = {min: 1 max: 32767}];
     required uint32 group = 6 [(dccl.field) = {min: 0 max: 255}];
     optional TransporterConfig intervehicle = 10;
-
-    // defines the DCCL message for the Portal (edge) internally on interprocess
-    optional string protobuf_name = 20 [(dccl.field).omit = true];
-    repeated google.protobuf.FileDescriptorProto file_descriptor = 4
-        [(dccl.field).omit = true];
+    optional goby.middleware.protobuf.SerializerProtobufMetadata metadata = 20;
 }
 
 message Header

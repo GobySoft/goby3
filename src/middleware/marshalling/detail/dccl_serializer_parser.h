@@ -114,6 +114,8 @@ struct DCCLSerializerParserHelperBase
     DCCLSerializerParserHelperBase() = default;
     virtual ~DCCLSerializerParserHelperBase() = default;
 
+    constexpr static int INVALID_DCCL_ID{0};
+
     template <typename CharIterator> static unsigned id(CharIterator begin, CharIterator end)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
@@ -136,8 +138,7 @@ struct DCCLSerializerParserHelperBase
         }
     }
 
-    static void
-    load_forwarded_subscription(const goby::middleware::intervehicle::protobuf::Subscription& sub);
+    static void load_metadata(const goby::middleware::protobuf::SerializerProtobufMetadata& meta);
     static goby::middleware::intervehicle::protobuf::DCCLForwardedData
     unpack(const std::string& bytes);
 

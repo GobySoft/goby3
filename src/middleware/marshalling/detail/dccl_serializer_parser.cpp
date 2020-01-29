@@ -34,26 +34,26 @@ std::unordered_map<
     goby::middleware::detail::DCCLSerializerParserHelperBase::loader_map_;
 std::mutex goby::middleware::detail::DCCLSerializerParserHelperBase::dccl_mutex_;
 
-void goby::middleware::detail::DCCLSerializerParserHelperBase::load_forwarded_subscription(
-    const goby::middleware::intervehicle::protobuf::Subscription& sub)
+void goby::middleware::detail::DCCLSerializerParserHelperBase::load_metadata(
+    const goby::middleware::protobuf::SerializerProtobufMetadata& meta)
 {
     std::lock_guard<std::mutex> lock(dccl_mutex_);
 
     // check that we don't already have this type available
-    if (auto* desc = dccl::DynamicProtobufManager::find_descriptor(sub.protobuf_name()))
+    if (auto* desc = dccl::DynamicProtobufManager::find_descriptor(meta.protobuf_name()))
     {
         check_load(desc);
     }
     else
     {
-        for (const auto& file_desc : sub.file_descriptor())
+        for (const auto& file_desc : meta.file_descriptor())
             dccl::DynamicProtobufManager::add_protobuf_file(file_desc);
-        if (auto* desc = dccl::DynamicProtobufManager::find_descriptor(sub.protobuf_name()))
+        if (auto* desc = dccl::DynamicProtobufManager::find_descriptor(meta.protobuf_name()))
             check_load(desc);
         else
             goby::glog.is(goby::util::logger::DEBUG3) &&
-                goby::glog << "Failed to load DCCL message sent via forwarded subscription: "
-                           << sub.protobuf_name() << std::endl;
+                goby::glog << "Failed to load DCCL message via metadata: " << meta.protobuf_name()
+                           << std::endl;
     }
 }
 
@@ -74,7 +74,7 @@ goby::middleware::detail::DCCLSerializerParserHelperBase::unpack(const std::stri
 
         std::string::const_iterator next_frame_it;
 
-        if (codec().loaded().count(dccl_id) == 0)
+        if (codec().loaded().count(dccl_id) == INVALID_DCCL_ID)
         {
             goby::glog.is_debug1() &&
                 goby::glog << "DCCL ID " << dccl_id

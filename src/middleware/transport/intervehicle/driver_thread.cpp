@@ -32,7 +32,7 @@ using goby::middleware::protobuf::SerializerTransporterMessage;
 goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     const intervehicle::protobuf::PortalConfig::LinkConfig& config)
     : goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
-                               InterProcessForwarder<InterThreadTransporter> >(
+                               InterProcessForwarder<InterThreadTransporter>>(
           config, 10 * boost::units::si::hertz)
 {
     interthread_.reset(new InterThreadTransporter);
@@ -154,7 +154,8 @@ void goby::middleware::intervehicle::ModemDriverThread::_expire_value(
 void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
     intervehicle::protobuf::Subscription subscription)
 {
-    detail::DCCLSerializerParserHelperBase::load_forwarded_subscription(subscription);
+    if (subscription.has_metadata())
+        detail::DCCLSerializerParserHelperBase::load_metadata(subscription.metadata());
 
     subscription.mutable_header()->set_src(cfg().driver().modem_id());
     for (auto dest : subscription.header().dest())
@@ -300,7 +301,32 @@ void goby::middleware::intervehicle::ModemDriverThread::_create_buffer(
 void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
     std::shared_ptr<const SerializerTransporterMessage> msg)
 {
-    auto buffer_id = _create_buffer_id(msg->key());
+    if (msg->key().has_metadata())
+        detail::DCCLSerializerParserHelperBase::load_metadata(msg->key().metadata());
+
+    // check if we have this message loaded
+    auto dccl_id = detail::DCCLSerializerParserHelperBase::id(msg->key().type());
+    if (dccl_id == detail::DCCLSerializerParserHelperBase::INVALID_DCCL_ID)
+    {
+        // start sending metadata
+        middleware::protobuf::SerializerMetadataRequest meta_request;
+        *meta_request.mutable_key() = msg->key();
+        meta_request.set_request(middleware::protobuf::SerializerMetadataRequest::METADATA_INCLUDE);
+        interprocess_->publish<groups::metadata_request>(meta_request);
+        return;
+    }
+    else if (msg->key().has_metadata())
+    {
+        // stop sending metadata
+        middleware::protobuf::SerializerMetadataRequest meta_request;
+        *meta_request.mutable_key() = msg->key();
+        // avoid extra data send
+        meta_request.mutable_key()->clear_metadata();
+        meta_request.set_request(middleware::protobuf::SerializerMetadataRequest::METADATA_EXCLUDE);
+        interprocess_->publish<groups::metadata_request>(meta_request);
+    }
+
+    auto buffer_id = _create_buffer_id(dccl_id, msg->key().group_numeric());
 
     glog.is_debug3() && glog << "Buffering message with id: " << buffer_id << " from "
                              << msg->ShortDebugString() << std::endl;

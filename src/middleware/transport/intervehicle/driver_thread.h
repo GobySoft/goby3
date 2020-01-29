@@ -109,6 +109,9 @@ constexpr Group modem_subscription_forward_tx{
 constexpr Group modem_subscription_forward_rx{
     "goby::middleware::intervehicle::modem_subscription_forward_rx"};
 constexpr Group modem_driver_ready{"goby::middleware::intervehicle::modem_driver_ready"};
+
+constexpr Group metadata_request{"goby::middleware::intervehicle::metadata_request"};
+
 } // namespace groups
 
 class ModemDriverThread
