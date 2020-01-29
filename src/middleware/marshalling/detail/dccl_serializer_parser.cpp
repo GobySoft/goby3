@@ -24,7 +24,7 @@
 #include "goby/middleware/protobuf/serializer_transporter.pb.h"
 #include "goby/util/debug_logger.h"
 
-#include "dccl.h"
+#include "dccl_serializer_parser.h"
 
 std::unique_ptr<dccl::Codec>
     goby::middleware::detail::DCCLSerializerParserHelperBase::codec_(nullptr);
