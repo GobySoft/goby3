@@ -24,6 +24,7 @@
 #define SCI20100713H
 
 #include <cmath>
+#include <map>
 
 namespace goby
 {
@@ -66,6 +67,36 @@ inline unsigned ceil_log2(double d) { return ceil_log2(static_cast<unsigned>(std
 inline unsigned ceil_log2(int i) { return ceil_log2(static_cast<unsigned>(i)); }
 
 [[deprecated("use std::log2()")]] inline double log2(double d) { return std::log2(d); }
+
+/// \brief Linear interpolation function
+///
+/// \param a Value to interpolate
+/// \param table Table of values to interpolate from
+/// \return Interpolated value
+template <typename N1, typename N2> N2 linear_interpolate(N1 a, const std::map<N1, N2> table)
+{
+    auto l_it = table.upper_bound(a);
+
+    // clip to max value
+    if (l_it == table.end())
+    {
+        return (--l_it)->second;
+    }
+    // clip to min value
+    else if (l_it == table.begin())
+    {
+        return l_it->second;
+    }
+    // linear interpolation
+    else
+    {
+        auto u_it = l_it;
+        --l_it;
+        auto a_u = u_it->first, a_l = l_it->first;
+        auto b_u = u_it->second, b_l = l_it->second;
+        return ((a - a_l) / (a_l - a_u)) * (b_l - b_u) + b_l;
+    }
+}
 
 } // namespace util
 

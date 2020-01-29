@@ -394,7 +394,7 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
                 protobuf::TranslatorEntry::PublishSerializer::Algorithm>::const_iterator
                 const_iterator;
 
-            int primary_field;
+            int primary_field = 0;
             for (const_iterator alg_it = algorithms.begin(), alg_n = algorithms.end();
                  alg_it != alg_n; ++alg_it)
             {

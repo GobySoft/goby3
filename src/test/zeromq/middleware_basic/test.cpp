@@ -81,8 +81,10 @@ int main(int argc, char* argv[])
     t.set_temperature(15);
     zmq.publish<temp>(t);
 
+    // CSTR
     std::string value("HI");
     zmq.publish_dynamic(value, "GroupHi");
+    zmq.publish<temp>(std::string("15"));
 
     std::deque<char> dc = {'H', 'E', 'L', 'L', 'O'};
 

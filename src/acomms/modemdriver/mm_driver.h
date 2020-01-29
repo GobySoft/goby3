@@ -241,12 +241,12 @@ class MMDriver : public ModemDriverBase
         ROUGH_SPEED_OF_SOUND = 1500
     }; // m/s
 
-    // seconds to wait for modem to respond
-    static const boost::posix_time::time_duration MODEM_WAIT;
-    // seconds to wait after modem reboot
-    static const boost::posix_time::time_duration WAIT_AFTER_REBOOT;
-    // allowed time diff in millisecs between our clock and the modem clock
-    static const int ALLOWED_MS_DIFF;
+    // time to wait for modem to respond
+    static const goby::time::SystemClock::duration MODEM_WAIT;
+    // time to wait for modem to respond
+    static const goby::time::SystemClock::duration MULTI_REPLY_WAIT;
+    // time to wait after modem reboot
+    static const goby::time::SystemClock::duration WAIT_AFTER_REBOOT;
 
     static const std::string SERIAL_DELIMITER;
     // number of frames for a given packet type
@@ -262,10 +262,13 @@ class MMDriver : public ModemDriverBase
     std::deque<util::NMEASentence> out_;
 
     // time of the last message written. we timeout and resend after MODEM_WAIT seconds
-    boost::posix_time::ptime last_write_time_;
+    goby::time::SystemClock::time_point last_write_time_;
 
     // are we waiting for a command ack (CA) from the modem or can we send another output?
     bool waiting_for_modem_;
+
+    // are we waiting for a multi-message reply
+    bool waiting_for_multimsg_;
 
     // set after the startup routines finish once. we can't startup on instantiation because
     // the base class sets some of our references (from the MOOS file)
@@ -308,8 +311,8 @@ class MMDriver : public ModemDriverBase
         HYDROID_GATEWAY_PREFIX_LENGTH = 3
     };
     // time between requests to the hydroid gateway buoy gps
-    static const boost::posix_time::time_duration HYDROID_GATEWAY_GPS_REQUEST_INTERVAL;
-    boost::posix_time::ptime last_hydroid_gateway_gps_request_;
+    static const goby::time::SystemClock::duration HYDROID_GATEWAY_GPS_REQUEST_INTERVAL;
+    goby::time::SystemClock::time_point last_hydroid_gateway_gps_request_;
     bool is_hydroid_gateway_;
     std::string hydroid_gateway_modem_prefix_;
     std::string hydroid_gateway_gps_request_;
@@ -342,7 +345,10 @@ class MMDriver : public ModemDriverBase
 
     micromodem::protobuf::TransmissionType last_lbl_type_;
 
-    goby::time::SITime last_keep_alive_time_;
+    goby::time::SystemClock::time_point last_keep_alive_time_;
+
+    // time of the last multi-message reply received. we timeout and pop after MULTI_REPLY_WAIT seconds
+    goby::time::SystemClock::time_point last_multimsg_rx_time_;
 
     struct MMRevision
     {

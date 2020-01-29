@@ -102,7 +102,6 @@ BOOST_AUTO_TEST_CASE(ais_decode_18_1)
 
     BOOST_CHECK_EQUAL(pos.message_id(), 18);
     BOOST_CHECK_EQUAL(pos.mmsi(), 338087471);
-    metric::knot_base_unit::unit_type knots;
     BOOST_CHECK_CLOSE(
         pos.speed_over_ground_with_units<quantity<metric::knot_base_unit::unit_type>>().value(),
         0.1, eps_pct);
@@ -129,7 +128,6 @@ BOOST_AUTO_TEST_CASE(ais_decode_18_2)
 
     BOOST_CHECK_EQUAL(pos.message_id(), 18);
     BOOST_CHECK_EQUAL(pos.mmsi(), 338088483);
-    metric::knot_base_unit::unit_type knots;
     BOOST_CHECK_CLOSE(
         pos.speed_over_ground_with_units<quantity<metric::knot_base_unit::unit_type>>().value(), 0,
         eps_pct);

@@ -31,31 +31,30 @@ namespace goby
 {
 namespace middleware
 {
-template <typename DataType> struct SerializerParserHelper<DataType, MarshallingScheme::CSTR>
+/// \brief Example usable specialization for std::string using a null terminated array of bytes (C string). Likely not the best choice for production use.
+template <> struct SerializerParserHelper<std::string, MarshallingScheme::CSTR>
 {
-    static std::vector<char> serialize(const DataType& msg)
+    static std::vector<char> serialize(const std::string& msg)
     {
         std::vector<char> bytes(std::begin(msg), std::end(msg));
         bytes.push_back('\0');
         return bytes;
     }
 
-    static std::string type_name() { return "CSTR"; }
-
-    static std::string type_name(const DataType& d) { return type_name(); }
+    static std::string type_name(const std::string& d = std::string()) { return "CSTR"; }
 
     template <typename CharIterator>
-    static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
-                                           CharIterator& actual_end)
+    static std::shared_ptr<std::string> parse(CharIterator bytes_begin, CharIterator bytes_end,
+                                              CharIterator& actual_end)
     {
         actual_end = bytes_end;
         if (bytes_begin != bytes_end)
         {
-            return std::make_shared<DataType>(bytes_begin, bytes_end - 1);
+            return std::make_shared<std::string>(bytes_begin, bytes_end - 1);
         }
         else
         {
-            return std::make_shared<DataType>();
+            return std::make_shared<std::string>();
         }
     }
 };

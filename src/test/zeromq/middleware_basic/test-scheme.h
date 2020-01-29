@@ -24,6 +24,8 @@
 
 namespace goby
 {
+namespace test
+{
 namespace middleware
 {
 struct MyMarshallingScheme
@@ -33,8 +35,13 @@ struct MyMarshallingScheme
         DEQUECHAR = 1000
     };
 };
+} // namespace middleware
+} // namespace test
 
-template <> struct SerializerParserHelper<std::deque<char>, MyMarshallingScheme::DEQUECHAR>
+namespace middleware
+{
+template <>
+struct SerializerParserHelper<std::deque<char>, test::middleware::MyMarshallingScheme::DEQUECHAR>
 {
     static std::vector<char> serialize(const std::deque<char>& msg)
     {
@@ -58,7 +65,7 @@ template <> struct SerializerParserHelper<std::deque<char>, MyMarshallingScheme:
 template <typename T>
 constexpr int scheme(typename std::enable_if<std::is_same<T, std::deque<char> >::value>::type* = 0)
 {
-    return MyMarshallingScheme::DEQUECHAR;
+    return test::middleware::MyMarshallingScheme::DEQUECHAR;
 }
 } // namespace middleware
 } // namespace goby

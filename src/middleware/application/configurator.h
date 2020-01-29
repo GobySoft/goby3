@@ -30,39 +30,59 @@ namespace goby
 {
 namespace middleware
 {
+/// \brief Defines the interface to a "configurator", a class that can read command line parameters (argc, argv) and produce a configuration object.
+///
+/// Configurators are used to read command line parameters (and subsequently possibly open one or more configuration files) to populate the values in a configuration object that is used by the code to be configured (SingleThreadApplication, MultiThreadApplication, SimpleThread, etc.).
+/// \tparam Config The type of the configuration object produced by the configurator
 template <typename Config> class ConfiguratorInterface
 {
   public:
+    /// \brief The configuration object produced from the command line parameters
     const Config& cfg() const { return cfg_; }
 
-    // TODO: AppConfig will eventually not be a Protobuf Message, just a C++ struct
-    const protobuf::AppConfig& app3_configuration() const { return app3_configuration_; }
+    /// \brief Subset of the configuration used to configure the Application itself
+    /// \todo Change AppConfig to a C++ struct (not a Protobuf message)
+    const protobuf::AppConfig& app_configuration() const { return app_configuration_; }
+
+    /// \brief Override to validate the configuration
+    ///
+    /// \throw ConfigException if the configuration is not valid
     virtual void validate() const {}
+
+    /// \brief Override to customize how ConfigException errors are handled.
     virtual void handle_config_error(middleware::ConfigException& e) const
     {
         std::cerr << "Invalid configuration: " << e.what() << std::endl;
     }
 
+    /// \brief Override to output the configuration object as a string
     virtual std::string str() const = 0;
 
   protected:
-    // Derived classes can modify these as needed in their constructor
+    /// \brief Derived classes can modify the configuration as needed in their constructor
     Config& mutable_cfg() { return cfg_; }
-    protobuf::AppConfig& mutable_app3_configuration() { return app3_configuration_; }
+
+    /// \brief Derived classes can modify the application configuration as needed in their constructor
+    protobuf::AppConfig& mutable_app_configuration() { return app_configuration_; }
 
   private:
     Config cfg_;
-    protobuf::AppConfig app3_configuration_;
+    protobuf::AppConfig app_configuration_;
 };
 
-/// Implementation of ConfiguratorInterface for Google Protocol buffers
+/// \brief Implementation of ConfiguratorInterface for Google Protocol buffers
+///
+/// \tparam Config The Protobuf message that represents the parsed configuration
 template <typename Config> class ProtobufConfigurator : public ConfiguratorInterface<Config>
 {
   public:
+    /// \brief Constructs a ProtobufConfigurator. Typically passed as a parameter to goby::run
+    ///
+    /// \param argc Command line argument count
+    /// \param argv Command line parameters
     ProtobufConfigurator(int argc, char* argv[]);
 
   protected:
-    // subclass should call to verify all required fields have been set
     virtual void validate() const override
     {
         middleware::ConfigReader::check_required_cfg(this->cfg());
@@ -112,7 +132,7 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
     }
 
     // TODO: convert to C++ struct app3 configuration format
-    this->mutable_app3_configuration() = *cfg.mutable_app();
+    this->mutable_app_configuration() = *cfg.mutable_app();
 }
 
 template <typename Config>

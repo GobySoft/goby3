@@ -19,7 +19,7 @@ message PortalConfig
     message LinkConfig
     {
         required uint32 modem_id = 1;
-        optional uint32 subnet_mask = 2 [default = 0xF0];
+        optional uint32 subnet_mask = 2 [default = 0xFFF0];
         
         required goby.acomms.protobuf.DriverConfig driver = 11
             [(goby.field).description =

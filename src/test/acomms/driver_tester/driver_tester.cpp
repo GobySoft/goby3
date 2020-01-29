@@ -221,7 +221,8 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
 
             auto now = goby::time::SystemClock::now();
             auto reported = goby::time::convert<decltype(now)>(msg.time_with_units());
-            assert(reported < now && reported > now - std::chrono::seconds(2));
+            assert(std::abs(std::chrono::duration_cast<std::chrono::milliseconds>(reported - now)
+                                .count()) < 2000);
             ++check_count_;
         }
         break;
@@ -237,7 +238,8 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
 
             auto now = goby::time::SystemClock::now();
             auto reported = goby::time::convert<decltype(now)>(msg.time_with_units());
-            assert(reported < now && reported > now - std::chrono::seconds(2));
+            assert(std::abs(std::chrono::duration_cast<std::chrono::milliseconds>(reported - now)
+                                .count()) < 2000);
             ++check_count_;
         }
         break;

@@ -1,4 +1,4 @@
 #!/bin/bash
 
-LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:@goby_LIB_DIR@ IFRONTSEAT_DRIVER_LIBRARY=libgoby_frontseat_bluefin.so.@GOBY_SOVERSION@ exec iFrontSeat $@
+LD_LIBRARY_PATH=@goby_LIB_DIR@:${LD_LIBRARY_PATH} IFRONTSEAT_DRIVER_LIBRARY=libgoby_frontseat_bluefin.so.@GOBY_SOVERSION@ exec iFrontSeat $@
 

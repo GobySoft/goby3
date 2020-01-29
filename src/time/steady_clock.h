@@ -31,14 +31,19 @@ namespace goby
 {
 namespace time
 {
+/// \brief Essentially the same as std::chrono::steady_clock except the time returned by SteadyClock::now() can be "warped" (made to run faster than real time) for simulation purposes. To do this, set the appropriate parameters in SimulatorSettings.
 struct SteadyClock
 {
+    /// \brief Duration type
+    ///
+    /// We use microseconds (not nanoseconds) to avoid overflow at higher warp values
     typedef std::chrono::microseconds duration;
     typedef duration::rep rep;
     typedef duration::period period;
     typedef std::chrono::time_point<SteadyClock> time_point;
     static const bool is_steady = true;
 
+    /// \brief Returns the current steady time unless `SimulatorSettings::using_sim_time == true` in which case a simulated time is returned that is sped up by (multiplied by) the `SimulatorSettings::warp_factor`
     static time_point now() noexcept
     {
         using namespace std::chrono;

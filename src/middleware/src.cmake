@@ -10,13 +10,14 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/io.proto
   middleware/protobuf/serial_config.proto
   middleware/protobuf/udp_config.proto
+  middleware/protobuf/coroner.proto
   )
 
 set(MIDDLEWARE_SRC
   middleware/marshalling/interface.cpp
   middleware/marshalling/dccl.cpp 
   middleware/transport/interthread.cpp
-  middleware/intervehicle/driver-thread.cpp
+  middleware/transport/intervehicle/driver_thread.cpp
   middleware/application/configuration_reader.cpp
   middleware/log/log_entry.cpp
   ${MIDDLEWARE_PROTO_SRCS} ${MIDDLEWARE_PROTO_HDRS} 

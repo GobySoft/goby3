@@ -5,11 +5,13 @@ else()
   set(GOBY_FOUND 0)
 endif()
 
-# moos requires zeromq
-if("moos" IN_LIST GOBY_FIND_COMPONENTS)
-  list(INSERT GOBY_FIND_COMPONENTS 0 "zeromq")
+set(zeromq_built @build_zeromq@)
+if(zeromq_built)
+  # moos requires zeromq for goby_moos_gateway if built
+  if("moos" IN_LIST GOBY_FIND_COMPONENTS)
+    list(INSERT GOBY_FIND_COMPONENTS 0 "zeromq")
+  endif()
 endif()
-
 
 foreach(component ${GOBY_FIND_COMPONENTS})
   if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/goby_${component}-config.cmake)

@@ -6,6 +6,7 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/liaison_config.proto
   protobuf/terminate_config.proto
   protobuf/mavlink_gateway_config.proto
+  protobuf/coroner_config.proto
   )
 
 set(SRC

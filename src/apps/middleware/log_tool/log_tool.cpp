@@ -31,6 +31,7 @@ using goby::glog;
 
 namespace goby
 {
+///\brief Code beloning to applications and other binaries
 namespace apps
 {
 namespace middleware

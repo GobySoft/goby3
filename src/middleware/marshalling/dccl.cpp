@@ -26,13 +26,15 @@
 
 #include "dccl.h"
 
-std::unique_ptr<dccl::Codec> goby::middleware::DCCLSerializerParserHelperBase::codec_(nullptr);
-std::unordered_map<const google::protobuf::Descriptor*,
-                   std::unique_ptr<goby::middleware::DCCLSerializerParserHelperBase::LoaderBase>>
-    goby::middleware::DCCLSerializerParserHelperBase::loader_map_;
-std::mutex goby::middleware::DCCLSerializerParserHelperBase::dccl_mutex_;
+std::unique_ptr<dccl::Codec>
+    goby::middleware::detail::DCCLSerializerParserHelperBase::codec_(nullptr);
+std::unordered_map<
+    const google::protobuf::Descriptor*,
+    std::unique_ptr<goby::middleware::detail::DCCLSerializerParserHelperBase::LoaderBase>>
+    goby::middleware::detail::DCCLSerializerParserHelperBase::loader_map_;
+std::mutex goby::middleware::detail::DCCLSerializerParserHelperBase::dccl_mutex_;
 
-void goby::middleware::DCCLSerializerParserHelperBase::load_forwarded_subscription(
+void goby::middleware::detail::DCCLSerializerParserHelperBase::load_forwarded_subscription(
     const goby::middleware::intervehicle::protobuf::Subscription& sub)
 {
     std::lock_guard<std::mutex> lock(dccl_mutex_);
@@ -56,7 +58,7 @@ void goby::middleware::DCCLSerializerParserHelperBase::load_forwarded_subscripti
 }
 
 goby::middleware::intervehicle::protobuf::DCCLForwardedData
-goby::middleware::DCCLSerializerParserHelperBase::unpack(const std::string& frame)
+goby::middleware::detail::DCCLSerializerParserHelperBase::unpack(const std::string& frame)
 {
     std::lock_guard<std::mutex> lock(dccl_mutex_);
 

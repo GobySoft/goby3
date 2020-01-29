@@ -40,10 +40,12 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 {
     driver_cfg_ = cfg;
 
+    socket_.reset(new boost::asio::ip::udp::socket(io_service_));
     const auto& local = driver_cfg_.GetExtension(udp::protobuf::config).local();
-    socket_.open(boost::asio::ip::udp::v4());
-    socket_.bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), local.port()));
+    socket_->open(boost::asio::ip::udp::v4());
+    socket_->bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), local.port()));
 
+    receivers_.clear();
     for (const auto& remote : driver_cfg_.GetExtension(udp::protobuf::config).remote())
     {
         glog.is(DEBUG1) && glog << group(glog_out_group())
@@ -61,6 +63,7 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
                                 << receiver.port() << std::endl;
     }
 
+    application_ack_ids_.clear();
     application_ack_ids_.insert(driver_cfg_.modem_id());
     // allow application acks for additional modem ids (for spoofing another ID)
     for (unsigned id :
@@ -74,7 +77,7 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 void goby::acomms::UDPDriver::shutdown()
 {
     io_service_.stop();
-    socket_.close();
+    socket_.reset();
 }
 
 void goby::acomms::UDPDriver::handle_initiate_transmission(
@@ -136,8 +139,8 @@ void goby::acomms::UDPDriver::start_send(const protobuf::ModemTransmission& msg)
     signal_raw_outgoing(raw_msg);
 
     auto send = [&](const boost::asio::ip::udp::endpoint& receiver) {
-        socket_.async_send_to(boost::asio::buffer(bytes), receiver,
-                              boost::bind(&UDPDriver::send_complete, this, _1, _2));
+        socket_->async_send_to(boost::asio::buffer(bytes), receiver,
+                               boost::bind(&UDPDriver::send_complete, this, _1, _2));
     };
 
     auto broadcast_receivers = receivers_.equal_range(goby::acomms::BROADCAST_ID);
@@ -168,8 +171,8 @@ void goby::acomms::UDPDriver::send_complete(const boost::system::error_code& err
 
 void goby::acomms::UDPDriver::start_receive()
 {
-    socket_.async_receive_from(boost::asio::buffer(receive_buffer_), sender_,
-                               boost::bind(&UDPDriver::receive_complete, this, _1, _2));
+    socket_->async_receive_from(boost::asio::buffer(receive_buffer_), sender_,
+                                boost::bind(&UDPDriver::receive_complete, this, _1, _2));
 }
 
 void goby::acomms::UDPDriver::receive_complete(const boost::system::error_code& error,

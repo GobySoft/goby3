@@ -1,0 +1,21 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+import "dccl/option_extensions.proto";
+
+package goby.apps.zeromq.protobuf;
+
+message CoronerConfig
+{
+    option (dccl.msg).unit_system = "si";
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+
+    repeated string expected_name = 10;
+
+    optional float request_interval = 20
+        [default = 10, (dccl.field).units.base_dimensions = "T"];
+    optional float response_timeout = 21
+        [default = 5, (dccl.field).units.base_dimensions = "T"];
+}
