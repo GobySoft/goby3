@@ -99,8 +99,9 @@ class IOThread
     /// \brief Constructs the thread.
     /// \param config A reference to the configuration read by the main application at launch
     /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
-    IOThread(const IOConfig& config, int index = -1)
-        : goby::middleware::SimpleThread<IOConfig>(config, this->loop_max_frequency(), index)
+    IOThread(const IOConfig& config, int index = -1, std::string glog_group = "i/o")
+        : goby::middleware::SimpleThread<IOConfig>(config, this->loop_max_frequency(), index),
+          glog_group_(glog_group)
     {
         auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
@@ -112,11 +113,10 @@ class IOThread
             .template subscribe<line_out_group, goby::middleware::protobuf::IOData>(
                 data_out_callback);
 
-        static bool io_group_added = false;
-        if (!io_group_added)
+        if (!glog_group_added_)
         {
-            goby::glog.add_group("i/o", goby::util::Colors::red);
-            io_group_added = true;
+            goby::glog.add_group(glog_group_, goby::util::Colors::red);
+            glog_group_added_ = true;
         }
     }
 
@@ -160,7 +160,7 @@ class IOThread
     void write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
     {
         goby::glog.is_debug2() &&
-            goby::glog << group("i/o") << "(" << io_msg->data().size() << "B) <"
+            goby::glog << group(glog_group_) << "(" << io_msg->data().size() << "B) <"
                        << ((this->index() == -1) ? std::string() : std::to_string(this->index()))
                        << " " << io_msg->ShortDebugString() << std::endl;
         if (io_msg->data().empty())
@@ -186,7 +186,7 @@ class IOThread
             io_msg->set_index(this->index());
 
         goby::glog.is_debug2() &&
-            goby::glog << group("i/o") << "(" << bytes_transferred << "B) >"
+            goby::glog << group(glog_group_) << "(" << bytes_transferred << "B) >"
                        << ((this->index() == -1) ? std::string() : std::to_string(this->index()))
                        << " " << io_msg->ShortDebugString() << std::endl;
 
@@ -231,6 +231,8 @@ class IOThread
         async_write(io_msg->data());
     }
 
+    const std::string& glog_group() { return glog_group_; }
+
   private:
     /// \brief Tries to open the socket, and if fails publishes an error
     void try_open();
@@ -249,6 +251,9 @@ class IOThread
 
     std::mutex incoming_mail_notify_mutex_;
     std::unique_ptr<std::thread> incoming_mail_notify_thread_;
+
+    std::string glog_group_;
+    bool glog_group_added_{false};
 }; // namespace io
 
 template <const goby::middleware::Group& line_in_group,
@@ -266,12 +271,18 @@ void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer
         // messages read from the socket
         this->async_read();
 
+        // reset io_service, which ran out of work
+        io_.reset();
+
         // successful, reset backoff
         backoff_interval_ = min_backoff_interval_;
 
         protobuf::IOStatus status;
         status.set_state(protobuf::IO__LINK_OPEN);
         this->interthread().template publish<goby::middleware::io::groups::status>(status);
+
+        goby::glog.is_debug2() && goby::glog << group(glog_group_) << "Successfully opened socket"
+                                             << std::endl;
     }
     catch (const boost::system::system_error& e)
     {
@@ -282,7 +293,7 @@ void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer
         error.set_text(e.what() + std::string(": config (") + this->cfg().ShortDebugString() + ")");
         this->interthread().template publish<goby::middleware::io::groups::status>(status);
 
-        goby::glog.is_warn() && goby::glog << group("i/o")
+        goby::glog.is_warn() && goby::glog << group(glog_group_)
                                            << "Failed to open/configure socket/serial_port: "
                                            << error.ShortDebugString() << std::endl;
 
@@ -292,7 +303,7 @@ void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer
         decltype(next_open_attempt_) now(goby::time::SteadyClock::now());
         next_open_attempt_ = now + backoff_interval_;
 
-        goby::glog.is_warn() && goby::glog << group("i/o") << "Will retry in "
+        goby::glog.is_warn() && goby::glog << group(glog_group_) << "Will retry in "
                                            << backoff_interval_ / std::chrono::seconds(1)
                                            << " seconds" << std::endl;
     }
@@ -337,7 +348,7 @@ void goby::middleware::io::IOThread<
     error.set_text(ec.message());
     this->interthread().template publish<goby::middleware::io::groups::status>(status);
 
-    goby::glog.is_warn() && goby::glog << group("i/o")
+    goby::glog.is_warn() && goby::glog << group(glog_group_)
                                        << "Failed to read from the socket/serial_port: "
                                        << error.ShortDebugString() << std::endl;
 
@@ -359,7 +370,7 @@ void goby::middleware::io::IOThread<
     error.set_text(ec.message());
     this->interthread().template publish<goby::middleware::io::groups::status>(status);
 
-    goby::glog.is_warn() && goby::glog << group("i/o")
+    goby::glog.is_warn() && goby::glog << group(glog_group_)
                                        << "Failed to write to the socket/serial_port: "
                                        << error.ShortDebugString() << std::endl;
     socket_.reset();
