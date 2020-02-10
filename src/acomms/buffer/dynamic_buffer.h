@@ -46,14 +46,14 @@ class DynamicBufferNoDataException : goby::Exception
 template <typename Container> size_t data_size(const Container& c) { return c.size(); }
 
 /// Represents a time-dependent priority queue for a single group of messages (e.g. for a single DCCL ID)
-template <typename T> class DynamicSubBuffer
+template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSubBuffer
 {
   public:
     using size_type = typename std::deque<T>::size_type;
 
     struct Value
     {
-        goby::time::SteadyClock::time_point push_time;
+        typename Clock::time_point push_time;
         T data;
         bool operator==(const Value& a) const { return a.push_time == push_time && a.data == data; }
     };
@@ -133,8 +133,8 @@ template <typename T> class DynamicSubBuffer
     /// \param ack_timeout Duration to wait before resending a value
     /// \return Value to send
     /// \throw DynamicBufferNoDataException no data to (re)send
-    Value& top(goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now(),
-               goby::time::SteadyClock::duration ack_timeout = std::chrono::microseconds(0))
+    Value& top(typename Clock::time_point reference = Clock::now(),
+               typename Clock::duration ack_timeout = std::chrono::microseconds(0))
     {
         for (auto& datum_pair : data_)
         {
@@ -150,9 +150,9 @@ template <typename T> class DynamicSubBuffer
     }
 
     /// \brief returns true if all messages have been sent within ack_timeout of the reference provided and thus none are available for resending yet
-    bool all_waiting_for_ack(
-        goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now(),
-        goby::time::SteadyClock::duration ack_timeout = std::chrono::microseconds(0)) const
+    bool
+    all_waiting_for_ack(typename Clock::time_point reference = Clock::now(),
+                        typename Clock::duration ack_timeout = std::chrono::microseconds(0)) const
     {
         for (const auto& datum_pair : data_)
         {
@@ -179,9 +179,9 @@ template <typename T> class DynamicSubBuffer
     /// \param ack_timeout how long to wait before resending the same value again
     /// \return priority value for this sub buffer
     std::pair<double, ValueResult>
-    top_value(goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now(),
+    top_value(typename Clock::time_point reference = Clock::now(),
               size_type max_bytes = std::numeric_limits<size_type>::max(),
-              goby::time::SteadyClock::duration ack_timeout = std::chrono::microseconds(0)) const
+              typename Clock::duration ack_timeout = std::chrono::microseconds(0)) const
     {
         if (empty())
             return std::make_pair(-std::numeric_limits<double>::infinity(), ValueResult::EMPTY);
@@ -208,11 +208,10 @@ template <typename T> class DynamicSubBuffer
     /// \brief Returns if buffer is in blackout
     ///
     /// \param reference time point to use for current reference when calculating blackout
-    bool in_blackout(
-        goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now()) const
+    bool in_blackout(typename Clock::time_point reference = Clock::now()) const
     {
-        auto blackout = goby::time::convert_duration<goby::time::SteadyClock::duration>(
-            cfg_.blackout_time_with_units());
+        auto blackout =
+            goby::time::convert_duration<typename Clock::duration>(cfg_.blackout_time_with_units());
 
         return reference <= (last_access_ + blackout);
     }
@@ -230,8 +229,7 @@ template <typename T> class DynamicSubBuffer
     /// \param t Value to push
     /// \param reference Reference time to use for this value (defaults to current time)
     /// \return vector of values removed due to max_queue being exceeded
-    std::vector<Value>
-    push(const T& t, goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now())
+    std::vector<Value> push(const T& t, typename Clock::time_point reference = Clock::now())
     {
         std::vector<Value> exceeded;
 
@@ -251,13 +249,11 @@ template <typename T> class DynamicSubBuffer
     /// \brief Erase any values that have exceeded their time-to-live
     ///
     /// \return Vector of values that have expired and have been erased
-    std::vector<Value>
-    expire(goby::time::SteadyClock::time_point reference = goby::time::SteadyClock::now())
+    std::vector<Value> expire(typename Clock::time_point reference = Clock::now())
     {
         std::vector<Value> expired;
 
-        auto ttl =
-            goby::time::convert_duration<goby::time::SteadyClock::duration>(cfg_.ttl_with_units());
+        auto ttl = goby::time::convert_duration<typename Clock::duration>(cfg_.ttl_with_units());
         if (cfg_.newest_first())
         {
             while (!data_.empty() && reference > (data_.back().second.push_time + ttl))
@@ -307,14 +303,14 @@ template <typename T> class DynamicSubBuffer
     goby::acomms::protobuf::DynamicBufferConfig cfg_;
 
     // pair of last send -> value
-    std::deque<std::pair<goby::time::SteadyClock::time_point, Value> > data_;
-    goby::time::SteadyClock::time_point last_access_{goby::time::SteadyClock::now()};
+    std::deque<std::pair<typename Clock::time_point, Value>> data_;
+    typename Clock::time_point last_access_{Clock::now()};
 
-    goby::time::SteadyClock::time_point zero_point_{std::chrono::seconds(0)};
+    typename Clock::time_point zero_point_{std::chrono::seconds(0)};
 };
 
 /// Represents a time-dependent priority queue for several groups of messages (multiple DynamicSubBuffers)
-template <typename T> class DynamicBuffer
+template <typename T, typename Clock = goby::time::SteadyClock> class DynamicBuffer
 {
   public:
     DynamicBuffer()
@@ -326,14 +322,14 @@ template <typename T> class DynamicBuffer
     ~DynamicBuffer() {}
 
     using subbuffer_id_type = std::string;
-    using size_type = typename DynamicSubBuffer<T>::size_type;
+    using size_type = typename DynamicSubBuffer<T, Clock>::size_type;
     using modem_id_type = int;
 
     struct Value
     {
         modem_id_type modem_id;
         subbuffer_id_type subbuffer_id;
-        goby::time::SteadyClock::time_point push_time;
+        typename Clock::time_point push_time;
         T data;
     };
 
@@ -361,7 +357,7 @@ template <typename T> class DynamicBuffer
         if (sub_.count(dest_id) && sub_.at(dest_id).count(sub_id))
             throw(goby::Exception("Subbuffer ID: " + sub_id + " already exists."));
 
-        sub_[dest_id].insert(std::make_pair(sub_id, DynamicSubBuffer<T>(cfgs)));
+        sub_[dest_id].insert(std::make_pair(sub_id, DynamicSubBuffer<T, Clock>(cfgs)));
     }
 
     /// \brief Replace an existing subbuffer with the given configuration (any messages in the subbuffer will be erased)
@@ -435,17 +431,18 @@ template <typename T> class DynamicBuffer
     /// \return Value with the highest priority (DynamicSubBuffer::top_value()) of all the subbuffers
     Value top(modem_id_type dest_id = goby::acomms::QUERY_DESTINATION_ID,
               size_type max_bytes = std::numeric_limits<size_type>::max(),
-              goby::time::SteadyClock::duration ack_timeout = std::chrono::microseconds(0))
+              typename Clock::duration ack_timeout = std::chrono::microseconds(0))
     {
         using goby::glog;
 
         glog.is_debug1() && glog << group(glog_priority_group_)
                                  << "Starting priority contest:" << std::endl;
 
-        typename std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T> >::iterator winning_sub;
+        typename std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T, Clock>>::iterator
+            winning_sub;
         double winning_value = -std::numeric_limits<double>::infinity();
 
-        auto now = goby::time::SteadyClock::now();
+        auto now = Clock::now();
 
         if (dest_id != goby::acomms::QUERY_DESTINATION_ID && !sub_.count(dest_id))
             throw(DynamicBufferNoDataException());
@@ -462,27 +459,29 @@ template <typename T> class DynamicBuffer
                  sub_it != sub_end; ++sub_it)
             {
                 double value;
-                typename DynamicSubBuffer<T>::ValueResult result;
+                typename DynamicSubBuffer<T, Clock>::ValueResult result;
                 std::tie(value, result) = sub_it->second.top_value(now, max_bytes, ack_timeout);
 
                 std::string value_or_reason;
                 switch (result)
                 {
-                    case DynamicSubBuffer<T>::ValueResult::VALUE_PROVIDED:
+                    case DynamicSubBuffer<T, Clock>::ValueResult::VALUE_PROVIDED:
                         value_or_reason = std::to_string(value);
                         break;
 
-                    case DynamicSubBuffer<T>::ValueResult::EMPTY: value_or_reason = "empty"; break;
+                    case DynamicSubBuffer<T, Clock>::ValueResult::EMPTY:
+                        value_or_reason = "empty";
+                        break;
 
-                    case DynamicSubBuffer<T>::ValueResult::IN_BLACKOUT:
+                    case DynamicSubBuffer<T, Clock>::ValueResult::IN_BLACKOUT:
                         value_or_reason = "blackout";
                         break;
 
-                    case DynamicSubBuffer<T>::ValueResult::NEXT_MESSAGE_TOO_LARGE:
+                    case DynamicSubBuffer<T, Clock>::ValueResult::NEXT_MESSAGE_TOO_LARGE:
                         value_or_reason = "too large";
                         break;
 
-                    case DynamicSubBuffer<T>::ValueResult::ALL_MESSAGES_WAITING_FOR_ACK:
+                    case DynamicSubBuffer<T, Clock>::ValueResult::ALL_MESSAGES_WAITING_FOR_ACK:
                         value_or_reason = "ack wait";
                         break;
                 }
@@ -526,7 +525,7 @@ template <typename T> class DynamicBuffer
     /// \return Vector of values that have expired and have been erased
     std::vector<Value> expire()
     {
-        auto now = goby::time::SteadyClock::now();
+        auto now = Clock::now();
         std::vector<Value> expired;
         for (auto& sub_id_p : sub_)
         {
@@ -543,7 +542,7 @@ template <typename T> class DynamicBuffer
     /// \brief Reference a given subbuffer
     ///
     /// \throw goby::Exception If subbuffer doesn't exist
-    DynamicSubBuffer<T>& sub(modem_id_type dest_id, const subbuffer_id_type& sub_id)
+    DynamicSubBuffer<T, Clock>& sub(modem_id_type dest_id, const subbuffer_id_type& sub_id)
     {
         if (!sub_.count(dest_id) || !sub_.at(dest_id).count(sub_id))
             throw(goby::Exception("Subbuffer ID: " + sub_id +
@@ -553,14 +552,14 @@ template <typename T> class DynamicBuffer
 
   private:
     // destination -> subbuffer id (group/type) -> subbuffer
-    std::map<modem_id_type, std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T> > > sub_;
+    std::map<modem_id_type, std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T, Clock>>> sub_;
 
     std::string glog_priority_group_;
     static std::atomic<int> count_;
 
 }; // namespace acomms
 
-template <typename T> std::atomic<int> DynamicBuffer<T>::count_(0);
+template <typename T, typename Clock> std::atomic<int> DynamicBuffer<T, Clock>::count_(0);
 
 } // namespace acomms
 } // namespace goby

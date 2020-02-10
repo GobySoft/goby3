@@ -26,6 +26,31 @@
 #include "goby/acomms/buffer/dynamic_buffer.h"
 #include "goby/time/io.h"
 
+struct TestClock
+{
+    typedef std::chrono::microseconds duration;
+    typedef duration::rep rep;
+    typedef duration::period period;
+    typedef std::chrono::time_point<TestClock> time_point;
+    static const bool is_steady = true;
+
+    static time_point now() noexcept { return sim_now_; }
+
+    static void increment(duration dur) { sim_now_ += dur; }
+
+  private:
+    static time_point sim_now_;
+};
+
+TestClock::time_point TestClock::sim_now_{std::chrono::microseconds(0)};
+
+inline std::ostream& operator<<(std::ostream& out, const TestClock::time_point& time)
+{
+    return (out << std::chrono::duration_cast<std::chrono::microseconds>(time.time_since_epoch())
+                       .count()
+                << " us");
+}
+
 bool close_enough(double a, double b, int precision)
 {
     return std::abs(a - b) < std::pow(10, -precision);
@@ -104,7 +129,7 @@ BOOST_AUTO_TEST_CASE(check_top_value)
     cfg.set_ttl(10);
     cfg.set_value_base(1000);
 
-    goby::acomms::DynamicSubBuffer<std::string> buffer(cfg);
+    goby::acomms::DynamicSubBuffer<std::string, TestClock> buffer(cfg);
     BOOST_CHECK_EQUAL(buffer.top_value().first, -std::numeric_limits<double>::infinity());
 
     buffer.push("foo");
@@ -115,26 +140,11 @@ BOOST_AUTO_TEST_CASE(check_top_value)
     {
         // reset last access
         buffer.top();
-        int us_dt = i * 10000; // 10*i ms
-        usleep(us_dt);
+        TestClock::increment(std::chrono::milliseconds(10 * i));
         double v;
-        typename goby::acomms::DynamicSubBuffer<std::string>::ValueResult result;
+        typename goby::acomms::DynamicSubBuffer<std::string, TestClock>::ValueResult result;
         std::tie(v, result) = buffer.top_value();
         BOOST_CHECK_MESSAGE(close_enough(v, i * 1.0, 0), "Expected " << i * 1.0 << ", got: " << v);
-    }
-
-    {
-        goby::time::SimulatorSettings::using_sim_time = true;
-        goby::time::SimulatorSettings::warp_factor = 2;
-        buffer.top();
-        int us_dt = 10000; // 10 ms
-        usleep(us_dt);
-        double v;
-        typename goby::acomms::DynamicSubBuffer<std::string>::ValueResult result;
-        std::tie(v, result) = buffer.top_value();
-        BOOST_CHECK_MESSAGE(close_enough(v, 2 * 1.0, 0), "Expected " << 2 * 1.0 << ", got: " << v);
-
-        goby::time::SimulatorSettings::using_sim_time = false;
     }
 }
 
@@ -178,16 +188,16 @@ BOOST_AUTO_TEST_CASE(check_subbuffer_expire)
         cfg.set_ttl_with_units(10.0 * milli * seconds);
         cfg.set_newest_first(newest_first);
 
-        goby::acomms::DynamicSubBuffer<std::string> buffer(cfg);
+        goby::acomms::DynamicSubBuffer<std::string, TestClock> buffer(cfg);
         buffer.push("first");
         BOOST_CHECK_EQUAL(buffer.size(), 1);
-        usleep(5000); // 5 ms
+        TestClock::increment(std::chrono::milliseconds(5));
         buffer.push("second");
         BOOST_CHECK_EQUAL(buffer.size(), 2);
-        usleep(5000); // 5 ms
+        TestClock::increment(std::chrono::milliseconds(6));
         auto exp1 = buffer.expire();
         BOOST_CHECK_EQUAL(buffer.size(), 1);
-        usleep(5000); // 5 ms
+        TestClock::increment(std::chrono::milliseconds(6));
         auto exp2 = buffer.expire();
 
         BOOST_CHECK(buffer.empty());
@@ -211,6 +221,7 @@ struct DynamicBufferFixture
         cfg1.set_max_queue(2);
         cfg1.set_newest_first(true);
         buffer.create(goby::acomms::BROADCAST_ID, "A", cfg1);
+        TestClock::increment(std::chrono::milliseconds(1));
 
         goby::acomms::protobuf::DynamicBufferConfig cfg2;
         cfg2.set_ack_required(true);
@@ -223,7 +234,7 @@ struct DynamicBufferFixture
 
     ~DynamicBufferFixture() {}
 
-    goby::acomms::DynamicBuffer<std::string> buffer;
+    goby::acomms::DynamicBuffer<std::string, TestClock> buffer;
 };
 
 BOOST_FIXTURE_TEST_CASE(create_buffer, DynamicBufferFixture)
@@ -231,9 +242,10 @@ BOOST_FIXTURE_TEST_CASE(create_buffer, DynamicBufferFixture)
     BOOST_CHECK(buffer.empty());
     BOOST_CHECK_EQUAL(buffer.size(), 0);
 
-    buffer.push({goby::acomms::BROADCAST_ID, "A", goby::time::SteadyClock::now(), "first"});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", TestClock::now(), "first"});
 
-    auto vp = buffer.top();
+    TestClock::increment(std::chrono::microseconds(1));
+    goby::acomms::DynamicBuffer<std::string, TestClock>::Value vp = buffer.top();
     BOOST_CHECK_EQUAL(vp.modem_id, goby::acomms::BROADCAST_ID);
     BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
     BOOST_CHECK_EQUAL(vp.data, "first");
@@ -244,13 +256,14 @@ BOOST_FIXTURE_TEST_CASE(create_buffer, DynamicBufferFixture)
 
 BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
 {
-    auto now = goby::time::SteadyClock::now();
+    auto now = TestClock::now();
 
     buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"});
     buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"});
     buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"});
     buffer.push({goby::acomms::BROADCAST_ID, "B", now, "2"});
 
+    TestClock::increment(std::chrono::milliseconds(1));
     // will be "A" because it was created first (and last access is initialized to creation time)
     {
         auto vp = buffer.top();
@@ -259,6 +272,7 @@ BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 3);
     }
+    TestClock::increment(std::chrono::milliseconds(1));
 
     // now it will be "B"
     {
@@ -268,6 +282,7 @@ BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 2);
     }
+    TestClock::increment(std::chrono::milliseconds(1));
 
     // A
     {
@@ -277,6 +292,7 @@ BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 1);
     }
+    TestClock::increment(std::chrono::milliseconds(1));
 
     // B
     {
@@ -290,7 +306,7 @@ BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
 
 BOOST_FIXTURE_TEST_CASE(arbitrary_erase, DynamicBufferFixture)
 {
-    auto now = goby::time::SteadyClock::now();
+    auto now = TestClock::now();
 
     buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"});
     buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"});
@@ -310,17 +326,17 @@ BOOST_FIXTURE_TEST_CASE(arbitrary_erase, DynamicBufferFixture)
 
 BOOST_FIXTURE_TEST_CASE(check_expire, DynamicBufferFixture)
 {
-    auto now = goby::time::SteadyClock::now();
+    auto now = TestClock::now();
     buffer.push({goby::acomms::BROADCAST_ID, "A", now, "first"});
     buffer.push({goby::acomms::BROADCAST_ID, "B", now, "first"});
     BOOST_CHECK_EQUAL(buffer.size(), 2);
     buffer.push({goby::acomms::BROADCAST_ID, "A", now + std::chrono::milliseconds(5), "second"});
     buffer.push({goby::acomms::BROADCAST_ID, "B", now + std::chrono::milliseconds(5), "second"});
     BOOST_CHECK_EQUAL(buffer.size(), 4);
-    usleep(10000); // 10 ms
+    TestClock::increment(std::chrono::milliseconds(11));
     auto exp1 = buffer.expire();
     BOOST_CHECK_EQUAL(buffer.size(), 2);
-    usleep(5000); // 5 ms
+    TestClock::increment(std::chrono::milliseconds(6));
     auto exp2 = buffer.expire();
 
     BOOST_CHECK(buffer.empty());
@@ -334,7 +350,7 @@ BOOST_FIXTURE_TEST_CASE(check_expire, DynamicBufferFixture)
 
 BOOST_FIXTURE_TEST_CASE(check_max_queue, DynamicBufferFixture)
 {
-    auto now = goby::time::SteadyClock::now();
+    auto now = TestClock::now();
 
     BOOST_CHECK_EQUAL(buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"}).size(), 0);
     BOOST_CHECK_EQUAL(buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"}).size(), 0);
@@ -364,7 +380,7 @@ BOOST_FIXTURE_TEST_CASE(check_max_queue, DynamicBufferFixture)
 
 BOOST_FIXTURE_TEST_CASE(check_blackout_time, DynamicBufferFixture)
 {
-    auto now = goby::time::SteadyClock::now();
+    auto now = TestClock::now();
 
     using boost::units::si::milli;
     using boost::units::si::seconds;
@@ -382,11 +398,12 @@ BOOST_FIXTURE_TEST_CASE(check_blackout_time, DynamicBufferFixture)
 
     // would be A but it is in blackout
     {
+        TestClock::increment(std::chrono::microseconds(1));
         auto vp = buffer.top();
         BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
         BOOST_CHECK_EQUAL(vp.data, "1");
     }
-    usleep(10000); // 10 ms
+    TestClock::increment(std::chrono::milliseconds(10));
     // now it's A since we're not in blackout any more
     {
         auto vp = buffer.top();
@@ -397,7 +414,7 @@ BOOST_FIXTURE_TEST_CASE(check_blackout_time, DynamicBufferFixture)
 
 BOOST_FIXTURE_TEST_CASE(check_size, DynamicBufferFixture)
 {
-    auto now = goby::time::SteadyClock::now();
+    auto now = TestClock::now();
 
     goby::acomms::protobuf::DynamicBufferConfig cfg =
         buffer.sub(goby::acomms::BROADCAST_ID, "A").cfg();
@@ -409,6 +426,7 @@ BOOST_FIXTURE_TEST_CASE(check_size, DynamicBufferFixture)
 
     // would be A but it is too large
     {
+        TestClock::increment(std::chrono::microseconds(1));
         auto vp = buffer.top(goby::acomms::BROADCAST_ID, 3);
         BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
         BOOST_CHECK_EQUAL(vp.data, "1");
@@ -423,17 +441,19 @@ BOOST_FIXTURE_TEST_CASE(check_size, DynamicBufferFixture)
 
 BOOST_FIXTURE_TEST_CASE(check_ack_timeout, DynamicBufferFixture)
 {
-    auto now = goby::time::SteadyClock::now();
+    auto now = TestClock::now();
 
     BOOST_CHECK_EQUAL(buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"}).size(), 0);
     BOOST_CHECK_EQUAL(buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"}).size(), 0);
 
+    TestClock::increment(std::chrono::milliseconds(1));
     int max_bytes = 100;
     {
         auto vp = buffer.top(goby::acomms::BROADCAST_ID, max_bytes, std::chrono::milliseconds(10));
         BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
         BOOST_CHECK_EQUAL(vp.data, "2");
     }
+    TestClock::increment(std::chrono::milliseconds(1));
     {
         auto vp = buffer.top(goby::acomms::BROADCAST_ID, max_bytes, std::chrono::milliseconds(10));
         BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
@@ -445,7 +465,7 @@ BOOST_FIXTURE_TEST_CASE(check_ack_timeout, DynamicBufferFixture)
                                                std::chrono::milliseconds(10)),
                           goby::acomms::DynamicBufferNoDataException);
     }
-    usleep(10000); // 10 ms
+    TestClock::increment(std::chrono::milliseconds(10));
     {
         auto vp = buffer.top(goby::acomms::BROADCAST_ID, max_bytes, std::chrono::milliseconds(10));
         BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
@@ -482,20 +502,21 @@ struct MultiIDDynamicBufferFixture
 
     ~MultiIDDynamicBufferFixture() {}
 
-    goby::acomms::DynamicBuffer<std::string> buffer;
+    goby::acomms::DynamicBuffer<std::string, TestClock> buffer;
 };
 } // namespace test
 } // namespace goby
 
 BOOST_FIXTURE_TEST_CASE(two_destination_contest, goby::test::MultiIDDynamicBufferFixture)
 {
-    auto now = goby::time::SteadyClock::now();
+    auto now = TestClock::now();
 
     buffer.push({1, "A", now, "1"});
     buffer.push({2, "B", now, "1"});
     buffer.push({1, "A", now, "2"});
     buffer.push({2, "B", now, "2"});
 
+    TestClock::increment(std::chrono::milliseconds(1));
     // will be "A" because it was created first (and last access is initialized to creation time)
     {
         auto vp = buffer.top();
@@ -505,6 +526,7 @@ BOOST_FIXTURE_TEST_CASE(two_destination_contest, goby::test::MultiIDDynamicBuffe
         BOOST_CHECK_EQUAL(buffer.size(), 3);
     }
 
+    TestClock::increment(std::chrono::milliseconds(1));
     // now it will be "B"
     {
         auto vp = buffer.top();
@@ -514,6 +536,7 @@ BOOST_FIXTURE_TEST_CASE(two_destination_contest, goby::test::MultiIDDynamicBuffe
         BOOST_CHECK_EQUAL(buffer.size(), 2);
     }
 
+    TestClock::increment(std::chrono::milliseconds(1));
     // A, but we ask for dest 2, so B
     {
         auto vp = buffer.top(2);
