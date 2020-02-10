@@ -109,6 +109,9 @@ constexpr Group modem_subscription_forward_tx{
 constexpr Group modem_subscription_forward_rx{
     "goby::middleware::intervehicle::modem_subscription_forward_rx"};
 constexpr Group modem_driver_ready{"goby::middleware::intervehicle::modem_driver_ready"};
+
+constexpr Group metadata_request{"goby::middleware::intervehicle::metadata_request"};
+
 } // namespace groups
 
 class ModemDriverThread
@@ -154,7 +157,15 @@ class ModemDriverThread
 
     bool _dest_is_in_subnet(modem_id_type dest_id)
     {
-        return (dest_id & cfg().subnet_mask()) == (cfg().modem_id() & cfg().subnet_mask());
+        bool dest_in_subnet =
+            (dest_id & cfg().subnet_mask()) == (cfg().modem_id() & cfg().subnet_mask());
+        if (!dest_in_subnet)
+            goby::glog.is_debug3() && goby::glog
+                                          << "Dest: " << dest_id
+                                          << " is not in subnet (our id: " << cfg().modem_id()
+                                          << ", mask: " << cfg().subnet_mask();
+
+        return dest_in_subnet;
     }
 
   private:

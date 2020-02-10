@@ -59,6 +59,21 @@ class InterVehicleTransporterBase
     InterVehicleTransporterBase(InnerTransporter& inner)
         : InterfaceType(inner), PollerType(&this->inner())
     {
+        // handle request from Portal to omit or include metadata on future publications for a given data type
+        this->inner()
+            .template subscribe<intervehicle::groups::metadata_request,
+                                protobuf::SerializerMetadataRequest>(
+                [this](const protobuf::SerializerMetadataRequest& request) {
+                    switch (request.request())
+                    {
+                        case protobuf::SerializerMetadataRequest::METADATA_INCLUDE:
+                            omit_publish_metadata_.erase(request.key().type());
+                            break;
+                        case protobuf::SerializerMetadataRequest::METADATA_EXCLUDE:
+                            omit_publish_metadata_.insert(request.key().type());
+                            break;
+                    }
+                });
     }
     InterVehicleTransporterBase() : PollerType(&this->inner()) {}
 
@@ -201,6 +216,12 @@ class InterVehicleTransporterBase
                                       data, ack_handler, expire_handler);
         }
 
+        if (!omit_publish_metadata_.count(data->key().type()))
+            _set_protobuf_metadata<Data>(data->mutable_key()->mutable_metadata());
+
+        goby::glog.is_debug3() &&
+            goby::glog << "Set up publishing for: " << data->ShortDebugString() << std::endl;
+
         return data;
     }
 
@@ -315,9 +336,7 @@ class InterVehicleTransporterBase
         dccl_subscription->set_group(group.numeric());
         dccl_subscription->set_time_with_units(
             goby::time::SystemClock::now<goby::time::MicroTime>());
-        dccl_subscription->set_protobuf_name(
-            SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
-        _insert_file_desc_with_dependencies(Data::descriptor()->file(), dccl_subscription.get());
+        _set_protobuf_metadata<Data>(dccl_subscription->mutable_metadata());
         *dccl_subscription->mutable_intervehicle() = subscriber.cfg().intervehicle();
         return dccl_subscription;
     }
@@ -350,15 +369,20 @@ class InterVehicleTransporterBase
         return static_cast<Derived*>(this)->_poll(lock);
     }
 
+    template <typename Data> void _set_protobuf_metadata(protobuf::SerializerProtobufMetadata* meta)
+    {
+        meta->set_protobuf_name(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
+        _insert_file_desc_with_dependencies(Data::descriptor()->file(), meta);
+    }
+
     // used to populated InterVehicleSubscription file_descriptor fields
     void _insert_file_desc_with_dependencies(const google::protobuf::FileDescriptor* file_desc,
-                                             intervehicle::protobuf::Subscription* subscription)
+                                             protobuf::SerializerProtobufMetadata* meta)
     {
         for (int i = 0, n = file_desc->dependency_count(); i < n; ++i)
-            _insert_file_desc_with_dependencies(file_desc->dependency(i), subscription);
+            _insert_file_desc_with_dependencies(file_desc->dependency(i), meta);
 
-        google::protobuf::FileDescriptorProto* file_desc_proto =
-            subscription->add_file_descriptor();
+        google::protobuf::FileDescriptorProto* file_desc_proto = meta->add_file_descriptor();
         file_desc->CopyTo(file_desc_proto);
     }
 
@@ -405,6 +429,9 @@ class InterVehicleTransporterBase
         std::tuple<std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::AckData>>,
                    std::shared_ptr<SerializationHandlerBase<intervehicle::protobuf::ExpireData>>>>
         pending_ack_;
+
+    // map of Protobuf names where we can omit metadata on publication
+    std::set<std::string> omit_publish_metadata_;
 };
 
 /// \brief Implements the forwarder concept for the intervehicle layer
@@ -599,9 +626,6 @@ class InterVehiclePortal
                 goby::glog.is_debug1() && goby::glog << "Received driver ready" << std::endl;
                 ++drivers_ready_;
             });
-
-        for (const auto& lib_path : cfg_.dccl_load_library())
-            detail::DCCLSerializerParserHelperBase::load_library(lib_path);
 
         for (int i = 0, n = cfg_.link_size(); i < n; ++i)
         {

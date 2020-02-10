@@ -118,8 +118,13 @@ int main(int argc, char* argv[])
     mac.push_back(downlink_slot);
     mac.update();
 
+    mac.restart();
+
     while (first_cycle == -1 || (current_cycle < first_cycle + num_cycles_check))
-        mac.get_io_service().run_one();
+    {
+        mac.do_work();
+        usleep(1e2);
+    }
 
     std::cout << "all tests passed" << std::endl;
 }

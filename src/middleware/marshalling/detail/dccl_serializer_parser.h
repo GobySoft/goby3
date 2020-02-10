@@ -29,6 +29,7 @@
 #include <dccl/codec.h>
 
 #include "goby/middleware/protobuf/intervehicle.pb.h"
+#include "goby/util/debug_logger.h"
 
 namespace goby
 {
@@ -113,6 +114,8 @@ struct DCCLSerializerParserHelperBase
     DCCLSerializerParserHelperBase() = default;
     virtual ~DCCLSerializerParserHelperBase() = default;
 
+    constexpr static int INVALID_DCCL_ID{0};
+
     template <typename CharIterator> static unsigned id(CharIterator begin, CharIterator end)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
@@ -124,13 +127,18 @@ struct DCCLSerializerParserHelperBase
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         auto* desc = dccl::DynamicProtobufManager::find_descriptor(full_name);
         if (desc)
+        {
             return codec().id(desc);
+        }
         else
+        {
+            goby::glog.is_warn() && goby::glog << "No DCCL message found with name: " << full_name
+                                               << std::endl;
             return 0;
+        }
     }
 
-    static void
-    load_forwarded_subscription(const goby::middleware::intervehicle::protobuf::Subscription& sub);
+    static void load_metadata(const goby::middleware::protobuf::SerializerProtobufMetadata& meta);
     static goby::middleware::intervehicle::protobuf::DCCLForwardedData
     unpack(const std::string& bytes);
 

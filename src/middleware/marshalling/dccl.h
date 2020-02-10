@@ -36,7 +36,6 @@ namespace protobuf
 class InterVehicleSubscription;
 } // namespace protobuf
 
-
 /// \brief Specialization for DCCL message types that are fully qualified Protobuf message types (static), e.g. DataType == Foo for "message Foo"
 ///
 /// DCCL is defined as distinct from the PROTOBUF Marshalling scheme if the DataTYpe has the DCCLParameters enumeration, as output by the \c protoc-gen-dccl plugin to \c protoc. If this plugin isn't used when compiling your .proto files, DCCL types will be identified as Protobuf types.

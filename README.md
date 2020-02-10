@@ -1,6 +1,6 @@
 # goby project
 
-The Goby Underwater Autonomy Project aims to create a unified framework for multiple scientific autonomous marine vehicle collaboration, seamlessly incorporating acoustic, ethernet, wifi, and serial communications. Goby provides a publish/subscribe middleware that operates on the concept ofunified Nested Communications, with differing layers for interthread, interprocess, and intervehicle communications.
+The Goby Underwater Autonomy Project aims to create a unified framework for multiple scientific autonomous marine vehicle collaboration, seamlessly incorporating acoustic, ethernet, wifi, and serial communications. Goby provides a publish/subscribe middleware that operates on the concept of unified Nested Communications, with differing layers for interthread, interprocess, and intervehicle communications.
 
 For Release 2.1.1 and newer, Goby uses the standalone DCCL project: https://github.com/GobySoft/dccl
 

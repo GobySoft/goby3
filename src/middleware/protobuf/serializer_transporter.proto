@@ -1,8 +1,17 @@
 syntax = "proto2";
 import "dccl/option_extensions.proto";
 import "goby/middleware/protobuf/transporter_config.proto";
+import "google/protobuf/descriptor.proto";
 
 package goby.middleware.protobuf;
+
+message SerializerProtobufMetadata
+{
+    // defines the DCCL message for the Portal (edge) internally on interprocess
+    optional string protobuf_name = 1 [(dccl.field).omit = true];
+    repeated google.protobuf.FileDescriptorProto file_descriptor = 2
+        [(dccl.field).omit = true];
+}
 
 message SerializerTransporterKey
 {
@@ -17,10 +26,23 @@ message SerializerTransporterKey
     optional uint64 serialize_time = 5
         [(dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}];
     optional TransporterConfig cfg = 10;
+    optional SerializerProtobufMetadata metadata = 20;
 }
 
 message SerializerTransporterMessage
 {
     required SerializerTransporterKey key = 1;
     optional bytes data = 4;
+}
+
+
+message SerializerMetadataRequest
+{
+    required SerializerTransporterKey key = 1;
+    enum Request
+    {
+        METADATA_INCLUDE = 1; // we need this metadata
+        METADATA_EXCLUDE = 2; // we already have the metadata
+    }
+    required Request request = 2;
 }

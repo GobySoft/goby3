@@ -15,7 +15,7 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
 
 set(MIDDLEWARE_SRC
   middleware/marshalling/interface.cpp
-  middleware/marshalling/dccl.cpp 
+  middleware/marshalling/detail/dccl_serializer_parser.cpp 
   middleware/transport/interthread.cpp
   middleware/transport/intervehicle/driver_thread.cpp
   middleware/application/configuration_reader.cpp
