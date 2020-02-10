@@ -135,7 +135,11 @@ template <typename Config, typename TransporterType> class Thread
 
     void set_transporter(TransporterType* transporter) { transporter_ = transporter; }
 
-    virtual void loop() { sleep(1); }
+    virtual void loop()
+    {
+        throw(std::runtime_error(
+            "void Thread::loop() must be overridden for non-zero loop frequencies"));
+    }
 
     double loop_frequency_hertz() const { return loop_frequency_ / boost::units::si::hertz; }
     decltype(loop_frequency_) loop_frequency() const { return loop_frequency_; }
