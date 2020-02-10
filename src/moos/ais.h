@@ -79,7 +79,10 @@ class AISConverter
             pos.set_true_heading_with_units(status.pose().heading_with_units());
 
         std::vector<quantity<si::velocity>> sogs;
-        std::vector<quantity<si::plane_angle>> cogs;
+        std::vector<double> cogs_cos;
+        std::vector<double> cogs_sin;
+
+        auto ninety_degrees(90. * boost::units::degree::degrees);
 
         for (int i = 1, n = status_reports_.size(); i < n; ++i)
         {
@@ -90,19 +93,26 @@ class AISConverter
             auto dx = status1.local_fix().x_with_units() - status0.local_fix().x_with_units();
             auto dt = status1.time_with_units() - status0.time_with_units();
 
-            auto ninety_degrees(90. * boost::units::degree::degrees);
             decltype(ninety_degrees) cog_angle(boost::units::atan2(dy, dx));
 
             sogs.push_back(boost::units::sqrt(dy * dy + dx * dx) / dt);
-            cogs.push_back(quantity<si::plane_angle>(ninety_degrees - cog_angle));
+            cogs_cos.push_back(boost::units::cos(cog_angle));
+            cogs_sin.push_back(boost::units::sin(cog_angle));
         }
         auto sog_sum =
             std::accumulate(sogs.begin(), sogs.end(), 0. * boost::units::si::meters_per_second);
 
-        auto cog_sum = std::accumulate(cogs.begin(), cogs.end(), 0. * boost::units::si::radians);
+        auto cogs_cos_mean =
+            std::accumulate(cogs_cos.begin(), cogs_cos.end(), 0.0) / cogs_cos.size();
+        auto cogs_sin_mean =
+            std::accumulate(cogs_sin.begin(), cogs_sin.end(), 0.0) / cogs_sin.size();
 
         pos.set_speed_over_ground_with_units(sog_sum / quantity<si::dimensionless>(sogs.size()));
-        pos.set_course_over_ground_with_units(cog_sum / quantity<si::dimensionless>(cogs.size()));
+
+        decltype(ninety_degrees) cog_heading_mean(
+            boost::units::atan2(quantity<si::dimensionless>(cogs_sin_mean),
+                                quantity<si::dimensionless>(cogs_cos_mean)));
+        pos.set_course_over_ground_with_units(ninety_degrees - cog_heading_mean);
 
         Voyage voy;
         voy.set_message_id(24); // Class B voyage
