@@ -23,7 +23,6 @@
 #include <cmath>
 #include <iostream>
 
-#include <boost/bind.hpp>
 #include <boost/date_time/gregorian/gregorian_types.hpp>
 
 #include "goby/time/io.h"
@@ -39,10 +38,7 @@ using namespace goby::util::tcolor;
 int goby::acomms::MACManager::count_;
 
 goby::acomms::MACManager::MACManager()
-    : timer_(io_),
-      work_(io_),
-      current_slot_(std::list<protobuf::ModemTransmission>::begin()),
-      started_up_(false)
+    : current_slot_(std::list<protobuf::ModemTransmission>::begin()), started_up_(false)
 {
     ++count_;
 
@@ -51,16 +47,6 @@ goby::acomms::MACManager::MACManager()
 }
 
 goby::acomms::MACManager::~MACManager() {}
-
-void goby::acomms::MACManager::restart_timer()
-{
-    // cancel any old timer jobs waiting
-    timer_.cancel();
-    timer_.expires_at(next_slot_t_);
-    timer_.async_wait([this](const boost::system::error_code& e) { begin_slot(e); });
-}
-
-void goby::acomms::MACManager::stop_timer() { timer_.cancel(); }
 
 void goby::acomms::MACManager::startup(const protobuf::MACConfig& cfg)
 {
@@ -94,6 +80,12 @@ void goby::acomms::MACManager::startup(const protobuf::MACConfig& cfg)
     restart();
 }
 
+void goby::acomms::MACManager::do_work()
+{
+    if (running() && goby::time::SystemClock::now() > next_slot_t_)
+        begin_slot();
+}
+
 void goby::acomms::MACManager::restart()
 {
     glog.is(DEBUG1) && glog << group(glog_mac_group_)
@@ -118,8 +110,6 @@ void goby::acomms::MACManager::restart()
 
 void goby::acomms::MACManager::shutdown()
 {
-    stop_timer();
-
     current_slot_ = std::list<protobuf::ModemTransmission>::begin();
     started_up_ = false;
 
@@ -127,12 +117,8 @@ void goby::acomms::MACManager::shutdown()
                             << "the MAC cycle has been shutdown until restarted." << std::endl;
 }
 
-void goby::acomms::MACManager::begin_slot(const boost::system::error_code& e)
+void goby::acomms::MACManager::begin_slot()
 {
-    // canceled the last timer
-    if (e == boost::asio::error::operation_aborted)
-        return;
-
     // check skew
     if (std::abs((time::SystemClock::now() - next_slot_t_) / std::chrono::microseconds(1)) >
         allowed_skew_ / std::chrono::microseconds(1))
@@ -199,8 +185,6 @@ void goby::acomms::MACManager::begin_slot(const boost::system::error_code& e)
 
     glog.is(DEBUG1) && glog << group(glog_mac_group_) << "Next slot at " << next_slot_t_
                             << std::endl;
-
-    restart_timer();
 }
 
 void goby::acomms::MACManager::increment_slot()
@@ -271,7 +255,7 @@ void goby::acomms::MACManager::update()
     {
         glog.is(DEBUG1) && glog << group(glog_mac_group_)
                                 << "the MAC TDMA cycle is empty. Stopping timer" << std::endl;
-        stop_timer();
+        started_up_ = false;
         return;
     }
 
@@ -302,9 +286,6 @@ void goby::acomms::MACManager::update()
         glog.is(DEBUG1) && glog << group(glog_mac_group_) << "Next slot at " << next_slot_t_
                                 << std::endl;
     }
-
-    if (started_up_)
-        restart_timer();
 }
 
 goby::time::SystemClock::duration goby::acomms::MACManager::cycle_duration()

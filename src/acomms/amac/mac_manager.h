@@ -23,12 +23,6 @@
 #ifndef MAC20091019H
 #define MAC20091019H
 
-#include <boost/asio.hpp>
-#include <boost/asio/time_traits.hpp>
-#include <boost/bind.hpp>
-#include <boost/function.hpp>
-#include <boost/lexical_cast.hpp>
-
 #include "goby/acomms/modem_driver.h"
 #include "goby/acomms/protobuf/amac.pb.h"
 #include "goby/acomms/protobuf/amac_config.pb.h"
@@ -71,8 +65,8 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     /// \brief Shutdown the MAC
     void shutdown();
 
-    /// \brief Allows the MAC timer to do its work. Does not block. If you prefer more control you can directly control the underlying boost::asio::io_service (get_io_service()) instead of using this function. This function is equivalent to get_io_service().poll();
-    void do_work() { io_.poll(); }
+    /// \brief Allows the MAC timer to do its work. Does not block.
+    void do_work();
 
     /// \brief You must call this after any change to the underlying list that would invalidate iterators or change the size (insert, push_back, erase, etc.).
     void update();
@@ -100,12 +94,10 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     unsigned cycle_count() { return std::list<protobuf::ModemTransmission>::size(); }
     time::SystemClock::duration cycle_duration();
 
-    boost::asio::io_service& get_io_service() { return io_; }
-
     const std::string& glog_mac_group() const { return glog_mac_group_; }
 
   private:
-    void begin_slot(const boost::system::error_code&);
+    void begin_slot();
     time::SystemClock::time_point next_cycle_time();
 
     void increment_slot();
@@ -125,13 +117,6 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     MACManager& operator=(const MACManager&);
 
     protobuf::MACConfig cfg_;
-
-    // asynchronous timer
-    boost::asio::io_service io_;
-
-    boost::asio::basic_waitable_timer<goby::time::SystemClock> timer_;
-    // give the io_service some work to do forever
-    boost::asio::io_service::work work_;
 
     // start of the next cycle (cycle = all slots)
     time::SystemClock::time_point next_cycle_t_;
