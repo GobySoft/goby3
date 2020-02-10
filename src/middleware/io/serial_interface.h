@@ -55,11 +55,11 @@ class SerialThread
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
     /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
     SerialThread(const goby::middleware::protobuf::SerialConfig& config, int index = -1)
-        : Base(config, index)
+        : Base(config, index, std::string("serial: ") + config.port())
     {
         auto command_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::SerialCommand> cmd) {
-                goby::glog.is_debug2() && goby::glog << group("i/o") << "< [Command] "
+                goby::glog.is_debug2() && goby::glog << group(this->glog_group()) << "< [Command] "
                                                      << cmd->ShortDebugString() << std::endl;
                 switch (cmd->command())
                 {

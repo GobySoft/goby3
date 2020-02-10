@@ -50,7 +50,10 @@ class UDPOneToManyThread : public IOThread<line_in_group, line_out_group, publis
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    UDPOneToManyThread(const Config& config) : Base(config) {}
+    UDPOneToManyThread(const Config& config)
+        : Base(config, -1, std::string("udp: ") + std::to_string(config.bind_port()))
+    {
+    }
 
     ~UDPOneToManyThread() {}
 
