@@ -842,8 +842,11 @@ void goby::apps::moos::CpAcommsHandler::driver_reset(
                     // bind the correct signals
                     driver_bind();
 
-                    // restart the new primary driver
-                    driver_restart_time_.insert(std::make_pair(driver_, 0));
+                    // restart the new primary driver (after backoff)
+                    driver_restart_time_.insert(std::make_pair(
+                        driver_, goby::time::SystemClock::now<goby::time::SITime>() /
+                                         boost::units::si::seconds +
+                                     cfg_.driver_failure_approach().new_driver_backoff_sec()));
                 }
             }
 

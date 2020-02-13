@@ -48,6 +48,11 @@ message pAcommsHandlerConfig
                 "Seconds to wait until restarting a failed driver.",
             default = 60
         ];
+        optional int32 new_driver_backoff_sec = 3 [
+            (goby.field).description =
+                "Seconds to wait until starting a listen driver in place of the failed driver.",
+            default = 5
+        ];
     }
     optional DriverFailureApproach driver_failure_approach = 32
         [(goby.field).description = "How to try to deal with a failed driver"];
