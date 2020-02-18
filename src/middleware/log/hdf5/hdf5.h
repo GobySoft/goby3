@@ -27,10 +27,10 @@
 #include "H5Cpp.h"
 
 #include "goby/middleware/application/interface.h"
-#include "goby/middleware/hdf5_plugin.h"
 #include "goby/middleware/protobuf/hdf5.pb.h"
 #include "goby/util/binary.h"
 
+#include "hdf5_plugin.h"
 #include "hdf5_predicate.h"
 #include "hdf5_protobuf_values.h"
 

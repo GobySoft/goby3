@@ -159,6 +159,7 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
             std::vector<const google::protobuf::Message*> sub_messages(
                 messages.size() * max_field_size, (const google::protobuf::Message*)0);
 
+            bool has_submessages = false;
             for (unsigned i = 0, n = messages.size(); i < n; ++i)
             {
                 if (messages[i])
@@ -172,10 +173,13 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
                             refl->GetRepeatedMessage(*messages[i], field_desc, j);
                         sub_messages[i * max_field_size + j] = &sub_msg;
                     }
+                    has_submessages = true;
                 }
             }
-            write_field_selector(group + "/" + field_desc->name(), sub_field_desc, sub_messages,
-                                 hs);
+
+            if (has_submessages) // don't recurse unless one or more message requires it
+                write_field_selector(group + "/" + field_desc->name(), sub_field_desc, sub_messages,
+                                     hs);
         }
         hs.pop_back();
     }
@@ -185,6 +189,9 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
         {
             const google::protobuf::FieldDescriptor* sub_field_desc = sub_desc->field(i);
             std::vector<const google::protobuf::Message*> sub_messages;
+
+            bool has_submessages = false;
+
             for (std::vector<const google::protobuf::Message*>::const_iterator
                      it = messages.begin(),
                      end = messages.end();
@@ -195,14 +202,17 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
                     const google::protobuf::Reflection* refl = (*it)->GetReflection();
                     const google::protobuf::Message& sub_msg = refl->GetMessage(**it, field_desc);
                     sub_messages.push_back(&sub_msg);
+                    has_submessages = true;
                 }
                 else
                 {
                     sub_messages.push_back(0);
                 }
             }
-            write_field_selector(group + "/" + field_desc->name(), sub_field_desc, sub_messages,
-                                 hs);
+
+            if (has_submessages)
+                write_field_selector(group + "/" + field_desc->name(), sub_field_desc, sub_messages,
+                                     hs);
         }
     }
 }

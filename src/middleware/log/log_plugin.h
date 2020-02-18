@@ -27,7 +27,7 @@
 #include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
 
-#include "goby/middleware/hdf5_plugin.h"
+#include "goby/middleware/log/hdf5/hdf5_plugin.h"
 
 namespace goby
 {
