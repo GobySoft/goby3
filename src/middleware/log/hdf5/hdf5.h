@@ -46,7 +46,7 @@ struct MessageCollection
     std::string name;
 
     // time -> Message contents
-    std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message> > entries;
+    std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message>> entries;
 };
 
 struct Channel
@@ -90,15 +90,16 @@ class GroupFactory
     GroupWrapper root_group_;
 };
 
-class Writer : public goby::middleware::Application<goby::middleware::protobuf::HDF5Config>
+class Writer
 {
   public:
-    Writer();
+    Writer(const std::string& output_file, bool include_string_fields);
+
+    void add_entry(goby::middleware::HDF5ProtobufEntry entry);
+
+    void write();
 
   private:
-    void load();
-    void collect();
-    void write();
     void write_channel(const std::string& group, const goby::middleware::hdf5::Channel& channel);
     void
     write_message_collection(const std::string& group,
@@ -133,16 +134,13 @@ class Writer : public goby::middleware::Application<goby::middleware::protobuf::
                       const std::vector<std::string>& data, const std::vector<hsize_t>& hs,
                       const std::string& default_value);
 
-    void run() {}
-
   private:
-    std::shared_ptr<goby::middleware::HDF5Plugin> plugin_;
-
     // channel name -> hdf5::Channel
     std::map<std::string, goby::middleware::hdf5::Channel> channels_;
     H5::H5File h5file_;
-
     goby::middleware::hdf5::GroupFactory group_factory_;
+
+    bool include_string_fields_;
 };
 
 template <typename T>

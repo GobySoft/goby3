@@ -207,6 +207,11 @@ if(enable_ais)
   target_link_libraries(goby ${AIS_LIBRARIES})
 endif()
 
+
+if(enable_hdf5)
+  target_link_libraries(goby ${HDF5_LIBRARIES})
+endif()
+
 set_target_properties(goby PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
 goby_install_lib(goby core)

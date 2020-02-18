@@ -19,43 +19,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <cstdlib>
-#include <dlfcn.h>
-#include <iostream>
-
-#include "goby/util/debug_logger.h"
-
 #include "hdf5.h"
-
-void* plugin_handle = 0;
-
-using namespace goby::util::logger;
-using goby::glog;
-
-int main(int argc, char* argv[])
-{
-    // load plugin driver from environmental variable GOBY_HDF5_PLUGIN
-    const char* plugin_path = getenv("GOBY_HDF5_PLUGIN");
-    if (plugin_path)
-    {
-        std::cerr << "Loading plugin library: " << plugin_path << std::endl;
-        plugin_handle = dlopen(plugin_path, RTLD_LAZY);
-        if (!plugin_handle)
-        {
-            std::cerr << "Failed to open library: " << plugin_path << std::endl;
-            exit(EXIT_FAILURE);
-        }
-    }
-    else
-    {
-        std::cerr << "Environmental variable GOBY_HDF5_PLUGIN must be set with name of the dynamic "
-                     "library containing the specific frontend plugin to use."
-                  << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    return goby::run<goby::middleware::hdf5::Writer>(argc, argv);
-}
 
 void goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5ProtobufEntry& entry)
 {
@@ -102,54 +66,27 @@ goby::middleware::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::
     }
 }
 
-goby::middleware::hdf5::Writer::Writer()
-    : h5file_(app_cfg().output_file(), H5F_ACC_TRUNC), group_factory_(h5file_)
+goby::middleware::hdf5::Writer::Writer(const std::string& output_file, bool include_string_fields)
+    : h5file_(output_file, H5F_ACC_TRUNC),
+      group_factory_(h5file_),
+      include_string_fields_(include_string_fields)
 {
-    load();
-    collect();
-    write();
-    quit();
 }
 
-void goby::middleware::hdf5::Writer::load()
+void goby::middleware::hdf5::Writer::add_entry(goby::middleware::HDF5ProtobufEntry entry)
 {
-    typedef goby::middleware::HDF5Plugin* (*plugin_func)(
-        const goby::middleware::protobuf::HDF5Config*);
-    plugin_func plugin_ptr = (plugin_func)dlsym(plugin_handle, "goby_hdf5_load");
+    boost::trim_if(entry.channel, boost::algorithm::is_space() || boost::algorithm::is_any_of("/"));
 
-    if (!plugin_ptr)
-        glog.is(DIE) &&
-            glog << "Function goby_hdf5_load in library defined in GOBY_HDF5_PLUGIN does not exist."
-                 << std::endl;
-    else
-        plugin_.reset((*plugin_ptr)(&app_cfg()));
-
-    if (!plugin_)
-        glog.is(DIE) && glog << "Function goby_hdf5_load in library defined in GOBY_HDF5_PLUGIN "
-                                "returned a null pointer."
-                             << std::endl;
-}
-
-void goby::middleware::hdf5::Writer::collect()
-{
-    goby::middleware::HDF5ProtobufEntry entry;
-    while (plugin_->provide_entry(&entry))
+    typedef std::map<std::string, goby::middleware::hdf5::Channel>::iterator It;
+    It it = channels_.find(entry.channel);
+    if (it == channels_.end())
     {
-        boost::trim_if(entry.channel,
-                       boost::algorithm::is_space() || boost::algorithm::is_any_of("/"));
-
-        typedef std::map<std::string, goby::middleware::hdf5::Channel>::iterator It;
-        It it = channels_.find(entry.channel);
-        if (it == channels_.end())
-        {
-            std::pair<It, bool> itpair = channels_.insert(
-                std::make_pair(entry.channel, goby::middleware::hdf5::Channel(entry.channel)));
-            it = itpair.first;
-        }
-
-        it->second.add_message(entry);
-        entry.clear();
+        std::pair<It, bool> itpair = channels_.insert(
+            std::make_pair(entry.channel, goby::middleware::hdf5::Channel(entry.channel)));
+        it = itpair.first;
     }
+
+    it->second.add_message(entry);
 }
 
 void goby::middleware::hdf5::Writer::write()
@@ -184,7 +121,7 @@ void goby::middleware::hdf5::Writer::write_message_collection(
 
         std::vector<const google::protobuf::Message*> messages;
         for (std::multimap<std::uint64_t,
-                           std::shared_ptr<google::protobuf::Message> >::const_iterator
+                           std::shared_ptr<google::protobuf::Message>>::const_iterator
                  it = message_collection.entries.begin(),
                  end = message_collection.entries.end();
              it != end; ++it)
@@ -309,7 +246,7 @@ void goby::middleware::hdf5::Writer::write_field_selector(
             break;
 
         case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-            if (app_cfg().include_string_fields())
+            if (include_string_fields_)
                 write_field<std::string>(group, field_desc, messages, hs);
             else
                 // placeholder for users to know that the field exists, even if the data are omitted
@@ -369,7 +306,7 @@ void goby::middleware::hdf5::Writer::write_time(
     std::vector<std::uint64_t> utime(message_collection.entries.size(), 0);
     std::vector<double> datenum(message_collection.entries.size(), 0);
     int i = 0;
-    for (std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message> >::const_iterator
+    for (std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message>>::const_iterator
              it = message_collection.entries.begin(),
              end = message_collection.entries.end();
          it != end; ++it)

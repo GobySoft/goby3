@@ -27,6 +27,8 @@
 #include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
 
+#include "goby/middleware/hdf5_plugin.h"
+
 namespace goby
 {
 namespace middleware
@@ -45,6 +47,11 @@ class LogPlugin
     virtual std::string debug_text_message(LogEntry& log_entry)
     {
         throw(log::LogException("DEBUG_TEXT is not supported by the scheme's plugin"));
+    }
+
+    virtual std::vector<goby::middleware::HDF5ProtobufEntry> hdf5_entry(LogEntry& log_entry)
+    {
+        throw(log::LogException("HDF5 is not supported by the scheme's plugin"));
     }
 };
 
