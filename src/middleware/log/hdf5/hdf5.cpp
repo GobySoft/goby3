@@ -21,6 +21,8 @@
 
 #include "hdf5.h"
 
+#include <dccl/dynamic_protobuf_manager.h>
+
 void goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5ProtobufEntry& entry)
 {
     const std::string& msg_name = entry.msg->GetDescriptor()->full_name();
@@ -66,10 +68,8 @@ goby::middleware::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::
     }
 }
 
-goby::middleware::hdf5::Writer::Writer(const std::string& output_file, bool include_string_fields)
-    : h5file_(output_file, H5F_ACC_TRUNC),
-      group_factory_(h5file_),
-      include_string_fields_(include_string_fields)
+goby::middleware::hdf5::Writer::Writer(const std::string& output_file)
+    : h5file_(output_file, H5F_ACC_TRUNC), group_factory_(h5file_)
 {
 }
 
@@ -113,12 +113,7 @@ void goby::middleware::hdf5::Writer::write_message_collection(
 {
     write_time(group, message_collection);
 
-    const google::protobuf::Descriptor* desc =
-        message_collection.entries.begin()->second->GetDescriptor();
-    for (int i = 0, n = desc->field_count(); i < n; ++i)
-    {
-        const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
-
+    auto write_field = [&, this](const google::protobuf::FieldDescriptor* field_desc) {
         std::vector<const google::protobuf::Message*> messages;
         for (std::multimap<std::uint64_t,
                            std::shared_ptr<google::protobuf::Message>>::const_iterator
@@ -128,6 +123,24 @@ void goby::middleware::hdf5::Writer::write_message_collection(
         { messages.push_back(it->second.get()); } std::vector<hsize_t> hs;
         hs.push_back(messages.size());
         write_field_selector(group, field_desc, messages, hs);
+    };
+
+    const google::protobuf::Descriptor* desc =
+        message_collection.entries.begin()->second->GetDescriptor();
+    for (int i = 0, n = desc->field_count(); i < n; ++i)
+    {
+        const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
+        write_field(field_desc);
+    }
+
+    std::vector<const google::protobuf::FieldDescriptor*> extensions;
+    google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
+    dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(desc, &extensions);
+
+    for (int i = 0, n = extensions.size(); i < n; ++i)
+    {
+        const google::protobuf::FieldDescriptor* field_desc = extensions[i];
+        write_field(field_desc);
     }
 }
 
@@ -152,10 +165,7 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
 
         hs.push_back(max_field_size);
 
-        for (int i = 0, n = sub_desc->field_count(); i < n; ++i)
-        {
-            const google::protobuf::FieldDescriptor* sub_field_desc = sub_desc->field(i);
-
+        auto write_field = [&, this](const google::protobuf::FieldDescriptor* sub_field_desc) {
             std::vector<const google::protobuf::Message*> sub_messages(
                 messages.size() * max_field_size, (const google::protobuf::Message*)0);
 
@@ -178,16 +188,34 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
             }
 
             if (has_submessages) // don't recurse unless one or more message requires it
-                write_field_selector(group + "/" + field_desc->name(), sub_field_desc, sub_messages,
-                                     hs);
+                write_field_selector(
+                    group + "/" +
+                        (field_desc->is_extension() ? field_desc->full_name() : field_desc->name()),
+                    sub_field_desc, sub_messages, hs);
+        };
+
+        for (int i = 0, n = sub_desc->field_count(); i < n; ++i)
+        {
+            const google::protobuf::FieldDescriptor* sub_field_desc = sub_desc->field(i);
+            write_field(sub_field_desc);
         }
+
+        std::vector<const google::protobuf::FieldDescriptor*> extensions;
+        google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(sub_desc,
+                                                                              &extensions);
+        dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(sub_desc,
+                                                                               &extensions);
+        for (int i = 0, n = extensions.size(); i < n; ++i)
+        {
+            const google::protobuf::FieldDescriptor* sub_field_desc = extensions[i];
+            write_field(sub_field_desc);
+        }
+
         hs.pop_back();
     }
     else
     {
-        for (int i = 0, n = sub_desc->field_count(); i < n; ++i)
-        {
-            const google::protobuf::FieldDescriptor* sub_field_desc = sub_desc->field(i);
+        auto write_field = [&, this](const google::protobuf::FieldDescriptor* sub_field_desc) {
             std::vector<const google::protobuf::Message*> sub_messages;
 
             bool has_submessages = false;
@@ -211,8 +239,27 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
             }
 
             if (has_submessages)
-                write_field_selector(group + "/" + field_desc->name(), sub_field_desc, sub_messages,
-                                     hs);
+                write_field_selector(
+                    group + "/" +
+                        (field_desc->is_extension() ? field_desc->full_name() : field_desc->name()),
+                    sub_field_desc, sub_messages, hs);
+        };
+
+        for (int i = 0, n = sub_desc->field_count(); i < n; ++i)
+        {
+            const google::protobuf::FieldDescriptor* sub_field_desc = sub_desc->field(i);
+            write_field(sub_field_desc);
+        }
+
+        std::vector<const google::protobuf::FieldDescriptor*> extensions;
+        google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(sub_desc,
+                                                                              &extensions);
+        dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(sub_desc,
+                                                                               &extensions);
+        for (int i = 0, n = extensions.size(); i < n; ++i)
+        {
+            const google::protobuf::FieldDescriptor* sub_field_desc = extensions[i];
+            write_field(sub_field_desc);
         }
     }
 }
@@ -256,12 +303,7 @@ void goby::middleware::hdf5::Writer::write_field_selector(
             break;
 
         case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-            if (include_string_fields_)
-                write_field<std::string>(group, field_desc, messages, hs);
-            else
-                // placeholder for users to know that the field exists, even if the data are omitted
-                write_vector(group, field_desc->name(), std::vector<unsigned char>(),
-                             std::vector<hsize_t>(1, 0), (unsigned char)0);
+            write_field<std::string>(group, field_desc, messages, hs);
             break;
 
         case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
@@ -341,19 +383,33 @@ void goby::middleware::hdf5::Writer::write_time(
 void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
                                                   const std::string dataset_name,
                                                   const std::vector<std::string>& data,
-                                                  const std::vector<hsize_t>& hs,
+                                                  const std::vector<hsize_t>& hs_outer,
                                                   const std::string& default_value)
 {
-    std::vector<const char*> data_c_str;
-    for (unsigned i = 0, n = data.size(); i < n; ++i) data_c_str.push_back(data[i].c_str());
+    std::vector<char> data_char;
+    std::vector<hsize_t> hs = hs_outer;
+
+    int max_size = 0;
+    for (unsigned i = 0, n = data.size(); i < n; ++i)
+    {
+        if (data[i].size() > max_size)
+            max_size = data[i].size();
+    }
+
+    for (unsigned i = 0, n = data.size(); i < n; ++i)
+    {
+        std::string d = data[i];
+        d.resize(max_size, ' ');
+        for (char c : d) data_char.push_back(c);
+    }
+    hs.push_back(max_size);
 
     H5::DataSpace dataspace(hs.size(), hs.data(), hs.data());
-    H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE);
     H5::Group& grp = group_factory_.fetch_group(group);
-    H5::DataSet dataset = grp.createDataSet(dataset_name, datatype, dataspace);
+    H5::DataSet dataset = grp.createDataSet(dataset_name, H5::PredType::NATIVE_CHAR, dataspace);
 
-    if (data_c_str.size())
-        dataset.write(data_c_str.data(), datatype);
+    if (data_char.size())
+        dataset.write(&data_char[0], H5::PredType::NATIVE_CHAR);
 
     const int rank = 1;
     hsize_t att_hs[] = {1};

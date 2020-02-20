@@ -29,5 +29,4 @@ message LogToolConfig
         [(goby.field).description =
              "Load a shared library (e.g. to load Protobuf files)"];
 
-    optional bool h5_include_string_fields = 50 [default = false];
 }

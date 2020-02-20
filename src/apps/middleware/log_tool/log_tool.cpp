@@ -114,8 +114,7 @@ goby::apps::middleware::LogTool::LogTool()
         case protobuf::LogToolConfig::DEBUG_TEXT: f_out_.open(output_file_path_.c_str()); break;
 #ifdef HAS_HDF5
         case protobuf::LogToolConfig::HDF5:
-            h5_writer_.reset(new goby::middleware::hdf5::Writer(
-                output_file_path_, app_cfg().h5_include_string_fields()));
+            h5_writer_.reset(new goby::middleware::hdf5::Writer(output_file_path_));
             break;
 #endif
         default:
@@ -164,8 +163,7 @@ goby::apps::middleware::LogTool::LogTool()
                                << log_entry.type() << " | " << debug_text_msg << std::endl;
                         break;
                     }
-                    case protobuf::LogToolConfig::HDF5:
-                    {
+                    case protobuf::LogToolConfig::HDF5: {
 #ifdef HAS_HDF5
                         auto h5_entries = plugin->second->hdf5_entry(log_entry);
                         for (const auto& entry : h5_entries) h5_writer_->add_entry(entry);

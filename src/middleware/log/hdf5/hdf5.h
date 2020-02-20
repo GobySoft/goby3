@@ -23,6 +23,7 @@
 #define GOBYHDF520160524H
 
 #include <boost/algorithm/string.hpp>
+#include <boost/range/algorithm/replace_if.hpp>
 
 #include "H5Cpp.h"
 
@@ -93,7 +94,7 @@ class GroupFactory
 class Writer
 {
   public:
-    Writer(const std::string& output_file, bool include_string_fields);
+    Writer(const std::string& output_file);
 
     void add_entry(goby::middleware::HDF5ProtobufEntry entry);
 
@@ -139,8 +140,6 @@ class Writer
     std::map<std::string, goby::middleware::hdf5::Channel> channels_;
     H5::H5File h5file_;
     goby::middleware::hdf5::GroupFactory group_factory_;
-
-    bool include_string_fields_;
 };
 
 template <typename T>

@@ -41,7 +41,7 @@ namespace hdf5
 class WriterApp : public goby::middleware::Application<goby::middleware::protobuf::HDF5Config>
 {
   public:
-    WriterApp() : writer_(app_cfg().output_file(), app_cfg().include_string_fields())
+    WriterApp() : writer_(app_cfg().output_file())
     {
         load();
         collect();
