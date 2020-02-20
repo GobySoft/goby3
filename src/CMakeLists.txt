@@ -102,6 +102,11 @@ else()
   message(">> setting enable_hdf5 to OFF ... if you need this functionality: 1) install libhdf5-dev; 2) run cmake -Denable_hdf5=ON")
 endif()
 
+if(enable_hdf5)
+  goby_find_required_package(HDF5)  
+  add_definitions(-DHAS_HDF5)
+endif()
+
 ## Wt
 find_package(WtGoby QUIET)
 set(WT_DOC_STRING "Enable Wt web browser GUI components (requires libwt-dev, libwtdbo-dev, libwtdbosqlite-dev, and libwthttp-dev: http://www.webtoolkit.eu/wt)")

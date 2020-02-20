@@ -27,7 +27,11 @@
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
 
 #include "goby/middleware/log/dccl_log_plugin.h"
+
+#ifdef HAS_HDF5
 #include "goby/middleware/log/hdf5/hdf5.h"
+#endif
+
 #include "goby/middleware/log/protobuf_log_plugin.h"
 
 using goby::glog;
@@ -45,11 +49,13 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
     LogTool();
     ~LogTool()
     {
+#ifdef HAS_HDF5
         if (app_cfg().format() == protobuf::LogToolConfig::HDF5)
             h5_writer_->write();
 
         // need to clear these objects before protobuf shutdown or else we get an invalid pointer error
         h5_writer_.reset();
+#endif
 
         dccl::DynamicProtobufManager::protobuf_shutdown();
         for (void* handle : dl_handles_) dlclose(handle);
@@ -89,7 +95,10 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
     std::string output_file_path_;
 
     std::ofstream f_out_;
+
+#ifdef HAS_HDF5
     std::unique_ptr<goby::middleware::hdf5::Writer> h5_writer_;
+#endif
 };
 } // namespace middleware
 } // namespace apps
@@ -103,9 +112,18 @@ goby::apps::middleware::LogTool::LogTool()
     switch (app_cfg().format())
     {
         case protobuf::LogToolConfig::DEBUG_TEXT: f_out_.open(output_file_path_.c_str()); break;
+#ifdef HAS_HDF5
         case protobuf::LogToolConfig::HDF5:
             h5_writer_.reset(new goby::middleware::hdf5::Writer(
                 output_file_path_, app_cfg().h5_include_string_fields()));
+            break;
+#endif
+        default:
+            glog.is_die() &&
+                glog << "Format: " << protobuf::LogToolConfig::OutputFormat_Name(app_cfg().format())
+                     << " is not supported. Make sure you have compiled Goby with the correct "
+                        "supporting library"
+                     << std::endl;
             break;
     }
 
@@ -148,8 +166,10 @@ goby::apps::middleware::LogTool::LogTool()
                     }
                     case protobuf::LogToolConfig::HDF5:
                     {
+#ifdef HAS_HDF5
                         auto h5_entries = plugin->second->hdf5_entry(log_entry);
                         for (const auto& entry : h5_entries) h5_writer_->add_entry(entry);
+#endif
                         break;
                     }
                 }
