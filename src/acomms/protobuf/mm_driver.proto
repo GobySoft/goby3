@@ -113,6 +113,17 @@ message Config
     repeated uint32 additional_application_ack_modem_id = 21;
     
     optional bool query_cfg_on_startup = 22 [default = true];
+
+    message Revision
+    {
+	required int32 mm_major = 1;
+	required int32 mm_minor = 2;
+	required int32 mm_patch = 3;
+    }
+    
+    optional Revision revision = 30;
+
+    optional bool use_base64_fdp = 40 [default = false];
 }
 
 extend goby.acomms.protobuf.DriverConfig
