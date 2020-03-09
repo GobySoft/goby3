@@ -802,8 +802,8 @@ void goby::acomms::MMDriver::cctdp(protobuf::ModemTransmission* msg)
 	// pad to even bytes to avoid bug with Micro-Modem
 	if (revision_.mm_major == 2 && revision_.mm_minor == 0 && revision_.mm_patch < 35490)
 	{
-	  if(msg->frame(0).size() % 1)
-	      *msg->mutable_frame(0) += '\0';
+            if (msg->frame(0).size() & 1)
+                *msg->mutable_frame(0) += '\0';
 	}
 	
         nmea.push_back(goby::util::hex_encode(msg->frame(0))); //HHHH
