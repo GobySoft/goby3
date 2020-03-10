@@ -29,3 +29,11 @@ if(enable_mavlink)
     ${MIDDLEWARE_SRC}
     )
 endif()
+
+if(enable_hdf5)
+  set(MIDDLEWARE_SRC
+    middleware/log/hdf5/hdf5.cpp
+    ${MIDDLEWARE_SRC}
+    )
+endif()
+

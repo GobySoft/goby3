@@ -1,5 +1,6 @@
 syntax = "proto2";
 import "goby/middleware/protobuf/app_config.proto";
+import "goby/protobuf/option_extensions.proto";
 
 package goby.apps.middleware.protobuf;
 
@@ -7,15 +8,25 @@ message LogToolConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
 
-    required string input_file = 10;
-    required string output_file = 20;
+    required string input_file = 10 [(goby.field).description =
+                                         "Input goby_logger file to read (e.g. "
+                                         "'vehicle_20200204T121314.goby')"];
+    optional string output_file = 20
+        [(goby.field).description =
+             "Output file to write (default is determined by input_file name "
+             "and output format, e.g. vehicle_20200204T121314.txt for "
+             "DEBUG_TEXT, vehicle_20200204T121314.h5 for HDF5)"];
 
     enum OutputFormat
     {
         DEBUG_TEXT = 1;
+        HDF5 = 2;
     }
 
     optional OutputFormat format = 30 [default = DEBUG_TEXT];
-    
-    repeated string load_shared_library = 40;
+
+    repeated string load_shared_library = 40
+        [(goby.field).description =
+             "Load a shared library (e.g. to load Protobuf files)"];
+
 }

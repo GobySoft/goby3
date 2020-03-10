@@ -58,6 +58,21 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
         return ss.str();
     }
 
+    std::vector<goby::middleware::HDF5ProtobufEntry> hdf5_entry(LogEntry& log_entry) override
+    {
+        std::vector<goby::middleware::HDF5ProtobufEntry> hdf5_entries;
+        auto msgs = parse_message(log_entry);
+
+        for (auto msg : msgs)
+        {
+            hdf5_entries.emplace_back();
+            goby::middleware::HDF5ProtobufEntry& hdf5_entry = hdf5_entries.back();
+            hdf5_entry.channel = log_entry.group();
+            hdf5_entry.msg = msg;
+        }
+        return hdf5_entries;
+    }
+
     void register_read_hooks(const std::ifstream& in_log_file) override
     {
         LogEntry::filter_hook[{static_cast<int>(scheme), static_cast<std::string>(file_desc_group),

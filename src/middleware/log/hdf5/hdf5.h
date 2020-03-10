@@ -23,14 +23,15 @@
 #define GOBYHDF520160524H
 
 #include <boost/algorithm/string.hpp>
+#include <boost/range/algorithm/replace_if.hpp>
 
 #include "H5Cpp.h"
 
 #include "goby/middleware/application/interface.h"
-#include "goby/middleware/hdf5_plugin.h"
 #include "goby/middleware/protobuf/hdf5.pb.h"
 #include "goby/util/binary.h"
 
+#include "hdf5_plugin.h"
 #include "hdf5_predicate.h"
 #include "hdf5_protobuf_values.h"
 
@@ -46,7 +47,7 @@ struct MessageCollection
     std::string name;
 
     // time -> Message contents
-    std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message> > entries;
+    std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message>> entries;
 };
 
 struct Channel
@@ -90,15 +91,16 @@ class GroupFactory
     GroupWrapper root_group_;
 };
 
-class Writer : public goby::middleware::Application<goby::middleware::protobuf::HDF5Config>
+class Writer
 {
   public:
-    Writer();
+    Writer(const std::string& output_file);
+
+    void add_entry(goby::middleware::HDF5ProtobufEntry entry);
+
+    void write();
 
   private:
-    void load();
-    void collect();
-    void write();
     void write_channel(const std::string& group, const goby::middleware::hdf5::Channel& channel);
     void
     write_message_collection(const std::string& group,
@@ -133,15 +135,10 @@ class Writer : public goby::middleware::Application<goby::middleware::protobuf::
                       const std::vector<std::string>& data, const std::vector<hsize_t>& hs,
                       const std::string& default_value);
 
-    void run() {}
-
   private:
-    std::shared_ptr<goby::middleware::HDF5Plugin> plugin_;
-
     // channel name -> hdf5::Channel
     std::map<std::string, goby::middleware::hdf5::Channel> channels_;
     H5::H5File h5file_;
-
     goby::middleware::hdf5::GroupFactory group_factory_;
 };
 
