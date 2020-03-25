@@ -153,8 +153,6 @@ class FlexOstream : public std::ostream
 
     bool quiet() { return (sb_.is_quiet()); }
 
-    template <typename T> friend void boost::checked_delete(T*);
-
     friend std::ostream& operator<<(FlexOstream& out, char c);
     friend std::ostream& operator<<(FlexOstream& out, signed char c);
     friend std::ostream& operator<<(FlexOstream& out, unsigned char c);
