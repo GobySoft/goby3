@@ -309,17 +309,17 @@ if [ "$background" = false ]; then
     while (($(num_running_proc) > 0))
     do
         if (($(num_running_proc) == ${#spid[@]})); then
-            echo `date +%T`": All processes running"
+            echo "[${platform}] "`date +%T`": All processes running"
         else
             for ((i=0; i<${#spid[@]}; ++i)); do 
                 p=${spid[i]}
                 cmd=${spid_cmd[i]}
-                [ $(ps --pid $p -o pid=) ] || echo `date +%T`": Missing PID: $p (was: $cmd)"
+                [ $(ps --pid $p -o pid=) ] || echo "[${platform}] "`date +%T`": Missing PID: $p (was: $cmd)"
             done
         fi
         sleep 5            
     done
-    echo "All processes exited"
+    echo "[${platform}]: All processes exited"
 else
     if [ $launch = "gnometerm" ]; then 
         echo -e "To quit, close the gnome-terminal window(s)"
