@@ -460,10 +460,25 @@ void goby::acomms::MMDriver::write_cfg()
     write_single_cfg("SRC," + as<std::string>(driver_cfg_.modem_id()));
 
     // enforce REV to be enabled, we use it for current time and detecting modem reboots
-    write_single_cfg("REV,1");
-
+    if(!mm_driver_cfg().has_revision())
+    {
+      write_single_cfg("REV,1");
+    }
+    else // unless revision is manually specified
+    {
+      write_single_cfg("REV,0");
+      revision_.mm_major = mm_driver_cfg().revision().mm_major();
+      revision_.mm_minor = mm_driver_cfg().revision().mm_minor();
+      revision_.mm_patch = mm_driver_cfg().revision().mm_patch();
+    }
+    
     // enforce RXP to be enabled, we use it to detect start of received message
     write_single_cfg("RXP,1");
+
+    if(mm_driver_cfg().use_base64_fdp())
+    {
+      write_single_cfg("recv.base64data,1");
+    }
 }
 
 void goby::acomms::MMDriver::write_single_cfg(const std::string& s)
@@ -771,9 +786,7 @@ void goby::acomms::MMDriver::cctdp(protobuf::ModemTransmission* msg)
         {
             if (!using_application_acks_)
             {
-                glog.is(WARN) &&
-                    glog << "Firmware ACK not yet supported for FDP. Enable application acks "
-                            "(use_application_acks: true) for ACK capability."
+	      glog.is(WARN) && glog << "Firmware ACK not yet supported for FDP. Enable application acks (use_application_acks: true) for ACK capability."
                          << std::endl;
             }
             else
@@ -786,6 +799,13 @@ void goby::acomms::MMDriver::cctdp(protobuf::ModemTransmission* msg)
         nmea.push_back(0); // ack
         nmea.push_back(0); // reserved
 
+	// pad to even bytes to avoid bug with Micro-Modem
+	if (revision_.mm_major == 2 && revision_.mm_minor == 0 && revision_.mm_patch < 35490)
+	{
+            if (msg->frame(0).size() & 1)
+                *msg->mutable_frame(0) += '\0';
+	}
+	
         nmea.push_back(goby::util::hex_encode(msg->frame(0))); //HHHH
         append_to_write_queue(nmea);
     }
@@ -1416,7 +1436,7 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
     frames.insert(frames.end(), frames_data.begin(), frames_data.end());
 
     bool bad_frame = false;
-    std::string frame_hex;
+    std::string frame;
     const int num_fields = 3;
     for (int f = 0, n = frames.size() / num_fields; f < n; ++f)
     {
@@ -1435,7 +1455,14 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
         }
         else
         {
-            frame_hex += frames[f * num_fields + DATA];
+	  if(mm_driver_cfg().use_base64_fdp())
+	    {
+	      frame += dccl::b64_decode(frames[f * num_fields + DATA]);
+	    }
+	  else
+	    {
+	      frame += goby::util::hex_decode(frames[f * num_fields + DATA]);
+	    }
         }
     }
 
@@ -1446,9 +1473,9 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
     }
     else
     {
-        m->add_frame(goby::util::hex_decode(frame_hex));
-        if (using_application_acks_)
-            process_incoming_app_ack(m);
+      m->add_frame(frame);
+      if (using_application_acks_)
+	process_incoming_app_ack(m);
     }
 
     glog.is(DEBUG1) && glog << group(glog_in_group())
