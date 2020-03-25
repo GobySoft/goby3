@@ -19,7 +19,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/hdf5_plugin.h"
+#include "goby/middleware/log/hdf5/hdf5_plugin.h"
 
 #include "goby/time.h"
 #include "goby/util/binary.h"

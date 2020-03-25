@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 
     std::string sys_cmd("LD_LIBRARY_PATH=" GOBY_LIB_DIR
                         ":$LD_LIBRARY_PATH GOBY_HDF5_PLUGIN=libgoby_hdf5test.so goby_hdf5 "
-                        "--output_file /tmp/test.h5 --include_string_fields=true");
+                        "--output_file /tmp/test.h5");
     std::cout << "Running: [" << sys_cmd << "]" << std::endl;
     int rc = system(sys_cmd.c_str());
 
