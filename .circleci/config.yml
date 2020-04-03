@@ -292,8 +292,10 @@ workflows:
           <<: *filter-template-master-only
       - amd64+asan-build:
           <<: *filter-template-master-only
-      - amd64+tsan-build:
-          <<: *filter-template-master-only
+
+# problem running unit test on CircleCI executors
+#      - amd64+tsan-build:
+#          <<: *filter-template-master-only
 
 # problem running this using clang with libcrypto++-dev 
 #      - amd64+ubsan-build:
