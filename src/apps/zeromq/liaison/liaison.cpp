@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
     }
 
     int return_value = goby::run<goby::apps::zeromq::Liaison>(argc, argv);
-    dccl::DynamicProtobufManager::protobuf_shutdown();
+    //    dccl::DynamicProtobufManager::protobuf_shutdown();
 
     for (int i = 0, n = goby::apps::zeromq::Liaison::plugin_handles_.size(); i < n; ++i)
         dlclose(goby::apps::zeromq::Liaison::plugin_handles_[i]);
@@ -173,11 +173,23 @@ goby::apps::zeromq::Liaison::Liaison()
     // see https://redmine.webtoolkit.eu/boards/2/topics/5614?r=5615#message-5615
     expire_sessions_ = [=]() {
         int seconds = 10;
-        if (!terminating_)
+        auto start = goby::time::SteadyClock::now();
+        while (!terminating_ &&
+               goby::time::SteadyClock::now() < start + std::chrono::seconds(seconds))
         {
-            Wt::WServer::instance()->ioService().schedule(seconds * 1000, expire_sessions_);
+            // 100 ms to avoid pegging CPU but be responsive to shutdown
+            usleep(100000);
         }
+
+        glog.is_debug3() && glog << std::chrono::duration_cast<std::chrono::seconds>(
+                                        goby::time::SteadyClock::now().time_since_epoch())
+                                        .count()
+                                 << ": Expire sessions" << std::endl;
+
         wt_server_.expireSessions();
+
+        if (!terminating_)
+            Wt::WServer::instance()->ioService().post(expire_sessions_);
     };
 
     expire_sessions_();
