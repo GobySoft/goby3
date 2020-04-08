@@ -117,6 +117,7 @@ class FlexOstream : public std::ostream
     std::ostream& operator<<(const int& val) { return std::ostream::operator<<(val); }
     std::ostream& operator<<(const unsigned int& val) { return std::ostream::operator<<(val); }
     std::ostream& operator<<(const long& val) { return std::ostream::operator<<(val); }
+    std::ostream& operator<<(const long long& val) { return std::ostream::operator<<(val); }
     std::ostream& operator<<(const unsigned long& val) { return std::ostream::operator<<(val); }
     std::ostream& operator<<(const float& val) { return std::ostream::operator<<(val); }
     std::ostream& operator<<(const double& val) { return std::ostream::operator<<(val); }
