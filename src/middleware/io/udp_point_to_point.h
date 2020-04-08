@@ -47,8 +47,9 @@ class UDPPointToPointThread
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    UDPPointToPointThread(const goby::middleware::protobuf::UDPPointToPointConfig& config)
-        : Base(config)
+    UDPPointToPointThread(const goby::middleware::protobuf::UDPPointToPointConfig& config,
+                          int index = -1)
+        : Base(config, index)
     {
         boost::asio::ip::udp::resolver resolver(this->mutable_io());
         remote_endpoint_ =

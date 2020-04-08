@@ -37,9 +37,8 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
 using UDPThreadMAVLinkBase = IOThreadMAVLink<
-    line_in_group, line_out_group, publish_layer, subscribe_layer,
-    UDPPointToPointThread<line_in_group, line_out_group, publish_layer, subscribe_layer>,
-    goby::middleware::protobuf::UDPPointToPointConfig>;
+    line_in_group, line_out_group,
+    UDPPointToPointThread<line_in_group, line_out_group, publish_layer, subscribe_layer>>;
 
 /// \brief Reads/Writes MAVLink message packages from/to udp socket
 /// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the udp socket

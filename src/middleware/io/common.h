@@ -96,6 +96,13 @@ class IOThread
                                     subscribe_layer>
 {
   public:
+    using config_type = IOConfig;
+    using socket_type = SocketType;
+    static constexpr PubSubLayer publish_layer_value{publish_layer};
+    static constexpr PubSubLayer subscribe_layer_value{subscribe_layer};
+    constexpr static const goby::middleware::Group& line_in_group_value{line_in_group};
+    constexpr static const goby::middleware::Group& line_out_group_value{line_out_group};
+
     /// \brief Constructs the thread.
     /// \param config A reference to the configuration read by the main application at launch
     /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
@@ -144,7 +151,7 @@ class IOThread
         incoming_mail_notify_thread_->join();
     }
 
-    ~IOThread()
+    virtual ~IOThread()
     {
         socket_.reset();
 
@@ -254,7 +261,11 @@ class IOThread
 
     std::string glog_group_;
     bool glog_group_added_{false};
-}; // namespace io
+};
+
+} // namespace io
+} // namespace middleware
+} // namespace goby
 
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
@@ -375,9 +386,5 @@ void goby::middleware::io::IOThread<
                                        << error.ShortDebugString() << std::endl;
     socket_.reset();
 }
-
-} // namespace io
-} // namespace middleware
-} // namespace goby
 
 #endif

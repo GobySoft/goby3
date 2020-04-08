@@ -37,16 +37,15 @@ namespace middleware
 {
 namespace io
 {
-template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
-          PubSubLayer subscribe_layer, typename IOThreadBase, typename IOConfig>
+template <const goby::middleware::Group& parsed_line_in_group,
+          const goby::middleware::Group& serialized_line_out_group, typename IOThreadBase>
 class IOThreadMAVLink : public IOThreadBase
 {
   public:
-    IOThreadMAVLink(const IOConfig& config) : IOThreadBase(config)
+    IOThreadMAVLink(const typename IOThreadBase::config_type& config) : IOThreadBase(config)
     {
         // subscribe directly to mavlink_message_t as well
-        if (subscribe_layer == PubSubLayer::INTERPROCESS)
+        if (IOThreadBase::subscribe_layer_value == PubSubLayer::INTERPROCESS)
         {
             auto msg_out_callback = [this](std::shared_ptr<const mavlink::mavlink_message_t> msg,
                                            const std::string& type) {
@@ -62,8 +61,8 @@ class IOThreadMAVLink : public IOThreadBase
             };
 
             this->interprocess()
-                .template subscribe_type_regex<line_out_group, mavlink::mavlink_message_t>(
-                    msg_out_callback);
+                .template subscribe_type_regex<serialized_line_out_group,
+                                               mavlink::mavlink_message_t>(msg_out_callback);
         }
     }
 
@@ -91,13 +90,10 @@ class IOThreadMAVLink : public IOThreadBase
 } // namespace middleware
 } // namespace goby
 
-template <
-    const goby::middleware::Group& line_in_group, const goby::middleware::Group& line_out_group,
-    goby::middleware::io::PubSubLayer publish_layer,
-    goby::middleware::io::PubSubLayer subscribe_layer, typename IOThreadBase, typename IOConfig>
-void goby::middleware::io::IOThreadMAVLink<line_in_group, line_out_group, publish_layer,
-                                           subscribe_layer, IOThreadBase,
-                                           IOConfig>::try_parse(std::size_t bytes_transferred)
+template <const goby::middleware::Group& parsed_line_in_group,
+          const goby::middleware::Group& serialized_line_out_group, typename IOThreadBase>
+void goby::middleware::io::IOThreadMAVLink<parsed_line_in_group, serialized_line_out_group,
+                                           IOThreadBase>::try_parse(std::size_t bytes_transferred)
 {
     auto bytes_begin = buffer_.begin(), bytes_end = buffer_.begin() + bytes_transferred;
     for (auto c = bytes_begin; c != bytes_end; ++c)
@@ -134,7 +130,7 @@ void goby::middleware::io::IOThreadMAVLink<line_in_group, line_out_group, publis
                     goby::glog.is_debug3() && goby::glog << "Parsed message of id: " << msg_.msgid
                                                          << std::endl;
 
-                    this->publish_transporter().template publish<line_in_group>(msg_);
+                    this->publish_transporter().template publish<parsed_line_in_group>(msg_);
 
                     std::array<uint8_t, MAVLINK_MAX_PACKET_LEN> buffer;
                     auto length = mavlink::mavlink_msg_to_send_buffer(&buffer[0], &msg_);

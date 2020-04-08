@@ -37,9 +37,8 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
 using SerialThreadMAVLinkBase =
-    IOThreadMAVLink<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                    SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>,
-                    goby::middleware::protobuf::SerialConfig>;
+    IOThreadMAVLink<line_in_group, line_out_group,
+                    SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>>;
 
 /// \brief Reads/Writes MAVLink message packages from/to serial port
 /// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the serial port
