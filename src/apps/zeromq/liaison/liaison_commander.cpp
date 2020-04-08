@@ -45,8 +45,8 @@ using goby::glog;
 using goby::util::logger_lock::lock;
 
 std::mutex goby::apps::zeromq::LiaisonCommander::dbo_mutex_;
-std::shared_ptr<Dbo::backend::Sqlite3> goby::apps::zeromq::LiaisonCommander::sqlite3_;
-std::shared_ptr<Dbo::FixedSqlConnectionPool> goby::apps::zeromq::LiaisonCommander::connection_pool_;
+Dbo::backend::Sqlite3* goby::apps::zeromq::LiaisonCommander::sqlite3_(nullptr);
+std::unique_ptr<Dbo::FixedSqlConnectionPool> goby::apps::zeromq::LiaisonCommander::connection_pool_;
 boost::posix_time::ptime goby::apps::zeromq::LiaisonCommander::last_db_update_time_(
     goby::time::SystemClock::now<boost::posix_time::ptime>());
 
@@ -74,6 +74,8 @@ goby::apps::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonCo
 
     set_name("Commander");
 }
+
+goby::apps::zeromq::LiaisonCommander::~LiaisonCommander() {}
 
 void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
     const std::vector<unsigned char>& data, int scheme, const std::string& type,
@@ -250,9 +252,11 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
     if (!sqlite3_)
     {
         std::lock_guard<std::mutex> slock(dbo_mutex_);
-        sqlite3_.reset(new Dbo::backend::Sqlite3(pb_commander_config_.sqlite3_database()));
-        connection_pool_.reset(new Dbo::FixedSqlConnectionPool(
-            sqlite3_.get(), pb_commander_config_.database_pool_size()));
+        sqlite3_ = new Dbo::backend::Sqlite3(pb_commander_config_.sqlite3_database());
+
+        // connection_pool takes ownership of sqlite3_ pointer
+        connection_pool_.reset(
+            new Dbo::FixedSqlConnectionPool(sqlite3_, pb_commander_config_.database_pool_size()));
     }
 
     {

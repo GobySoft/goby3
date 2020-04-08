@@ -115,6 +115,7 @@ class LiaisonCommander
 {
   public:
     LiaisonCommander(const protobuf::LiaisonConfig& cfg);
+    ~LiaisonCommander();
     void loop();
 
   private:
@@ -289,8 +290,8 @@ class LiaisonCommander
     // static database objects
     static boost::posix_time::ptime last_db_update_time_;
     static std::mutex dbo_mutex_;
-    static std::shared_ptr<Wt::Dbo::backend::Sqlite3> sqlite3_;
-    static std::shared_ptr<Wt::Dbo::FixedSqlConnectionPool> connection_pool_;
+    static Wt::Dbo::backend::Sqlite3* sqlite3_;
+    static std::unique_ptr<Wt::Dbo::FixedSqlConnectionPool> connection_pool_;
 };
 
 class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonCommander>

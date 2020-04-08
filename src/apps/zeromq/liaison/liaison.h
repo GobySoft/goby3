@@ -48,7 +48,11 @@ class Liaison : public goby::zeromq::MultiThreadApplication<protobuf::LiaisonCon
 {
   public:
     Liaison();
-    ~Liaison() {}
+    ~Liaison()
+    {
+        terminating_ = true;
+        wt_server_.stop();
+    }
 
     void loop() override;
 
@@ -61,12 +65,12 @@ class Liaison : public goby::zeromq::MultiThreadApplication<protobuf::LiaisonCon
 
   private:
     Wt::WServer wt_server_;
-    bool terminating_{false};
+    std::atomic<bool> terminating_{false};
     std::function<void()> expire_sessions_;
 };
 
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
 
 #endif
