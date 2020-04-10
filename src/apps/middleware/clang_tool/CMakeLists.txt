@@ -1,4 +1,4 @@
-find_program(LLVM_CONFIG_EXECUTABLE "llvm-config")
+find_program(LLVM_CONFIG_EXECUTABLE NAMES "llvm-config" "llvm-config-7" "llvm-config-8" "llvm-config-9")
 
 set(BUILD_GOBY_CLANG_TOOL OFF)	
 
