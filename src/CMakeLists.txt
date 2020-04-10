@@ -13,18 +13,19 @@ endmacro()
 goby_find_required_package(ProtobufGoby)
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
+string(STRIP ${PROTOC_VERSION} PROTOC_VERSION_CLEAN)
+message(STATUS "Using Protocol Buffers ${PROTOC_VERSION_CLEAN}: ${PROTOBUF_INCLUDE_DIRS}")
 
 if(${PROTOC_VERSION} VERSION_LESS 3.0.0) 
-  message("libprotobuf < 3.0.0")
+  message(STATUS "\tlibprotobuf < 3.0.0, removing syntax= string")
   set(PROTOBUF_HAS_SYNTAX_VERSION FALSE PARENT_SCOPE)
 else()
-  message("libprotobuf >= 3.0.0")
   set(PROTOBUF_HAS_SYNTAX_VERSION TRUE PARENT_SCOPE)
 endif()
 
 #dccl
 goby_find_required_package(DCCL)
-message("Using DCCL in ${DCCL_DIR}")
+message(STATUS "Using DCCL in ${DCCL_DIR}")
 
 if(NOT DEFINED DCCL_INCLUDE_DIR)
   #for DCCL 3.0.3 and newer
@@ -32,7 +33,7 @@ if(NOT DEFINED DCCL_INCLUDE_DIR)
 endif()
 
 if(DCCL_INCLUDE_DIR)
-  message("Including protobuf dir: ${DCCL_INCLUDE_DIR}")
+  message(STATUS "\tIncluding DCCL protobuf dir: ${DCCL_INCLUDE_DIR}")
   include_directories("${DCCL_INCLUDE_DIR}")
   protobuf_include_dirs("${DCCL_INCLUDE_DIR}")
 endif()
@@ -132,7 +133,7 @@ set(MAVLINK_DOC_STRING "Build the MAVLink marshalling language support library (
 find_package(MAVLINK QUIET)
 if(MAVLINK_FOUND)
   include_directories(SYSTEM ${MAVLINK_INCLUDE_DIR})
-  message("Using MAVLink in ${MAVLINK_INCLUDE_DIR}")
+  message(STATUS "Using MAVLink in ${MAVLINK_INCLUDE_DIR}")
   option(enable_mavlink ${MAVLINK_DOC_STRING} ON)
 else()
   option(enable_mavlink ${MAVLINK_DOC_STRING} OFF)
@@ -144,13 +145,12 @@ set(AIS_DOC_STRING "Build the Automatic Identification System (AIS) parsing comp
 find_package(AIS QUIET)
 if(AIS_FOUND)
   include_directories(SYSTEM ${AIS_INCLUDE_DIR})
-  message("Using libais in ${AIS_INCLUDE_DIR}")
+  message(STATUS "Using libais in ${AIS_INCLUDE_DIR}")
   option(enable_ais ${AIS_DOC_STRING} ON)
 else()
   option(enable_ais ${AIS_DOC_STRING} OFF)
   message(">> setting enable_ais to OFF ... if you need this functionality: 1) install libais (\"apt install libais-dev\" from packages.gobysoft.org or from source at https://github.com/GobySoft/libais); 2) run cmake -Denable_ais=ON")
 endif()
-
 
 ## set flags
 macro(goby_install_lib target_lib component)
