@@ -445,9 +445,14 @@ goby::moos::MOOSTranslator::moos_to_protobuf(const StringCMOOSMsgMap& moos_varia
 
     const goby::moos::protobuf::TranslatorEntry& entry = it->second;
 
-    GoogleProtobufMessagePointer msg =
-        dccl::DynamicProtobufManager::new_protobuf_message<GoogleProtobufMessagePointer>(
+    GoogleProtobufMessagePointer msg;
+
+    {
+        // dccl::DynamicProtobufManager appears not to be thread safe
+        const std::lock_guard<std::mutex> lock(goby::moos::dynamic_parse_mutex);
+        msg = dccl::DynamicProtobufManager::new_protobuf_message<GoogleProtobufMessagePointer>(
             protobuf_name);
+    }
 
     if (!msg)
         throw(std::runtime_error("Unknown Protobuf type: " + protobuf_name +

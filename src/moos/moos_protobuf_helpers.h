@@ -47,6 +47,8 @@ namespace goby
 {
 namespace moos
 {
+extern std::mutex dynamic_parse_mutex;
+
 const std::string MAGIC_PROTOBUF_HEADER = "@PB";
 
 inline std::map<int, std::string>
@@ -258,6 +260,9 @@ class MOOSPrefixTranslation
 
             try
             {
+                // dccl::DynamicProtobufManager appears not to be thread safe
+                const std::lock_guard<std::mutex> lock(goby::moos::dynamic_parse_mutex);
+
                 auto return_message = dccl::DynamicProtobufManager::new_protobuf_message<
                     std::shared_ptr<google::protobuf::Message>>(name);
                 if (in.size() > end_bracket_pos + 1)
@@ -1515,10 +1520,19 @@ namespace goby
 {
 namespace moos
 {
+extern std::mutex moos_technique_mutex;
 extern goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique moos_technique;
+
+inline goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique get_moos_technique()
+{
+    const std::lock_guard<std::mutex> lock(moos_technique_mutex);
+    return moos_technique;
+}
 
 inline void set_moos_technique(const goby::moos::protobuf::GobyMOOSAppConfig& cfg)
 {
+    const std::lock_guard<std::mutex> lock(moos_technique_mutex);
+
     if (cfg.has_moos_parser_technique())
         goby::moos::moos_technique = cfg.moos_parser_technique();
     else if (cfg.has_use_binary_protobuf())
@@ -1533,7 +1547,7 @@ inline void set_moos_technique(const goby::moos::protobuf::GobyMOOSAppConfig& cf
 
 inline bool serialize_for_moos(std::string* out, const google::protobuf::Message& msg)
 {
-    switch (goby::moos::moos_technique)
+    switch (goby::moos::get_moos_technique())
     {
         case goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_NATIVE_ENCODED:
             goby::moos::MOOSTranslation<goby::moos::protobuf::TranslatorEntry::
@@ -1567,7 +1581,7 @@ inline bool serialize_for_moos(std::string* out, const google::protobuf::Message
                 goby::glog
                     << "Non-PROTOBUF techniques are not supported for 'moos_parser_technique': "
                     << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(
-                           goby::moos::moos_technique)
+                           goby::moos::get_moos_technique())
                     << std::endl;
             return false;
     }
@@ -1579,7 +1593,7 @@ inline bool serialize_for_moos(std::string* out, const google::protobuf::Message
 /// \param msg Google Protocol buffers message to store result
 inline void parse_for_moos(const std::string& in, google::protobuf::Message* msg)
 {
-    switch (goby::moos::moos_technique)
+    switch (goby::moos::get_moos_technique())
     {
         case goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PROTOBUF_NATIVE_ENCODED:
             goby::moos::MOOSTranslation<goby::moos::protobuf::TranslatorEntry::
@@ -1615,7 +1629,7 @@ inline void parse_for_moos(const std::string& in, google::protobuf::Message* msg
                 goby::glog
                     << "Non-PROTOBUF techniques are not supported for 'moos_parser_technique': "
                     << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(
-                           goby::moos::moos_technique)
+                           goby::moos::get_moos_technique())
                     << std::endl;
             break;
     }
@@ -1623,7 +1637,7 @@ inline void parse_for_moos(const std::string& in, google::protobuf::Message* msg
 
 inline std::shared_ptr<google::protobuf::Message> dynamic_parse_for_moos(const std::string& in)
 {
-    switch (goby::moos::moos_technique)
+    switch (goby::moos::get_moos_technique())
     {
         case goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_NATIVE_ENCODED:
             return goby::moos::MOOSTranslation<
@@ -1645,7 +1659,7 @@ inline std::shared_ptr<google::protobuf::Message> dynamic_parse_for_moos(const s
                 goby::glog << "Non-PREFIX techniques are not supported when using "
                               "dynamic_parse_for_moos for 'moos_parser_technique': "
                            << goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique_Name(
-                                  goby::moos::moos_technique)
+                                  goby::moos::get_moos_technique())
                            << std::endl;
             return std::shared_ptr<google::protobuf::Message>();
     }
