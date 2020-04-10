@@ -437,6 +437,8 @@ GoogleProtobufMessagePointer
 goby::moos::MOOSTranslator::moos_to_protobuf(const StringCMOOSMsgMap& moos_variables,
                                              const std::string& protobuf_name)
 {
+    const std::lock_guard<std::mutex> lock(goby::moos::dynamic_parse_mutex);
+
     std::map<std::string, goby::moos::protobuf::TranslatorEntry>::const_iterator it =
         dictionary_.find(protobuf_name);
 

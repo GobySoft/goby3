@@ -22,5 +22,7 @@
 
 #include "moos_protobuf_helpers.h"
 
+std::mutex goby::moos::dynamic_parse_mutex;
+std::mutex goby::moos::moos_technique_mutex;
 goby::moos::protobuf::TranslatorEntry::ParserSerializerTechnique goby::moos::moos_technique =
     goby::moos::protobuf::TranslatorEntry::TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT;
