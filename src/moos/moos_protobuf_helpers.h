@@ -241,8 +241,6 @@ class MOOSPrefixTranslation
 
     static std::shared_ptr<google::protobuf::Message> dynamic_parse(const std::string& in)
     {
-        const std::lock_guard<std::mutex> lock(goby::moos::dynamic_parse_mutex);
-
         if (in.size() > goby::moos::MAGIC_PROTOBUF_HEADER.size() &&
             in.substr(0, goby::moos::MAGIC_PROTOBUF_HEADER.size()) ==
                 goby::moos::MAGIC_PROTOBUF_HEADER)
@@ -262,6 +260,9 @@ class MOOSPrefixTranslation
 
             try
             {
+                // dccl::DynamicProtobufManager appears not to be thread safe
+                const std::lock_guard<std::mutex> lock(goby::moos::dynamic_parse_mutex);
+
                 auto return_message = dccl::DynamicProtobufManager::new_protobuf_message<
                     std::shared_ptr<google::protobuf::Message>>(name);
                 if (in.size() > end_bracket_pos + 1)
