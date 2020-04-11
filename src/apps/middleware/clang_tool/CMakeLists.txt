@@ -1,4 +1,5 @@
-find_program(LLVM_CONFIG_EXECUTABLE NAMES "llvm-config" "llvm-config-7" "llvm-config-8" "llvm-config-9")
+set(LLVM_CONFIG_NAMES_VERSIONED "llvm-config-4.0" "llvm-config-5.0" "llvm-config-6.0" "llvm-config-7" "llvm-config-8" "llvm-config-9")
+find_program(LLVM_CONFIG_EXECUTABLE NAMES "llvm-config" ${LLVM_CONFIG_NAMES_VERSIONED})
 
 set(BUILD_GOBY_CLANG_TOOL OFF)	
 
@@ -6,10 +7,10 @@ if(NOT LLVM_CONFIG_EXECUTABLE)
   message(STATUS "llvm-config NOT found. Will not attempt to build goby_clang_tool. (To install run 'apt install llvm')")
 else()  
   execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --version OUTPUT_VARIABLE LLVM_CONFIG_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if(${LLVM_CONFIG_VERSION} VERSION_LESS 6.0.0)
-    message(STATUS "llvm-config is too old (must be version 6+). Searching for newer llvm-config")
+  if(${LLVM_CONFIG_VERSION} VERSION_LESS 4.0.0)
+    message(STATUS "llvm-config is too old (must be version 4+). Searching for newer llvm-config")
     unset(LLVM_CONFIG_EXECUTABLE CACHE)
-    find_program(LLVM_CONFIG_EXECUTABLE NAMES "llvm-config-7" "llvm-config-8" "llvm-config-9")
+    find_program(LLVM_CONFIG_EXECUTABLE NAMES ${LLVM_CONFIG_NAMES_VERSIONED})
   endif()
 
   if(NOT LLVM_CONFIG_EXECUTABLE)
