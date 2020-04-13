@@ -483,7 +483,7 @@ jobs:
           name: Build with static analyzer
           command: |
             mkdir -p build && cd build &&
-            scan-build --use-cc=/usr/bin/clang --use-c++=/usr/bin/clang++ cmake .. -Denable_testing=ON -DCMAKE_BUILD_TYPE=Debug &&
+            scan-build --use-cc=/usr/bin/clang --use-c++=/usr/bin/clang++ cmake .. -Denable_testing=ON -DCMAKE_BUILD_TYPE=Debug -Denable_llvm=OFF &&
             scan-build --use-cc=/usr/bin/clang --use-c++=/usr/bin/clang++ --status-bugs cmake --build . -- -j${SANITIZER_NUM_JOBS}
       - run:
           name: Store static analyzer results
@@ -500,7 +500,7 @@ jobs:
       - run: *run-update-apt
       - run:
           name: Build with AddressSanitizer (and LeakSanitizer)
-          command: mkdir -p build && cd build && cmake -DSANITIZE_ADDRESS=ON -Denable_testing=ON .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
+          command: mkdir -p build && cd build && cmake -DSANITIZE_ADDRESS=ON -Denable_testing=ON -Denable_llvm=OFF .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
       - run: &run-tests-sanitizers
           name: Run tests
           command: cd build && ctest --output-on-failure
@@ -512,7 +512,7 @@ jobs:
       - run: *run-update-apt
       - run: 
           name: Build with ThreadSanitizer
-          command: mkdir -p build && cd build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
+          command: mkdir -p build && cd build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON  -Denable_llvm=OFF .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
       - run: *run-tests-sanitizers
   amd64+ubsan-build:
     <<: *job-template-sanitizers
@@ -522,7 +522,7 @@ jobs:
       - run: *run-update-apt
       - run:
           name: Build with UndefinedBehaviorSanitizer
-          command: mkdir -p build && cd build && cmake -DSANITIZE_UNDEFINED=ON -Denable_testing=ON .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
+          command: mkdir -p build && cd build && cmake -DSANITIZE_UNDEFINED=ON -Denable_testing=ON  -Denable_llvm=OFF .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
       - run: *run-tests-sanitizers
   continuous-upload:
     <<: *job-template-upload
