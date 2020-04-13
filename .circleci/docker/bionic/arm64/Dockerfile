@@ -11,5 +11,6 @@ RUN apt-get update && \
             libboost-regex-dev:arm64 libicu-dev:arm64 \
             libhdf5-dev:arm64 \
             libgmp3-dev:arm64 \
+            libstdc++-7-dev:arm64 \
             && \
     rm -rf /var/lib/apt/lists/*

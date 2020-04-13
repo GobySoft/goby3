@@ -11,5 +11,6 @@ RUN apt-get update && \
             libboost-regex-dev:armhf libicu-dev:armhf \
             libhdf5-dev:armhf \
             libgmp3-dev:armhf \
+            libstdc++-7-dev:armhf \
             && \
     rm -rf /var/lib/apt/lists/*
