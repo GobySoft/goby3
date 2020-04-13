@@ -1,10 +1,9 @@
 ## set up function for external libraries errors
-#e.g.Boost libboost - dev 1.36 REQUIRED... 
 macro(goby_find_required_package package_name)
   find_package(${package_name} ${ARGN})
   string(TOUPPER ${package_name} package_name_upper)
   if(NOT ${package_name_upper}_FOUND AND NOT ${package_name}_FOUND)
-    message(FATAL_ERROR "missing required external library: ${package_name}. Please read the goby/DEPENDENCIES file to resolve.")
+    message(FATAL_ERROR "missing required external library: ${package_name}. Please run/read the goby/DEPENDENCIES script to resolve.")
   endif()
 endmacro()
 
@@ -151,6 +150,20 @@ else()
   option(enable_ais ${AIS_DOC_STRING} OFF)
   message(">> setting enable_ais to OFF ... if you need this functionality: 1) install libais (\"apt install libais-dev\" from packages.gobysoft.org or from source at https://github.com/GobySoft/libais); 2) run cmake -Denable_ais=ON")
 endif()
+
+## LLVM (for goby_clang_tool)
+if(enable_llvm)
+  include(GobyClangTool)
+  set(goby_INTERFACES_DIR ${goby_SHARE_DIR}/interfaces CACHE INTERNAL "Goby Pub/Sub Interface Directory")
+endif()
+
+macro(generate_middleware_interfaces target) 
+  if(enable_llvm)
+    goby_export_interface(${target} ${goby_INTERFACES_DIR} ${target}_YML_OUT)
+    add_custom_target(${target}_interface ALL DEPENDS ${${target}_YML_OUT})
+  endif()
+endmacro()
+
 
 ## set flags
 macro(goby_install_lib target_lib component)

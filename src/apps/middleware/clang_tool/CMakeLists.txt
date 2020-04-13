@@ -1,47 +1,63 @@
 set(LLVM_CONFIG_NAMES_VERSIONED "llvm-config-4.0" "llvm-config-5.0" "llvm-config-6.0" "llvm-config-7" "llvm-config-8" "llvm-config-9")
 find_program(LLVM_CONFIG_EXECUTABLE NAMES "llvm-config" ${LLVM_CONFIG_NAMES_VERSIONED})
 
-set(BUILD_GOBY_CLANG_TOOL OFF)	
 
-if(NOT LLVM_CONFIG_EXECUTABLE)
-  message(STATUS "llvm-config NOT found. Will not attempt to build goby_clang_tool. (To install run 'apt install llvm')")
-else()  
+set(GOBY_CLANG_TOOL_DOC_STRING "Build goby_clang_tool for static analysis (requires llvm-dev, libclang-dev, libyaml-cpp-dev)")
+set(LLVM_OFF_STRING ">> setting enable_llvm to OFF ... if you need this functionality (goby_clang_tool): 1) install llvm-dev, libclang-dev, and libyaml-cpp-dev; 2) run cmake -Denable_llvm=ON")
+
+
+set(LLVM_CONFIG_FOUND OFF)
+set(LIBCLANG_FOUND OFF)
+set(YAML_CPP_FOUND OFF)
+
+if(LLVM_CONFIG_EXECUTABLE)
   execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --version OUTPUT_VARIABLE LLVM_CONFIG_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
   if(${LLVM_CONFIG_VERSION} VERSION_LESS 4.0.0)
-    message(STATUS "llvm-config is too old (must be version 4+). Searching for newer llvm-config")
+    message(STATUS "llvm-config is too old (must be version 4+). Searching for newer llvm-config...")
     unset(LLVM_CONFIG_EXECUTABLE CACHE)
     find_program(LLVM_CONFIG_EXECUTABLE NAMES ${LLVM_CONFIG_NAMES_VERSIONED})
   endif()
 
-  if(NOT LLVM_CONFIG_EXECUTABLE)
-    message(STATUS "llvm-config-7, llvm-config-8, or llvm-config-9 NOT found. Will not attempt to build goby_clang_tool. (To install run 'apt install llvm')")
-  else()
+  if(LLVM_CONFIG_EXECUTABLE)
     message(STATUS "Using ${LLVM_CONFIG_EXECUTABLE} to find LLVM/Clang libraries:")
+    set(LLVM_CONFIG_FOUND ON)
     execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --cmakedir OUTPUT_VARIABLE LLVM_CMAKE_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
     message(STATUS "\tUsing LLVM CMake path: ${LLVM_CMAKE_DIR}")
     find_package(LLVM REQUIRED CONFIG PATHS ${LLVM_CMAKE_DIR} NO_DEFAULT_PATH)
     if(LLVM_FOUND)
-      message(STATUS "\tFound LLVM version ${LLVM_PACKAGE_VERSION}: ${LLVM_INCLUDE_DIR}")
-      
+      message(STATUS "\tFound LLVM version ${LLVM_PACKAGE_VERSION}: ${LLVM_INCLUDE_DIR}")      
       find_file(CLANG_TOOLING_INCLUDE Tooling.h PATHS ${LLVM_INCLUDE_DIR}/clang/Tooling NO_DEFAULT_PATH)
       if(CLANG_TOOLING_INCLUDE)
+        set(LIBCLANG_FOUND ON)
+
         find_package(yaml-cpp QUIET)
         if(YAML_CPP_LIBRARIES)
-          set(BUILD_GOBY_CLANG_TOOL ON)		
+          set(YAML_CPP_FOUND ON)
         else()
-          message(STATUS "Could NOT find YAML-CPP. Will not attempt to build goby_clang_tool. (To install run 'apt install libyaml-cpp-dev')")      
+          message(STATUS "Could NOT find YAML-CPP. (To install run 'apt install libyaml-cpp-dev')")      
         endif()
       else()
-	message(STATUS "Could NOT find libclang. Will not attempt to build goby_clang_tool. (To install run 'apt install libclang-dev')")      
-      endif()	
-
+	message(STATUS "Could NOT find libclang. (To install run 'apt install libclang-dev')")      
+      endif()
     else()
-      message(STATUS "Could NOT find LLVM. Will not attempt to build goby_clang_tool")
+      message(STATUS "Could NOT find LLVM even though we found llvm-config.")
     endif()
+  else()
+    message(STATUS "None of ${LLVM_CONFIG_NAMES_VERSIONED} found. (To install run 'apt install llvm-dev')")
   endif()
+else()
+  message(STATUS "llvm-config NOT found. (To install run 'apt install llvm-dev')")
 endif()
 
-if(BUILD_GOBY_CLANG_TOOL)
+if(LLVM_CONFIG_FOUND AND LIBCLANG_FOUND AND YAML_CPP_FOUND)
+  option(enable_llvm ${GOBY_CLANG_TOOL_DOC_STRING} ON)
+else()
+  option(enable_llvm ${GOBY_CLANG_TOOL_DOC_STRING} OFF)
+  message(${LLVM_OFF_STRING})
+endif()
+
+if(enable_llvm)
+                      
   include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
 
   add_executable(goby_clang_tool tool.cpp generate.cpp visualize.cpp)
@@ -68,5 +84,6 @@ if(BUILD_GOBY_CLANG_TOOL)
     goby
     yaml-cpp
     )
+
 
 endif()

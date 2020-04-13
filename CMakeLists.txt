@@ -182,7 +182,7 @@ install(FILES ${goby_SCRIPTS_DIR}/analyze_dccl_xml ${goby_SCRIPTS_DIR}/moos_goby
 
 install(DIRECTORY ${goby_SHARE_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX}/share/goby)
 install(DIRECTORY ${goby_INC_DIR}/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING REGEX .*\\.h|.*\\.proto)
+  FILES_MATCHING REGEX .*\\.h|.*\\.proto|.*\\.yml)
 
 # clear library list
 unset(GOBY_CORE_LIBRARY_LIST CACHE)
