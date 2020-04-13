@@ -152,10 +152,7 @@ else()
 endif()
 
 ## LLVM (for goby_clang_tool)
-if(enable_llvm)
-  include(GobyClangTool)
-  set(goby_INTERFACES_DIR ${goby_SHARE_DIR}/interfaces CACHE INTERNAL "Goby Pub/Sub Interface Directory")
-endif()
+include(FindLLVMForGoby)
 
 macro(generate_middleware_interfaces target) 
   if(enable_llvm)
