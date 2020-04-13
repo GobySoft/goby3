@@ -12,7 +12,7 @@ namespace cl = llvm::cl;
 
 // Apply a custom category to all command-line options so that they are the
 // only ones displayed.
-static cl::OptionCategory Goby3ToolCategory("goby3-tool options");
+static cl::OptionCategory Goby3ToolCategory("goby_clang_tool options");
 
 // CommonOptionsParser declares HelpMessage with a description of the common
 // command-line options related to the compilation database and input files.
@@ -28,14 +28,9 @@ static cl::opt<bool> Visualize(
     cl::desc("Run visualize action (create GraphViz DOT files from multiple YML interface files)"),
     cl::cat(Goby3ToolCategory));
 
-static cl::opt<std::string> Target("target",
-                                   cl::desc("Specify target (binary) name for 'gen' action"),
-                                   cl::value_desc("name"), cl::cat(Goby3ToolCategory));
-
-static cl::opt<std::string> OutDir("outdir",
-                                   cl::desc("Specify output directory for 'viz' and 'gen' actions"),
-                                   cl::value_desc("dir"), cl::init("."),
-                                   cl::cat(Goby3ToolCategory));
+static cl::opt<std::string>
+    OutDir("outdir", cl::desc("Specify output directory for '-viz' and '-gen' actions"),
+           cl::value_desc("dir"), cl::init("."), cl::cat(Goby3ToolCategory));
 
 static cl::opt<std::string>
     OutFile("o",
@@ -43,20 +38,38 @@ static cl::opt<std::string>
                      "-gen and {deployment}.dot for -viz)"),
             cl::value_desc("file.[yml|dot]"), cl::cat(Goby3ToolCategory));
 
+static cl::opt<std::string> Target("target",
+                                   cl::desc("Specify target (binary) name for '-gen' action"),
+                                   cl::value_desc("name"), cl::cat(Goby3ToolCategory));
+
 static cl::opt<std::string>
     Deployment("deployment",
-               cl::desc("Specify deployment name for 'viz' action that summarizes the collection "
+               cl::desc("Specify deployment name for '-viz' action that summarizes the collection "
                         "of yml files or the path to a deployment yml file"),
                cl::value_desc("name"), cl::cat(Goby3ToolCategory));
 
+static cl::opt<bool> OmitDisconnected(
+    "no-disconnected",
+    cl::desc("For '-viz', do not display arrows representing publishers without subscribers "
+             "or subscribers without publishers"),
+    cl::cat(Goby3ToolCategory));
+
+static cl::opt<bool> IncludeTerminate("include-terminate",
+                                      cl::desc("For '-viz', include goby_terminate groups"),
+                                      cl::cat(Goby3ToolCategory));
+
+static cl::opt<bool> IncludeCoroner("include-coroner",
+                                    cl::desc("For '-viz', include goby_coroner groups"),
+                                    cl::cat(Goby3ToolCategory));
+
 static cl::opt<bool>
-    OmitDisconnected("no-disconnected",
-                     cl::desc("Do not display arrows representing publishers without subscribers "
-                              "or subscribers without publishers"));
+    IncludeAll("include-all",
+               cl::desc("For '-viz', include all groups, include goby internal groups"),
+               cl::cat(Goby3ToolCategory));
 
 int main(int argc, const char** argv)
 {
-    clang::tooling::CommonOptionsParser OptionsParser(argc, argv, Goby3ToolCategory);
+    clang::tooling::CommonOptionsParser SharedOptionsParser(argc, argv, Goby3ToolCategory);
 
     if (Generate)
     {
@@ -65,14 +78,21 @@ int main(int argc, const char** argv)
             std::cerr << "Must specify -target when using -gen" << std::endl;
             exit(EXIT_FAILURE);
         }
-        clang::tooling::ClangTool Tool(OptionsParser.getCompilations(),
-                                       OptionsParser.getSourcePathList());
+        clang::tooling::ClangTool Tool(SharedOptionsParser.getCompilations(),
+                                       SharedOptionsParser.getSourcePathList());
         return goby::clang::generate(Tool, OutDir, OutFile, Target);
     }
     else if (Visualize)
     {
-        return goby::clang::visualize(OptionsParser.getSourcePathList(), OutDir, OutFile,
-                                      Deployment, OmitDisconnected);
+        goby::clang::VisualizeParameters params{OutDir,
+                                                OutFile,
+                                                Deployment,
+                                                OmitDisconnected,
+                                                IncludeAll ? true : IncludeCoroner,
+                                                IncludeAll ? true : IncludeTerminate,
+                                                IncludeAll};
+
+        return goby::clang::visualize(SharedOptionsParser.getSourcePathList(), params);
     }
     else
     {

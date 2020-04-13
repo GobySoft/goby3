@@ -1,6 +1,7 @@
 #ifndef PUBSUB_ENTRY_20190801H
 #define PUBSUB_ENTRY_20190801H
 
+#include <boost/algorithm/string.hpp>
 #include <string>
 
 #include "yaml_raii.h"
@@ -157,6 +158,23 @@ struct Thread
     std::set<goby::clang::PubSubEntry> interthread_publishes;
     std::set<goby::clang::PubSubEntry> interthread_subscribes;
 };
+
+inline void html_escape(std::string& s)
+{
+    using boost::algorithm::replace_all;
+    replace_all(s, "&", "&amp;");
+    replace_all(s, "\"", "&quot;");
+    replace_all(s, "\'", "&apos;");
+    replace_all(s, "<", "&lt;");
+    replace_all(s, ">", "&gt;");
+
+    boost::algorithm::replace_first(s, "&lt;", "<br/>&lt;");
+    replace_all(s, "&lt;", "<font point-size=\"10\">&lt;");
+    replace_all(s, "&gt;", "&gt;</font>");
+
+    replace_all(s, ", ", ",<br/>");
+}
+
 } // namespace viz
 
 inline goby::clang::PubSubEntry::PubSubEntry(

@@ -18,8 +18,19 @@ namespace clang
 {
 int generate(::clang::tooling::ClangTool& Tool, std::string output_directory,
              std::string output_file, std::string target_name);
-int visualize(const std::vector<std::string>& ymls, std::string output_directory,
-              std::string output_file, std::string deployment_name, bool omit_disconnected);
+
+struct VisualizeParameters
+{
+    std::string output_directory;
+    std::string output_file;
+    std::string deployment;
+    bool omit_disconnected;
+    bool include_coroner;
+    bool include_terminate;
+    bool include_internal;
+};
+
+int visualize(const std::vector<std::string>& ymls, const VisualizeParameters& params);
 } // namespace clang
 } // namespace goby
 

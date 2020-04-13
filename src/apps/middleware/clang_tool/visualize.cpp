@@ -1,4 +1,3 @@
-#include <boost/algorithm/string.hpp>
 #include <fstream>
 #include <iostream>
 
@@ -9,7 +8,38 @@
 
 using goby::clang::PubSubEntry;
 
-bool g_omit_disconnected = false;
+goby::clang::VisualizeParameters g_params;
+
+bool is_group_included(const std::string& group)
+{
+    static const std::set<std::string> internal_groups{
+        "goby::InterProcessForwarder",
+        "goby::InterProcessRegexData",
+        "goby::middleware::SerializationUnSubscribeAll",
+        "goby::ThreadJoinable",
+        "goby::ThreadShutdown",
+        "goby::middleware::intervehicle::modem_data_in",
+        "goby::middleware::intervehicle::modem_data_out",
+        "goby::middleware::intervehicle::metadata_request",
+        "goby::middleware::intervehicle::modem_ack_in",
+        "goby::middleware::intervehicle::modem_expire_in",
+        "goby::middleware::intervehicle::modem_subscription_forward_tx"};
+
+    static const std::set<std::string> terminate_groups{"goby::terminate::request",
+                                                        "goby::terminate::response"};
+
+    static const std::set<std::string> coroner_groups{"goby::health::request",
+                                                      "goby::health::response"};
+
+    if (internal_groups.count(group) && !g_params.include_internal)
+        return false;
+    else if (terminate_groups.count(group) && !g_params.include_terminate)
+        return false;
+    else if (coroner_groups.count(group) && !g_params.include_coroner)
+        return false;
+    else
+        return true;
+}
 
 namespace viz
 {
@@ -230,7 +260,7 @@ const auto thread_color = "purple4";
 
 std::string node_name(std::string p, std::string a, std::string th)
 {
-    std::vector<char> reserved{{':', '&', '<', '>', ' ', ','}};
+    std::vector<char> reserved{{':', '&', '<', '>', ' ', ',', '-'}};
 
     for (char r : reserved)
     {
@@ -247,9 +277,17 @@ std::string node_name(std::string p, std::string a, std::string th)
 std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_str,
                                         std::string sub_str, std::string color)
 {
-    return pub_str + "->" + sub_str + "[label=<<b><font point-size=\"10\">" + pub.group +
-           "</font></b><br/><font point-size=\"6\">" + pub.scheme +
-           "</font><br/><font point-size=\"8\">" + pub.type + "</font>>" + "color=" + color + "]\n";
+    std::string group = pub.group;
+    std::string scheme = pub.scheme;
+    std::string type = pub.type;
+
+    viz::html_escape(group);
+    viz::html_escape(scheme);
+    viz::html_escape(type);
+
+    return pub_str + "->" + sub_str + "[label=<<b><font point-size=\"10\">" + group +
+           "</font></b><br/><font point-size=\"6\">" + scheme +
+           "</font><br/><font point-size=\"8\">" + type + "</font>>" + "color=" + color + "]\n";
 }
 
 std::string connection_with_label(std::string pub_platform, std::string pub_application,
@@ -264,7 +302,7 @@ std::string connection_with_label(std::string pub_platform, std::string pub_appl
 std::string disconnected_publication(std::string pub_platform, std::string pub_application,
                                      const PubSubEntry& pub, std::string color)
 {
-    if (g_omit_disconnected)
+    if (g_params.omit_disconnected)
         return "";
 
     // hide inner publications without subscribers.
@@ -283,7 +321,7 @@ std::string disconnected_publication(std::string pub_platform, std::string pub_a
 std::string disconnected_subscription(std::string sub_platform, std::string sub_application,
                                       const PubSubEntry& sub, std::string color)
 {
-    if (g_omit_disconnected)
+    if (g_params.omit_disconnected)
         return "";
 
     return node_name(sub_platform, sub_application, sub.thread) + "_no_publishers_" + color +
@@ -301,6 +339,9 @@ void write_thread_connections(std::ofstream& ofs, const viz::Platform& platform,
     std::set<PubSubEntry> disconnected_pubs;
     for (const auto& pub : thread.interthread_publishes)
     {
+        if (!is_group_included(pub.group))
+            continue;
+
         disconnected_pubs.insert(pub);
 
         for (const auto& sub_thread_p : application.threads)
@@ -308,6 +349,9 @@ void write_thread_connections(std::ofstream& ofs, const viz::Platform& platform,
             const auto& sub_thread = sub_thread_p.second;
             for (const auto& sub : sub_thread->interthread_subscribes)
             {
+                if (!is_group_included(sub.group))
+                    continue;
+
                 if (goby::clang::connects(pub, sub))
                 {
                     remove_disconnected(pub, sub, disconnected_pubs, disconnected_subs);
@@ -333,11 +377,17 @@ void write_process_connections(std::ofstream& ofs, const viz::Platform& platform
 
     for (const auto& pub : pub_application.interprocess_publishes)
     {
+        if (!is_group_included(pub.group))
+            continue;
+
         disconnected_pubs.insert(pub);
         for (const auto& sub_application : platform.applications)
         {
             for (const auto& sub : sub_application.interprocess_subscribes)
             {
+                if (!is_group_included(sub.group))
+                    continue;
+
                 if (goby::clang::connects(pub, sub))
                 {
                     remove_disconnected(pub, sub, disconnected_pubs,
@@ -367,6 +417,9 @@ void write_vehicle_connections(
     std::set<PubSubEntry> disconnected_pubs;
     for (const auto& pub : pub_application.intervehicle_publishes)
     {
+        if (!is_group_included(pub.group))
+            continue;
+
         disconnected_pubs.insert(pub);
         for (const auto& sub_platform : deployment.platforms)
         {
@@ -374,6 +427,9 @@ void write_vehicle_connections(
             {
                 for (const auto& sub : sub_application.intervehicle_subscribes)
                 {
+                    if (!is_group_included(sub.group))
+                        continue;
+
                     if (goby::clang::connects(pub, sub))
                     {
                         remove_disconnected(
@@ -397,11 +453,9 @@ void write_vehicle_connections(
             << "\n";
 }
 
-int goby::clang::visualize(const std::vector<std::string>& yamls, std::string output_directory,
-                           std::string output_file, std::string deployment_config_input,
-                           bool omit_disconnected)
+int goby::clang::visualize(const std::vector<std::string>& yamls, const VisualizeParameters& params)
 {
-    g_omit_disconnected = omit_disconnected;
+    g_params = params;
 
     std::string deployment_name;
 
@@ -409,7 +463,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, std::string ou
     std::map<std::string, std::vector<std::string>> platform_yamls;
 
     // assume deployment file
-    if (deployment_config_input.empty())
+    if (params.deployment.empty())
     {
         YAML::Node deploy_yaml;
         try
@@ -418,7 +472,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, std::string ou
         }
         catch (const std::exception& e)
         {
-            std::cout << "Failed to parse deployment file: " << deployment_config_input << ": "
+            std::cout << "Failed to parse deployment file: " << params.deployment << ": "
                       << e.what() << std::endl;
         }
         deployment_name = deploy_yaml["deployment"].as<std::string>();
@@ -452,18 +506,19 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, std::string ou
         // degenerate case without deployment yml, e.g.
         // goby_clang_tool -viz -deployment example goby3_example_basic_interprocess_publisher_interface.yml goby3_example_basic_interprocess_subscriber_interface.yml
 
-        // "deployment_config_input" is the name, not a file
-        deployment_name = deployment_config_input;
+        // "params.deployment" is the name, not a file
+        deployment_name = params.deployment;
         // use the yaml files passed as arguments to goby_clang_tool as if they belong to one deployment
         platform_yamls.insert(std::make_pair("default", yamls));
     }
 
     viz::Deployment deployment(deployment_name, platform_yamls);
 
+    std::string output_file = params.output_file;
     if (output_file.empty())
         output_file = deployment.name + ".dot";
 
-    std::string file_name(output_directory + "/" + output_file);
+    std::string file_name(params.output_directory + "/" + output_file);
     std::ofstream ofs(file_name.c_str());
     if (!ofs.is_open())
     {
@@ -481,7 +536,12 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, std::string ou
         for (const auto& sub_application : sub_platform.applications)
         {
             for (const auto& sub : sub_application.intervehicle_subscribes)
-            { platform_disconnected_subs[sub_platform.name][sub_application.name].insert(sub); } }
+            {
+                if (!is_group_included(sub.group))
+                    continue;
+                platform_disconnected_subs[sub_platform.name][sub_application.name].insert(sub);
+            }
+        }
     }
 
     for (const auto& platform : deployment.platforms)
@@ -494,7 +554,12 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, std::string ou
         for (const auto& application : platform.applications)
         {
             for (const auto& sub : application.interprocess_subscribes)
+            {
+                if (!is_group_included(sub.group))
+                    continue;
+
                 process_disconnected_subs[application.name].insert(sub);
+            }
         }
 
         for (const auto& application : platform.applications)
@@ -509,7 +574,12 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, std::string ou
                 const auto& thread = thread_p.second;
 
                 for (const auto& sub : thread->interthread_subscribes)
+                {
+                    if (!is_group_included(sub.group))
+                        continue;
+
                     thread_disconnected_subs.insert(sub);
+                }
             }
 
             for (const auto& thread_p : application.threads)
@@ -517,18 +587,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, std::string ou
                 const auto& thread = thread_p.second;
 
                 std::string thread_display_name = thread->most_derived_name();
-                using boost::algorithm::replace_all;
-                replace_all(thread_display_name, "&", "&amp;");
-                replace_all(thread_display_name, "\"", "&quot;");
-                replace_all(thread_display_name, "\'", "&apos;");
-                replace_all(thread_display_name, "<", "&lt;");
-                replace_all(thread_display_name, ">", "&gt;");
-
-                boost::algorithm::replace_first(thread_display_name, "&lt;", "<br/>&lt;");
-                replace_all(thread_display_name, "&lt;", "<font point-size=\"10\">&lt;");
-                replace_all(thread_display_name, "&gt;", "&gt;</font>");
-
-                replace_all(thread_display_name, ", ", ",<br/>");
+                viz::html_escape(thread_display_name);
 
                 ofs << "\t\t\t"
                     << node_name(platform.name, application.name, thread->most_derived_name())

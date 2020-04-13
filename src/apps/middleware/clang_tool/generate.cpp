@@ -111,8 +111,22 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         const int scheme_num = scheme_arg->getAsIntegral().getExtValue();
         const std::string scheme = goby::middleware::MarshallingScheme::to_string(scheme_num);
 
-        // hide internal groups for now
-        if (group.find("goby::") != std::string::npos)
+        std::set<std::string> internal_groups{
+            "goby::InterProcessForwarder",
+            "goby::InterProcessRegexData",
+            "goby::middleware::SerializationUnSubscribeAll",
+            "goby::ThreadJoinable",
+            "goby::ThreadShutdown",
+            "goby::middleware::intervehicle::modem_data_in",
+            "goby::middleware::intervehicle::modem_data_out",
+            "goby::middleware::intervehicle::metadata_request",
+            "goby::middleware::intervehicle::modem_ack_in",
+            "goby::middleware::intervehicle::modem_expire_in",
+            "goby::middleware::intervehicle::modem_subscription_forward_tx"};
+
+        // TODO: fix generation of internal groups (all show as "unknown")
+        // until then, hide them
+        if (internal_groups.count(group))
             return;
 
         entries_.emplace(layer, thread, group, scheme, type);
