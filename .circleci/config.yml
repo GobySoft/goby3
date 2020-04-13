@@ -109,6 +109,7 @@ job-template-deb-amd64: &job-template-deb-amd64
         name: Update the debian source repo and pull the branch with the same name as the project branch (if it exists)
         command: |        
           cd /root/debian &&
+          git reset --hard HEAD &&
           git pull &&
           git checkout origin/${CIRCLE_BRANCH} ||
           echo "No branch in debian called ${CIRCLE_BRANCH}, using $(git rev-parse --abbrev-ref HEAD)"
