@@ -189,14 +189,12 @@ filter-template-master-only: &filter-template-master-only
     branches:
       only:
         - "3.0"
-        - "3.0-clang-tool"      
 
 filter-template-non-master: &filter-template-non-master
   filters:
     branches:
       ignore:
         - "3.0"
-        - "3.0-clang-tool"
         
 ## Begin actual config
 version: 2
