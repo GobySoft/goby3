@@ -36,7 +36,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
       if(NOT CLANG_C_BINARY OR NOT CLANG_CXX_BINARY)
         message(FATAL_ERROR "Could not find clang. On Debian or Ubuntu use 'apt install clang'")
       else()
-        message("Found Clang: ${CLANG_C_BINARY}, ${CLANG_CXX_BINARY}")
+        message(STATUS "Found Clang: ${CLANG_C_BINARY}, ${CLANG_CXX_BINARY}")
       endif()
       
       set(CMAKE_C_COMPILER "${CLANG_C_BINARY}")
@@ -49,20 +49,19 @@ endif()
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   find_program(LDD_BINARY lld)
   if(LDD_BINARY)
-    message("Using Clang, setting to also use ldd")
+    message(STATUS "Using Clang, setting to also use ldd")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
   else()
-    message("Using Clang, but lld is not installed, so using system default (probably ld)")    
+    message(STATUS "Using Clang, but lld is not installed, so using system default (probably ld)")    
   endif()
 endif()
-  
 
 set(GOBY_VERSION_MAJOR "3")
 set(GOBY_VERSION_MINOR "0")
 set(GOBY_VERSION_PATCH "0~beta9")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
-   message("Compiling in Git source tree.")
+   message(STATUS "Compiling in Git source tree.")
    include(today)
    today(GOBY_VERSION_DATE)  
    execute_process(COMMAND git rev-parse --short HEAD
@@ -87,7 +86,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    set(GOBY_VERSION_PATCH "${GOBY_VERSION_PATCH}+${GOBY_REVS_SINCE_TAG}+g${GOBY_LAST_REV}${GOBY_DIRTY_REV_STRING}")
    
 else()
-   message("Compiling from release tarball.")
+   message(STATUS "Compiling from release tarball (${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}).")
    set(GOBY_VERSION_DATE "2020.04.09")
 endif()
 
@@ -181,7 +180,7 @@ install(DIRECTORY ${goby_BIN_DIR}/ DESTINATION ${CMAKE_INSTALL_BINDIR}
 install(FILES ${goby_SCRIPTS_DIR}/analyze_dccl_xml ${goby_SCRIPTS_DIR}/moos_goby_liaison ${goby_SCRIPTS_DIR}/goby_launch DESTINATION ${CMAKE_INSTALL_BINDIR}
   PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )
 
-install(DIRECTORY ${goby_SHARE_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX}/share/goby)
+install(DIRECTORY ${goby_SHARE_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX}/share)
 install(DIRECTORY ${goby_INC_DIR}/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   FILES_MATCHING REGEX .*\\.h|.*\\.proto)
 
@@ -227,7 +226,7 @@ endif()
 ## copy to build/share
 file(GLOB SHARE_FILES RELATIVE ${goby_SRC_DIR} src/share/*)
 foreach(I ${SHARE_FILES})
-  file(COPY ${goby_SRC_DIR}/${I} DESTINATION ${goby_SHARE_DIR})
+  file(COPY ${goby_SRC_DIR}/${I} DESTINATION ${goby_SHARE_DIR}/goby)
 endforeach()
 
 

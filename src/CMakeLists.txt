@@ -1,10 +1,9 @@
 ## set up function for external libraries errors
-#e.g.Boost libboost - dev 1.36 REQUIRED... 
 macro(goby_find_required_package package_name)
   find_package(${package_name} ${ARGN})
   string(TOUPPER ${package_name} package_name_upper)
   if(NOT ${package_name_upper}_FOUND AND NOT ${package_name}_FOUND)
-    message(FATAL_ERROR "missing required external library: ${package_name}. Please read the goby/DEPENDENCIES file to resolve.")
+    message(FATAL_ERROR "missing required external library: ${package_name}. Please run/read the goby/DEPENDENCIES script to resolve.")
   endif()
 endmacro()
 
@@ -13,18 +12,19 @@ endmacro()
 goby_find_required_package(ProtobufGoby)
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
+string(STRIP ${PROTOC_VERSION} PROTOC_VERSION_CLEAN)
+message(STATUS "Using Protocol Buffers ${PROTOC_VERSION_CLEAN}: ${PROTOBUF_INCLUDE_DIRS}")
 
 if(${PROTOC_VERSION} VERSION_LESS 3.0.0) 
-  message("libprotobuf < 3.0.0")
+  message(STATUS "\tlibprotobuf < 3.0.0, removing syntax= string")
   set(PROTOBUF_HAS_SYNTAX_VERSION FALSE PARENT_SCOPE)
 else()
-  message("libprotobuf >= 3.0.0")
   set(PROTOBUF_HAS_SYNTAX_VERSION TRUE PARENT_SCOPE)
 endif()
 
 #dccl
 goby_find_required_package(DCCL)
-message("Using DCCL in ${DCCL_DIR}")
+message(STATUS "Using DCCL in ${DCCL_DIR}")
 
 if(NOT DEFINED DCCL_INCLUDE_DIR)
   #for DCCL 3.0.3 and newer
@@ -32,7 +32,7 @@ if(NOT DEFINED DCCL_INCLUDE_DIR)
 endif()
 
 if(DCCL_INCLUDE_DIR)
-  message("Including protobuf dir: ${DCCL_INCLUDE_DIR}")
+  message(STATUS "\tIncluding DCCL protobuf dir: ${DCCL_INCLUDE_DIR}")
   include_directories("${DCCL_INCLUDE_DIR}")
   protobuf_include_dirs("${DCCL_INCLUDE_DIR}")
 endif()
@@ -123,7 +123,7 @@ if(enable_wt)
   goby_find_required_package(WtGoby)    
   include_directories(${Wt_INCLUDE_DIR})
   set(Wt_RESOURCES_DIR "${Wt_RESOURCES_DIR_BASE}/share/Wt/resources")
-  add_custom_command(OUTPUT WtResourcesLink COMMAND ${CMAKE_COMMAND} -E create_symlink ${Wt_RESOURCES_DIR} ${goby_SHARE_DIR}/liaison/resources)
+  add_custom_command(OUTPUT WtResourcesLink COMMAND ${CMAKE_COMMAND} -E create_symlink ${Wt_RESOURCES_DIR} ${goby_SHARE_DIR}/goby/liaison/resources)
   add_custom_target(wt_link ALL DEPENDS WtResourcesLink)
 endif()  
 
@@ -132,7 +132,7 @@ set(MAVLINK_DOC_STRING "Build the MAVLink marshalling language support library (
 find_package(MAVLINK QUIET)
 if(MAVLINK_FOUND)
   include_directories(SYSTEM ${MAVLINK_INCLUDE_DIR})
-  message("Using MAVLink in ${MAVLINK_INCLUDE_DIR}")
+  message(STATUS "Using MAVLink in ${MAVLINK_INCLUDE_DIR}")
   option(enable_mavlink ${MAVLINK_DOC_STRING} ON)
 else()
   option(enable_mavlink ${MAVLINK_DOC_STRING} OFF)
@@ -144,12 +144,22 @@ set(AIS_DOC_STRING "Build the Automatic Identification System (AIS) parsing comp
 find_package(AIS QUIET)
 if(AIS_FOUND)
   include_directories(SYSTEM ${AIS_INCLUDE_DIR})
-  message("Using libais in ${AIS_INCLUDE_DIR}")
+  message(STATUS "Using libais in ${AIS_INCLUDE_DIR}")
   option(enable_ais ${AIS_DOC_STRING} ON)
 else()
   option(enable_ais ${AIS_DOC_STRING} OFF)
   message(">> setting enable_ais to OFF ... if you need this functionality: 1) install libais (\"apt install libais-dev\" from packages.gobysoft.org or from source at https://github.com/GobySoft/libais); 2) run cmake -Denable_ais=ON")
 endif()
+
+## LLVM (for goby_clang_tool)
+include(FindLLVMForGoby)
+
+macro(generate_middleware_interfaces target) 
+  if(enable_llvm)
+    goby_export_interface(${target} ${goby_INTERFACES_DIR} ${target}_YML_OUT)
+    add_custom_target(${target}_interface ALL DEPENDS ${${target}_YML_OUT})
+  endif()
+endmacro()
 
 
 ## set flags

@@ -17,7 +17,7 @@ RUN apt-get update && \
     mk-build-deps -t "apt-get -y --no-install-recommends  -o Debug::pkgProblemResolver=yes" -i "debian/control"
 
 # Comment out troublesome (not fully multi-arch compatible) dependencies
-RUN sed -i 's/^\(.*\)clang/#\1clang/' debian/control && \
+RUN sed -i 's/^\( *\)clang/#\1clang/' debian/control && \
     sed -i 's/^\(.*\)lld/#\1lld/' debian/control && \
     sed -i 's/^\(.*\)lmodern/#\1lmodern/' debian/control && \
     sed -i 's/^\(.*\)libwt/#\1libwt/' debian/control && \
