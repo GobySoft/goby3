@@ -180,9 +180,9 @@ install(DIRECTORY ${goby_BIN_DIR}/ DESTINATION ${CMAKE_INSTALL_BINDIR}
 install(FILES ${goby_SCRIPTS_DIR}/analyze_dccl_xml ${goby_SCRIPTS_DIR}/moos_goby_liaison ${goby_SCRIPTS_DIR}/goby_launch DESTINATION ${CMAKE_INSTALL_BINDIR}
   PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )
 
-install(DIRECTORY ${goby_SHARE_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX}/share/goby)
+install(DIRECTORY ${goby_SHARE_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX}/share)
 install(DIRECTORY ${goby_INC_DIR}/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING REGEX .*\\.h|.*\\.proto|.*\\.yml)
+  FILES_MATCHING REGEX .*\\.h|.*\\.proto)
 
 # clear library list
 unset(GOBY_CORE_LIBRARY_LIST CACHE)
@@ -226,7 +226,7 @@ endif()
 ## copy to build/share
 file(GLOB SHARE_FILES RELATIVE ${goby_SRC_DIR} src/share/*)
 foreach(I ${SHARE_FILES})
-  file(COPY ${goby_SRC_DIR}/${I} DESTINATION ${goby_SHARE_DIR})
+  file(COPY ${goby_SRC_DIR}/${I} DESTINATION ${goby_SHARE_DIR}/goby)
 endforeach()
 
 

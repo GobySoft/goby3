@@ -123,7 +123,7 @@ if(enable_wt)
   goby_find_required_package(WtGoby)    
   include_directories(${Wt_INCLUDE_DIR})
   set(Wt_RESOURCES_DIR "${Wt_RESOURCES_DIR_BASE}/share/Wt/resources")
-  add_custom_command(OUTPUT WtResourcesLink COMMAND ${CMAKE_COMMAND} -E create_symlink ${Wt_RESOURCES_DIR} ${goby_SHARE_DIR}/liaison/resources)
+  add_custom_command(OUTPUT WtResourcesLink COMMAND ${CMAKE_COMMAND} -E create_symlink ${Wt_RESOURCES_DIR} ${goby_SHARE_DIR}/goby/liaison/resources)
   add_custom_target(wt_link ALL DEPENDS WtResourcesLink)
 endif()  
 

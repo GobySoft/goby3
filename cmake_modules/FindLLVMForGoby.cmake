@@ -58,5 +58,5 @@ endif()
 
 if(enable_llvm)
   include(GobyClangTool)
-  set(goby_INTERFACES_DIR ${goby_SHARE_DIR}/interfaces CACHE INTERNAL "Goby Pub/Sub Interface Directory")
+  set(goby_INTERFACES_DIR ${goby_SHARE_DIR}/goby/interfaces CACHE INTERNAL "Goby Pub/Sub Interface Directory")
 endif()

@@ -27,9 +27,21 @@ foreach(component ${GOBY_FIND_COMPONENTS})
 endforeach()
 
 get_target_property(GOBY_INCLUDE_DIR goby INTERFACE_INCLUDE_DIRECTORIES)
-message(STATUS "Found the following Goby libraries (headers in ${GOBY_INCLUDE_DIR}):")
+
+# goby_clang_tool interfaces files
+get_filename_component(GOBY_INTERFACES_DIR ${GOBY_INCLUDE_DIR}/../share/goby/interfaces ABSOLUTE)
+if(NOT EXISTS ${GOBY_INTERFACES_DIR})
+  unset(GOBY_INTERFACES_DIR)
+endif()
+  
+message(STATUS "Found the following Goby libraries:")
 message(STATUS "   goby")
 foreach(component ${GOBY_COMPONENTS_FOUND})
   message(STATUS "   goby_${component}")
 endforeach()
 
+message(STATUS "Goby headers in ${GOBY_INCLUDE_DIR}")
+
+if(GOBY_INTERFACES_DIR)
+  message (STATUS "Goby interfaces in ${GOBY_INTERFACES_DIR}")
+endif()
