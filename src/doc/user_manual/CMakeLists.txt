@@ -1,8 +1,8 @@
-add_custom_command(OUTPUT ${goby_SHARE_DIR}/doc/goby-user.pdf
+add_custom_command(OUTPUT ${goby_SHARE_DIR}/goby/doc/goby-user.pdf
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build_user_manual.sh
-  ARGS "full" ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${goby_SHARE_DIR}/doc/goby-user.pdf
+  ARGS "full" ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${goby_SHARE_DIR}/goby/doc/goby-user.pdf
 )
-add_custom_command(OUTPUT ${goby_SHARE_DIR}/doc/goby-user-quick.pdf
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/goby-user-quick.pdf
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build_user_manual.sh
   ARGS "quick" ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/goby-user-quick.pdf
 )
@@ -16,6 +16,6 @@ foreach(I ${LATEX_FILES})
 endforeach()
 
 
-add_custom_target(user-pdf ALL DEPENDS ${goby_SHARE_DIR}/doc/goby-user.pdf)
+add_custom_target(user-pdf ALL DEPENDS ${goby_SHARE_DIR}/goby/doc/goby-user.pdf)
 
-add_custom_target(user-quick DEPENDS ${goby_SHARE_DIR}/doc/goby-user-quick.pdf)
+add_custom_target(user-quick DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/goby-user-quick.pdf)
