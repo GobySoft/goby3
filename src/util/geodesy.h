@@ -29,6 +29,7 @@
 #include <boost/units/systems/angle/degrees.hpp>
 #include <boost/units/systems/si/length.hpp>
 
+#define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
 #include <proj_api.h>
 
 #include "goby/util/sci.h"
