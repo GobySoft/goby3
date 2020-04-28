@@ -23,8 +23,11 @@
 #ifndef ASIO20200428H
 #define ASIO20200428H
 
+#include <boost/version.hpp>
+
 // manage the switch from ASIO io_service to io_context introduced in Boost 1.66 but functions were not reworked until 1.70
 #if BOOST_VERSION < 107000
+#include <boost/asio/io_service.hpp>
 #define USE_BOOST_IO_SERVICE
 namespace boost
 {
