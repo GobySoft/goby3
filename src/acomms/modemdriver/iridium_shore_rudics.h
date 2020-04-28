@@ -39,7 +39,12 @@ namespace acomms
 class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
 {
   public:
-    static std::shared_ptr<RUDICSConnection> create(const boost::asio::executor& executor)
+    static std::shared_ptr<RUDICSConnection> create(
+#ifdef USE_BOOST_IO_SERVICE
+        boost::asio::io_service& executor)
+#else
+        const boost::asio::executor& executor)
+#endif
     {
         return std::shared_ptr<RUDICSConnection>(new RUDICSConnection(executor));
     }
@@ -98,7 +103,12 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
     const std::string& remote_endpoint_str() { return remote_endpoint_str_; }
 
   private:
-    RUDICSConnection(const boost::asio::executor& executor)
+    RUDICSConnection(
+#ifdef USE_BOOST_IO_SERVICE
+        boost::asio::io_service& executor)
+#else
+        const boost::asio::executor& executor)
+#endif
         : socket_(executor), remote_endpoint_str_("Unknown"), packet_failures_(0)
     {
     }

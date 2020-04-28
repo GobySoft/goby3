@@ -23,13 +23,13 @@
 #ifndef IO_COMMON_20190815H
 #define IO_COMMON_20190815H
 
+#include "goby/util/asio-compat.h"
+
 #ifdef USE_BOOST_IO_SERVICE
 #include <boost/asio/io_service.hpp>
 #else
 #include <boost/asio/io_context.hpp>
 #endif
-
-#include "goby/util/asio-compat.h"
 
 #include "goby/exception.h"
 #include "goby/middleware/application/multi_thread.h"

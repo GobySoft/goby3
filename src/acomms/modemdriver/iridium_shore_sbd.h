@@ -201,7 +201,12 @@ class SBDMTConfirmationMessageReader : public SBDMessageReader
 class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
 {
   public:
-    static std::shared_ptr<SBDConnection> create(const boost::asio::executor& executor)
+    static std::shared_ptr<SBDConnection> create(
+#ifdef USE_BOOST_IO_SERVICE
+        boost::asio::io_service& executor)
+#else
+        const boost::asio::executor& executor)
+#endif
     {
         return std::shared_ptr<SBDConnection>(new SBDConnection(executor));
     }
@@ -227,7 +232,12 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
     const std::string& remote_endpoint_str() { return remote_endpoint_str_; }
 
   private:
-    SBDConnection(const boost::asio::executor& executor)
+    SBDConnection(
+#ifdef USE_BOOST_IO_SERVICE
+        boost::asio::io_service& executor)
+#else
+        const boost::asio::executor& executor)
+#endif
         : socket_(executor), connect_time_(-1), message_(socket_), remote_endpoint_str_("Unknown")
     {
     }
