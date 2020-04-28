@@ -541,4 +541,6 @@ struct TransmitData : boost::statechart::state<TransmitData, Online>, StateNotif
 } // namespace acomms
 } // namespace goby
 
+#include "goby/acomms/modemdriver/detail/boost_statechart_compat.h"
+
 #endif

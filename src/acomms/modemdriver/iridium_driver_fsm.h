@@ -735,4 +735,6 @@ struct SBDReceive : boost::statechart::state<SBDReceive, SBD>, StateNotify
 } // namespace acomms
 } // namespace goby
 
+#include "goby/acomms/modemdriver/detail/boost_statechart_compat.h"
+
 #endif

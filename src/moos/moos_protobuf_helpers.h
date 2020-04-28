@@ -1511,11 +1511,6 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
 } // namespace goby
 
 /// \file moos_protobuf_helpers.h Helpers for MOOS applications for serializing and parsed Google Protocol buffers messages
-
-/// \brief Converts the Google Protocol Buffers message `msg` into a suitable (human readable) string `out` for sending via MOOS
-///
-/// \param out pointer to std::string to store serialized result
-/// \param msg Google Protocol buffers message to serialize
 namespace goby
 {
 namespace moos
@@ -1545,6 +1540,10 @@ inline void set_moos_technique(const goby::moos::protobuf::GobyMOOSAppConfig& cf
 } // namespace moos
 } // namespace goby
 
+/// \brief Converts the Google Protocol Buffers message `msg` into a suitable (human readable) string `out` for sending via MOOS
+///
+/// \param out pointer to std::string to store serialized result
+/// \param msg Google Protocol buffers message to serialize
 inline bool serialize_for_moos(std::string* out, const google::protobuf::Message& msg)
 {
     switch (goby::moos::get_moos_technique())

@@ -389,7 +389,7 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
     std::vector<char> data_char;
     std::vector<hsize_t> hs = hs_outer;
 
-    int max_size = 0;
+    size_t max_size = 0;
     for (unsigned i = 0, n = data.size(); i < n; ++i)
     {
         if (data[i].size() > max_size)

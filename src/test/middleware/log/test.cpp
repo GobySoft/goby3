@@ -116,7 +116,7 @@ void read_log(int test)
         bool expected_eof = false;
         assert(expected_eof);
     }
-    catch (std::ifstream::failure e)
+    catch (std::ifstream::failure& e)
     {
         assert(in_log_file.eof());
     }
