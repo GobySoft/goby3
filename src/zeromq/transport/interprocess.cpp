@@ -28,21 +28,21 @@ using goby::glog;
 using namespace goby::util::logger;
 
 // support moving to new API in ZeroMQ 4.3.1
-#if ZMQ_VERSION >= ZMQ_MAKE_VERSION(4, 3, 1)
-auto zmq_send_flags_none{zmq::send_flags::none};
-auto zmq_recv_flags_none{zmq::recv_flags::none};
-#else
+#ifdef USE_OLD_ZMQ_CPP_API
 int zmq_send_flags_none{0};
 int zmq_recv_flags_none{0};
+#else
+auto zmq_send_flags_none{zmq::send_flags::none};
+auto zmq_recv_flags_none{zmq::recv_flags::none};
 #endif
 
 bool zmq_socket_recv(zmq::socket_t& socket, zmq::message_t& msg,
                      goby::zeromq::zmq_recv_flags_type flags = zmq_recv_flags_none)
 {
-#if ZMQ_VERSION >= ZMQ_MAKE_VERSION(4, 3, 1)
-    return bool(socket.recv(msg, flags));
-#else
+#ifdef USE_OLD_ZMQ_CPP_API
     return socket.recv(&msg, flags);
+#else
+    return bool(socket.recv(msg, flags));
 #endif
 }
 
@@ -423,10 +423,10 @@ void goby::zeromq::Router::run()
     }
     try
     {
-#if ZMQ_VERSION >= ZMQ_MAKE_VERSION(4, 3, 1)
-        zmq::proxy(frontend, backend);
-#else
+#ifdef USE_OLD_ZMQ_CPP_API
         zmq::proxy((void*)frontend, (void*)backend, nullptr);
+#else
+        zmq::proxy(frontend, backend);
 #endif
     }
     catch (const zmq::error_t& e)

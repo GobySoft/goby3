@@ -853,8 +853,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
         fetch_moos_globals(cfg, moos_file_reader);
 
         // add / overwrite any options that are specified in the cfg file with those given on the command line
-        typedef std::pair<std::string, boost::program_options::variable_value> P;
-        for (const P& p : var_map)
+        for (const auto& p : var_map)
         {
             // let protobuf deal with the defaults
             if (!p.second.defaulted())

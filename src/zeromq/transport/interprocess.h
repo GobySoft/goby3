@@ -30,18 +30,22 @@
 #include "goby/zeromq/protobuf/interprocess_config.pb.h"
 #include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"
 
+#if ZMQ_VERSION <= ZMQ_MAKE_VERSION(4, 3, 1)
+#define USE_OLD_ZMQ_CPP_API
+#endif
+
 namespace goby
 {
 namespace zeromq
 {
 void setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg);
 
-#if ZMQ_VERSION >= ZMQ_MAKE_VERSION(4, 3, 1)
-using zmq_recv_flags_type = zmq::recv_flags;
-using zmq_send_flags_type = zmq::send_flags;
-#else
+#ifdef USE_OLD_ZMQ_CPP_API
 using zmq_recv_flags_type = int;
 using zmq_send_flags_type = int;
+#else
+using zmq_recv_flags_type = zmq::recv_flags;
+using zmq_send_flags_type = zmq::send_flags;
 #endif
 
 // run in the same thread as InterProcessPortal
@@ -279,10 +283,10 @@ class InterProcessPortal
         int items = 0;
         protobuf::InprocControl control_msg;
 
-#if ZMQ_VERSION >= ZMQ_MAKE_VERSION(4, 3, 1)
-        auto flags = zmq::recv_flags::dontwait;
-#else
+#ifdef USE_OLD_ZMQ_CPP_API
         int flags = ZMQ_NOBLOCK;
+#else
+        auto flags = zmq::recv_flags::dontwait;
 #endif
 
         while (zmq_main_.recv(&control_msg, flags))
