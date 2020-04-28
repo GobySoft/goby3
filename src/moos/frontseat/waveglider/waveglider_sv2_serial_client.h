@@ -22,7 +22,9 @@
 
 #include <memory>
 
+#include "goby/util/asio-compat.h"
 #include <boost/asio.hpp>
+
 #include <dccl/binary.h>
 
 namespace goby
@@ -32,11 +34,11 @@ namespace moos
 class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnection>
 {
   public:
-    static std::shared_ptr<SV2SerialConnection> create(boost::asio::io_service& io_service,
+    static std::shared_ptr<SV2SerialConnection> create(boost::asio::io_context& io_context,
                                                        std::string name, int baud = 115200)
     {
         return std::shared_ptr<SV2SerialConnection>(
-            new SV2SerialConnection(io_service, name, baud));
+            new SV2SerialConnection(io_context, name, baud));
     }
 
     boost::asio::serial_port& socket() { return socket_; }
@@ -74,8 +76,8 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
         PART_COMPLETE
     };
 
-    SV2SerialConnection(boost::asio::io_service& io_service, std::string name, int baud)
-        : socket_(io_service),
+    SV2SerialConnection(boost::asio::io_context& io_context, std::string name, int baud)
+        : socket_(io_context),
           message_(SV2_MAX_SIZE * 2) // leave room for escape chars (in theory, every byte)
     {
         using goby::glog;

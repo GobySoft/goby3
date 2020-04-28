@@ -64,7 +64,7 @@ void goby::acomms::UDPMulticastDriver::startup(const protobuf::DriverConfig& cfg
 
 void goby::acomms::UDPMulticastDriver::shutdown()
 {
-    io_service_.stop();
+    io_context_.stop();
     socket_.close();
 }
 
@@ -98,7 +98,7 @@ void goby::acomms::UDPMulticastDriver::handle_initiate_transmission(
         start_send(msg);
 }
 
-void goby::acomms::UDPMulticastDriver::do_work() { io_service_.poll(); }
+void goby::acomms::UDPMulticastDriver::do_work() { io_context_.poll(); }
 
 void goby::acomms::UDPMulticastDriver::receive_message(const protobuf::ModemTransmission& msg)
 {

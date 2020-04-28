@@ -97,18 +97,21 @@ template <typename DataType, int scheme, class Enable = void> struct SerializerP
     static std::vector<char> serialize(const DataType& msg)
     {
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
+        return std::vector<char>();
     }
 
     /// \brief The marshalling scheme specific string name for this type
     static std::string type_name()
     {
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
+        return std::string();
     }
 
     /// \brief The marshalling scheme specific string name for this type, given a instantiation of the type (useful for specializations that can handle multiple types using runtime introspection)
     static std::string type_name(const DataType& d)
     {
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
+        return std::string();
     }
 
     /// \brief Given a beginning and end iterator to bytes, parse the data and return it
@@ -123,6 +126,7 @@ template <typename DataType, int scheme, class Enable = void> struct SerializerP
                                            CharIterator& actual_end)
     {
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
+        return std::shared_ptr<DataType>();
     }
 
     /// \brief alternative to the parse method for SerializerParserHelper specializations that can handle multiple types using runtime introspection
@@ -138,6 +142,7 @@ template <typename DataType, int scheme, class Enable = void> struct SerializerP
                                                    const std::string& type)
     {
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
+        return std::shared_ptr<DataType>();
     }
 };
 

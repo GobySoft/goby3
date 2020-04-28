@@ -29,7 +29,9 @@ goby::util::TCPClient::TCPClient(const std::string& server, unsigned port,
                                  const std::string& delimiter /*= "\r\n"*/,
                                  int retry_interval /*=  10*/)
     : LineBasedClient<boost::asio::ip::tcp::socket>(delimiter, retry_interval),
-      socket_(io_service_), server_(server), port_(as<std::string>(port))
+      socket_(io_),
+      server_(server),
+      port_(as<std::string>(port))
 {
 }
 
@@ -38,7 +40,7 @@ bool goby::util::TCPClient::start_specific()
     using namespace goby::util::logger;
     using goby::glog;
 
-    boost::asio::ip::tcp::resolver resolver(io_service_);
+    boost::asio::ip::tcp::resolver resolver(io_);
     boost::asio::ip::tcp::resolver::query query(
         server_, port_, boost::asio::ip::resolver_query_base::numeric_service);
 
