@@ -40,6 +40,11 @@ environment-template-bionic: &environment-template-bionic
   DISTRO_RELEASE_CODENAME: "bionic"
   DISTRO_RELEASE_VERSION: "ubuntu18.04"
 
+environment-template-focal: &environment-template-focal
+  DISTRO_RELEASE_CODENAME: "focal"
+  DISTRO_RELEASE_VERSION: "ubuntu20.04"
+
+  
 ## Pre-declare Docker containers
 docker-base-stretch: &docker-base-stretch
   - image: gobysoft/goby3-debian-build-base:9.1
@@ -69,6 +74,14 @@ docker-arm64-bionic: &docker-arm64-bionic
 docker-armhf-bionic: &docker-armhf-bionic
   - image: gobysoft/goby3-ubuntu-build-armhf:18.04.1
 
+docker-base-focal: &docker-base-focal
+  - image: gobysoft/goby3-ubuntu-build-base:20.04.1
+docker-arm64-focal: &docker-arm64-focal
+  - image: gobysoft/goby3-ubuntu-build-arm64:20.04.1
+docker-armhf-focal: &docker-armhf-focal
+  - image: gobysoft/goby3-ubuntu-build-armhf:20.04.1
+
+    
 ## Pre-declare job templates
 job-template-amd64: &job-template-amd64
   working_directory: /root/goby3
@@ -165,17 +178,18 @@ job-template-deb-amd64: &job-template-deb-amd64
 job-template-deb-cross: &job-template-deb-cross
   <<: *job-template-deb-amd64
 
-# base sanitizer and upload off Bionic build
+# base sanitizer off Focal build
 job-template-sanitizers: &job-template-sanitizers
   <<: *job-template-amd64
   environment:
     <<: *environment-template-common
-    <<: *environment-template-bionic
+    <<: *environment-template-focal
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 2
     TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"    
-  docker: *docker-base-bionic
+  docker: *docker-base-focal
 
+# Base upload off Bionic build
 job-template-upload: &job-template-upload
   <<: *job-template-amd64
   docker: *docker-base-bionic
@@ -206,11 +220,14 @@ workflows:
           <<: *filter-template-non-master
       - amd64-buster-build:
           <<: *filter-template-non-master
-      - amd64-xenial-build:
-          <<: *filter-template-non-master
+# To keep basic builds to a minimum, remove Xenial
+#      - amd64-xenial-build:
+#          <<: *filter-template-non-master
       - amd64-bionic-build:
           <<: *filter-template-non-master
-      - amd64-bionic-minimal-build:
+      - amd64-focal-build:
+          <<: *filter-template-non-master
+      - amd64-focal-minimal-build:
           <<: *filter-template-non-master          
       
       - get-orig-source:
@@ -268,11 +285,26 @@ workflows:
           requires:
             - arm64-bionic-deb-build
 
+      - amd64-focal-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - arm64-focal-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - amd64-focal-deb-build
+      - armhf-focal-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - arm64-focal-deb-build
+
+            
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
           requires:
             - armhf-stretch-deb-build
             - armhf-buster-deb-build
+            - armhf-focal-deb-build
             - armhf-bionic-deb-build
             - armhf-xenial-deb-build
 
@@ -286,6 +318,7 @@ workflows:
           requires:
             - armhf-stretch-deb-build
             - armhf-buster-deb-build
+            - armhf-focal-deb-build
             - armhf-bionic-deb-build
             - armhf-xenial-deb-build
             
@@ -365,16 +398,27 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-bionic
 
-  amd64-bionic-minimal-build:
+  amd64-focal-build:
+    <<: *job-template-amd64
+    docker: *docker-base-focal
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-focal
+
+      
+  amd64-focal-minimal-build:
     docker:
-      - image: ubuntu:bionic
+      - image: ubuntu:focal
     working_directory: /root/goby3
+    environment:
+      DEBIAN_FRONTEND: "noninteractive"
+      DEBIAN_PRIORITY: "critical"
     steps:
       - run:
           name: Install packages server
           command: |
             apt-get update && apt-get -y install dirmngr ca-certificates && \
-            echo "deb http://packages.gobysoft.org/ubuntu/release/ bionic/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
+            echo "deb http://packages.gobysoft.org/ubuntu/release/ focal/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
             apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE    
       - run: 
           name: Install apt packages
@@ -470,6 +514,27 @@ jobs:
     environment:
       <<: *environment-template-common
       <<: *environment-template-bionic
+      <<: *environment-template-armhf
+  amd64-focal-deb-build:
+    <<: *job-template-deb-amd64
+    docker: *docker-base-focal
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-focal
+      <<: *environment-template-amd64
+  arm64-focal-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-arm64-focal
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-focal
+      <<: *environment-template-arm64
+  armhf-focal-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-armhf-focal
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-focal
       <<: *environment-template-armhf
   amd64+scan-build:
     <<: *job-template-sanitizers

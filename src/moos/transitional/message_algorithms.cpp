@@ -112,7 +112,7 @@ void goby::moos::transitional::DCCLAlgorithmPerformer::check_algorithm(const std
     for (std::vector<std::string>::size_type i = 1, n = ref_vars.size(); i < n; ++i)
     {
         bool ref_found = false;
-        for (const std::shared_ptr<DCCLMessageVar> mv : msg.header_const())
+        for (const std::shared_ptr<DCCLMessageVar>& mv : msg.header_const())
         {
             if (ref_vars[i] == mv->name())
             {
@@ -121,7 +121,7 @@ void goby::moos::transitional::DCCLAlgorithmPerformer::check_algorithm(const std
             }
         }
 
-        for (const std::shared_ptr<DCCLMessageVar> mv : msg.layout_const())
+        for (const std::shared_ptr<DCCLMessageVar>& mv : msg.layout_const())
         {
             if (ref_vars[i] == mv->name())
             {

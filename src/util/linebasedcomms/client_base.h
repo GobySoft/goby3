@@ -56,10 +56,10 @@ class LineBasedClient : public LineBasedInterface, public LineBasedConnection<AS
 
         set_active(start_specific());
 
-        LineBasedInterface::io_service().post(
+        LineBasedInterface::io_context().post(
             boost::bind(&LineBasedConnection<ASIOAsyncReadStream>::read_start, this));
         if (!LineBasedConnection<ASIOAsyncReadStream>::out().empty())
-            LineBasedInterface::io_service().post(
+            LineBasedInterface::io_context().post(
                 boost::bind(&LineBasedConnection<ASIOAsyncReadStream>::write_start, this));
     }
 
@@ -71,7 +71,7 @@ class LineBasedClient : public LineBasedInterface, public LineBasedConnection<AS
         bool write_in_progress = !LineBasedConnection<ASIOAsyncReadStream>::out().empty();
         LineBasedConnection<ASIOAsyncReadStream>::out().push_back(line);
         if (!write_in_progress)
-            LineBasedInterface::io_service().post(
+            LineBasedInterface::io_context().post(
                 boost::bind(&LineBasedConnection<ASIOAsyncReadStream>::write_start, this));
     }
 
@@ -94,7 +94,7 @@ class LineBasedClient : public LineBasedInterface, public LineBasedConnection<AS
                 LineBasedInterface::sleep(retry_interval_ -
                                           (now - last_start_time_).total_seconds());
 
-            // add this to the io_service jobs
+            // add this to the io_context jobs
             LineBasedInterface::start();
         }
     }

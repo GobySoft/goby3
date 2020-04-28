@@ -27,6 +27,25 @@
 using goby::glog;
 using namespace goby::util::logger;
 
+// support moving to new API in ZeroMQ 4.3.1
+#ifdef USE_OLD_ZMQ_CPP_API
+int zmq_send_flags_none{0};
+int zmq_recv_flags_none{0};
+#else
+auto zmq_send_flags_none{zmq::send_flags::none};
+auto zmq_recv_flags_none{zmq::recv_flags::none};
+#endif
+
+bool zmq_socket_recv(zmq::socket_t& socket, zmq::message_t& msg,
+                     goby::zeromq::zmq_recv_flags_type flags = zmq_recv_flags_none)
+{
+#ifdef USE_OLD_ZMQ_CPP_API
+    return socket.recv(&msg, flags);
+#else
+    return bool(socket.recv(msg, flags));
+#endif
+}
+
 void goby::zeromq::setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg)
 {
     int send_hwm = cfg.send_queue_size();
@@ -67,11 +86,11 @@ goby::zeromq::InterProcessPortalMainThread::InterProcessPortalMainThread(zmq::co
 }
 
 bool goby::zeromq::InterProcessPortalMainThread::recv(protobuf::InprocControl* control_msg,
-                                                      int flags)
+                                                      zmq_recv_flags_type flags)
 {
     zmq::message_t zmq_msg;
     bool message_received = false;
-    if (control_socket_.recv(&zmq_msg, flags))
+    if (zmq_socket_recv(control_socket_, zmq_msg, flags))
     {
         control_msg->ParseFromArray((char*)zmq_msg.data(), zmq_msg.size());
         glog.is(DEBUG3) &&
@@ -104,7 +123,8 @@ void goby::zeromq::InterProcessPortalMainThread::publish(const std::string& iden
         zmq::message_t msg(identifier.size() + size);
         memcpy(msg.data(), identifier.data(), identifier.size());
         memcpy(static_cast<char*>(msg.data()) + identifier.size(), bytes, size);
-        publish_socket_.send(msg);
+
+        publish_socket_.send(msg, zmq_send_flags_none);
 
         glog.is(DEBUG3) && glog << "Published " << size << " bytes to ["
                                 << identifier.substr(0, identifier.size() - 1) << "]" << std::endl;
@@ -157,7 +177,8 @@ void goby::zeromq::InterProcessPortalMainThread::send_control_msg(
 {
     zmq::message_t zmq_control_msg(control.ByteSize());
     control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());
-    control_socket_.send(zmq_control_msg);
+
+    control_socket_.send(zmq_control_msg, zmq_send_flags_none);
 }
 
 //
@@ -217,7 +238,7 @@ void goby::zeromq::InterProcessPortalReadThread::run()
 
             zmq::message_t msg(req.ByteSize());
             req.SerializeToArray(static_cast<char*>(msg.data()), req.ByteSize());
-            manager_socket_.send(msg);
+            manager_socket_.send(msg, zmq_send_flags_none);
 
             auto start = goby::time::SystemClock::now();
             while (!have_pubsub_sockets_ &&
@@ -245,15 +266,15 @@ void goby::zeromq::InterProcessPortalReadThread::poll(long timeout_ms)
             switch (i)
             {
                 case SOCKET_CONTROL:
-                    if (control_socket_.recv(&zmq_msg))
+                    if (zmq_socket_recv(control_socket_, zmq_msg))
                         control_data(zmq_msg);
                     break;
                 case SOCKET_SUBSCRIBE:
-                    if (subscribe_socket_.recv(&zmq_msg))
+                    if (zmq_socket_recv(subscribe_socket_, zmq_msg))
                         subscribe_data(zmq_msg);
                     break;
                 case SOCKET_MANAGER:
-                    if (manager_socket_.recv(&zmq_msg))
+                    if (zmq_socket_recv(manager_socket_, zmq_msg))
                         manager_data(zmq_msg);
                     break;
             }
@@ -341,7 +362,7 @@ void goby::zeromq::InterProcessPortalReadThread::send_control_msg(
 {
     zmq::message_t zmq_control_msg(control.ByteSize());
     control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());
-    control_socket_.send(zmq_control_msg);
+    control_socket_.send(zmq_control_msg, zmq_send_flags_none);
     poller_cv_->notify_all();
 }
 
@@ -402,7 +423,11 @@ void goby::zeromq::Router::run()
     }
     try
     {
+#ifdef USE_OLD_ZMQ_CPP_API
         zmq::proxy((void*)frontend, (void*)backend, nullptr);
+#else
+        zmq::proxy(frontend, backend);
+#endif
     }
     catch (const zmq::error_t& e)
     {
@@ -445,7 +470,7 @@ void goby::zeromq::Manager::run()
         while (true)
         {
             zmq::message_t request;
-            socket.recv(&request);
+            zmq_socket_recv(socket, request);
 
             protobuf::ManagerRequest pb_request;
             pb_request.ParseFromArray((char*)request.data(), request.size());
@@ -497,7 +522,7 @@ void goby::zeromq::Manager::run()
 
             zmq::message_t reply(pb_response.ByteSize());
             pb_response.SerializeToArray((char*)reply.data(), reply.size());
-            socket.send(reply);
+            socket.send(reply, zmq_send_flags_none);
         }
     }
     catch (const zmq::error_t& e)

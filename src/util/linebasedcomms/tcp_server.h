@@ -28,12 +28,15 @@
 #include <set>
 #include <string>
 
+#include "goby/util/asio-compat.h"
 #include <boost/asio.hpp>
+
 #include <boost/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <memory>
 
 #include "goby/util/as.h"
+#include "goby/util/asio-compat.h"
 
 #include "connection.h"
 #include "interface.h"
@@ -54,7 +57,7 @@ class TCPServer : public LineBasedInterface
     /// \param delimiter string used to split lines
     TCPServer(unsigned port, const std::string& delimiter = "\r\n")
         : LineBasedInterface(delimiter),
-          acceptor_(io_service(), boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
+          acceptor_(io_context(), boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
     {
     }
     virtual ~TCPServer() {}
@@ -62,8 +65,7 @@ class TCPServer : public LineBasedInterface
     typedef std::string Endpoint;
     void close(const Endpoint& endpoint)
     {
-        io_service_.post(
-            boost::bind(&TCPServer::do_close, this, boost::system::error_code(), endpoint));
+        io_.post(boost::bind(&TCPServer::do_close, this, boost::system::error_code(), endpoint));
     }
 
     /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230
@@ -105,16 +107,33 @@ class TCPConnection : public boost::enable_shared_from_this<TCPConnection>,
 
     boost::asio::ip::tcp::socket& socket() { return socket_; }
 
-    void start() { socket_.get_io_service().post(boost::bind(&TCPConnection::read_start, this)); }
+    void start()
+    {
+#ifdef USE_BOOST_IO_SERVICE
+        socket_.get_io_service().post(boost::bind(&TCPConnection::read_start, this));
+#else
+        boost::asio::post(socket_.get_executor(), boost::bind(&TCPConnection::read_start, this));
+#endif
+    }
 
     void write(const protobuf::Datagram& msg)
     {
+#ifdef USE_BOOST_IO_SERVICE
         socket_.get_io_service().post(boost::bind(&TCPConnection::socket_write, this, msg));
+#else
+        boost::asio::post(socket_.get_executor(),
+                          boost::bind(&TCPConnection::socket_write, this, msg));
+#endif
     }
 
     void close(const boost::system::error_code& error)
     {
+#ifdef USE_BOOST_IO_SERVICE
         socket_.get_io_service().post(boost::bind(&TCPConnection::socket_close, this, error));
+#else
+        boost::asio::post(socket_.get_executor(),
+                          boost::bind(&TCPConnection::socket_close, this, error));
+#endif
     }
 
     std::string local_endpoint() { return goby::util::as<std::string>(socket_.local_endpoint()); }
@@ -126,7 +145,7 @@ class TCPConnection : public boost::enable_shared_from_this<TCPConnection>,
 
     TCPConnection(LineBasedInterface* interface)
         : LineBasedConnection<boost::asio::ip::tcp::socket>(interface),
-          socket_(interface->io_service())
+          socket_(interface->io_context())
     {
     }
 

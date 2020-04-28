@@ -27,7 +27,9 @@
 
 #include <google/protobuf/descriptor.h>
 
+#include "goby/util/asio-compat.h"
 #include <boost/asio/basic_waitable_timer.hpp>
+
 #include <boost/bimap.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
@@ -153,8 +155,8 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
     // MAC
     goby::acomms::MACManager mac_;
 
-    boost::asio::io_service timer_io_service_;
-    boost::asio::io_service::work work_;
+    boost::asio::io_context timer_io_context_;
+    boost::asio::io_context::work work_;
 
     goby::acomms::RouteManager* router_;
 

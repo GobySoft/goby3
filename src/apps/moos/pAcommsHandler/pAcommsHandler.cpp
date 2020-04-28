@@ -73,7 +73,7 @@ goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
       translator_(goby::moos::protobuf::TranslatorEntry(), cfg_.common().lat_origin(),
                   cfg_.common().lon_origin(), cfg_.modem_id_lookup_path()),
       dccl_(goby::acomms::DCCLCodec::get()),
-      work_(timer_io_service_),
+      work_(timer_io_context_),
       router_(0)
 {
     translator_.add_entry(cfg_.translator_entry());
@@ -147,7 +147,7 @@ goby::apps::moos::CpAcommsHandler::~CpAcommsHandler() {}
 
 void goby::apps::moos::CpAcommsHandler::loop()
 {
-    timer_io_service_.poll();
+    timer_io_context_.poll();
 
     if (driver_restart_time_.size())
         restart_drivers();
@@ -498,7 +498,7 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
         else if (cfg_.translator_entry(i).trigger().type() ==
                  goby::moos::protobuf::TranslatorEntry::Trigger::TRIGGER_TIME)
         {
-            timers_.push_back(std::shared_ptr<Timer>(new Timer(timer_io_service_)));
+            timers_.push_back(std::shared_ptr<Timer>(new Timer(timer_io_context_)));
 
             Timer& new_timer = *timers_.back();
 

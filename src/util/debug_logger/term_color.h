@@ -175,8 +175,7 @@ class TermColor
     // red -> "red"
     std::string priv_str_from_col(const Colors::Color& c)
     {
-        typedef std::pair<std::string, Colors::Color> P;
-        for (const P& p : colors_map_)
+        for (const auto& p : colors_map_)
         {
             if (p.second == c)
                 return p.first;
@@ -190,8 +189,7 @@ class TermColor
     // red -> "\33[31m"
     std::string priv_esc_code_from_col(const Colors::Color& c)
     {
-        typedef std::pair<std::string, Colors::Color> P;
-        for (const P& p : esc_code_map_)
+        for (const auto& p : esc_code_map_)
         {
             if (p.second == c)
                 return p.first;

@@ -109,8 +109,7 @@ void goby::util::FlexOStreamBuf::enable_gui()
     curses_->startup();
 
     // add any groups already on the screen as ncurses windows
-    typedef std::pair<std::string, logger::Group> P;
-    for (const P& p : groups_) curses_->add_win(&groups_[p.first]);
+    for (const auto& p : groups_) curses_->add_win(&groups_[p.first]);
 
     curses_->recalculate_win();
 

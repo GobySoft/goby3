@@ -76,7 +76,7 @@ struct Application
                 std::set<std::string> bases;
                 if (bases_node)
                 {
-                    for (auto base : bases_node) bases.insert(base.as<std::string>());
+                    for (const auto& base : bases_node) bases.insert(base.as<std::string>());
                 }
 
                 threads.emplace(thread_name,
@@ -88,7 +88,7 @@ struct Application
             {
                 auto& bases = thread_p.second->bases;
                 bool is_direct_thread_subclass = false;
-                for (const auto base : bases)
+                for (const auto& base : bases)
                 {
                     if (base.find("goby::middleware::SimpleThread") == 0)
                         is_direct_thread_subclass = true;
@@ -98,7 +98,7 @@ struct Application
                 {
                     for (auto& base_thread_p : threads)
                     {
-                        for (const auto base : bases)
+                        for (const auto& base : bases)
                         {
                             if (base == base_thread_p.first)
                             {

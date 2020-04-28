@@ -26,6 +26,16 @@ foreach(component ${GOBY_FIND_COMPONENTS})
   endif()
 endforeach()
 
+include(CMakeFindDependencyMacro)
+
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.9)
+find_dependency(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
+find_dependency(DCCL)
+# Todo - install these Find scripts for use by downstream projects
+#find_dependency(Proj)
+#find_dependency(ProtobufGoby)
+endif()
+
 get_target_property(GOBY_INCLUDE_DIR goby INTERFACE_INCLUDE_DIRECTORIES)
 
 # goby_clang_tool interfaces files

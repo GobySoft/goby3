@@ -843,7 +843,7 @@ IGNORE_PREFIX          =
 # If a relative path is entered the value of OUTPUT_DIRECTORY will be 
 # put in front of it. If left blank `html' will be used as the default path.
 
-HTML_OUTPUT            = @goby_SHARE_DIR@/doc/html
+HTML_OUTPUT            = @goby_SHARE_DIR@/goby/doc/html
 
 # The HTML_FILE_EXTENSION tag can be used to specify the file extension for 
 # each generated HTML page (for example: .htm,.php,.asp). If it is left blank 
@@ -1576,3 +1576,5 @@ DOT_CLEANUP            = YES
 # used. If set to NO the values of all tags below this one will be ignored.
 
 SEARCHENGINE           = YES
+
+USE_MATHJAX  = YES

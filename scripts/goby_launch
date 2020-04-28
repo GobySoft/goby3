@@ -97,6 +97,9 @@ do_kill()
     done
 
     spid=()
+
+    rm $launchfile;
+    
     exit 0;
 }
 

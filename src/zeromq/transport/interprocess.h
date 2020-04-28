@@ -30,18 +30,33 @@
 #include "goby/zeromq/protobuf/interprocess_config.pb.h"
 #include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"
 
+#if ZMQ_VERSION <= ZMQ_MAKE_VERSION(4, 3, 1)
+#define USE_OLD_ZMQ_CPP_API
+#endif
+
 namespace goby
 {
 namespace zeromq
 {
 void setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg);
+
+#ifdef USE_OLD_ZMQ_CPP_API
+using zmq_recv_flags_type = int;
+using zmq_send_flags_type = int;
+#else
+using zmq_recv_flags_type = zmq::recv_flags;
+using zmq_send_flags_type = zmq::send_flags;
+#endif
+
 // run in the same thread as InterProcessPortal
 class InterProcessPortalMainThread
 {
   public:
     InterProcessPortalMainThread(zmq::context_t& context);
     bool ready() { return publish_socket_configured_; }
-    bool recv(protobuf::InprocControl* control_msg, int flags = 0);
+
+    bool recv(protobuf::InprocControl* control_msg,
+              zmq_recv_flags_type flags = zmq_recv_flags_type());
     void set_publish_cfg(const protobuf::Socket& cfg);
     void publish(const std::string& identifier, const char* bytes, int size);
     void subscribe(const std::string& identifier);
@@ -267,7 +282,14 @@ class InterProcessPortal
     {
         int items = 0;
         protobuf::InprocControl control_msg;
-        while (zmq_main_.recv(&control_msg, ZMQ_NOBLOCK))
+
+#ifdef USE_OLD_ZMQ_CPP_API
+        int flags = ZMQ_NOBLOCK;
+#else
+        auto flags = zmq::recv_flags::dontwait;
+#endif
+
+        while (zmq_main_.recv(&control_msg, flags))
         {
             switch (control_msg.type())
             {

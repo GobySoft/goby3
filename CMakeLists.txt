@@ -47,9 +47,9 @@ endif()
 
 # If we're using clang, use lld as well
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-  find_program(LDD_BINARY lld)
-  if(LDD_BINARY)
-    message(STATUS "Using Clang, setting to also use ldd")
+  find_program(LLD_BINARY lld)
+  if(LLD_BINARY)
+    message(STATUS "Using Clang, setting to also use lld")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
   else()
     message(STATUS "Using Clang, but lld is not installed, so using system default (probably ld)")    

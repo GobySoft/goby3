@@ -30,8 +30,10 @@
 #include <string>
 #include <thread>
 
-#include <boost/array.hpp>
+#include "goby/util/asio-compat.h"
 #include <boost/asio.hpp>
+
+#include <boost/array.hpp>
 #include <boost/bind.hpp>
 
 #include "goby/time.h"
@@ -85,7 +87,7 @@ class LineBasedInterface
     void set_delimiter(const std::string& s) { delimiter_ = s; }
     std::string delimiter() const { return delimiter_; }
 
-    boost::asio::io_service& io_service() { return io_service_; }
+    boost::asio::io_context& io_context() { return io_; }
 
   protected:
     // all implementors of this line based interface must provide do_start, do_write, do_close, and put all read data into "in_"
@@ -96,7 +98,7 @@ class LineBasedInterface
     void set_active(bool active) { active_ = active; }
 
     std::string delimiter_;
-    boost::asio::io_service io_service_; // the main IO service that runs this connection
+    boost::asio::io_context io_;         // the main IO service that runs this connection
     std::deque<protobuf::Datagram> in_;  // buffered read data
     std::mutex in_mutex_;
 
@@ -110,25 +112,25 @@ class LineBasedInterface
     class IOLauncher
     {
       public:
-        IOLauncher(boost::asio::io_service& io_service)
-            : io_service_(io_service), t_(boost::bind(&boost::asio::io_service::run, &io_service))
+        IOLauncher(boost::asio::io_context& io)
+            : io_(io), t_(boost::bind(&boost::asio::io_context::run, &io))
         {
         }
 
         ~IOLauncher()
         {
-            io_service_.stop();
+            io_.stop();
             t_.join();
         }
 
       private:
-        boost::asio::io_service& io_service_;
+        boost::asio::io_context& io_;
         std::thread t_;
     };
 
     std::shared_ptr<IOLauncher> io_launcher_;
 
-    boost::asio::io_service::work work_;
+    boost::asio::io_context::work work_;
     bool active_; // remains true while this object is still operating
 };
 
