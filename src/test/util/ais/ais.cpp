@@ -19,8 +19,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <boost/version.hpp>
+
 #define BOOST_TEST_MODULE ais_codec_test
+
+#if BOOST_VERSION > 105800
+#include <boost/test/tools/floating_point_comparison.hpp>
+#else
 #include <boost/test/floating_point_comparison.hpp>
+#endif
+
 #include <boost/test/included/unit_test.hpp>
 #include <boost/units/io.hpp>
 #include <boost/units/systems/si/prefixes.hpp>

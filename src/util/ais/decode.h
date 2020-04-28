@@ -169,6 +169,7 @@ inline ostream& operator<<(ostream& os, Decoder::ParsedType t)
 {
     switch (t)
     {
+        default:
         case Decoder::ParsedType::NOT_SUPPORTED: return os << "NOT_SUPPORTED";
         case Decoder::ParsedType::VOYAGE: return os << "VOYAGE";
         case Decoder::ParsedType::POSITION: return os << "POSITION";

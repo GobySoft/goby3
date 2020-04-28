@@ -410,6 +410,9 @@ jobs:
     docker:
       - image: ubuntu:focal
     working_directory: /root/goby3
+    environment:
+      DEBIAN_FRONTEND: "noninteractive"
+      DEBIAN_PRIORITY: "critical"
     steps:
       - run:
           name: Install packages server
