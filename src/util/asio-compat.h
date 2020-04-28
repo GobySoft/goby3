@@ -29,12 +29,15 @@
 #if BOOST_VERSION < 107000
 #include <boost/asio/io_service.hpp>
 #define USE_BOOST_IO_SERVICE
+#endif
+
+// also typedef new names
+#if BOOST_VERSION < 106600
 namespace boost
 {
 namespace asio
 {
 using io_context = io_service;
-using executor = io_service;
 } // namespace asio
 } // namespace boost
 #endif
