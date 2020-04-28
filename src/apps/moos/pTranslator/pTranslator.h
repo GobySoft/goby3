@@ -24,6 +24,7 @@
 
 #include <google/protobuf/descriptor.h>
 
+#include "goby/util/asio-compat.h"
 #include <boost/asio.hpp>
 
 #include "dccl/dynamic_protobuf_manager.h"
@@ -69,8 +70,8 @@ class CpTranslator : public goby::moos::GobyMOOSApp
 
     goby::moos::MOOSTranslator translator_;
 
-    boost::asio::io_service timer_io_service_;
-    boost::asio::io_service::work work_;
+    boost::asio::io_context timer_io_context_;
+    boost::asio::io_context::work work_;
 
     std::vector<std::shared_ptr<Timer> > timers_;
 

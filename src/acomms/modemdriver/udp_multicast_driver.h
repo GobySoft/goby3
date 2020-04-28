@@ -28,6 +28,7 @@
 #include "goby/acomms/modemdriver/driver_base.h"
 #include "goby/acomms/protobuf/udp_multicast_driver.pb.h"
 
+#include "goby/util/asio-compat.h"
 #include <boost/asio.hpp>
 
 namespace goby
@@ -59,8 +60,8 @@ class UDPMulticastDriver : public ModemDriverBase
 
   private:
     protobuf::DriverConfig driver_cfg_;
-    boost::asio::io_service io_service_;
-    boost::asio::ip::udp::socket socket_{io_service_};
+    boost::asio::io_context io_context_;
+    boost::asio::ip::udp::socket socket_{io_context_};
     boost::asio::ip::udp::endpoint receiver_;
     boost::asio::ip::udp::endpoint sender_;
 

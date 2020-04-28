@@ -28,7 +28,9 @@
 #include "goby/acomms/modemdriver/driver_base.h"
 #include "goby/acomms/protobuf/udp_driver.pb.h"
 
+#include "goby/util/asio-compat.h"
 #include <boost/asio.hpp>
+
 #include <boost/bind.hpp>
 
 namespace goby
@@ -55,7 +57,7 @@ class UDPDriver : public ModemDriverBase
 
   private:
     protobuf::DriverConfig driver_cfg_;
-    boost::asio::io_service io_service_;
+    boost::asio::io_context io_context_;
     std::unique_ptr<boost::asio::ip::udp::socket> socket_;
     // modem id to endpoint
     std::multimap<int, boost::asio::ip::udp::endpoint> receivers_;

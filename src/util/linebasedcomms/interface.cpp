@@ -25,7 +25,7 @@
 #include "goby/util/debug_logger.h"
 
 goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
-    : work_(io_service_), active_(false)
+    : work_(io_), active_(false)
 {
     goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
@@ -33,7 +33,7 @@ goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
         throw Exception("Line based comms started with null string as delimiter!");
 
     delimiter_ = delimiter;
-    io_launcher_.reset(new IOLauncher(io_service_));
+    io_launcher_.reset(new IOLauncher(io_));
 }
 
 void goby::util::LineBasedInterface::start()
@@ -42,7 +42,7 @@ void goby::util::LineBasedInterface::start()
         return;
 
     //    active_ = true;
-    io_service_.post(boost::bind(&LineBasedInterface::do_start, this));
+    io_.post(boost::bind(&LineBasedInterface::do_start, this));
 }
 
 void goby::util::LineBasedInterface::clear()
@@ -106,13 +106,13 @@ bool goby::util::LineBasedInterface::readline(std::string* s,
 // pass the write data via the io service in the other thread
 void goby::util::LineBasedInterface::write(const protobuf::Datagram& msg)
 {
-    io_service_.post(boost::bind(&LineBasedInterface::do_write, this, msg));
+    io_.post(boost::bind(&LineBasedInterface::do_write, this, msg));
 }
 
 // call the do_close function via the io service in the other thread
 void goby::util::LineBasedInterface::close()
 {
-    io_service_.post(boost::bind(&LineBasedInterface::do_close, this, boost::system::error_code()));
+    io_.post(boost::bind(&LineBasedInterface::do_close, this, boost::system::error_code()));
 }
 
-void goby::util::LineBasedInterface::sleep(int sec) { io_service_.post(boost::bind(::sleep, sec)); }
+void goby::util::LineBasedInterface::sleep(int sec) { io_.post(boost::bind(::sleep, sec)); }

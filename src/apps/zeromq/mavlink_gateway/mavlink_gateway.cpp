@@ -2,8 +2,6 @@
 #include <string>
 #include <vector>
 
-#include <boost/asio.hpp>
-
 #include "goby/middleware/marshalling/protobuf.h"
 
 #include "goby/middleware/io/serial_mavlink.h"

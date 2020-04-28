@@ -23,7 +23,9 @@
 #ifndef IridiumShoreSBD20150508H
 #define IridiumShoreSBD20150508H
 
+#include "goby/util/asio-compat.h"
 #include <boost/asio.hpp>
+
 #include <boost/bind.hpp>
 #include <boost/signals2.hpp>
 
@@ -37,9 +39,14 @@ namespace acomms
 class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
 {
   public:
-    static std::shared_ptr<RUDICSConnection> create(boost::asio::io_service& io_service)
+    static std::shared_ptr<RUDICSConnection> create(
+#ifdef USE_BOOST_IO_SERVICE
+        boost::asio::io_service& executor)
+#else
+        const boost::asio::executor& executor)
+#endif
     {
-        return std::shared_ptr<RUDICSConnection>(new RUDICSConnection(io_service));
+        return std::shared_ptr<RUDICSConnection>(new RUDICSConnection(executor));
     }
 
     boost::asio::ip::tcp::socket& socket() { return socket_; }
@@ -96,8 +103,13 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
     const std::string& remote_endpoint_str() { return remote_endpoint_str_; }
 
   private:
-    RUDICSConnection(boost::asio::io_service& io_service)
-        : socket_(io_service), remote_endpoint_str_("Unknown"), packet_failures_(0)
+    RUDICSConnection(
+#ifdef USE_BOOST_IO_SERVICE
+        boost::asio::io_service& executor)
+#else
+        const boost::asio::executor& executor)
+#endif
+        : socket_(executor), remote_endpoint_str_("Unknown"), packet_failures_(0)
     {
     }
 
@@ -155,8 +167,8 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
 class RUDICSServer
 {
   public:
-    RUDICSServer(boost::asio::io_service& io_service, int port)
-        : acceptor_(io_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
+    RUDICSServer(boost::asio::io_context& io_context, int port)
+        : acceptor_(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
     {
         start_accept();
     }
@@ -171,7 +183,11 @@ class RUDICSServer
     void start_accept()
     {
         std::shared_ptr<RUDICSConnection> new_connection =
+#ifdef USE_BOOST_IO_SERVICE
             RUDICSConnection::create(acceptor_.get_io_service());
+#else
+            RUDICSConnection::create(acceptor_.get_executor());
+#endif
         acceptor_.async_accept(new_connection->socket(),
                                boost::bind(&RUDICSServer::handle_accept, this, new_connection,
                                            boost::asio::placeholders::error));
