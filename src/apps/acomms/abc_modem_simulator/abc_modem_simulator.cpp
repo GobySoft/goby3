@@ -35,7 +35,6 @@
 #include "goby/acomms/acomms_constants.h" // for BROADCAST_ID
 #include "goby/util/as.h"
 #include "goby/util/linebasedcomms.h"
-#include "goby/util/string.h"
 
 std::map<int, std::string> modem_id2endpoint;
 
@@ -168,12 +167,12 @@ int main(int argc, char* argv[])
 void parse_in(const std::string& in, std::map<std::string, std::string>* out)
 {
     std::vector<std::string> comma_split;
-    goby::util::split(comma_split, in, boost::is_any_of(","));
+    boost::split(comma_split, in, boost::is_any_of(","));
     out->insert(std::make_pair("KEY", comma_split.at(0)));
     for (int i = 1, n = comma_split.size(); i < n; ++i)
     {
         std::vector<std::string> colon_split;
-        goby::util::split(colon_split, comma_split[i], boost::is_any_of(":"));
+        boost::split(colon_split, comma_split[i], boost::is_any_of(":"));
         out->insert(std::make_pair(colon_split.at(0), colon_split.at(1)));
     }
 }

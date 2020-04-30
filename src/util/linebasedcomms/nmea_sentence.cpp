@@ -23,7 +23,6 @@
 #include <boost/algorithm/string.hpp>
 
 #include "goby/util/binary.h"
-#include "goby/util/string.h"
 
 #include "nmea_sentence.h"
 
@@ -60,7 +59,7 @@ goby::util::NMEASentence::NMEASentence(std::string s, strategy cs_strat /*= VALI
             throw bad_nmea_sentence("NMEASentence: bad checksum: '" + s + "'.");
     }
     // Split string into parts.
-    goby::util::split(*(std::vector<std::string>*)this, s, boost::is_any_of(","));
+    boost::split(*(std::vector<std::string>*)this, s, boost::is_any_of(","));
     // Validate talker size.
     if (enforce_talker_length && this->front().size() != 6)
         throw bad_nmea_sentence("NMEASentence: bad talker length '" + s + "'.");

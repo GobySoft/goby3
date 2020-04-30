@@ -21,8 +21,6 @@
 
 #include "pAcommsHandler.h"
 
-#include "goby/util/string.h"
-
 std::vector<void*> plugin_handles_;
 
 using goby::glog;
@@ -38,7 +36,7 @@ int main(int argc, char* argv[])
     {
         std::string s_plugins(plugins);
         std::vector<std::string> plugin_vec;
-        goby::util::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
+        boost::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
 
         for (int i = 0, n = plugin_vec.size(); i < n; ++i)
         {

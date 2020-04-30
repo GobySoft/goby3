@@ -40,7 +40,6 @@
 #include "goby/acomms/protobuf/iridium_driver.pb.h"
 #include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/util/as.h"
-#include "goby/util/string.h"
 
 namespace goby
 {
@@ -657,7 +656,7 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
     {
         // +SBDIX:<MO status>,<MOMSN>,<MT status>,<MTMSN>,<MT length>,<MT queued>
         std::vector<std::string> sbdi_fields;
-        goby::util::split(sbdi_fields, e.sbdi_, boost::is_any_of(":,"));
+        boost::algorithm::split(sbdi_fields, e.sbdi_, boost::is_any_of(":,"));
 
         std::for_each(sbdi_fields.begin(), sbdi_fields.end(),
                       boost::bind(&boost::trim<std::string>, _1, std::locale()));

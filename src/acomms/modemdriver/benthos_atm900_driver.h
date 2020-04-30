@@ -29,7 +29,6 @@
 
 #include "goby/acomms/protobuf/benthos_atm900.pb.h"
 #include "goby/time.h"
-#include "goby/util/string.h"
 
 #include "benthos_atm900_driver_fsm.h"
 #include "driver_base.h"
@@ -126,7 +125,7 @@ inline void parse_benthos_modem_message(std::string in,
         out->add_acked_frame(header.acked_frame(i));
 
     std::vector<std::string> encoded_frames;
-    goby::util::split(encoded_frames, in, boost::is_any_of("\r"), boost::token_compress_on);
+    boost::split(encoded_frames, in, boost::is_any_of("\r"), boost::token_compress_on);
 
     for (int i = 0, n = encoded_frames.size(); i < n; ++i)
     {

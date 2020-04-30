@@ -31,7 +31,6 @@
 
 #include "dccl/dynamic_protobuf_manager.h"
 #include "goby/time.h"
-#include "goby/util/string.h"
 
 #include "liaison.h"
 #include "liaison_wt_thread.h"
@@ -50,7 +49,7 @@ int main(int argc, char* argv[])
     {
         std::string s_plugins(plugins);
         std::vector<std::string> plugin_vec;
-        goby::util::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
+        boost::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
 
         for (int i = 0, n = plugin_vec.size(); i < n; ++i)
         {
@@ -137,7 +136,7 @@ goby::apps::zeromq::Liaison::Liaison()
         std::string str = cfg().app().name() + " --docroot " + doc_root + " --http-port " +
                           goby::util::as<std::string>(cfg().http_port()) + " --http-address " +
                           cfg().http_address() + " " + cfg().additional_wt_http_params();
-        goby::util::split(wt_argv_vec, str, boost::is_any_of(" "));
+        boost::split(wt_argv_vec, str, boost::is_any_of(" "));
 
         char* wt_argv[wt_argv_vec.size()];
 

@@ -180,7 +180,7 @@ endmacro()
 
 ## boost
 goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
-include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
 
 protobuf_generate_cpp(BASE_PROTO_SRCS BASE_PROTO_HDRS 
   protobuf/option_extensions.proto
