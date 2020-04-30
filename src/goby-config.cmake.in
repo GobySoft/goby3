@@ -28,7 +28,8 @@ endforeach()
 
 include(CMakeFindDependencyMacro)
 
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.9)
+# cmake 3.9+ requires find_dependency(boost) on downstream projects to link goby
+if(NOT (${CMAKE_VERSION} VERSION_LESS 3.9))
 find_dependency(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
 find_dependency(DCCL)
 # Todo - install these Find scripts for use by downstream projects
