@@ -23,6 +23,8 @@
 
 #include <dccl/dynamic_protobuf_manager.h>
 
+#include "goby/util/string.h"
+
 void goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5ProtobufEntry& entry)
 {
     const std::string& msg_name = entry.msg->GetDescriptor()->full_name();
@@ -42,7 +44,7 @@ H5::Group& goby::middleware::hdf5::GroupFactory::fetch_group(const std::string& 
     std::deque<std::string> nodes;
     std::string clean_path = boost::trim_copy_if(group_path, boost::algorithm::is_space() ||
                                                                  boost::algorithm::is_any_of("/"));
-    boost::split(nodes, clean_path, boost::is_any_of("/"));
+    goby::util::split(nodes, clean_path, boost::is_any_of("/"));
     return root_group_.fetch_group(nodes);
 }
 

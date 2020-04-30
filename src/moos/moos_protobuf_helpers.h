@@ -42,6 +42,7 @@
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/primitive_types.h"
+#include "goby/util/string.h"
 
 namespace goby
 {
@@ -464,7 +465,7 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
                         }
 
                         std::vector<std::string> vals;
-                        boost::split(vals, val, boost::is_any_of(","));
+                        goby::util::split(vals, val, boost::is_any_of(","));
                         from_moos_comma_equals_string_field(out, field_desc, vals, 0,
                                                             use_short_enum);
                     }
@@ -483,7 +484,7 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
                                         field_desc->message_type()->field(k)->name()))
                             {
                                 std::vector<std::string> vals;
-                                boost::split(vals, val, boost::is_any_of(","));
+                                goby::util::split(vals, val, boost::is_any_of(","));
 
                                 for (int j = 0, m = vals.size(); j < m; ++j)
                                 {
@@ -509,7 +510,7 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
                                         field_desc->message_type()->field(k)->name()))
                             {
                                 std::vector<std::string> vals;
-                                boost::split(vals, val, boost::is_any_of(","));
+                                goby::util::split(vals, val, boost::is_any_of(","));
 
                                 google::protobuf::Message* embedded_msg =
                                     refl->MutableMessage(out, field_desc);
@@ -873,7 +874,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
 
             boost::trim_if(match, boost::is_any_of("%"));
             std::vector<std::string> subfields;
-            boost::split(subfields, match, boost::is_any_of(":"));
+            goby::util::split(subfields, match, boost::is_any_of(":"));
 
             ++max_field_number;
 
@@ -884,7 +885,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
             for (int i = 0, n = subfields.size() - 1; i < n; ++i)
             {
                 std::vector<std::string> field_and_index;
-                boost::split(field_and_index, subfields[i], boost::is_any_of("."));
+                goby::util::split(field_and_index, subfields[i], boost::is_any_of("."));
 
                 field_desc = sub_message->GetDescriptor()->FindFieldByNumber(
                     goby::util::as<int>(field_and_index[0]));
@@ -941,7 +942,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
             RepeatedFieldKey key;
 
             std::vector<std::string> field_and_index;
-            boost::split(field_and_index, match, boost::is_any_of("."));
+            goby::util::split(field_and_index, match, boost::is_any_of("."));
 
             key.field = goby::util::as<int>(field_and_index[0]);
             key.index = goby::util::as<int>(field_and_index[1]);
@@ -1172,7 +1173,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                 if (specifier.find(":") != std::string::npos)
                 {
                     std::vector<std::string> subfields;
-                    boost::split(subfields, specifier, boost::is_any_of(":"));
+                    goby::util::split(subfields, specifier, boost::is_any_of(":"));
                     const google::protobuf::FieldDescriptor* field_desc = 0;
                     const google::protobuf::Reflection* sub_refl = refl;
                     google::protobuf::Message* sub_message = out;
@@ -1180,7 +1181,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                     for (int i = 0, n = subfields.size() - 1; i < n; ++i)
                     {
                         std::vector<std::string> field_and_index;
-                        boost::split(field_and_index, subfields[i], boost::is_any_of("."));
+                        goby::util::split(field_and_index, subfields[i], boost::is_any_of("."));
 
                         field_desc = sub_message->GetDescriptor()->FindFieldByNumber(
                             goby::util::as<int>(field_and_index[0]));
@@ -1221,7 +1222,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                     try
                     {
                         std::vector<std::string> field_and_index;
-                        boost::split(field_and_index, specifier, boost::is_any_of("."));
+                        goby::util::split(field_and_index, specifier, boost::is_any_of("."));
 
                         int field_index = boost::lexical_cast<int>(field_and_index[0]);
                         bool is_indexed_repeated_field = field_and_index.size() == 2;
@@ -1260,7 +1261,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                         if (is_indexed_repeated_field || !field_desc->is_repeated())
                             parts.push_back(extract);
                         else
-                            boost::split(parts, extract, boost::is_any_of(repeated_delimiter));
+                            goby::util::split(parts, extract, boost::is_any_of(repeated_delimiter));
 
                         for (int j = 0, m = parts.size(); j < m; ++j)
                         {

@@ -22,7 +22,6 @@
 #ifndef GOBYHDF520160524H
 #define GOBYHDF520160524H
 
-#include <boost/algorithm/string.hpp>
 #include <boost/range/algorithm/replace_if.hpp>
 
 #include "H5Cpp.h"

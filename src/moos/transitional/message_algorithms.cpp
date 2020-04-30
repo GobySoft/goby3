@@ -26,6 +26,7 @@
 #include "message_val.h"
 
 #include "goby/util/as.h"
+#include "goby/util/string.h"
 
 goby::moos::transitional::DCCLAlgorithmPerformer*
     goby::moos::transitional::DCCLAlgorithmPerformer::inst_ = 0;
@@ -53,7 +54,7 @@ void goby::moos::transitional::DCCLAlgorithmPerformer::algorithm(
 
     std::vector<std::string> ref_vars;
     std::string algorithm_deblanked = boost::erase_all_copy(algorithm, " ");
-    boost::split(ref_vars, algorithm_deblanked, boost::is_any_of(":"));
+    goby::util::split(ref_vars, algorithm_deblanked, boost::is_any_of(":"));
 
     std::string alg;
     std::vector<DCCLMessageVal> tied_vals;
@@ -101,7 +102,7 @@ void goby::moos::transitional::DCCLAlgorithmPerformer::check_algorithm(const std
 
     std::vector<std::string> ref_vars;
     std::string algorithm_deblanked = boost::erase_all_copy(alg, " ");
-    boost::split(ref_vars, algorithm_deblanked, boost::is_any_of(":"));
+    goby::util::split(ref_vars, algorithm_deblanked, boost::is_any_of(":"));
 
     // check if the algorithm exists
     // but ignore if no algorithms loaded (to use for testing tools)

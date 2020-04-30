@@ -39,6 +39,7 @@
 #include <Wt/WVBoxLayout>
 
 #include "goby/time.h"
+#include "goby/util/string.h"
 
 using namespace Wt;
 using namespace goby::util::logger_lock;
@@ -104,7 +105,7 @@ void goby::apps::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WSta
     std::string debug_string = pb_msg.DebugString();
     boost::trim(debug_string);
 
-    boost::split(result, debug_string, boost::is_any_of("\n"));
+    goby::util::split(result, debug_string, boost::is_any_of("\n"));
 
     key_item->setRowCount(result.size());
     key_item->setColumnCount(protobuf::ProtobufScopeConfig::COLUMN_MAX + 1);

@@ -31,6 +31,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "goby/util/as.h"
+#include "goby/util/string.h"
 
 namespace goby
 {
@@ -87,7 +88,7 @@ class NMEASentence : public std::vector<std::string>
         else
         {
             std::vector<std::string> vec;
-            boost::split(vec, str, boost::is_any_of(","));
+            goby::util::split(vec, str, boost::is_any_of(","));
 
             for (const std::string& s : vec) std::vector<std::string>::push_back(s);
         }

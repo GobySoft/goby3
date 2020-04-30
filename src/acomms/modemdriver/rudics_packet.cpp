@@ -20,8 +20,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/algorithm/string.hpp>
 #include <boost/crc.hpp>
+
+// see https://bugs.llvm.org/show_bug.cgi?id=41141
+#ifndef __clang_analyzer__
+#include <boost/algorithm/string/classification.hpp>
+#endif
+
 #include <netinet/in.h>
 
 #include "goby/util/base_convert.h"
@@ -67,10 +72,15 @@ void goby::acomms::parse_rudics_packet(std::string* bytes, std::string rudics_pk
 
     const int reduced_base = 256 - reserved.size();
 
+// see https://bugs.llvm.org/show_bug.cgi?id=41141
+#ifndef __clang_analyzer__
+
     // get rid of extra junk
     rudics_pkt.erase(
         std::remove_if(rudics_pkt.begin(), rudics_pkt.end(), boost::is_any_of(reserved)),
         rudics_pkt.end());
+
+#endif
 
     // 3. replace reserved characters
     for (int i = 0, n = reserved.size(); i < n; ++i)

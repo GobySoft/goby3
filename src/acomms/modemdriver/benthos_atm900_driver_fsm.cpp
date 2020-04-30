@@ -28,6 +28,7 @@
 #include "goby/time.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
+#include "goby/util/string.h"
 
 #include "benthos_atm900_driver.h"
 #include "benthos_atm900_driver_fsm.h"
@@ -143,7 +144,7 @@ void goby::acomms::benthos::fsm::ReceiveData::in_state_react(const EvRxSerial& e
         {
             //  Source:001  Destination:002
             std::vector<std::string> src_dest;
-            boost::split(src_dest, in, boost::is_any_of(" "), boost::token_compress_on);
+            goby::util::split(src_dest, in, boost::is_any_of(" "), boost::token_compress_on);
             if (src_dest.size() != 2)
             {
                 throw(std::runtime_error(
@@ -178,7 +179,7 @@ void goby::acomms::benthos::fsm::ReceiveData::in_state_react(const EvRxSerial& e
 
             // CRC:Pass MPD:03.2 SNR:31.3 AGC:91 SPD:+00.0 CCERR:013
             std::vector<std::string> stats;
-            boost::split(stats, in, boost::is_any_of(" "), boost::token_compress_on);
+            goby::util::split(stats, in, boost::is_any_of(" "), boost::token_compress_on);
 
             enum StatField
             {
@@ -301,7 +302,8 @@ void goby::acomms::benthos::fsm::Range::in_state_react(const EvRxSerial& e)
                 in.substr(range_pos + range.size(), col_pos - (range_pos + range.size()));
             boost::trim(src_to_dest);
             std::vector<std::string> src_dest;
-            boost::split(src_dest, src_to_dest, boost::is_any_of(" to"), boost::token_compress_on);
+            goby::util::split(src_dest, src_to_dest, boost::is_any_of(" to"),
+                              boost::token_compress_on);
             if (src_dest.size() != 2)
             {
                 throw(std::runtime_error("Invalid source/dest string, expected \"Range 1 to 2\""));

@@ -24,6 +24,7 @@
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/moos/middleware/moos_plugin_translator.h"
 #include "goby/moos/protobuf/moos_gateway_config.pb.h"
+#include "goby/util/string.h"
 #include "goby/zeromq/application/multi_thread.h"
 
 using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
@@ -60,7 +61,7 @@ int main(int argc, char* argv[])
     {
         std::string s_plugins(plugins);
         std::vector<std::string> plugin_vec;
-        boost::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
+        goby::util::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
 
         for (const auto& plugin : plugin_vec)
         {

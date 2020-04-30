@@ -27,6 +27,7 @@
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/linebasedcomms/nmea_sentence.h"
+#include "goby/util/string.h"
 
 #include "iver_driver.h"
 
@@ -236,7 +237,7 @@ void goby::moos::IverFrontSeat::process_receive(const std::string& s)
             };
 
             std::vector<std::string> cfields;
-            boost::split(cfields, nmea.at(0), boost::is_any_of("CPRTD"));
+            goby::util::split(cfields, nmea.at(0), boost::is_any_of("CPRTD"));
 
             status_.mutable_pose()->set_roll_with_units(goby::util::as<double>(cfields.at(ROLL)) *
                                                         boost::units::degree::degrees);

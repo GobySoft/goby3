@@ -22,14 +22,13 @@
 
 #include <sstream>
 
-#include <boost/algorithm/string.hpp>
-
 #include <dccl/bitset.h>
 
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
 #include "goby/util/sci.h"
+#include "goby/util/string.h"
 
 #include "driver_exception.h"
 #include "mm_driver.h"
@@ -1430,9 +1429,9 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
     std::vector<std::string> frames, frames_data;
 
     if (!nmea[DATA_MINI].empty())
-        boost::split(frames, nmea[DATA_MINI], boost::is_any_of(";"));
+        goby::util::split(frames, nmea[DATA_MINI], boost::is_any_of(";"));
     if (!nmea[DATA].empty())
-        boost::split(frames_data, nmea[DATA], boost::is_any_of(";"));
+        goby::util::split(frames_data, nmea[DATA], boost::is_any_of(";"));
     frames.insert(frames.end(), frames_data.begin(), frames_data.end());
 
     bool bad_frame = false;
@@ -1759,7 +1758,7 @@ void goby::acomms::MMDriver::carev(const NMEASentence& nmea)
     else if (nmea[2] == "AUV")
     {
         std::vector<std::string> rev_parts;
-        boost::split(rev_parts, nmea[3], boost::is_any_of("."));
+        goby::util::split(rev_parts, nmea[3], boost::is_any_of("."));
         if (rev_parts.size() == 3 || rev_parts.size() == 4)
         {
             revision_.mm_major = as<int>(rev_parts[0]);

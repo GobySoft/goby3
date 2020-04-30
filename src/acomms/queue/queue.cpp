@@ -26,6 +26,7 @@
 #include "goby/acomms/dccl.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
+#include "goby/util/string.h"
 
 #include "queue.h"
 #include "queue_manager.h"
@@ -242,7 +243,7 @@ boost::any goby::acomms::Queue::find_queue_field(const std::string& field_name,
 
     // split name on "." as subfield delimiter
     std::vector<std::string> field_names;
-    boost::split(field_names, field_name, boost::is_any_of("."));
+    goby::util::split(field_names, field_name, boost::is_any_of("."));
 
     for (int i = 0, n = field_names.size(); i < n; ++i)
     {

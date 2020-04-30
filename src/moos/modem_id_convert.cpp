@@ -22,6 +22,7 @@
 
 #include "modem_id_convert.h"
 #include "goby/util/as.h"
+#include "goby/util/string.h"
 #include <boost/algorithm/string.hpp>
 #include <string>
 #include <vector>
@@ -77,7 +78,7 @@ std::string goby::moos::ModemIdConvert::read_lookup_file(string path)
         if (sline != "")
         {
             vector<string> line_parsed;
-            boost::algorithm::split(line_parsed, sline, boost::is_any_of(","));
+            goby::util::split(line_parsed, sline, boost::is_any_of(","));
 
             if (line_parsed.size() < 3)
                 ss << "invalid line: " << sline << endl;
