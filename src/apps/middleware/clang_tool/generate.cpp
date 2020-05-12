@@ -224,8 +224,20 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                     {
                         // show inner publications
                         if (e.layer >= layer && (layer != Layer::INTERTHREAD || e.thread == thread))
+                        {
                             e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD,
                                              e.layer > layer);
+
+                            // special case: Intervehicle publishes both PROTOBUF and DCCL version on inner layers
+                            if (e.layer > layer && e.layer == Layer::INTERVEHICLE &&
+                                e.scheme == "DCCL")
+                            {
+                                auto pb_e = e;
+                                pb_e.scheme = "PROTOBUF";
+                                pb_e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD,
+                                                    pb_e.layer > layer);
+                            }
+                        }
                     }
                 }
 

@@ -116,6 +116,9 @@ class InterVehicleTransporterBase
         publisher.set_group(data_with_group, group);
 
         static_cast<Derived*>(this)->template _publish<Data>(data_with_group, group, publisher);
+        // publish to interprocess as both DCCL and Protobuf
+        this->inner().template publish_dynamic<Data, MarshallingScheme::DCCL>(data_with_group,
+                                                                              group, publisher);
         this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data_with_group,
                                                                                   group, publisher);
     }
@@ -140,6 +143,10 @@ class InterVehicleTransporterBase
 
             static_cast<Derived*>(this)->template _publish<Data>(*data_with_group, group,
                                                                  publisher);
+
+            // publish to interprocess as both DCCL and Protobuf
+            this->inner().template publish_dynamic<Data, MarshallingScheme::DCCL>(data_with_group,
+                                                                                  group, publisher);
             this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(
                 data_with_group, group, publisher);
         }

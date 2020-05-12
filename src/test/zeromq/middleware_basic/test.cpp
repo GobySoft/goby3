@@ -67,7 +67,9 @@ int main(int argc, char* argv[])
     s.set_salinity(38.5);
 
     std::cout << "Should be DCCL" << std::endl;
-    assert(zmq_blank.scheme<decltype(s)>() == goby::middleware::MarshallingScheme::DCCL);
+    assert(goby::middleware::scheme<decltype(s)>() == goby::middleware::MarshallingScheme::DCCL);
+    // Interprocess defaults to PROTOBUF for DCCL types
+    assert(zmq_blank.scheme<decltype(s)>() == goby::middleware::MarshallingScheme::PROTOBUF);
     zmq_blank.publish<ctd>(s);
 
     std::shared_ptr<CTDSample> sp(new CTDSample);

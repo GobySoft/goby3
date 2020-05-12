@@ -210,7 +210,11 @@ class InterProcessTransporterBase
     /// \return marshalling scheme id
     template <typename Data> static constexpr int scheme()
     {
-        return goby::middleware::scheme<Data>();
+        int scheme = goby::middleware::scheme<Data>();
+        // if default returns DCCL, use PROTOBUF instead
+        if (scheme == MarshallingScheme::DCCL)
+            scheme = MarshallingScheme::PROTOBUF;
+        return scheme;
     }
 
     /// \brief Check validity of the Group for interthread use (at compile time)
