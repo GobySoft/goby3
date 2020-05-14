@@ -1,7 +1,8 @@
-// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
-//                     GobySoft, LLC (2013-)
-//                     Massachusetts Institute of Technology (2007-2014)
-//                     Community contributors (see AUTHORS file)
+// Copyright 2019-2020:
+//   GobySoft, LLC (2013-)
+//   Community contributors (see AUTHORS file)
+// File authors:
+//   Toby Schneider <toby@gobysoft.org>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -116,6 +117,9 @@ class InterVehicleTransporterBase
         publisher.set_group(data_with_group, group);
 
         static_cast<Derived*>(this)->template _publish<Data>(data_with_group, group, publisher);
+        // publish to interprocess as both DCCL and Protobuf
+        this->inner().template publish_dynamic<Data, MarshallingScheme::DCCL>(data_with_group,
+                                                                              group, publisher);
         this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(data_with_group,
                                                                                   group, publisher);
     }
@@ -140,6 +144,10 @@ class InterVehicleTransporterBase
 
             static_cast<Derived*>(this)->template _publish<Data>(*data_with_group, group,
                                                                  publisher);
+
+            // publish to interprocess as both DCCL and Protobuf
+            this->inner().template publish_dynamic<Data, MarshallingScheme::DCCL>(data_with_group,
+                                                                                  group, publisher);
             this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(
                 data_with_group, group, publisher);
         }

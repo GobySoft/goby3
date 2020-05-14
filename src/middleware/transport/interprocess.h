@@ -1,7 +1,9 @@
-// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
-//                     GobySoft, LLC (2013-)
-//                     Massachusetts Institute of Technology (2007-2014)
-//                     Community contributors (see AUTHORS file)
+// Copyright 2019:
+//   GobySoft, LLC (2013-)
+//   Community contributors (see AUTHORS file)
+// File authors:
+//   Toby Schneider <toby@gobysoft.org>
+//   Ryan Govostes <rgovostes+git@gmail.com>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -210,7 +212,11 @@ class InterProcessTransporterBase
     /// \return marshalling scheme id
     template <typename Data> static constexpr int scheme()
     {
-        return goby::middleware::scheme<Data>();
+        int scheme = goby::middleware::scheme<Data>();
+        // if default returns DCCL, use PROTOBUF instead
+        if (scheme == MarshallingScheme::DCCL)
+            scheme = MarshallingScheme::PROTOBUF;
+        return scheme;
     }
 
     /// \brief Check validity of the Group for interthread use (at compile time)

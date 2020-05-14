@@ -1,6 +1,9 @@
-// Copyright 2009-2018 Toby Schneider (http://gobysoft.org/index.wt/people/toby)
-//                     GobySoft, LLC (2013-)
-//                     Massachusetts Institute of Technology (2007-2014)
+// Copyright 2013-2020:
+//   GobySoft, LLC (2013-)
+//   Massachusetts Institute of Technology (2007-2014)
+//   Community contributors (see AUTHORS file)
+// File authors:
+//   Toby Schneider <toby@gobysoft.org>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Binaries
@@ -78,17 +81,24 @@ goby::moos::FrontSeatInterfaceBase* load_driver(goby::apps::moos::protobuf::iFro
         goby::apps::moos::iFrontSeat::driver_library_handle_, "frontseat_driver_load");
 
     if (!driver_load_ptr)
+    {
         glog.is(DIE) && glog << "Function frontseat_driver_load in library defined in "
                                 "IFRONTSEAT_DRIVER_LIBRARY does not exist."
                              << std::endl;
+        // suppress clang static analyzer false positive
+        exit(EXIT_FAILURE);
+    }
 
     goby::moos::FrontSeatInterfaceBase* driver = (*driver_load_ptr)(cfg);
 
     if (!driver)
+    {
         glog.is(DIE) && glog << "Function frontseat_driver_load in library defined in "
                                 "IFRONTSEAT_DRIVER_LIBRARY returned a null pointer."
                              << std::endl;
-
+        // suppress clang static analyzer false positive
+        exit(EXIT_FAILURE);
+    }
     return driver;
 }
 

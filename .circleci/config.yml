@@ -547,7 +547,7 @@ jobs:
           command: |
             mkdir -p build && cd build &&
             scan-build --use-cc=/usr/bin/clang --use-c++=/usr/bin/clang++ cmake .. -Denable_testing=ON -DCMAKE_BUILD_TYPE=Debug -Denable_llvm=OFF &&
-            scan-build --use-cc=/usr/bin/clang --use-c++=/usr/bin/clang++ --status-bugs cmake --build . -- -j${SANITIZER_NUM_JOBS}
+            scan-build --exclude /usr/include/boost --use-cc=/usr/bin/clang --use-c++=/usr/bin/clang++ --status-bugs cmake --build . -- -j${SANITIZER_NUM_JOBS}
       - run:
           name: Store static analyzer results
           command: cd /tmp && tar cfvz scan-build.tar.gz scan-build*
