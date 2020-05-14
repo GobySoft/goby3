@@ -72,11 +72,11 @@ class CanThread : public IOThread<line_in_group, line_out_group, publish_layer, 
     void async_read() override;
     void open_socket() override;
 
-    void data_rec(struct can_frame& recieve_frame_,
+    void data_rec(struct can_frame& receive_frame_,
                   boost::asio::posix::basic_stream_descriptor<>& stream);
 
   private:
-    struct can_frame recieve_frame_;
+    struct can_frame receive_frame_;
 };
 } // namespace io
 } // namespace middleware
@@ -92,7 +92,7 @@ void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_laye
     int can_socket;
 
     struct sockaddr_can addr_;
-    struct can_frame recieve_frame_;
+    struct can_frame receive_frame_;
     struct ifreq ifr_;
     can_socket = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 
@@ -113,7 +113,8 @@ void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_laye
     addr_.can_ifindex = ifr_.ifr_ifindex;
     if (bind(can_socket, (struct sockaddr*)&addr_, sizeof(addr_)) < 0)
     {
-        glog.is_die() && glog << "Error in socket bind" << std::endl;
+        glog.is_die() && glog << "Error in socket bind to interface " << this->cfg().interface()
+                              << ": " << std::strerror(errno) << std::endl;
     }
 
     this->mutable_socket().assign(can_socket);
@@ -150,8 +151,8 @@ void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_laye
                                      subscribe_layer>::async_read()
 {
     this->mutable_socket().async_read_some(
-        boost::asio::buffer(&recieve_frame_, sizeof(recieve_frame_)),
-        boost::bind(&CanThread::data_rec, this, boost::ref(recieve_frame_),
+        boost::asio::buffer(&receive_frame_, sizeof(receive_frame_)),
+        boost::bind(&CanThread::data_rec, this, boost::ref(receive_frame_),
                     boost::ref(this->mutable_socket())));
 }
 
@@ -161,22 +162,22 @@ template <const goby::middleware::Group& line_in_group,
           goby::middleware::io::PubSubLayer subscribe_layer>
 void goby::middleware::io::
     CanThread<line_in_group, line_out_group, publish_layer, subscribe_layer>::data_rec(
-        struct can_frame& recieve_frame_, boost::asio::posix::basic_stream_descriptor<>& stream)
+        struct can_frame& receive_frame_, boost::asio::posix::basic_stream_descriptor<>& stream)
 {
     //  Within a process raw can frames are probably what we are looking for.
-    this->interthread().template publish<line_in_group>(recieve_frame_);
+    this->interthread().template publish<line_in_group>(receive_frame_);
 
     std::string bytes;
     const int frame_size = sizeof(can_frame);
 
     for (int i = 0; i < frame_size; ++i)
-    { bytes += *(reinterpret_cast<char*>(&recieve_frame_) + i); }
+    { bytes += *(reinterpret_cast<char*>(&receive_frame_) + i); }
 
     this->handle_read_success(bytes.size(), bytes);
 
     stream.async_read_some(
-        boost::asio::buffer(&recieve_frame_, sizeof(recieve_frame_)),
-        boost::bind(&CanThread::data_rec, this, boost::ref(recieve_frame_), boost::ref(stream)));
+        boost::asio::buffer(&receive_frame_, sizeof(receive_frame_)),
+        boost::bind(&CanThread::data_rec, this, boost::ref(receive_frame_), boost::ref(stream)));
 }
 
 #endif
