@@ -1,4 +1,4 @@
-// Copyright 2010-2019:
+// Copyright 2010-2020:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
