@@ -3,6 +3,7 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   Shawn Dooley <shawn@shawndooley.net>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries

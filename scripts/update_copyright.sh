@@ -53,9 +53,9 @@ EOF
         # use latest email for author name here
         email=$(git log --author "$author" -n 1 --format=format:%aE)
         if [ ! -z "$email" ]; then
-            email="<${email}>"
+            email=" <${email}>"
         fi
-        echo "//   $author $email"  >> /tmp/goby_authors.tmp
+        echo "//   $author$email"  >> /tmp/goby_authors.tmp
     done
 }
 
