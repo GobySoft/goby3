@@ -68,7 +68,7 @@ do
 done
 popd
 
-for dir in ../src/apps ../src/test ../src/share/examples; do
+for dir in ../src/apps ../src/test; do
     pushd $dir
     header_strip
     for i in `find -regex ".*\.h$\|.*\.cpp$"`;
