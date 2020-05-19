@@ -3,6 +3,7 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   Shawn Dooley <shawn@shawndooley.net>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -41,6 +42,11 @@ constexpr goby::middleware::Group mavlink_raw_out{"goby::apps::zeromq::mavlink_r
 
 constexpr goby::middleware::Group nmea0183_in{"goby::middleware::io::nmea0183_in"};
 constexpr goby::middleware::Group nmea0183_out{"goby::middleware::io::nmea0183_out"};
+
+constexpr goby::middleware::Group can_in{"goby::middleware::io::can_in"};
+constexpr goby::middleware::Group can_out{"goby::middleware::io::can_out"};
+
+
 }
 } // namespace io
 } // namespace middleware
