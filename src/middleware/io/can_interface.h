@@ -152,10 +152,10 @@ template <const goby::middleware::Group& line_in_group,
 void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_layer,
                                      subscribe_layer>::async_read()
 {
-    this->mutable_socket().async_read(
-        boost::asio::buffer(&receive_frame_, sizeof(receive_frame_)),
-        boost::bind(&CanThread::data_rec, this, boost::ref(receive_frame_),
-                    boost::ref(this->mutable_socket())));
+    boost::asio::async_read(this->mutable_socket(),
+                            boost::asio::buffer(&receive_frame_, sizeof(receive_frame_)),
+                            boost::bind(&CanThread::data_rec, this, boost::ref(receive_frame_),
+                                        boost::ref(this->mutable_socket())));
 }
 
 template <const goby::middleware::Group& line_in_group,
@@ -177,8 +177,8 @@ void goby::middleware::io::
 
     this->handle_read_success(bytes.size(), bytes);
 
-    stream.async_read(
-        boost::asio::buffer(&receive_frame_, sizeof(receive_frame_)),
+    boost::asio::async_read(
+        stream, boost::asio::buffer(&receive_frame_, sizeof(receive_frame_)),
         boost::bind(&CanThread::data_rec, this, boost::ref(receive_frame_), boost::ref(stream)));
 }
 
