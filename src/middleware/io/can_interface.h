@@ -25,7 +25,7 @@
 #ifndef CanInterface20200422H
 #define CanInterface20200422H
 
-#include <boost/asio/posix/basic_stream_descriptor.hpp>
+#include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/units/systems/si/prefixes.hpp>
@@ -48,13 +48,13 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-class CanThread : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                  goby::middleware::protobuf::CanConfig,
-                                  boost::asio::posix::basic_stream_descriptor<>>
+class CanThread
+    : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                      goby::middleware::protobuf::CanConfig, boost::asio::posix::stream_descriptor>
 {
-    using Base = IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                          goby::middleware::protobuf::CanConfig,
-                          boost::asio::posix::basic_stream_descriptor<>>;
+    using Base =
+        IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                 goby::middleware::protobuf::CanConfig, boost::asio::posix::stream_descriptor>;
 
   public:
     /// \brief Constructs the thread.
@@ -74,8 +74,7 @@ class CanThread : public IOThread<line_in_group, line_out_group, publish_layer, 
     void async_read() override;
     void open_socket() override;
 
-    void data_rec(struct can_frame& receive_frame_,
-                  boost::asio::posix::basic_stream_descriptor<>& stream);
+    void data_rec(struct can_frame& receive_frame_, boost::asio::posix::stream_descriptor& stream);
 
   private:
     struct can_frame receive_frame_;
@@ -164,7 +163,7 @@ template <const goby::middleware::Group& line_in_group,
           goby::middleware::io::PubSubLayer subscribe_layer>
 void goby::middleware::io::
     CanThread<line_in_group, line_out_group, publish_layer, subscribe_layer>::data_rec(
-        struct can_frame& receive_frame_, boost::asio::posix::basic_stream_descriptor<>& stream)
+        struct can_frame& receive_frame_, boost::asio::posix::stream_descriptor& stream)
 {
     //  Within a process raw can frames are probably what we are looking for.
     this->interthread().template publish<line_in_group>(receive_frame_);
