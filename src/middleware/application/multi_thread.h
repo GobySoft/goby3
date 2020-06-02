@@ -126,12 +126,15 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
         {
             if (thread)
             {
+                goby::glog.is(goby::util::logger::DEBUG1) &&
+                    goby::glog << "Joining thread: " << name << std::endl;
                 alive = false;
                 thread->join();
             }
         }
 
         std::atomic<bool> alive{true};
+        std::string name;
         std::unique_ptr<std::thread> thread;
     };
 
@@ -229,7 +232,7 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
             goby::glog.is(goby::util::logger::WARN) &&
                 goby::glog << "MultiThreadApplicationBase:: uncaught exception: " << e.what()
                            << std::endl;
-            throw;
+            std::terminate();
         }
     }
 
@@ -408,6 +411,7 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
         interthread_.publish<MainThreadBase::joinable_group_>(std::make_pair(type_i, index));
     };
 
+    thread_manager.name = std::string(typeid(ThreadType).name()) + "_index" + std::to_string(index);
     thread_manager.thread = std::unique_ptr<std::thread>(new std::thread(thread_lambda));
     ++running_thread_count_;
 }

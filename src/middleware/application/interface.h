@@ -290,7 +290,7 @@ int goby::run(const goby::middleware::ConfiguratorInterface<typename App::Config
     {
         // some other exception
         std::cerr << "Application:: uncaught exception: " << e.what() << std::endl;
-        return 2;
+        throw;
     }
 
     goby::glog.is_debug2() && goby::glog << "goby::run: exiting cleanly with code: " << return_value
