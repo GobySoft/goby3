@@ -160,10 +160,11 @@ class InterVehicleTransporterBase
     {
         if (data)
         {
-            //            std::shared_ptr<Data> data_with_group = std::make_shared<Data>(*data);
+            std::shared_ptr<google::protobuf::Message> data_with_group(data->New());
+            data_with_group->CopyFrom(*data);
+
             //            publisher.set_group(*data_with_group, group);
 
-            auto data_with_group = data;
 
             static_cast<Derived*>(this)->template _publish<google::protobuf::Message>(
                 *data_with_group, group, publisher);
