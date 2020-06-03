@@ -179,7 +179,7 @@ class InterProcessTransporterBase
 
     /// \brief Subscribe to a number of types within a given group and scheme using a regular expression
     ///
-    /// The marshalling scheme must implement SerializerParserHelper::parse_dynamic() to use this method.
+    /// The marshalling scheme must implement SerializerParserHelper::parse() to use this method.
     /// \tparam group group to publish this message to (reference to constexpr Group)
     /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
@@ -197,8 +197,8 @@ class InterProcessTransporterBase
         auto regex_lambda = [=](const std::vector<unsigned char>& data, int schm,
                                 const std::string& type, const Group& grp) {
             auto data_begin = data.begin(), data_end = data.end(), actual_end = data.end();
-            auto msg = SerializerParserHelper<Data, scheme>::parse_dynamic(data_begin, data_end,
-                                                                           actual_end, type);
+            auto msg =
+                SerializerParserHelper<Data, scheme>::parse(data_begin, data_end, actual_end, type);
             f(msg, type);
         };
 

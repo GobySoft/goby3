@@ -87,6 +87,7 @@ struct CommandEntry
 {
     std::string protobuf_name;
     std::string group;
+    std::string layer;
     std::vector<unsigned char> bytes;
     long long utime;
     Wt::WDateTime time;
@@ -100,6 +101,7 @@ struct CommandEntry
     {
         Wt::Dbo::field(a, protobuf_name, "protobuf_name");
         Wt::Dbo::field(a, group, "group");
+        Wt::Dbo::field(a, layer, "layer");
         Wt::Dbo::field(a, bytes, "bytes");
         Wt::Dbo::field(a, utime, "utime");
         Wt::Dbo::field(a, time, "time");
@@ -230,7 +232,7 @@ class LiaisonCommander
 
             void handle_database_dialog(DatabaseDialogResponse response,
                                         std::shared_ptr<google::protobuf::Message> message,
-                                        std::string group);
+                                        std::string group, std::string layer);
 
             std::shared_ptr<google::protobuf::Message> message_;
 
@@ -240,6 +242,10 @@ class LiaisonCommander
             Wt::WContainerWidget* group_div_;
             Wt::WLabel* group_label_;
             Wt::WComboBox* group_selection_;
+
+            std::vector<
+                goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer>
+                publish_to_;
 
             Wt::WGroupBox* tree_box_;
             Wt::WTreeTable* tree_table_;

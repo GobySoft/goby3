@@ -1,6 +1,7 @@
 syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
 import "goby/middleware/protobuf/app_config.proto";
+import "goby/middleware/protobuf/layer.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
 import "goby/acomms/protobuf/network_ack.proto";
 
@@ -66,7 +67,13 @@ message ProtobufCommanderConfig
     message LoadProtobuf
     {
         required string name = 1;
-        repeated string group = 2;
+
+        message GroupLayer
+        {
+            required string group = 1;
+            optional goby.middleware.protobuf.Layer layer = 2 [default = LAYER_INTERPROCESS];
+        }
+        repeated GroupLayer publish_to = 2;
     }
     repeated LoadProtobuf load_protobuf = 1;
 
@@ -85,20 +92,22 @@ message ProtobufCommanderConfig
         COLUMN_COMMENT = 0;
         COLUMN_NAME = 1;
         COLUMN_GROUP = 2;
-        COLUMN_IP = 3;
-        COLUMN_TIME = 4;
-        COLUMN_LAST_ACK = 5;
-        COLUMN_MAX = 5;
+        COLUMN_LAYER = 3;
+        COLUMN_IP = 4;
+        COLUMN_TIME = 5;
+        COLUMN_LAST_ACK = 6;
+        COLUMN_MAX = 6;
     }
 
     message DatabaseColumnWidthPixels
     {
         optional int32 comment_width = 1 [default = 180];
         optional int32 name_width = 2 [default = 180];
-        optional int32 group_width = 3 [default = 180];
-        optional int32 ip_width = 4 [default = 120];
-        optional int32 time_width = 5 [default = 120];
-        optional int32 last_ack_width = 6 [default = 120];
+        optional int32 group_width = 3 [default = 120];
+        optional int32 layer_width = 4 [default = 120];
+        optional int32 ip_width = 5 [default = 120];
+        optional int32 time_width = 6 [default = 120];
+        optional int32 last_ack_width = 7 [default = 120];
     }
     optional DatabaseColumnWidthPixels database_width = 22;
 

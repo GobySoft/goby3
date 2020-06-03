@@ -72,7 +72,8 @@ struct SerializerParserHelper<DataType, MarshallingScheme::DCCL>
     /// If DCCL messages are concatentated, you can pass "actual_end" back into parse() as the new "bytes_begin" until it reaches "bytes_end"
     template <typename CharIterator>
     static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
-                                           CharIterator& actual_end)
+                                           CharIterator& actual_end,
+                                           const std::string& type = type_name())
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         check_load<DataType>();
@@ -96,6 +97,8 @@ struct SerializerParserHelper<DataType, MarshallingScheme::DCCL>
         check_load<DataType>();
         return codec().template id<DataType>();
     }
+
+    static unsigned id(const google::protobuf::Message& d) { return id(); }
 
   private:
 };
@@ -141,8 +144,8 @@ struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL
     /// \return Parsed Protobuf message
     template <typename CharIterator>
     static std::shared_ptr<google::protobuf::Message>
-    parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-                  const std::string& type)
+    parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
+          const std::string& type)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
 

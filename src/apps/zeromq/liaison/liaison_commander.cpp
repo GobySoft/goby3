@@ -36,6 +36,7 @@
 #include "dccl/dynamic_protobuf_manager.h"
 #include "dccl/protobuf/option_extensions.pb.h"
 #include "goby/acomms/protobuf/network_ack.pb.h"
+#include "goby/middleware/common.h"
 #include "goby/util/binary.h"
 #include "goby/util/sci.h"
 
@@ -57,6 +58,24 @@ const std::string MESSAGE_REMOVE_TEXT = "remove";
 
 const std::string STRIPE_ODD_CLASS = "odd";
 const std::string STRIPE_EVEN_CLASS = "even";
+
+goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer
+to_group_layer(std::string group, std::string layer)
+{
+    goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer grouplayer;
+    grouplayer.set_group(group);
+    goby::middleware::protobuf::Layer layer_enum;
+    if (goby::middleware::protobuf::Layer_Parse(layer, &layer_enum))
+        grouplayer.set_layer(layer_enum);
+    return grouplayer;
+}
+
+std::string
+to_string(const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer&
+              grouplayer)
+{
+    return grouplayer.group() + " [" + goby::middleware::to_string(grouplayer.layer()) + "]";
+}
 
 goby::apps::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonConfig& cfg)
     : LiaisonContainerWithComms<LiaisonCommander, CommanderCommsThread>(cfg),
@@ -130,48 +149,6 @@ void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
         glog.is(WARN) && glog << "Unhandled notify subscription: " << e.what() << std::endl;
     }
 }
-
-// void goby::apps::zeromq::LiaisonCommander::moos_inbox(CMOOSMsg& msg)
-// {
-//     glog.is(DEBUG1) && glog << "LiaisonCommander: Got message: " << msg <<  std::endl;
-
-//     if(msg.GetKey() == pb_commander_config_.network_ack_var())
-//     {
-//         std::string value = msg.GetAsString();
-//         goby::acomms::protobuf::NetworkAck ack;
-//         parse_for_moos(value, &ack);
-
-//         Dbo::ptr<CommandEntry> acked_command(static_cast<CommandEntry*>(0));
-//         {
-//             std::lock_guard<std::mutex> slock(dbo_mutex_);
-//             Dbo::Transaction transaction(controls_div_->session_);
-//             acked_command = controls_div_->session_.find<CommandEntry>().where("utime = ?").bind((long long)ack.message_time());
-//             if(acked_command)
-//             {
-//                glog.is(DEBUG1) && glog << "ACKED command was of type: " << acked_command->protobuf_name << std::endl;
-//                protobuf::NetworkAckSet ack_set;
-//                if(acked_command->acks.size())
-//                    ack_set.ParseFromArray(&acked_command->acks[0], acked_command->acks.size());
-
-//                if(ack.ack_type() == goby::acomms::protobuf::NetworkAck::ACK)
-//                    acked_command.modify()->last_ack = ack.ack_src();
-
-//                bool seen_ack = false;
-//                for(int i = 0, n = ack_set.ack_size(); i < n; ++i)
-//                {
-//                    if(ack_set.ack(i).ack_src() == ack.ack_src())
-//                        seen_ack = true;
-//                }
-//                if(!seen_ack)
-//                    ack_set.add_ack()->CopyFrom(ack);
-
-//                acked_command.modify()->acks.resize(ack_set.ByteSize());
-//                ack_set.SerializeToArray(&acked_command.modify()->acks[0], acked_command->acks.size());
-//                transaction.commit();
-//                last_db_update_time_ = goby::time::SystemClock::now<boost::posix_time::ptime>();
-//             }
-//         }
-//     }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::increment_incoming_messages(
     const WMouseEvent& event)
@@ -348,8 +325,11 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
                 // index of the newly added widget
                 commands_[protobuf_name] = commands_div_->count() - 1;
 
-                for (const auto& group : pb_commander_config.load_protobuf(i).group())
-                    new_command->group_selection_->addItem(group);
+                for (const auto& grouplayer : pb_commander_config.load_protobuf(i).publish_to())
+                {
+                    new_command->group_selection_->addItem(to_string(grouplayer));
+                    new_command->publish_to_.push_back(grouplayer);
+                }
             }
         }
     }
@@ -445,14 +425,37 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 
     if (dialog.exec() == WDialog::Accepted)
     {
-        commander_->post_to_comms([=]() {
-            commander_->goby_thread()->interprocess().publish_dynamic<google::protobuf::Message>(
-                current_command->message_,
-                goby::middleware::DynamicGroup(
-                    current_command->group_selection_
-                        ->itemText(current_command->group_selection_->currentIndex())
-                        .narrow()));
-        });
+        auto grouplayer =
+            current_command->publish_to_.at(current_command->group_selection_->currentIndex());
+
+        switch (grouplayer.layer())
+        {
+            case goby::middleware::protobuf::LAYER_INTERTHREAD:
+                commander_->post_to_comms([=]() {
+                    commander_->goby_thread()
+                        ->interthread()
+                        .publish_dynamic<google::protobuf::Message>(
+                            current_command->message_,
+                            goby::middleware::DynamicGroup(grouplayer.group()));
+                });
+                break;
+            case goby::middleware::protobuf::LAYER_INTERPROCESS:
+                commander_->post_to_comms([=]() {
+                    commander_->goby_thread()
+                        ->interprocess()
+                        .publish_dynamic<google::protobuf::Message>(
+                            current_command->message_,
+                            goby::middleware::DynamicGroup(grouplayer.group()));
+                });
+                break;
+            case goby::middleware::protobuf::LAYER_INTERVEHICLE:
+                commander_->post_to_comms([=]() {
+                    commander_->goby_thread()->intervehicle().publish_dynamic_introspection(
+                        current_command->message_,
+                        goby::middleware::DynamicGroup(grouplayer.group()));
+                });
+                break;
+        }
 
         CommandEntry* command_entry = new CommandEntry;
         command_entry->protobuf_name = current_command->message_->GetDescriptor()->full_name();
@@ -460,9 +463,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         current_command->message_->SerializeToArray(&command_entry->bytes[0],
                                                     command_entry->bytes.size());
         command_entry->address = wApp->environment().clientAddress();
-        command_entry->group = current_command->group_selection_
-                                   ->itemText(current_command->group_selection_->currentIndex())
-                                   .narrow();
+        command_entry->group = grouplayer.group();
+        command_entry->layer = goby::middleware::to_string(grouplayer.layer());
 
         boost::posix_time::ptime now = goby::time::SystemClock::now<boost::posix_time::ptime>();
         command_entry->time.setPosixTime(now);
@@ -521,6 +523,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     query_model_->addColumn("comment", "Comment");
     query_model_->addColumn("protobuf_name", "Name");
     query_model_->addColumn("group", "Group");
+    query_model_->addColumn("layer", "Layer");
     query_model_->addColumn("address", "Network Address");
     query_model_->addColumn("time", "Time");
     query_model_->addColumn("last_ack", "Latest Ack");
@@ -531,6 +534,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     query_table_->setMinimumSize(pb_commander_config.database_width().comment_width() +
                                      pb_commander_config.database_width().name_width() +
                                      pb_commander_config.database_width().group_width() +
+                                     pb_commander_config.database_width().layer_width() +
                                      pb_commander_config.database_width().ip_width() +
                                      pb_commander_config.database_width().time_width() +
                                      pb_commander_config.database_width().last_ack_width() +
@@ -543,6 +547,8 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
                                  pb_commander_config.database_width().name_width());
     query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_GROUP,
                                  pb_commander_config.database_width().group_width());
+    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_LAYER,
+                                 pb_commander_config.database_width().layer_width());
     query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_IP,
                                  pb_commander_config.database_width().ip_width());
 
@@ -559,7 +565,8 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
         const Dbo::ptr<CommandEntry>& entry = query_model_->resultRow(0);
         message_->ParseFromArray(&entry->bytes[0], entry->bytes.size());
 
-        int group_index = group_selection_->findText(entry->group);
+        int group_index =
+            group_selection_->findText(to_string(to_group_layer(entry->group, entry->layer)));
         if (group_index >= 0)
             group_selection_->setCurrentIndex(group_index);
     }
@@ -583,6 +590,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     std::shared_ptr<google::protobuf::Message> message(message_->New());
     message->ParseFromArray(&entry->bytes[0], entry->bytes.size());
     std::string group = entry->group;
+    std::string layer = entry->layer;
 
     if (!message)
     {
@@ -621,11 +629,11 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     database_dialog_->rejectWhenEscapePressed();
 
     edit->clicked().connect(boost::bind(&CommandContainer::handle_database_dialog, this,
-                                        RESPONSE_EDIT, message, group));
+                                        RESPONSE_EDIT, message, group, layer));
     merge->clicked().connect(boost::bind(&CommandContainer::handle_database_dialog, this,
-                                         RESPONSE_MERGE, message, group));
+                                         RESPONSE_MERGE, message, group, layer));
     cancel->clicked().connect(boost::bind(&CommandContainer::handle_database_dialog, this,
-                                          RESPONSE_CANCEL, message, group));
+                                          RESPONSE_CANCEL, message, group, layer));
 
     database_dialog_->show();
     //     merge.clicked().connect(&dialog, &WDialog::accept);
@@ -634,14 +642,15 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_database_dialog(DatabaseDialogResponse response,
-                           std::shared_ptr<google::protobuf::Message> message, std::string group)
+                           std::shared_ptr<google::protobuf::Message> message, std::string group,
+                           std::string layer)
 {
     switch (response)
     {
         case RESPONSE_EDIT:
         {
             message_->CopyFrom(*message);
-            int group_index = group_selection_->findText(group);
+            int group_index = group_selection_->findText(to_string(to_group_layer(group, layer)));
 
             glog.is_debug1() && glog << "Group: " << group << ", index: " << group_index
                                      << std::endl;
@@ -658,7 +667,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             message->MergeFrom(*message_);
             message_->CopyFrom(*message);
 
-            int group_index = group_selection_->findText(group);
+            int group_index = group_selection_->findText(to_string(to_group_layer(group, layer)));
             if (group_index >= 0)
                 group_selection_->setCurrentIndex(group_index);
 
@@ -1251,18 +1260,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 {
     if (WLineEdit* line_edit = dynamic_cast<WLineEdit*>(value_field))
     {
-        boost::posix_time::ptime now;
-        // if(pb_commander_config_.has_time_source_var())
-        // {
-        //     CMOOSMsg& newest = moos_node_->newest(pb_commander_config_.time_source_var());
-        //     now = newest.IsDouble() ?
-        //         unix_double2ptime(newest.GetDouble()) :
-        //         unix_double2ptime(goby::util::as<double>(newest.GetString()));
-        // }
-        // else
-        //        {
-        now = goby::time::SystemClock::now<boost::posix_time::ptime>();
-        //}
+        boost::posix_time::ptime now = goby::time::SystemClock::now<boost::posix_time::ptime>();
 
         const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
         latest_time_ = time::convert<time::MicroTime>(now).value();

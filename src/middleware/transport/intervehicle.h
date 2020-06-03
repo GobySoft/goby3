@@ -139,7 +139,7 @@ class InterVehicleTransporterBase
                       "Can only use DCCL messages with InterVehicleTransporters");
         if (data)
         {
-            std::shared_ptr<Data> data_with_group(new Data(*data));
+            std::shared_ptr<Data> data_with_group = std::make_shared<Data>(*data);
             publisher.set_group(*data_with_group, group);
 
             static_cast<Derived*>(this)->template _publish<Data>(*data_with_group, group,
@@ -150,6 +150,31 @@ class InterVehicleTransporterBase
                                                                                   group, publisher);
             this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(
                 data_with_group, group, publisher);
+        }
+    }
+
+    void publish_dynamic_introspection(std::shared_ptr<const google::protobuf::Message> data,
+                                       const Group& group = Group(),
+                                       const Publisher<google::protobuf::Message>& publisher =
+                                           Publisher<google::protobuf::Message>())
+    {
+        if (data)
+        {
+            //            std::shared_ptr<Data> data_with_group = std::make_shared<Data>(*data);
+            //            publisher.set_group(*data_with_group, group);
+
+            auto data_with_group = data;
+
+            static_cast<Derived*>(this)->template _publish<google::protobuf::Message>(
+                *data_with_group, group, publisher);
+
+            // publish to interprocess as both DCCL and Protobuf
+            this->inner()
+                .template publish_dynamic<google::protobuf::Message, MarshallingScheme::DCCL>(
+                    data_with_group, group, publisher);
+            this->inner()
+                .template publish_dynamic<google::protobuf::Message, MarshallingScheme::PROTOBUF>(
+                    data_with_group, group, publisher);
         }
     }
 
@@ -164,7 +189,7 @@ class InterVehicleTransporterBase
     void publish_dynamic(std::shared_ptr<Data> data, const Group& group = Group(),
                          const Publisher<Data>& publisher = Publisher<Data>())
     {
-        publish_dynamic<Data>(std::shared_ptr<const Data>(data), group, publisher);
+        publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, publisher);
     }
 
     /// \brief Subscribe to a specific run-time defined group and data type (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
@@ -213,19 +238,19 @@ class InterVehicleTransporterBase
         {
             auto ack_handler = std::make_shared<
                 PublisherCallback<Data, MarshallingScheme::DCCL, intervehicle::protobuf::AckData>>(
-                publisher.acked_func());
+                publisher.acked_func(), d);
 
             auto expire_handler =
                 std::make_shared<PublisherCallback<Data, MarshallingScheme::DCCL,
                                                    intervehicle::protobuf::ExpireData>>(
-                    publisher.expired_func());
+                    publisher.expired_func(), d);
 
-            this->_insert_pending_ack(SerializerParserHelper<Data, MarshallingScheme::DCCL>::id(),
+            this->_insert_pending_ack(SerializerParserHelper<Data, MarshallingScheme::DCCL>::id(d),
                                       data, ack_handler, expire_handler);
         }
 
         if (!omit_publish_metadata_.count(data->key().type()))
-            _set_protobuf_metadata<Data>(data->mutable_key()->mutable_metadata());
+            _set_protobuf_metadata<Data>(data->mutable_key()->mutable_metadata(), d);
 
         goby::glog.is_debug3() &&
             goby::glog << "Set up publishing for: " << data->ShortDebugString() << std::endl;
@@ -381,6 +406,14 @@ class InterVehicleTransporterBase
     {
         meta->set_protobuf_name(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
         _insert_file_desc_with_dependencies(Data::descriptor()->file(), meta);
+    }
+
+    template <typename Data>
+    void _set_protobuf_metadata(protobuf::SerializerProtobufMetadata* meta, const Data& d)
+    {
+        meta->set_protobuf_name(
+            SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name(d));
+        _insert_file_desc_with_dependencies(d.GetDescriptor()->file(), meta);
     }
 
     // used to populated InterVehicleSubscription file_descriptor fields
