@@ -450,9 +450,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                 break;
             case goby::middleware::protobuf::LAYER_INTERVEHICLE:
                 commander_->post_to_comms([=]() {
-                    commander_->goby_thread()->intervehicle().publish_dynamic_introspection(
-                        current_command->message_,
-                        goby::middleware::DynamicGroup(grouplayer.group()));
+                    commander_->goby_thread()
+                        ->intervehicle()
+                        .publish_dynamic<google::protobuf::Message,
+                                         goby::middleware::MarshallingScheme::DCCL>(
+                            current_command->message_,
+                            goby::middleware::DynamicGroup(grouplayer.group()));
                 });
                 break;
         }

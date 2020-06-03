@@ -139,7 +139,10 @@ class InterVehicleTransporterBase
                       "Can only use DCCL messages with InterVehicleTransporters");
         if (data)
         {
-            std::shared_ptr<Data> data_with_group = std::make_shared<Data>(*data);
+            // copy this way as it allows us to copy Data == google::protobuf::Message abstract base class
+            std::shared_ptr<Data> data_with_group(data->New());
+            data_with_group->CopyFrom(*data);
+
             publisher.set_group(*data_with_group, group);
 
             static_cast<Derived*>(this)->template _publish<Data>(*data_with_group, group,
@@ -150,32 +153,6 @@ class InterVehicleTransporterBase
                                                                                   group, publisher);
             this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(
                 data_with_group, group, publisher);
-        }
-    }
-
-    void publish_dynamic_introspection(std::shared_ptr<const google::protobuf::Message> data,
-                                       const Group& group = Group(),
-                                       const Publisher<google::protobuf::Message>& publisher =
-                                           Publisher<google::protobuf::Message>())
-    {
-        if (data)
-        {
-            std::shared_ptr<google::protobuf::Message> data_with_group(data->New());
-            data_with_group->CopyFrom(*data);
-
-            //            publisher.set_group(*data_with_group, group);
-
-
-            static_cast<Derived*>(this)->template _publish<google::protobuf::Message>(
-                *data_with_group, group, publisher);
-
-            // publish to interprocess as both DCCL and Protobuf
-            this->inner()
-                .template publish_dynamic<google::protobuf::Message, MarshallingScheme::DCCL>(
-                    data_with_group, group, publisher);
-            this->inner()
-                .template publish_dynamic<google::protobuf::Message, MarshallingScheme::PROTOBUF>(
-                    data_with_group, group, publisher);
         }
     }
 
