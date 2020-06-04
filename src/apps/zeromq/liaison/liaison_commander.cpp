@@ -104,22 +104,7 @@ void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
     const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::NotificationSubscription::Color&
         background_color)
 {
-    WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
-
     goby::glog.is_debug1() && goby::glog << "wt group: " << group << std::endl;
-
-    new WText("Message: " + goby::util::as<std::string>(
-                                controls_div_->incoming_message_stack_->children().size()),
-              new_div);
-
-    WGroupBox* box =
-        new WGroupBox(type + "/" + group + " @ " +
-                          boost::posix_time::to_simple_string(
-                              goby::time::SystemClock::now<boost::posix_time::ptime>()),
-                      new_div);
-
-    new_div->decorationStyle().setBackgroundColor(Wt::WColor(
-        background_color.r(), background_color.g(), background_color.b(), background_color.a()));
 
     try
     {
@@ -130,24 +115,47 @@ void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
         glog.is(DEBUG1) && glog << "Received notify msg: " << pb_msg->ShortDebugString()
                                 << std::endl;
 
-        new WText("<pre>" + pb_msg->DebugString() + "</pre>", box);
+        std::string title = type + "/" + group + " @ " +
+                            boost::posix_time::to_simple_string(
+                                goby::time::SystemClock::now<boost::posix_time::ptime>());
 
-        WPushButton* minus = new WPushButton("-", new_div);
-        WPushButton* plus = new WPushButton("+", new_div);
-
-        WPushButton* remove = new WPushButton("x", new_div);
-        remove->setFloatSide(Wt::Right);
-
-        plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
-        minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);
-        remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
-        controls_div_->incoming_message_stack_->setCurrentIndex(
-            controls_div_->incoming_message_stack_->children().size() - 1);
+        display_notify(*pb_msg, title, background_color);
     }
     catch (const std::exception& e)
     {
         glog.is(WARN) && glog << "Unhandled notify subscription: " << e.what() << std::endl;
     }
+}
+
+void goby::apps::zeromq::LiaisonCommander::display_notify(
+    const google::protobuf::Message& pb_msg, std::string title,
+    const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::NotificationSubscription::Color&
+        background_color)
+{
+    WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
+
+    new WText("Message: " + goby::util::as<std::string>(
+                                controls_div_->incoming_message_stack_->children().size()),
+              new_div);
+
+    WGroupBox* box = new WGroupBox(title, new_div);
+
+    new_div->decorationStyle().setBackgroundColor(Wt::WColor(
+        background_color.r(), background_color.g(), background_color.b(), background_color.a()));
+
+    new WText("<pre>" + pb_msg.DebugString() + "</pre>", box);
+
+    WPushButton* minus = new WPushButton("-", new_div);
+    WPushButton* plus = new WPushButton("+", new_div);
+
+    WPushButton* remove = new WPushButton("x", new_div);
+    remove->setFloatSide(Wt::Right);
+
+    plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
+    minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);
+    remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
+    controls_div_->incoming_message_stack_->setCurrentIndex(
+        controls_div_->incoming_message_stack_->children().size() - 1);
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::increment_incoming_messages(
@@ -455,7 +463,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                         .publish_dynamic<google::protobuf::Message,
                                          goby::middleware::MarshallingScheme::DCCL>(
                             current_command->message_,
-                            goby::middleware::DynamicGroup(grouplayer.group()));
+                            goby::middleware::DynamicGroup(
+                                grouplayer.group(), goby::middleware::Group::broadcast_group),
+                            commander_->goby_thread()->command_publisher_);
                 });
                 break;
         }
@@ -529,7 +539,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     query_model_->addColumn("layer", "Layer");
     query_model_->addColumn("address", "Network Address");
     query_model_->addColumn("time", "Time");
-    query_model_->addColumn("last_ack", "Latest Ack");
+    //query_model_->addColumn("last_ack", "Latest Ack");
 
     query_table_->setModel(query_model_);
     query_table_->resize(WLength::Auto, pb_commander_config.database_view_height());

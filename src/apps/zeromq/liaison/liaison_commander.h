@@ -133,6 +133,10 @@ class LiaisonCommander
                                      const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::
                                          NotificationSubscription::Color& background_color);
 
+    void display_notify(const google::protobuf::Message& pb_msg, std::string title,
+                        const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::
+                            NotificationSubscription::Color& background_color);
+
   private:
     const protobuf::ProtobufCommanderConfig& pb_commander_config_;
     std::set<std::string> display_subscriptions_;
@@ -309,6 +313,15 @@ class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonComm
                          int index)
         : LiaisonCommsThread<LiaisonCommander>(commander, config, index), commander_(commander)
     {
+        {
+            using std::placeholders::_1;
+            using std::placeholders::_2;
+            command_publisher_ = {
+                {},
+                std::bind(&CommanderCommsThread::handle_command_ack, this, _1, _2),
+                std::bind(&CommanderCommsThread::handle_command_expired, this, _1, _2)};
+        }
+
         for (const auto& notify : cfg().pb_commander_config().notify_subscribe())
         {
             interprocess().subscribe_regex(
@@ -335,8 +348,44 @@ class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonComm
     ~CommanderCommsThread() {}
 
   private:
+    void handle_command_ack(const google::protobuf::Message& command,
+                            const goby::middleware::intervehicle::protobuf::AckData& ack)
+    {
+        goby::apps::zeromq::protobuf::ProtobufCommanderConfig::NotificationSubscription::Color
+            bg_color;
+        bg_color.set_r(100);
+        bg_color.set_g(200);
+        bg_color.set_b(100);
+
+        std::shared_ptr<google::protobuf::Message> pb_msg(command.New());
+        pb_msg->CopyFrom(command);
+        std::string title = std::string("Ack: ") + ack.ShortDebugString() + " @ " +
+                            boost::posix_time::to_simple_string(
+                                goby::time::SystemClock::now<boost::posix_time::ptime>());
+        commander_->post_to_wt([=]() { commander_->display_notify(*pb_msg, title, bg_color); });
+    }
+
+    void handle_command_expired(const google::protobuf::Message& command,
+                                const goby::middleware::intervehicle::protobuf::ExpireData& expire)
+    {
+        goby::apps::zeromq::protobuf::ProtobufCommanderConfig::NotificationSubscription::Color
+            bg_color;
+        bg_color.set_r(200);
+        bg_color.set_g(100);
+        bg_color.set_b(100);
+
+        std::shared_ptr<google::protobuf::Message> pb_msg(command.New());
+        pb_msg->CopyFrom(command);
+        std::string title = std::string("Expire: ") + expire.ShortDebugString() + " @ " +
+                            boost::posix_time::to_simple_string(
+                                goby::time::SystemClock::now<boost::posix_time::ptime>());
+        commander_->post_to_wt([=]() { commander_->display_notify(*pb_msg, title, bg_color); });
+    };
+
+  private:
     friend class LiaisonCommander;
     LiaisonCommander* commander_;
+    goby::middleware::Publisher<google::protobuf::Message> command_publisher_;
 };
 
 } // namespace zeromq
