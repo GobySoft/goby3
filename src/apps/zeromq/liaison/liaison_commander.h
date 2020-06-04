@@ -83,6 +83,24 @@ class LiaisonTreeTableNode : public Wt::WTreeTableNode
     }
 };
 
+struct ExternalData
+{
+    std::string affiliated_protobuf_name;
+    std::string protobuf_name;
+    Wt::WDateTime time;
+    std::string group;
+    std::string value;
+
+    template <class Action> void persist(Action& a)
+    {
+        Wt::Dbo::field(a, affiliated_protobuf_name, "affiliated_protobuf_name");
+        Wt::Dbo::field(a, protobuf_name, "protobuf_name");
+        Wt::Dbo::field(a, time, "time");
+        Wt::Dbo::field(a, group, "group");
+        Wt::Dbo::field(a, value, "value");
+    }
+};
+
 struct CommandEntry
 {
     std::string protobuf_name;
@@ -143,8 +161,16 @@ class LiaisonCommander
 
     struct ControlsContainer : Wt::WGroupBox
     {
+        struct CommandContainer;
+
         ControlsContainer(const protobuf::ProtobufCommanderConfig& pb_commander_config,
                           Wt::WStackedWidget* commands_div, LiaisonCommander* parent);
+
+        void load_groups(const google::protobuf::Descriptor* desc, int load_protobuf_index,
+                         CommandContainer* new_command);
+        void load_external_data(const google::protobuf::Descriptor* desc, int load_protobuf_index,
+                                CommandContainer* new_command);
+
         void switch_command(int selection_index);
 
         void clear_message();
@@ -251,17 +277,20 @@ class LiaisonCommander
                 goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer>
                 publish_to_;
 
-            Wt::WGroupBox* tree_box_;
-            Wt::WTreeTable* tree_table_;
+            Wt::WGroupBox* message_tree_box_;
+            Wt::WTreeTable* message_tree_table_;
 
             //                    Wt::WStackedWidget* field_info_stack_;
             //                    std::map<const google::protobuf::FieldDescriptor*, int> field_info_map_;
 
             Wt::Dbo::Session* session_;
-            Wt::Dbo::QueryModel<Wt::Dbo::ptr<CommandEntry>>* query_model_;
+            Wt::Dbo::QueryModel<Wt::Dbo::ptr<CommandEntry>>* sent_model_;
+            Wt::WGroupBox* sent_box_;
+            Wt::WTreeView* sent_table_;
 
-            Wt::WGroupBox* query_box_;
-            Wt::WTreeView* query_table_;
+            Wt::Dbo::QueryModel<Wt::Dbo::ptr<ExternalData>>* external_data_model_;
+            Wt::WGroupBox* external_data_box_;
+            Wt::WTreeView* external_data_table_;
 
             boost::posix_time::ptime last_reload_time_;
 

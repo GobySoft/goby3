@@ -1,4 +1,5 @@
 syntax = "proto2";
+
 import "goby/protobuf/option_extensions.proto";
 import "goby/middleware/protobuf/app_config.proto";
 import "goby/middleware/protobuf/layer.proto";
@@ -77,6 +78,19 @@ message ProtobufCommanderConfig
                 [default = LAYER_INTERPROCESS];
         }
         repeated GroupLayer publish_to = 2;
+
+        message ExternalData
+        {
+            required string name = 1;
+            required string group = 2;
+            message Translation
+            {
+                required string from = 1;
+                required string to = 2;
+            }
+            repeated Translation translate = 3;
+        }
+        repeated ExternalData external_data = 3;
     }
     repeated LoadProtobuf load_protobuf = 1;
 
@@ -138,6 +152,26 @@ message ProtobufCommanderConfig
     }
 
     repeated NotificationSubscription notify_subscribe = 30;
+
+    enum ExternalDataColumn
+    {
+        option allow_alias = true;
+
+        EXTERNAL_DATA_COLUMN_NAME = 0;
+        EXTERNAL_DATA_COLUMN_GROUP = 1;
+        EXTERNAL_DATA_COLUMN_TIME = 2;
+        EXTERNAL_DATA_COLUMN_VALUE = 3;
+        EXTERNAL_DATA_COLUMN_MAX = 3;
+    }
+
+    message DatabaseExternalDataColumnWidthPixels
+    {
+        optional int32 name_width = 1 [default = 180];
+        optional int32 group_width = 2 [default = 120];
+        optional int32 time_width = 3 [default = 120];
+        optional int32 value_width = 4 [default = 400];
+    }
+    optional DatabaseExternalDataColumnWidthPixels external_database_width = 40;
 
     // optional string time_source_var = 40;
 

@@ -218,7 +218,7 @@ void goby::apps::zeromq::LiaisonCommander::loop()
 
         std::lock_guard<std::mutex> slock(dbo_mutex_);
         Dbo::Transaction transaction(controls_div_->session_);
-        current_command->query_model_->reload();
+        current_command->sent_model_->reload();
         current_command->last_reload_time_ =
             goby::time::SystemClock::now<boost::posix_time::ptime>();
     }
@@ -259,6 +259,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
         std::lock_guard<std::mutex> slock(dbo_mutex_);
         session_.setConnectionPool(*connection_pool_);
         session_.mapClass<CommandEntry>("_liaison_commands");
+        session_.mapClass<ExternalData>("_external_data");
 
         try
         {
@@ -341,52 +342,8 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
                 commands_div_->addWidget(new_command);
                 // index of the newly added widget
                 commands_[protobuf_name] = commands_div_->count() - 1;
-
-                for (const auto& grouplayer : pb_commander_config.load_protobuf(i).publish_to())
-                {
-                    // validate grouplayer
-                    bool grouplayer_valid = true;
-
-                    if (grouplayer.has_group_numeric_field_name())
-                    {
-                        auto group_numeric_field =
-                            desc->FindFieldByName(grouplayer.group_numeric_field_name());
-
-                        if (!group_numeric_field)
-                        {
-                            glog.is(WARN) && glog << "In message " << protobuf_name
-                                                  << ": could not find field named "
-                                                  << grouplayer.group_numeric_field_name()
-                                                  << " to use for group numeric value" << std::endl;
-                            grouplayer_valid = false;
-                        }
-                        else if (group_numeric_field->cpp_type() !=
-                                     google::protobuf::FieldDescriptor::CPPTYPE_INT32 &&
-                                 group_numeric_field->cpp_type() !=
-                                     google::protobuf::FieldDescriptor::CPPTYPE_INT64 &&
-                                 group_numeric_field->cpp_type() !=
-                                     google::protobuf::FieldDescriptor::CPPTYPE_UINT32 &&
-                                 group_numeric_field->cpp_type() !=
-                                     google::protobuf::FieldDescriptor::CPPTYPE_UINT64 &&
-                                 group_numeric_field->cpp_type() !=
-                                     google::protobuf::FieldDescriptor::CPPTYPE_ENUM)
-                        {
-                            glog.is(WARN) && glog << "In message " << protobuf_name
-                                                  << ": field named "
-                                                  << grouplayer.group_numeric_field_name()
-                                                  << " must be (u)int(32|64) or enum type to use "
-                                                     "for group numeric value"
-                                                  << std::endl;
-                            grouplayer_valid = false;
-                        }
-                    }
-
-                    if (grouplayer_valid)
-                    {
-                        new_command->group_selection_->addItem(to_string(grouplayer));
-                        new_command->publish_to_.push_back(grouplayer);
-                    }
-                }
+                load_groups(desc, i, new_command);
+                load_external_data(desc, i, new_command);
             }
         }
     }
@@ -406,6 +363,74 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
     {
         switch_command(0);
     }
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::load_groups(
+    const google::protobuf::Descriptor* desc, int load_protobuf_index,
+    CommandContainer* new_command)
+{
+    const auto& protobuf_name = pb_commander_config_.load_protobuf(load_protobuf_index).name();
+
+    for (const auto& grouplayer :
+         pb_commander_config_.load_protobuf(load_protobuf_index).publish_to())
+    {
+        // validate grouplayer
+        bool grouplayer_valid = true;
+
+        if (grouplayer.has_group_numeric_field_name())
+        {
+            auto group_numeric_field = desc->FindFieldByName(grouplayer.group_numeric_field_name());
+
+            if (!group_numeric_field)
+            {
+                glog.is(WARN) && glog << "In message " << protobuf_name
+                                      << ": could not find field named "
+                                      << grouplayer.group_numeric_field_name()
+                                      << " to use for group numeric value" << std::endl;
+                grouplayer_valid = false;
+            }
+            else if (group_numeric_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_INT32 &&
+                     group_numeric_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_INT64 &&
+                     group_numeric_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_UINT32 &&
+                     group_numeric_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_UINT64 &&
+                     group_numeric_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_ENUM)
+            {
+                glog.is(WARN) && glog << "In message " << protobuf_name << ": field named "
+                                      << grouplayer.group_numeric_field_name()
+                                      << " must be (u)int(32|64) or enum type to use "
+                                         "for group numeric value"
+                                      << std::endl;
+                grouplayer_valid = false;
+            }
+        }
+
+        if (grouplayer_valid)
+        {
+            new_command->group_selection_->addItem(to_string(grouplayer));
+            new_command->publish_to_.push_back(grouplayer);
+        }
+    }
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::load_external_data(
+    const google::protobuf::Descriptor* desc, int load_protobuf_index,
+    CommandContainer* new_command)
+{
+    //    const auto& protobuf_name = pb_commander_config_.load_protobuf(load_protobuf_index).name();
+
+    //    for (const auto& external_data :
+    //         pb_commander_config_.load_protobuf(load_protobuf_index).external_data())
+    //    {
+    // commander_->post_to_comms([=]()
+    //                           {
+    //                               commander_->goby_thread()->interprocess().subscribe_type_regex(
+    //                           });
+    //    }
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::switch_command(int selection_index)
@@ -482,8 +507,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
             {
                 auto val = refl->GetUInt32(*current_command->message_, group_numeric_field_desc);
-                if (val >= std::numeric_limits<std::uint8_t>::min() &&
-                    val <= std::numeric_limits<std::uint8_t>::max())
+                if (val <= std::numeric_limits<std::uint8_t>::max())
                     group_numeric = val;
 
                 break;
@@ -502,8 +526,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
             {
                 auto val = refl->GetUInt64(*current_command->message_, group_numeric_field_desc);
-                if (val >= std::numeric_limits<std::uint8_t>::min() &&
-                    val <= std::numeric_limits<std::uint8_t>::max())
+                if (val <= std::numeric_limits<std::uint8_t>::max())
                     group_numeric = val;
 
                 break;
@@ -609,7 +632,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         }
 
         comment_line_->setText("");
-        current_command->query_model_->reload();
+        current_command->sent_model_->reload();
     }
 }
 
@@ -624,72 +647,75 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
       group_div_(new WContainerWidget(this)),
       group_label_(new WLabel("Group: ", group_div_)),
       group_selection_(new WComboBox(group_div_)),
-      tree_box_(new WGroupBox("Contents", this)),
-      tree_table_(new WTreeTable(tree_box_)),
+      message_tree_box_(new WGroupBox("Contents", this)),
+      message_tree_table_(new WTreeTable(message_tree_box_)),
       //      field_info_stack_(new WStackedWidget(master_field_info_stack)),
       session_(session),
-      query_model_(new Dbo::QueryModel<Dbo::ptr<CommandEntry>>(this)),
-      query_box_(new WGroupBox("Sent message log (click for details)", this)),
-      query_table_(new WTreeView(query_box_)),
+      sent_model_(new Dbo::QueryModel<Dbo::ptr<CommandEntry>>(this)),
+      sent_box_(new WGroupBox("Sent message log (click for details)", this)),
+      sent_table_(new WTreeView(sent_box_)),
+      external_data_model_(new Dbo::QueryModel<Dbo::ptr<ExternalData>>(this)),
+      external_data_box_(new WGroupBox("External Data", this)),
+      external_data_table_(new WTreeView(external_data_box_)),
       last_reload_time_(boost::posix_time::neg_infin),
       pb_commander_config_(pb_commander_config)
 {
     //    new WText("", field_info_stack_);
     //field_info_map_[0] = 0;
 
-    tree_table_->addColumn("Value", pb_commander_config.value_width_pixels());
-    tree_table_->addColumn("Modify", pb_commander_config.modify_width_pixels());
+    message_tree_table_->addColumn("Value", pb_commander_config.value_width_pixels());
+    message_tree_table_->addColumn("Modify", pb_commander_config.modify_width_pixels());
 
     {
         std::lock_guard<std::mutex> slock(dbo_mutex_);
         Dbo::Transaction transaction(*session_);
-        query_model_->setQuery(
+        sent_model_->setQuery(
             session_->find<CommandEntry>("where protobuf_name='" + protobuf_name + "'"));
     }
 
-    query_model_->addColumn("comment", "Comment");
-    query_model_->addColumn("protobuf_name", "Name");
-    query_model_->addColumn("group", "Group");
-    query_model_->addColumn("layer", "Layer");
-    query_model_->addColumn("address", "Network Address");
-    query_model_->addColumn("time", "Time");
-    //query_model_->addColumn("last_ack", "Latest Ack");
+    sent_model_->addColumn("comment", "Comment");
+    sent_model_->addColumn("protobuf_name", "Name");
+    sent_model_->addColumn("group", "Group");
+    sent_model_->addColumn("layer", "Layer");
+    sent_model_->addColumn("address", "Network Address");
+    sent_model_->addColumn("time", "Time");
+    //sent_model_->addColumn("last_ack", "Latest Ack");
 
-    query_table_->setModel(query_model_);
-    query_table_->resize(WLength::Auto, pb_commander_config.database_view_height());
-    query_table_->sortByColumn(protobuf::ProtobufCommanderConfig::COLUMN_TIME, DescendingOrder);
-    query_table_->setMinimumSize(pb_commander_config.database_width().comment_width() +
-                                     pb_commander_config.database_width().name_width() +
-                                     pb_commander_config.database_width().group_width() +
-                                     pb_commander_config.database_width().layer_width() +
-                                     pb_commander_config.database_width().ip_width() +
-                                     pb_commander_config.database_width().time_width() +
-                                     pb_commander_config.database_width().last_ack_width() +
-                                     7 * (protobuf::ProtobufCommanderConfig::COLUMN_MAX + 1),
-                                 WLength::Auto);
+    sent_table_->setModel(sent_model_);
+    sent_table_->resize(WLength::Auto, pb_commander_config.database_view_height());
+    sent_table_->sortByColumn(protobuf::ProtobufCommanderConfig::COLUMN_TIME, DescendingOrder);
+    sent_table_->setMinimumSize(pb_commander_config.database_width().comment_width() +
+                                    pb_commander_config.database_width().name_width() +
+                                    pb_commander_config.database_width().group_width() +
+                                    pb_commander_config.database_width().layer_width() +
+                                    pb_commander_config.database_width().ip_width() +
+                                    pb_commander_config.database_width().time_width() +
+                                    //pb_commander_config.database_width().last_ack_width() +
+                                    7 * (protobuf::ProtobufCommanderConfig::COLUMN_MAX + 1),
+                                WLength::Auto);
 
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_COMMENT,
-                                 pb_commander_config.database_width().comment_width());
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_NAME,
-                                 pb_commander_config.database_width().name_width());
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_GROUP,
-                                 pb_commander_config.database_width().group_width());
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_LAYER,
-                                 pb_commander_config.database_width().layer_width());
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_IP,
-                                 pb_commander_config.database_width().ip_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_COMMENT,
+                                pb_commander_config.database_width().comment_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_NAME,
+                                pb_commander_config.database_width().name_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_GROUP,
+                                pb_commander_config.database_width().group_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_LAYER,
+                                pb_commander_config.database_width().layer_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_IP,
+                                pb_commander_config.database_width().ip_width());
 
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_TIME,
-                                 pb_commander_config.database_width().time_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_TIME,
+                                pb_commander_config.database_width().time_width());
 
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_LAST_ACK,
-                                 pb_commander_config.database_width().last_ack_width());
+    //    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_LAST_ACK,
+    //                                 pb_commander_config.database_width().last_ack_width());
 
-    query_table_->clicked().connect(this, &CommandContainer::handle_database_double_click);
+    sent_table_->clicked().connect(this, &CommandContainer::handle_database_double_click);
 
-    if (query_model_->rowCount() > 0)
+    if (sent_model_->rowCount() > 0)
     {
-        const Dbo::ptr<CommandEntry>& entry = query_model_->resultRow(0);
+        const Dbo::ptr<CommandEntry>& entry = sent_model_->resultRow(0);
         message_->ParseFromArray(&entry->bytes[0], entry->bytes.size());
 
         int group_index =
@@ -698,7 +724,45 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
             group_selection_->setCurrentIndex(group_index);
     }
 
-    glog.is(DEBUG1) && glog << "Model has " << query_model_->rowCount() << " rows" << std::endl;
+    glog.is(DEBUG1) && glog << "Sent message model has " << sent_model_->rowCount() << " rows"
+                            << std::endl;
+
+    {
+        std::lock_guard<std::mutex> slock(dbo_mutex_);
+        Dbo::Transaction transaction(*session_);
+        external_data_model_->setQuery(
+            session_->find<ExternalData>("where affiliated_protobuf_name='" + protobuf_name + "'"));
+    }
+
+    external_data_model_->addColumn("protobuf_name", "Name");
+    external_data_model_->addColumn("group", "Group");
+    external_data_model_->addColumn("time", "Time");
+    external_data_model_->addColumn("value", "Value");
+
+    external_data_table_->setModel(external_data_model_);
+    external_data_table_->resize(WLength::Auto, pb_commander_config.database_view_height());
+    external_data_table_->sortByColumn(protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_TIME,
+                                       DescendingOrder);
+    external_data_table_->setMinimumSize(
+        pb_commander_config.external_database_width().name_width() +
+            pb_commander_config.external_database_width().group_width() +
+            pb_commander_config.external_database_width().time_width() +
+            pb_commander_config.external_database_width().value_width() +
+            7 * (protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_MAX + 1),
+        WLength::Auto);
+
+    external_data_table_->setColumnWidth(
+        protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_NAME,
+        pb_commander_config.external_database_width().name_width());
+    external_data_table_->setColumnWidth(
+        protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_GROUP,
+        pb_commander_config.external_database_width().group_width());
+    external_data_table_->setColumnWidth(
+        protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_TIME,
+        pb_commander_config.external_database_width().time_width());
+    external_data_table_->setColumnWidth(
+        protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_VALUE,
+        pb_commander_config.external_database_width().value_width());
 
     generate_root();
 }
@@ -712,7 +776,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     if (!index.isValid())
         return;
 
-    const Dbo::ptr<CommandEntry>& entry = query_model_->resultRow(index.row());
+    const Dbo::ptr<CommandEntry>& entry = sent_model_->resultRow(index.row());
 
     std::shared_ptr<google::protobuf::Message> message(message_->New());
     message->ParseFromArray(&entry->bytes[0], entry->bytes.size());
@@ -817,7 +881,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     root->setStyleClass(STRIPE_EVEN_CLASS);
 
     // deletes an existing root
-    tree_table_->setTreeRoot(root, "Field");
+    message_tree_table_->setTreeRoot(root, "Field");
 
     time_fields_.clear();
 

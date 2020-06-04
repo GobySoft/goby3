@@ -180,15 +180,15 @@ class InterProcessTransporterBase
     /// \brief Subscribe to a number of types within a given group and scheme using a regular expression
     ///
     /// The marshalling scheme must implement SerializerParserHelper::parse() to use this method.
-    /// \tparam group group to publish this message to (reference to constexpr Group)
     /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param group group to subscribe to (typically a DynamicGroup)
     /// \param f Callback function or lambda that is called upon receipt of any messages matching the given group and type regex
     /// \param type_regex C++ regex to match type names (within the given scheme)
-    template <const Group& group, typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = scheme<Data>()>
     void subscribe_type_regex(
         std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
-        const std::string& type_regex = ".*")
+        const Group& group, const std::string& type_regex = ".*")
     {
         std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
         std::string sanitized_group =
@@ -204,6 +204,22 @@ class InterProcessTransporterBase
 
         static_cast<Derived*>(this)->_subscribe_regex(regex_lambda, {scheme}, type_regex,
                                                       "^" + sanitized_group + "$");
+    }
+
+    /// \brief Subscribe to a number of types within a given group and scheme using a regular expression
+    ///
+    /// The marshalling scheme must implement SerializerParserHelper::parse() to use this method.
+    /// \tparam group group to publish this message to (reference to constexpr Group)
+    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param f Callback function or lambda that is called upon receipt of any messages matching the given group and type regex
+    /// \param type_regex C++ regex to match type names (within the given scheme)
+    template <const Group& group, typename Data, int scheme = scheme<Data>()>
+    void subscribe_type_regex(
+        std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
+        const std::string& type_regex = ".*")
+    {
+        subscribe_type_regex(f, group, type_regex);
     }
 
     /// \brief returns the marshalling scheme id for a given data type on this layer
