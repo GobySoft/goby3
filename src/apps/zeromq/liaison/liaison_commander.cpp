@@ -72,9 +72,23 @@ to_group_layer(std::string group, std::string layer)
 
 std::string
 to_string(const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer&
-              grouplayer)
+              grouplayer,
+          std::uint8_t groupnum = goby::middleware::Group::invalid_numeric_group)
 {
-    return grouplayer.group() + " [" + goby::middleware::to_string(grouplayer.layer()) + "]";
+    std::string groupnum_str;
+
+    if (grouplayer.layer() >= goby::middleware::protobuf::LAYER_INTERVEHICLE)
+    {
+        if (groupnum == goby::middleware::Group::invalid_numeric_group &&
+            grouplayer.has_group_numeric_field_name())
+            groupnum_str =
+                std::string("/{value of \"" + grouplayer.group_numeric_field_name() + "\"}");
+        else
+            groupnum_str = std::string("/") + std::to_string(groupnum);
+    }
+
+    return grouplayer.group() + groupnum_str + " [" +
+           goby::middleware::to_string(grouplayer.layer()) + "]";
 }
 
 goby::apps::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonConfig& cfg)
@@ -84,11 +98,6 @@ goby::apps::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonCo
       controls_div_(new ControlsContainer(pb_commander_config_, commands_div_, this))
 {
     addWidget(commands_div_);
-
-    //    if(pb_commander_config_.has_time_source_var())
-    //    subscribe(pb_commander_config_.time_source_var(), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
-
-    // subscribe(pb_commander_config_.network_ack_var(), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
 
     commander_timer_.setInterval(1 / cfg.update_freq() * 1.0e3);
     commander_timer_.timeout().connect(this, &LiaisonCommander::loop);
@@ -335,8 +344,48 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
 
                 for (const auto& grouplayer : pb_commander_config.load_protobuf(i).publish_to())
                 {
-                    new_command->group_selection_->addItem(to_string(grouplayer));
-                    new_command->publish_to_.push_back(grouplayer);
+                    // validate grouplayer
+                    bool grouplayer_valid = true;
+
+                    if (grouplayer.has_group_numeric_field_name())
+                    {
+                        auto group_numeric_field =
+                            desc->FindFieldByName(grouplayer.group_numeric_field_name());
+
+                        if (!group_numeric_field)
+                        {
+                            glog.is(WARN) && glog << "In message " << protobuf_name
+                                                  << ": could not find field named "
+                                                  << grouplayer.group_numeric_field_name()
+                                                  << " to use for group numeric value" << std::endl;
+                            grouplayer_valid = false;
+                        }
+                        else if (group_numeric_field->cpp_type() !=
+                                     google::protobuf::FieldDescriptor::CPPTYPE_INT32 &&
+                                 group_numeric_field->cpp_type() !=
+                                     google::protobuf::FieldDescriptor::CPPTYPE_INT64 &&
+                                 group_numeric_field->cpp_type() !=
+                                     google::protobuf::FieldDescriptor::CPPTYPE_UINT32 &&
+                                 group_numeric_field->cpp_type() !=
+                                     google::protobuf::FieldDescriptor::CPPTYPE_UINT64 &&
+                                 group_numeric_field->cpp_type() !=
+                                     google::protobuf::FieldDescriptor::CPPTYPE_ENUM)
+                        {
+                            glog.is(WARN) && glog << "In message " << protobuf_name
+                                                  << ": field named "
+                                                  << grouplayer.group_numeric_field_name()
+                                                  << " must be (u)int(32|64) or enum type to use "
+                                                     "for group numeric value"
+                                                  << std::endl;
+                            grouplayer_valid = false;
+                        }
+                    }
+
+                    if (grouplayer_valid)
+                    {
+                        new_command->group_selection_->addItem(to_string(grouplayer));
+                        new_command->publish_to_.push_back(grouplayer);
+                    }
                 }
             }
         }
@@ -403,18 +452,87 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 {
     glog.is(VERBOSE) && glog << "Message to be sent!" << std::endl;
 
-    WDialog dialog("Confirm sending of message: " + command_selection_->currentText());
-
     CommandContainer* current_command =
         dynamic_cast<CommandContainer*>(commands_div_->currentWidget());
+
+    auto grouplayer =
+        current_command->publish_to_.at(current_command->group_selection_->currentIndex());
+    std::uint8_t group_numeric = grouplayer.group_numeric();
+
+    // read the numeric group value out of the message if requested
+    if (grouplayer.has_group_numeric_field_name())
+    {
+        auto desc = current_command->message_->GetDescriptor();
+        auto group_numeric_field_desc =
+            desc->FindFieldByName(grouplayer.group_numeric_field_name());
+
+        auto refl = current_command->message_->GetReflection();
+        switch (group_numeric_field_desc->cpp_type())
+        {
+            default: break;
+            case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+            {
+                auto val = refl->GetInt32(*current_command->message_, group_numeric_field_desc);
+                if (val >= std::numeric_limits<std::uint8_t>::min() &&
+                    val <= std::numeric_limits<std::uint8_t>::max())
+                    group_numeric = val;
+                break;
+            }
+
+            case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+            {
+                auto val = refl->GetUInt32(*current_command->message_, group_numeric_field_desc);
+                if (val >= std::numeric_limits<std::uint8_t>::min() &&
+                    val <= std::numeric_limits<std::uint8_t>::max())
+                    group_numeric = val;
+
+                break;
+            }
+
+            case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+            {
+                auto val = refl->GetInt64(*current_command->message_, group_numeric_field_desc);
+                if (val >= std::numeric_limits<std::uint8_t>::min() &&
+                    val <= std::numeric_limits<std::uint8_t>::max())
+                    group_numeric = val;
+
+                break;
+            }
+
+            case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+            {
+                auto val = refl->GetUInt64(*current_command->message_, group_numeric_field_desc);
+                if (val >= std::numeric_limits<std::uint8_t>::min() &&
+                    val <= std::numeric_limits<std::uint8_t>::max())
+                    group_numeric = val;
+
+                break;
+            }
+            case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+            {
+                auto val =
+                    refl->GetEnum(*current_command->message_, group_numeric_field_desc)->number();
+                if (val >= std::numeric_limits<std::uint8_t>::min() &&
+                    val <= std::numeric_limits<std::uint8_t>::max())
+                    group_numeric = val;
+
+                break;
+            }
+        }
+    }
+
+    WDialog dialog("Confirm sending of message: " + command_selection_->currentText());
 
     WGroupBox* comment_box = new WGroupBox("Log comment", dialog.contents());
     WLineEdit* comment_line = new WLineEdit(comment_box);
     comment_line->setText(comment_line_->text());
 
+    WGroupBox* group_box = new WGroupBox("Group", dialog.contents());
+    WContainerWidget* group_div = new WContainerWidget(group_box);
+    new WText("Group: " + to_string(grouplayer, group_numeric), group_div);
+
     WGroupBox* message_box = new WGroupBox("Message to send", dialog.contents());
     WContainerWidget* message_div = new WContainerWidget(message_box);
-
     new WText("<pre>" + current_command->message_->DebugString() + "</pre>", message_div);
 
     message_div->setMaximumSize(pb_commander_config_.modal_dimensions().width(),
@@ -433,9 +551,6 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 
     if (dialog.exec() == WDialog::Accepted)
     {
-        auto grouplayer =
-            current_command->publish_to_.at(current_command->group_selection_->currentIndex());
-
         switch (grouplayer.layer())
         {
             case goby::middleware::protobuf::LAYER_INTERTHREAD:
@@ -463,8 +578,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                         .publish_dynamic<google::protobuf::Message,
                                          goby::middleware::MarshallingScheme::DCCL>(
                             current_command->message_,
-                            goby::middleware::DynamicGroup(
-                                grouplayer.group(), goby::middleware::Group::broadcast_group),
+                            goby::middleware::DynamicGroup(grouplayer.group(), group_numeric),
                             commander_->goby_thread()->command_publisher_);
                 });
                 break;

@@ -71,7 +71,10 @@ message ProtobufCommanderConfig
         message GroupLayer
         {
             required string group = 1;
-            optional goby.middleware.protobuf.Layer layer = 2 [default = LAYER_INTERPROCESS];
+            optional uint32 group_numeric = 2 [default = 0];
+            optional string group_numeric_field_name = 3;
+            optional goby.middleware.protobuf.Layer layer = 4
+                [default = LAYER_INTERPROCESS];
         }
         repeated GroupLayer publish_to = 2;
     }

@@ -318,6 +318,7 @@ class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonComm
             using std::placeholders::_2;
             command_publisher_ = {
                 {},
+                std::bind(&CommanderCommsThread::set_command_group, this, _1, _2),
                 std::bind(&CommanderCommsThread::handle_command_ack, this, _1, _2),
                 std::bind(&CommanderCommsThread::handle_command_expired, this, _1, _2)};
         }
@@ -348,6 +349,10 @@ class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonComm
     ~CommanderCommsThread() {}
 
   private:
+    void set_command_group(google::protobuf::Message& command, const goby::middleware::Group& group)
+    {
+    }
+
     void handle_command_ack(const google::protobuf::Message& command,
                             const goby::middleware::intervehicle::protobuf::AckData& ack)
     {
