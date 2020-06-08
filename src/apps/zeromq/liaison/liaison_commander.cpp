@@ -423,14 +423,27 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::load_external_data
 {
     //    const auto& protobuf_name = pb_commander_config_.load_protobuf(load_protobuf_index).name();
 
-    //    for (const auto& external_data :
-    //         pb_commander_config_.load_protobuf(load_protobuf_index).external_data())
-    //    {
-    // commander_->post_to_comms([=]()
-    //                           {
-    //                               commander_->goby_thread()->interprocess().subscribe_type_regex(
-    //                           });
-    //    }
+    for (const auto& external_data :
+         pb_commander_config_.load_protobuf(load_protobuf_index).external_data())
+    {
+        commander_->post_to_comms([=]() {
+            std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
+            std::string sanitized_type =
+                std::regex_replace(std::string(external_data.name()), special_chars, R"(\$&)");
+
+            auto external_data_callback = [](std::shared_ptr<const google::protobuf::Message> msg,
+                                             const std::string& type) {
+                std::cout << "Received msg: " << msg->ShortDebugString() << "of type: " << type
+                          << std::endl;
+            };
+
+            commander_->goby_thread()
+                ->interprocess()
+                .subscribe_type_regex<google::protobuf::Message>(
+                    external_data_callback, goby::middleware::DynamicGroup(external_data.group()),
+                    "^" + sanitized_type + "$");
+        });
+    }
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::switch_command(int selection_index)
