@@ -828,7 +828,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     set_external_data_table_params(Wt::WTreeView* external_data_table)
 {
-    //   external_data_table->resize(WLength::Auto, pb_commander_config_.database_view_height());
+    external_data_table->resize(WLength::Auto, pb_commander_config_.database_view_height());
     external_data_table->sortByColumn(protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_TIME,
                                       DescendingOrder);
     external_data_table->setMinimumSize(

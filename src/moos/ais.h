@@ -85,13 +85,21 @@ class AISConverter
 
         auto ninety_degrees(90. * boost::units::degree::degrees);
 
+        // convert to local projection to perform cog and sog calculations
+        goby::util::UTMGeodesy geo({status_reports_.front().global_fix().lat_with_units(),
+                                    status_reports_.front().global_fix().lon_with_units()});
         for (int i = 1, n = status_reports_.size(); i < n; ++i)
         {
             auto& status0 = status_reports_[i - 1];
             auto& status1 = status_reports_[i];
 
-            auto dy = status1.local_fix().y_with_units() - status0.local_fix().y_with_units();
-            auto dx = status1.local_fix().x_with_units() - status0.local_fix().x_with_units();
+            auto xy0 = geo.convert(
+                {status0.global_fix().lat_with_units(), status0.global_fix().lon_with_units()});
+            auto xy1 = geo.convert(
+                {status1.global_fix().lat_with_units(), status1.global_fix().lon_with_units()});
+
+            auto dy = xy1.y - xy0.y;
+            auto dx = xy1.x - xy0.x;
             auto dt = status1.time_with_units() - status0.time_with_units();
 
             decltype(ninety_degrees) cog_angle(boost::units::atan2(dy, dx));
