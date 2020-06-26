@@ -158,13 +158,14 @@ void goby::apps::zeromq::LiaisonCommander::display_notify(
 
     WPushButton* minus = new WPushButton("-", new_div);
     WPushButton* plus = new WPushButton("+", new_div);
-
     WPushButton* remove = new WPushButton("x", new_div);
-    remove->setFloatSide(Wt::Right);
+    WPushButton* remove_all = new WPushButton("X", new_div);
+    remove_all->setFloatSide(Wt::Right);
 
     plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
     minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);
     remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
+    remove_all->clicked().connect(controls_div_, &ControlsContainer::clear_incoming_messages);
     controls_div_->incoming_message_stack_->setCurrentIndex(
         controls_div_->incoming_message_stack_->children().size() - 1);
 }
@@ -195,6 +196,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::remove_incoming_me
     WWidget* remove = incoming_message_stack_->currentWidget();
     decrement_incoming_messages(event);
     incoming_message_stack_->removeWidget(remove);
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::clear_incoming_messages(
+    const WMouseEvent& event)
+{
+    while (incoming_message_stack_->children().size() > 0) remove_incoming_message(event);
 }
 
 void goby::apps::zeromq::LiaisonCommander::loop()
@@ -435,23 +442,31 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             continue;
         }
 
-        commander_->post_to_comms([=]() {
-            std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
-            std::string sanitized_type =
-                std::regex_replace(std::string(external_data.name()), special_chars, R"(\$&)");
+        // avoid multiple subscribe
+        if (!external_types_.count(external_desc))
+        {
+            commander_->post_to_comms([=]() {
+                std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
+                std::string sanitized_type =
+                    std::regex_replace(std::string(external_data.name()), special_chars, R"(\$&)");
 
-            auto external_data_callback = [=](std::shared_ptr<const google::protobuf::Message> msg,
-                                              const std::string& type) {
-                commander_->post_to_wt(
-                    [=]() { this->handle_external_data(type, external_data.group(), msg); });
-            };
+                auto external_data_callback =
+                    [=](std::shared_ptr<const google::protobuf::Message> msg,
+                        const std::string& type) {
+                        commander_->post_to_wt([=]() {
+                            this->handle_external_data(type, external_data.group(), msg);
+                        });
+                    };
 
-            commander_->goby_thread()
-                ->interprocess()
-                .subscribe_type_regex<google::protobuf::Message>(
-                    external_data_callback, goby::middleware::DynamicGroup(external_data.group()),
-                    "^" + sanitized_type + "$");
-        });
+                commander_->goby_thread()
+                    ->interprocess()
+                    .subscribe_type_regex<google::protobuf::Message>(
+                        external_data_callback,
+                        goby::middleware::DynamicGroup(external_data.group()),
+                        "^" + sanitized_type + "$");
+            });
+            external_types_.insert(external_desc);
+        }
 
         for (const auto& translate : external_data.translate())
         {
@@ -685,6 +700,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         command_entry->utime = current_command->latest_time_;
 
         command_entry->comment = comment_line->text().narrow();
+        if (command_entry->comment.empty())
+        {
+            command_entry->comment =
+                "[" + current_command->message_->ShortDebugString().substr(0, 100) + "...]";
+        }
+
         command_entry->last_ack = 0;
         session_.add(command_entry);
 
@@ -718,9 +739,11 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
       session_(session),
       sent_model_(new Dbo::QueryModel<Dbo::ptr<CommandEntry>>(this)),
       sent_box_(new WGroupBox("Sent message log (click for details)", this)),
+      sent_clear_(new WPushButton("Clear", sent_box_)),
       sent_table_(new WTreeView(sent_box_)),
       external_data_model_(new Dbo::QueryModel<Dbo::ptr<ExternalData>>(this)),
       external_data_box_(new WGroupBox("External Data", this)),
+      external_data_clear_(new WPushButton("Clear", external_data_box_)),
       external_data_table_(new WTreeView(external_data_box_)),
       last_reload_time_(boost::posix_time::neg_infin),
       pb_commander_config_(pb_commander_config),
@@ -804,10 +827,61 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
             session_->find<ExternalData>("where affiliated_protobuf_name='" + protobuf_name + "'"));
     }
 
+    boost::function<void(const Wt::WMouseEvent&)> sent_clear_callback =
+        [=](const Wt::WMouseEvent& event) {
+            WDialog dialog("Confirm clearing of ALL sent messages for " + protobuf_name);
+            WPushButton ok("Clear", dialog.contents());
+            WPushButton cancel("Cancel", dialog.contents());
+
+            dialog.rejectWhenEscapePressed();
+            ok.clicked().connect(&dialog, &WDialog::accept);
+            cancel.clicked().connect(&dialog, &WDialog::reject);
+
+            if (dialog.exec() == WDialog::Accepted)
+            {
+                {
+                    std::lock_guard<std::mutex> slock(dbo_mutex_);
+                    Dbo::Transaction transaction(*session_);
+
+                    session_->execute("delete from _liaison_commands where protobuf_name='" +
+                                      protobuf_name + "'");
+                }
+
+                sent_model_->reload();
+            }
+        };
+    sent_clear_->clicked().connect(boost::bind(sent_clear_callback, _1));
+
     set_external_data_model_params(external_data_model_);
 
     external_data_table_->setModel(external_data_model_);
     set_external_data_table_params(external_data_table_);
+
+    boost::function<void(const Wt::WMouseEvent&)> external_data_clear_callback =
+        [=](const Wt::WMouseEvent& event) {
+            WDialog dialog("Confirm clearing of ALL external data for " + protobuf_name);
+            WPushButton ok("Clear", dialog.contents());
+            WPushButton cancel("Cancel", dialog.contents());
+
+            dialog.rejectWhenEscapePressed();
+            ok.clicked().connect(&dialog, &WDialog::accept);
+            cancel.clicked().connect(&dialog, &WDialog::reject);
+
+            if (dialog.exec() == WDialog::Accepted)
+            {
+                {
+                    std::lock_guard<std::mutex> slock(dbo_mutex_);
+                    Dbo::Transaction transaction(*session_);
+
+                    session_->execute(
+                        "delete from _external_data where affiliated_protobuf_name='" +
+                        protobuf_name + "'");
+                }
+
+                external_data_model_->reload();
+            }
+        };
+    external_data_clear_->clicked().connect(boost::bind(external_data_clear_callback, _1));
 
     load_groups(message_->GetDescriptor());
     load_external_data(message_->GetDescriptor());

@@ -176,6 +176,7 @@ class LiaisonCommander
         void increment_incoming_messages(const Wt::WMouseEvent& event);
         void decrement_incoming_messages(const Wt::WMouseEvent& event);
         void remove_incoming_message(const Wt::WMouseEvent& event);
+        void clear_incoming_messages(const Wt::WMouseEvent& event);
 
         struct CommandContainer : Wt::WGroupBox
         {
@@ -320,6 +321,8 @@ class LiaisonCommander
             std::map<std::string, std::map<std::string, ExternalDataMeta>>
                 externally_loadable_fields_;
 
+            std::set<const google::protobuf::Descriptor*> external_types_;
+
             Wt::WGroupBox* message_tree_box_;
             Wt::WTreeTable* message_tree_table_;
 
@@ -329,10 +332,12 @@ class LiaisonCommander
             Wt::Dbo::Session* session_;
             Wt::Dbo::QueryModel<Wt::Dbo::ptr<CommandEntry>>* sent_model_;
             Wt::WGroupBox* sent_box_;
+            Wt::WPushButton* sent_clear_;
             Wt::WTreeView* sent_table_;
 
             Wt::Dbo::QueryModel<Wt::Dbo::ptr<ExternalData>>* external_data_model_;
             Wt::WGroupBox* external_data_box_;
+            Wt::WPushButton* external_data_clear_;
             Wt::WTreeView* external_data_table_;
 
             boost::posix_time::ptime last_reload_time_;
