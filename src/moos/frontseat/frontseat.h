@@ -32,6 +32,7 @@
 #include "goby/moos/moos_geodesy.h"
 
 #include "goby/moos/frontseat/frontseat_exception.h"
+#include "goby/moos/moos_header.h"
 #include "goby/moos/protobuf/frontseat.pb.h"
 #include "goby/moos/protobuf/frontseat_config.pb.h"
 
@@ -46,6 +47,9 @@ class FrontSeatLegacyTranslator;
 } // namespace apps
 namespace moos
 {
+void convert_and_publish_node_status(const goby::moos::protobuf::NodeStatus& status,
+                                     CMOOSCommClient& moos_comms);
+
 class FrontSeatInterfaceBase
 {
   public:

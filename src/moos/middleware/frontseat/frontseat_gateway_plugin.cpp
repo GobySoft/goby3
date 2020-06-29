@@ -25,6 +25,7 @@
 
 #include "goby/middleware/frontseat/groups.h"
 
+#include "goby/moos/frontseat/frontseat.h"
 #include "goby/moos/middleware/moos_plugin_translator.h"
 #include "goby/moos/moos_translator.h"
 #include "goby/moos/protobuf/desired_course.pb.h"
@@ -48,7 +49,7 @@ class FrontSeatTranslation : public goby::moos::Translator
                        goby::moos::protobuf::NodeStatus,
                        goby::middleware::MarshallingScheme::PROTOBUF>(
                 [this](const goby::moos::protobuf::NodeStatus& status) {
-                    convert_node_status(status);
+                    goby::moos::convert_and_publish_node_status(status, moos().comms());
                 });
 
         std::vector<std::string> desired_buffer_params(
@@ -59,7 +60,6 @@ class FrontSeatTranslation : public goby::moos::Translator
     }
 
   private:
-    void convert_node_status(const goby::moos::protobuf::NodeStatus& status);
     void convert_desired_setpoints();
 };
 } // namespace moos
@@ -82,59 +82,6 @@ extern "C"
     }
 }
 
-void goby::moos::FrontSeatTranslation::convert_node_status(
-    const goby::moos::protobuf::NodeStatus& status)
-{
-    // post NAV_*
-    using boost::units::quantity;
-    namespace si = boost::units::si;
-    namespace degree = boost::units::degree;
-
-    glog.is_debug2() && glog << "Posting to MOOS: NAV: " << status.DebugString() << std::endl;
-
-    moos().comms().Notify("NAV_X", status.local_fix().x_with_units<quantity<si::length>>().value());
-    moos().comms().Notify("NAV_Y", status.local_fix().y_with_units<quantity<si::length>>().value());
-    moos().comms().Notify("NAV_LAT",
-                          status.global_fix().lat_with_units() / boost::units::degree::degrees);
-    moos().comms().Notify("NAV_LONG",
-                          status.global_fix().lon_with_units() / boost::units::degree::degrees);
-
-    if (status.local_fix().has_z())
-        moos().comms().Notify("NAV_Z",
-                              status.local_fix().z_with_units<quantity<si::length>>().value());
-    if (status.global_fix().has_depth())
-        moos().comms().Notify("NAV_DEPTH",
-                              status.global_fix().depth_with_units<quantity<si::length>>().value());
-
-    if (status.pose().has_heading())
-        moos().comms().Notify(
-            "NAV_HEADING",
-            status.pose().heading_with_units<quantity<degree::plane_angle>>().value());
-
-    moos().comms().Notify("NAV_SPEED", status.speed_with_units<quantity<si::velocity>>().value());
-
-    if (status.pose().has_pitch())
-        moos().comms().Notify("NAV_PITCH",
-                              status.pose().pitch_with_units<quantity<si::plane_angle>>().value());
-    if (status.pose().has_roll())
-        moos().comms().Notify("NAV_ROLL",
-                              status.pose().roll_with_units<quantity<si::plane_angle>>().value());
-
-    if (status.global_fix().has_altitude())
-        moos().comms().Notify(
-            "NAV_ALTITUDE",
-            status.global_fix().altitude_with_units<quantity<si::length>>().value());
-
-    // surface for GPS variable
-    if (status.global_fix().lat_source() == goby::moos::protobuf::GPS &&
-        status.global_fix().lon_source() == goby::moos::protobuf::GPS)
-    {
-        std::stringstream ss;
-        ss << "Timestamp=" << std::setprecision(15)
-           << status.time_with_units() / boost::units::si::seconds;
-        moos().comms().Notify("GPS_UPDATE_RECEIVED", ss.str());
-    }
-}
 
 void goby::moos::FrontSeatTranslation::convert_desired_setpoints()
 {

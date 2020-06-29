@@ -171,7 +171,7 @@ void goby::moos::IverFrontSeat::process_receive(const std::string& s)
                                                              boost::units::degree::degrees);
 
             static const boost::units::metric::knot_base_unit::unit_type knots;
-            status_.set_speed_with_units(nmea.as<double>(SPEED) * knots);
+            status_.mutable_speed()->set_over_ground_with_units(nmea.as<double>(SPEED) * knots);
 
             std::string mode_str = nmea.at(MODE);
             if (mode_str.size() >= 1 && gpb::IverState::IverMissionMode_IsValid(mode_str[0]))
@@ -317,12 +317,12 @@ void goby::moos::IverFrontSeat::send_command_to_frontseat(const gpb::CommandRequ
         using boost::units::quantity;
         typedef boost::units::imperial::foot_base_unit::unit_type feet;
         nmea.push_back(tenths_precision_str(
-            command.desired_course().depth_with_units<quantity<feet> >().value()));   // in feet
+            command.desired_course().depth_with_units<quantity<feet>>().value()));    // in feet
         nmea.push_back(tenths_precision_str(iver_config_.max_pitch_angle_degrees())); // in degrees
         typedef boost::units::metric::knot_base_unit::unit_type knots;
         nmea.push_back(tenths_precision_str(
-            command.desired_course().speed_with_units<quantity<knots> >().value())); // in knots
-        const int time_out = 5;                                                      // seconds
+            command.desired_course().speed_with_units<quantity<knots>>().value())); // in knots
+        const int time_out = 5;                                                     // seconds
         nmea.push_back(time_out);
 
         write(nmea.message());

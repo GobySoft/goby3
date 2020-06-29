@@ -109,45 +109,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_driver_data_from_fronts
         ctd_sample_.set_lat(status.global_fix().lat());
         ctd_sample_.set_lon(status.global_fix().lon());
 
-        // post NAV_*
-        ifs_->publish("NAV_X", status.local_fix().x());
-        ifs_->publish("NAV_Y", status.local_fix().y());
-        ifs_->publish("NAV_LAT", status.global_fix().lat());
-        ifs_->publish("NAV_LONG", status.global_fix().lon());
-
-        if (status.local_fix().has_z())
-            ifs_->publish("NAV_Z", status.local_fix().z());
-        if (status.global_fix().has_depth())
-            ifs_->publish("NAV_DEPTH", status.global_fix().depth());
-
-        const double pi = 3.14159;
-        if (status.pose().has_heading())
-        {
-            double yaw = status.pose().heading() * pi / 180.0;
-            while (yaw < -pi) yaw += 2 * pi;
-            while (yaw >= pi) yaw -= 2 * pi;
-            ifs_->publish("NAV_YAW", yaw);
-            ifs_->publish("NAV_HEADING", status.pose().heading());
-        }
-
-        ifs_->publish("NAV_SPEED", status.speed());
-
-        if (status.pose().has_pitch())
-            ifs_->publish("NAV_PITCH", status.pose().pitch() * pi / 180.0);
-        if (status.pose().has_roll())
-            ifs_->publish("NAV_ROLL", status.pose().roll() * pi / 180.0);
-
-        if (status.global_fix().has_altitude())
-            ifs_->publish("NAV_ALTITUDE", status.global_fix().altitude());
-
-        // surface for GPS variable
-        if (status.global_fix().lat_source() == goby::moos::protobuf::GPS &&
-            status.global_fix().lon_source() == goby::moos::protobuf::GPS)
-        {
-            std::stringstream ss;
-            ss << "Timestamp=" << std::setprecision(15) << status.time();
-            ifs_->publish("GPS_UPDATE_RECEIVED", ss.str());
-        }
+        goby::moos::convert_and_publish_node_status(status, ifs_->m_Comms);
     }
 
     if (data.HasExtension(gpb::bluefin_data) && ifs_->cfg_.legacy_cfg().pub_sub_bf_commands())

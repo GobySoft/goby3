@@ -5,227 +5,143 @@ package goby.moos.protobuf;
 
 message NodeStatus
 {
-    option (dccl.msg).id = 20;
-    option (dccl.msg).max_bytes = 32;
-    option (dccl.msg).unit_system = "si";
-    option (dccl.msg).codec_version = 3;
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
 
-    required double time = 1 [
-        (dccl.field).codec = "_time",
-        (dccl.field).units.derived_dimensions = "time"
-    ];
-    optional string name = 2 [(dccl.field).omit = true];
-    optional uint32 modem_id = 12 [(dccl.field).min = 1, (dccl.field).max = 31];
-
+    required double time = 1 [(dccl.field).units.derived_dimensions = "time"];
+    optional string name = 2;
     optional VehicleType type = 3;
 
     // lat, lon, depth
-    required GeodeticCoordinate global_fix = 4;
+    required LatLonPoint global_fix = 10;
     // x, y, z on local cartesian grid
-    required CartesianCoordinate local_fix = 5;
+    required CartesianCoordinate local_fix = 11;
 
     // roll, pitch, yaw
-    required EulerAngles pose = 7;
+    required EulerAngles pose = 20;
 
-    // speed over ground (not relative to water or surface)
-    required double speed = 8 [
-        (dccl.field).max = 20.0,
-        (dccl.field).min = -2.0,
-        (dccl.field).precision = 1,
-        (dccl.field).units.derived_dimensions = "length/time"
-    ];
+    required Speed speed = 30;
 
-    optional SourceSensor speed_source = 9
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
-    optional double speed_time_lag = 11 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
+    optional Source source = 40;
 }
 
 // Type of vehicle for a given node
 enum VehicleType
 {
     UNKNOWN = 0;
-    AUV = 1;
-    USV = 2;
-    SHIP = 3;
-    GLIDER = 4;
-    TARGET = 5;
-    BUOY = 6;
+    AUV = 10;
+    GLIDER = 11;
+
+    USV = 20;
+    USV_POWERED = 21;
+    USV_SAILING = 22;
+
+    ROV = 30;
+
+    TARGET = 50;
+
+    BUOY = 60;
+    MOORING = 61;
+    MOORING_SUBSURFACE = 62;
+    MOORING_SURFACE = 63;
+
+    SHIP = 100;
+
     OTHER = -1;
 }
 
-enum SourceSensor
+message Source
 {
-    SOURCE_UNKNOWN = 0;
-    GPS = 1;
-    DEAD_RECKONING = 2;
-    INERTIAL_MEASUREMENT_UNIT = 3;
-    PRESSURE_SENSOR = 4;
-    COMPASS = 5;
-    SIMULATION = 6;
+    enum Sensor
+    {
+        GPS = 1;
+        USBL = 2;
+        LBL = 3;
+        INERTIAL_NAVIGATION_SYSTEM = 4;
+
+        PRESSURE = 10;
+
+        DVL = 20;
+        RPM_LOOKUP = 30;
+
+        MAGNETIC_COMPASS = 40;
+    }
+
+    optional Sensor position = 1;
+    optional Sensor depth = 2;
+    optional Sensor speed = 3;
+    optional Sensor heading = 4;
 }
 
-message GeodeticCoordinate
+message LatLonPoint
 {
     option (dccl.msg).unit_system = "si";
 
-    optional double lat = 1 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "plane_angle",
-        (dccl.field).units.system = "angle::degree"
-    ];  // dccl sends Cartesian Y
-    optional double lon = 2 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "plane_angle",
-        (dccl.field).units.system = "angle::degree"
-    ];  // dccl sends Cartesian X
-    optional double depth = 3 [
-        default = 0,
-        (dccl.field).max = 6400.0,
-        (dccl.field).min = 0.0,
-        (dccl.field).precision = 1,
-        (dccl.field).units.derived_dimensions = "length"
-    ];  // negative of "height"
-    optional double altitude = 4 [
-        (dccl.field).max = 5000.0,
-        (dccl.field).min = -10.0,
-        (dccl.field).precision = 1,
-        (dccl.field).units.derived_dimensions = "length"
-    ];
+    optional double lat = 1 [(dccl.field) = {units {
+                                 derived_dimensions: "plane_angle"
+                                 system: "angle::degree"
+                             }}];
 
-    optional SourceSensor lat_source = 5
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
-    optional SourceSensor lon_source = 6
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
-    optional SourceSensor depth_source = 7
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
-    optional SourceSensor altitude_source = 8
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
-
-    // time lags (in seconds) from the message Header time
-    optional double lat_time_lag = 9 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
-    optional double lon_time_lag = 10 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
-    optional double depth_time_lag = 11 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
-    optional double altitude_time_lag = 12 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
+    optional double lon = 2 [(dccl.field) = {units {
+                                 derived_dimensions: "plane_angle"
+                                 system: "angle::degree"
+                             }}];
+    optional double depth = 3
+        [(dccl.field).units.derived_dimensions = "length", default = 0];
+    optional double altitude = 4
+        [(dccl.field).units.derived_dimensions = "length", default = nan];
 }
 
-// computed from GeodeticCoordinate
+// computed from LatLonPoint
 message CartesianCoordinate
 {
     option (dccl.msg).unit_system = "si";
 
-    required double x = 1 [
-        (dccl.field).max = 100000,
-        (dccl.field).min = -100000,
-        (dccl.field).precision = 0,
-        (dccl.field).units.derived_dimensions = "length"
-    ];
-    required double y = 2 [
-        (dccl.field).max = 100000,
-        (dccl.field).min = -100000,
-        (dccl.field).precision = 0,
-        (dccl.field).units.derived_dimensions = "length"
-    ];
-    optional double z = 3 [
-        default = 0,
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "length"
-    ];  // negative of "depth"
+    required double x = 1 [(dccl.field).units.derived_dimensions = "length"];
+    required double y = 2 [(dccl.field).units.derived_dimensions = "length"];
+    optional double z = 3
+        [(dccl.field).units.derived_dimensions = "length", default = 0];
 }
 
-// all in degrees
 message EulerAngles
 {
     option (dccl.msg).unit_system = "si";
 
-    optional double roll = 1 [
-        (dccl.field).max = 180,
-        (dccl.field).min = -180,
-        (dccl.field).precision = 1,
-        (dccl.field).units.derived_dimensions = "plane_angle",
-        (dccl.field).units.system = "angle::degree"
-    ];
-    optional double pitch = 2 [
-        (dccl.field).max = 180,
-        (dccl.field).min = -180,
-        (dccl.field).precision = 1,
-        (dccl.field).units.derived_dimensions = "plane_angle",
-        (dccl.field).units.system = "angle::degree"
-    ];
-    optional double heading = 3 [
-        (dccl.field).max = 360,
-        (dccl.field).min = 0,
-        (dccl.field).precision = 1,
-        (dccl.field).units.derived_dimensions = "plane_angle",
-        (dccl.field).units.system = "angle::degree"
-    ];
+    optional double roll = 1 [(dccl.field) = {units {
+                                  derived_dimensions: "plane_angle"
+                                  system: "angle::degree"
+                              }}];
+    optional double pitch = 2 [(dccl.field) = {units {
+                                   derived_dimensions: "plane_angle"
+                                   system: "angle::degree"
+                               }}];
+    optional double heading = 3 [(dccl.field) = {units {
+                                     derived_dimensions: "plane_angle"
+                                     system: "angle::degree"
+                                 }}];
 
-    optional double roll_rate = 4 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "plane_angle/time",
-        (dccl.field).units.system = "angle::degree"
-    ];
-    optional double pitch_rate = 5 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "plane_angle/time",
-        (dccl.field).units.system = "angle::degree"
-    ];
-    optional double heading_rate = 6 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "plane_angle/time",
-        (dccl.field).units.system = "angle::degree"
-    ];
+    optional double roll_rate = 10 [(dccl.field) = {units {
+                                        derived_dimensions: "plane_angle/time"
+                                        system: "angle::degree"
+                                    }}];
+    optional double pitch_rate = 11 [(dccl.field) = {units {
+                                         derived_dimensions: "plane_angle/time"
+                                         system: "angle::degree"
+                                     }}];
+    optional double heading_rate = 12
+        [(dccl.field) = {units {
+             derived_dimensions: "plane_angle/time"
+             system: "angle::degree"
+         }}];
+}
 
-    optional SourceSensor roll_source = 10
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
-    optional SourceSensor pitch_source = 11
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
-    optional SourceSensor heading_source = 12
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
-    optional SourceSensor roll_rate_source = 13
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
-    optional SourceSensor pitch_rate_source = 14
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
-    optional SourceSensor heading_rate_source = 15
-        [(dccl.field).omit = true, default = SOURCE_UNKNOWN];
+message Speed
+{
+    option (dccl.msg).unit_system = "si";
 
-    // time lags (in seconds) from the message Header time
-    optional double roll_time_lag = 20 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
-    optional double pitch_time_lag = 21 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
-    optional double heading_time_lag = 22 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
-    optional double roll_rate_time_lag = 23 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
-    optional double pitch_rate_time_lag = 24 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
-    optional double heading_rate_time_lag = 25 [
-        (dccl.field).omit = true,
-        (dccl.field).units.derived_dimensions = "time"
-    ];
+    required double over_ground = 1
+        [(dccl.field).units.derived_dimensions = "length/time"];
+    optional double over_water = 2
+        [(dccl.field).units.derived_dimensions = "length/time"];
 }

@@ -201,8 +201,7 @@ void goby::moos::BluefinFrontSeat::bfnvg(const goby::util::NMEASentence& nmea)
 
     if (nmea.as<int>(QUALITY_OF_POSITION) == 1)
     {
-        status_.mutable_global_fix()->set_lat_source(goby::moos::protobuf::GPS);
-        status_.mutable_global_fix()->set_lon_source(goby::moos::protobuf::GPS);
+        status_.mutable_source()->set_position(goby::moos::protobuf::Source::GPS);
     }
 
     status_.mutable_global_fix()->set_altitude(nmea.as<double>(ALTITUDE));
@@ -225,8 +224,8 @@ void goby::moos::BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
         YAW_RATE = 7,
     };
 
-    auto status_time = status_.time_with_units();
-    auto dt = gtime::convert_from_nmea<decltype(status_time)>(nmea.at(TIMESTAMP)) - status_time;
+    // auto status_time = status_.time_with_units();
+    // auto dt = gtime::convert_from_nmea<decltype(status_time)>(nmea.at(TIMESTAMP)) - status_time;
 
     double east_speed = nmea.as<double>(EAST_VELOCITY);
     double north_speed = nmea.as<double>(NORTH_VELOCITY);
@@ -234,12 +233,13 @@ void goby::moos::BluefinFrontSeat::bfnvr(const goby::util::NMEASentence& nmea)
     status_.mutable_pose()->set_pitch_rate(nmea.as<double>(PITCH_RATE));
     status_.mutable_pose()->set_roll_rate(nmea.as<double>(ROLL_RATE));
     status_.mutable_pose()->set_heading_rate(nmea.as<double>(YAW_RATE));
-    status_.set_speed(std::sqrt(north_speed * north_speed + east_speed * east_speed));
+    status_.mutable_speed()->set_over_ground(
+        std::sqrt(north_speed * north_speed + east_speed * east_speed));
 
-    status_.mutable_pose()->set_roll_rate_time_lag_with_units(dt);
-    status_.mutable_pose()->set_pitch_rate_time_lag_with_units(dt);
-    status_.mutable_pose()->set_heading_rate_time_lag_with_units(dt);
-    status_.set_speed_time_lag_with_units(dt);
+    //    status_.mutable_pose()->set_roll_rate_time_lag_with_units(dt);
+    //    status_.mutable_pose()->set_pitch_rate_time_lag_with_units(dt);
+    //    status_.mutable_pose()->set_heading_rate_time_lag_with_units(dt);
+    //    status_.set_speed_time_lag_with_units(dt);
 
     // fill in the local X, Y
     compute_missing(&status_);

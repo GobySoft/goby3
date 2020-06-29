@@ -42,12 +42,7 @@ message iFrontSeatConfig
             "Seconds between publishing the status of iFrontseat. The special "
             "value 0 disables posting of the status message."
     ];
-
-    optional uint32 modem_id = 14 [
-        (goby.field).moos_global = "modem_id",
-        (goby.field).description = "Acoustic modem identification number"
-    ];
-
+    
     message MOOSVariables
     {
         optional string prefix = 1 [
