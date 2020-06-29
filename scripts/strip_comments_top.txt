@@ -1,9 +1,0 @@
-for i in `grep -l "If not, see <http:\/\/www.gnu.org\/licenses\/>." **/*`
-do 
-echo $i
-sed -n '/If not, see <http:\/\/www.gnu.org\/licenses\/>./,$p' $i | tail -n +2 > $i.tmp;
-mv $i.tmp $i
-done
-
-for i in **/*.cpp; do cat ../share/doc/header_lib.txt $i > $i.tmp; mv $i.tmp $i; done
-
