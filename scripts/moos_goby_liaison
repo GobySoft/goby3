@@ -1,3 +1,0 @@
-#!/bin/bash
-
-GOBY_LIAISON_PLUGINS=libliaison_plugins_goby_moos.so exec goby_liaison $@

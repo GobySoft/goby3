@@ -1,7 +1,0 @@
-#!/bin/bash
-
-perl -pi -w -e 's/\#include "MOOSLib.h"/\#include "MOOSLib.h"\n\#include "goby\/core\/moos_mimic.h"/g;' *.h
-
-perl -pi -w -e 's/public CMOOSApp/public goby::core::CMOOSApp/g;' *.h
-
-perl -pi -w -e 's/MOOSGen/MOOSGen\ngoby_moosmimic/g;' CMakeLists.txt
