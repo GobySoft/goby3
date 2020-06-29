@@ -41,16 +41,16 @@ const auto allowed_skew = std::chrono::seconds(10);
 
 extern "C"
 {
-    goby::moos::FrontSeatInterfaceBase*
-    frontseat_driver_load(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
+    goby::middleware::frontseat::InterfaceBase*
+    frontseat_driver_load(goby::middleware::protobuf::FrontSeatConfig* cfg)
     {
         return new goby::middleware::frontseat::Iver(*cfg);
     }
 }
 
-goby::middleware::frontseat::Iver::Iver(const apps::moos::protobuf::iFrontSeatConfig& cfg)
-    : FrontSeatInterfaceBase(cfg),
-      iver_config_(cfg.GetExtension(apps::moos::protobuf::iver_config)),
+goby::middleware::frontseat::Iver::Iver(const goby::middleware::protobuf::FrontSeatConfig& cfg)
+    : InterfaceBase(cfg),
+      iver_config_(cfg.GetExtension(protobuf::iver_config)),
       serial_(iver_config_.serial_port(), iver_config_.serial_baud(), "\r\n"),
       frontseat_providing_data_(false),
       last_frontseat_data_time_(std::chrono::seconds(0)),

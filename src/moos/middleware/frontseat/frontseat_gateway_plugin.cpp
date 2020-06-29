@@ -25,7 +25,7 @@
 
 #include "goby/middleware/frontseat/groups.h"
 #include "goby/middleware/protobuf/frontseat_data.pb.h"
-#include "goby/moos/frontseat/frontseat.h"
+#include "goby/moos/frontseat/convert.h"
 #include "goby/moos/middleware/moos_plugin_translator.h"
 #include "goby/moos/moos_translator.h"
 
@@ -47,6 +47,8 @@ class FrontSeatTranslation : public goby::moos::Translator
                        goby::middleware::protobuf::NodeStatus,
                        goby::middleware::MarshallingScheme::PROTOBUF>(
                 [this](const goby::middleware::protobuf::NodeStatus& status) {
+                    glog.is_debug2() && glog << "Posting to MOOS: NAV: " << status.DebugString()
+                                             << std::endl;
                     goby::moos::convert_and_publish_node_status(status, moos().comms());
                 });
 

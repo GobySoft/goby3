@@ -1,8 +1,8 @@
 syntax = "proto2";
-import "goby/moos/protobuf/frontseat_config.proto";
+import "goby/middleware/protobuf/frontseat_config.proto";
 import "goby/protobuf/option_extensions.proto";
 
-package goby.apps.moos.protobuf;
+package goby.middleware.protobuf;
 
 message WavegliderSV2FrontSeatConfig
 {
@@ -12,7 +12,7 @@ message WavegliderSV2FrontSeatConfig
     optional uint32 task_id = 4 [default = 0x01];
 }
 
-extend iFrontSeatConfig
+extend FrontSeatConfig
 {
     optional WavegliderSV2FrontSeatConfig waveglider_sv2_config = 1001;
 }

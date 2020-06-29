@@ -27,12 +27,11 @@
 
 #include <boost/signals2.hpp>
 
+#include "goby/middleware/frontseat/exception.h"
 #include "goby/middleware/protobuf/frontseat.pb.h"
-#include "goby/moos/frontseat/frontseat_exception.h"
-#include "goby/moos/moos_geodesy.h"
-#include "goby/moos/moos_header.h"
-#include "goby/moos/protobuf/frontseat_config.pb.h"
+#include "goby/middleware/protobuf/frontseat_config.pb.h"
 #include "goby/time.h"
+#include "goby/util/geodesy.h"
 
 namespace goby
 {
@@ -43,17 +42,16 @@ namespace moos
 class FrontSeatLegacyTranslator;
 }
 } // namespace apps
-namespace moos
+namespace middleware
 {
-void convert_and_publish_node_status(const goby::middleware::protobuf::NodeStatus& status,
-                                     CMOOSCommClient& moos_comms);
-
-class FrontSeatInterfaceBase
+namespace frontseat
+{
+class InterfaceBase
 {
   public:
-    FrontSeatInterfaceBase(const goby::apps::moos::protobuf::iFrontSeatConfig& cfg);
+    InterfaceBase(const goby::middleware::protobuf::FrontSeatConfig& cfg);
 
-    virtual ~FrontSeatInterfaceBase() {}
+    virtual ~InterfaceBase() {}
 
     virtual void
     send_command_to_frontseat(const goby::middleware::protobuf::CommandRequest& command) = 0;
@@ -98,7 +96,7 @@ class FrontSeatInterfaceBase
     boost::signals2::signal<void(const goby::middleware::protobuf::FrontSeatRaw& data)>
         signal_raw_to_frontseat;
 
-    const goby::apps::moos::protobuf::iFrontSeatConfig& cfg() const { return cfg_; }
+    const goby::middleware::protobuf::FrontSeatConfig& cfg() const { return cfg_; }
 
     void compute_missing(goby::middleware::protobuf::CTDSample* ctd_sample);
     void compute_missing(goby::middleware::protobuf::NodeStatus* status);
@@ -108,7 +106,7 @@ class FrontSeatInterfaceBase
     void check_error_states();
     void check_change_state();
 
-    // Signals called by FrontSeatInterfaceBase directly. No need to call these
+    // Signals called by InterfaceBase directly. No need to call these
     // from the Frontseat driver implementation
     boost::signals2::signal<void(goby::middleware::protobuf::InterfaceState state)>
         signal_state_change;
@@ -122,18 +120,19 @@ class FrontSeatInterfaceBase
     void glog_raw(const goby::middleware::protobuf::FrontSeatRaw& data, Direction direction);
 
   private:
-    const goby::apps::moos::protobuf::iFrontSeatConfig& cfg_;
+    const goby::middleware::protobuf::FrontSeatConfig& cfg_;
     goby::middleware::protobuf::HelmState helm_state_;
     goby::middleware::protobuf::InterfaceState state_;
     goby::time::MicroTime start_time_;
     goby::middleware::protobuf::FrontSeatError last_frontseat_error_;
     goby::middleware::protobuf::HelmError last_helm_error_;
 
-    CMOOSGeodesy geodesy_;
+    std::unique_ptr<goby::util::UTMGeodesy> geodesy_;
 
     std::string glog_out_group_, glog_in_group_;
 };
-} // namespace moos
+} // namespace frontseat
+} // namespace middleware
 } // namespace goby
 
 #endif

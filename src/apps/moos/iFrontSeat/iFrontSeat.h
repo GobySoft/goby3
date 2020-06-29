@@ -27,8 +27,8 @@
 
 #include "goby/moos/goby_moos_app.h"
 
-#include "goby/moos/frontseat/frontseat.h"
-#include "goby/moos/protobuf/frontseat_config.pb.h"
+#include "goby/middleware/frontseat/interface.h"
+#include "goby/moos/protobuf/iFrontSeat_config.pb.h"
 
 #include "legacy_translator.h"
 
@@ -71,7 +71,7 @@ class iFrontSeat : public goby::moos::GobyMOOSApp
     void handle_driver_raw_out(const goby::middleware::protobuf::FrontSeatRaw& data);
 
   private:
-    std::shared_ptr<goby::moos::FrontSeatInterfaceBase> frontseat_;
+    std::unique_ptr<goby::middleware::frontseat::InterfaceBase> frontseat_;
 
     FrontSeatLegacyTranslator translator_;
 

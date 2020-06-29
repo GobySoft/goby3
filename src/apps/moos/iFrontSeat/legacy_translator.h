@@ -29,7 +29,7 @@
 
 #include "goby/moos/moos_header.h"
 
-#include "goby/moos/frontseat/frontseat.h"
+#include "goby/middleware/frontseat/interface.h"
 
 namespace goby
 {

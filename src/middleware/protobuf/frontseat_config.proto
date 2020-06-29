@@ -1,0 +1,60 @@
+syntax = "proto2";
+import "dccl/option_extensions.proto";
+
+import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/frontseat_data.proto";
+
+package goby.middleware.protobuf;
+
+message FrontSeatConfig
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string name = 1;
+    optional LatLonPoint origin = 2;
+    
+    optional bool require_helm = 10 [
+        default = true,
+        (dccl.field).units = { base_dimensions: "T" },
+        (goby.field).description =
+        "Require the IvP Helm even for listening mission where the "
+        "frontseat is in control."
+    ];
+    
+    optional double helm_running_timeout = 11 [
+        default = 10,
+        (dccl.field).units = { base_dimensions: "T" },
+        (goby.field).description =
+            "If `require_helm`, how long (in seconds) to wait for the IvP Helm "
+            "to start before moving to the Helm Error state."
+    ];
+
+    optional double frontseat_connected_timeout = 12 [
+        default = 10,
+        (dccl.field).units = { base_dimensions: "T" },
+        (goby.field).description =
+            "How long (in seconds) to wait for the Frontseat to be connected "
+            "before moving to the Frontseat Error state."
+    ];
+
+    optional uint32 status_period = 13 [
+        default = 5,
+        (goby.field).description =
+            "Seconds between publishing the status of iFrontseat. The special "
+            "value 0 disables posting of the status message."
+    ];
+    
+
+    optional bool exit_on_error = 21 [
+        default = false,
+        (goby.field).description =
+            "If true, exit the application if it enters one of the error "
+            "states."
+    ];
+
+    // Bluefin: 1000
+    // ABC: 1001
+    // Nemo: 1002
+    // Iver3: 1003
+    extensions 1000 to max;
+}

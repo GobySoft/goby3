@@ -33,7 +33,9 @@ extern "C"
 
 namespace goby
 {
-namespace moos
+namespace middleware
+{
+namespace frontseat
 {
 class SV2IdentifierCodec : public dccl::DefaultIdentifierCodec
 {
@@ -81,5 +83,6 @@ template <typename Integer> class SV2NumericCodec : public dccl::TypedFixedField
 
     void validate() {}
 };
-} // namespace moos
+} // namespace frontseat
+} // namespace middleware
 } // namespace goby

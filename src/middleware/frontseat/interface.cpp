@@ -22,14 +22,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "goby/exception.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/seawater.h"
-
 #include "goby/util/seawater/depth.h"
 #include "goby/util/seawater/salinity.h"
 #include "goby/util/seawater/swstate.h"
 
-#include "frontseat.h"
+#include "interface.h"
 
 namespace gpb = goby::middleware::protobuf;
 using goby::glog;
@@ -37,8 +37,8 @@ using namespace goby::util::logger;
 using namespace goby::util::tcolor;
 using goby::time::MicroTime;
 
-goby::moos::FrontSeatInterfaceBase::FrontSeatInterfaceBase(
-    const goby::apps::moos::protobuf::iFrontSeatConfig& cfg)
+goby::middleware::frontseat::InterfaceBase::InterfaceBase(
+    const goby::middleware::protobuf::FrontSeatConfig& cfg)
     : cfg_(cfg),
       helm_state_(gpb::HELM_NOT_RUNNING),
       state_(gpb::INTERFACE_STANDBY),
@@ -49,32 +49,39 @@ goby::moos::FrontSeatInterfaceBase::FrontSeatInterfaceBase(
     if (glog.is(DEBUG1))
     {
         signal_raw_from_frontseat.connect(
-            boost::bind(&FrontSeatInterfaceBase::glog_raw, this, _1, DIRECTION_FROM_FRONTSEAT));
+            boost::bind(&InterfaceBase::glog_raw, this, _1, DIRECTION_FROM_FRONTSEAT));
         signal_raw_to_frontseat.connect(
-            boost::bind(&FrontSeatInterfaceBase::glog_raw, this, _1, DIRECTION_TO_FRONTSEAT));
+            boost::bind(&InterfaceBase::glog_raw, this, _1, DIRECTION_TO_FRONTSEAT));
     }
 
-    if (!geodesy_.Initialise(cfg_.common().lat_origin(), cfg_.common().lon_origin()))
+    try
     {
-        glog.is(DIE) && glog << "Failed to initialize MOOS Geodesy. Check LatOrigin and LongOrigin."
-                             << std::endl;
+        geodesy_.reset(new goby::util::UTMGeodesy(
+            {cfg_.origin().lat_with_units(), cfg_.origin().lon_with_units()}));
+    }
+    catch (const goby::Exception& e)
+    {
+        glog.is(DIE) &&
+            glog
+                << "Failed to initialize UTMGeodesy. Check datum values (LatOrigin and LongOrigin)."
+                << std::endl;
     }
 
-    glog_out_group_ = "FrontSeatInterfaceBase::raw::out";
-    glog_in_group_ = "FrontSeatInterfaceBase::raw::in";
+    glog_out_group_ = "frontseat::InterfaceBase::raw::out";
+    glog_in_group_ = "frontseat::InterfaceBase::raw::in";
 
     goby::glog.add_group(glog_out_group_, goby::util::Colors::lt_magenta);
     goby::glog.add_group(glog_in_group_, goby::util::Colors::lt_blue);
 }
 
-void goby::moos::FrontSeatInterfaceBase::do_work()
+void goby::middleware::frontseat::InterfaceBase::do_work()
 {
     try
     {
         check_change_state();
         loop();
     }
-    catch (goby::moos::FrontSeatException& e)
+    catch (goby::middleware::frontseat::Exception& e)
     {
         if (e.is_helm_error())
         {
@@ -92,7 +99,7 @@ void goby::moos::FrontSeatInterfaceBase::do_work()
             throw;
     }
 }
-void goby::moos::FrontSeatInterfaceBase::check_change_state()
+void goby::middleware::frontseat::InterfaceBase::check_change_state()
 {
     // check and change state
     gpb::InterfaceState previous_state = state_;
@@ -151,11 +158,11 @@ void goby::moos::FrontSeatInterfaceBase::check_change_state()
         signal_state_change(state_);
 }
 
-void goby::moos::FrontSeatInterfaceBase::check_error_states()
+void goby::middleware::frontseat::InterfaceBase::check_error_states()
 {
     // helm in park is always an error
     if (helm_state() == gpb::HELM_PARK)
-        throw(goby::moos::FrontSeatException(gpb::ERROR_HELM_PARKED));
+        throw(goby::middleware::frontseat::Exception(gpb::ERROR_HELM_PARKED));
     // while in command, if the helm is not running, this is an error after
     // a configurable timeout, unless require_helm is false
     else if (cfg_.require_helm() &&
@@ -163,7 +170,7 @@ void goby::moos::FrontSeatInterfaceBase::check_error_states()
               (state_ == gpb::INTERFACE_COMMAND ||
                (start_time_ + cfg_.helm_running_timeout_with_units<MicroTime>() <
                 goby::time::SystemClock::now<MicroTime>()))))
-        throw(goby::moos::FrontSeatException(gpb::ERROR_HELM_NOT_RUNNING));
+        throw(goby::middleware::frontseat::Exception(gpb::ERROR_HELM_NOT_RUNNING));
 
     // frontseat not connected is an error except in standby, it's only
     // an error after a timeout
@@ -171,14 +178,14 @@ void goby::moos::FrontSeatInterfaceBase::check_error_states()
         (state_ != gpb::INTERFACE_STANDBY ||
          start_time_ + cfg_.frontseat_connected_timeout_with_units<MicroTime>() <
              goby::time::SystemClock::now<MicroTime>()))
-        throw(goby::moos::FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_CONNECTED));
+        throw(goby::middleware::frontseat::Exception(gpb::ERROR_FRONTSEAT_NOT_CONNECTED));
     // frontseat must always provide data in either the listen or command states
     else if (!frontseat_providing_data() && state_ != gpb::INTERFACE_STANDBY)
-        throw(goby::moos::FrontSeatException(gpb::ERROR_FRONTSEAT_NOT_PROVIDING_DATA));
+        throw(goby::middleware::frontseat::Exception(gpb::ERROR_FRONTSEAT_NOT_PROVIDING_DATA));
 }
 
-void goby::moos::FrontSeatInterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg,
-                                                  Direction direction)
+void goby::middleware::frontseat::InterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg,
+                                                          Direction direction)
 {
     if (direction == DIRECTION_TO_FRONTSEAT)
         glog << group(glog_out_group_);
@@ -198,7 +205,7 @@ void goby::moos::FrontSeatInterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_m
     }
 };
 
-void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
+void goby::middleware::frontseat::InterfaceBase::compute_missing(gpb::CTDSample* ctd_sample)
 {
     if (!ctd_sample->has_salinity())
     {
@@ -241,10 +248,10 @@ void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sam
     }
 }
 
-void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::NodeStatus* status)
+void goby::middleware::frontseat::InterfaceBase::compute_missing(gpb::NodeStatus* status)
 {
     if (!status->has_name())
-        status->set_name(cfg_.common().community());
+        status->set_name(cfg_.name());
 
     if (!status->has_global_fix() && !status->has_local_fix())
     {
@@ -258,74 +265,22 @@ void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::NodeStatus* status
     {
         // compute global from local
         if (status->local_fix().has_z())
-            status->mutable_global_fix()->set_depth(-status->local_fix().z());
+            status->mutable_global_fix()->set_depth_with_units(-status->local_fix().z_with_units());
 
-        double lat, lon;
-        geodesy_.UTM2LatLong(status->local_fix().x(), status->local_fix().y(), lat, lon);
-        status->mutable_global_fix()->set_lat(lat);
-        status->mutable_global_fix()->set_lon(lon);
+        auto ll = geodesy_->convert(
+            {status->local_fix().x_with_units(), status->local_fix().y_with_units()});
+        status->mutable_global_fix()->set_lat_with_units(ll.lat);
+        status->mutable_global_fix()->set_lon_with_units(ll.lon);
     }
     else if (!status->has_local_fix())
     {
         // compute local from global
         if (status->global_fix().has_depth())
-            status->mutable_local_fix()->set_z(-status->global_fix().depth());
+            status->mutable_local_fix()->set_z_with_units(-status->global_fix().depth_with_units());
 
-        double x, y;
-        geodesy_.LatLong2LocalUTM(status->global_fix().lat(), status->global_fix().lon(), y, x);
-        status->mutable_local_fix()->set_x(x);
-        status->mutable_local_fix()->set_y(y);
-    }
-}
-
-void goby::moos::convert_and_publish_node_status(
-    const goby::middleware::protobuf::NodeStatus& status, CMOOSCommClient& moos_comms)
-{
-    // post NAV_*
-    using boost::units::quantity;
-    namespace si = boost::units::si;
-    namespace degree = boost::units::degree;
-
-    glog.is_debug2() && glog << "Posting to MOOS: NAV: " << status.DebugString() << std::endl;
-
-    moos_comms.Notify("NAV_X", status.local_fix().x_with_units<quantity<si::length>>().value());
-    moos_comms.Notify("NAV_Y", status.local_fix().y_with_units<quantity<si::length>>().value());
-    moos_comms.Notify("NAV_LAT",
-                      status.global_fix().lat_with_units() / boost::units::degree::degrees);
-    moos_comms.Notify("NAV_LONG",
-                      status.global_fix().lon_with_units() / boost::units::degree::degrees);
-
-    if (status.local_fix().has_z())
-        moos_comms.Notify("NAV_Z", status.local_fix().z_with_units<quantity<si::length>>().value());
-    if (status.global_fix().has_depth())
-        moos_comms.Notify("NAV_DEPTH",
-                          status.global_fix().depth_with_units<quantity<si::length>>().value());
-
-    if (status.pose().has_heading())
-        moos_comms.Notify(
-            "NAV_HEADING",
-            status.pose().heading_with_units<quantity<degree::plane_angle>>().value());
-
-    moos_comms.Notify("NAV_SPEED",
-                      status.speed().over_ground_with_units<quantity<si::velocity>>().value());
-
-    if (status.pose().has_pitch())
-        moos_comms.Notify("NAV_PITCH",
-                          status.pose().pitch_with_units<quantity<si::plane_angle>>().value());
-    if (status.pose().has_roll())
-        moos_comms.Notify("NAV_ROLL",
-                          status.pose().roll_with_units<quantity<si::plane_angle>>().value());
-
-    if (status.global_fix().has_altitude())
-        moos_comms.Notify("NAV_ALTITUDE",
-                          status.global_fix().altitude_with_units<quantity<si::length>>().value());
-
-    // surface for GPS variable
-    if (status.source().position() == goby::middleware::protobuf::Source::GPS)
-    {
-        std::stringstream ss;
-        ss << "Timestamp=" << std::setprecision(15)
-           << status.time_with_units() / boost::units::si::seconds;
-        moos_comms.Notify("GPS_UPDATE_RECEIVED", ss.str());
+        auto xy = geodesy_->convert(
+            {status->global_fix().lat_with_units(), status->global_fix().lon_with_units()});
+        status->mutable_local_fix()->set_x_with_units(xy.x);
+        status->mutable_local_fix()->set_y_with_units(xy.y);
     }
 }

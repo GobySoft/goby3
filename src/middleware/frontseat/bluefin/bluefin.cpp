@@ -43,21 +43,21 @@ using goby::util::NMEASentence;
 
 using namespace goby::util::logger;
 using namespace goby::util::tcolor;
-using goby::apps::moos::protobuf::BluefinFrontSeatConfig;
+using goby::middleware::protobuf::BluefinFrontSeatConfig;
 
 extern "C"
 {
-    goby::moos::FrontSeatInterfaceBase*
-    frontseat_driver_load(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
+    goby::middleware::frontseat::InterfaceBase*
+    frontseat_driver_load(goby::middleware::protobuf::FrontSeatConfig* cfg)
     {
         return new goby::middleware::frontseat::Bluefin(*cfg);
     }
 }
 
 goby::middleware::frontseat::Bluefin::Bluefin(
-    const goby::apps::moos::protobuf::iFrontSeatConfig& cfg)
-    : FrontSeatInterfaceBase(cfg),
-      bf_config_(cfg.GetExtension(apps::moos::protobuf::bluefin_config)),
+    const goby::middleware::protobuf::FrontSeatConfig& cfg)
+    : InterfaceBase(cfg),
+      bf_config_(cfg.GetExtension(protobuf::bluefin_config)),
       tcp_(bf_config_.huxley_tcp_address(), bf_config_.huxley_tcp_port(), "\r\n",
            bf_config_.reconnect_interval()),
       frontseat_providing_data_(false),
@@ -547,11 +547,12 @@ void goby::middleware::frontseat::Bluefin::try_send()
             // will throw if fail counter exceeds nmea_resend_attempts
             ++nmea_present_fail_count_;
             if (nmea_present_fail_count_ >= bf_config_.nmea_resend_attempts())
-                throw(goby::moos::FrontSeatException(gpb::ERROR_FRONTSEAT_IGNORING_COMMANDS));
+                throw(
+                    goby::middleware::frontseat::Exception(gpb::ERROR_FRONTSEAT_IGNORING_COMMANDS));
             // assuming we're still ok, write the line again
             write(nmea);
         }
-        catch (goby::moos::FrontSeatException& e)
+        catch (goby::middleware::frontseat::Exception& e)
         {
             glog.is(DEBUG1) && glog << "Huxley did not respond to our command even after "
                                     << bf_config_.nmea_resend_attempts()

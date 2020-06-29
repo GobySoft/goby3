@@ -6,10 +6,10 @@ set(SRC iver_driver.cpp)
 add_library(goby_frontseat_iver SHARED ${SRC} ${PROTO_SRCS} ${PROTO_HDRS})
 
 target_link_libraries(goby_frontseat_iver
-  goby_moos
+  goby
   ${PROTOBUF_LIBRARIES})
 
 set_target_properties(goby_frontseat_iver PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
 configure_file(iFrontSeat_iver.in ${goby_BIN_DIR}/iFrontSeat_iver @ONLY)
-goby_install_lib(goby_frontseat_iver moos)
+goby_install_lib(goby_frontseat_iver core)

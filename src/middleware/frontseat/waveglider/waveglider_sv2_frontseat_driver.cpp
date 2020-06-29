@@ -40,8 +40,8 @@ const auto allowed_skew = std::chrono::seconds(30);
 // allows iFrontSeat to load our library
 extern "C"
 {
-    goby::moos::FrontSeatInterfaceBase*
-    frontseat_driver_load(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
+    goby::middleware::frontseat::InterfaceBase*
+    frontseat_driver_load(goby::middleware::protobuf::FrontSeatConfig* cfg)
     {
         return new goby::middleware::frontseat::WavegliderSV2(*cfg);
     }
@@ -51,14 +51,14 @@ uint16_t crc_compute_incrementally(uint16_t crc, char a);
 uint16_t crc_compute(const std::string& buffer, unsigned offset, unsigned count, uint16_t seed);
 
 goby::middleware::frontseat::WavegliderSV2::WavegliderSV2(
-    const apps::moos::protobuf::iFrontSeatConfig& cfg)
-    : FrontSeatInterfaceBase(cfg),
-      waveglider_sv2_config_(cfg.GetExtension(apps::moos::protobuf::waveglider_sv2_config)),
+    const goby::middleware::protobuf::FrontSeatConfig& cfg)
+    : InterfaceBase(cfg),
+      waveglider_sv2_config_(cfg.GetExtension(protobuf::waveglider_sv2_config)),
       frontseat_providing_data_(false),
       last_frontseat_data_time_(std::chrono::seconds(0)),
       frontseat_state_(gpb::FRONTSEAT_NOT_CONNECTED),
-      serial_(goby::moos::SV2SerialConnection::create(io_, waveglider_sv2_config_.pm_serial_port(),
-                                                      waveglider_sv2_config_.pm_serial_baud())),
+      serial_(SV2SerialConnection::create(io_, waveglider_sv2_config_.pm_serial_port(),
+                                          waveglider_sv2_config_.pm_serial_baud())),
       queued_messages_(1),
       dccl_("SV2.id", getenv("IFRONTSEAT_DRIVER_LIBRARY"))
 {

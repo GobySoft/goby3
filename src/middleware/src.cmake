@@ -14,6 +14,7 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/coroner.proto
   middleware/protobuf/frontseat.proto
   middleware/protobuf/frontseat_data.proto
+  middleware/protobuf/frontseat_config.proto
   )
 
 set(MIDDLEWARE_SRC
@@ -23,6 +24,7 @@ set(MIDDLEWARE_SRC
   middleware/transport/intervehicle/driver_thread.cpp
   middleware/application/configuration_reader.cpp
   middleware/log/log_entry.cpp
+  middleware/frontseat/interface.cpp
   ${MIDDLEWARE_PROTO_SRCS} ${MIDDLEWARE_PROTO_HDRS} 
   )
 

@@ -23,7 +23,8 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/acomms/connect.h"
-#include "goby/moos/frontseat/bluefin/bluefin.pb.h"
+#include "goby/middleware/frontseat/bluefin/bluefin.pb.h"
+#include "goby/moos/frontseat/convert.h"
 
 #include "iFrontSeat.h"
 #include "legacy_translator.h"

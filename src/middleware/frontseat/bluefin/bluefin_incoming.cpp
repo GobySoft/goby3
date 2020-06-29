@@ -33,7 +33,7 @@ using goby::glog;
 using goby::util::NMEASentence;
 using namespace goby::util::logger;
 using namespace goby::util::tcolor;
-using goby::apps::moos::protobuf::BluefinFrontSeatConfig;
+using goby::middleware::protobuf::BluefinFrontSeatConfig;
 
 void goby::middleware::frontseat::Bluefin::bfack(const goby::util::NMEASentence& nmea)
 {

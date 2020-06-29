@@ -16,7 +16,7 @@ message NodeStatus
     // lat, lon, depth
     required LatLonPoint global_fix = 10;
     // x, y, z on local cartesian grid
-    required CartesianCoordinate local_fix = 11;
+    optional CartesianCoordinate local_fix = 11;
 
     // roll, pitch, yaw
     required EulerAngles pose = 20;

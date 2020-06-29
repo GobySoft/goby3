@@ -30,10 +30,10 @@
 #include "goby/util/linebasedcomms/nmea_sentence.h"
 #include "goby/util/linebasedcomms/tcp_client.h"
 
-#include "goby/moos/frontseat/frontseat.h"
+#include "goby/middleware/frontseat/interface.h"
 
-#include "goby/moos/frontseat/bluefin/bluefin.pb.h"
-#include "goby/moos/frontseat/bluefin/bluefin_config.pb.h"
+#include "goby/middleware/frontseat/bluefin/bluefin.pb.h"
+#include "goby/middleware/frontseat/bluefin/bluefin_config.pb.h"
 
 namespace goby
 {
@@ -41,21 +41,26 @@ namespace middleware
 {
 namespace frontseat
 {
-class Bluefin : public moos::FrontSeatInterfaceBase
+class Bluefin : public InterfaceBase
 {
   public:
-    Bluefin(const goby::apps::moos::protobuf::iFrontSeatConfig& cfg);
+    Bluefin(const goby::middleware::protobuf::FrontSeatConfig& cfg);
 
-  private: // virtual methods from FrontSeatInterfaceBase
-    void loop();
+  private: // virtual methods from InterfaceBase
+    void loop() override;
 
-    void send_command_to_frontseat(const goby::middleware::protobuf::CommandRequest& command);
-    void send_data_to_frontseat(const goby::middleware::protobuf::FrontSeatInterfaceData& data);
-    void send_raw_to_frontseat(const goby::middleware::protobuf::FrontSeatRaw& data);
+    void
+    send_command_to_frontseat(const goby::middleware::protobuf::CommandRequest& command) override;
+    void
+    send_data_to_frontseat(const goby::middleware::protobuf::FrontSeatInterfaceData& data) override;
+    void send_raw_to_frontseat(const goby::middleware::protobuf::FrontSeatRaw& data) override;
 
-    goby::middleware::protobuf::FrontSeatState frontseat_state() const { return frontseat_state_; }
+    goby::middleware::protobuf::FrontSeatState frontseat_state() const override
+    {
+        return frontseat_state_;
+    }
 
-    bool frontseat_providing_data() const { return frontseat_providing_data_; }
+    bool frontseat_providing_data() const override { return frontseat_providing_data_; }
 
   private: // internal non-virtual methods
     void load_nmea_mappings();
@@ -89,7 +94,7 @@ class Bluefin : public moos::FrontSeatInterfaceBase
     std::string unix_time2nmea_time(goby::time::SystemClock::time_point time);
 
   private:
-    const apps::moos::protobuf::BluefinFrontSeatConfig bf_config_;
+    const protobuf::BluefinFrontSeatConfig bf_config_;
     goby::util::TCPClient tcp_;
     bool frontseat_providing_data_;
     goby::time::SystemClock::time_point last_frontseat_data_time_;
@@ -202,8 +207,8 @@ class Bluefin : public moos::FrontSeatInterfaceBase
     // maps speed to rpm value
     std::map<double, int> speed_to_rpm_;
 };
-} // namespace moos
-} // namespace goby
+} // namespace frontseat
+} // namespace middleware
 } // namespace goby
 
 #endif

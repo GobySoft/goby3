@@ -1,8 +1,8 @@
 syntax = "proto2";
-import "goby/moos/protobuf/frontseat_config.proto";
+import "goby/middleware/protobuf/frontseat_config.proto";
 import "goby/protobuf/option_extensions.proto";
 
-package goby.apps.moos.protobuf;
+package goby.middleware.protobuf;
 
 message IverFrontSeatConfig
 {
@@ -13,7 +13,7 @@ message IverFrontSeatConfig
     optional int32 max_pitch_angle_degrees = 4 [default = 45];
 }
 
-extend iFrontSeatConfig
+extend FrontSeatConfig
 {
     optional IverFrontSeatConfig iver_config = 1003;
 }

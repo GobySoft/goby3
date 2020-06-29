@@ -25,17 +25,20 @@
 #ifndef FrontSeatException20130221H
 #define FrontSeatException20130221H
 
+#include "goby/exception.h"
 #include "goby/middleware/protobuf/frontseat.pb.h"
 
 namespace goby
 {
-namespace moos
+namespace middleware
 {
-class FrontSeatException : std::runtime_error
+namespace frontseat
+{
+class Exception : goby::Exception
 {
   public:
-    FrontSeatException()
-        : std::runtime_error("Unknown FrontSeatException"),
+    Exception()
+        : goby::Exception("Unknown FrontSeatException"),
           helm_err_(goby::middleware::protobuf::ERROR_HELM_NONE),
           is_helm_error_(false),
           fs_err_(goby::middleware::protobuf::ERROR_FRONTSEAT_NONE),
@@ -43,16 +46,16 @@ class FrontSeatException : std::runtime_error
     {
     }
 
-    FrontSeatException(goby::middleware::protobuf::HelmError err)
-        : std::runtime_error(goby::middleware::protobuf::HelmError_Name(err)),
+    Exception(goby::middleware::protobuf::HelmError err)
+        : goby::Exception(goby::middleware::protobuf::HelmError_Name(err)),
           helm_err_(err),
           is_helm_error_(true),
           fs_err_(goby::middleware::protobuf::ERROR_FRONTSEAT_NONE),
           is_fs_error_(false)
     {
     }
-    FrontSeatException(goby::middleware::protobuf::FrontSeatError err)
-        : std::runtime_error(goby::middleware::protobuf::FrontSeatError_Name(err)),
+    Exception(goby::middleware::protobuf::FrontSeatError err)
+        : goby::Exception(goby::middleware::protobuf::FrontSeatError_Name(err)),
           helm_err_(goby::middleware::protobuf::ERROR_HELM_NONE),
           is_helm_error_(false),
           fs_err_(err),
@@ -75,7 +78,7 @@ class FrontSeatException : std::runtime_error
     bool is_fs_error_;
 };
 
-inline std::ostream& operator<<(std::ostream& os, const goby::moos::FrontSeatException& e)
+inline std::ostream& operator<<(std::ostream& os, const goby::middleware::frontseat::Exception& e)
 {
     if (e.is_helm_error())
         os << "Error in the Helm: " << goby::middleware::protobuf::HelmError_Name(e.helm_err());
@@ -86,7 +89,8 @@ inline std::ostream& operator<<(std::ostream& os, const goby::moos::FrontSeatExc
         os << "Unknown error.";
     return os;
 };
-} // namespace moos
+} // namespace frontseat
+} // namespace middleware
 } // namespace goby
 
 #endif

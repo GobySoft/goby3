@@ -30,7 +30,9 @@
 
 namespace goby
 {
-namespace moos
+namespace middleware
+{
+namespace frontseat
 {
 class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnection>
 {
@@ -299,5 +301,6 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
         SV2_MAX_SIZE = 557
     };
 };
-} // namespace moos
+} // namespace frontseat
+} // namespace middleware
 } // namespace goby

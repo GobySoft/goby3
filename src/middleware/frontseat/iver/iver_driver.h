@@ -32,12 +32,11 @@
 
 #include <dccl/common.h>
 
+#include "goby/middleware/frontseat/interface.h"
+#include "goby/middleware/frontseat/iver/iver_driver.pb.h"
 #include "goby/util/linebasedcomms/serial_client.h"
 #include "goby/util/primitive_types.h"
 #include "goby/util/sci.h"
-
-#include "goby/moos/frontseat/frontseat.h"
-#include "goby/moos/frontseat/iver/iver_driver.pb.h"
 
 #include "iver_driver_config.pb.h"
 
@@ -47,19 +46,21 @@ namespace middleware
 {
 namespace frontseat
 {
-class Iver : public moos::FrontSeatInterfaceBase
+class Iver : public InterfaceBase
 {
   public:
-    Iver(const goby::apps::moos::protobuf::iFrontSeatConfig& cfg);
+    Iver(const goby::middleware::protobuf::FrontSeatConfig& cfg);
 
-  private: // virtual methods from FrontSeatInterfaceBase
-    void loop();
+  private: // virtual methods from InterfaceBase
+    void loop() override;
 
-    void send_command_to_frontseat(const goby::middleware::protobuf::CommandRequest& command);
-    void send_data_to_frontseat(const goby::middleware::protobuf::FrontSeatInterfaceData& data);
-    void send_raw_to_frontseat(const goby::middleware::protobuf::FrontSeatRaw& data);
-    goby::middleware::protobuf::FrontSeatState frontseat_state() const;
-    bool frontseat_providing_data() const;
+    void
+    send_command_to_frontseat(const goby::middleware::protobuf::CommandRequest& command) override;
+    void
+    send_data_to_frontseat(const goby::middleware::protobuf::FrontSeatInterfaceData& data) override;
+    void send_raw_to_frontseat(const goby::middleware::protobuf::FrontSeatRaw& data) override;
+    goby::middleware::protobuf::FrontSeatState frontseat_state() const override;
+    bool frontseat_providing_data() const override;
 
   private: // internal non-virtual methods
     void check_connection_state();
@@ -87,7 +88,7 @@ class Iver : public moos::FrontSeatInterfaceBase
     }
 
   private:
-    const apps::moos::protobuf::IverFrontSeatConfig iver_config_;
+    const protobuf::IverFrontSeatConfig iver_config_;
     goby::util::SerialClient serial_;
 
     std::shared_ptr<goby::util::SerialClient> ntp_serial_;
