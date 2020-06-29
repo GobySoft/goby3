@@ -4,9 +4,9 @@ import "dccl/option_extensions.proto";
 import "goby/middleware/protobuf/frontseat_config.proto";
 import "goby/protobuf/option_extensions.proto";
 
-package goby.middleware.protobuf;
+package goby.middleware.frontseat.protobuf;
 
-message BluefinFrontSeatConfig
+message BluefinConfig
 {
     option (dccl.msg).unit_system = "si";
 
@@ -103,7 +103,7 @@ message BluefinFrontSeatConfig
     repeated RPMSpeedEntry rpm_table = 21;
 }
 
-extend FrontSeatConfig
+extend Config
 {
-    optional BluefinFrontSeatConfig bluefin_config = 1000;
+    optional BluefinConfig bluefin_config = 1000;
 }

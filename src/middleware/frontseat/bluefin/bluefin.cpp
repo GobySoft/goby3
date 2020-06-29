@@ -35,7 +35,7 @@
 
 #include "bluefin.h"
 
-namespace gpb = goby::middleware::protobuf;
+namespace gpb = goby::middleware::frontseat::protobuf;
 namespace gtime = goby::time;
 
 using goby::glog;
@@ -43,19 +43,17 @@ using goby::util::NMEASentence;
 
 using namespace goby::util::logger;
 using namespace goby::util::tcolor;
-using goby::middleware::protobuf::BluefinFrontSeatConfig;
+using goby::middleware::frontseat::protobuf::BluefinConfig;
 
 extern "C"
 {
-    goby::middleware::frontseat::InterfaceBase*
-    frontseat_driver_load(goby::middleware::protobuf::FrontSeatConfig* cfg)
+    goby::middleware::frontseat::InterfaceBase* frontseat_driver_load(gpb::Config* cfg)
     {
         return new goby::middleware::frontseat::Bluefin(*cfg);
     }
 }
 
-goby::middleware::frontseat::Bluefin::Bluefin(
-    const goby::middleware::protobuf::FrontSeatConfig& cfg)
+goby::middleware::frontseat::Bluefin::Bluefin(const gpb::Config& cfg)
     : InterfaceBase(cfg),
       bf_config_(cfg.GetExtension(protobuf::bluefin_config)),
       tcp_(bf_config_.huxley_tcp_address(), bf_config_.huxley_tcp_port(), "\r\n",
@@ -321,8 +319,7 @@ void goby::middleware::frontseat::Bluefin::send_command_to_frontseat(
     }
 }
 
-void goby::middleware::frontseat::Bluefin::send_data_to_frontseat(
-    const gpb::FrontSeatInterfaceData& data)
+void goby::middleware::frontseat::Bluefin::send_data_to_frontseat(const gpb::InterfaceData& data)
 {
     //    glog.is(DEBUG1) && glog << "Data to FS: " << data.DebugString() << std::endl;
 
@@ -390,7 +387,7 @@ void goby::middleware::frontseat::Bluefin::send_data_to_frontseat(
     }
 }
 
-void goby::middleware::frontseat::Bluefin::send_raw_to_frontseat(const gpb::FrontSeatRaw& data)
+void goby::middleware::frontseat::Bluefin::send_raw_to_frontseat(const gpb::Raw& data)
 {
     try
     {
@@ -493,7 +490,7 @@ void goby::middleware::frontseat::Bluefin::initialize_huxley()
     log_requests.insert(log_requests.end(), standard_log_requests.begin(),
                         standard_log_requests.end());
 
-    if (bf_config_.accepting_commands_hook() == BluefinFrontSeatConfig::BFCTL_TRIGGER)
+    if (bf_config_.accepting_commands_hook() == BluefinConfig::BFCTL_TRIGGER)
         log_requests.push_back(CTL);
 
     NMEASentence nmea("$BPLOG", NMEASentence::IGNORE);
@@ -590,7 +587,7 @@ void goby::middleware::frontseat::Bluefin::remove_from_write_queue()
 
 void goby::middleware::frontseat::Bluefin::write(const NMEASentence& nmea)
 {
-    gpb::FrontSeatRaw raw_msg;
+    gpb::Raw raw_msg;
     raw_msg.set_raw(nmea.message());
     raw_msg.set_description(description_map_[nmea.front()]);
 
@@ -611,7 +608,7 @@ void goby::middleware::frontseat::Bluefin::write(const NMEASentence& nmea)
 
 void goby::middleware::frontseat::Bluefin::process_receive(const NMEASentence& nmea)
 {
-    gpb::FrontSeatRaw raw_msg;
+    gpb::Raw raw_msg;
     raw_msg.set_raw(nmea.message());
     raw_msg.set_description(description_map_[nmea.front()]);
 

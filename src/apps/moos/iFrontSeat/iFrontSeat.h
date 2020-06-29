@@ -63,12 +63,12 @@ class iFrontSeat : public goby::moos::GobyMOOSApp
     void handle_mail_helm_state(const CMOOSMsg& msg);
 
     // frontseat driver signal handlers
-    void
-    handle_driver_command_response(const goby::middleware::protobuf::CommandResponse& response);
+    void handle_driver_command_response(
+        const goby::middleware::frontseat::protobuf::CommandResponse& response);
     void handle_driver_data_from_frontseat(
-        const goby::middleware::protobuf::FrontSeatInterfaceData& data);
-    void handle_driver_raw_in(const goby::middleware::protobuf::FrontSeatRaw& data);
-    void handle_driver_raw_out(const goby::middleware::protobuf::FrontSeatRaw& data);
+        const goby::middleware::frontseat::protobuf::InterfaceData& data);
+    void handle_driver_raw_in(const goby::middleware::frontseat::protobuf::Raw& data);
+    void handle_driver_raw_out(const goby::middleware::frontseat::protobuf::Raw& data);
 
   private:
     std::unique_ptr<goby::middleware::frontseat::InterfaceBase> frontseat_;

@@ -34,7 +34,7 @@
 #include "iFrontSeat.h"
 
 using namespace goby::util::logger;
-namespace gpb = goby::middleware::protobuf;
+namespace gpb = goby::middleware::frontseat::protobuf;
 using goby::glog;
 
 goby::apps::moos::protobuf::iFrontSeatConfig goby::apps::moos::iFrontSeat::cfg_;
@@ -76,8 +76,7 @@ goby::apps::moos::iFrontSeat* goby::apps::moos::iFrontSeat::get_instance()
 goby::middleware::frontseat::InterfaceBase*
 load_driver(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
 {
-    typedef goby::middleware::frontseat::InterfaceBase* (*driver_load_func)(
-        goby::middleware::protobuf::FrontSeatConfig*);
+    typedef goby::middleware::frontseat::InterfaceBase* (*driver_load_func)(gpb::Config*);
     driver_load_func driver_load_ptr = (driver_load_func)dlsym(
         goby::apps::moos::iFrontSeat::driver_library_handle_, "frontseat_driver_load");
 
@@ -187,7 +186,7 @@ void goby::apps::moos::iFrontSeat::handle_mail_data_to_frontseat(const CMOOSMsg&
     }
     else
     {
-        gpb::FrontSeatInterfaceData data;
+        gpb::InterfaceData data;
         parse_for_moos(msg.GetString(), &data);
         frontseat_->send_data_to_frontseat(data);
     }
@@ -208,7 +207,7 @@ void goby::apps::moos::iFrontSeat::handle_mail_raw_out(const CMOOSMsg& msg)
     }
     else
     {
-        gpb::FrontSeatRaw raw;
+        gpb::Raw raw;
         parse_for_moos(msg.GetString(), &raw);
         frontseat_->send_raw_to_frontseat(raw);
     }
@@ -232,20 +231,19 @@ void goby::apps::moos::iFrontSeat::handle_driver_command_response(
     publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().command_response(), response);
 }
 
-void goby::apps::moos::iFrontSeat::handle_driver_data_from_frontseat(
-    const gpb::FrontSeatInterfaceData& data)
+void goby::apps::moos::iFrontSeat::handle_driver_data_from_frontseat(const gpb::InterfaceData& data)
 {
     publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().data_from_frontseat(), data);
     if (data.has_node_status())
         publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().node_status(), data.node_status());
 }
 
-void goby::apps::moos::iFrontSeat::handle_driver_raw_in(const gpb::FrontSeatRaw& data)
+void goby::apps::moos::iFrontSeat::handle_driver_raw_in(const gpb::Raw& data)
 {
     publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().raw_in(), data);
 }
 
-void goby::apps::moos::iFrontSeat::handle_driver_raw_out(const gpb::FrontSeatRaw& data)
+void goby::apps::moos::iFrontSeat::handle_driver_raw_out(const gpb::Raw& data)
 {
     publish_pb(cfg_.moos_var().prefix() + cfg_.moos_var().raw_out(), data);
 }

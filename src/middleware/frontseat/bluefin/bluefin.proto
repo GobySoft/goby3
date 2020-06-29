@@ -4,7 +4,7 @@ import "dccl/option_extensions.proto";
 import "goby/middleware/protobuf/frontseat.proto";
 import "goby/acomms/protobuf/modem_message.proto";
 
-package goby.middleware.protobuf;
+package goby.middleware.frontseat.protobuf;
 
 message BuoyancyStatus
 {
@@ -118,7 +118,7 @@ message BluefinExtraData
     optional RawThrusterRotation thruster = 50;
 }
 
-extend FrontSeatInterfaceData
+extend InterfaceData
 {
     optional BluefinExtraData bluefin_data = 1000;
 }

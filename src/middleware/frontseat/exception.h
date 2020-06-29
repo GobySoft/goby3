@@ -39,24 +39,24 @@ class Exception : goby::Exception
   public:
     Exception()
         : goby::Exception("Unknown FrontSeatException"),
-          helm_err_(goby::middleware::protobuf::ERROR_HELM_NONE),
+          helm_err_(protobuf::ERROR_HELM_NONE),
           is_helm_error_(false),
-          fs_err_(goby::middleware::protobuf::ERROR_FRONTSEAT_NONE),
+          fs_err_(protobuf::ERROR_FRONTSEAT_NONE),
           is_fs_error_(false)
     {
     }
 
-    Exception(goby::middleware::protobuf::HelmError err)
-        : goby::Exception(goby::middleware::protobuf::HelmError_Name(err)),
+    Exception(protobuf::HelmError err)
+        : goby::Exception(protobuf::HelmError_Name(err)),
           helm_err_(err),
           is_helm_error_(true),
-          fs_err_(goby::middleware::protobuf::ERROR_FRONTSEAT_NONE),
+          fs_err_(protobuf::ERROR_FRONTSEAT_NONE),
           is_fs_error_(false)
     {
     }
-    Exception(goby::middleware::protobuf::FrontSeatError err)
-        : goby::Exception(goby::middleware::protobuf::FrontSeatError_Name(err)),
-          helm_err_(goby::middleware::protobuf::ERROR_HELM_NONE),
+    Exception(protobuf::FrontSeatError err)
+        : goby::Exception(protobuf::FrontSeatError_Name(err)),
+          helm_err_(protobuf::ERROR_HELM_NONE),
           is_helm_error_(false),
           fs_err_(err),
           is_fs_error_(true)
@@ -64,27 +64,26 @@ class Exception : goby::Exception
     {
     }
 
-    goby::middleware::protobuf::HelmError helm_err() const { return helm_err_; }
+    protobuf::HelmError helm_err() const { return helm_err_; }
     bool is_helm_error() const { return is_helm_error_; }
 
-    goby::middleware::protobuf::FrontSeatError fs_err() const { return fs_err_; }
+    protobuf::FrontSeatError fs_err() const { return fs_err_; }
     bool is_fs_error() const { return is_fs_error_; }
 
   private:
-    goby::middleware::protobuf::HelmError helm_err_;
+    protobuf::HelmError helm_err_;
     bool is_helm_error_;
 
-    goby::middleware::protobuf::FrontSeatError fs_err_;
+    protobuf::FrontSeatError fs_err_;
     bool is_fs_error_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const goby::middleware::frontseat::Exception& e)
 {
     if (e.is_helm_error())
-        os << "Error in the Helm: " << goby::middleware::protobuf::HelmError_Name(e.helm_err());
+        os << "Error in the Helm: " << protobuf::HelmError_Name(e.helm_err());
     else if (e.is_fs_error())
-        os << "Error in the Frontseat: "
-           << goby::middleware::protobuf::FrontSeatError_Name(e.fs_err());
+        os << "Error in the Frontseat: " << protobuf::FrontSeatError_Name(e.fs_err());
     else
         os << "Unknown error.";
     return os;

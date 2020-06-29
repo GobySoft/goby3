@@ -39,18 +39,18 @@ extern "C"
                                google::protobuf::FieldDescriptor::TYPE_BYTES>("SV2");
         FieldCodecManager::add<goby::middleware::frontseat::SV2NumericCodec<dccl::uint32>>("SV2");
 
-        dccl->load<goby::middleware::protobuf::SV2RequestEnumerate>();
-        dccl->load<goby::middleware::protobuf::SV2ReplyEnumerate>();
-        dccl->load<goby::middleware::protobuf::SV2RequestStatus>();
-        dccl->load<goby::middleware::protobuf::SV2ReplyStatus>();
-        dccl->load<goby::middleware::protobuf::SV2RequestQueuedMessage>();
-        dccl->load<goby::middleware::protobuf::SV2ReplyQueuedMessage>();
-        dccl->load<goby::middleware::protobuf::SV2ACKNAKQueuedMessage>();
-        dccl->load<goby::middleware::protobuf::SV2GenericNAK>();
-        dccl->load<goby::middleware::protobuf::SV2GenericACK>();
-        dccl->load<goby::middleware::protobuf::SV2SendToConsole>();
-        dccl->load<goby::middleware::protobuf::SV2CommandFollowFixedHeading>();
-        dccl->load<goby::middleware::protobuf::SV2CommandFollowFixedHeading::
+        dccl->load<goby::middleware::frontseat::protobuf::SV2RequestEnumerate>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2ReplyEnumerate>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2RequestStatus>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2ReplyStatus>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2RequestQueuedMessage>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2ReplyQueuedMessage>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2ACKNAKQueuedMessage>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2GenericNAK>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2GenericACK>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2SendToConsole>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2CommandFollowFixedHeading>();
+        dccl->load<goby::middleware::frontseat::protobuf::SV2CommandFollowFixedHeading::
                        CommandFollowFixedHeadingBody>();
     }
 
@@ -58,18 +58,18 @@ extern "C"
     {
         using namespace dccl;
 
-        dccl->unload<goby::middleware::protobuf::SV2RequestEnumerate>();
-        dccl->unload<goby::middleware::protobuf::SV2ReplyEnumerate>();
-        dccl->unload<goby::middleware::protobuf::SV2RequestStatus>();
-        dccl->unload<goby::middleware::protobuf::SV2ReplyStatus>();
-        dccl->unload<goby::middleware::protobuf::SV2RequestQueuedMessage>();
-        dccl->unload<goby::middleware::protobuf::SV2ReplyQueuedMessage>();
-        dccl->unload<goby::middleware::protobuf::SV2ACKNAKQueuedMessage>();
-        dccl->unload<goby::middleware::protobuf::SV2GenericNAK>();
-        dccl->unload<goby::middleware::protobuf::SV2GenericACK>();
-        dccl->unload<goby::middleware::protobuf::SV2SendToConsole>();
-        dccl->unload<goby::middleware::protobuf::SV2CommandFollowFixedHeading>();
-        dccl->unload<goby::middleware::protobuf::SV2CommandFollowFixedHeading::
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2RequestEnumerate>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2ReplyEnumerate>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2RequestStatus>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2ReplyStatus>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2RequestQueuedMessage>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2ReplyQueuedMessage>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2ACKNAKQueuedMessage>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2GenericNAK>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2GenericACK>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2SendToConsole>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2CommandFollowFixedHeading>();
+        dccl->unload<goby::middleware::frontseat::protobuf::SV2CommandFollowFixedHeading::
                          CommandFollowFixedHeadingBody>();
 
         FieldCodecManager::remove<goby::middleware::frontseat::SV2IdentifierCodec>("SV2.id");

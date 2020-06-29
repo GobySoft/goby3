@@ -44,9 +44,9 @@ class FrontSeatTranslation : public goby::moos::Translator
         goby()
             .interprocess()
             .subscribe<goby::middleware::frontseat::groups::node_status,
-                       goby::middleware::protobuf::NodeStatus,
+                       goby::middleware::frontseat::protobuf::NodeStatus,
                        goby::middleware::MarshallingScheme::PROTOBUF>(
-                [this](const goby::middleware::protobuf::NodeStatus& status) {
+                [this](const goby::middleware::frontseat::protobuf::NodeStatus& status) {
                     glog.is_debug2() && glog << "Posting to MOOS: NAV: " << status.DebugString()
                                              << std::endl;
                     goby::moos::convert_and_publish_node_status(status, moos().comms());
@@ -84,7 +84,7 @@ extern "C"
 
 void goby::moos::FrontSeatTranslation::convert_desired_setpoints()
 {
-    goby::middleware::protobuf::DesiredCourse desired_setpoints;
+    goby::middleware::frontseat::protobuf::DesiredCourse desired_setpoints;
 
     auto& buffer = moos().buffer();
 

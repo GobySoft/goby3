@@ -31,7 +31,7 @@
 
 #include "iver_driver.h"
 
-namespace gpb = goby::middleware::protobuf;
+namespace gpb = goby::middleware::frontseat::protobuf;
 namespace gtime = goby::time;
 
 using goby::glog;
@@ -41,16 +41,15 @@ const auto allowed_skew = std::chrono::seconds(10);
 
 extern "C"
 {
-    goby::middleware::frontseat::InterfaceBase*
-    frontseat_driver_load(goby::middleware::protobuf::FrontSeatConfig* cfg)
+    goby::middleware::frontseat::InterfaceBase* frontseat_driver_load(gpb::Config* cfg)
     {
         return new goby::middleware::frontseat::Iver(*cfg);
     }
 }
 
-goby::middleware::frontseat::Iver::Iver(const goby::middleware::protobuf::FrontSeatConfig& cfg)
+goby::middleware::frontseat::Iver::Iver(const gpb::Config& cfg)
     : InterfaceBase(cfg),
-      iver_config_(cfg.GetExtension(protobuf::iver_config)),
+      iver_config_(cfg.GetExtension(gpb::iver_config)),
       serial_(iver_config_.serial_port(), iver_config_.serial_baud(), "\r\n"),
       frontseat_providing_data_(false),
       last_frontseat_data_time_(std::chrono::seconds(0)),
@@ -104,7 +103,7 @@ void goby::middleware::frontseat::Iver::try_receive()
 
 void goby::middleware::frontseat::Iver::process_receive(const std::string& s)
 {
-    gpb::FrontSeatRaw raw_msg;
+    gpb::Raw raw_msg;
     raw_msg.set_raw(s);
     signal_raw_from_frontseat(raw_msg);
 
@@ -218,7 +217,7 @@ void goby::middleware::frontseat::Iver::process_receive(const std::string& s)
             status_.mutable_pose()->set_heading_with_units(nmea.as<double>(TRUEHEADING) *
                                                            boost::units::degree::degrees);
 
-            gpb::FrontSeatInterfaceData fs_data;
+            gpb::InterfaceData fs_data;
             gpb::IverState& iver_state = *fs_data.MutableExtension(gpb::iver_state);
             iver_state.set_mode(reported_mission_mode_);
             signal_data_from_frontseat(fs_data);
@@ -245,7 +244,7 @@ void goby::middleware::frontseat::Iver::process_receive(const std::string& s)
                                                          boost::units::degree::degrees);
 
             compute_missing(&status_);
-            gpb::FrontSeatInterfaceData data;
+            gpb::InterfaceData data;
             data.mutable_node_status()->CopyFrom(status_);
             signal_data_from_frontseat(data);
             frontseat_providing_data_ = true;
@@ -330,13 +329,12 @@ void goby::middleware::frontseat::Iver::send_command_to_frontseat(
     }
 }
 
-void goby::middleware::frontseat::Iver::send_data_to_frontseat(
-    const gpb::FrontSeatInterfaceData& data)
+void goby::middleware::frontseat::Iver::send_data_to_frontseat(const gpb::InterfaceData& data)
 {
     // no data yet to send
 }
 
-void goby::middleware::frontseat::Iver::send_raw_to_frontseat(const gpb::FrontSeatRaw& data)
+void goby::middleware::frontseat::Iver::send_raw_to_frontseat(const gpb::Raw& data)
 {
     write(data.raw());
 }
@@ -346,15 +344,14 @@ bool goby::middleware::frontseat::Iver::frontseat_providing_data() const
     return frontseat_providing_data_;
 }
 
-goby::middleware::protobuf::FrontSeatState
-goby::middleware::frontseat::Iver::frontseat_state() const
+gpb::FrontSeatState goby::middleware::frontseat::Iver::frontseat_state() const
 {
     return frontseat_state_;
 }
 
 void goby::middleware::frontseat::Iver::write(const std::string& s)
 {
-    gpb::FrontSeatRaw raw_msg;
+    gpb::Raw raw_msg;
     raw_msg.set_raw(s);
     signal_raw_to_frontseat(raw_msg);
 

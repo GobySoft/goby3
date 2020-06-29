@@ -1,7 +1,7 @@
 syntax = "proto2";
 import "goby/middleware/protobuf/frontseat_data.proto";
 
-package goby.middleware.protobuf;
+package goby.middleware.frontseat.protobuf;
 
 enum InterfaceState
 {
@@ -42,7 +42,7 @@ enum FrontSeatError
     ERROR_FRONTSEAT_IGNORING_COMMANDS = 3;
 }
 
-message FrontSeatInterfaceStatus
+message InterfaceStatus
 {
     optional InterfaceState state = 1;
     optional FrontSeatState frontseat_state = 2;
@@ -53,7 +53,7 @@ message FrontSeatInterfaceStatus
 
 message CommandRequest
 {
-    optional goby.middleware.protobuf.DesiredCourse desired_course = 1;
+    optional DesiredCourse desired_course = 1;
     optional bool response_requested = 10 [default = false];
     optional int32 request_id = 11;
 
@@ -76,9 +76,9 @@ message CommandResponse
     extensions 1000 to max;
 }
 
-message FrontSeatInterfaceData
+message InterfaceData
 {
-    optional goby.middleware.protobuf.NodeStatus node_status = 1;
+    optional NodeStatus node_status = 1;
     optional CTDSample ctd_sample = 2;
     optional bytes dccl_message = 3;
 
@@ -87,7 +87,7 @@ message FrontSeatInterfaceData
     // 1001 - Iver
 }
 
-message FrontSeatRaw
+message Raw
 {
     optional bytes raw = 1;
     enum RawType

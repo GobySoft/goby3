@@ -4,9 +4,9 @@ import "dccl/option_extensions.proto";
 import "goby/protobuf/option_extensions.proto";
 import "goby/middleware/protobuf/frontseat_data.proto";
 
-package goby.middleware.protobuf;
+package goby.middleware.frontseat.protobuf;
 
-message FrontSeatConfig
+message Config
 {
     option (dccl.msg).unit_system = "si";
 

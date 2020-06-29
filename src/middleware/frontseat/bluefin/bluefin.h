@@ -44,21 +44,16 @@ namespace frontseat
 class Bluefin : public InterfaceBase
 {
   public:
-    Bluefin(const goby::middleware::protobuf::FrontSeatConfig& cfg);
+    Bluefin(const protobuf::Config& cfg);
 
   private: // virtual methods from InterfaceBase
     void loop() override;
 
-    void
-    send_command_to_frontseat(const goby::middleware::protobuf::CommandRequest& command) override;
-    void
-    send_data_to_frontseat(const goby::middleware::protobuf::FrontSeatInterfaceData& data) override;
-    void send_raw_to_frontseat(const goby::middleware::protobuf::FrontSeatRaw& data) override;
+    void send_command_to_frontseat(const protobuf::CommandRequest& command) override;
+    void send_data_to_frontseat(const protobuf::InterfaceData& data) override;
+    void send_raw_to_frontseat(const protobuf::Raw& data) override;
 
-    goby::middleware::protobuf::FrontSeatState frontseat_state() const override
-    {
-        return frontseat_state_;
-    }
+    protobuf::FrontSeatState frontseat_state() const override { return frontseat_state_; }
 
     bool frontseat_providing_data() const override { return frontseat_providing_data_; }
 
@@ -94,11 +89,11 @@ class Bluefin : public InterfaceBase
     std::string unix_time2nmea_time(goby::time::SystemClock::time_point time);
 
   private:
-    const protobuf::BluefinFrontSeatConfig bf_config_;
+    const protobuf::BluefinConfig bf_config_;
     goby::util::TCPClient tcp_;
     bool frontseat_providing_data_;
     goby::time::SystemClock::time_point last_frontseat_data_time_;
-    goby::middleware::protobuf::FrontSeatState frontseat_state_;
+    protobuf::FrontSeatState frontseat_state_;
     goby::time::SystemClock::time_point next_connect_attempt_time_;
 
     goby::time::SystemClock::time_point last_write_time_;
@@ -192,17 +187,14 @@ class Bluefin : public InterfaceBase
     std::map<std::string, std::string> description_map_;
 
     // the current status message we're building up
-    goby::middleware::protobuf::NodeStatus status_;
+    protobuf::NodeStatus status_;
 
     // maps command type to outstanding request, if response is requested
-    std::map<goby::middleware::protobuf::BluefinExtraCommands::BluefinCommand,
-             goby::middleware::protobuf::CommandRequest>
+    std::map<protobuf::BluefinExtraCommands::BluefinCommand, protobuf::CommandRequest>
         outstanding_requests_;
 
     // maps status expire time to payload status
-    std::multimap<goby::time::MicroTime,
-                  goby::middleware::protobuf::BluefinExtraData::PayloadStatus>
-        payload_status_;
+    std::multimap<goby::time::MicroTime, protobuf::BluefinExtraData::PayloadStatus> payload_status_;
 
     // maps speed to rpm value
     std::map<double, int> speed_to_rpm_;

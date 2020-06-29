@@ -27,7 +27,7 @@
 #include "waveglider_sv2_frontseat_driver.h"
 #include <stdint.h>
 
-namespace gpb = goby::middleware::protobuf;
+namespace gpb = goby::middleware::frontseat::protobuf;
 namespace gtime = goby::time;
 
 using goby::glog;
@@ -40,8 +40,7 @@ const auto allowed_skew = std::chrono::seconds(30);
 // allows iFrontSeat to load our library
 extern "C"
 {
-    goby::middleware::frontseat::InterfaceBase*
-    frontseat_driver_load(goby::middleware::protobuf::FrontSeatConfig* cfg)
+    goby::middleware::frontseat::InterfaceBase* frontseat_driver_load(gpb::Config* cfg)
     {
         return new goby::middleware::frontseat::WavegliderSV2(*cfg);
     }
@@ -50,8 +49,7 @@ extern "C"
 uint16_t crc_compute_incrementally(uint16_t crc, char a);
 uint16_t crc_compute(const std::string& buffer, unsigned offset, unsigned count, uint16_t seed);
 
-goby::middleware::frontseat::WavegliderSV2::WavegliderSV2(
-    const goby::middleware::protobuf::FrontSeatConfig& cfg)
+goby::middleware::frontseat::WavegliderSV2::WavegliderSV2(const gpb::Config& cfg)
     : InterfaceBase(cfg),
       waveglider_sv2_config_(cfg.GetExtension(protobuf::waveglider_sv2_config)),
       frontseat_providing_data_(false),
@@ -82,7 +80,7 @@ void goby::middleware::frontseat::WavegliderSV2::loop()
     }
 
     // if we haven't gotten data for a while, set this boolean so that the
-    // FrontSeatInterfaceBase class knows
+    // InterfaceBase class knows
     if (gtime::SystemClock::now() > last_frontseat_data_time_ + allowed_skew)
         frontseat_providing_data_ = false;
 }
@@ -149,14 +147,11 @@ void goby::middleware::frontseat::WavegliderSV2::send_command_to_frontseat(
 }
 
 void goby::middleware::frontseat::WavegliderSV2::send_data_to_frontseat(
-    const gpb::FrontSeatInterfaceData& data)
+    const gpb::InterfaceData& data)
 {
 }
 
-void goby::middleware::frontseat::WavegliderSV2::send_raw_to_frontseat(
-    const gpb::FrontSeatRaw& data)
-{
-}
+void goby::middleware::frontseat::WavegliderSV2::send_raw_to_frontseat(const gpb::Raw& data) {}
 
 bool goby::middleware::frontseat::WavegliderSV2::frontseat_providing_data() const
 {

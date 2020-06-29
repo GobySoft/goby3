@@ -49,34 +49,32 @@ namespace frontseat
 class InterfaceBase
 {
   public:
-    InterfaceBase(const goby::middleware::protobuf::FrontSeatConfig& cfg);
+    InterfaceBase(const protobuf::Config& cfg);
 
     virtual ~InterfaceBase() {}
 
-    virtual void
-    send_command_to_frontseat(const goby::middleware::protobuf::CommandRequest& command) = 0;
-    virtual void
-    send_data_to_frontseat(const goby::middleware::protobuf::FrontSeatInterfaceData& data) = 0;
-    virtual void send_raw_to_frontseat(const goby::middleware::protobuf::FrontSeatRaw& data) = 0;
+    virtual void send_command_to_frontseat(const protobuf::CommandRequest& command) = 0;
+    virtual void send_data_to_frontseat(const protobuf::InterfaceData& data) = 0;
+    virtual void send_raw_to_frontseat(const protobuf::Raw& data) = 0;
 
-    virtual goby::middleware::protobuf::FrontSeatState frontseat_state() const = 0;
+    virtual protobuf::FrontSeatState frontseat_state() const = 0;
     virtual bool frontseat_providing_data() const = 0;
 
-    void set_helm_state(goby::middleware::protobuf::HelmState state) { helm_state_ = state; }
-    goby::middleware::protobuf::HelmState helm_state() const { return helm_state_; }
-    goby::middleware::protobuf::InterfaceState state() const { return state_; }
+    void set_helm_state(protobuf::HelmState state) { helm_state_ = state; }
+    protobuf::HelmState helm_state() const { return helm_state_; }
+    protobuf::InterfaceState state() const { return state_; }
 
     void do_work();
 
-    goby::middleware::protobuf::FrontSeatInterfaceStatus status()
+    protobuf::InterfaceStatus status()
     {
-        goby::middleware::protobuf::FrontSeatInterfaceStatus s;
+        protobuf::InterfaceStatus s;
         s.set_state(state_);
         s.set_frontseat_state(frontseat_state());
         s.set_helm_state(helm_state_);
-        if (last_helm_error_ != goby::middleware::protobuf::ERROR_HELM_NONE)
+        if (last_helm_error_ != protobuf::ERROR_HELM_NONE)
             s.set_helm_error(last_helm_error_);
-        if (last_frontseat_error_ != goby::middleware::protobuf::ERROR_FRONTSEAT_NONE)
+        if (last_frontseat_error_ != protobuf::ERROR_FRONTSEAT_NONE)
             s.set_frontseat_error(last_frontseat_error_);
         return s;
     }
@@ -87,19 +85,15 @@ class InterfaceBase
 
     // Signals that iFrontseat connects to
     // call this with data from the Frontseat
-    boost::signals2::signal<void(const goby::middleware::protobuf::CommandResponse& data)>
-        signal_command_response;
-    boost::signals2::signal<void(const goby::middleware::protobuf::FrontSeatInterfaceData& data)>
-        signal_data_from_frontseat;
-    boost::signals2::signal<void(const goby::middleware::protobuf::FrontSeatRaw& data)>
-        signal_raw_from_frontseat;
-    boost::signals2::signal<void(const goby::middleware::protobuf::FrontSeatRaw& data)>
-        signal_raw_to_frontseat;
+    boost::signals2::signal<void(const protobuf::CommandResponse& data)> signal_command_response;
+    boost::signals2::signal<void(const protobuf::InterfaceData& data)> signal_data_from_frontseat;
+    boost::signals2::signal<void(const protobuf::Raw& data)> signal_raw_from_frontseat;
+    boost::signals2::signal<void(const protobuf::Raw& data)> signal_raw_to_frontseat;
 
-    const goby::middleware::protobuf::FrontSeatConfig& cfg() const { return cfg_; }
+    const protobuf::Config& cfg() const { return cfg_; }
 
-    void compute_missing(goby::middleware::protobuf::CTDSample* ctd_sample);
-    void compute_missing(goby::middleware::protobuf::NodeStatus* status);
+    void compute_missing(protobuf::CTDSample* ctd_sample);
+    void compute_missing(protobuf::NodeStatus* status);
 
     friend class goby::apps::moos::FrontSeatLegacyTranslator; // to access the signal_state_change
   private:
@@ -108,8 +102,7 @@ class InterfaceBase
 
     // Signals called by InterfaceBase directly. No need to call these
     // from the Frontseat driver implementation
-    boost::signals2::signal<void(goby::middleware::protobuf::InterfaceState state)>
-        signal_state_change;
+    boost::signals2::signal<void(protobuf::InterfaceState state)> signal_state_change;
 
     enum Direction
     {
@@ -117,15 +110,15 @@ class InterfaceBase
         DIRECTION_FROM_FRONTSEAT
     };
 
-    void glog_raw(const goby::middleware::protobuf::FrontSeatRaw& data, Direction direction);
+    void glog_raw(const protobuf::Raw& data, Direction direction);
 
   private:
-    const goby::middleware::protobuf::FrontSeatConfig& cfg_;
-    goby::middleware::protobuf::HelmState helm_state_;
-    goby::middleware::protobuf::InterfaceState state_;
+    const protobuf::Config& cfg_;
+    protobuf::HelmState helm_state_;
+    protobuf::InterfaceState state_;
     goby::time::MicroTime start_time_;
-    goby::middleware::protobuf::FrontSeatError last_frontseat_error_;
-    goby::middleware::protobuf::HelmError last_helm_error_;
+    protobuf::FrontSeatError last_frontseat_error_;
+    protobuf::HelmError last_helm_error_;
 
     std::unique_ptr<goby::util::UTMGeodesy> geodesy_;
 

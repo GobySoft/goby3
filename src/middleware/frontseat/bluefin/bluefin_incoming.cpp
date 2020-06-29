@@ -26,14 +26,14 @@
 
 #include "bluefin.h"
 
-namespace gpb = goby::middleware::protobuf;
+namespace gpb = goby::middleware::frontseat::protobuf;
 namespace gtime = goby::time;
 
 using goby::glog;
 using goby::util::NMEASentence;
 using namespace goby::util::logger;
 using namespace goby::util::tcolor;
-using goby::middleware::protobuf::BluefinFrontSeatConfig;
+using goby::middleware::frontseat::protobuf::BluefinConfig;
 
 void goby::middleware::frontseat::Bluefin::bfack(const goby::util::NMEASentence& nmea)
 {
@@ -143,7 +143,7 @@ void goby::middleware::frontseat::Bluefin::bfmsc(const goby::util::NMEASentence&
 {
     // TODO: See if there is something to the message contents
     // BF manual says: Arbitrary textual message. Semantics determined by the payload.
-    if (bf_config_.accepting_commands_hook() == BluefinFrontSeatConfig::BFMSC_TRIGGER)
+    if (bf_config_.accepting_commands_hook() == BluefinConfig::BFMSC_TRIGGER)
         frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
 }
 
@@ -244,7 +244,7 @@ void goby::middleware::frontseat::Bluefin::bfnvr(const goby::util::NMEASentence&
     // fill in the local X, Y
     compute_missing(&status_);
 
-    gpb::FrontSeatInterfaceData data;
+    gpb::InterfaceData data;
     data.mutable_node_status()->CopyFrom(status_);
     signal_data_from_frontseat(data);
 }
@@ -290,7 +290,7 @@ void goby::middleware::frontseat::Bluefin::bfboy(const goby::util::NMEASentence&
         BUOYANCY_ESTIMATE_NEWTONS = 5
     };
 
-    gpb::FrontSeatInterfaceData data;
+    gpb::InterfaceData data;
     gpb::BuoyancyStatus* buoy_status =
         data.MutableExtension(gpb::bluefin_data)->mutable_buoyancy_status();
 
@@ -318,7 +318,7 @@ void goby::middleware::frontseat::Bluefin::bftrm(const goby::util::NMEASentence&
         ROLL_DEGREES = 6
     };
 
-    gpb::FrontSeatInterfaceData data;
+    gpb::InterfaceData data;
     gpb::TrimStatus* trim_status = data.MutableExtension(gpb::bluefin_data)->mutable_trim_status();
 
     int status = nmea.as<int>(STATUS);
@@ -381,7 +381,7 @@ void goby::middleware::frontseat::Bluefin::bfdvl(const goby::util::NMEASentence&
         DVL_TIMESTAMP = 10
     };
 
-    gpb::FrontSeatInterfaceData data;
+    gpb::InterfaceData data;
 
     auto& dvl_data = *data.MutableExtension(gpb::bluefin_data)->mutable_dvl();
 
@@ -426,7 +426,7 @@ void goby::middleware::frontseat::Bluefin::bfrvl(const goby::util::NMEASentence&
         SPEED_FROM_LOOKUP_TABLE = 3
     };
 
-    gpb::FrontSeatInterfaceData data;
+    gpb::InterfaceData data;
 
     auto& thruster_data = *data.MutableExtension(gpb::bluefin_data)->mutable_thruster();
     thruster_data.set_rotation_with_units(nmea.as<double>(THRUSTER_RPM) *
@@ -446,12 +446,12 @@ void goby::middleware::frontseat::Bluefin::bfmis(const goby::util::NMEASentence&
     {
         switch (bf_config_.accepting_commands_hook())
         {
-            case BluefinFrontSeatConfig::BFMIS_RUNNING_TRIGGER:
+            case BluefinConfig::BFMIS_RUNNING_TRIGGER:
                 frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
                 break;
 
-            case BluefinFrontSeatConfig::BFCTL_TRIGGER:
-            case BluefinFrontSeatConfig::BFMSC_TRIGGER:
+            case BluefinConfig::BFCTL_TRIGGER:
+            case BluefinConfig::BFMSC_TRIGGER:
                 if (frontseat_state_ != gpb::FRONTSEAT_ACCEPTING_COMMANDS)
                     frontseat_state_ = gpb::FRONTSEAT_IN_CONTROL;
                 break;
@@ -467,7 +467,7 @@ void goby::middleware::frontseat::Bluefin::bfmis(const goby::util::NMEASentence&
 
 void goby::middleware::frontseat::Bluefin::bfctd(const goby::util::NMEASentence& nmea)
 {
-    gpb::FrontSeatInterfaceData data;
+    gpb::InterfaceData data;
     gpb::CTDSample* ctd_sample = data.mutable_ctd_sample();
 
     enum
@@ -493,7 +493,7 @@ void goby::middleware::frontseat::Bluefin::bfctd(const goby::util::NMEASentence&
 
 void goby::middleware::frontseat::Bluefin::bfctl(const goby::util::NMEASentence& nmea)
 {
-    if (bf_config_.accepting_commands_hook() == BluefinFrontSeatConfig::BFCTL_TRIGGER)
+    if (bf_config_.accepting_commands_hook() == BluefinConfig::BFCTL_TRIGGER)
     {
         enum
         {

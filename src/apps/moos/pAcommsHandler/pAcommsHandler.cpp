@@ -650,7 +650,7 @@ void goby::apps::moos::CpAcommsHandler::handle_queue_receive(const google::proto
     // forward to frontseat driver
     if (dccl_frontseat_forward_.count(msg.GetDescriptor()))
     {
-        goby::middleware::protobuf::FrontSeatInterfaceData fs_data;
+        goby::middleware::frontseat::protobuf::InterfaceData fs_data;
         dccl_->encode(fs_data.mutable_dccl_message(), msg);
         publish_pb(cfg_.moos_var().ifrontseat_data_out(), fs_data);
     }

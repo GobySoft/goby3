@@ -29,7 +29,7 @@
 #include "iFrontSeat.h"
 #include "legacy_translator.h"
 
-namespace gpb = goby::middleware::protobuf;
+namespace gpb = goby::middleware::frontseat::protobuf;
 using goby::glog;
 using namespace goby::util::logger;
 
@@ -101,7 +101,7 @@ goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSea
     }
 }
 void goby::apps::moos::FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(
-    const gpb::FrontSeatInterfaceData& data)
+    const gpb::InterfaceData& data)
 {
     if (data.has_node_status() && ifs_->cfg_.legacy_cfg().publish_nav())
     {
@@ -160,7 +160,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg
         // We'll use the variable to key postings, since it's
         // always present (even in simulations)
         ctd_sample_.set_time(msg.GetTime());
-        gpb::FrontSeatInterfaceData data;
+        gpb::InterfaceData data;
         *data.mutable_ctd_sample() = ctd_sample_;
         ifs_->frontseat_->compute_missing(data.mutable_ctd_sample());
 
@@ -229,7 +229,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_modem_raw(const CM
 {
     goby::acomms::protobuf::ModemRaw raw;
     parse_for_moos(msg.GetString(), &raw);
-    gpb::FrontSeatInterfaceData data;
+    gpb::InterfaceData data;
 
     switch (direction)
     {
@@ -247,7 +247,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_modem_raw(const CM
 
 void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(gpb::InterfaceState state)
 {
-    gpb::FrontSeatInterfaceStatus status = ifs_->frontseat_->status();
+    gpb::InterfaceStatus status = ifs_->frontseat_->status();
     if (status.frontseat_state() == gpb::FRONTSEAT_ACCEPTING_COMMANDS)
         ifs_->publish("FRONTSEAT_READY", 1);
     else

@@ -1,7 +1,7 @@
 syntax = "proto2";
 import "goby/middleware/protobuf/frontseat.proto";
 
-package goby.middleware.protobuf;
+package goby.middleware.frontseat.protobuf;
 
 message IverState
 {
@@ -36,7 +36,7 @@ extend CommandRequest
     optional IverExtraCommands iver_command = 1001;
 }
 
-extend FrontSeatInterfaceData
+extend InterfaceData
 {
     optional IverState iver_state = 1001;
 }

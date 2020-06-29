@@ -49,17 +49,15 @@ namespace frontseat
 class Iver : public InterfaceBase
 {
   public:
-    Iver(const goby::middleware::protobuf::FrontSeatConfig& cfg);
+    Iver(const protobuf::Config& cfg);
 
   private: // virtual methods from InterfaceBase
     void loop() override;
 
-    void
-    send_command_to_frontseat(const goby::middleware::protobuf::CommandRequest& command) override;
-    void
-    send_data_to_frontseat(const goby::middleware::protobuf::FrontSeatInterfaceData& data) override;
-    void send_raw_to_frontseat(const goby::middleware::protobuf::FrontSeatRaw& data) override;
-    goby::middleware::protobuf::FrontSeatState frontseat_state() const override;
+    void send_command_to_frontseat(const protobuf::CommandRequest& command) override;
+    void send_data_to_frontseat(const protobuf::InterfaceData& data) override;
+    void send_raw_to_frontseat(const protobuf::Raw& data) override;
+    protobuf::FrontSeatState frontseat_state() const override;
     bool frontseat_providing_data() const override;
 
   private: // internal non-virtual methods
@@ -88,7 +86,7 @@ class Iver : public InterfaceBase
     }
 
   private:
-    const protobuf::IverFrontSeatConfig iver_config_;
+    const protobuf::IverConfig iver_config_;
     goby::util::SerialClient serial_;
 
     std::shared_ptr<goby::util::SerialClient> ntp_serial_;
@@ -96,12 +94,12 @@ class Iver : public InterfaceBase
     bool frontseat_providing_data_;
     goby::time::SystemClock::time_point last_frontseat_data_time_;
 
-    goby::middleware::protobuf::FrontSeatState frontseat_state_;
-    goby::middleware::protobuf::IverState::IverMissionMode reported_mission_mode_;
+    protobuf::FrontSeatState frontseat_state_;
+    protobuf::IverState::IverMissionMode reported_mission_mode_;
 
-    goby::middleware::protobuf::CommandRequest last_request_;
+    protobuf::CommandRequest last_request_;
 
-    goby::middleware::protobuf::NodeStatus status_;
+    protobuf::NodeStatus status_;
 };
 } // namespace frontseat
 } // namespace middleware

@@ -31,14 +31,13 @@
 
 #include "interface.h"
 
-namespace gpb = goby::middleware::protobuf;
+namespace gpb = goby::middleware::frontseat::protobuf;
 using goby::glog;
 using namespace goby::util::logger;
 using namespace goby::util::tcolor;
 using goby::time::MicroTime;
 
-goby::middleware::frontseat::InterfaceBase::InterfaceBase(
-    const goby::middleware::protobuf::FrontSeatConfig& cfg)
+goby::middleware::frontseat::InterfaceBase::InterfaceBase(const protobuf::Config& cfg)
     : cfg_(cfg),
       helm_state_(gpb::HELM_NOT_RUNNING),
       state_(gpb::INTERFACE_STANDBY),
@@ -184,7 +183,7 @@ void goby::middleware::frontseat::InterfaceBase::check_error_states()
         throw(goby::middleware::frontseat::Exception(gpb::ERROR_FRONTSEAT_NOT_PROVIDING_DATA));
 }
 
-void goby::middleware::frontseat::InterfaceBase::glog_raw(const gpb::FrontSeatRaw& raw_msg,
+void goby::middleware::frontseat::InterfaceBase::glog_raw(const gpb::Raw& raw_msg,
                                                           Direction direction)
 {
     if (direction == DIRECTION_TO_FRONTSEAT)
@@ -194,11 +193,11 @@ void goby::middleware::frontseat::InterfaceBase::glog_raw(const gpb::FrontSeatRa
 
     switch (raw_msg.type())
     {
-        case gpb::FrontSeatRaw::RAW_ASCII:
+        case gpb::Raw::RAW_ASCII:
             glog << raw_msg.raw() << "\n"
                  << "^ " << magenta << raw_msg.description() << nocolor << std::endl;
             break;
-        case gpb::FrontSeatRaw::RAW_BINARY:
+        case gpb::Raw::RAW_BINARY:
             glog << raw_msg.raw().size() << "byte message\n"
                  << "^ " << magenta << raw_msg.description() << nocolor << std::endl;
             break;
