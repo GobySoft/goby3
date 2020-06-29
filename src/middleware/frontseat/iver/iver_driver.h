@@ -43,20 +43,22 @@
 
 namespace goby
 {
-namespace moos
+namespace middleware
 {
-class IverFrontSeat : public FrontSeatInterfaceBase
+namespace frontseat
+{
+class Iver : public moos::FrontSeatInterfaceBase
 {
   public:
-    IverFrontSeat(const goby::apps::moos::protobuf::iFrontSeatConfig& cfg);
+    Iver(const goby::apps::moos::protobuf::iFrontSeatConfig& cfg);
 
   private: // virtual methods from FrontSeatInterfaceBase
     void loop();
 
-    void send_command_to_frontseat(const goby::moos::protobuf::CommandRequest& command);
-    void send_data_to_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data);
-    void send_raw_to_frontseat(const goby::moos::protobuf::FrontSeatRaw& data);
-    goby::moos::protobuf::FrontSeatState frontseat_state() const;
+    void send_command_to_frontseat(const goby::middleware::protobuf::CommandRequest& command);
+    void send_data_to_frontseat(const goby::middleware::protobuf::FrontSeatInterfaceData& data);
+    void send_raw_to_frontseat(const goby::middleware::protobuf::FrontSeatRaw& data);
+    goby::middleware::protobuf::FrontSeatState frontseat_state() const;
     bool frontseat_providing_data() const;
 
   private: // internal non-virtual methods
@@ -93,14 +95,15 @@ class IverFrontSeat : public FrontSeatInterfaceBase
     bool frontseat_providing_data_;
     goby::time::SystemClock::time_point last_frontseat_data_time_;
 
-    goby::moos::protobuf::FrontSeatState frontseat_state_;
-    goby::moos::protobuf::IverState::IverMissionMode reported_mission_mode_;
+    goby::middleware::protobuf::FrontSeatState frontseat_state_;
+    goby::middleware::protobuf::IverState::IverMissionMode reported_mission_mode_;
 
-    goby::moos::protobuf::CommandRequest last_request_;
+    goby::middleware::protobuf::CommandRequest last_request_;
 
-    goby::moos::protobuf::NodeStatus status_;
+    goby::middleware::protobuf::NodeStatus status_;
 };
-} // namespace moos
+} // namespace frontseat
+} // namespace middleware
 } // namespace goby
 
 #endif

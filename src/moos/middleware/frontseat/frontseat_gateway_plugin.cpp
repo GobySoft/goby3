@@ -24,12 +24,10 @@
 #include "goby/middleware/marshalling/protobuf.h"
 
 #include "goby/middleware/frontseat/groups.h"
-
+#include "goby/middleware/protobuf/frontseat_data.pb.h"
 #include "goby/moos/frontseat/frontseat.h"
 #include "goby/moos/middleware/moos_plugin_translator.h"
 #include "goby/moos/moos_translator.h"
-#include "goby/moos/protobuf/desired_course.pb.h"
-#include "goby/moos/protobuf/node_status.pb.h"
 
 using goby::glog;
 
@@ -46,9 +44,9 @@ class FrontSeatTranslation : public goby::moos::Translator
         goby()
             .interprocess()
             .subscribe<goby::middleware::frontseat::groups::node_status,
-                       goby::moos::protobuf::NodeStatus,
+                       goby::middleware::protobuf::NodeStatus,
                        goby::middleware::MarshallingScheme::PROTOBUF>(
-                [this](const goby::moos::protobuf::NodeStatus& status) {
+                [this](const goby::middleware::protobuf::NodeStatus& status) {
                     goby::moos::convert_and_publish_node_status(status, moos().comms());
                 });
 
@@ -82,10 +80,9 @@ extern "C"
     }
 }
 
-
 void goby::moos::FrontSeatTranslation::convert_desired_setpoints()
 {
-    goby::moos::protobuf::DesiredCourse desired_setpoints;
+    goby::middleware::protobuf::DesiredCourse desired_setpoints;
 
     auto& buffer = moos().buffer();
 

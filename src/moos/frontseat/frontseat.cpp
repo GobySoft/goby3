@@ -31,7 +31,7 @@
 
 #include "frontseat.h"
 
-namespace gpb = goby::moos::protobuf;
+namespace gpb = goby::middleware::protobuf;
 using goby::glog;
 using namespace goby::util::logger;
 using namespace goby::util::tcolor;
@@ -207,10 +207,10 @@ void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sam
             ctd_sample->pressure_with_units()));
         ctd_sample->set_salinity_algorithm(gpb::CTDSample::UNESCO_44_PREKIN_AND_LEWIS_1980);
     }
-    if (!ctd_sample->has_depth())
+    if (!ctd_sample->global_fix().has_depth())
     {
-        ctd_sample->set_depth_with_units(goby::util::seawater::depth(
-            ctd_sample->pressure_with_units(), ctd_sample->lat_with_units()));
+        ctd_sample->mutable_global_fix()->set_depth_with_units(goby::util::seawater::depth(
+            ctd_sample->pressure_with_units(), ctd_sample->global_fix().lat_with_units()));
     }
     if (!ctd_sample->has_sound_speed())
     {
@@ -218,7 +218,7 @@ void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::CTDSample* ctd_sam
         {
             ctd_sample->set_sound_speed_with_units(goby::util::seawater::mackenzie_soundspeed(
                 ctd_sample->temperature_with_units(), ctd_sample->salinity_with_units(),
-                ctd_sample->depth_with_units()));
+                ctd_sample->global_fix().depth_with_units()));
         }
         catch (std::out_of_range& e)
         {
@@ -278,8 +278,8 @@ void goby::moos::FrontSeatInterfaceBase::compute_missing(gpb::NodeStatus* status
     }
 }
 
-void goby::moos::convert_and_publish_node_status(const goby::moos::protobuf::NodeStatus& status,
-                                                 CMOOSCommClient& moos_comms)
+void goby::moos::convert_and_publish_node_status(
+    const goby::middleware::protobuf::NodeStatus& status, CMOOSCommClient& moos_comms)
 {
     // post NAV_*
     using boost::units::quantity;
@@ -321,7 +321,7 @@ void goby::moos::convert_and_publish_node_status(const goby::moos::protobuf::Nod
                           status.global_fix().altitude_with_units<quantity<si::length>>().value());
 
     // surface for GPS variable
-    if (status.source().position() == goby::moos::protobuf::Source::GPS)
+    if (status.source().position() == goby::middleware::protobuf::Source::GPS)
     {
         std::stringstream ss;
         ss << "Timestamp=" << std::setprecision(15)

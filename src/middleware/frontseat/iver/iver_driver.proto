@@ -1,7 +1,7 @@
 syntax = "proto2";
-import "goby/moos/protobuf/frontseat.proto";
+import "goby/middleware/protobuf/frontseat.proto";
 
-package goby.moos.protobuf;
+package goby.middleware.protobuf;
 
 message IverState
 {

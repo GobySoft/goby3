@@ -27,7 +27,7 @@
 #include "waveglider_sv2_frontseat_driver.h"
 #include <stdint.h>
 
-namespace gpb = goby::moos::protobuf;
+namespace gpb = goby::middleware::protobuf;
 namespace gtime = goby::time;
 
 using goby::glog;
@@ -43,14 +43,14 @@ extern "C"
     goby::moos::FrontSeatInterfaceBase*
     frontseat_driver_load(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
     {
-        return new goby::moos::WavegliderSV2FrontSeat(*cfg);
+        return new goby::middleware::frontseat::WavegliderSV2(*cfg);
     }
 }
 
 uint16_t crc_compute_incrementally(uint16_t crc, char a);
 uint16_t crc_compute(const std::string& buffer, unsigned offset, unsigned count, uint16_t seed);
 
-goby::moos::WavegliderSV2FrontSeat::WavegliderSV2FrontSeat(
+goby::middleware::frontseat::WavegliderSV2::WavegliderSV2(
     const apps::moos::protobuf::iFrontSeatConfig& cfg)
     : FrontSeatInterfaceBase(cfg),
       waveglider_sv2_config_(cfg.GetExtension(apps::moos::protobuf::waveglider_sv2_config)),
@@ -62,15 +62,14 @@ goby::moos::WavegliderSV2FrontSeat::WavegliderSV2FrontSeat(
       queued_messages_(1),
       dccl_("SV2.id", getenv("IFRONTSEAT_DRIVER_LIBRARY"))
 {
-    serial_->message_signal.connect(
-        boost::bind(&WavegliderSV2FrontSeat::handle_sv2_message, this, _1));
+    serial_->message_signal.connect(boost::bind(&WavegliderSV2::handle_sv2_message, this, _1));
     serial_->start();
 
     glog.is(VERBOSE) && glog << "Connected to WavegliderSV2 serial port." << std::endl;
     frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
 }
 
-void goby::moos::WavegliderSV2FrontSeat::loop()
+void goby::middleware::frontseat::WavegliderSV2::loop()
 {
     try
     {
@@ -88,7 +87,7 @@ void goby::moos::WavegliderSV2FrontSeat::loop()
         frontseat_providing_data_ = false;
 }
 
-void goby::moos::WavegliderSV2FrontSeat::send_command_to_frontseat(
+void goby::middleware::frontseat::WavegliderSV2::send_command_to_frontseat(
     const gpb::CommandRequest& command)
 {
     if (command.has_desired_course())
@@ -96,20 +95,19 @@ void goby::moos::WavegliderSV2FrontSeat::send_command_to_frontseat(
         dccl::uint32 board_addr = waveglider_sv2_config_.board_id() << dccl::BITS_IN_BYTE |
                                   waveglider_sv2_config_.task_id();
 
-        std::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> hdg_cmd(
-            new goby::moos::protobuf::SV2CommandFollowFixedHeading);
+        std::shared_ptr<gpb::SV2CommandFollowFixedHeading> hdg_cmd(
+            new gpb::SV2CommandFollowFixedHeading);
         hdg_cmd->mutable_header()->set_start_of_frame(0x7e);
-        hdg_cmd->mutable_header()->set_dest(goby::moos::protobuf::SV2Header::BOARD_ID_CC
-                                                << dccl::BITS_IN_BYTE |
-                                            goby::moos::protobuf::SV2Header::CCTASK_ID_COMMAND);
+        hdg_cmd->mutable_header()->set_dest(gpb::SV2Header::BOARD_ID_CC << dccl::BITS_IN_BYTE |
+                                            gpb::SV2Header::CCTASK_ID_COMMAND);
         hdg_cmd->mutable_header()->set_src(board_addr);
         hdg_cmd->mutable_header()->set_transaction_id(command.request_id());
-        hdg_cmd->mutable_header()->set_message_type(goby::moos::protobuf::MESSAGE_TYPE_ACK);
+        hdg_cmd->mutable_header()->set_message_type(gpb::MESSAGE_TYPE_ACK);
 
-        hdg_cmd->set_original_msg_type(goby::moos::protobuf::MESSAGE_TYPE_REQUEST_QUEUED_MESSAGE);
+        hdg_cmd->set_original_msg_type(gpb::MESSAGE_TYPE_REQUEST_QUEUED_MESSAGE);
         hdg_cmd->set_command_format(0x0001);
 
-        goby::moos::protobuf::SV2CommandFollowFixedHeading::CommandFollowFixedHeadingBody* body =
+        gpb::SV2CommandFollowFixedHeading::CommandFollowFixedHeadingBody* body =
             hdg_cmd->mutable_body();
 
         body->set_level2id(0x0A);
@@ -150,24 +148,27 @@ void goby::moos::WavegliderSV2FrontSeat::send_command_to_frontseat(
     }
 }
 
-void goby::moos::WavegliderSV2FrontSeat::send_data_to_frontseat(
+void goby::middleware::frontseat::WavegliderSV2::send_data_to_frontseat(
     const gpb::FrontSeatInterfaceData& data)
 {
 }
 
-void goby::moos::WavegliderSV2FrontSeat::send_raw_to_frontseat(const gpb::FrontSeatRaw& data) {}
+void goby::middleware::frontseat::WavegliderSV2::send_raw_to_frontseat(
+    const gpb::FrontSeatRaw& data)
+{
+}
 
-bool goby::moos::WavegliderSV2FrontSeat::frontseat_providing_data() const
+bool goby::middleware::frontseat::WavegliderSV2::frontseat_providing_data() const
 {
     return frontseat_providing_data_;
 }
 
-goby::moos::protobuf::FrontSeatState goby::moos::WavegliderSV2FrontSeat::frontseat_state() const
+gpb::FrontSeatState goby::middleware::frontseat::WavegliderSV2::frontseat_state() const
 {
     return frontseat_state_;
 }
 
-void goby::moos::WavegliderSV2FrontSeat::handle_sv2_message(const std::string& message)
+void goby::middleware::frontseat::WavegliderSV2::handle_sv2_message(const std::string& message)
 {
     enum
     {
@@ -182,18 +183,18 @@ void goby::moos::WavegliderSV2FrontSeat::handle_sv2_message(const std::string& m
     bytes[1] &= 0x7F; // remove the ack requested bit;
 
     unsigned dccl_id = dccl_.id(bytes);
-    if (dccl_id == dccl_.id<goby::moos::protobuf::SV2RequestEnumerate>())
+    if (dccl_id == dccl_.id<gpb::SV2RequestEnumerate>())
     {
-        goby::moos::protobuf::SV2RequestEnumerate enum_msg;
+        gpb::SV2RequestEnumerate enum_msg;
         dccl_.decode(bytes, &enum_msg);
         glog.is(DEBUG1) && glog << "Received enumeration request." << std::endl;
         glog.is(DEBUG2) && glog << enum_msg.DebugString() << std::endl;
         check_crc(message, enum_msg.footer().crc16());
         handle_enumeration_request(enum_msg);
     }
-    else if (dccl_id == dccl_.id<goby::moos::protobuf::SV2RequestStatus>())
+    else if (dccl_id == dccl_.id<gpb::SV2RequestStatus>())
     {
-        goby::moos::protobuf::SV2RequestStatus request;
+        gpb::SV2RequestStatus request;
         dccl_.decode(bytes, &request);
         glog.is(DEBUG1) && glog << "Received status request." << std::endl;
         glog.is(DEBUG2) && glog << request.DebugString() << std::endl;
@@ -201,33 +202,33 @@ void goby::moos::WavegliderSV2FrontSeat::handle_sv2_message(const std::string& m
         last_frontseat_data_time_ = gtime::SystemClock::now();
         handle_request_status(request);
     }
-    else if (dccl_id == dccl_.id<goby::moos::protobuf::SV2RequestQueuedMessage>())
+    else if (dccl_id == dccl_.id<gpb::SV2RequestQueuedMessage>())
     {
-        goby::moos::protobuf::SV2RequestQueuedMessage request;
+        gpb::SV2RequestQueuedMessage request;
         dccl_.decode(bytes, &request);
         glog.is(DEBUG1) && glog << "Received queue message request. " << std::endl;
         glog.is(DEBUG2) && glog << request.DebugString() << std::endl;
         handle_request_queued_message(request);
     }
-    else if (dccl_id == dccl_.id<goby::moos::protobuf::SV2ACKNAKQueuedMessage>())
+    else if (dccl_id == dccl_.id<gpb::SV2ACKNAKQueuedMessage>())
     {
-        goby::moos::protobuf::SV2ACKNAKQueuedMessage ack;
+        gpb::SV2ACKNAKQueuedMessage ack;
         dccl_.decode(bytes, &ack);
         glog.is(DEBUG1) && glog << "Received queue message ack/nak." << std::endl;
         glog.is(DEBUG2) && glog << ack.DebugString() << std::endl;
         // HANDLE ACK QUEUED MESSAGE
     }
-    else if (dccl_id == dccl_.id<goby::moos::protobuf::SV2GenericNAK>())
+    else if (dccl_id == dccl_.id<gpb::SV2GenericNAK>())
     {
-        goby::moos::protobuf::SV2ACKNAKQueuedMessage nak;
+        gpb::SV2ACKNAKQueuedMessage nak;
         dccl_.decode(bytes, &nak);
         glog.is(DEBUG1) && glog << "Received generic nak." << std::endl;
         glog.is(DEBUG2) && glog << nak.DebugString() << std::endl;
         // HANDLE NAK
     }
-    else if (dccl_id == dccl_.id<goby::moos::protobuf::SV2GenericACK>())
+    else if (dccl_id == dccl_.id<gpb::SV2GenericACK>())
     {
-        goby::moos::protobuf::SV2GenericACK ack;
+        gpb::SV2GenericACK ack;
         dccl_.decode(bytes, &ack);
         glog.is(DEBUG1) && glog << "Received generic ack." << std::endl;
         glog.is(DEBUG2) && glog << ack.DebugString() << std::endl;
@@ -240,7 +241,8 @@ void goby::moos::WavegliderSV2FrontSeat::handle_sv2_message(const std::string& m
     }
 }
 
-void goby::moos::WavegliderSV2FrontSeat::check_crc(const std::string& message, uint16_t expected)
+void goby::middleware::frontseat::WavegliderSV2::check_crc(const std::string& message,
+                                                           uint16_t expected)
 {
     enum
     {
@@ -257,7 +259,7 @@ void goby::moos::WavegliderSV2FrontSeat::check_crc(const std::string& message, u
         glog.is(WARN) && glog << "Invalid CRC16" << std::endl;
 }
 
-void goby::moos::WavegliderSV2FrontSeat::add_crc(std::string* message)
+void goby::middleware::frontseat::WavegliderSV2::add_crc(std::string* message)
 {
     enum
     {
@@ -272,21 +274,20 @@ void goby::moos::WavegliderSV2FrontSeat::add_crc(std::string* message)
     glog.is(DEBUG2) && glog << "Computed CRC: " << std::hex << calculated << std::dec << std::endl;
 }
 
-void goby::moos::WavegliderSV2FrontSeat::handle_enumeration_request(
-    const goby::moos::protobuf::SV2RequestEnumerate& request)
+void goby::middleware::frontseat::WavegliderSV2::handle_enumeration_request(
+    const gpb::SV2RequestEnumerate& request)
 {
-    goby::moos::protobuf::SV2ReplyEnumerate reply;
+    gpb::SV2ReplyEnumerate reply;
 
     dccl::uint32 board_addr =
         waveglider_sv2_config_.board_id() << dccl::BITS_IN_BYTE | waveglider_sv2_config_.task_id();
 
     reply.mutable_header()->set_start_of_frame(0x7e);
-    reply.mutable_header()->set_dest(goby::moos::protobuf::SV2Header::BOARD_ID_CC
-                                         << dccl::BITS_IN_BYTE |
-                                     goby::moos::protobuf::SV2Header::CCTASK_ID_MAIN);
+    reply.mutable_header()->set_dest(gpb::SV2Header::BOARD_ID_CC << dccl::BITS_IN_BYTE |
+                                     gpb::SV2Header::CCTASK_ID_MAIN);
     reply.mutable_header()->set_src(board_addr);
     reply.mutable_header()->set_transaction_id(request.header().transaction_id());
-    reply.mutable_header()->set_message_type(goby::moos::protobuf::MESSAGE_TYPE_ACK);
+    reply.mutable_header()->set_message_type(gpb::MESSAGE_TYPE_ACK);
 
     reply.set_original_msg_type(request.header().message_type());
     reply.set_number_of_devices_responding(1);
@@ -324,21 +325,20 @@ void goby::moos::WavegliderSV2FrontSeat::handle_enumeration_request(
     encode_and_write(reply);
 }
 
-void goby::moos::WavegliderSV2FrontSeat::handle_request_status(
-    const goby::moos::protobuf::SV2RequestStatus& request)
+void goby::middleware::frontseat::WavegliderSV2::handle_request_status(
+    const gpb::SV2RequestStatus& request)
 {
-    goby::moos::protobuf::SV2ReplyStatus reply;
+    gpb::SV2ReplyStatus reply;
 
     dccl::uint32 board_addr =
         waveglider_sv2_config_.board_id() << dccl::BITS_IN_BYTE | waveglider_sv2_config_.task_id();
 
     reply.mutable_header()->set_start_of_frame(0x7e);
-    reply.mutable_header()->set_dest(goby::moos::protobuf::SV2Header::BOARD_ID_CC
-                                         << dccl::BITS_IN_BYTE |
-                                     goby::moos::protobuf::SV2Header::CCTASK_ID_MAIN);
+    reply.mutable_header()->set_dest(gpb::SV2Header::BOARD_ID_CC << dccl::BITS_IN_BYTE |
+                                     gpb::SV2Header::CCTASK_ID_MAIN);
     reply.mutable_header()->set_src(board_addr);
     reply.mutable_header()->set_transaction_id(request.header().transaction_id());
-    reply.mutable_header()->set_message_type(goby::moos::protobuf::MESSAGE_TYPE_ACK);
+    reply.mutable_header()->set_message_type(gpb::MESSAGE_TYPE_ACK);
 
     reply.set_original_msg_type(request.header().message_type());
     reply.set_number_of_devices_responding(1);
@@ -369,13 +369,12 @@ void goby::moos::WavegliderSV2FrontSeat::handle_request_status(
     encode_and_write(reply);
 }
 
-void goby::moos::WavegliderSV2FrontSeat::handle_request_queued_message(
-    const goby::moos::protobuf::SV2RequestQueuedMessage& request)
+void goby::middleware::frontseat::WavegliderSV2::handle_request_queued_message(
+    const gpb::SV2RequestQueuedMessage& request)
 {
     if (queued_messages_.size())
     {
-        std::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> reply =
-            queued_messages_.front();
+        std::shared_ptr<gpb::SV2CommandFollowFixedHeading> reply = queued_messages_.front();
         reply->mutable_header()->set_transaction_id(request.header().transaction_id());
         glog.is(DEBUG1) && glog << "Sent queued Message reply." << std::endl;
         glog.is(DEBUG2) && glog << reply->DebugString() << std::endl;
@@ -388,7 +387,8 @@ void goby::moos::WavegliderSV2FrontSeat::handle_request_queued_message(
     }
 }
 
-void goby::moos::WavegliderSV2FrontSeat::encode_and_write(const google::protobuf::Message& message)
+void goby::middleware::frontseat::WavegliderSV2::encode_and_write(
+    const google::protobuf::Message& message)
 {
     try
     {

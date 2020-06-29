@@ -38,26 +38,28 @@
 
 namespace goby
 {
-namespace moos
+namespace middleware
 {
-class WavegliderSV2FrontSeat : public FrontSeatInterfaceBase
+namespace frontseat
+{
+class WavegliderSV2 : public moos::FrontSeatInterfaceBase
 {
   public:
-    WavegliderSV2FrontSeat(const apps::moos::protobuf::iFrontSeatConfig& cfg);
+    WavegliderSV2(const apps::moos::protobuf::iFrontSeatConfig& cfg);
 
   private: // virtual methods from FrontSeatInterfaceBase
     void loop();
 
-    void send_command_to_frontseat(const goby::moos::protobuf::CommandRequest& command);
-    void send_data_to_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data);
-    void send_raw_to_frontseat(const goby::moos::protobuf::FrontSeatRaw& data);
-    goby::moos::protobuf::FrontSeatState frontseat_state() const;
+    void send_command_to_frontseat(const goby::middleware::protobuf::CommandRequest& command);
+    void send_data_to_frontseat(const goby::middleware::protobuf::FrontSeatInterfaceData& data);
+    void send_raw_to_frontseat(const goby::middleware::protobuf::FrontSeatRaw& data);
+    goby::middleware::protobuf::FrontSeatState frontseat_state() const;
     bool frontseat_providing_data() const;
     void handle_sv2_message(const std::string& message);
-    void handle_enumeration_request(const goby::moos::protobuf::SV2RequestEnumerate& msg);
-    void handle_request_status(const goby::moos::protobuf::SV2RequestStatus& request);
-    void
-    handle_request_queued_message(const goby::moos::protobuf::SV2RequestQueuedMessage& request);
+    void handle_enumeration_request(const goby::middleware::protobuf::SV2RequestEnumerate& msg);
+    void handle_request_status(const goby::middleware::protobuf::SV2RequestStatus& request);
+    void handle_request_queued_message(
+        const goby::middleware::protobuf::SV2RequestQueuedMessage& request);
 
     void check_crc(const std::string& message, uint16_t expected);
     void add_crc(std::string* message);
@@ -71,17 +73,19 @@ class WavegliderSV2FrontSeat : public FrontSeatInterfaceBase
 
     bool frontseat_providing_data_;
     goby::time::SystemClock::time_point last_frontseat_data_time_;
-    goby::moos::protobuf::FrontSeatState frontseat_state_;
+    goby::middleware::protobuf::FrontSeatState frontseat_state_;
 
     boost::asio::io_service io_;
     std::shared_ptr<goby::moos::SV2SerialConnection> serial_;
 
-    boost::circular_buffer<std::shared_ptr<goby::moos::protobuf::SV2CommandFollowFixedHeading> >
+    boost::circular_buffer<
+        std::shared_ptr<goby::middleware::protobuf::SV2CommandFollowFixedHeading>>
         queued_messages_;
 
     dccl::Codec dccl_;
 };
-} // namespace moos
+} // namespace frontseat
+} // namespace middleware
 } // namespace goby
 
 #endif

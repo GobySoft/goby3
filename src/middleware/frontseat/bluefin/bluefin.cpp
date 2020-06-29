@@ -35,7 +35,7 @@
 
 #include "bluefin.h"
 
-namespace gpb = goby::moos::protobuf;
+namespace gpb = goby::middleware::protobuf;
 namespace gtime = goby::time;
 
 using goby::glog;
@@ -50,11 +50,11 @@ extern "C"
     goby::moos::FrontSeatInterfaceBase*
     frontseat_driver_load(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
     {
-        return new goby::moos::BluefinFrontSeat(*cfg);
+        return new goby::middleware::frontseat::Bluefin(*cfg);
     }
 }
 
-goby::moos::BluefinFrontSeat::BluefinFrontSeat(
+goby::middleware::frontseat::Bluefin::Bluefin(
     const goby::apps::moos::protobuf::iFrontSeatConfig& cfg)
     : FrontSeatInterfaceBase(cfg),
       bf_config_(cfg.GetExtension(apps::moos::protobuf::bluefin_config)),
@@ -89,7 +89,7 @@ goby::moos::BluefinFrontSeat::BluefinFrontSeat(
     tcp_.start();
 }
 
-void goby::moos::BluefinFrontSeat::loop()
+void goby::middleware::frontseat::Bluefin::loop()
 {
     auto now = gtime::SystemClock::now();
 
@@ -117,12 +117,12 @@ void goby::moos::BluefinFrontSeat::loop()
         frontseat_providing_data_ = false;
 }
 
-void goby::moos::BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& command)
+void goby::middleware::frontseat::Bluefin::send_command_to_frontseat(
+    const gpb::CommandRequest& command)
 {
     if (command.has_cancel_request_id())
     {
-        for (std::map<goby::moos::protobuf::BluefinExtraCommands::BluefinCommand,
-                      goby::moos::protobuf::CommandRequest>::iterator
+        for (std::map<gpb::BluefinExtraCommands::BluefinCommand, gpb::CommandRequest>::iterator
                  it = outstanding_requests_.begin(),
                  end = outstanding_requests_.end();
              it != end; ++it)
@@ -271,7 +271,7 @@ void goby::moos::BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandR
             type = gpb::BluefinExtraCommands::DESIRED_COURSE;
             NMEASentence nmea("$BPRMB", NMEASentence::IGNORE);
             nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
-            const goby::moos::protobuf::DesiredCourse& desired_course = command.desired_course();
+            const gpb::DesiredCourse& desired_course = command.desired_course();
 
             // for zero speed, send zero RPM, pitch, rudder
             if (desired_course.speed() < 0.01)
@@ -321,7 +321,8 @@ void goby::moos::BluefinFrontSeat::send_command_to_frontseat(const gpb::CommandR
     }
 }
 
-void goby::moos::BluefinFrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData& data)
+void goby::middleware::frontseat::Bluefin::send_data_to_frontseat(
+    const gpb::FrontSeatInterfaceData& data)
 {
     //    glog.is(DEBUG1) && glog << "Data to FS: " << data.DebugString() << std::endl;
 
@@ -389,7 +390,7 @@ void goby::moos::BluefinFrontSeat::send_data_to_frontseat(const gpb::FrontSeatIn
     }
 }
 
-void goby::moos::BluefinFrontSeat::send_raw_to_frontseat(const gpb::FrontSeatRaw& data)
+void goby::middleware::frontseat::Bluefin::send_raw_to_frontseat(const gpb::FrontSeatRaw& data)
 {
     try
     {
@@ -403,7 +404,7 @@ void goby::moos::BluefinFrontSeat::send_raw_to_frontseat(const gpb::FrontSeatRaw
     }
 }
 
-void goby::moos::BluefinFrontSeat::check_send_heartbeat()
+void goby::middleware::frontseat::Bluefin::check_send_heartbeat()
 {
     auto now = gtime::SystemClock::now();
     if (now > last_heartbeat_time_ + gtime::convert_duration<gtime::SystemClock::duration>(
@@ -455,7 +456,7 @@ void goby::moos::BluefinFrontSeat::check_send_heartbeat()
     }
 }
 
-void goby::moos::BluefinFrontSeat::try_receive()
+void goby::middleware::frontseat::Bluefin::try_receive()
 {
     std::string in;
     while (tcp_.readline(&in))
@@ -475,7 +476,7 @@ void goby::moos::BluefinFrontSeat::try_receive()
     }
 }
 
-void goby::moos::BluefinFrontSeat::initialize_huxley()
+void goby::middleware::frontseat::Bluefin::initialize_huxley()
 {
     nmea_demerits_ = 0;
     waiting_for_huxley_ = false;
@@ -513,13 +514,13 @@ void goby::moos::BluefinFrontSeat::initialize_huxley()
     }
 }
 
-void goby::moos::BluefinFrontSeat::append_to_write_queue(const NMEASentence& nmea)
+void goby::middleware::frontseat::Bluefin::append_to_write_queue(const NMEASentence& nmea)
 {
     out_.push_back(nmea);
     try_send(); // try to push it now without waiting for the next call to do_work();
 }
 
-void goby::moos::BluefinFrontSeat::try_send()
+void goby::middleware::frontseat::Bluefin::try_send()
 {
     if (out_.empty())
         return;
@@ -571,7 +572,7 @@ void goby::moos::BluefinFrontSeat::try_send()
     }
 }
 
-void goby::moos::BluefinFrontSeat::remove_from_write_queue()
+void goby::middleware::frontseat::Bluefin::remove_from_write_queue()
 {
     waiting_for_huxley_ = false;
 
@@ -586,7 +587,7 @@ void goby::moos::BluefinFrontSeat::remove_from_write_queue()
     nmea_present_fail_count_ = 0;
 }
 
-void goby::moos::BluefinFrontSeat::write(const NMEASentence& nmea)
+void goby::middleware::frontseat::Bluefin::write(const NMEASentence& nmea)
 {
     gpb::FrontSeatRaw raw_msg;
     raw_msg.set_raw(nmea.message());
@@ -607,7 +608,7 @@ void goby::moos::BluefinFrontSeat::write(const NMEASentence& nmea)
     }
 }
 
-void goby::moos::BluefinFrontSeat::process_receive(const NMEASentence& nmea)
+void goby::middleware::frontseat::Bluefin::process_receive(const NMEASentence& nmea)
 {
     gpb::FrontSeatRaw raw_msg;
     raw_msg.set_raw(nmea.message());
@@ -651,7 +652,7 @@ void goby::moos::BluefinFrontSeat::process_receive(const NMEASentence& nmea)
 }
 
 std::string
-goby::moos::BluefinFrontSeat::unix_time2nmea_time(goby::time::SystemClock::time_point time)
+goby::middleware::frontseat::Bluefin::unix_time2nmea_time(goby::time::SystemClock::time_point time)
 {
     auto ptime = gtime::convert<boost::posix_time::ptime>(time);
 
@@ -666,7 +667,7 @@ goby::moos::BluefinFrontSeat::unix_time2nmea_time(goby::time::SystemClock::time_
     return f.str();
 }
 
-void goby::moos::BluefinFrontSeat::load_nmea_mappings()
+void goby::middleware::frontseat::Bluefin::load_nmea_mappings()
 {
     {
         std::vector<typename decltype(sentence_id_map_)::value_type> v = {

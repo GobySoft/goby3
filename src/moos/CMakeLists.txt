@@ -1,12 +1,8 @@
 set(PROTOS 
   protobuf/bluefin_driver.proto
-  protobuf/ctd_sample.proto
-  protobuf/desired_course.proto
   protobuf/frontseat_config.proto
-  protobuf/frontseat.proto
   protobuf/goby_moos_app.proto
   protobuf/modem_id_lookup.proto
-  protobuf/node_status.proto
   protobuf/pAcommsHandler_config.proto
   protobuf/translator.proto
   protobuf/ufield_sim_driver.proto

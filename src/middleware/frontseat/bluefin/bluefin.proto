@@ -1,10 +1,10 @@
 syntax = "proto2";
 import "dccl/option_extensions.proto";
 
-import "goby/moos/protobuf/frontseat.proto";
+import "goby/middleware/protobuf/frontseat.proto";
 import "goby/acomms/protobuf/modem_message.proto";
 
-package goby.moos.protobuf;
+package goby.middleware.protobuf;
 
 message BuoyancyStatus
 {

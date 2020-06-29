@@ -12,6 +12,8 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/can_config.proto
   middleware/protobuf/udp_config.proto
   middleware/protobuf/coroner.proto
+  middleware/protobuf/frontseat.proto
+  middleware/protobuf/frontseat_data.proto
   )
 
 set(MIDDLEWARE_SRC
@@ -38,3 +40,4 @@ if(enable_hdf5)
     )
 endif()
 
+add_subdirectory(middleware/frontseat)

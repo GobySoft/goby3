@@ -28,7 +28,7 @@
 #include "iFrontSeat.h"
 #include "legacy_translator.h"
 
-namespace gpb = goby::moos::protobuf;
+namespace gpb = goby::middleware::protobuf;
 using goby::glog;
 using namespace goby::util::logger;
 
@@ -48,8 +48,8 @@ goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSea
         ctd_sample_.set_temperature(std::numeric_limits<double>::quiet_NaN());
         ctd_sample_.set_pressure(std::numeric_limits<double>::quiet_NaN());
         ctd_sample_.set_salinity(std::numeric_limits<double>::quiet_NaN());
-        ctd_sample_.set_lat(std::numeric_limits<double>::quiet_NaN());
-        ctd_sample_.set_lon(std::numeric_limits<double>::quiet_NaN());
+        ctd_sample_.mutable_global_fix()->set_lat(std::numeric_limits<double>::quiet_NaN());
+        ctd_sample_.mutable_global_fix()->set_lon(std::numeric_limits<double>::quiet_NaN());
         // we'll let FrontSeatInterfaceBase::compute_missing() give us density, sound speed & depth
     }
 
@@ -100,14 +100,14 @@ goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSea
     }
 }
 void goby::apps::moos::FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(
-    const goby::moos::protobuf::FrontSeatInterfaceData& data)
+    const gpb::FrontSeatInterfaceData& data)
 {
     if (data.has_node_status() && ifs_->cfg_.legacy_cfg().publish_nav())
     {
-        const goby::moos::protobuf::NodeStatus& status = data.node_status();
+        const gpb::NodeStatus& status = data.node_status();
 
-        ctd_sample_.set_lat(status.global_fix().lat());
-        ctd_sample_.set_lon(status.global_fix().lon());
+        ctd_sample_.mutable_global_fix()->set_lat(status.global_fix().lat());
+        ctd_sample_.mutable_global_fix()->set_lon(status.global_fix().lon());
 
         goby::moos::convert_and_publish_node_status(status, ifs_->m_Comms);
     }
@@ -244,10 +244,9 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_modem_raw(const CM
                      data);
 }
 
-void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(
-    goby::moos::protobuf::InterfaceState state)
+void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(gpb::InterfaceState state)
 {
-    goby::moos::protobuf::FrontSeatInterfaceStatus status = ifs_->frontseat_->status();
+    gpb::FrontSeatInterfaceStatus status = ifs_->frontseat_->status();
     if (status.frontseat_state() == gpb::FRONTSEAT_ACCEPTING_COMMANDS)
         ifs_->publish("FRONTSEAT_READY", 1);
     else

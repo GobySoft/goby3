@@ -31,7 +31,7 @@
 
 #include "iver_driver.h"
 
-namespace gpb = goby::moos::protobuf;
+namespace gpb = goby::middleware::protobuf;
 namespace gtime = goby::time;
 
 using goby::glog;
@@ -44,11 +44,11 @@ extern "C"
     goby::moos::FrontSeatInterfaceBase*
     frontseat_driver_load(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
     {
-        return new goby::moos::IverFrontSeat(*cfg);
+        return new goby::middleware::frontseat::Iver(*cfg);
     }
 }
 
-goby::moos::IverFrontSeat::IverFrontSeat(const apps::moos::protobuf::iFrontSeatConfig& cfg)
+goby::middleware::frontseat::Iver::Iver(const apps::moos::protobuf::iFrontSeatConfig& cfg)
     : FrontSeatInterfaceBase(cfg),
       iver_config_(cfg.GetExtension(apps::moos::protobuf::iver_config)),
       serial_(iver_config_.serial_port(), iver_config_.serial_baud(), "\r\n"),
@@ -69,7 +69,7 @@ goby::moos::IverFrontSeat::IverFrontSeat(const apps::moos::protobuf::iFrontSeatC
     }
 }
 
-void goby::moos::IverFrontSeat::loop()
+void goby::middleware::frontseat::Iver::loop()
 {
     try_receive();
 
@@ -83,7 +83,7 @@ void goby::moos::IverFrontSeat::loop()
     while (ntp_serial_ && ntp_serial_->readline(&in))
     { glog.is(DEBUG2) && glog << "NTP says: " << in << std::endl; } }
 
-void goby::moos::IverFrontSeat::try_receive()
+void goby::middleware::frontseat::Iver::try_receive()
 {
     std::string in;
 
@@ -102,7 +102,7 @@ void goby::moos::IverFrontSeat::try_receive()
     }
 }
 
-void goby::moos::IverFrontSeat::process_receive(const std::string& s)
+void goby::middleware::frontseat::Iver::process_receive(const std::string& s)
 {
     gpb::FrontSeatRaw raw_msg;
     raw_msg.set_raw(s);
@@ -262,7 +262,8 @@ void goby::moos::IverFrontSeat::process_receive(const std::string& s)
     }
 }
 
-void goby::moos::IverFrontSeat::send_command_to_frontseat(const gpb::CommandRequest& command)
+void goby::middleware::frontseat::Iver::send_command_to_frontseat(
+    const gpb::CommandRequest& command)
 {
     if (command.HasExtension(gpb::iver_command))
     {
@@ -329,27 +330,29 @@ void goby::moos::IverFrontSeat::send_command_to_frontseat(const gpb::CommandRequ
     }
 }
 
-void goby::moos::IverFrontSeat::send_data_to_frontseat(const gpb::FrontSeatInterfaceData& data)
+void goby::middleware::frontseat::Iver::send_data_to_frontseat(
+    const gpb::FrontSeatInterfaceData& data)
 {
     // no data yet to send
 }
 
-void goby::moos::IverFrontSeat::send_raw_to_frontseat(const gpb::FrontSeatRaw& data)
+void goby::middleware::frontseat::Iver::send_raw_to_frontseat(const gpb::FrontSeatRaw& data)
 {
     write(data.raw());
 }
 
-bool goby::moos::IverFrontSeat::frontseat_providing_data() const
+bool goby::middleware::frontseat::Iver::frontseat_providing_data() const
 {
     return frontseat_providing_data_;
 }
 
-goby::moos::protobuf::FrontSeatState goby::moos::IverFrontSeat::frontseat_state() const
+goby::middleware::protobuf::FrontSeatState
+goby::middleware::frontseat::Iver::frontseat_state() const
 {
     return frontseat_state_;
 }
 
-void goby::moos::IverFrontSeat::write(const std::string& s)
+void goby::middleware::frontseat::Iver::write(const std::string& s)
 {
     gpb::FrontSeatRaw raw_msg;
     raw_msg.set_raw(s);
@@ -359,7 +362,7 @@ void goby::moos::IverFrontSeat::write(const std::string& s)
 }
 
 boost::units::quantity<boost::units::si::time>
-goby::moos::IverFrontSeat::nmea_time_to_seconds(double nmea_time, int nmea_date)
+goby::middleware::frontseat::Iver::nmea_time_to_seconds(double nmea_time, int nmea_date)
 {
     namespace si = boost::units::si;
 
@@ -421,7 +424,7 @@ goby::moos::IverFrontSeat::nmea_time_to_seconds(double nmea_time, int nmea_date)
 }
 
 boost::units::quantity<boost::units::degree::plane_angle>
-goby::moos::IverFrontSeat::nmea_geo_to_degrees(double nmea_geo, char hemi)
+goby::middleware::frontseat::Iver::nmea_geo_to_degrees(double nmea_geo, char hemi)
 {
     // DDMM.MMMM
     double deg_int = std::floor(nmea_geo / 1e2);

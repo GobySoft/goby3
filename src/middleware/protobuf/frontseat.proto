@@ -1,9 +1,7 @@
 syntax = "proto2";
-import "goby/moos/protobuf/desired_course.proto";
-import "goby/moos/protobuf/ctd_sample.proto";
-import "goby/moos/protobuf/node_status.proto";
+import "goby/middleware/protobuf/frontseat_data.proto";
 
-package goby.moos.protobuf;
+package goby.middleware.protobuf;
 
 enum InterfaceState
 {
@@ -55,7 +53,7 @@ message FrontSeatInterfaceStatus
 
 message CommandRequest
 {
-    optional DesiredCourse desired_course = 1;
+    optional goby.middleware.protobuf.DesiredCourse desired_course = 1;
     optional bool response_requested = 10 [default = false];
     optional int32 request_id = 11;
 
@@ -80,7 +78,7 @@ message CommandResponse
 
 message FrontSeatInterfaceData
 {
-    optional NodeStatus node_status = 1;
+    optional goby.middleware.protobuf.NodeStatus node_status = 1;
     optional CTDSample ctd_sample = 2;
     optional bytes dccl_message = 3;
 

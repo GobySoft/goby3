@@ -1,7 +1,7 @@
 syntax = "proto2";
 import "dccl/option_extensions.proto";
 
-package goby.moos.protobuf;
+package goby.middleware.protobuf;
 
 enum MessageTypes
 {

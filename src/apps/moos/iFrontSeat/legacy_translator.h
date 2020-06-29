@@ -60,16 +60,16 @@ class FrontSeatLegacyTranslator
     void handle_mail_frontseat_silent(const CMOOSMsg& msg);
     void handle_mail_backseat_abort(const CMOOSMsg& msg);
 
-    void
-    handle_driver_data_from_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data);
-    void set_fs_bs_ready_flags(goby::moos::protobuf::InterfaceState state);
+    void handle_driver_data_from_frontseat(
+        const goby::middleware::protobuf::FrontSeatInterfaceData& data);
+    void set_fs_bs_ready_flags(goby::middleware::protobuf::InterfaceState state);
 
-    void publish_command(const goby::moos::protobuf::CommandRequest& command);
+    void publish_command(const goby::middleware::protobuf::CommandRequest& command);
 
   private:
     iFrontSeat* ifs_;
-    goby::moos::protobuf::CTDSample ctd_sample_;
-    goby::moos::protobuf::DesiredCourse desired_course_;
+    goby::middleware::protobuf::CTDSample ctd_sample_;
+    goby::middleware::protobuf::DesiredCourse desired_course_;
 
     // added to each request we send so as not to conflict with other requestors
     enum
