@@ -91,8 +91,8 @@ template <> struct SerializerParserHelper<mavlink::mavlink_message_t, Marshallin
 
     template <typename CharIterator>
     static std::shared_ptr<mavlink::mavlink_message_t>
-    parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-                  const std::string& type)
+    parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
+          const std::string& type)
     {
         CharIterator c = bytes_begin;
         auto msg = std::make_shared<mavlink::mavlink_message_t>();
@@ -187,13 +187,12 @@ struct SerializerParserHelper<std::tuple<Integer, Integer, DataType>, Marshallin
 
     template <typename CharIterator>
     static std::shared_ptr<std::tuple<Integer, Integer, DataType>>
-    parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end)
+    parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
+          const std::string& type = type_name())
     {
         auto msg =
-            SerializerParserHelper<mavlink::mavlink_message_t,
-                                   MarshallingScheme::MAVLINK>::parse_dynamic(bytes_begin,
-                                                                              bytes_end, actual_end,
-                                                                              type_name());
+            SerializerParserHelper<mavlink::mavlink_message_t, MarshallingScheme::MAVLINK>::parse(
+                bytes_begin, bytes_end, actual_end, type_name());
         auto packet_with_metadata = std::make_shared<std::tuple<Integer, Integer, DataType>>();
         DataType* packet = &std::get<MAVLinkTupleIndices::PACKET_INDEX>(*packet_with_metadata);
         mavlink::MsgMap map(msg.get());
@@ -222,7 +221,8 @@ template <typename DataType> struct SerializerParserHelper<DataType, Marshalling
 
     template <typename CharIterator>
     static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
-                                           CharIterator& actual_end)
+                                           CharIterator& actual_end,
+                                           const std::string& type = type_name())
     {
         auto packet_with_metadata =
             SerializerParserHelper<std::tuple<int, int, DataType>,

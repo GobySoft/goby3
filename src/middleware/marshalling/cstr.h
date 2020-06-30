@@ -46,7 +46,8 @@ template <> struct SerializerParserHelper<std::string, MarshallingScheme::CSTR>
 
     template <typename CharIterator>
     static std::shared_ptr<std::string> parse(CharIterator bytes_begin, CharIterator bytes_end,
-                                              CharIterator& actual_end)
+                                              CharIterator& actual_end,
+                                              const std::string& type = type_name())
     {
         actual_end = bytes_end;
         if (bytes_begin != bytes_end)

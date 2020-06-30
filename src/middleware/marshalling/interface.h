@@ -121,30 +121,17 @@ template <typename DataType, int scheme, class Enable = void> struct SerializerP
     /// \param bytes_begin Iterator to the beginning of a container of bytes
     /// \param bytes_end Iterator to the end of a container of bytes
     /// \param actual_end Will be set to the actual end of parsing by this specialization (useful for byte streams that are concatenated, e.g. DCCL)
+    /// \param type Type name as string. If type_name() can be defined without parameters, the default value should be set, otherwise omit it (for dynamic types like google::protobuf::Message)
     /// \return shared pointer to the parsed message
     template <typename CharIterator>
     static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
-                                           CharIterator& actual_end)
+                                           CharIterator& actual_end,
+                                           const std::string& type = type_name())
     {
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
         return std::shared_ptr<DataType>();
     }
 
-    /// \brief alternative to the parse method for SerializerParserHelper specializations that can handle multiple types using runtime introspection
-    ///
-    /// \param bytes_begin Iterator to the beginning of a container of bytes
-    /// \param bytes_end Iterator to the end of a container of bytes
-    /// \param actual_end Will be set to the actual end of parsing by this specialization (useful for byte streams that are concatenated, e.g. DCCL)
-    /// \param type the type to parse as a marshalling scheme specific string
-    /// \return shared pointer to the parsed message
-    template <typename CharIterator>
-    static std::shared_ptr<DataType> parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end,
-                                                   CharIterator& actual_end,
-                                                   const std::string& type)
-    {
-        static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
-        return std::shared_ptr<DataType>();
-    }
 };
 
 //

@@ -41,8 +41,10 @@ message GobyFieldOptions
         optional ConfigAction action = 2 [default = ALWAYS];
     }
     optional ConfigurationOptions cfg = 200;
+
 }
 
 message GobyMessageOptions
 {
+    optional string convertible_from = 100; // tags this message as convertible from another existing message type based on field names
 }

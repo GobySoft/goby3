@@ -36,6 +36,7 @@
 #include "dccl/dynamic_protobuf_manager.h"
 #include "dccl/protobuf/option_extensions.pb.h"
 #include "goby/acomms/protobuf/network_ack.pb.h"
+#include "goby/middleware/common.h"
 #include "goby/util/binary.h"
 #include "goby/util/sci.h"
 
@@ -55,8 +56,42 @@ boost::posix_time::ptime goby::apps::zeromq::LiaisonCommander::last_db_update_ti
 const std::string MESSAGE_INCLUDE_TEXT = "include";
 const std::string MESSAGE_REMOVE_TEXT = "remove";
 
+const std::string EXTERNAL_DATA_LOAD_TEXT = "load";
+
 const std::string STRIPE_ODD_CLASS = "odd";
 const std::string STRIPE_EVEN_CLASS = "even";
+
+goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer
+to_group_layer(std::string group, std::string layer)
+{
+    goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer grouplayer;
+    grouplayer.set_group(group);
+    goby::middleware::protobuf::Layer layer_enum;
+    if (goby::middleware::protobuf::Layer_Parse(layer, &layer_enum))
+        grouplayer.set_layer(layer_enum);
+    return grouplayer;
+}
+
+std::string
+to_string(const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer&
+              grouplayer,
+          std::uint8_t groupnum = goby::middleware::Group::invalid_numeric_group)
+{
+    std::string groupnum_str;
+
+    if (grouplayer.layer() >= goby::middleware::protobuf::LAYER_INTERVEHICLE)
+    {
+        if (groupnum == goby::middleware::Group::invalid_numeric_group &&
+            grouplayer.has_group_numeric_field_name())
+            groupnum_str =
+                std::string("/{value of \"" + grouplayer.group_numeric_field_name() + "\"}");
+        else
+            groupnum_str = std::string("/") + std::to_string(groupnum);
+    }
+
+    return grouplayer.group() + groupnum_str + " [" +
+           goby::middleware::to_string(grouplayer.layer()) + "]";
+}
 
 goby::apps::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonConfig& cfg)
     : LiaisonContainerWithComms<LiaisonCommander, CommanderCommsThread>(cfg),
@@ -65,11 +100,6 @@ goby::apps::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonCo
       controls_div_(new ControlsContainer(pb_commander_config_, commands_div_, this))
 {
     addWidget(commands_div_);
-
-    //    if(pb_commander_config_.has_time_source_var())
-    //    subscribe(pb_commander_config_.time_source_var(), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
-
-    // subscribe(pb_commander_config_.network_ack_var(), LIAISON_INTERNAL_SUBSCRIBE_SOCKET);
 
     commander_timer_.setInterval(1 / cfg.update_freq() * 1.0e3);
     commander_timer_.timeout().connect(this, &LiaisonCommander::loop);
@@ -85,22 +115,7 @@ void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
     const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::NotificationSubscription::Color&
         background_color)
 {
-    WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
-
     goby::glog.is_debug1() && goby::glog << "wt group: " << group << std::endl;
-
-    new WText("Message: " + goby::util::as<std::string>(
-                                controls_div_->incoming_message_stack_->children().size()),
-              new_div);
-
-    WGroupBox* box =
-        new WGroupBox(type + "/" + group + " @ " +
-                          boost::posix_time::to_simple_string(
-                              goby::time::SystemClock::now<boost::posix_time::ptime>()),
-                      new_div);
-
-    new_div->decorationStyle().setBackgroundColor(Wt::WColor(
-        background_color.r(), background_color.g(), background_color.b(), background_color.a()));
 
     try
     {
@@ -111,19 +126,11 @@ void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
         glog.is(DEBUG1) && glog << "Received notify msg: " << pb_msg->ShortDebugString()
                                 << std::endl;
 
-        new WText("<pre>" + pb_msg->DebugString() + "</pre>", box);
+        std::string title = type + "/" + group + " @ " +
+                            boost::posix_time::to_simple_string(
+                                goby::time::SystemClock::now<boost::posix_time::ptime>());
 
-        WPushButton* minus = new WPushButton("-", new_div);
-        WPushButton* plus = new WPushButton("+", new_div);
-
-        WPushButton* remove = new WPushButton("x", new_div);
-        remove->setFloatSide(Wt::Right);
-
-        plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
-        minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);
-        remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
-        controls_div_->incoming_message_stack_->setCurrentIndex(
-            controls_div_->incoming_message_stack_->children().size() - 1);
+        display_notify(*pb_msg, title, background_color);
     }
     catch (const std::exception& e)
     {
@@ -131,47 +138,37 @@ void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
     }
 }
 
-// void goby::apps::zeromq::LiaisonCommander::moos_inbox(CMOOSMsg& msg)
-// {
-//     glog.is(DEBUG1) && glog << "LiaisonCommander: Got message: " << msg <<  std::endl;
+void goby::apps::zeromq::LiaisonCommander::display_notify(
+    const google::protobuf::Message& pb_msg, std::string title,
+    const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::NotificationSubscription::Color&
+        background_color)
+{
+    WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
 
-//     if(msg.GetKey() == pb_commander_config_.network_ack_var())
-//     {
-//         std::string value = msg.GetAsString();
-//         goby::acomms::protobuf::NetworkAck ack;
-//         parse_for_moos(value, &ack);
+    new WText("Message: " + goby::util::as<std::string>(
+                                controls_div_->incoming_message_stack_->children().size()),
+              new_div);
 
-//         Dbo::ptr<CommandEntry> acked_command(static_cast<CommandEntry*>(0));
-//         {
-//             std::lock_guard<std::mutex> slock(dbo_mutex_);
-//             Dbo::Transaction transaction(controls_div_->session_);
-//             acked_command = controls_div_->session_.find<CommandEntry>().where("utime = ?").bind((long long)ack.message_time());
-//             if(acked_command)
-//             {
-//                glog.is(DEBUG1) && glog << "ACKED command was of type: " << acked_command->protobuf_name << std::endl;
-//                protobuf::NetworkAckSet ack_set;
-//                if(acked_command->acks.size())
-//                    ack_set.ParseFromArray(&acked_command->acks[0], acked_command->acks.size());
+    WGroupBox* box = new WGroupBox(title, new_div);
 
-//                if(ack.ack_type() == goby::acomms::protobuf::NetworkAck::ACK)
-//                    acked_command.modify()->last_ack = ack.ack_src();
+    new_div->decorationStyle().setBackgroundColor(Wt::WColor(
+        background_color.r(), background_color.g(), background_color.b(), background_color.a()));
 
-//                bool seen_ack = false;
-//                for(int i = 0, n = ack_set.ack_size(); i < n; ++i)
-//                {
-//                    if(ack_set.ack(i).ack_src() == ack.ack_src())
-//                        seen_ack = true;
-//                }
-//                if(!seen_ack)
-//                    ack_set.add_ack()->CopyFrom(ack);
+    new WText("<pre>" + pb_msg.DebugString() + "</pre>", box);
 
-//                acked_command.modify()->acks.resize(ack_set.ByteSize());
-//                ack_set.SerializeToArray(&acked_command.modify()->acks[0], acked_command->acks.size());
-//                transaction.commit();
-//                last_db_update_time_ = goby::time::SystemClock::now<boost::posix_time::ptime>();
-//             }
-//         }
-//     }
+    WPushButton* minus = new WPushButton("-", new_div);
+    WPushButton* plus = new WPushButton("+", new_div);
+    WPushButton* remove = new WPushButton("x", new_div);
+    WPushButton* remove_all = new WPushButton("X", new_div);
+    remove_all->setFloatSide(Wt::Right);
+
+    plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
+    minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);
+    remove->clicked().connect(controls_div_, &ControlsContainer::remove_incoming_message);
+    remove_all->clicked().connect(controls_div_, &ControlsContainer::clear_incoming_messages);
+    controls_div_->incoming_message_stack_->setCurrentIndex(
+        controls_div_->incoming_message_stack_->children().size() - 1);
+}
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::increment_incoming_messages(
     const WMouseEvent& event)
@@ -201,6 +198,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::remove_incoming_me
     incoming_message_stack_->removeWidget(remove);
 }
 
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::clear_incoming_messages(
+    const WMouseEvent& event)
+{
+    while (incoming_message_stack_->children().size() > 0) remove_incoming_message(event);
+}
+
 void goby::apps::zeromq::LiaisonCommander::loop()
 {
     ControlsContainer::CommandContainer* current_command =
@@ -224,7 +227,7 @@ void goby::apps::zeromq::LiaisonCommander::loop()
 
         std::lock_guard<std::mutex> slock(dbo_mutex_);
         Dbo::Transaction transaction(controls_div_->session_);
-        current_command->query_model_->reload();
+        current_command->sent_model_->reload();
         current_command->last_reload_time_ =
             goby::time::SystemClock::now<boost::posix_time::ptime>();
     }
@@ -265,6 +268,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
         std::lock_guard<std::mutex> slock(dbo_mutex_);
         session_.setConnectionPool(*connection_pool_);
         session_.mapClass<CommandEntry>("_liaison_commands");
+        session_.mapClass<ExternalData>("_external_data");
 
         try
         {
@@ -341,15 +345,13 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
             if (!commands_.count(protobuf_name))
             {
                 CommandContainer* new_command =
-                    new CommandContainer(pb_commander_config_, protobuf_name, &session_);
+                    new CommandContainer(pb_commander_config_, pb_commander_config.load_protobuf(i),
+                                         protobuf_name, &session_, commander_, send_button_);
 
                 //master_field_info_stack_);
                 commands_div_->addWidget(new_command);
                 // index of the newly added widget
                 commands_[protobuf_name] = commands_div_->count() - 1;
-
-                for (const auto& group : pb_commander_config.load_protobuf(i).group())
-                    new_command->group_selection_->addItem(group);
             }
         }
     }
@@ -368,6 +370,145 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
     else
     {
         switch_command(0);
+    }
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::load_groups(
+    const google::protobuf::Descriptor* desc)
+{
+    const auto& protobuf_name = desc->full_name();
+
+    for (const auto& grouplayer : load_config_.publish_to())
+    {
+        // validate grouplayer
+        bool grouplayer_valid = true;
+
+        if (grouplayer.has_group_numeric_field_name())
+        {
+            auto group_numeric_field = desc->FindFieldByName(grouplayer.group_numeric_field_name());
+
+            if (!group_numeric_field)
+            {
+                glog.is(WARN) && glog << "In message " << protobuf_name
+                                      << ": could not find field named "
+                                      << grouplayer.group_numeric_field_name()
+                                      << " to use for group numeric value" << std::endl;
+                grouplayer_valid = false;
+            }
+            else if (group_numeric_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_INT32 &&
+                     group_numeric_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_INT64 &&
+                     group_numeric_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_UINT32 &&
+                     group_numeric_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_UINT64 &&
+                     group_numeric_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_ENUM)
+            {
+                glog.is(WARN) && glog << "In message " << protobuf_name << ": field named "
+                                      << grouplayer.group_numeric_field_name()
+                                      << " must be (u)int(32|64) or enum type to use "
+                                         "for group numeric value"
+                                      << std::endl;
+                grouplayer_valid = false;
+            }
+        }
+
+        if (grouplayer_valid)
+        {
+            group_selection_->addItem(to_string(grouplayer));
+            publish_to_.push_back(grouplayer);
+        }
+    }
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::load_external_data(
+    const google::protobuf::Descriptor* desc)
+{
+    for (const auto& external_data : load_config_.external_data())
+    {
+        const google::protobuf::Descriptor* external_desc =
+            dccl::DynamicProtobufManager::find_descriptor(external_data.name());
+
+        if (!external_desc)
+        {
+            glog.is(WARN) &&
+                glog << "Could not find protobuf name " << external_data.name()
+                     << " to load for external_data in Protobuf Commander (configuration line "
+                        "`load_protobuf { external_data { name: } }`). Skipping..."
+                     << std::endl;
+
+            continue;
+        }
+
+        // avoid multiple subscribe
+        if (!external_types_.count(external_desc))
+        {
+            commander_->post_to_comms([=]() {
+                std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
+                std::string sanitized_type =
+                    std::regex_replace(std::string(external_data.name()), special_chars, R"(\$&)");
+
+                auto external_data_callback =
+                    [=](std::shared_ptr<const google::protobuf::Message> msg,
+                        const std::string& type) {
+                        commander_->post_to_wt([=]() {
+                            this->handle_external_data(type, external_data.group(), msg);
+                        });
+                    };
+
+                commander_->goby_thread()
+                    ->interprocess()
+                    .subscribe_type_regex<google::protobuf::Message>(
+                        external_data_callback,
+                        goby::middleware::DynamicGroup(external_data.group()),
+                        "^" + sanitized_type + "$");
+            });
+            external_types_.insert(external_desc);
+        }
+
+        for (const auto& translate : external_data.translate())
+        {
+            CommandContainer::ExternalDataMeta& meta =
+                externally_loadable_fields_["." + translate.to()][external_data.name()];
+            meta.pb = external_data;
+            meta.external_desc = external_desc;
+            std::vector<std::string> from_fields, to_fields;
+
+            // verify that translates are valid
+            boost::split(from_fields, translate.from(), boost::is_any_of("."));
+            boost::split(to_fields, translate.to(), boost::is_any_of("."));
+
+            auto check_fields = [](const std::vector<std::string>& fields,
+                                   const google::protobuf::Descriptor* root_desc) {
+                const google::protobuf::FieldDescriptor* field = 0;
+                const google::protobuf::Descriptor* desc = root_desc;
+
+                for (int i = 0, n = fields.size(); i < n; ++i)
+                {
+                    field = desc->FindFieldByName(fields[i]);
+                    if (!field)
+                        glog.is(DIE) && glog << "Invalid field " << fields[i]
+                                             << " for message: " << desc->full_name() << std::endl;
+
+                    // not last field
+                    if (i + 1 < n)
+                    {
+                        if (field->cpp_type() != google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE)
+                            glog.is(DIE) && glog << "Field " << fields[i]
+                                                 << " is not a message type but '.' syntax is used "
+                                                    "suggesting children"
+                                                 << std::endl;
+
+                        desc = field->message_type();
+                    }
+                }
+            };
+
+            check_fields(from_fields, external_desc);
+            check_fields(to_fields, desc);
+        }
     }
 }
 
@@ -415,18 +556,85 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 {
     glog.is(VERBOSE) && glog << "Message to be sent!" << std::endl;
 
-    WDialog dialog("Confirm sending of message: " + command_selection_->currentText());
-
     CommandContainer* current_command =
         dynamic_cast<CommandContainer*>(commands_div_->currentWidget());
+
+    auto grouplayer =
+        current_command->publish_to_.at(current_command->group_selection_->currentIndex());
+    std::uint8_t group_numeric = grouplayer.group_numeric();
+
+    // read the numeric group value out of the message if requested
+    if (grouplayer.has_group_numeric_field_name())
+    {
+        auto desc = current_command->message_->GetDescriptor();
+        auto group_numeric_field_desc =
+            desc->FindFieldByName(grouplayer.group_numeric_field_name());
+
+        auto refl = current_command->message_->GetReflection();
+        switch (group_numeric_field_desc->cpp_type())
+        {
+            default: break;
+            case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+            {
+                auto val = refl->GetInt32(*current_command->message_, group_numeric_field_desc);
+                if (val >= std::numeric_limits<std::uint8_t>::min() &&
+                    val <= std::numeric_limits<std::uint8_t>::max())
+                    group_numeric = val;
+                break;
+            }
+
+            case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+            {
+                auto val = refl->GetUInt32(*current_command->message_, group_numeric_field_desc);
+                if (val <= std::numeric_limits<std::uint8_t>::max())
+                    group_numeric = val;
+
+                break;
+            }
+
+            case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+            {
+                auto val = refl->GetInt64(*current_command->message_, group_numeric_field_desc);
+                if (val >= std::numeric_limits<std::uint8_t>::min() &&
+                    val <= std::numeric_limits<std::uint8_t>::max())
+                    group_numeric = val;
+
+                break;
+            }
+
+            case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+            {
+                auto val = refl->GetUInt64(*current_command->message_, group_numeric_field_desc);
+                if (val <= std::numeric_limits<std::uint8_t>::max())
+                    group_numeric = val;
+
+                break;
+            }
+            case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+            {
+                auto val =
+                    refl->GetEnum(*current_command->message_, group_numeric_field_desc)->number();
+                if (val >= std::numeric_limits<std::uint8_t>::min() &&
+                    val <= std::numeric_limits<std::uint8_t>::max())
+                    group_numeric = val;
+
+                break;
+            }
+        }
+    }
+
+    WDialog dialog("Confirm sending of message: " + command_selection_->currentText());
 
     WGroupBox* comment_box = new WGroupBox("Log comment", dialog.contents());
     WLineEdit* comment_line = new WLineEdit(comment_box);
     comment_line->setText(comment_line_->text());
 
+    WGroupBox* group_box = new WGroupBox("Group", dialog.contents());
+    WContainerWidget* group_div = new WContainerWidget(group_box);
+    new WText("Group: " + to_string(grouplayer, group_numeric), group_div);
+
     WGroupBox* message_box = new WGroupBox("Message to send", dialog.contents());
     WContainerWidget* message_div = new WContainerWidget(message_box);
-
     new WText("<pre>" + current_command->message_->DebugString() + "</pre>", message_div);
 
     message_div->setMaximumSize(pb_commander_config_.modal_dimensions().width(),
@@ -445,14 +653,38 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 
     if (dialog.exec() == WDialog::Accepted)
     {
-        commander_->post_to_comms([=]() {
-            commander_->goby_thread()->interprocess().publish_dynamic<google::protobuf::Message>(
-                current_command->message_,
-                goby::middleware::DynamicGroup(
-                    current_command->group_selection_
-                        ->itemText(current_command->group_selection_->currentIndex())
-                        .narrow()));
-        });
+        switch (grouplayer.layer())
+        {
+            case goby::middleware::protobuf::LAYER_INTERTHREAD:
+                commander_->post_to_comms([=]() {
+                    commander_->goby_thread()
+                        ->interthread()
+                        .publish_dynamic<google::protobuf::Message>(
+                            current_command->message_,
+                            goby::middleware::DynamicGroup(grouplayer.group()));
+                });
+                break;
+            case goby::middleware::protobuf::LAYER_INTERPROCESS:
+                commander_->post_to_comms([=]() {
+                    commander_->goby_thread()
+                        ->interprocess()
+                        .publish_dynamic<google::protobuf::Message>(
+                            current_command->message_,
+                            goby::middleware::DynamicGroup(grouplayer.group()));
+                });
+                break;
+            case goby::middleware::protobuf::LAYER_INTERVEHICLE:
+                commander_->post_to_comms([=]() {
+                    commander_->goby_thread()
+                        ->intervehicle()
+                        .publish_dynamic<google::protobuf::Message,
+                                         goby::middleware::MarshallingScheme::DCCL>(
+                            current_command->message_,
+                            goby::middleware::DynamicGroup(grouplayer.group(), group_numeric),
+                            commander_->goby_thread()->command_publisher_);
+                });
+                break;
+        }
 
         CommandEntry* command_entry = new CommandEntry;
         command_entry->protobuf_name = current_command->message_->GetDescriptor()->full_name();
@@ -460,15 +692,20 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         current_command->message_->SerializeToArray(&command_entry->bytes[0],
                                                     command_entry->bytes.size());
         command_entry->address = wApp->environment().clientAddress();
-        command_entry->group = current_command->group_selection_
-                                   ->itemText(current_command->group_selection_->currentIndex())
-                                   .narrow();
+        command_entry->group = grouplayer.group();
+        command_entry->layer = goby::middleware::to_string(grouplayer.layer());
 
         boost::posix_time::ptime now = goby::time::SystemClock::now<boost::posix_time::ptime>();
         command_entry->time.setPosixTime(now);
         command_entry->utime = current_command->latest_time_;
 
         command_entry->comment = comment_line->text().narrow();
+        if (command_entry->comment.empty())
+        {
+            command_entry->comment =
+                "[" + current_command->message_->ShortDebugString().substr(0, 100) + "...]";
+        }
+
         command_entry->last_ack = 0;
         session_.add(command_entry);
 
@@ -480,14 +717,15 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         }
 
         comment_line_->setText("");
-        current_command->query_model_->reload();
+        current_command->sent_model_->reload();
     }
 }
 
 goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::CommandContainer(
-    const protobuf::ProtobufCommanderConfig& pb_commander_config, const std::string& protobuf_name,
-    Dbo::Session* session)
-    //    WStackedWidget* master_field_info_stack)
+    const protobuf::ProtobufCommanderConfig& pb_commander_config,
+    const protobuf::ProtobufCommanderConfig::LoadProtobuf& load_config,
+    const std::string& protobuf_name, Dbo::Session* session, LiaisonCommander* commander,
+    Wt::WPushButton* send_button)
     : WGroupBox(protobuf_name),
       message_(dccl::DynamicProtobufManager::new_protobuf_message<
                std::shared_ptr<google::protobuf::Message>>(protobuf_name)),
@@ -495,78 +733,198 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
       group_div_(new WContainerWidget(this)),
       group_label_(new WLabel("Group: ", group_div_)),
       group_selection_(new WComboBox(group_div_)),
-      tree_box_(new WGroupBox("Contents", this)),
-      tree_table_(new WTreeTable(tree_box_)),
+      message_tree_box_(new WGroupBox("Contents", this)),
+      message_tree_table_(new WTreeTable(message_tree_box_)),
       //      field_info_stack_(new WStackedWidget(master_field_info_stack)),
       session_(session),
-      query_model_(new Dbo::QueryModel<Dbo::ptr<CommandEntry>>(this)),
-      query_box_(new WGroupBox("Sent message log (click for details)", this)),
-      query_table_(new WTreeView(query_box_)),
+      sent_model_(new Dbo::QueryModel<Dbo::ptr<CommandEntry>>(this)),
+      sent_box_(new WGroupBox("Sent message log (click for details)", this)),
+      sent_clear_(new WPushButton("Clear", sent_box_)),
+      sent_table_(new WTreeView(sent_box_)),
+      external_data_model_(new Dbo::QueryModel<Dbo::ptr<ExternalData>>(this)),
+      external_data_box_(new WGroupBox("External Data", this)),
+      external_data_clear_(new WPushButton("Clear", external_data_box_)),
+      external_data_table_(new WTreeView(external_data_box_)),
       last_reload_time_(boost::posix_time::neg_infin),
-      pb_commander_config_(pb_commander_config)
+      pb_commander_config_(pb_commander_config),
+      load_config_(load_config),
+      commander_(commander),
+      send_button_(send_button)
 {
     //    new WText("", field_info_stack_);
     //field_info_map_[0] = 0;
 
-    tree_table_->addColumn("Value", pb_commander_config.value_width_pixels());
-    tree_table_->addColumn("Modify", pb_commander_config.modify_width_pixels());
+    message_tree_table_->addColumn("Value", pb_commander_config.value_width_pixels());
+    message_tree_table_->addColumn("Modify", pb_commander_config.modify_width_pixels());
+    message_tree_table_->addColumn("External Data",
+                                   pb_commander_config.external_data_width_pixels());
 
     {
         std::lock_guard<std::mutex> slock(dbo_mutex_);
         Dbo::Transaction transaction(*session_);
-        query_model_->setQuery(
+        sent_model_->setQuery(
             session_->find<CommandEntry>("where protobuf_name='" + protobuf_name + "'"));
     }
 
-    query_model_->addColumn("comment", "Comment");
-    query_model_->addColumn("protobuf_name", "Name");
-    query_model_->addColumn("group", "Group");
-    query_model_->addColumn("address", "Network Address");
-    query_model_->addColumn("time", "Time");
-    query_model_->addColumn("last_ack", "Latest Ack");
+    sent_model_->addColumn("comment", "Comment");
+    sent_model_->addColumn("protobuf_name", "Name");
+    sent_model_->addColumn("group", "Group");
+    sent_model_->addColumn("layer", "Layer");
+    sent_model_->addColumn("address", "Network Address");
+    sent_model_->addColumn("time", "Time");
+    //sent_model_->addColumn("last_ack", "Latest Ack");
 
-    query_table_->setModel(query_model_);
-    query_table_->resize(WLength::Auto, pb_commander_config.database_view_height());
-    query_table_->sortByColumn(protobuf::ProtobufCommanderConfig::COLUMN_TIME, DescendingOrder);
-    query_table_->setMinimumSize(pb_commander_config.database_width().comment_width() +
-                                     pb_commander_config.database_width().name_width() +
-                                     pb_commander_config.database_width().group_width() +
-                                     pb_commander_config.database_width().ip_width() +
-                                     pb_commander_config.database_width().time_width() +
-                                     pb_commander_config.database_width().last_ack_width() +
-                                     7 * (protobuf::ProtobufCommanderConfig::COLUMN_MAX + 1),
-                                 WLength::Auto);
+    sent_table_->setModel(sent_model_);
+    sent_table_->resize(WLength::Auto, pb_commander_config.database_view_height());
+    sent_table_->sortByColumn(protobuf::ProtobufCommanderConfig::COLUMN_TIME, DescendingOrder);
+    sent_table_->setMinimumSize(pb_commander_config.database_width().comment_width() +
+                                    pb_commander_config.database_width().name_width() +
+                                    pb_commander_config.database_width().group_width() +
+                                    pb_commander_config.database_width().layer_width() +
+                                    pb_commander_config.database_width().ip_width() +
+                                    pb_commander_config.database_width().time_width() +
+                                    //pb_commander_config.database_width().last_ack_width() +
+                                    7 * (protobuf::ProtobufCommanderConfig::COLUMN_MAX + 1),
+                                WLength::Auto);
 
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_COMMENT,
-                                 pb_commander_config.database_width().comment_width());
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_NAME,
-                                 pb_commander_config.database_width().name_width());
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_GROUP,
-                                 pb_commander_config.database_width().group_width());
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_IP,
-                                 pb_commander_config.database_width().ip_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_COMMENT,
+                                pb_commander_config.database_width().comment_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_NAME,
+                                pb_commander_config.database_width().name_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_GROUP,
+                                pb_commander_config.database_width().group_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_LAYER,
+                                pb_commander_config.database_width().layer_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_IP,
+                                pb_commander_config.database_width().ip_width());
 
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_TIME,
-                                 pb_commander_config.database_width().time_width());
+    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_TIME,
+                                pb_commander_config.database_width().time_width());
 
-    query_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_LAST_ACK,
-                                 pb_commander_config.database_width().last_ack_width());
+    //    sent_table_->setColumnWidth(protobuf::ProtobufCommanderConfig::COLUMN_LAST_ACK,
+    //                                 pb_commander_config.database_width().last_ack_width());
 
-    query_table_->clicked().connect(this, &CommandContainer::handle_database_double_click);
+    sent_table_->clicked().connect(this, &CommandContainer::handle_database_double_click);
 
-    if (query_model_->rowCount() > 0)
+    if (sent_model_->rowCount() > 0)
     {
-        const Dbo::ptr<CommandEntry>& entry = query_model_->resultRow(0);
+        const Dbo::ptr<CommandEntry>& entry = sent_model_->resultRow(0);
         message_->ParseFromArray(&entry->bytes[0], entry->bytes.size());
 
-        int group_index = group_selection_->findText(entry->group);
+        int group_index =
+            group_selection_->findText(to_string(to_group_layer(entry->group, entry->layer)));
         if (group_index >= 0)
             group_selection_->setCurrentIndex(group_index);
     }
 
-    glog.is(DEBUG1) && glog << "Model has " << query_model_->rowCount() << " rows" << std::endl;
+    glog.is(DEBUG1) && glog << "Sent message model has " << sent_model_->rowCount() << " rows"
+                            << std::endl;
+
+    {
+        std::lock_guard<std::mutex> slock(dbo_mutex_);
+        Dbo::Transaction transaction(*session_);
+        external_data_model_->setQuery(
+            session_->find<ExternalData>("where affiliated_protobuf_name='" + protobuf_name + "'"));
+    }
+
+    boost::function<void(const Wt::WMouseEvent&)> sent_clear_callback =
+        [=](const Wt::WMouseEvent& event) {
+            WDialog dialog("Confirm clearing of ALL sent messages for " + protobuf_name);
+            WPushButton ok("Clear", dialog.contents());
+            WPushButton cancel("Cancel", dialog.contents());
+
+            dialog.rejectWhenEscapePressed();
+            ok.clicked().connect(&dialog, &WDialog::accept);
+            cancel.clicked().connect(&dialog, &WDialog::reject);
+
+            if (dialog.exec() == WDialog::Accepted)
+            {
+                {
+                    std::lock_guard<std::mutex> slock(dbo_mutex_);
+                    Dbo::Transaction transaction(*session_);
+
+                    session_->execute("delete from _liaison_commands where protobuf_name='" +
+                                      protobuf_name + "'");
+                }
+
+                sent_model_->reload();
+            }
+        };
+    sent_clear_->clicked().connect(boost::bind(sent_clear_callback, _1));
+
+    set_external_data_model_params(external_data_model_);
+
+    external_data_table_->setModel(external_data_model_);
+    set_external_data_table_params(external_data_table_);
+
+    boost::function<void(const Wt::WMouseEvent&)> external_data_clear_callback =
+        [=](const Wt::WMouseEvent& event) {
+            WDialog dialog("Confirm clearing of ALL external data for " + protobuf_name);
+            WPushButton ok("Clear", dialog.contents());
+            WPushButton cancel("Cancel", dialog.contents());
+
+            dialog.rejectWhenEscapePressed();
+            ok.clicked().connect(&dialog, &WDialog::accept);
+            cancel.clicked().connect(&dialog, &WDialog::reject);
+
+            if (dialog.exec() == WDialog::Accepted)
+            {
+                {
+                    std::lock_guard<std::mutex> slock(dbo_mutex_);
+                    Dbo::Transaction transaction(*session_);
+
+                    session_->execute(
+                        "delete from _external_data where affiliated_protobuf_name='" +
+                        protobuf_name + "'");
+                }
+
+                external_data_model_->reload();
+            }
+        };
+    external_data_clear_->clicked().connect(boost::bind(external_data_clear_callback, _1));
+
+    load_groups(message_->GetDescriptor());
+    load_external_data(message_->GetDescriptor());
 
     generate_root();
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    set_external_data_model_params(
+        Wt::Dbo::QueryModel<Wt::Dbo::ptr<ExternalData>>* external_data_model)
+{
+    external_data_model->addColumn("protobuf_name", "Name");
+    external_data_model->addColumn("group", "Group");
+    external_data_model->addColumn("time", "Time");
+    external_data_model->addColumn("value", "Value");
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    set_external_data_table_params(Wt::WTreeView* external_data_table)
+{
+    external_data_table->resize(WLength::Auto, pb_commander_config_.database_view_height());
+    external_data_table->sortByColumn(protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_TIME,
+                                      DescendingOrder);
+    external_data_table->setMinimumSize(
+        pb_commander_config_.external_database_width().name_width() +
+            pb_commander_config_.external_database_width().group_width() +
+            pb_commander_config_.external_database_width().time_width() +
+            pb_commander_config_.external_database_width().value_width() +
+            7 * (protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_MAX + 1),
+        WLength::Auto);
+
+    external_data_table->setColumnWidth(
+        protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_NAME,
+        pb_commander_config_.external_database_width().name_width());
+    external_data_table->setColumnWidth(
+        protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_GROUP,
+        pb_commander_config_.external_database_width().group_width());
+    external_data_table->setColumnWidth(
+        protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_TIME,
+        pb_commander_config_.external_database_width().time_width());
+    external_data_table->setColumnWidth(
+        protobuf::ProtobufCommanderConfig::EXTERNAL_DATA_COLUMN_VALUE,
+        pb_commander_config_.external_database_width().value_width());
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -578,11 +936,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     if (!index.isValid())
         return;
 
-    const Dbo::ptr<CommandEntry>& entry = query_model_->resultRow(index.row());
+    const Dbo::ptr<CommandEntry>& entry = sent_model_->resultRow(index.row());
 
     std::shared_ptr<google::protobuf::Message> message(message_->New());
     message->ParseFromArray(&entry->bytes[0], entry->bytes.size());
     std::string group = entry->group;
+    std::string layer = entry->layer;
 
     if (!message)
     {
@@ -621,11 +980,11 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     database_dialog_->rejectWhenEscapePressed();
 
     edit->clicked().connect(boost::bind(&CommandContainer::handle_database_dialog, this,
-                                        RESPONSE_EDIT, message, group));
+                                        RESPONSE_EDIT, message, group, layer));
     merge->clicked().connect(boost::bind(&CommandContainer::handle_database_dialog, this,
-                                         RESPONSE_MERGE, message, group));
+                                         RESPONSE_MERGE, message, group, layer));
     cancel->clicked().connect(boost::bind(&CommandContainer::handle_database_dialog, this,
-                                          RESPONSE_CANCEL, message, group));
+                                          RESPONSE_CANCEL, message, group, layer));
 
     database_dialog_->show();
     //     merge.clicked().connect(&dialog, &WDialog::accept);
@@ -634,14 +993,15 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_database_dialog(DatabaseDialogResponse response,
-                           std::shared_ptr<google::protobuf::Message> message, std::string group)
+                           std::shared_ptr<google::protobuf::Message> message, std::string group,
+                           std::string layer)
 {
     switch (response)
     {
         case RESPONSE_EDIT:
         {
             message_->CopyFrom(*message);
-            int group_index = group_selection_->findText(group);
+            int group_index = group_selection_->findText(to_string(to_group_layer(group, layer)));
 
             glog.is_debug1() && glog << "Group: " << group << ", index: " << group_index
                                      << std::endl;
@@ -658,7 +1018,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             message->MergeFrom(*message_);
             message_->CopyFrom(*message);
 
-            int group_index = group_selection_->findText(group);
+            int group_index = group_selection_->findText(to_string(to_group_layer(group, layer)));
             if (group_index >= 0)
                 group_selection_->setCurrentIndex(group_index);
 
@@ -671,6 +1031,35 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 }
 
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    handle_external_data(std::string type, std::string group,
+                         std::shared_ptr<const google::protobuf::Message> msg)
+{
+    ExternalData* external_data = new ExternalData;
+    external_data->protobuf_name = type;
+    external_data->affiliated_protobuf_name = message_->GetDescriptor()->full_name();
+    external_data->group = group;
+    boost::posix_time::ptime now = goby::time::SystemClock::now<boost::posix_time::ptime>();
+    external_data->time.setPosixTime(now);
+
+    google::protobuf::TextFormat::Printer printer;
+    printer.SetSingleLineMode(true);
+    printer.SetUseShortRepeatedPrimitives(true);
+    printer.PrintToString(*msg, &external_data->value);
+
+    external_data->bytes.resize(msg->ByteSize());
+    msg->SerializeToArray(&external_data->bytes[0], external_data->bytes.size());
+
+    session_->add(external_data);
+    {
+        std::lock_guard<std::mutex> slock(dbo_mutex_);
+        Dbo::Transaction transaction(*session_);
+        transaction.commit();
+    }
+
+    external_data_model_->reload();
+}
+
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_root()
 {
     const google::protobuf::Descriptor* desc = message_->GetDescriptor();
@@ -681,7 +1070,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     root->setStyleClass(STRIPE_EVEN_CLASS);
 
     // deletes an existing root
-    tree_table_->setTreeRoot(root, "Field");
+    message_tree_table_->setTreeRoot(root, "Field");
 
     time_fields_.clear();
 
@@ -691,23 +1080,25 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree(
-    WTreeTableNode* parent, google::protobuf::Message* message)
+    WTreeTableNode* parent, google::protobuf::Message* message, std::string parent_hierarchy)
 {
     const google::protobuf::Descriptor* desc = message->GetDescriptor();
 
     for (int i = 0, n = desc->field_count(); i < n; ++i)
-        generate_tree_row(parent, message, desc->field(i));
+        generate_tree_row(parent, message, desc->field(i), parent_hierarchy);
 
     std::vector<const google::protobuf::FieldDescriptor*> extensions;
     dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(desc, &extensions);
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
     for (int i = 0, n = extensions.size(); i < n; ++i)
-        generate_tree_row(parent, message, extensions[i]);
+        generate_tree_row(parent, message, extensions[i], parent_hierarchy);
+
+    check_initialized();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree_row(
     WTreeTableNode* parent, google::protobuf::Message* message,
-    const google::protobuf::FieldDescriptor* field_desc)
+    const google::protobuf::FieldDescriptor* field_desc, std::string parent_hierarchy)
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
 
@@ -729,6 +1120,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
     WFormWidget* value_field = 0;
     WFormWidget* modify_field = 0;
+    WFormWidget* external_data_field = 0;
     if (field_desc->is_repeated())
     {
         //        WContainerWidget* div = new WContainerWidget;
@@ -740,7 +1132,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         spin_box->setSingleStep(1);
 
         spin_box->valueChanged().connect(boost::bind(&CommandContainer::handle_repeated_size_change,
-                                                     this, _1, message, field_desc, node));
+                                                     this, _1, message, field_desc, node,
+                                                     parent_hierarchy));
 
         spin_box->setValue(refl->FieldSize(*message, field_desc));
         spin_box->valueChanged().emit(refl->FieldSize(*message, field_desc));
@@ -753,7 +1146,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         {
             if (field_desc->is_required())
             {
-                generate_tree(node, message->GetReflection()->MutableMessage(message, field_desc));
+                generate_tree(node, message->GetReflection()->MutableMessage(message, field_desc),
+                              parent_hierarchy + "." + field_desc->name());
                 node->expand();
             }
             else
@@ -762,12 +1156,13 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
                 button->clicked().connect(
                     boost::bind(&CommandContainer::handle_toggle_single_message, this, _1, message,
-                                field_desc, button, node));
+                                field_desc, button, node, parent_hierarchy));
 
                 if (refl->HasField(*message, field_desc))
                 {
                     parent->expand();
-                    handle_toggle_single_message(WMouseEvent(), message, field_desc, button, node);
+                    handle_toggle_single_message(WMouseEvent(), message, field_desc, button, node,
+                                                 parent_hierarchy);
                 }
 
                 modify_field = button;
@@ -778,6 +1173,17 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             generate_tree_field(value_field, message, field_desc);
         }
     }
+
+    if (externally_loadable_fields_.count(parent_hierarchy + "." + field_desc->name()))
+    {
+        WPushButton* button = new WPushButton(EXTERNAL_DATA_LOAD_TEXT);
+
+        button->clicked().connect(boost::bind(&CommandContainer::handle_load_external_data, this,
+                                              _1, message, field_desc, button, node,
+                                              parent_hierarchy));
+        external_data_field = button;
+    }
+
     if (value_field)
         node->setColumnWidget(1, value_field);
 
@@ -788,6 +1194,11 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         generate_field_info_box(modify_field, field_desc);
 
         node->setColumnWidget(2, modify_field);
+    }
+
+    if (external_data_field)
+    {
+        node->setColumnWidget(3, external_data_field);
     }
 }
 
@@ -1127,6 +1538,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             default: break;
         }
     }
+    check_initialized();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1162,6 +1574,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         }
     }
     glog.is(DEBUG1) && glog << "The message is: " << message_->DebugString() << std::endl;
+
+    check_initialized();
 }
 
 WLineEdit* goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1251,18 +1665,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 {
     if (WLineEdit* line_edit = dynamic_cast<WLineEdit*>(value_field))
     {
-        boost::posix_time::ptime now;
-        // if(pb_commander_config_.has_time_source_var())
-        // {
-        //     CMOOSMsg& newest = moos_node_->newest(pb_commander_config_.time_source_var());
-        //     now = newest.IsDouble() ?
-        //         unix_double2ptime(newest.GetDouble()) :
-        //         unix_double2ptime(goby::util::as<double>(newest.GetString()));
-        // }
-        // else
-        //        {
-        now = goby::time::SystemClock::now<boost::posix_time::ptime>();
-        //}
+        boost::posix_time::ptime now = goby::time::SystemClock::now<boost::posix_time::ptime>();
 
         const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
         latest_time_ = time::convert<time::MicroTime>(now).value();
@@ -1398,7 +1801,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::strin
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_repeated_size_change(int desired_size, google::protobuf::Message* message,
                                 const google::protobuf::FieldDescriptor* field_desc,
-                                WTreeTableNode* parent)
+                                WTreeTableNode* parent, std::string parent_hierarchy)
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
 
@@ -1421,12 +1824,14 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         {
             if (refl->FieldSize(*message, field_desc) <= index)
             {
-                generate_tree(node, refl->AddMessage(message, field_desc));
+                generate_tree(node, refl->AddMessage(message, field_desc),
+                              parent_hierarchy + "." + field_desc->name());
             }
             else
             {
+                generate_tree(node, refl->MutableRepeatedMessage(message, field_desc, index),
+                              parent_hierarchy + "." + field_desc->name());
                 parent->expand();
-                generate_tree(node, refl->MutableRepeatedMessage(message, field_desc, index));
             }
         }
         else
@@ -1447,18 +1852,21 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         refl->RemoveLast(message, field_desc);
     }
+
+    check_initialized();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_toggle_single_message(const WMouseEvent& mouse, google::protobuf::Message* message,
                                  const google::protobuf::FieldDescriptor* field_desc,
-                                 WPushButton* button, WTreeTableNode* parent)
+                                 WPushButton* button, WTreeTableNode* parent,
+                                 std::string parent_hierarchy)
 {
     if (button->text() == MESSAGE_INCLUDE_TEXT)
     {
-        generate_tree(parent, message->GetReflection()->MutableMessage(message, field_desc));
-
         parent->expand();
+        generate_tree(parent, message->GetReflection()->MutableMessage(message, field_desc),
+                      parent_hierarchy + "." + field_desc->name());
 
         button->setText(MESSAGE_REMOVE_TEXT);
     }
@@ -1469,5 +1877,218 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         for (int i = 0, n = children.size(); i < n; ++i) parent->removeChildNode(children[i]);
 
         button->setText(MESSAGE_INCLUDE_TEXT);
+    }
+    check_initialized();
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    handle_load_external_data(const WMouseEvent& mouse, google::protobuf::Message* message,
+                              const google::protobuf::FieldDescriptor* field_desc,
+                              WPushButton* button, WTreeTableNode* parent,
+                              std::string parent_hierarchy)
+{
+    WDialog dialog("Available external data for field: " + field_desc->name() +
+                   " (click to select)");
+
+    WGroupBox* choice_box = new WGroupBox("Choose external data message", dialog.contents());
+    WContainerWidget* choice_div = new WContainerWidget(choice_box);
+
+    Wt::Dbo::QueryModel<Wt::Dbo::ptr<ExternalData>>* external_data_model(
+        new Dbo::QueryModel<Dbo::ptr<ExternalData>>(choice_box));
+    Wt::WTreeView* external_data_table(new WTreeView(choice_div));
+
+    // ".foo.bar.field"
+    std::string hierarchy = parent_hierarchy + "." + field_desc->name();
+    {
+        std::string external_data_where_clause;
+
+        const auto& externally_loadable = externally_loadable_fields_.at(hierarchy);
+        for (auto it = externally_loadable.begin(), end = externally_loadable.end(); it != end;
+             ++it)
+        {
+            if (it != externally_loadable.begin())
+                external_data_where_clause += " OR ";
+            external_data_where_clause +=
+                "protobuf_name='" + it->second.external_desc->full_name() + "'";
+        }
+
+        std::lock_guard<std::mutex> slock(dbo_mutex_);
+        Dbo::Transaction transaction(*session_);
+        auto query =
+            session_->find<ExternalData>()
+                .where("affiliated_protobuf_name='" + message_->GetDescriptor()->full_name() + "'")
+                .where(external_data_where_clause);
+        external_data_model->setQuery(query);
+    }
+
+    set_external_data_model_params(external_data_model);
+    external_data_table->setModel(external_data_model);
+    set_external_data_table_params(external_data_table);
+
+    WGroupBox* message_box = new WGroupBox("External data to load", dialog.contents());
+    WContainerWidget* message_div = new WContainerWidget(message_box);
+    WText* message_text = new WText("", message_div);
+
+    WPushButton ok("Load", dialog.contents());
+    WPushButton cancel("Cancel", dialog.contents());
+    ok.setDisabled(true);
+
+    std::shared_ptr<google::protobuf::Message> message_to_load;
+
+    boost::function<void(const Wt::WModelIndex&, const Wt::WMouseEvent&)> select_data_callback =
+        [&](const Wt::WModelIndex& index, const Wt::WMouseEvent& event) {
+            glog.is(DEBUG1) && glog << "clicked: " << index.row() << "," << index.column()
+                                    << ", is_valid: " << index.isValid() << std::endl;
+
+            if (!index.isValid())
+                return;
+
+            const Dbo::ptr<ExternalData>& entry = external_data_model->resultRow(index.row());
+
+            message_to_load = dccl::DynamicProtobufManager::new_protobuf_message<
+                std::shared_ptr<google::protobuf::Message>>(entry->protobuf_name);
+            message_to_load->ParseFromArray(&entry->bytes[0], entry->bytes.size());
+
+            message_text->setText(std::string("<pre>") + message_to_load->DebugString() + "</pre>");
+            ok.setDisabled(false);
+        };
+
+    external_data_table->clicked().connect(boost::bind(select_data_callback, _1, _2));
+
+    message_div->setMaximumSize(pb_commander_config_.modal_dimensions().width(),
+                                pb_commander_config_.modal_dimensions().height());
+    message_div->setOverflow(WContainerWidget::OverflowAuto);
+
+    dialog.rejectWhenEscapePressed();
+
+    ok.clicked().connect(&dialog, &WDialog::accept);
+    cancel.clicked().connect(&dialog, &WDialog::reject);
+
+    if (dialog.exec() == WDialog::Accepted)
+    {
+        // find the appropriate ExternalDataMeta
+        const ExternalDataMeta& meta = externally_loadable_fields_.at(hierarchy).at(
+            message_to_load->GetDescriptor()->full_name());
+
+        // clear fields except the ones we need
+        std::cout << "Running translates from: " << meta.pb.ShortDebugString() << std::endl;
+
+        for (const auto& translate : meta.pb.translate())
+        {
+            std::deque<std::string> from_fields, to_fields;
+
+            boost::split(from_fields, translate.from(), boost::is_any_of("."));
+            boost::split(to_fields, translate.to(), boost::is_any_of("."));
+
+            // clear existing "to" fields
+            std::pair<const google::protobuf::FieldDescriptor*,
+                      std::vector<google::protobuf::Message*>>
+                fully_qualified_to_fields =
+                    find_fully_qualified_field({&*message_}, to_fields, true, 0);
+
+            auto write_to_message = [&](std::string from_text, int index) {
+                std::pair<const google::protobuf::FieldDescriptor*,
+                          std::vector<google::protobuf::Message*>>
+                    fully_qualified_to_fields =
+                        find_fully_qualified_field({&*message_}, to_fields, true, index);
+
+                for (auto* msg : fully_qualified_to_fields.second)
+                {
+                    const auto* field = fully_qualified_to_fields.first;
+                    google::protobuf::TextFormat::ParseFieldValueFromString(from_text, field, msg);
+                }
+            };
+
+            for (auto* msg : fully_qualified_to_fields.second)
+            {
+                const auto* field = fully_qualified_to_fields.first;
+                const google::protobuf::Reflection* refl = msg->GetReflection();
+                refl->ClearField(msg, field);
+            }
+
+            std::pair<const google::protobuf::FieldDescriptor*,
+                      std::vector<google::protobuf::Message*>>
+                fully_qualified_from_fields =
+                    find_fully_qualified_field({&*message_to_load}, from_fields);
+
+            const auto* field = fully_qualified_from_fields.first;
+
+            int index = 0;
+            for (const auto* msg : fully_qualified_from_fields.second)
+            {
+                const google::protobuf::Reflection* refl = msg->GetReflection();
+                if (!field->is_repeated())
+                {
+                    std::string text;
+                    google::protobuf::TextFormat::PrintFieldValueToString(*msg, field, -1, &text);
+
+                    if (field->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE)
+                        text = "{ " + text + "}";
+
+                    write_to_message(text, index++);
+                }
+                else
+                {
+                    for (int i = 0, n = refl->FieldSize(*msg, field); i < n; ++i)
+                    {
+                        std::string text;
+                        google::protobuf::TextFormat::PrintFieldValueToString(*msg, field, i,
+                                                                              &text);
+                        if (field->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE)
+                            text = "{ " + text + "}";
+
+                        write_to_message(text, index++);
+                    }
+                }
+            }
+        }
+
+        generate_root();
+    }
+}
+
+std::pair<const google::protobuf::FieldDescriptor*, std::vector<google::protobuf::Message*>>
+goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    find_fully_qualified_field(std::vector<google::protobuf::Message*> msgs,
+                               std::deque<std::string> fields, bool set_field, int set_index)
+{
+    const google::protobuf::Descriptor* desc = msgs[0]->GetDescriptor();
+    const auto* field = desc->FindFieldByName(fields[0]);
+    std::vector<google::protobuf::Message*> result_msgs;
+
+    if (fields.size() > 1)
+    {
+        for (auto* msg : msgs)
+        {
+            const google::protobuf::Reflection* refl = msg->GetReflection();
+
+            if (!field->is_repeated())
+            {
+                result_msgs.push_back(refl->MutableMessage(msg, field));
+            }
+            else
+            {
+                if (set_field)
+                {
+                    if (set_index < refl->FieldSize(*msg, field))
+                        result_msgs.push_back(refl->MutableRepeatedMessage(msg, field, set_index));
+
+                    else
+                        result_msgs.push_back(refl->AddMessage(msg, field));
+                }
+                else
+                {
+                    for (int i = 0, n = refl->FieldSize(*msg, field); i < n; ++i)
+                        result_msgs.push_back(refl->MutableRepeatedMessage(msg, field, i));
+                }
+            }
+        }
+
+        fields.pop_front();
+        return find_fully_qualified_field(result_msgs, fields, set_field, set_index);
+    }
+    else
+    {
+        return std::make_pair(field, msgs);
     }
 }

@@ -12,6 +12,8 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/can_config.proto
   middleware/protobuf/udp_config.proto
   middleware/protobuf/coroner.proto
+  middleware/protobuf/layer.proto
+  middleware/protobuf/geographic.proto
   )
 
 set(MIDDLEWARE_SRC

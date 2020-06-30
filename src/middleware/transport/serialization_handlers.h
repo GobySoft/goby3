@@ -168,8 +168,8 @@ class SerializationSubscription : public SerializationHandlerBase<>
     CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end) const
     {
         CharIterator actual_end;
-        auto msg =
-            SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end);
+        auto msg = SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end,
+                                                                  actual_end, type_name_);
 
         if (subscribed_group() == subscriber_.group(*msg) && handler_)
             handler_(msg);
@@ -193,6 +193,11 @@ class PublisherCallback : public SerializationHandlerBase<Metadata>
 
     PublisherCallback(HandlerType handler)
         : handler_(handler), type_name_(SerializerParserHelper<Data, scheme_id>::type_name())
+    {
+    }
+
+    PublisherCallback(HandlerType handler, const Data& data)
+        : handler_(handler), type_name_(SerializerParserHelper<Data, scheme_id>::type_name(data))
     {
     }
 
@@ -230,8 +235,8 @@ class PublisherCallback : public SerializationHandlerBase<Metadata>
     CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end, const Metadata& md) const
     {
         CharIterator actual_end;
-        auto msg =
-            SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end, actual_end);
+        auto msg = SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end,
+                                                                  actual_end, type_name_);
 
         if (handler_)
             handler_(*msg, md);
