@@ -489,8 +489,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                 {
                     field = desc->FindFieldByName(fields[i]);
                     if (!field)
+                    {
                         glog.is(DIE) && glog << "Invalid field " << fields[i]
                                              << " for message: " << desc->full_name() << std::endl;
+                        // avoid false positive with clang static analyzer
+                        exit(EXIT_FAILURE);
+                    }
 
                     // not last field
                     if (i + 1 < n)
