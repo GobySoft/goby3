@@ -65,7 +65,8 @@ struct SerializerParserHelper<
     /// \brief Parse Protobuf message (using standard Protobuf decoding)
     template <typename CharIterator>
     static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
-                                           CharIterator& actual_end)
+                                           CharIterator& actual_end,
+                                           const std::string& type = type_name())
     {
         auto msg = std::make_shared<DataType>();
         msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
@@ -110,8 +111,8 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
     /// \return Parsed Protobuf message
     template <typename CharIterator>
     static std::shared_ptr<google::protobuf::Message>
-    parse_dynamic(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-                  const std::string& type)
+    parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
+          const std::string& type)
     {
         std::shared_ptr<google::protobuf::Message> msg;
 

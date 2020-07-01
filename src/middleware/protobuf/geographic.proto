@@ -1,0 +1,35 @@
+syntax = "proto2";
+
+import "dccl/option_extensions.proto";
+
+package goby.middleware.protobuf;
+
+message LatLonPoint
+{
+    option (dccl.msg).unit_system = "si";
+    required double lat = 1 [(dccl.field) = {units {
+                                 derived_dimensions: "plane_angle"
+                                 system: "angle::degree"
+                             }}];
+    required double lon = 2 [(dccl.field) = {units {
+                                 derived_dimensions: "plane_angle"
+                                 system: "angle::degree"
+                             }}];
+
+    optional double depth = 3
+        [default = 0, (dccl.field) = {units {derived_dimensions: "length"}}];
+}
+
+// protobuf contents of $GPWPL message
+message Waypoint
+{
+    optional string name = 1;
+    required LatLonPoint location = 2;
+}
+
+// protobuf contents of $GPRTE message
+message Route
+{
+    optional string name = 1;
+    repeated Waypoint point = 2;
+}

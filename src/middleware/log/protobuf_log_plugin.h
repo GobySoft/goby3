@@ -105,7 +105,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
         {
             try
             {
-                auto msg = SerializerParserHelper<google::protobuf::Message, scheme>::parse_dynamic(
+                auto msg = SerializerParserHelper<google::protobuf::Message, scheme>::parse(
                     bytes_begin, bytes_end, actual_end, log_entry.type());
                 msgs.push_back(msg);
             }

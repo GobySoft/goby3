@@ -85,7 +85,7 @@ serialize_publication(const Data& d, const Group& group, const Publisher<Data>& 
 
     auto* key = msg->mutable_key();
     key->set_marshalling_scheme(MarshallingScheme::DCCL);
-    key->set_type(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
+    key->set_type(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name(d));
     key->set_group(std::string(group));
     key->set_group_numeric(group.numeric());
     auto now = goby::time::SystemClock::now<goby::time::MicroTime>();

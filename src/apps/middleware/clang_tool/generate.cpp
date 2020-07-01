@@ -129,6 +129,8 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         }
         bases_[thread] = bases;
 
+        for (auto base : bases) parents_[base].insert(thread);
+
         const std::string group = group_string_lit->getString().str();
         const std::string type = as_string(*type_arg->getAsType());
         const int scheme_num = scheme_arg->getAsIntegral().getExtValue();
@@ -157,6 +159,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
 
     const std::set<PubSubEntry>& entries() const { return entries_; }
     const std::set<std::string>& bases(const std::string& thread) { return bases_[thread]; }
+    const std::set<std::string>& parents(const std::string& thread) { return parents_[thread]; }
 
   private:
     std::string as_string(const clang::Type& type)
@@ -185,6 +188,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
     std::set<PubSubEntry> entries_;
     // map thread to bases
     std::map<std::string, std::set<std::string>> bases_;
+    std::map<std::string, std::set<std::string>> parents_;
 };
 
 int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_directory,
@@ -214,17 +218,27 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
     for (const auto& e : publish_aggregator.entries())
     {
         layers_in_use.insert(e.layer);
-        threads_in_use.insert(e.thread);
+
+        // only include most derived thread class
+        if (publish_aggregator.parents(e.thread).empty() &&
+            subscribe_aggregator.parents(e.thread).empty())
+            threads_in_use.insert(e.thread);
     }
     for (const auto& e : subscribe_aggregator.entries())
     {
         layers_in_use.insert(e.layer);
-        threads_in_use.insert(e.thread);
+        if (publish_aggregator.parents(e.thread).empty() &&
+            subscribe_aggregator.parents(e.thread).empty())
+            threads_in_use.insert(e.thread);
     }
 
     // intervehicle requires interprocess at this point
     if (layers_in_use.count(Layer::INTERVEHICLE))
         layers_in_use.insert(Layer::INTERPROCESS);
+
+    // add interthread so that we can get bases even if there's no interthread pubsub actually happening
+    if (layers_in_use.count(Layer::INTERPROCESS))
+        layers_in_use.insert(Layer::INTERTHREAD);
 
     YAML::Emitter yaml_out;
     {
@@ -239,26 +253,66 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
             root_map.add_key(layer_to_str.at(layer));
             goby::yaml::YMap layer_map(yaml_out);
 
-            auto emit_pub_sub = [&](goby::yaml::YMap& map, const std::string& thread) {
+            auto find_most_derived_parents = [&](std::string thread) -> std::set<std::string> {
+                // if e.thread has parents, use them instead
+                std::set<std::string> most_derived{thread};
+
+                bool parents_found = true;
+                while (parents_found)
+                {
+                    std::set<std::string> new_most_derived;
+                    // assume we find no parents until we do
+                    parents_found = false;
+                    for (const auto& thread : most_derived)
+                    {
+                        auto pub_parents = publish_aggregator.parents(thread);
+                        auto sub_parents = subscribe_aggregator.parents(thread);
+                        if (!(pub_parents.empty() && sub_parents.empty()))
+                        {
+                            parents_found = true;
+                            new_most_derived.insert(pub_parents.begin(), pub_parents.end());
+                            new_most_derived.insert(sub_parents.begin(), sub_parents.end());
+                        }
+                        else
+                        {
+                            new_most_derived.insert(thread);
+                        }
+                    }
+                    most_derived = new_most_derived;
+                }
+                return most_derived;
+            };
+
+            auto emit_pub_sub = [&](goby::yaml::YMap& map,
+                                    const std::set<std::string>& thread_and_bases) {
                 {
                     map.add_key("publishes");
                     goby::yaml::YSeq publish_seq(yaml_out);
-                    for (const auto& e : publish_aggregator.entries())
+                    for (auto e : publish_aggregator.entries())
                     {
-                        // show inner publications
-                        if (e.layer >= layer && (layer != Layer::INTERTHREAD || e.thread == thread))
-                        {
-                            e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD,
-                                             e.layer > layer);
+                        auto most_derived = find_most_derived_parents(e.thread);
 
-                            // special case: Intervehicle publishes both PROTOBUF and DCCL version on inner layers
-                            if (e.layer > layer && e.layer == Layer::INTERVEHICLE &&
-                                e.scheme == "DCCL")
+                        // show inner publications
+                        if (e.layer >= layer &&
+                            (layer != Layer::INTERTHREAD || thread_and_bases.count(e.thread)))
+                        {
+                            for (const auto& thread : most_derived)
                             {
-                                auto pb_e = e;
-                                pb_e.scheme = "PROTOBUF";
-                                pb_e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD,
-                                                    pb_e.layer > layer);
+                                // overwrite with most derived
+                                e.thread = thread;
+
+                                e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD,
+                                                 e.layer > layer);
+
+                                // special case: Intervehicle publishes both PROTOBUF and DCCL version on inner layers
+                                if (e.layer > layer && e.layer == Layer::INTERVEHICLE &&
+                                    e.scheme == "DCCL")
+                                {
+                                    auto pb_e = e;
+                                    pb_e.scheme = "PROTOBUF";
+                                    pb_e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD,
+                                                        pb_e.layer > layer);
+                                }
                             }
                         }
                     }
@@ -267,10 +321,19 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                 {
                     map.add_key("subscribes");
                     goby::yaml::YSeq subscribe_seq(yaml_out);
-                    for (const auto& e : subscribe_aggregator.entries())
+                    for (auto e : subscribe_aggregator.entries())
                     {
-                        if (e.layer == layer && (layer != Layer::INTERTHREAD || e.thread == thread))
-                            e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD);
+                        if (e.layer == layer &&
+                            (layer != Layer::INTERTHREAD || thread_and_bases.count(e.thread)))
+                        {
+                            auto most_derived = find_most_derived_parents(e.thread);
+                            for (const auto& thread : most_derived)
+                            {
+                                // overwrite with most derived
+                                e.thread = thread;
+                                e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD);
+                            }
+                        }
                     }
                 }
             };
@@ -284,25 +347,40 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                     goby::yaml::YMap thread_map(yaml_out);
                     {
                         thread_map.add("name", thread);
+                        std::set<std::string> thread_and_bases{thread};
 
-                        const auto& pub_bases = publish_aggregator.bases(thread);
-                        const auto& sub_bases = subscribe_aggregator.bases(thread);
-                        auto bases(pub_bases);
-                        bases.insert(sub_bases.begin(), sub_bases.end());
+                        std::set<std::string> bases;
+                        std::function<void(std::string)> add_bases_recurse =
+                            [&](std::string thread) {
+                                std::set<std::string> new_bases;
+                                const auto& pub_bases = publish_aggregator.bases(thread);
+                                const auto& sub_bases = subscribe_aggregator.bases(thread);
+                                new_bases.insert(pub_bases.begin(), pub_bases.end());
+                                new_bases.insert(sub_bases.begin(), sub_bases.end());
+                                bases.insert(new_bases.begin(), new_bases.end());
+                                for (const auto& base : new_bases) add_bases_recurse(base);
+                            };
+
+                        add_bases_recurse(thread);
+
                         if (!bases.empty())
                         {
                             thread_map.add_key("bases");
                             goby::yaml::YSeq bases_seq(yaml_out);
-                            for (const auto& base : bases) bases_seq.add(base);
-                        }
 
-                        emit_pub_sub(thread_map, thread);
+                            for (const auto& base : bases)
+                            {
+                                bases_seq.add(base);
+                                thread_and_bases.insert(base);
+                            }
+                        }
+                        emit_pub_sub(thread_map, thread_and_bases);
                     }
                 }
             }
             else
             {
-                emit_pub_sub(layer_map, "");
+                emit_pub_sub(layer_map, {});
             }
         }
     }

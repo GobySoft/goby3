@@ -206,8 +206,8 @@ class LiaisonCommsThread
 
     void loop() override
     {
-        goby::glog.is_debug3() && goby::glog << "LiaisonCommsThread " << this->index() << " loop()"
-                                             << std::endl;
+        //        goby::glog.is_debug3() && goby::glog << "LiaisonCommsThread " << this->index() << " loop()"
+        //                                             << std::endl;
         container_->process_from_wt();
     }
 

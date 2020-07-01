@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package goby.middleware.protobuf;
+
+enum Layer
+{
+    LAYER_INTERTHREAD = 0;
+    LAYER_INTERPROCESS = 1;
+    LAYER_INTERVEHICLE = 2;
+}
+
+
+                            

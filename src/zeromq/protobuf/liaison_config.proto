@@ -1,6 +1,8 @@
 syntax = "proto2";
+
 import "goby/protobuf/option_extensions.proto";
 import "goby/middleware/protobuf/app_config.proto";
+import "goby/middleware/protobuf/layer.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
 import "goby/acomms/protobuf/network_ack.proto";
 
@@ -66,12 +68,35 @@ message ProtobufCommanderConfig
     message LoadProtobuf
     {
         required string name = 1;
-        repeated string group = 2;
+
+        message GroupLayer
+        {
+            required string group = 1;
+            optional uint32 group_numeric = 2 [default = 0];
+            optional string group_numeric_field_name = 3;
+            optional goby.middleware.protobuf.Layer layer = 4
+                [default = LAYER_INTERPROCESS];
+        }
+        repeated GroupLayer publish_to = 2;
+
+        message ExternalData
+        {
+            required string name = 1;
+            required string group = 2;
+            message Translation
+            {
+                required string from = 1;
+                required string to = 2;
+            }
+            repeated Translation translate = 3;
+        }
+        repeated ExternalData external_data = 3;
     }
     repeated LoadProtobuf load_protobuf = 1;
 
     optional int32 value_width_pixels = 10 [default = 500];
     optional int32 modify_width_pixels = 11 [default = 100];
+    optional int32 external_data_width_pixels = 12 [default = 100];
 
     optional string sqlite3_database = 20
         [default = "/tmp/liaison_commander_autosave.db"];
@@ -85,20 +110,22 @@ message ProtobufCommanderConfig
         COLUMN_COMMENT = 0;
         COLUMN_NAME = 1;
         COLUMN_GROUP = 2;
-        COLUMN_IP = 3;
-        COLUMN_TIME = 4;
-        COLUMN_LAST_ACK = 5;
-        COLUMN_MAX = 5;
+        COLUMN_LAYER = 3;
+        COLUMN_IP = 4;
+        COLUMN_TIME = 5;
+        COLUMN_LAST_ACK = 6;
+        COLUMN_MAX = 6;
     }
 
     message DatabaseColumnWidthPixels
     {
         optional int32 comment_width = 1 [default = 180];
         optional int32 name_width = 2 [default = 180];
-        optional int32 group_width = 3 [default = 180];
-        optional int32 ip_width = 4 [default = 120];
-        optional int32 time_width = 5 [default = 120];
-        optional int32 last_ack_width = 6 [default = 120];
+        optional int32 group_width = 3 [default = 120];
+        optional int32 layer_width = 4 [default = 120];
+        optional int32 ip_width = 5 [default = 120];
+        optional int32 time_width = 6 [default = 120];
+        optional int32 last_ack_width = 7 [default = 120];
     }
     optional DatabaseColumnWidthPixels database_width = 22;
 
@@ -126,6 +153,26 @@ message ProtobufCommanderConfig
     }
 
     repeated NotificationSubscription notify_subscribe = 30;
+
+    enum ExternalDataColumn
+    {
+        option allow_alias = true;
+
+        EXTERNAL_DATA_COLUMN_NAME = 0;
+        EXTERNAL_DATA_COLUMN_GROUP = 1;
+        EXTERNAL_DATA_COLUMN_TIME = 2;
+        EXTERNAL_DATA_COLUMN_VALUE = 3;
+        EXTERNAL_DATA_COLUMN_MAX = 3;
+    }
+
+    message DatabaseExternalDataColumnWidthPixels
+    {
+        optional int32 name_width = 1 [default = 180];
+        optional int32 group_width = 2 [default = 120];
+        optional int32 time_width = 3 [default = 120];
+        optional int32 value_width = 4 [default = 400];
+    }
+    optional DatabaseExternalDataColumnWidthPixels external_database_width = 40;
 
     // optional string time_source_var = 40;
 

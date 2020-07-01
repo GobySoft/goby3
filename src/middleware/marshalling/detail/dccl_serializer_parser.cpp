@@ -96,3 +96,70 @@ goby::middleware::detail::DCCLSerializerParserHelperBase::unpack(const std::stri
 
     return packets;
 }
+
+void goby::middleware::detail::DCCLSerializerParserHelperBase::setup_dlog()
+{
+    static bool setup_complete = false;
+
+    if (!setup_complete)
+    {
+        std::string glog_dccl_group = "dccl";
+
+        glog.add_group(glog_dccl_group, util::Colors::lt_magenta);
+
+        auto dlog_lambda = [=](const std::string& msg, dccl::logger::Verbosity vrb,
+                               dccl::logger::Group grp) {
+            switch (vrb)
+            {
+                case dccl::logger::WARN:
+                    goby::glog.is_warn() && goby::glog << group(glog_dccl_group) << msg
+                                                       << std::endl;
+                    break;
+
+                case dccl::logger::INFO:
+                    goby::glog.is_verbose() && goby::glog << group(glog_dccl_group) << msg
+                                                          << std::endl;
+                    break;
+
+                default:
+                case dccl::logger::DEBUG1:
+                    goby::glog.is_debug1() && goby::glog << group(glog_dccl_group) << msg
+                                                         << std::endl;
+                    break;
+
+                case dccl::logger::DEBUG2:
+                    goby::glog.is_debug2() && goby::glog << group(glog_dccl_group) << msg
+                                                         << std::endl;
+                    break;
+
+                case dccl::logger::DEBUG3:
+                    goby::glog.is_debug3() && goby::glog << group(glog_dccl_group) << msg
+                                                         << std::endl;
+                    break;
+            }
+        };
+
+        switch (goby::glog.buf().highest_verbosity())
+        {
+            default:
+            case goby::util::logger::QUIET: break;
+            case goby::util::logger::WARN:
+                dccl::dlog.connect(dccl::logger::WARN_PLUS, dlog_lambda);
+                break;
+            case goby::util::logger::VERBOSE:
+                dccl::dlog.connect(dccl::logger::INFO_PLUS, dlog_lambda);
+                break;
+            case goby::util::logger::DEBUG1:
+                dccl::dlog.connect(dccl::logger::DEBUG1_PLUS, dlog_lambda);
+                break;
+            case goby::util::logger::DEBUG2:
+                dccl::dlog.connect(dccl::logger::DEBUG2_PLUS, dlog_lambda);
+                break;
+            case goby::util::logger::DEBUG3:
+                dccl::dlog.connect(dccl::logger::DEBUG3_PLUS, dlog_lambda);
+                break;
+        }
+
+        setup_complete = true;
+    }
+}
