@@ -78,9 +78,16 @@ class Group
     operator std::string() const
     {
         if (c_ != nullptr)
-            return std::string(c_);
+        {
+            if (i_ == invalid_numeric_group)
+                return std::string(c_);
+            else
+                return std::string(c_) + "::" + std::to_string(i_);
+        }
         else
+        {
             return std::to_string(i_);
+        }
     }
 
   protected:
@@ -94,7 +101,7 @@ class Group
 inline bool operator==(const Group& a, const Group& b)
 {
     if (a.c_str() != nullptr && b.c_str() != nullptr)
-        return std::string(a.c_str()) == std::string(b.c_str());
+        return (std::string(a.c_str()) == std::string(b.c_str())) && (a.numeric() == b.numeric());
     else
         return a.numeric() == b.numeric();
 }
@@ -104,7 +111,7 @@ inline bool operator!=(const Group& a, const Group& b) { return !(a == b); }
 inline std::ostream& operator<<(std::ostream& os, const Group& g)
 {
     if (g.c_str() != nullptr)
-        return (os << std::string(g));
+        return (os << std::string(g) + "::" + std::to_string(g.numeric()));
     else
         return (os << g.numeric());
 }

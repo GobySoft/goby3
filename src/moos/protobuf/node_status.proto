@@ -1,0 +1,2 @@
+// placeholder for messages moved to:
+import public "goby/middleware/protobuf/frontseat_data.proto";

@@ -29,12 +29,12 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/circular_buffer.hpp>
 
-#include "goby/moos/protobuf/node_status.pb.h"
+#include "goby/middleware/protobuf/frontseat_data.pb.h"
 #include "goby/util/protobuf/ais.pb.h"
 
 namespace goby
 {
-namespace moos
+namespace middleware
 {
 class AISConverter
 {
@@ -45,7 +45,7 @@ class AISConverter
             throw(std::runtime_error("History length must be >= 2"));
     }
 
-    void add_status(const goby::moos::protobuf::NodeStatus& status)
+    void add_status(const goby::middleware::frontseat::protobuf::NodeStatus& status)
     {
         // reject duplications
         if (status_reports_.empty() ||
@@ -66,7 +66,7 @@ class AISConverter
         if (status_reports_.size() == 0)
             throw(std::runtime_error("No status reports"));
 
-        const goby::moos::protobuf::NodeStatus& status = status_reports_.back();
+        const goby::middleware::frontseat::protobuf::NodeStatus& status = status_reports_.back();
 
         Position pos;
         pos.set_message_id(18); // Class B position report
@@ -134,10 +134,10 @@ class AISConverter
 
   private:
     int mmsi_;
-    boost::circular_buffer<goby::moos::protobuf::NodeStatus> status_reports_;
-}; // namespace moos
+    boost::circular_buffer<goby::middleware::frontseat::protobuf::NodeStatus> status_reports_;
+};
 
-} // namespace moos
+} // namespace middleware
 } // namespace goby
 
 #endif

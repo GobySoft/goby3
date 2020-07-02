@@ -51,6 +51,8 @@ goby::middleware::frontseat::InterfaceBase::InterfaceBase(const protobuf::Config
             boost::bind(&InterfaceBase::glog_raw, this, _1, DIRECTION_FROM_FRONTSEAT));
         signal_raw_to_frontseat.connect(
             boost::bind(&InterfaceBase::glog_raw, this, _1, DIRECTION_TO_FRONTSEAT));
+        // unlock
+        glog << std::flush;
     }
 
     try

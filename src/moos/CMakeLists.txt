@@ -6,6 +6,8 @@ set(PROTOS
   protobuf/iFrontSeat_config.proto
   protobuf/translator.proto
   protobuf/ufield_sim_driver.proto
+  protobuf/node_status.proto
+  protobuf/desired_course.proto
   )
 
 set(SRC

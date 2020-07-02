@@ -56,6 +56,7 @@ template <typename Config, typename TransporterType> class Thread
     const Config& cfg_;
     int index_;
     std::atomic<bool>* alive_{nullptr};
+    std::type_index type_i_{std::type_index(typeid(void))};
 
   public:
     using Transporter = TransporterType;
@@ -110,6 +111,9 @@ template <typename Config, typename TransporterType> class Thread
 
     /// \return the Thread index (for multiple instantiations)
     int index() const { return index_; }
+
+    std::type_index type_index() { return type_i_; }
+    void set_type_index(std::type_index type_i) { type_i_ = type_i; }
 
   protected:
     Thread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
@@ -181,8 +185,8 @@ template <typename Config, typename TransporterType> class Thread
 
     bool alive() { return alive_ && *alive_; }
 
-    static constexpr goby::middleware::Group shutdown_group_{"goby::ThreadShutdown"};
-    static constexpr goby::middleware::Group joinable_group_{"goby::ThreadJoinable"};
+    static constexpr goby::middleware::Group shutdown_group_{"goby::middleware::Thread::shutdown"};
+    static constexpr goby::middleware::Group joinable_group_{"goby::middleware::Thread::joinable"};
 };
 
 } // namespace middleware

@@ -42,6 +42,13 @@ namespace goby
 {
 namespace middleware
 {
+struct ThreadIdentifier
+{
+    std::type_index type_i{std::type_index(typeid(void))};
+    int index{-1};
+    bool all_threads{false};
+};
+
 /// \brief Implements Thread for a three layer middleware setup ([ intervehicle [ interprocess [ interthread ] ] ]) based around InterVehicleForwarder.
 ///
 /// \tparam Config Configuration type
@@ -81,10 +88,10 @@ class SimpleThread
 
         this->set_transporter(intervehicle_.get());
 
-        interthread_->template subscribe<SimpleThreadBase::shutdown_group_, bool>(
-            [this](const bool& shutdown) {
-                if (shutdown)
-                    SimpleThreadBase::thread_quit();
+        interthread_->template subscribe<SimpleThreadBase::shutdown_group_>(
+            [this, index](const ThreadIdentifier ti) {
+                if (ti.all_threads || (ti.type_i == this->type_index() && ti.index == index))
+                    this->thread_quit();
             });
     }
 
@@ -109,6 +116,34 @@ class SimpleThread
     std::unique_ptr<InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
         intervehicle_;
 };
+
+/// \brief Thread that simply publishes an empty message on its loop interval to TimerThread::group
+///
+/// This can be launched to provide a simple timer by subscribing to TimerThread::group.
+///
+/// For example, to create timer that expires every two seconds:
+/// ```
+/// launch_thread<goby::middleware::TimerThread<0>>(0.5*boost::units::si::hertz);
+/// interthread().subscribe_empty<goby::middleware::TimerThread<0>::group>([]() { std::cout << "Timer expired." << std::endl; });
+/// ```
+template <int i>
+class TimerThread : public SimpleThread<boost::units::quantity<boost::units::si::frequency>>
+{
+  public:
+    static constexpr goby::middleware::Group expire_group{"goby::middleware::TimerThread::timer",
+                                                          i};
+
+    TimerThread(const boost::units::quantity<boost::units::si::frequency>& freq)
+        : goby::middleware::SimpleThread<boost::units::quantity<boost::units::si::frequency>>(freq,
+                                                                                              freq)
+    {
+    }
+
+  private:
+    void loop() override { this->interthread().template publish_empty<expire_group>(); }
+};
+
+template <int i> const goby::middleware::Group TimerThread<i>::expire_group;
 
 /// \brief Base class for creating multiple thread applications
 ///
@@ -167,9 +202,22 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
 
     template <typename ThreadType> void join_thread(int index = -1)
     {
+        // request thread self-join
         auto type_i = std::type_index(typeid(ThreadType));
-        _join_thread(type_i, index);
+        ThreadIdentifier ti{type_i, index};
+        interthread_.publish<MainThreadBase::shutdown_group_>(ti);
     }
+
+    template <int i>
+    void launch_timer(boost::units::quantity<boost::units::si::frequency> freq,
+                      std::function<void()> on_expire)
+    {
+        launch_thread<goby::middleware::TimerThread<i>>(freq);
+        this->interthread()
+            .template subscribe_empty<goby::middleware::TimerThread<i>::expire_group>(on_expire);
+    }
+
+    template <int i> void join_timer() { join_thread<goby::middleware::TimerThread<i>>(); }
 
     int running_thread_count() { return running_thread_count_; }
 
@@ -183,11 +231,10 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
     {
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
-        interthread_
-            .template subscribe<MainThreadBase::joinable_group_, std::pair<std::type_index, int>>(
-                [this](const std::pair<std::type_index, int>& joinable) {
-                    _join_thread(joinable.first, joinable.second);
-                });
+        interthread_.template subscribe<MainThreadBase::joinable_group_>(
+            [this](const ThreadIdentifier& joinable) {
+                _join_thread(joinable.type_i, joinable.index);
+            });
     }
 
     virtual ~MultiThreadApplicationBase() {}
@@ -203,7 +250,9 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
                 goby::glog << "Requesting that all remaining threads shutdown cleanly..."
                            << std::endl;
 
-            interthread_.publish<MainThreadBase::shutdown_group_>(true);
+            ThreadIdentifier ti;
+            ti.all_threads = true;
+            interthread_.publish<MainThreadBase::shutdown_group_>(ti);
 
             // allow the threads to self-join
             while (running_thread_count_ > 0)
@@ -401,6 +450,7 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
             std::shared_ptr<ThreadType> goby_thread(
                 detail::ThreadTypeSelector<ThreadType, ThreadConfig, has_index>::thread(cfg,
                                                                                         index));
+            goby_thread->set_type_index(type_i);
             goby_thread->run(thread_manager.alive);
         }
         catch (...)
@@ -408,7 +458,7 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
             thread_exception_ = std::current_exception();
         }
 
-        interthread_.publish<MainThreadBase::joinable_group_>(std::make_pair(type_i, index));
+        interthread_.publish<MainThreadBase::joinable_group_>(ThreadIdentifier{type_i, index});
     };
 
     thread_manager.name = std::string(typeid(ThreadType).name()) + "_index" + std::to_string(index);
@@ -433,6 +483,9 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_join_th
         threads_[type_i][index].thread->join();
         threads_[type_i][index].thread.reset();
         --running_thread_count_;
+
+        goby::glog.is(goby::util::logger::DEBUG1) &&
+            goby::glog << "Joined thread: " << type_i.name() << " index " << index << std::endl;
 
         if (thread_exception_)
         {

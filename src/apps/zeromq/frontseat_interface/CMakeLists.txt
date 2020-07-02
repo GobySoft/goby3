@@ -1,0 +1,3 @@
+add_executable(goby_frontseat_interface frontseat_interface.cpp)
+target_link_libraries(goby_frontseat_interface goby goby_zeromq)
+generate_middleware_interfaces(goby_frontseat_interface)

@@ -51,6 +51,8 @@ namespace test
 {
 namespace zeromq
 {
+void noop_func(const Widget& widget) {}
+
 class TestConfigurator : public goby::middleware::ProtobufConfigurator<TestConfig>
 {
   public:
@@ -138,6 +140,19 @@ class TestAppTx : public AppBase
         glog.is_verbose() && glog << "Tx App: pid: " << getpid()
                                   << ", thread: " << std::this_thread::get_id() << std::endl;
         interprocess().subscribe<ready, Ready>([this](const Ready& r) { rx_ready_ = r.b(); });
+
+        // test subscribe interface options
+        interthread().subscribe<widget1, Widget>([this](const Widget& w) { noop(w); });
+        interthread().subscribe<widget1>([this](const Widget& w) { noop(w); });
+        interthread().subscribe<widget1, Widget>(
+            std::bind(&TestAppTx::noop, this, std::placeholders::_1));
+        //        interthread().subscribe2<widget1>(
+        // std::bind(&TestAppTx::noop, this, std::placeholders::_1));
+        std::function<void(const Widget& widget)> f(
+            std::bind(&TestAppTx::noop, this, std::placeholders::_1));
+        interthread().subscribe<widget1>(f);
+        interthread().subscribe<widget1, Widget>(&noop_func);
+        interthread().subscribe<widget1>(&noop_func);
     }
 
     void loop() override
@@ -159,6 +174,8 @@ class TestAppTx : public AppBase
                 quit();
         }
     }
+
+    void noop(const Widget& widget) {}
 
   private:
     int tx_count_{0};

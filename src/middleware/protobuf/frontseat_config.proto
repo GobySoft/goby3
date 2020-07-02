@@ -12,18 +12,17 @@ message Config
 
     optional string name = 1;
     optional LatLonPoint origin = 2;
-    
+
     optional bool require_helm = 10 [
         default = true,
-        (dccl.field).units = { base_dimensions: "T" },
         (goby.field).description =
-        "Require the IvP Helm even for listening mission where the "
-        "frontseat is in control."
+            "Require the IvP Helm even for listening mission where the "
+            "frontseat is in control."
     ];
-    
+
     optional double helm_running_timeout = 11 [
         default = 10,
-        (dccl.field).units = { base_dimensions: "T" },
+        (dccl.field).units = {base_dimensions: "T"},
         (goby.field).description =
             "If `require_helm`, how long (in seconds) to wait for the IvP Helm "
             "to start before moving to the Helm Error state."
@@ -31,7 +30,7 @@ message Config
 
     optional double frontseat_connected_timeout = 12 [
         default = 10,
-        (dccl.field).units = { base_dimensions: "T" },
+        (dccl.field).units = {base_dimensions: "T"},
         (goby.field).description =
             "How long (in seconds) to wait for the Frontseat to be connected "
             "before moving to the Frontseat Error state."
@@ -39,11 +38,11 @@ message Config
 
     optional uint32 status_period = 13 [
         default = 5,
+        (dccl.field).units = {base_dimensions: "T"},
         (goby.field).description =
             "Seconds between publishing the status of iFrontseat. The special "
             "value 0 disables posting of the status message."
     ];
-    
 
     optional bool exit_on_error = 21 [
         default = false,
