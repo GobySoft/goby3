@@ -8,6 +8,7 @@ set(PROTOS
   protobuf/ufield_sim_driver.proto
   protobuf/node_status.proto
   protobuf/desired_course.proto
+  protobuf/moos_helm_frontseat_interface_config.proto
   )
 
 set(SRC

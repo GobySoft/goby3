@@ -21,49 +21,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/marshalling/protobuf.h"
-
-#include "goby/middleware/frontseat/groups.h"
-#include "goby/middleware/protobuf/frontseat_data.pb.h"
-#include "goby/moos/frontseat/convert.h"
-#include "goby/moos/middleware/moos_plugin_translator.h"
-#include "goby/moos/moos_translator.h"
+#include "frontseat_gateway_plugin.h"
 
 using goby::glog;
-
-namespace goby
-{
-namespace moos
-{
-class FrontSeatTranslation : public goby::moos::Translator
-{
-  public:
-    FrontSeatTranslation(const goby::apps::moos::protobuf::GobyMOOSGatewayConfig& cfg)
-        : goby::moos::Translator(cfg)
-    {
-        goby()
-            .interprocess()
-            .subscribe<goby::middleware::frontseat::groups::node_status,
-                       goby::middleware::frontseat::protobuf::NodeStatus,
-                       goby::middleware::MarshallingScheme::PROTOBUF>(
-                [this](const goby::middleware::frontseat::protobuf::NodeStatus& status) {
-                    glog.is_debug2() && glog << "Posting to MOOS: NAV: " << status.DebugString()
-                                             << std::endl;
-                    goby::moos::convert_and_publish_node_status(status, moos().comms());
-                });
-
-        std::vector<std::string> desired_buffer_params(
-            {"SPEED", "HEADING", "DEPTH", "PITCH", "ROLL", "Z_RATE", "ALTITUDE"});
-        for (const auto& var : desired_buffer_params) moos().add_buffer("DESIRED_" + var);
-        moos().add_trigger("DESIRED_SPEED",
-                           [this](const CMOOSMsg& msg) { convert_desired_setpoints(); });
-    }
-
-  private:
-    void convert_desired_setpoints();
-};
-} // namespace moos
-} // namespace goby
 
 extern "C"
 {

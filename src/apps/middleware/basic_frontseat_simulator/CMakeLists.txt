@@ -1,2 +1,2 @@
 add_executable(goby_basic_frontseat_simulator basic_frontseat_simulator.cpp)
-target_link_libraries(goby_basic_frontseat_simulator goby goby_moos)
+target_link_libraries(goby_basic_frontseat_simulator goby)

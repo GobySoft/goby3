@@ -49,6 +49,8 @@ constexpr goby::middleware::Group data_from_frontseat{
 constexpr goby::middleware::Group data_to_frontseat{
     "goby::middleware::frontseat::data_to_frontseat"};
 
+constexpr goby::middleware::Group helm_state{"goby::middleware::frontseat::helm_state"};
+
 constexpr goby::middleware::Group status{"goby::middleware::frontseat::status"};
 
 } // namespace groups

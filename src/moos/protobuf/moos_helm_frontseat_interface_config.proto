@@ -1,0 +1,10 @@
+syntax = "proto2";
+import "goby/zeromq/protobuf/frontseat_interface_config.proto";
+import "goby/moos/protobuf/moos_gateway_config.proto";
+
+package goby.moos.protobuf;
+
+extend goby.apps.zeromq.protobuf.FrontSeatInterfaceConfig
+{
+    optional goby.apps.moos.protobuf.GobyMOOSGatewayConfig.MOOSConfig moos_helm = 1000;
+}

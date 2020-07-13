@@ -27,6 +27,11 @@ enum HelmState
     HELM_PARK = 2;
 }
 
+message HelmStateReport
+{
+    required HelmState state = 1;
+}
+
 enum HelmError
 {
     ERROR_HELM_NONE = 0;

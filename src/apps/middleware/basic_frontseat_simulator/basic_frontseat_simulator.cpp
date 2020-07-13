@@ -34,8 +34,8 @@
 #include <sstream>
 #include <string>
 
-#include "goby/moos/moos_geodesy.h"
 #include "goby/util/as.h"
+#include "goby/util/geodesy.h"
 #include "goby/util/linebasedcomms.h"
 
 double datum_lat = std::numeric_limits<double>::quiet_NaN();
@@ -48,7 +48,7 @@ double current_z = 0;
 double current_v = 0;
 double current_hdg = 0;
 
-goby::moos::CMOOSGeodesy geodesy;
+std::unique_ptr<goby::util::UTMGeodesy> geodesy;
 
 void parse_in(const std::string& in, std::map<std::string, std::string>* out);
 bool started() { return !std::isnan(datum_lat) && !std::isnan(datum_lon); }
@@ -116,7 +116,9 @@ int main(int argc, char* argv[])
                     datum_lat = goby::util::as<double>(parsed["LAT"]);
                     datum_lon = goby::util::as<double>(parsed["LON"]);
                     duration = goby::util::as<int>(parsed["DURATION"]);
-                    geodesy.Initialise(datum_lat, datum_lon);
+                    geodesy.reset(
+                        new goby::util::UTMGeodesy({datum_lat * boost::units::degree::degrees,
+                                                    datum_lon * boost::units::degree::degrees}));
 
                     time_in_mission = 0;
                     server.write("CTRL,STATE:PAYLOAD\r\n");
@@ -153,12 +155,12 @@ int main(int argc, char* argv[])
 
                 std::cout << "new x: " << current_x << ", y: " << current_y << std::endl;
 
-                double lat, lon;
-                geodesy.UTM2LatLong(current_x, current_y, lat, lon);
+                auto ll = geodesy->convert(
+                    {current_x * boost::units::si::meters, current_y * boost::units::si::meters});
                 std::stringstream nav_ss;
                 nav_ss << "NAV,"
-                       << "LAT:" << std::setprecision(10) << lat << ","
-                       << "LON:" << std::setprecision(10) << lon << ","
+                       << "LAT:" << std::setprecision(10) << ll.lat.value() << ","
+                       << "LON:" << std::setprecision(10) << ll.lon.value() << ","
                        << "DEPTH:" << -current_z << ","
                        << "HEADING:" << current_hdg << ","
                        << "SPEED:" << current_v << "\r\n";

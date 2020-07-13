@@ -53,7 +53,7 @@ template <typename Config, typename TransporterType> class Thread
     boost::units::quantity<boost::units::si::frequency> loop_frequency_;
     std::chrono::system_clock::time_point loop_time_;
     unsigned long long loop_count_{0};
-    const Config& cfg_;
+    const Config cfg_;
     int index_;
     std::atomic<bool>* alive_{nullptr};
     std::type_index type_i_{std::type_index(typeid(void))};

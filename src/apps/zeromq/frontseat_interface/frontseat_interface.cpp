@@ -21,48 +21,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/marshalling/protobuf.h"
-
 #include "goby/middleware/frontseat/groups.h"
-#include "goby/middleware/frontseat/interface.h"
 #include "goby/middleware/protobuf/frontseat.pb.h"
-#include "goby/zeromq/application/multi_thread.h"
-#include "goby/zeromq/protobuf/frontseat_interface_config.pb.h"
+
+#include "frontseat_interface.h"
 
 using goby::glog;
 namespace frontseat = goby::middleware::frontseat;
-
-namespace goby
-{
-namespace apps
-{
-namespace zeromq
-{
-class FrontSeatInterface
-    : public goby::zeromq::MultiThreadApplication<protobuf::FrontSeatInterfaceConfig>
-{
-  public:
-    FrontSeatInterface();
-    ~FrontSeatInterface() {}
-
-    static void* driver_library_handle_;
-
-  private:
-    void loop() override;
-    void setup_subscriptions();
-
-    enum
-    {
-        STATUS_TIMER = 0
-    };
-
-  private:
-    std::unique_ptr<frontseat::InterfaceBase> frontseat_;
-};
-
-} // namespace zeromq
-} // namespace apps
-} // namespace goby
 
 void* goby::apps::zeromq::FrontSeatInterface::driver_library_handle_ = 0;
 
@@ -134,6 +99,8 @@ goby::apps::zeromq::FrontSeatInterface::FrontSeatInterface()
     glog.is_debug1() && glog << "Setup subscriptions" << std::endl;
     setup_subscriptions();
 
+    launch_helm_interface();
+
     glog.is_debug1() && glog << "Launch timer thread" << std::endl;
     launch_timer<STATUS_TIMER>(
         1.0 / boost::units::quantity<boost::units::si::time>(
@@ -141,7 +108,7 @@ goby::apps::zeromq::FrontSeatInterface::FrontSeatInterface()
         [this]() {
             glog.is_debug1() && glog << "Status: " << frontseat_->status().ShortDebugString()
                                      << std::endl;
-            interprocess().publish<middleware::frontseat::groups::status>(frontseat_->status());
+            interprocess().publish<frontseat::groups::status>(frontseat_->status());
         });
 }
 
@@ -162,6 +129,12 @@ void goby::apps::zeromq::FrontSeatInterface::loop()
 
 void goby::apps::zeromq::FrontSeatInterface::setup_subscriptions()
 {
+    // helm state
+    interprocess().subscribe<frontseat::groups::helm_state>(
+        [this](const frontseat::protobuf::HelmStateReport& helm_state) {
+            frontseat_->set_helm_state(helm_state.state());
+        });
+
     // commands
     interprocess().subscribe<frontseat::groups::command_request>(
         [this](const frontseat::protobuf::CommandRequest& command) {
@@ -175,6 +148,21 @@ void goby::apps::zeromq::FrontSeatInterface::setup_subscriptions()
     frontseat_->signal_command_response.connect(
         [this](const frontseat::protobuf::CommandResponse& response) {
             interprocess().publish<frontseat::groups::command_response>(response);
+        });
+
+    // shortcut for common desired course command
+    interprocess().subscribe<frontseat::groups::desired_course>(
+        [this](const frontseat::protobuf::DesiredCourse& desired_course) {
+            if (frontseat_->state() != frontseat::protobuf::INTERFACE_COMMAND)
+                glog.is_debug1() &&
+                    glog << "Not sending command because the interface is not in the command state"
+                         << std::endl;
+            else
+            {
+                frontseat::protobuf::CommandRequest command;
+                *command.mutable_desired_course() = desired_course;
+                frontseat_->send_command_to_frontseat(command);
+            }
         });
 
     // data
