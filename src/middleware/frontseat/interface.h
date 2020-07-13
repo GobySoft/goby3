@@ -113,7 +113,7 @@ class InterfaceBase
     void glog_raw(const protobuf::Raw& data, Direction direction);
 
   private:
-    const protobuf::Config& cfg_;
+    protobuf::Config cfg_;
     protobuf::HelmState helm_state_;
     protobuf::InterfaceState state_;
     goby::time::MicroTime start_time_;

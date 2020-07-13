@@ -24,8 +24,8 @@
 
 //
 // Usage:
-// 1. run abc_frontseat_simulator running on some port (as TCP server)
-// > abc_modem_simulator 54321
+// 1. run basic_frontseat_frontseat_simulator running on some port (as TCP server)
+// > basic_frontseat_modem_simulator 54321
 // 2. run iFrontSeat connecting to that port
 
 #include <boost/math/special_functions/fpclassify.hpp>
@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
 {
     if (argc < 2)
     {
-        std::cout << "usage: abc_modem_simulator [tcp listen port]" << std::endl;
+        std::cout << "usage: basic_frontseat_modem_simulator [tcp listen port]" << std::endl;
         exit(1);
     }
 

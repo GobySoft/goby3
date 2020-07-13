@@ -16,7 +16,6 @@ endif()
 
 if(build_iFrontSeat)
   add_subdirectory(iFrontSeat) 
-  add_subdirectory(abc_frontseat_simulator)
 endif()
 
 option(build_pGobyMOOSAppTemplate "Build pGobyMOOSAppTemplate - example Goby MOOS App" OFF)

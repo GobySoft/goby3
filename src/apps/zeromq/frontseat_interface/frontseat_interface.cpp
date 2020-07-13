@@ -138,7 +138,11 @@ goby::apps::zeromq::FrontSeatInterface::FrontSeatInterface()
     launch_timer<STATUS_TIMER>(
         1.0 / boost::units::quantity<boost::units::si::time>(
                   cfg().frontseat_cfg().status_period_with_units()),
-        []() { glog.is_debug1() && glog << "Time to publish status" << std::endl; });
+        [this]() {
+            glog.is_debug1() && glog << "Status: " << frontseat_->status().ShortDebugString()
+                                     << std::endl;
+            interprocess().publish<middleware::frontseat::groups::status>(frontseat_->status());
+        });
 }
 
 void goby::apps::zeromq::FrontSeatInterface::loop()

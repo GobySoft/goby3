@@ -1,0 +1,23 @@
+syntax = "proto2";
+import "goby/middleware/protobuf/frontseat_config.proto";
+import "goby/protobuf/option_extensions.proto";
+
+package goby.middleware.frontseat.protobuf;
+
+message BasicSimulatorFrontSeatConfig
+{
+    required string tcp_address = 1;
+    optional uint32 tcp_port = 2 [default = 54321];
+    message StartParams
+    {
+        required double lat = 1;
+        required double lon = 2;
+        required int32 duration = 3;
+    }
+    required StartParams start = 3;
+}
+
+extend Config
+{
+    optional BasicSimulatorFrontSeatConfig basic_simulator_config = 1001;
+}

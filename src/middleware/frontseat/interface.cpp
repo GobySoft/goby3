@@ -254,6 +254,9 @@ void goby::middleware::frontseat::InterfaceBase::compute_missing(gpb::NodeStatus
     if (!status->has_name())
         status->set_name(cfg_.name());
 
+    if (!status->has_time())
+        status->set_time_with_units(goby::time::SystemClock::now<goby::time::SITime>());
+
     if (!status->has_global_fix() && !status->has_local_fix())
     {
         glog.is(WARN) &&
