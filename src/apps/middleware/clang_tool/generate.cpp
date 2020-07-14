@@ -46,64 +46,69 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
                                           {Layer::INTERPROCESS, "interprocess"},
                                           {Layer::INTERVEHICLE, "intervehicle"}};
 
-::clang::ast_matchers::StatementMatcher pubsub_matcher(const char* method)
+::clang::ast_matchers::StatementMatcher pubsub_matcher(std::string method)
 {
     using namespace clang::ast_matchers;
 
-    return cxxMemberCallExpr(
-        expr().bind("pubsub_call_expr"),
+    // picks out the object (goby::middleware::Thread) that made the publish/subscribe call
+    auto calling_thread_matcher = on(expr(
+        anyOf(
+            // Thread: pull out what "this" in "this->interprocess()" when "this" is derived from goby::middleware::Thread
+            cxxMemberCallExpr(on(hasType(pointsTo(cxxRecordDecl(
+                cxxRecordDecl().bind("on_thread_decl"),
+                isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread")))))))),
+            // Thread: match this->goby().interprocess() or similar chains
+            hasDescendant(cxxMemberCallExpr(on(hasType(pointsTo(cxxRecordDecl(
+                cxxRecordDecl().bind("on_indirect_thread_decl"),
+                isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread"))))))))),
+            // also allow out direct calls to publish/subscribe
+            expr().bind("on_expr")),
         // call is on an instantiation of a class derived from StaticTransporterInterface
-        on(expr(
-            anyOf(
-                // Thread: pull out what "this" in "this->interprocess()" when "this" is derived from goby::middleware::Thread
-                cxxMemberCallExpr(on(hasType(pointsTo(cxxRecordDecl(
-                    cxxRecordDecl().bind("on_thread_decl"),
-                    isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread")))))))),
-                // Thread: match this->goby().interprocess() or similar chains
-                hasDescendant(cxxMemberCallExpr(on(hasType(pointsTo(cxxRecordDecl(
-                    cxxRecordDecl().bind("on_indirect_thread_decl"),
-                    isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread"))))))))),
-                // also allow out direct calls to publish/subscribe
-                expr().bind("on_expr")),
-            hasType(cxxRecordDecl(decl().bind("on_type_decl"),
-                                  isDerivedFrom(cxxRecordDecl(
-                                      hasName("::goby::middleware::StaticTransporterInterface"))),
-                                  unless(hasName("::goby::middleware::NullTransporter")))))),
-        anyOf(callee(cxxMethodDecl(
-                  // "publish" or "subscribe"
-                  hasName(method),
-                  // Group (must refer to goby::middleware::Group)
-                  hasTemplateArgument(
-                      0, templateArgument(refersToDeclaration(
-                             varDecl(hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
-                                     // find the actual string argument and bind it
-                                     hasDescendant(cxxConstructExpr(hasArgument(
-                                         0, stringLiteral().bind("group_string_arg")))))))),
-                  // Type (no restrictions)
-                  hasTemplateArgument(1, templateArgument().bind("type_arg")),
-                  // Scheme (must be int)
-                  hasTemplateArgument(
-                      2, templateArgument(templateArgument().bind("scheme_arg"),
-                                          refersToIntegralType(qualType(asString("int"))))))),
-              callee(cxxMethodDecl(
-                  // "subscribe" - simplified version
-                  hasName(method),
-                  hasDescendant(cxxMemberCallExpr(callee(cxxMethodDecl(
-                      // "publish" or "subscribe"
-                      hasName(method),
-                      // Group (must refer to goby::middleware::Group)
-                      hasTemplateArgument(
-                          0, templateArgument(refersToDeclaration(varDecl(
-                                 hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
-                                 // find the actual string argument and bind it
-                                 hasDescendant(cxxConstructExpr(
-                                     hasArgument(0, stringLiteral().bind("group_string_arg")))))))),
-                      // Type (no restrictions)
-                      hasTemplateArgument(1, templateArgument().bind("type_arg")),
-                      // Scheme (must be int)
-                      hasTemplateArgument(2, templateArgument(templateArgument().bind("scheme_arg"),
-                                                              refersToIntegralType(qualType(
-                                                                  asString("int")))))))))))));
+        hasType(cxxRecordDecl(
+            decl().bind("on_type_decl"),
+            isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::StaticTransporterInterface"))),
+            unless(hasName("::goby::middleware::NullTransporter"))))));
+
+    // picks out the parameters of the publish/subscribe call
+    auto base_pubsub_parameters_matcher = cxxMethodDecl(
+        // "publish" or "subscribe"
+        hasName(method),
+        // Group (must refer to goby::middleware::Group)
+        hasTemplateArgument(0, templateArgument(refersToDeclaration(varDecl(
+                                   hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
+                                   // find the actual string argument and bind it
+                                   hasDescendant(cxxConstructExpr(hasArgument(
+                                       0, stringLiteral().bind("group_string_arg")))))))),
+        // Type (no restrictions)
+        hasTemplateArgument(1, templateArgument().bind("type_arg")),
+        // Scheme (must be int)
+        hasTemplateArgument(2, templateArgument(templateArgument().bind("scheme_arg"),
+                                                refersToIntegralType(qualType(asString("int"))))));
+
+    if (method == "publish")
+    {
+        auto publish_parameters_matcher = callee(base_pubsub_parameters_matcher);
+        return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
+                                 publish_parameters_matcher);
+    }
+    else if (method == "subscribe")
+    {
+        // subscribe also has a simplified template version that infers arguments from the function parameters; we need to match the subsequent call to the full subscribe
+        auto subscribe_parameters_matcher = anyOf(
+            callee(base_pubsub_parameters_matcher),
+            // matches "template <const Group& group, typename Func> void subscribe(Func f)"
+            callee(cxxMethodDecl(
+                hasName(method),
+                // simplified version calls full subscribe, so pull the parameters out from this call
+                hasDescendant(cxxMemberCallExpr(callee(base_pubsub_parameters_matcher))))));
+
+        return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
+                                 subscribe_parameters_matcher);
+    }
+    else
+    {
+        throw(std::runtime_error("method must be 'publish' or 'subscribe'"));
+    }
 }
 
 class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallback
