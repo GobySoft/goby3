@@ -10,5 +10,7 @@ target_link_libraries(goby_frontseat_basic_simulator
   goby
   ${PROTOBUF_LIBRARIES})
 
+generate_specialized_frontseat_apps(goby_frontseat_basic_simulator basic_simulator)
+
 set_target_properties(goby_frontseat_basic_simulator PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 goby_install_lib(goby_frontseat_basic_simulator core)

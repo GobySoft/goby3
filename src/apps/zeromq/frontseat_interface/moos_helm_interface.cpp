@@ -15,9 +15,4 @@ void goby::apps::zeromq::FrontSeatInterface::launch_helm_interface()
         *gateway_config.mutable_moos() = cfg().GetExtension(goby::moos::protobuf::moos_helm);
         launch_thread<goby::moos::FrontSeatTranslation>(gateway_config);
     }
-    else
-    {
-        goby::glog.is_die() && goby::glog << "Missing [goby.moos.protobuf.moos_helm] config"
-                                          << std::endl;
-    }
 }

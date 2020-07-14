@@ -151,7 +151,7 @@ void goby::apps::zeromq::FrontSeatInterface::setup_subscriptions()
         });
 
     // shortcut for common desired course command
-    interprocess().subscribe<frontseat::groups::desired_course>(
+    interprocess().subscribe<frontseat::groups::desired_course, frontseat::protobuf::DesiredCourse>(
         [this](const frontseat::protobuf::DesiredCourse& desired_course) {
             if (frontseat_->state() != frontseat::protobuf::INTERFACE_COMMAND)
                 glog.is_debug1() &&

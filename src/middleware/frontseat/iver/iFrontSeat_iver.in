@@ -1,4 +1,0 @@
-#!/bin/bash
-
-LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:@goby_LIB_DIR@ IFRONTSEAT_DRIVER_LIBRARY=libgoby_frontseat_iver.so.@GOBY_SOVERSION@ exec iFrontSeat $@
-

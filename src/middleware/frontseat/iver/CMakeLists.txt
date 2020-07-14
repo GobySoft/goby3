@@ -11,5 +11,5 @@ target_link_libraries(goby_frontseat_iver
 
 set_target_properties(goby_frontseat_iver PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
-configure_file(iFrontSeat_iver.in ${goby_BIN_DIR}/iFrontSeat_iver @ONLY)
+generate_specialized_frontseat_apps(goby_frontseat_iver iver)
 goby_install_lib(goby_frontseat_iver core)

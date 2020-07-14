@@ -49,6 +49,7 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
 ::clang::ast_matchers::StatementMatcher pubsub_matcher(const char* method)
 {
     using namespace clang::ast_matchers;
+
     return cxxMemberCallExpr(
         expr().bind("pubsub_call_expr"),
         // call is on an instantiation of a class derived from StaticTransporterInterface
@@ -68,21 +69,41 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
                                   isDerivedFrom(cxxRecordDecl(
                                       hasName("::goby::middleware::StaticTransporterInterface"))),
                                   unless(hasName("::goby::middleware::NullTransporter")))))),
-        callee(cxxMethodDecl(
-            // "publish" or "subscribe"
-            hasName(method),
-            // Group (must refer to goby::middleware::Group)
-            hasTemplateArgument(0, templateArgument(refersToDeclaration(varDecl(
-                                       hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
-                                       // find the actual string argument and bind it
-                                       hasDescendant(cxxConstructExpr(hasArgument(
-                                           0, stringLiteral().bind("group_string_arg")))))))),
-            // Type (no restrictions)
-            hasTemplateArgument(1, templateArgument().bind("type_arg")),
-            // Scheme (must be int)
-            hasTemplateArgument(
-                2, templateArgument(templateArgument().bind("scheme_arg"),
-                                    refersToIntegralType(qualType(asString("int"))))))));
+        anyOf(callee(cxxMethodDecl(
+                  // "publish" or "subscribe"
+                  hasName(method),
+                  // Group (must refer to goby::middleware::Group)
+                  hasTemplateArgument(
+                      0, templateArgument(refersToDeclaration(
+                             varDecl(hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
+                                     // find the actual string argument and bind it
+                                     hasDescendant(cxxConstructExpr(hasArgument(
+                                         0, stringLiteral().bind("group_string_arg")))))))),
+                  // Type (no restrictions)
+                  hasTemplateArgument(1, templateArgument().bind("type_arg")),
+                  // Scheme (must be int)
+                  hasTemplateArgument(
+                      2, templateArgument(templateArgument().bind("scheme_arg"),
+                                          refersToIntegralType(qualType(asString("int"))))))),
+              callee(cxxMethodDecl(
+                  // "subscribe" - simplified version
+                  hasName(method),
+                  hasDescendant(cxxMemberCallExpr(callee(cxxMethodDecl(
+                      // "publish" or "subscribe"
+                      hasName(method),
+                      // Group (must refer to goby::middleware::Group)
+                      hasTemplateArgument(
+                          0, templateArgument(refersToDeclaration(varDecl(
+                                 hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
+                                 // find the actual string argument and bind it
+                                 hasDescendant(cxxConstructExpr(
+                                     hasArgument(0, stringLiteral().bind("group_string_arg")))))))),
+                      // Type (no restrictions)
+                      hasTemplateArgument(1, templateArgument().bind("type_arg")),
+                      // Scheme (must be int)
+                      hasTemplateArgument(2, templateArgument(templateArgument().bind("scheme_arg"),
+                                                              refersToIntegralType(qualType(
+                                                                  asString("int")))))))))))));
 }
 
 class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallback
@@ -105,7 +126,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
             on_thread_decl =
                 Result.Nodes.getNodeAs<clang::CXXRecordDecl>("on_indirect_thread_decl");
 
-        if (!pubsub_call_expr || !group_string_lit || !type_arg || !scheme_arg || !on_type_decl)
+        if (!pubsub_call_expr || !group_string_lit || !on_type_decl)
             return;
 
         const std::string layer_type = on_type_decl->getQualifiedNameAsString();
@@ -132,16 +153,24 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         for (auto base : bases) parents_[base].insert(thread);
 
         const std::string group = group_string_lit->getString().str();
-        const std::string type = as_string(*type_arg->getAsType());
-        const int scheme_num = scheme_arg->getAsIntegral().getExtValue();
-        const std::string scheme = goby::middleware::MarshallingScheme::to_string(scheme_num);
+
+        std::string type = "unknown";
+        if (type_arg)
+            type = as_string(*type_arg->getAsType());
+
+        std::string scheme = "unknown";
+        if (scheme_arg)
+        {
+            const int scheme_num = scheme_arg->getAsIntegral().getExtValue();
+            scheme = goby::middleware::MarshallingScheme::to_string(scheme_num);
+        }
 
         std::set<std::string> internal_groups{
             "goby::InterProcessForwarder",
             "goby::InterProcessRegexData",
             "goby::middleware::SerializationUnSubscribeAll",
-            "goby::ThreadJoinable",
-            "goby::ThreadShutdown",
+            "goby::middleware::Thread::joinable",
+            "goby::middleware::Thread::shutdown",
             "goby::middleware::intervehicle::modem_data_in",
             "goby::middleware::intervehicle::modem_data_out",
             "goby::middleware::intervehicle::metadata_request",
