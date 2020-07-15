@@ -4,32 +4,36 @@ import "dccl/option_extensions.proto";
 
 package goby.middleware.protobuf;
 
-message UDPOneToManyConfig
+message TCPServerConfig
 {
     option (dccl.msg) = {
         unit_system: "si"
     };
 
     required uint32 bind_port = 2
-        [(goby.field) = {description: "UDP Port to bind on" example: "50000"}];
+        [(goby.field) = {description: "TCP Port to bind on" example: "50000"}];
+
+    optional string end_of_line = 3 [
+        default = "\n",
+        (goby.field) = {
+            description: "End of line string. Can also be a std::regex"
+        }
+    ];
 
     optional bool set_reuseaddr = 10 [default = false];
-    optional bool set_broadcast = 11 [default = false];
 }
 
-message UDPPointToPointConfig
+message TCPClientConfig
 {
     option (dccl.msg) = {
         unit_system: "si"
     };
 
-    optional uint32 bind_port = 2 [
+    optional string end_of_line = 3 [
+        default = "\n",
         (goby.field) = {
-            description:
-                "UDP Port to bind on. Defaults to dynamically allocated (0)"
-            example: "50000"
-        },
-        default = 0
+            description: "End of line string. Can also be a std::regex"
+        }
     ];
 
     required string remote_address = 5 [(goby.field) = {
@@ -37,10 +41,7 @@ message UDPPointToPointConfig
         example: "192.168.1.1"
     }];
     required uint32 remote_port = 6 [(goby.field) = {
-        description: "UDP port for remote endpoint"
+        description: "TCP port for remote endpoint"
         example: "50001"
     }];
-
-    optional bool set_reuseaddr = 10 [default = false];
-    optional bool set_broadcast = 11 [default = false];
 }

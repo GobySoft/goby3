@@ -10,6 +10,13 @@ message UDPEndPoint
     required uint32 port = 2;
 }
 
+message TCPEndPoint
+{
+    optional string addr = 1;
+    optional uint32 port = 2;
+    optional bool all_clients = 3 [default = false];
+}
+
 message IOData
 {
     optional int32 index = 1 [default = -1];
@@ -17,11 +24,13 @@ message IOData
     oneof src
     {
         UDPEndPoint udp_src = 10;
+        TCPEndPoint tcp_src = 11;
     }
-    
+
     oneof dest
     {
         UDPEndPoint udp_dest = 20;
+        TCPEndPoint tcp_dest = 21;
     }
 
     optional bytes data = 30;
@@ -36,6 +45,18 @@ message SerialCommand
         RTS_LOW = 3;
     }
     required Command command = 1;
+}
+
+message TCPServerEvent
+{
+    enum Event
+    {
+        EVENT_CONNECT = 1;
+        EVENT_DISCONNECT = 2;
+    }
+    required Event event = 1;
+    optional TCPEndPoint client_endpoint = 2;
+    optional int32 number_of_clients = 3;
 }
 
 enum IOState

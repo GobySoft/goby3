@@ -34,6 +34,7 @@
 #include "goby/exception.h"
 #include "goby/middleware/protobuf/coroner.pb.h"
 
+#include "goby/middleware/common.h"
 #include "goby/middleware/group.h"
 
 namespace goby
@@ -57,6 +58,7 @@ template <typename Config, typename TransporterType> class Thread
     int index_;
     std::atomic<bool>* alive_{nullptr};
     std::type_index type_i_{std::type_index(typeid(void))};
+    std::string thread_id_;
 
   public:
     using Transporter = TransporterType;
@@ -121,7 +123,8 @@ template <typename Config, typename TransporterType> class Thread
         : loop_frequency_(loop_freq),
           loop_time_(std::chrono::system_clock::now()),
           cfg_(cfg),
-          index_(index)
+          index_(index),
+          thread_id_(thread_id())
     {
         if (loop_frequency_hertz() > 0 &&
             loop_frequency_hertz() != std::numeric_limits<double>::infinity())
@@ -163,8 +166,7 @@ template <typename Config, typename TransporterType> class Thread
 
     void thread_health(goby::middleware::protobuf::ThreadHealth& health)
     {
-        health.set_thread_id(
-            std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+        health.set_thread_id(thread_id_);
         health.set_name(health.thread_id());
         this->health(health);
     }

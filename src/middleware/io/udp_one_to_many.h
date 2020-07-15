@@ -74,6 +74,7 @@ class UDPOneToManyThread : public IOThread<line_in_group, line_out_group, publis
     static constexpr int max_udp_size{65507};
     std::array<char, max_udp_size> rx_message_;
     boost::asio::ip::udp::endpoint sender_endpoint_;
+    boost::asio::ip::udp::endpoint local_endpoint_;
 };
 } // namespace io
 } // namespace middleware
@@ -103,6 +104,7 @@ void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, pub
 
     this->mutable_socket().bind(
         boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), this->cfg().bind_port()));
+    local_endpoint_ = this->mutable_socket().local_endpoint();
 }
 
 template <const goby::middleware::Group& line_in_group,
@@ -121,9 +123,10 @@ void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, pub
                 *io_msg->mutable_data() =
                     std::string(rx_message_.begin(), rx_message_.begin() + bytes_transferred);
 
-                auto& src_endpoint = *io_msg->mutable_udp_src();
-                src_endpoint.set_addr(sender_endpoint_.address().to_string());
-                src_endpoint.set_port(sender_endpoint_.port());
+                *io_msg->mutable_udp_src() =
+                    endpoint_convert<protobuf::UDPEndPoint>(sender_endpoint_);
+                *io_msg->mutable_udp_dest() =
+                    endpoint_convert<protobuf::UDPEndPoint>(local_endpoint_);
 
                 this->handle_read_success(bytes_transferred, io_msg);
                 this->async_read();

@@ -44,6 +44,15 @@ namespace middleware
 {
 namespace io
 {
+template <typename ProtobufEndpoint, typename ASIOEndpoint>
+ProtobufEndpoint endpoint_convert(const ASIOEndpoint& asio_ep)
+{
+    ProtobufEndpoint pb_ep;
+    pb_ep.set_addr(asio_ep.address().to_string());
+    pb_ep.set_port(asio_ep.port());
+    return pb_ep;
+}
+
 enum class PubSubLayer
 {
     INTERTHREAD,
@@ -108,7 +117,7 @@ class IOThread
     /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
     IOThread(const IOConfig& config, int index = -1, std::string glog_group = "i/o")
         : goby::middleware::SimpleThread<IOConfig>(config, this->loop_max_frequency(), index),
-          glog_group_(glog_group)
+          glog_group_(glog_group + " / t" + goby::middleware::thread_id().substr(0, 6))
     {
         auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
@@ -313,6 +322,7 @@ void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer
         goby::glog.is_warn() && goby::glog << group(glog_group_) << "Will retry in "
                                            << backoff_interval_ / std::chrono::seconds(1)
                                            << " seconds" << std::endl;
+        socket_.reset();
     }
 }
 

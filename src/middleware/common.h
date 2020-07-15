@@ -24,6 +24,11 @@
 #ifndef Common20200603H
 #define Common20200603H
 
+#include <sstream>
+#include <thread>
+
+#include <boost/algorithm/string.hpp>
+
 #include "goby/middleware/protobuf/layer.pb.h"
 
 namespace goby
@@ -37,6 +42,13 @@ inline std::string to_string(goby::middleware::protobuf::Layer layer)
     boost::to_lower(name);
     return name;
 }
+inline std::string thread_id(std::thread::id i = std::this_thread::get_id())
+{
+    std::stringstream ss;
+    ss << std::hex << std::hash<std::thread::id>{}(i);
+    return ss.str();
+}
+
 } // namespace middleware
 } // namespace goby
 
