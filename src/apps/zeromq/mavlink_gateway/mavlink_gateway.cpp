@@ -25,10 +25,11 @@
 #include <string>
 #include <vector>
 
+#include "goby/middleware/marshalling/mavlink.h"
 #include "goby/middleware/marshalling/protobuf.h"
 
-#include "goby/middleware/io/serial_mavlink.h"
-#include "goby/middleware/io/udp_mavlink.h"
+#include "goby/middleware/io/mavlink/serial.h"
+#include "goby/middleware/io/mavlink/udp.h"
 
 #include "goby/zeromq/application/multi_thread.h"
 #include "goby/zeromq/protobuf/mavlink_gateway_config.pb.h"

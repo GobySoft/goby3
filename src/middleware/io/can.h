@@ -22,8 +22,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef CanInterface20200422H
-#define CanInterface20200422H
+#pragma once
 
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -33,7 +32,7 @@
 #include <linux/can.h>
 #include <linux/can/raw.h>
 
-#include "goby/middleware/io/common.h"
+#include "goby/middleware/io/detail/io_interface.h"
 #include "goby/middleware/protobuf/can_config.pb.h"
 
 namespace goby
@@ -48,13 +47,13 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-class CanThread
-    : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                      goby::middleware::protobuf::CanConfig, boost::asio::posix::stream_descriptor>
+class CanThread : public detail::IOThread<line_in_group, line_out_group, publish_layer,
+                                          subscribe_layer, goby::middleware::protobuf::CanConfig,
+                                          boost::asio::posix::stream_descriptor>
 {
-    using Base =
-        IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                 goby::middleware::protobuf::CanConfig, boost::asio::posix::stream_descriptor>;
+    using Base = detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                  goby::middleware::protobuf::CanConfig,
+                                  boost::asio::posix::stream_descriptor>;
 
   public:
     /// \brief Constructs the thread.
@@ -180,5 +179,3 @@ void goby::middleware::io::
         stream, boost::asio::buffer(&receive_frame_, sizeof(receive_frame_)),
         boost::bind(&CanThread::data_rec, this, boost::ref(receive_frame_), boost::ref(stream)));
 }
-
-#endif

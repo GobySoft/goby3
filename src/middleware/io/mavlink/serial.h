@@ -21,11 +21,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UDPMAVLink20190815H
-#define UDPMAVLink20190815H
+#ifndef SerialMAVLink20190719H
+#define SerialMAVLink20190719H
 
-#include "mavlink_common.h"
-#include "udp_point_to_point.h"
+#include "goby/middleware/io/mavlink/common.h"
+
+#include "goby/middleware/io/detail/serial_interface.h"
 
 namespace goby
 {
@@ -37,35 +38,32 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-using UDPThreadMAVLinkBase = IOThreadMAVLink<
+using SerialThreadMAVLinkBase = IOThreadMAVLink<
     line_in_group, line_out_group, publish_layer, subscribe_layer,
-    UDPPointToPointThread<line_in_group, line_out_group, publish_layer, subscribe_layer>,
-    goby::middleware::protobuf::UDPPointToPointConfig>;
+    detail::SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>,
+    goby::middleware::protobuf::SerialConfig>;
 
-/// \brief Reads/Writes MAVLink message packages from/to udp socket
-/// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the udp socket
-/// \tparam line_out_group goby::middleware::Group to subcribe to for data to send to the udp socket
+/// \brief Reads/Writes MAVLink message packages from/to serial port
+/// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the serial port
+/// \tparam line_out_group goby::middleware::Group to subcribe to for data to send to the serial port
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-class UDPThreadMAVLink
-    : public UDPThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer>
+class SerialThreadMAVLink
+    : public SerialThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer>
 {
   public:
-    UDPThreadMAVLink(const goby::middleware::protobuf::UDPPointToPointConfig& config)
-        : UDPThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer>(
+    SerialThreadMAVLink(const goby::middleware::protobuf::SerialConfig& config)
+        : SerialThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer>(
               config)
     {
     }
 
-    ~UDPThreadMAVLink() {}
+    ~SerialThreadMAVLink() {}
 
   private:
     void async_read() override;
-
-  private:
-    boost::asio::ip::udp::endpoint sender_endpoint_;
 };
 } // namespace io
 } // namespace middleware
@@ -75,11 +73,12 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer>
-void goby::middleware::io::UDPThreadMAVLink<line_in_group, line_out_group, publish_layer,
-                                            subscribe_layer>::async_read()
+void goby::middleware::io::SerialThreadMAVLink<line_in_group, line_out_group, publish_layer,
+                                               subscribe_layer>::async_read()
 {
-    this->mutable_socket().async_receive_from(
-        boost::asio::buffer(this->buffer()), sender_endpoint_,
+    boost::asio::async_read(
+        this->mutable_serial_port(), boost::asio::buffer(this->buffer()),
+        boost::asio::transfer_at_least(1),
         [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
             if (!ec && bytes_transferred > 0)
             {

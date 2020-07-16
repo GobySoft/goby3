@@ -26,11 +26,11 @@
 
 #include <mavlink/v2.0/common/common.hpp>
 
-#include "goby/middleware/group.h"
 #include "goby/middleware/marshalling/mavlink.h"
-#include "goby/middleware/protobuf/io.pb.h"
 
-#include "common.h"
+#include "goby/middleware/group.h"
+#include "goby/middleware/io/detail/io_interface.h"
+#include "goby/middleware/protobuf/io.pb.h"
 
 namespace goby
 {

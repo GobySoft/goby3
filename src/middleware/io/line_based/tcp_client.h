@@ -25,8 +25,8 @@
 
 #include <regex>
 
-#include "line_based.h"
-#include "tcp_client.h"
+#include "goby/middleware/io/detail/tcp_client_interface.h"
+#include "goby/middleware/io/line_based/common.h"
 
 namespace goby
 {
@@ -42,9 +42,10 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
 class TCPClientThreadLineBased
-    : public TCPClientThread<line_in_group, line_out_group, publish_layer, subscribe_layer>
+    : public detail::TCPClientThread<line_in_group, line_out_group, publish_layer, subscribe_layer>
 {
-    using Base = TCPClientThread<line_in_group, line_out_group, publish_layer, subscribe_layer>;
+    using Base =
+        detail::TCPClientThread<line_in_group, line_out_group, publish_layer, subscribe_layer>;
 
   public:
     /// \brief Constructs the thread.

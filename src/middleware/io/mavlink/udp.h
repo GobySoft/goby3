@@ -21,13 +21,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerialLineBased20190718H
-#define SerialLineBased20190718H
+#ifndef UDPMAVLink20190815H
+#define UDPMAVLink20190815H
 
-#include <regex>
+#include "goby/middleware/io/mavlink/common.h"
 
-#include "line_based.h"
-#include "serial_interface.h"
+#include "goby/middleware/io/udp_point_to_point.h"
 
 namespace goby
 {
@@ -35,37 +34,39 @@ namespace middleware
 {
 namespace io
 {
-
-/// \brief Reads/Writes strings from/to serial port using a line-based (typically ASCII) protocol with a defined end-of-line regex.
-/// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the serial port
-/// \tparam line_out_group goby::middleware::Group to subcribe to for data to send to the serial port
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-class SerialThreadLineBased
-    : public SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>
-{
-    using Base = SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>;
+using UDPThreadMAVLinkBase = IOThreadMAVLink<
+    line_in_group, line_out_group, publish_layer, subscribe_layer,
+    UDPPointToPointThread<line_in_group, line_out_group, publish_layer, subscribe_layer>,
+    goby::middleware::protobuf::UDPPointToPointConfig>;
 
+/// \brief Reads/Writes MAVLink message packages from/to udp socket
+/// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the udp socket
+/// \tparam line_out_group goby::middleware::Group to subcribe to for data to send to the udp socket
+template <const goby::middleware::Group& line_in_group,
+          const goby::middleware::Group& line_out_group,
+          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
+          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
+class UDPThreadMAVLink
+    : public UDPThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer>
+{
   public:
-    /// \brief Constructs the thread.
-    /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
-    SerialThreadLineBased(const goby::middleware::protobuf::SerialConfig& config, int index = -1)
-        : Base(config, index), eol_matcher_(this->cfg().end_of_line())
+    UDPThreadMAVLink(const goby::middleware::protobuf::UDPPointToPointConfig& config)
+        : UDPThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer>(
+              config)
     {
     }
 
-    ~SerialThreadLineBased() {}
+    ~UDPThreadMAVLink() {}
 
   private:
-    /// \brief Starts an asynchronous read on the serial port until the end-of-line string is reached. When the read completes, a lambda is called that publishes the received line.
     void async_read() override;
 
   private:
-    match_regex eol_matcher_;
-    boost::asio::streambuf buffer_;
+    boost::asio::ip::udp::endpoint sender_endpoint_;
 };
 } // namespace io
 } // namespace middleware
@@ -75,18 +76,15 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer>
-void goby::middleware::io::SerialThreadLineBased<line_in_group, line_out_group, publish_layer,
-                                                 subscribe_layer>::async_read()
+void goby::middleware::io::UDPThreadMAVLink<line_in_group, line_out_group, publish_layer,
+                                            subscribe_layer>::async_read()
 {
-    boost::asio::async_read_until(
-        this->mutable_serial_port(), buffer_, eol_matcher_,
+    this->mutable_socket().async_receive_from(
+        boost::asio::buffer(this->buffer()), sender_endpoint_,
         [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
             if (!ec && bytes_transferred > 0)
             {
-                std::string bytes(bytes_transferred, 0);
-                std::istream is(&buffer_);
-                is.read(&bytes[0], bytes_transferred);
-                this->handle_read_success(bytes_transferred, bytes);
+                this->try_parse(bytes_transferred);
                 this->async_read();
             }
             else

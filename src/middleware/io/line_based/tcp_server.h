@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "tcp_server.h"
+#include "goby/middleware/io/detail/tcp_server_interface.h"
 
 namespace goby
 {
@@ -32,11 +32,11 @@ namespace middleware
 namespace io
 {
 template <typename TCPServerThreadType>
-class TCPSessionLineBased : public TCPSession<TCPServerThreadType>
+class TCPSessionLineBased : public detail::TCPSession<TCPServerThreadType>
 {
   public:
     TCPSessionLineBased(boost::asio::ip::tcp::socket socket, TCPServerThreadType& server)
-        : TCPSession<TCPServerThreadType>(std::move(socket), server),
+        : detail::TCPSession<TCPServerThreadType>(std::move(socket), server),
           eol_matcher_(this->cfg().end_of_line())
     {
     }
@@ -79,10 +79,11 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
           typename Config = goby::middleware::protobuf::TCPServerConfig>
 class TCPServerThreadLineBased
-    : public TCPServerThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config>
+    : public detail::TCPServerThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                     Config>
 {
-    using Base =
-        TCPServerThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config>;
+    using Base = detail::TCPServerThread<line_in_group, line_out_group, publish_layer,
+                                         subscribe_layer, Config>;
 
   public:
     TCPServerThreadLineBased(const Config& config) : Base(config) {}

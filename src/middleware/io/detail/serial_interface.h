@@ -29,7 +29,7 @@
 #include <boost/asio/write.hpp>
 #include <boost/units/systems/si/prefixes.hpp>
 
-#include "goby/middleware/io/common.h"
+#include "goby/middleware/io/detail/io_interface.h"
 #include "goby/middleware/protobuf/serial_config.pb.h"
 
 namespace goby
@@ -37,6 +37,8 @@ namespace goby
 namespace middleware
 {
 namespace io
+{
+namespace detail
 {
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
@@ -111,6 +113,7 @@ class SerialThread
   private:
     void open_socket() override;
 };
+} // namespace detail
 } // namespace io
 } // namespace middleware
 } // namespace goby
@@ -119,8 +122,8 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer>
-void goby::middleware::io::SerialThread<line_in_group, line_out_group, publish_layer,
-                                        subscribe_layer>::open_socket()
+void goby::middleware::io::detail::SerialThread<line_in_group, line_out_group, publish_layer,
+                                                subscribe_layer>::open_socket()
 {
     this->mutable_serial_port().open(this->cfg().port());
     using boost::asio::serial_port_base;
@@ -154,8 +157,9 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer>
-void goby::middleware::io::SerialThread<line_in_group, line_out_group, publish_layer,
-                                        subscribe_layer>::async_write(const std::string& bytes)
+void goby::middleware::io::detail::SerialThread<line_in_group, line_out_group, publish_layer,
+                                                subscribe_layer>::async_write(const std::string&
+                                                                                  bytes)
 {
     boost::asio::async_write(
         this->mutable_serial_port(), boost::asio::buffer(bytes),

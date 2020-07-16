@@ -25,16 +25,16 @@
 
 #include <boost/asio/ip/tcp.hpp>
 
-#include "goby/middleware/io/common.h"
+#include "goby/middleware/io/detail/io_interface.h"
 #include "goby/middleware/protobuf/tcp_config.pb.h"
-
-#include "line_based.h"
 
 namespace goby
 {
 namespace middleware
 {
 namespace io
+{
+namespace detail
 {
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
@@ -104,6 +104,7 @@ class TCPClientThread : public IOThread<line_in_group, line_out_group, publish_l
     boost::asio::ip::tcp::endpoint local_endpoint_;
 };
 
+} // namespace detail
 } // namespace io
 } // namespace middleware
 } // namespace goby

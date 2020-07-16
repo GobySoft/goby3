@@ -26,7 +26,7 @@
 
 #include <boost/asio/ip/udp.hpp>
 
-#include "goby/middleware/io/common.h"
+#include "goby/middleware/io/detail/io_interface.h"
 #include "goby/middleware/protobuf/udp_config.pb.h"
 
 namespace goby
@@ -42,11 +42,12 @@ template <const goby::middleware::Group& line_in_group,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
           typename Config = goby::middleware::protobuf::UDPOneToManyConfig>
-class UDPOneToManyThread : public IOThread<line_in_group, line_out_group, publish_layer,
-                                           subscribe_layer, Config, boost::asio::ip::udp::socket>
+class UDPOneToManyThread
+    : public detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
+                              boost::asio::ip::udp::socket>
 {
-    using Base = IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-                          boost::asio::ip::udp::socket>;
+    using Base = detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                  Config, boost::asio::ip::udp::socket>;
 
   public:
     /// \brief Constructs the thread.
@@ -124,9 +125,9 @@ void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, pub
                     std::string(rx_message_.begin(), rx_message_.begin() + bytes_transferred);
 
                 *io_msg->mutable_udp_src() =
-                    endpoint_convert<protobuf::UDPEndPoint>(sender_endpoint_);
+                    detail::endpoint_convert<protobuf::UDPEndPoint>(sender_endpoint_);
                 *io_msg->mutable_udp_dest() =
-                    endpoint_convert<protobuf::UDPEndPoint>(local_endpoint_);
+                    detail::endpoint_convert<protobuf::UDPEndPoint>(local_endpoint_);
 
                 this->handle_read_success(bytes_transferred, io_msg);
                 this->async_read();

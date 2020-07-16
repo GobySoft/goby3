@@ -44,6 +44,14 @@ namespace middleware
 {
 namespace io
 {
+enum class PubSubLayer
+{
+    INTERTHREAD,
+    INTERPROCESS
+};
+
+namespace detail
+{
 template <typename ProtobufEndpoint, typename ASIOEndpoint>
 ProtobufEndpoint endpoint_convert(const ASIOEndpoint& asio_ep)
 {
@@ -52,12 +60,6 @@ ProtobufEndpoint endpoint_convert(const ASIOEndpoint& asio_ep)
     pb_ep.set_port(asio_ep.port());
     return pb_ep;
 }
-
-enum class PubSubLayer
-{
-    INTERTHREAD,
-    INTERPROCESS
-};
 
 template <class Derived, PubSubLayer layer> struct IOPublishTransporter
 {
@@ -270,14 +272,19 @@ class IOThread
 
     std::string glog_group_;
     bool glog_group_added_{false};
-}; // namespace io
+};
+
+} // namespace detail
+} // namespace io
+} // namespace middleware
+} // namespace goby
 
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
-void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                    IOConfig, SocketType>::try_open()
+void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publish_layer,
+                                            subscribe_layer, IOConfig, SocketType>::try_open()
 {
     try
     {
@@ -330,8 +337,8 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
-void goby::middleware::io::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                    IOConfig, SocketType>::loop()
+void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publish_layer,
+                                            subscribe_layer, IOConfig, SocketType>::loop()
 {
     if (socket_ && socket_->is_open())
     {
@@ -354,7 +361,7 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
-void goby::middleware::io::IOThread<
+void goby::middleware::io::detail::IOThread<
     line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
     SocketType>::handle_read_error(const boost::system::error_code& ec)
 {
@@ -376,7 +383,7 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
-void goby::middleware::io::IOThread<
+void goby::middleware::io::detail::IOThread<
     line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
     SocketType>::handle_write_error(const boost::system::error_code& ec)
 {
@@ -392,9 +399,5 @@ void goby::middleware::io::IOThread<
                                        << error.ShortDebugString() << std::endl;
     socket_.reset();
 }
-
-} // namespace io
-} // namespace middleware
-} // namespace goby
 
 #endif

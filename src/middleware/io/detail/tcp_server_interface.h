@@ -25,16 +25,16 @@
 
 #include <boost/asio/ip/tcp.hpp>
 
-#include "goby/middleware/io/common.h"
+#include "goby/middleware/io/detail/io_interface.h"
 #include "goby/middleware/protobuf/tcp_config.pb.h"
-
-#include "line_based.h"
 
 namespace goby
 {
 namespace middleware
 {
 namespace io
+{
+namespace detail
 {
 bool operator==(const protobuf::TCPEndPoint& ep_a, const protobuf::TCPEndPoint& ep_b)
 {
@@ -184,6 +184,7 @@ class TCPServerThread : public IOThread<line_in_group, line_out_group, publish_l
         TCPServerThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config>>>>
         clients_;
 };
+} // namespace detail
 } // namespace io
 } // namespace middleware
 } // namespace goby
@@ -192,8 +193,8 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename Config>
-void goby::middleware::io::TCPServerThread<line_in_group, line_out_group, publish_layer,
-                                           subscribe_layer, Config>::open_acceptor()
+void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group, publish_layer,
+                                                   subscribe_layer, Config>::open_acceptor()
 {
     auto& acceptor = this->mutable_socket();
     acceptor.open(boost::asio::ip::tcp::v4());
@@ -221,8 +222,8 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename Config>
-void goby::middleware::io::TCPServerThread<line_in_group, line_out_group, publish_layer,
-                                           subscribe_layer, Config>::async_accept()
+void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group, publish_layer,
+                                                   subscribe_layer, Config>::async_accept()
 {
     auto& acceptor = this->mutable_socket();
     acceptor.async_accept(tcp_socket_, [this](boost::system::error_code ec) {
@@ -247,7 +248,7 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename Config>
-void goby::middleware::io::TCPServerThread<
+void goby::middleware::io::detail::TCPServerThread<
     line_in_group, line_out_group, publish_layer, subscribe_layer,
     Config>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
 {
