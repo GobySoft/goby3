@@ -53,7 +53,7 @@ class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThrea
     {
     }
 
-    ~TCPSession()
+    virtual ~TCPSession()
     {
         goby::middleware::protobuf::TCPServerEvent event;
         event.set_event(goby::middleware::protobuf::TCPServerEvent::EVENT_DISCONNECT);
@@ -132,46 +132,6 @@ class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThrea
     boost::asio::ip::tcp::endpoint local_endpoint_;
 };
 
-template <typename TCPServerThreadType>
-class TCPSessionLineBased : public TCPSession<TCPServerThreadType>
-{
-  public:
-    TCPSessionLineBased(boost::asio::ip::tcp::socket socket, TCPServerThreadType& server)
-        : TCPSession<TCPServerThreadType>(std::move(socket), server),
-          eol_matcher_(this->cfg().end_of_line())
-    {
-    }
-
-  private:
-    void async_read() override
-    {
-        auto self(this->shared_from_this());
-        boost::asio::async_read_until(
-            this->mutable_socket(), buffer_, eol_matcher_,
-            [this, self](const boost::system::error_code& ec, std::size_t bytes_transferred) {
-                if (!ec && bytes_transferred > 0)
-                {
-                    auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();
-                    auto& bytes = *io_msg->mutable_data();
-                    bytes = std::string(bytes_transferred, 0);
-                    std::istream is(&buffer_);
-                    is.read(&bytes[0], bytes_transferred);
-
-                    this->handle_read_success(bytes_transferred, io_msg);
-                    async_read();
-                }
-                else
-                {
-                    this->handle_read_error(ec);
-                }
-            });
-    }
-
-  private:
-    match_regex eol_matcher_;
-    boost::asio::streambuf buffer_;
-};
-
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           // by default publish all incoming traffic to interprocess for logging
@@ -196,7 +156,7 @@ class TCPServerThread : public IOThread<line_in_group, line_out_group, publish_l
     {
     }
 
-    ~TCPServerThread() {}
+    virtual ~TCPServerThread() {}
 
     template <typename TCPServerThreadType> friend class TCPSession;
 
@@ -211,6 +171,8 @@ class TCPServerThread : public IOThread<line_in_group, line_out_group, publish_l
     /// \brief Tries to open the tcp server acceptor, and if fails publishes an error
     void open_socket() override { open_acceptor(); }
     void open_acceptor();
+
+    virtual void start_session(boost::asio::ip::tcp::socket tcp_socket) = 0;
 
   private:
     boost::asio::ip::tcp::endpoint remote_endpoint_;
@@ -269,10 +231,9 @@ void goby::middleware::io::TCPServerThread<line_in_group, line_out_group, publis
             goby::glog.is_debug2() && goby::glog << group(this->glog_group())
                                                  << "Received connection from: "
                                                  << tcp_socket_.remote_endpoint() << std::endl;
-            std::make_shared<
-                TCPSessionLineBased<typename std::remove_pointer<decltype(this)>::type>>(
-                std::move(tcp_socket_), *this)
-                ->start();
+
+            start_session(std::move(tcp_socket_));
+
             this->async_accept();
         }
         else
