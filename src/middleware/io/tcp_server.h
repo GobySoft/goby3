@@ -213,8 +213,6 @@ class TCPServerThread : public IOThread<line_in_group, line_out_group, publish_l
     void open_acceptor();
 
   private:
-    static constexpr int max_tcp_size{65507};
-    std::array<char, max_tcp_size> rx_message_;
     boost::asio::ip::tcp::endpoint remote_endpoint_;
     boost::asio::ip::tcp::endpoint local_endpoint_;
 
