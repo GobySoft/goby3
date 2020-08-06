@@ -10,20 +10,25 @@ message CanConfig
         unit_system: "si"
     };
 
-    required  string interface = 1  [(goby.field) = {
-        example: "can0"
-        description: "Can interface"
-    }];
+    required string interface = 1
+        [(goby.field) = {example: "can0" description: "Can interface"}];
 
-    message CanFilter {
-      enum CanMask {
-        StandardFrameFormat = 0x000007FF;
-        ExtendedFrameFormat = 0x1FFFFFFF;
-      };
-      required uint32 can_id = 1;
-      //  Should we have a default?
-      optional CanMask can_mask = 2 [default = ExtendedFrameFormat];
+    message CanFilter
+    {
+        enum CanMask
+        {
+            StandardFrameFormat = 0x000007FF;
+            ExtendedFrameFormat = 0x1FFFFFFF;
+            PGNOnly = 0x01FFFF00;
+        };
+        required uint32 can_id = 1;
+        oneof mask
+        {
+            CanMask can_mask = 2 [default = ExtendedFrameFormat];
+            uint32 can_mask_custom = 3;
+        }
     }
 
     repeated CanFilter filter = 2;
+    repeated uint32 pgn_filter = 3;
 }
