@@ -42,9 +42,24 @@ namespace middleware
 {
 namespace io
 {
-inline std::uint32_t make_extended_format_can_id(std::uint32_t pgn, std::uint32_t priority)
+inline std::uint32_t make_extended_format_can_id(std::uint32_t pgn, std::uint8_t priority,
+                                                 std::uint8_t source = 0)
 {
-    return pgn << 8 | priority << 26 | CAN_EFF_FLAG;
+    return (pgn & 0x1FFFF) << 8 | (priority & 0x7) << 26 | CAN_EFF_FLAG | (source & 0xFF);
+}
+
+// tuple of pgn, priority, source
+namespace can_id
+{
+constexpr int pgn_index{0};
+constexpr int priority_index{1};
+constexpr int source_index{2};
+} // namespace can_id
+
+inline std::tuple<std::uint32_t, std::uint8_t, std::uint8_t>
+parse_extended_format_can_id(std::uint32_t can_id)
+{
+    return std::make_tuple((can_id >> 8) & 0x1FFFF, (can_id >> 26) & 0x7, can_id & 0xFF);
 }
 
 template <const goby::middleware::Group& line_in_group,
