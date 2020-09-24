@@ -2,7 +2,14 @@
 < means message from frontseat to iFrontSeat
 
 simulator init message
-> START,LAT:42.1234,LON:-72,DURATION:600
+(duration = 0 means no timeout)
+(duration, freq, accel, hdg_rate, z_rate, warp are optional)
+FREQ = control loop frequency in hertz
+ACCEL = vehicle acceleration in m/s
+HDG_RATE = vehicle turn rate in deg/s
+Z_RATE = vehicle dive rate in m/s
+WARP = run this factor faster than real time
+> START,LAT:42.1234,LON:-72,DURATION:600,FREQ:10,ACCEL:0.5,HDG_RATE:45,Z_RATE:1,WARP:1
 
 frontseat state messages
   sent after successful START command
@@ -11,7 +18,7 @@ frontseat state messages
 < CTRL,STATE:IDLE
 
 frontseat nav command
-  generated from very primitive dynamics model (depth & heading changes are instantaneous)
+  generated from primitive dynamics model
 < NAV,LAT:42.1234,LON:-72.5435,DEPTH:200,HEADING:223,SPEED:1.4
 
 backseat desired course command

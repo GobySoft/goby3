@@ -75,7 +75,7 @@ inline unsigned ceil_log2(int i) { return ceil_log2(static_cast<unsigned>(i)); }
 /// \param a Value to interpolate
 /// \param table Table of values to interpolate from
 /// \return Interpolated value
-template <typename N1, typename N2> N2 linear_interpolate(N1 a, const std::map<N1, N2> table)
+template <typename N1, typename N2> N2 linear_interpolate(N1 a, const std::map<N1, N2>& table)
 {
     auto l_it = table.upper_bound(a);
 

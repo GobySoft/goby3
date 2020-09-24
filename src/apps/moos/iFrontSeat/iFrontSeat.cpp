@@ -95,6 +95,8 @@ load_driver(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
     cfg->mutable_frontseat_cfg()->mutable_origin()->set_lon_with_units(
         cfg->common().lon_origin() * boost::units::degree::degrees);
 
+    cfg->mutable_frontseat_cfg()->set_sim_warp_factor(cfg->common().time_warp_multiplier());
+
     goby::middleware::frontseat::InterfaceBase* driver =
         (*driver_load_ptr)(cfg->mutable_frontseat_cfg());
 

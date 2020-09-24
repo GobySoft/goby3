@@ -31,6 +31,30 @@ namespace frontseat = goby::middleware::frontseat;
 
 void* goby::apps::zeromq::FrontSeatInterface::driver_library_handle_ = 0;
 
+namespace goby
+{
+namespace apps
+{
+namespace zeromq
+{
+class FrontseatInterfaceConfigurator
+    : public goby::middleware::ProtobufConfigurator<protobuf::FrontSeatInterfaceConfig>
+{
+  public:
+    FrontseatInterfaceConfigurator(int argc, char* argv[])
+        : goby::middleware::ProtobufConfigurator<protobuf::FrontSeatInterfaceConfig>(argc, argv)
+    {
+        protobuf::FrontSeatInterfaceConfig& cfg = mutable_cfg();
+
+        if (cfg.app().simulation().time().use_sim_time())
+            cfg.mutable_frontseat_cfg()->set_sim_warp_factor(
+                cfg.app().simulation().time().warp_factor());
+    }
+};
+} // namespace zeromq
+} // namespace apps
+} // namespace goby
+
 int main(int argc, char* argv[])
 {
     // load plugin driver from environmental variable FRONTSEAT_DRIVER_LIBRARY
@@ -54,7 +78,8 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    return goby::run<goby::apps::zeromq::FrontSeatInterface>(argc, argv);
+    return goby::run<goby::apps::zeromq::FrontSeatInterface>(
+        goby::apps::zeromq::FrontseatInterfaceConfigurator(argc, argv));
 }
 
 frontseat::InterfaceBase*
@@ -154,9 +179,9 @@ void goby::apps::zeromq::FrontSeatInterface::setup_subscriptions()
     interprocess().subscribe<frontseat::groups::desired_course, frontseat::protobuf::DesiredCourse>(
         [this](const frontseat::protobuf::DesiredCourse& desired_course) {
             if (frontseat_->state() != frontseat::protobuf::INTERFACE_COMMAND)
-                glog.is_debug1() &&
-                    glog << "Not sending command because the interface is not in the command state"
-                         << std::endl;
+                glog.is_debug1() && glog << "Not sending command because the interface is "
+                                            "not in the command state"
+                                         << std::endl;
             else
             {
                 frontseat::protobuf::CommandRequest command;

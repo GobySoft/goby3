@@ -188,21 +188,26 @@ void goby::middleware::frontseat::InterfaceBase::check_error_states()
 void goby::middleware::frontseat::InterfaceBase::glog_raw(const gpb::Raw& raw_msg,
                                                           Direction direction)
 {
-    if (direction == DIRECTION_TO_FRONTSEAT)
-        glog << group(glog_out_group_);
-    else if (direction == DIRECTION_FROM_FRONTSEAT)
-        glog << group(glog_in_group_);
-
-    switch (raw_msg.type())
+    if (glog.is(DEBUG1))
     {
-        case gpb::Raw::RAW_ASCII:
-            glog << raw_msg.raw() << "\n"
-                 << "^ " << magenta << raw_msg.description() << nocolor << std::endl;
-            break;
-        case gpb::Raw::RAW_BINARY:
-            glog << raw_msg.raw().size() << "byte message\n"
-                 << "^ " << magenta << raw_msg.description() << nocolor << std::endl;
-            break;
+        if (direction == DIRECTION_TO_FRONTSEAT)
+            glog << group(glog_out_group_);
+        else if (direction == DIRECTION_FROM_FRONTSEAT)
+            glog << group(glog_in_group_);
+
+        switch (raw_msg.type())
+        {
+            case gpb::Raw::RAW_ASCII:
+                glog << raw_msg.raw() << "\n"
+                     << "^ " << magenta << raw_msg.description() << nocolor << "\n";
+                break;
+            case gpb::Raw::RAW_BINARY:
+                glog << raw_msg.raw().size() << "byte message\n"
+                     << "^ " << magenta << raw_msg.description() << nocolor << "\n";
+                break;
+        }
+        // unlock
+        glog << std::flush;
     }
 };
 

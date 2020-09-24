@@ -51,6 +51,8 @@ message Config
             "states."
     ];
 
+    optional int32 sim_warp_factor = 30 [default = 1];
+
     // Bluefin: 1000
     // Basic Simulator: 1001
     // Nemo: 1002

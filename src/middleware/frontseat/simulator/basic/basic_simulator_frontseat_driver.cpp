@@ -86,13 +86,18 @@ void goby::middleware::frontseat::BasicSimulatorFrontSeatInterface::check_connec
         // on connection, send the START command to initialize the simulator
         if (frontseat_state_ == goby::middleware::frontseat::protobuf::FRONTSEAT_NOT_CONNECTED)
         {
-            glog.is(VERBOSE) && glog << "Connected to ABC Simulator." << std::endl;
+            glog.is(VERBOSE) && glog << "Connected to Basic Vehicle Simulator." << std::endl;
             frontseat_state_ = goby::middleware::frontseat::protobuf::FRONTSEAT_IDLE;
             std::stringstream start_ss;
             start_ss << "START,"
                      << "LAT:" << sim_config_.start().lat() << ","
                      << "LON:" << sim_config_.start().lon() << ","
-                     << "DURATION:" << sim_config_.start().duration();
+                     << "DURATION:" << sim_config_.start().duration() << ","
+                     << "FREQ:" << sim_config_.start().control_freq() << ","
+                     << "ACCEL:" << sim_config_.start().vehicle().accel() << ","
+                     << "HDG_RATE:" << sim_config_.start().vehicle().hdg_rate() << ","
+                     << "Z_RATE:" << sim_config_.start().vehicle().z_rate() << ","
+                     << "WARP:" << cfg().sim_warp_factor();
             write(start_ss.str());
         }
     }
@@ -201,7 +206,7 @@ void goby::middleware::frontseat::BasicSimulatorFrontSeatInterface::send_command
 void goby::middleware::frontseat::BasicSimulatorFrontSeatInterface::send_data_to_frontseat(
     const goby::middleware::frontseat::protobuf::InterfaceData& data)
 {
-    // ABC driver doesn't have any data to sent to the frontseat
+    // Bsaic simulator driver doesn't have any data to sent to the frontseat
 } // send_data_to_frontseat
 
 void goby::middleware::frontseat::BasicSimulatorFrontSeatInterface::send_raw_to_frontseat(
