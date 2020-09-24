@@ -39,7 +39,7 @@ These parts are as follows:
 * scheme: The string representation of the scheme if one is defined in goby::middleware::MarshallingScheme::e2s, otherwsie the numeric value as a string (std::to_string)
 * type: The type name as returned by goby::middleware::SerializerParserHelper::type_name() for the given message
 * process: string representation of the publishing process id (`std::to_string(getpid())`).
-* thread: string representation of the publishing thread id (`std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()))`).
+* thread: string representation of the publishing thread id based on the hex representation of the std::hash of the id (`goby::middleware::thread_id()`).
 
 Since ZMQ allows wildcard subscription based on substrings, you can subscribe at any point for more messages (don't forget the ending slash or you may get unintended messages if you wanted "Foo" but not "FooBar"):
 

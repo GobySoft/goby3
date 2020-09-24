@@ -23,12 +23,13 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/acomms/connect.h"
-#include "goby/moos/frontseat/bluefin/bluefin.pb.h"
+#include "goby/middleware/frontseat/bluefin/bluefin.pb.h"
+#include "goby/moos/frontseat/convert.h"
 
 #include "iFrontSeat.h"
 #include "legacy_translator.h"
 
-namespace gpb = goby::moos::protobuf;
+namespace gpb = goby::middleware::frontseat::protobuf;
 using goby::glog;
 using namespace goby::util::logger;
 
@@ -48,8 +49,8 @@ goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSea
         ctd_sample_.set_temperature(std::numeric_limits<double>::quiet_NaN());
         ctd_sample_.set_pressure(std::numeric_limits<double>::quiet_NaN());
         ctd_sample_.set_salinity(std::numeric_limits<double>::quiet_NaN());
-        ctd_sample_.set_lat(std::numeric_limits<double>::quiet_NaN());
-        ctd_sample_.set_lon(std::numeric_limits<double>::quiet_NaN());
+        ctd_sample_.mutable_global_fix()->set_lat(std::numeric_limits<double>::quiet_NaN());
+        ctd_sample_.mutable_global_fix()->set_lon(std::numeric_limits<double>::quiet_NaN());
         // we'll let FrontSeatInterfaceBase::compute_missing() give us density, sound speed & depth
     }
 
@@ -100,54 +101,16 @@ goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSea
     }
 }
 void goby::apps::moos::FrontSeatLegacyTranslator::handle_driver_data_from_frontseat(
-    const goby::moos::protobuf::FrontSeatInterfaceData& data)
+    const gpb::InterfaceData& data)
 {
     if (data.has_node_status() && ifs_->cfg_.legacy_cfg().publish_nav())
     {
-        const goby::moos::protobuf::NodeStatus& status = data.node_status();
+        const gpb::NodeStatus& status = data.node_status();
 
-        ctd_sample_.set_lat(status.global_fix().lat());
-        ctd_sample_.set_lon(status.global_fix().lon());
+        ctd_sample_.mutable_global_fix()->set_lat(status.global_fix().lat());
+        ctd_sample_.mutable_global_fix()->set_lon(status.global_fix().lon());
 
-        // post NAV_*
-        ifs_->publish("NAV_X", status.local_fix().x());
-        ifs_->publish("NAV_Y", status.local_fix().y());
-        ifs_->publish("NAV_LAT", status.global_fix().lat());
-        ifs_->publish("NAV_LONG", status.global_fix().lon());
-
-        if (status.local_fix().has_z())
-            ifs_->publish("NAV_Z", status.local_fix().z());
-        if (status.global_fix().has_depth())
-            ifs_->publish("NAV_DEPTH", status.global_fix().depth());
-
-        const double pi = 3.14159;
-        if (status.pose().has_heading())
-        {
-            double yaw = status.pose().heading() * pi / 180.0;
-            while (yaw < -pi) yaw += 2 * pi;
-            while (yaw >= pi) yaw -= 2 * pi;
-            ifs_->publish("NAV_YAW", yaw);
-            ifs_->publish("NAV_HEADING", status.pose().heading());
-        }
-
-        ifs_->publish("NAV_SPEED", status.speed());
-
-        if (status.pose().has_pitch())
-            ifs_->publish("NAV_PITCH", status.pose().pitch() * pi / 180.0);
-        if (status.pose().has_roll())
-            ifs_->publish("NAV_ROLL", status.pose().roll() * pi / 180.0);
-
-        if (status.global_fix().has_altitude())
-            ifs_->publish("NAV_ALTITUDE", status.global_fix().altitude());
-
-        // surface for GPS variable
-        if (status.global_fix().lat_source() == goby::moos::protobuf::GPS &&
-            status.global_fix().lon_source() == goby::moos::protobuf::GPS)
-        {
-            std::stringstream ss;
-            ss << "Timestamp=" << std::setprecision(15) << status.time();
-            ifs_->publish("GPS_UPDATE_RECEIVED", ss.str());
-        }
+        goby::moos::convert_and_publish_node_status(status, ifs_->m_Comms);
     }
 
     if (data.HasExtension(gpb::bluefin_data) && ifs_->cfg_.legacy_cfg().pub_sub_bf_commands())
@@ -197,7 +160,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg
         // We'll use the variable to key postings, since it's
         // always present (even in simulations)
         ctd_sample_.set_time(msg.GetTime());
-        gpb::FrontSeatInterfaceData data;
+        gpb::InterfaceData data;
         *data.mutable_ctd_sample() = ctd_sample_;
         ifs_->frontseat_->compute_missing(data.mutable_ctd_sample());
 
@@ -266,7 +229,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_modem_raw(const CM
 {
     goby::acomms::protobuf::ModemRaw raw;
     parse_for_moos(msg.GetString(), &raw);
-    gpb::FrontSeatInterfaceData data;
+    gpb::InterfaceData data;
 
     switch (direction)
     {
@@ -282,10 +245,9 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_modem_raw(const CM
                      data);
 }
 
-void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(
-    goby::moos::protobuf::InterfaceState state)
+void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(gpb::InterfaceState state)
 {
-    goby::moos::protobuf::FrontSeatInterfaceStatus status = ifs_->frontseat_->status();
+    gpb::InterfaceStatus status = ifs_->frontseat_->status();
     if (status.frontseat_state() == gpb::FRONTSEAT_ACCEPTING_COMMANDS)
         ifs_->publish("FRONTSEAT_READY", 1);
     else

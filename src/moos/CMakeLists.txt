@@ -1,15 +1,14 @@
 set(PROTOS 
   protobuf/bluefin_driver.proto
-  protobuf/ctd_sample.proto
-  protobuf/desired_course.proto
-  protobuf/frontseat_config.proto
-  protobuf/frontseat.proto
   protobuf/goby_moos_app.proto
   protobuf/modem_id_lookup.proto
-  protobuf/node_status.proto
   protobuf/pAcommsHandler_config.proto
+  protobuf/iFrontSeat_config.proto
   protobuf/translator.proto
   protobuf/ufield_sim_driver.proto
+  protobuf/node_status.proto
+  protobuf/desired_course.proto
+  protobuf/moos_helm_frontseat_interface_config.proto
   )
 
 set(SRC
@@ -22,8 +21,9 @@ set(SRC
    transitional/message_val.cpp
    transitional/message_algorithms.cpp
    moos_geodesy.cpp
-   frontseat/frontseat.cpp
-)
+   frontseat/convert.cpp
+   )
+
 
 if(build_zeromq)
   set(PROTOS ${PROTOS} 
@@ -53,8 +53,6 @@ if(build_zeromq)
 endif()
 
 set_target_properties(goby_moos PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
-
-add_subdirectory(frontseat)
 
 if(build_zeromq)
   add_subdirectory(middleware)

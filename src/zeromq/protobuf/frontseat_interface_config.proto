@@ -1,0 +1,22 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+import "dccl/option_extensions.proto";
+import "goby/middleware/protobuf/frontseat_config.proto";
+
+
+package goby.apps.zeromq.protobuf;
+
+message FrontSeatInterfaceConfig
+{
+    option (dccl.msg).unit_system = "si";
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+
+    required goby.middleware.frontseat.protobuf.Config frontseat_cfg = 10;
+
+    extensions 1000 to max;
+    // 1000: MOOS helm
+}
+

@@ -1,2 +1,0 @@
-add_executable(abc_frontseat_simulator abc_frontseat_simulator.cpp)
-target_link_libraries(abc_frontseat_simulator goby goby_moos)

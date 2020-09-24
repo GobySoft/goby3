@@ -33,8 +33,10 @@
 #include "goby/middleware/marshalling/interface.h"
 
 #include "goby/exception.h"
+#include "goby/middleware/marshalling/detail/primitive_type.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"
+#include "goby/middleware/transport/detail/type_helpers.h"
 #include "goby/middleware/transport/publisher.h"
 #include "goby/middleware/transport/subscriber.h"
 #include "goby/util/debug_logger.h"
@@ -242,6 +244,18 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
         static_cast<Transporter*>(this)->template check_validity<group>();
         static_cast<Transporter*>(this)->template subscribe_dynamic<Data, scheme>(f, group,
                                                                                   subscriber);
+    }
+
+    /// \brief Simplified version of subscribe() that can deduce Data from the first argument of the function (lambda, function pointer, etc.) passed to it.
+    ///
+    /// This removes the need to explicitly specify Data for simple calls to subscribe() that do not need to manually specify the 'scheme' or provide a Subscriber.
+    template <const Group& group, typename Func> void subscribe(Func f)
+    {
+        // we want to grab the first argument of "f" and then capture "Data" from "const Data& data" and "std::shared_ptr<const Data>"
+        using Data = typename detail::primitive_type<
+            typename std::decay<detail::first_argument<Func>>::type>::type;
+
+        subscribe<group, Data, transporter_scheme<Data, Transporter>()>(f);
     }
 
     /// \brief Unsubscribe to a specific group and data type

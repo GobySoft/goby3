@@ -2,6 +2,7 @@ add_subdirectory(gobyd)
 add_subdirectory(logger)
 add_subdirectory(terminate)
 add_subdirectory(coroner)
+add_subdirectory(frontseat_interface)
 
 if(enable_wt)
   add_subdirectory(liaison)

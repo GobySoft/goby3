@@ -1,0 +1,42 @@
+syntax = "proto2";
+import "goby/middleware/protobuf/frontseat.proto";
+
+package goby.middleware.frontseat.protobuf;
+
+message IverState
+{
+    enum IverMissionMode
+    {
+        IVER_MODE_UNKNOWN = -1;
+        IVER_MODE_NORMAL = 0x4E; // 'N'
+        IVER_MODE_STOPPED = 0x53; // 'S'
+        IVER_MODE_PARKING = 0x50; // 'P'
+        IVER_MODE_MANUAL_OVERRIDE = 0x4D; // 'M'
+        IVER_MODE_MANUAL_PARKING = 0x6D; // 'm' ("mP")
+        IVER_MODE_SERVO_MODE = 0x41; // 'A'
+        IVER_MODE_MISSION_MODE = 0x57; // 'W'
+    }
+    optional IverMissionMode mode = 1 [default = IVER_MODE_UNKNOWN];
+}
+
+message IverExtraCommands
+{
+    enum IverCommand
+    {
+        UNKNOWN_COMMAND = 0;
+        START_MISSION = 1;
+        STOP_MISSION = 2;
+    }
+    optional IverCommand command = 1 [default = UNKNOWN_COMMAND];
+    optional string mission = 2;
+}
+
+extend CommandRequest
+{
+    optional IverExtraCommands iver_command = 1001;
+}
+
+extend InterfaceData
+{
+    optional IverState iver_state = 1001;
+}

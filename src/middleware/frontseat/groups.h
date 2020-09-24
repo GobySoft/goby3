@@ -37,6 +37,22 @@ namespace groups
 constexpr goby::middleware::Group node_status{"goby::middleware::frontseat::node_status"};
 constexpr goby::middleware::Group desired_course{"goby::middleware::frontseat::desired_course"};
 
+constexpr goby::middleware::Group raw_in{"goby::middleware::frontseat::raw_in"};
+constexpr goby::middleware::Group raw_out{"goby::middleware::frontseat::raw_out"};
+constexpr goby::middleware::Group raw_send_request{"goby::middleware::frontseat::raw_send_request"};
+
+constexpr goby::middleware::Group command_request{"goby::middleware::frontseat::command_request"};
+constexpr goby::middleware::Group command_response{"goby::middleware::frontseat::command_response"};
+
+constexpr goby::middleware::Group data_from_frontseat{
+    "goby::middleware::frontseat::data_from_frontseat"};
+constexpr goby::middleware::Group data_to_frontseat{
+    "goby::middleware::frontseat::data_to_frontseat"};
+
+constexpr goby::middleware::Group helm_state{"goby::middleware::frontseat::helm_state"};
+
+constexpr goby::middleware::Group status{"goby::middleware::frontseat::status"};
+
 } // namespace groups
 } // namespace frontseat
 } // namespace middleware

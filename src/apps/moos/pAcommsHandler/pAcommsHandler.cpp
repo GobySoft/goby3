@@ -35,11 +35,11 @@
 #include "goby/acomms/modemdriver/iridium_driver.h"
 #include "goby/acomms/modemdriver/iridium_shore_driver.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
+#include "goby/middleware/protobuf/frontseat.pb.h"
 #include "goby/moos/moos_bluefin_driver.h"
 #include "goby/moos/moos_protobuf_helpers.h"
 #include "goby/moos/moos_ufield_sim_driver.h"
 #include "goby/moos/protobuf/bluefin_driver.pb.h"
-#include "goby/moos/protobuf/frontseat.pb.h"
 #include "goby/moos/protobuf/ufield_sim_driver.pb.h"
 #include "goby/time/io.h"
 #include "goby/util/protobuf/io.h"
@@ -650,7 +650,7 @@ void goby::apps::moos::CpAcommsHandler::handle_queue_receive(const google::proto
     // forward to frontseat driver
     if (dccl_frontseat_forward_.count(msg.GetDescriptor()))
     {
-        goby::moos::protobuf::FrontSeatInterfaceData fs_data;
+        goby::middleware::frontseat::protobuf::InterfaceData fs_data;
         dccl_->encode(fs_data.mutable_dccl_message(), msg);
         publish_pb(cfg_.moos_var().ifrontseat_data_out(), fs_data);
     }

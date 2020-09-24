@@ -58,7 +58,9 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
 
         glog.is(VERBOSE) && glog << "Subscribing: rx thread: " << std::this_thread::get_id()
                                  << std::endl;
-        interthread().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
+
+        interthread().subscribe<widget1>([this](const Widget& w) { post(w); });
+
         glog.is(VERBOSE) && glog << "...subscribed: rx thread: " << std::this_thread::get_id()
                                  << std::endl;
         ++ready;

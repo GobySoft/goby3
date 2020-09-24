@@ -47,6 +47,11 @@ class InterThreadTransporter
     : public StaticTransporterInterface<InterThreadTransporter, NullTransporter>,
       public Poller<InterThreadTransporter>
 {
+  private:
+    struct EmptyMessage
+    {
+    };
+
   public:
     InterThreadTransporter() : data_mutex_(std::make_shared<std::mutex>()) {}
 
@@ -118,6 +123,13 @@ class InterThreadTransporter
         publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, publisher);
     }
 
+    /// \brief Publish with no data (used to signal another thread)
+    template <const Group& group> void publish_empty()
+    {
+        publish_dynamic<EmptyMessage>(
+            std::shared_ptr<EmptyMessage>(std::make_shared<EmptyMessage>()), group);
+    }
+
     /// \brief Subscribe to a specific run-time defined group and data type (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
     ///
     /// \tparam Data data type to subscribe to.
@@ -153,6 +165,12 @@ class InterThreadTransporter
             Poller<InterThreadTransporter>::poll_mutex());
     }
 
+    /// \brief Subscribe with no data (used to receive a signal from another thread)
+    template <const Group& group> void subscribe_empty(std::function<void()> f)
+    {
+        subscribe_dynamic<EmptyMessage>([=](std::shared_ptr<const EmptyMessage>) { f(); }, group);
+    }
+
     /// \brief Unsubscribe to a specific run-time defined group and data type. Where possible, prefer the static variant in StaticTransporterInterface::unsubscribe()
     ///
     /// \tparam Data data type to unsubscribe from.
@@ -173,7 +191,7 @@ class InterThreadTransporter
 
   private:
     friend Poller<InterThreadTransporter>;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
         return detail::SubscriptionStoreBase::poll_all(std::this_thread::get_id(), lock);
     }

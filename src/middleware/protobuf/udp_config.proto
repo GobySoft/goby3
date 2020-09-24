@@ -10,8 +10,9 @@ message UDPOneToManyConfig
         unit_system: "si"
     };
 
-    required uint32 bind_port = 2 [(goby.field) = { description: "UDP Port to bind on" example: "50000" }];
-    
+    required uint32 bind_port = 2
+        [(goby.field) = {description: "UDP Port to bind on" example: "50000"}];
+
     optional bool set_reuseaddr = 10 [default = false];
     optional bool set_broadcast = 11 [default = false];
 }
@@ -22,12 +23,24 @@ message UDPPointToPointConfig
         unit_system: "si"
     };
 
-    required uint32 bind_port = 2 [(goby.field) = { description: "UDP Port to bind on" example: "50000" }];
+    optional uint32 bind_port = 2 [
+        (goby.field) = {
+            description:
+                "UDP Port to bind on. Defaults to dynamically allocated (0)"
+            example: "50000"
+        },
+        default = 0
+    ];
 
-    required string remote_address = 5 [(goby.field) = { description: "Remote address to transfer data to" example: "192.168.1.1" }];
-    required uint32 remote_port = 6 [(goby.field) = { description: "UDP port for remote endpoint" example: "50001" }];
+    required string remote_address = 5 [(goby.field) = {
+        description: "Remote address to transfer data to"
+        example: "192.168.1.1"
+    }];
+    required uint32 remote_port = 6 [(goby.field) = {
+        description: "UDP port for remote endpoint"
+        example: "50001"
+    }];
 
     optional bool set_reuseaddr = 10 [default = false];
     optional bool set_broadcast = 11 [default = false];
-    
 }

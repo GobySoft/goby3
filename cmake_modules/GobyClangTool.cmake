@@ -25,7 +25,7 @@ function(GOBY_EXPORT_INTERFACE TARGET YML_OUT_DIR YML)
     COMMAND goby_clang_tool
     ARGS -gen -target ${TARGET} -outdir ${YML_OUT_DIR} -p ${CMAKE_BINARY_DIR} ${ABS_TARGET_SOURCES}
     COMMENT "Running goby_clang_tool on ${TARGET}"
-    DEPENDS ${ABS_TARGET_SOURCES}
+    DEPENDS ${ABS_TARGET_SOURCES} ${TARGET}
     VERBATIM)
 
   set_source_files_properties(${${YML}} PROPERTIES GENERATED TRUE)

@@ -7,6 +7,7 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/terminate_config.proto
   protobuf/mavlink_gateway_config.proto
   protobuf/coroner_config.proto
+  protobuf/frontseat_interface_config.proto
   )
 
 set(SRC

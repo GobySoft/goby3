@@ -27,6 +27,7 @@
 #include <tuple>
 #include <zmq.hpp>
 
+#include "goby/middleware/common.h"
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/zeromq/protobuf/interprocess_config.pb.h"
 #include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"
@@ -513,7 +514,7 @@ class InterProcessPortal
             previous_slash = slash_pos;
         }
         return std::make_tuple(elem[0], middleware::MarshallingScheme::from_string(elem[1]),
-                               elem[2], std::stoi(elem[3]), std::stoull(elem[4]));
+                               elem[2], std::stoi(elem[3]), std::stoull(elem[4], 0, 16));
     }
 
     template <typename Key>
@@ -528,10 +529,7 @@ class InterProcessPortal
         return it_pair.first->second;
     }
 
-    std::string to_string(std::thread::id i)
-    {
-        return std::to_string(std::hash<std::thread::id>{}(i));
-    }
+    std::string to_string(std::thread::id i) { return goby::middleware::thread_id(i); }
 
     // used by scheme
     std::string to_string(int i) { return middleware::MarshallingScheme::to_string(i); }
@@ -564,7 +562,6 @@ class InterProcessPortal
     std::string process_{std::to_string(getpid())};
     std::unordered_map<int, std::string> schemes_;
     std::unordered_map<std::thread::id, std::string> threads_;
-
 };
 
 class Router

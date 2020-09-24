@@ -4,3 +4,4 @@ endif()
 
 add_subdirectory(log_tool)
 add_subdirectory(clang_tool)
+add_subdirectory(basic_frontseat_simulator)

@@ -1,0 +1,18 @@
+syntax = "proto2";
+import "goby/middleware/protobuf/frontseat_config.proto";
+import "goby/protobuf/option_extensions.proto";
+
+package goby.middleware.frontseat.protobuf;
+
+message WavegliderSV2Config
+{
+    required string pm_serial_port = 1;
+    optional uint32 pm_serial_baud = 2 [default = 115200];
+    optional uint32 board_id = 3 [default = 0x03];
+    optional uint32 task_id = 4 [default = 0x01];
+}
+
+extend Config
+{
+    optional WavegliderSV2Config waveglider_sv2_config = 1001;
+}

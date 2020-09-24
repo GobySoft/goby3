@@ -1,0 +1,32 @@
+> means message from iFrontSeat to frontseat
+< means message from frontseat to iFrontSeat
+
+simulator init message
+(duration = 0 means no timeout)
+(duration, freq, accel, hdg_rate, z_rate, warp are optional)
+FREQ = control loop frequency in hertz
+ACCEL = vehicle acceleration in m/s
+HDG_RATE = vehicle turn rate in deg/s
+Z_RATE = vehicle dive rate in m/s
+WARP = run this factor faster than real time
+> START,LAT:42.1234,LON:-72,DURATION:600,FREQ:10,ACCEL:0.5,HDG_RATE:45,Z_RATE:1,WARP:1
+
+frontseat state messages
+  sent after successful START command
+< CTRL,STATE:PAYLOAD 
+  sent after DURATION is up in START command
+< CTRL,STATE:IDLE
+
+frontseat nav command
+  generated from primitive dynamics model
+< NAV,LAT:42.1234,LON:-72.5435,DEPTH:200,HEADING:223,SPEED:1.4
+
+backseat desired course command
+> CMD,HEADING:260,SPEED:1.5,DEPTH:100
+
+frontseat response to backseat CMD
+  CMD is good
+< CMD,RESULT:OK
+  error in the CMD
+< CMD,RESULT:ERROR
+

@@ -27,8 +27,8 @@
 
 #include "goby/moos/goby_moos_app.h"
 
-#include "goby/moos/frontseat/frontseat.h"
-#include "goby/moos/protobuf/frontseat_config.pb.h"
+#include "goby/middleware/frontseat/interface.h"
+#include "goby/moos/protobuf/iFrontSeat_config.pb.h"
 
 #include "legacy_translator.h"
 
@@ -63,14 +63,15 @@ class iFrontSeat : public goby::moos::GobyMOOSApp
     void handle_mail_helm_state(const CMOOSMsg& msg);
 
     // frontseat driver signal handlers
-    void handle_driver_command_response(const goby::moos::protobuf::CommandResponse& response);
-    void
-    handle_driver_data_from_frontseat(const goby::moos::protobuf::FrontSeatInterfaceData& data);
-    void handle_driver_raw_in(const goby::moos::protobuf::FrontSeatRaw& data);
-    void handle_driver_raw_out(const goby::moos::protobuf::FrontSeatRaw& data);
+    void handle_driver_command_response(
+        const goby::middleware::frontseat::protobuf::CommandResponse& response);
+    void handle_driver_data_from_frontseat(
+        const goby::middleware::frontseat::protobuf::InterfaceData& data);
+    void handle_driver_raw_in(const goby::middleware::frontseat::protobuf::Raw& data);
+    void handle_driver_raw_out(const goby::middleware::frontseat::protobuf::Raw& data);
 
   private:
-    std::shared_ptr<goby::moos::FrontSeatInterfaceBase> frontseat_;
+    std::unique_ptr<goby::middleware::frontseat::InterfaceBase> frontseat_;
 
     FrontSeatLegacyTranslator translator_;
 

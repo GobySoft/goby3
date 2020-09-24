@@ -34,6 +34,7 @@
 #include "goby/exception.h"
 #include "goby/middleware/protobuf/coroner.pb.h"
 
+#include "goby/middleware/common.h"
 #include "goby/middleware/group.h"
 
 namespace goby
@@ -53,9 +54,11 @@ template <typename Config, typename TransporterType> class Thread
     boost::units::quantity<boost::units::si::frequency> loop_frequency_;
     std::chrono::system_clock::time_point loop_time_;
     unsigned long long loop_count_{0};
-    const Config& cfg_;
+    const Config cfg_;
     int index_;
     std::atomic<bool>* alive_{nullptr};
+    std::type_index type_i_{std::type_index(typeid(void))};
+    std::string thread_id_;
 
   public:
     using Transporter = TransporterType;
@@ -111,13 +114,17 @@ template <typename Config, typename TransporterType> class Thread
     /// \return the Thread index (for multiple instantiations)
     int index() const { return index_; }
 
+    std::type_index type_index() { return type_i_; }
+    void set_type_index(std::type_index type_i) { type_i_ = type_i; }
+
   protected:
     Thread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
            int index = -1)
         : loop_frequency_(loop_freq),
           loop_time_(std::chrono::system_clock::now()),
           cfg_(cfg),
-          index_(index)
+          index_(index),
+          thread_id_(thread_id())
     {
         if (loop_frequency_hertz() > 0 &&
             loop_frequency_hertz() != std::numeric_limits<double>::infinity())
@@ -159,8 +166,7 @@ template <typename Config, typename TransporterType> class Thread
 
     void thread_health(goby::middleware::protobuf::ThreadHealth& health)
     {
-        health.set_thread_id(
-            std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+        health.set_thread_id(thread_id_);
         health.set_name(health.thread_id());
         this->health(health);
     }
@@ -181,8 +187,8 @@ template <typename Config, typename TransporterType> class Thread
 
     bool alive() { return alive_ && *alive_; }
 
-    static constexpr goby::middleware::Group shutdown_group_{"goby::ThreadShutdown"};
-    static constexpr goby::middleware::Group joinable_group_{"goby::ThreadJoinable"};
+    static constexpr goby::middleware::Group shutdown_group_{"goby::middleware::Thread::shutdown"};
+    static constexpr goby::middleware::Group joinable_group_{"goby::middleware::Thread::joinable"};
 };
 
 } // namespace middleware
