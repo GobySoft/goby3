@@ -1,22 +1,11 @@
-function(generate_specialized_frontseat_apps target shortname)
-  file(WRITE goby_frontseat_interface_${shortname}
-    "#!/bin/bash\nLD_LIBRARY_PATH=${goby_LIB_DIR}:\$\{LD_LIBRARY_PATH\} FRONTSEAT_DRIVER_LIBRARY=lib${target}.so.${GOBY_SOVERSION} exec goby_frontseat_interface \$@")
-  # copy to get executable permissions set
-  file(COPY goby_frontseat_interface_${shortname}
-    DESTINATION ${goby_BIN_DIR}
-    FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-  # remove temporary files
-  file(REMOVE goby_frontseat_interface_${shortname})
+unset(GOBY_FRONTSEAT_PLUGIN_TARGET_LIST CACHE)
+unset(GOBY_FRONTSEAT_PLUGIN_SHORTNAME_LIST CACHE)
 
-  if(build_iFrontSeat)
-    file(WRITE iFrontSeat_${shortname}
-      "#!/bin/bash\nLD_LIBRARY_PATH=${goby_LIB_DIR}:\$\{LD_LIBRARY_PATH\} IFRONTSEAT_DRIVER_LIBRARY=lib${target}.so.${GOBY_SOVERSION} exec iFrontSeat \$@")
-    file(COPY iFrontSeat_${shortname}
-      DESTINATION ${goby_BIN_DIR}
-      FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-    file(REMOVE iFrontSeat_${shortname})
-  endif()  
-
+function(goby_register_frontseat_plugin target shortname)
+  list(APPEND GOBY_FRONTSEAT_PLUGIN_TARGET_LIST ${target})
+  list(APPEND GOBY_FRONTSEAT_PLUGIN_SHORTNAME_LIST ${shortname})
+  set(GOBY_FRONTSEAT_PLUGIN_TARGET_LIST ${GOBY_FRONTSEAT_PLUGIN_TARGET_LIST} CACHE INTERNAL "GOBY_FRONTSEAT_PLUGIN_TARGET_LIST")
+  set(GOBY_FRONTSEAT_PLUGIN_SHORTNAME_LIST ${GOBY_FRONTSEAT_PLUGIN_SHORTNAME_LIST} CACHE INTERNAL "GOBY_FRONTSEAT_PLUGIN_SHORTNAME_LIST")
 endfunction()
 
 add_subdirectory(bluefin)

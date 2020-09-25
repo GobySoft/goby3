@@ -222,8 +222,10 @@ void goby::middleware::frontseat::InterfaceBase::compute_missing(gpb::CTDSample*
     }
     if (!ctd_sample->global_fix().has_depth())
     {
-        ctd_sample->mutable_global_fix()->set_depth_with_units(goby::util::seawater::depth(
-            ctd_sample->pressure_with_units(), ctd_sample->global_fix().lat_with_units()));
+        // should always be true, but if() to workaround clang-analyzer false positive ("Called C++ object pointer is null")
+        if (ctd_sample->mutable_global_fix())
+            ctd_sample->mutable_global_fix()->set_depth_with_units(goby::util::seawater::depth(
+                ctd_sample->pressure_with_units(), ctd_sample->global_fix().lat_with_units()));
     }
     if (!ctd_sample->has_sound_speed())
     {

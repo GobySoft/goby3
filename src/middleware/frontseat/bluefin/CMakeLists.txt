@@ -11,6 +11,6 @@ target_link_libraries(goby_frontseat_bluefin
 
 set_target_properties(goby_frontseat_bluefin PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
 
-generate_specialized_frontseat_apps(goby_frontseat_bluefin bluefin)
+goby_register_frontseat_plugin(goby_frontseat_bluefin bluefin)
 
 goby_install_lib(goby_frontseat_bluefin core)
