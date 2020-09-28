@@ -12,7 +12,7 @@ endif()
 
 add_executable(goby_frontseat_interface ${SRC})
 if(build_moos)
-  target_link_libraries(goby_frontseat_interface goby goby_zeromq goby_moos goby_frontseat_moos_gateway_plugin)
+  target_link_libraries(goby_frontseat_interface goby goby_zeromq goby_moos goby_ivp_frontseat_moos_gateway_plugin)
 else()
   target_link_libraries(goby_frontseat_interface goby goby_zeromq)
 endif()
