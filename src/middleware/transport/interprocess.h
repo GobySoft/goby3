@@ -401,6 +401,43 @@ class InterProcessForwarder
     std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
 };
 
+template <typename Derived, typename InnerTransporter>
+class InterProcessPortalBase : public InterProcessTransporterBase<Derived, InnerTransporter>
+{
+  public:
+    using Base = InterProcessTransporterBase<Derived, InnerTransporter>;
+
+    InterProcessPortalBase(InnerTransporter& inner) : Base(inner) { _init(); }
+    InterProcessPortalBase() { _init(); }
+
+    virtual ~InterProcessPortalBase() {}
+
+  private:
+    void _init()
+    {
+        using goby::middleware::protobuf::SerializerTransporterMessage;
+        this->inner().template subscribe<Base::forward_group_, SerializerTransporterMessage>(
+            [this](std::shared_ptr<const SerializerTransporterMessage> d) {
+                static_cast<Derived*>(this)->_receive_publication_forwarded(d);
+            });
+
+        this->inner().template subscribe<Base::forward_group_, SerializationHandlerBase<>>(
+            [this](std::shared_ptr<const middleware::SerializationHandlerBase<>> s) {
+                static_cast<Derived*>(this)->_receive_subscription_forwarded(s);
+            });
+
+        this->inner().template subscribe<Base::forward_group_, SerializationSubscriptionRegex>(
+            [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s) {
+                static_cast<Derived*>(this)->_receive_regex_subscription_forwarded(s);
+            });
+
+        this->inner().template subscribe<Base::forward_group_, SerializationUnSubscribeAll>(
+            [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s) {
+                static_cast<Derived*>(this)->_unsubscribe_all(s->thread_id());
+            });
+    }
+};
+
 } // namespace middleware
 } // namespace goby
 

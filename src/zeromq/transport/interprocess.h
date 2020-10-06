@@ -113,16 +113,17 @@ class InterProcessPortalReadThread
     bool have_pubsub_sockets_{false};
 };
 
-template <typename InnerTransporter = middleware::NullTransporter>
-class InterProcessPortal
-    : public middleware::InterProcessTransporterBase<InterProcessPortal<InnerTransporter>,
-                                                     InnerTransporter>
+template <typename InnerTransporter,
+          template <typename Derived, typename InnerTransporterType> class PortalBase>
+class InterProcessPortalImplementation
+    : public PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase>,
+                        InnerTransporter>
 {
   public:
-    using Base = middleware::InterProcessTransporterBase<InterProcessPortal<InnerTransporter>,
-                                                         InnerTransporter>;
+    using Base = PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase>,
+                            InnerTransporter>;
 
-    InterProcessPortal(const protobuf::InterProcessPortalConfig& cfg)
+    InterProcessPortalImplementation(const protobuf::InterProcessPortalConfig& cfg)
         : cfg_(cfg),
           zmq_context_(cfg.zeromq_number_io_threads()),
           zmq_main_(zmq_context_),
@@ -131,7 +132,8 @@ class InterProcessPortal
         _init();
     }
 
-    InterProcessPortal(InnerTransporter& inner, const protobuf::InterProcessPortalConfig& cfg)
+    InterProcessPortalImplementation(InnerTransporter& inner,
+                                     const protobuf::InterProcessPortalConfig& cfg)
         : Base(inner),
           cfg_(cfg),
           zmq_context_(cfg.zeromq_number_io_threads()),
@@ -141,7 +143,7 @@ class InterProcessPortal
         _init();
     }
 
-    ~InterProcessPortal()
+    ~InterProcessPortalImplementation()
     {
         if (zmq_thread_)
         {
@@ -151,35 +153,12 @@ class InterProcessPortal
     }
 
     friend Base;
+    friend typename Base::Base;
 
   private:
     void _init()
     {
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
-
-        using goby::middleware::protobuf::SerializerTransporterMessage;
-        this->inner().template subscribe<Base::forward_group_, SerializerTransporterMessage>(
-            [this](std::shared_ptr<const SerializerTransporterMessage> d) {
-                _receive_publication_forwarded(d);
-            });
-
-        this->inner()
-            .template subscribe<Base::forward_group_, middleware::SerializationHandlerBase<>>(
-                [this](std::shared_ptr<const middleware::SerializationHandlerBase<>> s) {
-                    _receive_subscription_forwarded(s);
-                });
-
-        this->inner()
-            .template subscribe<Base::forward_group_, middleware::SerializationSubscriptionRegex>(
-                [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s) {
-                    _receive_regex_subscription_forwarded(s);
-                });
-
-        this->inner()
-            .template subscribe<Base::forward_group_, middleware::SerializationUnSubscribeAll>(
-                [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s) {
-                    _unsubscribe_all(s->thread_id());
-                });
 
         // start zmq read thread
         zmq_thread_.reset(new std::thread([this]() { zmq_read_thread_.run(); }));
@@ -603,6 +582,11 @@ class Manager
     const protobuf::InterProcessPortalConfig& cfg_;
     const Router& router_;
 };
+
+template <typename InnerTransporter = middleware::NullTransporter>
+using InterProcessPortal =
+    InterProcessPortalImplementation<InnerTransporter, middleware::InterProcessPortalBase>;
+
 } // namespace zeromq
 } // namespace goby
 
