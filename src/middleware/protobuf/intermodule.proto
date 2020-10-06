@@ -1,0 +1,19 @@
+syntax = "proto2";
+import "dccl/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/serializer_transporter.proto";
+
+package goby.middleware.intermodule.protobuf;
+
+message Subscription
+{
+    required int32 scheme = 1;
+    required string type = 2;
+    required string group = 3;
+    enum Action
+    {
+        SUBSCRIBE = 1;
+        UNSUBSCRIBE = 2;
+    }
+    required Action action = 4;
+}

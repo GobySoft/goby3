@@ -18,6 +18,7 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/frontseat_data.proto
   middleware/protobuf/frontseat_config.proto
   middleware/protobuf/tcp_config.proto
+  middleware/protobuf/intermodule.proto
   )
 
 set(MIDDLEWARE_SRC
