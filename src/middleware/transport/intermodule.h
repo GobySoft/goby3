@@ -34,6 +34,7 @@
 #include "goby/middleware/group.h"
 
 #include "goby/middleware/protobuf/intermodule.pb.h"
+#include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
 #include "goby/middleware/transport/serialization_handlers.h"
@@ -54,181 +55,12 @@ bool operator<(const SerializerTransporterKey& k1, const SerializerTransporterKe
 }
 } // namespace protobuf
 
-/// \brief Base class for implementing transporters (both portal and forwarder) for the interprocess layer
+template <typename Derived, typename InnerTransporter>
+using InterModuleTransporterBase = InterProcessTransporterBase<Derived, InnerTransporter>;
+
+/// \brief Implements the forwarder concept for the intermodule layer
 ///
-/// \tparam Derived derived class (curiously recurring template pattern)
-/// \tparam InnerTransporter inner layer transporter type
-template <typename Derived, typename InnerTransporter>
-class InterModuleTransporterBase
-    : public StaticTransporterInterface<InterModuleTransporterBase<Derived, InnerTransporter>,
-                                        InnerTransporter>,
-      public Poller<InterModuleTransporterBase<Derived, InnerTransporter>>
-{
-    using InterfaceType =
-        StaticTransporterInterface<InterModuleTransporterBase<Derived, InnerTransporter>,
-                                   InnerTransporter>;
-
-    using PollerType = Poller<InterModuleTransporterBase<Derived, InnerTransporter>>;
-
-  public:
-    InterModuleTransporterBase(InnerTransporter& inner)
-        : InterfaceType(inner), PollerType(&this->inner())
-    {
-    }
-    InterModuleTransporterBase() : PollerType(&this->inner()) {}
-
-    virtual ~InterModuleTransporterBase() {}
-
-    /// \brief Publish a message using a run-time defined DynamicGroup (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
-    ///
-    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
-    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
-    /// \param data Message to publish
-    /// \param group group to publish this message to (typically a DynamicGroup)
-    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(const Data& data, const Group& group,
-                         const Publisher<Data>& publisher = Publisher<Data>())
-    {
-        check_validity_runtime(group);
-        static_cast<Derived*>(this)->template _publish<Data, scheme>(data, group, publisher);
-        this->inner().template publish_dynamic<Data, scheme>(data, group, publisher);
-    }
-
-    /// \brief Publish a message using a run-time defined DynamicGroup (shared pointer to const data variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
-    ///
-    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
-    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
-    /// \param data Message to publish
-    /// \param group group to publish this message to (typically a DynamicGroup)
-    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
-                         const Publisher<Data>& publisher = Publisher<Data>())
-    {
-        if (data)
-        {
-            check_validity_runtime(group);
-            static_cast<Derived*>(this)->template _publish<Data, scheme>(*data, group, publisher);
-            this->inner().template publish_dynamic<Data, scheme>(data, group, publisher);
-        }
-    }
-
-    /// \brief Publish a message using a run-time defined DynamicGroup (shared pointer to mutable data variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
-    ///
-    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
-    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
-    /// \param data Message to publish
-    /// \param group group to publish this message to (typically a DynamicGroup)
-    /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = scheme<Data>()>
-    void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
-                         const Publisher<Data>& publisher = Publisher<Data>())
-    {
-        publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, publisher);
-    }
-
-    /// \brief Subscribe to a specific run-time defined group and data type (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
-    ///
-    /// \tparam Data data type to subscribe to.
-    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
-    /// \param f Callback function or lambda that is called upon receipt of the subscribed data
-    /// \param group group to subscribe to (typically a DynamicGroup)
-    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
-                           const Subscriber<Data>& subscriber = Subscriber<Data>())
-    {
-        check_validity_runtime(group);
-        static_cast<Derived*>(this)->template _subscribe<Data, scheme>(
-            [=](std::shared_ptr<const Data> d) { f(*d); }, group, subscriber);
-    }
-
-    /// \brief Subscribe to a specific run-time defined group and data type (shared pointer variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
-    ///
-    /// \tparam Data data type to subscribe to.
-    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
-    /// \param f Callback function or lambda that is called upon receipt of the subscribed data
-    /// \param group group to subscribe to (typically a DynamicGroup)
-    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
-                           const Subscriber<Data>& subscriber = Subscriber<Data>())
-    {
-        check_validity_runtime(group);
-        static_cast<Derived*>(this)->template _subscribe<Data, scheme>(f, group, subscriber);
-    }
-
-    /// \brief Unsubscribe to a specific run-time defined group and data type. Where possible, prefer the static variant in StaticTransporterInterface::unsubscribe()
-    ///
-    /// \tparam Data data type to unsubscribe from.
-    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
-    /// \param group group to unsubscribe from (typically a DynamicGroup)
-    template <typename Data, int scheme = scheme<Data>()>
-    void unsubscribe_dynamic(const Group& group)
-    {
-        check_validity_runtime(group);
-        static_cast<Derived*>(this)->template _unsubscribe<Data, scheme>(group);
-    }
-
-    /// \brief Unsubscribe from all current subscriptions
-    void unsubscribe_all() { static_cast<Derived*>(this)->_unsubscribe_all(); }
-
-    /// \brief returns the marshalling scheme id for a given data type on this layer
-    ///
-    /// \tparam Data data type
-    /// \return marshalling scheme id
-    template <typename Data> static constexpr int scheme()
-    {
-        int scheme = goby::middleware::scheme<Data>();
-        // if default returns DCCL, use PROTOBUF instead
-        if (scheme == MarshallingScheme::DCCL)
-            scheme = MarshallingScheme::PROTOBUF;
-        return scheme;
-    }
-
-    /// \brief Check validity of the Group for interthread use (at compile time)
-    ///
-    /// This layer requires a valid string group
-    template <const Group& group> void check_validity()
-    {
-        static_assert((group.c_str() != nullptr) && (group.c_str()[0] != '\0'),
-                      "goby::middleware::Group must have non-zero length string to publish on the "
-                      "InterModule layer");
-    }
-
-    /// \brief Check validity of the Group for interthread use (for DynamicGroup at run time)
-    void check_validity_runtime(const Group& group)
-    {
-        if ((group.c_str() == nullptr) || (group.c_str()[0] == '\0'))
-            throw(goby::Exception("Group must have a non-empty string for use on InterModule"));
-    }
-
-  protected:
-    static constexpr Group to_portal_group_{"goby::middleware::intermodule::to_portal"};
-
-    // add full_pid
-    static const std::string from_portal_group_prefix_;
-
-  private:
-    friend PollerType;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
-    {
-        return static_cast<Derived*>(this)->_poll(lock);
-    }
-};
-
-template <typename Derived, typename InnerTransporter>
-constexpr goby::middleware::Group
-    InterModuleTransporterBase<Derived, InnerTransporter>::to_portal_group_;
-
-template <typename Derived, typename InnerTransporter>
-const std::string InterModuleTransporterBase<Derived, InnerTransporter>::from_portal_group_prefix_{
-    "goby::middleware::intermodule::from_portal::"};
-
-/// \brief Implements the forwarder concept for the interprocess layer
-///
-/// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer. For example, the main thread might instantiate a portal and then spawn several threads that instantiate forwarders. These auxiliary threads can then communicate on the interprocess layer as if they had a direct connection to other interprocess nodes.
+/// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer.
 /// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
 template <typename InnerTransporter>
 class InterModuleForwarder
@@ -238,7 +70,7 @@ class InterModuleForwarder
     using Base =
         InterModuleTransporterBase<InterModuleForwarder<InnerTransporter>, InnerTransporter>;
 
-    /// \brief Construct a forwarder for the interprocess layer
+    /// \brief Construct a forwarder for the intermodule layer
     ///
     /// \param inner A reference to the inner transporter used to forward messages to and from the portal
     InterModuleForwarder(InnerTransporter& inner) : Base(inner)
@@ -331,6 +163,15 @@ class InterModuleForwarder
         this->inner().template unsubscribe_dynamic<protobuf::SerializerTransporterMessage>(
             from_portal_group_);
     }
+
+    // not yet implemented
+    // void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme,
+    //                                          const std::string& type, const Group& group)>
+    //                           f,
+    //                       const std::set<int>& schemes, const std::string& type_regex = ".*",
+    //                       const std::string& group_regex = ".*")
+    // {
+    // }
 
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {

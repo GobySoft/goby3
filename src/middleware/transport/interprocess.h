@@ -255,6 +255,7 @@ class InterProcessTransporterBase
   protected:
     static constexpr Group to_portal_group_{"goby::middleware::interprocess::to_portal"};
     static constexpr Group regex_group_{"goby::middleware::interprocess::regex"};
+    static const std::string from_portal_group_prefix_;
 
   private:
     friend PollerType;
@@ -270,6 +271,10 @@ constexpr goby::middleware::Group
 template <typename Derived, typename InnerTransporter>
 constexpr goby::middleware::Group
     InterProcessTransporterBase<Derived, InnerTransporter>::regex_group_;
+// append "full_pid()"
+template <typename Derived, typename InnerTransporter>
+const std::string InterProcessTransporterBase<Derived, InnerTransporter>::from_portal_group_prefix_{
+    "goby::middleware::intermodule::from_portal::"};
 
 /// \brief Implements the forwarder concept for the interprocess layer
 ///
