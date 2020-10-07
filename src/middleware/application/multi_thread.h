@@ -127,20 +127,32 @@ class SimpleThread
 /// interthread().subscribe_empty<goby::middleware::TimerThread<0>::group>([]() { std::cout << "Timer expired." << std::endl; });
 /// ```
 template <int i>
-class TimerThread : public SimpleThread<boost::units::quantity<boost::units::si::frequency>>
+class TimerThread
+    : public Thread<boost::units::quantity<boost::units::si::frequency>, InterThreadTransporter>
 {
+    using ThreadBase =
+        Thread<boost::units::quantity<boost::units::si::frequency>, InterThreadTransporter>;
+
   public:
     static constexpr goby::middleware::Group expire_group{"goby::middleware::TimerThread::timer",
                                                           i};
 
     TimerThread(const boost::units::quantity<boost::units::si::frequency>& freq)
-        : goby::middleware::SimpleThread<boost::units::quantity<boost::units::si::frequency>>(freq,
-                                                                                              freq)
+        : ThreadBase(freq, &interthread_, freq)
     {
+        interthread_.innermost().template subscribe<ThreadBase::shutdown_group_>(
+            [this](const ThreadIdentifier ti) {
+                if (ti.all_threads ||
+                    (ti.type_i == this->type_index() && ti.index == this->index()))
+                    this->thread_quit();
+            });
     }
 
   private:
-    void loop() override { this->interthread().template publish_empty<expire_group>(); }
+    void loop() override { interthread_.template publish_empty<expire_group>(); }
+
+  private:
+    InterThreadTransporter interthread_;
 };
 
 template <int i> const goby::middleware::Group TimerThread<i>::expire_group;
@@ -295,7 +307,7 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
 ///
 /// \tparam Config Configuration type
 /// \tparam InterProcessPortal the interprocess portal type to use (e.g. zeromq::InterProcessPortal).
-template <class Config, template <class> class InterProcessPortal>
+template <class Config, template <class InnerTransporter> class InterProcessPortal>
 class MultiThreadApplication
     : public MultiThreadApplicationBase<
           Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>

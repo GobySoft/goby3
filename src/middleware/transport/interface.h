@@ -62,32 +62,76 @@ class InnerTransporterInterface
     /// \return Reference to the inner transporter
     InnerTransporter& inner()
     {
-        static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
+        static_assert(std::is_void<Enable>::value, "InnerTransporterInterface must be specialized");
+    }
+    auto innermost()
+    {
+        static_assert(std::is_void<Enable>::value, "InnerTransporterInterface must be specialized");
     }
 };
 
-/// \brief Recursive inner layer transporter storage or generator for real (non-null) transporters
+/// \brief Real transporter that has a real inner transporter
 template <typename Transporter, typename InnerTransporter>
 class InnerTransporterInterface<
     Transporter, InnerTransporter,
-    typename std::enable_if_t<!(std::is_same<Transporter, NullTransporter>::value &&
-                                std::is_same<InnerTransporter, NullTransporter>::value)>>
+    typename std::enable_if_t<!std::is_same<Transporter, NullTransporter>::value &&
+                              !std::is_same<InnerTransporter, NullTransporter>::value>>
 {
   public:
     /// \brief the InnerTransporter type (accessible for other uses)
     using InnerTransporterType = InnerTransporter;
     /// \return Reference to the inner transporter
     InnerTransporter& inner() { return inner_; }
+    auto& innermost() { return inner_.innermost(); }
 
   protected:
     /// \brief Pass in an external inner transporter for use
-    InnerTransporterInterface(InnerTransporter& inner) : inner_(inner) {}
+    InnerTransporterInterface(Transporter& self, InnerTransporter& inner)
+        : inner_(inner), self_(self)
+    {
+    }
     /// \brief Generate a local instantiation of the inner transporter
-    InnerTransporterInterface() : own_inner_(new InnerTransporter), inner_(*own_inner_) {}
+    InnerTransporterInterface(Transporter& self)
+        : own_inner_(new InnerTransporter), inner_(*own_inner_), self_(self)
+    {
+    }
 
   private:
     std::shared_ptr<InnerTransporter> own_inner_;
     InnerTransporter& inner_;
+    Transporter& self_;
+};
+
+/// \brief Innermost real transporter
+template <typename Transporter, typename InnerTransporter>
+class InnerTransporterInterface<
+    Transporter, InnerTransporter,
+    typename std::enable_if_t<!std::is_same<Transporter, NullTransporter>::value &&
+                              std::is_same<InnerTransporter, NullTransporter>::value>>
+{
+  public:
+    /// \brief the InnerTransporter type (accessible for other uses)
+    using InnerTransporterType = InnerTransporter;
+    /// \return Reference to the inner transporter
+    InnerTransporter& inner() { return inner_; }
+    Transporter& innermost() { return self_; }
+
+  protected:
+    /// \brief Pass in an external inner transporter for use
+    InnerTransporterInterface(Transporter& self, InnerTransporter& inner)
+        : inner_(inner), self_(self)
+    {
+    }
+    /// \brief Generate a local instantiation of the inner transporter
+    InnerTransporterInterface(Transporter& self)
+        : own_inner_(new InnerTransporter), inner_(*own_inner_), self_(self)
+    {
+    }
+
+  private:
+    std::shared_ptr<InnerTransporter> own_inner_;
+    InnerTransporter& inner_;
+    Transporter& self_;
 };
 
 /// \brief End recursion when both Transporter and InnerTransporter are NullTransporter
@@ -276,10 +320,14 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
 
   protected:
     StaticTransporterInterface(InnerTransporter& inner)
-        : InnerTransporterInterface<Transporter, InnerTransporter>(inner)
+        : InnerTransporterInterface<Transporter, InnerTransporter>(*static_cast<Transporter*>(this),
+                                                                   inner)
     {
     }
-    StaticTransporterInterface() {}
+    StaticTransporterInterface()
+        : InnerTransporterInterface<Transporter, InnerTransporter>(*static_cast<Transporter*>(this))
+    {
+    }
 };
 
 } // namespace middleware
