@@ -42,13 +42,6 @@ namespace goby
 {
 namespace middleware
 {
-struct ThreadIdentifier
-{
-    std::type_index type_i{std::type_index(typeid(void))};
-    int index{-1};
-    bool all_threads{false};
-};
-
 /// \brief Implements Thread for a three layer middleware setup ([ intervehicle [ interprocess [ interthread ] ] ]) based around InterVehicleForwarder.
 ///
 /// \tparam Config Configuration type
@@ -87,12 +80,6 @@ class SimpleThread
                 *interprocess_));
 
         this->set_transporter(intervehicle_.get());
-
-        interthread_->template subscribe<SimpleThreadBase::shutdown_group_>(
-            [this, index](const ThreadIdentifier ti) {
-                if (ti.all_threads || (ti.type_i == this->type_index() && ti.index == index))
-                    this->thread_quit();
-            });
     }
 
     /// \brief Access the transporter on the intervehicle layer (which wraps interprocess and interthread)
@@ -140,12 +127,6 @@ class TimerThread
     TimerThread(const boost::units::quantity<boost::units::si::frequency>& freq)
         : ThreadBase(freq, &interthread_, freq)
     {
-        interthread_.innermost().template subscribe<ThreadBase::shutdown_group_>(
-            [this](const ThreadIdentifier ti) {
-                if (ti.all_threads ||
-                    (ti.type_i == this->type_index() && ti.index == this->index()))
-                    this->thread_quit();
-            });
     }
 
   private:

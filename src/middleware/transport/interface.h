@@ -86,20 +86,13 @@ class InnerTransporterInterface<
 
   protected:
     /// \brief Pass in an external inner transporter for use
-    InnerTransporterInterface(Transporter& self, InnerTransporter& inner)
-        : inner_(inner), self_(self)
-    {
-    }
+    InnerTransporterInterface(InnerTransporter& inner) : inner_(inner) {}
     /// \brief Generate a local instantiation of the inner transporter
-    InnerTransporterInterface(Transporter& self)
-        : own_inner_(new InnerTransporter), inner_(*own_inner_), self_(self)
-    {
-    }
+    InnerTransporterInterface() : own_inner_(new InnerTransporter), inner_(*own_inner_) {}
 
   private:
     std::shared_ptr<InnerTransporter> own_inner_;
     InnerTransporter& inner_;
-    Transporter& self_;
 };
 
 /// \brief Innermost real transporter
@@ -114,24 +107,17 @@ class InnerTransporterInterface<
     using InnerTransporterType = InnerTransporter;
     /// \return Reference to the inner transporter
     InnerTransporter& inner() { return inner_; }
-    Transporter& innermost() { return self_; }
+    Transporter& innermost() { return *static_cast<Transporter*>(this); }
 
   protected:
     /// \brief Pass in an external inner transporter for use
-    InnerTransporterInterface(Transporter& self, InnerTransporter& inner)
-        : inner_(inner), self_(self)
-    {
-    }
+    InnerTransporterInterface(InnerTransporter& inner) : inner_(inner) {}
     /// \brief Generate a local instantiation of the inner transporter
-    InnerTransporterInterface(Transporter& self)
-        : own_inner_(new InnerTransporter), inner_(*own_inner_), self_(self)
-    {
-    }
+    InnerTransporterInterface() : own_inner_(new InnerTransporter), inner_(*own_inner_) {}
 
   private:
     std::shared_ptr<InnerTransporter> own_inner_;
     InnerTransporter& inner_;
-    Transporter& self_;
 };
 
 /// \brief End recursion when both Transporter and InnerTransporter are NullTransporter
@@ -320,14 +306,10 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
 
   protected:
     StaticTransporterInterface(InnerTransporter& inner)
-        : InnerTransporterInterface<Transporter, InnerTransporter>(*static_cast<Transporter*>(this),
-                                                                   inner)
+        : InnerTransporterInterface<Transporter, InnerTransporter>(inner)
     {
     }
-    StaticTransporterInterface()
-        : InnerTransporterInterface<Transporter, InnerTransporter>(*static_cast<Transporter*>(this))
-    {
-    }
+    StaticTransporterInterface() {}
 };
 
 } // namespace middleware
