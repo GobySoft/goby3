@@ -391,6 +391,7 @@ class SerializationInterModuleSubscription : public SerializationHandlerBase<>
             case intermodule::protobuf::Subscription::SUBSCRIBE:
                 return SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE;
             case intermodule::protobuf::Subscription::UNSUBSCRIBE:
+            case intermodule::protobuf::Subscription::UNSUBSCRIBE_ALL:
                 return SerializationHandlerBase<>::SubscriptionAction::UNSUBSCRIBE;
         }
     }

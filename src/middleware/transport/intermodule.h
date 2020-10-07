@@ -46,24 +46,11 @@ namespace protobuf
 {
 bool operator<(const SerializerTransporterKey& k1, const SerializerTransporterKey& k2)
 {
-    if (k1.marshalling_scheme() == k2.marshalling_scheme())
-    {
-        if (k1.type() == k2.type())
-        {
-            if (k1.group() == k2.group())
-                return false;
-            else
-                return k1.group() < k2.group();
-        }
-        else
-        {
-            return k1.type() < k2.type();
-        }
-    }
-    else
-    {
-        return k1.marshalling_scheme() < k2.marshalling_scheme();
-    }
+    return k1.marshalling_scheme() != k2.marshalling_scheme()
+               ? (k1.marshalling_scheme() < k2.marshalling_scheme())
+               : (k1.type() != k2.type()
+                      ? (k1.type() < k2.type())
+                      : (k1.group() != k2.group() ? (k1.group() < k2.group()) : false));
 }
 } // namespace protobuf
 
@@ -187,66 +174,6 @@ class InterModuleTransporterBase
     /// \brief Unsubscribe from all current subscriptions
     void unsubscribe_all() { static_cast<Derived*>(this)->_unsubscribe_all(); }
 
-    /// \brief Subscribe to multiple groups and/or types at once using regular expressions
-    ///
-    /// \param f Callback function or lambda that is called upon receipt of any messages matching the group regex and type regex
-    /// \param schemes Set of marshalling schemes to match
-    /// \param type_regex C++ regex to match type names (within one or more of the given schemes)
-    /// \param group_regex C++ regex to match group names
-    // void subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme,
-    //                                         const std::string& type, const Group& group)>
-    //                          f,
-    //                      const std::set<int>& schemes, const std::string& type_regex = ".*",
-    //                      const std::string& group_regex = ".*")
-    // {
-    //     static_cast<Derived*>(this)->_subscribe_regex(f, schemes, type_regex, group_regex);
-    // }
-
-    /// \brief Subscribe to a number of types within a given group and scheme using a regular expression
-    ///
-    /// The marshalling scheme must implement SerializerParserHelper::parse() to use this method.
-    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
-    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
-    /// \param group group to subscribe to (typically a DynamicGroup)
-    /// \param f Callback function or lambda that is called upon receipt of any messages matching the given group and type regex
-    /// \param type_regex C++ regex to match type names (within the given scheme)
-    // template <typename Data, int scheme = scheme<Data>()>
-    // void subscribe_type_regex(
-    //     std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
-    //     const Group& group, const std::string& type_regex = ".*")
-    // {
-    //     std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
-    //     std::string sanitized_group =
-    //         std::regex_replace(std::string(group), special_chars, R"(\$&)");
-
-    //     auto regex_lambda = [=](const std::vector<unsigned char>& data, int schm,
-    //                             const std::string& type, const Group& grp) {
-    //         auto data_begin = data.begin(), data_end = data.end(), actual_end = data.end();
-    //         auto msg =
-    //             SerializerParserHelper<Data, scheme>::parse(data_begin, data_end, actual_end, type);
-    //         f(msg, type);
-    //     };
-
-    //     static_cast<Derived*>(this)->_subscribe_regex(regex_lambda, {scheme}, type_regex,
-    //                                                   "^" + sanitized_group + "$");
-    // }
-
-    /// \brief Subscribe to a number of types within a given group and scheme using a regular expression
-    ///
-    /// The marshalling scheme must implement SerializerParserHelper::parse() to use this method.
-    /// \tparam group group to publish this message to (reference to constexpr Group)
-    /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
-    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
-    /// \param f Callback function or lambda that is called upon receipt of any messages matching the given group and type regex
-    /// \param type_regex C++ regex to match type names (within the given scheme)
-    // template <const Group& group, typename Data, int scheme = scheme<Data>()>
-    // void subscribe_type_regex(
-    //     std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
-    //     const std::string& type_regex = ".*")
-    // {
-    //     subscribe_type_regex(f, group, type_regex);
-    // }
-
     /// \brief returns the marshalling scheme id for a given data type on this layer
     ///
     /// \tparam Data data type
@@ -283,8 +210,6 @@ class InterModuleTransporterBase
     // add full_pid
     static const std::string from_portal_group_prefix_;
 
-    //    static constexpr Group regex_group_{"goby::InterModuleRegexData"};
-
   private:
     friend PollerType;
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
@@ -300,10 +225,6 @@ constexpr goby::middleware::Group
 template <typename Derived, typename InnerTransporter>
 const std::string InterModuleTransporterBase<Derived, InnerTransporter>::from_portal_group_prefix_{
     "goby::middleware::intermodule::from_portal::"};
-
-//template <typename Derived, typename InnerTransporter>
-//constexpr goby::middleware::Group
-//    InterModuleTransporterBase<Derived, InnerTransporter>::regex_group_;
 
 /// \brief Implements the forwarder concept for the interprocess layer
 ///
@@ -322,12 +243,6 @@ class InterModuleForwarder
     /// \param inner A reference to the inner transporter used to forward messages to and from the portal
     InterModuleForwarder(InnerTransporter& inner) : Base(inner)
     {
-        // this->inner()
-        //     .template subscribe<Base::regex_group_,
-        //                         goby::middleware::protobuf::SerializerTransporterMessage>(
-        //         [this](
-        //             std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage>
-        //                 msg) { _receive_regex_data_forwarded(msg); });
     }
     virtual ~InterModuleForwarder() { this->unsubscribe_all(); }
 
@@ -360,12 +275,9 @@ class InterModuleForwarder
         if (subscriptions_.empty())
             this->inner().template subscribe_dynamic<protobuf::SerializerTransporterMessage>(
                 [this](const protobuf::SerializerTransporterMessage& msg) {
-                    std::cout << "Received data: " << msg.ShortDebugString() << std::endl;
                     auto range = subscriptions_.equal_range(msg.key());
                     for (auto it = range.first; it != range.second; ++it)
                     {
-                        std::cout << "Posting data to key: " << msg.key().ShortDebugString()
-                                  << std::endl;
                         it->second->post(msg.data().begin(), msg.data().end());
                     }
                 },
@@ -391,56 +303,34 @@ class InterModuleForwarder
 
     template <typename Data, int scheme> void _unsubscribe(const Group& group)
     {
-        // this->inner().template unsubscribe_dynamic<Data, scheme>(group);
+        using goby::middleware::intermodule::protobuf::Subscription;
+        Subscription unsubscription;
+        unsubscription.set_id(full_process_id());
+        unsubscription.mutable_key()->set_marshalling_scheme(scheme);
+        unsubscription.mutable_key()->set_type(SerializerParserHelper<Data, scheme>::type_name());
+        unsubscription.mutable_key()->set_group(std::string(group));
+        unsubscription.set_action(Subscription::UNSUBSCRIBE);
+        this->inner().template publish<Base::to_portal_group_>(unsubscription);
 
-        // auto unsubscription = std::shared_ptr<SerializationHandlerBase<>>(
-        //     new SerializationUnSubscription<Data, scheme>(group));
+        subscriptions_.erase(unsubscription.key());
 
-        // this->inner().template publish<Base::to_portal_group_, SerializationHandlerBase<>>(
-        //     unsubscription);
+        if (subscriptions_.empty())
+            this->inner().template unsubscribe_dynamic<protobuf::SerializerTransporterMessage>(
+                from_portal_group_);
     }
 
     void _unsubscribe_all()
     {
-        // auto all = std::make_shared<SerializationUnSubscribeAll>();
-        // this->inner().template publish<Base::to_portal_group_, SerializationUnSubscribeAll>(all);
+        using goby::middleware::intermodule::protobuf::Subscription;
+        Subscription unsubscription;
+        unsubscription.set_id(full_process_id());
+        unsubscription.set_action(Subscription::UNSUBSCRIBE_ALL);
+        this->inner().template publish<Base::to_portal_group_>(unsubscription);
+
+        subscriptions_.clear();
+        this->inner().template unsubscribe_dynamic<protobuf::SerializerTransporterMessage>(
+            from_portal_group_);
     }
-
-    // void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme,
-    //                                          const std::string& type, const Group& group)>
-    //                           f,
-    //                       const std::set<int>& schemes, const std::string& type_regex = ".*",
-    //                       const std::string& group_regex = ".*")
-    // {
-    //     auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme,
-    //                                         const std::string& type, const Group& group) {
-    //         std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
-    //             forwarded_data(new goby::middleware::protobuf::SerializerTransporterMessage);
-    //         forwarded_data->mutable_key()->set_marshalling_scheme(scheme);
-    //         forwarded_data->mutable_key()->set_type(type);
-    //         forwarded_data->mutable_key()->set_group(group);
-    //         forwarded_data->set_data(std::string(data.begin(), data.end()));
-    //         this->inner().template publish<Base::regex_group_>(forwarded_data);
-    //     };
-
-    //     auto portal_subscription = std::make_shared<SerializationSubscriptionRegex>(
-    //         inner_publication_lambda, schemes, type_regex, group_regex);
-    //     this->inner().template publish<Base::to_portal_group_, SerializationSubscriptionRegex>(
-    //         portal_subscription);
-
-    //     auto local_subscription = std::shared_ptr<SerializationSubscriptionRegex>(
-    //         new SerializationSubscriptionRegex(f, schemes, type_regex, group_regex));
-    //     regex_subscriptions_.insert(local_subscription);
-    // }
-
-    // void _receive_regex_data_forwarded(
-    //     std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage> msg)
-    // {
-    //     const auto& bytes = msg->data();
-    //     for (auto& sub : regex_subscriptions_)
-    //         sub->post(bytes.begin(), bytes.end(), msg->key().marshalling_scheme(),
-    //                   msg->key().type(), msg->key().group());
-    // }
 
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
@@ -448,8 +338,6 @@ class InterModuleForwarder
     } // A forwarder is a shell, only the inner Transporter has data
 
   private:
-    // std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
-
     std::multimap<protobuf::SerializerTransporterKey,
                   std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         subscriptions_;
@@ -480,28 +368,24 @@ class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTr
 
         this->inner().template subscribe<Base::to_portal_group_, Subscription>(
             [this](const Subscription& s) {
-                std::cout << "Received subscription: " << s.ShortDebugString() << std::endl;
-
                 std::string group_name(Base::from_portal_group_prefix_ + s.id());
                 auto on_subscribe = [this, group_name](const SerializerTransporterMessage& d) {
                     DynamicGroup group(group_name);
-                    std::cout << "Received data to forward to " << group_name << ":"
-                              << d.ShortDebugString() << std::endl;
                     this->inner().publish_dynamic(d, group);
                 };
                 auto sub = std::make_shared<SerializationInterModuleSubscription>(on_subscribe, s);
-                static_cast<Derived*>(this)->_receive_subscription_forwarded(sub);
+
+                switch (s.action())
+                {
+                    case Subscription::SUBSCRIBE:
+                    case Subscription::UNSUBSCRIBE:
+                        static_cast<Derived*>(this)->_receive_subscription_forwarded(sub);
+                        break;
+                    case Subscription::UNSUBSCRIBE_ALL:
+                        static_cast<Derived*>(this)->_unsubscribe_all(s.id());
+                        break;
+                }
             });
-
-        // this->inner().template subscribe<Base::to_portal_group_, SerializationSubscriptionRegex>(
-        //     [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s) {
-        //         static_cast<Derived*>(this)->_receive_regex_subscription_forwarded(s);
-        //     });
-
-        // this->inner().template subscribe<Base::to_portal_group_, SerializationUnSubscribeAll>(
-        //     [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s) {
-        //         static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id());
-        //     });
     }
 };
 

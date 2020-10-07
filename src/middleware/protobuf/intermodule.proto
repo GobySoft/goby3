@@ -8,11 +8,12 @@ package goby.middleware.intermodule.protobuf;
 message Subscription
 {
     required string id = 1;
-    required goby.middleware.protobuf.SerializerTransporterKey key = 2;
+    optional goby.middleware.protobuf.SerializerTransporterKey key = 2;
     enum Action
     {
         SUBSCRIBE = 1;
         UNSUBSCRIBE = 2;
+        UNSUBSCRIBE_ALL = 3;
     }
     required Action action = 5;
 }
