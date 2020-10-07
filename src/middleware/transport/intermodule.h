@@ -33,6 +33,7 @@
 
 #include "goby/middleware/group.h"
 
+#include "goby/middleware/protobuf/intermodule.pb.h"
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
 #include "goby/middleware/transport/serialization_handlers.h"
@@ -41,6 +42,31 @@ namespace goby
 {
 namespace middleware
 {
+namespace protobuf
+{
+bool operator<(const SerializerTransporterKey& k1, const SerializerTransporterKey& k2)
+{
+    if (k1.marshalling_scheme() == k2.marshalling_scheme())
+    {
+        if (k1.type() == k2.type())
+        {
+            if (k1.group() == k2.group())
+                return false;
+            else
+                return k1.group() < k2.group();
+        }
+        else
+        {
+            return k1.type() < k2.type();
+        }
+    }
+    else
+    {
+        return k1.marshalling_scheme() < k2.marshalling_scheme();
+    }
+}
+} // namespace protobuf
+
 /// \brief Base class for implementing transporters (both portal and forwarder) for the interprocess layer
 ///
 /// \tparam Derived derived class (curiously recurring template pattern)
@@ -253,6 +279,10 @@ class InterModuleTransporterBase
 
   protected:
     static constexpr Group to_portal_group_{"goby::middleware::intermodule::to_portal"};
+
+    // add full_pid
+    static const std::string from_portal_group_prefix_;
+
     //    static constexpr Group regex_group_{"goby::InterModuleRegexData"};
 
   private:
@@ -266,6 +296,11 @@ class InterModuleTransporterBase
 template <typename Derived, typename InnerTransporter>
 constexpr goby::middleware::Group
     InterModuleTransporterBase<Derived, InnerTransporter>::to_portal_group_;
+
+template <typename Derived, typename InnerTransporter>
+const std::string InterModuleTransporterBase<Derived, InnerTransporter>::from_portal_group_prefix_{
+    "goby::middleware::intermodule::from_portal::"};
+
 //template <typename Derived, typename InnerTransporter>
 //constexpr goby::middleware::Group
 //    InterModuleTransporterBase<Derived, InnerTransporter>::regex_group_;
@@ -302,40 +337,56 @@ class InterModuleForwarder
     template <typename Data, int scheme>
     void _publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
-        // create and forward publication to edge
-        // std::vector<char> bytes(SerializerParserHelper<Data, scheme>::serialize(d));
-        // std::string* sbytes = new std::string(bytes.begin(), bytes.end());
-        // auto msg = std::make_shared<goby::middleware::protobuf::SerializerTransporterMessage>();
-        // auto* key = msg->mutable_key();
+        //create and forward publication to edge
 
-        // key->set_marshalling_scheme(scheme);
-        // key->set_type(SerializerParserHelper<Data, scheme>::type_name(d));
-        // key->set_group(std::string(group));
-        // msg->set_allocated_data(sbytes);
+        std::vector<char> bytes(SerializerParserHelper<Data, scheme>::serialize(d));
+        std::string* sbytes = new std::string(bytes.begin(), bytes.end());
+        goby::middleware::protobuf::SerializerTransporterMessage msg;
+        auto* key = msg.mutable_key();
 
-        // *key->mutable_cfg() = publisher.cfg();
+        key->set_marshalling_scheme(scheme);
+        key->set_type(SerializerParserHelper<Data, scheme>::type_name(d));
+        key->set_group(std::string(group));
+        msg.set_allocated_data(sbytes);
 
-        //        this->inner().template publish<Base::to_portal_group_>(msg);
+        *key->mutable_cfg() = publisher.cfg();
+        this->inner().template publish<Base::to_portal_group_>(msg);
     }
 
     template <typename Data, int scheme>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f, const Group& group,
                     const Subscriber<Data>& subscriber)
     {
-        //         this->inner().template subscribe_dynamic<Data, scheme>(f, group);
+        if (subscriptions_.empty())
+            this->inner().template subscribe_dynamic<protobuf::SerializerTransporterMessage>(
+                [this](const protobuf::SerializerTransporterMessage& msg) {
+                    std::cout << "Received data: " << msg.ShortDebugString() << std::endl;
+                    auto range = subscriptions_.equal_range(msg.key());
+                    for (auto it = range.first; it != range.second; ++it)
+                    {
+                        std::cout << "Posting data to key: " << msg.key().ShortDebugString()
+                                  << std::endl;
+                        it->second->post(msg.data().begin(), msg.data().end());
+                    }
+                },
+                from_portal_group_);
 
-        // // forward subscription to edge
-        // auto inner_publication_lambda = [=](std::shared_ptr<const Data> d) {
-        //     this->inner().template publish_dynamic<Data, scheme>(d, group);
-        // };
+        auto local_subscription = std::make_shared<SerializationSubscription<Data, scheme>>(
+            f, group,
+            middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
+                                         [=](const Data& d) { return group; }));
 
-        // auto subscription = std::make_shared<SerializationSubscription<Data, scheme>>(
-        //     inner_publication_lambda, group,
-        //     middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
-        //                                  [=](const Data& d) { return group; }));
+        using goby::middleware::intermodule::protobuf::Subscription;
+        Subscription subscription;
+        subscription.set_id(full_process_id());
+        subscription.mutable_key()->set_marshalling_scheme(scheme);
+        subscription.mutable_key()->set_type(SerializerParserHelper<Data, scheme>::type_name());
+        subscription.mutable_key()->set_group(std::string(group));
+        subscription.set_action(Subscription::SUBSCRIBE);
 
-        //         this->inner().template publish<Base::to_portal_group_, SerializationHandlerBase<>>(
-        //             subscription);
+        this->inner().template publish<Base::to_portal_group_>(subscription);
+
+        subscriptions_.insert(std::make_pair(subscription.key(), local_subscription));
     }
 
     template <typename Data, int scheme> void _unsubscribe(const Group& group)
@@ -398,6 +449,12 @@ class InterModuleForwarder
 
   private:
     // std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
+
+    std::multimap<protobuf::SerializerTransporterKey,
+                  std::shared_ptr<const middleware::SerializationHandlerBase<>>>
+        subscriptions_;
+
+    DynamicGroup from_portal_group_{Base::from_portal_group_prefix_ + full_process_id()};
 };
 
 template <typename Derived, typename InnerTransporter>
@@ -414,16 +471,27 @@ class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTr
   private:
     void _init()
     {
-        // using goby::middleware::protobuf::SerializerTransporterMessage;
-        // this->inner().template subscribe<Base::to_portal_group_, SerializerTransporterMessage>(
-        //     [this](std::shared_ptr<const SerializerTransporterMessage> d) {
-        //         static_cast<Derived*>(this)->_receive_publication_forwarded(d);
-        //     });
+        using goby::middleware::intermodule::protobuf::Subscription;
+        using goby::middleware::protobuf::SerializerTransporterMessage;
+        this->inner().template subscribe<Base::to_portal_group_, SerializerTransporterMessage>(
+            [this](const SerializerTransporterMessage& d) {
+                static_cast<Derived*>(this)->_receive_publication_forwarded(d);
+            });
 
-        // this->inner().template subscribe<Base::to_portal_group_, SerializationHandlerBase<>>(
-        //     [this](std::shared_ptr<const middleware::SerializationHandlerBase<>> s) {
-        //         static_cast<Derived*>(this)->_receive_subscription_forwarded(s);
-        //     });
+        this->inner().template subscribe<Base::to_portal_group_, Subscription>(
+            [this](const Subscription& s) {
+                std::cout << "Received subscription: " << s.ShortDebugString() << std::endl;
+
+                std::string group_name(Base::from_portal_group_prefix_ + s.id());
+                auto on_subscribe = [this, group_name](const SerializerTransporterMessage& d) {
+                    DynamicGroup group(group_name);
+                    std::cout << "Received data to forward to " << group_name << ":"
+                              << d.ShortDebugString() << std::endl;
+                    this->inner().publish_dynamic(d, group);
+                };
+                auto sub = std::make_shared<SerializationInterModuleSubscription>(on_subscribe, s);
+                static_cast<Derived*>(this)->_receive_subscription_forwarded(sub);
+            });
 
         // this->inner().template subscribe<Base::to_portal_group_, SerializationSubscriptionRegex>(
         //     [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s) {
@@ -432,7 +500,7 @@ class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTr
 
         // this->inner().template subscribe<Base::to_portal_group_, SerializationUnSubscribeAll>(
         //     [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s) {
-        //         static_cast<Derived*>(this)->_unsubscribe_all(s->thread_id());
+        //         static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id());
         //     });
     }
 };

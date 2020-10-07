@@ -7,13 +7,12 @@ package goby.middleware.intermodule.protobuf;
 
 message Subscription
 {
-    required int32 scheme = 1;
-    required string type = 2;
-    required string group = 3;
+    required string id = 1;
+    required goby.middleware.protobuf.SerializerTransporterKey key = 2;
     enum Action
     {
         SUBSCRIBE = 1;
         UNSUBSCRIBE = 2;
     }
-    required Action action = 4;
+    required Action action = 5;
 }

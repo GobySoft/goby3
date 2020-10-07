@@ -418,7 +418,7 @@ class InterProcessPortalBase : public InterProcessTransporterBase<Derived, Inner
         using goby::middleware::protobuf::SerializerTransporterMessage;
         this->inner().template subscribe<Base::to_portal_group_, SerializerTransporterMessage>(
             [this](std::shared_ptr<const SerializerTransporterMessage> d) {
-                static_cast<Derived*>(this)->_receive_publication_forwarded(d);
+                static_cast<Derived*>(this)->_receive_publication_forwarded(*d);
             });
 
         this->inner().template subscribe<Base::to_portal_group_, SerializationHandlerBase<>>(
@@ -433,7 +433,7 @@ class InterProcessPortalBase : public InterProcessTransporterBase<Derived, Inner
 
         this->inner().template subscribe<Base::to_portal_group_, SerializationUnSubscribeAll>(
             [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s) {
-                static_cast<Derived*>(this)->_unsubscribe_all(s->thread_id());
+                static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id());
             });
     }
 };

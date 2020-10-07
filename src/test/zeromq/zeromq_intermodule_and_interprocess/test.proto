@@ -12,3 +12,10 @@ message Widget
 {
     optional int32 b = 1;
 }
+
+
+
+message Complete
+{
+    optional int32 subscriber_id = 1;
+}

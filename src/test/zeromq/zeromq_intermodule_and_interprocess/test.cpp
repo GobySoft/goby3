@@ -45,8 +45,11 @@ int publish_count = -1;
 const int max_publish = 100;
 int ipc_receive_count = {0};
 
+std::atomic<bool> running(true);
+
 std::atomic<int> zmq_reqs(0);
 std::atomic<int> subscribers_complete(0);
+const int n_subscribers = 2;
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -54,6 +57,7 @@ using namespace goby::util::logger;
 extern constexpr goby::middleware::Group sample1{"Sample1"};
 extern constexpr goby::middleware::Group sample2{"Sample2"};
 extern constexpr goby::middleware::Group widget{"Widget"};
+extern constexpr goby::middleware::Group complete{"Complete"};
 
 void portal_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& p_cfg,
                       const goby::zeromq::protobuf::InterProcessPortalConfig& m_cfg)
@@ -61,6 +65,14 @@ void portal_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& p_
     goby::zeromq::InterProcessPortal<> interprocess(p_cfg);
     goby::zeromq::InterModulePortal<goby::zeromq::InterProcessPortal<>> intermodule(interprocess,
                                                                                     m_cfg);
+
+    intermodule.subscribe<complete, Complete>([](const Complete& complete) {
+        glog.is_debug1() && glog << "Subscriber complete: " << complete.ShortDebugString()
+                                 << std::endl;
+        ++subscribers_complete;
+        if (subscribers_complete == n_subscribers)
+            running = false;
+    });
 
     double a = 0;
     while (publish_count < max_publish)
@@ -71,15 +83,16 @@ void portal_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& p_
         auto s2 = std::make_shared<Sample>();
         s2->set_a(s1->a() + 10);
         intermodule.publish<sample2>(s2);
-
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
+        intermodule.poll(std::chrono::seconds(0));
 
         if (publish_count < 0)
             usleep(1e6);
 
         ++publish_count;
     }
-    sleep(2);
+
+    while (running) intermodule.poll(std::chrono::seconds(1));
 }
 
 void forwarder_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& p_cfg)
@@ -87,6 +100,14 @@ void forwarder_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig&
     goby::zeromq::InterProcessPortal<> interprocess(p_cfg);
     goby::middleware::InterModuleForwarder<goby::zeromq::InterProcessPortal<>> intermodule(
         interprocess);
+
+    intermodule.subscribe<complete, Complete>([](const Complete& complete) {
+        glog.is_debug1() && glog << "Subscriber complete: " << complete.ShortDebugString()
+                                 << std::endl;
+        ++subscribers_complete;
+        if (subscribers_complete == n_subscribers)
+            running = false;
+    });
 
     double a = 0;
     while (publish_count < max_publish)
@@ -97,12 +118,14 @@ void forwarder_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig&
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
 
+        intermodule.poll(std::chrono::seconds(0));
         if (publish_count < 0)
             usleep(1e6);
 
         ++publish_count;
     }
-    sleep(2);
+
+    while (running) intermodule.poll(std::chrono::seconds(1));
 }
 
 void portal_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& p_cfg,
@@ -111,6 +134,14 @@ void portal_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& p
     goby::zeromq::InterProcessPortal<> interprocess(p_cfg);
     goby::zeromq::InterModulePortal<goby::zeromq::InterProcessPortal<>> intermodule(interprocess,
                                                                                     m_cfg);
+
+    intermodule.subscribe<complete, Complete>([](const Complete& complete) {
+        glog.is_debug1() && glog << "Forwarder subscriber complete: " << complete.ShortDebugString()
+                                 << std::endl;
+
+        if (complete.subscriber_id() == 1)
+            running = false;
+    });
 
     intermodule.subscribe<sample1, Sample>([](const Sample& sample) {
         glog.is(DEBUG1) && glog << "InterModulePortal received publication sample1: "
@@ -135,7 +166,15 @@ void portal_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& p
         glog.is(DEBUG1) && glog << ipc_receive_count << "/" << 3 * max_publish << std::endl;
         intermodule.poll();
     }
-    glog.is(DEBUG1) && glog << "Subscriber complete." << std::endl;
+
+    Complete c;
+    c.set_subscriber_id(0);
+    intermodule.publish<complete>(c);
+
+    while (running) intermodule.poll(std::chrono::seconds(1));
+
+    sleep(1);
+    glog.is(DEBUG1) && glog << "Portal Subscriber complete." << std::endl;
 }
 
 void forwarder_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& p_cfg)
@@ -167,6 +206,11 @@ void forwarder_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig
         glog.is(DEBUG1) && glog << ipc_receive_count << "/" << 3 * max_publish << std::endl;
         intermodule.poll();
     }
+
+    Complete c;
+    c.set_subscriber_id(1);
+    intermodule.publish<complete>(c);
+
     glog.is(DEBUG1) && glog << "Subscriber complete." << std::endl;
 }
 
@@ -176,19 +220,19 @@ int main(int argc, char* argv[])
     interprocess_cfg1.set_platform("test_interprocess1");
     interprocess_cfg1.set_transport(goby::zeromq::protobuf::InterProcessPortalConfig::TCP);
     interprocess_cfg1.set_ipv4_address("127.0.0.1");
-    interprocess_cfg1.set_tcp_port(54325);
+    interprocess_cfg1.set_tcp_port(54326);
 
     goby::zeromq::protobuf::InterProcessPortalConfig interprocess_cfg2;
     interprocess_cfg2.set_platform("test_interprocess2");
     interprocess_cfg2.set_transport(goby::zeromq::protobuf::InterProcessPortalConfig::TCP);
     interprocess_cfg2.set_ipv4_address("127.0.0.1");
-    interprocess_cfg2.set_tcp_port(54326);
+    interprocess_cfg2.set_tcp_port(54327);
 
     goby::zeromq::protobuf::InterProcessPortalConfig intermodule_cfg;
     intermodule_cfg.set_platform("test_intermodule");
     intermodule_cfg.set_transport(goby::zeromq::protobuf::InterProcessPortalConfig::TCP);
     intermodule_cfg.set_ipv4_address("127.0.0.1");
-    intermodule_cfg.set_tcp_port(54327);
+    intermodule_cfg.set_tcp_port(54328);
 
     enum Roles
     {
@@ -264,7 +308,7 @@ int main(int argc, char* argv[])
             for (int i = 0; i < n_children; ++i)
             {
                 wait(&wstatus);
-                std::cout << "child ended" << std::endl;
+                std::cout << "child ended with status: " << wstatus << std::endl;
                 if (wstatus != 0)
                     exit(EXIT_FAILURE);
             }
@@ -287,6 +331,7 @@ int main(int argc, char* argv[])
 
         case PORTAL_PUBLISHER:
         {
+            usleep(1e6);
             std::thread t1([&] { portal_publisher(interprocess_cfg1, intermodule_cfg); });
             t1.join();
             break;
@@ -294,6 +339,7 @@ int main(int argc, char* argv[])
 
         case FORWARDER_PUBLISHER:
         {
+            usleep(1.5e6);
             std::thread t1([&] { forwarder_publisher(interprocess_cfg1); });
             t1.join();
             break;
@@ -301,6 +347,7 @@ int main(int argc, char* argv[])
 
         case PORTAL_SUBSCRIBER:
         {
+            usleep(1e6);
             std::thread t1([&] { portal_subscriber(interprocess_cfg2, intermodule_cfg); });
             t1.join();
             break;
@@ -308,6 +355,7 @@ int main(int argc, char* argv[])
 
         case FORWARDER_SUBSCRIBER:
         {
+            usleep(1.5e6);
             std::thread t1([&] { forwarder_subscriber(interprocess_cfg2); });
             t1.join();
             break;

@@ -230,10 +230,10 @@ class InterProcessPortalImplementation
             zmq_main_.unsubscribe(identifier);
     }
 
-    void _unsubscribe_all(const std::thread::id thread_id = std::this_thread::get_id())
+    void _unsubscribe_all(const std::string subscriber_id = to_string(std::this_thread::get_id()))
     {
         // portal unsubscribe
-        if (thread_id == std::this_thread::get_id())
+        if (subscriber_id == to_string(std::this_thread::get_id()))
         {
             for (const auto& p : portal_subscriptions_)
             {
@@ -245,15 +245,16 @@ class InterProcessPortalImplementation
         }
         else // forwarder unsubscribe
         {
-            while (forwarder_subscription_identifiers_[thread_id].size() > 0)
+            while (forwarder_subscription_identifiers_[subscriber_id].size() > 0)
                 _forwarder_unsubscribe(
-                    thread_id, forwarder_subscription_identifiers_[thread_id].begin()->first);
+                    subscriber_id,
+                    forwarder_subscription_identifiers_[subscriber_id].begin()->first);
         }
 
         // regex
         if (regex_subscriptions_.size() > 0)
         {
-            regex_subscriptions_.erase(thread_id);
+            regex_subscriptions_.erase(subscriber_id);
             if (regex_subscriptions_.empty())
                 zmq_main_.unsubscribe("/");
         }
@@ -317,7 +318,8 @@ class InterProcessPortalImplementation
                         for (auto& sub : regex_subscriptions_)
                         {
                             // only post at most once for forwarders as the threads will filter
-                            bool is_forwarded_sub = sub.first != std::this_thread::get_id();
+                            bool is_forwarded_sub =
+                                sub.first != to_string(std::this_thread::get_id());
                             if (is_forwarded_sub && forwarder_subscription_posted)
                                 continue;
 
@@ -337,13 +339,13 @@ class InterProcessPortalImplementation
     }
 
     void _receive_publication_forwarded(
-        std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage> msg)
+        const goby::middleware::protobuf::SerializerTransporterMessage& msg)
     {
         std::string identifier =
-            _make_identifier(msg->key().type(), msg->key().marshalling_scheme(), msg->key().group(),
+            _make_identifier(msg.key().type(), msg.key().marshalling_scheme(), msg.key().group(),
                              IdentifierWildcard::NO_WILDCARDS) +
             '\0';
-        auto& bytes = msg->data();
+        auto& bytes = msg.data();
         zmq_main_.publish(identifier, &bytes[0], bytes.size());
     }
 
@@ -359,7 +361,7 @@ class InterProcessPortalImplementation
             case middleware::SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE:
             {
                 // insert if this thread hasn't already subscribed
-                if (forwarder_subscription_identifiers_[subscription->thread_id()].count(
+                if (forwarder_subscription_identifiers_[subscription->subscriber_id()].count(
                         identifier) == 0)
                 {
                     // first to subscribe from a Forwarder
@@ -372,7 +374,7 @@ class InterProcessPortalImplementation
                         // create Forwarder subscription
                         forwarder_subscriptions_.insert(std::make_pair(identifier, subscription));
                     }
-                    forwarder_subscription_identifiers_[subscription->thread_id()].insert(
+                    forwarder_subscription_identifiers_[subscription->subscriber_id()].insert(
                         std::make_pair(identifier, forwarder_subscriptions_.find(identifier)));
                 }
             }
@@ -380,7 +382,7 @@ class InterProcessPortalImplementation
 
             case middleware::SerializationHandlerBase<>::SubscriptionAction::UNSUBSCRIBE:
             {
-                _forwarder_unsubscribe(subscription->thread_id(), identifier);
+                _forwarder_unsubscribe(subscription->subscriber_id(), identifier);
             }
             break;
 
@@ -388,10 +390,10 @@ class InterProcessPortalImplementation
         }
     }
 
-    void _forwarder_unsubscribe(std::thread::id thread_id, std::string identifier)
+    void _forwarder_unsubscribe(std::string subscriber_id, std::string identifier)
     {
-        auto it = forwarder_subscription_identifiers_[thread_id].find(identifier);
-        if (it != forwarder_subscription_identifiers_[thread_id].end())
+        auto it = forwarder_subscription_identifiers_[subscriber_id].find(identifier);
+        if (it != forwarder_subscription_identifiers_[subscriber_id].end())
         {
             bool no_forwarder_subscribers = true;
             for (const auto& p : forwarder_subscription_identifiers_)
@@ -414,7 +416,7 @@ class InterProcessPortalImplementation
                     zmq_main_.unsubscribe(identifier);
             }
 
-            forwarder_subscription_identifiers_[thread_id].erase(it);
+            forwarder_subscription_identifiers_[subscriber_id].erase(it);
         }
     }
 
@@ -429,7 +431,7 @@ class InterProcessPortalImplementation
         if (regex_subscriptions_.empty())
             zmq_main_.subscribe("/");
 
-        regex_subscriptions_.insert(std::make_pair(new_sub->thread_id(), new_sub));
+        regex_subscriptions_.insert(std::make_pair(new_sub->subscriber_id(), new_sub));
     }
 
     enum class IdentifierWildcard
@@ -508,10 +510,10 @@ class InterProcessPortalImplementation
         return it_pair.first->second;
     }
 
-    std::string to_string(std::thread::id i) { return goby::middleware::thread_id(i); }
+    static std::string to_string(std::thread::id i) { return goby::middleware::thread_id(i); }
 
     // used by scheme
-    std::string to_string(int i) { return middleware::MarshallingScheme::to_string(i); }
+    static std::string to_string(int i) { return middleware::MarshallingScheme::to_string(i); }
 
   private:
     const protobuf::InterProcessPortalConfig& cfg_;
@@ -530,12 +532,11 @@ class InterProcessPortalImplementation
     std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         forwarder_subscriptions_;
     std::unordered_map<
-        std::thread::id,
-        std::unordered_map<std::string,
-                           typename decltype(forwarder_subscriptions_)::const_iterator>>
+        std::string, std::unordered_map<std::string, typename decltype(
+                                                         forwarder_subscriptions_)::const_iterator>>
         forwarder_subscription_identifiers_;
 
-    std::unordered_multimap<std::thread::id,
+    std::unordered_multimap<std::string,
                             std::shared_ptr<const middleware::SerializationSubscriptionRegex>>
         regex_subscriptions_;
     std::string process_{std::to_string(getpid())};
