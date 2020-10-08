@@ -274,7 +274,7 @@ constexpr goby::middleware::Group
 // append "full_pid()"
 template <typename Derived, typename InnerTransporter>
 const std::string InterProcessTransporterBase<Derived, InnerTransporter>::from_portal_group_prefix_{
-    "goby::middleware::intermodule::from_portal::"};
+    "goby::middleware::interprocess::from_portal::"};
 
 /// \brief Implements the forwarder concept for the interprocess layer
 ///

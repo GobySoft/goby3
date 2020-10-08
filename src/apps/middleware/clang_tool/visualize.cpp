@@ -36,8 +36,8 @@ goby::clang::VisualizeParameters g_params;
 bool is_group_included(const std::string& group)
 {
     static const std::set<std::string> internal_groups{
-        "goby::InterProcessForwarder",
-        "goby::InterProcessRegexData",
+        "goby::middleware::interprocess::to_portal",
+        "goby::middleware::interprocess::regex",
         "goby::middleware::SerializationUnSubscribeAll",
         "goby::ThreadJoinable",
         "goby::ThreadShutdown",

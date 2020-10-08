@@ -95,7 +95,7 @@ class SimpleThread
     }
 
     /// \brief Access the transporter on the interthread layer (this is the innermost transporter)
-    InterThreadTransporter& interthread() { return this->transporter().inner().inner(); }
+    InterThreadTransporter& interthread() { return this->transporter().innermost(); }
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
@@ -357,8 +357,7 @@ class MultiThreadApplication
         health.set_name(this->app_name());
         health.set_state(goby::middleware::protobuf::HEALTH__OK);
     }
-
-}; // namespace middleware
+};
 
 /// \brief Base class for building multithreaded Goby applications that do not have perform any interprocess (or outer) communications, but only communicate internally via the InterThreadTransporter
 ///

@@ -77,12 +77,18 @@ class InnerTransporterInterface<
     typename std::enable_if_t<!std::is_same<Transporter, NullTransporter>::value &&
                               !std::is_same<InnerTransporter, NullTransporter>::value>>
 {
+    using Self = InnerTransporterInterface<
+        Transporter, InnerTransporter,
+        typename std::enable_if_t<!std::is_same<Transporter, NullTransporter>::value &&
+                                  !std::is_same<InnerTransporter, NullTransporter>::value>>;
+
   public:
-    /// \brief the InnerTransporter type (accessible for other uses)
-    using InnerTransporterType = InnerTransporter;
     /// \return Reference to the inner transporter
     InnerTransporter& inner() { return inner_; }
     auto& innermost() { return inner_.innermost(); }
+
+    /// \brief the InnerTransporter type (accessible for other uses)
+    using InnerTransporterType = InnerTransporter;
 
   protected:
     /// \brief Pass in an external inner transporter for use

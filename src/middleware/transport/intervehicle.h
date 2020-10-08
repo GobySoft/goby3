@@ -517,7 +517,7 @@ class InterVehicleForwarder
 
 /// \brief Implements a portal for the intervehicle layer based on Goby Acomms.
 ///
-/// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node. This portal uses goby::middleware::InterThreadTransport internally, so the inner transporter of InnerTransporter (two layers in) must be goby::middleware::InterThreadTransport. This allows for use of any InterProcessPortal, as long as that InterProcessPortal has an inner transporter of goby::middleware::InterThreadTransport.
+/// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node. This portal uses goby::middleware::InterThreadTransport internally, so the innermost transporter must be goby::middleware::InterThreadTransport. This allows for use of any InterProcessPortal, as long as that InterProcessPortal has an inner transporter of goby::middleware::InterThreadTransport.
 template <typename InnerTransporter>
 class InterVehiclePortal
     : public InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>
@@ -564,7 +564,7 @@ class InterVehiclePortal
     template <typename Data>
     void _publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
-        this->inner().inner().template publish<intervehicle::groups::modem_data_out>(
+        this->innermost().template publish<intervehicle::groups::modem_data_out>(
             this->_set_up_publish(d, group, publisher));
     }
 
@@ -574,7 +574,7 @@ class InterVehiclePortal
     {
         auto dccl_subscription = this->_set_up_subscribe(func, group, subscriber);
 
-        this->inner().inner().template publish<intervehicle::groups::modem_subscription_forward_tx>(
+        this->innermost().template publish<intervehicle::groups::modem_subscription_forward_tx>(
             dccl_subscription);
     }
 
@@ -600,8 +600,7 @@ class InterVehiclePortal
         {
             using intervehicle::protobuf::Subscription;
             auto subscribe_lambda = [=](std::shared_ptr<const Subscription> d) {
-                this->inner()
-                    .inner()
+                this->innermost()
                     .template publish<intervehicle::groups::modem_subscription_forward_rx,
                                       intervehicle::protobuf::Subscription,
                                       MarshallingScheme::PROTOBUF>(d);
@@ -615,8 +614,7 @@ class InterVehiclePortal
                 std::make_pair(subscription->subscribed_group(), subscription));
         }
 
-        this->inner()
-            .inner()
+        this->innermost()
             .template subscribe<intervehicle::groups::modem_data_in,
                                 intervehicle::protobuf::DCCLForwardedData>(
                 [this](const intervehicle::protobuf::DCCLForwardedData& msg) {
@@ -627,20 +625,19 @@ class InterVehiclePortal
         // post the correct callback (ack for [1] and expire for [2-4])
         // and remove the pending ack message
         using ack_pair_type = intervehicle::protobuf::AckMessagePair;
-        this->inner().inner().template subscribe<intervehicle::groups::modem_ack_in, ack_pair_type>(
+        this->innermost().template subscribe<intervehicle::groups::modem_ack_in, ack_pair_type>(
             [this](const ack_pair_type& ack_pair) {
                 this->template _handle_ack_or_expire<0>(ack_pair);
             });
 
         using expire_pair_type = intervehicle::protobuf::ExpireMessagePair;
-        this->inner()
-            .inner()
+        this->innermost()
             .template subscribe<intervehicle::groups::modem_expire_in, expire_pair_type>(
                 [this](const expire_pair_type& expire_pair) {
                     this->template _handle_ack_or_expire<1>(expire_pair);
                 });
 
-        this->inner().inner().template subscribe<intervehicle::groups::modem_driver_ready, bool>(
+        this->innermost().template subscribe<intervehicle::groups::modem_driver_ready, bool>(
             [this](const bool& ready) {
                 goby::glog.is_debug1() && goby::glog << "Received driver ready" << std::endl;
                 ++drivers_ready_;
