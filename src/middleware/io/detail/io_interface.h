@@ -34,6 +34,7 @@
 
 #include "goby/exception.h"
 #include "goby/middleware/application/multi_thread.h"
+#include "goby/middleware/common.h"
 #include "goby/middleware/io/groups.h"
 #include "goby/middleware/protobuf/io.pb.h"
 #include "goby/time/steady_clock.h"
