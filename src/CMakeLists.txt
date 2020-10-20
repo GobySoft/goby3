@@ -205,7 +205,7 @@ target_link_libraries(goby
   dccl_arithmetic
   ${Boost_LIBRARIES}
   ${PROTOBUF_LIBRARY}
-  proj
+  ${PROJ_LIBRARY}
   )
 
 if(enable_gmp)
