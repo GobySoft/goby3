@@ -307,7 +307,7 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
         goby::glog.is_debug2() && goby::glog << group(glog_group_) << "Successfully opened socket"
                                              << std::endl;
     }
-    catch (const boost::system::system_error& e)
+    catch (const std::exception& e)
     {
         protobuf::IOStatus status;
         status.set_state(protobuf::IO__CRITICAL_FAILURE);

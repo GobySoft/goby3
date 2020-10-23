@@ -1,0 +1,19 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
+
+package goby.middleware.protobuf;
+
+message PTYConfig
+{
+    required string name = 1
+        [(goby.field) = {example: "/tmp/ttytest0" description: "Name for created PTY device symlink."}];
+
+    optional string end_of_line = 2 [
+        default = "\n",
+        (goby.field) = {
+            description: "End of line string. Can also be a std::regex"
+        }
+    ];
+
+}
