@@ -1,0 +1,14 @@
+syntax = "proto2";
+
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/middleware/protobuf/serial_config.proto";
+import "goby/middleware/protobuf/pty_config.proto";
+
+package goby.apps.middleware.protobuf;
+
+message SerialMuxConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    required goby.middleware.protobuf.SerialConfig primary_serial = 2;
+    repeated goby.middleware.protobuf.PTYConfig secondary_pty = 3;
+}

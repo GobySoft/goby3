@@ -6,14 +6,18 @@ package goby.middleware.protobuf;
 
 message PTYConfig
 {
-    required string name = 1
-        [(goby.field) = {example: "/tmp/ttytest0" description: "Name for created PTY device symlink."}];
-
-    optional string end_of_line = 2 [
+    required string port = 1 [(goby.field) = {
+        example: "/tmp/ttytest0"
+        description: "Name for created PTY device symlink."
+    }];
+    optional uint32 baud = 2 [
+        default = 115200,
+        (goby.field) = {description: "Serial baud for PTY device"}
+    ];
+    optional string end_of_line = 3 [
         default = "\n",
         (goby.field) = {
             description: "End of line string. Can also be a std::regex"
         }
     ];
-
 }

@@ -123,7 +123,7 @@ class IOThread
     {
         auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
-                if (io_msg->index() == this->index())
+                if (!io_msg->has_index() || io_msg->index() == this->index())
                     write(io_msg);
             };
 

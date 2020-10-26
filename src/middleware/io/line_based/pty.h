@@ -77,18 +77,17 @@ void goby::middleware::io::PTYThreadLineBased<line_in_group, line_out_group, pub
     boost::asio::async_read_until(
         this->mutable_socket(), buffer_, eol_matcher_,
         [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
-            if (/*!ec && */ bytes_transferred > 0)
+            if (!ec && bytes_transferred > 0)
             {
                 std::string bytes(bytes_transferred, 0);
                 std::istream is(&buffer_);
                 is.read(&bytes[0], bytes_transferred);
                 this->handle_read_success(bytes_transferred, bytes);
-                //    this->async_read();
+                this->async_read();
             }
-            this->async_read();
-            //            else
-            //            {
-            //                this->handle_read_error(ec);
-            //            }
+            else
+            {
+                this->handle_read_error(ec);
+            }
         });
 }

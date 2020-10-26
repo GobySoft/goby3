@@ -60,7 +60,7 @@ class PTYThread : public detail::IOThread<line_in_group, line_out_group, publish
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
     /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
     PTYThread(const goby::middleware::protobuf::PTYConfig& config, int index = -1)
-        : Base(config, index, std::string("pty: ") + config.name())
+        : Base(config, index, std::string("pty: ") + config.port())
     {
     }
 
@@ -95,7 +95,7 @@ void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publ
 
     char pty_external_path[256];
     ptsname_r(pty_internal, pty_external_path, sizeof(pty_external_path));
-    const char* pty_external_symlink = this->cfg().name().c_str();
+    const char* pty_external_symlink = this->cfg().port().c_str();
 
     struct stat stat_buffer;
     // file exists
@@ -117,8 +117,46 @@ void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publ
     if (symlink(pty_external_path, pty_external_symlink) == -1)
         throw(goby::Exception(std::string("Could not create symlink: ") + pty_external_symlink));
 
+    // structure to store the port settings in
+    termios ps;
+    if (tcgetattr(pty_internal, &ps) == -1)
+        throw(goby::Exception(std::string("Unable to get attributes for pty configuration: ") +
+                              strerror(errno)));
+
+    // raw mode
+    // https://man7.org/linux/man-pages/man3/cfmakeraw.3.html
+    // ps.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP
+    //                        | INLCR | IGNCR | ICRNL | IXON);
+    // ps.c_oflag &= ~OPOST;
+    // ps.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+    // ps.c_cflag &= ~(CSIZE | PARENB);
+    // ps.c_cflag |= CS8;
+    cfmakeraw(&ps);
+
+    switch (this->cfg().baud())
+    {
+        case 2400: cfsetspeed(&ps, B2400); break;
+        case 4800: cfsetspeed(&ps, B4800); break;
+        case 9600: cfsetspeed(&ps, B9600); break;
+        case 19200: cfsetspeed(&ps, B19200); break;
+        case 38400: cfsetspeed(&ps, B38400); break;
+        case 57600: cfsetspeed(&ps, B57600); break;
+        case 115200: cfsetspeed(&ps, B115200); break;
+        default:
+            throw(goby::Exception(std::string("Invalid baud rate: ") +
+                                  std::to_string(this->cfg().baud())));
+    }
+
+    // set no parity, stop bits, data bits
+    ps.c_cflag &= ~CSTOPB;
+    // no flow control
+    ps.c_cflag &= ~CRTSCTS;
+
+    if (tcsetattr(pty_internal, TCSANOW, &ps) == -1)
+        throw(goby::Exception(std::string("Unable to set pty configuration attributes ") +
+                              strerror(errno)));
+
     this->mutable_socket().assign(pty_internal);
-    this->mutable_socket().non_blocking(true);
 }
 
 template <const goby::middleware::Group& line_in_group,
