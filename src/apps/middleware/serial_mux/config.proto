@@ -10,5 +10,12 @@ message SerialMuxConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
     required goby.middleware.protobuf.SerialConfig primary_serial = 2;
-    repeated goby.middleware.protobuf.PTYConfig secondary_pty = 3;
+
+    message SecondaryPTY
+    {
+        required goby.middleware.protobuf.PTYConfig pty = 1;
+        optional bool allow_write = 2 [default = true];
+    }
+    
+    repeated SecondaryPTY secondary = 3;
 }

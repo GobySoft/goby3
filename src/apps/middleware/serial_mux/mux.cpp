@@ -39,17 +39,28 @@ class SerialMux
 
         interthread().subscribe<groups::pty_secondary_in>(
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> from_pty) {
-                auto to_serial = std::make_shared<goby::middleware::protobuf::IOData>(*from_pty);
-                to_serial->clear_index();
-                interthread().publish<groups::serial_primary_out>(to_serial);
+                if (allow_write_.count(from_pty->index()))
+                {
+                    auto to_serial =
+                        std::make_shared<goby::middleware::protobuf::IOData>(*from_pty);
+                    to_serial->clear_index();
+                    interthread().publish<groups::serial_primary_out>(to_serial);
+                }
             });
 
         launch_thread<SerialThread>(cfg().primary_serial());
 
         int pty_index = 0;
-        for (const auto& pty_cfg : cfg().secondary_pty())
-            launch_thread<PTYThread>(pty_index++, pty_cfg);
+        for (const auto& secondary_cfg : cfg().secondary())
+        {
+            if (secondary_cfg.allow_write())
+                allow_write_.insert(pty_index);
+            launch_thread<PTYThread>(pty_index++, secondary_cfg.pty());
+        }
     }
+
+  private:
+    std::set<int> allow_write_;
 };
 
 } // namespace middleware
