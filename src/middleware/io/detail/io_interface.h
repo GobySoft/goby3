@@ -160,11 +160,16 @@ class IOThread
             this->interthread().cv()->notify_all();
         }
         incoming_mail_notify_thread_->join();
+        incoming_mail_notify_thread_.reset();
     }
 
     ~IOThread()
     {
         socket_.reset();
+
+        // for non clean shutdown, avoid abort
+        if (incoming_mail_notify_thread_)
+            incoming_mail_notify_thread_->detach();
 
         protobuf::IOStatus status;
         status.set_state(protobuf::IO__LINK_CLOSED);

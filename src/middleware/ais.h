@@ -28,8 +28,10 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/circular_buffer.hpp>
+#include <boost/units/cmath.hpp>
 
 #include "goby/middleware/protobuf/frontseat_data.pb.h"
+#include "goby/util/geodesy.h"
 #include "goby/util/protobuf/ais.pb.h"
 
 namespace goby
