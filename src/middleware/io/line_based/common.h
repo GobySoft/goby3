@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <regex>
+
 namespace goby
 {
 namespace middleware

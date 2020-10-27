@@ -123,7 +123,7 @@ class IOThread
     {
         auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
-                if (io_msg->index() == this->index())
+                if (!io_msg->has_index() || io_msg->index() == this->index())
                     write(io_msg);
             };
 
@@ -160,11 +160,16 @@ class IOThread
             this->interthread().cv()->notify_all();
         }
         incoming_mail_notify_thread_->join();
+        incoming_mail_notify_thread_.reset();
     }
 
     ~IOThread()
     {
         socket_.reset();
+
+        // for non clean shutdown, avoid abort
+        if (incoming_mail_notify_thread_)
+            incoming_mail_notify_thread_->detach();
 
         protobuf::IOStatus status;
         status.set_state(protobuf::IO__LINK_CLOSED);
@@ -307,7 +312,7 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
         goby::glog.is_debug2() && goby::glog << group(glog_group_) << "Successfully opened socket"
                                              << std::endl;
     }
-    catch (const boost::system::system_error& e)
+    catch (const std::exception& e)
     {
         protobuf::IOStatus status;
         status.set_state(protobuf::IO__CRITICAL_FAILURE);

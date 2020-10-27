@@ -26,12 +26,22 @@ message GLogConfig
 
     message FileLog
     {
-        required string file_name = 1
-            [(goby.field).description =
-                 "Full path to the debug file to write. If present, the string "
-                 "'%1%' will be replaced by the current UTC date and time, and "
-                 "'%2%' will be replaced by the application name."];
-        optional Verbosity verbosity = 2 [
+        optional string file_name = 1 [
+            (goby.field).description =
+                "Path to the debug file to write. If 'file_dir' is set, this "
+                "field is the path relative to 'file_dir', otherwise it is an "
+                "absolute path. The string '%1%' must be present, which will "
+                "be replaced by the current UTC date and time. Optionally, "
+                "'%2%' will be replaced by the application name.",
+            default = "%2%_%1%.txt"
+        ];
+        optional string file_dir = 2 [
+            (goby.field).description =
+                "Directory to store log file in. If not specified, 'file_name' "
+                "will be assumed to be an full path to the log file"
+        ];
+
+        optional Verbosity verbosity = 3 [
             default = VERBOSE,
             (goby.field).description = "Verbosity for this file log"
         ];
@@ -39,4 +49,7 @@ message GLogConfig
     repeated FileLog file_log = 3
         [(goby.field).description =
              "Open one or more files for (debug) logging."];
+
+    
+    optional bool show_dccl_log = 4 [default = false];
 }

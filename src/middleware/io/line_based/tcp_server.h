@@ -24,6 +24,7 @@
 #pragma once
 
 #include "goby/middleware/io/detail/tcp_server_interface.h"
+#include "goby/middleware/io/line_based/common.h"
 
 namespace goby
 {
