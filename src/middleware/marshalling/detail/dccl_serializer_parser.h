@@ -97,15 +97,11 @@ struct DCCLSerializerParserHelperBase
                 std::make_pair(desc, std::unique_ptr<LoaderBase>(new LoaderDynamic(desc))));
     }
 
-    static void setup_dlog();
 
     static dccl::Codec& codec()
     {
         if (!codec_)
-        {
             codec_.reset(new dccl::Codec);
-            setup_dlog();
-        }
         return *codec_;
     }
 
@@ -113,7 +109,6 @@ struct DCCLSerializerParserHelperBase
     {
         codec_.reset(new_codec);
         loader_map_.clear();
-        setup_dlog();
         return *new_codec;
     }
 
@@ -154,6 +149,9 @@ struct DCCLSerializerParserHelperBase
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         codec().load_library(library);
     }
+
+    /// \brief Enable dlog output to glog using same verbosity settings as glog.
+    static void setup_dlog();
 };
 } // namespace detail
 
