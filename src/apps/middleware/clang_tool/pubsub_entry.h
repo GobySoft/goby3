@@ -72,7 +72,7 @@ struct PubSubEntry
     }
 
     PubSubEntry(Layer l, std::string th, std::string g, std::string s, std::string t, bool tk,
-                goby::middleware::SubscriptionNecessity n)
+                goby::middleware::Necessity n)
         : layer(l), thread(th), group(g), scheme(s), type(t), thread_is_known(tk), necessity(n)
     {
     }
@@ -83,8 +83,7 @@ struct PubSubEntry
     std::string scheme;
     std::string type;
     bool thread_is_known{true};
-    goby::middleware::SubscriptionNecessity necessity{
-        goby::middleware::SubscriptionNecessity::OPTIONAL};
+    goby::middleware::Necessity necessity{goby::middleware::Necessity::OPTIONAL};
     bool is_inner_pub{false};
 
     void write_yaml_map(YAML::Emitter& yaml_out, bool include_thread = true, bool inner_pub = false,
@@ -104,13 +103,13 @@ struct PubSubEntry
             entry_map.add("inner", "true");
     }
 
-    std::string as_string(goby::middleware::SubscriptionNecessity n) const
+    std::string as_string(goby::middleware::Necessity n) const
     {
         switch (n)
         {
-            case goby::middleware::SubscriptionNecessity::REQUIRED: return "required";
-            case goby::middleware::SubscriptionNecessity::RECOMMENDED: return "recommended";
-            case goby::middleware::SubscriptionNecessity::OPTIONAL: return "optional";
+            case goby::middleware::Necessity::REQUIRED: return "required";
+            case goby::middleware::Necessity::RECOMMENDED: return "recommended";
+            case goby::middleware::Necessity::OPTIONAL: return "optional";
         }
     }
 };

@@ -201,9 +201,9 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
             scheme = goby::middleware::MarshallingScheme::to_string(scheme_num);
         }
 
-        auto necessity = goby::middleware::SubscriptionNecessity::OPTIONAL;
+        auto necessity = goby::middleware::Necessity::OPTIONAL;
         if (necessity_arg)
-            necessity = static_cast<goby::middleware::SubscriptionNecessity>(
+            necessity = static_cast<goby::middleware::Necessity>(
                 necessity_arg->getAsIntegral().getExtValue());
 
         std::set<std::string> internal_groups{

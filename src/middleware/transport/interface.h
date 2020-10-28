@@ -188,7 +188,7 @@ class PollerInterface
 };
 
 /// \brief Used to tag subscriptions based on their necessity (e.g. required for correct functioning, or optional)
-enum class SubscriptionNecessity
+enum class Necessity
 {
     REQUIRED,
     RECOMMENDED,
@@ -266,7 +266,7 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
     /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>(),
-              SubscriptionNecessity necessity = SubscriptionNecessity::OPTIONAL>
+              Necessity necessity = Necessity::OPTIONAL>
     void subscribe(std::function<void(const Data&)> f,
                    const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
@@ -285,7 +285,7 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
     /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>(),
-              SubscriptionNecessity necessity = SubscriptionNecessity::OPTIONAL>
+              Necessity necessity = Necessity::OPTIONAL>
     void subscribe(std::function<void(std::shared_ptr<const Data>)> f,
                    const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
@@ -303,8 +303,7 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     ///
     /// This removes the need to explicitly specify Data for simple calls to subscribe() that do not need to manually specify the 'scheme' or provide a Subscriber.
-    template <const Group& group, SubscriptionNecessity necessity = SubscriptionNecessity::OPTIONAL,
-              typename Func>
+    template <const Group& group, Necessity necessity = Necessity::OPTIONAL, typename Func>
     void subscribe(Func f)
     {
         // we want to grab the first argument of "f" and then capture "Data" from "const Data& data" and "std::shared_ptr<const Data>"
