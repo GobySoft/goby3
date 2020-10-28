@@ -64,10 +64,10 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
             // also allow out direct calls to publish/subscribe
             expr().bind("on_expr")),
         // call is on an instantiation of a class derived from StaticTransporterInterface
-        hasType(cxxRecordDecl(
+        hasType(hasUnqualifiedDesugaredType(recordType(hasDeclaration(cxxRecordDecl(
             decl().bind("on_type_decl"),
             isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::StaticTransporterInterface"))),
-            unless(hasName("::goby::middleware::NullTransporter"))))));
+            unless(hasName("::goby::middleware::NullTransporter")))))))));
 
     // picks out the parameters of the publish/subscribe call
     auto base_pubsub_parameters_matcher = cxxMethodDecl(
