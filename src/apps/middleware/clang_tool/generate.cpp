@@ -54,9 +54,10 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
     auto calling_thread_matcher = on(expr(
         anyOf(
             // Thread: pull out what "this" in "this->interprocess()" when "this" is derived from goby::middleware::Thread
-            cxxMemberCallExpr(on(hasType(pointsTo(cxxRecordDecl(
-                cxxRecordDecl().bind("on_thread_decl"),
-                isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread")))))))),
+            cxxMemberCallExpr(on(hasType(
+                pointsTo(hasUnqualifiedDesugaredType(recordType(hasDeclaration(cxxRecordDecl(
+                    cxxRecordDecl().bind("on_thread_decl"),
+                    isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread"))))))))))),
             // Thread: match this->goby().interprocess() or similar chains
             hasDescendant(cxxMemberCallExpr(on(hasType(pointsTo(cxxRecordDecl(
                 cxxRecordDecl().bind("on_indirect_thread_decl"),
@@ -85,11 +86,17 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
         hasTemplateArgument(2, templateArgument(templateArgument().bind("scheme_arg"),
                                                 refersToIntegralType(qualType(asString("int"))))));
 
+    // if on_thread_decl or on_thread_direct_decl fails, use this to try to determine the class that contains this statement
+    auto containing_class_matcher =
+        anyOf(hasAncestor(cxxRecordDecl().bind(
+                  "containing_class_decl")), // should be "optionally" but this isn't in clang 6
+              expr());
+
     if (method == "publish")
     {
         auto publish_parameters_matcher = callee(base_pubsub_parameters_matcher);
         return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
-                                 publish_parameters_matcher);
+                                 publish_parameters_matcher, containing_class_matcher);
     }
     else if (method == "subscribe")
     {
@@ -103,7 +110,7 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
                 hasDescendant(cxxMemberCallExpr(callee(base_pubsub_parameters_matcher))))));
 
         return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
-                                 subscribe_parameters_matcher);
+                                 subscribe_parameters_matcher, containing_class_matcher);
     }
     else
     {
@@ -127,9 +134,19 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         const auto* on_type_decl = Result.Nodes.getNodeAs<clang::CXXRecordDecl>("on_type_decl");
         const auto* on_thread_decl = Result.Nodes.getNodeAs<clang::CXXRecordDecl>("on_thread_decl");
 
+        const auto* on_expr = Result.Nodes.getNodeAs<clang::Expr>("on_expr");
+
+        const auto* containing_class_decl =
+            Result.Nodes.getNodeAs<clang::CXXRecordDecl>("containing_class_decl");
+
         if (!on_thread_decl)
             on_thread_decl =
                 Result.Nodes.getNodeAs<clang::CXXRecordDecl>("on_indirect_thread_decl");
+
+        if (!on_thread_decl)
+        {
+            on_thread_decl = Result.Nodes.getNodeAs<clang::CXXRecordDecl>("containing_class_decl");
+        }
 
         if (!pubsub_call_expr || !group_string_lit || !on_type_decl)
             return;
