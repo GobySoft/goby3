@@ -187,6 +187,14 @@ class PollerInterface
     std::shared_ptr<std::condition_variable_any> cv_;
 };
 
+/// \brief Used to tag subscriptions based on their necessity (e.g. required for correct functioning, or optional)
+enum class SubscriptionNecessity
+{
+    REQUIRED,
+    RECOMMENDED,
+    OPTIONAL
+};
+
 /// \brief Defines the common interface for publishing and subscribing data using static (constexpr) groups on Goby transporters
 ///
 /// \tparam Transporter The transporter for which this interface applies (derived class)
@@ -253,10 +261,12 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
     /// \tparam group group to subscribe to (reference to constexpr Group)
     /// \tparam Data data type to subscribe to.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \tparam necessity How important is this subscription (is it required?)
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <const Group& group, typename Data,
-              int scheme = transporter_scheme<Data, Transporter>()>
+              int scheme = transporter_scheme<Data, Transporter>(),
+              SubscriptionNecessity necessity = SubscriptionNecessity::OPTIONAL>
     void subscribe(std::function<void(const Data&)> f,
                    const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
@@ -270,10 +280,12 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
     /// \tparam group group to subscribe to (reference to constexpr Group)
     /// \tparam Data data type to subscribe to.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \tparam necessity How important is this subscription (is it required?)
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <const Group& group, typename Data,
-              int scheme = transporter_scheme<Data, Transporter>()>
+              int scheme = transporter_scheme<Data, Transporter>(),
+              SubscriptionNecessity necessity = SubscriptionNecessity::OPTIONAL>
     void subscribe(std::function<void(std::shared_ptr<const Data>)> f,
                    const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
@@ -284,14 +296,22 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
 
     /// \brief Simplified version of subscribe() that can deduce Data from the first argument of the function (lambda, function pointer, etc.) passed to it.
     ///
+    /// \tparam group group to subscribe to (reference to constexpr Group)
+    /// \tparam necessity How important is this subscription (is it required?)
+    /// \tparam Func Function of a form accepted by other overloads of subscribe()
+    ///
+    /// \param f Callback function or lambda that is called upon receipt of the subscribed data
+    ///
     /// This removes the need to explicitly specify Data for simple calls to subscribe() that do not need to manually specify the 'scheme' or provide a Subscriber.
-    template <const Group& group, typename Func> void subscribe(Func f)
+    template <const Group& group, SubscriptionNecessity necessity = SubscriptionNecessity::OPTIONAL,
+              typename Func>
+    void subscribe(Func f)
     {
         // we want to grab the first argument of "f" and then capture "Data" from "const Data& data" and "std::shared_ptr<const Data>"
         using Data = typename detail::primitive_type<
             typename std::decay<detail::first_argument<Func>>::type>::type;
 
-        subscribe<group, Data, transporter_scheme<Data, Transporter>()>(f);
+        subscribe<group, Data, transporter_scheme<Data, Transporter>(), necessity>(f);
     }
 
     /// \brief Unsubscribe to a specific group and data type

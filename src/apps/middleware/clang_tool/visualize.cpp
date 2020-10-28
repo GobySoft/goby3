@@ -95,6 +95,8 @@ struct Application
             {
                 auto thread_node = *it;
                 auto thread_name = thread_node["name"].as<std::string>();
+                auto thread_known =
+                    (!thread_node["known"]) ? true : thread_node["known"].as<bool>();
                 auto bases_node = thread_node["bases"];
                 std::set<std::string> bases;
                 if (bases_node)
@@ -102,8 +104,8 @@ struct Application
                     for (const auto& base : bases_node) bases.insert(base.as<std::string>());
                 }
 
-                threads.emplace(thread_name,
-                                std::make_shared<Thread>(thread_name, thread_node, bases));
+                threads.emplace(thread_name, std::make_shared<Thread>(thread_name, thread_known,
+                                                                      thread_node, bases));
             }
 
             // crosslink threads that aren't direct subclasses of goby::middleware::SimpleThread
@@ -164,7 +166,8 @@ struct Application
             for (const auto& e : pubsubs)
             {
                 if (!threads.count(e.thread))
-                    threads.emplace(e.thread, std::make_shared<Thread>(e.thread));
+                    threads.emplace(e.thread,
+                                    std::make_shared<Thread>(e.thread, e.thread_is_known));
             }
         };
 
@@ -615,7 +618,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
                 ofs << "\t\t\t"
                     << node_name(platform.name, application.name, thread->most_derived_name())
                     << " [label=<" << thread_display_name << ">,fontcolor=" << thread_color
-                    << ",shape=box]\n";
+                    << ",shape=box,style=" << (thread->known ? "solid" : "dotted") << "]\n";
 
                 write_thread_connections(ofs, platform, application, *thread,
                                          thread_disconnected_subs);

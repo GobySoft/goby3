@@ -27,6 +27,8 @@
 #include <boost/algorithm/string.hpp>
 #include <string>
 
+#include "goby/middleware/transport/interface.h"
+
 #include "yaml_raii.h"
 
 namespace viz
@@ -42,8 +44,9 @@ enum class Layer
 {
     UNKNOWN = -1,
     INTERTHREAD = 0,
-    INTERPROCESS = 1,
-    INTERVEHICLE = 2
+    INTERPROCESS = 10,
+    INTERMODULE = 20,
+    INTERVEHICLE = 30
 };
 
 struct PubSubEntry
@@ -68,25 +71,31 @@ struct PubSubEntry
             is_inner_pub = true;
     }
 
-    PubSubEntry(Layer l, std::string th, std::string g, std::string s, std::string t)
-        : layer(l), thread(th), group(g), scheme(s), type(t)
+    PubSubEntry(Layer l, std::string th, std::string g, std::string s, std::string t, bool tk,
+                goby::middleware::SubscriptionNecessity n)
+        : layer(l), thread(th), group(g), scheme(s), type(t), thread_is_known(tk), necessity(n)
     {
     }
 
     Layer layer{Layer::UNKNOWN};
     std::string thread;
-
     std::string group;
     std::string scheme;
     std::string type;
+    bool thread_is_known{true};
+    goby::middleware::SubscriptionNecessity necessity{
+        goby::middleware::SubscriptionNecessity::OPTIONAL};
+    bool is_inner_pub{false};
 
-    void write_yaml_map(YAML::Emitter& yaml_out, bool include_thread = true,
-                        bool inner_pub = false) const
+    void write_yaml_map(YAML::Emitter& yaml_out, bool include_thread = true, bool inner_pub = false,
+                        bool include_necessity = true) const
     {
         goby::yaml::YMap entry_map(yaml_out, false);
         entry_map.add("group", group);
         entry_map.add("scheme", scheme);
         entry_map.add("type", type);
+        if (include_necessity) // only for subscribers
+            entry_map.add("necessity", as_string(necessity));
         if (include_thread)
             entry_map.add("thread", thread);
 
@@ -95,7 +104,15 @@ struct PubSubEntry
             entry_map.add("inner", "true");
     }
 
-    bool is_inner_pub{false};
+    std::string as_string(goby::middleware::SubscriptionNecessity n) const
+    {
+        switch (n)
+        {
+            case goby::middleware::SubscriptionNecessity::REQUIRED: return "required";
+            case goby::middleware::SubscriptionNecessity::RECOMMENDED: return "recommended";
+            case goby::middleware::SubscriptionNecessity::OPTIONAL: return "optional";
+        }
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PubSubEntry& e)
@@ -144,9 +161,13 @@ namespace viz
 {
 struct Thread
 {
-    Thread(std::string n, std::set<std::string> b = std::set<std::string>()) : name(n), bases(b) {}
-    Thread(std::string n, const YAML::Node& y, std::set<std::string> b = std::set<std::string>())
-        : name(n), bases(b), yaml(y)
+    Thread(std::string n, bool k, std::set<std::string> b = std::set<std::string>())
+        : name(n), known(k), bases(b)
+    {
+    }
+    Thread(std::string n, bool k, const YAML::Node& y,
+           std::set<std::string> b = std::set<std::string>())
+        : name(n), known(k), bases(b), yaml(y)
     {
     }
 
@@ -170,6 +191,7 @@ struct Thread
     }
 
     std::string name;
+    bool known;
     std::set<std::string> bases;
     YAML::Node yaml;
 

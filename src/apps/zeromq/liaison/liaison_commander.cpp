@@ -669,6 +669,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                             goby::middleware::DynamicGroup(grouplayer.group()));
                 });
                 break;
+            case goby::middleware::protobuf::LAYER_INTERMODULE:
             case goby::middleware::protobuf::LAYER_INTERPROCESS:
                 commander_->post_to_comms([=]() {
                     commander_->goby_thread()
