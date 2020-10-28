@@ -22,8 +22,8 @@ gen_authors()
     echo $i;
     mapfile -t authors < <(git blame --line-porcelain $i | grep "^author " | sort | uniq -c | sort -nr | sed 's/^ *//' | cut -d " " -f 3-)
     #    echo ${authors[@]}
-    start_year=$(git log --reverse --date=format:%Y --format=format:%ad $i | head -n 1)
-    end_year=$(git log -n 1 --date=format:%Y --format=format:%ad $i)
+    start_year=$(git log --follow --date=format:%Y --format=format:%ad $i | tail -n 1)
+    end_year=$(git log --follow -n 1 --date=format:%Y --format=format:%ad $i)
     #    echo ${start_year}-${end_year}    
 
     if [[ "${start_year}" == "${end_year}" ]]; then

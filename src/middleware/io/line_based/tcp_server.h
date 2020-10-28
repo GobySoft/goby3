@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2020:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -24,6 +24,7 @@
 #pragma once
 
 #include "goby/middleware/io/detail/tcp_server_interface.h"
+#include "goby/middleware/io/line_based/common.h"
 
 namespace goby
 {

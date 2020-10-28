@@ -1,5 +1,6 @@
-// Copyright 2019-2020:
+// Copyright 2011-2020:
 //   GobySoft, LLC (2013-)
+//   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
@@ -34,13 +35,12 @@
 #include "goby/exception.h"
 #include <boost/format.hpp>
 
+#include "goby/middleware/application/configurator.h"
+#include "goby/middleware/marshalling/detail/dccl_serializer_parser.h"
 #include "goby/middleware/protobuf/app_config.pb.h"
-
 #include "goby/time.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/geodesy.h"
-
-#include "goby/middleware/application/configurator.h"
 
 namespace goby
 {
@@ -181,8 +181,21 @@ template <typename Config> void goby::middleware::Application<Config>::configure
     fout_.resize(app3_base_configuration_->glog_config().file_log_size());
     for (int i = 0, n = app3_base_configuration_->glog_config().file_log_size(); i < n; ++i)
     {
-        const auto& file_format_str =
-            app3_base_configuration_->glog_config().file_log(i).file_name();
+        const auto& file_log = app3_base_configuration_->glog_config().file_log(i);
+        std::string file_format_str;
+
+        if (file_log.has_file_dir() && !file_log.file_dir().empty())
+        {
+            auto file_dir = file_log.file_dir();
+            if (file_dir.back() != '/')
+                file_dir += "/";
+            file_format_str = file_dir + file_log.file_name();
+        }
+        else
+        {
+            file_format_str = file_log.file_name();
+        }
+
         boost::format file_format(file_format_str);
 
         if (file_format_str.find("%1") == std::string::npos)
@@ -217,6 +230,9 @@ template <typename Config> void goby::middleware::Application<Config>::configure
         glog.add_stream(app3_base_configuration_->glog_config().file_log(i).verbosity(),
                         fout_[i].get());
     }
+
+    if (app3_base_configuration_->glog_config().show_dccl_log())
+        goby::middleware::detail::DCCLSerializerParserHelperBase::setup_dlog();
 }
 
 template <typename Config> void goby::middleware::Application<Config>::configure_geodesy()

@@ -49,7 +49,7 @@ Configuration of individual DCCL messages (the vast majority of DCCL configurati
 %\end{figure}
 
 
-A full guide to designing DCCL messages is given at \url{http://gobysoft.com/doc/2.0/acomms_dccl.html} along with a full list of the DCCL extensions to the Google Protobuf !MessageOptions! (i.e. !(dccl.msg).*!) and !FieldOptions! (i.e. !(dccl.field).*!). Therefore, we will not replicate that information here. However, we will give a broad overview of the DCCL configuration.
+A full guide to designing DCCL messages is given at \url{http://libdccl.org/} along with a full list of the DCCL extensions to the Google Protobuf !MessageOptions! (i.e. !(dccl.msg).*!) and !FieldOptions! (i.e. !(dccl.field).*!). Therefore, we will not replicate that information here. However, we will give a broad overview of the DCCL configuration.
 
 DCCL messages are protobuf messages with ``invisible'' extensions. By ``invisible,'' we mean that DCCL messages can be compiled by the standard protobuf compiler (!protoc!) without requiring the Goby-Acomms library. This allows DCCL messages to be shared with users that do not need the functionality of DCCL (e.g. are only using traditional IP networks), but need to communicate with groups that need the additional compression afforded by DCCL. The goal is to break down the barriers for using acoustic links on robotic systems, while still maintaining the efficiency necessary for effective use of these highly restricted links.
 
@@ -120,7 +120,7 @@ The option "!in_head!" tags the field as belonging in the user header. The only 
 \section{Time dependent priority queuing: Queue} \label{sec:queue}
 
 Goby-Queue manages a queue for each DCCL message. When it is prompted by data by the modem, it has a priority "contest" between the queues. the queue with the current highest priority (as determined by the !value_base! and !ttl! fields) is selected. The next message in that queue is then provided to the modem to send. For modem messages with multiple frames per packet, each frame is a separate contest. Thus a single packet may contain frames from different
- queues (e.g. a rate 5 PSK packet has eight 256 byte frames. frame 1 might grab a STATUS message since that has the current highest queue. then frame 2 may grab a BTR message and frames 3-8 are filled up with CTD messages (e.g. STATUS is in blackout, BTR queue is empty)). See \url{http://gobysoft.com/doc/2.0/acomms_queue.html} for more information.
+ queues (e.g. a rate 5 PSK packet has eight 256 byte frames. frame 1 might grab a STATUS message since that has the current highest queue. then frame 2 may grab a BTR message and frames 3-8 are filled up with CTD messages (e.g. STATUS is in blackout, BTR queue is empty)). See \url{http://gobysoft.org/doc/3.0/html/md_src_doc_markdown_doc101_acomms-queue.html} for more information.
 
 \subsection{Configuration: QueueManagerConfig}
 
@@ -186,7 +186,7 @@ message_entry {
 
 The AMAC unit uses time division (TDMA) to attempt to ensure a collision-free acoustic channel.
 
-AMAC supports two variants of the TDMA MAC scheme: centralized and decentralized. As the names suggest, Centralized TDMA (!type: MAC_POLLED!) involves control of the entire cycle from a single master node, whereas each node's respective slot is controlled by that node in Decentralized TDMA. Within decentralized TDMA, Goby supports a fixed (preprogrammed) cycle (!type: MAC_FIXED_DECENTRALIZED!) that can be updated by the application. The autodiscovery mode (!type: MAC_AUTO_DECENTRALIZED!) supported in version 1 is no longer provided in version 2. To disable the AMAC, use (!type: MAC_NONE!). See \url{http://gobysoft.com/doc/2.0/acomms_mac.html} for more details.
+AMAC supports two variants of the TDMA MAC scheme: centralized and decentralized. As the names suggest, Centralized TDMA (!type: MAC_POLLED!) involves control of the entire cycle from a single master node, whereas each node's respective slot is controlled by that node in Decentralized TDMA. Within decentralized TDMA, Goby supports a fixed (preprogrammed) cycle (!type: MAC_FIXED_DECENTRALIZED!) that can be updated by the application. The autodiscovery mode (!type: MAC_AUTO_DECENTRALIZED!) supported in version 1 is no longer provided in version 2. To disable the AMAC, use (!type: MAC_NONE!). See \url{http://gobysoft.org/doc/3.0/html/md_src_doc_markdown_doc102_acomms-mac.html} for more details.
 
 \subsection{Configuration: MACConfig}
 
@@ -198,7 +198,7 @@ The !goby::acomms::MACManager! is basically a !std::list<ModemTransmission>!. Th
 
 Further details on these configuration fields: 
 \begin{itemize}
-\item !type!: type of Medium Access Control. See \url{http://gobysoft.com/doc/2.0/acomms_mac.html#amac_schemes} for an explanation of the various MAC schemes.
+\item !type!: type of Medium Access Control. 
 \item !slot!: use this repeated field to specify a manual polling or fixed TDMA cycle for the  !type: MAC_FIXED_DECENTRALIZED! and  !type: MAC_POLLED!. 
 \begin{itemize}
 \item !src!: The sending !modem_id! for this slot. Setting both src and dest to 0 causes AMAC to ignore this slot (which can be used to provide a blank slot).
@@ -284,7 +284,7 @@ slot {
 
 \section{Abstract Acoustic (or other slow link) Modem Driver: ModemDriver} \label{sec:driver}
 
-The ModemDriver unit provides a common interface to any modem capable of sending datagrams. It currently supports the WHOI Micro-Modem acoustic modem, UDP over the Internet, and is extensible to other acoustic (or slow link) modems. More details on the ModemDriver are available here: \url{http://gobysoft.com/doc/2.0/acomms_driver.html}.
+The ModemDriver unit provides a common interface to any modem capable of sending datagrams. It currently supports the WHOI Micro-Modem acoustic modem, UDP over the Internet, and is extensible to other acoustic (or slow link) modems. More details on the ModemDriver are available here: \url{http://gobysoft.org/doc/3.0/html/acomms_driver.html}.
 
 \subsection{Configuration: DriverConfig}
 
@@ -294,6 +294,7 @@ Base driver configuration:
 \resetbvlinenumber
 
 \begin{itemize}
+\item !driver_type!: Which driver to run
 \item !modem_id!: A unique integer value for this particular vehicle (like a MAC address). Should be as small as possible for optimal bounding of the source and destination fields of the message. 0 is reserved for broadcast (analogous to 255.255.255.255 for IPv4).
 \item !connection_type!: How the modem is attached to this computer. Some of the drivers do not use this connection. Valid options: !CONNECTION_SERIAL! (uses a serial connection, e.g. !/dev/ttyS0!), !CONNECTION_TCP_AS_CLIENT! (connect using TCP where this application is a client, and the modem is a server), !CONNECTION_TCP_AS_SERVER! (connect using TCP where this application is a server, and the modem is a client).
 \item !line_delimiter!: A string representing the ``end-of-line'' of each message from the modem.
@@ -308,32 +309,40 @@ Extensions for the WHOI Micro-Modem (!DRIVER_WHOI_MICROMODEM!):
 \resetbvlinenumber
 
 \begin{itemize}
-\item ![micromodem.protobuf.Config.reset_nvram]!: If true, reset all the modem's configuration settings at startup (before applying those specified in !nvram_cfg!). In general, it is a good idea to set this to true so that the modem's NVRAM (configuration) state is known.
-\item ![micromodem.protobuf.Config.nvram_cfg]!: This repeated field specifies an NVRAM configuration sentence to send. For example, to set !$CCCFG,DTO,10!, use ``DTO,10'' as the value for this field. %$
-\item ![micromodem.protobuf.Config.nvram_cfg]!: You must omit this in all cases except when using a Hydroid Buoy which uses a modified talker to communicate with the Micro-Modem. In that case, set this to the Buoy identification number.
-\item ![micromodem.protobuf.Config.narrowband_lbl]!: Default configuration used for each !MICROMODEM_NARROWBAND_LBL_RANGING! transmission. Overwritten by any settings also specified in the AMAC configuration. See \url{http://gobysoft.com/doc/2.0/acomms_driver.html} for the details of these fields.
-\item ![micromodem.protobuf.Config.remus_lbl]!: Default configuration used for each !MICROMODEM_REMUS_LBL_RANGING! transmission. Overwritten by any settings also specified in the AMAC configuration. See \url{http://gobysoft.com/doc/2.0/acomms_driver.html} for the details of these fields.
-\item ![micromodem.protobuf.Config.mm_version]!: Micro-Modem major version. Only Micro-Modem 1 is currently supported (and Micro-Modem 2 in backwards-compatible mode). Thus, currently, this field should always be 1.
+\item ![reset_nvram]!: If true, reset all the modem's configuration settings at startup (before applying those specified in !nvram_cfg!). In general, it is a good idea to set this to true so that the modem's NVRAM (configuration) state is known.
+\item ![nvram_cfg]!: This repeated field specifies an NVRAM configuration sentence to send. For example, to set !$CCCFG,DTO,10!, use ``DTO,10'' as the value for this field. %$
+\item ![hydroid_gateway_id]!: You must omit this in all cases except when using a Hydroid Buoy which uses a modified talker to communicate with the Micro-Modem. In that case, set this to the Buoy identification number.
+\item ![narrowband_lbl]!: Default configuration used for each !MICROMODEM_NARROWBAND_LBL_RANGING! transmission (!$CCPNT!). Overwritten by any settings also specified in the AMAC configuration. See \url{http://gobysoft.org/doc/3.0/html/md_src_doc_markdown_doc103_acomms-driver.html} for the details of these fields.
+\item ![remus_lbl]!: Default configuration used for each !MICROMODEM_REMUS_LBL_RANGING! transmission (!$CCPDT!). Overwritten by any settings also specified in the AMAC configuration. See \url{http://gobysoft.org/doc/3.0/html/md_src_doc_markdown_doc103_acomms-driver.html} for the details of these fields.
+\item ![keep_alive_Seconds]!: How often to send a heartbeat request to the MicroModem. For Micro-Modem 2 this is !$CCTMQ!, and for Micro-Modem 1 this is !$CCCFQ!.
+\item ![allowed_skew_ms]!: Allowed milliseconds of error between the Micro-Modem clock and the system clock before forcing a clock set of the Micro-Modem. You may need to increase this for high latency serial links to avoid constantly resetting the clock.
+\item ![generic_lbl]!: Default configuration used for each !MICROMODEM_GENERIC_LBL_RANGING! transmission (!$CCPGT!). Overwritten by any settings also specified in the AMAC configuration. 
+\item ![fm_sweep]!: Default configuration used for each !MICROMODEM_FM_SWEEP! transmission (!$CCSWP!). Overwritten by any settings also specified in the AMAC configuration.
+\item ![m_sequence]!: Default configuration used for each !MICROMODEM_M_SEQUENCE! transmission (!$CCMSQ!). Overwritten by any settings also specified in the AMAC configuration.
+\item ![use_application_acks]!: For use with !MICROMODEM_FLEXIBLE_DATA! transmissions, if true will use a prefix ack inserted by the Goby driver rather than using the (unimplemented as of this writing) ack function in the firmware.
+\item ![additional_application_ack_modem_id]!: Also send acks for this modem id, used for spoofing a downstream modem id.
+\item ![query_cfg_on_startup]!: If true (default), this queries the full Micro-Modem configuration (!$CCCFQ,TOP!) for logging purposes.
+\item ![revision]!: Manually specify the MicroModem firmware revision. If omitted, the revision is automatically parsed from the !$CAREV! message.
+\item ![use_base64_fdp]!: Use the Base64 version of the Flexible Data Packet (!$CCCFG,recv.base64data,1!).
 \end{itemize} 
 
 
 Extensions for the example driver (!DRIVER_ABC_EXAMPLE_MODEM!):
 \boxedverbatiminput{@RELATIVE_CMAKE_CURRENT_SOURCE_DIR@/includes/driver_abc_driver.pb.cfg}
 \resetbvlinenumber
-This ``modem'' is simply an example on how to write drivers. See \url{http://gobysoft.com/doc/2.0/acomms_driver.html#acomms_writedriver}. Do not use this for real work.
+This ``modem'' is simply an example on how to write drivers. See \url{http://gobysoft.org/doc/3.0/html/md_src_doc_markdown_doc103_acomms-driver.html}. Do not use this for real work.
 
 Extensions for the MOOS uField driver (!DRIVER_UFIELD_SIM_DRIVER!) that uses the MOOS-IvP uField toolbox \cite{ufield} as the transport:
 \boxedverbatiminput{@RELATIVE_CMAKE_CURRENT_SOURCE_DIR@/includes/driver_ufield.pb.cfg}
 \resetbvlinenumber
 
-
 \begin{itemize}
-\item ![goby.moos.protobuf.Config.moos_server]!: Address for the !MOOSDB!.
-\item ![goby.moos.protobuf.Config.moos_port]!: Port for the !MOOSDB!.
-\item ![goby.moos.protobuf.Config.incoming_moos_var]!: MOOS variable to use for incoming messages.
-\item ![goby.moos.protobuf.Config.outgoing_moos_var]!: MOOS variable to use for outgoing messages.
-\item ![goby.moos.protobuf.Config.ufield_outgoing_moos_var]!: The MOOS variable uField uses for relaying messages.
-\item ![goby.moos.protobuf.Config.rate_to_bytes]!: This repeated field is the size in bytes of the given rate. The order these are defined in the configuration file maps onto the rate. The first is rate 0, the second is rate 1, and so on. To emulate the WHOI Micro-Modem, use:
+\item ![moos_server]!: Address for the !MOOSDB!.
+\item ![moos_port]!: Port for the !MOOSDB!.
+\item ![incoming_moos_var]!: MOOS variable to use for incoming messages.
+\item ![outgoing_moos_var]!: MOOS variable to use for outgoing messages.
+\item ![ufield_outgoing_moos_var]!: The MOOS variable uField uses for relaying messages.
+\item ![rate_to_bytes]!: This repeated field is the size in bytes of the given rate. The order these are defined in the configuration file maps onto the rate. The first is rate 0, the second is rate 1, and so on. To emulate the WHOI Micro-Modem, use:
 \begin{boxedverbatim}
 [goby.moos.protobuf.Config.rate_to_bytes]: 32 
 [goby.moos.protobuf.Config.rate_to_bytes]: 192 
@@ -343,7 +352,7 @@ Extensions for the MOOS uField driver (!DRIVER_UFIELD_SIM_DRIVER!) that uses the
 [goby.moos.protobuf.Config.rate_to_bytes]: 2048 
 \end{boxedverbatim}
 \resetbvlinenumber
-\item ![goby.moos.protobuf.Config.modem_id_lookup_path]!: Path to a file containing the mapping of MOOS Community names to modem IDs.  This file should look like:
+\item ![modem_id_lookup_path]!: Path to a file containing the mapping of MOOS Community names to modem IDs.  This file should look like:
 \begin{boxedverbatim}
 // modem id, vehicle name (should be community name), vehicle type
 0, broadcast, broadcast
@@ -355,20 +364,68 @@ Extensions for the MOOS uField driver (!DRIVER_UFIELD_SIM_DRIVER!) that uses the
 
 \end{itemize} 
 
-Extensions for the UDP driver (!DRIVER_UDP!), a basic driver for Goby that sends packets using UDP over IP:
+Extensions for the UDP driver (!DRIVER_UDP!), a basic driver for Goby that sends packets using point-to-point UDP over IP:
 \boxedverbatiminput{@RELATIVE_CMAKE_CURRENT_SOURCE_DIR@/includes/driver_udp.pb.cfg}
 \resetbvlinenumber
 
 \begin{itemize}
-\item ![UDPDriverConfig.local]!: Source port of the local machine (!ip! is not used). This can be omitted, and then a dynamic port is used.
-\item ![UDPDriverConfig.remote]!: Address and port to send messages to. 
-\item ![UDPDriverConfig.max_frame_size]!: Maximum UDP frame to send (in bytes).
+\item ![local]!: Source port of the local machine (!ip! is not used).
+\item ![remote]!: Address and port to send messages to. 
+\item ![max_frame_size]!: Maximum UDP frame to send (in bytes).
 \end{itemize} 
 
-Extensions for the ZeroMQ/Protobuf storage driver (!DRIVER_PB_STORE_SERVER!):
-\boxedverbatiminput{@RELATIVE_CMAKE_CURRENT_SOURCE_DIR@/includes/driver_pb.pb.cfg}
+Extensions for the UDP Multicast driver (!DRIVER_UDP_MULTICAST!), a basic driver for Goby that sends packets using UDP multicast:
+\boxedverbatiminput{@RELATIVE_CMAKE_CURRENT_SOURCE_DIR@/includes/driver_udp_multicast.pb.cfg}
 \resetbvlinenumber
-This driver is still under development and thus is not for general use at the moment.
+
+\begin{itemize}
+\item ![listen_address]!: IP address to listen on.
+\item ![multicast_address]!: Multicast IP address to use.
+\item ![multicast_port]!: UDP port to use.
+\item ![max_frame_size]!: Maximum UDP frame to send (in bytes).
+\item ![rate_to_bytes]!: This repeated field is the size in bytes of the given rate. Useful for mimicing a particular acoustic modem rate table.
+\end{itemize} 
+
+
+Extensions for the Benthos ATM-900 driver (!DRIVER_BENTHOS_ATM900!), a driver for Goby that supports the Teledyne Benthos ATM-900 series of modems:
+\boxedverbatiminput{@RELATIVE_CMAKE_CURRENT_SOURCE_DIR@/includes/driver_benthos.pb.cfg}
+\resetbvlinenumber
+
+\begin{itemize}
+\item ![factory_reset]!: Reset modem to factory defaults prior to applying configuration values specified in 'config' (i.e. load values from ffs/factcfg.ini) 
+\item ![config_load]!: Path to config file to load on the modem, e.g. 'ffs/standard.ini'
+\item ![config]!: Strings of configuration values to set in CLAM format, for example !@AcRspTmOut=10.0!
+\item ![start_timeout]!: Number of seconds to try to initialize the modem before giving up
+\item ![max_frame_size]!: Enforce this maximum packet size (in bytes) for all rates (also used if !max_frame_bytes! not set in ModemTransmission)
+\end{itemize} 
+
+
+Extensions for the Iridium 9523 (may also work with other Iridium devices) driver (!DRIVER_IRIDIUM!), and the Iridium DirectIP shore based server/client infrastructure (SBD/RUDICS) (!DRIVER_IRIDIUM_SHORE!):
+\boxedverbatiminput{@RELATIVE_CMAKE_CURRENT_SOURCE_DIR@/includes/driver_iridium.pb.cfg}
+\resetbvlinenumber
+
+Iridium mobile unit (![goby.acomms.iridium.protobuf.config]!)
+\begin{itemize}
+\item ![remote]!: Iridium phone number and corresponding modem ID for remote connection (typically a RUDICS number)
+\item ![max_Frame_Size]!: Max size in bytes for a frame (if not set in ModemTransmission)
+\item ![target_bit_rate]!: Bit rate to target while on a call.
+\item ![config]!: Configuration parameters (AT sentences without the !AT!, e.g. set !+IPR=5,0! to send !AT+IPR=5,0!)
+\item ![dial_attempts]!: How many times to call dial (!ATD!) before giving up
+\item ![debug_client_port]!: Start a TCP server on this port for sending and receiving AT sentences.
+\item ![hangup_seconds_after_empty]!: How many seconds after which we have no data before hanging up the call.
+\item ![start_timeout]!: Number of seconds to try to initialize the modem before giving up
+\item ![use_dtr]!: If true, toggle the DTR serial hardware line to hangup calls (more reliable if available). If false, use the AT command set instead.
+\item ![handshake_hangup_seconds]!: How long after last transmitting before beginning hangup handshake. Having this value low can reduce call duration if both sides are done transmitting.
+\end{itemize} 
+
+Iridium shore (DirectIP/RUDICS) (![goby.acomms.iridium.protobuf.shore_config]!)
+\begin{itemize}
+\item ![rudics_server_port]!: RUDICS server port to bind on (TCP server listen)
+\item ![mo_sbd_server_port]!: SBD server port to bind on for Mobile-Originated messages.
+\item ![mt_sbd_Server_Address]!: SBD server address to connect to for Mobile-Terminated messages.
+\item ![mt_sbd_Server_port]!: SBD server port to connect to for Mobile-Terminated messages.
+\item ![modem_id_to_imei]!: Mapping of Goby modem id to Iridium IMEI.
+\end{itemize} 
 
 
 \DeleteShortVerb{\!}

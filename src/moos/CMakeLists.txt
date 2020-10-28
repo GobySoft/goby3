@@ -44,7 +44,7 @@ goby_install_lib(goby_moos moos)
 
 target_link_libraries(goby_moos
   goby
-  proj
+  ${PROJ_LIBRARY}
   ${MOOS_LIBRARIES} ${Boost_LIBRARIES} ${PROTOBUF_LIBRARY}
 )
 

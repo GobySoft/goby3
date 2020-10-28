@@ -146,10 +146,8 @@ void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_laye
     addr_.can_family = AF_CAN;
     addr_.can_ifindex = ifr_.ifr_ifindex;
     if (bind(can_socket, (struct sockaddr*)&addr_, sizeof(addr_)) < 0)
-    {
-        glog.is_die() && glog << "Error in socket bind to interface " << this->cfg().interface()
-                              << ": " << std::strerror(errno) << std::endl;
-    }
+        throw(goby::Exception(std::string("Error in socket bind to interface ") +
+                              this->cfg().interface() + ": " + std::strerror(errno)));
 
     this->mutable_socket().assign(can_socket);
 
