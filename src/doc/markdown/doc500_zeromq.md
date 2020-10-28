@@ -17,9 +17,35 @@ The Manager opens a ZMQ_REP socket on a known address based on the the configura
 * goby::zeromq::protobuf::InterProcessPortalConfig::IPC, then "ipc://socket_name" where socket_name is "/tmp/goby_{platform}.manager" unless explicity specified in `socket_name`.
 * goby::zeromq::protobuf::InterProcessPortalConfig::TCP, then "tcp://*:port" where `port` is also given in the configuration's `tcp_port`.
 
-When a new client (goby::zeromq::InterProcessPortal) connects to the goby::zeromq::Manager, it sends a request using goby::zeromq::protobuf::ManagerRequest, with the request enumeration of goby::zeromq::protobuf::PROVIDE_PUB_SUB_SOCKETS.
+When a new client (goby::zeromq::InterProcessPortal) connects to the goby::zeromq::Manager, it sends a request using goby::zeromq::protobuf::ManagerRequest, with the request enumeration of goby::zeromq::protobuf::PROVIDE_PUB_SUB_SOCKETS, that is:
 
-In response, the Manager provides a goby::zeromq::protobuf::ManagerRequest containing the actual sockets required for data (the Router's XPUB/XSUB sockets) in the `subscribe_socket` and `publish_socket` fields.
+```
+request: PROVIDE_PUB_SUB_SOCKETS
+```
+
+In response, the Manager provides a goby::zeromq::protobuf::ManagerResponse containing the actual sockets required for data (the Router's XPUB/XSUB sockets) in the `subscribe_socket` and `publish_socket` fields. This response may look something like:
+
+```
+request: PROVIDE_PUB_SUB_SOCKETS
+publish_socket {
+ socket_type: PUBLISH
+ transport: TCP
+ connect_or_bind: CONNECT
+ ethernet_address: "127.0.0.1"
+ ethernet_port: 36635
+ send_queue_size: 1000
+ receive_queue_size: 1000
+}
+subscribe_socket {
+  socket_type: SUBSCRIBE
+  transport: TCP
+  connect_or_bind: CONNECT
+  ethernet_address: "127.0.0.1"
+  ethernet_port: 35151
+  send_queue_size: 1000
+  receive_queue_size: 1000
+}
+```
 
 Once these are received, the application can receive data by subscribing using ZMQ_SUB to the provided `subscribe_socket` and publishing using ZMQ_PUB to the `publish_socket`.
 
