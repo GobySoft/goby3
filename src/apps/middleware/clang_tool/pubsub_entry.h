@@ -82,9 +82,7 @@ struct PubSubEntry
         if (inner_node && inner_node.as<bool>())
             is_inner_pub = true;
 
-        static int g_publish_index = 0;
-        if (direction == Direction::PUBLISH)
-            publish_index = g_publish_index++;
+        init();
     }
 
     PubSubEntry(Layer l, Direction d, std::string th, std::string g, std::string s, std::string t,
@@ -98,6 +96,30 @@ struct PubSubEntry
           thread_is_known(tk),
           necessity(n)
     {
+        init();
+    }
+
+    void init()
+    {
+        if (direction == Direction::PUBLISH)
+        {
+            switch (layer)
+            {
+                case Layer::UNKNOWN: publish_index = get_next_index<Layer::UNKNOWN>(); break;
+                case Layer::INTERTHREAD:
+                    publish_index = get_next_index<Layer::INTERTHREAD>();
+                    break;
+                case Layer::INTERMODULE:
+                    publish_index = get_next_index<Layer::INTERMODULE>();
+                    break;
+                case Layer::INTERPROCESS:
+                    publish_index = get_next_index<Layer::INTERPROCESS>();
+                    break;
+                case Layer::INTERVEHICLE:
+                    publish_index = get_next_index<Layer::INTERVEHICLE>();
+                    break;
+            }
+        }
     }
 
     Layer layer{Layer::UNKNOWN};
@@ -111,6 +133,27 @@ struct PubSubEntry
     goby::middleware::Necessity necessity{goby::middleware::Necessity::OPTIONAL};
     bool is_inner_pub{false};
     int publish_index{-1};
+
+    std::string publish_index_str() const
+    {
+        std::string layer_code;
+        switch (layer)
+        {
+            case Layer::UNKNOWN: layer_code = "X"; break;
+            case Layer::INTERTHREAD: layer_code = "T"; break;
+            case Layer::INTERMODULE: layer_code = "M"; break;
+            case Layer::INTERPROCESS: layer_code = "P"; break;
+            case Layer::INTERVEHICLE: layer_code = "V"; break;
+        }
+
+        return layer_code + std::to_string(publish_index);
+    }
+
+    template <Layer l> int get_next_index()
+    {
+        static int g_publish_index = 0;
+        return g_publish_index++;
+    }
 
     void write_yaml_map(YAML::Emitter& yaml_out, bool include_thread = true, bool inner_pub = false,
                         bool include_necessity = true) const
@@ -205,6 +248,8 @@ struct Thread
         : name(n), known(k), bases(b), yaml(y)
     {
     }
+
+    Thread() : name(""), known(true) {}
 
     void parse_yaml()
     {
