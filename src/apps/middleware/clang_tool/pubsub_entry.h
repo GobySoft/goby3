@@ -51,12 +51,20 @@ enum class Layer
 
 struct PubSubEntry
 {
-    PubSubEntry(Layer l, const YAML::Node& yaml,
+    enum class Direction
+    {
+        UNKNOWN,
+        PUBLISH,
+        SUBSCRIBE
+    };
+
+    PubSubEntry(Layer l, Direction dir, const YAML::Node& yaml,
                 const std::map<std::string, std::shared_ptr<viz::Thread>> threads);
 
-    PubSubEntry(Layer l, const YAML::Node& yaml, const std::string& th = "")
+    PubSubEntry(Layer l, Direction dir, const YAML::Node& yaml, const std::string& th = "")
     {
         layer = l;
+        direction = dir;
         auto thread_node = yaml["thread"];
         if (thread_node)
             thread = thread_node.as<std::string>();
@@ -66,18 +74,35 @@ struct PubSubEntry
         group = yaml["group"].as<std::string>();
         scheme = yaml["scheme"].as<std::string>();
         type = yaml["type"].as<std::string>();
+
+        if (dir == Direction::SUBSCRIBE && yaml["necessity"])
+            necessity = as_necessity_enum(yaml["necessity"].as<std::string>());
+
         auto inner_node = yaml["inner"];
         if (inner_node && inner_node.as<bool>())
             is_inner_pub = true;
+
+        static int g_publish_index = 0;
+        if (direction == Direction::PUBLISH)
+            publish_index = g_publish_index++;
     }
 
-    PubSubEntry(Layer l, std::string th, std::string g, std::string s, std::string t, bool tk,
-                goby::middleware::Necessity n)
-        : layer(l), thread(th), group(g), scheme(s), type(t), thread_is_known(tk), necessity(n)
+    PubSubEntry(Layer l, Direction d, std::string th, std::string g, std::string s, std::string t,
+                bool tk, goby::middleware::Necessity n)
+        : layer(l),
+          direction(d),
+          thread(th),
+          group(g),
+          scheme(s),
+          type(t),
+          thread_is_known(tk),
+          necessity(n)
     {
     }
 
     Layer layer{Layer::UNKNOWN};
+    Direction direction{Direction::UNKNOWN};
+
     std::string thread;
     std::string group;
     std::string scheme;
@@ -85,6 +110,7 @@ struct PubSubEntry
     bool thread_is_known{true};
     goby::middleware::Necessity necessity{goby::middleware::Necessity::OPTIONAL};
     bool is_inner_pub{false};
+    int publish_index{-1};
 
     void write_yaml_map(YAML::Emitter& yaml_out, bool include_thread = true, bool inner_pub = false,
                         bool include_necessity = true) const
@@ -111,6 +137,16 @@ struct PubSubEntry
             case goby::middleware::Necessity::RECOMMENDED: return "recommended";
             case goby::middleware::Necessity::OPTIONAL: return "optional";
         }
+    }
+
+    goby::middleware::Necessity as_necessity_enum(std::string s)
+    {
+        if (s == "required")
+            return goby::middleware::Necessity::REQUIRED;
+        else if (s == "recommended")
+            return goby::middleware::Necessity::RECOMMENDED;
+        else
+            return goby::middleware::Necessity::OPTIONAL;
     }
 };
 
@@ -174,11 +210,15 @@ struct Thread
     {
         auto publish_node = yaml["publishes"];
         for (auto p : publish_node)
-            interthread_publishes.emplace(goby::clang::Layer::INTERTHREAD, p, most_derived_name());
+            interthread_publishes.emplace(goby::clang::Layer::INTERTHREAD,
+                                          goby::clang::PubSubEntry::Direction::PUBLISH, p,
+                                          most_derived_name());
 
         auto subscribe_node = yaml["subscribes"];
         for (auto s : subscribe_node)
-            interthread_subscribes.emplace(goby::clang::Layer::INTERTHREAD, s, most_derived_name());
+            interthread_subscribes.emplace(goby::clang::Layer::INTERTHREAD,
+                                           goby::clang::PubSubEntry::Direction::SUBSCRIBE, s,
+                                           most_derived_name());
     }
 
     std::string most_derived_name()
@@ -222,9 +262,9 @@ inline void html_escape(std::string& s)
 } // namespace viz
 
 inline goby::clang::PubSubEntry::PubSubEntry(
-    Layer l, const YAML::Node& yaml,
+    Layer l, Direction dir, const YAML::Node& yaml,
     const std::map<std::string, std::shared_ptr<viz::Thread>> threads)
-    : PubSubEntry(l, yaml)
+    : PubSubEntry(l, dir, yaml)
 {
     if (threads.count(thread))
         thread = threads.at(thread)->most_derived_name();

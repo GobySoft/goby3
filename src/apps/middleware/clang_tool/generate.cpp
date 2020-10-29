@@ -224,7 +224,10 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         if (internal_groups.count(group))
             return;
 
-        entries_.emplace(layer, thread, group, scheme, type, thread_is_known, necessity);
+        entries_.emplace(layer,
+                         (necessity_arg) ? goby::clang::PubSubEntry::Direction::SUBSCRIBE
+                                         : goby::clang::PubSubEntry::Direction::PUBLISH,
+                         thread, group, scheme, type, thread_is_known, necessity);
     }
 
     const std::set<PubSubEntry>& entries() const { return entries_; }

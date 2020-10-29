@@ -144,22 +144,30 @@ struct Application
         {
             auto publish_node = interprocess_node["publishes"];
             for (auto p : publish_node)
-                interprocess_publishes.emplace(goby::clang::Layer::INTERPROCESS, p, threads);
+                interprocess_publishes.emplace(goby::clang::Layer::INTERPROCESS,
+                                               goby::clang::PubSubEntry::Direction::PUBLISH, p,
+                                               threads);
 
             auto subscribe_node = interprocess_node["subscribes"];
             for (auto s : subscribe_node)
-                interprocess_subscribes.emplace(goby::clang::Layer::INTERPROCESS, s, threads);
+                interprocess_subscribes.emplace(goby::clang::Layer::INTERPROCESS,
+                                                goby::clang::PubSubEntry::Direction::SUBSCRIBE, s,
+                                                threads);
         }
         auto intervehicle_node = yaml["intervehicle"];
         if (intervehicle_node)
         {
             auto publish_node = intervehicle_node["publishes"];
             for (auto p : publish_node)
-                intervehicle_publishes.emplace(goby::clang::Layer::INTERVEHICLE, p, threads);
+                intervehicle_publishes.emplace(goby::clang::Layer::INTERVEHICLE,
+                                               goby::clang::PubSubEntry::Direction::PUBLISH, p,
+                                               threads);
 
             auto subscribe_node = intervehicle_node["subscribes"];
             for (auto s : subscribe_node)
-                intervehicle_subscribes.emplace(goby::clang::Layer::INTERVEHICLE, s, threads);
+                intervehicle_subscribes.emplace(goby::clang::Layer::INTERVEHICLE,
+                                                goby::clang::PubSubEntry::Direction::SUBSCRIBE, s,
+                                                threads);
         }
 
         auto add_threads = [&](const std::set<PubSubEntry>& pubsubs) {
@@ -284,6 +292,10 @@ const auto vehicle_color = "darkgreen";
 const auto process_color = "dodgerblue4";
 const auto thread_color = "purple4";
 
+const auto required_style = "bold";
+const auto recommended_style = "tapered";
+const auto optional_style = "solid";
+
 std::string node_name(std::string p, std::string a, std::string th)
 {
     std::vector<char> reserved{{':', '&', '<', '>', ' ', ',', '-'}};
@@ -301,7 +313,8 @@ std::string node_name(std::string p, std::string a, std::string th)
 }
 
 std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_str,
-                                        std::string sub_str, std::string color)
+                                        std::string sub_str, std::string color,
+                                        goby::middleware::Necessity necessity)
 {
     std::string group = pub.group;
     std::string scheme = pub.scheme;
@@ -311,18 +324,36 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
     viz::html_escape(scheme);
     viz::html_escape(type);
 
-    return pub_str + "->" + sub_str + "[label=<<b><font point-size=\"10\">" + group +
-           "</font></b><br/><font point-size=\"6\">" + scheme +
-           "</font><br/><font point-size=\"8\">" + type + "</font>>" + "color=" + color + "]\n";
+    std::string style;
+    switch (necessity)
+    {
+        case goby::middleware::Necessity::REQUIRED: style = required_style; break;
+        case goby::middleware::Necessity::RECOMMENDED: style = recommended_style; break;
+        case goby::middleware::Necessity::OPTIONAL: style = optional_style; break;
+    }
+
+    // return pub_str + "->" + sub_str + "[xlabel=<<b><font point-size=\"10\">" + group +
+    //        "</font></b><br/><font point-size=\"6\">" + scheme +
+    //        "</font><br/><font point-size=\"8\">" + type + "</font>>" + ",color=" + color +
+    //        ",style=" + style + "]\n";
+
+    auto label = std::to_string(pub.publish_index);
+    auto tooltip = label + ": " + group + " | " + scheme + " | " + type;
+    auto ret = pub_str + "->" + sub_str + "[fontsize=7,headlabel=" + label + ",taillabel=" + label +
+               ",xlabel=\"" + label + ": " + group + "\",color=" + color + ",style=" + style +
+               ",tooltip=\"" + tooltip + "\"]\n";
+
+    return ret;
 }
 
 std::string connection_with_label(std::string pub_platform, std::string pub_application,
                                   const PubSubEntry& pub, std::string sub_platform,
                                   std::string sub_application, const PubSubEntry& sub,
-                                  std::string color)
+                                  std::string color, goby::middleware::Necessity necessity)
 {
     return connection_with_label_final(pub, node_name(pub_platform, pub_application, pub.thread),
-                                       node_name(sub_platform, sub_application, sub.thread), color);
+                                       node_name(sub_platform, sub_application, sub.thread), color,
+                                       necessity);
 }
 
 std::string disconnected_publication(std::string pub_platform, std::string pub_application,
@@ -341,21 +372,25 @@ std::string disconnected_publication(std::string pub_platform, std::string pub_a
                                            node_name(pub_platform, pub_application, pub.thread),
                                            node_name(pub_platform, pub_application, pub.thread) +
                                                "_no_subscribers_" + color,
-                                           color);
+                                           color, goby::middleware::Necessity::OPTIONAL);
 }
 
 std::string disconnected_subscription(std::string sub_platform, std::string sub_application,
-                                      const PubSubEntry& sub, std::string color)
+                                      const PubSubEntry& sub, std::string color,
+                                      goby::middleware::Necessity necessity)
 {
-    if (g_params.omit_disconnected)
+    if (g_params.omit_disconnected && necessity != goby::middleware::Necessity::REQUIRED)
         return "";
+
+    if (necessity == goby::middleware::Necessity::REQUIRED)
+        color = "red";
 
     return node_name(sub_platform, sub_application, sub.thread) + "_no_publishers_" + color +
            " [label=\"\",style=invis] \n" +
-           connection_with_label_final(sub,
-                                       node_name(sub_platform, sub_application, sub.thread) +
-                                           "_no_publishers_" + color,
-                                       node_name(sub_platform, sub_application, sub.thread), color);
+           connection_with_label_final(
+               sub,
+               node_name(sub_platform, sub_application, sub.thread) + "_no_publishers_" + color,
+               node_name(sub_platform, sub_application, sub.thread), color, necessity);
 }
 
 void write_thread_connections(std::ofstream& ofs, const viz::Platform& platform,
@@ -383,7 +418,8 @@ void write_thread_connections(std::ofstream& ofs, const viz::Platform& platform,
                     remove_disconnected(pub, sub, disconnected_pubs, disconnected_subs);
                     ofs << "\t\t\t"
                         << connection_with_label(platform.name, application.name, pub,
-                                                 platform.name, application.name, sub, thread_color)
+                                                 platform.name, application.name, sub, thread_color,
+                                                 sub.necessity)
                         << "\n";
                 }
             }
@@ -422,7 +458,7 @@ void write_process_connections(std::ofstream& ofs, const viz::Platform& platform
                     ofs << "\t\t"
                         << connection_with_label(platform.name, pub_application.name, pub,
                                                  platform.name, sub_application.name, sub,
-                                                 process_color)
+                                                 process_color, sub.necessity)
                         << "\n";
                 }
             }
@@ -465,7 +501,7 @@ void write_vehicle_connections(
                         ofs << "\t\t"
                             << connection_with_label(pub_platform.name, pub_application.name, pub,
                                                      sub_platform.name, sub_application.name, sub,
-                                                     vehicle_color)
+                                                     vehicle_color, sub.necessity)
                             << "\n";
                     }
                 }
@@ -554,7 +590,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
 
     int cluster = 0;
     ofs << "digraph " << deployment.name << " { \n";
-    ofs << " splines=polyline\n";
+    ofs << " splines=ortho\n";
 
     std::map<std::string, std::map<std::string, std::set<PubSubEntry>>> platform_disconnected_subs;
     for (const auto& sub_platform : deployment.platforms)
@@ -573,8 +609,13 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
     for (const auto& platform : deployment.platforms)
     {
         ofs << "\tsubgraph cluster_" << cluster++ << " {\n";
-        ofs << "\tlabel=\"" << platform.name << "\"\n";
-        ofs << "\tfontcolor=\"" << vehicle_color << "\"\n";
+
+        auto platform_display_name = platform.name;
+        viz::html_escape(platform_display_name);
+
+        ofs << "\tlabel=<<b>" << platform_display_name << "</b>>\n";
+        ofs << "\t\tfontcolor=\"" << vehicle_color << "\"\n";
+        ofs << "\t\tpenwidth=2\n";
 
         std::map<std::string, std::set<PubSubEntry>> process_disconnected_subs;
         for (const auto& application : platform.applications)
@@ -591,8 +632,12 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
         for (const auto& application : platform.applications)
         {
             ofs << "\t\tsubgraph cluster_" << cluster++ << " {\n";
-            ofs << "\t\tlabel=\"" << application.name << "\"\n";
+            auto application_display_name = application.name;
+            viz::html_escape(application_display_name);
+
+            ofs << "\t\tlabel=<<b>" << application_display_name << "</b>>\n";
             ofs << "\t\tfontcolor=\"" << process_color << "\"\n";
+            ofs << "\t\tpenwidth=2\n";
 
             std::set<PubSubEntry> thread_disconnected_subs;
             for (const auto& thread_p : application.threads)
@@ -615,19 +660,38 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
                 std::string thread_display_name = thread->most_derived_name();
                 viz::html_escape(thread_display_name);
 
-                ofs << "\t\t\t"
-                    << node_name(platform.name, application.name, thread->most_derived_name())
-                    << " [label=<" << thread_display_name << ">,fontcolor=" << thread_color
-                    << ",shape=box,style=" << (thread->known ? "solid" : "dotted") << "]\n";
-
                 write_thread_connections(ofs, platform, application, *thread,
                                          thread_disconnected_subs);
+
+                std::string pub_key;
+                for (const auto& pub : thread->interthread_publishes)
+                {
+                    std::string group = pub.group;
+                    std::string scheme = pub.scheme;
+                    std::string type = pub.type;
+
+                    viz::html_escape(group);
+                    viz::html_escape(scheme);
+                    viz::html_escape(type);
+
+                    pub_key += "<font point-size=\"10\">" + std::to_string(pub.publish_index) +
+                               ": </font><b><font point-size=\"10\">" + group +
+                               "</font></b><br/><font point-size=\"6\">" + scheme +
+                               "</font><br/><font point-size=\"8\">" + type + "</font><br/>";
+                }
+
+                ofs << "\t\t\t"
+                    << node_name(platform.name, application.name, thread->most_derived_name())
+                    << " [label=<<font color=\"" << thread_color << "\">" << thread_display_name
+                    << "</font><br/>" + pub_key + ">,shape=box,style="
+                    << (thread->known ? "solid" : "dashed") << "]\n";
             }
 
             for (const auto& sub : thread_disconnected_subs)
             {
                 ofs << "\t\t\t"
-                    << disconnected_subscription(platform.name, application.name, sub, thread_color)
+                    << disconnected_subscription(platform.name, application.name, sub, thread_color,
+                                                 sub.necessity)
                     << "\n";
             }
 
@@ -641,7 +705,8 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             for (const auto& sub : sub_p.second)
             {
                 ofs << "\t\t\t"
-                    << disconnected_subscription(platform.name, sub_p.first, sub, process_color)
+                    << disconnected_subscription(platform.name, sub_p.first, sub, process_color,
+                                                 sub.necessity)
                     << "\n";
             }
         }
@@ -661,7 +726,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             {
                 ofs << "\t\t\t"
                     << disconnected_subscription(sub_plat_p.first, sub_app_p.first, sub,
-                                                 vehicle_color)
+                                                 vehicle_color, sub.necessity)
                     << "\n";
             }
         }
