@@ -28,10 +28,12 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <typeindex>
 
 #include <boost/units/systems/si.hpp>
 
 #include "goby/exception.h"
+#include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/protobuf/coroner.pb.h"
 
 #include "goby/middleware/common.h"
