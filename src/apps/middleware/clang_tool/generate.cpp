@@ -72,6 +72,17 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
             isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::StaticTransporterInterface"))),
             unless(hasName("::goby::middleware::NullTransporter")))))))));
 
+    // picks out string argument to Group constructor
+    auto group_string_arg_matcher =
+        anyOf(stringLiteral().bind("group_string_arg"),
+              declRefExpr(hasDeclaration(
+                  varDecl(hasDescendant(stringLiteral().bind("group_string_arg"))))));
+    // picks out integer argument to Group constructor
+    auto group_int_arg_matcher = anyOf(
+        integerLiteral().bind("group_int_arg"),
+        declRefExpr(hasDeclaration(varDecl(hasDescendant(integerLiteral().bind("group_int_arg"))))),
+        expr().bind("group_int_arg"));
+
     // picks out the parameters of the publish/subscribe call
     auto base_pubsub_parameters_matcher = cxxMethodDecl(
         // "publish" or "subscribe"
@@ -79,14 +90,12 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
         // Group (must refer to goby::middleware::Group)
         hasTemplateArgument(
             0, templateArgument(refersToDeclaration(varDecl(
+                   decl().bind("group_decl"),
                    hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
                    // find the actual group argument and bind it
                    hasDescendant(cxxConstructExpr(
-                       anyOf(allOf(hasArgument(0, stringLiteral().bind("group_string_arg")),
-                                   hasArgument(1, declRefExpr(hasDeclaration(varDecl(hasDescendant(
-                                                      integerLiteral().bind("group_int_arg"))))))),
-                             hasArgument(0, stringLiteral().bind("group_string_arg")),
-                             hasArgument(0, expr().bind("group_int_arg"))))))))),
+                       hasArgument(0, anyOf(group_string_arg_matcher, group_int_arg_matcher)),
+                       hasArgument(1, group_int_arg_matcher))))))),
         // Type (no restrictions)
         hasTemplateArgument(1, templateArgument().bind("type_arg")),
         // Scheme (must be int)
@@ -145,6 +154,8 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
             Result.Nodes.getNodeAs<clang::StringLiteral>("group_string_arg");
         const auto* group_int_lit = Result.Nodes.getNodeAs<clang::IntegerLiteral>("group_int_arg");
 
+        //        const auto* group_decl = Result.Nodes.getNodeAs<clang::Decl>("group_decl");
+
         const auto* type_arg = Result.Nodes.getNodeAs<clang::TemplateArgument>("type_arg");
         const auto* scheme_arg = Result.Nodes.getNodeAs<clang::TemplateArgument>("scheme_arg");
         const auto* necessity_arg =
@@ -197,21 +208,32 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
 
         std::string group = "unknown";
         if (group_string_lit)
-        {
-            group_string_lit->dumpColor();
             group = group_string_lit->getString().str();
-        }
+        else
+            group.clear();
 
-        //        std::string group_int = "unknown";
+        std::string group_int;
         if (group_int_lit)
         {
-            group_int_lit->dumpColor();
-            //group_int_lit->getDecl()->dumpColor();
-            //group_int = group_int_lit->getValue().toString(10, false);
+            group_int = group_int_lit->getValue().toString(10, false);
         }
-        std::cout << std::endl;
+        else
+        {
+            const auto* group_int_expr = Result.Nodes.getNodeAs<clang::Expr>("group_int_arg");
+            if (group_int_expr)
+            {
+                llvm::raw_string_ostream os(group_int);
+                group_int_expr->printPretty(os, NULL, clang::PrintingPolicy(clang::LangOptions()));
+                os.flush();
+            }
+        }
 
-        //std::cout << group_int << std::endl;
+        if (!group_int.empty())
+        {
+            if (!group.empty())
+                group += "::";
+            group += group_int;
+        }
 
         std::string type = "unknown";
         if (type_arg)
