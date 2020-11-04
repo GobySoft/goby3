@@ -88,10 +88,18 @@ inline std::ostream& operator<<(std::ostream& os, const Thread& th)
 struct Application
 {
     // create from root interface.yml node
-    Application(const YAML::Node& yaml)
+    Application(const YAML::Node& yaml, const std::string& override_name)
     {
-        name = yaml["application"].as<std::string>();
+        if (override_name.empty())
+            name = yaml["application"].as<std::string>();
+        else
+            name = override_name;
 
+        merge(yaml);
+    }
+
+    void merge(const YAML::Node& yaml)
+    {
         auto interthread_node = yaml["interthread"];
         if (interthread_node)
         {
@@ -237,29 +245,41 @@ inline std::ostream& operator<<(std::ostream& os, const Application& a)
     return os;
 }
 
+struct PlatformParams
+{
+    std::string yaml;
+    std::string application;
+};
+
 struct Platform
 {
-    Platform(const std::string& n, const std::vector<std::string>& yamls) : name(n)
+    Platform(const std::string& n, const std::vector<PlatformParams>& params) : name(n)
     {
         // each yaml represents a given application
-        for (const auto& yaml_file : yamls)
+        for (const auto& param : params)
         {
             YAML::Node yaml;
             try
             {
-                yaml = YAML::LoadFile(yaml_file);
+                yaml = YAML::LoadFile(param.yaml);
             }
             catch (const std::exception& e)
             {
-                std::cout << "Failed to parse " << yaml_file << ": " << e.what() << std::endl;
+                std::cout << "Failed to parse " << param.yaml << ": " << e.what() << std::endl;
             }
 
-            applications.emplace(yaml);
+            Application app(yaml, param.application);
+
+            auto it = applications.find(app.name);
+            if (it == applications.end())
+                applications.insert(std::make_pair(app.name, app));
+            else
+                it->second.merge(yaml);
         }
     }
 
     std::string name;
-    std::set<Application> applications;
+    std::map<std::string, Application> applications;
 };
 
 inline bool operator<(const Platform& a, const Platform& b) { return a.name < b.name; }
@@ -267,17 +287,17 @@ inline bool operator<(const Platform& a, const Platform& b) { return a.name < b.
 inline std::ostream& operator<<(std::ostream& os, const Platform& p)
 {
     os << "((" << p.name << "))" << std::endl;
-    for (const auto& a : p.applications) os << "Application: " << a << std::endl;
+    for (const auto& a : p.applications) os << "Application: " << a.second << std::endl;
     return os;
 }
 
 struct Deployment
 {
     Deployment(const std::string& n,
-               const std::map<std::string, std::vector<std::string>>& platform_yamls)
+               const std::map<std::string, std::vector<PlatformParams>>& platform_params)
         : name(n)
     {
-        for (const auto& platform_yaml_p : platform_yamls)
+        for (const auto& platform_yaml_p : platform_params)
         { platforms.emplace(platform_yaml_p.first, platform_yaml_p.second); } }
 
     std::string name;
@@ -348,7 +368,8 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
     auto tooltip = label + ": " + pub.group + " | " + pub.scheme + " | " + pub.type;
     auto ret = pub_str + "->" + sub_str + "[fontsize=7,headlabel=\"" + label + "\",taillabel=\"" +
                label + "\",xlabel=\"" + label + ": " + group + "\",color=" + color +
-               ",style=" + style + ",tooltip=\"" + tooltip + "\"]\n";
+               ",style=" + style + ",tooltip=\"" + tooltip + "\",labeltooltip=\"" + tooltip +
+               "\",headtooltip=\"" + tooltip + "\",penwidth=0.5,arrowhead=vee,arrowsize=0.3]\n";
 
     return ret;
 }
@@ -462,7 +483,7 @@ void write_process_connections(std::ofstream& ofs, const viz::Platform& platform
         disconnected_pubs.insert(pub);
         for (const auto& sub_application : platform.applications)
         {
-            for (const auto& sub : sub_application.interprocess_subscribes)
+            for (const auto& sub : sub_application.second.interprocess_subscribes)
             {
                 if (!is_group_included(sub.group))
                     continue;
@@ -470,11 +491,11 @@ void write_process_connections(std::ofstream& ofs, const viz::Platform& platform
                 if (goby::clang::connects(pub, sub))
                 {
                     remove_disconnected(pub, sub, disconnected_pubs,
-                                        disconnected_subs[sub_application.name]);
+                                        disconnected_subs[sub_application.second.name]);
 
                     ofs << "\t\t"
                         << connection_with_label(platform.name, pub_application.name, pub,
-                                                 platform.name, sub_application.name, sub,
+                                                 platform.name, sub_application.second.name, sub,
                                                  process_color, sub.necessity)
                         << "\n";
                 }
@@ -504,7 +525,7 @@ void write_vehicle_connections(
         {
             for (const auto& sub_application : sub_platform.applications)
             {
-                for (const auto& sub : sub_application.intervehicle_subscribes)
+                for (const auto& sub : sub_application.second.intervehicle_subscribes)
                 {
                     if (!is_group_included(sub.group))
                         continue;
@@ -513,12 +534,12 @@ void write_vehicle_connections(
                     {
                         remove_disconnected(
                             pub, sub, disconnected_pubs,
-                            disconnected_subs[sub_platform.name][sub_application.name]);
+                            disconnected_subs[sub_platform.name][sub_application.second.name]);
 
                         ofs << "\t"
                             << connection_with_label(pub_platform.name, pub_application.name, pub,
-                                                     sub_platform.name, sub_application.name, sub,
-                                                     vehicle_color, sub.necessity)
+                                                     sub_platform.name, sub_application.second.name,
+                                                     sub, vehicle_color, sub.necessity)
                             << "\n";
                     }
                 }
@@ -539,7 +560,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
     std::string deployment_name;
 
     // maps platform name to yaml files
-    std::map<std::string, std::vector<std::string>> platform_yamls;
+    std::map<std::string, std::vector<viz::PlatformParams>> platform_params;
 
     // assume deployment file
     if (params.deployment.empty())
@@ -577,7 +598,25 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             }
 
             for (auto interface_yaml : interfaces_node)
-                platform_yamls[name].push_back(interface_yaml.as<std::string>());
+            {
+                if (interface_yaml.IsMap())
+                {
+                    YAML::Node file_node = interface_yaml["file"];
+                    if (!file_node)
+                    {
+                        std::cerr << "Must specify file: for each interfaces entry" << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
+                    YAML::Node application_node = interface_yaml["application"];
+                    platform_params[name].push_back(
+                        {file_node.as<std::string>(),
+                         application_node ? application_node.as<std::string>() : ""});
+                }
+                else if (interface_yaml.IsScalar())
+                {
+                    platform_params[name].push_back({interface_yaml.as<std::string>()});
+                }
+            }
         }
     }
     else
@@ -588,10 +627,10 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
         // "params.deployment" is the name, not a file
         deployment_name = params.deployment;
         // use the yaml files passed as arguments to goby_clang_tool as if they belong to one deployment
-        platform_yamls.insert(std::make_pair("default", yamls));
+        for (const auto& yaml : yamls) platform_params["default"].push_back({yaml});
     }
 
-    viz::Deployment deployment(deployment_name, platform_yamls);
+    viz::Deployment deployment(deployment_name, platform_params);
 
     std::string output_file = params.output_file;
     if (output_file.empty())
@@ -614,11 +653,12 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
     {
         for (const auto& sub_application : sub_platform.applications)
         {
-            for (const auto& sub : sub_application.intervehicle_subscribes)
+            for (const auto& sub : sub_application.second.intervehicle_subscribes)
             {
                 if (!is_group_included(sub.group))
                     continue;
-                platform_disconnected_subs[sub_platform.name][sub_application.name].insert(sub);
+                platform_disconnected_subs[sub_platform.name][sub_application.second.name].insert(
+                    sub);
             }
         }
     }
@@ -637,19 +677,19 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
         std::map<std::string, std::set<PubSubEntry>> process_disconnected_subs;
         for (const auto& application : platform.applications)
         {
-            for (const auto& sub : application.interprocess_subscribes)
+            for (const auto& sub : application.second.interprocess_subscribes)
             {
                 if (!is_group_included(sub.group))
                     continue;
 
-                process_disconnected_subs[application.name].insert(sub);
+                process_disconnected_subs[application.second.name].insert(sub);
             }
         }
 
         for (const auto& application : platform.applications)
         {
             ofs << "\t\tsubgraph cluster_" << cluster++ << " {\n";
-            auto application_display_name = application.name;
+            auto application_display_name = application.second.name;
             viz::html_escape(application_display_name);
 
             ofs << "\t\t\tlabel=<<b>" << application_display_name << "</b>>\n";
@@ -657,7 +697,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             ofs << "\t\t\tpenwidth=2\n";
 
             std::set<PubSubEntry> thread_disconnected_subs;
-            for (const auto& thread_p : application.threads)
+            for (const auto& thread_p : application.second.threads)
             {
                 const auto& thread = thread_p.second;
 
@@ -670,14 +710,15 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
                 }
             }
 
-            for (const auto& thread_p : application.threads)
+            for (const auto& thread_p : application.second.threads)
             {
                 const auto& thread = thread_p.second;
 
-                write_thread_connections(ofs, platform, application, *thread,
+                write_thread_connections(ofs, platform, application.second, *thread,
                                          thread_disconnected_subs);
 
-                auto node = node_name(platform.name, application.name, thread->most_derived_name());
+                auto node =
+                    node_name(platform.name, application.second.name, thread->most_derived_name());
                 g_node_name_to_thread[node] = thread;
 
                 ofs << "\t\t\t" << node << "\n";
@@ -689,14 +730,14 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             for (const auto& sub : thread_disconnected_subs)
             {
                 ofs << "\t\t\t"
-                    << disconnected_subscription(platform.name, application.name, sub, thread_color,
-                                                 sub.necessity)
+                    << disconnected_subscription(platform.name, application.second.name, sub,
+                                                 thread_color, sub.necessity)
                     << "\n";
             }
 
             ofs << "\t\t}\n";
 
-            write_process_connections(ofs, platform, application, process_disconnected_subs);
+            write_process_connections(ofs, platform, application.second, process_disconnected_subs);
         }
 
         for (const auto& sub_p : process_disconnected_subs)
@@ -713,7 +754,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
         ofs << "\t}\n";
 
         for (const auto& application : platform.applications)
-            write_vehicle_connections(ofs, deployment, platform, application,
+            write_vehicle_connections(ofs, deployment, platform, application.second,
                                       platform_disconnected_subs);
     }
 
