@@ -345,7 +345,7 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
     //        ",style=" + style + "]\n";
 
     auto label = pub.publish_index_str();
-    auto tooltip = label + ": " + group + " | " + scheme + " | " + type;
+    auto tooltip = label + ": " + pub.group + " | " + pub.scheme + " | " + pub.type;
     auto ret = pub_str + "->" + sub_str + "[fontsize=7,headlabel=\"" + label + "\",taillabel=\"" +
                label + "\",xlabel=\"" + label + ": " + group + "\",color=" + color +
                ",style=" + style + ",tooltip=\"" + tooltip + "\"]\n";

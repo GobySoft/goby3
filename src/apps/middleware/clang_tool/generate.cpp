@@ -77,11 +77,16 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
         // "publish" or "subscribe"
         hasName(method),
         // Group (must refer to goby::middleware::Group)
-        hasTemplateArgument(0, templateArgument(refersToDeclaration(varDecl(
-                                   hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
-                                   // find the actual string argument and bind it
-                                   hasDescendant(cxxConstructExpr(hasArgument(
-                                       0, stringLiteral().bind("group_string_arg")))))))),
+        hasTemplateArgument(
+            0, templateArgument(refersToDeclaration(varDecl(
+                   hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
+                   // find the actual group argument and bind it
+                   hasDescendant(cxxConstructExpr(
+                       anyOf(allOf(hasArgument(0, stringLiteral().bind("group_string_arg")),
+                                   hasArgument(1, declRefExpr(hasDeclaration(varDecl(hasDescendant(
+                                                      integerLiteral().bind("group_int_arg"))))))),
+                             hasArgument(0, stringLiteral().bind("group_string_arg")),
+                             hasArgument(0, expr().bind("group_int_arg"))))))))),
         // Type (no restrictions)
         hasTemplateArgument(1, templateArgument().bind("type_arg")),
         // Scheme (must be int)
@@ -138,6 +143,8 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
 
         const auto* group_string_lit =
             Result.Nodes.getNodeAs<clang::StringLiteral>("group_string_arg");
+        const auto* group_int_lit = Result.Nodes.getNodeAs<clang::IntegerLiteral>("group_int_arg");
+
         const auto* type_arg = Result.Nodes.getNodeAs<clang::TemplateArgument>("type_arg");
         const auto* scheme_arg = Result.Nodes.getNodeAs<clang::TemplateArgument>("scheme_arg");
         const auto* necessity_arg =
@@ -160,7 +167,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
             on_thread_decl = containing_class_decl;
         }
 
-        if (!pubsub_call_expr || !group_string_lit || !on_type_decl)
+        if (!pubsub_call_expr || (!group_string_lit && !group_int_lit) || !on_type_decl)
             return;
 
         const std::string layer_type = on_type_decl->getQualifiedNameAsString();
@@ -188,7 +195,23 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
 
         for (auto base : bases) parents_[base].insert(thread);
 
-        const std::string group = group_string_lit->getString().str();
+        std::string group = "unknown";
+        if (group_string_lit)
+        {
+            group_string_lit->dumpColor();
+            group = group_string_lit->getString().str();
+        }
+
+        //        std::string group_int = "unknown";
+        if (group_int_lit)
+        {
+            group_int_lit->dumpColor();
+            //group_int_lit->getDecl()->dumpColor();
+            //group_int = group_int_lit->getValue().toString(10, false);
+        }
+        std::cout << std::endl;
+
+        //std::cout << group_int << std::endl;
 
         std::string type = "unknown";
         if (type_arg)
