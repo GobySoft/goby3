@@ -225,6 +225,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
                 llvm::raw_string_ostream os(group_int);
                 group_int_expr->printPretty(os, NULL, clang::PrintingPolicy(clang::LangOptions()));
                 os.flush();
+                boost::erase_all(group_int, " ");
             }
         }
 

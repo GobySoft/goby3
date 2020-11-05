@@ -646,7 +646,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
 
     int cluster = 0;
     ofs << "digraph " << deployment.name << " { \n";
-    ofs << "\tsplines=ortho\n";
+    ofs << "\tsplines=" << g_params.dot_splines << "\n";
 
     std::map<std::string, std::map<std::string, std::set<PubSubEntry>>> platform_disconnected_subs;
     for (const auto& sub_platform : deployment.platforms)

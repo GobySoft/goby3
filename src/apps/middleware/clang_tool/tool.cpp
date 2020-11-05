@@ -85,6 +85,10 @@ static cl::opt<bool> IncludeCoroner("include-coroner",
                                     cl::desc("For '-viz', include goby_coroner groups"),
                                     cl::cat(Goby3ToolCategory));
 
+static cl::opt<std::string> DotSplines("splines", cl::desc("For '-viz', Graphviz spline= setting"),
+                                       cl::value_desc("ortho"), cl::init("ortho"),
+                                       cl::cat(Goby3ToolCategory));
+
 static cl::opt<bool>
     IncludeAll("include-all",
                cl::desc("For '-viz', include all groups, include goby internal groups"),
@@ -113,7 +117,8 @@ int main(int argc, const char** argv)
                                                 OmitDisconnected,
                                                 IncludeAll ? true : IncludeCoroner,
                                                 IncludeAll ? true : IncludeTerminate,
-                                                IncludeAll};
+                                                IncludeAll,
+                                                DotSplines};
 
         return goby::clang::visualize(SharedOptionsParser.getSourcePathList(), params);
     }
