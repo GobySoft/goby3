@@ -70,15 +70,20 @@ int main(int argc, char* argv[])
             glog.is(VERBOSE) && glog << "Loading plugin library: " << plugin << std::endl;
             void* handle = dlopen(plugin.c_str(), RTLD_LAZY);
             if (handle)
+            { 
                 goby::moos::GobyMOOSGateway::dl_handles_.push_back(handle);
+            }
             else
-                glog.is(DIE) && glog << "Failed to open library: " << plugin
-                                     << ", reason: " << dlerror() << std::endl;
-
+            {
+                std::cerr << "Failed to open library: " << plugin << ", reason: " << dlerror()
+                          << std::endl;
+                exit(EXIT_FAILURE);
+            }
             if (!dlsym(handle, "goby3_moos_gateway_load"))
             {
-                glog.is(DIE) && glog << "Function goby3_moos_gateway_load in library: " << plugin
-                                     << " does not exist." << std::endl;
+                std::cerr << "Function goby3_moos_gateway_load in library: " << plugin
+                          << " does not exist." << std::endl;
+                exit(EXIT_FAILURE);
             }
         }
     }
