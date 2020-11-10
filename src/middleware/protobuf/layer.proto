@@ -5,9 +5,7 @@ package goby.middleware.protobuf;
 enum Layer
 {
     LAYER_INTERTHREAD = 0;
-    LAYER_INTERPROCESS = 1;
-    LAYER_INTERVEHICLE = 2;
+    LAYER_INTERPROCESS = 10;
+    LAYER_INTERMODULE = 20;
+    LAYER_INTERVEHICLE = 30;
 }
-
-
-                            

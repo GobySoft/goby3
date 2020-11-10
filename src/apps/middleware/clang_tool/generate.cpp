@@ -29,6 +29,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "goby/middleware/marshalling/interface.h"
+#include "goby/middleware/transport/interface.h"
 
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
@@ -44,6 +45,7 @@ using goby::clang::PubSubEntry;
 std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
                                           {Layer::INTERTHREAD, "interthread"},
                                           {Layer::INTERPROCESS, "interprocess"},
+                                          {Layer::INTERMODULE, "intermodule"},
                                           {Layer::INTERVEHICLE, "intervehicle"}};
 
 ::clang::ast_matchers::StatementMatcher pubsub_matcher(std::string method)
@@ -54,56 +56,81 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
     auto calling_thread_matcher = on(expr(
         anyOf(
             // Thread: pull out what "this" in "this->interprocess()" when "this" is derived from goby::middleware::Thread
-            cxxMemberCallExpr(on(hasType(pointsTo(cxxRecordDecl(
-                cxxRecordDecl().bind("on_thread_decl"),
-                isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread")))))))),
+            cxxMemberCallExpr(on(hasType(
+                pointsTo(hasUnqualifiedDesugaredType(recordType(hasDeclaration(cxxRecordDecl(
+                    cxxRecordDecl().bind("on_thread_decl"),
+                    isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread"))))))))))),
             // Thread: match this->goby().interprocess() or similar chains
             hasDescendant(cxxMemberCallExpr(on(hasType(pointsTo(cxxRecordDecl(
                 cxxRecordDecl().bind("on_indirect_thread_decl"),
                 isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread"))))))))),
-            // also allow out direct calls to publish/subscribe
+            // also allow direct calls to publish/subscribe
             expr().bind("on_expr")),
         // call is on an instantiation of a class derived from StaticTransporterInterface
-        hasType(cxxRecordDecl(
+        hasType(hasUnqualifiedDesugaredType(recordType(hasDeclaration(cxxRecordDecl(
             decl().bind("on_type_decl"),
             isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::StaticTransporterInterface"))),
-            unless(hasName("::goby::middleware::NullTransporter"))))));
+            unless(hasName("::goby::middleware::NullTransporter")))))))));
+
+    // picks out string argument to Group constructor
+    auto group_string_arg_matcher =
+        anyOf(stringLiteral().bind("group_string_arg"),
+              declRefExpr(hasDeclaration(
+                  varDecl(hasDescendant(stringLiteral().bind("group_string_arg"))))));
+    // picks out integer argument to Group constructor
+    auto group_int_arg_matcher = anyOf(
+        integerLiteral().bind("group_int_arg"),
+        declRefExpr(hasDeclaration(varDecl(hasDescendant(integerLiteral().bind("group_int_arg"))))),
+        expr().bind("group_int_arg"));
 
     // picks out the parameters of the publish/subscribe call
     auto base_pubsub_parameters_matcher = cxxMethodDecl(
         // "publish" or "subscribe"
         hasName(method),
         // Group (must refer to goby::middleware::Group)
-        hasTemplateArgument(0, templateArgument(refersToDeclaration(varDecl(
-                                   hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
-                                   // find the actual string argument and bind it
-                                   hasDescendant(cxxConstructExpr(hasArgument(
-                                       0, stringLiteral().bind("group_string_arg")))))))),
+        hasTemplateArgument(
+            0, templateArgument(refersToDeclaration(varDecl(
+                   decl().bind("group_decl"),
+                   hasType(cxxRecordDecl(hasName("::goby::middleware::Group"))),
+                   // find the actual group argument and bind it
+                   hasDescendant(cxxConstructExpr(
+                       hasArgument(0, anyOf(group_string_arg_matcher, group_int_arg_matcher)),
+                       hasArgument(1, group_int_arg_matcher))))))),
         // Type (no restrictions)
         hasTemplateArgument(1, templateArgument().bind("type_arg")),
         // Scheme (must be int)
         hasTemplateArgument(2, templateArgument(templateArgument().bind("scheme_arg"),
                                                 refersToIntegralType(qualType(asString("int"))))));
 
+    // if on_thread_decl or on_thread_direct_decl fails, use this to try to determine the class that contains this statement
+    auto containing_class_matcher =
+        anyOf(hasAncestor(cxxRecordDecl().bind(
+                  "containing_class_decl")), // should be "optionally" but this isn't in clang 6
+              expr());
+
     if (method == "publish")
     {
         auto publish_parameters_matcher = callee(base_pubsub_parameters_matcher);
         return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
-                                 publish_parameters_matcher);
+                                 publish_parameters_matcher, containing_class_matcher);
     }
     else if (method == "subscribe")
     {
         // subscribe also has a simplified template version that infers arguments from the function parameters; we need to match the subsequent call to the full subscribe
+        auto subscribe_parameters_matcher_base =
+            cxxMethodDecl(base_pubsub_parameters_matcher,
+                          hasTemplateArgument(3, templateArgument().bind("necessity_arg")));
+
         auto subscribe_parameters_matcher = anyOf(
-            callee(base_pubsub_parameters_matcher),
+            callee(subscribe_parameters_matcher_base),
             // matches "template <const Group& group, typename Func> void subscribe(Func f)"
             callee(cxxMethodDecl(
                 hasName(method),
                 // simplified version calls full subscribe, so pull the parameters out from this call
-                hasDescendant(cxxMemberCallExpr(callee(base_pubsub_parameters_matcher))))));
+                hasDescendant(cxxMemberCallExpr(callee(subscribe_parameters_matcher_base))))));
 
         return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
-                                 subscribe_parameters_matcher);
+                                 subscribe_parameters_matcher, containing_class_matcher);
     }
     else
     {
@@ -116,22 +143,42 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
   public:
     virtual void run(const ::clang::ast_matchers::MatchFinder::MatchResult& Result)
     {
+        // we know that this call is from a goby::middleware::Thread
+        bool thread_is_known = true;
+
         // the function call itself (e.g. interprocess().publish<...>(...));
         const auto* pubsub_call_expr =
             Result.Nodes.getNodeAs<clang::CXXMemberCallExpr>("pubsub_call_expr");
 
         const auto* group_string_lit =
             Result.Nodes.getNodeAs<clang::StringLiteral>("group_string_arg");
+        const auto* group_int_lit = Result.Nodes.getNodeAs<clang::IntegerLiteral>("group_int_arg");
+
+        //        const auto* group_decl = Result.Nodes.getNodeAs<clang::Decl>("group_decl");
+
         const auto* type_arg = Result.Nodes.getNodeAs<clang::TemplateArgument>("type_arg");
         const auto* scheme_arg = Result.Nodes.getNodeAs<clang::TemplateArgument>("scheme_arg");
+        const auto* necessity_arg =
+            Result.Nodes.getNodeAs<clang::TemplateArgument>("necessity_arg");
         const auto* on_type_decl = Result.Nodes.getNodeAs<clang::CXXRecordDecl>("on_type_decl");
         const auto* on_thread_decl = Result.Nodes.getNodeAs<clang::CXXRecordDecl>("on_thread_decl");
+
+        // const auto* on_expr = Result.Nodes.getNodeAs<clang::Expr>("on_expr");
+
+        const auto* containing_class_decl =
+            Result.Nodes.getNodeAs<clang::CXXRecordDecl>("containing_class_decl");
 
         if (!on_thread_decl)
             on_thread_decl =
                 Result.Nodes.getNodeAs<clang::CXXRecordDecl>("on_indirect_thread_decl");
 
-        if (!pubsub_call_expr || !group_string_lit || !on_type_decl)
+        if (!on_thread_decl)
+        {
+            thread_is_known = false;
+            on_thread_decl = containing_class_decl;
+        }
+
+        if (!pubsub_call_expr || (!group_string_lit && !group_int_lit) || !on_type_decl)
             return;
 
         const std::string layer_type = on_type_decl->getQualifiedNameAsString();
@@ -141,6 +188,8 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
             layer = Layer::INTERTHREAD;
         else if (layer_type.find("InterProcess") != std::string::npos)
             layer = Layer::INTERPROCESS;
+        else if (layer_type.find("InterModule") != std::string::npos)
+            layer = Layer::INTERMODULE;
         else if (layer_type.find("InterVehicle") != std::string::npos)
             layer = Layer::INTERVEHICLE;
 
@@ -157,7 +206,35 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
 
         for (auto base : bases) parents_[base].insert(thread);
 
-        const std::string group = group_string_lit->getString().str();
+        std::string group = "unknown";
+        if (group_string_lit)
+            group = group_string_lit->getString().str();
+        else
+            group.clear();
+
+        std::string group_int;
+        if (group_int_lit)
+        {
+            group_int = group_int_lit->getValue().toString(10, false);
+        }
+        else
+        {
+            const auto* group_int_expr = Result.Nodes.getNodeAs<clang::Expr>("group_int_arg");
+            if (group_int_expr)
+            {
+                llvm::raw_string_ostream os(group_int);
+                group_int_expr->printPretty(os, NULL, clang::PrintingPolicy(clang::LangOptions()));
+                os.flush();
+                boost::erase_all(group_int, " ");
+            }
+        }
+
+        if (!group_int.empty())
+        {
+            if (!group.empty())
+                group += "::";
+            group += group_int;
+        }
 
         std::string type = "unknown";
         if (type_arg)
@@ -170,9 +247,14 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
             scheme = goby::middleware::MarshallingScheme::to_string(scheme_num);
         }
 
+        auto necessity = goby::middleware::Necessity::OPTIONAL;
+        if (necessity_arg)
+            necessity = static_cast<goby::middleware::Necessity>(
+                necessity_arg->getAsIntegral().getExtValue());
+
         std::set<std::string> internal_groups{
-            "goby::InterProcessForwarder",
-            "goby::InterProcessRegexData",
+            "goby::middleware::interprocess::to_portal",
+            "goby::middleware::interprocess::regex",
             "goby::middleware::SerializationUnSubscribeAll",
             "goby::middleware::Thread::joinable",
             "goby::middleware::Thread::shutdown",
@@ -188,7 +270,10 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         if (internal_groups.count(group))
             return;
 
-        entries_.emplace(layer, thread, group, scheme, type);
+        entries_.emplace(layer,
+                         (necessity_arg) ? goby::clang::PubSubEntry::Direction::SUBSCRIBE
+                                         : goby::clang::PubSubEntry::Direction::PUBLISH,
+                         thread, group, scheme, type, thread_is_known, necessity);
     }
 
     const std::set<PubSubEntry>& entries() const { return entries_; }
@@ -248,7 +333,7 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
     auto retval = Tool.run(::clang::tooling::newFrontendActionFactory(&finder).get());
 
     std::set<Layer> layers_in_use;
-    std::set<std::string> threads_in_use;
+    std::set<std::pair<std::string, bool>> threads_in_use;
     for (const auto& e : publish_aggregator.entries())
     {
         layers_in_use.insert(e.layer);
@@ -256,14 +341,14 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
         // only include most derived thread class
         if (publish_aggregator.parents(e.thread).empty() &&
             subscribe_aggregator.parents(e.thread).empty())
-            threads_in_use.insert(e.thread);
+            threads_in_use.insert(std::make_pair(e.thread, e.thread_is_known));
     }
     for (const auto& e : subscribe_aggregator.entries())
     {
         layers_in_use.insert(e.layer);
         if (publish_aggregator.parents(e.thread).empty() &&
             subscribe_aggregator.parents(e.thread).empty())
-            threads_in_use.insert(e.thread);
+            threads_in_use.insert(std::make_pair(e.thread, e.thread_is_known));
     }
 
     // intervehicle requires interprocess at this point
@@ -336,7 +421,7 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                                 e.thread = thread;
 
                                 e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD,
-                                                 e.layer > layer);
+                                                 e.layer > layer, false);
 
                                 // special case: Intervehicle publishes both PROTOBUF and DCCL version on inner layers
                                 if (e.layer > layer && e.layer == Layer::INTERVEHICLE &&
@@ -345,7 +430,7 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                                     auto pb_e = e;
                                     pb_e.scheme = "PROTOBUF";
                                     pb_e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD,
-                                                        pb_e.layer > layer);
+                                                        pb_e.layer > layer, false);
                                 }
                             }
                         }
@@ -380,8 +465,9 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                 {
                     goby::yaml::YMap thread_map(yaml_out);
                     {
-                        thread_map.add("name", thread);
-                        std::set<std::string> thread_and_bases{thread};
+                        thread_map.add("name", thread.first);
+                        thread_map.add("known", thread.second);
+                        std::set<std::string> thread_and_bases{thread.first};
 
                         std::set<std::string> bases;
                         std::function<void(std::string)> add_bases_recurse =
@@ -395,7 +481,7 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                                 for (const auto& base : new_bases) add_bases_recurse(base);
                             };
 
-                        add_bases_recurse(thread);
+                        add_bases_recurse(thread.first);
 
                         if (!bases.empty())
                         {

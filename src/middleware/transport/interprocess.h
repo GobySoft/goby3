@@ -253,8 +253,9 @@ class InterProcessTransporterBase
     }
 
   protected:
-    static constexpr Group forward_group_{"goby::InterProcessForwarder"};
-    static constexpr Group regex_group_{"goby::InterProcessRegexData"};
+    static constexpr Group to_portal_group_{"goby::middleware::interprocess::to_portal"};
+    static constexpr Group regex_group_{"goby::middleware::interprocess::regex"};
+    static const std::string from_portal_group_prefix_;
 
   private:
     friend PollerType;
@@ -266,10 +267,14 @@ class InterProcessTransporterBase
 
 template <typename Derived, typename InnerTransporter>
 constexpr goby::middleware::Group
-    InterProcessTransporterBase<Derived, InnerTransporter>::forward_group_;
+    InterProcessTransporterBase<Derived, InnerTransporter>::to_portal_group_;
 template <typename Derived, typename InnerTransporter>
 constexpr goby::middleware::Group
     InterProcessTransporterBase<Derived, InnerTransporter>::regex_group_;
+// append "full_pid()"
+template <typename Derived, typename InnerTransporter>
+const std::string InterProcessTransporterBase<Derived, InnerTransporter>::from_portal_group_prefix_{
+    "goby::middleware::interprocess::from_portal::"};
 
 /// \brief Implements the forwarder concept for the interprocess layer
 ///
@@ -316,7 +321,7 @@ class InterProcessForwarder
 
         *key->mutable_cfg() = publisher.cfg();
 
-        this->inner().template publish<Base::forward_group_>(msg);
+        this->inner().template publish<Base::to_portal_group_>(msg);
     }
 
     template <typename Data, int scheme>
@@ -335,7 +340,7 @@ class InterProcessForwarder
             middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
                                          [=](const Data& d) { return group; }));
 
-        this->inner().template publish<Base::forward_group_, SerializationHandlerBase<>>(
+        this->inner().template publish<Base::to_portal_group_, SerializationHandlerBase<>>(
             subscription);
     }
 
@@ -346,14 +351,14 @@ class InterProcessForwarder
         auto unsubscription = std::shared_ptr<SerializationHandlerBase<>>(
             new SerializationUnSubscription<Data, scheme>(group));
 
-        this->inner().template publish<Base::forward_group_, SerializationHandlerBase<>>(
+        this->inner().template publish<Base::to_portal_group_, SerializationHandlerBase<>>(
             unsubscription);
     }
 
     void _unsubscribe_all()
     {
         auto all = std::make_shared<SerializationUnSubscribeAll>();
-        this->inner().template publish<Base::forward_group_, SerializationUnSubscribeAll>(all);
+        this->inner().template publish<Base::to_portal_group_, SerializationUnSubscribeAll>(all);
     }
 
     void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme,
@@ -375,7 +380,7 @@ class InterProcessForwarder
 
         auto portal_subscription = std::make_shared<SerializationSubscriptionRegex>(
             inner_publication_lambda, schemes, type_regex, group_regex);
-        this->inner().template publish<Base::forward_group_, SerializationSubscriptionRegex>(
+        this->inner().template publish<Base::to_portal_group_, SerializationSubscriptionRegex>(
             portal_subscription);
 
         auto local_subscription = std::shared_ptr<SerializationSubscriptionRegex>(
@@ -399,6 +404,43 @@ class InterProcessForwarder
 
   private:
     std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
+};
+
+template <typename Derived, typename InnerTransporter>
+class InterProcessPortalBase : public InterProcessTransporterBase<Derived, InnerTransporter>
+{
+  public:
+    using Base = InterProcessTransporterBase<Derived, InnerTransporter>;
+
+    InterProcessPortalBase(InnerTransporter& inner) : Base(inner) { _init(); }
+    InterProcessPortalBase() { _init(); }
+
+    virtual ~InterProcessPortalBase() {}
+
+  private:
+    void _init()
+    {
+        using goby::middleware::protobuf::SerializerTransporterMessage;
+        this->inner().template subscribe<Base::to_portal_group_, SerializerTransporterMessage>(
+            [this](std::shared_ptr<const SerializerTransporterMessage> d) {
+                static_cast<Derived*>(this)->_receive_publication_forwarded(*d);
+            });
+
+        this->inner().template subscribe<Base::to_portal_group_, SerializationHandlerBase<>>(
+            [this](std::shared_ptr<const middleware::SerializationHandlerBase<>> s) {
+                static_cast<Derived*>(this)->_receive_subscription_forwarded(s);
+            });
+
+        this->inner().template subscribe<Base::to_portal_group_, SerializationSubscriptionRegex>(
+            [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s) {
+                static_cast<Derived*>(this)->_receive_regex_subscription_forwarded(s);
+            });
+
+        this->inner().template subscribe<Base::to_portal_group_, SerializationUnSubscribeAll>(
+            [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s) {
+                static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id());
+            });
+    }
 };
 
 } // namespace middleware

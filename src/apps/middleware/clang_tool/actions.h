@@ -51,6 +51,7 @@ struct VisualizeParameters
     bool include_coroner;
     bool include_terminate;
     bool include_internal;
+    std::string dot_splines;
 };
 
 int visualize(const std::vector<std::string>& ymls, const VisualizeParameters& params);

@@ -25,11 +25,13 @@
 #ifndef Common20200603H
 #define Common20200603H
 
+#include <fstream>
 #include <sstream>
 #include <thread>
 
 #include <boost/algorithm/string.hpp>
 
+#include "goby/exception.h"
 #include "goby/middleware/protobuf/layer.pb.h"
 
 namespace goby
@@ -48,6 +50,31 @@ inline std::string thread_id(std::thread::id i = std::this_thread::get_id())
     std::stringstream ss;
     ss << std::hex << std::hash<std::thread::id>{}(i);
     return ss.str();
+}
+
+inline std::string hostname()
+{
+    // read from boot id as this is static while the machine is up and running
+    std::ifstream hs("/etc/hostname");
+    if (hs.is_open())
+    {
+        std::string hostname((std::istreambuf_iterator<char>(hs)),
+                             std::istreambuf_iterator<char>());
+        boost::trim(hostname);
+        return hostname;
+    }
+    else
+    {
+        throw(goby::Exception("Could not open /etc/hostname"));
+    }
+};
+
+inline std::string full_process_id()
+{
+    static const std::string host_id = hostname();
+    static const std::string pid = std::to_string(getpid());
+    static const std::string full_pid = host_id + std::string("-p") + pid;
+    return full_pid;
 }
 
 } // namespace middleware

@@ -28,10 +28,12 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <typeindex>
 
 #include <boost/units/systems/si.hpp>
 
 #include "goby/exception.h"
+#include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/protobuf/coroner.pb.h"
 
 #include "goby/middleware/common.h"
@@ -41,6 +43,13 @@ namespace goby
 {
 namespace middleware
 {
+struct ThreadIdentifier
+{
+    std::type_index type_i{std::type_index(typeid(void))};
+    int index{-1};
+    bool all_threads{false};
+};
+
 /// \brief Represents a thread of execution within the Goby middleware, interleaving periodic events (loop()) with asynchronous receipt of data. Most user code should inherit from SimpleThread, not from Thread directly.
 ///
 /// A Thread can represent the main thread of an application or a thread that was launched after startup.
@@ -49,7 +58,7 @@ namespace middleware
 template <typename Config, typename TransporterType> class Thread
 {
   private:
-    TransporterType* transporter_;
+    TransporterType* transporter_{nullptr};
 
     boost::units::quantity<boost::units::si::frequency> loop_frequency_;
     std::chrono::system_clock::time_point loop_time_;
@@ -107,6 +116,7 @@ template <typename Config, typename TransporterType> class Thread
     void run(std::atomic<bool>& alive)
     {
         alive_ = &alive;
+        do_subscribe();
         initialize();
         while (alive) { run_once(); }
     }
@@ -189,6 +199,25 @@ template <typename Config, typename TransporterType> class Thread
 
     static constexpr goby::middleware::Group shutdown_group_{"goby::middleware::Thread::shutdown"};
     static constexpr goby::middleware::Group joinable_group_{"goby::middleware::Thread::joinable"};
+
+  private:
+    void do_subscribe()
+    {
+        if (!transporter_)
+        {
+            throw(goby::Exception(
+                "Thread::transporter_ is null. Must set_transporter() before using"));
+        }
+
+        transporter()
+            .innermost()
+            .template subscribe<shutdown_group_, ThreadIdentifier, MarshallingScheme::CXX_OBJECT>(
+                [this](const ThreadIdentifier ti) {
+                    if (ti.all_threads ||
+                        (ti.type_i == this->type_index() && ti.index == this->index()))
+                        this->thread_quit();
+                });
+    }
 };
 
 } // namespace middleware

@@ -42,13 +42,6 @@ namespace goby
 {
 namespace middleware
 {
-struct ThreadIdentifier
-{
-    std::type_index type_i{std::type_index(typeid(void))};
-    int index{-1};
-    bool all_threads{false};
-};
-
 /// \brief Implements Thread for a three layer middleware setup ([ intervehicle [ interprocess [ interthread ] ] ]) based around InterVehicleForwarder.
 ///
 /// \tparam Config Configuration type
@@ -87,12 +80,6 @@ class SimpleThread
                 *interprocess_));
 
         this->set_transporter(intervehicle_.get());
-
-        interthread_->template subscribe<SimpleThreadBase::shutdown_group_>(
-            [this, index](const ThreadIdentifier ti) {
-                if (ti.all_threads || (ti.type_i == this->type_index() && ti.index == index))
-                    this->thread_quit();
-            });
     }
 
     /// \brief Access the transporter on the intervehicle layer (which wraps interprocess and interthread)
@@ -108,7 +95,7 @@ class SimpleThread
     }
 
     /// \brief Access the transporter on the interthread layer (this is the innermost transporter)
-    InterThreadTransporter& interthread() { return this->transporter().inner().inner(); }
+    InterThreadTransporter& interthread() { return this->transporter().innermost(); }
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
@@ -127,20 +114,26 @@ class SimpleThread
 /// interthread().subscribe_empty<goby::middleware::TimerThread<0>::group>([]() { std::cout << "Timer expired." << std::endl; });
 /// ```
 template <int i>
-class TimerThread : public SimpleThread<boost::units::quantity<boost::units::si::frequency>>
+class TimerThread
+    : public Thread<boost::units::quantity<boost::units::si::frequency>, InterThreadTransporter>
 {
+    using ThreadBase =
+        Thread<boost::units::quantity<boost::units::si::frequency>, InterThreadTransporter>;
+
   public:
     static constexpr goby::middleware::Group expire_group{"goby::middleware::TimerThread::timer",
                                                           i};
 
     TimerThread(const boost::units::quantity<boost::units::si::frequency>& freq)
-        : goby::middleware::SimpleThread<boost::units::quantity<boost::units::si::frequency>>(freq,
-                                                                                              freq)
+        : ThreadBase(freq, &interthread_, freq)
     {
     }
 
   private:
-    void loop() override { this->interthread().template publish_empty<expire_group>(); }
+    void loop() override { interthread_.template publish_empty<expire_group>(); }
+
+  private:
+    InterThreadTransporter interthread_;
 };
 
 template <int i> const goby::middleware::Group TimerThread<i>::expire_group;
@@ -295,7 +288,7 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
 ///
 /// \tparam Config Configuration type
 /// \tparam InterProcessPortal the interprocess portal type to use (e.g. zeromq::InterProcessPortal).
-template <class Config, template <class> class InterProcessPortal>
+template <class Config, template <class InnerTransporter> class InterProcessPortal>
 class MultiThreadApplication
     : public MultiThreadApplicationBase<
           Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>
@@ -364,8 +357,7 @@ class MultiThreadApplication
         health.set_name(this->app_name());
         health.set_state(goby::middleware::protobuf::HEALTH__OK);
     }
-
-}; // namespace middleware
+};
 
 /// \brief Base class for building multithreaded Goby applications that do not have perform any interprocess (or outer) communications, but only communicate internally via the InterThreadTransporter
 ///

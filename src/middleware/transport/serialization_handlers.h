@@ -33,6 +33,8 @@
 #include "goby/exception.h"
 #include "goby/util/binary.h"
 
+#include "goby/middleware/common.h"
+#include "goby/middleware/protobuf/intermodule.pb.h"
 #include "goby/middleware/protobuf/serializer_transporter.pb.h"
 
 #include "interface.h"
@@ -105,9 +107,11 @@ class SerializationHandlerBase : public SerializationHandlerPostSelector<Metadat
     virtual SubscriptionAction action() const = 0;
 
     std::thread::id thread_id() const { return thread_id_; }
+    virtual std::string subscriber_id() const { return subscriber_id_; }
 
   private:
     const std::thread::id thread_id_{std::this_thread::get_id()};
+    const std::string subscriber_id_{goby::middleware::thread_id(thread_id_)};
 };
 
 template <typename Metadata>
@@ -330,6 +334,7 @@ class SerializationSubscriptionRegex
     }
 
     std::thread::id thread_id() const { return thread_id_; }
+    std::string subscriber_id() const { return subscriber_id_; }
 
   private:
     HandlerType handler_;
@@ -337,6 +342,7 @@ class SerializationSubscriptionRegex
     std::regex type_regex_;
     std::regex group_regex_;
     const std::thread::id thread_id_{std::this_thread::get_id()};
+    const std::string subscriber_id_{goby::middleware::thread_id(thread_id_)};
 };
 
 /// \brief Represents an unsubscription to all subscribed data for a given thread
@@ -344,9 +350,75 @@ class SerializationUnSubscribeAll
 {
   public:
     std::thread::id thread_id() const { return thread_id_; }
+    std::string subscriber_id() const { return subscriber_id_; }
 
   private:
     const std::thread::id thread_id_{std::this_thread::get_id()};
+    const std::string subscriber_id_{goby::middleware::thread_id(thread_id_)};
+};
+
+/// \brief Represents a(n) (un)subscription from an InterModuleForwarder
+class SerializationInterModuleSubscription : public SerializationHandlerBase<>
+{
+  public:
+    typedef std::function<void(const protobuf::SerializerTransporterMessage& d)> HandlerType;
+
+    SerializationInterModuleSubscription(HandlerType handler,
+                                         const intermodule::protobuf::Subscription sub)
+        : handler_(handler), sub_cfg_(sub), group_(sub_cfg_.key().group())
+    {
+    }
+
+    // handle an incoming message
+    std::string::const_iterator post(std::string::const_iterator b,
+                                     std::string::const_iterator e) const override
+    {
+        return _post(b, e);
+    }
+
+    std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
+                                           std::vector<char>::const_iterator e) const override
+    {
+        return _post(b, e);
+    }
+
+    const char* post(const char* b, const char* e) const override { return _post(b, e); }
+
+    SerializationHandlerBase<>::SubscriptionAction action() const override
+    {
+        switch (sub_cfg_.action())
+        {
+            case intermodule::protobuf::Subscription::SUBSCRIBE:
+                return SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE;
+            case intermodule::protobuf::Subscription::UNSUBSCRIBE:
+            case intermodule::protobuf::Subscription::UNSUBSCRIBE_ALL:
+                return SerializationHandlerBase<>::SubscriptionAction::UNSUBSCRIBE;
+        }
+    }
+
+    // getters
+    const std::string& type_name() const override { return sub_cfg_.key().type(); }
+    const Group& subscribed_group() const override { return group_; }
+    int scheme() const override { return sub_cfg_.key().marshalling_scheme(); }
+
+  private:
+    template <typename CharIterator>
+    CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end) const
+    {
+        protobuf::SerializerTransporterMessage msg;
+        std::string* sbytes = new std::string(bytes_begin, bytes_end);
+        *msg.mutable_key() = sub_cfg_.key();
+        msg.set_allocated_data(sbytes);
+        handler_(msg);
+
+        CharIterator actual_end = bytes_end;
+        return actual_end;
+    }
+
+  private:
+    HandlerType handler_;
+    intermodule::protobuf::Subscription sub_cfg_;
+    DynamicGroup group_;
 };
 
 } // namespace middleware
