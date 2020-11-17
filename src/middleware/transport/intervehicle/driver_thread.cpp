@@ -274,7 +274,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
             auto it_pair = subscriber_buffer_cfg_[dest].equal_range(buffer_id);
             for (auto it = it_pair.first, end = it_pair.second; it != end; ++it)
             {
-                if (it->second.intervehicle().buffer() == subscription.intervehicle().buffer())
+                if (it->second.intervehicle() == subscription.intervehicle())
                     is_new_cfg = false;
                 break;
             }
@@ -289,7 +289,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
                 glog.is_debug2() &&
                     glog << group(glog_group_) << "Subscription configuration exists for "
                          << buffer_id << " with configuration: "
-                         << subscription.intervehicle().buffer().ShortDebugString() << std::endl;
+                         << subscription.intervehicle().ShortDebugString() << std::endl;
             }
         }
         break;
@@ -299,7 +299,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
             auto it_to_erase = subscriber_buffer_cfg_[dest].end();
             for (auto it = it_pair.first, end = it_pair.second; it != end; ++it)
             {
-                if (it->second.intervehicle().buffer() == subscription.intervehicle().buffer())
+                if (it->second.intervehicle() == subscription.intervehicle())
                     it_to_erase = it;
             }
 

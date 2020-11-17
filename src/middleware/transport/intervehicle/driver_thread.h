@@ -75,6 +75,15 @@ inline bool operator<(const SerializerTransporterMessage& a, const SerializerTra
 
 namespace intervehicle
 {
+namespace protobuf
+{
+inline bool operator==(const TransporterConfig& a, const TransporterConfig& b)
+{
+    return a.SerializeAsString() == b.SerializeAsString();
+}
+
+} // namespace protobuf
+
 template <typename Data>
 std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
 serialize_publication(const Data& d, const Group& group, const Publisher<Data>& publisher)
