@@ -68,10 +68,10 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
                       const goby::middleware::intervehicle::protobuf::PortalConfig& slow_cfg)
 {
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
-    goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
+    goby::middleware::InterVehiclePortal<decltype(zmq)> intervehicle(zmq, slow_cfg);
 
     // give time for the subscriptions to come across
-    for (int i = 0; i < 20; ++i) slt.poll(std::chrono::milliseconds(100));
+    for (int i = 0; i < 20; ++i) intervehicle.poll(std::chrono::milliseconds(100));
 
     double a = 0;
     while (publish_count < max_publish)
@@ -112,12 +112,12 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
             [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); },
             ack_callback, expire_callback);
 
-        slt.publish<group1>(s1, sample_publisher);
+        intervehicle.publish<group1>(s1, sample_publisher);
         glog.is(DEBUG1) && glog << "Published group1: " << s1->ShortDebugString() << std::endl;
 
         auto s2 = std::make_shared<Sample>();
         s2->set_a(a++);
-        slt.publish<group2>(s2, sample_publisher);
+        intervehicle.publish<group2>(s2, sample_publisher);
         glog.is(DEBUG1) && glog << "Published group2: " << s2->ShortDebugString() << std::endl;
 
         goby::middleware::protobuf::TransporterConfig widget_publisher_cfg;
@@ -127,14 +127,15 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
 
         Widget w;
         w.set_b(a - 2);
-        slt.publish<null>(w, {widget_publisher_cfg});
+        intervehicle.publish<null>(w, {widget_publisher_cfg});
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
+        intervehicle.poll(std::chrono::milliseconds(0));
         ++publish_count;
     }
 
-    while (forward) { slt.poll(std::chrono::milliseconds(100)); }
+    while (forward) { intervehicle.poll(std::chrono::milliseconds(100)); }
 
     // no subscriber
     assert(direct_ack_receive_count[0] == 0);
@@ -149,7 +150,7 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
 void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg)
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
-    goby::middleware::InterVehicleForwarder<decltype(zmq)> interplatform(zmq);
+    goby::middleware::InterVehicleForwarder<decltype(zmq)> intervehicle(zmq);
     double a = 0;
     while (publish_count < max_publish)
     {
@@ -185,15 +186,16 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
             sample_publisher_cfg,
             [](Sample& s, const goby::middleware::Group& g) { s.set_group(g.numeric()); },
             ack_callback, expire_callback);
-        interplatform.publish<group3>(s1, sample_publisher);
+        intervehicle.publish<group3>(s1, sample_publisher);
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
         usleep(1e3);
+        intervehicle.poll(std::chrono::milliseconds(0));
         ++publish_count;
     }
 
     while (indirect_ack_receive_count != max_publish || forward)
-    { interplatform.poll(std::chrono::milliseconds(100)); } }
+    { intervehicle.poll(std::chrono::milliseconds(100)); } }
 
 // process 3
 void handle_sample1(const Sample& sample)
@@ -224,7 +226,7 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
                        const goby::middleware::intervehicle::protobuf::PortalConfig& slow_cfg)
 {
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
-    goby::middleware::InterVehiclePortal<decltype(zmq)> slt(zmq, slow_cfg);
+    goby::middleware::InterVehiclePortal<decltype(zmq)> intervehicle(zmq, slow_cfg);
 
     goby::middleware::protobuf::TransporterConfig sample_subscriber_cfg;
     sample_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
@@ -248,20 +250,20 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
         sample_subscriber_cfg, [](const Sample& s) { return s.group(); }, ack_callback,
         expire_callback);
 
-    slt.subscribe<group2, Sample>(&handle_sample1, sample_subscriber);
-    slt.subscribe<group3, Sample>(&handle_sample_indirect, sample_subscriber);
+    intervehicle.subscribe<group2, Sample>(&handle_sample1, sample_subscriber);
+    intervehicle.subscribe<group3, Sample>(&handle_sample_indirect, sample_subscriber);
 
     goby::middleware::protobuf::TransporterConfig widget_subscriber_cfg;
     widget_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
     goby::middleware::Subscriber<Widget> widget_subscriber(widget_subscriber_cfg);
-    slt.subscribe<null, Widget>(&handle_widget, widget_subscriber_cfg);
+    intervehicle.subscribe<null, Widget>(&handle_widget, widget_subscriber_cfg);
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
     while (ipc_receive_count[0] < max_publish || ipc_receive_count[1] < max_publish ||
            ipc_receive_count[2] < max_publish)
     {
-        slt.poll(std::chrono::seconds(1));
+        intervehicle.poll(std::chrono::seconds(1));
         if (std::chrono::system_clock::now() > timeout)
             glog.is(DIE) && glog << "InterVehiclePortal timed out waiting for data" << std::endl;
     }
@@ -282,7 +284,7 @@ void indirect_handle_sample_indirect(const Sample& sample)
 void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg)
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
-    goby::middleware::InterVehicleForwarder<decltype(zmq)> interplatform(zmq);
+    goby::middleware::InterVehicleForwarder<decltype(zmq)> intervehicle(zmq);
 
     goby::middleware::protobuf::TransporterConfig sample_indirect_subscriber_cfg;
     sample_indirect_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
@@ -302,7 +304,7 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
         assert(false);
     };
 
-    interplatform.subscribe_dynamic<Sample>(
+    intervehicle.subscribe_dynamic<Sample>(
         &indirect_handle_sample_indirect, 3,
         goby::middleware::Subscriber<Sample>(sample_indirect_subscriber_cfg,
                                              [](const Sample& s) { return s.group(); },
@@ -312,7 +314,7 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
     while (ipc_receive_count[0] < max_publish)
     {
-        interplatform.poll(std::chrono::seconds(1));
+        intervehicle.poll(std::chrono::seconds(1));
         if (std::chrono::system_clock::now() > timeout)
             glog.is(DIE) && glog << "InterVehicleTransport timed out waiting for data" << std::endl;
     }

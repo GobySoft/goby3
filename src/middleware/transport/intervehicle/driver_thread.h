@@ -153,8 +153,7 @@ class ModemDriverThread
         return _create_buffer_id(subscription.dccl_id(), subscription.group());
     }
 
-    void _create_buffer(modem_id_type dest_id, subbuffer_id_type buffer_id,
-                        const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs);
+    void _try_create_or_update_buffer(modem_id_type dest_id, subbuffer_id_type buffer_id);
 
     bool _dest_is_in_subnet(modem_id_type dest_id)
     {
@@ -173,10 +172,10 @@ class ModemDriverThread
     std::unique_ptr<InterThreadTransporter> interthread_;
     std::unique_ptr<InterProcessForwarder<InterThreadTransporter>> interprocess_;
 
-    std::map<subbuffer_id_type, goby::middleware::protobuf::SerializerTransporterKey>
+    std::multimap<subbuffer_id_type, goby::middleware::protobuf::SerializerTransporterKey>
         publisher_buffer_cfg_;
 
-    std::map<modem_id_type, std::map<subbuffer_id_type, intervehicle::protobuf::Subscription>>
+    std::map<modem_id_type, std::multimap<subbuffer_id_type, intervehicle::protobuf::Subscription>>
         subscriber_buffer_cfg_;
 
     std::map<subbuffer_id_type, std::set<modem_id_type>> subbuffers_created_;
@@ -192,6 +191,8 @@ class ModemDriverThread
 
     std::unique_ptr<goby::acomms::ModemDriverBase> driver_;
     goby::acomms::MACManager mac_;
+
+    std::string glog_group_;
 };
 
 } // namespace intervehicle

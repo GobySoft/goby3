@@ -62,6 +62,14 @@ message Subscription
         omit: true
         units {prefix: "micro" base_dimensions: "T"}
     }];
+
+    enum Action
+    {
+        SUBSCRIBE = 1;
+        UNSUBSCRIBE = 2;
+    }
+    required Action action = 3;
+    
     required uint32 dccl_id = 5 [(dccl.field) = {min: 1 max: 32767}];
     required uint32 group = 6 [(dccl.field) = {min: 0 max: 255}];
     optional TransporterConfig intervehicle = 10;

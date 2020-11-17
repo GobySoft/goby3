@@ -82,6 +82,8 @@ struct DCCLSerializerParserHelperBase
     static std::unordered_map<const google::protobuf::Descriptor*, std::unique_ptr<LoaderBase>>
         loader_map_;
 
+    static std::set<std::string> loaded_proto_files_;
+
     template <typename DataType> static void check_load()
     {
         const auto* desc = DataType::descriptor();
