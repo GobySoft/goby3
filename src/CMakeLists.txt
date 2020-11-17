@@ -212,8 +212,6 @@ if (BUILD_POPOTO)
   target_link_libraries(goby
     dccl
     dccl_arithmetic
-    comma_application
-    comma_csv 
     nlohmann_json::nlohmann_json
     ${Boost_LIBRARIES}
     ${PROTOBUF_LIBRARY}

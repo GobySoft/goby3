@@ -10,8 +10,6 @@
 #include "popoto_driver.h"
 #include <iostream>
  #include <nlohmann/json.hpp>
-#include <comma/application/command_line_options.h>
-#include <comma/csv/format.h>
 
 #include "driver_exception.h"
 #include "goby/util/debug_logger.h"
@@ -347,42 +345,30 @@ void goby::acomms::popotoDriver::signal_and_write(const std::string& raw)
     ModemDriverBase::modem_write(raw);
 }
 
-// Converts the dccl binary to the require comma seperated bytes 
+// Converts the dccl binary to the required comma seperated bytes 
 std::string binary_to_json( const char* buf, size_t num_bytes )
 {
-    std::ostringstream format_str;
-    format_str << num_bytes << "ub";
-    comma::csv::format format( format_str.str() );
-    std::ostringstream json;
-    json << format.bin_to_csv( buf );
-    return json.str();
+    std::string output;
+
+    for (int i = 0; i < num_bytes; i++){
+        output.append(std::to_string((uint8_t) buf[i]));
+        if(i < num_bytes-1) {
+            output.append(",");
+        }
+    }
+
+    return output;
 }
 
 // Convert csv values back to dccl binary for the dccl codec to decode
-std::string json_to_binary( const std::string& jsonMsg)
-{
-    // To unpack the csv string, count how many values are present
-    int count = 1;
-
-    for (int i = 0; i < jsonMsg.length(); i++) 
-    {
-        if (jsonMsg[i] == ',')
-            count++;
+std::string json_to_binary( const json &element) {
+    std::string output;
+   
+   for(auto &subel : element) {
+        output.append(1, (char) ((uint8_t)subel));
     }
-    std::stringstream format_str;
-    format_str << count << "ub";
-    
-    comma::csv::format format(format_str.str() );
-
-    // Look for the contents of "Data", the csv values will be between [ and ]
-    size_t pos = jsonMsg.find_first_of('[') + 1;
-    size_t pos2 = jsonMsg.find_first_of(']');
-    std::string s3 = jsonMsg.substr(pos,pos2-pos);
-    
-    // convert from 8bit csv to bin
-    std::ostringstream buf;
-    buf << format.csv_to_bin(s3);  
-    return buf.str();
+     
+    return output;
 }
 
 // Decode Popoto header
@@ -438,7 +424,7 @@ std::string goby::acomms::popotoDriver::ProcessJSON(std::string message)
     
     } else if (label == "Data") {
         
-        str = json_to_binary(message);
+        str = json_to_binary(j["Data"]);
         return str;
     
     } else if (label == "Alert"){
