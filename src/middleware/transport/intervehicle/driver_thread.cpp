@@ -174,6 +174,18 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
             auto subscription_buffer_cfg = cfg().subscription_buffer();
             if (!subscription_buffer_cfg.has_ack_required())
                 subscription_buffer_cfg.set_ack_required(true);
+
+            using value_base_type =
+                std::result_of<decltype (&goby::acomms::protobuf::DynamicBufferConfig::value_base)(
+                    goby::acomms::protobuf::DynamicBufferConfig)>::type;
+
+            // set subscriptions to maximum value
+            if (!subscription_buffer_cfg.has_value_base())
+                subscription_buffer_cfg.set_value_base(
+                    std::numeric_limits<value_base_type>::has_infinity
+                        ? std::numeric_limits<value_base_type>::infinity()
+                        : std::numeric_limits<value_base_type>::max());
+
             buffer_.create(dest, buffer_id, subscription_buffer_cfg);
             subscription_subbuffers_.insert(dest);
         }
@@ -332,6 +344,8 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
         }
         break;
     }
+    // publish an update anyway, even if we didn't have to make any changes to inform subscribers to the subscription report than a subscription/unsubcription came in
+    _publish_subscription_report(subscription);
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_try_create_or_update_buffer(
@@ -535,4 +549,18 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
             }
         }
     }
+}
+
+void goby::middleware::intervehicle::ModemDriverThread::_publish_subscription_report(
+    const intervehicle::protobuf::Subscription& changed)
+{
+    protobuf::SubscriptionReport report;
+    report.set_link_modem_id(cfg().modem_id());
+    for (const auto& sub_id_p : subscriber_buffer_cfg_)
+    {
+        for (const auto& subbuffer_sub_p : sub_id_p.second)
+            *report.add_subscription() = subbuffer_sub_p.second;
+    }
+    *report.mutable_changed() = changed;
+    interprocess_->publish<groups::subscription_report>(report);
 }

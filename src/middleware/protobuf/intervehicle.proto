@@ -152,3 +152,11 @@ message ExpireMessagePair
         1;
     required ExpireData data = 2;
 }
+
+
+message SubscriptionReport
+{
+    required uint32 link_modem_id = 1;
+    repeated Subscription subscription = 2;
+    optional Subscription changed = 3;
+}

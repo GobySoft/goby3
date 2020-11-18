@@ -35,6 +35,8 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 
+#include "goby/middleware/transport/intervehicle/groups.h"
+
 namespace goby
 {
 namespace acomms
@@ -104,26 +106,6 @@ serialize_publication(const Data& d, const Group& group, const Publisher<Data>& 
     return msg;
 }
 
-namespace groups
-{
-constexpr Group subscription_forward{"goby::middleware::intervehicle::subscription_forward",
-                                     Group::broadcast_group};
-
-constexpr Group modem_data_out{"goby::middleware::intervehicle::modem_data_out"};
-constexpr Group modem_data_in{"goby::middleware::intervehicle::modem_data_in"};
-constexpr Group modem_ack_in{"goby::middleware::intervehicle::modem_ack_in"};
-constexpr Group modem_expire_in{"goby::middleware::intervehicle::modem_expire_in"};
-
-constexpr Group modem_subscription_forward_tx{
-    "goby::middleware::intervehicle::modem_subscription_forward_tx"};
-constexpr Group modem_subscription_forward_rx{
-    "goby::middleware::intervehicle::modem_subscription_forward_rx"};
-constexpr Group modem_driver_ready{"goby::middleware::intervehicle::modem_driver_ready"};
-
-constexpr Group metadata_request{"goby::middleware::intervehicle::metadata_request"};
-
-} // namespace groups
-
 class ModemDriverThread
     : public goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
                                       InterProcessForwarder<InterThreadTransporter>>
@@ -176,6 +158,8 @@ class ModemDriverThread
 
         return dest_in_subnet;
     }
+
+    void _publish_subscription_report(const intervehicle::protobuf::Subscription& changed);
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;

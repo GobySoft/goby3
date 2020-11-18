@@ -284,7 +284,7 @@ class InterVehicleTransporterBase
                     std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(
                         func, group, subscriber);
 
-                this->subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
+                this->subscriptions_[dccl_id][group] = subscription;
             }
             break;
             case SubscriptionAction::UNSUBSCRIBE:
@@ -429,8 +429,9 @@ class InterVehicleTransporterBase
 
   protected:
     // maps DCCL ID to map of Group->subscription
-    std::unordered_map<int, std::unordered_multimap<
-                                std::string, std::shared_ptr<const SerializationHandlerBase<>>>>
+    // only one subscription allowed per IntervehicleForwarder/Portal (new subscription overwrites old one)
+    std::unordered_map<
+        int, std::unordered_map<std::string, std::shared_ptr<const SerializationHandlerBase<>>>>
         subscriptions_;
 
   private:
@@ -698,7 +699,7 @@ class InterVehiclePortal
                     received_.push_back(msg);
                 });
 
-        // a message required ack can be disposed by either [1] ack, [2] expire (TTL exceeded), [3] having no subscribers, [4] queue size exceeded.
+        // a message requiring ack can be disposed by either [1] ack, [2] expire (TTL exceeded), [3] having no subscribers, [4] queue size exceeded.
         // post the correct callback (ack for [1] and expire for [2-4])
         // and remove the pending ack message
         using ack_pair_type = intervehicle::protobuf::AckMessagePair;
