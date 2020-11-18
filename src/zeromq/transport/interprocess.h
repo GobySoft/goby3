@@ -218,7 +218,10 @@ class InterProcessPortalImplementation
         _subscribe_regex(new_sub);
     }
 
-    template <typename Data, int scheme> void _unsubscribe(const goby::middleware::Group& group)
+    template <typename Data, int scheme>
+    void
+    _unsubscribe(const goby::middleware::Group& group,
+                 const middleware::Subscriber<Data>& subscriber = middleware::Subscriber<Data>())
     {
         std::string identifier =
             _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);

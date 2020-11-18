@@ -34,6 +34,7 @@ std::unordered_map<
     std::unique_ptr<goby::middleware::detail::DCCLSerializerParserHelperBase::LoaderBase>>
     goby::middleware::detail::DCCLSerializerParserHelperBase::loader_map_;
 std::mutex goby::middleware::detail::DCCLSerializerParserHelperBase::dccl_mutex_;
+std::set<std::string> goby::middleware::detail::DCCLSerializerParserHelperBase::loaded_proto_files_;
 
 void goby::middleware::detail::DCCLSerializerParserHelperBase::load_metadata(
     const goby::middleware::protobuf::SerializerProtobufMetadata& meta)
@@ -47,8 +48,15 @@ void goby::middleware::detail::DCCLSerializerParserHelperBase::load_metadata(
     }
     else
     {
-        for (const auto& file_desc : meta.file_descriptor())
-            dccl::DynamicProtobufManager::add_protobuf_file(file_desc);
+        for (const auto& file_desc_proto : meta.file_descriptor())
+        {
+            if (!loaded_proto_files_.count(file_desc_proto.name()))
+            {
+                dccl::DynamicProtobufManager::add_protobuf_file(file_desc_proto);
+                loaded_proto_files_.insert(file_desc_proto.name());
+            }
+        }
+
         if (auto* desc = dccl::DynamicProtobufManager::find_descriptor(meta.protobuf_name()))
             check_load(desc);
         else

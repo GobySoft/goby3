@@ -40,6 +40,12 @@ namespace goby
 {
 namespace middleware
 {
+class InvalidUnsubscription : public Exception
+{
+  public:
+    InvalidUnsubscription(const std::string& e) : Exception(e) {}
+};
+
 /// \brief Base class for implementing transporters (both portal and forwarder) for the intervehicle layer
 ///
 /// \tparam Derived derived class (curiously recurring template pattern)
@@ -57,6 +63,12 @@ class InterVehicleTransporterBase
     using PollerType = Poller<InterVehicleTransporterBase<Derived, InnerTransporter>>;
 
   public:
+    enum class SubscriptionAction
+    {
+        SUBSCRIBE,
+        UNSUBSCRIBE
+    };
+
     InterVehicleTransporterBase(InnerTransporter& inner)
         : InterfaceType(inner), PollerType(&this->inner())
     {
@@ -65,6 +77,9 @@ class InterVehicleTransporterBase
             .template subscribe<intervehicle::groups::metadata_request,
                                 protobuf::SerializerMetadataRequest>(
                 [this](const protobuf::SerializerMetadataRequest& request) {
+                    glog.is_debug3() && glog << "Received DCCL metadata request: "
+                                             << request.ShortDebugString() << std::endl;
+
                     switch (request.request())
                     {
                         case protobuf::SerializerMetadataRequest::METADATA_INCLUDE:
@@ -184,8 +199,8 @@ class InterVehicleTransporterBase
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
         auto pointer_ref_lambda = [=](std::shared_ptr<const Data> d) { f(*d); };
-        static_cast<Derived*>(this)->template _subscribe<Data>(pointer_ref_lambda, group,
-                                                               subscriber);
+        static_cast<Derived*>(this)->template _subscribe<Data>(
+            pointer_ref_lambda, group, subscriber, SubscriptionAction::SUBSCRIBE);
     }
 
     /// \brief Subscribe to a specific run-time defined group and data type (shared pointer variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
@@ -202,7 +217,25 @@ class InterVehicleTransporterBase
     {
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
-        static_cast<Derived*>(this)->template _subscribe<Data>(f, group, subscriber);
+        static_cast<Derived*>(this)->template _subscribe<Data>(f, group, subscriber,
+                                                               SubscriptionAction::SUBSCRIBE);
+    }
+
+    /// \brief Unsubscribe from a specific run-time defined group and data type. Where possible, prefer the static variant in StaticTransporterInterface::unsubscribe()
+    ///
+    /// \tparam Data data type to unsubscribe from.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param group group to subscribe to (typically a DynamicGroup)
+    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
+    template <typename Data, int scheme = goby::middleware::scheme<Data>()>
+    void unsubscribe_dynamic(const Group& group = Group(),
+                             const Subscriber<Data>& subscriber = Subscriber<Data>())
+    {
+        static_assert(scheme == MarshallingScheme::DCCL,
+                      "Can only use DCCL messages with InterVehicleTransporters");
+        static_cast<Derived*>(this)->template _subscribe<Data>(
+            std::function<void(std::shared_ptr<const Data>)>(), group, subscriber,
+            SubscriptionAction::UNSUBSCRIBE);
     }
 
   protected:
@@ -239,17 +272,41 @@ class InterVehicleTransporterBase
     template <typename Data>
     std::shared_ptr<intervehicle::protobuf::Subscription>
     _set_up_subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                      const Subscriber<Data>& subscriber)
+                      const Subscriber<Data>& subscriber, SubscriptionAction action)
     {
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
 
-        auto subscription =
-            std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(func, group,
-                                                                                       subscriber);
+        switch (action)
+        {
+            case SubscriptionAction::SUBSCRIBE:
+            {
+                auto subscription =
+                    std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(
+                        func, group, subscriber);
 
-        this->subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
+                this->subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
+            }
+            break;
+            case SubscriptionAction::UNSUBSCRIBE:
+            {
+                auto sub_it = this->subscriptions_[dccl_id].find(group);
+                if (sub_it != this->subscriptions_[dccl_id].end())
+                {
+                    this->subscriptions_[dccl_id].erase(sub_it);
+                }
+                else
+                {
+                    std::stringstream ss;
+                    ss << "Cannot unsubscribe to DCCL id: " << dccl_id
+                       << " and group: " << std::string(group) << " as no subscription was found.";
+                    throw(InvalidUnsubscription(ss.str()));
+                }
+            }
+            break;
+        }
 
-        auto dccl_subscription = this->template _serialize_subscription<Data>(group, subscriber);
+        auto dccl_subscription =
+            this->template _serialize_subscription<Data>(group, subscriber, action);
         using intervehicle::protobuf::Subscription;
         // insert pending subscription
         auto subscription_publication = intervehicle::serialize_publication(
@@ -334,7 +391,8 @@ class InterVehicleTransporterBase
 
     template <typename Data>
     std::shared_ptr<intervehicle::protobuf::Subscription>
-    _serialize_subscription(const Group& group, const Subscriber<Data>& subscriber)
+    _serialize_subscription(const Group& group, const Subscriber<Data>& subscriber,
+                            SubscriptionAction action)
     {
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
         auto dccl_subscription = std::make_shared<intervehicle::protobuf::Subscription>();
@@ -347,6 +405,10 @@ class InterVehicleTransporterBase
         dccl_subscription->set_group(group.numeric());
         dccl_subscription->set_time_with_units(
             goby::time::SystemClock::now<goby::time::MicroTime>());
+        dccl_subscription->set_action((action == SubscriptionAction::SUBSCRIBE)
+                                          ? intervehicle::protobuf::Subscription::SUBSCRIBE
+                                          : intervehicle::protobuf::Subscription::UNSUBSCRIBE);
+
         _set_protobuf_metadata<Data>(dccl_subscription->mutable_metadata());
         *dccl_subscription->mutable_intervehicle() = subscriber.cfg().intervehicle();
         return dccl_subscription;
@@ -504,12 +566,20 @@ class InterVehicleForwarder
 
     template <typename Data>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                    const Subscriber<Data>& subscriber)
+                    const Subscriber<Data>& subscriber, typename Base::SubscriptionAction action)
     {
-        this->inner()
-            .template publish<intervehicle::groups::modem_subscription_forward_tx,
-                              intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
-                this->_set_up_subscribe(func, group, subscriber));
+        try
+        {
+            this->inner()
+                .template publish<intervehicle::groups::modem_subscription_forward_tx,
+                                  intervehicle::protobuf::Subscription,
+                                  MarshallingScheme::PROTOBUF>(
+                    this->_set_up_subscribe(func, group, subscriber, action));
+        }
+        catch (const InvalidUnsubscription& e)
+        {
+            goby::glog.is_warn() && goby::glog << e.what() << std::endl;
+        }
     }
 
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) { return 0; }
@@ -570,12 +640,19 @@ class InterVehiclePortal
 
     template <typename Data>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                    const Subscriber<Data>& subscriber)
+                    const Subscriber<Data>& subscriber, typename Base::SubscriptionAction action)
     {
-        auto dccl_subscription = this->_set_up_subscribe(func, group, subscriber);
+        try
+        {
+            auto dccl_subscription = this->_set_up_subscribe(func, group, subscriber, action);
 
-        this->innermost().template publish<intervehicle::groups::modem_subscription_forward_tx>(
-            dccl_subscription);
+            this->innermost().template publish<intervehicle::groups::modem_subscription_forward_tx>(
+                dccl_subscription);
+        }
+        catch (const InvalidUnsubscription& e)
+        {
+            goby::glog.is_warn() && goby::glog << e.what() << std::endl;
+        }
     }
 
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)

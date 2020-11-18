@@ -37,6 +37,15 @@ namespace goby
 {
 namespace acomms
 {
+namespace protobuf
+{
+inline bool operator==(const DynamicBufferConfig& a, const DynamicBufferConfig& b)
+{
+    return a.SerializeAsString() == b.SerializeAsString();
+}
+
+} // namespace protobuf
+
 class DynamicBufferNoDataException : goby::Exception
 {
   public:
@@ -75,10 +84,19 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
     /// - `queue_size:` the larger value takes precedence
     DynamicSubBuffer(const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs)
     {
-        using goby::acomms::protobuf::DynamicBufferConfig;
+        update(cfgs);
+    }
 
+    ~DynamicSubBuffer() {}
+
+    /// \brief Update the configurations without clearing the buffer
+    void update(const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs)
+    {
+        using goby::acomms::protobuf::DynamicBufferConfig;
         if (cfgs.empty())
             throw(goby::Exception("Configuration vector must not be empty for DynamicSubBuffer"));
+
+        cfg_.Clear();
 
         // extract these types from the Protobuf message
         using ttl_type =
@@ -122,8 +140,6 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
         if (value_base_divisor > 0)
             cfg_.set_value_base(value_base_sum / value_base_divisor);
     }
-
-    ~DynamicSubBuffer() {}
 
     /// \brief Return the aggregate configuration
     const goby::acomms::protobuf::DynamicBufferConfig& cfg() const { return cfg_; }
@@ -239,7 +255,7 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
         else
             data_.push_back(std::make_pair(zero_point_, Value({reference, t})));
 
-        if (data_.size() > cfg_.max_queue())
+        while (data_.size() > cfg_.max_queue())
         {
             exceeded.push_back(data_.back().second);
             data_.pop_back();
@@ -376,12 +392,47 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicBuf
     ///
     /// \param dest_id The modem id destination for these messages
     /// \param sub_id An identifier for this subbuffer
-    /// \param cfgs The configuration for this new subbuffer
+    /// \param cfgs The configuration for this replacement subbuffer
     void replace(modem_id_type dest_id, const subbuffer_id_type& sub_id,
                  const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs)
     {
-        sub_[dest_id].erase(sub_id);
+        remove(dest_id, sub_id);
         create(dest_id, sub_id, cfgs);
+    }
+
+    /// \brief Update an existing subbuffer without removing the messsages
+    ///
+    /// \param dest_id The modem id destination for these messages
+    /// \param sub_id An identifier for this subbuffer
+    /// \param cfg The configuration for this updated subbuffer
+    void update(modem_id_type dest_id, const subbuffer_id_type& sub_id,
+                const goby::acomms::protobuf::DynamicBufferConfig& cfg)
+    {
+        update(dest_id, sub_id, std::vector<goby::acomms::protobuf::DynamicBufferConfig>(1, cfg));
+    }
+
+    /// \brief Update an existing subbuffer without removing the messsages (or creates the buffer if it doesn't already exist)
+    ///
+    /// \param dest_id The modem id destination for these messages
+    /// \param sub_id An identifier for this subbuffer
+    /// \param cfgs The configuration for this updated subbuffer
+    void update(modem_id_type dest_id, const subbuffer_id_type& sub_id,
+                const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs)
+    {
+        auto it = sub_[dest_id].find(sub_id);
+        if (it != sub_[dest_id].end())
+            it->second.update(cfgs);
+        else
+            create(dest_id, sub_id, cfgs);
+    }
+
+    /// \brief Remove an existing subbuffer
+    ///
+    /// \param dest_id The modem id destination for these messages
+    /// \param sub_id An identifier for this subbuffer
+    void remove(modem_id_type dest_id, const subbuffer_id_type& sub_id)
+    {
+        sub_[dest_id].erase(sub_id);
     }
 
     /// \brief Push a new message to the buffer

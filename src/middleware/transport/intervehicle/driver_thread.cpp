@@ -34,8 +34,12 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     const intervehicle::protobuf::PortalConfig::LinkConfig& config)
     : goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
                                InterProcessForwarder<InterThreadTransporter>>(
-          config, 10 * boost::units::si::hertz)
+          config, 10 * boost::units::si::hertz),
+      glog_group_("goby::middleware::intervehicle::driver_thread::id" +
+                  std::to_string(cfg().driver().modem_id()))
+
 {
+    goby::glog.add_group(glog_group_, util::Colors::blue);
     interthread_.reset(new InterThreadTransporter);
     interprocess_.reset(new InterProcessForwarder<InterThreadTransporter>(*interthread_));
     this->set_transporter(interprocess_.get());
@@ -114,7 +118,7 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     subscription_key_.set_type(intervehicle::protobuf::Subscription::descriptor()->full_name());
     subscription_key_.set_group_numeric(Group::broadcast_group);
 
-    goby::glog.is_debug1() && goby::glog << "Driver ready" << std::endl;
+    goby::glog.is_debug1() && goby::glog << group(glog_group_) << "Driver ready" << std::endl;
     interthread_->publish<groups::modem_driver_ready, bool>(true);
 }
 
@@ -174,7 +178,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
             subscription_subbuffers_.insert(dest);
         }
 
-        glog.is_debug1() && glog << "Forwarding subscription acoustically: "
+        glog.is_debug1() && glog << group(glog_group_) << "Forwarding subscription acoustically: "
                                  << _create_buffer_id(subscription) << std::endl;
 
         auto subscription_publication = serialize_publication(
@@ -195,8 +199,8 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
     auto it = pending_ack_.lower_bound(msg->frame_start()), end = pending_ack_.end();
     while (it != end)
     {
-        goby::glog << "Erasing " << it->second.size() << " values not acked for frame " << it->first
-                   << std::endl;
+        goby::glog << group(glog_group_) << "Erasing " << it->second.size()
+                   << " values not acked for frame " << it->first << std::endl;
         it = pending_ack_.erase(it);
     }
 
@@ -254,49 +258,127 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
     auto buffer_id = _create_buffer_id(subscription);
 
     glog.is_debug2() &&
-        glog << "Received new forwarded subscription: " << subscription.ShortDebugString()
-             << ", buffer_id: " << buffer_id << std::endl;
+        glog << group(glog_group_) << "Received new forwarded subscription/unsubscription: "
+             << subscription.ShortDebugString() << ", buffer_id: " << buffer_id << std::endl;
 
     auto dest = subscription.header().src();
 
     if (!_dest_is_in_subnet(dest))
         return;
 
-    // TODO see if there's a change to the buffer configuration with this subscription
-    if (!subscriber_buffer_cfg_[dest].count(buffer_id))
+    switch (subscription.action())
     {
-        subscriber_buffer_cfg_[dest].insert(std::make_pair(buffer_id, subscription));
+        case protobuf::Subscription::SUBSCRIBE:
+        {
+            bool is_new_cfg = true;
+            auto it_pair = subscriber_buffer_cfg_[dest].equal_range(buffer_id);
+            for (auto it = it_pair.first, end = it_pair.second; it != end; ++it)
+            {
+                if (it->second.intervehicle() == subscription.intervehicle())
+                    is_new_cfg = false;
+                break;
+            }
 
-        // check if there's a publisher already, if so create the buffer
-        auto pub_it = publisher_buffer_cfg_.find(buffer_id);
-        if (pub_it != publisher_buffer_cfg_.end())
-        {
-            _create_buffer(dest, buffer_id,
-                           {pub_it->second.cfg().intervehicle().buffer(),
-                            subscription.intervehicle().buffer()});
+            if (is_new_cfg)
+            {
+                subscriber_buffer_cfg_[dest].insert(std::make_pair(buffer_id, subscription));
+                _try_create_or_update_buffer(dest, buffer_id);
+            }
+            else
+            {
+                glog.is_debug2() &&
+                    glog << group(glog_group_) << "Subscription configuration exists for "
+                         << buffer_id << " with configuration: "
+                         << subscription.intervehicle().ShortDebugString() << std::endl;
+            }
         }
-        else
+        break;
+        case protobuf::Subscription::UNSUBSCRIBE:
         {
-            glog.is_debug2() && glog << "No publisher yet for this subscription" << std::endl;
+            auto it_pair = subscriber_buffer_cfg_[dest].equal_range(buffer_id);
+            auto it_to_erase = subscriber_buffer_cfg_[dest].end();
+            for (auto it = it_pair.first, end = it_pair.second; it != end; ++it)
+            {
+                if (it->second.intervehicle() == subscription.intervehicle())
+                    it_to_erase = it;
+            }
+
+            if (it_to_erase != subscriber_buffer_cfg_[dest].end())
+            {
+                subscriber_buffer_cfg_[dest].erase(it_to_erase);
+                if (!subscriber_buffer_cfg_[dest].count(buffer_id))
+                {
+                    subbuffers_created_[buffer_id].erase(dest);
+                    buffer_.remove(dest, buffer_id);
+                    glog.is_debug2() && glog << group(glog_group_)
+                                             << "No more subscribers, removing buffer for "
+                                             << buffer_id << std::endl;
+                }
+                else
+                {
+                    glog.is_debug2() && glog << group(glog_group_)
+                                             << "Still more subscribers, not removing buffer for "
+                                             << buffer_id << std::endl;
+                    // update buffer configuration with remaining subscribers
+                    _try_create_or_update_buffer(dest, buffer_id);
+                }
+            }
+            else
+            {
+                glog.is_warn() && glog << group(glog_group_)
+                                       << "No subscription configuration exists for " << buffer_id
+                                       << std::endl;
+            }
         }
-    }
-    else
-    {
-        glog.is_debug2() && glog << "Subscription configuration exists for " << buffer_id
-                                 << std::endl;
+        break;
     }
 }
 
-void goby::middleware::intervehicle::ModemDriverThread::_create_buffer(
-    modem_id_type dest_id, subbuffer_id_type buffer_id,
-    const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs)
+void goby::middleware::intervehicle::ModemDriverThread::_try_create_or_update_buffer(
+    modem_id_type dest_id, subbuffer_id_type buffer_id)
 {
-    // TODO create broadcast buffers if the configuration is not ack_required
+    auto pub_it_pair = publisher_buffer_cfg_.equal_range(buffer_id);
+    auto& dest_subscriber_buffer_cfg = subscriber_buffer_cfg_[dest_id];
+    auto sub_it_pair = dest_subscriber_buffer_cfg.equal_range(buffer_id);
 
-    buffer_.create(dest_id, buffer_id, cfgs);
-    subbuffers_created_[buffer_id].insert(dest_id);
-    glog.is_debug2() && glog << "Created buffer for dest: " << dest_id << " for id: " << buffer_id
-                             << std::endl;
+    if (pub_it_pair.first == pub_it_pair.second)
+    {
+        glog.is_debug2() &&
+            glog << group(glog_group_)
+                 << "No publisher yet for this subscription, buffer_id: " << buffer_id << std::endl;
+    }
+    else if (sub_it_pair.first == sub_it_pair.second)
+    {
+        glog.is_debug2() && glog << group(glog_group_)
+                                 << "No subscriber yet for this subscription, buffer_id: "
+                                 << buffer_id << std::endl;
+    }
+    else
+    {
+        std::vector<goby::acomms::protobuf::DynamicBufferConfig> cfgs;
+
+        for (auto it = sub_it_pair.first, end = sub_it_pair.second; it != end; ++it)
+            cfgs.push_back(it->second.intervehicle().buffer());
+        for (auto it = pub_it_pair.first, end = pub_it_pair.second; it != end; ++it)
+            cfgs.push_back(it->second.cfg().intervehicle().buffer());
+
+        if (!subbuffers_created_[buffer_id].count(dest_id))
+        {
+            buffer_.create(dest_id, buffer_id, cfgs);
+            subbuffers_created_[buffer_id].insert(dest_id);
+            glog.is_debug2() && glog << group(glog_group_) << "Created buffer for dest: " << dest_id
+                                     << " for id: " << buffer_id << " with " << cfgs.size()
+                                     << " configurations" << std::endl;
+        }
+        else
+        {
+            buffer_.update(dest_id, buffer_id, cfgs);
+            glog.is_debug2() && glog << group(glog_group_)
+                                     << "Updated existing buffer for dest: " << dest_id
+                                     << " for id: " << buffer_id << " with " << cfgs.size()
+                                     << " configurations" << std::endl;
+        }
+    }
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
@@ -314,6 +396,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
         *meta_request.mutable_key() = msg->key();
         meta_request.set_request(middleware::protobuf::SerializerMetadataRequest::METADATA_INCLUDE);
         interprocess_->publish<groups::metadata_request>(meta_request);
+        glog.is_warn() &&
+            glog << group(glog_group_)
+                 << "Omitting message because we don't have the DCCL metadata. Sending request: "
+                 << meta_request.ShortDebugString() << std::endl;
         return;
     }
     else if (msg->key().has_metadata())
@@ -324,32 +410,35 @@ void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
         // avoid extra data send
         meta_request.mutable_key()->clear_metadata();
         meta_request.set_request(middleware::protobuf::SerializerMetadataRequest::METADATA_EXCLUDE);
+        glog.is_debug3() && glog << group(glog_group_)
+                                 << "No need for more DCCL metadata. Sending request: "
+                                 << meta_request.ShortDebugString() << std::endl;
         interprocess_->publish<groups::metadata_request>(meta_request);
     }
 
     auto buffer_id = _create_buffer_id(dccl_id, msg->key().group_numeric());
 
-    glog.is_debug3() && glog << "Buffering message with id: " << buffer_id << " from "
-                             << msg->ShortDebugString() << std::endl;
+    glog.is_debug3() && glog << group(glog_group_) << "Buffering message with id: " << buffer_id
+                             << " from " << msg->ShortDebugString() << std::endl;
 
-    if (!publisher_buffer_cfg_.count(buffer_id))
+    bool is_new_cfg = true;
+    auto it_pair = publisher_buffer_cfg_.equal_range(buffer_id);
+    for (auto it = it_pair.first, end = it_pair.second; it != end; ++it)
+    {
+        if (it->second.cfg().intervehicle().buffer() == msg->key().cfg().intervehicle().buffer())
+            is_new_cfg = false;
+        break;
+    }
+
+    if (is_new_cfg)
     {
         publisher_buffer_cfg_.insert(std::make_pair(buffer_id, msg->key()));
 
-        // check for new subbuffers
-        // TODO see if there's a change to the buffer configuration with this publication
+        // check for new subbuffers from all existing subscribers
         for (const auto& sub_id_p : subscriber_buffer_cfg_)
         {
-            const auto& sub_map = sub_id_p.second;
-            auto sub_it = sub_map.find(buffer_id);
-            if (sub_it != sub_map.end())
-            {
-                auto dest_id = sub_id_p.first;
-                const auto& intervehicle_subscription = sub_it->second;
-                _create_buffer(dest_id, buffer_id,
-                               {msg->key().cfg().intervehicle().buffer(),
-                                intervehicle_subscription.intervehicle().buffer()});
-            }
+            auto dest_id = sub_id_p.first;
+            _try_create_or_update_buffer(dest_id, buffer_id);
         }
     }
 
@@ -383,12 +472,14 @@ void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
 void goby::middleware::intervehicle::ModemDriverThread::_receive(
     const goby::acomms::protobuf::ModemTransmission& rx_msg)
 {
-    glog.is(DEBUG1) && glog << "Received: " << rx_msg.ShortDebugString() << std::endl;
+    glog.is(DEBUG1) && glog << group(glog_group_) << "Received: " << rx_msg.ShortDebugString()
+                            << std::endl;
     if (rx_msg.type() == goby::acomms::protobuf::ModemTransmission::ACK)
     {
         if (rx_msg.dest() != cfg().driver().modem_id())
         {
-            glog.is(WARN) && glog << "ignoring ack for modem_id = " << rx_msg.dest() << std::endl;
+            glog.is(WARN) && glog << group(glog_group_)
+                                  << "ignoring ack for modem_id = " << rx_msg.dest() << std::endl;
             return;
         }
         for (int i = 0, n = rx_msg.acked_frame_size(); i < n; ++i)
@@ -396,9 +487,9 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
             int frame_number = rx_msg.acked_frame(i);
             if (!pending_ack_.count(frame_number))
             {
-                glog.is(DEBUG1) && glog << "got ack but we were not expecting one from "
-                                        << rx_msg.src() << " for frame " << frame_number
-                                        << std::endl;
+                glog.is(DEBUG1) &&
+                    glog << group(glog_group_) << "got ack but we were not expecting one from "
+                         << rx_msg.src() << " for frame " << frame_number << std::endl;
                 continue;
             }
             else
@@ -410,11 +501,13 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
                 auto now = goby::time::SteadyClock::now();
 
                 auto values_to_ack_it = pending_ack_.find(frame_number);
-                glog.is(DEBUG1) && glog << "processing " << values_to_ack_it->second.size()
+                glog.is(DEBUG1) && glog << group(glog_group_) << "processing "
+                                        << values_to_ack_it->second.size()
                                         << " acks for frame: " << frame_number << std::endl;
                 for (const auto& value : values_to_ack_it->second)
                 {
-                    goby::glog.is_debug1() && goby::glog << "Publishing ack for "
+                    goby::glog.is_debug1() && goby::glog << group(glog_group_)
+                                                         << "Publishing ack for "
                                                          << value.subbuffer_id << std::endl;
 
                     ack_data.set_latency_with_units(
