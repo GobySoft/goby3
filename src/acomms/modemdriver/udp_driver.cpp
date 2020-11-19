@@ -155,6 +155,8 @@ void goby::acomms::UDPDriver::start_send(const protobuf::ModemTransmission& msg)
         for (auto it = directed_receivers.first; it != directed_receivers.second; ++it)
             send(it->second);
     }
+
+    signal_transmit_result(msg);
 }
 
 void goby::acomms::UDPDriver::send_complete(const boost::system::error_code& error,

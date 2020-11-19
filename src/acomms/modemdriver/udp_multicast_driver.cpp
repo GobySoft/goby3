@@ -120,7 +120,7 @@ void goby::acomms::UDPMulticastDriver::receive_message(const protobuf::ModemTran
     signal_receive(msg);
 }
 
-void goby::acomms::UDPMulticastDriver::start_send(const google::protobuf::Message& msg)
+void goby::acomms::UDPMulticastDriver::start_send(const protobuf::ModemTransmission& msg)
 {
     // send the message
     std::string bytes;
@@ -136,6 +136,8 @@ void goby::acomms::UDPMulticastDriver::start_send(const google::protobuf::Messag
     socket_.async_send_to(
         boost::asio::buffer(bytes), receiver_,
         [this](boost::system::error_code ec, std::size_t length) { send_complete(ec, length); });
+
+    signal_transmit_result(msg);
 }
 
 void goby::acomms::UDPMulticastDriver::send_complete(const boost::system::error_code& error,
