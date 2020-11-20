@@ -14,7 +14,7 @@ This means for every sub-buffer, the user has control over two variables (\f$V_{
 
 The following graph illustrates the priority growth over time of three sub-buffers with different \f$ttl\f$ and \f$V_{base}\f$. A message is sent every 100 seconds and the sub-buffer that is chosen is marked on the graph.
 
-![](../images/priority_graph.png)
+![](images/priority_graph.png)
 \image latex priority_graph.eps "Graph of the growth of queueing priorities for \c queue for three different queues. A message is sent every 100 seconds from the %queue with the highest priority (numbered on the graph)." width=0.9\textwidth
 
 ## goby::acomms::QueueManager or goby::acomms::DynamicBuffer

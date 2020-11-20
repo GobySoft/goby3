@@ -24,8 +24,8 @@ Additionally, the frontseat may provide or consume:
 
 The state of iFrontSeat (as shown in the following diagram) is determined by a combination of the state of the frontseat and the state of pHelmIvP. Only the state of the frontseat must be determined by each new driver, as the state of pHelmIvP is determined by code shared by all the drivers.
 
-![](../images/state-diagram.png)
-\image latex ../images/state-diagram.eps "State charts of the iFrontSeat interface and connected ends (pHelmIvP and frontseat)" width=0.9\textwidth
+![](images/state-diagram.png)
+\image latex images/state-diagram.eps "State charts of the iFrontSeat interface and connected ends (pHelmIvP and frontseat)" width=0.9\textwidth
 
 The **state of the frontseat** consists of two parallel state charts (command and data):
 

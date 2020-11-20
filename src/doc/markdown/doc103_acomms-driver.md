@@ -414,36 +414,36 @@ hexdata = goby::acomms::hex_encode(goby::acomms::protobuf::ModemTransmission::fr
 ### Sequence diagrams for various Micro-Modem features using Goby
 
 FSK (rate 0) data transmission
-![](../images/goby-acomms-mmdriver-rate0.png)
-\image latex ../images/goby-acomms-mmdriver-rate0.eps "FSK (rate 0) data transmission"
+![](images/goby-acomms-mmdriver-rate0.png)
+\image latex images/goby-acomms-mmdriver-rate0.eps "FSK (rate 0) data transmission"
 
 
 PSK (rate 2 shown, others are similar) data transmission
-![](../images/goby-acomms-mmdriver-rate2.png)
-\image latex ../images/goby-acomms-mmdriver-rate2.eps "PSK (rate 2 shown, others are similar) data transmission"
+![](images/goby-acomms-mmdriver-rate2.png)
+\image latex images/goby-acomms-mmdriver-rate2.eps "PSK (rate 2 shown, others are similar) data transmission"
 
 
 Narrowband transponder LBL ping
-![](../images/goby-acomms-mmdriver-pnt.png)
-\image latex ../images/goby-acomms-mmdriver-pnt.eps "Narrowband transponder LBL ping"
+![](images/goby-acomms-mmdriver-pnt.png)
+\image latex images/goby-acomms-mmdriver-pnt.eps "Narrowband transponder LBL ping"
 
 
 REMUS transponder LBL ping
-![](../images/goby-acomms-mmdriver-pdt.png)
-\image latex ../images/goby-acomms-mmdriver-pdt.eps "REMUS transponder LBL ping"
+![](images/goby-acomms-mmdriver-pdt.png)
+\image latex images/goby-acomms-mmdriver-pdt.eps "REMUS transponder LBL ping"
 
 User mini-packet 13 bit data transmission
-![](../images/goby-acomms-mmdriver-muc.png)
-\image latex ../images/goby-acomms-mmdriver-muc.eps "User mini-packet 13 bit data transmission"
+![](images/goby-acomms-mmdriver-muc.png)
+\image latex images/goby-acomms-mmdriver-muc.eps "User mini-packet 13 bit data transmission"
 
 
 Two way ping
-![](../images/goby-acomms-mmdriver-mpc.png)
-\image latex ../images/goby-acomms-mmdriver-mpc.eps "Two way ping"
+![](images/goby-acomms-mmdriver-mpc.png)
+\image latex images/goby-acomms-mmdriver-mpc.eps "Two way ping"
 
 Flexible Data Protocol (Micro-Modem 2)
-![](../images/goby-acomms-mmdriver-tdp.png)
-\image latex ../images/goby-acomms-mmdriver-tdp.eps "Flexible Data Protocol"
+![](images/goby-acomms-mmdriver-tdp.png)
+\image latex images/goby-acomms-mmdriver-tdp.eps "Flexible Data Protocol"
 
 
 
