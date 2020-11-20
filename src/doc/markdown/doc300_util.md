@@ -96,13 +96,13 @@ The best way to get used to goby::glog is to compile and play with the flexostre
 
 A handful of examples:
 
-![](../images/glogger-example.png)
-\image latex ../images/glogger-example.png "Example of the goby::glog output at different verbosity settings to the terminal window"
+![](images/glogger-example.png)
+\image latex images/glogger-example.png "Example of the goby::glog output at different verbosity settings to the terminal window"
 
 Graphical user interface logger mode:
 
-![](../images/glogger-gui.png)
-\image latex ../images/glogger-gui.png "Example of the goby::glog in NCurses GUI mode"
+![](images/glogger-gui.png)
+\image latex images/glogger-gui.png "Example of the goby::glog in NCurses GUI mode"
 
 Simultaneous terminal window and file logging:
 

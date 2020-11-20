@@ -11,8 +11,8 @@ Please read the [User Manual](http://gobysoft.org/dl/goby3-user-manual.pdf) for 
 
 ## Nested Transport Layers and Transporters
 
-![](../images/nested_ipc.png)
-\image latex ../images/nested_ipc.png "Pictoral representation of the nested layers of the Goby middleware.
+![](images/nested_ipc.png)
+\image latex images/nested_ipc.png "Pictoral representation of the nested layers of the Goby middleware.
 
 Goby3 is designed around the idea of nested communication layers. Three layers are provided in the current implementation (in `goby/middleware/transport`):
 
@@ -32,8 +32,8 @@ Other models like request/reply can be implemented using a degenerate case (sing
 
 When a message is published on a given layer (e.g. intervehicle), it is also automatically recursively published on **all** inner layers (e.g. interprocess and then interthread). This allows a single publication to be used both internally to a layer (e.g. interprocess) and externally. Since each layer is presumed to be more restrictive in throughput than its inner layer, this model adds insignificant overhead.
 
-![](../images/pubsubexample.png)
-\image latex ../images/pubsubexample.png "Publication/Subscription example. The blue line shows an intervehicle publication from vehicle1/process1/thread1 to a subscriber on vehicle2. The red line shows an interprocess publication on vehicle1 by process1/thread1 to subscribers on process1/thread2 and process2"
+![](images/pubsubexample.png)
+\image latex images/pubsubexample.png "Publication/Subscription example. The blue line shows an intervehicle publication from vehicle1/process1/thread1 to a subscriber on vehicle2. The red line shows an interprocess publication on vehicle1 by process1/thread1 to subscribers on process1/thread2 and process2"
 
 The image above gives an example of the data flow. The blue line shows an intervehicle publication from vehicle1/process1/thread1 to a subscriber on vehicle2. The red line shows an interprocess publication on vehicle1 by process1/thread1 to subscribers on process1/thread2 and process2.
 
