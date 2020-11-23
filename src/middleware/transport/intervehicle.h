@@ -26,6 +26,7 @@
 
 #include <atomic>
 #include <functional>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
@@ -284,7 +285,7 @@ class InterVehicleTransporterBase
                     std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(
                         func, group, subscriber);
 
-                this->subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
+                this->subscriptions_[dccl_id][group] = subscription;
             }
             break;
             case SubscriptionAction::UNSUBSCRIBE:
@@ -429,8 +430,9 @@ class InterVehicleTransporterBase
 
   protected:
     // maps DCCL ID to map of Group->subscription
-    std::unordered_map<int, std::unordered_multimap<
-                                std::string, std::shared_ptr<const SerializationHandlerBase<>>>>
+    // only one subscription allowed per IntervehicleForwarder/Portal (new subscription overwrites old one)
+    std::unordered_map<
+        int, std::unordered_map<std::string, std::shared_ptr<const SerializationHandlerBase<>>>>
         subscriptions_;
 
   private:
@@ -592,12 +594,7 @@ template <typename InnerTransporter>
 class InterVehiclePortal
     : public InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>
 {
-    static_assert(
-        std::is_same<typename InnerTransporter::InnerTransporterType,
-                     InterThreadTransporter>::value,
-        "InterVehiclePortal is implemented in a way that requires that its "
-        "InnerTransporter's InnerTransporter be goby::middleware::InterThreadTransporter, that is "
-        "InterVehicle<InterProcess<goby::middleware::InterThreadTransport>>");
+    using modem_id_type = goby::middleware::intervehicle::ModemDriverThread::modem_id_type;
 
   public:
     using Base =
@@ -691,14 +688,12 @@ class InterVehiclePortal
                 std::make_pair(subscription->subscribed_group(), subscription));
         }
 
-        this->innermost()
-            .template subscribe<intervehicle::groups::modem_data_in,
-                                intervehicle::protobuf::DCCLForwardedData>(
-                [this](const intervehicle::protobuf::DCCLForwardedData& msg) {
-                    received_.push_back(msg);
-                });
+        this->innermost().template subscribe<intervehicle::groups::modem_data_in>(
+            [this](const intervehicle::protobuf::DCCLForwardedData& msg) {
+                received_.push_back(msg);
+            });
 
-        // a message required ack can be disposed by either [1] ack, [2] expire (TTL exceeded), [3] having no subscribers, [4] queue size exceeded.
+        // a message requiring ack can be disposed by either [1] ack, [2] expire (TTL exceeded), [3] having no subscribers, [4] queue size exceeded.
         // post the correct callback (ack for [1] and expire for [2-4])
         // and remove the pending ack message
         using ack_pair_type = intervehicle::protobuf::AckMessagePair;
@@ -719,6 +714,10 @@ class InterVehiclePortal
                 goby::glog.is_debug1() && goby::glog << "Received driver ready" << std::endl;
                 ++drivers_ready_;
             });
+
+        // set up before drivers ready to ensure we don't miss subscriptions
+        if (cfg_.has_persist_subscriptions())
+            _set_up_persistent_subscriptions();
 
         for (int i = 0, n = cfg_.link_size(); i < n; ++i)
         {
@@ -750,8 +749,80 @@ class InterVehiclePortal
             goby::glog.is_debug1() && goby::glog << "Waiting for drivers to be ready." << std::endl;
             this->poll();
         }
+
+        // write subscriptions after drivers ready to ensure they aren't missed
+        if (former_sub_collection_.subscription_size() > 0)
+        {
+            goby::glog.is_debug1() &&
+                goby::glog << "Begin loading subscriptions from persistent storage..." << std::endl;
+            for (const auto& sub : former_sub_collection_.subscription())
+                this->innermost()
+                    .template publish<intervehicle::groups::modem_subscription_forward_rx,
+                                      intervehicle::protobuf::Subscription,
+                                      MarshallingScheme::PROTOBUF>(sub);
+        }
     }
 
+    void _set_up_persistent_subscriptions()
+    {
+        const auto& dir = cfg_.persist_subscriptions().dir();
+        if (dir.empty())
+            goby::glog.is_die() && goby::glog << "persist_subscriptions.dir cannot be empty"
+                                              << std::endl;
+
+        std::stringstream file_name;
+        file_name << dir;
+        if (dir.back() != '/')
+            file_name << "/";
+        file_name << "goby_intervehicle_subscriptions_" << cfg_.persist_subscriptions().name()
+                  << ".pb.txt";
+        persist_sub_file_name_ = file_name.str();
+        {
+            std::ifstream persist_sub_ifs(persist_sub_file_name_.c_str());
+            if (persist_sub_ifs.is_open())
+            {
+                google::protobuf::TextFormat::Parser parser;
+                google::protobuf::io::IstreamInputStream iis(&persist_sub_ifs);
+                parser.Parse(&iis, &former_sub_collection_);
+            }
+            else
+            {
+                goby::glog.is_debug1() &&
+                    goby::glog << "Could not open persistent subscriptions file: "
+                               << persist_sub_file_name_
+                               << ". Assuming no persistent subscriptions exist" << std::endl;
+            }
+        }
+
+        std::ofstream persist_sub_ofs(persist_sub_file_name_.c_str());
+        if (!persist_sub_ofs.is_open())
+        {
+            goby::glog.is_die() &&
+                goby::glog << "Could not open persistent subscriptions file for writing: "
+                           << persist_sub_file_name_ << std::endl;
+        }
+
+        this->innermost().template subscribe<intervehicle::groups::subscription_report>(
+            [this](const intervehicle::protobuf::SubscriptionReport& report) {
+                goby::glog.is_debug1() && goby::glog << "Received subscription report: "
+                                                     << report.ShortDebugString() << std::endl;
+                sub_reports_[report.link_modem_id()] = report;
+                std::ofstream persist_sub_ofs(persist_sub_file_name_.c_str());
+                intervehicle::protobuf::SubscriptionPersistCollection collection;
+                for (auto report_p : sub_reports_)
+                {
+                    for (const auto& sub : report_p.second.subscription())
+                        *collection.add_subscription() = sub;
+                }
+                google::protobuf::TextFormat::Printer printer;
+                google::protobuf::io::OstreamOutputStream oos(&persist_sub_ofs);
+                goby::glog.is_debug1() &&
+                    goby::glog << "Collection: " << collection.ShortDebugString() << std::endl;
+                printer.Print(collection, &oos);
+            });
+    }
+
+  private:
     intervehicle::protobuf::PortalConfig cfg_;
 
     struct ModemDriverData
@@ -764,6 +835,10 @@ class InterVehiclePortal
     unsigned drivers_ready_{0};
 
     std::deque<intervehicle::protobuf::DCCLForwardedData> received_;
+
+    intervehicle::protobuf::SubscriptionPersistCollection former_sub_collection_;
+    std::string persist_sub_file_name_;
+    std::map<modem_id_type, intervehicle::protobuf::SubscriptionReport> sub_reports_;
 };
 } // namespace middleware
 } // namespace goby

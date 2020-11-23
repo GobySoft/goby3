@@ -17,7 +17,8 @@ message DynamicBufferConfig
     // lowest value takes precedence
     optional double blackout_time = 3 [
         default = 0,
-        (dccl.field) = {min: 0 max: 3600 precision: 0 units {base_dimensions: "T"}}
+        (dccl.field) =
+            {min: 0 max: 3600 precision: 0 units {base_dimensions: "T"}}
     ];
     // larger value takes precedence
     optional uint32 max_queue = 4
@@ -31,6 +32,6 @@ message DynamicBufferConfig
             {min: 1 max: 86400 precision: 0 units {base_dimensions: "T"}}
     ];
     // use average of values
-    optional int32 value_base = 7
-        [default = 100, (dccl.field) = {min: 1 max: 1000}];
+    optional double value_base = 7
+        [default = 100, (dccl.field) = {min: 1 max: 1000 precision: 0}];
 }

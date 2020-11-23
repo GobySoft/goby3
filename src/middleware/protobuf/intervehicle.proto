@@ -19,7 +19,7 @@ message PortalConfig
     {
         required uint32 modem_id = 1;
         optional uint32 subnet_mask = 2 [default = 0xFFF0];
-        
+
         required goby.acomms.protobuf.DriverConfig driver = 11
             [(goby.field).description =
                  "Configure the modem driver(s) in use by this portal"];
@@ -41,6 +41,23 @@ message PortalConfig
     }
 
     repeated LinkConfig link = 1;
+
+    message PersistSubscriptions
+    {
+        required string name = 1
+            [(goby.field).description =
+                 "Name to use when persisting subscriptions (must be unique "
+                 "for each InterVehiclePortal on this machine)"];
+        required string dir = 2
+            [(goby.field).description =
+                 "Directory to write subscription data file"];
+    }
+    optional PersistSubscriptions persist_subscriptions = 10
+        [(goby.field).description =
+             "Configuration for persisting intervehicle subscriptions between "
+             "restarts. If omitted, subscriptions will not be persisted, and "
+             "all remote subscribers will need to resubscribe when this Portal "
+             "restarts."];
 }
 
 message Status
@@ -69,7 +86,7 @@ message Subscription
         UNSUBSCRIBE = 2;
     }
     required Action action = 3;
-    
+
     required uint32 dccl_id = 5 [(dccl.field) = {min: 1 max: 32767}];
     required uint32 group = 6 [(dccl.field) = {min: 0 max: 255}];
     optional TransporterConfig intervehicle = 10;
@@ -151,4 +168,24 @@ message ExpireMessagePair
     required goby.middleware.protobuf.SerializerTransporterMessage serializer =
         1;
     required ExpireData data = 2;
+}
+
+message SubscriptionReport
+{
+    required uint32 link_modem_id = 1;
+    repeated Subscription subscription = 2;
+    optional Subscription changed = 3;
+}
+
+message SubscriptionPersistCollection
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    required uint64 time = 1 [(dccl.field) = {
+        omit: true
+        units {prefix: "micro" base_dimensions: "T"}
+    }];
+    repeated Subscription subscription = 2;
 }

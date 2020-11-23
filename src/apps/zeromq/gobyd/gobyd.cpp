@@ -61,13 +61,39 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
     // For hosting an InterVehiclePortal
     goby::middleware::InterThreadTransporter interthread_;
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> interprocess_;
-    std::unique_ptr<goby::middleware::InterVehiclePortal<decltype(interprocess_)> > intervehicle_;
+    std::unique_ptr<goby::middleware::InterVehiclePortal<decltype(interprocess_)>> intervehicle_;
 };
+
+class DaemonConfigurator : public goby::middleware::ProtobufConfigurator<protobuf::GobyDaemonConfig>
+{
+  public:
+    DaemonConfigurator(int argc, char* argv[])
+        : goby::middleware::ProtobufConfigurator<protobuf::GobyDaemonConfig>(argc, argv)
+    {
+        protobuf::GobyDaemonConfig& cfg = mutable_cfg();
+
+        if (cfg.has_intervehicle())
+        {
+            auto& intervehicle = *cfg.mutable_intervehicle();
+            if (intervehicle.has_persist_subscriptions())
+            {
+                auto& p = *intervehicle.mutable_persist_subscriptions();
+                if (!p.has_name())
+                    p.set_name(cfg.interprocess().platform());
+            }
+        }
+    }
+};
+
 } // namespace zeromq
 } // namespace apps
 } // namespace goby
 
-int main(int argc, char* argv[]) { return goby::run<goby::apps::zeromq::Daemon>(argc, argv); }
+int main(int argc, char* argv[])
+{
+    return goby::run<goby::apps::zeromq::Daemon>(
+        goby::apps::zeromq::DaemonConfigurator(argc, argv));
+}
 
 goby::apps::zeromq::Daemon::Daemon()
     : router_context_(new zmq::context_t(app_cfg().router_threads())),
