@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
             glog.is(VERBOSE) && glog << "Loading plugin library: " << plugin << std::endl;
             void* handle = dlopen(plugin.c_str(), RTLD_LAZY);
             if (handle)
-            { 
+            {
                 goby::moos::GobyMOOSGateway::dl_handles_.push_back(handle);
             }
             else
@@ -121,7 +121,5 @@ goby::moos::GobyMOOSGateway::~GobyMOOSGateway()
 
         if (unload_ptr)
             (*unload_ptr)(this);
-
-        dlclose(handle);
     }
 }

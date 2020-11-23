@@ -35,13 +35,12 @@ namespace goby
 {
 namespace moos
 {
-bool TranslatorOnConnectCallBack(void* Translator);
+bool TranslatorOnConnectCallBack(void* TranslatorBase);
 
-class Translator
-    : public goby::middleware::SimpleThread<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>
+class TranslatorBase
 {
   public:
-    Translator(const goby::apps::moos::protobuf::GobyMOOSGatewayConfig& config);
+    TranslatorBase(const goby::apps::moos::protobuf::GobyMOOSGatewayConfig& config);
 
   protected:
     std::string translator_name()
@@ -49,12 +48,6 @@ class Translator
         std::stringstream ss;
         ss << std::this_thread::get_id();
         return std::string("goby::moos::Translator::" + ss.str());
-    }
-
-    // Goby
-    goby::middleware::SimpleThread<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>& goby()
-    {
-        return *this;
     }
 
     class MOOSInterface
@@ -71,7 +64,7 @@ class Translator
         void loop();
 
       private:
-        friend bool TranslatorOnConnectCallBack(void* Translator);
+        friend bool TranslatorOnConnectCallBack(void* TranslatorBase);
         void on_connect();
 
       private:
@@ -82,15 +75,36 @@ class Translator
         goby::time::SystemClock::time_point next_time_publish_{goby::time::SystemClock::now()};
     };
 
-    friend bool TranslatorOnConnectCallBack(void* Translator);
+    friend bool TranslatorOnConnectCallBack(void* TranslatorBase);
     MOOSInterface& moos() { return moos_; }
-
-  private:
-    void loop() override;
+    void loop();
 
   private:
     MOOSInterface moos_;
+    const goby::apps::moos::protobuf::GobyMOOSGatewayConfig cfg_;
 };
+
+template <template <class> class ThreadType>
+class BasicTranslator : public TranslatorBase,
+                        public ThreadType<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>
+{
+  public:
+    BasicTranslator(const goby::apps::moos::protobuf::GobyMOOSGatewayConfig& config)
+        : TranslatorBase(config),
+          ThreadType<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>(
+              config, 10 * boost::units::si::hertz) // config.poll_frequency()))
+    {
+    }
+
+  protected:
+    // Goby
+    ThreadType<goby::apps::moos::protobuf::GobyMOOSGatewayConfig>& goby() { return *this; }
+
+  private:
+    void loop() override { this->TranslatorBase::loop(); }
+};
+
+using Translator = BasicTranslator<goby::middleware::SimpleThread>;
 
 } // namespace moos
 } // namespace goby

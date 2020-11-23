@@ -29,15 +29,14 @@
 
 using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
 
-goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
-    : goby::middleware::SimpleThread<GobyMOOSGatewayConfig>(
-          config, 10 * boost::units::si::hertz) // config.poll_frequency())
+goby::moos::TranslatorBase::TranslatorBase(const GobyMOOSGatewayConfig& config) : cfg_(config)
+
 {
     goby::moos::protobuf::GobyMOOSAppConfig moos_cfg;
-    if (cfg().moos().has_use_binary_protobuf())
-        moos_cfg.set_use_binary_protobuf(cfg().moos().use_binary_protobuf());
-    if (cfg().moos().moos_parser_technique())
-        moos_cfg.set_moos_parser_technique(cfg().moos().moos_parser_technique());
+    if (cfg_.moos().has_use_binary_protobuf())
+        moos_cfg.set_use_binary_protobuf(cfg_.moos().use_binary_protobuf());
+    if (cfg_.moos().moos_parser_technique())
+        moos_cfg.set_moos_parser_technique(cfg_.moos().moos_parser_technique());
     goby::moos::set_moos_technique(moos_cfg);
 
     if (config.app().simulation().time().use_sim_time())
@@ -45,18 +44,18 @@ goby::moos::Translator::Translator(const GobyMOOSGatewayConfig& config)
 
     moos_.comms().SetOnConnectCallBack(TranslatorOnConnectCallBack, this);
 
-    moos_.comms().Run(cfg().moos().server(), cfg().moos().port(), translator_name());
+    moos_.comms().Run(cfg_.moos().server(), cfg_.moos().port(), translator_name());
 }
 
-void goby::moos::Translator::loop() { moos_.loop(); }
+void goby::moos::TranslatorBase::loop() { moos_.loop(); }
 
 bool goby::moos::TranslatorOnConnectCallBack(void* translator)
 {
-    reinterpret_cast<goby::moos::Translator*>(translator)->moos().on_connect();
+    reinterpret_cast<goby::moos::TranslatorBase*>(translator)->moos().on_connect();
     return true;
 }
 
-void goby::moos::Translator::MOOSInterface::on_connect()
+void goby::moos::TranslatorBase::MOOSInterface::on_connect()
 {
     using goby::glog;
     using namespace goby::util::logger;
@@ -75,7 +74,7 @@ void goby::moos::Translator::MOOSInterface::on_connect()
     }
 }
 
-void goby::moos::Translator::MOOSInterface::loop()
+void goby::moos::TranslatorBase::MOOSInterface::loop()
 {
     using goby::glog;
     using namespace goby::util::logger;
