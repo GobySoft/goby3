@@ -111,7 +111,9 @@ void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_laye
 {
     int can_socket;
 
-    struct sockaddr_can addr_;
+    struct sockaddr_can addr_
+    {
+    };
     struct can_frame receive_frame_;
     struct ifreq ifr_;
     can_socket = socket(PF_CAN, SOCK_RAW, CAN_RAW);
