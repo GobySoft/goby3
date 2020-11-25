@@ -84,19 +84,8 @@ template <const goby::middleware::Group& line_in_group,
 void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publish_layer,
                                              subscribe_layer>::open_socket()
 {
-    int pty_internal = posix_openpt(O_RDWR | O_NOCTTY);
-
-    if (pty_internal == -1)
-        throw(goby::Exception(std::string("Error in posix_openpt: ") + std::strerror(errno)));
-    if (grantpt(pty_internal) == -1)
-        throw(goby::Exception(std::string("Error in grantpt: ") + std::strerror(errno)));
-    if (unlockpt(pty_internal) == -1)
-        throw(goby::Exception(std::string("Error in unlockpt: ") + std::strerror(errno)));
-
-    char pty_external_path[256];
-    ptsname_r(pty_internal, pty_external_path, sizeof(pty_external_path));
+    // remove old symlink
     const char* pty_external_symlink = this->cfg().port().c_str();
-
     struct stat stat_buffer;
     // file exists
     if (lstat(pty_external_symlink, &stat_buffer) == 0)
@@ -114,8 +103,15 @@ void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publ
         }
     }
 
-    if (symlink(pty_external_path, pty_external_symlink) == -1)
-        throw(goby::Exception(std::string("Could not create symlink: ") + pty_external_symlink));
+    // open the PTY
+    int pty_internal = posix_openpt(O_RDWR | O_NOCTTY);
+
+    if (pty_internal == -1)
+        throw(goby::Exception(std::string("Error in posix_openpt: ") + std::strerror(errno)));
+    if (grantpt(pty_internal) == -1)
+        throw(goby::Exception(std::string("Error in grantpt: ") + std::strerror(errno)));
+    if (unlockpt(pty_internal) == -1)
+        throw(goby::Exception(std::string("Error in unlockpt: ") + std::strerror(errno)));
 
     // structure to store the port settings in
     termios ps;
@@ -157,6 +153,13 @@ void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publ
                               strerror(errno)));
 
     this->mutable_socket().assign(pty_internal);
+
+    // re-symlink to new PTY
+    char pty_external_path[256];
+    ptsname_r(pty_internal, pty_external_path, sizeof(pty_external_path));
+
+    if (symlink(pty_external_path, pty_external_symlink) == -1)
+        throw(goby::Exception(std::string("Could not create symlink: ") + pty_external_symlink));
 }
 
 template <const goby::middleware::Group& line_in_group,
