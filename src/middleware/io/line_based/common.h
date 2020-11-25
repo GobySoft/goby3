@@ -35,7 +35,7 @@ namespace io
 class match_regex
 {
   public:
-    explicit match_regex(std::string eol) : eol_regex_(eol) {}
+    explicit match_regex(std::string eol) : eol_regex_(ctype_narrow_workaround(eol)) {}
 
     template <typename Iterator>
     std::pair<Iterator, bool> operator()(Iterator begin, Iterator end) const
@@ -45,6 +45,24 @@ class match_regex
             return std::make_pair(begin + result.position() + result.length(), true);
         else
             return std::make_pair(begin, false);
+    }
+
+  private:
+    std::string ctype_narrow_workaround(std::string eol)
+    {
+        // Thanks to  Boris Kolpackov:
+        // A data race happens in the libstdc++ (as of GCC 7.2) implementation of the
+        // ctype<ctype>::narrow() function (bug #77704).
+        // We work around this by pre-initializing the global locale
+        // facet internal cache.
+        static std::atomic<bool> ctype_narrow_initialized{false};
+        if (!ctype_narrow_initialized)
+        {
+            const std::ctype<char>& ct(std::use_facet<std::ctype<char>>(std::locale()));
+            for (size_t i(0); i != 256; ++i) ct.narrow(static_cast<char>(i), '\0');
+            ctype_narrow_initialized = true;
+        }
+        return eol;
     }
 
   private:

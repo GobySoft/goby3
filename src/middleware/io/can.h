@@ -86,11 +86,13 @@ class CanThread : public detail::IOThread<line_in_group, line_out_group, publish
 
     ~CanThread() {}
 
-  protected:
-    virtual void async_write(const std::string& bytes) override;
-
   private:
     void async_read() override;
+    void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) override
+    {
+        detail::basic_async_write(this, io_msg);
+    }
+
     void open_socket() override;
 
     void data_rec(struct can_frame& receive_frame_, boost::asio::posix::stream_descriptor& stream);
@@ -162,29 +164,6 @@ void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_laye
 
             for (int i = 0; i < frame_size; ++i)
             { bytes += *(reinterpret_cast<const char*>(&frame) + i); } this->write(io_msg);
-        });
-}
-
-template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
-void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_layer,
-                                     subscribe_layer>::async_write(const std::string& bytes)
-{
-    // TODO: Check frame validity?
-
-    this->mutable_socket().async_write_some(
-        boost::asio::buffer(bytes),
-        [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
-            if (!ec && bytes_transferred > 0)
-            {
-                this->handle_write_success(bytes_transferred);
-            }
-            else
-            {
-                this->handle_write_error(ec);
-            }
         });
 }
 

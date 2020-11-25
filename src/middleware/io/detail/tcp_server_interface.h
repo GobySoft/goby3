@@ -81,12 +81,12 @@ class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThrea
     const boost::asio::ip::tcp::endpoint& local_endpoint() { return local_endpoint_; }
 
     // public so TCPServer can call this
-    virtual void async_write(const std::string& bytes)
+    virtual void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
     {
         auto self(this->shared_from_this());
         boost::asio::async_write(
-            socket_, boost::asio::buffer(bytes),
-            [this, self](boost::system::error_code ec, std::size_t bytes_transferred) {
+            socket_, boost::asio::buffer(io_msg->data()),
+            [this, self, io_msg](boost::system::error_code ec, std::size_t bytes_transferred) {
                 if (!ec)
                 {
                     server_.handle_write_success(bytes_transferred);
@@ -265,7 +265,7 @@ void goby::middleware::io::detail::TCPServerThread<
             (io_msg->tcp_dest() ==
              endpoint_convert<protobuf::TCPEndPoint>(client->remote_endpoint())))
         {
-            client->async_write(io_msg->data());
+            client->async_write(io_msg);
         }
     }
 }

@@ -125,7 +125,9 @@ class IOThread
         auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
                 if (!io_msg->has_index() || io_msg->index() == this->index())
+                {
                     write(io_msg);
+                }
             };
 
         this->subscribe_transporter()
@@ -179,6 +181,10 @@ class IOThread
         this->subscribe_transporter()
             .template unsubscribe<line_out_group, goby::middleware::protobuf::IOData>();
     }
+
+    template <class IOThreadImplementation>
+    friend void basic_async_write(IOThreadImplementation* this_thread,
+                                  std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg);
 
   protected:
     void write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
@@ -242,18 +248,7 @@ class IOThread
     virtual void async_read() = 0;
 
     /// \brief Starts an asynchronous write from data published
-    virtual void async_write(const std::string& bytes)
-    {
-        throw(goby::Exception(
-            "Must overload async_write(const std::string& bytes) if not overloading "
-            "async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)"));
-    }
-
-    /// \brief Starts an asynchronous write from data published
-    virtual void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
-    {
-        async_write(io_msg->data());
-    }
+    virtual void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) = 0;
 
     const std::string& glog_group() { return glog_group_; }
 
@@ -279,6 +274,25 @@ class IOThread
     std::string glog_group_;
     bool glog_group_added_{false};
 };
+
+template <class IOThreadImplementation>
+void basic_async_write(IOThreadImplementation* this_thread,
+                       std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
+{
+    boost::asio::async_write(
+        this_thread->mutable_socket(), boost::asio::buffer(io_msg->data()),
+        // capture io_msg in callback to ensure write buffer exists until async_write is done
+        [this_thread, io_msg](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+            if (!ec && bytes_transferred > 0)
+            {
+                this_thread->handle_write_success(bytes_transferred);
+            }
+            else
+            {
+                this_thread->handle_write_error(ec);
+            }
+        });
+}
 
 } // namespace detail
 } // namespace io

@@ -108,9 +108,13 @@ class SerialThread
   protected:
     /// \brief Access the (mutable) serial_port object
     boost::asio::serial_port& mutable_serial_port() { return this->mutable_socket(); }
-    virtual void async_write(const std::string& bytes) override;
 
   private:
+    void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) override
+    {
+        basic_async_write(this, io_msg);
+    }
+
     void open_socket() override;
 };
 } // namespace detail
@@ -151,28 +155,6 @@ void goby::middleware::io::detail::SerialThread<line_in_group, line_out_group, p
         serial_port_base::parity(serial_port_base::parity::none));
     this->mutable_serial_port().set_option(
         serial_port_base::stop_bits(serial_port_base::stop_bits::one));
-}
-
-template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
-void goby::middleware::io::detail::SerialThread<line_in_group, line_out_group, publish_layer,
-                                                subscribe_layer>::async_write(const std::string&
-                                                                                  bytes)
-{
-    boost::asio::async_write(
-        this->mutable_serial_port(), boost::asio::buffer(bytes),
-        [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
-            if (!ec && bytes_transferred > 0)
-            {
-                this->handle_write_success(bytes_transferred);
-            }
-            else
-            {
-                this->handle_write_error(ec);
-            }
-        });
 }
 
 #endif
