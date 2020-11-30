@@ -9,11 +9,11 @@
 
 #include "popoto_driver.h"
 #include <iostream>
- #include <nlohmann/json.hpp>
 
 #include "driver_exception.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
+#include "goby/util/thirdparty/nlohmann/json.hpp"
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -110,7 +110,9 @@ void goby::acomms::popotoDriver::handle_initiate_transmission(
             next_frame_ += msg.frame_size();
 
             // Bitrates with Popoto modem: map these onto 0-5
-            const char *setRateSpeed[] = {"setRate80\n", "setRate640\n", "setRate1280\n", "setRate2560\n", "setRate5120\n", "setRate10240\n"};
+
+            // Rates not implemented?
+            // const char *setRateSpeed[] = {"setRate80\n", "setRate640\n", "setRate1280\n", "setRate2560\n", "setRate5120\n", "setRate10240\n"};
             if (msg.frame(0).size() > 0) 
             {
                 glog.is(DEBUG1) && glog << group(glog_out_group()) << "We were asked to transmit from "
@@ -157,6 +159,12 @@ void goby::acomms::popotoDriver::handle_initiate_transmission(
                 break;
             }
         }
+
+        default:
+            glog.is(WARN) && glog << group(glog_out_group()) << "Unsupported transmission type: "
+                                  << protobuf::ModemTransmission::TransmissionType_Name(msg.type())
+                                  << std::endl;
+            break;
     }
 }
 //--------------------------------------- send_wake ------------------------------------------------------------

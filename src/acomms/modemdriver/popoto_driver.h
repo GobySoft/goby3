@@ -12,8 +12,6 @@
 
 #include "goby/time.h"
 
-#include <comma/application/command_line_options.h>
-#include <comma/csv/format.h>
 #include <iostream>
 #include <string>
 #include "goby/acomms/modemdriver/driver_base.h"

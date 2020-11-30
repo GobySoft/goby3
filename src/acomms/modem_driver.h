@@ -51,7 +51,6 @@
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"
 
 // Popoto Driver
-#if defined (BUILD_POPOTO )
-    #include "goby/acomms/modemdriver/popoto_driver.h"
-#endif
+#include "goby/acomms/modemdriver/popoto_driver.h"
+
 #endif

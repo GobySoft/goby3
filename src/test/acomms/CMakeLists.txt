@@ -24,3 +24,5 @@ add_subdirectory(ipcodecs)
 add_subdirectory(udp_multicast_driver1)
 
 add_subdirectory(dynamic_buffer1)
+
+add_subdirectory(popoto_driver1)
