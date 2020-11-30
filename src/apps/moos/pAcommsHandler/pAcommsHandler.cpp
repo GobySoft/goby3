@@ -604,7 +604,7 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
                 driver.reset(new goby::acomms::UDPDriver);
                 break;
             case goby::acomms::protobuf::DRIVER_POPOTO:
-                driver.reset(new goby::acomms::popotoDriver);
+                driver.reset(new goby::acomms::PopotoDriver);
                 break;
             case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
                 driver.reset(new goby::acomms::UDPMulticastDriver);

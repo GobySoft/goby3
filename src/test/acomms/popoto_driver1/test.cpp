@@ -55,8 +55,8 @@ int main(int argc, char* argv[])
 
     goby::glog.set_name(argv[0]);
 
-    driver1.reset(new goby::acomms::popotoDriver);
-    driver2.reset(new goby::acomms::popotoDriver);
+    driver1.reset(new goby::acomms::PopotoDriver);
+    driver2.reset(new goby::acomms::PopotoDriver);
 
     goby::acomms::connect(&driver1->signal_raw_incoming,
                           std::bind(&handle_raw_incoming, 1, std::placeholders::_1));

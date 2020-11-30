@@ -7,8 +7,8 @@
 
 /* Copyright (c) 2020 mission systems pty ltd */
 
-#ifndef popotoDriver2020
-#define popotoDriver2020
+#ifndef PopotoDriver2020
+#define PopotoDriver2020
 
 #include "goby/time.h"
 
@@ -31,11 +31,11 @@ namespace goby
 {
 namespace acomms
 {
-class popotoDriver : public ModemDriverBase
+class PopotoDriver : public ModemDriverBase
 {
   public:
-    popotoDriver();
-    ~popotoDriver();
+    PopotoDriver();
+    ~PopotoDriver();
 
     std::uint32_t next_frame_{0};
 

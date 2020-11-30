@@ -89,7 +89,7 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
                 break;
 
             case goby::acomms::protobuf::DRIVER_POPOTO:
-                driver_.reset(new goby::acomms::popotoDriver);
+                driver_.reset(new goby::acomms::PopotoDriver);
                 break;
 
             case goby::acomms::protobuf::DRIVER_NONE:
