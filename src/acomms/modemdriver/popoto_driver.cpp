@@ -38,7 +38,6 @@
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
-#include "goby/util/thirdparty/nlohmann/json.hpp"
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -300,6 +299,8 @@ void goby::acomms::PopotoDriver::do_work()
         {
             // Remove VT100 sequences (if they exist) and popoto prompt
             in = StripString(in, "Popoto->");
+            constexpr const char *VT100_BOLD_ON = "\x1b[1m", *VT100_BOLD_OFF = "\x1b[0m";
+
             in = StripString(in, VT100_BOLD_ON);
             in = StripString(in, VT100_BOLD_OFF);
 
@@ -322,6 +323,9 @@ void goby::acomms::PopotoDriver::do_work()
                         protobuf::ModemTransmission ack;
                         ack.set_src(driver_cfg_.modem_id());
                         ack.set_dest(modem_msg_.src());
+
+                        // make the acks at rate 0 for highest reliability
+                        ack.set_rate(0);
 
                         ack.set_type(goby::acomms::protobuf::ModemTransmission::ACK);
                         ack.add_acked_frame(0);
@@ -352,7 +356,7 @@ void goby::acomms::PopotoDriver::signal_and_write(const std::string& raw)
 }
 
 // Converts the dccl binary to the required comma seperated bytes
-std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes)
+std::string goby::acomms::PopotoDriver::binary_to_json(const std::uint8_t* buf, size_t num_bytes)
 {
     std::string output;
 
@@ -369,7 +373,7 @@ std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes)
 }
 
 // Convert csv values back to dccl binary for the dccl codec to decode
-std::string json_to_binary(const json& element)
+std::string goby::acomms::PopotoDriver::json_to_binary(const json& element)
 {
     std::string output;
 
@@ -480,11 +484,11 @@ void goby::acomms::PopotoDriver::ProcessJSON(std::string message,
     }
     else if (label == "Info")
     {
-        glog.is(DEBUG1) && glog << "Info" << j["Info"] << std::endl;
+        glog.is(DEBUG1) && glog << "Info: " << j["Info"] << std::endl;
     }
 }
 // Remove popoto trash from the incoming serial string
-std::string StripString(std::string in, std::string p)
+std::string goby::acomms::PopotoDriver::StripString(std::string in, std::string p)
 {
     std::string out = in;
     std::string::size_type n = p.length();

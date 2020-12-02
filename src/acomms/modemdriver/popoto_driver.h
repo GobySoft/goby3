@@ -34,19 +34,13 @@
 #ifndef PopotoDriver2020
 #define PopotoDriver2020
 
-#include "goby/time.h"
-
-#include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/acomms/protobuf/popoto_driver.pb.h"
 #include <iostream>
 #include <string>
 
-#define VT100_BOLD_ON "\x1b[1m"
-#define VT100_BOLD_OFF "\x1b[0m"
-#define DEFAULT_BAUD 115200
-
-#define DEFAULT_MTU_BYTES 1024
-#define POPOTO_BROADCAST_ID 255
+#include "goby/acomms/modemdriver/driver_base.h"
+#include "goby/acomms/protobuf/popoto_driver.pb.h"
+#include "goby/time.h"
+#include "goby/util/thirdparty/nlohmann/json.hpp"
 
 namespace goby
 {
@@ -84,10 +78,18 @@ class PopotoDriver : public ModemDriverBase
         return driver_cfg_.GetExtension(popoto::protobuf::config);
     }
 
+    static std::string json_to_binary(const nlohmann::json& element);
+    static std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes);
+    static std::string StripString(std::string in, std::string p);
+
   private:
     protobuf::DriverConfig driver_cfg_;
     int sender_id_{0};
     protobuf::ModemTransmission modem_msg_;
+
+    static constexpr int DEFAULT_BAUD{115200};
+    static constexpr int DEFAULT_MTU_BYTES{1024};
+    static constexpr int POPOTO_BROADCAST_ID{255};
 
     enum GobyHeaderBits
     {
@@ -97,8 +99,5 @@ class PopotoDriver : public ModemDriverBase
 };
 } // namespace acomms
 } // namespace goby
-
-std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes);
-std::string StripString(std::string in, std::string p);
 
 #endif
