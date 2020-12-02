@@ -22,7 +22,44 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-// tests functionality of the UDPDriver
+// tests functionality of the PopotoDriver. Tested with:
+
+// Using Popoto Virtual Ocean (pvo) Popoto Modem Version 2.6.3  223
+// cd popoto-pvo/test/pvo
+// ./pvo.py GobyTwoChan.cfg
+// socat pty,link=/tmp/ttyvmodem0,raw,echo=0 exec:"python ../scripts/pshell \'connect localhost 17500\' \'startrx\'",pty
+// socat pty,link=/tmp/ttyvmodem1,raw,echo=0 exec:"python ../scripts/pshell \'connect localhost 18500\' \'startrx\'",pty
+// goby_test_popoto_driver1
+
+// diff -u TwoChan.cfg GobyTwoChan.cfg
+// --- TwoChan.cfg	2020-11-17 12:35:59.000000000 -0500
+// +++ GobyTwoChan.cfg	2020-12-02 12:14:18.857584002 -0500
+// @@ -22,7 +22,7 @@
+//              "X":0,
+//              "fgcolor":"white",
+//              "txdBSpl":"180",
+// -            "useShell":"TRUE"
+// +            "useShell":"false"
+//          },
+//          {
+//              "shell":"python ../scripts/pshell 'connect {} {}' 'startrx'",
+// @@ -34,12 +34,12 @@
+//              "bgcolor":"black",
+//              "log":"FALSE",
+//              "Y":0,
+// -            "X":500,
+// +            "X":100,
+//              "fgcolor":"white",
+//              "txdBSpl":"180",
+// -            "useShell":"TRUE"
+// +            "useShell":"false"
+//          }
+
+//      ]
+
+// -}
+// \ No newline at end of file
+// +}
 
 #include "../driver_tester/driver_tester.h"
 #include "goby/acomms/modemdriver/popoto_driver.h"
