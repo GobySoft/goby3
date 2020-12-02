@@ -164,9 +164,9 @@ void goby::test::acomms::DriverTester::handle_data_request1(protobuf::ModemTrans
         {
             static bool entered = false;
             msg->add_frame(test_str1_);
-            if (msg->max_num_frames() >= 2)
+            if (!msg->has_max_num_frames() || msg->max_num_frames() >= 2)
                 msg->add_frame(test_str2_);
-            if (msg->max_num_frames() >= 3)
+            if (!msg->has_max_num_frames() || msg->max_num_frames() >= 3)
                 msg->add_frame(test_str3_);
 
             if (!entered)
