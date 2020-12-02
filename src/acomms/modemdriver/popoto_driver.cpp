@@ -35,6 +35,7 @@
 #include <iostream>
 
 #include "driver_exception.h"
+#include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
 #include "goby/util/thirdparty/nlohmann/json.hpp"
@@ -117,31 +118,26 @@ void goby::acomms::PopotoDriver::handle_initiate_transmission(
     {
         case protobuf::ModemTransmission::DATA:
         {
-            //msg.set_max_frame_bytes(1024); // Might not need to set this
+            msg.set_max_num_frames(1);
+
+            if (!msg.has_max_frame_bytes())
+                msg.set_max_frame_bytes(DEFAULT_MTU_BYTES);
+
             ModemDriverBase::signal_modify_transmission(&msg);
 
-            // no data given to us, let's ask for some
-            if (!msg.has_frame_start())
-                msg.set_frame_start(next_frame_);
+            msg.set_frame_start(0);
 
             if (msg.frame_size() == 0)
                 ModemDriverBase::signal_data_request(&msg);
 
-            next_frame_ += msg.frame_size();
-
-            // Bitrates with Popoto modem: map these onto 0-5
-
-            // Rates not implemented?
-            // const char *setRateSpeed[] = {"setRate80\n", "setRate640\n", "setRate1280\n", "setRate2560\n", "setRate5120\n", "setRate10240\n"};
-            if (msg.frame(0).size() > 0)
+            if (msg.frame_size() > 0 && msg.frame(0).size() > 0)
             {
                 glog.is(DEBUG1) && glog << group(glog_out_group())
                                         << "We were asked to transmit from " << msg.src() << " to "
                                         << msg.dest() << " at bitrate code " << msg.rate()
                                         << std::endl;
-                glog.is(DEBUG1) && glog << group(glog_out_group())
-                                        << "Sending these data now: " << msg.frame(0) << std::endl;
-
+                glog.is(DEBUG1) && glog << group(glog_out_group()) << "Sending these data now: "
+                                        << goby::util::hex_encode(msg.frame(0)) << std::endl;
                 send(msg);
             }
             break;
@@ -229,37 +225,44 @@ void goby::acomms::PopotoDriver::send_ping(protobuf::ModemTransmission& msg)
 // ------------------------------------- Send -------------------------------------------------
 void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
 {
-    int dest = msg.dest();
+    // Set bitrate
+    // Bitrates with Popoto modem: map these onto 0-5
+    std::vector<std::string> rate_to_speed{"setRate80\n",   "setRate640\n",  "setRate1280\n",
+                                           "setRate2560\n", "setRate5120\n", "setRate10240\n"};
+    int min_rate = 0, max_rate = rate_to_speed.size() - 1;
+    int rate = msg.rate();
 
+    if (rate < min_rate || rate > max_rate)
+    {
+        glog.is(WARN) && glog << "Invalid rate, must be between " << min_rate << " and " << max_rate
+                              << ". Using rate: " << min_rate << std::endl;
+        rate = min_rate;
+    }
+    signal_and_write(rate_to_speed[rate]);
+
+    int dest = (msg.dest() == goby::acomms::BROADCAST_ID) ? POPOTO_BROADCAST_ID : msg.dest();
     std::stringstream raw1;
     raw1 << "setvaluei RemoteID " << dest << "\n";
     signal_and_write(raw1.str());
 
-    std::stringstream out_msg;
-    int d = msg.frame_start();
-    out_msg << "ACK: " << d;
-    protobuf::ModemRaw raw_out;
-    raw_out.set_raw(out_msg.str());
-
-    // Pass the binary packet to comma to convert it to csv
-    char buf[1024];
-    std::string ss;
-    msg.clear_slot_seconds();
-    msg.clear_time();
-    msg.clear_slot_index();
-
-    if (msg.type() != protobuf::ModemTransmission::ACK)
+    auto goby_header = CreateGobyHeader(msg);
+    std::string jsonStr = binary_to_json(&goby_header, 1);
+    if (msg.type() == protobuf::ModemTransmission::DATA)
     {
-        msg.clear_type();
-        msg.clear_ack_requested();
+        std::vector<std::uint8_t> bytes(msg.frame(0).begin(), msg.frame(0).end());
+        jsonStr += "," + binary_to_json(&bytes[0], bytes.size());
+    }
+    else if (msg.type() == protobuf::ModemTransmission::ACK)
+    {
+        // use empty data packet to indicate ACK
+        // TODO - get Popoto to provide ACK packet type in header
+    }
+    else
+    {
+        throw(goby::Exception(std::string("Unsupported type provided to send: ") +
+                              protobuf::ModemTransmission::TransmissionType_Name(msg.type())));
     }
 
-    msg.SerializeToString(&ss);
-    std::memcpy(buf, ss.data(), ss.size());
-
-    std::string jsonStr;
-    size_t buf_size = ss.size();
-    jsonStr = binary_to_json(buf, buf_size);
     // To send a bin msg it needs to be in 8 bit CSV values
     std::stringstream raw;
     raw << "transmitJSON {\"Payload\":{\"Data\":[" << jsonStr << "]}}"
@@ -295,51 +298,38 @@ void goby::acomms::PopotoDriver::do_work()
     {
         try
         {
-            // let others know about the raw feed. Can remove this if not needed
-            protobuf::ModemRaw raw;
-            raw.set_raw(in);
-            ModemDriverBase::signal_raw_incoming(raw);
-
             // Remove VT100 sequences (if they exist) and popoto prompt
-            glog.is(DEBUG1) && glog << "This is the received string: " << in << std::endl;
             in = StripString(in, "Popoto->");
             in = StripString(in, VT100_BOLD_ON);
             in = StripString(in, VT100_BOLD_OFF);
 
-            std::string binMsg;
+            protobuf::ModemRaw raw;
+            raw.set_raw(in);
+            ModemDriverBase::signal_raw_incoming(raw);
+
             if (json::accept(in))
             {
-                binMsg = ProcessJSON(in);
-                protobuf::ModemTransmission msg;
-                if (!binMsg.empty())
+                ProcessJSON(in, modem_msg_);
+                if (modem_msg_.has_type())
                 {
-                    msg.ParseFromString(binMsg); //why don't the other drivers use this?
-                    glog.is(DEBUG1) && glog << group(glog_in_group()) << in << std::endl;
-                    glog.is(DEBUG1) && glog << group(glog_in_group()) << "received: " << msg
+                    glog.is(DEBUG1) && glog << group(glog_in_group()) << "received: " << modem_msg_
                                             << std::endl;
 
-                    if (msg.type() == protobuf::ModemTransmission::ACK)
-                    {
-                        std::stringstream out_msg;
-                        int d = msg.acked_frame(0);
-                        out_msg << "GOT ACK FROM FRAME " << d;
-                        msg.set_src(sender_id_);
-                        msg.set_dest(driver_cfg_.modem_id());
-                        protobuf::ModemRaw raw_out;
-                        raw_out.set_raw(out_msg.str());
-                    }
-                    else
+                    if (modem_msg_.type() == protobuf::ModemTransmission::DATA &&
+                        modem_msg_.ack_requested() && modem_msg_.dest() == driver_cfg_.modem_id())
                     {
                         // make any acks
                         protobuf::ModemTransmission ack;
+                        ack.set_src(driver_cfg_.modem_id());
+                        ack.set_dest(modem_msg_.src());
+
                         ack.set_type(goby::acomms::protobuf::ModemTransmission::ACK);
-                        for (int i = msg.frame_start(), n = msg.frame_size() + msg.frame_start();
-                             i < n; ++i)
-                            ack.add_acked_frame(i);
+                        ack.add_acked_frame(0);
 
                         send(ack); // reply with the ack msg
                     }
-                    ModemDriverBase::signal_receive(msg);
+                    ModemDriverBase::signal_receive(modem_msg_);
+                    modem_msg_.Clear();
                 }
             }
         }
@@ -362,7 +352,7 @@ void goby::acomms::PopotoDriver::signal_and_write(const std::string& raw)
 }
 
 // Converts the dccl binary to the required comma seperated bytes
-std::string binary_to_json(const char* buf, size_t num_bytes)
+std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes)
 {
     std::string output;
 
@@ -389,14 +379,48 @@ std::string json_to_binary(const json& element)
 }
 
 // Decode Popoto header
-void goby::acomms::PopotoDriver::DecodeHeader(std::vector<uint8_t> data)
+void goby::acomms::PopotoDriver::DecodeHeader(std::vector<uint8_t> data,
+                                              protobuf::ModemTransmission& modem_msg)
 {
     std::string type;
+
+    // Popoto header types
+    enum PopotoMessageType
+    {
+        DATA_MESSAGE = 0,
+        RANGE_RESPONSE = 128,
+        RANGE_REQUEST = 129,
+        STATUS = 130
+    };
 
     // Process binary payload data
     switch (data[0])
     {
-        case DATA_MESSAGE: type = "Data message"; break;
+        case DATA_MESSAGE:
+            type = "Data message";
+            {
+                std::uint16_t payload_info{0};
+                payload_info |= data[4] & 0xFF;
+                payload_info |= (data[5] & 0xFF) << 8;
+
+                // lowest 10 bits
+                std::uint16_t length = payload_info & 0x3FF;
+                // bit 10
+                // bool streaming = payload_info & 0x400;
+                // bits 11-15
+                std::uint16_t modulation = (payload_info & 0xF800) >> 11;
+
+                // use empty data packet to indicate ACK
+                // TODO - get Popoto to provide ACK packet type in header
+                if (length == 0)
+                    modem_msg.set_type(protobuf::ModemTransmission::ACK);
+
+                std::vector<int> modulation_to_rate{0, 4, 3, 2, 1, 5};
+                if (modulation < modulation_to_rate.size())
+                    modem_msg.set_rate(modulation_to_rate[modulation]);
+
+                break;
+            }
 
         case RANGE_RESPONSE: type = "Range response"; break;
 
@@ -404,19 +428,22 @@ void goby::acomms::PopotoDriver::DecodeHeader(std::vector<uint8_t> data)
 
         case STATUS: type = "Status message"; break;
 
-        default: glog.is(DEBUG1) && glog << "Unknown message type" << std::endl; break;
+        default: glog.is(DEBUG1) && glog << "Unknown message type: " << data[0] << std::endl; break;
     }
 
     int sender = data[1];
-    std::string receiver = std::to_string(data[2]);
-    std::string tx_power = std::to_string(data[3]);
+    modem_msg.set_src(sender == POPOTO_BROADCAST_ID ? goby::acomms::BROADCAST_ID : sender);
+    int receiver = data[2];
+    modem_msg.set_dest(receiver == POPOTO_BROADCAST_ID ? goby::acomms::BROADCAST_ID : receiver);
+    int tx_power = data[3];
     sender_id_ = sender;
     glog.is(DEBUG1) && glog << type << " from " << sender << " to " << receiver
                             << " at tx power: " << tx_power << std::endl;
 }
 
 // The only msg that is important for the dccl driver is the header and data. We will just print everything else to terminal for the moment
-std::string goby::acomms::PopotoDriver::ProcessJSON(std::string message)
+void goby::acomms::PopotoDriver::ProcessJSON(std::string message,
+                                             protobuf::ModemTransmission& modem_msg)
 {
     json j = json::parse(message);
     json::iterator it = j.begin();
@@ -428,12 +455,16 @@ std::string goby::acomms::PopotoDriver::ProcessJSON(std::string message)
 
     if (label == "Header")
     {
-        DecodeHeader(j["Header"]);
+        DecodeHeader(j["Header"], modem_msg);
     }
     else if (label == "Data")
     {
-        str = json_to_binary(j["Data"]);
-        return str;
+        std::string data = json_to_binary(j["Data"]);
+        DecodeGobyHeader(data[0], modem_msg);
+        if (modem_msg.type() == protobuf::ModemTransmission::DATA)
+            *modem_msg.add_frame() = data.substr(1);
+        else if (modem_msg.type() == protobuf::ModemTransmission::ACK)
+            modem_msg.add_acked_frame(0);
     }
     else if (label == "Alert")
     {
@@ -451,12 +482,6 @@ std::string goby::acomms::PopotoDriver::ProcessJSON(std::string message)
     {
         glog.is(DEBUG1) && glog << "Info" << j["Info"] << std::endl;
     }
-    else
-    {
-        return "";
-    }
-
-    return str;
 }
 // Remove popoto trash from the incoming serial string
 std::string StripString(std::string in, std::string p)
@@ -467,4 +492,34 @@ std::string StripString(std::string in, std::string p)
         out.erase(i, n);
 
     return out;
+}
+
+// one byte header for information we need to send that isn't contained in the Popoto header
+std::uint8_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemTransmission& m)
+{
+    std::uint8_t header{0};
+    if (m.type() == protobuf::ModemTransmission::DATA)
+    {
+        header |= 0 << GOBY_HEADER_TYPE;
+        header |= (m.ack_requested() ? 1 : 0) << GOBY_HEADER_ACK_REQUEST;
+    }
+    else if (m.type() == protobuf::ModemTransmission::ACK)
+    {
+        header |= 1 << GOBY_HEADER_TYPE;
+    }
+    else
+    {
+        throw(goby::Exception(std::string("Unsupported type provided to CreateGobyHeader: ") +
+                              protobuf::ModemTransmission::TransmissionType_Name(m.type())));
+    }
+    return header;
+}
+
+void goby::acomms::PopotoDriver::DecodeGobyHeader(std::uint8_t header,
+                                                  protobuf::ModemTransmission& m)
+{
+    m.set_type((header & (1 << GOBY_HEADER_TYPE)) ? protobuf::ModemTransmission::ACK
+                                                  : protobuf::ModemTransmission::DATA);
+    if (m.type() == protobuf::ModemTransmission::DATA)
+        m.set_ack_requested(header & (1 << GOBY_HEADER_ACK_REQUEST));
 }

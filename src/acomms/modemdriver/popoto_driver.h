@@ -36,20 +36,17 @@
 
 #include "goby/time.h"
 
-#include <iostream>
-#include <string>
 #include "goby/acomms/modemdriver/driver_base.h"
 #include "goby/acomms/protobuf/popoto_driver.pb.h"
+#include <iostream>
+#include <string>
 
-#define VT100_BOLD_ON  "\x1b[1m"
+#define VT100_BOLD_ON "\x1b[1m"
 #define VT100_BOLD_OFF "\x1b[0m"
 #define DEFAULT_BAUD 115200
 
-// Popoto header types
-#define DATA_MESSAGE	0
-#define RANGE_RESPONSE	128
-#define RANGE_REQUEST	129	
-#define STATUS			130
+#define DEFAULT_MTU_BYTES 1024
+#define POPOTO_BROADCAST_ID 255
 
 namespace goby
 {
@@ -61,41 +58,47 @@ class PopotoDriver : public ModemDriverBase
     PopotoDriver();
     ~PopotoDriver();
 
-    std::uint32_t next_frame_{0};
-
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;
     void do_work() override;
     void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
-    void send(protobuf::ModemTransmission& msg); 
-    void play_file(protobuf::ModemTransmission& msg); 
-    void send_ping(protobuf::ModemTransmission& msg); 
-    void send_wake(void); 
-    void send_range_request(int dest); 
+    void send(protobuf::ModemTransmission& msg);
+    void play_file(protobuf::ModemTransmission& msg);
+    void send_ping(protobuf::ModemTransmission& msg);
+    void send_wake(void);
+    void send_range_request(int dest);
     void popoto_sleep(void);
 
   private:
     void parse_in(const std::string& in, std::map<std::string, std::string>* out);
     void signal_and_write(const std::string& raw);
-    void DecodeHeader(std::vector<uint8_t> data);
-    std::string ProcessJSON(std::string message);
-    
+
+    std::uint8_t CreateGobyHeader(const protobuf::ModemTransmission& m);
+
+    void DecodeHeader(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
+    void DecodeGobyHeader(std::uint8_t header, protobuf::ModemTransmission& m);
+    void ProcessJSON(std::string message, protobuf::ModemTransmission& m);
+
     const popoto::protobuf::Config& popoto_driver_cfg() const
     {
         return driver_cfg_.GetExtension(popoto::protobuf::config);
     }
-    
 
   private:
     protobuf::DriverConfig driver_cfg_;
-    int sender_id_;
-    std::map<int, int> rate_to_bytes_;
+    int sender_id_{0};
+    protobuf::ModemTransmission modem_msg_;
+
+    enum GobyHeaderBits
+    {
+        GOBY_HEADER_TYPE = 0,       // 0 == Data, 1 == Ack
+        GOBY_HEADER_ACK_REQUEST = 1 // 0 == no ack requested, 1 == ack requested
+    };
 };
 } // namespace acomms
 } // namespace goby
 
-std::string binary_to_json( const char* buf, size_t num_bytes );
-std::string ProcessJSON(std::string message);
+std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes);
 std::string StripString(std::string in, std::string p);
 
 #endif

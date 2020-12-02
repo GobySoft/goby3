@@ -163,8 +163,12 @@ void goby::test::acomms::DriverTester::handle_data_request1(protobuf::ModemTrans
         case 5:
         {
             static bool entered = false;
-            msg->add_frame(test_str2_);
-            msg->add_frame(test_str3_);
+            msg->add_frame(test_str1_);
+            if (msg->max_num_frames() >= 2)
+                msg->add_frame(test_str2_);
+            if (msg->max_num_frames() >= 3)
+                msg->add_frame(test_str3_);
+
             if (!entered)
             {
                 ++check_count_;
@@ -276,8 +280,20 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
             assert(msg.type() == protobuf::ModemTransmission::ACK);
             assert(msg.src() == 2);
             assert(msg.dest() == 1);
-            assert(msg.acked_frame_size() == 3 && msg.acked_frame(1) == msg.acked_frame(0) + 1 &&
-                   msg.acked_frame(2) == msg.acked_frame(0) + 2);
+
+            switch (driver_type_)
+            {
+                default:
+                    assert(msg.acked_frame_size() == 3 &&
+                           msg.acked_frame(1) == msg.acked_frame(0) + 1 &&
+                           msg.acked_frame(2) == msg.acked_frame(0) + 2);
+                    break;
+                    // single frame only
+                case goby::acomms::protobuf::DRIVER_POPOTO:
+                    assert(msg.acked_frame_size() == 1);
+                    break;
+            }
+
             ++check_count_;
         }
         break;
@@ -392,10 +408,22 @@ void goby::test::acomms::DriverTester::handle_data_receive2(const protobuf::Mode
             {
                 assert(msg.src() == 1);
                 assert(msg.dest() == 2);
-                assert(msg.frame_size() == 3);
-                assert(msg.frame(0) == test_str1_);
-                assert(msg.frame(1) == test_str2_);
-                assert(msg.frame(2) == test_str3_);
+                switch (driver_type_)
+                {
+                    default:
+                        assert(msg.frame_size() == 3);
+                        assert(msg.frame(0) == test_str1_);
+                        assert(msg.frame(1) == test_str2_);
+                        assert(msg.frame(2) == test_str3_);
+                        break;
+
+                        // single frame only
+                    case goby::acomms::protobuf::DRIVER_POPOTO:
+                        assert(msg.frame_size() == 1);
+                        assert(msg.frame(0) == test_str1_);
+                        break;
+                }
+
                 ++check_count_;
             }
             break;
@@ -567,7 +595,6 @@ void goby::test::acomms::DriverTester::test5()
     transmit.set_dest(2);
     transmit.set_rate(2);
 
-    transmit.add_frame(test_str1_);
     transmit.set_ack_requested(true);
 
     driver1_->handle_initiate_transmission(transmit);
