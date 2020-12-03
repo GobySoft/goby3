@@ -10,21 +10,13 @@ package goby.acomms.popoto.protobuf;
 
 message Config
 {
-    optional int32 MODEM_ID = 3 [
-        default = 0,
-        (dccl.field).min = 0,
-        (dccl.field).max = 254,
-        (goby.field).description =
-            "Local Modem ID can be 0-254, 255 is reserved as a broadcast ID"
-    ];
-
-    optional int32 start_timeout = 4 [
+    optional int32 start_timeout = 1 [
         default = 30,
         (goby.field).description =
             "Number of seconds to initialize the modem before giving up"
     ];
 
-    optional int32 PAYLOAD_MODE = 5 [
+    optional int32 payload_mode = 2 [
         default = 0,
         (dccl.field).min = 0,
         (dccl.field).max = 5,
@@ -32,16 +24,14 @@ message Config
             "The modulation rate of the payload portion of the waveform, 0-5"
     ];
 
-    optional int32 MODEM_POWER = 6 [
+    optional int32 modem_power = 3 [
         default = 1,
         (dccl.field).min = 1,
         (dccl.field).max = 100,
-        (goby.field).description =
-            "Modem Tx strength 1-100W"
+        (goby.field).description = "Modem Tx strength 1-100W"
     ];
-    
 }
-// added 1442 in modem driver 
+// added 1442 in modem driver
 extend goby.acomms.protobuf.DriverConfig
 {
     optional Config config = 1442;
@@ -51,12 +41,11 @@ enum TransmissionType
 {
     BASE_TYPE = 0;
     POPOTO_TWO_WAY_PING = 1;  // modem 1 interrogates modem 2; modem 2 replies
-                               // and modem 1 computes one way travel time
-    POPOTO_PLAY_FILE = 2;  
-    POPOTO_TWO_WAY_RANGE = 3; 
+                              // and modem 1 computes one way travel time
+    POPOTO_PLAY_FILE = 2;
+    POPOTO_TWO_WAY_RANGE = 3;
     POPOTO_DEEP_SLEEP = 4;
-    POPOTO_WAKE = 5; 
-    
+    POPOTO_WAKE = 5;
 }
 message RangingReply
 {
@@ -70,13 +59,12 @@ message Transmission
             "Type of transmission if base `type` == DRIVER_SPECIFIC",
         default = BASE_TYPE
     ];
-    optional RangingReply ranging_reply = 3;    
-    optional string file_location  = 4;
+    optional RangingReply ranging_reply = 3;
+    optional string file_location = 4;
     optional double transmit_power = 5;
 }
 
 extend goby.acomms.protobuf.ModemTransmission
 {
-    optional Transmission transmission = 1402;
-
+    optional Transmission transmission = 1441;
 }

@@ -192,12 +192,6 @@ include(util/src.cmake)
 include(time/src.cmake)
 include(middleware/src.cmake)
 
-option(BUILD_POPOTO OFF)
-
-if (BUILD_POPOTO)
-  add_definitions(-DBUILD_POPOTO=${BUILD_POPOTO})
-endif()
-
 add_library(goby
   ${BASE_PROTO_SRCS} ${BASE_PROTO_HDRS}
   ${ACOMMS_SRC}
@@ -206,27 +200,13 @@ add_library(goby
   ${MIDDLEWARE_SRC}
   )
 
-if (BUILD_POPOTO)
-  find_package(nlohmann_json 3.5.0 CONFIG REQUIRED)
-
-  target_link_libraries(goby
-    dccl
-    dccl_arithmetic
-    nlohmann_json::nlohmann_json
-    ${Boost_LIBRARIES}
-    ${PROTOBUF_LIBRARY}
-    ${PROJ_LIBRARY}
-    )
-
-else ()
-  target_link_libraries(goby
-    dccl
-    dccl_arithmetic
-    ${Boost_LIBRARIES}
-    ${PROTOBUF_LIBRARY}
-    ${PROJ_LIBRARY}
-    )
-endif()
+target_link_libraries(goby
+  dccl
+  dccl_arithmetic
+  ${Boost_LIBRARIES}
+  ${PROTOBUF_LIBRARY}
+  ${PROJ_LIBRARY}
+  )
 
 if(enable_gmp)
   target_link_libraries(goby ${GMP_LIBRARIES})
