@@ -11,5 +11,8 @@ message GobyDaemonConfig
     optional goby.middleware.protobuf.AppConfig app = 1;
     optional int32 router_threads = 2 [default = 10];
     optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 3;
-    optional goby.middleware.intervehicle.protobuf.PortalConfig intervehicle = 4;
+    optional goby.middleware.intervehicle.protobuf.PortalConfig intervehicle =
+        4;
+
+    optional goby.zeromq.protobuf.InterProcessManagerHold hold = 10;
 }

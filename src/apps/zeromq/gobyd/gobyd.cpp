@@ -49,6 +49,14 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
   private:
     void run() override;
 
+    goby::zeromq::Manager make_manager()
+    {
+        return app_cfg().has_hold()
+                   ? goby::zeromq::Manager(*manager_context_, app_cfg().interprocess(), router_,
+                                           app_cfg().hold())
+                   : goby::zeromq::Manager(*manager_context_, app_cfg().interprocess(), router_);
+    }
+
   private:
     // for handling ZMQ Interprocess Communications
     std::unique_ptr<zmq::context_t> router_context_;
@@ -99,7 +107,7 @@ goby::apps::zeromq::Daemon::Daemon()
     : router_context_(new zmq::context_t(app_cfg().router_threads())),
       manager_context_(new zmq::context_t(1)),
       router_(*router_context_, app_cfg().interprocess()),
-      manager_(*manager_context_, app_cfg().interprocess(), router_),
+      manager_(make_manager()),
       router_thread_(new std::thread([&] { router_.run(); })),
       manager_thread_(new std::thread([&] { manager_.run(); })),
       interprocess_(app_cfg().interprocess())

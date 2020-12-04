@@ -55,15 +55,21 @@ class InterProcessPortalMainThread
 {
   public:
     InterProcessPortalMainThread(zmq::context_t& context);
-    bool ready() { return publish_socket_configured_; }
+    bool publish_ready() { return !hold_; }
+    bool subscribe_ready() { return have_pubsub_sockets_; }
 
     bool recv(protobuf::InprocControl* control_msg,
               zmq_recv_flags_type flags = zmq_recv_flags_type());
     void set_publish_cfg(const protobuf::Socket& cfg);
+
+    void set_hold_state(bool hold);
+
     void publish(const std::string& identifier, const char* bytes, int size);
     void subscribe(const std::string& identifier);
     void unsubscribe(const std::string& identifier);
     void reader_shutdown();
+
+    std::deque<protobuf::InprocControl>& control_buffer() { return control_buffer_; }
 
   private:
     void send_control_msg(const protobuf::InprocControl& control);
@@ -71,9 +77,14 @@ class InterProcessPortalMainThread
   private:
     zmq::socket_t control_socket_;
     zmq::socket_t publish_socket_;
-    bool publish_socket_configured_{false};
+    bool hold_{true};
+    bool have_pubsub_sockets_{false};
+
     std::deque<std::pair<std::string, std::vector<char>>>
-        publish_queue_; //used before publish_socket_configured_ == true
+        publish_queue_; //used before hold == false
+
+    // buffer messages while waiting for (un)subscribe ack
+    std::deque<protobuf::InprocControl> control_buffer_;
 };
 
 // run in a separate thread to allow zmq_.poll() to block without interrupting the main thread
@@ -111,6 +122,7 @@ class InterProcessPortalReadThread
         NUMBER_SOCKETS = 3
     };
     bool have_pubsub_sockets_{false};
+    bool hold_{true};
 };
 
 template <typename InnerTransporter,
@@ -163,7 +175,7 @@ class InterProcessPortalImplementation
         // start zmq read thread
         zmq_thread_.reset(new std::thread([this]() { zmq_read_thread_.run(); }));
 
-        while (!zmq_main_.ready())
+        while (!zmq_main_.subscribe_ready())
         {
             protobuf::InprocControl control_msg;
             if (zmq_main_.recv(&control_msg))
@@ -175,6 +187,9 @@ class InterProcessPortalImplementation
                         break;
                     default: break;
                 }
+
+                if (control_msg.has_hold())
+                    zmq_main_.set_hold_state(control_msg.hold());
             }
         }
     }
@@ -266,7 +281,7 @@ class InterProcessPortalImplementation
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
         int items = 0;
-        protobuf::InprocControl control_msg;
+        protobuf::InprocControl new_control_msg;
 
 #ifdef USE_OLD_ZMQ_CPP_API
         int flags = ZMQ_NOBLOCK;
@@ -274,8 +289,12 @@ class InterProcessPortalImplementation
         auto flags = zmq::recv_flags::dontwait;
 #endif
 
-        while (zmq_main_.recv(&control_msg, flags))
+        while (zmq_main_.recv(&new_control_msg, flags))
+            zmq_main_.control_buffer().push_back(new_control_msg);
+
+        while (!zmq_main_.control_buffer().empty())
         {
+            const auto& control_msg = zmq_main_.control_buffer().front();
             switch (control_msg.type())
             {
                 case protobuf::InprocControl::RECEIVE:
@@ -335,8 +354,13 @@ class InterProcessPortalImplementation
                 }
                 break;
 
+                case protobuf::InprocControl::HOLD_STATE:
+                    zmq_main_.set_hold_state(control_msg.hold());
+                    break;
+
                 default: break;
             }
+            zmq_main_.control_buffer().pop_front();
         }
         return items;
     }
@@ -579,9 +603,20 @@ class Manager
     {
     }
 
+    Manager(zmq::context_t& context, const protobuf::InterProcessPortalConfig& cfg,
+            const Router& router, const protobuf::InterProcessManagerHold& hold)
+        : Manager(context, cfg, router)
+    {
+        for (const auto& req_c : hold.required_client()) required_clients_.insert(req_c);
+    }
+
     void run();
+    bool hold_state();
 
   private:
+    std::set<std::string> reported_clients_;
+    std::set<std::string> required_clients_;
+
     zmq::context_t& context_;
     const protobuf::InterProcessPortalConfig& cfg_;
     const Router& router_;
