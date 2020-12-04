@@ -58,6 +58,7 @@ extern constexpr goby::middleware::Group widget{"Widget"};
 void publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 {
     goby::zeromq::InterProcessPortal<> zmq(cfg);
+    zmq.ready();
 
     double a = 0;
     while (publish_count < max_publish)
@@ -73,9 +74,6 @@ void publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         zmq.publish<widget>(w1);
 
         glog.is(DEBUG1) && glog << "Published: " << publish_count << std::endl;
-
-        //        if (publish_count < 0)
-        //            usleep(1e6);
 
         ++publish_count;
     }
@@ -113,6 +111,7 @@ void subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
     zmq.subscribe<sample1, Sample>(&handle_sample1);
     zmq.subscribe<sample2, Sample>(&handle_sample2);
     zmq.subscribe<widget, Widget>(&handle_widget);
+    zmq.ready();
     while (ipc_receive_count < 3 * max_publish)
     {
         glog.is(DEBUG1) && glog << ipc_receive_count << "/" << 3 * max_publish << std::endl;

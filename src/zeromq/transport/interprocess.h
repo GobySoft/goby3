@@ -70,9 +70,9 @@ class InterProcessPortalMainThread
     void reader_shutdown();
 
     std::deque<protobuf::InprocControl>& control_buffer() { return control_buffer_; }
+    void send_control_msg(const protobuf::InprocControl& control);
 
   private:
-    void send_control_msg(const protobuf::InprocControl& control);
 
   private:
     zmq::socket_t control_socket_;
@@ -102,6 +102,7 @@ class InterProcessPortalReadThread
     void subscribe_data(const zmq::message_t& zmq_msg);
     void manager_data(const zmq::message_t& zmq_msg);
     void send_control_msg(const protobuf::InprocControl& control);
+    void send_manager_request(const protobuf::ManagerRequest& req);
 
   private:
     const protobuf::InterProcessPortalConfig& cfg_;
@@ -122,7 +123,9 @@ class InterProcessPortalReadThread
         NUMBER_SOCKETS = 3
     };
     bool have_pubsub_sockets_{false};
+    bool ready_{false};
     bool hold_{true};
+    bool manager_waiting_for_reply_{false};
 };
 
 template <typename InnerTransporter,
@@ -162,6 +165,13 @@ class InterProcessPortalImplementation
             zmq_main_.reader_shutdown();
             zmq_thread_->join();
         }
+    }
+
+    void ready()
+    {
+        protobuf::InprocControl control;
+        control.set_type(protobuf::InprocControl::READY);
+        zmq_main_.send_control_msg(control);
     }
 
     friend Base;

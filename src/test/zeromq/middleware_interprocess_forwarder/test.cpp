@@ -57,7 +57,6 @@ int ipc_receive_count = {0};
 
 std::atomic<int> ready(0);
 std::atomic<bool> forward(true);
-std::atomic<bool> zmq_ready(false);
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -251,7 +250,7 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString() << std::endl;
     });
 
-    zmq_ready = true;
+    zmq.ready();
     while (forward) { zmq.poll(std::chrono::milliseconds(100)); }
 }
 } // namespace zeromq
@@ -295,8 +294,9 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> router_context;
     if (is_subscriber)
     {
-        std::thread t3([&] { goby::test::zeromq::zmq_forward(cfg); });
-        while (!zmq_ready) usleep(1e5);
+        auto sub_cfg = cfg;
+        sub_cfg.set_client_name("subscriber");
+        std::thread t3([&] { goby::test::zeromq::zmq_forward(sub_cfg); });
         std::thread t1(goby::test::zeromq::subscriber);
         t1.join();
         for (int i = 0; i < max_subs; ++i) threads.at(i).join();
@@ -308,14 +308,18 @@ int main(int argc, char* argv[])
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
 
+        goby::zeromq::protobuf::InterProcessManagerHold hold;
+        hold.add_required_client("subscriber");
+        hold.add_required_client("publisher");
+
         goby::zeromq::Router router(*router_context, cfg);
         t4.reset(new std::thread([&] { router.run(); }));
-        goby::zeromq::Manager manager(*manager_context, cfg, router);
+        goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
         t5.reset(new std::thread([&] { manager.run(); }));
-        sleep(1);
 
-        std::thread t3([&] { goby::test::zeromq::zmq_forward(cfg); });
-        while (!zmq_ready) usleep(1e5);
+        auto pub_cfg = cfg;
+        pub_cfg.set_client_name("publisher");
+        std::thread t3([&] { goby::test::zeromq::zmq_forward(pub_cfg); });
         std::thread t1(goby::test::zeromq::publisher);
         t1.join();
         for (int i = 0; i < max_subs; ++i) threads.at(i).join();
