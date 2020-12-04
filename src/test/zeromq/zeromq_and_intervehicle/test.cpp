@@ -70,8 +70,22 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> zmq(zmq_cfg);
     goby::middleware::InterVehiclePortal<decltype(zmq)> intervehicle(zmq, slow_cfg);
 
+    bool intervehicle_subscriptions_ready = false;
+
+    // wait until we have some subscriptions
+    zmq.subscribe<goby::middleware::intervehicle::groups::subscription_report>(
+        [&intervehicle_subscriptions_ready](
+            const goby::middleware::intervehicle::protobuf::SubscriptionReport& report) {
+            if (report.subscription_size() == 3)
+                intervehicle_subscriptions_ready = true;
+        });
+
+    zmq.ready();
+
+    while (!intervehicle_subscriptions_ready) intervehicle.poll(std::chrono::milliseconds(10));
+
     // give time for the subscriptions to come across
-    for (int i = 0; i < 20; ++i) intervehicle.poll(std::chrono::milliseconds(100));
+    //    for (int i = 0; i < 20; ++i) intervehicle.poll(std::chrono::milliseconds(100));
 
     double a = 0;
     while (publish_count < max_publish)
@@ -151,6 +165,7 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
     goby::middleware::InterVehicleForwarder<decltype(zmq)> intervehicle(zmq);
+    zmq.ready();
     double a = 0;
     while (publish_count < max_publish)
     {
@@ -257,6 +272,7 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
     widget_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
     goby::middleware::Subscriber<Widget> widget_subscriber(widget_subscriber_cfg);
     intervehicle.subscribe<null, Widget>(&handle_widget, widget_subscriber_cfg);
+    zmq.ready();
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -309,6 +325,7 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
         goby::middleware::Subscriber<Sample>(sample_indirect_subscriber_cfg,
                                              [](const Sample& s) { return s.group(); },
                                              ack_callback, expire_callback));
+    zmq.ready();
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -388,13 +405,19 @@ int main(int argc, char* argv[])
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
 
+        goby::zeromq::protobuf::InterProcessManagerHold hold;
+        hold.add_required_client("direct_publisher");
+        hold.add_required_client("indirect_publisher");
+
         goby::zeromq::Router router(*router_context, zmq_cfg);
         t10.reset(new std::thread([&] { router.run(); }));
-        goby::zeromq::Manager manager(*manager_context, zmq_cfg, router);
+        goby::zeromq::Manager manager(*manager_context, zmq_cfg, router, hold);
         t11.reset(new std::thread([&] { manager.run(); }));
-        sleep(1);
+        //        sleep(1);
 
-        std::thread t1([&] { direct_publisher(zmq_cfg, slow_cfg); });
+        auto direct_cfg = zmq_cfg;
+        direct_cfg.set_client_name("direct_publisher");
+        std::thread t1([&] { direct_publisher(direct_cfg, slow_cfg); });
         std::array<int, number_children> wstatus;
         for (int i = 0; i < number_children; ++i) wait(&wstatus[i]);
 
@@ -420,7 +443,8 @@ int main(int argc, char* argv[])
         zmq_cfg.set_platform("test5-vehicle1");
 
         // wait for ZMQ (process_index == 0) to start up
-        sleep(3);
+        //        sleep(3);
+        zmq_cfg.set_client_name("indirect_publisher");
         std::thread t1([&] { indirect_publisher(zmq_cfg); });
         forward = false;
         t1.join();
@@ -438,13 +462,19 @@ int main(int argc, char* argv[])
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
 
+        goby::zeromq::protobuf::InterProcessManagerHold hold;
+        hold.add_required_client("direct_subscriber");
+        hold.add_required_client("indirect_subscriber");
+
         goby::zeromq::Router router(*router_context, zmq_cfg);
         t10.reset(new std::thread([&] { router.run(); }));
-        goby::zeromq::Manager manager(*manager_context, zmq_cfg, router);
+        goby::zeromq::Manager manager(*manager_context, zmq_cfg, router, hold);
         t11.reset(new std::thread([&] { manager.run(); }));
-        sleep(1);
+        //        sleep(1);
 
-        std::thread t1([&] { direct_subscriber(zmq_cfg, slow_cfg); });
+        auto direct_cfg = zmq_cfg;
+        direct_cfg.set_client_name("direct_subscriber");
+        std::thread t1([&] { direct_subscriber(direct_cfg, slow_cfg); });
         t1.join();
         router_context.reset();
         manager_context.reset();
@@ -454,9 +484,10 @@ int main(int argc, char* argv[])
     }
     else if (process_index == 3)
     {
-        sleep(3);
+        //        sleep(3);
         goby::zeromq::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle2");
+        zmq_cfg.set_client_name("indirect_subscriber");
         std::thread t1([&] { indirect_subscriber(zmq_cfg); });
         t1.join();
         glog.is(VERBOSE) && glog << process_suffix << ": all tests passed" << std::endl;

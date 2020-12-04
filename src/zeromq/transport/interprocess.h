@@ -63,6 +63,7 @@ class InterProcessPortalMainThread
     void set_publish_cfg(const protobuf::Socket& cfg);
 
     void set_hold_state(bool hold);
+    bool hold_state() { return hold_; }
 
     void publish(const std::string& identifier, const char* bytes, int size);
     void subscribe(const std::string& identifier);
@@ -73,7 +74,6 @@ class InterProcessPortalMainThread
     void send_control_msg(const protobuf::InprocControl& control);
 
   private:
-
   private:
     zmq::socket_t control_socket_;
     zmq::socket_t publish_socket_;
@@ -173,6 +173,8 @@ class InterProcessPortalImplementation
         control.set_type(protobuf::InprocControl::READY);
         zmq_main_.send_control_msg(control);
     }
+
+    bool hold_state() { return zmq_main_.hold_state(); }
 
     friend Base;
     friend typename Base::Base;
