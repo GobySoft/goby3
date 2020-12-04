@@ -261,6 +261,7 @@ if(MOOS_FOUND)
   set(MOOS_LIBRARY_HEADER "MOOS/libMOOS/MOOSLib.h" PARENT_SCOPE)
   include_directories(${MOOS_INCLUDE_DIRS})
   option(build_moos ${MOOS_DOC_STRING} ON)
+
 else()
   option(build_moos ${MOOS_DOC_STRING} OFF)
   message(">> setting build_moos to OFF ... if you need this functionality: 1) install MOOS and libproj-dev; 2) run cmake -Dbuild_moos=ON")

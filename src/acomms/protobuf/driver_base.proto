@@ -17,6 +17,7 @@ enum DriverType
     DRIVER_IRIDIUM_SHORE = 9;
     DRIVER_BENTHOS_ATM900 = 10;
     DRIVER_UDP_MULTICAST = 11;
+    DRIVER_POPOTO = 12;
 }
 
 message DriverConfig
@@ -108,4 +109,5 @@ message DriverConfig
     // extensions 1401-1420 used by MOOSSafir (external)
     // extension 1421 used by iridium_shore_driver.proto
     // extension 1441 used by benthos_atm900.proto
+    // extension 1442 used by popoto.proto
 }

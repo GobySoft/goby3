@@ -51,7 +51,7 @@ EOF
     for author in "${authors[@]}"
     do
         # use latest email for author name here
-        email=$(git log --author "$author" -n 1 --format=format:%aE)
+        email=$(git log --use-mailmap --author "$author" -n 1 --format=format:%aE)
         if [ ! -z "$email" ]; then
             email=" <${email}>"
         fi
