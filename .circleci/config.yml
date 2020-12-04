@@ -216,19 +216,23 @@ workflows:
   version: 2
   commit:
     jobs:
-      - amd64-stretch-build:
+# To keep basic builds to a minimum, remove Xenial and Stretch
+#      - amd64-xenial-build:
+#          <<: *filter-template-non-master
+#      - amd64-stretch-build:
+#          <<: *filter-template-non-master
+
+      - amd64+tsan-build:
           <<: *filter-template-non-master
       - amd64-buster-build:
           <<: *filter-template-non-master
-# To keep basic builds to a minimum, remove Xenial
-#      - amd64-xenial-build:
-#          <<: *filter-template-non-master
       - amd64-bionic-build:
           <<: *filter-template-non-master
       - amd64-focal-build:
           <<: *filter-template-non-master
+
       - amd64-focal-minimal-build:
-          <<: *filter-template-non-master          
+          <<: *filter-template-master-only
       
       - get-orig-source:
           <<: *filter-template-master-only
@@ -327,9 +331,6 @@ workflows:
       - amd64+asan-build:
           <<: *filter-template-master-only
 
-# problem running unit test on CircleCI executors
-#      - amd64+tsan-build:
-#          <<: *filter-template-master-only
 
 # problem running this using clang with libcrypto++-dev 
 #      - amd64+ubsan-build:
