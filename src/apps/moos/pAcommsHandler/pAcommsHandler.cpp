@@ -144,6 +144,9 @@ goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
 
     subscribe_pb(cfg_.moos_var().prefix() + cfg_.moos_var().driver_cfg_update(),
                  &CpAcommsHandler::handle_driver_cfg_update, this);
+
+    subscribe(cfg_.moos_var().prefix() + cfg_.moos_var().driver_receive(),
+              &CpAcommsHandler::handle_external_driver_receive, this);
 }
 
 goby::apps::moos::CpAcommsHandler::~CpAcommsHandler() {}
@@ -361,6 +364,21 @@ void goby::apps::moos::CpAcommsHandler::handle_external_initiate_transmission(co
                                  << "Initiating transmission: " << transmission << std::endl;
         driver_->handle_initiate_transmission(transmission);
     }
+}
+
+void goby::apps::moos::CpAcommsHandler::handle_external_driver_receive(const CMOOSMsg& msg)
+{
+    // don't repost our own transmissions
+    if (msg.GetSource() == CMOOSApp::GetAppName())
+        return;
+
+    goby::acomms::protobuf::ModemTransmission transmission;
+    parse_for_moos(msg.GetString(), &transmission);
+
+    glog.is(VERBOSE) && glog << group("pAcommsHandler") << "External receive: " << transmission
+                             << std::endl;
+
+    queue_manager_.handle_modem_receive(transmission);
 }
 
 void goby::apps::moos::CpAcommsHandler::handle_goby_signal(const google::protobuf::Message& msg1,

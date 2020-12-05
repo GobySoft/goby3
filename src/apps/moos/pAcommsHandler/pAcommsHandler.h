@@ -113,6 +113,7 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
     void handle_mac_cycle_update(const CMOOSMsg& msg);
     void handle_flush_queue(const CMOOSMsg& msg);
     void handle_external_initiate_transmission(const CMOOSMsg& msg);
+    void handle_external_driver_receive(const CMOOSMsg& msg);
 
     void handle_config_file_request(const CMOOSMsg& msg);
 
@@ -141,7 +142,6 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
   private:
     goby::moos::MOOSTranslator translator_;
 
-
     // new DCCL2 codec
     goby::acomms::DCCLCodec* dccl_;
 
@@ -163,7 +163,7 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
 
     goby::acomms::RouteManager* router_;
 
-    std::vector<std::shared_ptr<Timer> > timers_;
+    std::vector<std::shared_ptr<Timer>> timers_;
 
     std::map<std::shared_ptr<goby::acomms::ModemDriverBase>, double> driver_restart_time_;
 
