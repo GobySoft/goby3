@@ -80,6 +80,8 @@ class DaemonConfigurator : public goby::middleware::ProtobufConfigurator<protobu
     {
         protobuf::GobyDaemonConfig& cfg = mutable_cfg();
 
+        cfg.mutable_interprocess()->set_client_name(cfg.app().name());
+
         if (cfg.has_intervehicle())
         {
             auto& intervehicle = *cfg.mutable_intervehicle();
@@ -138,6 +140,8 @@ goby::apps::zeromq::Daemon::Daemon()
                 quit();
             }
         });
+
+    interprocess_.ready();
 }
 
 goby::apps::zeromq::Daemon::~Daemon()

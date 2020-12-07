@@ -271,20 +271,17 @@ void goby::zeromq::InterProcessPortalReadThread::run()
             }
             else if (hold_)
             {
-                while (hold_)
-                {
-                    req.set_ready(ready_);
-                    auto start = goby::time::SystemClock::now();
-                    auto request_period = std::chrono::seconds(1);
+                req.set_ready(ready_);
+                auto start = goby::time::SystemClock::now();
+                auto request_period = std::chrono::seconds(1);
 
-                    req.set_request(protobuf::PROVIDE_HOLD_STATE);
-                    if (cfg_.has_client_name())
-                        req.set_client_name(cfg_.client_name());
+                req.set_request(protobuf::PROVIDE_HOLD_STATE);
+                if (cfg_.has_client_name())
+                    req.set_client_name(cfg_.client_name());
 
-                    if (!manager_waiting_for_reply_)
-                        send_manager_request(req);
-                    while (start + request_period > goby::time::SystemClock::now()) poll(10);
-                }
+                if (!manager_waiting_for_reply_)
+                    send_manager_request(req);
+                while (start + request_period > goby::time::SystemClock::now()) poll(10);
             }
         }
     }
@@ -595,10 +592,9 @@ void goby::zeromq::Manager::run()
                 reported_clients_.insert(pb_request.client_name());
 
             if (pb_request.has_client_name())
-            {
                 pb_response.set_client_name(pb_request.client_name());
-                pb_response.set_hold(hold_state());
-            }
+
+            pb_response.set_hold(hold_state());
 
             zmq::message_t reply(pb_response.ByteSize());
             pb_response.SerializeToArray((char*)reply.data(), reply.size());

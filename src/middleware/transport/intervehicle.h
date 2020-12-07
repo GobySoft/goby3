@@ -779,18 +779,27 @@ class InterVehiclePortal
         persist_sub_file_name_ = file_name.str();
         {
             std::ifstream persist_sub_ifs(persist_sub_file_name_.c_str());
-            if (persist_sub_ifs.is_open())
+            try
             {
-                google::protobuf::TextFormat::Parser parser;
-                google::protobuf::io::IstreamInputStream iis(&persist_sub_ifs);
-                parser.Parse(&iis, &former_sub_collection_);
+                if (persist_sub_ifs.is_open())
+                {
+                    google::protobuf::TextFormat::Parser parser;
+                    google::protobuf::io::IstreamInputStream iis(&persist_sub_ifs);
+                    parser.Parse(&iis, &former_sub_collection_);
+                }
+                else
+                {
+                    goby::glog.is_debug1() &&
+                        goby::glog << "Could not open persistent subscriptions file: "
+                                   << persist_sub_file_name_
+                                   << ". Assuming no persistent subscriptions exist" << std::endl;
+                }
             }
-            else
+            catch (const std::exception& e)
             {
-                goby::glog.is_debug1() &&
-                    goby::glog << "Could not open persistent subscriptions file: "
-                               << persist_sub_file_name_
-                               << ". Assuming no persistent subscriptions exist" << std::endl;
+                goby::glog.is_warn() &&
+                    goby::glog << "Error reading persistent subscriptions file: " << e.what()
+                               << std::endl;
             }
         }
 
@@ -801,6 +810,7 @@ class InterVehiclePortal
                 goby::glog << "Could not open persistent subscriptions file for writing: "
                            << persist_sub_file_name_ << std::endl;
         }
+        remove(persist_sub_file_name_.c_str());
 
         this->innermost().template subscribe<intervehicle::groups::subscription_report>(
             [this](const intervehicle::protobuf::SubscriptionReport& report) {
@@ -809,6 +819,8 @@ class InterVehiclePortal
                 sub_reports_[report.link_modem_id()] = report;
                 std::ofstream persist_sub_ofs(persist_sub_file_name_.c_str());
                 intervehicle::protobuf::SubscriptionPersistCollection collection;
+                collection.set_time_with_units(
+                    goby::time::SystemClock::now<goby::time::MicroTime>());
                 for (auto report_p : sub_reports_)
                 {
                     for (const auto& sub : report_p.second.subscription())

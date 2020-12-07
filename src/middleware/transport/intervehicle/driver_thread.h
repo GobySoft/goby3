@@ -154,7 +154,7 @@ class ModemDriverThread
             goby::glog.is_debug3() && goby::glog
                                           << "Dest: " << dest_id
                                           << " is not in subnet (our id: " << cfg().modem_id()
-                                          << ", mask: " << cfg().subnet_mask();
+                                          << ", mask: " << cfg().subnet_mask() << std::endl;
 
         return dest_in_subnet;
     }
