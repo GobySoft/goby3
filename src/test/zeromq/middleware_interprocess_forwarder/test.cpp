@@ -56,7 +56,9 @@ const int max_publish = 100;
 int ipc_receive_count = {0};
 
 std::atomic<int> ready(0);
+std::atomic<bool> hold(true);
 std::atomic<bool> forward(true);
+std::atomic<bool> subscriber_ready(false);
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -77,6 +79,9 @@ void publisher()
     goby::middleware::InterThreadTransporter inproc1;
     goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
     double a = 0;
+
+    while (hold) usleep(1e4);
+
     while (
         publish_count <
         max_publish *
@@ -152,6 +157,8 @@ void subscriber()
         [](std::shared_ptr<const Sample> s) { handle_sample1(*s); }, sample1);
     ipc_child().subscribe<sample2, Sample>(&handle_sample2);
     ipc_child().subscribe<widget, Widget>(&handle_widget);
+
+    subscriber_ready = true;
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -250,8 +257,15 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString() << std::endl;
     });
 
+    while (!subscriber_ready) usleep(1e4);
+
     zmq.ready();
-    while (forward) { zmq.poll(std::chrono::milliseconds(100)); }
+    while (forward)
+    {
+        zmq.poll(std::chrono::milliseconds(100));
+        if (!zmq.hold_state())
+            hold = false;
+    }
 }
 } // namespace zeromq
 } // namespace test
@@ -261,6 +275,7 @@ int main(int argc, char* argv[])
 {
     goby::zeromq::protobuf::InterProcessPortalConfig cfg;
     cfg.set_platform("test3");
+    cfg.set_manager_timeout_seconds(5);
 
     pid_t child_pid = fork();
 
@@ -320,6 +335,7 @@ int main(int argc, char* argv[])
         auto pub_cfg = cfg;
         pub_cfg.set_client_name("publisher");
         std::thread t3([&] { goby::test::zeromq::zmq_forward(pub_cfg); });
+        subscriber_ready = true;
         std::thread t1(goby::test::zeromq::publisher);
         t1.join();
         for (int i = 0; i < max_subs; ++i) threads.at(i).join();
