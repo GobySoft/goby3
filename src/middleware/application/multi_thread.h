@@ -27,6 +27,7 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/exception.h"
+#include "goby/middleware/application/detail/interprocess_common.h"
 #include "goby/middleware/application/detail/thread_type_selector.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/thread.h"
@@ -313,7 +314,8 @@ class MultiThreadApplication
     /// \param loop_freq The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : Base(loop_freq, &intervehicle_),
-          interprocess_(Base::interthread(), this->app_cfg().interprocess()),
+          interprocess_(Base::interthread(), detail::make_interprocess_config(
+                                                 this->app_cfg().interprocess(), this->app_name())),
           intervehicle_(interprocess_)
     {
         // handle goby_terminate request

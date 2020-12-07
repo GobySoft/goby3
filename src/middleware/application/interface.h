@@ -32,9 +32,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "goby/exception.h"
 #include <boost/format.hpp>
 
+#include "goby/exception.h"
 #include "goby/middleware/application/configurator.h"
 #include "goby/middleware/marshalling/detail/dccl_serializer_parser.h"
 #include "goby/middleware/protobuf/app_config.pb.h"

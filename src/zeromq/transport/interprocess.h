@@ -167,6 +167,7 @@ class InterProcessPortalImplementation
         }
     }
 
+    /// \brief When using hold functionality, call when the process is ready to receive publications (typically done after most or all subscribe calls)
     void ready()
     {
         protobuf::InprocControl control;
@@ -174,6 +175,7 @@ class InterProcessPortalImplementation
         zmq_main_.send_control_msg(control);
     }
 
+    /// \brief When using hold functionality, returns whether the system is holding (true) and thus waiting for all processes to connect and be ready, or running (false).
     bool hold_state() { return zmq_main_.hold_state(); }
 
     friend Base;
@@ -555,7 +557,7 @@ class InterProcessPortalImplementation
     static std::string to_string(int i) { return middleware::MarshallingScheme::to_string(i); }
 
   private:
-    const protobuf::InterProcessPortalConfig& cfg_;
+    const protobuf::InterProcessPortalConfig cfg_;
 
     std::unique_ptr<std::thread> zmq_thread_;
     std::atomic<bool> zmq_alive_{true};

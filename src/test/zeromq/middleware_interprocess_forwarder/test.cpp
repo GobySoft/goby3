@@ -54,6 +54,7 @@ goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter
 int publish_count = 0;
 const int max_publish = 100;
 int ipc_receive_count = {0};
+const int max_subs = 3;
 
 std::atomic<int> ready(0);
 std::atomic<bool> hold(true);
@@ -257,7 +258,7 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString() << std::endl;
     });
 
-    while (!subscriber_ready) usleep(1e4);
+    while (!subscriber_ready || ready < max_subs) usleep(1e4);
 
     zmq.ready();
     while (forward)
@@ -291,18 +292,16 @@ int main(int argc, char* argv[])
     goby::glog.set_name(std::string(argv[0]) + (is_subscriber ? "_subscriber" : "_publisher"));
     goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
-    //    std::thread t3(subscriber);
-    const int max_subs = 3;
+    std::vector<std::thread> threads;
     std::vector<goby::test::zeromq::ThreadSubscriber> thread_subscribers(
         max_subs, goby::test::zeromq::ThreadSubscriber());
-    std::vector<std::thread> threads;
-    for (int i = 0; i < max_subs; ++i)
-    {
-        threads.push_back(std::thread(
-            std::bind(&goby::test::zeromq::ThreadSubscriber::run, &thread_subscribers.at(i))));
-    }
-
-    while (ready < max_subs) usleep(1e5);
+    auto launch_sub_threads = [&]() {
+        for (int i = 0; i < max_subs; ++i)
+        {
+            threads.push_back(std::thread(
+                std::bind(&goby::test::zeromq::ThreadSubscriber::run, &thread_subscribers.at(i))));
+        }
+    };
 
     std::unique_ptr<std::thread> t4, t5;
     std::unique_ptr<zmq::context_t> manager_context;
@@ -312,7 +311,10 @@ int main(int argc, char* argv[])
         auto sub_cfg = cfg;
         sub_cfg.set_client_name("subscriber");
         std::thread t3([&] { goby::test::zeromq::zmq_forward(sub_cfg); });
+        // ensure InterProcessPortal is up and running
+        sleep(1);
         std::thread t1(goby::test::zeromq::subscriber);
+        launch_sub_threads();
         t1.join();
         for (int i = 0; i < max_subs; ++i) threads.at(i).join();
         forward = false;
@@ -335,8 +337,11 @@ int main(int argc, char* argv[])
         auto pub_cfg = cfg;
         pub_cfg.set_client_name("publisher");
         std::thread t3([&] { goby::test::zeromq::zmq_forward(pub_cfg); });
+        // ensure InterProcessPortal is up and running
+        sleep(1);
         subscriber_ready = true;
         std::thread t1(goby::test::zeromq::publisher);
+        launch_sub_threads();
         t1.join();
         for (int i = 0; i < max_subs; ++i) threads.at(i).join();
         int wstatus;

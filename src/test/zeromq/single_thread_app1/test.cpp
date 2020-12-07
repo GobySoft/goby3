@@ -54,7 +54,9 @@ class TestConfigurator : public goby::middleware::ProtobufConfigurator<TestConfi
         : goby::middleware::ProtobufConfigurator<TestConfig>(argc, argv)
     {
         TestConfig& cfg = mutable_cfg();
+        cfg.mutable_app()->set_name("TestApp");
         cfg.mutable_interprocess()->set_platform(platform_name);
+        cfg.mutable_interprocess()->set_manager_timeout_seconds(5);
     }
 };
 
@@ -64,22 +66,18 @@ class TestApp : public Base
     TestApp() : Base(10)
     {
         interprocess().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
+        interprocess().ready();
     }
 
     void loop() override
     {
         static int i = 0;
         ++i;
-        // wait for zeromq pub/sub setup
-        if (i < 1 * loop_frequency_hertz())
-        {
-            return;
-        }
-        else if (i > (10 + 1 * loop_frequency_hertz()))
+        if (i > (10 + 1 * loop_frequency_hertz()))
         {
             quit();
         }
-        else
+        else if (!interprocess().hold_state())
         {
             assert(rx_count_ == tx_count_);
             std::cout << goby::time::SystemClock::now() << std::endl;
@@ -117,11 +115,14 @@ int main(int argc, char* argv[])
     {
         goby::zeromq::protobuf::InterProcessPortalConfig cfg;
         cfg.set_platform(platform_name);
+        goby::zeromq::protobuf::InterProcessManagerHold hold;
+        hold.add_required_client("TestApp");
+
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
         goby::zeromq::Router router(*router_context, cfg);
         t2.reset(new std::thread([&] { router.run(); }));
-        goby::zeromq::Manager manager(*manager_context, cfg, router);
+        goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
         t3.reset(new std::thread([&] { manager.run(); }));
         int wstatus;
         wait(&wstatus);
@@ -134,8 +135,8 @@ int main(int argc, char* argv[])
     }
     else
     {
-        // wait for router to set up
-        sleep(1);
+        // let manager and router start up
+        //      sleep(1);
         return goby::run<goby::test::zeromq::TestApp>(
             goby::test::zeromq::TestConfigurator(argc, argv));
     }
