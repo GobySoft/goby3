@@ -71,15 +71,12 @@ class TestApp : public Base
 
     void loop() override
     {
-        static int i = 0;
-        ++i;
-        if (i > (10 + 1 * loop_frequency_hertz()))
+        if (rx_count_ == 10)
         {
             quit();
         }
-        else if (!interprocess().hold_state())
+        else if (!interprocess().hold_state() && rx_count_ == tx_count_)
         {
-            assert(rx_count_ == tx_count_);
             std::cout << goby::time::SystemClock::now() << std::endl;
             Widget w;
             w.set_b(++tx_count_);
@@ -93,6 +90,7 @@ class TestApp : public Base
         std::cout << "Rx: " << widget.DebugString() << std::flush;
         assert(widget.b() == tx_count_);
         ++rx_count_;
+        assert(rx_count_ == tx_count_);
     }
 
   private:
