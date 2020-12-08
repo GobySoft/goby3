@@ -165,7 +165,21 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
 {
     goby::zeromq::InterProcessPortal<> zmq(zmq_cfg);
     goby::middleware::InterVehicleForwarder<decltype(zmq)> intervehicle(zmq);
+
+    bool intervehicle_subscriptions_ready = false;
+
+    // wait until we have some subscriptions
+    zmq.subscribe<goby::middleware::intervehicle::groups::subscription_report>(
+        [&intervehicle_subscriptions_ready](
+            const goby::middleware::intervehicle::protobuf::SubscriptionReport& report) {
+            if (report.subscription_size() == 3)
+                intervehicle_subscriptions_ready = true;
+        });
+
     zmq.ready();
+
+    while (!intervehicle_subscriptions_ready) intervehicle.poll(std::chrono::milliseconds(10));
+
     double a = 0;
     while (publish_count < max_publish)
     {

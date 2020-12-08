@@ -279,8 +279,8 @@ void goby::zeromq::InterProcessPortalReadThread::run()
                 {
                     send_manager_request(req);
                     next_hold_state_request_time_ += hold_state_request_period_;
-                    poll(cfg_.manager_timeout_seconds() * 1000);
                 }
+                poll(cfg_.manager_timeout_seconds() * 1000);
             }
             else
             {
