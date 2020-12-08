@@ -28,8 +28,6 @@
 #include <ctime>
 #include <sys/time.h>
 
-#include <boost/asio/time_traits.hpp>
-#include <boost/date_time.hpp>
 
 #include "goby/time/convert.h"
 #include "goby/time/system_clock.h"
@@ -183,46 +181,7 @@ nmea_time2ptime(const std::string& mt)
     return time::convert_from_nmea<boost::posix_time::ptime>(mt);
 }
 
-// dummy struct for use with boost::asio::time_traits
-struct [[deprecated("use boost::asio::basic_waitable_timer")]] GobyTime
-{
-};
-
 } // namespace common
 } // namespace goby
-
-namespace boost
-{
-namespace asio
-{
-/// Time traits specialised for GobyTime
-template <>
-struct [[deprecated("use boost::asio::basic_waitable_timer")]] time_traits<goby::common::GobyTime> {
-    /// The time type.
-    typedef boost::posix_time::ptime time_type;
-
-    /// The duration type.
-    typedef boost::posix_time::time_duration duration_type;
-
-    /// Get the current time.
-    static time_type now() { return goby::time::SystemClock::now<boost::posix_time::ptime>(); }
-
-    /// Add a duration to a time.
-    static time_type add(const time_type& t, const duration_type& d) { return t + d; }
-
-    /// Subtract one time from another.
-    static duration_type subtract(const time_type& t1, const time_type& t2) { return t1 - t2; }
-
-    /// Test whether one time is less than another.
-    static bool less_than(const time_type& t1, const time_type& t2) { return t1 < t2; }
-
-    /// Convert to POSIX duration type.
-    static boost::posix_time::time_duration to_posix_duration(const duration_type& d)
-    {
-        return d / goby::time::SimulatorSettings::warp_factor;
-    }
-};
-} // namespace asio
-} // namespace boost
 
 #endif
