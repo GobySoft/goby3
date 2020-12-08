@@ -74,6 +74,12 @@ void portal_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& p_
             running = false;
     });
 
+    interprocess.ready();
+    intermodule.ready();
+
+    while (interprocess.hold_state() || intermodule.hold_state())
+        intermodule.poll(std::chrono::milliseconds(100));
+
     double a = 0;
     while (publish_count < max_publish)
     {
@@ -108,6 +114,10 @@ void forwarder_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig&
         if (subscribers_complete == n_subscribers)
             running = false;
     });
+
+    interprocess.ready();
+
+    while (interprocess.hold_state()) intermodule.poll(std::chrono::milliseconds(100));
 
     double a = 0;
     while (publish_count < max_publish)
@@ -161,6 +171,9 @@ void portal_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& p
         ++ipc_receive_count;
     });
 
+    interprocess.ready();
+    intermodule.ready();
+
     while (ipc_receive_count < 3 * max_publish)
     {
         glog.is(DEBUG1) && glog << ipc_receive_count << "/" << 3 * max_publish << std::endl;
@@ -200,6 +213,8 @@ void forwarder_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig
                                 << widget.ShortDebugString() << std::endl;
         ++ipc_receive_count;
     });
+
+    interprocess.ready();
 
     while (ipc_receive_count < 3 * max_publish)
     {
@@ -289,19 +304,33 @@ int main(int argc, char* argv[])
             manager3_context.reset(new zmq::context_t(1));
             router3_context.reset(new zmq::context_t(10));
 
+            goby::zeromq::protobuf::InterProcessManagerHold ipc_hold1;
+            ipc_hold1.add_required_client("portal_publisher");
+            ipc_hold1.add_required_client("forwarder_publisher");
+
+            goby::zeromq::protobuf::InterProcessManagerHold ipc_hold2;
+            ipc_hold2.add_required_client("portal_subscriber");
+            ipc_hold2.add_required_client("forwarder_subscriber");
+
+            goby::zeromq::protobuf::InterProcessManagerHold im_hold;
+            im_hold.add_required_client("portal_subscriber");
+            im_hold.add_required_client("portal_publisher");
+
             goby::zeromq::Router router1(*router1_context, interprocess_cfg1);
             mt1.reset(new std::thread([&] { router1.run(); }));
-            goby::zeromq::Manager manager1(*manager1_context, interprocess_cfg1, router1);
+            goby::zeromq::Manager manager1(*manager1_context, interprocess_cfg1, router1,
+                                           ipc_hold1);
             rt1.reset(new std::thread([&] { manager1.run(); }));
 
             goby::zeromq::Router router2(*router2_context, interprocess_cfg2);
             mt2.reset(new std::thread([&] { router2.run(); }));
-            goby::zeromq::Manager manager2(*manager2_context, interprocess_cfg2, router2);
+            goby::zeromq::Manager manager2(*manager2_context, interprocess_cfg2, router2,
+                                           ipc_hold2);
             rt2.reset(new std::thread([&] { manager2.run(); }));
 
             goby::zeromq::Router router3(*router3_context, intermodule_cfg);
             mt3.reset(new std::thread([&] { router3.run(); }));
-            goby::zeromq::Manager manager3(*manager3_context, intermodule_cfg, router3);
+            goby::zeromq::Manager manager3(*manager3_context, intermodule_cfg, router3, im_hold);
             rt3.reset(new std::thread([&] { manager3.run(); }));
 
             int wstatus;
@@ -332,6 +361,8 @@ int main(int argc, char* argv[])
         case PORTAL_PUBLISHER:
         {
             usleep(1e6);
+            interprocess_cfg1.set_client_name(role_str);
+            intermodule_cfg.set_client_name(role_str);
             std::thread t1([&] { portal_publisher(interprocess_cfg1, intermodule_cfg); });
             t1.join();
             break;
@@ -340,6 +371,7 @@ int main(int argc, char* argv[])
         case FORWARDER_PUBLISHER:
         {
             usleep(1.5e6);
+            interprocess_cfg1.set_client_name(role_str);
             std::thread t1([&] { forwarder_publisher(interprocess_cfg1); });
             t1.join();
             break;
@@ -348,6 +380,8 @@ int main(int argc, char* argv[])
         case PORTAL_SUBSCRIBER:
         {
             usleep(1e6);
+            interprocess_cfg2.set_client_name(role_str);
+            intermodule_cfg.set_client_name(role_str);
             std::thread t1([&] { portal_subscriber(interprocess_cfg2, intermodule_cfg); });
             t1.join();
             break;
@@ -356,6 +390,7 @@ int main(int argc, char* argv[])
         case FORWARDER_SUBSCRIBER:
         {
             usleep(1.5e6);
+            interprocess_cfg2.set_client_name(role_str);
             std::thread t1([&] { forwarder_subscriber(interprocess_cfg2); });
             t1.join();
             break;
