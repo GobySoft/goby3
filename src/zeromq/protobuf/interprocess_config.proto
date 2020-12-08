@@ -1,9 +1,16 @@
 syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+
 package goby.zeromq.protobuf;
 
 message InterProcessPortalConfig
 {
-    optional string platform = 1 [default = "default_goby_platform"];
+    optional string platform = 1 [
+        default = "default_goby_platform",
+        (goby.field).description =
+            "Name for this platform (vehicle name, mooring name, topside name, "
+            "etc.)"
+    ];
 
     enum Transport
     {
@@ -11,14 +18,66 @@ message InterProcessPortalConfig
         TCP = 3;
     };
 
-    optional Transport transport = 2 [default = IPC];
-    optional string socket_name = 3;
-    optional string ipv4_address = 4 [default = "127.0.0.1"];
-    optional uint32 tcp_port = 5 [default = 11144];
+    optional Transport transport = 2 [
+        default = IPC,
+        (goby.field).description =
+            "Transport to use: IPC uses UNIX sockets and is only suitable for "
+            "single machine interprocess, TCP uses Internet Protocol and is "
+            "suitable for any reasonably high-speed LAN"
+    ];
+    optional string socket_name = 3
+        [(goby.field).description =
+             "For transport == IPC, the path to the socket file to use for "
+             "comms with the Manager (gobyd). If omitted, defaults to "
+             "\"/tmp/goby_{platform}.manager"];
+    optional string ipv4_address = 4 [
+        default = "127.0.0.1",
+        (goby.field).description =
+            "For transport == TCP, IP address for the Manager (gobyd)"
+    ];
+    optional uint32 tcp_port = 5 [
+        default = 11144,
+        (goby.field).description =
+            "For transport == TCP, TCP port for the Manager (gobyd)"
+    ];
 
-    optional uint32 send_queue_size = 6 [default = 1000];
-    optional uint32 receive_queue_size = 7 [default = 1000];
-    optional uint32 zeromq_number_io_threads = 8 [default = 4];
+    optional uint32 send_queue_size = 6 [
+        default = 1000,
+        (goby.field).description =
+            "Queue size for outbound messages, i.e. ZMQ_SNDHWM"
+    ];
+    optional uint32 receive_queue_size = 7 [
+        default = 1000,
+        (goby.field).description =
+            "Queue size for inbound messages, i.e. ZMQ_RCVHWM"
+    ];
+    optional uint32 zeromq_number_io_threads = 8 [
+        default = 4,
+        (goby.field).description =
+            "Number of threads for zmq::context_t (first constructor "
+            "argument)"
+    ];
 
-    optional uint32 manager_timeout_seconds = 10 [default = 1];
+    optional uint32 manager_timeout_seconds = 10 [
+        default = 1,
+        (goby.field).description =
+            "How long to wait for a ManagerResponse before assuming the "
+            "Manager (gobyd) is unresponsive"
+    ];
+
+    optional string client_name = 20
+        [(goby.field).description =
+             "Unique name for InterProcessPortal. Only required for Hold "
+             "functionality"];
+}
+
+message InterProcessManagerHold
+{
+    repeated string required_client = 1 [
+        (goby.field).description =
+            "List of required clients to be connected before hold is released"
+    ];
+    //        optional int32 timeout_seconds = 2 [default = 10,
+    //        (goby.field).description = "Timeout for all required clients
+    //        connecting"];
 }

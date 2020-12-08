@@ -36,6 +36,7 @@ namespace groups
 {
 constexpr goby::middleware::Group terminate_request{"goby::terminate::request"};
 constexpr goby::middleware::Group terminate_response{"goby::terminate::response"};
+constexpr goby::middleware::Group terminate_result{"goby::terminate::result"};
 } // namespace groups
 } // namespace goby
 } // namespace goby

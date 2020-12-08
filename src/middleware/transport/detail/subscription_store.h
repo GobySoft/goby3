@@ -200,8 +200,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
                 if (thread_id != std::this_thread::get_id() || publisher.cfg().echo())
                 {
                     // protect the DataQueue we are writing to
-                    std::unique_lock<std::mutex> lock(
-                        *(data_protection_.find(thread_id)->second.data_mutex));
+                    std::unique_lock<std::mutex> lock(*(data_protection_.at(thread_id).data_mutex));
                     auto queue_it = data_.find(thread_id);
                     queue_it->second.insert(group, data);
                     cv_to_notify.push_back(data_protection_.at(thread_id));

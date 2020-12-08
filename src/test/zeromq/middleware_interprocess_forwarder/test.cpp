@@ -54,10 +54,12 @@ goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter
 int publish_count = 0;
 const int max_publish = 100;
 int ipc_receive_count = {0};
+const int max_subs = 3;
 
 std::atomic<int> ready(0);
+std::atomic<bool> hold(true);
 std::atomic<bool> forward(true);
-std::atomic<bool> zmq_ready(false);
+std::atomic<bool> subscriber_ready(false);
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -78,6 +80,9 @@ void publisher()
     goby::middleware::InterThreadTransporter inproc1;
     goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
     double a = 0;
+
+    while (hold) usleep(1e4);
+
     while (
         publish_count <
         max_publish *
@@ -153,6 +158,8 @@ void subscriber()
         [](std::shared_ptr<const Sample> s) { handle_sample1(*s); }, sample1);
     ipc_child().subscribe<sample2, Sample>(&handle_sample2);
     ipc_child().subscribe<widget, Widget>(&handle_widget);
+
+    subscriber_ready = true;
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
@@ -251,8 +258,15 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString() << std::endl;
     });
 
-    zmq_ready = true;
-    while (forward) { zmq.poll(std::chrono::milliseconds(100)); }
+    while (!subscriber_ready || ready < max_subs) usleep(1e4);
+
+    zmq.ready();
+    while (forward)
+    {
+        zmq.poll(std::chrono::milliseconds(100));
+        if (!zmq.hold_state())
+            hold = false;
+    }
 }
 } // namespace zeromq
 } // namespace test
@@ -262,6 +276,7 @@ int main(int argc, char* argv[])
 {
     goby::zeromq::protobuf::InterProcessPortalConfig cfg;
     cfg.set_platform("test3");
+    cfg.set_manager_timeout_seconds(5);
 
     pid_t child_pid = fork();
 
@@ -277,27 +292,29 @@ int main(int argc, char* argv[])
     goby::glog.set_name(std::string(argv[0]) + (is_subscriber ? "_subscriber" : "_publisher"));
     goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
-    //    std::thread t3(subscriber);
-    const int max_subs = 3;
+    std::vector<std::thread> threads;
     std::vector<goby::test::zeromq::ThreadSubscriber> thread_subscribers(
         max_subs, goby::test::zeromq::ThreadSubscriber());
-    std::vector<std::thread> threads;
-    for (int i = 0; i < max_subs; ++i)
-    {
-        threads.push_back(std::thread(
-            std::bind(&goby::test::zeromq::ThreadSubscriber::run, &thread_subscribers.at(i))));
-    }
-
-    while (ready < max_subs) usleep(1e5);
+    auto launch_sub_threads = [&]() {
+        for (int i = 0; i < max_subs; ++i)
+        {
+            threads.push_back(std::thread(
+                std::bind(&goby::test::zeromq::ThreadSubscriber::run, &thread_subscribers.at(i))));
+        }
+    };
 
     std::unique_ptr<std::thread> t4, t5;
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
     if (is_subscriber)
     {
-        std::thread t3([&] { goby::test::zeromq::zmq_forward(cfg); });
-        while (!zmq_ready) usleep(1e5);
+        auto sub_cfg = cfg;
+        sub_cfg.set_client_name("subscriber");
+        std::thread t3([&] { goby::test::zeromq::zmq_forward(sub_cfg); });
+        // ensure InterProcessPortal is up and running
+        sleep(1);
         std::thread t1(goby::test::zeromq::subscriber);
+        launch_sub_threads();
         t1.join();
         for (int i = 0; i < max_subs; ++i) threads.at(i).join();
         forward = false;
@@ -308,15 +325,23 @@ int main(int argc, char* argv[])
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
 
+        goby::zeromq::protobuf::InterProcessManagerHold hold;
+        hold.add_required_client("subscriber");
+        hold.add_required_client("publisher");
+
         goby::zeromq::Router router(*router_context, cfg);
         t4.reset(new std::thread([&] { router.run(); }));
-        goby::zeromq::Manager manager(*manager_context, cfg, router);
+        goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
         t5.reset(new std::thread([&] { manager.run(); }));
-        sleep(1);
 
-        std::thread t3([&] { goby::test::zeromq::zmq_forward(cfg); });
-        while (!zmq_ready) usleep(1e5);
+        auto pub_cfg = cfg;
+        pub_cfg.set_client_name("publisher");
+        std::thread t3([&] { goby::test::zeromq::zmq_forward(pub_cfg); });
+        // ensure InterProcessPortal is up and running
+        sleep(1);
+        subscriber_ready = true;
         std::thread t1(goby::test::zeromq::publisher);
+        launch_sub_threads();
         t1.join();
         for (int i = 0; i < max_subs; ++i) threads.at(i).join();
         int wstatus;

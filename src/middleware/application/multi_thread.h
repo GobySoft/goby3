@@ -27,6 +27,7 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/exception.h"
+#include "goby/middleware/application/detail/interprocess_common.h"
 #include "goby/middleware/application/detail/thread_type_selector.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/thread.h"
@@ -233,7 +234,7 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
     virtual ~MultiThreadApplicationBase() {}
 
     InterThreadTransporter& interthread() { return interthread_; }
-    virtual void finalize() override { join_all_threads(); }
+    virtual void post_finalize() override { join_all_threads(); }
 
     void join_all_threads()
     {
@@ -313,7 +314,8 @@ class MultiThreadApplication
     /// \param loop_freq The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     MultiThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : Base(loop_freq, &intervehicle_),
-          interprocess_(Base::interthread(), this->app_cfg().interprocess()),
+          interprocess_(Base::interthread(), detail::make_interprocess_config(
+                                                 this->app_cfg().interprocess(), this->app_name())),
           intervehicle_(interprocess_)
     {
         // handle goby_terminate request
@@ -357,6 +359,9 @@ class MultiThreadApplication
         health.set_name(this->app_name());
         health.set_state(goby::middleware::protobuf::HEALTH__OK);
     }
+
+    /// \brief Assume all required subscriptions are done in the Constructor or in initialize(). If this isn't the case, this method can be overridden
+    virtual void post_initialize() override { interprocess().ready(); };
 };
 
 /// \brief Base class for building multithreaded Goby applications that do not have perform any interprocess (or outer) communications, but only communicate internally via the InterThreadTransporter

@@ -43,7 +43,7 @@ template <typename Config> class ConfiguratorInterface
 
     /// \brief Subset of the configuration used to configure the Application itself
     /// \todo Change AppConfig to a C++ struct (not a Protobuf message)
-    const protobuf::AppConfig& app_configuration() const { return app_configuration_; }
+    virtual const protobuf::AppConfig& app_configuration() const { return app_configuration_; }
 
     /// \brief Override to validate the configuration
     ///
@@ -64,7 +64,7 @@ template <typename Config> class ConfiguratorInterface
     Config& mutable_cfg() { return cfg_; }
 
     /// \brief Derived classes can modify the application configuration as needed in their constructor
-    protobuf::AppConfig& mutable_app_configuration() { return app_configuration_; }
+    virtual protobuf::AppConfig& mutable_app_configuration() { return app_configuration_; }
 
   private:
     Config cfg_;
@@ -83,6 +83,8 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
     /// \param argv Command line parameters
     ProtobufConfigurator(int argc, char* argv[]);
 
+    const protobuf::AppConfig& app_configuration() const override { return this->cfg().app(); }
+
   protected:
     virtual void validate() const override
     {
@@ -96,6 +98,11 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
     {
         std::cerr << "Invalid configuration: use --help and/or --example_config for more help: "
                   << e.what() << std::endl;
+    }
+
+    protobuf::AppConfig& mutable_app_configuration() override
+    {
+        return *this->mutable_cfg().mutable_app();
     }
 
     void merge_app_base_cfg(protobuf::AppConfig* base_cfg,

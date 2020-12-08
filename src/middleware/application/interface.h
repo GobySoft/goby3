@@ -32,9 +32,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "goby/exception.h"
 #include <boost/format.hpp>
 
+#include "goby/exception.h"
 #include "goby/middleware/application/configurator.h"
 #include "goby/middleware/marshalling/detail/dccl_serializer_parser.h"
 #include "goby/middleware/protobuf/app_config.pb.h"
@@ -81,14 +81,26 @@ template <typename Config> class Application
     using ConfigType = Config;
 
   protected:
+    /// \brief Called just before initialize
+    virtual void pre_initialize(){};
+
     /// \brief Perform any initialize tasks that couldn't be done in the constructor
     virtual void initialize(){};
+
+    /// \brief Called just after initialize
+    virtual void post_initialize(){};
 
     /// \brief Runs continuously until quit() is called
     virtual void run() = 0;
 
+    /// \brief Called just before finalize
+    virtual void pre_finalize(){};
+
     /// \brief Perform any final cleanup actions just before the destructor is called
     virtual void finalize(){};
+
+    /// \brief Called just after finalize
+    virtual void post_finalize(){};
 
     /// \brief Requests a clean exit.
     ///
@@ -250,11 +262,14 @@ template <typename Config> int goby::middleware::Application<Config>::__run()
     sigaddset(&signal_mask, SIGWINCH);
     pthread_sigmask(SIG_BLOCK, &signal_mask, NULL);
 
-    // continue to run while we are alive (quit() has not been called)
-
+    this->pre_initialize();
     this->initialize();
+    this->post_initialize();
+    // continue to run while we are alive (quit() has not been called)
     while (alive_) { this->run(); }
+    this->pre_finalize();
     this->finalize();
+    this->post_finalize();
     return return_value_;
 }
 

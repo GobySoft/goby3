@@ -379,7 +379,7 @@ int goby::middleware::PollerInterface::_poll_all(
 
             if (poll_items == 0)
                 goby::glog.is(goby::util::logger::DEBUG3) &&
-                    goby::glog << "PollerInterface condition_variable: spurious wakeup"
+                    goby::glog << "PollerInterface condition_variable: no data (spurious?) wakeup"
                                << std::endl;
         }
         else
