@@ -234,7 +234,7 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
     virtual ~MultiThreadApplicationBase() {}
 
     InterThreadTransporter& interthread() { return interthread_; }
-    virtual void finalize() override { join_all_threads(); }
+    virtual void post_finalize() override { join_all_threads(); }
 
     void join_all_threads()
     {
@@ -359,6 +359,9 @@ class MultiThreadApplication
         health.set_name(this->app_name());
         health.set_state(goby::middleware::protobuf::HEALTH__OK);
     }
+
+    /// \brief Assume all required subscriptions are done in the Constructor or in initialize(). If this isn't the case, this method can be overridden
+    virtual void post_initialize() override { interprocess().ready(); };
 };
 
 /// \brief Base class for building multithreaded Goby applications that do not have perform any interprocess (or outer) communications, but only communicate internally via the InterThreadTransporter

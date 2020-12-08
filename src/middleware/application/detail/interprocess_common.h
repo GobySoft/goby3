@@ -14,6 +14,7 @@ make_interprocess_config(goby::zeromq::protobuf::InterProcessPortalConfig cfg, s
     cfg.set_client_name(app_name);
     return cfg;
 }
+
 } // namespace detail
 } // namespace middleware
 } // namespace goby

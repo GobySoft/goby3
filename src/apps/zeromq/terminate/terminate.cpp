@@ -55,6 +55,13 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
             .subscribe<middleware::groups::terminate_response,
                        goby::middleware::protobuf::TerminateResponse>(
                 [this](const goby::middleware::protobuf::TerminateResponse& response) {
+                    goby::middleware::protobuf::TerminateResult result;
+                    result.set_target_name(response.target_name());
+                    result.set_target_pid(response.target_pid());
+                    result.set_result(
+                        goby::middleware::protobuf::TerminateResult::PROCESS_RESPONDED);
+                    interprocess().publish<middleware::groups::terminate_result>(result);
+
                     auto pid_it = waiting_for_response_pids_.find(response.target_pid());
                     if (pid_it != waiting_for_response_pids_.end())
                     {
@@ -112,6 +119,12 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
             {
                 glog.is_debug2() && glog << "PID: " << it->first << " (was " << it->second
                                          << ") has quit." << std::endl;
+                goby::middleware::protobuf::TerminateResult result;
+                result.set_target_name(it->second);
+                result.set_target_pid(it->first);
+                result.set_result(
+                    goby::middleware::protobuf::TerminateResult::PROCESS_CLEANLY_QUIT);
+                interprocess().publish<middleware::groups::terminate_result>(result);
                 running_pids_.erase(it++);
             }
             else
@@ -133,22 +146,55 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
             timeout(cfg().response_timeout_with_units());
         if (now > start_time_ + timeout)
         {
-            if (glog.is_warn())
+            if (!waiting_for_response_names_.empty())
             {
-                if (!waiting_for_response_names_.empty())
+                for (const auto& target_name : waiting_for_response_names_)
+                {
+                    goby::middleware::protobuf::TerminateResult result;
+                    result.set_target_name(target_name);
+                    result.set_result(
+                        goby::middleware::protobuf::TerminateResult::TIMEOUT_RESPONSE);
+                    interprocess().publish<middleware::groups::terminate_result>(result);
+                }
+
+                if (glog.is_warn())
                 {
                     glog << "Timeout waiting for response from targets (by name): ";
                     for (const auto& target_name : waiting_for_response_names_)
                         glog << target_name << ", ";
                     glog << std::endl;
                 }
-                if (!waiting_for_response_pids_.empty())
+            }
+            if (!waiting_for_response_pids_.empty())
+            {
+                for (const auto& pid : waiting_for_response_pids_)
+                {
+                    goby::middleware::protobuf::TerminateResult result;
+                    result.set_target_pid(pid);
+                    result.set_result(
+                        goby::middleware::protobuf::TerminateResult::TIMEOUT_RESPONSE);
+                    interprocess().publish<middleware::groups::terminate_result>(result);
+                }
+
+                if (glog.is_warn())
                 {
                     glog << "Timeout waiting for response from targets (by PID): ";
                     for (const auto& pid : waiting_for_response_pids_) glog << pid << ", ";
                     glog << std::endl;
                 }
-                if (!running_pids_.empty())
+            }
+            if (!running_pids_.empty())
+            {
+                for (const auto& p : running_pids_)
+                {
+                    goby::middleware::protobuf::TerminateResult result;
+                    result.set_target_pid(p.first);
+                    result.set_target_name(p.second);
+                    result.set_result(goby::middleware::protobuf::TerminateResult::TIMEOUT_RUNNING);
+                    interprocess().publish<middleware::groups::terminate_result>(result);
+                }
+
+                if (glog.is_warn())
                 {
                     glog << "Timeout waiting for targets that responded to our request but have "
                             "not stopped running: ";
@@ -174,10 +220,9 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
 
     // targets that have responded but haven't quit yet (map of PID to former name)
     std::map<int, std::string> running_pids_;
-};
+}; // namespace zeromq
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
-
 
 int main(int argc, char* argv[]) { return goby::run<goby::apps::zeromq::Terminate>(argc, argv); }

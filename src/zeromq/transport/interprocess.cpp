@@ -21,8 +21,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/time/system_clock.h"
-
 #include "interprocess.h"
 
 using goby::glog;
@@ -269,19 +267,24 @@ void goby::zeromq::InterProcessPortalReadThread::run()
                         goby::glog << "No response from gobyd: " << cfg_.ShortDebugString()
                                    << std::endl;
             }
-            else if (hold_)
+            else if (hold_ && goby::time::SystemClock::now() >= next_hold_state_request_time_)
             {
                 req.set_ready(ready_);
-                auto start = goby::time::SystemClock::now();
-                auto request_period = std::chrono::seconds(1);
 
                 req.set_request(protobuf::PROVIDE_HOLD_STATE);
                 if (cfg_.has_client_name())
                     req.set_client_name(cfg_.client_name());
 
                 if (!manager_waiting_for_reply_)
+                {
                     send_manager_request(req);
-                while (start + request_period > goby::time::SystemClock::now()) poll(10);
+                    next_hold_state_request_time_ += hold_state_request_period_;
+                    poll(cfg_.manager_timeout_seconds() * 1000);
+                }
+            }
+            else
+            {
+                poll(10);
             }
         }
     }
@@ -588,7 +591,7 @@ void goby::zeromq::Manager::run()
                 }
             }
 
-            if (pb_request.ready())
+            if (pb_request.ready() && required_clients_.count(pb_request.client_name()))
                 reported_clients_.insert(pb_request.client_name());
 
             if (pb_request.has_client_name())

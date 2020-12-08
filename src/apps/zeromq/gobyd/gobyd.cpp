@@ -82,6 +82,10 @@ class DaemonConfigurator : public goby::middleware::ProtobufConfigurator<protobu
 
         cfg.mutable_interprocess()->set_client_name(cfg.app().name());
 
+        // add ourself to the hold list if any are specified
+        if (cfg.has_hold())
+            cfg.mutable_hold()->add_required_client(cfg.app().name());
+
         if (cfg.has_intervehicle())
         {
             auto& intervehicle = *cfg.mutable_intervehicle();
@@ -135,10 +139,16 @@ goby::apps::zeromq::Daemon::Daemon()
             if (match)
             {
                 interprocess_.publish<goby::middleware::groups::terminate_response>(resp);
-                // as gobyd mediates all interprocess() comms; wait for a bit to hopefully get our response out before shutting down
-                sleep(1);
-                quit();
             }
+        });
+
+    // as gobyd mediates all interprocess() comms; wait until we get our result back from goby_terminate before shutting down
+    interprocess_.subscribe<goby::middleware::groups::terminate_result>(
+        [this](const goby::middleware::protobuf::TerminateResult& result) {
+            std::cout << result.DebugString() << std::endl;
+            if (result.has_target_pid() && result.target_pid() == getpid() &&
+                result.result() == goby::middleware::protobuf::TerminateResult::PROCESS_RESPONDED)
+                quit();
         });
 
     interprocess_.ready();

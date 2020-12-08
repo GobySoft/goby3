@@ -29,6 +29,7 @@
 
 #include "goby/middleware/common.h"
 #include "goby/middleware/transport/interprocess.h"
+#include "goby/time/system_clock.h"
 #include "goby/zeromq/protobuf/interprocess_config.pb.h"
 #include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"
 
@@ -55,6 +56,12 @@ class InterProcessPortalMainThread
 {
   public:
     InterProcessPortalMainThread(zmq::context_t& context);
+    ~InterProcessPortalMainThread()
+    {
+        control_socket_.setsockopt(ZMQ_LINGER, 0);
+        publish_socket_.setsockopt(ZMQ_LINGER, 0);
+    }
+
     bool publish_ready() { return !hold_; }
     bool subscribe_ready() { return have_pubsub_sockets_; }
 
@@ -95,6 +102,12 @@ class InterProcessPortalReadThread
                                  zmq::context_t& context, std::atomic<bool>& alive,
                                  std::shared_ptr<std::condition_variable_any> poller_cv);
     void run();
+    ~InterProcessPortalReadThread()
+    {
+        control_socket_.setsockopt(ZMQ_LINGER, 0);
+        subscribe_socket_.setsockopt(ZMQ_LINGER, 0);
+        manager_socket_.setsockopt(ZMQ_LINGER, 0);
+    }
 
   private:
     void poll(long timeout_ms = -1);
@@ -126,6 +139,11 @@ class InterProcessPortalReadThread
     bool ready_{false};
     bool hold_{true};
     bool manager_waiting_for_reply_{false};
+
+    goby::time::SystemClock::time_point next_hold_state_request_time_{
+        goby::time::SystemClock::now()};
+    const goby::time::SystemClock::duration hold_state_request_period_{
+        std::chrono::milliseconds(100)};
 };
 
 template <typename InnerTransporter,

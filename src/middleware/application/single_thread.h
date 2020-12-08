@@ -112,6 +112,9 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
         health.set_state(goby::middleware::protobuf::HEALTH__OK);
     }
 
+    /// \brief Assume all required subscriptions are done in the Constructor or in initialize(). If this isn't the case, this method can be overridden
+    virtual void post_initialize() override { interprocess().ready(); };
+
   private:
     void run() override { MainThread::run_once(); }
 };
