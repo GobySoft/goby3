@@ -373,7 +373,7 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
         if (now > next_open_attempt_)
             try_open();
         else
-            usleep(10000); // avoid pegging CPU while waiting to attempt reopening socket
+            usleep(100000); // avoid pegging CPU while waiting to attempt reopening socket
     }
 }
 
