@@ -320,10 +320,11 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
     template <const Group& group, typename Data,
               int scheme = transporter_scheme<Data, Transporter>()>
-    void unsubscribe()
+    void unsubscribe(const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         static_cast<Transporter*>(this)->template check_validity<group>();
-        static_cast<Transporter*>(this)->template unsubscribe_dynamic<Data, scheme>(group);
+        static_cast<Transporter*>(this)->template unsubscribe_dynamic<Data, scheme>(group,
+                                                                                    subscriber);
     }
 
     /// \brief Unsubscribe to all messages that this transporter has subscribed to
@@ -378,7 +379,7 @@ int goby::middleware::PollerInterface::_poll_all(
 
             if (poll_items == 0)
                 goby::glog.is(goby::util::logger::DEBUG3) &&
-                    goby::glog << "PollerInterface condition_variable: spurious wakeup"
+                    goby::glog << "PollerInterface condition_variable: no data (spurious?) wakeup"
                                << std::endl;
         }
         else

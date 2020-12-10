@@ -306,6 +306,88 @@ BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest, DynamicBufferFixture)
     }
 }
 
+BOOST_FIXTURE_TEST_CASE(two_subbuffer_contest_replace_update, DynamicBufferFixture)
+{
+    auto now = TestClock::now();
+
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "2"});
+
+    TestClock::increment(std::chrono::milliseconds(1));
+    // will be "A" because it was created first (and last access is initialized to creation time)
+    {
+        auto vp = buffer.top();
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "2");
+        BOOST_CHECK(buffer.erase(vp));
+        BOOST_CHECK_EQUAL(buffer.size(), 3);
+    }
+    TestClock::increment(std::chrono::milliseconds(1));
+
+    // now it will be "B"
+    {
+        auto vp = buffer.top();
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
+        BOOST_CHECK_EQUAL(vp.data, "1");
+        BOOST_CHECK(buffer.erase(vp));
+        BOOST_CHECK_EQUAL(buffer.size(), 2);
+    }
+    TestClock::increment(std::chrono::milliseconds(1));
+
+    {
+        goby::acomms::protobuf::DynamicBufferConfig cfg =
+            buffer.sub(goby::acomms::BROADCAST_ID, "A").cfg();
+        cfg.set_max_queue(2);
+        buffer.replace(goby::acomms::BROADCAST_ID, "A", cfg);
+    }
+    {
+        goby::acomms::protobuf::DynamicBufferConfig cfg1 =
+            buffer.sub(goby::acomms::BROADCAST_ID, "B").cfg();
+        goby::acomms::protobuf::DynamicBufferConfig cfg2 =
+            buffer.sub(goby::acomms::BROADCAST_ID, "B").cfg();
+        cfg1.set_max_queue(2);
+        cfg2.set_max_queue(3);
+        buffer.update(goby::acomms::BROADCAST_ID, "B", {cfg1, cfg2});
+    }
+    // replace clears
+    auto now2 = TestClock::now();
+
+    BOOST_CHECK_EQUAL(buffer.sub(goby::acomms::BROADCAST_ID, "A").size(), 0);
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now2, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now2, "2"});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now2, "3"});
+    BOOST_CHECK_EQUAL(buffer.sub(goby::acomms::BROADCAST_ID, "A").size(), 2);
+
+    // update doesn't clear
+    BOOST_CHECK_EQUAL(buffer.sub(goby::acomms::BROADCAST_ID, "B").size(), 1);
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now2, "3"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now2, "4"});
+    BOOST_CHECK_EQUAL(buffer.sub(goby::acomms::BROADCAST_ID, "B").size(), 3);
+    TestClock::increment(std::chrono::milliseconds(1));
+
+    // will be "B" because it "A" was recreated (and last access is initialized to creation time)
+    // B
+    {
+        auto vp = buffer.top();
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
+        BOOST_CHECK_EQUAL(vp.data, "2");
+        BOOST_CHECK(buffer.erase(vp));
+        BOOST_CHECK_EQUAL(buffer.size(), 4);
+    }
+    TestClock::increment(std::chrono::milliseconds(1));
+
+    // A
+    {
+        auto vp = buffer.top();
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "3");
+        BOOST_CHECK(buffer.erase(vp));
+        BOOST_CHECK_EQUAL(buffer.size(), 3);
+    }
+}
+
 BOOST_FIXTURE_TEST_CASE(arbitrary_erase, DynamicBufferFixture)
 {
     auto now = TestClock::now();

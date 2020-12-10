@@ -1,8 +1,8 @@
 file(GLOB MD_SRC ../markdown/*.md)
 
-file(GLOB FIGURES RELATIVE ${goby_SRC_DIR}/doc/images ${goby_SRC_DIR}/doc/images/*)
+file(GLOB FIGURES RELATIVE ${goby_SRC_DIR}/doc/markdown/images ${goby_SRC_DIR}/doc/markdown/images/*)
 foreach(F ${FIGURES})
-  configure_file(${goby_SRC_DIR}/doc/images/${F} ${CMAKE_BINARY_DIR}/share/goby/doc/images/${F} COPYONLY)
+  configure_file(${goby_SRC_DIR}/doc/markdown/images/${F} ${CMAKE_BINARY_DIR}/share/goby/doc/html/images/${F} COPYONLY)
 endforeach()
 
 

@@ -26,6 +26,7 @@
 
 #include <atomic>
 #include <functional>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
@@ -40,6 +41,12 @@ namespace goby
 {
 namespace middleware
 {
+class InvalidUnsubscription : public Exception
+{
+  public:
+    InvalidUnsubscription(const std::string& e) : Exception(e) {}
+};
+
 /// \brief Base class for implementing transporters (both portal and forwarder) for the intervehicle layer
 ///
 /// \tparam Derived derived class (curiously recurring template pattern)
@@ -57,6 +64,12 @@ class InterVehicleTransporterBase
     using PollerType = Poller<InterVehicleTransporterBase<Derived, InnerTransporter>>;
 
   public:
+    enum class SubscriptionAction
+    {
+        SUBSCRIBE,
+        UNSUBSCRIBE
+    };
+
     InterVehicleTransporterBase(InnerTransporter& inner)
         : InterfaceType(inner), PollerType(&this->inner())
     {
@@ -65,6 +78,9 @@ class InterVehicleTransporterBase
             .template subscribe<intervehicle::groups::metadata_request,
                                 protobuf::SerializerMetadataRequest>(
                 [this](const protobuf::SerializerMetadataRequest& request) {
+                    glog.is_debug3() && glog << "Received DCCL metadata request: "
+                                             << request.ShortDebugString() << std::endl;
+
                     switch (request.request())
                     {
                         case protobuf::SerializerMetadataRequest::METADATA_INCLUDE:
@@ -184,8 +200,8 @@ class InterVehicleTransporterBase
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
         auto pointer_ref_lambda = [=](std::shared_ptr<const Data> d) { f(*d); };
-        static_cast<Derived*>(this)->template _subscribe<Data>(pointer_ref_lambda, group,
-                                                               subscriber);
+        static_cast<Derived*>(this)->template _subscribe<Data>(
+            pointer_ref_lambda, group, subscriber, SubscriptionAction::SUBSCRIBE);
     }
 
     /// \brief Subscribe to a specific run-time defined group and data type (shared pointer variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
@@ -202,7 +218,25 @@ class InterVehicleTransporterBase
     {
         static_assert(scheme == MarshallingScheme::DCCL,
                       "Can only use DCCL messages with InterVehicleTransporters");
-        static_cast<Derived*>(this)->template _subscribe<Data>(f, group, subscriber);
+        static_cast<Derived*>(this)->template _subscribe<Data>(f, group, subscriber,
+                                                               SubscriptionAction::SUBSCRIBE);
+    }
+
+    /// \brief Unsubscribe from a specific run-time defined group and data type. Where possible, prefer the static variant in StaticTransporterInterface::unsubscribe()
+    ///
+    /// \tparam Data data type to unsubscribe from.
+    /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \param group group to subscribe to (typically a DynamicGroup)
+    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
+    template <typename Data, int scheme = goby::middleware::scheme<Data>()>
+    void unsubscribe_dynamic(const Group& group = Group(),
+                             const Subscriber<Data>& subscriber = Subscriber<Data>())
+    {
+        static_assert(scheme == MarshallingScheme::DCCL,
+                      "Can only use DCCL messages with InterVehicleTransporters");
+        static_cast<Derived*>(this)->template _subscribe<Data>(
+            std::function<void(std::shared_ptr<const Data>)>(), group, subscriber,
+            SubscriptionAction::UNSUBSCRIBE);
     }
 
   protected:
@@ -239,17 +273,41 @@ class InterVehicleTransporterBase
     template <typename Data>
     std::shared_ptr<intervehicle::protobuf::Subscription>
     _set_up_subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                      const Subscriber<Data>& subscriber)
+                      const Subscriber<Data>& subscriber, SubscriptionAction action)
     {
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
 
-        auto subscription =
-            std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(func, group,
-                                                                                       subscriber);
+        switch (action)
+        {
+            case SubscriptionAction::SUBSCRIBE:
+            {
+                auto subscription =
+                    std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(
+                        func, group, subscriber);
 
-        this->subscriptions_[dccl_id].insert(std::make_pair(group, subscription));
+                this->subscriptions_[dccl_id][group] = subscription;
+            }
+            break;
+            case SubscriptionAction::UNSUBSCRIBE:
+            {
+                auto sub_it = this->subscriptions_[dccl_id].find(group);
+                if (sub_it != this->subscriptions_[dccl_id].end())
+                {
+                    this->subscriptions_[dccl_id].erase(sub_it);
+                }
+                else
+                {
+                    std::stringstream ss;
+                    ss << "Cannot unsubscribe to DCCL id: " << dccl_id
+                       << " and group: " << std::string(group) << " as no subscription was found.";
+                    throw(InvalidUnsubscription(ss.str()));
+                }
+            }
+            break;
+        }
 
-        auto dccl_subscription = this->template _serialize_subscription<Data>(group, subscriber);
+        auto dccl_subscription =
+            this->template _serialize_subscription<Data>(group, subscriber, action);
         using intervehicle::protobuf::Subscription;
         // insert pending subscription
         auto subscription_publication = intervehicle::serialize_publication(
@@ -334,7 +392,8 @@ class InterVehicleTransporterBase
 
     template <typename Data>
     std::shared_ptr<intervehicle::protobuf::Subscription>
-    _serialize_subscription(const Group& group, const Subscriber<Data>& subscriber)
+    _serialize_subscription(const Group& group, const Subscriber<Data>& subscriber,
+                            SubscriptionAction action)
     {
         auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
         auto dccl_subscription = std::make_shared<intervehicle::protobuf::Subscription>();
@@ -347,6 +406,10 @@ class InterVehicleTransporterBase
         dccl_subscription->set_group(group.numeric());
         dccl_subscription->set_time_with_units(
             goby::time::SystemClock::now<goby::time::MicroTime>());
+        dccl_subscription->set_action((action == SubscriptionAction::SUBSCRIBE)
+                                          ? intervehicle::protobuf::Subscription::SUBSCRIBE
+                                          : intervehicle::protobuf::Subscription::UNSUBSCRIBE);
+
         _set_protobuf_metadata<Data>(dccl_subscription->mutable_metadata());
         *dccl_subscription->mutable_intervehicle() = subscriber.cfg().intervehicle();
         return dccl_subscription;
@@ -367,8 +430,9 @@ class InterVehicleTransporterBase
 
   protected:
     // maps DCCL ID to map of Group->subscription
-    std::unordered_map<int, std::unordered_multimap<
-                                std::string, std::shared_ptr<const SerializationHandlerBase<>>>>
+    // only one subscription allowed per IntervehicleForwarder/Portal (new subscription overwrites old one)
+    std::unordered_map<
+        int, std::unordered_map<std::string, std::shared_ptr<const SerializationHandlerBase<>>>>
         subscriptions_;
 
   private:
@@ -504,12 +568,20 @@ class InterVehicleForwarder
 
     template <typename Data>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                    const Subscriber<Data>& subscriber)
+                    const Subscriber<Data>& subscriber, typename Base::SubscriptionAction action)
     {
-        this->inner()
-            .template publish<intervehicle::groups::modem_subscription_forward_tx,
-                              intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
-                this->_set_up_subscribe(func, group, subscriber));
+        try
+        {
+            this->inner()
+                .template publish<intervehicle::groups::modem_subscription_forward_tx,
+                                  intervehicle::protobuf::Subscription,
+                                  MarshallingScheme::PROTOBUF>(
+                    this->_set_up_subscribe(func, group, subscriber, action));
+        }
+        catch (const InvalidUnsubscription& e)
+        {
+            goby::glog.is_warn() && goby::glog << e.what() << std::endl;
+        }
     }
 
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) { return 0; }
@@ -522,12 +594,7 @@ template <typename InnerTransporter>
 class InterVehiclePortal
     : public InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>
 {
-    static_assert(
-        std::is_same<typename InnerTransporter::InnerTransporterType,
-                     InterThreadTransporter>::value,
-        "InterVehiclePortal is implemented in a way that requires that its "
-        "InnerTransporter's InnerTransporter be goby::middleware::InterThreadTransporter, that is "
-        "InterVehicle<InterProcess<goby::middleware::InterThreadTransport>>");
+    using modem_id_type = goby::middleware::intervehicle::ModemDriverThread::modem_id_type;
 
   public:
     using Base =
@@ -570,12 +637,19 @@ class InterVehiclePortal
 
     template <typename Data>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                    const Subscriber<Data>& subscriber)
+                    const Subscriber<Data>& subscriber, typename Base::SubscriptionAction action)
     {
-        auto dccl_subscription = this->_set_up_subscribe(func, group, subscriber);
+        try
+        {
+            auto dccl_subscription = this->_set_up_subscribe(func, group, subscriber, action);
 
-        this->innermost().template publish<intervehicle::groups::modem_subscription_forward_tx>(
-            dccl_subscription);
+            this->innermost().template publish<intervehicle::groups::modem_subscription_forward_tx>(
+                dccl_subscription);
+        }
+        catch (const InvalidUnsubscription& e)
+        {
+            goby::glog.is_warn() && goby::glog << e.what() << std::endl;
+        }
     }
 
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
@@ -614,14 +688,12 @@ class InterVehiclePortal
                 std::make_pair(subscription->subscribed_group(), subscription));
         }
 
-        this->innermost()
-            .template subscribe<intervehicle::groups::modem_data_in,
-                                intervehicle::protobuf::DCCLForwardedData>(
-                [this](const intervehicle::protobuf::DCCLForwardedData& msg) {
-                    received_.push_back(msg);
-                });
+        this->innermost().template subscribe<intervehicle::groups::modem_data_in>(
+            [this](const intervehicle::protobuf::DCCLForwardedData& msg) {
+                received_.push_back(msg);
+            });
 
-        // a message required ack can be disposed by either [1] ack, [2] expire (TTL exceeded), [3] having no subscribers, [4] queue size exceeded.
+        // a message requiring ack can be disposed by either [1] ack, [2] expire (TTL exceeded), [3] having no subscribers, [4] queue size exceeded.
         // post the correct callback (ack for [1] and expire for [2-4])
         // and remove the pending ack message
         using ack_pair_type = intervehicle::protobuf::AckMessagePair;
@@ -642,6 +714,10 @@ class InterVehiclePortal
                 goby::glog.is_debug1() && goby::glog << "Received driver ready" << std::endl;
                 ++drivers_ready_;
             });
+
+        // set up before drivers ready to ensure we don't miss subscriptions
+        if (cfg_.has_persist_subscriptions())
+            _set_up_persistent_subscriptions();
 
         for (int i = 0, n = cfg_.link_size(); i < n; ++i)
         {
@@ -673,8 +749,92 @@ class InterVehiclePortal
             goby::glog.is_debug1() && goby::glog << "Waiting for drivers to be ready." << std::endl;
             this->poll();
         }
+
+        // write subscriptions after drivers ready to ensure they aren't missed
+        if (former_sub_collection_.subscription_size() > 0)
+        {
+            goby::glog.is_debug1() &&
+                goby::glog << "Begin loading subscriptions from persistent storage..." << std::endl;
+            for (const auto& sub : former_sub_collection_.subscription())
+                this->innermost()
+                    .template publish<intervehicle::groups::modem_subscription_forward_rx,
+                                      intervehicle::protobuf::Subscription,
+                                      MarshallingScheme::PROTOBUF>(sub);
+        }
     }
 
+    void _set_up_persistent_subscriptions()
+    {
+        const auto& dir = cfg_.persist_subscriptions().dir();
+        if (dir.empty())
+            goby::glog.is_die() && goby::glog << "persist_subscriptions.dir cannot be empty"
+                                              << std::endl;
+
+        std::stringstream file_name;
+        file_name << dir;
+        if (dir.back() != '/')
+            file_name << "/";
+        file_name << "goby_intervehicle_subscriptions_" << cfg_.persist_subscriptions().name()
+                  << ".pb.txt";
+        persist_sub_file_name_ = file_name.str();
+        {
+            std::ifstream persist_sub_ifs(persist_sub_file_name_.c_str());
+            try
+            {
+                if (persist_sub_ifs.is_open())
+                {
+                    google::protobuf::TextFormat::Parser parser;
+                    google::protobuf::io::IstreamInputStream iis(&persist_sub_ifs);
+                    parser.Parse(&iis, &former_sub_collection_);
+                }
+                else
+                {
+                    goby::glog.is_debug1() &&
+                        goby::glog << "Could not open persistent subscriptions file: "
+                                   << persist_sub_file_name_
+                                   << ". Assuming no persistent subscriptions exist" << std::endl;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                goby::glog.is_warn() &&
+                    goby::glog << "Error reading persistent subscriptions file: " << e.what()
+                               << std::endl;
+            }
+        }
+
+        std::ofstream persist_sub_ofs(persist_sub_file_name_.c_str());
+        if (!persist_sub_ofs.is_open())
+        {
+            goby::glog.is_die() &&
+                goby::glog << "Could not open persistent subscriptions file for writing: "
+                           << persist_sub_file_name_ << std::endl;
+        }
+        remove(persist_sub_file_name_.c_str());
+
+        this->innermost().template subscribe<intervehicle::groups::subscription_report>(
+            [this](const intervehicle::protobuf::SubscriptionReport& report) {
+                goby::glog.is_debug1() && goby::glog << "Received subscription report: "
+                                                     << report.ShortDebugString() << std::endl;
+                sub_reports_[report.link_modem_id()] = report;
+                std::ofstream persist_sub_ofs(persist_sub_file_name_.c_str());
+                intervehicle::protobuf::SubscriptionPersistCollection collection;
+                collection.set_time_with_units(
+                    goby::time::SystemClock::now<goby::time::MicroTime>());
+                for (auto report_p : sub_reports_)
+                {
+                    for (const auto& sub : report_p.second.subscription())
+                        *collection.add_subscription() = sub;
+                }
+                google::protobuf::TextFormat::Printer printer;
+                google::protobuf::io::OstreamOutputStream oos(&persist_sub_ofs);
+                goby::glog.is_debug1() &&
+                    goby::glog << "Collection: " << collection.ShortDebugString() << std::endl;
+                printer.Print(collection, &oos);
+            });
+    }
+
+  private:
     intervehicle::protobuf::PortalConfig cfg_;
 
     struct ModemDriverData
@@ -687,6 +847,10 @@ class InterVehiclePortal
     unsigned drivers_ready_{0};
 
     std::deque<intervehicle::protobuf::DCCLForwardedData> received_;
+
+    intervehicle::protobuf::SubscriptionPersistCollection former_sub_collection_;
+    std::string persist_sub_file_name_;
+    std::map<modem_id_type, intervehicle::protobuf::SubscriptionReport> sub_reports_;
 };
 } // namespace middleware
 } // namespace goby

@@ -49,6 +49,14 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
   private:
     void run() override;
 
+    goby::zeromq::Manager make_manager()
+    {
+        return app_cfg().has_hold()
+                   ? goby::zeromq::Manager(*manager_context_, app_cfg().interprocess(), router_,
+                                           app_cfg().hold())
+                   : goby::zeromq::Manager(*manager_context_, app_cfg().interprocess(), router_);
+    }
+
   private:
     // for handling ZMQ Interprocess Communications
     std::unique_ptr<zmq::context_t> router_context_;
@@ -61,19 +69,51 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
     // For hosting an InterVehiclePortal
     goby::middleware::InterThreadTransporter interthread_;
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> interprocess_;
-    std::unique_ptr<goby::middleware::InterVehiclePortal<decltype(interprocess_)> > intervehicle_;
+    std::unique_ptr<goby::middleware::InterVehiclePortal<decltype(interprocess_)>> intervehicle_;
 };
+
+class DaemonConfigurator : public goby::middleware::ProtobufConfigurator<protobuf::GobyDaemonConfig>
+{
+  public:
+    DaemonConfigurator(int argc, char* argv[])
+        : goby::middleware::ProtobufConfigurator<protobuf::GobyDaemonConfig>(argc, argv)
+    {
+        protobuf::GobyDaemonConfig& cfg = mutable_cfg();
+
+        cfg.mutable_interprocess()->set_client_name(cfg.app().name());
+
+        // add ourself to the hold list if any are specified
+        if (cfg.has_hold())
+            cfg.mutable_hold()->add_required_client(cfg.app().name());
+
+        if (cfg.has_intervehicle())
+        {
+            auto& intervehicle = *cfg.mutable_intervehicle();
+            if (intervehicle.has_persist_subscriptions())
+            {
+                auto& p = *intervehicle.mutable_persist_subscriptions();
+                if (!p.has_name())
+                    p.set_name(cfg.interprocess().platform());
+            }
+        }
+    }
+};
+
 } // namespace zeromq
 } // namespace apps
 } // namespace goby
 
-int main(int argc, char* argv[]) { return goby::run<goby::apps::zeromq::Daemon>(argc, argv); }
+int main(int argc, char* argv[])
+{
+    return goby::run<goby::apps::zeromq::Daemon>(
+        goby::apps::zeromq::DaemonConfigurator(argc, argv));
+}
 
 goby::apps::zeromq::Daemon::Daemon()
     : router_context_(new zmq::context_t(app_cfg().router_threads())),
       manager_context_(new zmq::context_t(1)),
       router_(*router_context_, app_cfg().interprocess()),
-      manager_(*manager_context_, app_cfg().interprocess(), router_),
+      manager_(make_manager()),
       router_thread_(new std::thread([&] { router_.run(); })),
       manager_thread_(new std::thread([&] { manager_.run(); })),
       interprocess_(app_cfg().interprocess())
@@ -99,11 +139,19 @@ goby::apps::zeromq::Daemon::Daemon()
             if (match)
             {
                 interprocess_.publish<goby::middleware::groups::terminate_response>(resp);
-                // as gobyd mediates all interprocess() comms; wait for a bit to hopefully get our response out before shutting down
-                sleep(1);
-                quit();
             }
         });
+
+    // as gobyd mediates all interprocess() comms; wait until we get our result back from goby_terminate before shutting down
+    interprocess_.subscribe<goby::middleware::groups::terminate_result>(
+        [this](const goby::middleware::protobuf::TerminateResult& result) {
+            std::cout << result.DebugString() << std::endl;
+            if (result.has_target_pid() && result.target_pid() == getpid() &&
+                result.result() == goby::middleware::protobuf::TerminateResult::PROCESS_RESPONDED)
+                quit();
+        });
+
+    interprocess_.ready();
 }
 
 goby::apps::zeromq::Daemon::~Daemon()

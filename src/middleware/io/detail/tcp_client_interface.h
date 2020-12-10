@@ -75,21 +75,9 @@ class TCPClientThread : public IOThread<line_in_group, line_out_group, publish_l
     }
 
   private:
-    /// \brief Starts an asynchronous write from data published
-    void async_write(const std::string& bytes) override
+    void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) override
     {
-        boost::asio::async_write(
-            this->mutable_socket(), boost::asio::buffer(bytes),
-            [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
-                if (!ec && bytes_transferred > 0)
-                {
-                    this->handle_write_success(bytes_transferred);
-                }
-                else
-                {
-                    this->handle_write_error(ec);
-                }
-            });
+        basic_async_write(this, io_msg);
     }
 
     /// \brief Tries to open the tcp client socket, and if fails publishes an error

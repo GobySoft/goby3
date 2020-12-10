@@ -66,10 +66,12 @@ class PTYThread : public detail::IOThread<line_in_group, line_out_group, publish
 
     ~PTYThread() {}
 
-  protected:
-    virtual void async_write(const std::string& bytes) override;
-
   private:
+    void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) override
+    {
+        basic_async_write(this, io_msg);
+    }
+
     void open_socket() override;
 };
 } // namespace detail
@@ -84,19 +86,8 @@ template <const goby::middleware::Group& line_in_group,
 void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publish_layer,
                                              subscribe_layer>::open_socket()
 {
-    int pty_internal = posix_openpt(O_RDWR | O_NOCTTY);
-
-    if (pty_internal == -1)
-        throw(goby::Exception(std::string("Error in posix_openpt: ") + std::strerror(errno)));
-    if (grantpt(pty_internal) == -1)
-        throw(goby::Exception(std::string("Error in grantpt: ") + std::strerror(errno)));
-    if (unlockpt(pty_internal) == -1)
-        throw(goby::Exception(std::string("Error in unlockpt: ") + std::strerror(errno)));
-
-    char pty_external_path[256];
-    ptsname_r(pty_internal, pty_external_path, sizeof(pty_external_path));
+    // remove old symlink
     const char* pty_external_symlink = this->cfg().port().c_str();
-
     struct stat stat_buffer;
     // file exists
     if (lstat(pty_external_symlink, &stat_buffer) == 0)
@@ -114,8 +105,15 @@ void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publ
         }
     }
 
-    if (symlink(pty_external_path, pty_external_symlink) == -1)
-        throw(goby::Exception(std::string("Could not create symlink: ") + pty_external_symlink));
+    // open the PTY
+    int pty_internal = posix_openpt(O_RDWR | O_NOCTTY);
+
+    if (pty_internal == -1)
+        throw(goby::Exception(std::string("Error in posix_openpt: ") + std::strerror(errno)));
+    if (grantpt(pty_internal) == -1)
+        throw(goby::Exception(std::string("Error in grantpt: ") + std::strerror(errno)));
+    if (unlockpt(pty_internal) == -1)
+        throw(goby::Exception(std::string("Error in unlockpt: ") + std::strerror(errno)));
 
     // structure to store the port settings in
     termios ps;
@@ -157,25 +155,11 @@ void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publ
                               strerror(errno)));
 
     this->mutable_socket().assign(pty_internal);
-}
 
-template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
-void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publish_layer,
-                                             subscribe_layer>::async_write(const std::string& bytes)
-{
-    boost::asio::async_write(
-        this->mutable_socket(), boost::asio::buffer(bytes),
-        [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
-            if (!ec && bytes_transferred > 0)
-            {
-                this->handle_write_success(bytes_transferred);
-            }
-            else
-            {
-                this->handle_write_error(ec);
-            }
-        });
+    // re-symlink to new PTY
+    char pty_external_path[256];
+    ptsname_r(pty_internal, pty_external_path, sizeof(pty_external_path));
+
+    if (symlink(pty_external_path, pty_external_symlink) == -1)
+        throw(goby::Exception(std::string("Could not create symlink: ") + pty_external_symlink));
 }

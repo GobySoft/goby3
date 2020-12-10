@@ -153,10 +153,11 @@ class InterProcessTransporterBase
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
     /// \param group group to unsubscribe from (typically a DynamicGroup)
     template <typename Data, int scheme = scheme<Data>()>
-    void unsubscribe_dynamic(const Group& group)
+    void unsubscribe_dynamic(const Group& group,
+                             const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
         check_validity_runtime(group);
-        static_cast<Derived*>(this)->template _unsubscribe<Data, scheme>(group);
+        static_cast<Derived*>(this)->template _unsubscribe<Data, scheme>(group, subscriber);
     }
 
     /// \brief Unsubscribe from all current subscriptions
@@ -344,9 +345,10 @@ class InterProcessForwarder
             subscription);
     }
 
-    template <typename Data, int scheme> void _unsubscribe(const Group& group)
+    template <typename Data, int scheme>
+    void _unsubscribe(const Group& group, const Subscriber<Data>& subscriber)
     {
-        this->inner().template unsubscribe_dynamic<Data, scheme>(group);
+        this->inner().template unsubscribe_dynamic<Data, scheme>(group, subscriber);
 
         auto unsubscription = std::shared_ptr<SerializationHandlerBase<>>(
             new SerializationUnSubscription<Data, scheme>(group));

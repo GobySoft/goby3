@@ -26,8 +26,10 @@
 
 #include <boost/units/systems/si.hpp>
 
+#include "goby/middleware/application/detail/interprocess_common.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/thread.h"
+
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/intervehicle.h"
 
@@ -66,7 +68,8 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
     /// \param loop_freq The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
         : MainThread(this->app_cfg(), loop_freq),
-          interprocess_(this->app_cfg().interprocess()),
+          interprocess_(
+              detail::make_interprocess_config(this->app_cfg().interprocess(), this->app_name())),
           intervehicle_(interprocess_)
     {
         this->set_transporter(&intervehicle_);
@@ -108,6 +111,9 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
         health.set_name(this->app_name());
         health.set_state(goby::middleware::protobuf::HEALTH__OK);
     }
+
+    /// \brief Assume all required subscriptions are done in the Constructor or in initialize(). If this isn't the case, this method can be overridden
+    virtual void post_initialize() override { interprocess().ready(); };
 
   private:
     void run() override { MainThread::run_once(); }

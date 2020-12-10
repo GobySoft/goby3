@@ -4,6 +4,7 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   Thomas McCabe <tom.mccabe@missionsystems.com.au>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -49,5 +50,8 @@
 
 // UDP Multicast driver
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"
+
+// Popoto Driver
+#include "goby/acomms/modemdriver/popoto_driver.h"
 
 #endif

@@ -80,7 +80,7 @@ void goby::middleware::io::UDPPointToPointThread<
 {
     this->mutable_socket().async_send_to(
         boost::asio::buffer(io_msg->data()), remote_endpoint_,
-        [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+        [this, io_msg](const boost::system::error_code& ec, std::size_t bytes_transferred) {
             if (!ec && bytes_transferred > 0)
             {
                 this->handle_write_success(bytes_transferred);

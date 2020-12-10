@@ -35,6 +35,8 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 
+#include "goby/middleware/transport/intervehicle/groups.h"
+
 namespace goby
 {
 namespace acomms
@@ -75,6 +77,15 @@ inline bool operator<(const SerializerTransporterMessage& a, const SerializerTra
 
 namespace intervehicle
 {
+namespace protobuf
+{
+inline bool operator==(const TransporterConfig& a, const TransporterConfig& b)
+{
+    return a.SerializeAsString() == b.SerializeAsString();
+}
+
+} // namespace protobuf
+
 template <typename Data>
 std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
 serialize_publication(const Data& d, const Group& group, const Publisher<Data>& publisher)
@@ -94,26 +105,6 @@ serialize_publication(const Data& d, const Group& group, const Publisher<Data>& 
     msg->set_allocated_data(sbytes);
     return msg;
 }
-
-namespace groups
-{
-constexpr Group subscription_forward{"goby::middleware::intervehicle::subscription_forward",
-                                     Group::broadcast_group};
-
-constexpr Group modem_data_out{"goby::middleware::intervehicle::modem_data_out"};
-constexpr Group modem_data_in{"goby::middleware::intervehicle::modem_data_in"};
-constexpr Group modem_ack_in{"goby::middleware::intervehicle::modem_ack_in"};
-constexpr Group modem_expire_in{"goby::middleware::intervehicle::modem_expire_in"};
-
-constexpr Group modem_subscription_forward_tx{
-    "goby::middleware::intervehicle::modem_subscription_forward_tx"};
-constexpr Group modem_subscription_forward_rx{
-    "goby::middleware::intervehicle::modem_subscription_forward_rx"};
-constexpr Group modem_driver_ready{"goby::middleware::intervehicle::modem_driver_ready"};
-
-constexpr Group metadata_request{"goby::middleware::intervehicle::metadata_request"};
-
-} // namespace groups
 
 class ModemDriverThread
     : public goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
@@ -153,8 +144,7 @@ class ModemDriverThread
         return _create_buffer_id(subscription.dccl_id(), subscription.group());
     }
 
-    void _create_buffer(modem_id_type dest_id, subbuffer_id_type buffer_id,
-                        const std::vector<goby::acomms::protobuf::DynamicBufferConfig>& cfgs);
+    void _try_create_or_update_buffer(modem_id_type dest_id, subbuffer_id_type buffer_id);
 
     bool _dest_is_in_subnet(modem_id_type dest_id)
     {
@@ -164,19 +154,21 @@ class ModemDriverThread
             goby::glog.is_debug3() && goby::glog
                                           << "Dest: " << dest_id
                                           << " is not in subnet (our id: " << cfg().modem_id()
-                                          << ", mask: " << cfg().subnet_mask();
+                                          << ", mask: " << cfg().subnet_mask() << std::endl;
 
         return dest_in_subnet;
     }
+
+    void _publish_subscription_report(const intervehicle::protobuf::Subscription& changed);
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
     std::unique_ptr<InterProcessForwarder<InterThreadTransporter>> interprocess_;
 
-    std::map<subbuffer_id_type, goby::middleware::protobuf::SerializerTransporterKey>
+    std::multimap<subbuffer_id_type, goby::middleware::protobuf::SerializerTransporterKey>
         publisher_buffer_cfg_;
 
-    std::map<modem_id_type, std::map<subbuffer_id_type, intervehicle::protobuf::Subscription>>
+    std::map<modem_id_type, std::multimap<subbuffer_id_type, intervehicle::protobuf::Subscription>>
         subscriber_buffer_cfg_;
 
     std::map<subbuffer_id_type, std::set<modem_id_type>> subbuffers_created_;
@@ -192,6 +184,8 @@ class ModemDriverThread
 
     std::unique_ptr<goby::acomms::ModemDriverBase> driver_;
     goby::acomms::MACManager mac_;
+
+    std::string glog_group_;
 };
 
 } // namespace intervehicle

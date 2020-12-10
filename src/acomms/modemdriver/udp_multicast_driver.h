@@ -49,7 +49,7 @@ class UDPMulticastDriver : public ModemDriverBase
     void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
 
   private:
-    void start_send(const google::protobuf::Message& msg);
+    void start_send(const protobuf::ModemTransmission& m);
     void send_complete(const boost::system::error_code& error, std::size_t bytes_transferred);
     void start_receive();
     void receive_complete(const boost::system::error_code& error, std::size_t bytes_transferred);

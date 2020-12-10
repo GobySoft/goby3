@@ -10,7 +10,13 @@ message TransporterConfig
     repeated int32 publisher_id = 1
         [(dccl.field) = {min: 1 max: 30 max_repeat: 8 omit: true}];
 
+    // unique id for intervehicle().subscribe within a given vehicle
+    optional int32 subscriber_uuid = 2
+        [default = 0, (dccl.field) = {min: 0, max: 7}];
+    
     optional goby.acomms.protobuf.DynamicBufferConfig buffer = 10;
+
+
     // message LinkConfig
     // {
     //     enum LinkPolicy

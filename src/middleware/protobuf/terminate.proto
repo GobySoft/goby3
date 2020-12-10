@@ -12,3 +12,20 @@ message TerminateResponse
     optional string target_name = 1;
     optional uint32 target_pid = 2;
 }
+
+
+message TerminateResult
+{        
+    optional string target_name = 1;
+    optional uint32 target_pid = 2;
+
+    enum Result
+    {
+        PROCESS_RESPONDED = 1;
+        PROCESS_CLEANLY_QUIT = 2;
+        TIMEOUT_RESPONSE = 3;
+        TIMEOUT_RUNNING = 4;
+    }
+    required Result result = 3;
+
+}

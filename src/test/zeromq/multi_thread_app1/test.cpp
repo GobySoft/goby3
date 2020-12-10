@@ -53,16 +53,30 @@ namespace zeromq
 {
 void noop_func(const Widget& widget) {}
 
-class TestConfigurator : public goby::middleware::ProtobufConfigurator<TestConfig>
+class TestRxConfigurator : public goby::middleware::ProtobufConfigurator<TestConfig>
 {
   public:
-    TestConfigurator(int argc, char* argv[])
+    TestRxConfigurator(int argc, char* argv[])
         : goby::middleware::ProtobufConfigurator<TestConfig>(argc, argv)
     {
         TestConfig& cfg = mutable_cfg();
+        cfg.mutable_app()->set_name("TestAppRx");
         cfg.mutable_interprocess()->set_platform(platform_name);
     }
 };
+
+class TestTxConfigurator : public goby::middleware::ProtobufConfigurator<TestConfig>
+{
+  public:
+    TestTxConfigurator(int argc, char* argv[])
+        : goby::middleware::ProtobufConfigurator<TestConfig>(argc, argv)
+    {
+        TestConfig& cfg = mutable_cfg();
+        cfg.mutable_app()->set_name("TestAppTx");
+        cfg.mutable_interprocess()->set_platform(platform_name);
+    }
+};
+
 class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
 {
   public:
@@ -75,6 +89,7 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
 
         interprocess().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
         interprocess().subscribe<widget2, Widget>([this](const Widget& w) { post(w); });
+        ready = true;
     }
 
     ~TestThreadRx() {}
@@ -88,9 +103,13 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
         interthread().publish<widget2>(widget);
     }
 
+    static std::atomic<bool> ready;
+
   private:
     int rx_count_{0};
 };
+
+std::atomic<bool> TestThreadRx::ready{false};
 
 class TestAppRx : public AppBase
 {
@@ -102,17 +121,13 @@ class TestAppRx : public AppBase
         interprocess().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
         interprocess().subscribe<widget2, Widget>([this](const Widget& w) { post2(w); });
         launch_thread<TestThreadRx>();
+
+        while (!TestThreadRx::ready) usleep(1e4);
+
+        interprocess().ready();
     }
 
-    void loop() override
-    {
-        if (rx_count_ == 0)
-        {
-            Ready r;
-            r.set_b(true);
-            interprocess().publish<ready>(r);
-        }
-    }
+    void loop() override {}
 
     void post(const Widget& widget)
     {
@@ -139,7 +154,6 @@ class TestAppTx : public AppBase
     {
         glog.is_verbose() && glog << "Tx App: pid: " << getpid()
                                   << ", thread: " << std::this_thread::get_id() << std::endl;
-        interprocess().subscribe<ready, Ready>([this](const Ready& r) { rx_ready_ = r.b(); });
 
         // test subscribe interface options
         interthread().subscribe<widget1, Widget>([this](const Widget& w) { noop(w); });
@@ -153,13 +167,16 @@ class TestAppTx : public AppBase
         interthread().subscribe<widget1>(f);
         interthread().subscribe<widget1, Widget>(&noop_func);
         interthread().subscribe<widget1>(&noop_func);
+
+        interprocess().ready();
     }
 
     void loop() override
     {
         static int i = 0;
         ++i;
-        if (rx_ready_)
+
+        if (!interprocess().hold_state())
         {
             glog.is_verbose() && glog << goby::time::SystemClock::now() << std::endl;
             Widget w;
@@ -179,7 +196,6 @@ class TestAppTx : public AppBase
 
   private:
     int tx_count_{0};
-    bool rx_ready_{false};
 };
 } // namespace zeromq
 } // namespace test
@@ -193,15 +209,21 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
 
+    //    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
+
     if (child_pid != 0)
     {
         goby::zeromq::protobuf::InterProcessPortalConfig cfg;
         cfg.set_platform(platform_name);
+        goby::zeromq::protobuf::InterProcessManagerHold hold;
+        hold.add_required_client("TestAppRx");
+        hold.add_required_client("TestAppTx");
+
         manager_context.reset(new zmq::context_t(1));
         router_context.reset(new zmq::context_t(1));
         goby::zeromq::Router router(*router_context, cfg);
         t2.reset(new std::thread([&] { router.run(); }));
-        goby::zeromq::Manager manager(*manager_context, cfg, router);
+        goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
         t3.reset(new std::thread([&] { manager.run(); }));
         int wstatus;
         wait(&wstatus);
@@ -214,12 +236,14 @@ int main(int argc, char* argv[])
     }
     else
     {
+        // let manager and router start up
+        // sleep(1);
         int child2_pid = fork();
         if (child2_pid != 0)
         {
             int wstatus;
             int rc = goby::run<goby::test::zeromq::TestAppRx>(
-                goby::test::zeromq::TestConfigurator(argc, argv));
+                goby::test::zeromq::TestRxConfigurator(argc, argv));
             wait(&wstatus);
             if (wstatus != 0)
                 exit(EXIT_FAILURE);
@@ -227,9 +251,8 @@ int main(int argc, char* argv[])
         }
         else
         {
-            usleep(100000);
             return goby::run<goby::test::zeromq::TestAppTx>(
-                goby::test::zeromq::TestConfigurator(argc, argv));
+                goby::test::zeromq::TestTxConfigurator(argc, argv));
         }
     }
     std::cout << "All tests passed." << std::endl;

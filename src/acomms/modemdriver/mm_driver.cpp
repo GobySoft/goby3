@@ -7,7 +7,7 @@
 //   Russ Webber <russ@rw.id.au>
 //   Mike Godin <mikegodin@yahoo.com>
 //   Zac Berkowitz <zberkowitz@whoi.edu>
-//   Jeff Walls
+//   Jeff Walls <jeff@luigi>
 //   Chris Murphy <cmurphy@bluefinrobotics.com>
 //
 //
