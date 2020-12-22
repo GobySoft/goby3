@@ -1,0 +1,58 @@
+syntax = "proto2";
+
+import "goby/middleware/protobuf/geographic.proto";
+import "dccl/option_extensions.proto";
+
+package goby.middleware.protobuf;
+
+
+message Attitude {
+  optional double heading = 1;
+  optional double pitch = 2;
+
+  optional double roll = 3;
+  optional double yaw = 4;
+  optional double dip = 5;
+}
+
+message GPSFix {
+
+  option (dccl.msg).unit_system = "si";
+  // There seems to be a number of things that aren't always initialized, so I am making everything optional for now. 
+
+  optional string device = 1;
+  optional double time = 2 [(dccl.field).units.derived_dimensions = "time"];
+
+  enum Mode {
+    ModeNotSeen = 0;
+    ModeNoFix = 1;
+    Mode2D = 2;
+    Mode3D= 3;
+  }
+
+  optional Mode mode = 3;
+  optional LatLonPoint location = 4;
+
+  optional double altitude = 5 [default = 0,
+           (dccl.field).units.derived_dimensions = "length"];
+
+  optional double track = 6 [(dccl.field) = {units {
+derived_dimensions: "plane_angle"
+                      system: "angle::degree"
+  }}];
+
+  optional double speed = 7
+    [default = 0, (dccl.field).units.derived_dimensions = "length/time"];
+
+  optional double climb = 8
+    [default = 0, (dccl.field).units.derived_dimensions = "length/time"];
+
+  // Do we want any of the uncertainty values?
+
+}
+
+
+message SatelliteData{
+
+}
+

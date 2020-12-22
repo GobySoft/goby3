@@ -2,6 +2,7 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/interprocess_config.proto
   protobuf/interprocess_zeromq.proto
   protobuf/gobyd_config.proto
+  protobuf/gps_config.proto
   protobuf/logger_config.proto
   protobuf/liaison_config.proto
   protobuf/terminate_config.proto

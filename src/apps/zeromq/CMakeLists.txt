@@ -1,4 +1,5 @@
 add_subdirectory(gobyd)
+add_subdirectory(gpsd_client)
 add_subdirectory(logger)
 add_subdirectory(terminate)
 add_subdirectory(coroner)
