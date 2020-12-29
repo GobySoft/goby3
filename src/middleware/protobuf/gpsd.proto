@@ -3,20 +3,87 @@ syntax = "proto2";
 import "goby/middleware/protobuf/geographic.proto";
 import "dccl/option_extensions.proto";
 
-package goby.middleware.protobuf;
+package goby.middleware.protobuf.gpsd;
 
 
-message Attitude {
-  optional double heading = 1;
-  optional double pitch = 2;
 
-  optional double roll = 3;
-  optional double yaw = 4;
-  optional double dip = 5;
+message Satellite {
+  option (dccl.msg).unit_system = "si";
+  required int32 prn = 1;
+  optional double az = 2
+    [(dccl.field) = {units {
+derived_dimensions: "plane_angle"
+                      system: "angle::degree"
+    }}];
+  optional double el = 3
+    [(dccl.field) = {units {
+derived_dimensions: "plane_angle"
+                      system: "angle::degree"
+    }}];
+  optional double ss = 4;
+  optional bool used = 5;
+  optional int32 gnssid = 6;
+  optional int32 svid = 7;
+  optional int32 sigid= 8;
+  optional int32 freqid = 9;
+  optional int32 health = 10;
 }
 
-message GPSFix {
+message SKY {
 
+  option (dccl.msg).unit_system = "si";
+  optional string device = 1;
+  optional double time = 2 [(dccl.field).units.derived_dimensions = "time"];
+
+  optional double gdop = 3;
+  optional double hdop = 4;
+  optional double pdop = 5;
+  optional double tdop = 6;
+  optional double vdop = 7;
+  optional double xdop = 8;
+  optional double ydop = 9;
+  optional double nsat = 10;
+  optional double usat = 11;
+
+  repeated Satellite satellite = 12;
+
+}
+message ATT{
+
+  option (dccl.msg).unit_system = "si";
+  optional string device = 1;
+  optional double time = 2 [(dccl.field).units.derived_dimensions = "time"];
+
+  optional double heading = 3
+    [(dccl.field) = {units {
+derived_dimensions: "plane_angle"
+                      system: "angle::degree"
+    }}];
+
+
+  optional double pitch = 4
+    [(dccl.field) = {units {
+derived_dimensions: "plane_angle"
+                      system: "angle::degree"
+    }}];
+
+  optional double yaw = 5
+    [(dccl.field) = {units {
+derived_dimensions: "plane_angle"
+                      system: "angle::degree"
+    }}];
+
+
+  optional double roll = 6
+    [(dccl.field) = {units {
+derived_dimensions: "plane_angle"
+                      system: "angle::degree"
+    }}];
+
+
+}
+
+message TPV {
   option (dccl.msg).unit_system = "si";
   // There seems to be a number of things that aren't always initialized, so I am making everything optional for now. 
 
@@ -33,26 +100,49 @@ message GPSFix {
   optional Mode mode = 3;
   optional LatLonPoint location = 4;
 
-  optional double altitude = 5 [default = 0,
-           (dccl.field).units.derived_dimensions = "length"];
+  optional double altitude = 5 
+    [(dccl.field).units.derived_dimensions = "length"];
 
-  optional double track = 6 [(dccl.field) = {units {
+  optional double track = 6 
+    [(dccl.field) = {units {
 derived_dimensions: "plane_angle"
                       system: "angle::degree"
-  }}];
+    }}];
 
   optional double speed = 7
-    [default = 0, (dccl.field).units.derived_dimensions = "length/time"];
+    [ (dccl.field).units.derived_dimensions = "length/time"];
 
   optional double climb = 8
-    [default = 0, (dccl.field).units.derived_dimensions = "length/time"];
+    [(dccl.field).units.derived_dimensions = "length/time"];
 
   // Do we want any of the uncertainty values?
+  optional double epc = 10 
+    [ (dccl.field).units.derived_dimensions = "length/time"];
+  optional double epd = 11
+    [(dccl.field) = {units {
+derived_dimensions: "plane_angle"
+                      system: "angle::degree"
+    }}];
+
+
+  optional double eps = 12
+
+    [ (dccl.field).units.derived_dimensions = "length/time"];
+  optional double ept = 13
+    [ (dccl.field).units.derived_dimensions = "time"];
+  ;
+
+  optional double epv = 14
+    [(dccl.field).units.derived_dimensions = "length"];
+  optional double epx = 15
+    [(dccl.field).units.derived_dimensions = "length"];
+  optional double epy = 16
+    [(dccl.field).units.derived_dimensions = "length"];
 
 }
 
 
-message SatelliteData{
 
-}
+
+
 

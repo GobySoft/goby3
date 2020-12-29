@@ -31,7 +31,13 @@ namespace middleware
 {
 namespace groups
 {
-constexpr goby::middleware::Group gps_fix("goby::apps::zeromq::gps_fix");
+namespace gpsd 
+{
+constexpr goby::middleware::Group tpv("goby::apps::zeromq::gpsd::tpv");
+constexpr goby::middleware::Group sky("goby::apps::zeromq::gpsd::sky");
+constexpr goby::middleware::Group att("goby::apps::zeromq::gpsd::att");
+
+}
 
 } // namespace groups
 } // namespace middleware

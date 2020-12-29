@@ -21,13 +21,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-/*
- * gpsd_client.h
- * Copyright (C) 2020 Shawn Dooley <shawn@shawndooley.net>
- *
- * Distributed under terms of the MIT license.
- */
-
 #pragma once
 
 #include <gps.h>
@@ -41,7 +34,6 @@
 
 #include "goby/middleware/protobuf/gpsd.pb.h"
 #include "goby/zeromq/protobuf/gps_config.pb.h"
-#include "gps_fix_data.h"
 
 namespace goby
 {
@@ -55,7 +47,12 @@ class GPSDClient : public goby::zeromq::SingleThreadApplication<protobuf::GPSDCo
     GPSDClient();
 
   private:
-    std::map<std::string, GPSFixData> fix_map_;
+    void handle_tpv(nlohmann::json& data);
+    void handle_sky(nlohmann::json& data);
+    void handle_att(nlohmann::json& data);
+
+    std::set<std::string> device_list_;
+    bool publish_all_;
 };
 } // namespace zeromq
 } // namespace apps
