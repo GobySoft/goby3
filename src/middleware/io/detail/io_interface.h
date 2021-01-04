@@ -326,6 +326,10 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
 
         goby::glog.is_debug2() && goby::glog << group(glog_group_) << "Successfully opened socket"
                                              << std::endl;
+
+        // update to avoid thrashing on open success but read/write failure
+        decltype(next_open_attempt_) now(goby::time::SteadyClock::now());
+        next_open_attempt_ = now + backoff_interval_;
     }
     catch (const std::exception& e)
     {
