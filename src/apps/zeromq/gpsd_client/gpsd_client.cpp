@@ -65,9 +65,9 @@ goby::time::SITime parse_time(std::string s)
 goby::apps::zeromq::GPSDClient::GPSDClient()
     : goby::zeromq::SingleThreadApplication<protobuf::GPSDConfig>(), publish_all_(false)
 {
-    if (cfg().device_size())
+    if (cfg().device_name_size())
     {
-        for (auto& dev : cfg().device()) { device_list_.insert(dev.device_name()); }
+        for (auto& d_name : cfg().device_name()) { device_list_.insert(d_name); }
     }
     else
     {

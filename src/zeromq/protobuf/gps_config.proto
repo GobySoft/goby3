@@ -5,56 +5,6 @@ import "goby/protobuf/option_extensions.proto";
 
 package goby.apps.zeromq.protobuf;
 
-
-message GPSTrigger {
-
-  required string device_name = 1 [
-    default = "/dev/ttyUSB0",
-            (goby.field).description =
-              "String to match in gpsd device name"
-  ];
-
-  enum Field {
-    ONLINE = 1;
-    TIME	= 2;
-    TIMERR	= 3;
-    LATLON	= 4;
-    ALTITUDE	= 5;
-    SPEED	= 6;
-    TRACK	= 7;
-    CLIMB	= 8;
-    STATUS	= 9;
-    MODE	= 10;
-    DOP  	= 11;
-    HERR	= 12;
-    VERR	= 13;
-    ATTITUDE	= 14;
-    SATELLITE	= 15;
-    SPEEDERR	= 16;
-    TRACKERR	= 17;
-    CLIMBERR	= 18;
-    DEVICE	= 19;
-    DEVICELIST	= 20;
-    DEVICEID	= 21;
-    RTCM2	= 22;
-    RTCM3	= 23;
-    AIS 	= 24;
-    PACKET	= 25;
-    SUBFRAME	= 26;
-    GST 	= 27;
-    VERSION	= 28;
-    POLICY	= 29;
-    LOGMESSAGE	= 30;
-    ERROR	= 31;
-    TOFF	= 32;	/* not yet used */
-    PPS 	= 33;
-    NAVDATA     = 34;
-    OSCILLATOR	= 35;
-  }
-
-  optional Field trigger_field = 2 [default = TIME];
-}
-
 message GPSDConfig
 {
   optional goby.middleware.protobuf.AppConfig app = 1;
@@ -63,5 +13,7 @@ message GPSDConfig
   optional string hostname = 3 [default = "localhost"];
   optional string port = 4 [default = "2947"];
 
-  repeated GPSTrigger device = 5;
+
+  repeated string device_name = 5 ;
+
 }
