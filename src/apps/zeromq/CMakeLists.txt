@@ -11,3 +11,7 @@ endif()
 if(enable_mavlink)
   add_subdirectory(mavlink_gateway)
 endif()
+
+if(enable_gpsd)
+  add_subdirectory(gpsd_client)
+endif()

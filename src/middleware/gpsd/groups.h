@@ -2,7 +2,7 @@
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
-//   Toby Schneider <toby@gobysoft.org>
+//   Shawn Dooley <shawn@shawndooley.net>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -23,18 +23,22 @@
 
 #pragma once
 
+#include "goby/middleware/group.h"
+
 namespace goby
 {
 namespace middleware
 {
-namespace detail
+namespace groups
 {
-template <typename Config> inline Config make_interprocess_config(Config cfg, std::string app_name)
+namespace gpsd 
 {
-    cfg.set_client_name(app_name);
-    return cfg;
-}
 
-} // namespace detail
+constexpr goby::middleware::Group tpv("goby::middleware::groups::gpsd::tpv");
+constexpr goby::middleware::Group sky("goby::middleware::groups::gpsd::sky");
+constexpr goby::middleware::Group att("goby::middleware::groups::gpsd::att");
+
+} // namespace gpsd
+} // namespace groups
 } // namespace middleware
 } // namespace goby
