@@ -33,12 +33,12 @@ namespace groups
 {
 namespace gpsd 
 {
-constexpr goby::middleware::Group tpv("goby::apps::zeromq::gpsd::tpv");
-constexpr goby::middleware::Group sky("goby::apps::zeromq::gpsd::sky");
-constexpr goby::middleware::Group att("goby::apps::zeromq::gpsd::att");
 
-}
+constexpr goby::middleware::Group tpv("goby::middleware::groups::gpsd::tpv");
+constexpr goby::middleware::Group sky("goby::middleware::groups::gpsd::sky");
+constexpr goby::middleware::Group att("goby::middleware::groups::gpsd::att");
 
+} // namespace gpsd
 } // namespace groups
 } // namespace middleware
 } // namespace goby

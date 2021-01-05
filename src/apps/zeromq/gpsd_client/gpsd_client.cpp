@@ -96,12 +96,10 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
     while (true)
     {
         struct gps_data_t* gps_data;
-
-        if (!gps_rec.waiting(1000))
-        {
-            // Notify data missing?
-            continue;
-        }
+        
+        // Notify data missing?
+        if (!gps_rec.waiting(1000))            
+          continue;
 
         if ((gps_data = gps_rec.read()) == NULL)
         {
@@ -119,17 +117,11 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
                 {
                     auto& j_class = json_data["class"];
                     if (j_class == "TPV")
-                    {
                         handle_tpv(json_data);
-                    }
                     else if (j_class == "SKY")
-                    {
                         handle_sky(json_data);
-                    }
                     else if (j_class == "ATT")
-                    {
                         handle_att(json_data);
-                    }
                 }
             }
             catch (std::exception& e)
@@ -155,7 +147,7 @@ void goby::apps::zeromq::GPSDClient::handle_tpv(nlohmann::json& data)
 
     if ((device_in_config && device_in_data) || publish_all_)
     {
-        middleware::protobuf::gpsd::TPV tpv;
+        middleware::protobuf::gpsd::TimePositionVelocity tpv;
         if (device_in_data)
         {
             tpv.set_device(data["device"]);
@@ -180,69 +172,47 @@ void goby::apps::zeromq::GPSDClient::handle_tpv(nlohmann::json& data)
             using namespace middleware::protobuf::gpsd;
             int mode = data["mode"].get<int>();
             if (mode == 0)
-                tpv.set_mode(TPV::ModeNotSeen);
+                tpv.set_mode(TimePositionVelocity::ModeNotSeen);
             else if (mode == 1)
-                tpv.set_mode(TPV::ModeNoFix);
+                tpv.set_mode(TimePositionVelocity::ModeNoFix);
             else if (mode == 2)
-                tpv.set_mode(TPV::Mode2D);
+                tpv.set_mode(TimePositionVelocity::Mode2D);
             else if (mode == 3)
-                tpv.set_mode(TPV::Mode3D);
+                tpv.set_mode(TimePositionVelocity::Mode3D);
         }
 
         if (data.contains("speed"))
-        {
             tpv.set_speed_with_units(data["speed"].get<double>() * (si::meters / si::second));
-        }
 
         if (data.contains("alt"))
-        {
             tpv.set_altitude_with_units(data["alt"].get<double>() * si::meter);
-        }
 
         if (data.contains("climb"))
-        {
             tpv.set_climb_with_units(data["climb"].get<double>() * (si::meters / si::second));
-        }
 
         if (data.contains("track"))
-        {
             tpv.set_track_with_units(data["track"].get<double>() * degree::degree);
-        }
 
         if (data.contains("epc"))
-        {
             tpv.set_epc_with_units(data["epc"].get<double>() * (si::meters / si::second));
-        }
 
         if (data.contains("epd"))
-        {
             tpv.set_epd_with_units(data["epd"].get<double>() * degree::degree);
-        }
 
         if (data.contains("eps"))
-        {
             tpv.set_eps_with_units(data["eps"].get<double>() * (si::meters / si::seconds));
-        }
 
         if (data.contains("ept"))
-        {
             tpv.set_ept_with_units(data["ept"].get<double>() * si::seconds);
-        }
 
         if (data.contains("epv"))
-        {
             tpv.set_epv_with_units(data["epv"].get<double>() * si::meter);
-        }
 
         if (data.contains("epx"))
-        {
             tpv.set_epx_with_units(data["epx"].get<double>() * si::meter);
-        }
 
         if (data.contains("epy"))
-        {
             tpv.set_epy_with_units(data["epy"].get<double>() * si::meter);
-        }
 
         interprocess().publish<goby::middleware::groups::gpsd::tpv>(tpv);
         glog.is_debug1() && glog << "TPV: " << tpv.ShortDebugString() << std::endl;
@@ -256,7 +226,7 @@ void goby::apps::zeromq::GPSDClient::handle_sky(nlohmann::json& data)
 
     if ((device_in_config && device_in_data) || publish_all_)
     {
-        middleware::protobuf::gpsd::SKY sky;
+        middleware::protobuf::gpsd::SkyView sky;
         if (device_in_data)
         {
             sky.set_device(data["device"]);
@@ -386,7 +356,7 @@ void goby::apps::zeromq::GPSDClient::handle_att(nlohmann::json& data)
 
     if ((device_in_config && device_in_data) || publish_all_)
     {
-        middleware::protobuf::gpsd::ATT att;
+        middleware::protobuf::gpsd::Attitude att;
         if (device_in_data)
         {
             att.set_device(data["device"]);

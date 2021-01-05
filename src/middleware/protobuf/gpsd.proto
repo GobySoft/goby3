@@ -29,7 +29,7 @@ derived_dimensions: "plane_angle"
   optional int32 health = 10;
 }
 
-message SKY {
+message SkyView {
 
   option (dccl.msg).unit_system = "si";
   optional string device = 1;
@@ -48,7 +48,7 @@ message SKY {
   repeated Satellite satellite = 12;
 
 }
-message ATT{
+message Attitude {
 
   option (dccl.msg).unit_system = "si";
   optional string device = 1;
@@ -83,7 +83,7 @@ derived_dimensions: "plane_angle"
 
 }
 
-message TPV {
+message TimePositionVelocity {
   option (dccl.msg).unit_system = "si";
   // There seems to be a number of things that aren't always initialized, so I am making everything optional for now. 
 
