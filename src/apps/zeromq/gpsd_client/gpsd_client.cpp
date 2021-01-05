@@ -149,16 +149,12 @@ void goby::apps::zeromq::GPSDClient::handle_tpv(nlohmann::json& data)
     {
         middleware::protobuf::gpsd::TimePositionVelocity tpv;
         if (device_in_data)
-        {
             tpv.set_device(data["device"]);
-        }
 
         using namespace boost::units;
 
         if (data.contains("time"))
-        {
             tpv.set_time_with_units(parse_time(data["time"]));
-        }
 
         if (data.contains("lat") && data.contains("lon"))
         {
@@ -228,61 +224,39 @@ void goby::apps::zeromq::GPSDClient::handle_sky(nlohmann::json& data)
     {
         middleware::protobuf::gpsd::SkyView sky;
         if (device_in_data)
-        {
             sky.set_device(data["device"]);
-        }
 
         using namespace boost::units;
 
         if (data.contains("time"))
-        {
             sky.set_time_with_units(parse_time(data["time"]));
-        }
 
         if (data.contains("gdop"))
-        {
             sky.set_gdop((data["gdop"].get<double>()));
-        }
 
         if (data.contains("hdop"))
-        {
             sky.set_hdop((data["hdop"].get<double>()));
-        }
 
         if (data.contains("pdop"))
-        {
             sky.set_pdop((data["pdop"].get<double>()));
-        }
 
         if (data.contains("tdop"))
-        {
             sky.set_tdop((data["tdop"].get<double>()));
-        }
 
         if (data.contains("vdop"))
-        {
             sky.set_vdop((data["vdop"].get<double>()));
-        }
 
         if (data.contains("xdop"))
-        {
             sky.set_xdop((data["xdop"].get<double>()));
-        }
 
         if (data.contains("vdop"))
-        {
             sky.set_vdop((data["vdop"].get<double>()));
-        }
 
         if (data.contains("nSat"))
-        {
             sky.set_nsat((data["nSat"].get<int>()));
-        }
 
         if (data.contains("uSat"))
-        {
             sky.set_usat((data["uSat"].get<int>()));
-        }
 
         if (data.contains("satellites"))
         {
@@ -293,54 +267,34 @@ void goby::apps::zeromq::GPSDClient::handle_sky(nlohmann::json& data)
                 auto* sat_pb = sky.add_satellite();
 
                 if (sat.contains("PRN"))
-                {
                     sat_pb->set_prn(sat["PRN"].get<int>());
-                }
 
                 if (sat.contains("az"))
-                {
                     sat_pb->set_az_with_units(sat["az"].get<double>() * degree::degrees);
-                }
 
                 if (sat.contains("el"))
-                {
                     sat_pb->set_el_with_units(sat["el"].get<double>() * degree::degrees);
-                }
 
                 if (sat.contains("ss"))
-                {
                     sat_pb->set_ss(sat["ss"].get<double>());
-                }
 
                 if (sat.contains("used"))
-                {
                     sat_pb->set_used(sat["used"].get<bool>());
-                }
 
                 if (sat.contains("gnssid"))
-                {
                     sat_pb->set_gnssid(sat["gnssid"].get<int>());
-                }
 
                 if (sat.contains("svid"))
-                {
                     sat_pb->set_svid(sat["svid"].get<int>());
-                }
 
                 if (sat.contains("sigid"))
-                {
                     sat_pb->set_sigid(sat["sigid"].get<int>());
-                }
 
                 if (sat.contains("freqid"))
-                {
                     sat_pb->set_freqid(sat["freqid"].get<int>());
-                }
 
                 if (sat.contains("health"))
-                {
                     sat_pb->set_health(sat["health"].get<int>());
-                }
             }
         }
 
@@ -358,34 +312,23 @@ void goby::apps::zeromq::GPSDClient::handle_att(nlohmann::json& data)
     {
         middleware::protobuf::gpsd::Attitude att;
         if (device_in_data)
-        {
             att.set_device(data["device"]);
-        }
 
         using namespace boost::units;
 
         if (data.contains("time"))
-        {
             att.set_time_with_units(parse_time(data["time"]));
-        }
 
         if (data.contains("heading"))
-        {
             att.set_heading_with_units(data["heading"].get<double>() * degree::degree);
-        }
 
         if (data.contains("yaw"))
-        {
             att.set_yaw_with_units(data["yaw"].get<double>() * degree::degree);
-        }
+
         if (data.contains("pitch"))
-        {
             att.set_pitch_with_units(data["pitch"].get<double>() * degree::degree);
-        }
         if (data.contains("roll"))
-        {
             att.set_roll_with_units(data["roll"].get<double>() * degree::degree);
-        }
 
         interprocess().publish<goby::middleware::groups::gpsd::att>(att);
         glog.is_debug1() && glog << "ATT: " << att.ShortDebugString() << std::endl;
