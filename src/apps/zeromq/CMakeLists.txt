@@ -1,5 +1,4 @@
 add_subdirectory(gobyd)
-add_subdirectory(gpsd_client)
 add_subdirectory(logger)
 add_subdirectory(terminate)
 add_subdirectory(coroner)
@@ -11,4 +10,8 @@ endif()
 
 if(enable_mavlink)
   add_subdirectory(mavlink_gateway)
+endif()
+
+if(enable_gpsd)
+  add_subdirectory(gpsd_client)
 endif()
