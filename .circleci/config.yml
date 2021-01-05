@@ -98,7 +98,7 @@ job-template-amd64: &job-template-amd64
         # TODO: Remove libgps-dev from this command once all Docker containers are updated to include it
         command: |
           apt-get update && apt-get dist-upgrade -y &&
-          apt-get install libgps-dev
+          apt-get install libgps-dev -y
     - run: &run-build
         name: Build
         command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_doc=ON -Dbuild_doc_pdf=OFF -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -- -j4
