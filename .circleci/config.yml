@@ -219,19 +219,19 @@ workflows:
   version: 2
   commit:
     jobs:
-# To keep basic builds to a minimum, remove Xenial and Stretch
-#      - amd64-xenial-build:
-#          <<: *filter-template-non-master
-#      - amd64-stretch-build:
-#          <<: *filter-template-non-master
+
 
       - amd64+tsan-build:
           <<: *filter-template-non-master
-      - amd64-buster-build:
-          <<: *filter-template-non-master
-      - amd64-bionic-build:
-          <<: *filter-template-non-master
+#      - amd64-buster-build:
+#          <<: *filter-template-non-master
+#      - amd64-bionic-build:
+#          <<: *filter-template-non-master
       - amd64-focal-build:
+          <<: *filter-template-non-master
+      - amd64-xenial-build:
+          <<: *filter-template-non-master
+      - amd64-stretch-build:
           <<: *filter-template-non-master
 
       - amd64-focal-minimal-build:
