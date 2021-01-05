@@ -11,7 +11,7 @@ message GPSDConfig
   optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
 
   optional string hostname = 3 [default = "localhost"];
-  optional string port = 4 [default = "2947"];
+  optional uint32 port = 4 [default = 2947];
 
 
   repeated string device_name = 5 ;

@@ -24,6 +24,7 @@
 #include <gps.h>
 #include <libgpsmm.h>
 
+#include <boost/range/algorithm_ext/erase.hpp>
 #include <boost/units/systems/angle/degrees.hpp>
 
 #include <chrono>
@@ -50,13 +51,11 @@ goby::time::SITime parse_time(std::string s)
     // From Documentation:
     // Time/date stamp in ISO8601 format, UTC. May have a fractional part of up to .001sec precision. May be absent if the mode is not 2D or 3D.
 
-    //std::string date_as_string = data["time"].get<std::string>();
+    // Convert from extended to basic format by removing ':' and '-' characters
     // Remove the "Z" from the end of the string because it messes up the
     // parser.
-
-    std::string work_string(s);
-    work_string.pop_back();
-    boost::posix_time::ptime t(boost::posix_time::from_iso_extended_string(work_string));
+    boost::remove_erase_if(s, boost::is_any_of(":-Z"));
+    boost::posix_time::ptime t(boost::posix_time::from_iso_string(s));
 
     return goby::time::convert<goby::time::SITime>(t);
 }
@@ -78,7 +77,7 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
                                << std::endl;
     }
 
-    gpsmm gps_rec(cfg().hostname().c_str(), cfg().port().c_str());
+    gpsmm gps_rec(cfg().hostname().c_str(), std::to_string(cfg().port()).c_str());
 
     if (!gps_rec.is_open())
     {
@@ -95,13 +94,12 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
 
     while (true)
     {
-        struct gps_data_t* gps_data;
-        
         // Notify data missing?
-        if (!gps_rec.waiting(1000))            
-          continue;
+        if (!gps_rec.waiting(1000))
+            continue;
 
-        if ((gps_data = gps_rec.read()) == NULL)
+        // read until a new message is received
+        if (gps_rec.read() == NULL)
         {
             glog.is_die() && glog << "Read error..\n";
         }
@@ -111,7 +109,13 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
             {
                 using json = nlohmann::json;
 
-                json json_data = json::parse(gps_rec.data());
+                std::string line(gps_rec.data());
+                // the buffer returned does not include a length, but we can
+                // read until the newline which is the end of the valid JSON message
+                line = line.substr(0, line.find('\n'));
+                boost::trim(line);
+
+                json json_data = json::parse(line);
 
                 if (json_data.contains("class"))
                 {
