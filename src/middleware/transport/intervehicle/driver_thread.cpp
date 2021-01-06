@@ -258,6 +258,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
             }
         }
     }
+
+    if (!msg->has_ack_requested())
+        msg->set_ack_requested(false);
+
     msg->set_dest(dest);
 }
 

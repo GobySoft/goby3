@@ -123,6 +123,22 @@ BOOST_AUTO_TEST_CASE(check_multi_configuration)
                                     << ", got: " << buffer.cfg().ShortDebugString());
 }
 
+BOOST_AUTO_TEST_CASE(check_multi_configuration2)
+{
+    goby::acomms::protobuf::DynamicBufferConfig cfg1;
+
+    goby::acomms::protobuf::DynamicBufferConfig cfg2;
+    cfg2.set_ack_required(false);
+
+    goby::acomms::protobuf::DynamicBufferConfig expected_cfg;
+    expected_cfg.set_ack_required(false);
+
+    goby::acomms::DynamicSubBuffer<std::string> buffer({cfg1, cfg2});
+    BOOST_CHECK_MESSAGE(expected_cfg.SerializeAsString() == buffer.cfg().SerializeAsString(),
+                        "Expected " << expected_cfg.ShortDebugString()
+                                    << ", got: " << buffer.cfg().ShortDebugString());
+}
+
 BOOST_AUTO_TEST_CASE(check_top_value)
 {
     goby::acomms::protobuf::DynamicBufferConfig cfg;
