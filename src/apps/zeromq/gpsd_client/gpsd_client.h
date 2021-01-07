@@ -47,9 +47,14 @@ class GPSDClient : public goby::zeromq::SingleThreadApplication<protobuf::GPSDCo
     GPSDClient();
 
   private:
+    void loop() override;
+
     void handle_tpv(nlohmann::json& data);
     void handle_sky(nlohmann::json& data);
     void handle_att(nlohmann::json& data);
+
+  private:
+    gpsmm gps_rec_;
 
     std::set<std::string> device_list_;
     bool publish_all_;

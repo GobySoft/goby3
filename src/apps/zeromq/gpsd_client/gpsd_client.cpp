@@ -62,7 +62,9 @@ goby::time::SITime parse_time(std::string s)
 } // end of Anonymous namespace
 
 goby::apps::zeromq::GPSDClient::GPSDClient()
-    : goby::zeromq::SingleThreadApplication<protobuf::GPSDConfig>(), publish_all_(false)
+    : goby::zeromq::SingleThreadApplication<protobuf::GPSDConfig>(this->loop_max_frequency()),
+      gps_rec_(cfg().hostname().c_str(), std::to_string(cfg().port()).c_str()),
+      publish_all_(false)
 {
     if (cfg().device_name_size())
     {
@@ -72,14 +74,11 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
     {
         publish_all_ = true;
 
-        // TODO (Shawn): IS this really what we want to do?
         glog.is_warn() && glog << "No device configured. We will publish all GPS data."
                                << std::endl;
     }
 
-    gpsmm gps_rec(cfg().hostname().c_str(), std::to_string(cfg().port()).c_str());
-
-    if (!gps_rec.is_open())
+    if (!gps_rec_.is_open())
     {
         // Check constructor success.
         glog.is_die() && glog << "Could not connect to GPSD at " << cfg().hostname()
@@ -87,59 +86,52 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
     }
 
     // compare devices from our config to what gps_rec has in it's list.
-    if (gps_rec.stream(WATCH_ENABLE | WATCH_JSON) == NULL)
+    if (gps_rec_.stream(WATCH_ENABLE | WATCH_JSON) == NULL)
     {
-        glog.is_die() && glog << "No GPSD running.\n";
+        glog.is_die() && glog << "No GPSD running." << std::endl;
     }
+}
 
-    while (true)
+void goby::apps::zeromq::GPSDClient::loop()
+{
+    // Notify data missing?
+    if (!gps_rec_.waiting(1000))
+        return;
+
+    // read until a new message is received
+    if (gps_rec_.read() == NULL)
     {
-        // Notify data missing?
-        if (!gps_rec.waiting(1000))
-            continue;
-
-        // read until a new message is received
-        if (gps_rec.read() == NULL)
+        glog.is_die() && glog << "Read error.." << std::endl;
+    }
+    else
+    {
+        try
         {
-            glog.is_die() && glog << "Read error..\n";
+            using json = nlohmann::json;
+
+            std::string line(gps_rec_.data());
+            // the buffer returned does not include a length, but we can
+            // read until the newline which is the end of the valid JSON message
+            line = line.substr(0, line.find('\n'));
+            boost::trim(line);
+
+            json json_data = json::parse(line);
+
+            if (json_data.contains("class"))
+            {
+                auto& j_class = json_data["class"];
+                if (j_class == "TPV")
+                    handle_tpv(json_data);
+                else if (j_class == "SKY")
+                    handle_sky(json_data);
+                else if (j_class == "ATT")
+                    handle_att(json_data);
+            }
         }
-        else
+        catch (std::exception& e)
         {
-            try
-            {
-                using json = nlohmann::json;
-
-                std::string line(gps_rec.data());
-                // the buffer returned does not include a length, but we can
-                // read until the newline which is the end of the valid JSON message
-                line = line.substr(0, line.find('\n'));
-                boost::trim(line);
-
-                json json_data = json::parse(line);
-
-                if (json_data.contains("class"))
-                {
-                    auto& j_class = json_data["class"];
-                    if (j_class == "TPV")
-                        handle_tpv(json_data);
-                    else if (j_class == "SKY")
-                        handle_sky(json_data);
-                    else if (j_class == "ATT")
-                        handle_att(json_data);
-                }
-            }
-            catch (std::exception& e)
-            {
-                glog.is_debug2() && glog << "Exception:\r\n" << e.what() << std::endl;
-                glog.is_debug2() && glog << "\r\n" << gps_rec.data() << "\r\n" << std::endl;
-                // TODO(Shawn)
-                // We always seemt to run into one of these at startup. Handle it
-                // better.
-
-                // Also, when I bridge in GPS with socat, I get a fairly regular
-                // malformed JSON string. As it sits now, we just ignore it an wait for
-                // the next valid string. Is this the correct approach?
-            }
+            glog.is_debug2() && glog << "Exception:\r\n" << e.what() << std::endl;
+            glog.is_debug2() && glog << "\r\n" << gps_rec_.data() << "\r\n" << std::endl;
         }
     }
 }
