@@ -1,4 +1,5 @@
 syntax = "proto2";
-import "goby/middleware/protobuf/frontseat.proto";
+
+//import "goby/middleware/protobuf/frontseat.proto";
 
 package goby.middleware.frontseat.protobuf;

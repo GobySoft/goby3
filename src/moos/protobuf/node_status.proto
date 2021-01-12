@@ -1,2 +1,3 @@
 // placeholder for messages moved to:
+syntax = "proto2";
 import public "goby/middleware/protobuf/frontseat_data.proto";
