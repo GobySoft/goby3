@@ -24,12 +24,12 @@
 
 #include <iostream>
 
-#include "basic_node_report.pb.h"
 #include "goby/moos/moos_translator.h"
+#include "goby/test/acomms/dccl1/test.pb.h"
+#include "goby/test/moos/translator1/basic_node_report.pb.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/sci.h"
-#include "test.pb.h"
 
 using namespace goby::moos;
 using goby::test::moos::protobuf::BasicNodeReport;

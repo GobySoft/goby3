@@ -39,7 +39,7 @@
 #include "goby/util/primitive_types.h"
 #include "goby/util/sci.h"
 
-#include "iver_driver_config.pb.h"
+#include "goby/middleware/frontseat/iver/iver_driver_config.pb.h"
 
 namespace goby
 {

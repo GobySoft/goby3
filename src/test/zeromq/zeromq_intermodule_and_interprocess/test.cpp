@@ -31,8 +31,8 @@
 #include "goby/zeromq/transport/intermodule.h"
 #include "goby/zeromq/transport/interprocess.h"
 
+#include "goby/test/zeromq/zeromq_intermodule_and_interprocess/test.pb.h"
 #include "goby/util/debug_logger.h"
-#include "test.pb.h"
 
 #include <zmq.hpp>
 

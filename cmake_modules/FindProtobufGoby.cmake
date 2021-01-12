@@ -97,7 +97,7 @@ function(PROTOBUF_GENERATE_CPP SRCS HDRS)
     # message(STATUS ${REL_FIL})
     # message(STATUS ${FIL_PATH})
 
-    include_directories(${FIL_PATH})
+#    include_directories(${FIL_PATH})
 
     list(APPEND ${SRCS} "${FIL_PATH}/${FIL_WE}.pb.cc")
     list(APPEND ${HDRS} "${FIL_PATH}/${FIL_WE}.pb.h")

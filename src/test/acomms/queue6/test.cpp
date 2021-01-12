@@ -29,7 +29,7 @@
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
 
-#include "test.pb.h"
+#include "goby/test/acomms/queue6/test.pb.h"
 
 // tests various manipulators' functionality
 using goby::test::acomms::protobuf::GobyMessage;

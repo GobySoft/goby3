@@ -34,8 +34,8 @@
 #include "goby/middleware/transport/intervehicle.h"
 #include "goby/zeromq/transport/interprocess.h"
 
+#include "goby/test/zeromq/middleware_basic/test.pb.h"
 #include "goby/util/debug_logger.h"
-#include "test.pb.h"
 
 using goby::test::zeromq::protobuf::CTDSample;
 using goby::test::zeromq::protobuf::TempSample;

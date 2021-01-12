@@ -27,7 +27,7 @@
 #include "goby/middleware/marshalling/interface.h"
 #include "goby/util/debug_logger.h"
 
-#include "test.pb.h"
+#include "goby/test/middleware/log/test.pb.h"
 
 using goby::test::middleware::protobuf::CTDSample;
 using goby::test::middleware::protobuf::TempSample;

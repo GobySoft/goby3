@@ -30,7 +30,7 @@
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
 
-#include "test.pb.h"
+#include "goby/test/acomms/dccl3/test.pb.h"
 // tests basic DCCL queuing with non-BROADCAST destination
 
 using goby::test::acomms::protobuf::GobyMessage;

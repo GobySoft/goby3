@@ -360,10 +360,10 @@ std::string goby::acomms::PopotoDriver::binary_to_json(const std::uint8_t* buf, 
 {
     std::string output;
 
-    for (int i = 0; i < num_bytes; i++)
+    for (int i = 0, n = num_bytes; i < n; i++)
     {
         output.append(std::to_string((uint8_t)buf[i]));
-        if (i < num_bytes - 1)
+        if (i < n - 1)
         {
             output.append(",");
         }

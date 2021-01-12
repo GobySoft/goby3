@@ -23,8 +23,8 @@
 
 #include <dccl/codecs3/field_codec_default.h>
 
+#include "goby/middleware/frontseat/waveglider/waveglider_sv2_frontseat_driver.pb.h"
 #include "waveglider_sv2_codecs.h"
-#include "waveglider_sv2_frontseat_driver.pb.h"
 
 extern "C"
 {

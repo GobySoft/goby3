@@ -31,7 +31,8 @@
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
 
-#include "test_config.pb.h"
+#include "goby/test/acomms/mmdriver2/test_config.pb.h"
+
 using namespace goby::acomms;
 using namespace goby::util::logger;
 using namespace goby::util::logger_lock;

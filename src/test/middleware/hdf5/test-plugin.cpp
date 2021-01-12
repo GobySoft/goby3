@@ -27,8 +27,8 @@
 #include "goby/time.h"
 #include "goby/util/binary.h"
 
-#include "test.pb.h"
-#include "test2.pb.h"
+#include "goby/test/acomms/dccl1/test.pb.h"
+#include "goby/test/middleware/hdf5/test2.pb.h"
 
 using namespace goby::test::middleware;
 

@@ -146,7 +146,10 @@ goby::apps::zeromq::Daemon::Daemon()
     interprocess_.subscribe<goby::middleware::groups::terminate_result>(
         [this](const goby::middleware::protobuf::TerminateResult& result) {
             std::cout << result.DebugString() << std::endl;
-            if (result.has_target_pid() && result.target_pid() == getpid() &&
+
+            auto our_pid = getpid();
+            if (result.has_target_pid() &&
+                static_cast<decltype(our_pid)>(result.target_pid()) == our_pid &&
                 result.result() == goby::middleware::protobuf::TerminateResult::PROCESS_RESPONDED)
                 quit();
         });

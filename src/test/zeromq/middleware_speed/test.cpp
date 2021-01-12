@@ -37,7 +37,7 @@
 #include "goby/util/debug_logger.h"
 #include "goby/zeromq/transport/interprocess.h"
 
-#include "test.pb.h"
+#include "goby/test/zeromq/middleware_speed/test.pb.h"
 
 // speed test for interprocess
 //#define LARGE_MESSAGE
