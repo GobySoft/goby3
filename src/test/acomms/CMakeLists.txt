@@ -1,5 +1,6 @@
-protobuf_generate_cpp(DCCL3_TEST_PROTO_SRCS DCCL3_TEST_PROTO_HDRS dccl3/test.proto dccl3/header.proto)
-add_library(goby_test_proto_messages STATIC ${DCCL3_TEST_PROTO_SRCS} ${DCCL3_TEST_PROTO_HDRS})
+protobuf_generate_cpp(TEST_PROTO_SRCS TEST_PROTO_HDRS dccl1/test.proto dccl3/test.proto dccl3/header.proto)
+add_library(goby_test_proto_messages STATIC ${TEST_PROTO_SRCS} ${TEST_PROTO_HDRS})
+target_compile_options(goby_test_proto_messages PRIVATE -fPIC)
 
 add_subdirectory(queue1)
 add_subdirectory(queue2)
