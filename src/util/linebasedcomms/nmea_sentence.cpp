@@ -91,7 +91,7 @@ std::string goby::util::NMEASentence::message_no_cs() const
 {
     std::string message = "";
 
-    for (const_iterator it = begin(), n = end(); it < n; ++it) message += *it + ",";
+    for (auto it = begin(), n = end(); it < n; ++it) message += *it + ",";
 
     // kill last ","
     message.resize(message.size() - 1);

@@ -149,7 +149,7 @@ class MOOSTranslator
         {
             try
             {
-                double return_double = boost::lexical_cast<double>(str);
+                auto return_double = boost::lexical_cast<double>(str);
                 return CMOOSMsg(MOOS_NOTIFY, var, return_double);
             }
             catch (boost::bad_lexical_cast&)
@@ -413,7 +413,7 @@ goby::moos::MOOSTranslator::protobuf_to_inverse_moos(const google::protobuf::Mes
             // fake the trigger last so that all other inputs get read in first
             typedef std::multimap<std::string, CMOOSMsg>::iterator It;
             std::pair<It, It> p = moos_msgs.equal_range(entry.trigger().moos_var());
-            for (It it = p.first; it != p.second; ++it) it->second.m_dfTime = MOOSTime();
+            for (auto it = p.first; it != p.second; ++it) it->second.m_dfTime = MOOSTime();
         }
         else
         {
@@ -455,8 +455,7 @@ goby::moos::MOOSTranslator::moos_to_protobuf(const StringCMOOSMsgMap& moos_varia
 
     for (int i = 0, n = entry.create_size(); i < n; ++i)
     {
-        std::multimap<std::string, CMOOSMsg>::const_iterator it =
-            moos_variables.find(entry.create(i).moos_var());
+        auto it = moos_variables.find(entry.create(i).moos_var());
         std::string source_string =
             (it == moos_variables.end())
                 ? ""

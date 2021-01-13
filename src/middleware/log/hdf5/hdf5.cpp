@@ -30,7 +30,7 @@ void goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5Pr
 {
     const std::string& msg_name = entry.msg->GetDescriptor()->full_name();
     typedef std::map<std::string, MessageCollection>::iterator It;
-    It it = entries.find(msg_name);
+    auto it = entries.find(msg_name);
     if (it == entries.end())
     {
         std::pair<It, bool> itpair =
@@ -59,7 +59,7 @@ goby::middleware::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::
     else
     {
         typedef std::map<std::string, GroupWrapper>::iterator It;
-        It it = children_.find(nodes[0]);
+        auto it = children_.find(nodes[0]);
         if (it == children_.end())
         {
             std::pair<It, bool> itpair =
@@ -81,7 +81,7 @@ void goby::middleware::hdf5::Writer::add_entry(goby::middleware::HDF5ProtobufEnt
     boost::trim_if(entry.channel, boost::algorithm::is_space() || boost::algorithm::is_any_of("/"));
 
     typedef std::map<std::string, goby::middleware::hdf5::Channel>::iterator It;
-    It it = channels_.find(entry.channel);
+    auto it = channels_.find(entry.channel);
     if (it == channels_.end())
     {
         std::pair<It, bool> itpair = channels_.insert(

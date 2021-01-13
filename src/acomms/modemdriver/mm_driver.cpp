@@ -425,8 +425,7 @@ void goby::acomms::MMDriver::set_clock()
     {
         NMEASentence nmea("$CCTMS", NMEASentence::IGNORE);
         std::stringstream iso_time;
-        boost::posix_time::time_facet* facet =
-            new boost::posix_time::time_facet("%Y-%m-%dT%H:%M:%SZ");
+        auto* facet = new boost::posix_time::time_facet("%Y-%m-%dT%H:%M:%SZ");
         iso_time.imbue(std::locale(iso_time.getloc(), facet));
         iso_time << (p + boost::posix_time::seconds(1));
         nmea.push_back(iso_time.str());
@@ -1566,7 +1565,7 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
             time_field = 1;
 
         std::string t = nmea.at(time_field).substr(0, nmea.at(time_field).size() - 1);
-        boost::posix_time::time_input_facet* tif = new boost::posix_time::time_input_facet;
+        auto* tif = new boost::posix_time::time_input_facet;
         tif->set_iso_extended_format();
         std::istringstream iso_time(t);
         iso_time.imbue(std::locale(std::locale::classic(), tif));
@@ -1844,7 +1843,7 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
     // we're receiving
     else
     {
-        unsigned rate = as<std::uint32_t>(nmea[4]);
+        auto rate = as<std::uint32_t>(nmea[4]);
         if (local_cccyc_ && rate != 0) // clear flag for next cycle
         {
             // if we poll for rates > 0, we get *two* CACYC - the one from the poll and the one from the message
@@ -1853,7 +1852,7 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
             return;
         }
 
-        unsigned num_frames = as<std::uint32_t>(nmea[6]);
+        auto num_frames = as<std::uint32_t>(nmea[6]);
         if (!frames_waiting_to_receive_.empty())
         {
             glog.is(DEBUG1) && glog << group(glog_out_group()) << warn << "flushing "
@@ -1922,8 +1921,7 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
             acks_part.set_ack_dest(it.first);
 
             std::uint32_t acked_frames = 0;
-            for (std::set<unsigned>::const_iterator jt = it.second.begin(), jend = it.second.end();
-                 jt != jend; ++jt)
+            for (auto jt = it.second.begin(), jend = it.second.end(); jt != jend; ++jt)
                 acked_frames |= (1ul << *jt);
 
             acks_part.set_acked_frames(acked_frames);

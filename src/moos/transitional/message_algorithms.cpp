@@ -62,8 +62,7 @@ void goby::moos::transitional::DCCLAlgorithmPerformer::algorithm(
 
     for (std::vector<std::string>::size_type i = 1, n = ref_vars.size(); i < n; ++i)
     {
-        std::map<std::string, std::vector<DCCLMessageVal> >::const_iterator it =
-            vals.find(ref_vars[i]);
+        auto it = vals.find(ref_vars[i]);
         if (it != vals.end())
         {
             if (array_index < it->second.size())

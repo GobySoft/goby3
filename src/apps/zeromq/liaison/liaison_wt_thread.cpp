@@ -60,23 +60,22 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     /*
      * Set up the title
      */
-    WContainerWidget* header_div = new WContainerWidget(root());
+    auto* header_div = new WContainerWidget(root());
     header_div->setId("header");
 
-    WText* header = new WText(title_text, header_div);
+    auto* header = new WText(title_text, header_div);
     header->setId("header");
 
-    WImage* goby_logo = new WImage("images/gobysoft_logo_dot_org_small.png");
-    WAnchor* goby_logo_a =
-        new WAnchor("http://gobysoft.org/#/software/goby", goby_logo, header_div);
+    auto* goby_logo = new WImage("images/gobysoft_logo_dot_org_small.png");
+    auto* goby_logo_a = new WAnchor("http://gobysoft.org/#/software/goby", goby_logo, header_div);
     goby_logo_a->setId("goby_logo");
     goby_logo_a->setStyleClass("no_ul");
     goby_logo_a->setTarget(TargetNewWindow);
 
     if (app_cfg_.has_upper_right_logo())
     {
-        WImage* goby_lp_image = new WImage(app_cfg_.upper_right_logo());
-        WAnchor* goby_lp_image_a = new WAnchor(
+        auto* goby_lp_image = new WImage(app_cfg_.upper_right_logo());
+        auto* goby_lp_image_a = new WAnchor(
             app_cfg_.has_upper_right_logo_link() ? app_cfg_.upper_right_logo_link() : "",
             goby_lp_image, header_div);
         goby_lp_image_a->setId("lp_logo");
@@ -86,10 +85,10 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
 
     new WText("<hr/>", root());
 
-    WContainerWidget* menu_div = new WContainerWidget(root());
+    auto* menu_div = new WContainerWidget(root());
     menu_div->setStyleClass("menu");
 
-    WContainerWidget* contents_div = new WContainerWidget(root());
+    auto* contents_div = new WContainerWidget(root());
     contents_div->setId("contents");
     contents_stack_ = new WStackedWidget(contents_div);
     contents_stack_->setStyleClass("fill");
@@ -112,8 +111,7 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
 
     for (auto& plugin_handle : Liaison::plugin_handles_)
     {
-        liaison_load_func liaison_load_ptr =
-            (liaison_load_func)dlsym(plugin_handle, "goby3_liaison_load");
+        auto liaison_load_ptr = (liaison_load_func)dlsym(plugin_handle, "goby3_liaison_load");
 
         if (liaison_load_ptr)
         {

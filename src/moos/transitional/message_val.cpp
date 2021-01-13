@@ -202,7 +202,7 @@ bool goby::moos::transitional::DCCLMessageVal::get(long& t) const
         case cpp_string:
             try
             {
-                double d = boost::lexical_cast<double>(sval_);
+                auto d = boost::lexical_cast<double>(sval_);
                 t = boost::numeric_cast<long>(dccl::round(d, 0));
             }
             catch (...)

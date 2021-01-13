@@ -120,10 +120,8 @@ void goby::middleware::frontseat::Bluefin::send_command_to_frontseat(
 {
     if (command.has_cancel_request_id())
     {
-        for (std::map<gpb::BluefinExtraCommands::BluefinCommand, gpb::CommandRequest>::iterator
-                 it = outstanding_requests_.begin(),
-                 end = outstanding_requests_.end();
-             it != end; ++it)
+        for (auto it = outstanding_requests_.begin(), end = outstanding_requests_.end(); it != end;
+             ++it)
         {
             if (it->second.request_id() == command.cancel_request_id())
             {

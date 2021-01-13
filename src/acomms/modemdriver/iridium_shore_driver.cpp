@@ -338,8 +338,7 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo()
                                 << std::endl;
     }
 
-    std::set<std::shared_ptr<SBDConnection> >::iterator it = mo_sbd_server_->connections().begin(),
-                                                        end = mo_sbd_server_->connections().end();
+    auto it = mo_sbd_server_->connections().begin(), end = mo_sbd_server_->connections().end();
     while (it != end)
     {
         const int timeout = 5;

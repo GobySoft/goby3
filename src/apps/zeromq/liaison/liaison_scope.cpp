@@ -199,8 +199,7 @@ void goby::apps::zeromq::LiaisonScope::inbox(const std::string& group,
 {
     if (is_paused())
     {
-        std::map<std::string, HistoryContainer::MVC>::iterator hist_it =
-            history_header_div_->history_models_.find(group);
+        auto hist_it = history_header_div_->history_models_.find(group);
         if (hist_it != history_header_div_->history_models_.end())
         {
             // buffer for later display
@@ -220,7 +219,7 @@ void goby::apps::zeromq::LiaisonScope::handle_message(const std::string& group,
                                                 bool fresh_message)
 {
     //    glog.is(DEBUG1) && glog << "LiaisonScope: got message:  " << msg << std::endl;
-    std::map<std::string, int>::iterator it = msg_map_.find(group);
+    auto it = msg_map_.find(group);
     if (it != msg_map_.end())
     {
         std::vector<WStandardItem*> items;
@@ -397,10 +396,10 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
 
     if (!history_models_.count(selected_key))
     {
-        Wt::WGroupBox* new_container = new WGroupBox("History");
+        auto* new_container = new WGroupBox("History");
 
-        Wt::WContainerWidget* text_container = new WContainerWidget(new_container);
-        WPushButton* remove_history_button = new WPushButton(selected_key, text_container);
+        auto* text_container = new WContainerWidget(new_container);
+        auto* remove_history_button = new WPushButton(selected_key, text_container);
 
         remove_history_button->clicked().connect(
             boost::bind(&HistoryContainer::handle_remove_history, this, selected_key));
@@ -414,7 +413,7 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
         Wt::WStandardItemModel* new_model =
             new LiaisonScopeProtobufModel(pb_scope_config_, new_container);
 
-        Wt::WSortFilterProxyModel* new_proxy = new Wt::WSortFilterProxyModel(new_container);
+        auto* new_proxy = new Wt::WSortFilterProxyModel(new_container);
         new_proxy->setSourceModel(new_model);
 
         // Chart::WCartesianChart* chart = new Chart::WCartesianChart(new_container);
@@ -492,7 +491,7 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::toggle_history_plot(Wt:
 void goby::apps::zeromq::LiaisonScope::HistoryContainer::display_message(
     const std::string& group, const google::protobuf::Message& msg)
 {
-    std::map<std::string, HistoryContainer::MVC>::iterator hist_it = history_models_.find(group);
+    auto hist_it = history_models_.find(group);
     if (hist_it != history_models_.end())
     {
         // when the pb_row children exist, Wt segfaults when removing the parent... for now don't attach pb_rows for history items

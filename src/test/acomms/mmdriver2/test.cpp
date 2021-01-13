@@ -225,8 +225,7 @@ void goby::test::acomms::MMDriverTest2::summary(
         {
             if (micromodem::protobuf::PacketType_IsValid(j))
             {
-                micromodem::protobuf::PacketType jt =
-                    static_cast<micromodem::protobuf::PacketType>(j);
+                auto jt = static_cast<micromodem::protobuf::PacketType>(j);
                 goby::glog.is(VERBOSE) && goby::glog << "\t"
                                                      << micromodem::protobuf::PacketType_Name(jt)
                                                      << ": " << type.count(jt) << std::endl;
@@ -239,8 +238,7 @@ void goby::test::acomms::MMDriverTest2::summary(
         {
             if (micromodem::protobuf::ReceiveMode_IsValid(j))
             {
-                micromodem::protobuf::ReceiveMode jt =
-                    static_cast<micromodem::protobuf::ReceiveMode>(j);
+                auto jt = static_cast<micromodem::protobuf::ReceiveMode>(j);
                 goby::glog.is(VERBOSE) && goby::glog << "\t"
                                                      << micromodem::protobuf::ReceiveMode_Name(jt)
                                                      << ": " << mode.count(jt) << std::endl;
@@ -253,8 +251,7 @@ void goby::test::acomms::MMDriverTest2::summary(
         {
             if (micromodem::protobuf::PSKErrorCode_IsValid(j))
             {
-                micromodem::protobuf::PSKErrorCode jt =
-                    static_cast<micromodem::protobuf::PSKErrorCode>(j);
+                auto jt = static_cast<micromodem::protobuf::PSKErrorCode>(j);
                 goby::glog.is(VERBOSE) && goby::glog << "\t"
                                                      << micromodem::protobuf::PSKErrorCode_Name(jt)
                                                      << ": " << code.count(jt) << std::endl;

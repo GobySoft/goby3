@@ -449,7 +449,7 @@ struct Dial : boost::statechart::state<Dial, Command>, StateNotify
     Dial(my_context ctx)
         : my_base(ctx), StateNotify("Dial"), dest_(BENTHOS_BROADCAST_ID), rate_(DEFAULT_RATE)
     {
-        if (const EvDial* evdial = dynamic_cast<const EvDial*>(triggering_event()))
+        if (const auto* evdial = dynamic_cast<const EvDial*>(triggering_event()))
         {
             dest_ = evdial->dest_;
             if (dest_ == goby::acomms::BROADCAST_ID)
@@ -481,7 +481,7 @@ struct Range : boost::statechart::state<Range, Command>, StateNotify
 
     Range(my_context ctx) : my_base(ctx), StateNotify("Range"), dest_(0)
     {
-        if (const EvRange* ev = dynamic_cast<const EvRange*>(triggering_event()))
+        if (const auto* ev = dynamic_cast<const EvRange*>(triggering_event()))
         {
             dest_ = ev->dest_;
         }

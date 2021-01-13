@@ -59,7 +59,7 @@ void goby::middleware::frontseat::Bluefin::bfack(const goby::util::NMEASentence&
         REQUEST_PENDING = 3
     };
 
-    AckStatus status = static_cast<AckStatus>(nmea.as<int>(ACK_STATUS));
+    auto status = static_cast<AckStatus>(nmea.as<int>(ACK_STATUS));
 
     std::string acked_sentence = nmea.at(COMMAND_NAME);
 
@@ -176,8 +176,8 @@ void goby::middleware::frontseat::Bluefin::bfnvg(const goby::util::NMEASentence&
     const std::string& lat_string = nmea.at(LATITUDE);
     if (lat_string.length() > 2)
     {
-        double lat_deg = goby::util::as<double>(lat_string.substr(0, 2));
-        double lat_min = goby::util::as<double>(lat_string.substr(2, lat_string.size()));
+        auto lat_deg = goby::util::as<double>(lat_string.substr(0, 2));
+        auto lat_min = goby::util::as<double>(lat_string.substr(2, lat_string.size()));
         double lat = lat_deg + lat_min / 60;
         status_.mutable_global_fix()->set_lat((nmea.at(LAT_HEMISPHERE) == "S") ? -lat : lat);
     }
@@ -189,8 +189,8 @@ void goby::middleware::frontseat::Bluefin::bfnvg(const goby::util::NMEASentence&
     const std::string& lon_string = nmea.at(LONGITUDE);
     if (lon_string.length() > 2)
     {
-        double lon_deg = goby::util::as<double>(lon_string.substr(0, 3));
-        double lon_min = goby::util::as<double>(lon_string.substr(3, nmea.at(4).size()));
+        auto lon_deg = goby::util::as<double>(lon_string.substr(0, 3));
+        auto lon_min = goby::util::as<double>(lon_string.substr(3, nmea.at(4).size()));
         double lon = lon_deg + lon_min / 60;
         status_.mutable_global_fix()->set_lon((nmea.at(LON_HEMISPHERE) == "W") ? -lon : lon);
     }
@@ -227,8 +227,8 @@ void goby::middleware::frontseat::Bluefin::bfnvr(const goby::util::NMEASentence&
     // auto status_time = status_.time_with_units();
     // auto dt = gtime::convert_from_nmea<decltype(status_time)>(nmea.at(TIMESTAMP)) - status_time;
 
-    double east_speed = nmea.as<double>(EAST_VELOCITY);
-    double north_speed = nmea.as<double>(NORTH_VELOCITY);
+    auto east_speed = nmea.as<double>(EAST_VELOCITY);
+    auto north_speed = nmea.as<double>(NORTH_VELOCITY);
 
     status_.mutable_pose()->set_pitch_rate(nmea.as<double>(PITCH_RATE));
     status_.mutable_pose()->set_roll_rate(nmea.as<double>(ROLL_RATE));

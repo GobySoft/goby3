@@ -54,8 +54,7 @@ int main(int argc, char* argv[])
                 exit(EXIT_FAILURE);
             }
 
-            const char* (*name_function)(void) =
-                (const char* (*)(void))dlsym(handle, "goby_driver_name");
+            const auto name_function = (const char* (*)(void))dlsym(handle, "goby_driver_name");
             if (name_function)
                 goby::apps::moos::CpAcommsHandler::driver_plugins_.insert(
                     std::make_pair(std::string((*name_function)()), handle));

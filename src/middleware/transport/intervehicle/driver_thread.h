@@ -91,7 +91,7 @@ std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
 serialize_publication(const Data& d, const Group& group, const Publisher<Data>& publisher)
 {
     std::vector<char> bytes(SerializerParserHelper<Data, MarshallingScheme::DCCL>::serialize(d));
-    std::string* sbytes = new std::string(bytes.begin(), bytes.end());
+    auto* sbytes = new std::string(bytes.begin(), bytes.end());
     auto msg = std::make_shared<goby::middleware::protobuf::SerializerTransporterMessage>();
 
     auto* key = msg->mutable_key();

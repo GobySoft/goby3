@@ -70,7 +70,7 @@ void goby::middleware::hdf5::WriterApp::load()
 {
     typedef goby::middleware::HDF5Plugin* (*plugin_func)(
         const goby::middleware::protobuf::HDF5Config*);
-    plugin_func plugin_ptr = (plugin_func)dlsym(plugin_handle, "goby_hdf5_load");
+    auto plugin_ptr = (plugin_func)dlsym(plugin_handle, "goby_hdf5_load");
 
     if (!plugin_ptr)
         glog.is(DIE) &&

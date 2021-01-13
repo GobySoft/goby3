@@ -192,7 +192,7 @@ void goby::apps::moos::CpAcommsHandler::handle_mac_cycle_update(const CMOOSMsg& 
         return;
     }
 
-    goby::acomms::MACManager::iterator it1 = mac_.begin(), it2 = mac_.begin();
+    auto it1 = mac_.begin(), it2 = mac_.begin();
 
     for (int i = 0, n = update_msg.first_iterator(); i < n; ++i) ++it1;
 
@@ -259,8 +259,7 @@ void goby::apps::moos::CpAcommsHandler::handle_mac_cycle_update(const CMOOSMsg& 
                 {
                     if (!driver_restart_time_.count(it.first))
                     {
-                        goby::acomms::MMDriver* driver =
-                            dynamic_cast<goby::acomms::MMDriver*>(it.first.get());
+                        auto* driver = dynamic_cast<goby::acomms::MMDriver*>(it.first.get());
                         if (driver)
                             driver->set_silent(false);
                     }
@@ -272,8 +271,7 @@ void goby::apps::moos::CpAcommsHandler::handle_mac_cycle_update(const CMOOSMsg& 
                 {
                     if (!driver_restart_time_.count(it.first))
                     {
-                        goby::acomms::MMDriver* driver =
-                            dynamic_cast<goby::acomms::MMDriver*>(it.first.get());
+                        auto* driver = dynamic_cast<goby::acomms::MMDriver*>(it.first.get());
                         if (driver)
                             driver->set_silent(true);
                     }
@@ -535,9 +533,8 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
                                  << std::endl;
         else
         {
-            goby::acomms::ModemDriverBase* (*driver_function)(void) =
-                (goby::acomms::ModemDriverBase * (*)(void))
-                    dlsym(driver_it->second, "goby_make_driver");
+            auto driver_function = (goby::acomms::ModemDriverBase * (*)(void))
+                dlsym(driver_it->second, "goby_make_driver");
 
             if (!driver_function)
             {
@@ -795,11 +792,8 @@ void goby::apps::moos::CpAcommsHandler::driver_reset(
                 }
                 else
                 {
-                    std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
-                             goby::acomms::protobuf::DriverConfig*>::iterator old_it =
-                        drivers_.find(driver);
-                    std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
-                             goby::acomms::protobuf::DriverConfig*>::iterator new_it = old_it;
+                    auto old_it = drivers_.find(driver);
+                    auto new_it = old_it;
 
                     // try the next one after the current driver_, otherwise the first driver
                     ++new_it;
@@ -859,9 +853,7 @@ void goby::apps::moos::CpAcommsHandler::restart_drivers()
     double now = goby::time::SystemClock::now<goby::time::SITime>() / boost::units::si::seconds;
     std::set<std::shared_ptr<goby::acomms::ModemDriverBase>> drivers_to_start;
 
-    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>, double>::iterator it =
-             driver_restart_time_.begin();
-         it != driver_restart_time_.end();)
+    for (auto it = driver_restart_time_.begin(); it != driver_restart_time_.end();)
     {
         if (it->second < now)
         {

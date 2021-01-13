@@ -226,7 +226,7 @@ void goby::acomms::IridiumDriver::do_work()
     //    display_state_cfg(&glog);
     double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
-    const iridium::fsm::OnCall* on_call = fsm_.state_cast<const iridium::fsm::OnCall*>();
+    const auto* on_call = fsm_.state_cast<const iridium::fsm::OnCall*>();
 
     if (on_call)
     {

@@ -52,8 +52,7 @@ void goby::util::TCPServer::do_write(const protobuf::Datagram& line)
 {
     if (line.has_dest())
     {
-        std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator it =
-            connections_.find(line.dest());
+        auto it = connections_.find(line.dest());
         if (it != connections_.end())
             (it->second)->write(line);
     }
@@ -69,7 +68,7 @@ void goby::util::TCPServer::do_close(const boost::system::error_code& error,
 {
     if (!endpt.empty())
     {
-        std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator it = connections_.find(endpt);
+        auto it = connections_.find(endpt);
         if (it != connections_.end())
             (it->second)->close(error);
     }
@@ -82,13 +81,12 @@ void goby::util::TCPServer::do_close(const boost::system::error_code& error,
 const std::map<goby::util::TCPServer::Endpoint, std::shared_ptr<goby::util::TCPConnection> >&
 goby::util::TCPServer::connections()
 {
-    typedef std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator It;
-    It it = connections_.begin(), it_end = connections_.end();
+    auto it = connections_.begin(), it_end = connections_.end();
     while (it != it_end)
     {
         if (!(it->second)->socket().is_open())
         {
-            It to_delete = it;
+            auto to_delete = it;
             ++it; // increment before erasing!
             connections_.erase(to_delete);
         }

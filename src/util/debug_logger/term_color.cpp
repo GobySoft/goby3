@@ -30,7 +30,7 @@ std::ostream& goby::util::tcolor::add_escape_code(std::ostream& os, const std::s
 {
     try
     {
-        FlexOstream& flex = dynamic_cast<FlexOstream&>(os);
+        auto& flex = dynamic_cast<FlexOstream&>(os);
         return (flex << esc_code);
     }
     catch (const std::bad_cast& e)

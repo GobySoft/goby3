@@ -163,7 +163,7 @@ void goby::acomms::QueueManager::push_message(const google::protobuf::Message& d
 
 void goby::acomms::QueueManager::flush_queue(const protobuf::QueueFlush& flush)
 {
-    std::map<unsigned, std::shared_ptr<Queue> >::iterator it = queues_.find(flush.dccl_id());
+    auto it = queues_.find(flush.dccl_id());
 
     if (it != queues_.end())
     {
@@ -189,7 +189,7 @@ void goby::acomms::QueueManager::info_all(std::ostream* os) const
 void goby::acomms::QueueManager::info(const google::protobuf::Descriptor* desc,
                                       std::ostream* os) const
 {
-    std::map<unsigned, std::shared_ptr<Queue> >::const_iterator it = queues_.find(codec_->id(desc));
+    auto it = queues_.find(codec_->id(desc));
 
     if (it != queues_.end())
         it->second->info(os);
@@ -379,7 +379,7 @@ void goby::acomms::QueueManager::handle_modem_data_request(protobuf::ModemTransm
                     // encode all the messages but the last (these must be unencrypted)
                     if (dccl_msgs.size() > 1)
                     {
-                        std::list<QueuedMessage>::iterator it_back = dccl_msgs.end();
+                        auto it_back = dccl_msgs.end();
                         --it_back;
                         *data +=
                             encode_repeated(std::list<QueuedMessage>(dccl_msgs.begin(), it_back));
@@ -501,9 +501,7 @@ unsigned goby::acomms::QueueManager::size_repeated(const std::list<QueuedMessage
 
 void goby::acomms::QueueManager::clear_packet(const protobuf::ModemTransmission& message)
 {
-    for (std::multimap<unsigned, Queue*>::iterator it = waiting_for_ack_.begin(),
-                                                   end = waiting_for_ack_.end();
-         it != end;)
+    for (auto it = waiting_for_ack_.begin(), end = waiting_for_ack_.end(); it != end;)
     {
         if (it->second->clear_ack_queue(message.frame_start()))
             waiting_for_ack_.erase(it++);
@@ -604,7 +602,7 @@ void goby::acomms::QueueManager::process_modem_ack(const protobuf::ModemTransmis
             glog.is(DEBUG1) && glog << group(glog_in_group_) << "received ack for us from "
                                     << ack_msg.src() << " for frame " << frame_number << std::endl;
 
-            std::multimap<unsigned, Queue*>::iterator it = waiting_for_ack_.find(frame_number);
+            auto it = waiting_for_ack_.find(frame_number);
             while (it != waiting_for_ack_.end())
             {
                 Queue* q = it->second;

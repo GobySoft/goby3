@@ -155,10 +155,7 @@ void goby::acomms::MACManager::begin_slot()
     {
         glog << group(glog_mac_group_) << "Cycle order: [";
 
-        for (std::list<protobuf::ModemTransmission>::iterator
-                 it = std::list<protobuf::ModemTransmission>::begin(),
-                 n = end();
-             it != n; ++it)
+        for (auto it = std::list<protobuf::ModemTransmission>::begin(), n = end(); it != n; ++it)
         {
             if (it == current_slot_)
                 glog << group(glog_mac_group_) << " " << green;

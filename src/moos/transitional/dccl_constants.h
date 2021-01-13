@@ -209,7 +209,7 @@ inline std::string long2binary_string(unsigned long l, unsigned short bits)
 inline std::string binary_string2hex_string(const std::string& bs)
 {
     std::string hs;
-    unsigned int bytes = (unsigned int)(std::ceil(bs.length() / 8.0));
+    auto bytes = (unsigned int)(std::ceil(bs.length() / 8.0));
     unsigned char c[bytes];
 
     for (size_t i = 0; i < bytes; ++i)

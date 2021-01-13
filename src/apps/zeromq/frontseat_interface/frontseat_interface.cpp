@@ -86,7 +86,7 @@ frontseat::InterfaceBase*
 load_driver(const goby::apps::zeromq::protobuf::FrontSeatInterfaceConfig& cfg)
 {
     typedef frontseat::InterfaceBase* (*driver_load_func)(frontseat::protobuf::Config*);
-    driver_load_func driver_load_ptr = (driver_load_func)dlsym(
+    auto driver_load_ptr = (driver_load_func)dlsym(
         goby::apps::zeromq::FrontSeatInterface::driver_library_handle_, "frontseat_driver_load");
 
     if (!driver_load_ptr)

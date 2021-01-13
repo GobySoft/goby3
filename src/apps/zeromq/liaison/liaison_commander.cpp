@@ -145,23 +145,23 @@ void goby::apps::zeromq::LiaisonCommander::display_notify(
     const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::NotificationSubscription::Color&
         background_color)
 {
-    WContainerWidget* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
+    auto* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
 
     new WText("Message: " + goby::util::as<std::string>(
                                 controls_div_->incoming_message_stack_->children().size()),
               new_div);
 
-    WGroupBox* box = new WGroupBox(title, new_div);
+    auto* box = new WGroupBox(title, new_div);
 
     new_div->decorationStyle().setBackgroundColor(Wt::WColor(
         background_color.r(), background_color.g(), background_color.b(), background_color.a()));
 
     new WText("<pre>" + pb_msg.DebugString() + "</pre>", box);
 
-    WPushButton* minus = new WPushButton("-", new_div);
-    WPushButton* plus = new WPushButton("+", new_div);
-    WPushButton* remove = new WPushButton("x", new_div);
-    WPushButton* remove_all = new WPushButton("X", new_div);
+    auto* minus = new WPushButton("-", new_div);
+    auto* plus = new WPushButton("+", new_div);
+    auto* remove = new WPushButton("x", new_div);
+    auto* remove_all = new WPushButton("X", new_div);
     remove_all->setFloatSide(Wt::Right);
 
     plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
@@ -208,15 +208,13 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::clear_incoming_mes
 
 void goby::apps::zeromq::LiaisonCommander::loop()
 {
-    ControlsContainer::CommandContainer* current_command =
-        dynamic_cast<ControlsContainer::CommandContainer*>(
-            controls_div_->commands_div_->currentWidget());
+    auto* current_command = dynamic_cast<ControlsContainer::CommandContainer*>(
+        controls_div_->commands_div_->currentWidget());
 
     if (current_command && current_command->time_fields_.size())
     {
-        for (std::map<Wt::WFormWidget*, const google::protobuf::FieldDescriptor*>::iterator
-                 it = current_command->time_fields_.begin(),
-                 end = current_command->time_fields_.end();
+        for (auto it = current_command->time_fields_.begin(),
+                  end = current_command->time_fields_.end();
              it != end; ++it)
             current_command->set_time_field(it->first, it->second);
     }
@@ -346,7 +344,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
 
             if (!commands_.count(protobuf_name))
             {
-                CommandContainer* new_command =
+                auto* new_command =
                     new CommandContainer(pb_commander_config_, pb_commander_config.load_protobuf(i),
                                          protobuf_name, &session_, commander_, send_button_);
 
@@ -551,8 +549,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::clear_message()
 
     if (dialog.exec() == WDialog::Accepted)
     {
-        CommandContainer* current_command =
-            dynamic_cast<CommandContainer*>(commands_div_->currentWidget());
+        auto* current_command = dynamic_cast<CommandContainer*>(commands_div_->currentWidget());
         current_command->message_->Clear();
         current_command->generate_root();
     }
@@ -562,8 +559,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 {
     glog.is(VERBOSE) && glog << "Message to be sent!" << std::endl;
 
-    CommandContainer* current_command =
-        dynamic_cast<CommandContainer*>(commands_div_->currentWidget());
+    auto* current_command = dynamic_cast<CommandContainer*>(commands_div_->currentWidget());
 
     auto grouplayer =
         current_command->publish_to_.at(current_command->group_selection_->currentIndex());
@@ -631,16 +627,16 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 
     WDialog dialog("Confirm sending of message: " + command_selection_->currentText());
 
-    WGroupBox* comment_box = new WGroupBox("Log comment", dialog.contents());
-    WLineEdit* comment_line = new WLineEdit(comment_box);
+    auto* comment_box = new WGroupBox("Log comment", dialog.contents());
+    auto* comment_line = new WLineEdit(comment_box);
     comment_line->setText(comment_line_->text());
 
-    WGroupBox* group_box = new WGroupBox("Group", dialog.contents());
-    WContainerWidget* group_div = new WContainerWidget(group_box);
+    auto* group_box = new WGroupBox("Group", dialog.contents());
+    auto* group_div = new WContainerWidget(group_box);
     new WText("Group: " + to_string(grouplayer, group_numeric), group_div);
 
-    WGroupBox* message_box = new WGroupBox("Message to send", dialog.contents());
-    WContainerWidget* message_div = new WContainerWidget(message_box);
+    auto* message_box = new WGroupBox("Message to send", dialog.contents());
+    auto* message_div = new WContainerWidget(message_box);
     new WText("<pre>" + current_command->message_->DebugString() + "</pre>", message_div);
 
     message_div->setMaximumSize(pb_commander_config_.modal_dimensions().width(),
@@ -693,7 +689,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                 break;
         }
 
-        CommandEntry* command_entry = new CommandEntry;
+        auto* command_entry = new CommandEntry;
         command_entry->protobuf_name = current_command->message_->GetDescriptor()->full_name();
         command_entry->bytes.resize(current_command->message_->ByteSize());
         current_command->message_->SerializeToArray(&command_entry->bytes[0],
@@ -959,30 +955,30 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     database_dialog_.reset(new WDialog("Viewing log entry: " + entry->protobuf_name +
                                        " posted at " + entry->time.toString()));
 
-    WGroupBox* comment_box = new WGroupBox("Log comment", database_dialog_->contents());
+    auto* comment_box = new WGroupBox("Log comment", database_dialog_->contents());
     new WText(entry->comment, comment_box);
 
-    WContainerWidget* contents_div = new WContainerWidget(database_dialog_->contents());
-    WGroupBox* message_box = new WGroupBox("Message posted to " + group, contents_div);
+    auto* contents_div = new WContainerWidget(database_dialog_->contents());
+    auto* message_box = new WGroupBox("Message posted to " + group, contents_div);
 
-    WContainerWidget* message_div = new WContainerWidget(message_box);
+    auto* message_div = new WContainerWidget(message_box);
 
     new WText("<pre>" + message->DebugString() + "</pre>", message_div);
 
     protobuf::NetworkAckSet acks;
     acks.ParseFromArray(&entry->acks[0], entry->acks.size());
 
-    WGroupBox* acks_box = new WGroupBox("Acks posted", contents_div);
-    WContainerWidget* acks_div = new WContainerWidget(acks_box);
+    auto* acks_box = new WGroupBox("Acks posted", contents_div);
+    auto* acks_div = new WContainerWidget(acks_box);
     new WText("<pre>" + acks.DebugString() + "</pre>", acks_div);
 
     contents_div->setMaximumSize(pb_commander_config_.modal_dimensions().width(),
                                  pb_commander_config_.modal_dimensions().height());
     contents_div->setOverflow(WContainerWidget::OverflowAuto);
 
-    WPushButton* edit = new WPushButton("Edit (replace)", database_dialog_->contents());
-    WPushButton* merge = new WPushButton("Edit (merge)", database_dialog_->contents());
-    WPushButton* cancel = new WPushButton("Cancel", database_dialog_->contents());
+    auto* edit = new WPushButton("Edit (replace)", database_dialog_->contents());
+    auto* merge = new WPushButton("Edit (merge)", database_dialog_->contents());
+    auto* cancel = new WPushButton("Cancel", database_dialog_->contents());
 
     database_dialog_->rejectWhenEscapePressed();
 
@@ -1042,7 +1038,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_external_data(std::string type, std::string group,
                          std::shared_ptr<const google::protobuf::Message> msg)
 {
-    ExternalData* external_data = new ExternalData;
+    auto* external_data = new ExternalData;
     external_data->protobuf_name = type;
     external_data->affiliated_protobuf_name = message_->GetDescriptor()->full_name();
     external_data->group = group;
@@ -1072,7 +1068,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     const google::protobuf::Descriptor* desc = message_->GetDescriptor();
 
     // Create and set the root node
-    WTreeTableNode* root = new WTreeTableNode(desc->name());
+    auto* root = new WTreeTableNode(desc->name());
     root->setImagePack("resources/");
     root->setStyleClass(STRIPE_EVEN_CLASS);
 
@@ -1114,7 +1110,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
     int index = parent->childNodes().size();
 
-    LiaisonTreeTableNode* node =
+    auto* node =
         new LiaisonTreeTableNode(field_desc->is_extension() ? "[" + field_desc->full_name() + "]: "
                                                             : field_desc->name() + ": ",
                                  0, parent);
@@ -1132,7 +1128,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     {
         //        WContainerWidget* div = new WContainerWidget;
         //        WLabel* label = new WLabel(": ", div);
-        WSpinBox* spin_box = new WSpinBox;
+        auto* spin_box = new WSpinBox;
         spin_box->setTextSize(3);
         //       label->setBuddy(spin_box);
         spin_box->setRange(0, std::numeric_limits<int>::max());
@@ -1159,7 +1155,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             }
             else
             {
-                WPushButton* button = new WPushButton(MESSAGE_INCLUDE_TEXT);
+                auto* button = new WPushButton(MESSAGE_INCLUDE_TEXT);
 
                 button->clicked().connect(
                     boost::bind(&CommandContainer::handle_toggle_single_message, this, _1, message,
@@ -1183,7 +1179,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
     if (externally_loadable_fields_.count(parent_hierarchy + "." + field_desc->name()))
     {
-        WPushButton* button = new WPushButton(EXTERNAL_DATA_LOAD_TEXT);
+        auto* button = new WPushButton(EXTERNAL_DATA_LOAD_TEXT);
 
         button->clicked().connect(boost::bind(&CommandContainer::handle_load_external_data, this,
                                               _1, message, field_desc, button, node,
@@ -1221,7 +1217,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
         {
-            WIntValidator* validator = new WIntValidator;
+            auto* validator = new WIntValidator;
 
             if (field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddInt32(message, field_desc, field_desc->default_value_int32());
@@ -1255,7 +1251,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
         {
-            WIntValidator* validator = new WIntValidator;
+            auto* validator = new WIntValidator;
             validator->setBottom(0);
 
             if (field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
@@ -1326,7 +1322,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                               ? refl->GetRepeatedFloat(*message, field_desc, index)
                               : refl->GetFloat(*message, field_desc);
 
-            WDoubleValidator* validator = new WDoubleValidator;
+            auto* validator = new WDoubleValidator;
             validator->setRange(std::numeric_limits<float>::min(),
                                 std::numeric_limits<float>::max());
 
@@ -1348,7 +1344,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                                ? refl->GetRepeatedDouble(*message, field_desc, index)
                                : refl->GetDouble(*message, field_desc);
 
-            WDoubleValidator* validator = new WDoubleValidator;
+            auto* validator = new WDoubleValidator;
 
             value_field = generate_single_line_edit_field(
                 message, field_desc,
@@ -1530,7 +1526,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
             case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
             {
-                double dvalue = goby::util::as<double>(value);
+                auto dvalue = goby::util::as<double>(value);
 
                 if (field_desc->options().GetExtension(dccl::field).has_precision())
                     field->setText(string_from_dccl_double(&dvalue, field_desc));
@@ -1593,7 +1589,7 @@ WLineEdit* goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandConta
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
 
-    WLineEdit* line_edit = new WLineEdit();
+    auto* line_edit = new WLineEdit();
 
     if (field_desc->has_default_value() || field_desc->is_repeated())
         line_edit->setEmptyText(default_value);
@@ -1622,8 +1618,8 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::gener
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
 
-    WComboBox* combo_box = new WComboBox;
-    WStringListModel* model = new WStringListModel(strings, this);
+    auto* combo_box = new WComboBox;
+    auto* model = new WStringListModel(strings, this);
 
     if (field_desc->has_default_value())
         model->insertString(0, "(default: " + default_value + ")");
@@ -1669,7 +1665,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::gener
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::set_time_field(
     WFormWidget* value_field, const google::protobuf::FieldDescriptor* field_desc)
 {
-    if (WLineEdit* line_edit = dynamic_cast<WLineEdit*>(value_field))
+    if (auto* line_edit = dynamic_cast<WLineEdit*>(value_field))
     {
         boost::posix_time::ptime now = goby::time::SystemClock::now<boost::posix_time::ptime>();
 
@@ -1719,21 +1715,21 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     if (options.has_min() && options.has_max())
     {
         WValidator* validator = value_field->validator();
-        if (WIntValidator* int_validator = dynamic_cast<WIntValidator*>(validator))
+        if (auto* int_validator = dynamic_cast<WIntValidator*>(validator))
             int_validator->setRange(options.min(), options.max());
-        if (WDoubleValidator* double_validator = dynamic_cast<WDoubleValidator*>(validator))
+        if (auto* double_validator = dynamic_cast<WDoubleValidator*>(validator))
             double_validator->setRange(options.min(), options.max());
     }
 
     if (options.has_static_value())
     {
-        if (WLineEdit* line_edit = dynamic_cast<WLineEdit*>(value_field))
+        if (auto* line_edit = dynamic_cast<WLineEdit*>(value_field))
         {
             line_edit->setText(options.static_value());
             line_edit->changed().emit();
         }
 
-        else if (WComboBox* combo_box = dynamic_cast<WComboBox*>(value_field))
+        else if (auto* combo_box = dynamic_cast<WComboBox*>(value_field))
         {
             combo_box->setCurrentIndex(combo_box->findText(options.static_value()));
             combo_box->changed().emit();
@@ -1746,12 +1742,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     {
         if (field_desc->type() == google::protobuf::FieldDescriptor::TYPE_STRING)
         {
-            WLengthValidator* validator = new WLengthValidator(0, options.max_length());
+            auto* validator = new WLengthValidator(0, options.max_length());
             value_field->setValidator(validator);
         }
         else if (field_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES)
         {
-            WRegExpValidator* validator =
+            auto* validator =
                 new WRegExpValidator("([0-9,a-f,A-F][0-9,a-f,A-F]){0," +
                                      goby::util::as<std::string>(options.max_length()) + "}");
 
@@ -1775,7 +1771,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
     if (options.has_max_repeat())
     {
-        if (WSpinBox* spin_box = dynamic_cast<WSpinBox*>(modify_field))
+        if (auto* spin_box = dynamic_cast<WSpinBox*>(modify_field))
             spin_box->setMaximum(options.max_repeat());
     }
 }
@@ -1815,8 +1811,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     while (desired_size > static_cast<int>(parent->childNodes().size()))
     {
         int index = parent->childNodes().size();
-        WTreeTableNode* node =
-            new WTreeTableNode("index: " + goby::util::as<std::string>(index), 0, parent);
+        auto* node = new WTreeTableNode("index: " + goby::util::as<std::string>(index), 0, parent);
 
         if ((parent->styleClass() == STRIPE_ODD_CLASS && index % 2) ||
             (parent->styleClass() == STRIPE_EVEN_CLASS && !(index % 2)))
@@ -1896,12 +1891,11 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     WDialog dialog("Available external data for field: " + field_desc->name() +
                    " (click to select)");
 
-    WGroupBox* choice_box = new WGroupBox("Choose external data message", dialog.contents());
-    WContainerWidget* choice_div = new WContainerWidget(choice_box);
+    auto* choice_box = new WGroupBox("Choose external data message", dialog.contents());
+    auto* choice_div = new WContainerWidget(choice_box);
 
-    Wt::Dbo::QueryModel<Wt::Dbo::ptr<ExternalData>>* external_data_model(
-        new Dbo::QueryModel<Dbo::ptr<ExternalData>>(choice_box));
-    Wt::WTreeView* external_data_table(new WTreeView(choice_div));
+    auto* external_data_model(new Dbo::QueryModel<Dbo::ptr<ExternalData>>(choice_box));
+    auto* external_data_table(new WTreeView(choice_div));
 
     // ".foo.bar.field"
     std::string hierarchy = parent_hierarchy + "." + field_desc->name();
@@ -1931,9 +1925,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     external_data_table->setModel(external_data_model);
     set_external_data_table_params(external_data_table);
 
-    WGroupBox* message_box = new WGroupBox("External data to load", dialog.contents());
-    WContainerWidget* message_div = new WContainerWidget(message_box);
-    WText* message_text = new WText("", message_div);
+    auto* message_box = new WGroupBox("External data to load", dialog.contents());
+    auto* message_div = new WContainerWidget(message_box);
+    auto* message_text = new WText("", message_div);
 
     WPushButton ok("Load", dialog.contents());
     WPushButton cancel("Cancel", dialog.contents());

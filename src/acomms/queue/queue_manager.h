@@ -293,7 +293,7 @@ class QueueManager
                 iterator;
             std::pair<iterator, iterator> p = manips_.equal_range(id);
 
-            for (iterator it = p.first; it != p.second; ++it)
+            for (auto it = p.first; it != p.second; ++it)
             {
                 if (it->second == manip)
                     return true;
