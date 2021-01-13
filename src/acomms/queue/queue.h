@@ -63,7 +63,7 @@ class Queue
 {
   public:
     Queue(const google::protobuf::Descriptor* desc, QueueManager* parent,
-          const protobuf::QueuedMessageEntry& cfg = protobuf::QueuedMessageEntry());
+          protobuf::QueuedMessageEntry cfg = protobuf::QueuedMessageEntry());
 
     bool push_message(std::shared_ptr<google::protobuf::Message> dccl_msg);
     bool push_message(std::shared_ptr<google::protobuf::Message> dccl_msg,

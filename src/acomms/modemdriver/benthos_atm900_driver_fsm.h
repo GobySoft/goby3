@@ -37,6 +37,7 @@
 #include <boost/statechart/state_machine.hpp>
 #include <boost/statechart/transition.hpp>
 #include <iostream>
+#include <utility>
 
 #include "goby/acomms/acomms_constants.h"
 #include "goby/time.h"
@@ -66,7 +67,7 @@ struct EvTxSerial : boost::statechart::event<EvTxSerial>
 
 struct EvAck : boost::statechart::event<EvAck>
 {
-    EvAck(const std::string& response) : response_(response) {}
+    EvAck(std::string response) : response_(std::move(response)) {}
 
     std::string response_;
 };
@@ -116,7 +117,7 @@ struct EvTransmitBegun : boost::statechart::event<EvTransmitBegun>
 
 struct EvReceive : boost::statechart::event<EvReceive>
 {
-    EvReceive(const std::string& first) : first_(first) {}
+    EvReceive(std::string first) : first_(std::move(first)) {}
     std::string first_;
 };
 
@@ -210,7 +211,7 @@ struct BenthosATM900FSM : boost::statechart::state_machine<BenthosATM900FSM, Act
 
 struct StateNotify
 {
-    StateNotify(const std::string& name) : name_(name)
+    StateNotify(std::string name) : name_(std::move(name))
     {
         glog.is(goby::util::logger::DEBUG1) && glog << group("benthosatm900::fsm") << name_
                                                     << std::endl;

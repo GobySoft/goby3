@@ -42,7 +42,7 @@ class TCPClient : public LineBasedClient<boost::asio::ip::tcp::socket>
     /// \param port port of the remote server
     /// \param delimiter string used to split lines
     /// \param retry_interval Time between reconnects in seconds
-    TCPClient(const std::string& server, unsigned port, const std::string& delimiter = "\r\n",
+    TCPClient(std::string server, unsigned port, const std::string& delimiter = "\r\n",
               int retry_interval = 10);
 
     boost::asio::ip::tcp::socket& socket() override { return socket_; }

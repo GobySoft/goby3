@@ -27,6 +27,7 @@
 
 #include <iostream>
 #include <string>
+#include <utility>
 
 #include "term_color.h"
 
@@ -67,9 +68,9 @@ inline std::ostream& debug3(std::ostream& os) { return (os << "D3: "); }
 class Group
 {
   public:
-    Group(const std::string& name = "", const std::string& description = "",
+    Group(std::string name = "", std::string description = "",
           goby::util::Colors::Color color = goby::util::Colors::nocolor)
-        : name_(name), description_(description), color_(color)
+        : name_(std::move(name)), description_(std::move(description)), color_(color)
     {
     }
 
@@ -104,7 +105,7 @@ class Group
 class GroupSetter
 {
   public:
-    explicit GroupSetter(const std::string& s) : group_(s) {}
+    explicit GroupSetter(std::string s) : group_(std::move(s)) {}
     void operator()(std::ostream& os) const;
     void operator()(goby::util::FlexOstream& os) const;
 

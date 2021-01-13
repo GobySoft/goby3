@@ -23,6 +23,8 @@
 
 #include "interprocess.h"
 
+#include <utility>
+
 using goby::glog;
 using namespace goby::util::logger;
 
@@ -204,7 +206,7 @@ goby::zeromq::InterProcessPortalReadThread::InterProcessPortalReadThread(
       subscribe_socket_(context, ZMQ_SUB),
       manager_socket_(context, ZMQ_REQ),
       alive_(alive),
-      poller_cv_(poller_cv)
+      poller_cv_(std::move(poller_cv))
 {
     poll_items_.resize(NUMBER_SOCKETS);
     poll_items_[SOCKET_CONTROL] = {(void*)control_socket_, 0, ZMQ_POLLIN, 0};

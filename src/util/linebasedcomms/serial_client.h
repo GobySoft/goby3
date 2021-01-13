@@ -42,7 +42,7 @@ class SerialClient : public LineBasedClient<boost::asio::serial_port>
     /// \param name name of the serial connection (e.g. "/dev/ttyS0")
     /// \param baud baud rate of the serial connection (e.g. 9600)
     /// \param delimiter string used to split lines
-    SerialClient(const std::string& name = "", unsigned baud = 9600,
+    SerialClient(std::string name = "", unsigned baud = 9600,
                  const std::string& delimiter = "\r\n");
 
     ~SerialClient() override = default;

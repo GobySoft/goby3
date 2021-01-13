@@ -26,6 +26,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/range/algorithm/replace_if.hpp>
+#include <utility>
 
 #include "H5Cpp.h"
 
@@ -45,7 +46,7 @@ namespace hdf5
 {
 struct MessageCollection
 {
-    MessageCollection(const std::string& n) : name(n) {}
+    MessageCollection(std::string n) : name(std::move(n)) {}
     std::string name;
 
     // time -> Message contents
@@ -54,7 +55,7 @@ struct MessageCollection
 
 struct Channel
 {
-    Channel(const std::string& n) : name(n) {}
+    Channel(std::string n) : name(std::move(n)) {}
     std::string name;
 
     void add_message(const goby::middleware::HDF5ProtobufEntry& entry);

@@ -30,6 +30,7 @@
 #include <Wt/WStackedWidget>
 #include <Wt/WText>
 #include <Wt/WVBoxLayout>
+#include <utility>
 
 #include "dccl/dynamic_protobuf_manager.h"
 #include "goby/time.h"
@@ -45,8 +46,8 @@ using namespace goby::util::logger;
 using goby::zeromq::LiaisonContainer;
 
 goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env,
-                                               protobuf::LiaisonConfig app_cfg)
-    : Wt::WApplication(env), app_cfg_(app_cfg)
+                                                     protobuf::LiaisonConfig app_cfg)
+    : Wt::WApplication(env), app_cfg_(std::move(app_cfg))
 {
     Wt::WString title_text("goby liaison: " + app_cfg_.interprocess().platform());
     setTitle(title_text);

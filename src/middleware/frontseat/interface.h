@@ -49,7 +49,7 @@ namespace frontseat
 class InterfaceBase
 {
   public:
-    InterfaceBase(const protobuf::Config& cfg);
+    InterfaceBase(protobuf::Config cfg);
 
     virtual ~InterfaceBase() = default;
 

@@ -43,8 +43,7 @@ class DriverTester
     DriverTester(std::shared_ptr<goby::acomms::ModemDriverBase> driver1,
                  std::shared_ptr<goby::acomms::ModemDriverBase> driver2,
                  const goby::acomms::protobuf::DriverConfig& cfg1,
-                 const goby::acomms::protobuf::DriverConfig& cfg2,
-                 const std::vector<int>& tests_to_run,
+                 const goby::acomms::protobuf::DriverConfig& cfg2, std::vector<int> tests_to_run,
                  goby::acomms::protobuf::DriverType driver_type);
 
     int run();

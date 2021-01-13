@@ -27,6 +27,7 @@
 #include <boost/bimap.hpp>
 #include <boost/crc.hpp>
 #include <cstdint>
+#include <utility>
 
 #include "goby/exception.h"
 #include "goby/util/debug_logger.h"
@@ -116,9 +117,11 @@ class LogEntry
         filter_hook;
 
   public:
-    LogEntry(const std::vector<unsigned char>& data, int scheme, const std::string& type,
-             const Group& group)
-        : data_(data), scheme_(scheme), type_(type), group_(std::string(group))
+    LogEntry(std::vector<unsigned char> data, int scheme, std::string type, const Group& group)
+        : data_(std::move(data)),
+          scheme_(scheme),
+          type_(std::move(type)),
+          group_(std::string(group))
     {
     }
 

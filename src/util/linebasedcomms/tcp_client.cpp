@@ -27,12 +27,14 @@
 
 #include "tcp_client.h"
 
-goby::util::TCPClient::TCPClient(const std::string& server, unsigned port,
+#include <utility>
+
+goby::util::TCPClient::TCPClient(std::string server, unsigned port,
                                  const std::string& delimiter /*= "\r\n"*/,
                                  int retry_interval /*=  10*/)
     : LineBasedClient<boost::asio::ip::tcp::socket>(delimiter, retry_interval),
       socket_(io_),
-      server_(server),
+      server_(std::move(server)),
       port_(as<std::string>(port))
 {
 }

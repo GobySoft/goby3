@@ -30,16 +30,19 @@
 #include "goby/util/protobuf/io.h"
 
 #include "queue.h"
+
+#include <utility>
+
 #include "queue_manager.h"
 
 using namespace goby::util::logger;
 using goby::util::as;
 
 goby::acomms::Queue::Queue(const google::protobuf::Descriptor* desc, QueueManager* parent,
-                           const protobuf::QueuedMessageEntry& cfg)
+                           protobuf::QueuedMessageEntry cfg)
     : desc_(desc),
       parent_(parent),
-      cfg_(cfg),
+      cfg_(std::move(cfg)),
       last_send_time_(time::SystemClock::now<boost::posix_time::ptime>())
 {
     process_cfg();

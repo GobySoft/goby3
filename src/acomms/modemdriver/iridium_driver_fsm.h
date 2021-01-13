@@ -37,6 +37,7 @@
 #include <boost/statechart/state_machine.hpp>
 #include <boost/statechart/transition.hpp>
 #include <iostream>
+#include <utility>
 
 #include "goby/acomms/modemdriver/iridium_driver_common.h"
 #include "goby/acomms/protobuf/iridium_driver.pb.h"
@@ -60,7 +61,7 @@ namespace fsm
 {
 struct StateNotify
 {
-    StateNotify(const std::string& name) : name_(name)
+    StateNotify(std::string name) : name_(std::move(name))
     {
         glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << name_ << std::endl;
     }
@@ -93,7 +94,7 @@ struct EvTxOnCallSerial : boost::statechart::event<EvTxOnCallSerial>
 
 struct EvAck : boost::statechart::event<EvAck>
 {
-    EvAck(const std::string& response) : response_(response) {}
+    EvAck(std::string response) : response_(std::move(response)) {}
 
     std::string response_;
 };
@@ -138,8 +139,8 @@ struct EvConfigured : boost::statechart::event<EvConfigured>
 };
 struct EvSBDBeginData : boost::statechart::event<EvSBDBeginData>
 {
-    EvSBDBeginData(const std::string& data = "", bool in_response_to_ring_alert = false)
-        : data_(data), in_response_to_ring_alert_(in_response_to_ring_alert)
+    EvSBDBeginData(std::string data = "", bool in_response_to_ring_alert = false)
+        : data_(std::move(data)), in_response_to_ring_alert_(in_response_to_ring_alert)
     {
     }
     std::string data_;
@@ -158,7 +159,7 @@ struct EvSBDWriteComplete : boost::statechart::event<EvSBDWriteComplete>
 };
 struct EvSBDTransmitComplete : boost::statechart::event<EvSBDTransmitComplete>
 {
-    EvSBDTransmitComplete(const std::string& sbdi) : sbdi_(sbdi) {}
+    EvSBDTransmitComplete(std::string sbdi) : sbdi_(std::move(sbdi)) {}
     std::string sbdi_;
 };
 struct EvSBDReceiveComplete : boost::statechart::event<EvSBDReceiveComplete>

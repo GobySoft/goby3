@@ -24,6 +24,8 @@
 
 #include "driver_tester.h"
 
+#include <utility>
+
 #include "goby/util/protobuf/io.h"
 
 using namespace goby::util::logger;
@@ -35,12 +37,12 @@ goby::test::acomms::DriverTester::DriverTester(
     std::shared_ptr<goby::acomms::ModemDriverBase> driver1,
     std::shared_ptr<goby::acomms::ModemDriverBase> driver2,
     const goby::acomms::protobuf::DriverConfig& cfg1,
-    const goby::acomms::protobuf::DriverConfig& cfg2, const std::vector<int>& tests_to_run,
+    const goby::acomms::protobuf::DriverConfig& cfg2, std::vector<int> tests_to_run,
     goby::acomms::protobuf::DriverType driver_type)
-    : driver1_(driver1),
-      driver2_(driver2),
+    : driver1_(std::move(driver1)),
+      driver2_(std::move(driver2)),
       check_count_(0),
-      tests_to_run_(tests_to_run),
+      tests_to_run_(std::move(tests_to_run)),
       tests_to_run_index_(0),
       test_number_(-1),
       driver_type_(driver_type)

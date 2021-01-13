@@ -22,6 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <utility>
+
 #include "goby/util/as.h"
 
 namespace goby
@@ -40,7 +42,7 @@ enum MyEnum
 class MyClass
 {
   public:
-    MyClass(int a = 0, std::string b = "") : a(a), b(b) {}
+    MyClass(int a = 0, std::string b = "") : a(a), b(std::move(b)) {}
 
     bool operator==(const MyClass& other) { return (other.a == a) && (other.b == b); }
 
