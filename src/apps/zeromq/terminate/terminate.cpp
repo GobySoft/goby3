@@ -22,7 +22,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 // for kill
-#include <signal.h>
+#include <csignal>
 #include <sys/types.h>
 
 #include "goby/middleware/marshalling/protobuf.h"

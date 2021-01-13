@@ -25,8 +25,8 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_RUDICS_PACKET_H
 #define GOBY_ACOMMS_MODEMDRIVER_RUDICS_PACKET_H
 
+#include <cstdint>
 #include <stdexcept>
-#include <stdint.h>
 #include <string>
 
 namespace goby

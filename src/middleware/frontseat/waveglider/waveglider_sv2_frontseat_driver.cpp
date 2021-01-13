@@ -25,7 +25,7 @@
 #include "goby/util/debug_logger.h"
 
 #include "waveglider_sv2_frontseat_driver.h"
-#include <stdint.h>
+#include <cstdint>
 
 namespace gpb = goby::middleware::frontseat::protobuf;
 namespace gtime = goby::time;

@@ -24,7 +24,7 @@
 
 #include "goby/time.h"
 #include "goby/time/legacy.h"
-#include "stdint.h"
+#include <cstdint>
 
 using goby::common::goby_time;
 using goby::util::as;
