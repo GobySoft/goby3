@@ -55,15 +55,15 @@ template <> struct uint<1>
 };
 template <> struct uint<2>
 {
-    typedef std::uint16_t type;
+    using type = std::uint16_t;
 };
 template <> struct uint<4>
 {
-    typedef std::uint32_t type;
+    using type = std::uint32_t;
 };
 template <> struct uint<8>
 {
-    typedef std::uint64_t type;
+    using type = std::uint64_t;
 };
 
 struct LogFilter

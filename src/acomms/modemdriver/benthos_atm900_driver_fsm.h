@@ -249,11 +249,9 @@ struct ReceiveData : boost::statechart::state<ReceiveData, BenthosATM900FSM>, St
 
     void in_state_react(const EvRxSerial&);
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::in_state_reaction<EvRxSerial, ReceiveData, &ReceiveData::in_state_react>,
-        boost::statechart::transition<EvReceiveComplete,
-                                      boost::statechart::deep_history<Command> > >
-        reactions;
+        boost::statechart::transition<EvReceiveComplete, boost::statechart::deep_history<Command>>>;
 
     goby::acomms::protobuf::ModemTransmission rx_msg_;
     unsigned reported_size_;
@@ -291,11 +289,10 @@ struct Command : boost::statechart::simple_state<Command, Active, Configure,
     }
     ~Command() override = default;
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::custom_reaction<EvConnect>,
         boost::statechart::in_state_reaction<EvAck, Command, &Command::in_state_react>,
-        boost::statechart::in_state_reaction<EvTxSerial, Command, &Command::in_state_react> >
-        reactions;
+        boost::statechart::in_state_reaction<EvTxSerial, Command, &Command::in_state_react>>;
 
     struct ATSentenceMeta
     {
@@ -337,7 +334,7 @@ struct Command : boost::statechart::simple_state<Command, Active, Configure,
 
 struct Configure : boost::statechart::state<Configure, Command>, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, SetClock> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, SetClock>>;
 
     Configure(my_context ctx) : my_base(ctx), StateNotify("Configure")
     {
@@ -399,7 +396,7 @@ struct Configure : boost::statechart::state<Configure, Command>, StateNotify
 
 struct SetClock : boost::statechart::state<SetClock, Command>, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
     SetClock(my_context ctx) : my_base(ctx), StateNotify("SetClock")
     {
@@ -426,11 +423,10 @@ struct Ready : boost::statechart::simple_state<Ready, Command>, StateNotify
     Ready() : StateNotify("Ready") {}
     ~Ready() override = default;
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::transition<EvDial, Dial>, boost::statechart::transition<EvRange, Range>,
         boost::statechart::in_state_reaction<EvRequestLowPower, Ready, &Ready::in_state_react>,
-        boost::statechart::transition<EvLowPower, LowPower> >
-        reactions;
+        boost::statechart::transition<EvLowPower, LowPower>>;
 };
 
 struct Dial : boost::statechart::state<Dial, Command>, StateNotify
@@ -489,10 +485,9 @@ struct Range : boost::statechart::state<Range, Command>, StateNotify
     }
     ~Range() override = default;
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::transition<EvRangingComplete, Ready>,
-        boost::statechart::in_state_reaction<EvRxSerial, Range, &Range::in_state_react> >
-        reactions;
+        boost::statechart::in_state_reaction<EvRxSerial, Range, &Range::in_state_react>>;
 
   private:
     int dest_;
@@ -504,9 +499,8 @@ struct Online : boost::statechart::state<Online, Active, Listen>, StateNotify
     Online(my_context ctx) : my_base(ctx), StateNotify("Online") {}
     ~Online() override = default;
 
-    typedef boost::mpl::list<
-        boost::statechart::transition<EvShellPrompt, boost::statechart::deep_history<Command> > >
-        reactions;
+    using reactions = boost::mpl::list<
+        boost::statechart::transition<EvShellPrompt, boost::statechart::deep_history<Command>>>;
 };
 
 struct Listen : boost::statechart::state<Listen, Online>, StateNotify
@@ -518,7 +512,7 @@ struct Listen : boost::statechart::state<Listen, Online>, StateNotify
     }
     ~Listen() override = default;
 
-    typedef boost::mpl::list<boost::statechart::transition<EvTransmit, TransmitData> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvTransmit, TransmitData>>;
 };
 
 struct TransmitData : boost::statechart::state<TransmitData, Online>, StateNotify
@@ -529,12 +523,11 @@ struct TransmitData : boost::statechart::state<TransmitData, Online>, StateNotif
     void in_state_react(const EvTxSerial&);
     void in_state_react(const EvAck&);
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::transition<EvTransmitBegun, Ready>,
         boost::statechart::in_state_reaction<EvTxSerial, TransmitData,
                                              &TransmitData::in_state_react>,
-        boost::statechart::in_state_reaction<EvAck, TransmitData, &TransmitData::in_state_react> >
-        reactions;
+        boost::statechart::in_state_reaction<EvAck, TransmitData, &TransmitData::in_state_react>>;
 };
 
 } // namespace fsm

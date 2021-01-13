@@ -31,9 +31,9 @@
 struct TestClock
 {
     typedef std::chrono::microseconds duration;
-    typedef duration::rep rep;
-    typedef duration::period period;
-    typedef std::chrono::time_point<TestClock> time_point;
+    using rep = duration::rep;
+    using period = duration::period;
+    using time_point = std::chrono::time_point<TestClock>;
     static const bool is_steady = true;
 
     static time_point now() noexcept { return sim_now_; }

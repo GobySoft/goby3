@@ -57,7 +57,7 @@ struct QueuedMessage
 };
 
 typedef std::list<QueuedMessage>::iterator messages_it;
-typedef std::multimap<unsigned, messages_it>::iterator waiting_for_ack_it;
+using waiting_for_ack_it = std::multimap<unsigned int, messages_it>::iterator;
 
 class Queue
 {

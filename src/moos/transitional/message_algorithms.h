@@ -45,11 +45,11 @@ class DCCLMessage;
 /// \brief boost::function for a function taking a single DCCLMessageVal reference. Used for algorithm callbacks.
 ///
 /// Think of this as a generalized version of a function pointer (void (*)(DCCLMessageVal&)). See http://www.boost.org/doc/libs/1_34_0/doc/html/function.html for more on boost:function.
-typedef boost::function<void(DCCLMessageVal&)> AlgFunction1;
+using AlgFunction1 = boost::function<void(DCCLMessageVal&)>;
 /// \brief boost::function for a function taking a dccl::MessageVal reference, and the MessageVal of a second part of the message. Used for algorithm callbacks.
 ///
 /// Think of this as a generalized version of a function pointer (void (*)(DCCLMessageVal&, const DCCLMessageVal&). See http://www.boost.org/doc/libs/1_34_0/doc/html/function.html for more on boost:function.
-typedef boost::function<void(DCCLMessageVal&, const std::vector<DCCLMessageVal>&)> AlgFunction2;
+using AlgFunction2 = boost::function<void(DCCLMessageVal&, const std::vector<DCCLMessageVal>&)>;
 
 class DCCLAlgorithmPerformer
 {

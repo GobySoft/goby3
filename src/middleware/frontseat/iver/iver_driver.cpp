@@ -319,7 +319,7 @@ void goby::middleware::frontseat::Iver::send_command_to_frontseat(
         nmea.push_back(tenths_precision_str(
             command.desired_course().depth_with_units<quantity<feet>>().value()));    // in feet
         nmea.push_back(tenths_precision_str(iver_config_.max_pitch_angle_degrees())); // in degrees
-        typedef boost::units::metric::knot_base_unit::unit_type knots;
+        using knots = boost::units::metric::knot_base_unit::unit_type;
         nmea.push_back(tenths_precision_str(
             command.desired_course().speed_with_units<quantity<knots>>().value())); // in knots
         const int time_out = 5;                                                     // seconds

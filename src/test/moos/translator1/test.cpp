@@ -395,7 +395,7 @@ int main(int argc, char* argv[])
         assert(it->second.GetString() == "em.val=19.998");
     }
 
-    typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
+    using GoogleProtobufMessagePointer = std::unique_ptr<google::protobuf::Message>;
     GoogleProtobufMessagePointer embedded_test_out =
         translator.moos_to_protobuf<GoogleProtobufMessagePointer>(
             moos_msgs, "goby.test.acomms.protobuf.TestMsg");
@@ -448,7 +448,7 @@ int main(int argc, char* argv[])
                "dbl2=nan,dbl3=nan,em0.em1.val=45");
     }
 
-    typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
+    using GoogleProtobufMessagePointer = std::unique_ptr<google::protobuf::Message>;
     embedded_test_out = translator.moos_to_protobuf<GoogleProtobufMessagePointer>(
         moos_msgs, "goby.test.acomms.protobuf.TestMsg");
 
@@ -537,7 +537,7 @@ void run_one_in_one_out_test(MOOSTranslator& translator, int i, bool hex_encode)
         ++i;
     }
 
-    typedef std::unique_ptr<google::protobuf::Message> GoogleProtobufMessagePointer;
+    using GoogleProtobufMessagePointer = std::unique_ptr<google::protobuf::Message>;
     GoogleProtobufMessagePointer msg_out =
         translator.moos_to_protobuf<GoogleProtobufMessagePointer>(
             moos_msgs, "goby.test.acomms.protobuf.TestMsg");

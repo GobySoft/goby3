@@ -270,12 +270,11 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
     Command() : StateNotify("Command"), at_out_(AT_BUFFER_CAPACITY) {}
     ~Command() override = default;
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::in_state_reaction<EvRxSerial, Command, &Command::in_state_react>,
         boost::statechart::in_state_reaction<EvTxSerial, Command, &Command::in_state_react>,
         boost::statechart::transition<EvOnline, Online>,
-        boost::statechart::in_state_reaction<EvAck, Command, &Command::in_state_react> >
-        reactions;
+        boost::statechart::in_state_reaction<EvAck, Command, &Command::in_state_react>>;
 
     struct ATSentenceMeta
     {
@@ -320,7 +319,7 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
 
 struct Configure : boost::statechart::state<Configure, Command::orthogonal<0> >, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
     Configure(my_context ctx) : my_base(ctx), StateNotify("Configure")
     {
@@ -353,9 +352,8 @@ struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0> >, 
         }
     }
 
-    typedef boost::mpl::list<boost::statechart::transition<EvRing, Answer>,
-                             boost::statechart::custom_reaction<EvDial> >
-        reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvRing, Answer>,
+                                       boost::statechart::custom_reaction<EvDial>>;
 
   private:
 };
@@ -370,7 +368,7 @@ struct HangingUp : boost::statechart::state<HangingUp, Command::orthogonal<0> >,
     }
     ~HangingUp() override = default;
 
-    typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
   private:
 };
@@ -387,14 +385,14 @@ struct PostDisconnected : boost::statechart::state<PostDisconnected, Command::or
     }
     ~PostDisconnected() override = default;
 
-    typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
   private:
 };
 
 struct Dial : boost::statechart::state<Dial, Command::orthogonal<0> >, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::custom_reaction<EvNoCarrier> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvNoCarrier>>;
 
     Dial(my_context ctx) : my_base(ctx), StateNotify("Dial"), dial_attempts_(0) { dial(); }
     ~Dial() override = default;
@@ -408,7 +406,7 @@ struct Dial : boost::statechart::state<Dial, Command::orthogonal<0> >, StateNoti
 
 struct Answer : boost::statechart::state<Answer, Command::orthogonal<0> >, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvNoCarrier, Ready> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvNoCarrier, Ready>>;
 
     Answer(my_context ctx) : my_base(ctx), StateNotify("Answer")
     {
@@ -426,18 +424,17 @@ struct Online : boost::statechart::simple_state<Online, Active::orthogonal<0> >,
     void in_state_react(const EvRxSerial&);
     void in_state_react(const EvTxSerial&);
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::transition<EvHangup, HangingUp>,
         boost::statechart::transition<EvDisconnect, PostDisconnected>,
         boost::statechart::in_state_reaction<EvRxSerial, Online, &Online::in_state_react>,
-        boost::statechart::in_state_reaction<EvTxSerial, Online, &Online::in_state_react> >
-        reactions;
+        boost::statechart::in_state_reaction<EvTxSerial, Online, &Online::in_state_react>>;
 };
 
 // Orthogonal on-call / not-on-call
 struct NotOnCall : boost::statechart::simple_state<NotOnCall, Active::orthogonal<1> >, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvConnect, OnCall> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvConnect, OnCall>>;
 
     NotOnCall() : StateNotify("NotOnCall") {}
     ~NotOnCall() override = default;
@@ -469,14 +466,11 @@ struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateN
     void in_state_react(const EvTxOnCallSerial&);
     void in_state_react(const EvSendBye&);
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::transition<EvNoCarrier, NotOnCall>,
         boost::statechart::in_state_reaction<EvRxOnCallSerial, OnCall, &OnCall::in_state_react>,
         boost::statechart::in_state_reaction<EvTxOnCallSerial, OnCall, &OnCall::in_state_react>,
-        boost::statechart::in_state_reaction<EvSendBye, OnCall, &OnCall::in_state_react>
-
-        >
-        reactions;
+        boost::statechart::in_state_reaction<EvSendBye, OnCall, &OnCall::in_state_react>>;
 
   private:
 };
@@ -531,9 +525,8 @@ struct SBD : boost::statechart::simple_state<SBD, Command::orthogonal<1>, SBDRea
 
 struct SBDReady : boost::statechart::simple_state<SBDReady, SBD>, StateNotify
 {
-    typedef boost::mpl::list<
-        boost::statechart::transition<EvSBDBeginData, SBDClearBuffers, SBD, &SBD::set_data> >
-        reactions;
+    using reactions = boost::mpl::list<
+        boost::statechart::transition<EvSBDBeginData, SBDClearBuffers, SBD, &SBD::set_data>>;
 
     SBDReady() : StateNotify("SBDReady") {}
 
@@ -542,8 +535,8 @@ struct SBDReady : boost::statechart::simple_state<SBDReady, SBD>, StateNotify
 
 struct SBDClearBuffers : boost::statechart::state<SBDClearBuffers, SBD>, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvSBDSendBufferCleared, SBDWrite> >
-        reactions;
+    using reactions =
+        boost::mpl::list<boost::statechart::transition<EvSBDSendBufferCleared, SBDWrite>>;
 
     SBDClearBuffers(my_context ctx) : my_base(ctx), StateNotify("SBDClearBuffers")
     {
@@ -582,15 +575,14 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
 
     ~SBDWrite() override = default;
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::in_state_reaction<EvSBDWriteReady, SBDWrite, &SBDWrite::in_state_react>,
-        boost::statechart::transition<EvSBDWriteComplete, SBDTransmit> >
-        reactions;
+        boost::statechart::transition<EvSBDWriteComplete, SBDTransmit>>;
 };
 
 struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::custom_reaction<EvSBDTransmitComplete> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvSBDTransmitComplete>>;
     SBDTransmit(my_context ctx) : my_base(ctx), StateNotify("SBDTransmit")
     {
         if (context<SBD>().in_response_to_ring_alert())
@@ -722,8 +714,8 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
 
 struct SBDReceive : boost::statechart::state<SBDReceive, SBD>, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvSBDReceiveComplete, SBDReady> >
-        reactions;
+    using reactions =
+        boost::mpl::list<boost::statechart::transition<EvSBDReceiveComplete, SBDReady>>;
     SBDReceive(my_context ctx) : my_base(ctx), StateNotify("SBDReceive")
     {
         context<Command>().push_at_command("+SBDRB");

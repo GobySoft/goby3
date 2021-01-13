@@ -289,8 +289,8 @@ class QueueManager
 
         bool has(unsigned id, goby::acomms::protobuf::Manipulator manip) const
         {
-            typedef std::multimap<unsigned, goby::acomms::protobuf::Manipulator>::const_iterator
-                iterator;
+            using iterator =
+                std::multimap<unsigned int, goby::acomms::protobuf::Manipulator>::const_iterator;
             std::pair<iterator, iterator> p = manips_.equal_range(id);
 
             for (auto it = p.first; it != p.second; ++it)

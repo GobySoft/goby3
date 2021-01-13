@@ -58,7 +58,7 @@ goby::middleware::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::
     }
     else
     {
-        typedef std::map<std::string, GroupWrapper>::iterator It;
+        using It = std::map<std::string, GroupWrapper>::iterator;
         auto it = children_.find(nodes[0]);
         if (it == children_.end())
         {
@@ -80,7 +80,7 @@ void goby::middleware::hdf5::Writer::add_entry(goby::middleware::HDF5ProtobufEnt
 {
     boost::trim_if(entry.channel, boost::algorithm::is_space() || boost::algorithm::is_any_of("/"));
 
-    typedef std::map<std::string, goby::middleware::hdf5::Channel>::iterator It;
+    using It = std::map<std::string, goby::middleware::hdf5::Channel>::iterator;
     auto it = channels_.find(entry.channel);
     if (it == channels_.end())
     {
