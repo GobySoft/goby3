@@ -106,19 +106,14 @@ class MOOSTranslator
 
     void add_entry(const std::set<goby::moos::protobuf::TranslatorEntry>& entries)
     {
-        for (std::set<goby::moos::protobuf::TranslatorEntry>::const_iterator it = entries.begin(),
-                                                                             n = entries.end();
-             it != n; ++it)
-        { add_entry(*it); } }
+        for (const auto& entry : entries) { add_entry(entry); }
+    }
 
     void add_entry(
         const google::protobuf::RepeatedPtrField<goby::moos::protobuf::TranslatorEntry>& entries)
     {
-        for (google::protobuf::RepeatedPtrField<
-                 goby::moos::protobuf::TranslatorEntry>::const_iterator it = entries.begin(),
-                                                                        n = entries.end();
-             it != n; ++it)
-        { add_entry(*it); } }
+        for (const auto& entry : entries) { add_entry(entry); }
+    }
 
     // ownership of returned pointer goes to caller (must use smart pointer or call delete)
     template <typename GoogleProtobufMessagePointer, class StringCMOOSMsgMap>
@@ -201,13 +196,10 @@ inline std::ostream& operator<<(std::ostream& os, const MOOSTranslator& tl)
     os << "= Begin MOOSTranslator =\n";
 
     int i = 0;
-    for (std::map<std::string, goby::moos::protobuf::TranslatorEntry>::const_iterator
-             it = tl.dictionary().begin(),
-             n = tl.dictionary().end();
-         it != n; ++it)
+    for (const auto& it : tl.dictionary())
     {
         os << "== Begin Entry " << i << " ==\n"
-           << it->second.DebugString() << "== End Entry " << i << " ==\n";
+           << it.second.DebugString() << "== End Entry " << i << " ==\n";
 
         ++i;
     }

@@ -194,18 +194,15 @@ void goby::test::acomms::MMDriverTest2::summary(
     goby::glog.is(VERBOSE) && goby::glog << "*** Begin modem " << cfg.modem_id()
                                          << " receive summary" << std::endl;
 
-    for (std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics> >::const_iterator
-             it = receive.begin(),
-             end = receive.end();
-         it != end; ++it)
+    for (const auto& it : receive)
     {
         goby::glog.is(VERBOSE) && goby::glog << "** Showing stats for this transmission (last "
                                                 "transmission before this reception occured): "
-                                             << app_cfg().transmission(it->first).DebugString()
+                                             << app_cfg().transmission(it.first).DebugString()
                                              << std::flush;
 
         const std::vector<micromodem::protobuf::ReceiveStatistics>& current_receive_vector =
-            it->second;
+            it.second;
 
         std::multiset<micromodem::protobuf::PacketType> type;
         std::multiset<micromodem::protobuf::ReceiveMode> mode;

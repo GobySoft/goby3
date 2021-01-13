@@ -103,12 +103,11 @@ void goby::acomms::IridiumShoreDriver::do_work()
     //    display_state_cfg(&glog);
     double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
-    for (std::map<ModemId, RemoteNode>::iterator it = remote_.begin(), end = remote_.end();
-         it != end; ++it)
+    for (auto& it : remote_)
     {
-        RemoteNode& remote = it->second;
+        RemoteNode& remote = it.second;
         std::shared_ptr<OnCallBase> on_call_base = remote.on_call;
-        ModemId id = it->first;
+        ModemId id = it.first;
 
         // if we're on either type of call, see if we need to send the "bye" message or hangup
         if (on_call_base)
@@ -122,7 +121,7 @@ void goby::acomms::IridiumShoreDriver::do_work()
             {
                 if (!on_call_base->bye_sent())
                 {
-                    rudics_mac_msg_.set_dest(it->first);
+                    rudics_mac_msg_.set_dest(it.first);
                     process_transmission(rudics_mac_msg_);
                 }
             }

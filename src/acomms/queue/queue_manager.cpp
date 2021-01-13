@@ -119,12 +119,10 @@ void goby::acomms::QueueManager::add_queue(
 
 void goby::acomms::QueueManager::do_work()
 {
-    for (std::map<unsigned, std::shared_ptr<Queue> >::iterator it = queues_.begin(),
-                                                               n = queues_.end();
-         it != n; ++it)
+    for (auto& queue : queues_)
     {
-        std::vector<std::shared_ptr<google::protobuf::Message> > expired_msgs =
-            it->second->expire();
+        std::vector<std::shared_ptr<google::protobuf::Message>> expired_msgs =
+            queue.second->expire();
 
         for (std::shared_ptr<google::protobuf::Message> expire : expired_msgs)
         {
@@ -183,10 +181,7 @@ void goby::acomms::QueueManager::flush_queue(const protobuf::QueueFlush& flush)
 void goby::acomms::QueueManager::info_all(std::ostream* os) const
 {
     *os << "= Begin QueueManager [[" << queues_.size() << " queues total]] =" << std::endl;
-    for (std::map<unsigned, std::shared_ptr<Queue> >::const_iterator it = queues_.begin(),
-                                                                     n = queues_.end();
-         it != n; ++it)
-        info(it->second->descriptor(), os);
+    for (const auto& queue : queues_) info(queue.second->descriptor(), os);
     *os << "= End QueueManager =";
 }
 
@@ -534,11 +529,9 @@ goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& 
                             << data.size() << "/" << request_msg.max_frame_bytes() << "B"
                             << std::endl;
 
-    for (std::map<unsigned, std::shared_ptr<Queue> >::iterator it = queues_.begin(),
-                                                               n = queues_.end();
-         it != n; ++it)
+    for (auto& queue : queues_)
     {
-        Queue& q = *(it->second);
+        Queue& q = *(queue.second);
 
         // encode on demand
         if (manip_manager_.has(codec_->id(q.descriptor()), protobuf::ON_DEMAND) &&

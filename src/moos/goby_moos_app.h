@@ -385,9 +385,8 @@ bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::OnNewMail(MOOSMSG_LIST& NewMa
     // for AppCasting (otherwise no-op)
     MOOSAppType::OnNewMail(NewMail);
 
-    for (MOOSMSG_LIST::const_iterator it = NewMail.begin(), end = NewMail.end(); it != end; ++it)
+    for (const auto& msg : NewMail)
     {
-        const CMOOSMsg& msg = *it;
         goby::glog.is(goby::util::logger::DEBUG3) &&
             goby::glog << "Received mail: " << msg.GetKey() << ", time: " << std::setprecision(15)
                        << msg.GetTime() << std::endl;
@@ -406,16 +405,11 @@ bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::OnNewMail(MOOSMSG_LIST& NewMa
         else if (mail_handlers_.count(msg.GetKey()))
             (*mail_handlers_[msg.GetKey()])(msg);
 
-        for (std::map<
-                 std::pair<std::string, std::string>,
-                 std::shared_ptr<boost::signals2::signal<void(const CMOOSMsg&msg)> > >::iterator
-                 it = wildcard_mail_handlers_.begin(),
-                 end = wildcard_mail_handlers_.end();
-             it != end; ++it)
+        for (auto& wildcard_mail_handler : wildcard_mail_handlers_)
         {
-            if (MOOSWildCmp(it->first.first, msg.GetKey()) &&
-                MOOSWildCmp(it->first.second, msg.GetSource()))
-                (*(it->second))(msg);
+            if (MOOSWildCmp(wildcard_mail_handler.first.first, msg.GetKey()) &&
+                MOOSWildCmp(wildcard_mail_handler.first.second, msg.GetSource()))
+                (*(wildcard_mail_handler.second))(msg);
         }
     }
 
@@ -444,13 +438,8 @@ template <class MOOSAppType> bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::
     connected_ = true;
     try_subscribing();
 
-    for (google::protobuf::RepeatedPtrField<
-             protobuf::GobyMOOSAppConfig::Initializer>::const_iterator
-             it = common_cfg_.initializer().begin(),
-             end = common_cfg_.initializer().end();
-         it != end; ++it)
+    for (const auto& ini : common_cfg_.initializer())
     {
-        const protobuf::GobyMOOSAppConfig::Initializer& ini = *it;
         if (ini.has_global_cfg_var())
         {
             std::string result;

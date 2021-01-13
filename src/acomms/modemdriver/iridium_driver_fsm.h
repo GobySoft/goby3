@@ -52,8 +52,7 @@ namespace iridium
 inline unsigned sbd_csum(const std::string& data)
 {
     unsigned int csum = 0;
-    for (std::string::const_iterator it = data.begin(), end = data.end(); it != end; ++it)
-        csum += *it & 0xFF;
+    for (char it : data) csum += it & 0xFF;
     return csum;
 }
 

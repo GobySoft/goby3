@@ -490,10 +490,8 @@ void goby::middleware::ConfigReader::build_description(const google::protobuf::D
 
     std::vector<const google::protobuf::FieldDescriptor*> extensions;
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
-    for (int i = 0, n = extensions.size(); i < n; ++i)
+    for (auto field_desc : extensions)
     {
-        const google::protobuf::FieldDescriptor* field_desc = extensions[i];
-
         if (field_desc->options().GetExtension(goby::field).cfg().action() ==
             goby::GobyFieldOptions::ConfigurationOptions::NEVER)
             continue;

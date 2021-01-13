@@ -91,11 +91,10 @@ void goby::util::FlexOStreamBuf::add_stream(logger::Verbosity verbosity, std::os
         streams_.push_back(StreamConfig(os, verbosity));
 
     highest_verbosity_ = logger::QUIET;
-    for (std::vector<StreamConfig>::const_iterator it = streams_.begin(), end = streams_.end();
-         it != end; ++it)
+    for (auto stream : streams_)
     {
-        if (it->verbosity() > highest_verbosity_)
-            highest_verbosity_ = it->verbosity();
+        if (stream.verbosity() > highest_verbosity_)
+            highest_verbosity_ = stream.verbosity();
     }
 }
 

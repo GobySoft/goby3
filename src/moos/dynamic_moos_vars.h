@@ -41,8 +41,7 @@ class DynamicMOOSVars
     // read the whole list
     void update_moos_vars(const MOOSMSG_LIST& NewMail)
     {
-        for (MOOSMSG_LIST::const_iterator p = NewMail.begin(), n = NewMail.end(); p != n; ++p)
-            vars[p->GetKey()] = *p;
+        for (const auto& p : NewMail) vars[p.GetKey()] = p;
     }
 
     // update a single variable at a time

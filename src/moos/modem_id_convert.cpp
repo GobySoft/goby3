@@ -142,10 +142,10 @@ string goby::moos::ModemIdConvert::get_location_from_id(int id)
 
 int goby::moos::ModemIdConvert::get_id_from_name(string name)
 {
-    for (map<int, string>::iterator it = names_.begin(); it != names_.end(); ++it)
+    for (auto& it : names_)
     {
-        if (boost::iequals(it->second, name))
-            return it->first;
+        if (boost::iequals(it.second, name))
+            return it.first;
     }
 
     return int(as<double>(name));

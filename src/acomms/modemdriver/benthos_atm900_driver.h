@@ -129,10 +129,10 @@ inline void parse_benthos_modem_message(std::string in,
     std::vector<std::string> encoded_frames;
     boost::split(encoded_frames, in, boost::is_any_of("\r"), boost::token_compress_on);
 
-    for (int i = 0, n = encoded_frames.size(); i < n; ++i)
+    for (auto& encoded_frame : encoded_frames)
     {
-        if (!encoded_frames[i].empty())
-            parse_rudics_packet(out->add_frame(), encoded_frames[i] + "\r", "\r", false);
+        if (!encoded_frame.empty())
+            parse_rudics_packet(out->add_frame(), encoded_frame + "\r", "\r", false);
     }
 }
 

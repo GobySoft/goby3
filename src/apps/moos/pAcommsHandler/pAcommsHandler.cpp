@@ -116,11 +116,7 @@ goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
 
     driver_bind();
 
-    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
-                  goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
-                                                                   end = drivers_.end();
-         it != end; ++it)
-        goby::acomms::bind(*(it->first), queue_manager_);
+    for (auto& driver : drivers_) goby::acomms::bind(*(driver.first), queue_manager_);
 
     if (router_)
     {
@@ -156,20 +152,17 @@ void goby::apps::moos::CpAcommsHandler::loop()
     if (driver_restart_time_.size())
         restart_drivers();
 
-    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
-                  goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
-                                                                   end = drivers_.end();
-         it != end; ++it)
+    for (auto& driver : drivers_)
     {
-        if (!driver_restart_time_.count(it->first))
+        if (!driver_restart_time_.count(driver.first))
         {
             try
             {
-                it->first->do_work();
+                driver.first->do_work();
             }
             catch (goby::acomms::ModemDriverException& e)
             {
-                driver_reset(it->first, e);
+                driver_reset(driver.first, e);
                 break; // no longer valid drivers_ container
             }
         }
@@ -261,16 +254,12 @@ void goby::apps::moos::CpAcommsHandler::handle_mac_cycle_update(const CMOOSMsg& 
             case goby::acomms::protobuf::MACUpdate::STARTED:
                 mac_.restart();
 
-                for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
-                              goby::acomms::protobuf::DriverConfig*>::iterator
-                         it = drivers_.begin(),
-                         end = drivers_.end();
-                     it != end; ++it)
+                for (auto& it : drivers_)
                 {
-                    if (!driver_restart_time_.count(it->first))
+                    if (!driver_restart_time_.count(it.first))
                     {
                         goby::acomms::MMDriver* driver =
-                            dynamic_cast<goby::acomms::MMDriver*>(it->first.get());
+                            dynamic_cast<goby::acomms::MMDriver*>(it.first.get());
                         if (driver)
                             driver->set_silent(false);
                     }
@@ -278,16 +267,12 @@ void goby::apps::moos::CpAcommsHandler::handle_mac_cycle_update(const CMOOSMsg& 
                 break;
 
             case goby::acomms::protobuf::MACUpdate::STOPPED:
-                for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
-                              goby::acomms::protobuf::DriverConfig*>::iterator
-                         it = drivers_.begin(),
-                         end = drivers_.end();
-                     it != end; ++it)
+                for (auto& it : drivers_)
                 {
-                    if (!driver_restart_time_.count(it->first))
+                    if (!driver_restart_time_.count(it.first))
                     {
                         goby::acomms::MMDriver* driver =
-                            dynamic_cast<goby::acomms::MMDriver*>(it->first.get());
+                            dynamic_cast<goby::acomms::MMDriver*>(it.first.get());
                         if (driver)
                             driver->set_silent(true);
                     }
@@ -329,16 +314,13 @@ void goby::apps::moos::CpAcommsHandler::handle_driver_cfg_update(
                              << std::endl;
 
     bool driver_found = false;
-    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
-                  goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
-                                                                   end = drivers_.end();
-         it != end; ++it)
+    for (auto& driver : drivers_)
     {
-        if (it->second->modem_id() == cfg.modem_id())
+        if (driver.second->modem_id() == cfg.modem_id())
         {
             driver_found = true;
-            if (it->first && !driver_restart_time_.count(it->first))
-                it->first->update_cfg(cfg);
+            if (driver.first && !driver_restart_time_.count(driver.first))
+                driver.first->update_cfg(cfg);
         }
     }
     if (!driver_found)
@@ -420,13 +402,10 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
     cfg_.mutable_queue_cfg()->set_modem_id(cfg_.modem_id());
     cfg_.mutable_mac_cfg()->set_modem_id(cfg_.modem_id());
 
-    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
-                  goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
-                                                                   end = drivers_.end();
-         it != end; ++it)
+    for (auto& driver : drivers_)
     {
-        if (!it->second->has_modem_id())
-            it->second->set_modem_id(cfg_.modem_id());
+        if (!driver.second->has_modem_id())
+            driver.second->set_modem_id(cfg_.modem_id());
     }
 
     std::vector<void*> handles;
@@ -452,7 +431,7 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
 
     // set id codec before shared library load
     dccl_->set_cfg(cfg_.dccl_cfg());
-    for (int i = 0, n = handles.size(); i < n; ++i) dccl_->load_shared_library_codecs(handles[i]);
+    for (auto& handle : handles) dccl_->load_shared_library_codecs(handle);
 
     // load all .proto files
     dccl::DynamicProtobufManager::enable_compilation();
@@ -468,11 +447,7 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
 
     // start goby-acomms classes
 
-    for (std::map<std::shared_ptr<goby::acomms::ModemDriverBase>,
-                  goby::acomms::protobuf::DriverConfig*>::iterator it = drivers_.begin(),
-                                                                   end = drivers_.end();
-         it != end; ++it)
-        driver_restart_time_.insert(std::make_pair(it->first, 0));
+    for (auto& driver : drivers_) driver_restart_time_.insert(std::make_pair(driver.first, 0));
 
     mac_.startup(cfg_.mac_cfg());
     queue_manager_.set_cfg(cfg_.queue_cfg());
@@ -636,12 +611,11 @@ void goby::apps::moos::CpAcommsHandler::handle_queue_receive(const google::proto
 
         out = translator_.protobuf_to_moos(msg);
 
-        for (std::multimap<std::string, CMOOSMsg>::iterator it = out.begin(), n = out.end();
-             it != n; ++it)
+        for (auto& it : out)
         {
-            glog.is(DEBUG2) && glog << group("pAcommsHandler") << "Publishing: " << it->second
+            glog.is(DEBUG2) && glog << group("pAcommsHandler") << "Publishing: " << it.second
                                     << std::endl;
-            publish(it->second);
+            publish(it.second);
         }
     }
     catch (std::runtime_error& e)
@@ -722,12 +696,11 @@ void goby::apps::moos::CpAcommsHandler::create_on_multiplex_publish(const CMOOSM
     {
         out = translator_.protobuf_to_inverse_moos(*msg);
 
-        for (std::multimap<std::string, CMOOSMsg>::iterator it = out.begin(), n = out.end();
-             it != n; ++it)
+        for (auto& it : out)
         {
             glog.is(VERBOSE) && glog << group("pAcommsHandler")
-                                     << "Inverse Publishing: " << it->second.GetKey() << std::endl;
-            publish(it->second);
+                                     << "Inverse Publishing: " << it.second.GetKey() << std::endl;
+            publish(it.second);
         }
     }
     catch (std::exception& e)
@@ -900,12 +873,8 @@ void goby::apps::moos::CpAcommsHandler::restart_drivers()
         }
     }
 
-    for (std::set<std::shared_ptr<goby::acomms::ModemDriverBase>>::iterator
-             it = drivers_to_start.begin(),
-             end = drivers_to_start.end();
-         it != end; ++it)
+    for (auto driver : drivers_to_start)
     {
-        std::shared_ptr<goby::acomms::ModemDriverBase> driver = *it;
         try
         {
             glog.is(DEBUG1) && glog << "Starting up driver: " << driver << std::endl;

@@ -112,15 +112,12 @@ int main(int argc, char* argv[])
 
                         if (dest == goby::acomms::BROADCAST_ID)
                         {
-                            typedef std::map<int, std::string>::const_iterator const_iterator;
-                            for (const_iterator it = modem_id2endpoint.begin(),
-                                                n = modem_id2endpoint.end();
-                                 it != n; ++it)
+                            for (const auto& it : modem_id2endpoint)
                             {
                                 // do not send it back to the originator
-                                if (it->first != src)
+                                if (it.first != src)
                                 {
-                                    out.set_dest(it->second);
+                                    out.set_dest(it.second);
                                     std::cout << "Sending: " << out.ShortDebugString() << std::endl;
                                     server.write(out);
                                 }

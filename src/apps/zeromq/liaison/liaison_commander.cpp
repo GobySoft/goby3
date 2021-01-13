@@ -1096,8 +1096,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     std::vector<const google::protobuf::FieldDescriptor*> extensions;
     dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(desc, &extensions);
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
-    for (int i = 0, n = extensions.size(); i < n; ++i)
-        generate_tree_row(parent, message, extensions[i], parent_hierarchy);
+    for (auto& extension : extensions)
+        generate_tree_row(parent, message, extension, parent_hierarchy);
 
     check_initialized();
 }
@@ -1420,9 +1420,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     std::vector<const google::protobuf::FieldDescriptor*> extensions;
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(
         field_desc->options().GetDescriptor(), &extensions);
-    for (int i = 0, n = extensions.size(); i < n; ++i)
+    for (auto ext_field_desc : extensions)
     {
-        const google::protobuf::FieldDescriptor* ext_field_desc = extensions[i];
         if (!ext_field_desc->is_repeated() &&
             field_desc->options().GetReflection()->HasField(field_desc->options(), ext_field_desc))
         {
@@ -1880,7 +1879,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     {
         const std::vector<WTreeNode*> children = parent->childNodes();
         message->GetReflection()->ClearField(message, field_desc);
-        for (int i = 0, n = children.size(); i < n; ++i) parent->removeChildNode(children[i]);
+        for (auto i : children) parent->removeChildNode(i);
 
         button->setText(MESSAGE_INCLUDE_TEXT);
     }

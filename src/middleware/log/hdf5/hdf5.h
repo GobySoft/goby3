@@ -154,12 +154,12 @@ void Writer::write_field(const std::string& group,
     {
         // pass one to figure out field size
         int max_field_size = 0;
-        for (unsigned i = 0, n = messages.size(); i < n; ++i)
+        for (auto message : messages)
         {
-            if (messages[i])
+            if (message)
             {
-                const google::protobuf::Reflection* refl = messages[i]->GetReflection();
-                int field_size = refl->FieldSize(*messages[i], field_desc);
+                const google::protobuf::Reflection* refl = message->GetReflection();
+                int field_size = refl->FieldSize(*message, field_desc);
                 if (field_size > max_field_size)
                     max_field_size = field_size;
             }

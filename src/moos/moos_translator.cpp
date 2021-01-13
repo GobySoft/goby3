@@ -328,10 +328,7 @@ void goby::moos::alg_subtract(moos::transitional::DCCLMessageVal& val_to_mod,
 {
     double diff = val_to_mod;
 
-    for (std::vector<moos::transitional::DCCLMessageVal>::const_iterator it = ref_vals.begin(),
-                                                                         end = ref_vals.end();
-         it != end; ++it)
-        diff -= static_cast<double>(*it);
+    for (const auto& ref_val : ref_vals) diff -= static_cast<double>(ref_val);
 
     val_to_mod = diff;
 }
@@ -341,10 +338,7 @@ void goby::moos::alg_add(moos::transitional::DCCLMessageVal& val_to_mod,
 {
     double sum = val_to_mod;
 
-    for (std::vector<moos::transitional::DCCLMessageVal>::const_iterator it = ref_vals.begin(),
-                                                                         end = ref_vals.end();
-         it != end; ++it)
-        sum += static_cast<double>(*it);
+    for (const auto& ref_val : ref_vals) sum += static_cast<double>(ref_val);
 
     val_to_mod = sum;
 }

@@ -300,7 +300,6 @@ goby::time::SystemClock::duration goby::acomms::MACManager::cycle_duration()
 
 std::ostream& goby::acomms::operator<<(std::ostream& os, const MACManager& mac)
 {
-    for (std::list<protobuf::ModemTransmission>::const_iterator it = mac.begin(), n = mac.end();
-         it != n; ++it)
-    { os << *it; } return os;
+    for (const auto& it : mac) { os << it; }
+    return os;
 }

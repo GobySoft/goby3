@@ -110,15 +110,15 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     using liaison_load_func = std::vector<goby::zeromq::LiaisonContainer*> (*)(
         const protobuf::LiaisonConfig& cfg);
 
-    for (int i = 0, n = Liaison::plugin_handles_.size(); i < n; ++i)
+    for (auto& plugin_handle : Liaison::plugin_handles_)
     {
         liaison_load_func liaison_load_ptr =
-            (liaison_load_func)dlsym(Liaison::plugin_handles_[i], "goby3_liaison_load");
+            (liaison_load_func)dlsym(plugin_handle, "goby3_liaison_load");
 
         if (liaison_load_ptr)
         {
             std::vector<goby::zeromq::LiaisonContainer*> containers = (*liaison_load_ptr)(app_cfg_);
-            for (int j = 0, m = containers.size(); j < m; ++j) add_to_menu(menu_, containers[j]);
+            for (auto& container : containers) add_to_menu(menu_, container);
         }
         else
         {
@@ -137,9 +137,9 @@ goby::apps::zeromq::LiaisonWtThread::~LiaisonWtThread()
 {
     // run on all children
     const std::vector<WMenuItem*>& items = menu_->items();
-    for (int i = 0, n = items.size(); i < n; ++i)
+    for (auto item : items)
     {
-        LiaisonContainer* contents = menu_contents_[items[i]];
+        LiaisonContainer* contents = menu_contents_[item];
         if (contents)
         {
             glog.is(DEBUG1) && glog << "Liaison: Cleanup : " << contents->name() << std::endl;
@@ -170,11 +170,11 @@ void goby::apps::zeromq::LiaisonWtThread::handle_menu_selection(Wt::WMenuItem* i
 
     // unfocus all others
     const std::vector<WMenuItem*>& items = menu_->items();
-    for (int i = 0, n = items.size(); i < n; ++i)
+    for (auto i : items)
     {
-        if (items[i] != item)
+        if (i != item)
         {
-            LiaisonContainer* other_contents = menu_contents_[items[i]];
+            LiaisonContainer* other_contents = menu_contents_[i];
             if (other_contents)
             {
                 glog.is(DEBUG1) && glog << "Liaison: Unfocused : " << other_contents->name()

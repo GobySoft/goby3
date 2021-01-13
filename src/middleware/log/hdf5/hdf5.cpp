@@ -94,21 +94,14 @@ void goby::middleware::hdf5::Writer::add_entry(goby::middleware::HDF5ProtobufEnt
 
 void goby::middleware::hdf5::Writer::write()
 {
-    for (std::map<std::string, goby::middleware::hdf5::Channel>::const_iterator
-             it = channels_.begin(),
-             end = channels_.end();
-         it != end; ++it)
-        write_channel("/" + it->first, it->second);
+    for (const auto& channel : channels_) write_channel("/" + channel.first, channel.second);
 }
 
 void goby::middleware::hdf5::Writer::write_channel(const std::string& group,
                                                    const goby::middleware::hdf5::Channel& channel)
 {
-    for (std::map<std::string, goby::middleware::hdf5::MessageCollection>::const_iterator
-             it = channel.entries.begin(),
-             end = channel.entries.end();
-         it != end; ++it)
-        write_message_collection(group + "/" + it->first, it->second);
+    for (const auto& entry : channel.entries)
+        write_message_collection(group + "/" + entry.first, entry.second);
 }
 
 void goby::middleware::hdf5::Writer::write_message_collection(
@@ -118,12 +111,8 @@ void goby::middleware::hdf5::Writer::write_message_collection(
 
     auto write_field = [&, this](const google::protobuf::FieldDescriptor* field_desc) {
         std::vector<const google::protobuf::Message*> messages;
-        for (std::multimap<std::uint64_t,
-                           std::shared_ptr<google::protobuf::Message>>::const_iterator
-                 it = message_collection.entries.begin(),
-                 end = message_collection.entries.end();
-             it != end; ++it)
-        { messages.push_back(it->second.get()); } std::vector<hsize_t> hs;
+        for (const auto& entry : message_collection.entries)
+        { messages.push_back(entry.second.get()); } std::vector<hsize_t> hs;
         hs.push_back(messages.size());
         write_field_selector(group, field_desc, messages, hs);
     };
@@ -140,11 +129,7 @@ void goby::middleware::hdf5::Writer::write_message_collection(
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
     dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(desc, &extensions);
 
-    for (int i = 0, n = extensions.size(); i < n; ++i)
-    {
-        const google::protobuf::FieldDescriptor* field_desc = extensions[i];
-        write_field(field_desc);
-    }
+    for (auto field_desc : extensions) { write_field(field_desc); }
 }
 
 void goby::middleware::hdf5::Writer::write_embedded_message(
@@ -155,12 +140,12 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
     if (field_desc->is_repeated())
     {
         int max_field_size = 0;
-        for (unsigned i = 0, n = messages.size(); i < n; ++i)
+        for (auto message : messages)
         {
-            if (messages[i])
+            if (message)
             {
-                const google::protobuf::Reflection* refl = messages[i]->GetReflection();
-                int field_size = refl->FieldSize(*messages[i], field_desc);
+                const google::protobuf::Reflection* refl = message->GetReflection();
+                int field_size = refl->FieldSize(*message, field_desc);
                 if (field_size > max_field_size)
                     max_field_size = field_size;
             }
@@ -208,11 +193,7 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
                                                                               &extensions);
         dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(sub_desc,
                                                                                &extensions);
-        for (int i = 0, n = extensions.size(); i < n; ++i)
-        {
-            const google::protobuf::FieldDescriptor* sub_field_desc = extensions[i];
-            write_field(sub_field_desc);
-        }
+        for (auto sub_field_desc : extensions) { write_field(sub_field_desc); }
 
         hs.pop_back();
     }
@@ -223,15 +204,13 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
 
             bool has_submessages = false;
 
-            for (std::vector<const google::protobuf::Message*>::const_iterator
-                     it = messages.begin(),
-                     end = messages.end();
-                 it != end; ++it)
+            for (auto message : messages)
             {
-                if (*it)
+                if (message)
                 {
-                    const google::protobuf::Reflection* refl = (*it)->GetReflection();
-                    const google::protobuf::Message& sub_msg = refl->GetMessage(**it, field_desc);
+                    const google::protobuf::Reflection* refl = message->GetReflection();
+                    const google::protobuf::Message& sub_msg =
+                        refl->GetMessage(*message, field_desc);
                     sub_messages.push_back(&sub_msg);
                     has_submessages = true;
                 }
@@ -259,11 +238,7 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
                                                                               &extensions);
         dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(sub_desc,
                                                                                &extensions);
-        for (int i = 0, n = extensions.size(); i < n; ++i)
-        {
-            const google::protobuf::FieldDescriptor* sub_field_desc = extensions[i];
-            write_field(sub_field_desc);
-        }
+        for (auto sub_field_desc : extensions) { write_field(sub_field_desc); }
     }
 }
 
@@ -361,12 +336,9 @@ void goby::middleware::hdf5::Writer::write_time(
     std::vector<std::uint64_t> utime(message_collection.entries.size(), 0);
     std::vector<double> datenum(message_collection.entries.size(), 0);
     int i = 0;
-    for (std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message>>::const_iterator
-             it = message_collection.entries.begin(),
-             end = message_collection.entries.end();
-         it != end; ++it)
+    for (const auto& entry : message_collection.entries)
     {
-        utime[i] = it->first;
+        utime[i] = entry.first;
         // datenum(1970, 1, 1, 0, 0, 0)
         const double datenum_unix_epoch = 719529;
         const double seconds_in_day = 86400;
@@ -393,15 +365,14 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
     std::vector<hsize_t> hs = hs_outer;
 
     size_t max_size = 0;
-    for (unsigned i = 0, n = data.size(); i < n; ++i)
+    for (const auto& i : data)
     {
-        if (data[i].size() > max_size)
-            max_size = data[i].size();
+        if (i.size() > max_size)
+            max_size = i.size();
     }
 
-    for (unsigned i = 0, n = data.size(); i < n; ++i)
+    for (auto d : data)
     {
-        std::string d = data[i];
         d.resize(max_size, ' ');
         for (char c : d) data_char.push_back(c);
     }

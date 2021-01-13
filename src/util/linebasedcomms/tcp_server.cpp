@@ -59,11 +59,7 @@ void goby::util::TCPServer::do_write(const protobuf::Datagram& line)
     }
     else
     {
-        for (std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator
-                 it = connections_.begin(),
-                 end = connections_.end();
-             it != end; ++it)
-            (it->second)->write(line);
+        for (auto& connection : connections_) (connection.second)->write(line);
     }
 }
 
@@ -79,11 +75,7 @@ void goby::util::TCPServer::do_close(const boost::system::error_code& error,
     }
     else
     {
-        for (std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator
-                 it = connections_.begin(),
-                 end = connections_.end();
-             it != end; ++it)
-            (it->second)->close(error);
+        for (auto& connection : connections_) (connection.second)->close(error);
     }
 }
 

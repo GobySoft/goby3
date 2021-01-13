@@ -1914,16 +1914,13 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
         // build up message to ack
         micromodem::protobuf::MMApplicationAck acks;
 
-        for (std::map<unsigned, std::set<unsigned>>::const_iterator it = frames_to_ack_.begin(),
-                                                                    end = frames_to_ack_.end();
-             it != end; ++it)
+        for (const auto& it : frames_to_ack_)
         {
             micromodem::protobuf::MMApplicationAck::AckPart& acks_part = *acks.add_part();
-            acks_part.set_ack_dest(it->first);
+            acks_part.set_ack_dest(it.first);
 
             std::uint32_t acked_frames = 0;
-            for (std::set<unsigned>::const_iterator jt = it->second.begin(),
-                                                    jend = it->second.end();
+            for (std::set<unsigned>::const_iterator jt = it.second.begin(), jend = it.second.end();
                  jt != jend; ++jt)
                 acked_frames |= (1ul << *jt);
 

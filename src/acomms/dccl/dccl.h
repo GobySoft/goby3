@@ -270,24 +270,19 @@ class DCCLCodec
     {
         codec_.reset(new dccl::Codec(identifier));
 
-        for (std::set<void*>::const_iterator it = loaded_libs_.begin(), end = loaded_libs_.end();
-             it != end; ++it)
-            load_shared_library_codecs(*it);
+        for (auto loaded_lib : loaded_libs_) load_shared_library_codecs(loaded_lib);
 
-        for (std::set<const google::protobuf::Descriptor*>::const_iterator
-                 it = loaded_msgs_.begin(),
-                 end = loaded_msgs_.end();
-             it != end; ++it)
+        for (auto loaded_msg : loaded_msgs_)
         {
             try
             {
-                validate(*it);
+                validate(loaded_msg);
             }
             catch (dccl::Exception& e)
             {
-                glog.is(util::logger::WARN) && glog << "Failed to reload " << (*it)->full_name()
-                                                    << " after ID codec change: " << e.what()
-                                                    << std::endl;
+                glog.is(util::logger::WARN) &&
+                    glog << "Failed to reload " << loaded_msg->full_name()
+                         << " after ID codec change: " << e.what() << std::endl;
             }
         }
     }
