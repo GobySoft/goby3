@@ -195,7 +195,7 @@ void goby::moos::BluefinCommsDriver::do_work()
             if (raw_pos == std::string::npos)
                 continue;
 
-            const std::string::size_type end_pos = s_val.find("\"", raw_pos + raw.size());
+            const std::string::size_type end_pos = s_val.find('\"', raw_pos + raw.size());
             if (end_pos == std::string::npos)
                 continue;
 

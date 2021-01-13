@@ -154,7 +154,7 @@ class LiaisonCommander
                                      const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::
                                          NotificationSubscription::Color& background_color);
 
-    void display_notify(const google::protobuf::Message& pb_msg, std::string title,
+    void display_notify(const google::protobuf::Message& pb_msg, const std::string& title,
                         const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::
                             NotificationSubscription::Color& background_color);
 
@@ -189,10 +189,10 @@ class LiaisonCommander
             void generate_root();
 
             void generate_tree(Wt::WTreeTableNode* parent, google::protobuf::Message* message,
-                               std::string parent_hierarchy = "");
+                               const std::string& parent_hierarchy = "");
             void generate_tree_row(Wt::WTreeTableNode* parent, google::protobuf::Message* message,
                                    const google::protobuf::FieldDescriptor* field_desc,
-                                   std::string parent_hierarchy = "");
+                                   const std::string& parent_hierarchy = "");
 
             void generate_tree_field(Wt::WFormWidget*& value_field,
                                      google::protobuf::Message* message,
@@ -244,13 +244,13 @@ class LiaisonCommander
                                               google::protobuf::Message* message,
                                               const google::protobuf::FieldDescriptor* field_desc,
                                               Wt::WPushButton* field, Wt::WTreeTableNode* parent,
-                                              std::string parent_hierarchy);
+                                              const std::string& parent_hierarchy);
 
             void handle_load_external_data(const Wt::WMouseEvent& mouse,
                                            google::protobuf::Message* message,
                                            const google::protobuf::FieldDescriptor* field_desc,
                                            Wt::WPushButton* field, Wt::WTreeTableNode* parent,
-                                           std::string parent_hierarchy);
+                                           const std::string& parent_hierarchy);
 
             std::pair<const google::protobuf::FieldDescriptor*,
                       std::vector<google::protobuf::Message*>>
@@ -269,7 +269,7 @@ class LiaisonCommander
             void handle_repeated_size_change(int size, google::protobuf::Message* message,
                                              const google::protobuf::FieldDescriptor* field_desc,
                                              Wt::WTreeTableNode* parent,
-                                             std::string parent_hierarchy);
+                                             const std::string& parent_hierarchy);
 
             void handle_database_double_click(const Wt::WModelIndex& index,
                                               const Wt::WMouseEvent& event);
@@ -290,11 +290,11 @@ class LiaisonCommander
             };
 
             void handle_database_dialog(DatabaseDialogResponse response,
-                                        std::shared_ptr<google::protobuf::Message> message,
-                                        std::string group, std::string layer);
+                                        const std::shared_ptr<google::protobuf::Message>& message,
+                                        const std::string& group, const std::string& layer);
 
             void handle_external_data(std::string type, std::string group,
-                                      std::shared_ptr<const google::protobuf::Message> msg);
+                                      const std::shared_ptr<const google::protobuf::Message>& msg);
 
             std::string create_field_hierarchy(const google::protobuf::FieldDescriptor* field_desc);
 

@@ -337,7 +337,7 @@ struct Configure : boost::statechart::state<Configure, Command>, StateNotify
 {
     using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, SetClock>>;
 
-    Configure(my_context ctx) : my_base(ctx), StateNotify("Configure")
+    Configure(my_context ctx) : my_base(std::move(ctx)), StateNotify("Configure")
     {
         context<Command>().push_at_command("");
 
@@ -399,7 +399,7 @@ struct SetClock : boost::statechart::state<SetClock, Command>, StateNotify
 {
     using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
-    SetClock(my_context ctx) : my_base(ctx), StateNotify("SetClock")
+    SetClock(my_context ctx) : my_base(std::move(ctx)), StateNotify("SetClock")
     {
         auto p = time::SystemClock::now<boost::posix_time::ptime>();
 
@@ -444,7 +444,10 @@ struct Dial : boost::statechart::state<Dial, Command>, StateNotify
     };
 
     Dial(my_context ctx)
-        : my_base(ctx), StateNotify("Dial"), dest_(BENTHOS_BROADCAST_ID), rate_(DEFAULT_RATE)
+        : my_base(std::move(ctx)),
+          StateNotify("Dial"),
+          dest_(BENTHOS_BROADCAST_ID),
+          rate_(DEFAULT_RATE)
     {
         if (const auto* evdial = dynamic_cast<const EvDial*>(triggering_event()))
         {
@@ -468,7 +471,7 @@ struct Dial : boost::statechart::state<Dial, Command>, StateNotify
 
 struct LowPower : boost::statechart::state<LowPower, Command>, StateNotify
 {
-    LowPower(my_context ctx) : my_base(ctx), StateNotify("LowPower") {}
+    LowPower(my_context ctx) : my_base(std::move(ctx)), StateNotify("LowPower") {}
     ~LowPower() override = default;
 };
 
@@ -476,7 +479,7 @@ struct Range : boost::statechart::state<Range, Command>, StateNotify
 {
     void in_state_react(const EvRxSerial&);
 
-    Range(my_context ctx) : my_base(ctx), StateNotify("Range"), dest_(0)
+    Range(my_context ctx) : my_base(std::move(ctx)), StateNotify("Range"), dest_(0)
     {
         if (const auto* ev = dynamic_cast<const EvRange*>(triggering_event()))
         {
@@ -497,7 +500,7 @@ struct Range : boost::statechart::state<Range, Command>, StateNotify
 // Online
 struct Online : boost::statechart::state<Online, Active, Listen>, StateNotify
 {
-    Online(my_context ctx) : my_base(ctx), StateNotify("Online") {}
+    Online(my_context ctx) : my_base(std::move(ctx)), StateNotify("Online") {}
     ~Online() override = default;
 
     using reactions = boost::mpl::list<
@@ -506,7 +509,7 @@ struct Online : boost::statechart::state<Online, Active, Listen>, StateNotify
 
 struct Listen : boost::statechart::state<Listen, Online>, StateNotify
 {
-    Listen(my_context ctx) : my_base(ctx), StateNotify("Listen")
+    Listen(my_context ctx) : my_base(std::move(ctx)), StateNotify("Listen")
     {
         if (!context<BenthosATM900FSM>().data_out().empty())
             post_event(EvTransmit());
@@ -518,7 +521,7 @@ struct Listen : boost::statechart::state<Listen, Online>, StateNotify
 
 struct TransmitData : boost::statechart::state<TransmitData, Online>, StateNotify
 {
-    TransmitData(my_context ctx) : my_base(ctx), StateNotify("TransmitData") {}
+    TransmitData(my_context ctx) : my_base(std::move(ctx)), StateNotify("TransmitData") {}
     ~TransmitData() override = default;
 
     void in_state_react(const EvTxSerial&);

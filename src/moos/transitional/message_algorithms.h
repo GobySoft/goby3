@@ -29,6 +29,8 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <utility>
+
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
@@ -63,9 +65,15 @@ class DCCLAlgorithmPerformer
     void run_algorithm(const std::string& algorithm, DCCLMessageVal& in,
                        const std::vector<DCCLMessageVal>& ref);
 
-    void add_algorithm(const std::string& name, AlgFunction1 func) { adv_map1_[name] = func; }
+    void add_algorithm(const std::string& name, AlgFunction1 func)
+    {
+        adv_map1_[name] = std::move(func);
+    }
 
-    void add_adv_algorithm(const std::string& name, AlgFunction2 func) { adv_map2_[name] = func; }
+    void add_adv_algorithm(const std::string& name, AlgFunction2 func)
+    {
+        adv_map2_[name] = std::move(func);
+    }
 
     void check_algorithm(const std::string& alg, const DCCLMessage& msg);
 

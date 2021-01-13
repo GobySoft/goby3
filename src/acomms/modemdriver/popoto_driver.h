@@ -71,7 +71,7 @@ class PopotoDriver : public ModemDriverBase
 
     void DecodeHeader(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
     void DecodeGobyHeader(std::uint8_t header, protobuf::ModemTransmission& m);
-    void ProcessJSON(std::string message, protobuf::ModemTransmission& m);
+    void ProcessJSON(const std::string& message, protobuf::ModemTransmission& m);
 
     const popoto::protobuf::Config& popoto_driver_cfg() const
     {
@@ -80,7 +80,7 @@ class PopotoDriver : public ModemDriverBase
 
     static std::string json_to_binary(const nlohmann::json& element);
     static std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes);
-    static std::string StripString(std::string in, std::string p);
+    static std::string StripString(std::string in, const std::string& p);
 
   private:
     protobuf::DriverConfig driver_cfg_;

@@ -30,6 +30,7 @@
 #include <sstream>
 
 #include <boost/date_time.hpp>
+#include <utility>
 
 #include "goby/util/debug_logger/flex_ostreambuf.h"
 
@@ -130,7 +131,7 @@ void goby::util::FlexOStreamBuf::add_group(const std::string& name, logger::Grou
 {
     //    if(groups_.count(name)) return;
 
-    groups_[name] = g;
+    groups_[name] = std::move(g);
 
 #ifdef HAS_NCURSES
     if (is_gui_)

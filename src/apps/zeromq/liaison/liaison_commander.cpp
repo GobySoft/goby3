@@ -33,6 +33,7 @@
 #include <cfloat>
 #include <cmath>
 #include <memory>
+#include <utility>
 
 #include "dccl/common.h"
 #include "dccl/dynamic_protobuf_manager.h"
@@ -63,7 +64,7 @@ const std::string STRIPE_ODD_CLASS = "odd";
 const std::string STRIPE_EVEN_CLASS = "even";
 
 goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer
-to_group_layer(std::string group, std::string layer)
+to_group_layer(const std::string& group, const std::string& layer)
 {
     goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer grouplayer;
     grouplayer.set_group(group);
@@ -140,7 +141,7 @@ void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
 }
 
 void goby::apps::zeromq::LiaisonCommander::display_notify(
-    const google::protobuf::Message& pb_msg, std::string title,
+    const google::protobuf::Message& pb_msg, const std::string& title,
     const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::NotificationSubscription::Color&
         background_color)
 {
@@ -450,7 +451,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                     std::regex_replace(std::string(external_data.name()), special_chars, R"(\$&)");
 
                 auto external_data_callback =
-                    [=](std::shared_ptr<const google::protobuf::Message> msg,
+                    [=](const std::shared_ptr<const google::protobuf::Message>& msg,
                         const std::string& type) {
                         commander_->post_to_wt([=]() {
                             this->handle_external_data(type, external_data.group(), msg);
@@ -995,8 +996,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_database_dialog(DatabaseDialogResponse response,
-                           std::shared_ptr<google::protobuf::Message> message, std::string group,
-                           std::string layer)
+                           const std::shared_ptr<google::protobuf::Message>& message,
+                           const std::string& group, const std::string& layer)
 {
     switch (response)
     {
@@ -1035,12 +1036,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_external_data(std::string type, std::string group,
-                         std::shared_ptr<const google::protobuf::Message> msg)
+                         const std::shared_ptr<const google::protobuf::Message>& msg)
 {
     auto* external_data = new ExternalData;
-    external_data->protobuf_name = type;
+    external_data->protobuf_name = std::move(type);
     external_data->affiliated_protobuf_name = message_->GetDescriptor()->full_name();
-    external_data->group = group;
+    external_data->group = std::move(group);
     boost::posix_time::ptime now = goby::time::SystemClock::now<boost::posix_time::ptime>();
     external_data->time.setPosixTime(now);
 
@@ -1082,7 +1083,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree(
-    WTreeTableNode* parent, google::protobuf::Message* message, std::string parent_hierarchy)
+    WTreeTableNode* parent, google::protobuf::Message* message, const std::string& parent_hierarchy)
 {
     const google::protobuf::Descriptor* desc = message->GetDescriptor();
 
@@ -1100,7 +1101,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree_row(
     WTreeTableNode* parent, google::protobuf::Message* message,
-    const google::protobuf::FieldDescriptor* field_desc, std::string parent_hierarchy)
+    const google::protobuf::FieldDescriptor* field_desc, const std::string& parent_hierarchy)
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
 
@@ -1802,7 +1803,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::strin
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_repeated_size_change(int desired_size, google::protobuf::Message* message,
                                 const google::protobuf::FieldDescriptor* field_desc,
-                                WTreeTableNode* parent, std::string parent_hierarchy)
+                                WTreeTableNode* parent, const std::string& parent_hierarchy)
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
 
@@ -1861,7 +1862,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_toggle_single_message(const WMouseEvent& /*mouse*/, google::protobuf::Message* message,
                                  const google::protobuf::FieldDescriptor* field_desc,
                                  WPushButton* button, WTreeTableNode* parent,
-                                 std::string parent_hierarchy)
+                                 const std::string& parent_hierarchy)
 {
     if (button->text() == MESSAGE_INCLUDE_TEXT)
     {
@@ -1886,7 +1887,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_load_external_data(const WMouseEvent& /*mouse*/, google::protobuf::Message* /*message*/,
                               const google::protobuf::FieldDescriptor* field_desc,
                               WPushButton* /*button*/, WTreeTableNode* /*parent*/,
-                              std::string parent_hierarchy)
+                              const std::string& parent_hierarchy)
 {
     WDialog dialog("Available external data for field: " + field_desc->name() +
                    " (click to select)");
@@ -1986,7 +1987,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                 fully_qualified_to_fields =
                     find_fully_qualified_field({&*message_}, to_fields, true, 0);
 
-            auto write_to_message = [&](std::string from_text, int index) {
+            auto write_to_message = [&](const std::string& from_text, int index) {
                 std::pair<const google::protobuf::FieldDescriptor*,
                           std::vector<google::protobuf::Message*>>
                     fully_qualified_to_fields =

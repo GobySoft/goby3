@@ -48,11 +48,11 @@ class Decoder
 {
   public:
     Decoder();
-    Decoder(NMEASentence nmea) : Decoder(std::vector<NMEASentence>(1, nmea)) {}
-    Decoder(std::vector<NMEASentence> nmeas);
+    Decoder(const NMEASentence& nmea) : Decoder(std::vector<NMEASentence>(1, nmea)) {}
+    Decoder(const std::vector<NMEASentence>& nmeas);
 
     // returns true if message is complete
-    bool push(NMEASentence nmea);
+    bool push(const NMEASentence& nmea);
 
     bool complete() { return ais_msg_ != nullptr; }
 

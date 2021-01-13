@@ -126,7 +126,7 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
     void driver_bind();
     void driver_unbind();
     void
-    driver_reset(std::shared_ptr<goby::acomms::ModemDriverBase> driver,
+    driver_reset(const std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
                  const goby::acomms::ModemDriverException& e,
                  protobuf::pAcommsHandlerConfig::DriverFailureApproach::DriverFailureTechnique =
                      cfg_.driver_failure_approach().technique());

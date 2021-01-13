@@ -69,9 +69,9 @@ class IridiumShoreDriver : public ModemDriverBase
     void send_sbd_mt(const std::string& bytes, const std::string& imei);
 
     void rudics_send(const std::string& data, ModemId id);
-    void rudics_disconnect(std::shared_ptr<RUDICSConnection> connection);
-    void rudics_line(const std::string& line, std::shared_ptr<RUDICSConnection> connection);
-    void rudics_connect(std::shared_ptr<RUDICSConnection> connection);
+    void rudics_disconnect(const std::shared_ptr<RUDICSConnection>& connection);
+    void rudics_line(const std::string& line, const std::shared_ptr<RUDICSConnection>& connection);
+    void rudics_connect(const std::shared_ptr<RUDICSConnection>& connection);
 
     const iridium::protobuf::Config& iridium_driver_cfg() const
     {

@@ -322,7 +322,7 @@ struct Configure : boost::statechart::state<Configure, Command::orthogonal<0> >,
 {
     using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
-    Configure(my_context ctx) : my_base(ctx), StateNotify("Configure")
+    Configure(my_context ctx) : my_base(std::move(ctx)), StateNotify("Configure")
     {
         context<Command>().push_at_command("");
         const auto& iridium_driver_config = context<IridiumDriverFSM>().iridium_driver_cfg();
@@ -362,7 +362,7 @@ struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0> >, 
 struct HangingUp : boost::statechart::state<HangingUp, Command::orthogonal<0> >, StateNotify
 {
   public:
-    HangingUp(my_context ctx) : my_base(ctx), StateNotify("HangingUp")
+    HangingUp(my_context ctx) : my_base(std::move(ctx)), StateNotify("HangingUp")
     {
         context<Command>().push_at_command("+++");
         context<Command>().push_at_command("H");
@@ -378,7 +378,7 @@ struct PostDisconnected : boost::statechart::state<PostDisconnected, Command::or
                           StateNotify
 {
   public:
-    PostDisconnected(my_context ctx) : my_base(ctx), StateNotify("PostDisconnected")
+    PostDisconnected(my_context ctx) : my_base(std::move(ctx)), StateNotify("PostDisconnected")
     {
         glog.is(goby::util::logger::DEBUG1) &&
             glog << group("iridiumdriver") << "Disconnected; checking error details: " << std::endl;
@@ -395,7 +395,10 @@ struct Dial : boost::statechart::state<Dial, Command::orthogonal<0> >, StateNoti
 {
     using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvNoCarrier>>;
 
-    Dial(my_context ctx) : my_base(ctx), StateNotify("Dial"), dial_attempts_(0) { dial(); }
+    Dial(my_context ctx) : my_base(std::move(ctx)), StateNotify("Dial"), dial_attempts_(0)
+    {
+        dial();
+    }
     ~Dial() override = default;
 
     boost::statechart::result react(const EvNoCarrier&);
@@ -409,7 +412,7 @@ struct Answer : boost::statechart::state<Answer, Command::orthogonal<0> >, State
 {
     using reactions = boost::mpl::list<boost::statechart::transition<EvNoCarrier, Ready>>;
 
-    Answer(my_context ctx) : my_base(ctx), StateNotify("Answer")
+    Answer(my_context ctx) : my_base(std::move(ctx)), StateNotify("Answer")
     {
         context<Command>().push_at_command("A");
     }
@@ -444,7 +447,7 @@ struct NotOnCall : boost::statechart::simple_state<NotOnCall, Active::orthogonal
 struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateNotify, OnCallBase
 {
   public:
-    OnCall(my_context ctx) : my_base(ctx), StateNotify("OnCall")
+    OnCall(my_context ctx) : my_base(std::move(ctx)), StateNotify("OnCall")
     {
         // add a brief identifier that is *different* than the "~" which is what PPP uses
         // add a carriage return to clear out any garbage
@@ -539,7 +542,7 @@ struct SBDClearBuffers : boost::statechart::state<SBDClearBuffers, SBD>, StateNo
     using reactions =
         boost::mpl::list<boost::statechart::transition<EvSBDSendBufferCleared, SBDWrite>>;
 
-    SBDClearBuffers(my_context ctx) : my_base(ctx), StateNotify("SBDClearBuffers")
+    SBDClearBuffers(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDClearBuffers")
     {
         context<Command>().clear_sbd_rx_buffer();
         context<Command>().push_at_command("+SBDD2");
@@ -550,7 +553,7 @@ struct SBDClearBuffers : boost::statechart::state<SBDClearBuffers, SBD>, StateNo
 
 struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
 {
-    SBDWrite(my_context ctx) : my_base(ctx), StateNotify("SBDWrite")
+    SBDWrite(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDWrite")
     {
         if (context<SBD>().data().empty())
         {
@@ -584,7 +587,7 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
 struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
 {
     using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvSBDTransmitComplete>>;
-    SBDTransmit(my_context ctx) : my_base(ctx), StateNotify("SBDTransmit")
+    SBDTransmit(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDTransmit")
     {
         if (context<SBD>().in_response_to_ring_alert())
             context<Command>().push_at_command("+SBDIXA");
@@ -717,7 +720,7 @@ struct SBDReceive : boost::statechart::state<SBDReceive, SBD>, StateNotify
 {
     using reactions =
         boost::mpl::list<boost::statechart::transition<EvSBDReceiveComplete, SBDReady>>;
-    SBDReceive(my_context ctx) : my_base(ctx), StateNotify("SBDReceive")
+    SBDReceive(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDReceive")
     {
         context<Command>().push_at_command("+SBDRB");
     }

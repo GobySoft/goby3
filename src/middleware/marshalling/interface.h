@@ -72,7 +72,7 @@ struct MarshallingScheme
     ///
     /// \param s string representation of marshalling scheme, e.g. "PROTOBUF" or "450"
     /// \return integer representation (e.g. 1 or 450).
-    static int from_string(std::string s)
+    static int from_string(const std::string& s)
     {
         auto it = s2e.find(s);
         return it != s2e.end() ? it->second : std::stoi(s);

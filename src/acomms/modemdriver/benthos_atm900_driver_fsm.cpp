@@ -202,7 +202,7 @@ void goby::acomms::benthos::fsm::ReceiveData::in_state_react(const EvRxSerial& e
 
             for (const auto& stat : stats)
             {
-                std::string::size_type col_pos = stat.find(":");
+                std::string::size_type col_pos = stat.find(':');
                 if (col_pos == std::string::npos)
                     continue;
 
@@ -289,7 +289,7 @@ void goby::acomms::benthos::fsm::Range::in_state_react(const EvRxSerial& e)
             const std::string ms = "ms)";
 
             std::string::size_type range_pos = in.find(range);
-            std::string::size_type col_pos = in.find(":");
+            std::string::size_type col_pos = in.find(':');
             std::string::size_type rt_start_pos = in.find(roundtrip);
             std::string::size_type rt_end_pos = in.find(ms);
 

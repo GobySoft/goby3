@@ -52,7 +52,7 @@ int handle_ack_count = 0;
 
 void handle_receive(const google::protobuf::Message& msg);
 
-void qsize(goby::acomms::protobuf::QueueSize size);
+void qsize(const goby::acomms::protobuf::QueueSize& size);
 void handle_ack(const goby::acomms::protobuf::ModemTransmission& ack_msg,
                 const google::protobuf::Message& orig_msg);
 
@@ -206,7 +206,7 @@ void handle_receive(const google::protobuf::Message& msg)
     ++receive_count;
 }
 
-void qsize(goby::acomms::protobuf::QueueSize size) { goby_message_qsize = size.size(); }
+void qsize(const goby::acomms::protobuf::QueueSize& size) { goby_message_qsize = size.size(); }
 
 void handle_ack(const goby::acomms::protobuf::ModemTransmission& ack_msg,
                 const google::protobuf::Message& orig_msg)

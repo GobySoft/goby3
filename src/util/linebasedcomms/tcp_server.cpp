@@ -64,7 +64,7 @@ void goby::util::TCPServer::do_write(const protobuf::Datagram& line)
 
 // close all the connections, it's up to the clients to try to reconnect
 void goby::util::TCPServer::do_close(const boost::system::error_code& error,
-                                     goby::util::TCPServer::Endpoint endpt /* = ""*/)
+                                     const goby::util::TCPServer::Endpoint& endpt /* = ""*/)
 {
     if (!endpt.empty())
     {
@@ -106,7 +106,7 @@ void goby::util::TCPServer::start_accept()
                                        boost::asio::placeholders::error));
 }
 
-void goby::util::TCPServer::handle_accept(std::shared_ptr<TCPConnection> /*new_connection*/,
+void goby::util::TCPServer::handle_accept(const std::shared_ptr<TCPConnection>& /*new_connection*/,
                                           const boost::system::error_code& error)
 {
     if (!error)

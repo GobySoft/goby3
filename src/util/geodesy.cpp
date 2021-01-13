@@ -32,7 +32,7 @@
 
 #include "geodesy.h"
 
-goby::util::UTMGeodesy::UTMGeodesy(LatLonPoint origin)
+goby::util::UTMGeodesy::UTMGeodesy(const LatLonPoint& origin)
     : origin_geo_(origin), origin_zone_(0), pj_utm_(nullptr), pj_latlong_(nullptr)
 {
     double origin_lon_deg = origin.lon / boost::units::degree::degrees;
@@ -68,7 +68,7 @@ goby::util::UTMGeodesy::~UTMGeodesy()
     pj_free(pj_latlong_);
 }
 
-goby::util::UTMGeodesy::XYPoint goby::util::UTMGeodesy::convert(LatLonPoint geo) const
+goby::util::UTMGeodesy::XYPoint goby::util::UTMGeodesy::convert(const LatLonPoint& geo) const
 {
     double x =
         boost::units::quantity<boost::units::si::plane_angle>(geo.lon) / boost::units::si::radians;
@@ -90,7 +90,7 @@ goby::util::UTMGeodesy::XYPoint goby::util::UTMGeodesy::convert(LatLonPoint geo)
     return utm;
 }
 
-goby::util::UTMGeodesy::LatLonPoint goby::util::UTMGeodesy::convert(XYPoint utm) const
+goby::util::UTMGeodesy::LatLonPoint goby::util::UTMGeodesy::convert(const XYPoint& utm) const
 {
     double lon = (utm.x + origin_utm_.x) / boost::units::si::meters;
     double lat = (utm.y + origin_utm_.y) / boost::units::si::meters;

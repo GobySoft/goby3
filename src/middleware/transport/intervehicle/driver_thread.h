@@ -122,7 +122,7 @@ class ModemDriverThread
   private:
     void _data_request(goby::acomms::protobuf::ModemTransmission* msg);
     void _buffer_message(
-        std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage> msg);
+        const std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage>& msg);
     void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
     void _forward_subscription(intervehicle::protobuf::Subscription subscription);
     void _accept_subscription(const intervehicle::protobuf::Subscription& subscription);
@@ -144,7 +144,7 @@ class ModemDriverThread
         return _create_buffer_id(subscription.dccl_id(), subscription.group());
     }
 
-    void _try_create_or_update_buffer(modem_id_type dest_id, subbuffer_id_type buffer_id);
+    void _try_create_or_update_buffer(modem_id_type dest_id, const subbuffer_id_type& buffer_id);
 
     bool _dest_is_in_subnet(modem_id_type dest_id)
     {

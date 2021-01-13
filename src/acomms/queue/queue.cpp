@@ -49,13 +49,13 @@ goby::acomms::Queue::Queue(const google::protobuf::Descriptor* desc, QueueManage
 }
 
 // add a new message
-bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message> dccl_msg)
+bool goby::acomms::Queue::push_message(const std::shared_ptr<google::protobuf::Message>& dccl_msg)
 {
     protobuf::QueuedMessageMeta meta = meta_from_msg(*dccl_msg);
     return push_message(dccl_msg, meta);
 }
 
-bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message> dccl_msg,
+bool goby::acomms::Queue::push_message(const std::shared_ptr<google::protobuf::Message>& dccl_msg,
                                        protobuf::QueuedMessageMeta meta)
 {
     // loopback if set
@@ -326,7 +326,8 @@ goby::acomms::QueuedMessage goby::acomms::Queue::give_data(unsigned frame)
     return *it_to_give;
 }
 
-double goby::acomms::Queue::time_duration2double(boost::posix_time::time_duration time_of_day)
+double
+goby::acomms::Queue::time_duration2double(const boost::posix_time::time_duration& time_of_day)
 {
     using namespace boost::posix_time;
 

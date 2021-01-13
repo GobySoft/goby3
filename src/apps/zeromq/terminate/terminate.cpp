@@ -74,7 +74,7 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
                             std::make_pair(response.target_pid(), response.target_name()));
                     }
 
-                    std::string target_name = response.target_name();
+                    const std::string& target_name = response.target_name();
                     auto name_it = waiting_for_response_names_.find(target_name);
                     if (name_it != waiting_for_response_names_.end())
                     {

@@ -125,7 +125,7 @@ void goby::acomms::QueueManager::do_work()
         std::vector<std::shared_ptr<google::protobuf::Message>> expired_msgs =
             queue.second->expire();
 
-        for (std::shared_ptr<google::protobuf::Message> expire : expired_msgs)
+        for (const std::shared_ptr<google::protobuf::Message>& expire : expired_msgs)
         {
             signal_expire(*expire);
             if (network_ack_src_ids_.count(meta_from_msg(*expire).src()))

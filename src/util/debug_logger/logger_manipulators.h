@@ -133,7 +133,7 @@ using goby::util::logger::operator<<;
 
 inline goby::util::logger::GroupSetter group(std::string n)
 {
-    return (goby::util::logger::GroupSetter(n));
+    return (goby::util::logger::GroupSetter(std::move(n)));
 }
 
 #endif

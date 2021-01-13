@@ -36,6 +36,8 @@
 
 #include <memory>
 
+#include <utility>
+
 #include <zmq.hpp>
 
 using namespace goby::test::zeromq::protobuf;
@@ -144,7 +146,7 @@ void handle_sample2(const Sample& sample)
     }
 }
 
-void handle_widget(std::shared_ptr<const Widget> widget)
+void handle_widget(const std::shared_ptr<const Widget>& widget)
 {
     static int receive_count3 = 0;
     glog.is(DEBUG1) && glog << "InterProcess widget received publication: "
@@ -157,7 +159,7 @@ void handle_widget(std::shared_ptr<const Widget> widget)
 void subscriber()
 {
     ipc_child().subscribe_dynamic<Sample>(
-        [](std::shared_ptr<const Sample> s) { handle_sample1(*s); }, sample1);
+        [](const std::shared_ptr<const Sample>& s) { handle_sample1(*s); }, sample1);
     ipc_child().subscribe<sample2, Sample>(&handle_sample2);
     ipc_child().subscribe<widget, Widget>(&handle_widget);
 
@@ -183,9 +185,9 @@ class ThreadSubscriber
     {
         inproc2_.subscribe<sample1, Sample>([&](const Sample& s) { handle_sample1(s); });
         inproc2_.subscribe<sample2, Sample>(
-            [&](std::shared_ptr<const Sample> s) { handle_sample2(s); });
+            [&](std::shared_ptr<const Sample> s) { handle_sample2(std::move(s)); });
         inproc2_.subscribe<widget, Widget>(
-            [&](std::shared_ptr<const Widget> w) { handle_widget1(w); });
+            [&](std::shared_ptr<const Widget> w) { handle_widget1(std::move(w)); });
         ++ready;
         while (receive_count1 < max_publish || receive_count2 < (max_publish / 2) ||
                receive_count3 < max_publish)
@@ -203,14 +205,14 @@ class ThreadSubscriber
     }
 
   private:
-    void handle_sample1(Sample sample)
+    void handle_sample1(const Sample& sample)
     {
         std::thread::id this_id = std::this_thread::get_id();
         glog.is(DEBUG1) && glog << this_id << ": Received1: " << sample.DebugString() << std::endl;
         assert(sample.a() == receive_count1);
         ++receive_count1;
     }
-    void handle_sample2(std::shared_ptr<const Sample> sample)
+    void handle_sample2(const std::shared_ptr<const Sample>& sample)
     {
         std::thread::id this_id = std::this_thread::get_id();
         glog.is(DEBUG1) && glog << this_id << ": Received2: " << sample->DebugString() << std::endl;
@@ -226,7 +228,7 @@ class ThreadSubscriber
         }
     }
 
-    void handle_widget1(std::shared_ptr<const Widget> widget)
+    void handle_widget1(const std::shared_ptr<const Widget>& widget)
     {
         std::thread::id this_id = std::this_thread::get_id();
         glog.is(DEBUG1) && glog << this_id << ": Received3: " << widget->DebugString() << std::endl;
@@ -253,10 +255,10 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 
         assert(s.a() <= 3 * max_publish / 4);
     });
-    zmq.subscribe<sample2, Sample>([&](std::shared_ptr<const Sample> s) {
+    zmq.subscribe<sample2, Sample>([&](const std::shared_ptr<const Sample>& s) {
         glog.is(DEBUG1) && glog << "Portal Received2: " << s->DebugString() << std::endl;
     });
-    zmq.subscribe<widget, Widget>([&](std::shared_ptr<const Widget> w) {
+    zmq.subscribe<widget, Widget>([&](const std::shared_ptr<const Widget>& w) {
         glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString() << std::endl;
     });
 

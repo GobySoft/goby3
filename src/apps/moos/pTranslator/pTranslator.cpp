@@ -219,7 +219,7 @@ void goby::apps::moos::CpTranslator::do_translation(
 }
 
 void goby::apps::moos::CpTranslator::do_publish(
-    std::shared_ptr<google::protobuf::Message> created_message)
+    const std::shared_ptr<google::protobuf::Message>& created_message)
 {
     std::multimap<std::string, CMOOSMsg> out;
 

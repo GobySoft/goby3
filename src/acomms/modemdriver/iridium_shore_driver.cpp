@@ -227,7 +227,8 @@ void goby::acomms::IridiumShoreDriver::rudics_send(const std::string& data,
     }
 }
 
-void goby::acomms::IridiumShoreDriver::rudics_connect(std::shared_ptr<RUDICSConnection> connection)
+void goby::acomms::IridiumShoreDriver::rudics_connect(
+    const std::shared_ptr<RUDICSConnection>& connection)
 {
     connection->line_signal.connect(boost::bind(&IridiumShoreDriver::rudics_line, this, _1, _2));
     connection->disconnect_signal.connect(
@@ -235,7 +236,7 @@ void goby::acomms::IridiumShoreDriver::rudics_connect(std::shared_ptr<RUDICSConn
 }
 
 void goby::acomms::IridiumShoreDriver::rudics_disconnect(
-    std::shared_ptr<RUDICSConnection> connection)
+    const std::shared_ptr<RUDICSConnection>& connection)
 {
     using RightIt = boost::bimap<ModemId, std::shared_ptr<RUDICSConnection>>::right_map::iterator;
 
@@ -256,8 +257,8 @@ void goby::acomms::IridiumShoreDriver::rudics_disconnect(
     }
 }
 
-void goby::acomms::IridiumShoreDriver::rudics_line(const std::string& data,
-                                                   std::shared_ptr<RUDICSConnection> connection)
+void goby::acomms::IridiumShoreDriver::rudics_line(
+    const std::string& data, const std::shared_ptr<RUDICSConnection>& connection)
 {
     glog.is(DEBUG1) && glog << "RUDICS received bytes: " << goby::util::hex_encode(data)
                             << std::endl;

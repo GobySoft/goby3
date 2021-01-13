@@ -27,6 +27,8 @@
 
 #include <iostream>
 #include <sstream>
+#include <utility>
+
 #include <vector>
 
 #include <boost/format.hpp>
@@ -54,18 +56,18 @@ class DCCLPublish
 
     //set
 
-    void set_var(std::string var) { var_ = var; }
+    void set_var(std::string var) { var_ = std::move(var); }
     void set_format(std::string format)
     {
-        format_ = format;
+        format_ = std::move(format);
         format_set_ = true;
     }
     void set_use_all_names(bool use_all_names) { use_all_names_ = use_all_names; }
     void set_type(DCCLCppType type) { type_ = type; }
 
     void add_name(const std::string& name) { names_.push_back(name); }
-    void add_message_var(std::shared_ptr<DCCLMessageVar> mv) { message_vars_.push_back(mv); }
-    void add_algorithms(const std::vector<std::string> algorithms)
+    void add_message_var(const std::shared_ptr<DCCLMessageVar>& mv) { message_vars_.push_back(mv); }
+    void add_algorithms(const std::vector<std::string>& algorithms)
     {
         algorithms_.push_back(algorithms);
     }

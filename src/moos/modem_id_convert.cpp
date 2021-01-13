@@ -31,7 +31,7 @@
 using namespace std;
 using goby::util::as;
 
-std::string goby::moos::ModemIdConvert::read_lookup_file(string path)
+std::string goby::moos::ModemIdConvert::read_lookup_file(const string& path)
 {
     stringstream ss;
     ss << "***********************************" << endl;
@@ -140,7 +140,7 @@ string goby::moos::ModemIdConvert::get_location_from_id(int id)
         return as<string>(id);
 }
 
-int goby::moos::ModemIdConvert::get_id_from_name(string name)
+int goby::moos::ModemIdConvert::get_id_from_name(const string& name)
 {
     for (auto& it : names_)
     {

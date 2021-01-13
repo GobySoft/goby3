@@ -54,7 +54,8 @@ class TranslatorBase
     {
       public:
         // MOOS
-        void add_trigger(const std::string& moos_var, std::function<void(const CMOOSMsg&)> func)
+        void add_trigger(const std::string& moos_var,
+                         const std::function<void(const CMOOSMsg&)>& func)
         {
             trigger_vars_.insert(std::make_pair(moos_var, func));
         }

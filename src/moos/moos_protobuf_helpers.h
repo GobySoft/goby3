@@ -1153,7 +1153,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                 ++i; // now *i is the next separator
                 std::string extract = str.substr(0, lower_str.find(*i));
 
-                if (specifier.find(":") != std::string::npos)
+                if (specifier.find(':') != std::string::npos)
                 {
                     std::vector<std::string> subfields;
                     boost::split(subfields, specifier, boost::is_any_of(":"));

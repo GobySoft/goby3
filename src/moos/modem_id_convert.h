@@ -39,12 +39,12 @@ class ModemIdConvert
   public:
     ModemIdConvert() = default;
 
-    std::string read_lookup_file(std::string path);
+    std::string read_lookup_file(const std::string& path);
 
     std::string get_name_from_id(int id);
     std::string get_type_from_id(int id);
     std::string get_location_from_id(int id);
-    int get_id_from_name(std::string name);
+    int get_id_from_name(const std::string& name);
 
     size_t max_name_length() { return max_name_length_; }
     int max_id() { return max_id_; }

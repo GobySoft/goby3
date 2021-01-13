@@ -28,6 +28,7 @@
 
 #include "goby/util/asio-compat.h"
 #include <boost/asio.hpp>
+#include <utility>
 
 #include <dccl/binary.h>
 
@@ -44,7 +45,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
                                                        std::string name, int baud = 115200)
     {
         return std::shared_ptr<SV2SerialConnection>(
-            new SV2SerialConnection(io_context, name, baud));
+            new SV2SerialConnection(io_context, std::move(name), baud));
     }
 
     boost::asio::serial_port& socket() { return socket_; }
@@ -82,7 +83,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
         PART_COMPLETE
     };
 
-    SV2SerialConnection(boost::asio::io_context& io_context, std::string name, int baud)
+    SV2SerialConnection(boost::asio::io_context& io_context, const std::string& name, int baud)
         : socket_(io_context),
           message_(SV2_MAX_SIZE * 2) // leave room for escape chars (in theory, every byte)
     {

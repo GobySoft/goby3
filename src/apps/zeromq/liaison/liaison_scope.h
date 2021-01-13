@@ -61,7 +61,8 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
   public:
     LiaisonScope(const protobuf::LiaisonConfig& cfg);
 
-    void inbox(const std::string& group, std::shared_ptr<const google::protobuf::Message> msg);
+    void inbox(const std::string& group,
+               const std::shared_ptr<const google::protobuf::Message>& msg);
 
     void handle_message(const std::string& group, const google::protobuf::Message& msg,
                         bool fresh_message);
@@ -82,7 +83,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     bool is_paused() { return controls_div_->is_paused_; }
 
   private:
-    void handle_global_key(Wt::WKeyEvent event);
+    void handle_global_key(const Wt::WKeyEvent& event);
 
     void focus() override
     {
@@ -146,7 +147,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
                          Wt::WContainerWidget* parent);
 
         void handle_add_history();
-        void handle_remove_history(std::string type);
+        void handle_remove_history(const std::string& type);
         void add_history(const protobuf::ProtobufScopeConfig::HistoryConfig& config);
         void toggle_history_plot(Wt::WWidget* plot);
         void display_message(const std::string& group, const google::protobuf::Message& msg);

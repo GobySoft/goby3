@@ -91,7 +91,7 @@ void handle_sample1(const Sample& sample)
     ++ipc_receive_count;
 }
 
-void handle_sample2(std::shared_ptr<const Sample> sample)
+void handle_sample2(const std::shared_ptr<const Sample>& sample)
 {
     glog.is(DEBUG1) && glog << "InterProcessPortal received publication sample2: "
                             << sample->ShortDebugString() << std::endl;

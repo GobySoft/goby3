@@ -77,7 +77,7 @@ goby::middleware::frontseat::Bluefin::Bluefin(const gpb::Config& cfg)
                                     "using 'use_rpm_table_for_speed == true'"
                                  << std::endl;
 
-        for (auto entry : bf_config_.rpm_table())
+        for (const auto& entry : bf_config_.rpm_table())
             speed_to_rpm_.insert(std::make_pair(entry.speed(), entry.rpm()));
     }
 

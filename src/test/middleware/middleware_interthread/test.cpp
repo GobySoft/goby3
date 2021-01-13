@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <deque>
+#include <utility>
 
 #include "goby/middleware/transport/interthread.h"
 #include "goby/test/middleware/middleware_interthread/test.pb.h"
@@ -78,11 +79,11 @@ class Subscriber
     void run()
     {
         inproc2.subscribe<sample1, Sample>(
-            [this](std::shared_ptr<const Sample> s) { handle_sample1(s); });
+            [this](std::shared_ptr<const Sample> s) { handle_sample1(std::move(s)); });
         inproc2.subscribe<sample2, Sample>(
-            [this](std::shared_ptr<const Sample> s) { handle_sample2(s); });
+            [this](std::shared_ptr<const Sample> s) { handle_sample2(std::move(s)); });
         inproc2.subscribe<widget, Widget>(
-            [this](std::shared_ptr<const Widget> w) { handle_widget1(w); });
+            [this](std::shared_ptr<const Widget> w) { handle_widget1(std::move(w)); });
         while (receive_count1 < max_publish || receive_count2 < max_publish ||
                receive_count3 < max_publish)
         {
@@ -93,14 +94,14 @@ class Subscriber
     }
 
   private:
-    void handle_sample1(std::shared_ptr<const Sample> sample)
+    void handle_sample1(const std::shared_ptr<const Sample>& sample)
     {
         //std::thread::id this_id = std::this_thread::get_id();
         //        std::cout << this_id << ": Received1: " << sample->DebugString() << std::endl;
         assert(sample->a() == receive_count1);
         ++receive_count1;
     }
-    void handle_sample2(std::shared_ptr<const Sample> sample)
+    void handle_sample2(const std::shared_ptr<const Sample>& sample)
     {
         //std::thread::id this_id = std::this_thread::get_id();
         //std::cout << this_id << ": Received2: " << sample->DebugString() << std::endl;
@@ -108,7 +109,7 @@ class Subscriber
         ++receive_count2;
     }
 
-    void handle_widget1(std::shared_ptr<const Widget> widget)
+    void handle_widget1(const std::shared_ptr<const Widget>& widget)
     {
         //std::thread::id this_id = std::this_thread::get_id();
         //std::cout << this_id << ": Received3: " << widget->DebugString() << std::endl;
@@ -136,6 +137,8 @@ int main(int /*argc*/, char* argv[])
     std::vector<goby::test::middleware::Subscriber> subscribers(
         max_subs, goby::test::middleware::Subscriber());
     std::vector<std::thread> threads;
+    threads.reserve(max_subs);
+
     for (int i = 0; i < max_subs; ++i)
     {
         threads.emplace_back(

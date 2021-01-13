@@ -141,7 +141,8 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     goby::moos::DynamicMOOSVars& dynamic_vars() { return dynamic_vars_; }
     double start_time() const { return start_time_; }
 
-    void subscribe(const std::string& var, InboxFunc handler = InboxFunc(), int blackout = 0);
+    void subscribe(const std::string& var, const InboxFunc& handler = InboxFunc(),
+                   int blackout = 0);
 
     template <typename V, typename A1>
     void subscribe(const std::string& var, void (V::*mem_func)(A1), V* obj, int blackout = 0)
@@ -151,7 +152,7 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
 
     // wildcard
     void subscribe(const std::string& var_pattern, const std::string& app_pattern,
-                   InboxFunc handler = InboxFunc(), int blackout = 0);
+                   const InboxFunc& handler = InboxFunc(), int blackout = 0);
 
     template <typename V, typename A1>
     void subscribe(const std::string& var_pattern, const std::string& app_pattern,
@@ -175,7 +176,7 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
                   blackout);
     }
 
-    void register_timer(int period_seconds, boost::function<void()> handler)
+    void register_timer(int period_seconds, const boost::function<void()>& handler)
     {
         int now = (goby::time::SystemClock::now<goby::time::SITime>() / boost::units::si::seconds) /
                   period_seconds;
@@ -478,7 +479,7 @@ template <class MOOSAppType> bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::
 
 template <class MOOSAppType>
 void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var,
-                                                             InboxFunc handler,
+                                                             const InboxFunc& handler,
                                                              int blackout /* = 0 */)
 {
     goby::glog.is(goby::util::logger::VERBOSE) &&
@@ -497,7 +498,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& 
 template <class MOOSAppType>
 void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var_pattern,
                                                              const std::string& app_pattern,
-                                                             InboxFunc handler,
+                                                             const InboxFunc& handler,
                                                              int blackout /* = 0 */)
 {
     goby::glog.is(goby::util::logger::VERBOSE) &&

@@ -282,7 +282,7 @@ class InterProcessPortalImplementation
             zmq_main_.unsubscribe(identifier);
     }
 
-    void _unsubscribe_all(const std::string subscriber_id = to_string(std::this_thread::get_id()))
+    void _unsubscribe_all(const std::string& subscriber_id = to_string(std::this_thread::get_id()))
     {
         // portal unsubscribe
         if (subscriber_id == to_string(std::this_thread::get_id()))
@@ -411,7 +411,7 @@ class InterProcessPortalImplementation
     }
 
     void _receive_subscription_forwarded(
-        std::shared_ptr<const middleware::SerializationHandlerBase<>> subscription)
+        const std::shared_ptr<const middleware::SerializationHandlerBase<>>& subscription)
     {
         std::string identifier = _make_identifier(subscription->type_name(), subscription->scheme(),
                                                   subscription->subscribed_group(),
@@ -451,7 +451,7 @@ class InterProcessPortalImplementation
         }
     }
 
-    void _forwarder_unsubscribe(std::string subscriber_id, std::string identifier)
+    void _forwarder_unsubscribe(const std::string& subscriber_id, const std::string& identifier)
     {
         auto it = forwarder_subscription_identifiers_[subscriber_id].find(identifier);
         if (it != forwarder_subscription_identifiers_[subscriber_id].end())
@@ -487,7 +487,8 @@ class InterProcessPortalImplementation
         _subscribe_regex(subscription);
     }
 
-    void _subscribe_regex(std::shared_ptr<const middleware::SerializationSubscriptionRegex> new_sub)
+    void _subscribe_regex(
+        const std::shared_ptr<const middleware::SerializationSubscriptionRegex>& new_sub)
     {
         if (regex_subscriptions_.empty())
             zmq_main_.subscribe("/");

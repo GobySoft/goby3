@@ -164,9 +164,10 @@ class InterThreadTransporter
     }
 
     /// \brief Subscribe with no data (used to receive a signal from another thread)
-    template <const Group& group> void subscribe_empty(std::function<void()> f)
+    template <const Group& group> void subscribe_empty(const std::function<void()>& f)
     {
-        subscribe_dynamic<EmptyMessage>([=](std::shared_ptr<const EmptyMessage>) { f(); }, group);
+        subscribe_dynamic<EmptyMessage>([=](const std::shared_ptr<const EmptyMessage>&) { f(); },
+                                        group);
     }
 
     /// \brief Unsubscribe to a specific run-time defined group and data type. Where possible, prefer the static variant in StaticTransporterInterface::unsubscribe()

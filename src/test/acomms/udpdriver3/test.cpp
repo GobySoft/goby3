@@ -49,7 +49,7 @@ using namespace goby::acomms;
 void handle_ack(const goby::acomms::protobuf::ModemTransmission& ack_msg,
                 const google::protobuf::Message& orig_msg);
 
-void qsize(goby::acomms::protobuf::QueueSize size);
+void qsize(const goby::acomms::protobuf::QueueSize& size);
 
 void handle_receive(const google::protobuf::Message& msg);
 void handle_data_receive1(const protobuf::ModemTransmission& msg);
@@ -215,7 +215,7 @@ void handle_receive(const google::protobuf::Message& msg)
     std::cout << "Received: " << msg << std::endl;
 }
 
-void qsize(goby::acomms::protobuf::QueueSize size)
+void qsize(const goby::acomms::protobuf::QueueSize& size)
 {
     std::cout << "Queue size: " << size.size() << std::endl;
 }

@@ -128,7 +128,7 @@ struct DCCLSerializerParserHelperBase
         return codec().id(begin, end);
     }
 
-    static unsigned id(const std::string full_name)
+    static unsigned id(const std::string& full_name)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         auto* desc = dccl::DynamicProtobufManager::find_descriptor(full_name);

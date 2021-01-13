@@ -165,7 +165,7 @@ void goby::apps::zeromq::LiaisonScope::update_row(const std::string& group,
         attach_pb_rows(items, msg);
 }
 
-void goby::apps::zeromq::LiaisonScope::handle_global_key(Wt::WKeyEvent event)
+void goby::apps::zeromq::LiaisonScope::handle_global_key(const Wt::WKeyEvent& event)
 {
     switch (event.key())
     {
@@ -194,8 +194,8 @@ void goby::apps::zeromq::LiaisonScope::resume()
     history_header_div_->flush_buffer();
 }
 
-void goby::apps::zeromq::LiaisonScope::inbox(const std::string& group,
-                                       std::shared_ptr<const google::protobuf::Message> msg)
+void goby::apps::zeromq::LiaisonScope::inbox(
+    const std::string& group, const std::shared_ptr<const google::protobuf::Message>& msg)
 {
     if (is_paused())
     {
@@ -468,7 +468,8 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
     }
 }
 
-void goby::apps::zeromq::LiaisonScope::HistoryContainer::handle_remove_history(std::string key)
+void goby::apps::zeromq::LiaisonScope::HistoryContainer::handle_remove_history(
+    const std::string& key)
 {
     glog.is(DEBUG2) && glog << "LiaisonScope: removing history for: " << key << std::endl;
 

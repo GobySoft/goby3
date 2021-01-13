@@ -449,7 +449,7 @@ unsigned goby::zeromq::Router::last_port(zmq::socket_t& socket)
         throw(std::runtime_error("Could not retrieve ZMQ_LAST_ENDPOINT"));
 
     std::string last_ep(last_endpoint);
-    unsigned port = std::stoi(last_ep.substr(last_ep.find_last_of(":") + 1));
+    unsigned port = std::stoi(last_ep.substr(last_ep.find_last_of(':') + 1));
     return port;
 }
 

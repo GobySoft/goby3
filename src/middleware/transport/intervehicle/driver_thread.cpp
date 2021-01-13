@@ -27,6 +27,7 @@
 #include "driver_thread.h"
 
 #include <memory>
+#include <utility>
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -47,17 +48,19 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     this->set_transporter(interprocess_.get());
 
     interprocess_->subscribe<groups::modem_data_out, SerializerTransporterMessage>(
-        [this](std::shared_ptr<const SerializerTransporterMessage> msg) { _buffer_message(msg); });
+        [this](std::shared_ptr<const SerializerTransporterMessage> msg) {
+            _buffer_message(std::move(msg));
+        });
 
     interprocess_->subscribe<groups::modem_subscription_forward_tx,
                              intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
-        [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
+        [this](const std::shared_ptr<const intervehicle::protobuf::Subscription>& subscription) {
             _forward_subscription(*subscription);
         });
 
     interprocess_->subscribe<groups::modem_subscription_forward_rx,
                              intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
-        [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
+        [this](const std::shared_ptr<const intervehicle::protobuf::Subscription>& subscription) {
             _accept_subscription(*subscription);
         });
 
@@ -359,7 +362,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_try_create_or_update_buffer(
-    modem_id_type dest_id, subbuffer_id_type buffer_id)
+    modem_id_type dest_id, const subbuffer_id_type& buffer_id)
 {
     auto pub_it_pair = publisher_buffer_cfg_.equal_range(buffer_id);
     auto& dest_subscriber_buffer_cfg = subscriber_buffer_cfg_[dest_id];
@@ -406,7 +409,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_try_create_or_update_bu
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
-    std::shared_ptr<const SerializerTransporterMessage> msg)
+    const std::shared_ptr<const SerializerTransporterMessage>& msg)
 {
     if (msg->key().has_metadata())
         detail::DCCLSerializerParserHelperBase::load_metadata(msg->key().metadata());

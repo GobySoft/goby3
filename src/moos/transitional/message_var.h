@@ -32,6 +32,8 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
+#include <utility>
+
 #include <vector>
 
 #include <boost/lexical_cast.hpp>
@@ -59,13 +61,13 @@ class DCCLMessageVar
     DCCLMessageVar() = default;
 
     // set
-    void set_name(std::string name) { name_ = name; }
+    void set_name(std::string name) { name_ = std::move(name); }
     void set_source_var(std::string source_var)
     {
-        source_var_ = source_var;
+        source_var_ = std::move(source_var);
         source_set_ = true;
     }
-    void set_source_key(std::string source_key) { source_key_ = source_key; }
+    void set_source_key(std::string source_key) { source_key_ = std::move(source_key); }
     void set_source_set(bool source_set) { source_set_ = source_set; }
     void set_algorithms(const std::vector<std::string>& algorithm) { algorithms_ = algorithm; }
 

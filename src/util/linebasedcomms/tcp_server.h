@@ -87,11 +87,11 @@ class TCPServer : public LineBasedInterface
 
     void do_write(const protobuf::Datagram& line) override;
     void do_close(const boost::system::error_code& error) override { do_close(error, ""); }
-    void do_close(const boost::system::error_code& error, Endpoint endpt);
+    void do_close(const boost::system::error_code& error, const Endpoint& endpt);
 
   private:
     void start_accept();
-    void handle_accept(std::shared_ptr<TCPConnection> new_connection,
+    void handle_accept(const std::shared_ptr<TCPConnection>& new_connection,
                        const boost::system::error_code& error);
 
   private:

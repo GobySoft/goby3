@@ -65,8 +65,8 @@ class Queue
     Queue(const google::protobuf::Descriptor* desc, QueueManager* parent,
           protobuf::QueuedMessageEntry cfg = protobuf::QueuedMessageEntry());
 
-    bool push_message(std::shared_ptr<google::protobuf::Message> dccl_msg);
-    bool push_message(std::shared_ptr<google::protobuf::Message> dccl_msg,
+    bool push_message(const std::shared_ptr<google::protobuf::Message>& dccl_msg);
+    bool push_message(const std::shared_ptr<google::protobuf::Message>& dccl_msg,
                       protobuf::QueuedMessageMeta meta);
 
     protobuf::QueuedMessageMeta meta_from_msg(const google::protobuf::Message& dccl_msg);
@@ -125,7 +125,7 @@ class Queue
     void set_latest_metadata(const google::protobuf::FieldDescriptor* field,
                              const boost::any& field_value, const boost::any& wire_value);
 
-    double time_duration2double(boost::posix_time::time_duration time_of_day);
+    double time_duration2double(const boost::posix_time::time_duration& time_of_day);
 
   private:
     Queue& operator=(const Queue&);

@@ -78,7 +78,7 @@ class GroupFactory
     {
       public:
         // for root group (already exists)
-        GroupWrapper(H5::Group group) : group_(group) {}
+        GroupWrapper(const H5::Group& group) : group_(group) {}
 
         // for children groups
         GroupWrapper(const std::string& name, H5::Group& parent) : group_(parent.createGroup(name))
@@ -134,7 +134,7 @@ class Writer
                       const std::vector<T>& data, const std::vector<hsize_t>& hs,
                       const T& default_value);
 
-    void write_vector(const std::string& group, const std::string dataset_name,
+    void write_vector(const std::string& group, const std::string& dataset_name,
                       const std::vector<std::string>& data, const std::vector<hsize_t>& hs,
                       const std::string& default_value);
 

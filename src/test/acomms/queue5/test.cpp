@@ -49,7 +49,7 @@ bool provide_data = true;
 void handle_encode_on_demand(const goby::acomms::protobuf::ModemTransmission& request_msg,
                              google::protobuf::Message* data_msg);
 
-void qsize(goby::acomms::protobuf::QueueSize size);
+void qsize(const goby::acomms::protobuf::QueueSize& size);
 
 void handle_receive(const google::protobuf::Message& msg);
 
@@ -157,7 +157,7 @@ void handle_encode_on_demand(const goby::acomms::protobuf::ModemTransmission& /*
     ++encode_on_demand_count;
 }
 
-void qsize(goby::acomms::protobuf::QueueSize size) { goby_message_qsize = size.size(); }
+void qsize(const goby::acomms::protobuf::QueueSize& size) { goby_message_qsize = size.size(); }
 
 void handle_receive(const google::protobuf::Message& in_msg)
 {

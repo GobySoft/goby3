@@ -48,7 +48,7 @@ void parse_rudics_packet(std::string* bytes, std::string rudics_pkt,
                                                        std::string(1, 0xff),
                          bool include_crc = true);
 std::string uint32_to_byte_string(uint32_t i);
-uint32_t byte_string_to_uint32(std::string s);
+uint32_t byte_string_to_uint32(const std::string& s);
 } // namespace acomms
 } // namespace goby
 

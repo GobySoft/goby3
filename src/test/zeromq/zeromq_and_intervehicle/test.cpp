@@ -244,7 +244,7 @@ void handle_sample_indirect(const Sample& sample)
     ++ipc_receive_count[1];
 }
 
-void handle_widget(std::shared_ptr<const Widget> w)
+void handle_widget(const std::shared_ptr<const Widget>& w)
 {
     glog.is(DEBUG1) && glog << "InterVehiclePortal received publication widget: "
                             << w->ShortDebugString() << std::endl;

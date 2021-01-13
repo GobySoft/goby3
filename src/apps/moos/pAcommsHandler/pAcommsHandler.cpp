@@ -761,7 +761,7 @@ void goby::apps::moos::CpAcommsHandler::translate_and_push(
 }
 
 void goby::apps::moos::CpAcommsHandler::driver_reset(
-    std::shared_ptr<goby::acomms::ModemDriverBase> driver,
+    const std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
     const goby::acomms::ModemDriverException& e,
     pAcommsHandlerConfig::DriverFailureApproach::DriverFailureTechnique
         technique /* = cfg_.driver_failure_approach().technique() */)
@@ -864,7 +864,7 @@ void goby::apps::moos::CpAcommsHandler::restart_drivers()
         }
     }
 
-    for (auto driver : drivers_to_start)
+    for (const auto& driver : drivers_to_start)
     {
         try
         {
