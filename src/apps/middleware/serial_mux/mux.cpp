@@ -27,7 +27,7 @@
 #include "goby/middleware/io/line_based/pty.h"
 #include "goby/middleware/io/line_based/serial.h"
 
-#include "config.pb.h"
+#include "goby/apps/middleware/serial_mux/config.pb.h"
 
 namespace goby
 {

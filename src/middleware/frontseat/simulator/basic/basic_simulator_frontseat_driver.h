@@ -30,7 +30,7 @@
 #include "goby/time/system_clock.h"
 #include "goby/util/linebasedcomms/tcp_client.h"
 
-#include "basic_simulator_frontseat_driver_config.pb.h"
+#include "goby/middleware/frontseat/simulator/basic/basic_simulator_frontseat_driver_config.pb.h"
 
 extern "C"
 {

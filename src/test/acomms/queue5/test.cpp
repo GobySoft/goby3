@@ -30,7 +30,7 @@
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
 
-#include "test.pb.h"
+#include "goby/test/acomms/queue5/test.pb.h"
 
 // tests "encode_on_demand" functionality
 using goby::test::acomms::protobuf::GobyMessage;

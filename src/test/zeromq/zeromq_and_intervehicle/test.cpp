@@ -34,7 +34,7 @@
 #include "goby/util/debug_logger.h"
 #include "goby/zeromq/transport/interprocess.h"
 
-#include "test.pb.h"
+#include "goby/test/zeromq/zeromq_and_intervehicle/test.pb.h"
 
 using namespace goby::test::zeromq::protobuf;
 

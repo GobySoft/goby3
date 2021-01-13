@@ -388,6 +388,7 @@ class SerializationInterModuleSubscription : public SerializationHandlerBase<>
     {
         switch (sub_cfg_.action())
         {
+            default:
             case intermodule::protobuf::Subscription::SUBSCRIBE:
                 return SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE;
             case intermodule::protobuf::Subscription::UNSUBSCRIBE:

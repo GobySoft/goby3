@@ -31,8 +31,8 @@
 #include "goby/middleware/transport/interthread.h"
 #include "goby/zeromq/transport/interprocess.h"
 
+#include "goby/test/zeromq/middleware_interprocess_forwarder/test.pb.h"
 #include "goby/util/debug_logger.h"
-#include "test.pb.h"
 
 #include <zmq.hpp>
 

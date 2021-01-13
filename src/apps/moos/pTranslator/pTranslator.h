@@ -35,7 +35,7 @@
 #include "goby/moos/goby_moos_app.h"
 #include "goby/moos/moos_translator.h"
 
-#include "pTranslator_config.pb.h"
+#include "goby/apps/moos/pTranslator/pTranslator_config.pb.h"
 
 namespace goby
 {

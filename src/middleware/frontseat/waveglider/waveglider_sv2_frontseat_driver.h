@@ -32,8 +32,9 @@
 
 #include "goby/middleware/frontseat/interface.h"
 
-#include "waveglider_sv2_frontseat_driver.pb.h"
-#include "waveglider_sv2_frontseat_driver_config.pb.h"
+#include "goby/middleware/frontseat/waveglider/waveglider_sv2_frontseat_driver.pb.h"
+#include "goby/middleware/frontseat/waveglider/waveglider_sv2_frontseat_driver_config.pb.h"
+
 #include "waveglider_sv2_serial_client.h"
 
 namespace goby

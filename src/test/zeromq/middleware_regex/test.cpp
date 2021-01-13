@@ -32,7 +32,7 @@
 #include "goby/util/debug_logger.h"
 #include "goby/zeromq/transport/interprocess.h"
 
-#include "test.pb.h"
+#include "goby/test/zeromq/middleware_regex/test.pb.h"
 
 #include <zmq.hpp>
 

@@ -30,7 +30,7 @@
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
 
-#include "test.pb.h"
+#include "goby/test/acomms/queue1/test.pb.h"
 
 using goby::test::acomms::protobuf::TestMsg;
 

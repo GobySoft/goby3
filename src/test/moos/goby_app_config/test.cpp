@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "config.pb.h"
 #include "goby/moos/goby_moos_app.h"
+#include "goby/test/moos/goby_app_config/config.pb.h"
 
 namespace goby
 {

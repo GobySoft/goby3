@@ -30,8 +30,8 @@
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/zeromq/transport/interprocess.h"
 
+#include "goby/test/zeromq/zeromq_portal_without_interthread/test.pb.h"
 #include "goby/util/debug_logger.h"
-#include "test.pb.h"
 
 #include <zmq.hpp>
 

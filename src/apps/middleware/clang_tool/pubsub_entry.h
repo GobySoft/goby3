@@ -178,6 +178,7 @@ struct PubSubEntry
         {
             case goby::middleware::Necessity::REQUIRED: return "required";
             case goby::middleware::Necessity::RECOMMENDED: return "recommended";
+            default:
             case goby::middleware::Necessity::OPTIONAL: return "optional";
         }
     }
