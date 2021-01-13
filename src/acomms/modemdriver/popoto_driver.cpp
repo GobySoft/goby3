@@ -264,7 +264,7 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
 
     // To send a bin msg it needs to be in 8 bit CSV values
     std::stringstream raw;
-    raw << "transmitJSON {\"Payload\":{\"Data\":[" << jsonStr << "]}}"
+    raw << R"(transmitJSON {"Payload":{"Data":[)" << jsonStr << "]}}"
         << "\n";
 
     // Send the raw string to terminal for debugging
