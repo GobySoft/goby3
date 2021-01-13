@@ -484,7 +484,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& 
     goby::glog.is(goby::util::logger::VERBOSE) &&
         goby::glog << "subscribing for MOOS variable: " << var << " @ " << blackout << std::endl;
 
-    pending_subscriptions_.push_back(std::make_pair(var, blackout));
+    pending_subscriptions_.emplace_back(var, blackout);
     try_subscribing();
 
     if (!mail_handlers_[var])
@@ -505,7 +505,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& 
                    << ", app pattern: " << app_pattern << " @ " << blackout << std::endl;
 
     std::pair<std::string, std::string> key = std::make_pair(var_pattern, app_pattern);
-    wildcard_pending_subscriptions_.push_back(std::make_pair(key, blackout));
+    wildcard_pending_subscriptions_.emplace_back(key, blackout);
     try_subscribing();
 
     if (!wildcard_mail_handlers_.count(key))

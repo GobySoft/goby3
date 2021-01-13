@@ -300,8 +300,8 @@ int main(int argc, char* argv[])
     auto launch_sub_threads = [&]() {
         for (int i = 0; i < max_subs; ++i)
         {
-            threads.push_back(std::thread(
-                std::bind(&goby::test::zeromq::ThreadSubscriber::run, &thread_subscribers.at(i))));
+            threads.emplace_back(
+                std::bind(&goby::test::zeromq::ThreadSubscriber::run, &thread_subscribers.at(i)));
         }
     };
 

@@ -90,7 +90,7 @@ void goby::util::FlexOStreamBuf::add_stream(logger::Verbosity verbosity, std::os
     }
 
     if (!stream_exists)
-        streams_.push_back(StreamConfig(os, verbosity));
+        streams_.emplace_back(os, verbosity);
 
     highest_verbosity_ = logger::QUIET;
     for (auto stream : streams_)
@@ -148,7 +148,7 @@ int goby::util::FlexOStreamBuf::overflow(int c /*= EOF*/)
     if (c == EOF)
         return c;
     else if (c == '\n')
-        buffer_.push_back(std::string());
+        buffer_.emplace_back();
     else
         buffer_.back().push_back(c);
 

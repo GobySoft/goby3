@@ -97,7 +97,7 @@ run_serialize_algorithms(const google::protobuf::Message& in,
                 std::string ref_value;
                 google::protobuf::TextFormat::PrintFieldValueToString(in, field_desc, -1,
                                                                       &ref_value);
-                ref.push_back(ref_value);
+                ref.emplace_back(ref_value);
             }
             else
             {

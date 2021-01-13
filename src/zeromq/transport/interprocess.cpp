@@ -138,8 +138,7 @@ void goby::zeromq::InterProcessPortalMainThread::publish(const std::string& iden
     }
     else
     {
-        publish_queue_.push_back(
-            std::make_pair(identifier, std::vector<char>(bytes, bytes + size)));
+        publish_queue_.emplace_back(identifier, std::vector<char>(bytes, bytes + size));
     }
 }
 

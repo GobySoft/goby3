@@ -138,8 +138,8 @@ int main(int argc, char* argv[])
     std::vector<std::thread> threads;
     for (int i = 0; i < max_subs; ++i)
     {
-        threads.push_back(
-            std::thread(std::bind(&goby::test::middleware::Subscriber::run, &subscribers.at(i))));
+        threads.emplace_back(
+            std::bind(&goby::test::middleware::Subscriber::run, &subscribers.at(i)));
     }
 
     while (ready < max_subs)

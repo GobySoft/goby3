@@ -80,7 +80,7 @@ void goby::middleware::frontseat::Bluefin::bfack(const goby::util::NMEASentence&
             glog.is(DEBUG1) && glog << "Huxley reports that our " << acked_sentence
                                     << " request is pending." << std::endl;
             if (!out_.empty())
-                pending_.push_back(out_.front().message());
+                pending_.emplace_back(out_.front().message());
             break;
     }
 

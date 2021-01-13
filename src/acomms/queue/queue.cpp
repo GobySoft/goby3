@@ -115,7 +115,7 @@ bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message
 
     if (!meta.has_ack_requested())
         meta.set_ack_requested(queue_message_options().ack());
-    messages_.push_back(QueuedMessage());
+    messages_.emplace_back();
     messages_.back().meta = meta;
     messages_.back().dccl_msg = dccl_msg;
 

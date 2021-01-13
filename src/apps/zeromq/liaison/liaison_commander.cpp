@@ -1365,8 +1365,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                              : refl->GetBool(*message, field_desc);
 
             std::vector<WString> strings;
-            strings.push_back("true");
-            strings.push_back("false");
+            strings.emplace_back("true");
+            strings.emplace_back("false");
 
             value_field = generate_combo_box_field(
                 message, field_desc, strings, value ? 0 : 1,
@@ -1388,7 +1388,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             const google::protobuf::EnumDescriptor* enum_desc = field_desc->enum_type();
 
             for (int i = 0, n = enum_desc->value_count(); i < n; ++i)
-                strings.push_back(enum_desc->value(i)->name());
+                strings.emplace_back(enum_desc->value(i)->name());
 
             value_field = generate_combo_box_field(
                 message, field_desc, strings, value->index(),
