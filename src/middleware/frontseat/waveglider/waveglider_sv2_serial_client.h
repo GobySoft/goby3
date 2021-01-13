@@ -111,7 +111,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
             boost::asio::serial_port_base::stop_bits::one));
     }
 
-    void handle_write(const boost::system::error_code& error, size_t bytes_transferred)
+    void handle_write(const boost::system::error_code& error, size_t /*bytes_transferred*/)
     {
         if (error)
         {

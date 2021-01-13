@@ -244,7 +244,8 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_modem_raw(const CM
                      data);
 }
 
-void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(gpb::InterfaceState state)
+void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(
+    gpb::InterfaceState /*state*/)
 {
     gpb::InterfaceStatus status = ifs_->frontseat_->status();
     if (status.frontseat_state() == gpb::FRONTSEAT_ACCEPTING_COMMANDS)

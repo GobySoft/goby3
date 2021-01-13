@@ -136,10 +136,9 @@ class InterThreadTransporter
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
-    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = scheme<Data>()>
     void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
-                           const Subscriber<Data>& subscriber = Subscriber<Data>())
+                           const Subscriber<Data>& /*subscriber*/ = Subscriber<Data>())
     {
         check_validity_runtime(group);
         detail::SubscriptionStore<Data>::subscribe([=](std::shared_ptr<const Data> pd) { f(*pd); },
@@ -154,10 +153,9 @@ class InterThreadTransporter
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
-    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = scheme<Data>()>
     void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
-                           const Subscriber<Data>& subscriber = Subscriber<Data>())
+                           const Subscriber<Data>& /*subscriber*/ = Subscriber<Data>())
     {
         check_validity_runtime(group);
         detail::SubscriptionStore<Data>::subscribe(
@@ -178,7 +176,7 @@ class InterThreadTransporter
     /// \param group group to unsubscribe from (typically a DynamicGroup)
     template <typename Data, int scheme = scheme<Data>()>
     void unsubscribe_dynamic(const Group& group,
-                             const Subscriber<Data>& subscriber = Subscriber<Data>())
+                             const Subscriber<Data>& /*subscriber*/ = Subscriber<Data>())
     {
         check_validity_runtime(group);
         detail::SubscriptionStore<Data>::unsubscribe(group, std::this_thread::get_id());

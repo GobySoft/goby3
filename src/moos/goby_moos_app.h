@@ -72,7 +72,7 @@ class MOOSAppShell : public CMOOSApp
     bool Iterate() override { return true; }
     bool OnStartUp() override { return true; }
     bool OnConnectToServer() override { return true; }
-    bool OnNewMail(MOOSMSG_LIST& NewMail) override { return true; }
+    bool OnNewMail(MOOSMSG_LIST& /*NewMail*/) override { return true; }
     void RegisterVariables() {}
     void PostReport() {}
 };

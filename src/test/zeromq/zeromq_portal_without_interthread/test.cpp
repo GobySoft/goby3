@@ -122,7 +122,7 @@ void subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
     glog.is(DEBUG1) && glog << "Subscriber complete." << std::endl;
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::zeromq::protobuf::InterProcessPortalConfig cfg;
     cfg.set_platform("test4");

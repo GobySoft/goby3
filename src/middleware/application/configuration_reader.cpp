@@ -218,7 +218,7 @@ void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
 }
 
 void goby::middleware::ConfigReader::set_protobuf_program_option(
-    const boost::program_options::variables_map& var_map, google::protobuf::Message& message,
+    const boost::program_options::variables_map& /*var_map*/, google::protobuf::Message& message,
     const std::string& full_name, const boost::program_options::variable_value& value)
 {
     const google::protobuf::Descriptor* desc = message.GetDescriptor();

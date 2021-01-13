@@ -235,7 +235,7 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
         has_warnings_ = true;
     }
 
-    void print_original(int line, int column)
+    void print_original(int line, int /*column*/)
     {
         using goby::util::logger::WARN;
 

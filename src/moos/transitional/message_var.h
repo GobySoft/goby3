@@ -70,14 +70,17 @@ class DCCLMessageVar
     void set_algorithms(const std::vector<std::string>& algorithm) { algorithms_ = algorithm; }
 
     // should be overloaded by derived types if supported
-    virtual void set_max(const std::string& s) { bad_overload("set_max()"); }
-    virtual void set_min(const std::string& s) { bad_overload("set_min()"); }
-    virtual void set_precision(const std::string& s) { bad_overload("set_precision()"); }
-    virtual void set_max_length(const std::string& s) { bad_overload("set_max_length()"); }
-    virtual void set_num_bytes(const std::string& s) { bad_overload("set_num_bytes()"); }
-    virtual void set_static_val(const std::string& static_val) { bad_overload("set_static_val()"); }
-    virtual void add_enum(std::string senum) { bad_overload("add_enum()"); }
-    virtual void set_max_delta(const std::string& s) { bad_overload("set_max_delta()"); }
+    virtual void set_max(const std::string& /*s*/) { bad_overload("set_max()"); }
+    virtual void set_min(const std::string& /*s*/) { bad_overload("set_min()"); }
+    virtual void set_precision(const std::string& /*s*/) { bad_overload("set_precision()"); }
+    virtual void set_max_length(const std::string& /*s*/) { bad_overload("set_max_length()"); }
+    virtual void set_num_bytes(const std::string& /*s*/) { bad_overload("set_num_bytes()"); }
+    virtual void set_static_val(const std::string& /*static_val*/)
+    {
+        bad_overload("set_static_val()");
+    }
+    virtual void add_enum(std::string /*senum*/) { bad_overload("add_enum()"); }
+    virtual void set_max_delta(const std::string& /*s*/) { bad_overload("set_max_delta()"); }
 
     void set_array_length(unsigned u) { array_length_ = u; }
     void set_array_length(const std::string& s)
@@ -147,7 +150,8 @@ class DCCLMessageVar
 
     virtual std::string additional_option_extensions() { return ""; }
 
-    virtual void set_defaults_specific(DCCLMessageVal& v, unsigned modem_id, unsigned id)
+    virtual void set_defaults_specific(DCCLMessageVal& /*v*/, unsigned /*modem_id*/,
+                                       unsigned /*id*/)
     {
         bad_overload("set_defaults_specific()");
     }

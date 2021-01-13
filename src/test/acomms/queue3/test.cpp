@@ -56,7 +56,7 @@ void qsize(goby::acomms::protobuf::QueueSize size);
 void handle_ack(const goby::acomms::protobuf::ModemTransmission& ack_msg,
                 const google::protobuf::Message& orig_msg);
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cout);
     goby::glog.set_name(argv[0]);

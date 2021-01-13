@@ -38,7 +38,7 @@ using namespace goby::test::acomms::protobuf;
 void populate_test_msg(TestMsg* msg_in);
 void run_one_in_one_out_test(MOOSTranslator& translator, int i, bool hex_encode);
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cout);
     goby::glog.set_name(argv[0]);

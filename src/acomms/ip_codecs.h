@@ -108,8 +108,8 @@ class IPGatewayEmptyIdentifierCodec : public dccl::TypedFixedFieldCodec<std::uin
 {
   private:
     dccl::Bitset encode() override { return dccl::Bitset(0, 0); }
-    dccl::Bitset encode(const std::uint32_t& wire_value) override { return dccl::Bitset(0, 0); }
-    std::uint32_t decode(dccl::Bitset* bits) override { return Id; }
+    dccl::Bitset encode(const std::uint32_t& /*wire_value*/) override { return dccl::Bitset(0, 0); }
+    std::uint32_t decode(dccl::Bitset* /*bits*/) override { return Id; }
     unsigned size() override { return 0; }
 };
 

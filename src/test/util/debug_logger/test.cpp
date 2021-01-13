@@ -30,7 +30,7 @@
 using goby::glog;
 
 /// asserts false if called - used for testing proper short-circuiting of logger calls
-inline std::ostream& stream_assert(std::ostream& os) { assert(false); }
+inline std::ostream& stream_assert(std::ostream& /*os*/) { assert(false); }
 
 using namespace goby::util::logger;
 

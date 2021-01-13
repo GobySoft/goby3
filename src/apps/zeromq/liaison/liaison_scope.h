@@ -257,7 +257,7 @@ class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
     ScopeCommsThread(LiaisonScope* scope, const protobuf::LiaisonConfig& config, int index)
         : LiaisonCommsThread<LiaisonScope>(scope, config, index), scope_(scope)
     {
-        auto subscription_handler = [this](const std::vector<unsigned char>& data, int scheme,
+        auto subscription_handler = [this](const std::vector<unsigned char>& data, int /*scheme*/,
                                            const std::string& type,
                                            const goby::middleware::Group& group) {
             std::string gr = group;

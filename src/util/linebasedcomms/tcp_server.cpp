@@ -106,7 +106,7 @@ void goby::util::TCPServer::start_accept()
                                        boost::asio::placeholders::error));
 }
 
-void goby::util::TCPServer::handle_accept(std::shared_ptr<TCPConnection> new_connection,
+void goby::util::TCPServer::handle_accept(std::shared_ptr<TCPConnection> /*new_connection*/,
                                           const boost::system::error_code& error)
 {
     if (!error)

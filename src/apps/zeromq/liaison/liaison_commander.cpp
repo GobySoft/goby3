@@ -112,7 +112,7 @@ goby::apps::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonCo
 goby::apps::zeromq::LiaisonCommander::~LiaisonCommander() = default;
 
 void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
-    const std::vector<unsigned char>& data, int scheme, const std::string& type,
+    const std::vector<unsigned char>& data, int /*scheme*/, const std::string& type,
     const std::string& group,
     const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::NotificationSubscription::Color&
         background_color)
@@ -173,7 +173,7 @@ void goby::apps::zeromq::LiaisonCommander::display_notify(
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::increment_incoming_messages(
-    const WMouseEvent& event)
+    const WMouseEvent& /*event*/)
 {
     int new_index = incoming_message_stack_->currentIndex() + 1;
     if (new_index == static_cast<int>(incoming_message_stack_->children().size()))
@@ -183,7 +183,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::increment_incoming
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::decrement_incoming_messages(
-    const WMouseEvent& event)
+    const WMouseEvent& /*event*/)
 {
     int new_index = static_cast<int>(incoming_message_stack_->currentIndex()) - 1;
     if (new_index < 0)
@@ -831,7 +831,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     }
 
     boost::function<void(const Wt::WMouseEvent&)> sent_clear_callback =
-        [=](const Wt::WMouseEvent& event) {
+        [=](const Wt::WMouseEvent& /*event*/) {
             WDialog dialog("Confirm clearing of ALL sent messages for " + protobuf_name);
             WPushButton ok("Clear", dialog.contents());
             WPushButton cancel("Cancel", dialog.contents());
@@ -861,7 +861,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     set_external_data_table_params(external_data_table_);
 
     boost::function<void(const Wt::WMouseEvent&)> external_data_clear_callback =
-        [=](const Wt::WMouseEvent& event) {
+        [=](const Wt::WMouseEvent& /*event*/) {
             WDialog dialog("Confirm clearing of ALL external data for " + protobuf_name);
             WPushButton ok("Clear", dialog.contents());
             WPushButton cancel("Cancel", dialog.contents());
@@ -931,7 +931,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
-    handle_database_double_click(const WModelIndex& index, const WMouseEvent& event)
+    handle_database_double_click(const WModelIndex& index, const WMouseEvent& /*event*/)
 {
     glog.is(DEBUG1) && glog << "clicked: " << index.row() << "," << index.column()
                             << ", is_valid: " << index.isValid() << std::endl;
@@ -1403,7 +1403,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     generate_field_info_box(value_field, field_desc);
 }
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
-    generate_field_info_box(Wt::WFormWidget*& value_field,
+    generate_field_info_box(Wt::WFormWidget*& /*value_field*/,
                             const google::protobuf::FieldDescriptor* field_desc)
 {
     //    if(!field_info_map_.count(field_desc))
@@ -1859,7 +1859,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
-    handle_toggle_single_message(const WMouseEvent& mouse, google::protobuf::Message* message,
+    handle_toggle_single_message(const WMouseEvent& /*mouse*/, google::protobuf::Message* message,
                                  const google::protobuf::FieldDescriptor* field_desc,
                                  WPushButton* button, WTreeTableNode* parent,
                                  std::string parent_hierarchy)
@@ -1884,9 +1884,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
-    handle_load_external_data(const WMouseEvent& mouse, google::protobuf::Message* message,
+    handle_load_external_data(const WMouseEvent& /*mouse*/, google::protobuf::Message* /*message*/,
                               const google::protobuf::FieldDescriptor* field_desc,
-                              WPushButton* button, WTreeTableNode* parent,
+                              WPushButton* /*button*/, WTreeTableNode* /*parent*/,
                               std::string parent_hierarchy)
 {
     WDialog dialog("Available external data for field: " + field_desc->name() +
@@ -1937,7 +1937,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     std::shared_ptr<google::protobuf::Message> message_to_load;
 
     boost::function<void(const Wt::WModelIndex&, const Wt::WMouseEvent&)> select_data_callback =
-        [&](const Wt::WModelIndex& index, const Wt::WMouseEvent& event) {
+        [&](const Wt::WModelIndex& index, const Wt::WMouseEvent& /*event*/) {
             glog.is(DEBUG1) && glog << "clicked: " << index.row() << "," << index.column()
                                     << ", is_valid: " << index.isValid() << std::endl;
 

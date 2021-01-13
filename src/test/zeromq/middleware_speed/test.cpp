@@ -136,7 +136,7 @@ void publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 }
 
 // child process
-void handle_sample1(const Type& sample)
+void handle_sample1(const Type& /*sample*/)
 {
     if (ipc_receive_count == 0)
     {

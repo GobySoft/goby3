@@ -105,7 +105,7 @@ class Decoder
     }
 
     template <typename LibAisMessage>
-    void set_shared_fields(goby::util::ais::protobuf::Voyage& voy, const LibAisMessage& ais,
+    void set_shared_fields(goby::util::ais::protobuf::Voyage& /*voy*/, const LibAisMessage& ais,
                            int part_num)
     {
         using namespace boost::units;

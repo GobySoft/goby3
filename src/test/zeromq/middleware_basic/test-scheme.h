@@ -56,7 +56,7 @@ struct SerializerParserHelper<std::deque<char>, test::middleware::MyMarshallingS
 
     static std::string type_name() { return "DEQUECHAR"; }
 
-    static std::string type_name(const std::deque<char>& d) { return type_name(); }
+    static std::string type_name(const std::deque<char>& /*d*/) { return type_name(); }
 
     static std::deque<char> parse(const std::vector<char>& bytes)
     {

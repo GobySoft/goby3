@@ -55,7 +55,7 @@ class SV2IdentifierCodec : public dccl::DefaultIdentifierCodec
 
     unsigned size() override { return 2 * dccl::BITS_IN_BYTE; }
 
-    unsigned size(const dccl::uint32& field_value) override { return size(); }
+    unsigned size(const dccl::uint32& /*field_value*/) override { return size(); }
 
     unsigned max_size() override { return size(); }
 

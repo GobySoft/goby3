@@ -58,7 +58,7 @@ class FrontSeatTranslation : public goby::moos::Translator
             {"SPEED", "HEADING", "DEPTH", "PITCH", "ROLL", "Z_RATE", "ALTITUDE"});
         for (const auto& var : desired_buffer_params) moos().add_buffer("DESIRED_" + var);
         moos().add_trigger("DESIRED_SPEED",
-                           [this](const CMOOSMsg& msg) { convert_desired_setpoints(); });
+                           [this](const CMOOSMsg& /*msg*/) { convert_desired_setpoints(); });
 
         moos().add_trigger("IVPHELM_STATE", [this](const CMOOSMsg& msg) {
             goby::middleware::frontseat::protobuf::HelmStateReport helm_state_report;

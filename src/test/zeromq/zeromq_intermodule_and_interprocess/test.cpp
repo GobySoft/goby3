@@ -231,7 +231,7 @@ void forwarder_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig
     glog.is(DEBUG1) && glog << "Subscriber complete." << std::endl;
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::zeromq::protobuf::InterProcessPortalConfig interprocess_cfg1;
     interprocess_cfg1.set_platform("test_interprocess1");

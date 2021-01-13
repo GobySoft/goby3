@@ -70,7 +70,7 @@ bool received_message = false;
 
 RouteMessage in_msg;
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     goby::glog.set_name(argv[0]);
@@ -245,9 +245,9 @@ int main(int argc, char* argv[])
     }
 }
 
-void handle_receive1(const google::protobuf::Message& msg) { assert(false); }
+void handle_receive1(const google::protobuf::Message& /*msg*/) { assert(false); }
 
-void handle_receive2(const google::protobuf::Message& msg) { assert(false); }
+void handle_receive2(const google::protobuf::Message& /*msg*/) { assert(false); }
 
 void handle_receive3(const google::protobuf::Message& msg)
 {
@@ -257,7 +257,7 @@ void handle_receive3(const google::protobuf::Message& msg)
     assert(in_msg.SerializeAsString() == msg.SerializeAsString());
 }
 
-void handle_modem_receive3(const protobuf::ModemTransmission& message)
+void handle_modem_receive3(const protobuf::ModemTransmission& /*message*/)
 {
     goby::acomms::DCCLCodec* dccl = goby::acomms::DCCLCodec::get();
     goby::acomms::protobuf::DCCLConfig dccl_cfg;

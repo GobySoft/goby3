@@ -116,7 +116,7 @@ void goby::middleware::detail::DCCLSerializerParserHelperBase::setup_dlog()
         glog.add_group(glog_dccl_group, util::Colors::lt_magenta);
 
         auto dlog_lambda = [=](const std::string& msg, dccl::logger::Verbosity vrb,
-                               dccl::logger::Group grp) {
+                               dccl::logger::Group /*grp*/) {
             switch (vrb)
             {
                 case dccl::logger::WARN:

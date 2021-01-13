@@ -74,8 +74,8 @@ class BenthosATM900Driver : public ModemDriverBase
 class NoOpIdentifierCodec : public dccl::TypedFixedFieldCodec<dccl::uint32>
 {
     dccl::Bitset encode() override { return dccl::Bitset(); }
-    dccl::Bitset encode(const std::uint32_t& wire_value) override { return dccl::Bitset(); }
-    dccl::uint32 decode(dccl::Bitset* bits) override { return 0; }
+    dccl::Bitset encode(const std::uint32_t& /*wire_value*/) override { return dccl::Bitset(); }
+    dccl::uint32 decode(dccl::Bitset* /*bits*/) override { return 0; }
     unsigned size() override { return 0; }
 };
 

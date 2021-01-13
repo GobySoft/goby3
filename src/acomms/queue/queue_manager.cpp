@@ -515,7 +515,7 @@ void goby::acomms::QueueManager::clear_packet(const protobuf::ModemTransmission&
 
 goby::acomms::Queue*
 goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& request_msg,
-                                             const std::string& data, bool first_user_frame)
+                                             const std::string& data, bool /*first_user_frame*/)
 {
     // competition between variable about who gets to send
     double winning_priority = 0;

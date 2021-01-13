@@ -299,7 +299,7 @@ void goby::apps::moos::CpAcommsHandler::handle_config_file_request(const CMOOSMs
             dccl::b64_encode(cfg_.SerializeAsString()));
 }
 
-void goby::apps::moos::CpAcommsHandler::handle_driver_reset(const CMOOSMsg& msg)
+void goby::apps::moos::CpAcommsHandler::handle_driver_reset(const CMOOSMsg& /*msg*/)
 {
     driver_reset(driver_,
                  goby::acomms::ModemDriverException(

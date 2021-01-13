@@ -95,7 +95,7 @@ struct MarshallingScheme
 template <typename DataType, int scheme, class Enable = void> struct SerializerParserHelper
 {
     /// \brief Given data, produce a vector of bytes
-    static std::vector<char> serialize(const DataType& msg)
+    static std::vector<char> serialize(const DataType& /*msg*/)
     {
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
         return std::vector<char>();
@@ -109,7 +109,7 @@ template <typename DataType, int scheme, class Enable = void> struct SerializerP
     }
 
     /// \brief The marshalling scheme specific string name for this type, given a instantiation of the type (useful for specializations that can handle multiple types using runtime introspection)
-    static std::string type_name(const DataType& d)
+    static std::string type_name(const DataType& /*d*/)
     {
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
         return std::string();
@@ -131,7 +131,6 @@ template <typename DataType, int scheme, class Enable = void> struct SerializerP
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
         return std::shared_ptr<DataType>();
     }
-
 };
 
 //

@@ -354,7 +354,7 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
     assert(indirect_subscriber_ack == 1);
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     int process_index = 0;
     const int number_children = 3;

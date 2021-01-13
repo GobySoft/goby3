@@ -289,7 +289,7 @@ goby::apps::zeromq::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(
 // }
 
 goby::apps::zeromq::LiaisonScopeProtobufModel::LiaisonScopeProtobufModel(
-    const protobuf::ProtobufScopeConfig& pb_scope_config, Wt::WContainerWidget* parent /*= 0*/)
+    const protobuf::ProtobufScopeConfig& /*pb_scope_config*/, Wt::WContainerWidget* parent /*= 0*/)
     : WStandardItemModel(0, protobuf::ProtobufScopeConfig::COLUMN_MAX + 1, parent)
 {
     this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_GROUP, Horizontal,

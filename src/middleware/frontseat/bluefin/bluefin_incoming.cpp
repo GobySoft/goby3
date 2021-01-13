@@ -139,7 +139,7 @@ void goby::middleware::frontseat::Bluefin::bfack(const goby::util::NMEASentence&
     waiting_for_huxley_ = false;
 }
 
-void goby::middleware::frontseat::Bluefin::bfmsc(const goby::util::NMEASentence& nmea)
+void goby::middleware::frontseat::Bluefin::bfmsc(const goby::util::NMEASentence& /*nmea*/)
 {
     // TODO: See if there is something to the message contents
     // BF manual says: Arbitrary textual message. Semantics determined by the payload.
@@ -256,7 +256,7 @@ void goby::middleware::frontseat::Bluefin::bfsvs(const goby::util::NMEASentence&
     // We don't use this, choosing to calculate it ourselves from the CTD
 }
 
-void goby::middleware::frontseat::Bluefin::bfsht(const goby::util::NMEASentence& nmea)
+void goby::middleware::frontseat::Bluefin::bfsht(const goby::util::NMEASentence& /*nmea*/)
 {
     glog.is(WARN) && glog << "Bluefin sent us the SHT message: they are shutting down!"
                           << std::endl;

@@ -316,7 +316,8 @@ class DCCLCodec
         }
     }
 
-    void dlog_message(const std::string& msg, dccl::logger::Verbosity vrb, dccl::logger::Group grp)
+    void dlog_message(const std::string& msg, dccl::logger::Verbosity /*vrb*/,
+                      dccl::logger::Group grp)
     {
         if (grp == dccl::logger::DECODE)
             goby::glog << group(glog_decode_group_) << msg << std::endl;

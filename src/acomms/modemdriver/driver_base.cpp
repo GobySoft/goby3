@@ -174,7 +174,7 @@ void goby::acomms::ModemDriverBase::write_raw(const protobuf::ModemRaw& msg, boo
     *raw_fs_ << msg.raw() << std::endl;
 }
 
-void goby::acomms::ModemDriverBase::update_cfg(const protobuf::DriverConfig& cfg)
+void goby::acomms::ModemDriverBase::update_cfg(const protobuf::DriverConfig& /*cfg*/)
 {
     goby::glog.is(WARN) && goby::glog << group(glog_out_group_)
                                       << "Updating configuration is not implemented in this driver."

@@ -178,7 +178,7 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
     assert(special_chars_receive);
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::zeromq::protobuf::InterProcessPortalConfig cfg;
     cfg.set_platform("test4");

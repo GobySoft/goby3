@@ -406,7 +406,7 @@ bool goby::acomms::Queue::get_priority_values(double* priority,
     }
 }
 
-bool goby::acomms::Queue::pop_message(unsigned frame)
+bool goby::acomms::Queue::pop_message(unsigned /*frame*/)
 {
     auto back_it = messages_.end();
     --back_it; // gives us "back" iterator

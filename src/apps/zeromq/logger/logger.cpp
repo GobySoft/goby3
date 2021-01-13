@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-void signal_handler(int sig) { goby::apps::zeromq::Logger::do_quit = true; }
+void signal_handler(int /*sig*/) { goby::apps::zeromq::Logger::do_quit = true; }
 
 void goby::apps::zeromq::Logger::log(const std::vector<unsigned char>& data, int scheme,
                                const std::string& type, const goby::middleware::Group& group)

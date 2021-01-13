@@ -230,7 +230,7 @@ class InterProcessPortalImplementation
 
     template <typename Data, int scheme>
     void _publish(const Data& d, const goby::middleware::Group& group,
-                  const middleware::Publisher<Data>& publisher)
+                  const middleware::Publisher<Data>& /*publisher*/)
     {
         std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
         std::string identifier = _make_fully_qualified_identifier<Data, scheme>(d, group) + '\0';
@@ -240,7 +240,7 @@ class InterProcessPortalImplementation
     template <typename Data, int scheme>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f,
                     const goby::middleware::Group& group,
-                    const middleware::Subscriber<Data>& subscriber)
+                    const middleware::Subscriber<Data>& /*subscriber*/)
     {
         std::string identifier =
             _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
@@ -248,7 +248,7 @@ class InterProcessPortalImplementation
         auto subscription = std::make_shared<middleware::SerializationSubscription<Data, scheme>>(
             f, group,
             middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
-                                         [=](const Data& d) { return group; }));
+                                         [=](const Data& /*d*/) { return group; }));
 
         if (forwarder_subscriptions_.count(identifier) == 0 &&
             portal_subscriptions_.count(identifier) == 0)
@@ -268,9 +268,9 @@ class InterProcessPortalImplementation
     }
 
     template <typename Data, int scheme>
-    void
-    _unsubscribe(const goby::middleware::Group& group,
-                 const middleware::Subscriber<Data>& subscriber = middleware::Subscriber<Data>())
+    void _unsubscribe(
+        const goby::middleware::Group& group,
+        const middleware::Subscriber<Data>& /*subscriber*/ = middleware::Subscriber<Data>())
     {
         std::string identifier =
             _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
