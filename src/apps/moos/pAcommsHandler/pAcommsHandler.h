@@ -161,7 +161,7 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
     boost::asio::io_context timer_io_context_;
     boost::asio::io_context::work work_;
 
-    goby::acomms::RouteManager* router_{0};
+    goby::acomms::RouteManager* router_{nullptr};
 
     std::vector<std::shared_ptr<Timer> > timers_;
 

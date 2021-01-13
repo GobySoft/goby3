@@ -132,7 +132,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     {
         SubscriptionsContainer(Wt::WStandardItemModel* model, Wt::WStringListModel* history_model,
                                std::map<std::string, int>& msg_map,
-                               Wt::WContainerWidget* parent = 0);
+                               Wt::WContainerWidget* parent = nullptr);
 
         Wt::WStandardItemModel* model_;
         Wt::WStringListModel* history_model_;
@@ -180,7 +180,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     {
         ControlsContainer(Wt::WTimer* timer, bool start_paused, LiaisonScope* scope,
                           SubscriptionsContainer* subscriptions_div,
-                          Wt::WContainerWidget* parent = 0);
+                          Wt::WContainerWidget* parent = nullptr);
         ~ControlsContainer() override;
 
         void handle_play_pause(bool toggle_state);
@@ -203,7 +203,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     {
         RegexFilterContainer(Wt::WStandardItemModel* model, Wt::WSortFilterProxyModel* proxy,
                              const protobuf::ProtobufScopeConfig& pb_scope_config,
-                             Wt::WContainerWidget* parent = 0);
+                             Wt::WContainerWidget* parent = nullptr);
 
         void handle_set_regex_filter();
         void handle_clear_regex_filter();
@@ -238,7 +238,7 @@ class LiaisonScopeProtobufTreeView : public Wt::WTreeView
 {
   public:
     LiaisonScopeProtobufTreeView(const protobuf::ProtobufScopeConfig& pb_scope_config,
-                                 int scope_height, Wt::WContainerWidget* parent = 0);
+                                 int scope_height, Wt::WContainerWidget* parent = nullptr);
 
   private:
     //           void handle_double_click(const Wt::WModelIndex& index, const Wt::WMouseEvent& event);
@@ -248,7 +248,7 @@ class LiaisonScopeProtobufModel : public Wt::WStandardItemModel
 {
   public:
     LiaisonScopeProtobufModel(const protobuf::ProtobufScopeConfig& pb_scope_config,
-                              Wt::WContainerWidget* parent = 0);
+                              Wt::WContainerWidget* parent = nullptr);
 };
 
 class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>

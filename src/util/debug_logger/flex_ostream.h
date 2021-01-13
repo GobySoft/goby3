@@ -86,7 +86,7 @@ class FlexOstream : public std::ostream
     bool is_debug3() { return is(goby::util::logger::DEBUG3); }
 
     /// Attach a stream object (e.g. std::cout, std::ofstream, ...) to the logger with desired verbosity
-    void add_stream(logger::Verbosity verbosity = logger::VERBOSE, std::ostream* os = 0)
+    void add_stream(logger::Verbosity verbosity = logger::VERBOSE, std::ostream* os = nullptr)
     {
         std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
         sb_.add_stream(verbosity, os);
@@ -94,7 +94,7 @@ class FlexOstream : public std::ostream
 
     void add_stream(goby::util::protobuf::GLogConfig::Verbosity verbosity =
                         goby::util::protobuf::GLogConfig::VERBOSE,
-                    std::ostream* os = 0)
+                    std::ostream* os = nullptr)
     {
         std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
         sb_.add_stream(static_cast<logger::Verbosity>(verbosity), os);

@@ -313,7 +313,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
     send_button_->clicked().connect(this, &ControlsContainer::send_message);
     clear_button_->clicked().connect(this, &ControlsContainer::clear_message);
 
-    Dbo::ptr<CommandEntry> last_command(static_cast<CommandEntry*>(0));
+    Dbo::ptr<CommandEntry> last_command(static_cast<CommandEntry*>(nullptr));
     {
         std::lock_guard<std::mutex> slock(dbo_mutex_);
         Dbo::Transaction transaction(session_);
@@ -482,7 +482,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
             auto check_fields = [](const std::vector<std::string>& fields,
                                    const google::protobuf::Descriptor* root_desc) {
-                const google::protobuf::FieldDescriptor* field = 0;
+                const google::protobuf::FieldDescriptor* field = nullptr;
                 const google::protobuf::Descriptor* desc = root_desc;
 
                 for (int i = 0, n = fields.size(); i < n; ++i)
@@ -1113,7 +1113,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     auto* node =
         new LiaisonTreeTableNode(field_desc->is_extension() ? "[" + field_desc->full_name() + "]: "
                                                             : field_desc->name() + ": ",
-                                 0, parent);
+                                 nullptr, parent);
 
     if ((parent->styleClass() == STRIPE_ODD_CLASS && index % 2) ||
         (parent->styleClass() == STRIPE_EVEN_CLASS && !(index % 2)))
@@ -1121,9 +1121,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     else
         node->setStyleClass(STRIPE_EVEN_CLASS);
 
-    WFormWidget* value_field = 0;
-    WFormWidget* modify_field = 0;
-    WFormWidget* external_data_field = 0;
+    WFormWidget* value_field = nullptr;
+    WFormWidget* modify_field = nullptr;
+    WFormWidget* external_data_field = nullptr;
     if (field_desc->is_repeated())
     {
         //        WContainerWidget* div = new WContainerWidget;
@@ -1234,7 +1234,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
         {
-            WIntValidator* validator = 0;
+            WIntValidator* validator = nullptr;
 
             if (field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddInt64(message, field_desc, field_desc->default_value_int64());
@@ -1269,7 +1269,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
         {
-            WIntValidator* validator = 0;
+            WIntValidator* validator = nullptr;
 
             if (field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddUInt64(message, field_desc, field_desc->default_value_uint64());
@@ -1289,7 +1289,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             if (field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddString(message, field_desc, field_desc->default_value_string());
 
-            WValidator* validator = 0;
+            WValidator* validator = nullptr;
 
             std::string current_str = field_desc->is_repeated()
                                           ? refl->GetRepeatedString(*message, field_desc, index)
@@ -1811,7 +1811,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     while (desired_size > static_cast<int>(parent->childNodes().size()))
     {
         int index = parent->childNodes().size();
-        auto* node = new WTreeTableNode("index: " + goby::util::as<std::string>(index), 0, parent);
+        auto* node =
+            new WTreeTableNode("index: " + goby::util::as<std::string>(index), nullptr, parent);
 
         if ((parent->styleClass() == STRIPE_ODD_CLASS && index % 2) ||
             (parent->styleClass() == STRIPE_EVEN_CLASS && !(index % 2)))
@@ -1819,7 +1820,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         else
             node->setStyleClass(STRIPE_EVEN_CLASS);
 
-        WFormWidget* value_field = 0;
+        WFormWidget* value_field = nullptr;
 
         if (field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE)
         {

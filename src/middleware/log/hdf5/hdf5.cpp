@@ -155,7 +155,7 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
 
         auto write_field = [&, this](const google::protobuf::FieldDescriptor* sub_field_desc) {
             std::vector<const google::protobuf::Message*> sub_messages(
-                messages.size() * max_field_size, (const google::protobuf::Message*)0);
+                messages.size() * max_field_size, (const google::protobuf::Message*)nullptr);
 
             bool has_submessages = false;
             for (unsigned i = 0, n = messages.size(); i < n; ++i)
@@ -216,7 +216,7 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
                 }
                 else
                 {
-                    sub_messages.push_back(0);
+                    sub_messages.push_back(nullptr);
                 }
             }
 
@@ -303,7 +303,7 @@ void goby::middleware::hdf5::Writer::write_enum_attributes(
 
     const google::protobuf::EnumDescriptor* enum_desc = field_desc->enum_type();
 
-    std::vector<const char*> names(enum_desc->value_count(), (const char*)(0));
+    std::vector<const char*> names(enum_desc->value_count(), (const char*)nullptr);
     std::vector<std::int32_t> values(enum_desc->value_count(), 0);
 
     for (int i = 0, n = enum_desc->value_count(); i < n; ++i)

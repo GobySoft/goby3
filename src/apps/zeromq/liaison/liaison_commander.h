@@ -76,8 +76,8 @@ namespace zeromq
 class LiaisonTreeTableNode : public Wt::WTreeTableNode
 {
   public:
-    LiaisonTreeTableNode(const Wt::WString& labelText, Wt::WIconPair* labelIcon = 0,
-                         Wt::WTreeTableNode* parentNode = 0)
+    LiaisonTreeTableNode(const Wt::WString& labelText, Wt::WIconPair* labelIcon = nullptr,
+                         Wt::WTreeTableNode* parentNode = nullptr)
         : Wt::WTreeTableNode(labelText, labelIcon, parentNode)
     {
         this->labelArea()->setHeight(Wt::WLength(2.5, Wt::WLength::FontEm));

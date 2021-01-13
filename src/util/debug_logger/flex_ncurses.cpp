@@ -131,18 +131,18 @@ void goby::util::FlexNCurses::recalculate_win()
     {
         delwin(static_cast<WINDOW*>(panels_[i].window()));
         delwin(static_cast<WINDOW*>(panels_[i].head_window()));
-        panels_[i].window(0);
-        panels_[i].head_window(0);
+        panels_[i].window(nullptr);
+        panels_[i].head_window(nullptr);
     }
     for (void* p : vert_windows_)
     {
         delwin(static_cast<WINDOW*>(p));
-        p = 0;
+        p = nullptr;
     }
     for (void* p : col_end_windows_)
     {
         delwin(static_cast<WINDOW*>(p));
-        p = 0;
+        p = nullptr;
     }
     delwin(static_cast<WINDOW*>(foot_window_));
 

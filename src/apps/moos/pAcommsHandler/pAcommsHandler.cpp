@@ -61,7 +61,7 @@ using goby::glog;
 using goby::apps::moos::protobuf::pAcommsHandlerConfig;
 
 pAcommsHandlerConfig goby::apps::moos::CpAcommsHandler::cfg_;
-goby::apps::moos::CpAcommsHandler* goby::apps::moos::CpAcommsHandler::inst_ = 0;
+goby::apps::moos::CpAcommsHandler* goby::apps::moos::CpAcommsHandler::inst_ = nullptr;
 std::map<std::string, void*> goby::apps::moos::CpAcommsHandler::driver_plugins_;
 
 goby::apps::moos::CpAcommsHandler* goby::apps::moos::CpAcommsHandler::get_instance()
@@ -379,7 +379,7 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
     for (int i = 0, n = cfg_.listen_driver_cfg_size(); i < n; ++i)
     {
         std::shared_ptr<goby::acomms::ModemDriverBase> driver;
-        create_driver(driver, cfg_.mutable_listen_driver_cfg(i), 0);
+        create_driver(driver, cfg_.mutable_listen_driver_cfg(i), nullptr);
         drivers_.insert(std::make_pair(driver, cfg_.mutable_listen_driver_cfg(i)));
     }
 

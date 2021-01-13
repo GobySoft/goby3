@@ -136,7 +136,7 @@ void goby::acomms::QueueManager::do_work()
 
 void goby::acomms::QueueManager::push_message(const google::protobuf::Message& dccl_msg)
 {
-    push_message(dccl_msg, 0);
+    push_message(dccl_msg, nullptr);
 }
 
 void goby::acomms::QueueManager::push_message(const google::protobuf::Message& dccl_msg,
@@ -222,7 +222,7 @@ void goby::acomms::QueueManager::handle_modem_data_request(protobuf::ModemTransm
                   total_frames = msg->max_num_frames() + msg->frame_start();
          frame_number < total_frames; ++frame_number)
     {
-        std::string* data = 0;
+        std::string* data = nullptr;
         if ((frame_number - msg->frame_start()) < (unsigned)msg->frame_size())
             data = msg->mutable_frame(frame_number - msg->frame_start());
         else
@@ -521,7 +521,7 @@ goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& 
     double winning_priority = 0;
     boost::posix_time::ptime winning_last_send_time;
 
-    Queue* winning_queue = 0;
+    Queue* winning_queue = nullptr;
 
     glog.is(DEBUG1) && glog << group(glog_priority_group_) << "Starting priority contest\n"
                             << "\tRequesting " << request_msg.max_num_frames() << " frame(s), have "

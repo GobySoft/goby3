@@ -37,7 +37,7 @@ using goby::moos::operator<<;
 using goby::apps::moos::protobuf::pTranslatorConfig;
 
 pTranslatorConfig goby::apps::moos::CpTranslator::cfg_;
-goby::apps::moos::CpTranslator* goby::apps::moos::CpTranslator::inst_ = 0;
+goby::apps::moos::CpTranslator* goby::apps::moos::CpTranslator::inst_ = nullptr;
 
 goby::apps::moos::CpTranslator* goby::apps::moos::CpTranslator::get_instance()
 {

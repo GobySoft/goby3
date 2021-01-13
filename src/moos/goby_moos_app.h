@@ -324,7 +324,7 @@ template <class MOOSAppType>
 std::string goby::moos::GobyMOOSAppSelector<MOOSAppType>::application_name_;
 
 template <class MOOSAppType> int goby::moos::GobyMOOSAppSelector<MOOSAppType>::argc_ = 0;
-template <class MOOSAppType> char** goby::moos::GobyMOOSAppSelector<MOOSAppType>::argv_ = 0;
+template <class MOOSAppType> char** goby::moos::GobyMOOSAppSelector<MOOSAppType>::argv_ = nullptr;
 
 template <class MOOSAppType> bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::Iterate()
 {

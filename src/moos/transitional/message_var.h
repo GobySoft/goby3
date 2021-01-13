@@ -118,7 +118,7 @@ class DCCLMessageVar
     virtual std::vector<std::string>* enums()
     {
         bad_overload("enums()");
-        return 0;
+        return nullptr;
     }
 
     unsigned array_length() const { return array_length_; }

@@ -29,7 +29,7 @@
 
 #include "goby/middleware/log/hdf5/hdf5.h"
 
-void* plugin_handle = 0;
+void* plugin_handle = nullptr;
 
 using namespace goby::util::logger;
 using goby::glog;

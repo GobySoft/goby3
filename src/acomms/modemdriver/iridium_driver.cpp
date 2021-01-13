@@ -384,7 +384,7 @@ void goby::acomms::IridiumDriver::display_state_cfg(std::ostream* os)
 
         const iridium::fsm::IridiumDriverFSM::state_base_type* pState = &*pLeafState;
 
-        while (pState != 0)
+        while (pState != nullptr)
         {
             if (pState != &*pLeafState)
             {

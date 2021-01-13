@@ -38,8 +38,8 @@ namespace gpb = goby::middleware::frontseat::protobuf;
 using goby::glog;
 
 goby::apps::moos::protobuf::iFrontSeatConfig goby::apps::moos::iFrontSeat::cfg_;
-goby::apps::moos::iFrontSeat* goby::apps::moos::iFrontSeat::inst_ = 0;
-void* goby::apps::moos::iFrontSeat::driver_library_handle_ = 0;
+goby::apps::moos::iFrontSeat* goby::apps::moos::iFrontSeat::inst_ = nullptr;
+void* goby::apps::moos::iFrontSeat::driver_library_handle_ = nullptr;
 
 int main(int argc, char* argv[])
 {

@@ -55,7 +55,9 @@ typedef dccl::v2::DefaultEnumCodec DCCLDefaultEnumCodec;
 class MessageHandler : public dccl::internal::MessageStack
 {
   public:
-    MessageHandler(const google::protobuf::FieldDescriptor* field = 0) : MessageStack(field) {}
+    MessageHandler(const google::protobuf::FieldDescriptor* field = nullptr) : MessageStack(field)
+    {
+    }
     typedef dccl::MessagePart MessagePart;
     static const MessagePart HEAD = dccl::HEAD, BODY = dccl::BODY, UNKNOWN = dccl::UNKNOWN;
 };

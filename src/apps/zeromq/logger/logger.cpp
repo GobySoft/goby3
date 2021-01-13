@@ -122,15 +122,15 @@ int main(int argc, char* argv[])
     // unblock signals
     sigset_t empty_mask;
     sigemptyset(&empty_mask);
-    pthread_sigmask(SIG_SETMASK, &empty_mask, 0);
+    pthread_sigmask(SIG_SETMASK, &empty_mask, nullptr);
 
     struct sigaction action;
     action.sa_handler = &signal_handler;
 
     // register the usual quitting signals
-    sigaction(SIGINT, &action, 0);
-    sigaction(SIGTERM, &action, 0);
-    sigaction(SIGQUIT, &action, 0);
+    sigaction(SIGINT, &action, nullptr);
+    sigaction(SIGTERM, &action, nullptr);
+    sigaction(SIGQUIT, &action, nullptr);
 
     // wait for the app to quit
     t.join();

@@ -56,7 +56,7 @@ goby::util::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
       name_("no name"),
       die_flag_(false),
       current_verbosity_(logger::UNKNOWN),
-      curses_(0),
+      curses_(nullptr),
       start_time_(time::SystemClock::now<boost::posix_time::ptime>()),
       is_gui_(false),
       highest_verbosity_(logger::QUIET),

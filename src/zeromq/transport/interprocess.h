@@ -556,7 +556,7 @@ class InterProcessPortalImplementation
             previous_slash = slash_pos;
         }
         return std::make_tuple(elem[0], middleware::MarshallingScheme::from_string(elem[1]),
-                               elem[2], std::stoi(elem[3]), std::stoull(elem[4], 0, 16));
+                               elem[2], std::stoi(elem[3]), std::stoull(elem[4], nullptr, 16));
     }
 
     template <typename Key>

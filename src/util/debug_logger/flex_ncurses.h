@@ -173,7 +173,7 @@ class FlexNCurses
     std::vector<void*> vert_windows_;
     // bottom of the column (indexed by column)
     std::vector<void*> col_end_windows_;
-    void* foot_window_{0};
+    void* foot_window_{nullptr};
 
     bool is_locked_{false};
     int locked_panel_{0};
@@ -181,7 +181,7 @@ class FlexNCurses
     class Panel
     {
       public:
-        Panel(const logger::Group* group = 0) : group_(group) {}
+        Panel(const logger::Group* group = nullptr) : group_(group) {}
 
         void window(void* v) { window_ = v; }
         void head_window(void* v) { head_window_ = v; }
@@ -226,8 +226,8 @@ class FlexNCurses
 
       private:
         const logger::Group* group_;
-        void* window_{0};
-        void* head_window_{0};
+        void* window_{nullptr};
+        void* head_window_{nullptr};
         bool minimized_{false};
         bool selected_{false};
         bool locked_{false};

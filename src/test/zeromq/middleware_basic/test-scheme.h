@@ -68,7 +68,8 @@ struct SerializerParserHelper<std::deque<char>, test::middleware::MyMarshallingS
 };
 
 template <typename T>
-constexpr int scheme(typename std::enable_if<std::is_same<T, std::deque<char> >::value>::type* = 0)
+constexpr int
+scheme(typename std::enable_if<std::is_same<T, std::deque<char>>::value>::type* = nullptr)
 {
     return test::middleware::MyMarshallingScheme::DEQUECHAR;
 }

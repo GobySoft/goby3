@@ -30,7 +30,7 @@
 #include "goby/util/as.h"
 
 goby::moos::transitional::DCCLAlgorithmPerformer*
-    goby::moos::transitional::DCCLAlgorithmPerformer::inst_ = 0;
+    goby::moos::transitional::DCCLAlgorithmPerformer::inst_ = nullptr;
 
 // singleton class, use this to get pointer
 goby::moos::transitional::DCCLAlgorithmPerformer*

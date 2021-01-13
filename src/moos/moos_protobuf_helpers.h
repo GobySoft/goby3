@@ -861,7 +861,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
 
             ++max_field_number;
 
-            const google::protobuf::FieldDescriptor* field_desc = 0;
+            const google::protobuf::FieldDescriptor* field_desc = nullptr;
             const google::protobuf::Reflection* sub_refl = refl;
             const google::protobuf::Message* sub_message = &in;
 
@@ -1157,7 +1157,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                 {
                     std::vector<std::string> subfields;
                     boost::split(subfields, specifier, boost::is_any_of(":"));
-                    const google::protobuf::FieldDescriptor* field_desc = 0;
+                    const google::protobuf::FieldDescriptor* field_desc = nullptr;
                     const google::protobuf::Reflection* sub_refl = refl;
                     google::protobuf::Message* sub_message = out;
 

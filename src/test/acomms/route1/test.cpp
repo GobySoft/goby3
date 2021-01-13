@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
     d_cfg2.set_modem_id(ID_2_1);
     d_cfg3.set_modem_id(ID_3_1);
 
-    srand(time(NULL));
+    srand(time(nullptr));
     int port1 = rand() % 1000 + 50020;
     int port2 = port1 + 1;
 

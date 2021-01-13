@@ -52,7 +52,7 @@ class GobyMOOSAppTest : public goby::moos::GobyMOOSApp
 } // namespace goby
 
 std::shared_ptr<goby::test::moos::protobuf::AppConfig> master_config;
-goby::test::moos::GobyMOOSAppTest* goby::test::moos::GobyMOOSAppTest::inst_ = 0;
+goby::test::moos::GobyMOOSAppTest* goby::test::moos::GobyMOOSAppTest::inst_ = nullptr;
 
 goby::test::moos::GobyMOOSAppTest* goby::test::moos::GobyMOOSAppTest::get_instance()
 {

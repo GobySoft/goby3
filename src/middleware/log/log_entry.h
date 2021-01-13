@@ -174,7 +174,8 @@ class LogEntry
         s->write(cs_str.data(), cs_str.size());
     }
 
-    template <typename Unsigned> Unsigned read_one(std::istream* s, boost::crc_32_type* crc = 0)
+    template <typename Unsigned>
+    Unsigned read_one(std::istream* s, boost::crc_32_type* crc = nullptr)
     {
         auto size = std::numeric_limits<Unsigned>::digits / 8;
         std::string str(size, '\0');

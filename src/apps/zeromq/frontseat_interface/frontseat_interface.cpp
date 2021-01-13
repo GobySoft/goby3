@@ -29,7 +29,7 @@
 using goby::glog;
 namespace frontseat = goby::middleware::frontseat;
 
-void* goby::apps::zeromq::FrontSeatInterface::driver_library_handle_ = 0;
+void* goby::apps::zeromq::FrontSeatInterface::driver_library_handle_ = nullptr;
 
 namespace goby
 {
