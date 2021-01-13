@@ -69,10 +69,10 @@ inline void protobuf_inbox(const CMOOSMsg& msg,
 class MOOSAppShell : public CMOOSApp
 {
   protected:
-    bool Iterate() { return true; }
-    bool OnStartUp() { return true; }
-    bool OnConnectToServer() { return true; }
-    bool OnNewMail(MOOSMSG_LIST& NewMail) { return true; }
+    bool Iterate() override { return true; }
+    bool OnStartUp() override { return true; }
+    bool OnConnectToServer() override { return true; }
+    bool OnNewMail(MOOSMSG_LIST& NewMail) override { return true; }
     void RegisterVariables() {}
     void PostReport() {}
 };
@@ -105,7 +105,7 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
         glog.is(goby::util::logger::DEBUG2) && glog << cfg->DebugString() << std::endl;
     }
 
-    virtual ~GobyMOOSAppSelector() {}
+    ~GobyMOOSAppSelector() override = default;
 
     template <typename ProtobufMessage>
     void publish_pb(const std::string& key, const ProtobufMessage& msg)
@@ -235,11 +235,11 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
 
   private:
     // from CMOOSApp
-    bool Iterate();
-    bool OnStartUp();
-    bool OnConnectToServer();
-    bool OnDisconnectFromServer();
-    bool OnNewMail(MOOSMSG_LIST& NewMail);
+    bool Iterate() override;
+    bool OnStartUp() override;
+    bool OnConnectToServer() override;
+    bool OnDisconnectFromServer() override;
+    bool OnNewMail(MOOSMSG_LIST& NewMail) override;
     void try_subscribing();
     void do_subscriptions();
 

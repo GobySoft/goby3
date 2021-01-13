@@ -86,8 +86,8 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
     typedef boost::asio::basic_waitable_timer<goby::time::SystemClock> Timer;
 
     CpAcommsHandler();
-    ~CpAcommsHandler();
-    void loop(); // from GobyMOOSApp
+    ~CpAcommsHandler() override;
+    void loop() override; // from GobyMOOSApp
 
     void process_configuration();
     void create_driver(std::shared_ptr<goby::acomms::ModemDriverBase>& driver,

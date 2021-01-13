@@ -268,7 +268,7 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
     void in_state_react(const EvAck&);
 
     Command() : StateNotify("Command"), at_out_(AT_BUFFER_CAPACITY) {}
-    ~Command() {}
+    ~Command() override = default;
 
     typedef boost::mpl::list<
         boost::statechart::in_state_reaction<EvRxSerial, Command, &Command::in_state_react>,
@@ -279,7 +279,7 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
 
     struct ATSentenceMeta
     {
-        ATSentenceMeta() {}
+        ATSentenceMeta() = default;
         double last_send_time_{0};
         int tries_{0};
     };
@@ -329,14 +329,14 @@ struct Configure : boost::statechart::state<Configure, Command::orthogonal<0> >,
         for (int i = 0, n = iridium_driver_config.config_size(); i < n; ++i)
         { context<Command>().push_at_command(iridium_driver_config.config(i)); } }
 
-    ~Configure() { post_event(EvConfigured()); }
+    ~Configure() override { post_event(EvConfigured()); }
 };
 
 struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0> >, StateNotify
 {
   public:
     Ready() : StateNotify("Ready") {}
-    ~Ready() {}
+    ~Ready() override = default;
 
     boost::statechart::result react(const EvDial&)
     {
@@ -368,7 +368,7 @@ struct HangingUp : boost::statechart::state<HangingUp, Command::orthogonal<0> >,
         context<Command>().push_at_command("+++");
         context<Command>().push_at_command("H");
     }
-    ~HangingUp() {}
+    ~HangingUp() override = default;
 
     typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready> > reactions;
 
@@ -385,7 +385,7 @@ struct PostDisconnected : boost::statechart::state<PostDisconnected, Command::or
             glog << group("iridiumdriver") << "Disconnected; checking error details: " << std::endl;
         context<Command>().push_at_command("+CEER");
     }
-    ~PostDisconnected() {}
+    ~PostDisconnected() override = default;
 
     typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready> > reactions;
 
@@ -397,7 +397,7 @@ struct Dial : boost::statechart::state<Dial, Command::orthogonal<0> >, StateNoti
     typedef boost::mpl::list<boost::statechart::custom_reaction<EvNoCarrier> > reactions;
 
     Dial(my_context ctx) : my_base(ctx), StateNotify("Dial"), dial_attempts_(0) { dial(); }
-    ~Dial() {}
+    ~Dial() override = default;
 
     boost::statechart::result react(const EvNoCarrier&);
     void dial();
@@ -414,14 +414,14 @@ struct Answer : boost::statechart::state<Answer, Command::orthogonal<0> >, State
     {
         context<Command>().push_at_command("A");
     }
-    ~Answer() {}
+    ~Answer() override = default;
 };
 
 // Online
 struct Online : boost::statechart::simple_state<Online, Active::orthogonal<0> >, StateNotify
 {
     Online() : StateNotify("Online") {}
-    ~Online() {}
+    ~Online() override = default;
 
     void in_state_react(const EvRxSerial&);
     void in_state_react(const EvTxSerial&);
@@ -440,7 +440,7 @@ struct NotOnCall : boost::statechart::simple_state<NotOnCall, Active::orthogonal
     typedef boost::mpl::list<boost::statechart::transition<EvConnect, OnCall> > reactions;
 
     NotOnCall() : StateNotify("NotOnCall") {}
-    ~NotOnCall() {}
+    ~NotOnCall() override = default;
 };
 
 struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateNotify, OnCallBase
@@ -456,7 +456,7 @@ struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateN
         // connecting necessarily puts the DTE online
         post_event(EvOnline());
     }
-    ~OnCall()
+    ~OnCall() override
     {
         // signal the disconnect event for the command state to handle
         glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << "Sent "
@@ -484,7 +484,7 @@ struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateN
 struct SBD : boost::statechart::simple_state<SBD, Command::orthogonal<1>, SBDReady>, StateNotify
 {
     SBD() : StateNotify("SBD") {}
-    ~SBD() {}
+    ~SBD() override = default;
 
     void set_data(const EvSBDBeginData& e)
     {
@@ -537,7 +537,7 @@ struct SBDReady : boost::statechart::simple_state<SBDReady, SBD>, StateNotify
 
     SBDReady() : StateNotify("SBDReady") {}
 
-    ~SBDReady() {}
+    ~SBDReady() override = default;
 };
 
 struct SBDClearBuffers : boost::statechart::state<SBDClearBuffers, SBD>, StateNotify
@@ -551,7 +551,7 @@ struct SBDClearBuffers : boost::statechart::state<SBDClearBuffers, SBD>, StateNo
         context<Command>().push_at_command("+SBDD2");
     }
 
-    ~SBDClearBuffers() {}
+    ~SBDClearBuffers() override = default;
 };
 
 struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
@@ -580,7 +580,7 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
         context<IridiumDriverFSM>().serial_tx_buffer().push_back(context<SBD>().data());
     }
 
-    ~SBDWrite() {}
+    ~SBDWrite() override = default;
 
     typedef boost::mpl::list<
         boost::statechart::in_state_reaction<EvSBDWriteReady, SBDWrite, &SBDWrite::in_state_react>,
@@ -598,7 +598,7 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
         else
             context<Command>().push_at_command("+SBDIX");
     }
-    ~SBDTransmit() { context<SBD>().clear_data(); }
+    ~SBDTransmit() override { context<SBD>().clear_data(); }
 
     std::string mo_status_as_string(int code)
     {
@@ -728,7 +728,7 @@ struct SBDReceive : boost::statechart::state<SBDReceive, SBD>, StateNotify
     {
         context<Command>().push_at_command("+SBDRB");
     }
-    ~SBDReceive() {}
+    ~SBDReceive() override = default;
 };
 
 } // namespace fsm

@@ -518,7 +518,7 @@ void goby::acomms::MMDriver::shutdown()
     modem_close();
 }
 
-goby::acomms::MMDriver::~MMDriver() {}
+goby::acomms::MMDriver::~MMDriver() = default;
 
 //
 // LOOP

@@ -37,7 +37,7 @@ class RouteManager
 {
   public:
     RouteManager() { glog.add_group("goby::acomms::route", util::Colors::yellow); }
-    ~RouteManager() {}
+    ~RouteManager() = default;
 
     void set_cfg(const protobuf::RouteManagerConfig& cfg);
     void merge_cfg(const protobuf::RouteManagerConfig& cfg);
@@ -58,8 +58,8 @@ class RouteManager
     int find_next_route_hop(int us, int dest);
 
   private:
-    RouteManager(const RouteManager&);
-    RouteManager& operator=(const RouteManager&);
+    RouteManager(const RouteManager&) = delete;
+    RouteManager& operator=(const RouteManager&) = delete;
 
     void process_cfg();
 

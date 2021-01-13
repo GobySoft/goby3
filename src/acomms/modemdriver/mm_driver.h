@@ -46,23 +46,23 @@ class MMDriver : public ModemDriverBase
     /// \brief Default constructor.
     MMDriver();
     /// Destructor.
-    ~MMDriver();
+    ~MMDriver() override;
 
     /// \brief Starts the driver.
     ///
     /// \param cfg Configuration for the Micro-Modem driver. DriverConfig is defined in acomms_driver_base.proto, and various extensions specific to the WHOI Micro-Modem are defined in acomms_mm_driver.proto.
-    void startup(const protobuf::DriverConfig& cfg);
+    void startup(const protobuf::DriverConfig& cfg) override;
 
-    void update_cfg(const protobuf::DriverConfig& cfg);
+    void update_cfg(const protobuf::DriverConfig& cfg) override;
 
     /// \brief Stops the driver.
-    void shutdown();
+    void shutdown() override;
 
     /// \brief See ModemDriverBase::do_work()
-    void do_work();
+    void do_work() override;
 
     /// \brief See ModemDriverBase::handle_initiate_transmission()
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
 
     /// \brief Current clock mode of the modem, necessary for synchronous navigation.
     int clk_mode() { return clk_mode_; }
@@ -355,7 +355,7 @@ class MMDriver : public ModemDriverBase
 
     struct MMRevision
     {
-        MMRevision() {}
+        MMRevision() = default;
         int mm_major{0};
         int mm_minor{0};
         int mm_patch{0};

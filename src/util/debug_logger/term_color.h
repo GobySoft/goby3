@@ -161,10 +161,10 @@ class TermColor
 
   private:
     TermColor();
-    ~TermColor() {}
+    ~TermColor() = default;
 
-    TermColor(const TermColor&);
-    TermColor& operator=(const TermColor&);
+    TermColor(const TermColor&) = delete;
+    TermColor& operator=(const TermColor&) = delete;
 
     static TermColor* get_instance()
     {

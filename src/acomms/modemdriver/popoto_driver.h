@@ -50,7 +50,7 @@ class PopotoDriver : public ModemDriverBase
 {
   public:
     PopotoDriver();
-    ~PopotoDriver();
+    ~PopotoDriver() override;
 
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;

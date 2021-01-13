@@ -43,15 +43,15 @@ class IridiumDriver : public ModemDriverBase
 {
   public:
     IridiumDriver();
-    ~IridiumDriver();
-    void startup(const protobuf::DriverConfig& cfg);
+    ~IridiumDriver() override;
+    void startup(const protobuf::DriverConfig& cfg) override;
 
     void modem_init();
 
-    void shutdown();
-    void do_work();
+    void shutdown() override;
+    void do_work() override;
 
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
     void process_transmission(protobuf::ModemTransmission msg, bool dial);
 
   private:

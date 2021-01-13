@@ -46,7 +46,7 @@ class LiaisonWtThread : public Wt::WApplication
 {
   public:
     LiaisonWtThread(const Wt::WEnvironment& env, protobuf::LiaisonConfig app_cfg);
-    ~LiaisonWtThread();
+    ~LiaisonWtThread() override;
 
     LiaisonWtThread(const LiaisonWtThread&) = delete;
     LiaisonWtThread& operator=(const LiaisonWtThread&) = delete;

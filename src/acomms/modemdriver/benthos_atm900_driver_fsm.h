@@ -231,7 +231,7 @@ struct Active : boost::statechart::simple_state<Active, BenthosATM900FSM, Comman
                 StateNotify
 {
     Active() : StateNotify("Active") {}
-    ~Active() {}
+    ~Active() override = default;
 
     void in_state_react(const EvRxSerial&);
 
@@ -245,7 +245,7 @@ struct Active : boost::statechart::simple_state<Active, BenthosATM900FSM, Comman
 struct ReceiveData : boost::statechart::state<ReceiveData, BenthosATM900FSM>, StateNotify
 {
     ReceiveData(my_context ctx);
-    ~ReceiveData() {}
+    ~ReceiveData() override = default;
 
     void in_state_react(const EvRxSerial&);
 
@@ -289,7 +289,7 @@ struct Command : boost::statechart::simple_state<Command, Active, Configure,
         // the modem seems to like to reset the OpMode
         context<Command>().push_clam_command("@OpMode=0");
     }
-    ~Command() {}
+    ~Command() override = default;
 
     typedef boost::mpl::list<
         boost::statechart::custom_reaction<EvConnect>,
@@ -299,7 +299,7 @@ struct Command : boost::statechart::simple_state<Command, Active, Configure,
 
     struct ATSentenceMeta
     {
-        ATSentenceMeta() {}
+        ATSentenceMeta() = default;
         double last_send_time_{0};
         int tries_{0};
     };
@@ -394,7 +394,7 @@ struct Configure : boost::statechart::state<Configure, Command>, StateNotify
         // context<Command>().push_clam_command("cfg store /ffs/goby.ini");
     }
 
-    ~Configure() {}
+    ~Configure() override = default;
 };
 
 struct SetClock : boost::statechart::state<SetClock, Command>, StateNotify
@@ -414,7 +414,7 @@ struct SetClock : boost::statechart::state<SetClock, Command>, StateNotify
         context<Command>().push_clam_command("date " + time_str + " " + date_str);
     }
 
-    ~SetClock() {}
+    ~SetClock() override = default;
 };
 
 struct Ready : boost::statechart::simple_state<Ready, Command>, StateNotify
@@ -424,7 +424,7 @@ struct Ready : boost::statechart::simple_state<Ready, Command>, StateNotify
 
   public:
     Ready() : StateNotify("Ready") {}
-    ~Ready() {}
+    ~Ready() override = default;
 
     typedef boost::mpl::list<
         boost::statechart::transition<EvDial, Dial>, boost::statechart::transition<EvRange, Range>,
@@ -462,7 +462,7 @@ struct Dial : boost::statechart::state<Dial, Command>, StateNotify
         context<Command>().push_clam_command("@TxRate=" + goby::util::as<std::string>(rate_));
         context<Command>().push_at_command("O");
     }
-    ~Dial() {}
+    ~Dial() override = default;
 
   private:
     int dest_;
@@ -472,7 +472,7 @@ struct Dial : boost::statechart::state<Dial, Command>, StateNotify
 struct LowPower : boost::statechart::state<LowPower, Command>, StateNotify
 {
     LowPower(my_context ctx) : my_base(ctx), StateNotify("LowPower") {}
-    ~LowPower() {}
+    ~LowPower() override = default;
 };
 
 struct Range : boost::statechart::state<Range, Command>, StateNotify
@@ -487,7 +487,7 @@ struct Range : boost::statechart::state<Range, Command>, StateNotify
         }
         context<Command>().push_at_command("R" + goby::util::as<std::string>(dest_));
     }
-    ~Range() {}
+    ~Range() override = default;
 
     typedef boost::mpl::list<
         boost::statechart::transition<EvRangingComplete, Ready>,
@@ -502,7 +502,7 @@ struct Range : boost::statechart::state<Range, Command>, StateNotify
 struct Online : boost::statechart::state<Online, Active, Listen>, StateNotify
 {
     Online(my_context ctx) : my_base(ctx), StateNotify("Online") {}
-    ~Online() {}
+    ~Online() override = default;
 
     typedef boost::mpl::list<
         boost::statechart::transition<EvShellPrompt, boost::statechart::deep_history<Command> > >
@@ -516,7 +516,7 @@ struct Listen : boost::statechart::state<Listen, Online>, StateNotify
         if (!context<BenthosATM900FSM>().data_out().empty())
             post_event(EvTransmit());
     }
-    ~Listen() {}
+    ~Listen() override = default;
 
     typedef boost::mpl::list<boost::statechart::transition<EvTransmit, TransmitData> > reactions;
 };
@@ -524,7 +524,7 @@ struct Listen : boost::statechart::state<Listen, Online>, StateNotify
 struct TransmitData : boost::statechart::state<TransmitData, Online>, StateNotify
 {
     TransmitData(my_context ctx) : my_base(ctx), StateNotify("TransmitData") {}
-    ~TransmitData() {}
+    ~TransmitData() override = default;
 
     void in_state_react(const EvTxSerial&);
     void in_state_react(const EvAck&);

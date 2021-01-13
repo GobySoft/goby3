@@ -36,7 +36,7 @@ struct GlogConfig
         goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
         goby::glog.set_name("mavlink");
     }
-    ~GlogConfig() {}
+    ~GlogConfig() = default;
 };
 
 BOOST_GLOBAL_FIXTURE(GlogConfig);

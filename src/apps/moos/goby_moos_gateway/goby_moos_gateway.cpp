@@ -45,7 +45,7 @@ class GobyMOOSGateway
 {
   public:
     GobyMOOSGateway();
-    ~GobyMOOSGateway();
+    ~GobyMOOSGateway() override;
 
     static std::vector<void*> dl_handles_;
 

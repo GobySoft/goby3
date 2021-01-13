@@ -70,7 +70,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
                                  boost::bind(&SV2SerialConnection::handle_write, this, _1, _2));
     }
 
-    ~SV2SerialConnection() {}
+    ~SV2SerialConnection() = default;
 
     boost::signals2::signal<void(const std::string& message)> message_signal;
 

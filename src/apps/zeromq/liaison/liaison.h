@@ -51,7 +51,7 @@ class Liaison : public goby::zeromq::MultiThreadApplication<protobuf::LiaisonCon
 {
   public:
     Liaison();
-    ~Liaison()
+    ~Liaison() override
     {
         terminating_ = true;
         wt_server_.stop();

@@ -52,9 +52,9 @@ class CpTranslator : public goby::moos::GobyMOOSApp
   private:
     typedef boost::asio::basic_waitable_timer<goby::time::SystemClock> Timer;
     CpTranslator();
-    ~CpTranslator();
+    ~CpTranslator() override;
 
-    void loop(); // from GobyMOOSApp
+    void loop() override; // from GobyMOOSApp
 
     void create_on_publish(const CMOOSMsg& trigger_msg,
                            const goby::moos::protobuf::TranslatorEntry& entry);

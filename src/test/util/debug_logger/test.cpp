@@ -42,7 +42,7 @@ namespace util
 {
 struct A
 {
-    A() {}
+    A() = default;
     A(int i) : i(i) {}
 
     int i{0};

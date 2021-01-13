@@ -55,7 +55,7 @@ class WriterApp : public goby::middleware::Application<goby::middleware::protobu
     void load();
     void collect();
     void write() { writer_.write(); }
-    void run() {}
+    void run() override {}
 
   private:
     std::shared_ptr<goby::middleware::HDF5Plugin> plugin_;

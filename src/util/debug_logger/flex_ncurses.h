@@ -50,7 +50,7 @@ class FlexNCurses
   public:
     /// \name Constructors / Destructor
     //@{
-    FlexNCurses();
+    FlexNCurses() = default;
     ~FlexNCurses()
     {
         alive_ = false;

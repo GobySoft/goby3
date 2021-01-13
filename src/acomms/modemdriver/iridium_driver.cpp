@@ -45,7 +45,7 @@ goby::acomms::IridiumDriver::IridiumDriver() : fsm_(driver_cfg_)
     //    assert(byte_string_to_uint32(uint32_to_byte_string(16540)) == 16540);
 }
 
-goby::acomms::IridiumDriver::~IridiumDriver() {}
+goby::acomms::IridiumDriver::~IridiumDriver() = default;
 
 void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
 {

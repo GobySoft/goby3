@@ -48,10 +48,10 @@ class BluefinCommsDriver : public goby::acomms::ModemDriverBase
 {
   public:
     BluefinCommsDriver(goby::acomms::MACManager* mac);
-    void startup(const goby::acomms::protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m);
+    void startup(const goby::acomms::protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m) override;
 
   private:
     std::string unix_time2nmea_time(double time);

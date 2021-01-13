@@ -50,7 +50,7 @@ class LineBasedInterface
 {
   public:
     LineBasedInterface(const std::string& delimiter);
-    virtual ~LineBasedInterface() {}
+    virtual ~LineBasedInterface() = default;
 
     // start the connection
     void start();

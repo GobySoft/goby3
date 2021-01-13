@@ -41,10 +41,10 @@ class ABCDriver : public ModemDriverBase
 {
   public:
     ABCDriver();
-    void startup(const protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void startup(const protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
 
   private:
     void parse_in(const std::string& in, std::map<std::string, std::string>* out);

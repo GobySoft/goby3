@@ -42,7 +42,7 @@ template <typename ASIOAsyncReadStream> class LineBasedConnection
     LineBasedConnection<ASIOAsyncReadStream>(LineBasedInterface* interface) : interface_(interface)
     {
     }
-    virtual ~LineBasedConnection<ASIOAsyncReadStream>() {}
+    virtual ~LineBasedConnection<ASIOAsyncReadStream>() = default;
 
     virtual ASIOAsyncReadStream& socket() = 0;
 

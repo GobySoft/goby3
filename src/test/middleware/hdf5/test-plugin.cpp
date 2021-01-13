@@ -48,7 +48,7 @@ class TestHDF5Plugin : public goby::middleware::HDF5Plugin
     TestHDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg);
 
   private:
-    bool provide_entry(goby::middleware::HDF5ProtobufEntry* entry);
+    bool provide_entry(goby::middleware::HDF5ProtobufEntry* entry) override;
     void fill_message(TestMsg& msg_in);
     void fill_message(protobuf::TestHDF5Message& msg);
 

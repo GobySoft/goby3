@@ -84,7 +84,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
   private:
     void handle_global_key(Wt::WKeyEvent event);
 
-    void focus()
+    void focus() override
     {
         if (last_scope_state_ == ACTIVE)
             resume();
@@ -94,7 +94,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         last_scope_state_ = UNKNOWN;
     }
 
-    void unfocus()
+    void unfocus() override
     {
         if (last_scope_state_ == UNKNOWN)
         {
@@ -104,7 +104,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     }
 
     friend class ScopeCommsThread;
-    void cleanup()
+    void cleanup() override
     {
         // we must resume the scope as this stops the background thread, allowing the ZeroMQService for the scope to be safely deleted. This is inelegant, but a by product of how Wt destructs the root object *after* this class (and thus all the local class objects).
         resume();
@@ -181,7 +181,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         ControlsContainer(Wt::WTimer* timer, bool start_paused, LiaisonScope* scope,
                           SubscriptionsContainer* subscriptions_div,
                           Wt::WContainerWidget* parent = 0);
-        ~ControlsContainer();
+        ~ControlsContainer() override;
 
         void handle_play_pause(bool toggle_state);
 
@@ -278,7 +278,7 @@ class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
         interprocess().subscribe_regex(subscription_handler,
                                        {goby::middleware::MarshallingScheme::PROTOBUF}, ".*", ".*");
     }
-    ~ScopeCommsThread() {}
+    ~ScopeCommsThread() override = default;
 
   private:
     friend class LiaisonScope;

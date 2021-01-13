@@ -55,7 +55,7 @@ class FlexOstream : public std::ostream
             exit(EXIT_FAILURE);
         }
     }
-    ~FlexOstream() {}
+    ~FlexOstream() override = default;
 
     /// \name Initialization
     //@{
@@ -215,7 +215,7 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
     {
     }
 
-    void AddError(int line, int column, const std::string& message)
+    void AddError(int line, int column, const std::string& message) override
     {
         using goby::util::logger::WARN;
 
@@ -224,7 +224,7 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
                                           << message << std::endl;
         has_errors_ = true;
     }
-    void AddWarning(int line, int column, const std::string& message)
+    void AddWarning(int line, int column, const std::string& message) override
     {
         using goby::util::logger::WARN;
 

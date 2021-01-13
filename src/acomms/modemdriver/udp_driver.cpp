@@ -37,8 +37,8 @@ using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
 
-goby::acomms::UDPDriver::UDPDriver() {}
-goby::acomms::UDPDriver::~UDPDriver() {}
+goby::acomms::UDPDriver::UDPDriver() = default;
+goby::acomms::UDPDriver::~UDPDriver() = default;
 
 void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 {

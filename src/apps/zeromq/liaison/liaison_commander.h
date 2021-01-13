@@ -140,13 +140,13 @@ class LiaisonCommander
 {
   public:
     LiaisonCommander(const protobuf::LiaisonConfig& cfg);
-    ~LiaisonCommander();
+    ~LiaisonCommander() override;
     void loop();
 
   private:
-    void focus() { commander_timer_.start(); }
+    void focus() override { commander_timer_.start(); }
 
-    void unfocus() { commander_timer_.stop(); }
+    void unfocus() override { commander_timer_.stop(); }
 
     friend class CommanderCommsThread;
     void display_notify_subscription(const std::vector<unsigned char>& data, int scheme,
@@ -427,7 +427,7 @@ class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonComm
                 notify.group_regex());
         }
     }
-    ~CommanderCommsThread() {}
+    ~CommanderCommsThread() override = default;
 
   private:
     void set_command_group(google::protobuf::Message& command, const goby::middleware::Group& group)

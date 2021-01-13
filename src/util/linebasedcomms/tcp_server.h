@@ -62,7 +62,7 @@ class TCPServer : public LineBasedInterface
           acceptor_(io_context(), boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
     {
     }
-    virtual ~TCPServer() {}
+    ~TCPServer() override = default;
 
     typedef std::string Endpoint;
     void close(const Endpoint& endpoint)
@@ -79,14 +79,14 @@ class TCPServer : public LineBasedInterface
     friend class LineBasedConnection<boost::asio::ip::tcp::socket>;
 
   private:
-    void do_start()
+    void do_start() override
     {
         start_accept();
         set_active(true);
     }
 
-    void do_write(const protobuf::Datagram& line);
-    void do_close(const boost::system::error_code& error) { do_close(error, ""); }
+    void do_write(const protobuf::Datagram& line) override;
+    void do_close(const boost::system::error_code& error) override { do_close(error, ""); }
     void do_close(const boost::system::error_code& error, Endpoint endpt);
 
   private:
@@ -107,7 +107,7 @@ class TCPConnection : public boost::enable_shared_from_this<TCPConnection>,
   public:
     static std::shared_ptr<TCPConnection> create(LineBasedInterface* interface);
 
-    boost::asio::ip::tcp::socket& socket() { return socket_; }
+    boost::asio::ip::tcp::socket& socket() override { return socket_; }
 
     void start()
     {
@@ -138,12 +138,18 @@ class TCPConnection : public boost::enable_shared_from_this<TCPConnection>,
 #endif
     }
 
-    std::string local_endpoint() { return goby::util::as<std::string>(socket_.local_endpoint()); }
-    std::string remote_endpoint() { return goby::util::as<std::string>(socket_.remote_endpoint()); }
+    std::string local_endpoint() override
+    {
+        return goby::util::as<std::string>(socket_.local_endpoint());
+    }
+    std::string remote_endpoint() override
+    {
+        return goby::util::as<std::string>(socket_.remote_endpoint());
+    }
 
   private:
     void socket_write(const protobuf::Datagram& line);
-    void socket_close(const boost::system::error_code& error);
+    void socket_close(const boost::system::error_code& error) override;
 
     TCPConnection(LineBasedInterface* interface)
         : LineBasedConnection<boost::asio::ip::tcp::socket>(interface),

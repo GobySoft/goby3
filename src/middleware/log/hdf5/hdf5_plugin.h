@@ -47,7 +47,7 @@ struct HDF5ProtobufEntry
     /// Actual message contents
     std::shared_ptr<google::protobuf::Message> msg;
 
-    HDF5ProtobufEntry() {}
+    HDF5ProtobufEntry() = default;
 
     /// Clear the values
     void clear()
@@ -77,7 +77,7 @@ class HDF5Plugin
 {
   public:
     HDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg) {}
-    virtual ~HDF5Plugin() {}
+    virtual ~HDF5Plugin() = default;
 
     /// \brief Implement this function in the plugin to provide a single Protobuf message and related metadata to the goby_hdf5 tool.
     ///

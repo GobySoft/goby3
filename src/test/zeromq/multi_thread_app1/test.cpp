@@ -94,7 +94,7 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
         ready = true;
     }
 
-    ~TestThreadRx() {}
+    ~TestThreadRx() override = default;
 
     void post(const Widget& widget)
     {

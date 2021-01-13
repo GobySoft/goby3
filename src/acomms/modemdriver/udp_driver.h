@@ -43,7 +43,7 @@ class UDPDriver : public ModemDriverBase
 {
   public:
     UDPDriver();
-    ~UDPDriver();
+    ~UDPDriver() override;
 
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;

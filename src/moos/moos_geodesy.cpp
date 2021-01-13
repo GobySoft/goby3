@@ -29,8 +29,8 @@
 
 #include "moos_geodesy.h"
 
-goby::moos::CMOOSGeodesy::CMOOSGeodesy() {}
-goby::moos::CMOOSGeodesy::~CMOOSGeodesy() {}
+goby::moos::CMOOSGeodesy::CMOOSGeodesy() = default;
+goby::moos::CMOOSGeodesy::~CMOOSGeodesy() = default;
 
 bool goby::moos::CMOOSGeodesy::Initialise(double lat, double lon)
 {

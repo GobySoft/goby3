@@ -55,7 +55,7 @@ class NMEASentence : public std::vector<std::string>
         REQUIRE
     };
 
-    NMEASentence() {}
+    NMEASentence() = default;
     NMEASentence(std::string s, strategy cs_strat = VALIDATE);
 
     // Bare message, no checksum or \r\n

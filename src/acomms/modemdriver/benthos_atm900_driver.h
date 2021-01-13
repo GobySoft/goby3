@@ -44,10 +44,10 @@ class BenthosATM900Driver : public ModemDriverBase
 {
   public:
     BenthosATM900Driver();
-    void startup(const protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void startup(const protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
 
   private:
     void receive(const protobuf::ModemTransmission& msg);
@@ -73,10 +73,10 @@ class BenthosATM900Driver : public ModemDriverBase
 // placeholder id codec that uses no bits, since we're always sending just this message on the wire
 class NoOpIdentifierCodec : public dccl::TypedFixedFieldCodec<dccl::uint32>
 {
-    dccl::Bitset encode() { return dccl::Bitset(); }
-    dccl::Bitset encode(const std::uint32_t& wire_value) { return dccl::Bitset(); }
-    dccl::uint32 decode(dccl::Bitset* bits) { return 0; }
-    virtual unsigned size() { return 0; }
+    dccl::Bitset encode() override { return dccl::Bitset(); }
+    dccl::Bitset encode(const std::uint32_t& wire_value) override { return dccl::Bitset(); }
+    dccl::uint32 decode(dccl::Bitset* bits) override { return 0; }
+    unsigned size() override { return 0; }
 };
 
 extern std::shared_ptr<dccl::Codec> benthos_header_dccl_;

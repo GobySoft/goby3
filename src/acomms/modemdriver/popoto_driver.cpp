@@ -43,8 +43,8 @@ using goby::glog;
 using namespace goby::util::logger;
 using json = nlohmann::json;
 
-goby::acomms::PopotoDriver::PopotoDriver() {}
-goby::acomms::PopotoDriver::~PopotoDriver() {}
+goby::acomms::PopotoDriver::PopotoDriver() = default;
+goby::acomms::PopotoDriver::~PopotoDriver() = default;
 
 void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
 {

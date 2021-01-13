@@ -41,7 +41,7 @@ class UDPMulticastDriver : public ModemDriverBase
 {
   public:
     UDPMulticastDriver();
-    ~UDPMulticastDriver();
+    ~UDPMulticastDriver() override;
 
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;

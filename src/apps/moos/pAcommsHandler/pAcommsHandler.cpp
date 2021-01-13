@@ -144,7 +144,7 @@ goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
                  &CpAcommsHandler::handle_driver_cfg_update, this);
 }
 
-goby::apps::moos::CpAcommsHandler::~CpAcommsHandler() {}
+goby::apps::moos::CpAcommsHandler::~CpAcommsHandler() = default;
 
 void goby::apps::moos::CpAcommsHandler::loop()
 {

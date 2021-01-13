@@ -45,15 +45,21 @@ class TCPClient : public LineBasedClient<boost::asio::ip::tcp::socket>
     TCPClient(const std::string& server, unsigned port, const std::string& delimiter = "\r\n",
               int retry_interval = 10);
 
-    boost::asio::ip::tcp::socket& socket() { return socket_; }
+    boost::asio::ip::tcp::socket& socket() override { return socket_; }
 
     /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230
-    std::string local_endpoint() { return goby::util::as<std::string>(socket_.local_endpoint()); }
+    std::string local_endpoint() override
+    {
+        return goby::util::as<std::string>(socket_.local_endpoint());
+    }
     /// \brief string representation of the remote endpoint, (e.g. 192.168.1.106:50000
-    std::string remote_endpoint() { return goby::util::as<std::string>(socket_.remote_endpoint()); }
+    std::string remote_endpoint() override
+    {
+        return goby::util::as<std::string>(socket_.remote_endpoint());
+    }
 
   private:
-    bool start_specific();
+    bool start_specific() override;
 
     friend class TCPConnection;
     friend class LineBasedConnection<boost::asio::ip::tcp::socket>;

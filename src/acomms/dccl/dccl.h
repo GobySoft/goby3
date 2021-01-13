@@ -294,9 +294,9 @@ class DCCLCodec
   private:
     DCCLCodec();
 
-    ~DCCLCodec() {}
-    DCCLCodec(const DCCLCodec&);
-    DCCLCodec& operator=(const DCCLCodec&);
+    ~DCCLCodec() = default;
+    DCCLCodec(const DCCLCodec&) = delete;
+    DCCLCodec& operator=(const DCCLCodec&) = delete;
 
     void process_cfg(bool new_id_codec)
     {

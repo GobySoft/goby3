@@ -50,7 +50,7 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
 {
   public:
     LogTool();
-    ~LogTool()
+    ~LogTool() override
     {
 #ifdef HAS_HDF5
         if (app_cfg().format() == protobuf::LogToolConfig::HDF5)

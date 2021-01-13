@@ -74,10 +74,10 @@ class DCCLAlgorithmPerformer
     std::map<std::string, AlgFunction1> adv_map1_;
     std::map<std::string, AlgFunction2> adv_map2_;
 
-    DCCLAlgorithmPerformer() {}
+    DCCLAlgorithmPerformer() = default;
 
-    DCCLAlgorithmPerformer(const DCCLAlgorithmPerformer&);
-    DCCLAlgorithmPerformer& operator=(const DCCLAlgorithmPerformer&);
+    DCCLAlgorithmPerformer(const DCCLAlgorithmPerformer&) = delete;
+    DCCLAlgorithmPerformer& operator=(const DCCLAlgorithmPerformer&) = delete;
 };
 } // namespace transitional
 } // namespace moos

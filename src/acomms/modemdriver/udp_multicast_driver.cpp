@@ -34,8 +34,8 @@ using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
 
-goby::acomms::UDPMulticastDriver::UDPMulticastDriver() {}
-goby::acomms::UDPMulticastDriver::~UDPMulticastDriver() {}
+goby::acomms::UDPMulticastDriver::UDPMulticastDriver() = default;
+goby::acomms::UDPMulticastDriver::~UDPMulticastDriver() = default;
 
 void goby::acomms::UDPMulticastDriver::startup(const protobuf::DriverConfig& cfg)
 {

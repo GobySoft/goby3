@@ -41,7 +41,7 @@ class FrontSeatInterface
 {
   public:
     FrontSeatInterface();
-    ~FrontSeatInterface() {}
+    ~FrontSeatInterface() override = default;
 
     static void* driver_library_handle_;
 

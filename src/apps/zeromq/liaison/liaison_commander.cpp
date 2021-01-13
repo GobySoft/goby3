@@ -109,7 +109,7 @@ goby::apps::zeromq::LiaisonCommander::LiaisonCommander(const protobuf::LiaisonCo
     set_name("Commander");
 }
 
-goby::apps::zeromq::LiaisonCommander::~LiaisonCommander() {}
+goby::apps::zeromq::LiaisonCommander::~LiaisonCommander() = default;
 
 void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
     const std::vector<unsigned char>& data, int scheme, const std::string& type,

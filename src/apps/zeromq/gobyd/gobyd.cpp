@@ -46,7 +46,7 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
 {
   public:
     Daemon();
-    ~Daemon();
+    ~Daemon() override;
 
   private:
     void run() override;

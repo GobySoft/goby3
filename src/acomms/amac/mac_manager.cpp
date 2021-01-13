@@ -48,7 +48,7 @@ goby::acomms::MACManager::MACManager()
     goby::glog.add_group(glog_mac_group_, util::Colors::blue);
 }
 
-goby::acomms::MACManager::~MACManager() {}
+goby::acomms::MACManager::~MACManager() = default;
 
 void goby::acomms::MACManager::startup(const protobuf::MACConfig& cfg)
 {

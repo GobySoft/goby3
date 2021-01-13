@@ -47,10 +47,10 @@ class UFldDriver : public goby::acomms::ModemDriverBase
 {
   public:
     UFldDriver();
-    void startup(const goby::acomms::protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m);
+    void startup(const goby::acomms::protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m) override;
 
   private:
     void send_message(const goby::acomms::protobuf::ModemTransmission& msg);

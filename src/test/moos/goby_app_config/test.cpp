@@ -43,8 +43,8 @@ class GobyMOOSAppTest : public goby::moos::GobyMOOSApp
         std::cout << "All tests passed. " << std::endl;
     }
 
-    ~GobyMOOSAppTest() {}
-    void loop() {}
+    ~GobyMOOSAppTest() override = default;
+    void loop() override {}
     static GobyMOOSAppTest* inst_;
 };
 } // namespace moos

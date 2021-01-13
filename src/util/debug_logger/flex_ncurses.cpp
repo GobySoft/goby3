@@ -44,12 +44,6 @@ using boost::posix_time::ptime;
 // defined in flex_ostreambuf.cpp
 extern std::mutex curses_mutex;
 
-goby::util::FlexNCurses::FlexNCurses()
-    
-      
-{
-}
-
 void goby::util::FlexNCurses::startup()
 {
     initscr();

@@ -43,7 +43,7 @@ using goby::util::TCPConnection;
 
 goby::acomms::IridiumShoreDriver::IridiumShoreDriver() { init_iridium_dccl(); }
 
-goby::acomms::IridiumShoreDriver::~IridiumShoreDriver() {}
+goby::acomms::IridiumShoreDriver::~IridiumShoreDriver() = default;
 
 void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg)
 {

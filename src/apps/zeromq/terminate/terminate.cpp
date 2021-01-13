@@ -107,7 +107,7 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
         }
     }
 
-    ~Terminate() {}
+    ~Terminate() override = default;
 
   private:
     void loop() override

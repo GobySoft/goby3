@@ -51,7 +51,7 @@ class InterfaceBase
   public:
     InterfaceBase(const protobuf::Config& cfg);
 
-    virtual ~InterfaceBase() {}
+    virtual ~InterfaceBase() = default;
 
     virtual void send_command_to_frontseat(const protobuf::CommandRequest& command) = 0;
     virtual void send_data_to_frontseat(const protobuf::InterfaceData& data) = 0;

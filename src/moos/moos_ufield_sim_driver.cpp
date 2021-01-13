@@ -38,7 +38,7 @@ using namespace goby::util::logger;
 
 namespace micromodem = goby::acomms::micromodem;
 
-goby::moos::UFldDriver::UFldDriver() {}
+goby::moos::UFldDriver::UFldDriver() = default;
 
 void goby::moos::UFldDriver::startup(const goby::acomms::protobuf::DriverConfig& cfg)
 {

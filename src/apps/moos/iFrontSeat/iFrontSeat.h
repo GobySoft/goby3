@@ -48,12 +48,12 @@ class iFrontSeat : public goby::moos::GobyMOOSApp
 
   private:
     iFrontSeat();
-    ~iFrontSeat() {}
-    iFrontSeat(const iFrontSeat&);
-    iFrontSeat& operator=(const iFrontSeat&);
+    ~iFrontSeat() override = default;
+    iFrontSeat(const iFrontSeat&) = delete;
+    iFrontSeat& operator=(const iFrontSeat&) = delete;
 
     // synchronous event
-    void loop();
+    void loop() override;
     void status_loop();
 
     // mail handlers

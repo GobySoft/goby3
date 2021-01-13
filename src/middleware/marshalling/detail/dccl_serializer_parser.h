@@ -66,7 +66,7 @@ struct DCCLSerializerParserHelperBase
     template <typename DataType> struct Loader : public LoaderBase
     {
         Loader() { codec().load<DataType>(); }
-        ~Loader() { codec().unload<DataType>(); }
+        ~Loader() override { codec().unload<DataType>(); }
     };
 
     struct LoaderDynamic : public LoaderBase
@@ -75,7 +75,7 @@ struct DCCLSerializerParserHelperBase
         {
             codec().load(desc_);
         }
-        ~LoaderDynamic() { codec().unload(desc_); }
+        ~LoaderDynamic() override { codec().unload(desc_); }
 
       private:
         const google::protobuf::Descriptor* desc_;

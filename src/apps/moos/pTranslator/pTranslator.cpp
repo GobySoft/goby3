@@ -127,7 +127,7 @@ goby::apps::moos::CpTranslator::CpTranslator()
     }
 }
 
-goby::apps::moos::CpTranslator::~CpTranslator() {}
+goby::apps::moos::CpTranslator::~CpTranslator() = default;
 
 void goby::apps::moos::CpTranslator::loop() { timer_io_context_.poll(); }
 

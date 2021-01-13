@@ -59,7 +59,7 @@ class QueueManager
     /// constructor
     QueueManager();
     /// destructor
-    ~QueueManager() {}
+    ~QueueManager() = default;
 
     /// \name Initialization Methods
     ///
@@ -224,8 +224,8 @@ class QueueManager
         signal_in_route;
 
   private:
-    QueueManager(const QueueManager&);
-    QueueManager& operator=(const QueueManager&);
+    QueueManager(const QueueManager&) = delete;
+    QueueManager& operator=(const QueueManager&) = delete;
     //@}
 
     void qsize(Queue* q);

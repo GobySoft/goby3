@@ -66,7 +66,7 @@ struct GLogSetup
         goby::glog.set_name("test");
     }
 
-    ~GLogSetup() {}
+    ~GLogSetup() = default;
 };
 
 BOOST_GLOBAL_FIXTURE(GLogSetup);
@@ -250,7 +250,7 @@ struct DynamicBufferFixture
         buffer.create(goby::acomms::BROADCAST_ID, "B", cfg2);
     }
 
-    ~DynamicBufferFixture() {}
+    ~DynamicBufferFixture() = default;
 
     goby::acomms::DynamicBuffer<std::string, TestClock> buffer;
 };
@@ -600,7 +600,7 @@ struct MultiIDDynamicBufferFixture
         buffer.create(2, "B", cfg2);
     }
 
-    ~MultiIDDynamicBufferFixture() {}
+    ~MultiIDDynamicBufferFixture() = default;
 
     goby::acomms::DynamicBuffer<std::string, TestClock> buffer;
 };

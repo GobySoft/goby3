@@ -56,7 +56,7 @@ class DCCLMessageVar
     // Added in Goby2 for transition to new Protobuf structure
     virtual void write_schema_to_dccl2(std::ofstream* proto_file, int sequence_number) {}
 
-    DCCLMessageVar() {}
+    DCCLMessageVar() = default;
 
     // set
     void set_name(std::string name) { name_ = name; }

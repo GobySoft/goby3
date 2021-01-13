@@ -37,7 +37,7 @@ namespace moos
 class ModemIdConvert
 {
   public:
-    ModemIdConvert() {}
+    ModemIdConvert() = default;
 
     std::string read_lookup_file(std::string path);
 

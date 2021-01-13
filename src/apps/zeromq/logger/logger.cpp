@@ -75,7 +75,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         dccl_plugin_.register_write_hooks(log_);
     }
 
-    ~Logger()
+    ~Logger() override
     {
         log_.close();
         // set read only
