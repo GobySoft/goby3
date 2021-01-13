@@ -77,13 +77,13 @@ class MMDriverTest2
     std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics> > driver1_receive,
         driver2_receive;
 
-    bool modems_running_;
+    bool modems_running_{true};
 };
 } // namespace acomms
 } // namespace test
 } // namespace goby
 
-goby::test::acomms::MMDriverTest2::MMDriverTest2() : modems_running_(true)
+goby::test::acomms::MMDriverTest2::MMDriverTest2()
 {
     goby::glog.set_lock_action(lock);
 

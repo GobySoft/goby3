@@ -42,10 +42,10 @@ namespace util
 {
 struct A
 {
-    A() : i(0) {}
+    A() {}
     A(int i) : i(i) {}
 
-    int i;
+    int i{0};
 };
 
 std::ostream& operator<<(std::ostream& out, const A& a) { return out << a.i; }

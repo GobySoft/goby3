@@ -35,7 +35,7 @@ using namespace goby::util::logger_lock;
 
 std::atomic<int> goby::acomms::ModemDriverBase::count_(0);
 
-goby::acomms::ModemDriverBase::ModemDriverBase() : raw_fs_connections_made_(false), order_(++count_)
+goby::acomms::ModemDriverBase::ModemDriverBase() : order_(++count_)
 {
     glog_out_group_ = "goby::acomms::modemdriver::out::" + goby::util::as<std::string>(order_);
     glog_in_group_ = "goby::acomms::modemdriver::in::" + goby::util::as<std::string>(order_);

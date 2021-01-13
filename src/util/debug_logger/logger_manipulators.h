@@ -69,7 +69,7 @@ class Group
   public:
     Group(const std::string& name = "", const std::string& description = "",
           goby::util::Colors::Color color = goby::util::Colors::nocolor)
-        : name_(name), description_(description), color_(color), enabled_(true)
+        : name_(name), description_(description), color_(color)
     {
     }
 
@@ -97,7 +97,7 @@ class Group
     std::string name_;
     std::string description_;
     goby::util::Colors::Color color_;
-    bool enabled_;
+    bool enabled_{true};
 };
 
 /// Helper class for enabling the group(std::string) manipulator

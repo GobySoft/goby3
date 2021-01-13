@@ -160,11 +160,11 @@ class FlexNCurses
     template <typename T> T max(const T& a, const T& b) { return (a > b ? a : b); }
 
   private:
-    int xmax_;
-    int ymax_;
+    int xmax_{0};
+    int ymax_{0};
 
-    int xwinN_;
-    int ywinN_;
+    int xwinN_{1};
+    int ywinN_{1};
 
     int last_select_x_;
     int last_select_y_;
@@ -173,27 +173,15 @@ class FlexNCurses
     std::vector<void*> vert_windows_;
     // bottom of the column (indexed by column)
     std::vector<void*> col_end_windows_;
-    void* foot_window_;
+    void* foot_window_{0};
 
-    bool is_locked_;
-    int locked_panel_;
+    bool is_locked_{false};
+    int locked_panel_{0};
 
     class Panel
     {
       public:
-        Panel(const logger::Group* group = 0)
-            : group_(group),
-              window_(0),
-              head_window_(0),
-              minimized_(false),
-              selected_(false),
-              locked_(false),
-              col_(1),
-              lines_from_beg_(0),
-              original_order_(0),
-              max_hist_(20000)
-        {
-        }
+        Panel(const logger::Group* group = 0) : group_(group) {}
 
         void window(void* v) { window_ = v; }
         void head_window(void* v) { head_window_ = v; }
@@ -238,17 +226,17 @@ class FlexNCurses
 
       private:
         const logger::Group* group_;
-        void* window_;
-        void* head_window_;
-        bool minimized_;
-        bool selected_;
-        bool locked_;
+        void* window_{0};
+        void* head_window_{0};
+        bool minimized_{false};
+        bool selected_{false};
+        bool locked_{false};
         int ywidth_;
         int unminimized_ywidth_;
-        int col_;
-        int lines_from_beg_;
-        int original_order_;
-        unsigned max_hist_;
+        int col_{1};
+        int lines_from_beg_{0};
+        int original_order_{0};
+        unsigned max_hist_{20000};
         std::multimap<boost::posix_time::ptime, std::string> history_;
         std::set<size_t> combined_;
     };
@@ -260,7 +248,7 @@ class FlexNCurses
     // indexed by column
     std::vector<int> line_buffer_;
 
-    bool alive_;
+    bool alive_{true};
 
     // ideal number of characters per line
     enum

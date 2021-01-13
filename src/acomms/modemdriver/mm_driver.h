@@ -268,27 +268,27 @@ class MMDriver : public ModemDriverBase
     goby::time::SystemClock::time_point last_write_time_;
 
     // are we waiting for a command ack (CA) from the modem or can we send another output?
-    bool waiting_for_modem_;
+    bool waiting_for_modem_{false};
 
     // are we waiting for a multi-message reply
-    bool waiting_for_multimsg_;
+    bool waiting_for_multimsg_{false};
 
     // set after the startup routines finish once. we can't startup on instantiation because
     // the base class sets some of our references (from the MOOS file)
-    bool startup_done_;
+    bool startup_done_{false};
 
     // keeps track of number of failures and exits after reaching MAX_FAILS, assuming modem dead
-    unsigned global_fail_count_;
+    unsigned global_fail_count_{0};
 
     // keeps track of number of failures on the present talker and moves on to the next talker
     // if exceeded
-    unsigned present_fail_count_;
+    unsigned present_fail_count_{0};
 
     // keeps track of clock mode, necessary for synchronous navigation
     micromodem::protobuf::ClockMode clk_mode_;
 
     // has the clock been properly set. we must reset the clock after reboot ($CAREV,INIT)
-    bool clock_set_;
+    bool clock_set_{false};
 
     enum TalkerIDs
     {
@@ -316,7 +316,7 @@ class MMDriver : public ModemDriverBase
     // time between requests to the hydroid gateway buoy gps
     static const goby::time::SystemClock::duration HYDROID_GATEWAY_GPS_REQUEST_INTERVAL;
     goby::time::SystemClock::time_point last_hydroid_gateway_gps_request_;
-    bool is_hydroid_gateway_;
+    bool is_hydroid_gateway_{false};
     std::string hydroid_gateway_modem_prefix_;
     std::string hydroid_gateway_gps_request_;
 
@@ -324,12 +324,12 @@ class MMDriver : public ModemDriverBase
     std::map<std::string, int> nvram_cfg_;
 
     protobuf::ModemTransmission transmit_msg_;
-    unsigned
-        expected_remaining_caxst_; // used to determine how many CAXST to aggregate (so that bost rate 0 transmissions [CYC and TXD] are provided as a single logical unit)
+    unsigned expected_remaining_caxst_{
+        0}; // used to determine how many CAXST to aggregate (so that bost rate 0 transmissions [CYC and TXD] are provided as a single logical unit)
 
     protobuf::ModemTransmission receive_msg_;
-    unsigned
-        expected_remaining_cacst_; // used to determine how many CACST to aggregate (so that rate 0 transmissions [CYC and RXD] are provided as a single logical unit)
+    unsigned expected_remaining_cacst_{
+        0}; // used to determine how many CACST to aggregate (so that rate 0 transmissions [CYC and RXD] are provided as a single logical unit)
 
     // keep track of which frames we've sent and are awaiting acks for. This
     // way we have a chance of intercepting unexpected behavior of the modem
@@ -338,13 +338,13 @@ class MMDriver : public ModemDriverBase
 
     // keep track of where we sent the message to be acked to work around a bug in
     // the MM1 firmware that reports third-party acks with a destination of the local modem
-    unsigned expected_ack_destination_;
+    unsigned expected_ack_destination_{0};
 
     std::set<unsigned> frames_waiting_to_receive_;
 
     // true if we initiated the last cycle ($CCCYC) (and thereby cache data for it)?
     // false if a third party initiated the last cycle
-    bool local_cccyc_;
+    bool local_cccyc_{false};
 
     micromodem::protobuf::TransmissionType last_lbl_type_;
 
@@ -355,20 +355,20 @@ class MMDriver : public ModemDriverBase
 
     struct MMRevision
     {
-        MMRevision() : mm_major(0), mm_minor(0), mm_patch(0) {}
-        int mm_major;
-        int mm_minor;
-        int mm_patch;
+        MMRevision() {}
+        int mm_major{0};
+        int mm_minor{0};
+        int mm_patch{0};
     };
     MMRevision revision_;
 
-    bool using_application_acks_;
-    int application_ack_max_frames_;
+    bool using_application_acks_{false};
+    int application_ack_max_frames_{0};
 
     // ids we are providing acks for, normally just our modem_id()
     std::set<unsigned> application_ack_ids_;
 
-    int next_frame_;
+    int next_frame_{0};
 
     // modem id to frames
     std::map<unsigned, std::set<unsigned> > frames_to_ack_;
@@ -377,7 +377,7 @@ class MMDriver : public ModemDriverBase
     // DCCL requires full memory barrier...
     static std::mutex dccl_mutex_;
 
-    int serial_fd_;
+    int serial_fd_{-1};
 };
 } // namespace acomms
 } // namespace goby

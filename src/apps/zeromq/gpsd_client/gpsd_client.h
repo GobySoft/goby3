@@ -58,7 +58,7 @@ class GPSDClient : public goby::zeromq::SingleThreadApplication<protobuf::GPSDCo
     gpsmm gps_rec_;
 
     std::set<std::string> device_list_;
-    bool publish_all_;
+    bool publish_all_{false};
 };
 } // namespace zeromq
 } // namespace apps

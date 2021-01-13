@@ -129,7 +129,7 @@ class MACManager : public std::list<protobuf::ModemTransmission>
 
     unsigned cycles_since_reference_;
 
-    bool started_up_;
+    bool started_up_{false};
 
     std::string glog_mac_group_;
     static int count_;

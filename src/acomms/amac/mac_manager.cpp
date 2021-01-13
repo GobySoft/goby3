@@ -40,7 +40,7 @@ using namespace goby::util::tcolor;
 int goby::acomms::MACManager::count_;
 
 goby::acomms::MACManager::MACManager()
-    : current_slot_(std::list<protobuf::ModemTransmission>::begin()), started_up_(false)
+    : current_slot_(std::list<protobuf::ModemTransmission>::begin())
 {
     ++count_;
 

@@ -75,7 +75,7 @@ class UFldDriver : public goby::acomms::ModemDriverBase
     //boost::bimap<int, std::string> modem_id2name_;
     goby::moos::ModemIdConvert modem_lookup_;
 
-    int last_ccmpc_dest_;
+    int last_ccmpc_dest_{-1};
 };
 } // namespace moos
 } // namespace goby

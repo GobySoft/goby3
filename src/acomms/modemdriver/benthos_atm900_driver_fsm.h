@@ -299,9 +299,9 @@ struct Command : boost::statechart::simple_state<Command, Active, Configure,
 
     struct ATSentenceMeta
     {
-        ATSentenceMeta() : last_send_time_(0), tries_(0) {}
-        double last_send_time_;
-        int tries_;
+        ATSentenceMeta() {}
+        double last_send_time_{0};
+        int tries_{0};
     };
 
     void push_at_command(std::string cmd)

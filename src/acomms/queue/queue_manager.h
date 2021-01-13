@@ -257,7 +257,7 @@ class QueueManager
     std::multimap<unsigned, Queue*> waiting_for_ack_;
 
     // the first *user* frame sets the tone (dest & ack) for the entire packet (all %modem frames)
-    unsigned packet_ack_;
+    unsigned packet_ack_{0};
     int packet_dest_;
 
     typedef int ModemId;

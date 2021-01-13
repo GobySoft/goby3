@@ -43,7 +43,7 @@ using namespace goby::util::logger;
 int goby::acomms::QueueManager::count_ = 0;
 
 goby::acomms::QueueManager::QueueManager()
-    : packet_ack_(0), packet_dest_(BROADCAST_ID), codec_(goby::acomms::DCCLCodec::get())
+    : packet_dest_(BROADCAST_ID), codec_(goby::acomms::DCCLCodec::get())
 {
     ++count_;
 

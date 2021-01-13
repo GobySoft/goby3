@@ -41,7 +41,7 @@ using goby::acomms::iridium::protobuf::DirectIPMTHeader;
 using goby::acomms::iridium::protobuf::DirectIPMTPayload;
 using goby::util::TCPConnection;
 
-goby::acomms::IridiumShoreDriver::IridiumShoreDriver() : next_frame_(0) { init_iridium_dccl(); }
+goby::acomms::IridiumShoreDriver::IridiumShoreDriver() { init_iridium_dccl(); }
 
 goby::acomms::IridiumShoreDriver::~IridiumShoreDriver() {}
 

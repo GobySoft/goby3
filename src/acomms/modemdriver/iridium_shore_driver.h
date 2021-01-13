@@ -88,7 +88,7 @@ class IridiumShoreDriver : public ModemDriverBase
 
     protobuf::ModemTransmission rudics_mac_msg_;
 
-    std::uint32_t next_frame_;
+    std::uint32_t next_frame_{0};
 
     struct RemoteNode
     {

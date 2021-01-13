@@ -76,7 +76,7 @@ class IridiumDriver : public ModemDriverBase
 
     std::shared_ptr<goby::util::TCPClient> debug_client_;
 
-    double last_triple_plus_time_;
+    double last_triple_plus_time_{0};
     enum
     {
         TRIPLE_PLUS_WAIT = 2
@@ -84,9 +84,9 @@ class IridiumDriver : public ModemDriverBase
 
     protobuf::ModemTransmission rudics_mac_msg_;
 
-    int serial_fd_;
+    int serial_fd_{-1};
 
-    std::uint32_t next_frame_;
+    std::uint32_t next_frame_{0};
 };
 } // namespace acomms
 } // namespace goby

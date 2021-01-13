@@ -43,7 +43,7 @@ namespace util
 class FlexOstream : public std::ostream
 {
   public:
-    FlexOstream() : std::ostream(&sb_), sb_(this), lock_action_(logger_lock::none)
+    FlexOstream() : std::ostream(&sb_), sb_(this)
     {
         ++instances_;
         if (instances_ > 1)
@@ -168,7 +168,7 @@ class FlexOstream : public std::ostream
 
   private:
     FlexOStreamBuf sb_;
-    logger_lock::LockAction lock_action_;
+    logger_lock::LockAction lock_action_{logger_lock::none};
 };
 
 inline std::ostream& operator<<(FlexOstream& out, char c) { return std::operator<<(out, c); }

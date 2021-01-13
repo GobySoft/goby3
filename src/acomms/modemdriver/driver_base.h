@@ -173,7 +173,7 @@ class ModemDriverBase
     std::string glog_in_group_;
 
     std::shared_ptr<std::ofstream> raw_fs_;
-    bool raw_fs_connections_made_;
+    bool raw_fs_connections_made_{false};
     int order_;
 };
 } // namespace acomms

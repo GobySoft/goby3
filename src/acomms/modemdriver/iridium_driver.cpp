@@ -38,8 +38,7 @@ using namespace goby::util::logger;
 
 std::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
 
-goby::acomms::IridiumDriver::IridiumDriver()
-    : fsm_(driver_cfg_), last_triple_plus_time_(0), serial_fd_(-1), next_frame_(0)
+goby::acomms::IridiumDriver::IridiumDriver() : fsm_(driver_cfg_)
 {
     init_iridium_dccl();
 

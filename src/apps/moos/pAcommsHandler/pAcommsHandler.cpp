@@ -78,8 +78,8 @@ goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
       translator_(goby::moos::protobuf::TranslatorEntry(), cfg_.common().lat_origin(),
                   cfg_.common().lon_origin(), cfg_.modem_id_lookup_path()),
       dccl_(goby::acomms::DCCLCodec::get()),
-      work_(timer_io_context_),
-      router_(0)
+      work_(timer_io_context_)
+
 {
     translator_.add_entry(cfg_.translator_entry());
 

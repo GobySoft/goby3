@@ -37,7 +37,7 @@ namespace moos
 class ModemIdConvert
 {
   public:
-    ModemIdConvert() : max_name_length_(0), max_id_(0) {}
+    ModemIdConvert() {}
 
     std::string read_lookup_file(std::string path);
 
@@ -56,8 +56,8 @@ class ModemIdConvert
     std::map<int, std::string> types_;
     std::map<int, std::string> locations_;
 
-    size_t max_name_length_;
-    int max_id_;
+    size_t max_name_length_{0};
+    int max_id_{0};
 };
 } // namespace moos
 } // namespace goby

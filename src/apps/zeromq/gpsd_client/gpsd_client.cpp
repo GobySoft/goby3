@@ -63,8 +63,8 @@ goby::time::SITime parse_time(std::string s)
 
 goby::apps::zeromq::GPSDClient::GPSDClient()
     : goby::zeromq::SingleThreadApplication<protobuf::GPSDConfig>(this->loop_max_frequency()),
-      gps_rec_(cfg().hostname().c_str(), std::to_string(cfg().port()).c_str()),
-      publish_all_(false)
+      gps_rec_(cfg().hostname().c_str(), std::to_string(cfg().port()).c_str())
+
 {
     if (cfg().device_name_size())
     {

@@ -45,14 +45,8 @@ using boost::posix_time::ptime;
 extern std::mutex curses_mutex;
 
 goby::util::FlexNCurses::FlexNCurses()
-    : xmax_(0),
-      ymax_(0),
-      xwinN_(1),
-      ywinN_(1),
-      foot_window_(0),
-      is_locked_(false),
-      locked_panel_(0),
-      alive_(true)
+    
+      
 {
 }
 
