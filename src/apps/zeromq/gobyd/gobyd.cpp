@@ -21,6 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <memory>
+
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/gobyd/groups.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"
@@ -125,8 +127,9 @@ goby::apps::zeromq::Daemon::Daemon()
     }
 
     if (app_cfg().has_intervehicle())
-        intervehicle_.reset(new goby::middleware::InterVehiclePortal<decltype(interprocess_)>(
-            interprocess_, app_cfg().intervehicle()));
+        intervehicle_ =
+            std::make_unique<goby::middleware::InterVehiclePortal<decltype(interprocess_)>>(
+                interprocess_, app_cfg().intervehicle());
 
     // handle goby_terminate request
     interprocess_.subscribe<goby::middleware::groups::terminate_request,

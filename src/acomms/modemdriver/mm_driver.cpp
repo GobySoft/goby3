@@ -27,6 +27,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <memory>
+
 #include <sstream>
 
 #include <boost/algorithm/string.hpp>
@@ -127,7 +129,7 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
             application_ack_ids_.insert(id);
 
         std::lock_guard<std::mutex> l(dccl_mutex_);
-        dccl_.reset(new dccl::Codec);
+        dccl_ = std::make_unique<dccl::Codec>();
         dccl_->load<micromodem::protobuf::MMApplicationAck>();
     }
 

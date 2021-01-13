@@ -24,6 +24,8 @@
 #ifndef GOBY_MIDDLEWARE_MARSHALLING_DETAIL_DCCL_SERIALIZER_PARSER_H
 #define GOBY_MIDDLEWARE_MARSHALLING_DETAIL_DCCL_SERIALIZER_PARSER_H
 
+#include <memory>
+
 #include <mutex>
 #include <unordered_map>
 
@@ -103,7 +105,7 @@ struct DCCLSerializerParserHelperBase
     static dccl::Codec& codec()
     {
         if (!codec_)
-            codec_.reset(new dccl::Codec);
+            codec_ = std::make_unique<dccl::Codec>();
         return *codec_;
     }
 

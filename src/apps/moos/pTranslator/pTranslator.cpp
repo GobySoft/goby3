@@ -24,6 +24,8 @@
 
 #include <dlfcn.h>
 
+#include <memory>
+
 #include "goby/moos/moos_string.h"
 #include "goby/time/io.h"
 
@@ -100,7 +102,7 @@ goby::apps::moos::CpTranslator::CpTranslator()
         else if (cfg_.translator_entry(i).trigger().type() ==
                  goby::moos::protobuf::TranslatorEntry::Trigger::TRIGGER_TIME)
         {
-            timers_.push_back(std::shared_ptr<Timer>(new Timer(timer_io_context_)));
+            timers_.push_back(std::make_shared<Timer>(timer_io_context_));
 
             Timer& new_timer = *timers_.back();
 

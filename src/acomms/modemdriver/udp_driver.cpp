@@ -24,6 +24,8 @@
 
 #include "udp_driver.h"
 
+#include <memory>
+
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
 #include "goby/util/binary.h"
@@ -42,7 +44,7 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 {
     driver_cfg_ = cfg;
 
-    socket_.reset(new boost::asio::ip::udp::socket(io_context_));
+    socket_ = std::make_unique<boost::asio::ip::udp::socket>(io_context_);
     const auto& local = driver_cfg_.GetExtension(udp::protobuf::config).local();
     socket_->open(boost::asio::ip::udp::v4());
     socket_->bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), local.port()));

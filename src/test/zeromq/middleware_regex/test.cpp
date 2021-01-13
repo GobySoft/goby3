@@ -34,6 +34,8 @@
 
 #include "goby/test/zeromq/middleware_regex/test.pb.h"
 
+#include <memory>
+
 #include <zmq.hpp>
 
 using namespace goby::test::zeromq::protobuf;
@@ -199,13 +201,13 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> router_context;
     if (!is_child)
     {
-        manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(1));
+        manager_context = std::make_unique<zmq::context_t>(1);
+        router_context = std::make_unique<zmq::context_t>(1);
 
         goby::zeromq::Router router(*router_context, cfg);
-        t4.reset(new std::thread([&] { router.run(); }));
+        t4 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, cfg, router);
-        t5.reset(new std::thread([&] { manager.run(); }));
+        t5 = std::make_unique<std::thread>([&] { manager.run(); });
         sleep(1);
         std::thread t3([&] { zmq_forward(cfg); });
         while (!zmq_ready) usleep(1e5);

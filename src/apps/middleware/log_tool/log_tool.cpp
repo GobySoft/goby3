@@ -22,6 +22,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <boost/filesystem/path.hpp>
+#include <memory>
 
 #include "goby/middleware/application/interface.h"
 
@@ -116,7 +117,7 @@ goby::apps::middleware::LogTool::LogTool()
         case protobuf::LogToolConfig::DEBUG_TEXT: f_out_.open(output_file_path_.c_str()); break;
 #ifdef HAS_HDF5
         case protobuf::LogToolConfig::HDF5:
-            h5_writer_.reset(new goby::middleware::hdf5::Writer(output_file_path_));
+            h5_writer_ = std::make_unique<goby::middleware::hdf5::Writer>(output_file_path_);
             break;
 #endif
         default:
@@ -136,10 +137,10 @@ goby::apps::middleware::LogTool::LogTool()
         dl_handles_.push_back(lib_handle);
     }
 
-    plugins_[goby::middleware::MarshallingScheme::PROTOBUF].reset(
-        new goby::middleware::log::ProtobufPlugin);
-    plugins_[goby::middleware::MarshallingScheme::DCCL].reset(
-        new goby::middleware::log::DCCLPlugin);
+    plugins_[goby::middleware::MarshallingScheme::PROTOBUF] =
+        std::make_unique<goby::middleware::log::ProtobufPlugin>();
+    plugins_[goby::middleware::MarshallingScheme::DCCL] =
+        std::make_unique<goby::middleware::log::DCCLPlugin>();
 
     for (auto& p : plugins_) p.second->register_read_hooks(f_in_);
 

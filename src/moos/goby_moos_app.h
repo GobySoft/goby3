@@ -34,6 +34,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/function.hpp>
 #include <boost/signals2.hpp>
+#include <memory>
 
 #include "dynamic_moos_vars.h"
 #include "goby/exception.h"
@@ -509,8 +510,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& 
 
     if (!wildcard_mail_handlers_.count(key))
         wildcard_mail_handlers_.insert(std::make_pair(
-            key, std::shared_ptr<boost::signals2::signal<void(const CMOOSMsg& msg)> >(
-                     new boost::signals2::signal<void(const CMOOSMsg& msg)>)));
+            key, std::make_shared<boost::signals2::signal<void(const CMOOSMsg& msg)>>()));
 
     if (handler)
         wildcard_mail_handlers_[key]->connect(handler);

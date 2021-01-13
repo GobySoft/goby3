@@ -27,6 +27,7 @@
 
 #include <atomic>
 #include <deque>
+#include <memory>
 
 #include "goby/middleware/marshalling/dccl.h"
 #include "goby/middleware/marshalling/protobuf.h"
@@ -416,17 +417,17 @@ int main(int argc, char* argv[])
         goby::zeromq::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle1");
 
-        manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(1));
+        manager_context = std::make_unique<zmq::context_t>(1);
+        router_context = std::make_unique<zmq::context_t>(1);
 
         goby::zeromq::protobuf::InterProcessManagerHold hold;
         hold.add_required_client("direct_publisher");
         hold.add_required_client("indirect_publisher");
 
         goby::zeromq::Router router(*router_context, zmq_cfg);
-        t10.reset(new std::thread([&] { router.run(); }));
+        t10 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, zmq_cfg, router, hold);
-        t11.reset(new std::thread([&] { manager.run(); }));
+        t11 = std::make_unique<std::thread>([&] { manager.run(); });
         //        sleep(1);
 
         auto direct_cfg = zmq_cfg;
@@ -473,17 +474,17 @@ int main(int argc, char* argv[])
         goby::zeromq::protobuf::InterProcessPortalConfig zmq_cfg;
         zmq_cfg.set_platform("test5-vehicle2");
 
-        manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(1));
+        manager_context = std::make_unique<zmq::context_t>(1);
+        router_context = std::make_unique<zmq::context_t>(1);
 
         goby::zeromq::protobuf::InterProcessManagerHold hold;
         hold.add_required_client("direct_subscriber");
         hold.add_required_client("indirect_subscriber");
 
         goby::zeromq::Router router(*router_context, zmq_cfg);
-        t10.reset(new std::thread([&] { router.run(); }));
+        t10 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, zmq_cfg, router, hold);
-        t11.reset(new std::thread([&] { manager.run(); }));
+        t11 = std::make_unique<std::thread>([&] { manager.run(); });
         //        sleep(1);
 
         auto direct_cfg = zmq_cfg;

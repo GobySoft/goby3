@@ -31,6 +31,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
 #include <boost/numeric/conversion/cast.hpp>
+#include <memory>
 
 #include "goby/acomms/modemdriver/benthos_atm900_driver.h"
 #include "goby/acomms/modemdriver/iridium_driver.h"
@@ -477,7 +478,7 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
         else if (cfg_.translator_entry(i).trigger().type() ==
                  goby::moos::protobuf::TranslatorEntry::Trigger::TRIGGER_TIME)
         {
-            timers_.push_back(std::shared_ptr<Timer>(new Timer(timer_io_context_)));
+            timers_.push_back(std::make_shared<Timer>(timer_io_context_));
 
             Timer& new_timer = *timers_.back();
 

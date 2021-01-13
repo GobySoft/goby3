@@ -34,6 +34,8 @@
 #include "goby/test/zeromq/zeromq_intermodule_and_interprocess/test.pb.h"
 #include "goby/util/debug_logger.h"
 
+#include <memory>
+
 #include <zmq.hpp>
 
 using namespace goby::test::zeromq::protobuf;
@@ -297,12 +299,12 @@ int main(int argc, char* argv[])
             std::unique_ptr<zmq::context_t> manager1_context, manager2_context, manager3_context;
             std::unique_ptr<zmq::context_t> router1_context, router2_context, router3_context;
 
-            manager1_context.reset(new zmq::context_t(1));
-            router1_context.reset(new zmq::context_t(10));
-            manager2_context.reset(new zmq::context_t(1));
-            router2_context.reset(new zmq::context_t(10));
-            manager3_context.reset(new zmq::context_t(1));
-            router3_context.reset(new zmq::context_t(10));
+            manager1_context = std::make_unique<zmq::context_t>(1);
+            router1_context = std::make_unique<zmq::context_t>(10);
+            manager2_context = std::make_unique<zmq::context_t>(1);
+            router2_context = std::make_unique<zmq::context_t>(10);
+            manager3_context = std::make_unique<zmq::context_t>(1);
+            router3_context = std::make_unique<zmq::context_t>(10);
 
             goby::zeromq::protobuf::InterProcessManagerHold ipc_hold1;
             ipc_hold1.add_required_client("portal_publisher");
@@ -317,21 +319,21 @@ int main(int argc, char* argv[])
             im_hold.add_required_client("portal_publisher");
 
             goby::zeromq::Router router1(*router1_context, interprocess_cfg1);
-            mt1.reset(new std::thread([&] { router1.run(); }));
+            mt1 = std::make_unique<std::thread>([&] { router1.run(); });
             goby::zeromq::Manager manager1(*manager1_context, interprocess_cfg1, router1,
                                            ipc_hold1);
-            rt1.reset(new std::thread([&] { manager1.run(); }));
+            rt1 = std::make_unique<std::thread>([&] { manager1.run(); });
 
             goby::zeromq::Router router2(*router2_context, interprocess_cfg2);
-            mt2.reset(new std::thread([&] { router2.run(); }));
+            mt2 = std::make_unique<std::thread>([&] { router2.run(); });
             goby::zeromq::Manager manager2(*manager2_context, interprocess_cfg2, router2,
                                            ipc_hold2);
-            rt2.reset(new std::thread([&] { manager2.run(); }));
+            rt2 = std::make_unique<std::thread>([&] { manager2.run(); });
 
             goby::zeromq::Router router3(*router3_context, intermodule_cfg);
-            mt3.reset(new std::thread([&] { router3.run(); }));
+            mt3 = std::make_unique<std::thread>([&] { router3.run(); });
             goby::zeromq::Manager manager3(*manager3_context, intermodule_cfg, router3, im_hold);
-            rt3.reset(new std::thread([&] { manager3.run(); }));
+            rt3 = std::make_unique<std::thread>([&] { manager3.run(); });
 
             int wstatus;
             for (int i = 0; i < n_children; ++i)

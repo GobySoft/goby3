@@ -26,6 +26,8 @@
 
 #include "driver_thread.h"
 
+#include <memory>
+
 using goby::glog;
 using namespace goby::util::logger;
 using goby::middleware::protobuf::SerializerTransporterMessage;
@@ -40,8 +42,8 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
 
 {
     goby::glog.add_group(glog_group_, util::Colors::blue);
-    interthread_.reset(new InterThreadTransporter);
-    interprocess_.reset(new InterProcessForwarder<InterThreadTransporter>(*interthread_));
+    interthread_ = std::make_unique<InterThreadTransporter>();
+    interprocess_ = std::make_unique<InterProcessForwarder<InterThreadTransporter>>(*interthread_);
     this->set_transporter(interprocess_.get());
 
     interprocess_->subscribe<groups::modem_data_out, SerializerTransporterMessage>(
@@ -69,31 +71,31 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
         switch (cfg().driver().driver_type())
         {
             case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
-                driver_.reset(new goby::acomms::MMDriver);
+                driver_ = std::make_unique<goby::acomms::MMDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_IRIDIUM:
-                driver_.reset(new goby::acomms::IridiumDriver);
+                driver_ = std::make_unique<goby::acomms::IridiumDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_UDP:
-                driver_.reset(new goby::acomms::UDPDriver);
+                driver_ = std::make_unique<goby::acomms::UDPDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
-                driver_.reset(new goby::acomms::UDPMulticastDriver);
+                driver_ = std::make_unique<goby::acomms::UDPMulticastDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
-                driver_.reset(new goby::acomms::IridiumShoreDriver);
+                driver_ = std::make_unique<goby::acomms::IridiumShoreDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_BENTHOS_ATM900:
-                driver_.reset(new goby::acomms::BenthosATM900Driver);
+                driver_ = std::make_unique<goby::acomms::BenthosATM900Driver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_POPOTO:
-                driver_.reset(new goby::acomms::PopotoDriver);
+                driver_ = std::make_unique<goby::acomms::PopotoDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_NONE:

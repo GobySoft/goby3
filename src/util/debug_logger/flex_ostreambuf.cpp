@@ -25,6 +25,8 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <memory>
+
 #include <sstream>
 
 #include <boost/date_time.hpp>
@@ -114,7 +116,7 @@ void goby::util::FlexOStreamBuf::enable_gui()
 
     curses_->recalculate_win();
 
-    input_thread_ = std::shared_ptr<std::thread>(new std::thread([&]() { curses_->run_input(); }));
+    input_thread_ = std::make_shared<std::thread>([&]() { curses_->run_input(); });
 #else
     // suppress -Wunused-private-field
     (void)curses_;

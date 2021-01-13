@@ -32,6 +32,7 @@
 #include <Wt/WRegExpValidator>
 #include <cfloat>
 #include <cmath>
+#include <memory>
 
 #include "dccl/common.h"
 #include "dccl/dynamic_protobuf_manager.h"
@@ -261,8 +262,8 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
         sqlite3_ = new Dbo::backend::Sqlite3(pb_commander_config_.sqlite3_database());
 
         // connection_pool takes ownership of sqlite3_ pointer
-        connection_pool_.reset(
-            new Dbo::FixedSqlConnectionPool(sqlite3_, pb_commander_config_.database_pool_size()));
+        connection_pool_ = std::make_unique<Dbo::FixedSqlConnectionPool>(
+            sqlite3_, pb_commander_config_.database_pool_size());
     }
 
     {

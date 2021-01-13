@@ -24,6 +24,8 @@
 #ifndef GOBY_ZEROMQ_TRANSPORT_INTERPROCESS_H
 #define GOBY_ZEROMQ_TRANSPORT_INTERPROCESS_H
 
+#include <memory>
+
 #include <tuple>
 #include <zmq.hpp>
 
@@ -205,7 +207,7 @@ class InterProcessPortalImplementation
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
         // start zmq read thread
-        zmq_thread_.reset(new std::thread([this]() { zmq_read_thread_.run(); }));
+        zmq_thread_ = std::make_unique<std::thread>([this]() { zmq_read_thread_.run(); });
 
         while (!zmq_main_.subscribe_ready())
         {

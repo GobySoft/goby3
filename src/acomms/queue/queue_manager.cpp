@@ -34,6 +34,8 @@
 #include "queue_constants.h"
 #include "queue_manager.h"
 
+#include <memory>
+
 using goby::glog;
 using goby::util::as;
 using namespace goby::util::logger;
@@ -104,9 +106,8 @@ void goby::acomms::QueueManager::add_queue(
     }
     else
     {
-        std::pair<std::map<unsigned, std::shared_ptr<Queue> >::iterator, bool> new_q_pair =
-            queues_.insert(
-                std::make_pair(dccl_id, std::shared_ptr<Queue>(new Queue(desc, this, queue_cfg))));
+        std::pair<std::map<unsigned, std::shared_ptr<Queue>>::iterator, bool> new_q_pair =
+            queues_.insert(std::make_pair(dccl_id, std::make_shared<Queue>(desc, this, queue_cfg)));
 
         Queue& new_q = *((new_q_pair.first)->second);
 

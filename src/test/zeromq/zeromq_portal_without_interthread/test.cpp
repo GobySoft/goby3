@@ -33,6 +33,8 @@
 #include "goby/test/zeromq/zeromq_portal_without_interthread/test.pb.h"
 #include "goby/util/debug_logger.h"
 
+#include <memory>
+
 #include <zmq.hpp>
 
 using namespace goby::test::zeromq::protobuf;
@@ -146,17 +148,17 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> router_context;
     if (!is_child)
     {
-        manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(10));
+        manager_context = std::make_unique<zmq::context_t>(1);
+        router_context = std::make_unique<zmq::context_t>(10);
 
         goby::zeromq::protobuf::InterProcessManagerHold hold;
         hold.add_required_client("subscriber");
         hold.add_required_client("publisher");
 
         goby::zeromq::Router router(*router_context, cfg);
-        t2.reset(new std::thread([&] { router.run(); }));
+        t2 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
-        t3.reset(new std::thread([&] { manager.run(); }));
+        t3 = std::make_unique<std::thread>([&] { manager.run(); });
 
         auto pub_cfg = cfg;
         pub_cfg.set_client_name("publisher");
