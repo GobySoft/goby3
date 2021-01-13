@@ -22,6 +22,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef GOBY_TEST_ACOMMS_DRIVER_TESTER_DRIVER_TESTER_H
+#define GOBY_TEST_ACOMMS_DRIVER_TESTER_DRIVER_TESTER_H
+
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
 #include "goby/acomms/protobuf/benthos_atm900.pb.h"
@@ -80,3 +83,5 @@ class DriverTester
 } // namespace acomms
 } // namespace test
 } // namespace goby
+
+#endif

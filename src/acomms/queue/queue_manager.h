@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef QueueManager20091204_H
-#define QueueManager20091204_H
+#ifndef GOBY_ACOMMS_QUEUE_QUEUE_MANAGER_H
+#define GOBY_ACOMMS_QUEUE_QUEUE_MANAGER_H
 
 #include <boost/bind.hpp>
 #include <boost/signals2.hpp>

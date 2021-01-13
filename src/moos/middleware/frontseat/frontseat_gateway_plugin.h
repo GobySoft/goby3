@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MOOS_MIDDLEWARE_FRONTSEAT_FRONTSEAT_GATEWAY_PLUGIN_H
+#define GOBY_MOOS_MIDDLEWARE_FRONTSEAT_FRONTSEAT_GATEWAY_PLUGIN_H
 
 #include "goby/middleware/marshalling/protobuf.h"
 
@@ -80,3 +81,5 @@ class FrontSeatTranslation : public goby::moos::Translator
 };
 } // namespace moos
 } // namespace goby
+
+#endif

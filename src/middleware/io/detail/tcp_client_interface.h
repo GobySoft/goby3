@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_IO_DETAIL_TCP_CLIENT_INTERFACE_H
+#define GOBY_MIDDLEWARE_IO_DETAIL_TCP_CLIENT_INTERFACE_H
 
 #include <boost/asio/ip/tcp.hpp>
 
@@ -96,3 +97,5 @@ class TCPClientThread : public IOThread<line_in_group, line_out_group, publish_l
 } // namespace io
 } // namespace middleware
 } // namespace goby
+
+#endif

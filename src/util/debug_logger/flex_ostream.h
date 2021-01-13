@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef FlexOstream20091211H
-#define FlexOstream20091211H
+#ifndef GOBY_UTIL_DEBUG_LOGGER_FLEX_OSTREAM_H
+#define GOBY_UTIL_DEBUG_LOGGER_FLEX_OSTREAM_H
 
 #include <iomanip>
 #include <iostream>

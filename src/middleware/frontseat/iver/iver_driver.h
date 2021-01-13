@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IverFrontSeat20171117H
-#define IverFrontSeat20171117H
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_IVER_IVER_DRIVER_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_IVER_IVER_DRIVER_H
 
 #include <boost/bimap.hpp>
 #include <boost/units/quantity.hpp>

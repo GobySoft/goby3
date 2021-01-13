@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterProcessZeroMQ20170807H
-#define TransportInterProcessZeroMQ20170807H
+#ifndef GOBY_ZEROMQ_TRANSPORT_INTERPROCESS_H
+#define GOBY_ZEROMQ_TRANSPORT_INTERPROCESS_H
 
 #include <tuple>
 #include <zmq.hpp>

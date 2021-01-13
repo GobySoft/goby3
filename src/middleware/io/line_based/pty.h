@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_PTY_H
+#define GOBY_MIDDLEWARE_IO_LINE_BASED_PTY_H
 
 #include "goby/middleware/io/detail/pty_interface.h"
 #include "goby/middleware/io/line_based/common.h"
@@ -91,3 +92,5 @@ void goby::middleware::io::PTYThreadLineBased<line_in_group, line_out_group, pub
             }
         });
 }
+
+#endif

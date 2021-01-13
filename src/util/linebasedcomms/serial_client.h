@@ -24,8 +24,8 @@
 
 // credit for much of this goes to Jeff Gray-3 (http://www.nabble.com/Simple-serial-port-demonstration-with-boost-asio-asynchronous-I-O-p19849520.html)
 
-#ifndef SerialClient20091211H
-#define SerialClient20091211H
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_SERIAL_CLIENT_H
+#define GOBY_UTIL_LINEBASEDCOMMS_SERIAL_CLIENT_H
 
 #include "client_base.h"
 

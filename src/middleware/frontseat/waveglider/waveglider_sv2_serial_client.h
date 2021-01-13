@@ -21,6 +21,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_SERIAL_CLIENT_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_SERIAL_CLIENT_H
+
 #include <memory>
 
 #include "goby/util/asio-compat.h"
@@ -304,3 +307,5 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
 } // namespace frontseat
 } // namespace middleware
 } // namespace goby
+
+#endif

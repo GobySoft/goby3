@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MESSAGE_VAR20091211H
-#define MESSAGE_VAR20091211H
+#ifndef GOBY_MOOS_TRANSITIONAL_MESSAGE_VAR_H
+#define GOBY_MOOS_TRANSITIONAL_MESSAGE_VAR_H
 
 #include <bitset>
 #include <cmath>

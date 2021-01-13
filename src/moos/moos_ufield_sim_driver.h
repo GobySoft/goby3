@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UFieldSimDriver20120214H
-#define UFieldSimDriver20120214H
+#ifndef GOBY_MOOS_MOOS_UFIELD_SIM_DRIVER_H
+#define GOBY_MOOS_MOOS_UFIELD_SIM_DRIVER_H
 
 #include "goby/moos/moos_header.h"
 #include "goby/moos/protobuf/ufield_sim_driver.pb.h"

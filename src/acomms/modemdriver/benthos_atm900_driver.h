@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef BenthosATM900Driver20161221H
-#define BenthosATM900Driver20161221H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_H
 
 #include <dccl/codec.h>
 #include <dccl/field_codec_fixed.h>

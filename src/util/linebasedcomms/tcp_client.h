@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TCPClientH
-#define TCPClientH
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_TCP_CLIENT_H
+#define GOBY_UTIL_LINEBASEDCOMMS_TCP_CLIENT_H
 
 #include "client_base.h"
 #include "goby/util/as.h"

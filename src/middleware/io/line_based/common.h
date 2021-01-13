@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_COMMON_H
+#define GOBY_MIDDLEWARE_IO_LINE_BASED_COMMON_H
 
 #include <regex>
 
@@ -82,3 +83,5 @@ template <> struct is_match_condition<goby::middleware::io::match_regex> : publi
 };
 } // namespace asio
 } // namespace boost
+
+#endif

@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IridiumModemDriverFSM20130826H
-#define IridiumModemDriverFSM20130826H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_FSM_H
+#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_FSM_H
 
 #include <boost/circular_buffer.hpp>
 

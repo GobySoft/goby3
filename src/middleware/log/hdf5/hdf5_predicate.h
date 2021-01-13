@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBYHDFPREDICATE520160525H
-#define GOBYHDFPREDICATE520160525H
+#ifndef GOBY_MIDDLEWARE_LOG_HDF5_HDF5_PREDICATE_H
+#define GOBY_MIDDLEWARE_LOG_HDF5_HDF5_PREDICATE_H
 
 #include "H5Cpp.h"
 

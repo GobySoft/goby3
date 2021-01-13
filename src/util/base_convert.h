@@ -22,6 +22,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef GOBY_UTIL_BASE_CONVERT_H
+#define GOBY_UTIL_BASE_CONVERT_H
+
 #include <string>
 
 namespace goby
@@ -31,3 +34,5 @@ namespace util
 void base_convert(const std::string& source, std::string* sink, int source_base, int sink_base);
 } // namespace util
 } // namespace goby
+
+#endif

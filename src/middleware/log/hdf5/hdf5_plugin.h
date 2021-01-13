@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef HDF5_PLUGIN20160523H
-#define HDF5_PLUGIN20160523H
+#ifndef GOBY_MIDDLEWARE_LOG_HDF5_HDF5_PLUGIN_H
+#define GOBY_MIDDLEWARE_LOG_HDF5_HDF5_PLUGIN_H
 
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>

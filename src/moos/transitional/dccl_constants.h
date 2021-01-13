@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCLTransitionalConstants20091211H
-#define DCCLTransitionalConstants20091211H
+#ifndef GOBY_MOOS_TRANSITIONAL_DCCL_CONSTANTS_H
+#define GOBY_MOOS_TRANSITIONAL_DCCL_CONSTANTS_H
 
 #include <bitset>
 #include <cmath>

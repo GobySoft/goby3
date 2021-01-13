@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterThread20160609H
-#define TransportInterThread20160609H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERTHREAD_H
+#define GOBY_MIDDLEWARE_TRANSPORT_INTERTHREAD_H
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/transport/detail/subscription_store.h"

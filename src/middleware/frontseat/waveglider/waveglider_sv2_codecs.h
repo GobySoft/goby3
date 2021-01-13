@@ -21,6 +21,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_CODECS_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_CODECS_H
+
 #include <dccl.h>
 #include <dccl/field_codec_id.h>
 
@@ -87,3 +90,5 @@ template <typename Integer> class SV2NumericCodec : public dccl::TypedFixedField
 } // namespace frontseat
 } // namespace middleware
 } // namespace goby
+
+#endif

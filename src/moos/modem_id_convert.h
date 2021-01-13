@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MODEM_ID_CONVERTH
-#define MODEM_ID_CONVERTH
+#ifndef GOBY_MOOS_MODEM_ID_CONVERT_H
+#define GOBY_MOOS_MODEM_ID_CONVERT_H
 
 #include <fstream>
 #include <iostream>

@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef NMEASentence20091211H
-#define NMEASentence20091211H
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_NMEA_SENTENCE_H
+#define GOBY_UTIL_LINEBASEDCOMMS_NMEA_SENTENCE_H
 
 #include <exception>
 #include <sstream>

@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_GPSD_GROUPS_H
+#define GOBY_MIDDLEWARE_GPSD_GROUPS_H
 
 #include "goby/middleware/group.h"
 
@@ -42,3 +43,5 @@ constexpr goby::middleware::Group att("goby::middleware::groups::gpsd::att");
 } // namespace groups
 } // namespace middleware
 } // namespace goby
+
+#endif

@@ -31,8 +31,8 @@
 
 /* Copyright (c) 2020 mission systems pty ltd */
 
-#ifndef PopotoDriver2020
-#define PopotoDriver2020
+#ifndef GOBY_ACOMMS_MODEMDRIVER_POPOTO_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_POPOTO_DRIVER_H
 
 #include <iostream>
 #include <string>

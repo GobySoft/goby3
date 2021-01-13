@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBYHDF520160524H
-#define GOBYHDF520160524H
+#ifndef GOBY_MIDDLEWARE_LOG_HDF5_HDF5_H
+#define GOBY_MIDDLEWARE_LOG_HDF5_HDF5_H
 
 #include <boost/algorithm/string.hpp>
 #include <boost/range/algorithm/replace_if.hpp>

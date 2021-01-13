@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISONSCOPE20110609H
-#define LIAISONSCOPE20110609H
+#ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_SCOPE_H
+#define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_SCOPE_H
 
 #include <boost/circular_buffer.hpp>
 #include <thread>

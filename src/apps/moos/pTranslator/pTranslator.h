@@ -23,8 +23,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef pTranslatorH
-#define pTranslatorH
+#ifndef GOBY_APPS_MOOS_PTRANSLATOR_PTRANSLATOR_H
+#define GOBY_APPS_MOOS_PTRANSLATOR_PTRANSLATOR_H
 
 #include <google/protobuf/descriptor.h>
 

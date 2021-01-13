@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MOOS_TRANSLATOR_H
-#define MOOS_TRANSLATOR_H
+#ifndef GOBY_MOOS_MOOS_TRANSLATOR_H
+#define GOBY_MOOS_MOOS_TRANSLATOR_H
 
 #include "goby/moos/moos_header.h"
 #include "moos_geodesy.h"

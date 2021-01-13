@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GENERATE_20190801H
-#define GENERATE_20190801H
+#ifndef GOBY_APPS_MIDDLEWARE_CLANG_TOOL_ACTIONS_H
+#define GOBY_APPS_MIDDLEWARE_CLANG_TOOL_ACTIONS_H
 
 #include <string>
 #include <vector>

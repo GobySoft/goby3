@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISONCOMMANDER20110609H
-#define LIAISONCOMMANDER20110609H
+#ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_COMMANDER_H
+#define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_COMMANDER_H
 
 #include <Wt/WAbstractListModel>
 #include <Wt/WBorder>

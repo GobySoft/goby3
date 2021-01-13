@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef CONFIGURATIONREADER20100929H
-#define CONFIGURATIONREADER20100929H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_CONFIGURATION_READER_H
+#define GOBY_MIDDLEWARE_APPLICATION_CONFIGURATION_READER_H
 
 #include <fstream>
 #include <iostream>

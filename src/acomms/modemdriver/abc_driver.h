@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Modem20110225H
-#define Modem20110225H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_ABC_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_ABC_DRIVER_H
 
 #include "goby/time.h"
 

@@ -25,8 +25,8 @@
 // This file uses the same basic API provided by MOOS pre-v10
 // (C) Paul Newman, released GPL v3
 
-#ifndef GobyMOOSGeodesy20130916H
-#define GobyMOOSGeodesy20130916H
+#ifndef GOBY_MOOS_MOOS_GEODESY_H
+#define GOBY_MOOS_MOOS_GEODESY_H
 
 #include <memory>
 

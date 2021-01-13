@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerializeParse20160607H
-#define SerializeParse20160607H
+#ifndef GOBY_MIDDLEWARE_MARSHALLING_INTERFACE_H
+#define GOBY_MIDDLEWARE_MARSHALLING_INTERFACE_H
 
 #include <map>
 #include <mutex>

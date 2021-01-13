@@ -24,8 +24,8 @@
 
 // defines translations for backwards compatible use (hopefully temporary)
 // with iHuxley
-#ifndef LegacyTranslator20130222H
-#define LegacyTranslator20130222H
+#ifndef GOBY_APPS_MOOS_IFRONTSEAT_LEGACY_TRANSLATOR_H
+#define GOBY_APPS_MOOS_IFRONTSEAT_LEGACY_TRANSLATOR_H
 
 #include "goby/moos/moos_header.h"
 

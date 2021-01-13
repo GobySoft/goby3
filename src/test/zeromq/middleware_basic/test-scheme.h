@@ -21,6 +21,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef GOBY_TEST_ZEROMQ_MIDDLEWARE_BASIC_TEST_SCHEME_H
+#define GOBY_TEST_ZEROMQ_MIDDLEWARE_BASIC_TEST_SCHEME_H
+
 #include "goby/middleware/marshalling/interface.h"
 #include <vector>
 
@@ -71,3 +74,5 @@ constexpr int scheme(typename std::enable_if<std::is_same<T, std::deque<char> >:
 }
 } // namespace middleware
 } // namespace goby
+
+#endif

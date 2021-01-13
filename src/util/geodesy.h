@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GobyGeodesy20180312H
-#define GobyGeodesy20180312H
+#ifndef GOBY_UTIL_GEODESY_H
+#define GOBY_UTIL_GEODESY_H
 
 #include <limits>
 

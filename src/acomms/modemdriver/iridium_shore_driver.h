@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IridiumShoreDriver20140508H
-#define IridiumShoreDriver20140508H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_DRIVER_H
 
 #include <boost/bimap.hpp>
 #include <boost/circular_buffer.hpp>

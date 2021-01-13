@@ -37,7 +37,6 @@ goby::test::acomms::DriverTester::DriverTester(
     const goby::acomms::protobuf::DriverConfig& cfg1,
     const goby::acomms::protobuf::DriverConfig& cfg2, const std::vector<int>& tests_to_run,
     goby::acomms::protobuf::DriverType driver_type)
-
     : driver1_(driver1),
       driver2_(driver2),
       check_count_(0),

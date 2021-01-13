@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IPCodecs20160329H
-#define IPCodecs20160329H
+#ifndef GOBY_ACOMMS_IP_CODECS_H
+#define GOBY_ACOMMS_IP_CODECS_H
 
 #include <cstdint>
 

@@ -23,8 +23,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBYMOOSAPP20100726H
-#define GOBYMOOSAPP20100726H
+#ifndef GOBY_MOOS_GOBY_MOOS_APP_H
+#define GOBY_MOOS_GOBY_MOOS_APP_H
 
 #include <map>
 

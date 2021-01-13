@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef BluefinCommsDriver20130412H
-#define BluefinCommsDriver20130412H
+#ifndef GOBY_MOOS_MOOS_BLUEFIN_DRIVER_H
+#define GOBY_MOOS_MOOS_BLUEFIN_DRIVER_H
 
 #include "goby/moos/moos_header.h"
 

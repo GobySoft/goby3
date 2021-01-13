@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TCPServer20100719H
-#define TCPServer20100719H
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_TCP_SERVER_H
+#define GOBY_UTIL_LINEBASEDCOMMS_TCP_SERVER_H
 
 #include <deque>
 #include <iostream>

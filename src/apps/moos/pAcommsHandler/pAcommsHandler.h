@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef pAcommsHandlerH
-#define pAcommsHandlerH
+#ifndef GOBY_APPS_MOOS_PACOMMSHANDLER_PACOMMSHANDLER_H
+#define GOBY_APPS_MOOS_PACOMMSHANDLER_PACOMMSHANDLER_H
 
 #include <fstream>
 #include <iostream>

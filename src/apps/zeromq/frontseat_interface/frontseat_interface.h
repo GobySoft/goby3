@@ -22,10 +22,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_APPS_ZEROMQ_FRONTSEAT_INTERFACE_FRONTSEAT_INTERFACE_H
+#define GOBY_APPS_ZEROMQ_FRONTSEAT_INTERFACE_FRONTSEAT_INTERFACE_H
 
 #include "goby/middleware/marshalling/protobuf.h"
-
 #include "goby/middleware/frontseat/interface.h"
 #include "goby/zeromq/application/multi_thread.h"
 #include "goby/zeromq/protobuf/frontseat_interface_config.pb.h"
@@ -62,3 +62,5 @@ class FrontSeatInterface
 } // namespace zeromq
 } // namespace apps
 } // namespace goby
+
+#endif

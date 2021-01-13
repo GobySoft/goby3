@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCLCOMPAT20131116H
-#define DCCLCOMPAT20131116H
+#ifndef GOBY_ACOMMS_DCCL_DCCL_H
+#define GOBY_ACOMMS_DCCL_DCCL_H
 
 #include "goby/acomms/protobuf/dccl.pb.h"
 #include "goby/util/binary.h"

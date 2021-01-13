@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef BasicSimulatorFrontSeat20130220H
-#define BasicSimulatorFrontSeat20130220H
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_SIMULATOR_BASIC_BASIC_SIMULATOR_FRONTSEAT_DRIVER_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_SIMULATOR_BASIC_BASIC_SIMULATOR_FRONTSEAT_DRIVER_H
 
 #include <boost/bimap.hpp>
 

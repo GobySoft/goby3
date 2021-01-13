@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef QueueConstants20091205H
-#define QueueConstants20091205H
+#ifndef GOBY_ACOMMS_QUEUE_QUEUE_CONSTANTS_H
+#define GOBY_ACOMMS_QUEUE_QUEUE_CONSTANTS_H
 
 #include "goby/acomms/acomms_constants.h"
 #include "goby/time.h"

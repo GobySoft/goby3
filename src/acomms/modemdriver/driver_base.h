@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DriverBase20091214H
-#define DriverBase20091214H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_DRIVER_BASE_H
+#define GOBY_ACOMMS_MODEMDRIVER_DRIVER_BASE_H
 
 #include <boost/signals2.hpp>
 #include <thread>

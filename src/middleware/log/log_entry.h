@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LogEntry20171127H
-#define LogEntry20171127H
+#ifndef GOBY_MIDDLEWARE_LOG_LOG_ENTRY_H
+#define GOBY_MIDDLEWARE_LOG_LOG_ENTRY_H
 
 #include <boost/bimap.hpp>
 #include <boost/crc.hpp>

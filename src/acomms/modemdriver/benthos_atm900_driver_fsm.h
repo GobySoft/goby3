@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef BenthosATM900DriverFSM20161221H
-#define BenthosATM900DriverFSM20161221H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_FSM_H
+#define GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_FSM_H
 
 #include <boost/circular_buffer.hpp>
 

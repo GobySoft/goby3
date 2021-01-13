@@ -25,8 +25,8 @@
 // courtesy header for the Dynamic Compact Control Language Library
 // (libdccl)
 
-#ifndef DCCL2COURTESY20091211H
-#define DCCL2COURTESY20091211H
+#ifndef GOBY_ACOMMS_DCCL_H
+#define GOBY_ACOMMS_DCCL_H
 
 #include "goby/acomms/dccl/dccl.h"
 

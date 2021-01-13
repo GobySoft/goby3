@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCLSerializerParserBase20191105H
-#define DCCLSerializerParserBase20191105H
+#ifndef GOBY_MIDDLEWARE_MARSHALLING_DETAIL_DCCL_SERIALIZER_PARSER_H
+#define GOBY_MIDDLEWARE_MARSHALLING_DETAIL_DCCL_SERIALIZER_PARSER_H
 
 #include <mutex>
 #include <unordered_map>

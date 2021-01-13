@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef PUBSUB_ENTRY_20190801H
-#define PUBSUB_ENTRY_20190801H
+#ifndef GOBY_APPS_MIDDLEWARE_CLANG_TOOL_PUBSUB_ENTRY_H
+#define GOBY_APPS_MIDDLEWARE_CLANG_TOOL_PUBSUB_ENTRY_H
 
 #include <boost/algorithm/string.hpp>
 #include <string>

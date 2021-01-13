@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ASIOLineBasedConnection20100715H
-#define ASIOLineBasedConnection20100715H
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_CONNECTION_H
+#define GOBY_UTIL_LINEBASEDCOMMS_CONNECTION_H
 
 #include "goby/time.h"
 #include "goby/util/debug_logger.h"

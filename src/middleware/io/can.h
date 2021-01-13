@@ -22,7 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_IO_CAN_H
+#define GOBY_MIDDLEWARE_IO_CAN_H
 
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -203,3 +204,5 @@ void goby::middleware::io::
         stream, boost::asio::buffer(&receive_frame_, sizeof(receive_frame_)),
         boost::bind(&CanThread::data_rec, this, boost::ref(receive_frame_), boost::ref(stream)));
 }
+
+#endif
