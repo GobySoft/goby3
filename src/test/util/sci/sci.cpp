@@ -77,8 +77,8 @@ int main()
     assert(std::round(linear_interpolate(1.9, table)) == 480);
     assert(std::round(linear_interpolate(2.0, table)) == 500);
 
-    assert(std::isnan(goby::util::NaN<double>));
-    assert(std::isnan(goby::util::NaN<float>));
+    static_assert(std::isnan(goby::util::NaN<double>), "");
+    static_assert(std::isnan(goby::util::NaN<float>), "");
 
     std::cout << "all tests passed" << std::endl;
     return 0;

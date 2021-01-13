@@ -33,7 +33,6 @@
 using namespace goby::test::middleware;
 
 using goby::test::acomms::protobuf::EmbeddedMsg1;
-using goby::test::acomms::protobuf::EmbeddedMsg2;
 using goby::test::acomms::protobuf::TestMsg;
 
 namespace goby

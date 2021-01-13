@@ -33,7 +33,6 @@
 #include <sys/wait.h>
 
 #include "goby/test/zeromq/single_thread_app1/test.pb.h"
-using goby::glog;
 using namespace goby::util::logger;
 using namespace goby::test::zeromq::protobuf;
 

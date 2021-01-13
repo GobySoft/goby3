@@ -30,7 +30,6 @@
 
 using namespace goby::util::logger;
 using namespace goby::acomms;
-using goby::util::as;
 using namespace boost::posix_time;
 
 goby::test::acomms::DriverTester::DriverTester(

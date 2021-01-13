@@ -36,7 +36,6 @@
 using namespace goby::acomms;
 using namespace goby::util::logger;
 using namespace goby::util::logger_lock;
-using goby::util::as;
 using namespace boost::posix_time;
 using goby::acomms::protobuf::ModemTransmission;
 

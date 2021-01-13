@@ -28,7 +28,6 @@
 #include "route.h"
 
 using goby::glog;
-using goby::util::as;
 using namespace goby::util::logger;
 
 void goby::acomms::RouteManager::set_cfg(const protobuf::RouteManagerConfig& cfg)

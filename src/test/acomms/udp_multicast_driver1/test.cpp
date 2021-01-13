@@ -28,7 +28,6 @@
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"
 #include <cstdlib>
 
-using goby::acomms::udp_multicast::protobuf::config;
 
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 

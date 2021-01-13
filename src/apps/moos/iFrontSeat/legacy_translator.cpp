@@ -30,7 +30,6 @@
 #include "legacy_translator.h"
 
 namespace gpb = goby::middleware::frontseat::protobuf;
-using goby::glog;
 using namespace goby::util::logger;
 
 goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs)

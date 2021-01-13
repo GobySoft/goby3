@@ -47,7 +47,6 @@
 using namespace Wt;
 using namespace goby::util::logger;
 using goby::glog;
-using goby::util::logger_lock::lock;
 
 std::mutex goby::apps::zeromq::LiaisonCommander::dbo_mutex_;
 Dbo::backend::Sqlite3* goby::apps::zeromq::LiaisonCommander::sqlite3_(nullptr);

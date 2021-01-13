@@ -34,12 +34,8 @@
 
 using namespace goby::util::logger;
 using goby::glog;
-using goby::acomms::iridium::protobuf::DirectIPMOHeader;
-using goby::acomms::iridium::protobuf::DirectIPMOPayload;
-using goby::acomms::iridium::protobuf::DirectIPMOPreHeader;
 using goby::acomms::iridium::protobuf::DirectIPMTHeader;
 using goby::acomms::iridium::protobuf::DirectIPMTPayload;
-using goby::util::TCPConnection;
 
 goby::acomms::IridiumShoreDriver::IridiumShoreDriver() { init_iridium_dccl(); }
 

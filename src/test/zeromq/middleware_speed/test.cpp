@@ -57,7 +57,6 @@ std::atomic<double> end(0);
 
 std::mutex cout_mutex;
 
-using goby::glog;
 using namespace goby::util::logger;
 
 constexpr goby::middleware::Group sample1_group{"Sample1"};

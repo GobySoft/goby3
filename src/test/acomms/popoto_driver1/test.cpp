@@ -65,7 +65,6 @@
 #include "goby/acomms/modemdriver/popoto_driver.h"
 #include <cstdlib>
 
-using goby::acomms::popoto::protobuf::config;
 
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 

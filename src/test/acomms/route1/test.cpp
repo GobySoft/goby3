@@ -48,7 +48,6 @@
 
 using namespace goby::util::logger;
 using namespace goby::acomms;
-using goby::util::as;
 using namespace boost::posix_time;
 using goby::acomms::udp::protobuf::config;
 using goby::test::acomms::protobuf::RouteMessage;

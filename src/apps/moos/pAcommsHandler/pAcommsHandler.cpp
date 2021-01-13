@@ -51,9 +51,7 @@
 
 using namespace goby::util::tcolor;
 using namespace goby::util::logger;
-using goby::acomms::operator<<;
 using goby::moos::operator<<;
-using goby::util::as;
 using google::protobuf::uint32;
 
 using goby::glog;
