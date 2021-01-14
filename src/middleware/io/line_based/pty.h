@@ -24,8 +24,34 @@
 #ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_PTY_H
 #define GOBY_MIDDLEWARE_IO_LINE_BASED_PTY_H
 
-#include "goby/middleware/io/detail/pty_interface.h"
-#include "goby/middleware/io/line_based/common.h"
+#include <istream> // for istream, basic_...
+#include <string>  // for string
+
+#include <boost/asio/read_until.hpp>   // for async_read_until
+#include <boost/asio/streambuf.hpp>    // for streambuf
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/middleware/io/detail/io_interface.h"  // for PubSubLayer
+#include "goby/middleware/io/detail/pty_interface.h" // for PTYThread
+#include "goby/middleware/io/line_based/common.h"    // for match_regex
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class PTYConfig;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {

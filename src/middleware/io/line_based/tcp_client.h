@@ -24,10 +24,36 @@
 #ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_TCP_CLIENT_H
 #define GOBY_MIDDLEWARE_IO_LINE_BASED_TCP_CLIENT_H
 
-#include <regex>
+#include <istream> // for istream
+#include <memory>  // for make_shared
+#include <string>  // for basic_st...
 
-#include "goby/middleware/io/detail/tcp_client_interface.h"
-#include "goby/middleware/io/line_based/common.h"
+#include <boost/asio/read_until.hpp>   // for async_re...
+#include <boost/asio/streambuf.hpp>    // for streambuf
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/middleware/io/detail/io_interface.h"         // for PubSubLayer
+#include "goby/middleware/io/detail/tcp_client_interface.h" // for TCPClien...
+#include "goby/middleware/io/line_based/common.h"           // for match_regex
+#include "goby/middleware/protobuf/io.pb.h"                 // for IOData
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class TCPClientConfig;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {

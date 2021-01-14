@@ -24,11 +24,34 @@
 #ifndef SerialMAVLink20190719H
 #define SerialMAVLink20190719H
 
-#include <boost/asio/read.hpp>
+#include <iosfwd> // for size_t
 
-#include "goby/middleware/io/mavlink/common.h"
+#include <boost/asio/buffer.hpp>               // for buffer
+#include <boost/asio/completion_condition.hpp> // for transfer_at_...
+#include <boost/asio/read.hpp>                 // for async_read
+#include <boost/system/error_code.hpp>         // for error_code
 
-#include "goby/middleware/io/detail/serial_interface.h"
+#include "goby/middleware/io/detail/io_interface.h"     // for PubSubLayer
+#include "goby/middleware/io/detail/serial_interface.h" // for SerialThread
+#include "goby/middleware/io/mavlink/common.h"          // for IOThreadMAVLink
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class SerialConfig;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {

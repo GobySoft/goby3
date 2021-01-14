@@ -24,18 +24,40 @@
 #ifndef GOBY_MIDDLEWARE_IO_DETAIL_PTY_INTERFACE_H
 #define GOBY_MIDDLEWARE_IO_DETAIL_PTY_INTERFACE_H
 
-#include <termios.h>
-#include <unistd.h>
+#include <errno.h>    // for errno
+#include <fcntl.h>    // for O_NOCTTY, O_RDWR
+#include <memory>     // for shared_ptr
+#include <stdio.h>    // for remove
+#include <stdlib.h>   // for grantpt, posix_o...
+#include <string.h>   // for strerror
+#include <string>     // for operator+, string
+#include <sys/stat.h> // for lstat, stat, S_I...
+#include <termios.h>  // for cfsetspeed, cfma...
+#include <unistd.h>   // for symlink
 
-#include <boost/asio/posix/stream_descriptor.hpp>
-#include <boost/asio/streambuf.hpp>
-#include <boost/asio/write.hpp>
-#include <boost/units/systems/si/prefixes.hpp>
+#include <boost/asio/posix/stream_descriptor.hpp> // for stream_descriptor
 
-#include "goby/middleware/io/detail/io_interface.h"
-#include "goby/middleware/protobuf/pty_config.pb.h"
+#include "goby/exception.h"                         // for Exception
+#include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer, IOT...
+#include "goby/middleware/protobuf/pty_config.pb.h" // for PTYConfig
 
-#include <sys/stat.h>
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class IOData;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {
