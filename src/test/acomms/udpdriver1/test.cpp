@@ -26,6 +26,7 @@
 
 #include "../driver_tester/driver_tester.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
+#include "goby/acomms/protobuf/udp_driver.pb.h"
 #include <cstdlib>
 
 using goby::acomms::udp::protobuf::config;

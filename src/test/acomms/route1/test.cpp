@@ -38,6 +38,7 @@
 #include "goby/acomms/bind.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
+#include "goby/acomms/protobuf/udp_driver.pb.h"
 #include "goby/acomms/route/route.h"
 #include "goby/test/acomms/route1/test.pb.h"
 #include "goby/time.h"

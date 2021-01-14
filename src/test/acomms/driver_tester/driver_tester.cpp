@@ -26,6 +26,7 @@
 
 #include <utility>
 
+#include "goby/time/convert.h"
 #include "goby/util/protobuf/io.h"
 
 using namespace goby::util::logger;

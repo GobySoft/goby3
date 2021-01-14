@@ -32,7 +32,6 @@
 
 #include <boost/asio/basic_socket.hpp>          // for basic_socket<...
 #include <boost/asio/basic_socket_acceptor.hpp> // for basic_socket_...
-#include <boost/asio/executor.hpp>              // for executor
 #include <boost/asio/ip/basic_endpoint.hpp>     // for operator<<
 #include <boost/asio/ip/tcp.hpp>                // for tcp::socket, tcp
 #include <boost/asio/read_until.hpp>
