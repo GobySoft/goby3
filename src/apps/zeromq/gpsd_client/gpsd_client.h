@@ -24,16 +24,13 @@
 #ifndef GOBY_APPS_ZEROMQ_GPSD_CLIENT_GPSD_CLIENT_H
 #define GOBY_APPS_ZEROMQ_GPSD_CLIENT_GPSD_CLIENT_H
 
-#include <gps.h>
+#include <set>    // for set
+#include <string> // for string
 
-#include <map>
-#include <string>
+#include <gps.h> // for gpsmm
 
-#include "goby/middleware/marshalling/protobuf.h"
-
-#include "goby/zeromq/application/single_thread.h"
-
-#include "goby/middleware/protobuf/gpsd.pb.h"
+#include "goby/util/thirdparty/nlohmann/json.hpp"  // for json
+#include "goby/zeromq/application/single_thread.h" // for SingleThreadA...
 #include "goby/zeromq/protobuf/gps_config.pb.h"
 
 namespace goby

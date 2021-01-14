@@ -23,11 +23,25 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "benthos_atm900_driver.h"
-#include "driver_exception.h"
 
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+#include <list>     // for operator!=
+#include <ostream>  // for basic_ostre...
+#include <typeinfo> // for bad_cast
+#include <unistd.h> // for usleep
+
+#include <boost/algorithm/string/predicate.hpp>        // for all
+#include <boost/algorithm/string/predicate_facade.hpp> // for predicate_f...
+#include <boost/algorithm/string/trim.hpp>             // for trim_copy
+#include <boost/circular_buffer.hpp>                   // for circular_bu...
+#include <boost/function.hpp>                          // for function
+#include <boost/signals2/expired_slot.hpp>             // for expired_slot
+#include <boost/signals2/signal.hpp>                   // for signal
+
+#include "driver_exception.h"                            // for ModemDriver...
+#include "goby/acomms/protobuf/modem_driver_status.pb.h" // for ModemDriver...
+#include "goby/util/binary.h"                            // for hex_encode
+#include "goby/util/debug_logger.h"                      // for glog
+#include "goby/util/protobuf/io.h"                       // for operator<<
 
 using goby::glog;
 using goby::util::hex_encode;

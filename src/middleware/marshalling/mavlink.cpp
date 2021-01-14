@@ -24,6 +24,10 @@
 
 #include "mavlink.h"
 
+#include <mavlink/v2.0/common/common.hpp> // for MESSAGE_ENTRIES
+#include <mavlink/v2.0/message.hpp>       // for mavlink_get_msg_entry
+#include <stdint.h>                       // for uint32_t
+
 std::unordered_map<uint32_t, mavlink::mavlink_msg_entry_t>
     goby::middleware::MAVLinkRegistry::entries_;
 std::mutex goby::middleware::MAVLinkRegistry::mavlink_registry_mutex_;

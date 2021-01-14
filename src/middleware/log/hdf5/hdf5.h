@@ -24,24 +24,28 @@
 #ifndef GOBY_MIDDLEWARE_LOG_HDF5_HDF5_H
 #define GOBY_MIDDLEWARE_LOG_HDF5_HDF5_H
 
-#include <boost/algorithm/string.hpp>
-#include <boost/range/algorithm/replace_if.hpp>
-#include <utility>
+#include <algorithm> // for max
+#include <deque>     // for deque
+#include <map>       // for map, multimap
+#include <memory>    // for shared_ptr
+#include <stdint.h>  // for uint64_t
+#include <string>    // for string
+#include <utility>   // for move
+#include <vector>    // for vector
 
-#include "H5Cpp.h"
+#include <H5Cpp.h>
+#include <google/protobuf/descriptor.h> // for FieldDescriptor
+#include <google/protobuf/message.h>    // for Message, Reflection
 
-#include "goby/middleware/application/interface.h"
-#include "goby/middleware/protobuf/hdf5.pb.h"
-#include "goby/util/binary.h"
-
-#include "hdf5_plugin.h"
-#include "hdf5_predicate.h"
-#include "hdf5_protobuf_values.h"
+#include "hdf5_predicate.h"       // for predicate
+#include "hdf5_protobuf_values.h" // for PBMeta, retrieve_default_value
 
 namespace goby
 {
 namespace middleware
 {
+struct HDF5ProtobufEntry;
+
 namespace hdf5
 {
 struct MessageCollection

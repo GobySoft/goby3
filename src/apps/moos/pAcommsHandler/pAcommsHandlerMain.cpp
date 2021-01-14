@@ -22,7 +22,27 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "pAcommsHandler.h"
+#include <algorithm> // for max
+#include <dlfcn.h>   // for dlclose
+#include <iostream>  // for operat...
+#include <map>       // for map
+#include <stdlib.h>  // for exit
+#include <string>    // for string
+#include <utility>   // for pair
+#include <vector>    // for vector
+
+#include <boost/algorithm/string/classification.hpp> // for is_any...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <dccl/dynamic_protobuf_manager.h>           // for Dynami...
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/moos/goby_moos_app.h"                          // for run
+#include "goby/moos/transitional/message_algorithms.h"        // for DCCLAl...
+#include "goby/util/debug_logger/flex_ostream.h"              // for FlexOs...
+#include "goby/util/debug_logger/flex_ostreambuf.h"           // for logger
+#include "goby/util/debug_logger/term_color.h"                // for Colors
+
+#include "pAcommsHandler.h" // for CpAcom...
 
 std::vector<void*> plugin_handles_;
 

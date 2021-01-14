@@ -21,14 +21,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <cmath>
-#include <iostream>
-#include <sstream>
+#include <cmath>    // for floor
+#include <iostream> // for operator<<, basic_...
+#include <string>   // for operator+, basic_s...
 
-#include <boost/units/io.hpp>
-#include <boost/units/systems/si/plane_angle.hpp>
+#include <boost/units/io.hpp>                     // for operator<<
+#include <boost/units/systems/si/plane_angle.hpp> // for plane_angle, radians
+#include <boost/units/unit.hpp>                   // for unit
 
-#include "goby/exception.h"
+#include "goby/exception.h" // for Exception
 
 #include "geodesy.h"
 

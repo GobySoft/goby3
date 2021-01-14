@@ -22,23 +22,44 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <dlfcn.h>
+#include <chrono>      // for time_point
+#include <list>        // for operator!=
+#include <ostream>     // for basic_ostre...
+#include <string>      // for operator+
+#include <type_traits> // for __decay_and...
+#include <utility>     // for pair, make_...
+#include <vector>      // for vector
 
-#include <Wt/WAnchor>
-#include <Wt/WHBoxLayout>
-#include <Wt/WImage>
-#include <Wt/WStackedWidget>
-#include <Wt/WText>
-#include <Wt/WVBoxLayout>
-#include <utility>
+#include <Wt/WAnchor>                     // for WAnchor
+#include <Wt/WContainerWidget>            // for WContainerW...
+#include <Wt/WFlags>                      // for Wt
+#include <Wt/WGlobal>                     // for TargetNewWi...
+#include <Wt/WImage>                      // for WImage
+#include <Wt/WLink>                       // for WLink
+#include <Wt/WMenu>                       // for WMenu
+#include <Wt/WSignal>                     // for Signal
+#include <Wt/WStackedWidget>              // for WStackedWidget
+#include <Wt/WString>                     // for operator<<
+#include <Wt/WText>                       // for WText
+#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
+#include <dlfcn.h>                        // for dlsym
 
-#include "dccl/dynamic_protobuf_manager.h"
-#include "goby/time.h"
+#include "goby/time/convert.h"                           // for file_str
+#include "goby/util/debug_logger/flex_ostream.h"         // for operator<<
+#include "goby/util/debug_logger/flex_ostreambuf.h"      // for DEBUG1, WARN
+#include "goby/zeromq/liaison/liaison_container.h"       // for LiaisonCont...
+#include "goby/zeromq/protobuf/interprocess_config.pb.h" // for InterProces...
 
-#include "liaison_commander.h"
-#include "liaison_home.h"
-#include "liaison_scope.h"
+#include "liaison.h"           // for Liaison
+#include "liaison_commander.h" // for LiaisonComm...
+#include "liaison_home.h"      // for LiaisonHome
+#include "liaison_scope.h"     // for LiaisonScope
 #include "liaison_wt_thread.h"
+
+namespace Wt
+{
+class WMenuItem;
+} // namespace Wt
 
 using goby::glog;
 using namespace Wt;

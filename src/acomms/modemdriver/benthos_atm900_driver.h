@@ -25,16 +25,27 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_H
 
-#include <dccl/codec.h>
-#include <dccl/field_codec_fixed.h>
-#include <dccl/field_codec_manager.h>
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/constants.hpp>      // for token_compress_on
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/any.hpp>                             // for bad_any_cast
+#include <dccl/bitset.h>                             // for Bitset
+#include <dccl/codec.h>                              // for Codec
+#include <dccl/common.h>                             // for uint32
+#include <dccl/exception.h>                          // for NullValueException
+#include <dccl/field_codec_fixed.h>                  // for TypedFixedField...
+#include <dccl/field_codec_manager.h>                // for FieldCodecManager
+#include <memory>                                    // for shared_ptr, __s...
+#include <stdint.h>                                  // for uint32_t
+#include <string>                                    // for string, operator+
+#include <vector>                                    // for vector
 
-#include "goby/acomms/protobuf/benthos_atm900.pb.h"
-#include "goby/time.h"
-
-#include "benthos_atm900_driver_fsm.h"
-#include "driver_base.h"
-#include "rudics_packet.h"
+#include "benthos_atm900_driver_fsm.h"              // for BenthosATM900FSM
+#include "driver_base.h"                            // for ModemDriverBase
+#include "goby/acomms/protobuf/benthos_atm900.pb.h" // for BenthosHeader
+#include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
+#include "goby/acomms/protobuf/modem_message.pb.h"  // for ModemTransmission
+#include "rudics_packet.h"                          // for parse_rudics_pa...
 
 namespace goby
 {

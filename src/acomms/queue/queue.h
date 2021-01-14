@@ -25,30 +25,41 @@
 #ifndef GOBY_ACOMMS_QUEUE_QUEUE_H
 #define GOBY_ACOMMS_QUEUE_QUEUE_H
 
-#include <bitset>
-#include <deque>
-#include <iostream>
-#include <list>
-#include <map>
-#include <sstream>
-#include <string>
-#include <vector>
+#include <iostream> // for ostream
+#include <list>     // for list
+#include <map>      // for multimap
+#include <memory>   // for shared_ptr
+#include <stddef.h> // for size_t
+#include <string>   // for string
+#include <vector>   // for vector
 
-#include <boost/algorithm/string.hpp>
-#include <boost/any.hpp>
+#include <boost/any.hpp>                                    // for any
+#include <boost/date_time/posix_time/posix_time_config.hpp> // for time_dur...
+#include <boost/date_time/posix_time/ptime.hpp>             // for ptime
+#include <boost/units/quantity.hpp>                         // for quantity
+#include <google/protobuf/descriptor.h>                     // for Descriptor
 
-#include "goby/acomms/dccl/dccl.h"
-#include "goby/time.h"
-#include "goby/util/as.h"
+#include "goby/acomms/dccl/dccl.h"         // for DCCLCodec
+#include "goby/acomms/protobuf/queue.pb.h" // for QueuedMe...
+#include "goby/time/convert.h"             // for convert
 
-#include "goby/acomms/protobuf/modem_message.pb.h"
-#include "goby/acomms/protobuf/queue.pb.h"
+namespace google
+{
+namespace protobuf
+{
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {
 namespace acomms
 {
 class QueueManager;
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
 
 struct QueuedMessage
 {

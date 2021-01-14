@@ -24,10 +24,24 @@
 
 #include "udp_multicast_driver.h"
 
-#include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/util/binary.h"
+#include <list>    // for operator!=
+#include <ostream> // for basic_ostream
+#include <string>  // for operator<<
+
+#include <boost/asio/buffer.hpp>       // for buffer, muta...
+#include <boost/asio/ip/address.hpp>   // for address
+#include <boost/asio/ip/multicast.hpp> // for join_group
+#include <boost/asio/socket_base.hpp>  // for socket_base:...
+#include <boost/function.hpp>          // for function
+#include <boost/signals2/signal.hpp>   // for signal
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/acomms/acomms_constants.h"          // for BROADCAST_ID
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTransmi...
+#include "goby/util/asio_compat.h"                 // for io_context
+#include "goby/util/binary.h"                      // for hex_encode
 #include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+#include "goby/util/protobuf/io.h" // for operator<<
 
 using goby::glog;
 using goby::util::hex_encode;

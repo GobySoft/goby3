@@ -22,11 +22,22 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <algorithm> // for max
+#include <fstream>   // for operator<<, bas...
+#include <memory>    // for allocator_trait...
+#include <stdlib.h>  // for atoi
+#include <string>    // for string, basic_s...
+#include <utility>   // for pair
+#include <vector>    // for vector
+
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/predicate.hpp>      // for iequals
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexical_cast
+
+#include "goby/util/as.h" // for as
+
 #include "modem_id_convert.h"
-#include "goby/util/as.h"
-#include <boost/algorithm/string.hpp>
-#include <string>
-#include <vector>
 
 using namespace std;
 using goby::util::as;

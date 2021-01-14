@@ -24,29 +24,42 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_FSM_H
 #define GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_FSM_H
 
-#include <boost/circular_buffer.hpp>
+#include <iostream> // for basic_ostrea...
+#include <memory>   // for allocator
+#include <string>   // for string, oper...
+#include <utility>  // for move, pair
 
-#include <boost/format.hpp>
+#include <boost/circular_buffer.hpp>               // for circular_buffer
+#include <boost/date_time/date.hpp>                // for date<>::day_...
+#include <boost/date_time/gregorian_calendar.hpp>  // for gregorian_ca...
+#include <boost/date_time/posix_time/ptime.hpp>    // for ptime
+#include <boost/date_time/time.hpp>                // for base_time<>:...
+#include <boost/date_time/time_system_counted.hpp> // for counted_time...
+#include <boost/format.hpp>                        // for basic_altstr...
+#include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_...
 #include <boost/mpl/list.hpp>
+#include <boost/smart_ptr/intrusive_ptr.hpp> // for intrusive_ptr
 #include <boost/statechart/custom_reaction.hpp>
 #include <boost/statechart/deep_history.hpp>
-#include <boost/statechart/event.hpp>
-#include <boost/statechart/in_state_reaction.hpp>
-#include <boost/statechart/simple_state.hpp>
-#include <boost/statechart/state.hpp>
-#include <boost/statechart/state_machine.hpp>
-#include <boost/statechart/transition.hpp>
-#include <iostream>
-#include <utility>
+#include <boost/statechart/event.hpp>             // for event
+#include <boost/statechart/event_base.hpp>        // for event_base
+#include <boost/statechart/in_state_reaction.hpp> // for in_state_rea...
+#include <boost/statechart/result.hpp>            // for reaction_result
+#include <boost/statechart/simple_state.hpp>      // for simple_state...
+#include <boost/statechart/state.hpp>             // for state, state...
+#include <boost/statechart/state_machine.hpp>     // for state_machine
+#include <boost/statechart/transition.hpp>        // for transition
 
-#include "goby/acomms/acomms_constants.h"
-#include "goby/time.h"
-#include "goby/util/as.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-
-#include "goby/acomms/protobuf/benthos_atm900.pb.h"
-#include "goby/acomms/protobuf/modem_message.pb.h"
+#include "goby/acomms/acomms_constants.h"               // for BROADCAST_ID
+#include "goby/acomms/protobuf/benthos_atm900.pb.h"     // for Config, Mess...
+#include "goby/acomms/protobuf/driver_base.pb.h"        // for DriverConfig
+#include "goby/acomms/protobuf/modem_message.pb.h"      // for ModemTransmi...
+#include "goby/time/convert.h"                          // for SystemClock:...
+#include "goby/time/system_clock.h"                     // for SystemClock
+#include "goby/util/as.h"                               // for as
+#include "goby/util/debug_logger/flex_ostream.h"        // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
 
 namespace goby
 {
@@ -140,7 +153,6 @@ struct SetClock;
 struct Dial;
 struct LowPower;
 struct Range;
-
 struct Online;
 struct Listen;
 struct TransmitData;

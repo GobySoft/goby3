@@ -26,7 +26,7 @@
 
 #include <memory>
 
-#include "goby/util/asio-compat.h"
+#include "goby/util/asio_compat.h"
 #include <boost/asio.hpp>
 #include <utility>
 

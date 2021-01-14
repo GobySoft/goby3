@@ -25,23 +25,28 @@
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_TCP_SERVER_H
 #define GOBY_UTIL_LINEBASEDCOMMS_TCP_SERVER_H
 
-#include <deque>
-#include <iostream>
-#include <set>
-#include <string>
+#include <iostream> // for ios_base::fai...
+#include <map>      // for map
+#include <memory>   // for shared_ptr
+#include <string>   // for string, basic...
 
-#include "goby/util/asio-compat.h"
-#include <boost/asio.hpp>
+#include <boost/asio/basic_socket.hpp>          // for basic_socket<...
+#include <boost/asio/basic_socket_acceptor.hpp> // for basic_socket_...
+#include <boost/asio/executor.hpp>              // for executor
+#include <boost/asio/ip/basic_endpoint.hpp>     // for operator<<
+#include <boost/asio/ip/tcp.hpp>                // for tcp::socket, tcp
+#include <boost/asio/read_until.hpp>
+#include <boost/bind.hpp>                              // for bind_t, list_...
+#include <boost/lexical_cast/bad_lexical_cast.hpp>     // for bad_lexical_cast
+#include <boost/smart_ptr/enable_shared_from_this.hpp> // for enable_shared...
+#include <boost/system/error_code.hpp>                 // for error_code
 
-#include <boost/bind.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <memory>
+#include "goby/util/as.h" // for as
+#include "goby/util/asio_compat.h"
+#include "goby/util/protobuf/linebasedcomms.pb.h" // for Datagram
 
-#include "goby/util/as.h"
-#include "goby/util/asio-compat.h"
-
-#include "connection.h"
-#include "interface.h"
+#include "connection.h" // for LineBasedConn...
+#include "interface.h"  // for LineBasedInte...
 
 namespace goby
 {

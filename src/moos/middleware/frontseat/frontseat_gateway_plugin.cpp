@@ -21,7 +21,32 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <map>     // for map, operator!=
+#include <utility> // for pair
+
+#include <boost/units/quantity.hpp>              // for operator*, quantity
+#include <boost/units/systems/angle/degrees.hpp> // for degrees, plane_angle
+#include <boost/units/systems/si/length.hpp>     // for length, meters
+#include <boost/units/systems/si/time.hpp>       // for seconds, time
+#include <boost/units/systems/si/velocity.hpp>   // for meters_per_second
+
+#include "goby/zeromq/application/multi_thread.h"
+
 #include "frontseat_gateway_plugin.h"
+
+namespace goby
+{
+namespace apps
+{
+namespace moos
+{
+namespace protobuf
+{
+class GobyMOOSGatewayConfig;
+} // namespace protobuf
+} // namespace moos
+} // namespace apps
+} // namespace goby
 
 using goby::glog;
 

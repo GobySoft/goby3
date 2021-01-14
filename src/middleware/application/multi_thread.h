@@ -26,6 +26,9 @@
 
 #include <boost/units/systems/si.hpp>
 
+#include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/terminate/terminate.h"
+
 #include "goby/exception.h"
 #include "goby/middleware/application/detail/interprocess_common.h"
 #include "goby/middleware/application/detail/thread_type_selector.h"
@@ -35,9 +38,6 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 #include "goby/middleware/transport/intervehicle.h"
-
-#include "goby/middleware/coroner/coroner.h"
-#include "goby/middleware/terminate/terminate.h"
 
 namespace goby
 {

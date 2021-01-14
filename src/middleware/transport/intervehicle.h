@@ -26,15 +26,17 @@
 
 #include <atomic>
 #include <functional>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
 
-#include "goby/middleware/protobuf/intervehicle.pb.h"
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
+#include "goby/middleware/marshalling/dccl.h"
+#include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/transport/interthread.h" // used for InterVehiclePortal implementation
 #include "goby/middleware/transport/intervehicle/driver_thread.h"
+#include "goby/middleware/transport/intervehicle/groups.h"
 #include "goby/middleware/transport/serialization_handlers.h"
 
 namespace goby

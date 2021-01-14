@@ -22,13 +22,34 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <dlfcn.h>
+#include <dlfcn.h>  // for dlopen
+#include <iostream> // for endl
+#include <list>     // for operat...
+#include <map>      // for map
+#include <stdlib.h> // for exit
+#include <string>   // for string
+#include <vector>   // for vector
 
-#include <boost/algorithm/string.hpp>
-#include <boost/signals2.hpp>
+#include <MOOS/libMOOS/Comms/CommsTypes.h>         // for MOOSMS...
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>            // for CMOOSMsg
+#include <boost/algorithm/string/predicate.hpp>    // for iequals
+#include <boost/algorithm/string/trim.hpp>         // for trim
+#include <boost/bind.hpp>                          // for bind_t
+#include <boost/program_options/variables_map.hpp> // for variab...
+#include <boost/signals2/expired_slot.hpp>         // for expire...
+#include <boost/signals2/signal.hpp>               // for signal
+#include <boost/smart_ptr/shared_ptr.hpp>          // for shared...
+#include <boost/units/quantity.hpp>                // for operator*
+#include <boost/units/systems/angle/degrees.hpp>   // for degrees
 
-#include "goby/acomms/connect.h"
-#include "goby/time.h"
+#include "goby/acomms/connect.h"                              // for connect
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/protobuf/frontseat.pb.h"            // for Interf...
+#include "goby/middleware/protobuf/frontseat_config.pb.h"     // for Config
+#include "goby/middleware/protobuf/frontseat_data.pb.h"       // for NodeSt...
+#include "goby/moos/moos_protobuf_helpers.h"                  // for parse_...
+#include "goby/moos/protobuf/goby_moos_app.pb.h"              // for GobyMO...
+#include "goby/moos/protobuf/iFrontSeat_config.pb.h"          // for iFront...
 #include "goby/util/debug_logger.h"
 
 #include "iFrontSeat.h"

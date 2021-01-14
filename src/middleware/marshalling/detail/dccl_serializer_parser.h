@@ -24,27 +24,36 @@
 #ifndef GOBY_MIDDLEWARE_MARSHALLING_DETAIL_DCCL_SERIALIZER_PARSER_H
 #define GOBY_MIDDLEWARE_MARSHALLING_DETAIL_DCCL_SERIALIZER_PARSER_H
 
-#include <memory>
+#include <memory>        // for unique_ptr
+#include <mutex>         // for mutex, lock_guard
+#include <ostream>       // for basic_ostream
+#include <set>           // for set
+#include <string>        // for string, operat...
+#include <unordered_map> // for unordered_map
+#include <utility>       // for pair, make_pair
 
-#include <mutex>
-#include <unordered_map>
+#include <dccl/codec.h>                    // for Codec
+#include <dccl/dynamic_protobuf_manager.h> // for DynamicProtobu...
 
-#include <dccl/codec.h>
+#include "goby/middleware/protobuf/intervehicle.pb.h" // for DCCLForwardedData
+#include "goby/util/debug_logger/flex_ostream.h"      // for operator<<
 
-#include "goby/middleware/protobuf/intervehicle.pb.h"
-#include "goby/util/debug_logger.h"
+namespace google
+{
+namespace protobuf
+{
+class Descriptor;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {
 namespace middleware
 {
-namespace intervehicle
-{
 namespace protobuf
 {
-class Subscription;
-}
-} // namespace intervehicle
+class SerializerProtobufMetadata;
+} // namespace protobuf
 
 namespace detail
 {

@@ -22,28 +22,86 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <Wt/Dbo/Exception>
-#include <Wt/WApplication>
-#include <Wt/WDoubleValidator>
-#include <Wt/WEnvironment>
-#include <Wt/WIntValidator>
-#include <Wt/WLengthValidator>
-#include <Wt/WPanel>
-#include <Wt/WRegExpValidator>
-#include <cfloat>
-#include <cmath>
-#include <memory>
-#include <utility>
+#include <cmath>    // for log10
+#include <iostream> // for basic_ostream
+#include <iterator> // for ostreambuf_i...
+#include <limits>   // for numeric_limits
+#include <list>     // for operator!=
+#include <memory>   // for shared_ptr
+#include <regex>    // for match_result...
+#include <sstream>  // for basic_string...
+#include <stdlib.h> // for exit, abs
+#include <utility>  // for pair, make_pair
 
-#include "dccl/common.h"
-#include "dccl/dynamic_protobuf_manager.h"
-#include "dccl/protobuf/option_extensions.pb.h"
-#include "goby/acomms/protobuf/network_ack.pb.h"
-#include "goby/middleware/common.h"
-#include "goby/util/binary.h"
-#include "goby/util/sci.h"
+#include <Wt/Dbo/Call>                                  // for Call
+#include <Wt/Dbo/Exception>                             // for Exception, Wt
+#include <Wt/Dbo/FixedSqlConnectionPool>                // for FixedSqlConn...
+#include <Wt/Dbo/Query>                                 // for Query
+#include <Wt/Dbo/QueryModel>                            // for QueryModel
+#include <Wt/Dbo/Transaction>                           // for Transaction
+#include <Wt/Dbo/backend/Sqlite3>                       // for Sqlite3
+#include <Wt/Dbo/ptr>                                   // for ptr, MetaDbo
+#include <Wt/WAbstractItemModel>                        // for WAbstractIte...
+#include <Wt/WApplication>                              // for WApplication
+#include <Wt/WColor>                                    // for WColor
+#include <Wt/WComboBox>                                 // for WComboBox
+#include <Wt/WCssDecorationStyle>                       // for WCssDecorati...
+#include <Wt/WDialog>                                   // for WDialog, WDi...
+#include <Wt/WDoubleValidator>                          // for WDoubleValid...
+#include <Wt/WEnvironment>                              // for WEnvironment
+#include <Wt/WFlags>                                    // for WFlags
+#include <Wt/WFormWidget>                               // for WFormWidget
+#include <Wt/WGlobal>                                   // for Right
+#include <Wt/WIntValidator>                             // for WIntValidator
+#include <Wt/WLabel>                                    // for WLabel
+#include <Wt/WLengthValidator>                          // for WLengthValid...
+#include <Wt/WLineEdit>                                 // for WLineEdit
+#include <Wt/WModelIndex>                               // for WModelIndex
+#include <Wt/WRegExpValidator>                          // for WRegExpValid...
+#include <Wt/WSignal>                                   // for EventSignal
+#include <Wt/WSpinBox>                                  // for WSpinBox
+#include <Wt/WStackedWidget>                            // for WStackedWidget
+#include <Wt/WStringListModel>                          // for WStringListM...
+#include <Wt/WText>                                     // for WText
+#include <Wt/WTreeTable>                                // for WTreeTable
+#include <Wt/WTreeView>                                 // for WTreeView
+#include <Wt/WValidator>                                // for WValidator
+#include <Wt/WWidget>                                   // for WWidget
+#include <boost/algorithm/string/classification.hpp>    // for is_any_ofF
+#include <boost/algorithm/string/split.hpp>             // for split
+#include <boost/any.hpp>                                // for any
+#include <boost/bind.hpp>                               // for bind_t, list...
+#include <boost/cstdint.hpp>                            // for uint32_t
+#include <boost/date_time/gregorian/gregorian.hpp>      // for date
+#include <boost/date_time/posix_time/posix_time_io.hpp> // for operator<<
+#include <boost/date_time/special_defs.hpp>             // for neg_infin
+#include <boost/detail/basic_pointerbuf.hpp>            // for basic_pointe...
+#include <boost/function.hpp>                           // for function
+#include <boost/iterator/iterator_traits.hpp>           // for iterator_val...
+#include <boost/lexical_cast/bad_lexical_cast.hpp>      // for bad_lexical_...
+#include <boost/operators.hpp>                          // for operator>
+#include <boost/signals2/expired_slot.hpp>              // for expired_slot
+#include <boost/smart_ptr/shared_ptr.hpp>               // for shared_ptr
+#include <dccl/option_extensions.pb.h>                  // for DCCLFieldOpt...
+#include <google/protobuf/descriptor.h>                 // for FieldDescriptor
+#include <google/protobuf/descriptor.pb.h>              // for FieldOptions
+#include <google/protobuf/text_format.h>                // for TextFormat
 
+#include "dccl/dynamic_protobuf_manager.h"          // for DynamicProto...
+#include "goby/middleware/common.h"                 // for to_string
+#include "goby/middleware/protobuf/layer.pb.h"      // for Layer_Parse
+#include "goby/middleware/transport/interthread.h"  // for InterThreadT...
+#include "goby/middleware/transport/intervehicle.h" // for InterVehicle...
+#include "goby/time/types.h"                        // for MicroTime
+#include "goby/util/as.h"                           // for as, FLOAT_FIXED
+#include "goby/util/binary.h"                       // for hex_encode
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for DEBUG1, WARN
 #include "liaison_commander.h"
+
+namespace Wt
+{
+class WTreeNode;
+} // namespace Wt
 
 using namespace Wt;
 using namespace goby::util::logger;

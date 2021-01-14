@@ -22,16 +22,39 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <fstream>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <algorithm>     // for copy, max
+#include <atomic>        // for atomic
+#include <chrono>        // for time_p...
+#include <dlfcn.h>       // for dlclose
+#include <fcntl.h>       // for S_IRGRP
+#include <fstream>       // for operat...
+#include <functional>    // for _Bind
+#include <map>           // for operat...
+#include <signal.h>      // for sigaction
+#include <string>        // for allocator
+#include <sys/stat.h>    // for chmod
+#include <thread>        // for thread
+#include <unordered_map> // for operat...
+#include <vector>        // for vector
 
-#include "goby/middleware/log.h"
-#include "goby/middleware/log/dccl_log_plugin.h"
-#include "goby/middleware/log/protobuf_log_plugin.h"
-#include "goby/time.h"
-#include "goby/zeromq/application/single_thread.h"
-#include "goby/zeromq/protobuf/logger_config.pb.h"
+#include <boost/units/quantity.hpp>             // for operator*
+#include <boost/units/systems/si/frequency.hpp> // for frequency
+
+#include "goby/middleware/marshalling/protobuf.h"
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/group.h"                            // for operat...
+#include "goby/middleware/log/dccl_log_plugin.h"              // for DCCLPl...
+#include "goby/middleware/log/log_entry.h"                    // for LogEntry
+#include "goby/middleware/log/protobuf_log_plugin.h"          // for Protob...
+#include "goby/middleware/marshalling/interface.h"            // for Marsha...
+#include "goby/time/convert.h"                                // for file_str
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/zeromq/application/single_thread.h"            // for Single...
+#include "goby/zeromq/protobuf/interprocess_config.pb.h"      // for InterP...
+#include "goby/zeromq/protobuf/logger_config.pb.h"            // for Logger...
+#include "goby/zeromq/transport/interprocess.h"               // for InterP...
 
 using goby::glog;
 

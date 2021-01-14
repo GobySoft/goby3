@@ -24,18 +24,26 @@
 #ifndef GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_FRONTSEAT_DRIVER_H
 #define GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_FRONTSEAT_DRIVER_H
 
-#include <boost/bimap.hpp>
-#include <boost/circular_buffer.hpp>
-#include <dccl.h>
+#include <memory>
+#include <stdint.h>
+#include <string>
 
-#include "goby/util/linebasedcomms/tcp_client.h"
+#include <boost/asio/io_service.hpp>
+#include <boost/circular_buffer.hpp>
+#include <dccl/codec.h>
 
 #include "goby/middleware/frontseat/interface.h"
-
-#include "goby/middleware/frontseat/waveglider/waveglider_sv2_frontseat_driver.pb.h"
 #include "goby/middleware/frontseat/waveglider/waveglider_sv2_frontseat_driver_config.pb.h"
+#include "goby/middleware/protobuf/frontseat.pb.h"
+#include "goby/time/system_clock.h"
 
-#include "waveglider_sv2_serial_client.h"
+namespace google
+{
+namespace protobuf
+{
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {
@@ -43,6 +51,16 @@ namespace middleware
 {
 namespace frontseat
 {
+class SV2SerialConnection;
+namespace protobuf
+{
+class Config;
+class SV2CommandFollowFixedHeading;
+class SV2RequestEnumerate;
+class SV2RequestQueuedMessage;
+class SV2RequestStatus;
+} // namespace protobuf
+
 class WavegliderSV2 : public InterfaceBase
 {
   public:

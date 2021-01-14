@@ -24,6 +24,7 @@
 #ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_COMMON_H
 #define GOBY_MIDDLEWARE_IO_LINE_BASED_COMMON_H
 
+#include <boost/asio/read_until.hpp> // for match_condition
 #include <regex>
 
 namespace goby

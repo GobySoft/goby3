@@ -25,16 +25,13 @@
 #ifndef GOBY_MOOS_TRANSITIONAL_MESSAGE_ALGORITHMS_H
 #define GOBY_MOOS_TRANSITIONAL_MESSAGE_ALGORITHMS_H
 
-#include <cctype>
-#include <iostream>
-#include <map>
-#include <string>
-#include <utility>
+#include <map>     // for map, map<>::mapped_type
+#include <string>  // for string
+#include <utility> // for move
+#include <vector>  // for vector
 
-#include <vector>
+#include <boost/function.hpp> // for function
 
-#include <boost/algorithm/string.hpp>
-#include <boost/function.hpp>
 namespace goby
 {
 namespace moos

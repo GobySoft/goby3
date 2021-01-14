@@ -25,19 +25,27 @@
 #ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_WT_THREAD_H
 #define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_WT_THREAD_H
 
-#include <Wt/WApplication>
-#include <Wt/WContainerWidget>
-#include <Wt/WEnvironment>
-#include <Wt/WMenu>
-#include <Wt/WServer>
-#include <Wt/WString>
-#include <Wt/WTimer>
+#include <map> // for map
 
-#include "goby/zeromq/protobuf/liaison_config.pb.h"
-#include "liaison.h"
+#include <Wt/WApplication> // for WApplication
+#include <Wt/WEnvironment> // for WEnvironment
+
+#include "goby/zeromq/protobuf/liaison_config.pb.h" // for LiaisonConfig
+
+namespace Wt
+{
+class WMenu;
+class WMenuItem;
+class WStackedWidget;
+} // namespace Wt
 
 namespace goby
 {
+namespace zeromq
+{
+class LiaisonContainer;
+} // namespace zeromq
+
 namespace apps
 {
 namespace zeromq

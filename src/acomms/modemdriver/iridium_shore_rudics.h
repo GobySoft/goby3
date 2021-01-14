@@ -24,7 +24,7 @@
 #ifndef IridiumShoreSBD20150508H
 #define IridiumShoreSBD20150508H
 
-#include "goby/util/asio-compat.h"
+#include "goby/util/asio_compat.h"
 #include <boost/asio.hpp>
 
 #include <boost/bind.hpp>
@@ -32,6 +32,7 @@
 
 #include "goby/time.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 namespace goby
 {

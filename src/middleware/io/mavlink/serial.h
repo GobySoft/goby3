@@ -24,6 +24,8 @@
 #ifndef SerialMAVLink20190719H
 #define SerialMAVLink20190719H
 
+#include <boost/asio/read.hpp>
+
 #include "goby/middleware/io/mavlink/common.h"
 
 #include "goby/middleware/io/detail/serial_interface.h"

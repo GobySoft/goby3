@@ -22,11 +22,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <iostream>
+#include <iostream> // for operator<<, cerr
+#include <limits>   // for numeric_limits
 
-#include "goby/exception.h"
-#include "goby/util/geodesy.h"
+#include <boost/units/quantity.hpp>              // for operator*, operator/
+#include <boost/units/systems/angle/degrees.hpp> // for degrees, plane_angle
+#include <boost/units/systems/si/length.hpp>     // for meters, length
 
+#include "goby/exception.h"    // for Exception
+#include "goby/util/geodesy.h" // for UTMGeodesy, UTMGeod...
 #include "moos_geodesy.h"
 
 goby::moos::CMOOSGeodesy::CMOOSGeodesy() = default;

@@ -24,29 +24,50 @@
 #ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_DRIVER_THREAD_H
 #define GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_DRIVER_THREAD_H
 
-#include "goby/acomms/amac.h"
+#include <algorithm>
+#include <chrono>
+#include <map>
+#include <memory>
+#include <ostream>
+#include <set>
+#include <stddef.h>
+#include <string>
+#include <vector>
+
+#include <boost/units/quantity.hpp>
+
+#include "goby/acomms/amac/mac_manager.h"
 #include "goby/acomms/buffer/dynamic_buffer.h"
-
-#include "goby/middleware/marshalling/dccl.h"
-
+#include "goby/acomms/modemdriver/driver_base.h"
 #include "goby/middleware/application/thread.h"
 #include "goby/middleware/group.h"
+#include "goby/middleware/marshalling/detail/dccl_serializer_parser.h"
+#include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"
+#include "goby/middleware/protobuf/intervehicle_transporter_config.pb.h"
+#include "goby/middleware/protobuf/serializer_transporter.pb.h"
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
-
-#include "goby/middleware/transport/intervehicle/groups.h"
+#include "goby/time/convert.h"
+#include "goby/time/steady_clock.h"
+#include "goby/time/system_clock.h"
+#include "goby/time/types.h"
+#include "goby/util/debug_logger/flex_ostream.h"
 
 namespace goby
 {
 namespace acomms
 {
-class ModemDriverBase;
-
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
 } // namespace acomms
 
 namespace middleware
 {
+template <typename Data> class Publisher;
+
 namespace protobuf
 {
 inline size_t data_size(const SerializerTransporterMessage& msg) { return msg.data().size(); }

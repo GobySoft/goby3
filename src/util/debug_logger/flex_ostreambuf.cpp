@@ -22,27 +22,40 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <iomanip>
-#include <iostream>
-#include <limits>
-#include <memory>
+#include <algorithm> // for copy, max
+#include <assert.h>  // for assert
+#include <atomic>    // for atomic
+#include <chrono>    // for time_point
+#include <deque>     // for deque
+#include <iomanip>   // for operator<<
+#include <iostream>  // for operator<<
+#include <iterator>  // for ostreamb...
+#include <map>       // for map, map...
+#include <memory>    // for make_shared
+#include <mutex>     // for mutex
+#include <sstream>   // for basic_st...
+#include <stdio.h>   // for EOF
+#include <stdlib.h>  // for exit
+#include <string>    // for string
+#include <thread>    // for thread
+#include <utility>   // for move, pair
+#include <vector>    // for vector
 
-#include <sstream>
+#include <boost/date_time/gregorian/gregorian.hpp>          // for date
+#include <boost/date_time/posix_time/posix_time_config.hpp> // for time_dur...
+#include <boost/date_time/posix_time/posix_time_io.hpp>     // for operator<<
+#include <boost/date_time/posix_time/ptime.hpp>             // for ptime
 
-#include <boost/date_time.hpp>
-#include <utility>
-
-#include "goby/util/debug_logger/flex_ostreambuf.h"
+#include "goby/time/convert.h"                      // for SystemCl...
+#include "goby/time/system_clock.h"                 // for SystemClock
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for FlexOStr...
+#include "goby/util/debug_logger/term_color.h"      // for esc_nocolor
 
 #ifdef HAS_NCURSES
-#include "flex_ncurses.h"
+#include "flex_ncurses.h" // for FlexNCurses
 #endif
-#include "flex_ostream.h"
-
-#include "goby/exception.h"
-#include "goby/time.h"
-#include "goby/util/sci.h"
-#include "logger_manipulators.h"
+#include "flex_ostream.h"        // for FlexOstream
+#include "logger_manipulators.h" // for Group
 
 using goby::time::SystemClock;
 

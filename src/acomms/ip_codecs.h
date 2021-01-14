@@ -24,12 +24,16 @@
 #ifndef GOBY_ACOMMS_IP_CODECS_H
 #define GOBY_ACOMMS_IP_CODECS_H
 
-#include <cstdint>
+#include <cstdint> // for uint32_t, uint16_t
+#include <string>  // for string
 
-#include "dccl.h"
+#include <boost/any.hpp>            // for bad_any_cast
+#include <boost/cstdint.hpp>        // for uint32_t
+#include <dccl/bitset.h>            // for Bitset
+#include <dccl/exception.h>         // for NullValueException
+#include <dccl/field_codec_fixed.h> // for TypedFixedFieldC...
 
-#include "goby/acomms/protobuf/network_header.pb.h"
-#include "goby/util/primitive_types.h"
+#include "goby/acomms/protobuf/network_header.pb.h" // for IPv4Header::Flag...
 
 namespace goby
 {

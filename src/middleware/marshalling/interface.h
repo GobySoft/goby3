@@ -24,14 +24,14 @@
 #ifndef GOBY_MIDDLEWARE_MARSHALLING_INTERFACE_H
 #define GOBY_MIDDLEWARE_MARSHALLING_INTERFACE_H
 
-#include <map>
-#include <mutex>
-#include <type_traits>
-#include <typeindex>
-#include <unordered_map>
-#include <vector>
+#include <map>         // for map
+#include <memory>      // for share...
+#include <string>      // for string
+#include <type_traits> // for is_void
+#include <utility>     // for pair
+#include <vector>      // for vector
 
-#include "goby/middleware/marshalling/detail/primitive_type.h"
+#include "goby/middleware/marshalling/detail/primitive_type.h" // for primi...
 
 namespace goby
 {

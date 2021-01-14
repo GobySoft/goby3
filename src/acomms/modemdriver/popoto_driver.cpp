@@ -32,13 +32,25 @@
 /* Copyright (c) 2020 mission systems pty ltd */
 
 #include "popoto_driver.h"
-#include <iostream>
-#include <utility>
 
-#include "driver_exception.h"
-#include "goby/util/binary.h"
+#include <cstdint>          // for uint8_t
+#include <initializer_list> // for initializer...
+#include <iostream>         // for operator<<
+#include <list>             // for operator!=
+#include <unistd.h>         // for usleep
+#include <utility>          // for move
+
+#include <boost/algorithm/string/trim.hpp> // for trim_copy
+#include <boost/signals2/signal.hpp>       // for signal
+
+#include "goby/acomms/acomms_constants.h"                // for BROADCAST_ID
+#include "goby/acomms/protobuf/modem_driver_status.pb.h" // for ModemDriver...
+#include "goby/exception.h"                              // for Exception
+#include "goby/util/binary.h"                            // for hex_encode
 #include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+#include "goby/util/protobuf/io.h" // for operator<<
+
+#include "driver_exception.h" // for ModemDriver...
 
 using goby::glog;
 using namespace goby::util::logger;

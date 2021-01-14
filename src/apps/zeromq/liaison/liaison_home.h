@@ -25,13 +25,12 @@
 #ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_HOME_H
 #define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_HOME_H
 
-#include <Wt/WBorder>
-#include <Wt/WColor>
-#include <Wt/WCssDecorationStyle>
-#include <Wt/WText>
-#include <Wt/WVBoxLayout>
+#include "goby/zeromq/liaison/liaison_container.h" // for LiaisonContainer
 
-#include "liaison.h"
+namespace Wt
+{
+class WVBoxLayout;
+} // namespace Wt
 
 namespace goby
 {

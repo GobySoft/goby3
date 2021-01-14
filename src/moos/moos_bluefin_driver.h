@@ -25,20 +25,28 @@
 #ifndef GOBY_MOOS_MOOS_BLUEFIN_DRIVER_H
 #define GOBY_MOOS_MOOS_BLUEFIN_DRIVER_H
 
-#include "goby/moos/moos_header.h"
+#include <map>    // for map
+#include <string> // for string
 
-#include <boost/bimap.hpp>
+#include <MOOS/libMOOS/Comms/MOOSCommClient.h> // for CMOOSCommClient
+#include <boost/bimap.hpp>                     // for bimap
 
-#include "goby/time.h"
-
-#include "goby/acomms/amac.h"
-#include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/moos/protobuf/bluefin_driver.pb.h"
-
-#include "goby/moos/modem_id_convert.h"
+#include "goby/acomms/modemdriver/driver_base.h"   // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h"   // for DriverConfig
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTransmission
+#include "goby/moos/protobuf/bluefin_driver.pb.h"  // for Config
 
 namespace goby
 {
+namespace acomms
+{
+class MACManager;
+} // namespace acomms
+namespace util
+{
+class NMEASentence;
+} // namespace util
+
 namespace moos
 {
 /// \brief provides a driver for the Bluefin Huxley communications infrastructure (initially uses SonarDyne as underlying hardware)

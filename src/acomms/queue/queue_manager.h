@@ -25,25 +25,35 @@
 #ifndef GOBY_ACOMMS_QUEUE_QUEUE_MANAGER_H
 #define GOBY_ACOMMS_QUEUE_QUEUE_MANAGER_H
 
-#include <boost/bind.hpp>
-#include <boost/signals2.hpp>
-#include <limits>
-#include <set>
+#include <iosfwd>  // for ostream
+#include <list>    // for list
+#include <map>     // for allocator, multimap
+#include <memory>  // for shared_ptr, __sha...
+#include <set>     // for set
+#include <string>  // for string, operator+
+#include <utility> // for pair, make_pair
 
-#include "goby/acomms/dccl.h"
-#include "goby/acomms/protobuf/network_ack.pb.h"
-#include "goby/acomms/protobuf/queue.pb.h"
+#include <boost/signals2/signal.hpp>    // for signal
+#include <google/protobuf/descriptor.h> // for Descriptor
+#include <google/protobuf/message.h>    // for Message
 
-#include <deque>
-#include <map>
+#include "goby/acomms/dccl/dccl.h"               // for DCCLCodec
+#include "goby/acomms/protobuf/manipulator.pb.h" // for Manipulator
+#include "goby/acomms/protobuf/network_ack.pb.h" // for NetworkAck, Netwo...
+#include "goby/acomms/protobuf/queue.pb.h"       // for QueuedMessageEntr...
+#include "goby/util/as.h"                        // for as
 
-#include "queue.h"
-#include "queue_exception.h"
+#include "queue.h"           // for Queue
+#include "queue_exception.h" // for QueueException
 
 namespace goby
 {
 namespace acomms
 {
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
 /// \class QueueManager queue.h goby/acomms/queue.h
 /// \brief provides an API to the goby-acomms Queuing Library.
 /// \ingroup acomms_api

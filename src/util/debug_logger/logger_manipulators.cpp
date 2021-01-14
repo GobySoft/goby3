@@ -22,9 +22,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/posix_time_io.hpp> // for operator<<
+#include <chrono>                                       // for time_point
+#include <iomanip>                                      // for operator<<
+#include <iterator>                                     // for ostreambuf_i...
+#include <sstream>                                      // for basic_string...
+
+#include "goby/time/convert.h" // for str
+
+#include "flex_ostream.h" // for FlexOstream
 #include "logger_manipulators.h"
-#include "flex_ostream.h"
-#include "goby/time.h"
 
 std::ostream& goby::util::logger::operator<<(std::ostream& os, const goby::util::logger::Group& g)
 {

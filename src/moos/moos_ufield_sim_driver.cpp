@@ -23,13 +23,30 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "moos_ufield_sim_driver.h"
-#include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/acomms/protobuf/mm_driver.pb.h"
-#include "goby/moos/modem_id_convert.h"
-#include "goby/moos/moos_string.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+
+#include <list>      // for operator!=
+#include <ostream>   // for operator<<
+#include <stdexcept> // for runtime_error
+#include <stdint.h>  // for uint64_t
+#include <string>    // for operator<<
+#include <unistd.h>  // for sleep
+
+#include <MOOS/libMOOS/Comms/CommsTypes.h>         // for MOOSMSG_LIST
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>            // for CMOOSMsg
+#include <boost/function.hpp>                      // for function
+#include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_...
+#include <boost/signals2/expired_slot.hpp>         // for expired_slot
+#include <boost/signals2/signal.hpp>               // for signal
+
+#include "goby/acomms/acomms_constants.h"               // for BROADCAST_ID
+#include "goby/acomms/protobuf/mm_driver.pb.h"          // for Transmission
+#include "goby/acomms/protobuf/modem_message.pb.h"      // for ModemTransmi...
+#include "goby/moos/modem_id_convert.h"                 // for ModemIdConvert
+#include "goby/moos/moos_string.h"                      // for val_from_string
+#include "goby/util/binary.h"                           // for hex_decode
+#include "goby/util/debug_logger/flex_ostream.h"        // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1, logger
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
 
 using goby::glog;
 using goby::util::hex_decode;

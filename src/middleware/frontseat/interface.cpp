@@ -22,16 +22,38 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/exception.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/seawater.h"
-#include "goby/util/seawater/depth.h"
-#include "goby/util/seawater/salinity.h"
-#include "goby/util/seawater/swstate.h"
+#include <limits>    // for numeric_limits
+#include <list>      // for operator==
+#include <ostream>   // for operator<<
+#include <stdexcept> // for out_of_range
+#include <utility>   // for move
+
+#include <boost/bind.hpp>                          // for bind_t, list...
+#include <boost/function.hpp>                      // for function
+#include <boost/signals2/expired_slot.hpp>         // for expired_slot
+#include <boost/signals2/mutex.hpp>                // for mutex
+#include <boost/units/absolute.hpp>                // for absolute
+#include <boost/units/quantity.hpp>                // for quantity
+#include <boost/units/systems/angle/degrees.hpp>   // for plane_angle
+#include <boost/units/systems/si/length.hpp>       // for length
+#include <boost/units/systems/si/mass_density.hpp> // for kilograms_pe...
+#include <boost/units/unit.hpp>                    // for unit
+
+#include "goby/exception.h"                             // for Exception
+#include "goby/middleware/frontseat/exception.h"        // for Exception
+#include "goby/middleware/protobuf/frontseat_data.pb.h" // for CTDSample
+#include "goby/time/convert.h"                          // for SystemClock:...
+#include "goby/time/system_clock.h"                     // for SystemClock
+#include "goby/util/debug_logger/flex_ostream.h"        // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1, DIE
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
+#include "goby/util/debug_logger/term_color.h"          // for magenta, noc...
+#include "goby/util/seawater/depth.h"                   // for depth
+#include "goby/util/seawater/salinity.h"                // for salinity
+#include "goby/util/seawater/soundspeed.h"              // for mackenzie_so...
+#include "goby/util/seawater/swstate.h"                 // for density_anomaly
 
 #include "interface.h"
-
-#include <utility>
 
 namespace gpb = goby::middleware::frontseat::protobuf;
 using goby::glog;

@@ -24,13 +24,28 @@
 #ifndef GOBY_MIDDLEWARE_FRONTSEAT_SIMULATOR_BASIC_BASIC_SIMULATOR_FRONTSEAT_DRIVER_H
 #define GOBY_MIDDLEWARE_FRONTSEAT_SIMULATOR_BASIC_BASIC_SIMULATOR_FRONTSEAT_DRIVER_H
 
-#include <boost/bimap.hpp>
+#include <map>
+#include <string>
 
 #include "goby/middleware/frontseat/interface.h"
+#include "goby/middleware/frontseat/simulator/basic/basic_simulator_frontseat_driver_config.pb.h"
+#include "goby/middleware/protobuf/frontseat.pb.h"
 #include "goby/time/system_clock.h"
 #include "goby/util/linebasedcomms/tcp_client.h"
 
-#include "goby/middleware/frontseat/simulator/basic/basic_simulator_frontseat_driver_config.pb.h"
+namespace goby
+{
+namespace middleware
+{
+namespace frontseat
+{
+namespace protobuf
+{
+class Config;
+} // namespace protobuf
+} // namespace frontseat
+} // namespace middleware
+} // namespace goby
 
 extern "C"
 {

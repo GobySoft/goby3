@@ -22,9 +22,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "hdf5.h"
+#include <cstdint>  // for uint64_t, int...
+#include <stddef.h> // for size_t
 
-#include <dccl/dynamic_protobuf_manager.h>
+#include <boost/algorithm/string/classification.hpp>   // for is_any_ofF
+#include <boost/algorithm/string/predicate_facade.hpp> // for predicate_facade
+#include <boost/algorithm/string/split.hpp>            // for split
+#include <boost/algorithm/string/trim.hpp>             // for trim_copy_if
+#include <dccl/dynamic_protobuf_manager.h>             // for DynamicProtob...
+
+#include "goby/time/types.h" // for MicroTime
+
+#include "hdf5.h"
+#include "hdf5_plugin.h" // for HDF5ProtobufE...
 
 void goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5ProtobufEntry& entry)
 {

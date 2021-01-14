@@ -25,14 +25,17 @@
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_NMEA_SENTENCE_H
 #define GOBY_UTIL_LINEBASEDCOMMS_NMEA_SENTENCE_H
 
-#include <exception>
-#include <sstream>
-#include <stdexcept>
-#include <vector>
+#include <algorithm> // for max
+#include <memory>    // for allocator_trait...
+#include <sstream>   // for ostream
+#include <stdexcept> // for runtime_error
+#include <string>    // for string, operator+
+#include <vector>    // for vector
 
-#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/split.hpp>          // for split
 
-#include "goby/util/as.h"
+#include "goby/util/as.h" // for as
 
 namespace goby
 {

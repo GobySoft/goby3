@@ -25,12 +25,16 @@
 #ifndef GOBY_ACOMMS_AMAC_MAC_MANAGER_H
 #define GOBY_ACOMMS_AMAC_MAC_MANAGER_H
 
-#include "goby/acomms/modem_driver.h"
-#include "goby/acomms/protobuf/amac.pb.h"
-#include "goby/acomms/protobuf/amac_config.pb.h"
-#include "goby/acomms/protobuf/modem_message.pb.h"
-#include "goby/time.h"
-#include "goby/util/as.h"
+#include <boost/signals2/signal.hpp>      // for signal
+#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
+#include <chrono>                         // for seconds
+#include <iosfwd>                         // for ostream
+#include <list>                           // for list, list<>::ite...
+#include <string>                         // for operator==, string
+
+#include "goby/acomms/protobuf/amac_config.pb.h"   // for MACConfig
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTransmission
+#include "goby/time/system_clock.h"                // for SystemClock, Syst...
 
 namespace goby
 {

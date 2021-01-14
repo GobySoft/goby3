@@ -22,8 +22,16 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/util/as.h"
-#include "goby/util/debug_logger.h"
+#include <ostream> // for basic_ostrea...
+#include <string>  // for operator<<
+
+#include <google/protobuf/descriptor.h> // for Descriptor
+#include <google/protobuf/message.h>    // for Message
+
+#include "goby/acomms/protobuf/queue.pb.h"              // for QueuedMessag...
+#include "goby/acomms/queue/queue_manager.h"            // for QueueManager
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1, logger
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
 
 #include "route.h"
 

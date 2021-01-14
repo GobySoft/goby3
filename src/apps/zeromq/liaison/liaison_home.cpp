@@ -24,6 +24,12 @@
 
 #include "liaison_home.h"
 
+#include <Wt/WBreak>           // for WBreak
+#include <Wt/WContainerWidget> // for WContainerWidget
+#include <Wt/WLength>          // for Wt
+#include <Wt/WText>            // for WText
+#include <Wt/WVBoxLayout>      // for WVBoxLayout
+
 using namespace Wt;
 
 goby::apps::zeromq::LiaisonHome::LiaisonHome() : main_layout_(new Wt::WVBoxLayout(this))

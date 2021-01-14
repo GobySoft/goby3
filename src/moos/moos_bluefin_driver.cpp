@@ -23,15 +23,39 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "moos_bluefin_driver.h"
-#include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/acomms/protobuf/mm_driver.pb.h"
-#include "goby/moos/moos_protobuf_helpers.h"
-#include "goby/moos/moos_string.h"
-#include "goby/time.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/linebasedcomms/nmea_sentence.h"
-#include <boost/format.hpp>
+
+#include <chrono>   // for operator/
+#include <list>     // for operator!=
+#include <ostream>  // for operator<<
+#include <unistd.h> // for sleep
+#include <utility>  // for make_pair
+
+#include <MOOS/libMOOS/Comms/CommsTypes.h>                  // for MOOSMSG_...
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>                     // for CMOOSMsg
+#include <boost/algorithm/string/case_conv.hpp>             // for to_upper...
+#include <boost/date_time/gregorian/gregorian.hpp>          // for gregoria...
+#include <boost/date_time/posix_time/posix_time_config.hpp> // for time_dur...
+#include <boost/date_time/posix_time/ptime.hpp>             // for ptime
+#include <boost/date_time/time.hpp>                         // for base_tim...
+#include <boost/date_time/time_system_counted.hpp>          // for counted_...
+#include <boost/format.hpp>                                 // for basic_al...
+#include <boost/function.hpp>                               // for function
+#include <boost/lexical_cast/bad_lexical_cast.hpp>          // for bad_lexi...
+#include <boost/signals2/expired_slot.hpp>                  // for expired_...
+#include <boost/signals2/signal.hpp>                        // for signal
+#include <boost/units/quantity.hpp>                         // for quantity
+#include <boost/units/systems/si/time.hpp>                  // for seconds
+#include <google/protobuf/stubs/port.h>                     // for int32
+
+#include "goby/acomms/amac/mac_manager.h"               // for MACManager
+#include "goby/time/convert.h"                          // for convert_...
+#include "goby/time/system_clock.h"                     // for SystemClock
+#include "goby/time/types.h"                            // for MicroTime
+#include "goby/util/binary.h"                           // for hex_decode
+#include "goby/util/debug_logger/flex_ostream.h"        // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
+#include "goby/util/linebasedcomms/nmea_sentence.h"     // for NMEASent...
 
 using goby::glog;
 using goby::util::hex_decode;

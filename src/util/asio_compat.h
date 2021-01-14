@@ -31,6 +31,8 @@
 #if BOOST_VERSION < 107000
 #include <boost/asio/io_service.hpp>
 #define USE_BOOST_IO_SERVICE
+#else
+#include <boost/asio/io_context.hpp>
 #endif
 
 // also typedef new names

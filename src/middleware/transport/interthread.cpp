@@ -21,6 +21,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <shared_mutex>  // for shared_timed_mutex
+#include <unordered_map> // for unordered_map
+
 #include "interthread.h"
 
 std::unordered_map<std::thread::id, goby::middleware::detail::SubscriptionStoreBase::StoresMap>

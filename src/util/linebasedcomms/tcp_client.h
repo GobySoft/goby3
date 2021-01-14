@@ -25,13 +25,26 @@
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_TCP_CLIENT_H
 #define GOBY_UTIL_LINEBASEDCOMMS_TCP_CLIENT_H
 
-#include "client_base.h"
-#include "goby/util/as.h"
+#include <algorithm> // for copy, copy_backward
+#include <ios>       // for ios_base::failure
+#include <string>    // for string, operator!=
+
+#include <boost/asio/basic_socket.hpp>             // for basic_socket<>::e...
+#include <boost/asio/ip/basic_endpoint.hpp>        // for operator<<
+#include <boost/asio/ip/tcp.hpp>                   // for tcp::socket, tcp
+#include <boost/asio/read_until.hpp>               // for async_read_until
+#include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_cast
+
+#include "goby/util/as.h" // for as
+
+#include "client_base.h" // for LineBasedClient
 
 namespace goby
 {
 namespace util
 {
+template <typename ASIOAsyncReadStream> class LineBasedConnection;
+
 /// provides a basic TCP client for line by line text based communications to a remote TCP server
 class TCPClient : public LineBasedClient<boost::asio::ip::tcp::socket>
 {

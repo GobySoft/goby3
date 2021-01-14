@@ -25,10 +25,10 @@
 #ifndef GOBY_UTIL_DEBUG_LOGGER_TERM_COLOR_H
 #define GOBY_UTIL_DEBUG_LOGGER_TERM_COLOR_H
 
-#include <iostream>
-#include <map>
-#include <memory>
-#include <string>
+#include <iostream> // for ostream
+#include <map>      // for map
+#include <string>   // for string
+#include <utility>  // for pair
 
 namespace goby
 {

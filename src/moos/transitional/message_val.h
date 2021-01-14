@@ -25,9 +25,11 @@
 #ifndef GOBY_MOOS_TRANSITIONAL_MESSAGE_VAL_H
 #define GOBY_MOOS_TRANSITIONAL_MESSAGE_VAL_H
 
-#include <iostream>
+#include <iostream> // for ostream
+#include <string>   // for string, basic_string
+#include <vector>   // for vector
 
-#include "dccl_constants.h"
+#include "dccl_constants.h" // for DCCLCppType, cpp_notype
 
 namespace goby
 {

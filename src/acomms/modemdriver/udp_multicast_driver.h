@@ -25,18 +25,34 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_UDP_MULTICAST_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_UDP_MULTICAST_DRIVER_H
 
-#include "goby/time.h"
+#include <array>                 // for array
+#include <boost/asio/ip/udp.hpp> // for udp, udp::...
+#include <cstddef>               // for size_t
+#include <map>                   // for map
+#include <stdint.h>              // for uint32_t
 
-#include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/acomms/protobuf/udp_multicast_driver.pb.h"
+#include "goby/acomms/modemdriver/driver_base.h"          // for ModemDrive...
+#include "goby/acomms/protobuf/driver_base.pb.h"          // for DriverConfig
+#include "goby/acomms/protobuf/udp_multicast_driver.pb.h" // for Config
+#include "goby/util/asio_compat.h"
 
-#include "goby/util/asio-compat.h"
-#include <boost/asio.hpp>
+namespace boost
+{
+namespace system
+{
+class error_code;
+} // namespace system
+} // namespace boost
 
 namespace goby
 {
 namespace acomms
 {
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
+
 class UDPMulticastDriver : public ModemDriverBase
 {
   public:

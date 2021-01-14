@@ -26,12 +26,25 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_MM_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_MM_DRIVER_H
 
-#include <dccl.h>
+#include <deque>    // for deque
+#include <map>      // for map
+#include <memory>   // for unique_ptr
+#include <mutex>    // for mutex
+#include <set>      // for set
+#include <stdint.h> // for uint32_t
+#include <string>   // for string
 
-#include "goby/time.h"
+#include "driver_base.h"                            // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
+#include "goby/acomms/protobuf/mm_driver.pb.h"      // for Config, MessageT...
+#include "goby/acomms/protobuf/modem_message.pb.h"  // for ModemTransmission
+#include "goby/time/system_clock.h"                 // for SystemClock, Sys...
+#include "goby/util/linebasedcomms/nmea_sentence.h" // for NMEASentence
 
-#include "driver_base.h"
-#include "goby/acomms/protobuf/mm_driver.pb.h"
+namespace dccl
+{
+class Codec;
+} // namespace dccl
 
 namespace goby
 {

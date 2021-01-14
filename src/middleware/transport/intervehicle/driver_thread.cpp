@@ -21,13 +21,43 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/acomms/bind.h"
-#include "goby/acomms/modem_driver.h"
+#include <deque>         // for deque
+#include <limits>        // for numeric_...
+#include <list>          // for operator!=
+#include <memory>        // for allocator
+#include <type_traits>   // for __decay_...
+#include <unordered_map> // for unordere...
+#include <utility>       // for pair
+
+#include <boost/function.hpp>                   // for function
+#include <boost/signals2/signal.hpp>            // for mutex
+#include <boost/smart_ptr/shared_ptr.hpp>       // for shared_ptr
+#include <boost/units/systems/si/frequency.hpp> // for frequency
+#include <google/protobuf/descriptor.h>         // for Descriptor
+
+#include "goby/middleware/marshalling/protobuf.h"
+
+#include "goby/acomms/acomms_constants.h"                   // for BROADCAS...
+#include "goby/acomms/bind.h"                               // for bind
+#include "goby/acomms/modemdriver/benthos_atm900_driver.h"  // for BenthosA...
+#include "goby/acomms/modemdriver/iridium_driver.h"         // for IridiumD...
+#include "goby/acomms/modemdriver/iridium_shore_driver.h"   // for IridiumS...
+#include "goby/acomms/modemdriver/mm_driver.h"              // for MMDriver
+#include "goby/acomms/modemdriver/popoto_driver.h"          // for PopotoDr...
+#include "goby/acomms/modemdriver/udp_driver.h"             // for UDPDriver
+#include "goby/acomms/modemdriver/udp_multicast_driver.h"   // for UDPMulti...
+#include "goby/acomms/protobuf/buffer.pb.h"                 // for DynamicB...
+#include "goby/acomms/protobuf/driver_base.pb.h"            // for DriverCo...
+#include "goby/acomms/protobuf/modem_message.pb.h"          // for ModemTra...
+#include "goby/exception.h"                                 // for Exception
+#include "goby/middleware/protobuf/transporter_config.pb.h" // for Transpor...
+#include "goby/middleware/transport/intervehicle/groups.h"  // for metadata...
+#include "goby/middleware/transport/publisher.h"            // for Publisher
+#include "goby/util/debug_logger/flex_ostreambuf.h"         // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h"     // for operator<<
+#include "goby/util/debug_logger/term_color.h"              // for Colors
 
 #include "driver_thread.h"
-
-#include <memory>
-#include <utility>
 
 using goby::glog;
 using namespace goby::util::logger;

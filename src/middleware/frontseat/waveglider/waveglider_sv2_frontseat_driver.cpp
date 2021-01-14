@@ -21,11 +21,41 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/util/as.h"
-#include "goby/util/debug_logger.h"
+#include <bits/exception.h>
+#include <chrono>
+#include <cstdint>
+#include <list>
+#include <ostream>
+#include <stdlib.h>
+#include <type_traits>
+
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
+#include <boost/signals2/mutex.hpp>
+#include <boost/signals2/signal.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
+#include <dccl/binary.h>
+#include <dccl/common.h>
+
+#include "goby/middleware/frontseat/waveglider/waveglider_sv2_frontseat_driver.pb.h"
+#include "goby/middleware/protobuf/frontseat_config.pb.h"
+#include "goby/middleware/protobuf/frontseat_data.pb.h"
+#include "goby/time/simulation.h"
+#include "goby/util/asio_compat.h"
+#include "goby/util/debug_logger/flex_ostream.h"
+#include "goby/util/debug_logger/flex_ostreambuf.h"
+#include "goby/util/debug_logger/term_color.h"
 
 #include "waveglider_sv2_frontseat_driver.h"
-#include <cstdint>
+#include "waveglider_sv2_serial_client.h"
+
+namespace google
+{
+namespace protobuf
+{
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace gpb = goby::middleware::frontseat::protobuf;
 namespace gtime = goby::time;

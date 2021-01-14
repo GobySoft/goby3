@@ -25,20 +25,34 @@
 #ifndef GOBY_UTIL_AIS_ENCODE_H
 #define GOBY_UTIL_AIS_ENCODE_H
 
-#include <atomic>
-#include <cstdint>
+#include <atomic>    // for atomic
+#include <cstdint>   // for uint32_t, uint8_t
+#include <math.h>    // for round
+#include <stdexcept> // for runtime_error
+#include <string>    // for string, allocator
+#include <vector>    // for vector
 
-#include <boost/dynamic_bitset.hpp>
-
-#include "goby/util/linebasedcomms/nmea_sentence.h"
-#include "goby/util/protobuf/ais.pb.h"
+#include <boost/algorithm/string/case_conv.hpp>    // for to_upper
+#include <boost/dynamic_bitset/dynamic_bitset.hpp> // for dynamic_bitset
+#include <boost/units/base_unit.hpp>               // for base_unit<>::unit...
+#include <boost/units/base_units/metric/knot.hpp>  // for knot_base_unit
+#include <boost/units/quantity.hpp>                // for quantity, operator*
+#include <boost/units/systems/angle/degrees.hpp>   // for plane_angle, degrees
 
 namespace goby
 {
 namespace util
 {
+class NMEASentence;
+
 namespace ais
 {
+namespace protobuf
+{
+class Position;
+class Voyage;
+} // namespace protobuf
+
 class EncoderException : public std::runtime_error
 {
   public:
@@ -95,6 +109,7 @@ class Encoder
     }
 
     struct AISField;
+
     void concatenate_bitset(const std::vector<AISField>& fields)
     {
         for (auto it = fields.rbegin(), end = fields.rend(); it != end; ++it)

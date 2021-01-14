@@ -27,9 +27,10 @@
 #ifndef GOBY_APPS_MOOS_IFRONTSEAT_LEGACY_TRANSLATOR_H
 #define GOBY_APPS_MOOS_IFRONTSEAT_LEGACY_TRANSLATOR_H
 
-#include "goby/moos/moos_header.h"
+#include "goby/middleware/protobuf/frontseat.pb.h"      // for CommandReque...
+#include "goby/middleware/protobuf/frontseat_data.pb.h" // for CTDSample
 
-#include "goby/middleware/frontseat/interface.h"
+class CMOOSMsg;
 
 namespace goby
 {
@@ -38,6 +39,7 @@ namespace apps
 namespace moos
 {
 class iFrontSeat;
+
 class FrontSeatLegacyTranslator
 {
   public:

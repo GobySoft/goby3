@@ -21,23 +21,41 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <fstream>
-#include <iostream>
-#include <sstream>
+#include <functional> // for function
+#include <iostream>   // for operator<<, basic...
+#include <iterator>   // for operator!=, rever...
+#include <map>        // for _Rb_tree_const_it...
+#include <memory>     // for allocator, unique...
+#include <set>        // for set
+#include <stdexcept>  // for runtime_error
+#include <stdlib.h>   // for exit, EXIT_FAILURE
+#include <string>     // for string, basic_string
+#include <utility>    // for pair, make_pair
 
-#include "yaml_raii.h"
-#include <yaml-cpp/yaml.h>
+#include <boost/algorithm/string/erase.hpp>        // for erase_all
+#include <boost/iterator/iterator_traits.hpp>      // for iterator_value<>:...
+#include <clang/AST/DeclCXX.h>                     // for CXXRecordDecl
+#include <clang/AST/Expr.h>                        // for Expr, IntegerLiteral
+#include <clang/AST/ExprCXX.h>                     // for CXXMemberCallExpr
+#include <clang/AST/PrettyPrinter.h>               // for PrintingPolicy
+#include <clang/AST/TemplateBase.h>                // for TemplateArgument
+#include <clang/AST/Type.h>                        // for QualType, Type
+#include <clang/ASTMatchers/ASTMatchersInternal.h> // for VariadicFunction
+#include <clang/Basic/LangOptions.h>               // for LangOptions
+#include <llvm/ADT/APInt.h>                        // for APInt
+#include <llvm/ADT/APSInt.h>                       // for APSInt
+#include <llvm/ADT/StringRef.h>                    // for StringRef
+#include <llvm/Support/raw_ostream.h>              // for raw_string_ostream
+#include <yaml-cpp/emitter.h>                      // for operator<<, Emitter
 
-#include "goby/middleware/marshalling/interface.h"
-#include "goby/middleware/transport/interface.h"
-
-#include "clang/ASTMatchers/ASTMatchFinder.h"
-#include "clang/ASTMatchers/ASTMatchers.h"
-#include "clang/Frontend/FrontendActions.h"
-#include "clang/Tooling/Tooling.h"
-
-#include "actions.h"
-#include "pubsub_entry.h"
+#include "actions.h"                               // for generate
+#include "goby/middleware/marshalling/interface.h" // for MarshallingScheme
+#include "goby/middleware/transport/interface.h"   // for Necessity, Necess...
+#include "pubsub_entry.h"                          // for Layer, PubSubEntry
+#include "yaml_raii.h"                             // for YMap, YSeq
+#include "clang/ASTMatchers/ASTMatchFinder.h"      // for MatchFinder::Matc...
+#include "clang/ASTMatchers/ASTMatchers.h"         // for hasName, callee
+#include "clang/Tooling/Tooling.h"                 // for newFrontendAction...
 
 using goby::clang::Layer;
 using goby::clang::PubSubEntry;

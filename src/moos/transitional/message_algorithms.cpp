@@ -22,12 +22,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/acomms/dccl.h"
-#include "message.h"
-#include "message_algorithms.h"
-#include "message_val.h"
+#include <algorithm> // for max
+#include <memory>    // for shared_ptr, __s...
 
-#include "goby/util/as.h"
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/erase.hpp>          // for erase_all_copy
+#include <boost/algorithm/string/split.hpp>          // for split
+
+#include "goby/acomms/dccl/dccl.h" // for DCCLException
+
+#include "message.h" // for DCCLMessage
+#include "message_algorithms.h"
+#include "message_val.h" // for DCCLMessageVal
+#include "message_var.h" // for DCCLMessageVar
 
 goby::moos::transitional::DCCLAlgorithmPerformer*
     goby::moos::transitional::DCCLAlgorithmPerformer::inst_ = nullptr;

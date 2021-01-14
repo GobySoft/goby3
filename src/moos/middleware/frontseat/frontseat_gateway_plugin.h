@@ -24,17 +24,39 @@
 #ifndef GOBY_MOOS_MIDDLEWARE_FRONTSEAT_FRONTSEAT_GATEWAY_PLUGIN_H
 #define GOBY_MOOS_MIDDLEWARE_FRONTSEAT_FRONTSEAT_GATEWAY_PLUGIN_H
 
+#include <ostream> // for basic_ostream
+#include <string>  // for string, bas...
+#include <vector>  // for vector
+
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>         // for CMOOSMsg
+#include <boost/algorithm/string/predicate.hpp> // for iequals
+#include <boost/algorithm/string/trim.hpp>      // for trim
+
 #include "goby/middleware/marshalling/protobuf.h"
 
-#include "goby/middleware/frontseat/groups.h"
-#include "goby/middleware/protobuf/frontseat.pb.h"
-#include "goby/middleware/protobuf/frontseat_data.pb.h"
-#include "goby/moos/frontseat/convert.h"
-#include "goby/moos/middleware/moos_plugin_translator.h"
-#include "goby/moos/moos_translator.h"
+#include "goby/middleware/application/multi_thread.h"    // for SimpleThread
+#include "goby/middleware/frontseat/groups.h"            // for helm_state
+#include "goby/middleware/marshalling/interface.h"       // for Marshalling...
+#include "goby/middleware/protobuf/frontseat.pb.h"       // for HelmStateRe...
+#include "goby/middleware/protobuf/frontseat_data.pb.h"  // for NodeStatus
+#include "goby/middleware/transport/interprocess.h"      // for InterProces...
+#include "goby/moos/frontseat/convert.h"                 // for convert_and...
+#include "goby/moos/middleware/moos_plugin_translator.h" // for TranslatorB...
+#include "goby/util/debug_logger/flex_ostream.h"         // for operator<<
 
 namespace goby
 {
+namespace apps
+{
+namespace moos
+{
+namespace protobuf
+{
+class GobyMOOSGatewayConfig;
+} // namespace protobuf
+} // namespace moos
+} // namespace apps
+
 namespace moos
 {
 class FrontSeatTranslation : public goby::moos::Translator

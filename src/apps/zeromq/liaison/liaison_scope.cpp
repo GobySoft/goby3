@@ -22,26 +22,46 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <list> // for operator!=, ope...
+
+#include <Wt/WApplication>                           // for WApplication, wApp
+#include <Wt/WBreak>                                 // for WBreak
+#include <Wt/WComboBox>                              // for WComboBox
+#include <Wt/WDateTime>                              // for WDateTime
+#include <Wt/WGlobal>                                // for Horizontal, Key_P
+#include <Wt/WGroupBox>                              // for WGroupBox
+#include <Wt/WLength>                                // for WLength, WLengt...
+#include <Wt/WLineEdit>                              // for WLineEdit
+#include <Wt/WModelIndex>                            // for DescendingOrder
+#include <Wt/WPushButton>                            // for WPushButton
+#include <Wt/WSignal>                                // for EventSignal
+#include <Wt/WSortFilterProxyModel>                  // for WSortFilterProx...
+#include <Wt/WStandardItem>                          // for WStandardItem
+#include <Wt/WString>                                // for WString
+#include <Wt/WStringListModel>                       // for WStringListModel
+#include <Wt/WText>                                  // for WText
+#include <Wt/WTimer>                                 // for WTimer
+#include <Wt/WVBoxLayout>                            // for WVBoxLayout
+#include <Wt/WWidget>                                // for WWidget
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim
+#include <boost/any.hpp>                             // for any_cast
+#include <boost/bind.hpp>                            // for bind_t, list_av...
+#include <boost/date_time/posix_time/ptime.hpp>      // for ptime
+#include <boost/smart_ptr/shared_ptr.hpp>            // for shared_ptr
+#include <google/protobuf/descriptor.h>              // for Descriptor
+
+#include "goby/time/convert.h"                      // for SystemClock::now
+#include "goby/time/system_clock.h"                 // for SystemClock
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for DEBUG2, logger
+
 #include "liaison_scope.h"
 
-#include <Wt/Chart/WCartesianChart>
-#include <Wt/WAnchor>
-#include <Wt/WApplication>
-#include <Wt/WDateTime>
-#include <Wt/WGroupBox>
-#include <Wt/WLineEdit>
-#include <Wt/WPanel>
-#include <Wt/WPushButton>
-#include <Wt/WSelectionBox>
-#include <Wt/WSortFilterProxyModel>
-#include <Wt/WStandardItem>
-#include <Wt/WStringListModel>
-#include <Wt/WTable>
-#include <Wt/WTextArea>
-#include <Wt/WTimer>
-#include <Wt/WVBoxLayout>
-
-#include "goby/time.h"
+namespace Wt
+{
+class WAbstractItemModel;
+} // namespace Wt
 
 using namespace Wt;
 using namespace goby::util::logger_lock;

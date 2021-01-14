@@ -26,25 +26,46 @@
 #ifndef GOBY_MOOS_MOOS_PROTOBUF_HELPERS_H
 #define GOBY_MOOS_MOOS_PROTOBUF_HELPERS_H
 
-#include <limits>
-#include <regex>
+#include <algorithm> // for max
+#include <iomanip>   // for _Setprecision
+#include <limits>    // for numeric_limits
+#include <map>       // for map, map<>::c...
+#include <memory>    // for allocator
+#include <mutex>     // for mutex, lock_g...
+#include <regex>     // for sregex_iterator
+#include <sstream>   // for basic_ostream
+#include <stddef.h>  // for size_t
+#include <stdexcept> // for runtime_error
+#include <stdint.h>  // for int32_t, int64_t
+#include <string>    // for string, opera...
+#include <utility>   // for pair
+#include <vector>    // for vector
 
-#include <boost/format.hpp>
+#include <boost/algorithm/string/case_conv.hpp>      // for to_lower_copy
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF
+#include <boost/algorithm/string/erase.hpp>          // for ierase_first_...
+#include <boost/algorithm/string/replace.hpp>        // for replace_all
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim_if
+#include <boost/core/enable_if.hpp>                  // for enable_if_c<>...
+#include <boost/format.hpp>                          // for basic_altstri...
+#include <boost/lexical_cast.hpp>                    // for lexical_cast
+#include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexical_cast
+#include <google/protobuf/descriptor.h>              // for FieldDescriptor
+#include <google/protobuf/message.h>                 // for Reflection
+#include <google/protobuf/stubs/port.h>              // for uint32, uint64
+#include <google/protobuf/text_format.h>             // for TextFormat
 
-#include <google/protobuf/io/printer.h>
-#include <google/protobuf/io/tokenizer.h>
-
-#include "dccl/dynamic_protobuf_manager.h"
-
-#include "goby/moos/moos_string.h"
-#include "goby/moos/protobuf/goby_moos_app.pb.h"
-#include "goby/moos/protobuf/translator.pb.h"
-#include "goby/moos/transitional/message_algorithms.h"
-#include "goby/moos/transitional/message_val.h"
-#include "goby/util/as.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/primitive_types.h"
+#include "dccl/dynamic_protobuf_manager.h"             // for DynamicProtob...
+#include "goby/moos/moos_string.h"                     // for val_from_string
+#include "goby/moos/protobuf/goby_moos_app.pb.h"       // for RepeatedPtrField
+#include "goby/moos/protobuf/translator.pb.h"          // for TranslatorEntry
+#include "goby/moos/transitional/message_algorithms.h" // for DCCLAlgorithm...
+#include "goby/moos/transitional/message_val.h"        // for DCCLMessageVal
+#include "goby/util/as.h"                              // for as
+#include "goby/util/binary.h"                          // for hex_encode
+#include "goby/util/debug_logger/flex_ostream.h"       // for operator<<
+#include "goby/util/debug_logger/flex_ostreambuf.h"    // for DIE
 
 namespace goby
 {

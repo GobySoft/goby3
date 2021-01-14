@@ -21,23 +21,44 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <gps.h>
-#include <libgpsmm.h>
+#include <algorithm>        // for copy
+#include <initializer_list> // for initia...
+#include <iostream>         // for basic_...
+#include <map>              // for operat...
+#include <unordered_map>    // for operat...
+#include <vector>           // for vector
 
-#include <boost/range/algorithm_ext/erase.hpp>
-#include <boost/units/systems/angle/degrees.hpp>
+#include <bits/exception.h>                          // for exception
+#include <boost/algorithm/string/classification.hpp> // for is_any...
+#include <boost/algorithm/string/trim.hpp>           // for trim
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>        // for ptime
+#include <boost/date_time/posix_time/time_parsers.hpp> // for from_i...
+#include <boost/range/algorithm_ext/erase.hpp>         // for remove...
+#include <boost/units/operators.hpp>                   // for units
+#include <boost/units/quantity.hpp>                    // for operator*
+#include <boost/units/systems/angle/degrees.hpp>       // for plane_...
+#include <boost/units/systems/si/length.hpp>           // for length
+#include <boost/units/systems/si/time.hpp>             // for second
+#include <boost/units/unit.hpp>                        // for operator/
+#include <gps.h>                                       // for WATCH_...
+#include <libgpsmm.h>                                  // for gpsmm
 
-#include <chrono>
-#include <ctime>
-#include <iostream>
+#include "goby/middleware/marshalling/protobuf.h"
 
-#include "goby/util/thirdparty/nlohmann/json.hpp"
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/gpsd/groups.h"                      // for att, sky
+#include "goby/middleware/protobuf/geographic.pb.h"           // for LatLon...
+#include "goby/middleware/protobuf/gpsd.pb.h"                 // for TimePo...
+#include "goby/time/convert.h"                                // for convert
+#include "goby/time/types.h"                                  // for SITime
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/util/thirdparty/nlohmann/json.hpp"             // for json
+#include "goby/zeromq/protobuf/gps_config.pb.h"               // for GPSDCo...
+#include "goby/zeromq/transport/interprocess.h"               // for InterP...
+
 #include "gpsd_client.h"
-
-#include "goby/time.h"
-
-#include "goby/middleware/gpsd/groups.h"
-#include "goby/zeromq/application/single_thread.h"
 
 using goby::glog;
 

@@ -24,10 +24,16 @@
 #ifndef GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_CODECS_H
 #define GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_CODECS_H
 
-#include <dccl.h>
-#include <dccl/field_codec_id.h>
+#include <dccl/bitset.h>            // for Bitset
+#include <dccl/common.h>            // for uint32, BITS_IN_BYTE, uint64
+#include <dccl/field_codec.h>       // for FieldCodecBase
+#include <dccl/field_codec_fixed.h> // for TypedFixedFieldCodec
+#include <dccl/field_codec_id.h>    // for DefaultIdentifierCodec
 
-#include "goby/middleware/frontseat/waveglider/waveglider_sv2_frontseat_driver.pb.h"
+namespace dccl
+{
+class Codec;
+} // namespace dccl
 
 extern "C"
 {

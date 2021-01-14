@@ -22,10 +22,11 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <iostream>
+#include <utility> // for move
 
-#include <thread>
-#include <utility>
+#include <boost/asio/serial_port_base.hpp> // for serial_port_base, serial_...
+
+#include "goby/util/asio_compat.h"
 
 #include "serial_client.h"
 

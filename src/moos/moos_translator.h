@@ -25,22 +25,39 @@
 #ifndef GOBY_MOOS_MOOS_TRANSLATOR_H
 #define GOBY_MOOS_MOOS_TRANSLATOR_H
 
-#include "goby/moos/moos_header.h"
-#include "moos_geodesy.h"
-#include <map>
-#include <set>
-#include <string>
+#include <limits>    // for numeric_limits
+#include <map>       // for map, multimap
+#include <mutex>     // for lock_guard, mutex
+#include <ostream>   // for operator<<, bas...
+#include <set>       // for set
+#include <stdexcept> // for runtime_error
+#include <string>    // for basic_string
+#include <utility>   // for pair, make_pair
+#include <vector>    // for vector
 
-#include "dccl/dynamic_protobuf_manager.h"
-#include "goby/moos/modem_id_convert.h"
-#include "goby/moos/moos_protobuf_helpers.h"
-#include "goby/moos/protobuf/translator.pb.h"
-#include "goby/moos/transitional/message_algorithms.h"
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>              // for CMOOSMsg, MOOS_...
+#include <MOOS/libMOOS/Utils/MOOSUtilityFunctions.h> // for MOOSTime
+#include <boost/lexical_cast.hpp>                    // for lexical_cast
+#include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexical_cast
+#include <google/protobuf/descriptor.h>              // for Descriptor
+#include <google/protobuf/message.h>                 // for Message
+
+#include "dccl/dynamic_protobuf_manager.h"    // for DynamicProtobuf...
+#include "goby/moos/modem_id_convert.h"       // for ModemIdConvert
+#include "goby/moos/moos_protobuf_helpers.h"  // for MOOSTranslation
+#include "goby/moos/protobuf/translator.pb.h" // for TranslatorEntry
+#include "goby/util/as.h"                     // for as
+#include "moos_geodesy.h"                     // for CMOOSGeodesy
 
 namespace goby
 {
 namespace moos
 {
+namespace transitional
+{
+class DCCLMessageVal;
+} // namespace transitional
+
 void alg_power_to_dB(moos::transitional::DCCLMessageVal& val_to_mod);
 void alg_dB_to_power(moos::transitional::DCCLMessageVal& val_to_mod);
 

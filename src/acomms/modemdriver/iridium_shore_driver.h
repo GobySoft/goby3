@@ -24,22 +24,39 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_DRIVER_H
 
-#include <boost/bimap.hpp>
-#include <boost/circular_buffer.hpp>
+#include <cstdint> // for uint32_t
+#include <map>     // for map
+#include <memory>  // for shared_ptr
+#include <string>  // for string
 
-#include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/acomms/modemdriver/iridium_driver_common.h"
-#include "goby/acomms/modemdriver/iridium_shore_rudics.h"
-#include "goby/acomms/modemdriver/iridium_shore_sbd.h"
-#include "goby/acomms/protobuf/iridium_driver.pb.h"
-#include "goby/acomms/protobuf/iridium_sbd_directip.pb.h"
-#include "goby/acomms/protobuf/iridium_shore_driver.pb.h"
-#include "goby/time.h"
+#include <boost/asio/io_service.hpp> // for io_service
+#include <boost/bimap.hpp>
+#include <boost/circular_buffer.hpp> // for circular_b...
+
+#include "goby/acomms/modemdriver/driver_base.h"          // for ModemDrive...
+#include "goby/acomms/protobuf/driver_base.pb.h"          // for DriverConfig
+#include "goby/acomms/protobuf/iridium_driver.pb.h"       // for MessageTyp...
+#include "goby/acomms/protobuf/iridium_shore_driver.pb.h" // for ShoreConfig
+#include "goby/acomms/protobuf/modem_message.pb.h"        // for ModemTrans...
 
 namespace goby
 {
 namespace acomms
 {
+class OnCallBase;
+class RUDICSConnection;
+class RUDICSServer;
+class SBDServer;
+namespace iridium
+{
+namespace protobuf
+{
+class DirectIPMOHeader;
+class DirectIPMOPayload;
+class DirectIPMOPreHeader;
+} // namespace protobuf
+} // namespace iridium
+
 class IridiumShoreDriver : public ModemDriverBase
 {
   public:

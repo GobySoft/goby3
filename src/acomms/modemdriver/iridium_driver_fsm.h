@@ -25,24 +25,38 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_FSM_H
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_FSM_H
 
-#include <boost/circular_buffer.hpp>
+#include <algorithm> // for for_each
+#include <iostream>  // for basic_ost...
+#include <locale>    // for locale
+#include <string>    // for string
+#include <utility>   // for move, pair
+#include <vector>    // for vector
 
-#include <boost/mpl/list.hpp>
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim
+#include <boost/bind.hpp>                            // for bind_t, arg
+#include <boost/circular_buffer.hpp>                 // for circular_...
+#include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexic...
+#include <boost/mpl/list.hpp>                        // for list
+#include <boost/smart_ptr/intrusive_ptr.hpp>         // for intrusive...
 #include <boost/statechart/custom_reaction.hpp>
-#include <boost/statechart/deep_history.hpp>
-#include <boost/statechart/event.hpp>
-#include <boost/statechart/in_state_reaction.hpp>
-#include <boost/statechart/simple_state.hpp>
-#include <boost/statechart/state.hpp>
-#include <boost/statechart/state_machine.hpp>
-#include <boost/statechart/transition.hpp>
-#include <iostream>
-#include <utility>
+#include <boost/statechart/event.hpp>             // for event
+#include <boost/statechart/in_state_reaction.hpp> // for in_state_...
+#include <boost/statechart/result.hpp>            // for reaction_...
+#include <boost/statechart/simple_state.hpp>      // for simple_st...
+#include <boost/statechart/state.hpp>             // for state
+#include <boost/statechart/state_machine.hpp>     // for state_mac...
+#include <boost/statechart/transition.hpp>        // for transition
 
-#include "goby/acomms/modemdriver/iridium_driver_common.h"
-#include "goby/acomms/protobuf/iridium_driver.pb.h"
-#include "goby/acomms/protobuf/modem_message.pb.h"
-#include "goby/util/as.h"
+#include "goby/acomms/modemdriver/iridium_driver_common.h" // for OnCallBase
+#include "goby/acomms/protobuf/driver_base.pb.h"           // for DriverConfig
+#include "goby/acomms/protobuf/iridium_driver.pb.h"        // for Config
+#include "goby/acomms/protobuf/modem_message.pb.h"         // for ModemTran...
+#include "goby/util/as.h"                                  // for as
+#include "goby/util/debug_logger/flex_ostream.h"           // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"        // for DEBUG1, WARN
+#include "goby/util/debug_logger/logger_manipulators.h"    // for operator<<
 
 namespace goby
 {
@@ -173,15 +187,10 @@ struct Configure;
 struct Ready;
 struct Answer;
 struct Dial;
-struct HangingUp;
-struct PostDisconnected;
-
 struct Online;
 struct OnCall;
 struct NotOnCall;
-
 struct SBD;
-struct SBDConfigure;
 struct SBDReady;
 struct SBDClearBuffers;
 struct SBDWrite;

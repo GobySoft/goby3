@@ -25,21 +25,24 @@
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_INTERFACE_H
 #define GOBY_UTIL_LINEBASEDCOMMS_INTERFACE_H
 
-#include <deque>
-#include <fstream>
-#include <iostream>
-#include <mutex>
-#include <string>
-#include <thread>
+#include <deque>  // for deque
+#include <memory> // for shared_ptr
+#include <mutex>  // for mutex
+#include <string> // for string
+#include <thread> // for thread
 
-#include "goby/util/asio-compat.h"
-#include <boost/asio.hpp>
+#include <boost/bind.hpp> // for bind_t, list_av_1<...
 
-#include <boost/array.hpp>
-#include <boost/bind.hpp>
+#include "goby/util/asio_compat.h"
+#include "goby/util/protobuf/linebasedcomms.pb.h" // for Datagram
 
-#include "goby/time.h"
-#include "goby/util/protobuf/linebasedcomms.pb.h"
+namespace boost
+{
+namespace system
+{
+class error_code;
+} // namespace system
+} // namespace boost
 
 namespace goby
 {

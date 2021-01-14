@@ -22,22 +22,25 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <algorithm>
-#include <cmath>
-#include <iostream>
-#include <mutex>
-#include <sstream>
+#include <algorithm> // for max, copy, iter_swap
+#include <cmath>     // for abs
+#include <iostream>  // for operator<<, strin...
+#include <iterator>  // for operator!=, rever...
+#include <memory>    // for allocator_traits<...
+#include <mutex>     // for mutex, lock_guard
+#include <stdlib.h>  // for size_t, abs
+#include <utility>   // for pair
 
-#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/trim.hpp>         // for trim_left_copy
+#include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_cast
+#include <curses.h>                                // for WINDOW, init_pair
+#include <ext/alloc_traits.h>                      // for __alloc_traits<>:...
 
-#include <ncurses.h>
-
-#include "goby/util/as.h"
-
-#include "logger_manipulators.h"
+#include "goby/util/as.h" // for as
 
 #include "flex_ncurses.h"
-#include "term_color.h"
+#include "logger_manipulators.h" // for Group
+#include "term_color.h"          // for Colors, Colors::w...
 
 using boost::posix_time::ptime;
 

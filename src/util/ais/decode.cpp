@@ -43,6 +43,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/lic
 
+#include <boost/units/base_dimension.hpp> // for list
+#include <boost/units/quantity.hpp>       // for operator*, operator/, quan...
+
 #include "decode.h"
 
 goby::util::ais::Decoder::Decoder(const std::vector<NMEASentence>& nmeas)

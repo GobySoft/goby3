@@ -24,6 +24,9 @@
 #ifndef GOBY_MIDDLEWARE_IO_DETAIL_PTY_INTERFACE_H
 #define GOBY_MIDDLEWARE_IO_DETAIL_PTY_INTERFACE_H
 
+#include <termios.h>
+#include <unistd.h>
+
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/write.hpp>
