@@ -32,8 +32,9 @@
 #include <Wt/WText>
 #include <Wt/WTimer>
 
-#include "goby/middleware/group.h"
 #include "goby/middleware/marshalling/protobuf.h"
+
+#include "goby/middleware/group.h"
 #include "goby/zeromq/application/multi_thread.h"
 #include "goby/zeromq/protobuf/liaison_config.pb.h"
 
