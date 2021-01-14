@@ -23,9 +23,9 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm> // for max
+#include <cstdlib>   // for atoi
 #include <fstream>   // for operator<<, bas...
 #include <memory>    // for allocator_trait...
-#include <stdlib.h>  // for atoi
 #include <string>    // for string, basic_s...
 #include <utility>   // for pair
 #include <vector>    // for vector

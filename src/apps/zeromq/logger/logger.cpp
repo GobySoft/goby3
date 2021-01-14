@@ -25,12 +25,12 @@
 #include <algorithm>     // for copy, max
 #include <atomic>        // for atomic
 #include <chrono>        // for time_p...
+#include <csignal>       // for sigaction
 #include <dlfcn.h>       // for dlclose
 #include <fcntl.h>       // for S_IRGRP
 #include <fstream>       // for operat...
 #include <functional>    // for _Bind
 #include <map>           // for operat...
-#include <signal.h>      // for sigaction
 #include <string>        // for allocator
 #include <sys/stat.h>    // for chmod
 #include <thread>        // for thread

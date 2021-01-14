@@ -26,13 +26,13 @@
 #define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_COMMANDER_H
 
 #include <algorithm>     // for max
+#include <cstdint>       // for uint64_t
 #include <deque>         // for deque
 #include <functional>    // for _Bind, bind
 #include <map>           // for operator!=
 #include <memory>        // for allocator
 #include <mutex>         // for mutex
 #include <set>           // for set
-#include <stdint.h>      // for uint64_t
 #include <string>        // for string
 #include <unordered_map> // for unordered_...
 #include <utility>       // for pair

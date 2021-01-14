@@ -25,8 +25,8 @@
 #ifndef GOBY_ACOMMS_ROUTE_ROUTE_H
 #define GOBY_ACOMMS_ROUTE_ROUTE_H
 
+#include <cstdint> // for uint32_t
 #include <map>      // for map
-#include <stdint.h> // for uint32_t
 
 #include "goby/acomms/protobuf/route.pb.h"       // for RouteManagerConfig
 #include "goby/util/debug_logger/flex_ostream.h" // for FlexOstream, glog

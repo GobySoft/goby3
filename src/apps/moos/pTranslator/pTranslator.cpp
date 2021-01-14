@@ -24,11 +24,11 @@
 
 #include <algorithm>   // for max
 #include <chrono>      // for operator+
+#include <cstdlib>     // for abs
 #include <dlfcn.h>     // for dlopen
 #include <map>         // for multimap
 #include <memory>      // for shared...
 #include <ostream>     // for basic_...
-#include <stdlib.h>    // for abs
 #include <string>      // for string
 #include <type_traits> // for __succ...
 #include <utility>     // for pair

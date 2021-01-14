@@ -23,10 +23,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <assert.h> // for assert
+#include <cassert> // for assert
+#include <cstdint> // for int32_t
 #include <memory>   // for shared...
 #include <ostream>  // for operat...
-#include <stdint.h> // for int32_t
 #include <vector>   // for vector
 
 #include <boost/date_time/posix_time/posix_time_duration.hpp> // for micros...

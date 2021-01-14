@@ -22,10 +22,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <cmath>   // for log10
+#include <cstdlib> // for abs
 #include <iomanip>  // for operator<<, setpr...
 #include <limits>   // for numeric_limits
-#include <math.h>   // for log10
-#include <stdlib.h> // for abs
 #include <utility>  // for move
 
 #include <boost/algorithm/string/predicate.hpp>    // for iequals

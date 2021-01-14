@@ -26,8 +26,8 @@
 #define GOBY_UTIL_AIS_ENCODE_H
 
 #include <atomic>    // for atomic
+#include <cmath>     // for round
 #include <cstdint>   // for uint32_t, uint8_t
-#include <math.h>    // for round
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, allocator
 #include <vector>    // for vector

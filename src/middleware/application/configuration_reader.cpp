@@ -24,11 +24,11 @@
 
 #include <algorithm> // for max
 #include <array>     // for array, array...
+#include <cstdint>   // for int_least32_t
+#include <cstdio>    // for pclose, feof
+#include <cstdlib>   // for exit, EXIT_S...
 #include <iostream>  // for cout, cerr
 #include <iterator>  // for istreambuf_i...
-#include <stdint.h>  // for int_least32_t
-#include <stdio.h>   // for pclose, feof
-#include <stdlib.h>  // for exit, EXIT_S...
 #include <utility>   // for pair
 
 #include <boost/algorithm/string/replace.hpp>           // for replace_all

@@ -34,9 +34,9 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_POPOTO_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_POPOTO_DRIVER_H
 
+#include <cstddef> // for size_t
+#include <cstdint> // for uint8_t
 #include <map>      // for map
-#include <stddef.h> // for size_t
-#include <stdint.h> // for uint8_t
 #include <string>   // for string
 #include <vector>   // for vector
 

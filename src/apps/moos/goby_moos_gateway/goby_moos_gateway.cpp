@@ -24,11 +24,11 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>     // for copy
+#include <cstdlib>       // for exit
 #include <dlfcn.h>       // for dlsym
 #include <exception>     // for exception
 #include <iostream>      // for operat...
 #include <map>           // for operat...
-#include <stdlib.h>      // for exit
 #include <string>        // for string
 #include <unordered_map> // for operat...
 #include <vector>        // for vector

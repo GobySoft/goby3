@@ -25,9 +25,9 @@
 #ifndef GOBY_UTIL_DEBUG_LOGGER_FLEX_NCURSES_H
 #define GOBY_UTIL_DEBUG_LOGGER_FLEX_NCURSES_H
 
+#include <cstddef> // for size_t
 #include <map>      // for multimap, multimap<>...
 #include <set>      // for set
-#include <stddef.h> // for size_t
 #include <string>   // for string
 #include <vector>   // for vector
 

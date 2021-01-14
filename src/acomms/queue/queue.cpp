@@ -40,9 +40,9 @@
 #include <boost/type_index.hpp>                               // for type_info
 #include <boost/units/systems/si/time.hpp>                    // for seconds
 #include <boost/units/unit.hpp>                               // for unit
+#include <cstdint>                                            // for uint64_t
 #include <dccl/field_codec.h>                                 // for FromPr...
 #include <google/protobuf/message.h>                          // for Message
-#include <stdint.h>                                           // for uint64_t
 
 #include "dccl/dynamic_protobuf_manager.h"              // for Dynami...
 #include "goby/acomms/acomms_constants.h"               // for BROADC...

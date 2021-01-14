@@ -29,6 +29,7 @@
 #include <boost/algorithm/string/constants.hpp>      // for token_compress_on
 #include <boost/algorithm/string/split.hpp>          // for split
 #include <boost/any.hpp>                             // for bad_any_cast
+#include <cstdint>                                   // for uint32_t
 #include <dccl/bitset.h>                             // for Bitset
 #include <dccl/codec.h>                              // for Codec
 #include <dccl/common.h>                             // for uint32
@@ -36,7 +37,6 @@
 #include <dccl/field_codec_fixed.h>                  // for TypedFixedField...
 #include <dccl/field_codec_manager.h>                // for FieldCodecManager
 #include <memory>                                    // for shared_ptr, __s...
-#include <stdint.h>                                  // for uint32_t
 #include <string>                                    // for string, operator+
 #include <vector>                                    // for vector
 

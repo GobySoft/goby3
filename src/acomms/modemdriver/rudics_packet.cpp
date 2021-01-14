@@ -23,7 +23,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm> // for replace, remove_if
-#include <string.h>  // for memcpy
+#include <cstring>   // for memcpy
 
 #include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
 #include <boost/crc.hpp>                             // for crc_32_type

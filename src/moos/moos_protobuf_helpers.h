@@ -27,6 +27,8 @@
 #define GOBY_MOOS_MOOS_PROTOBUF_HELPERS_H
 
 #include <algorithm> // for max
+#include <cstddef>   // for size_t
+#include <cstdint>   // for int32_t, int64_t
 #include <iomanip>   // for _Setprecision
 #include <limits>    // for numeric_limits
 #include <map>       // for map, map<>::c...
@@ -34,9 +36,7 @@
 #include <mutex>     // for mutex, lock_g...
 #include <regex>     // for sregex_iterator
 #include <sstream>   // for basic_ostream
-#include <stddef.h>  // for size_t
 #include <stdexcept> // for runtime_error
-#include <stdint.h>  // for int32_t, int64_t
 #include <string>    // for string, opera...
 #include <utility>   // for pair
 #include <vector>    // for vector

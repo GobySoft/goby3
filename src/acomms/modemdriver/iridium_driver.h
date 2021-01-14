@@ -25,9 +25,9 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_H
 
+#include <cstdint> // for uint32_t
 #include <iosfwd>   // for ostream
 #include <memory>   // for shared_ptr
-#include <stdint.h> // for uint32_t
 
 #include "goby/acomms/modemdriver/driver_base.h"    // for ModemDriverBase
 #include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig

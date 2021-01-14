@@ -26,11 +26,11 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <ostream>
 #include <set>
-#include <stddef.h>
 #include <string>
 #include <vector>
 

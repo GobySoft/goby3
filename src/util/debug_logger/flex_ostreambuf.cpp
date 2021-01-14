@@ -23,9 +23,11 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm> // for copy, max
-#include <assert.h>  // for assert
 #include <atomic>    // for atomic
+#include <cassert>   // for assert
 #include <chrono>    // for time_point
+#include <cstdio>    // for EOF
+#include <cstdlib>   // for exit
 #include <deque>     // for deque
 #include <iomanip>   // for operator<<
 #include <iostream>  // for operator<<
@@ -34,8 +36,6 @@
 #include <memory>    // for make_shared
 #include <mutex>     // for mutex
 #include <sstream>   // for basic_st...
-#include <stdio.h>   // for EOF
-#include <stdlib.h>  // for exit
 #include <string>    // for string
 #include <thread>    // for thread
 #include <utility>   // for move, pair

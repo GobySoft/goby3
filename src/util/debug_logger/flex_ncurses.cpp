@@ -24,11 +24,11 @@
 
 #include <algorithm> // for max, copy, iter_swap
 #include <cmath>     // for abs
+#include <cstdlib>   // for size_t, abs
 #include <iostream>  // for operator<<, strin...
 #include <iterator>  // for operator!=, rever...
 #include <memory>    // for allocator_traits<...
 #include <mutex>     // for mutex, lock_guard
-#include <stdlib.h>  // for size_t, abs
 #include <utility>   // for pair
 
 #include <boost/algorithm/string/trim.hpp>         // for trim_left_copy

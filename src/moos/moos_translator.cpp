@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <ctype.h> // for isdigit
-#include <math.h>  // for floor
+#include <cctype> // for isdigit
+#include <cmath>  // for floor
 #include <memory>  // for allocato...
 
 #include <boost/algorithm/string/case_conv.hpp>             // for to_lower...

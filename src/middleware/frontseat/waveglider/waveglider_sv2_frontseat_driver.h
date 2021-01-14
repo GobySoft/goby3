@@ -24,8 +24,8 @@
 #ifndef GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_FRONTSEAT_DRIVER_H
 #define GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_FRONTSEAT_DRIVER_H
 
+#include <cstdint>
 #include <memory>
-#include <stdint.h>
 #include <string>
 
 #include <boost/asio/io_service.hpp>

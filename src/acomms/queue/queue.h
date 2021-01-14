@@ -25,11 +25,11 @@
 #ifndef GOBY_ACOMMS_QUEUE_QUEUE_H
 #define GOBY_ACOMMS_QUEUE_QUEUE_H
 
+#include <cstddef> // for size_t
 #include <iostream> // for ostream
 #include <list>     // for list
 #include <map>      // for multimap
 #include <memory>   // for shared_ptr
-#include <stddef.h> // for size_t
 #include <string>   // for string
 #include <vector>   // for vector
 

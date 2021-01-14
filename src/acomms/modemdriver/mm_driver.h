@@ -26,12 +26,12 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_MM_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_MM_DRIVER_H
 
+#include <cstdint> // for uint32_t
 #include <deque>    // for deque
 #include <map>      // for map
 #include <memory>   // for unique_ptr
 #include <mutex>    // for mutex
 #include <set>      // for set
-#include <stdint.h> // for uint32_t
 #include <string>   // for string
 
 #include "driver_base.h"                            // for ModemDriverBase

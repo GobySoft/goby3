@@ -22,11 +22,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <cstdlib> // for exit
 #include <dlfcn.h>  // for dlopen
 #include <iostream> // for endl
 #include <list>     // for operat...
 #include <map>      // for map
-#include <stdlib.h> // for exit
 #include <string>   // for string
 #include <vector>   // for vector
 

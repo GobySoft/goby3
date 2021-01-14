@@ -27,10 +27,10 @@
 
 #include <array>    // for array
 #include <cstddef>  // for size_t
+#include <cstdint>  // for uint32_t
 #include <map>      // for multimap
 #include <memory>   // for unique_ptr
 #include <set>      // for set
-#include <stdint.h> // for uint32_t
 
 #include <boost/asio/ip/udp.hpp> // for udp, udp::endpoint
 

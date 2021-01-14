@@ -28,8 +28,8 @@
 #include <array>                 // for array
 #include <boost/asio/ip/udp.hpp> // for udp, udp::...
 #include <cstddef>               // for size_t
+#include <cstdint>               // for uint32_t
 #include <map>                   // for map
-#include <stdint.h>              // for uint32_t
 
 #include "goby/acomms/modemdriver/driver_base.h"          // for ModemDrive...
 #include "goby/acomms/protobuf/driver_base.pb.h"          // for DriverConfig

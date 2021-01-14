@@ -23,6 +23,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cmath>    // for log10
+#include <cstdlib>  // for exit, abs
 #include <iostream> // for basic_ostream
 #include <iterator> // for ostreambuf_i...
 #include <limits>   // for numeric_limits
@@ -30,7 +31,6 @@
 #include <memory>   // for shared_ptr
 #include <regex>    // for match_result...
 #include <sstream>  // for basic_string...
-#include <stdlib.h> // for exit, abs
 #include <utility>  // for pair, make_pair
 
 #include <Wt/Dbo/Call>                                  // for Call

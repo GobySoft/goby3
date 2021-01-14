@@ -22,9 +22,9 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <chrono>      // for seconds
+#include <cmath>       // for floor
 #include <limits>      // for numeri...
 #include <list>        // for operat...
-#include <math.h>      // for floor
 #include <type_traits> // for __succ...
 #include <vector>      // for vector
 

@@ -33,15 +33,15 @@
 #include <boost/signals2/expired_slot.hpp>             // for expired_slot
 #include <boost/signals2/signal.hpp>                   // for signal
 #include <boost/statechart/state_machine.hpp>          // for state_mac...
+#include <cerrno>                                      // for errno
 #include <chrono>                                      // for operator/
+#include <cstring>                                     // for strerror
 #include <dccl/common.h>                               // for operator<<
 #include <dccl/option_extensions.pb.h>                 // for DCCLField...
-#include <errno.h>                                     // for errno
 #include <google/protobuf/descriptor.h>                // for Descriptor
 #include <google/protobuf/descriptor.pb.h>             // for FieldOptions
 #include <list>                                        // for operator!=
 #include <ostream>                                     // for operator<<
-#include <string.h>                                    // for strerror
 #include <string>                                      // for string
 #include <sys/ioctl.h>                                 // for ioctl
 #include <typeinfo>                                    // for bad_cast

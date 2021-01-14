@@ -28,17 +28,17 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>   // for copy, max
+#include <cerrno>      // for errno
 #include <chrono>      // for seconds
-#include <errno.h>     // for errno
+#include <cmath>       // for abs
+#include <cstdlib>     // for abs
+#include <cstring>     // for strerror
 #include <iterator>    // for ostrea...
 #include <list>        // for operat...
 #include <locale>      // for locale
-#include <math.h>      // for abs
 #include <memory>      // for allocator
 #include <sstream>     // for basic_...
 #include <stdexcept>   // for out_of...
-#include <stdlib.h>    // for abs
-#include <string.h>    // for strerror
 #include <sys/ioctl.h> // for ioctl
 #include <unistd.h>    // for usleep
 #include <utility>     // for pair

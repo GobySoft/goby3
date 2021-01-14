@@ -25,10 +25,10 @@
 #define GOBY_MIDDLEWARE_LOG_HDF5_HDF5_H
 
 #include <algorithm> // for max
+#include <cstdint>   // for uint64_t
 #include <deque>     // for deque
 #include <map>       // for map, multimap
 #include <memory>    // for shared_ptr
-#include <stdint.h>  // for uint64_t
 #include <string>    // for string
 #include <utility>   // for move
 #include <vector>    // for vector

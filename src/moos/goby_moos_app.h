@@ -27,14 +27,14 @@
 #define GOBY_MOOS_GOBY_MOOS_APP_H
 
 #include <chrono>    // for system...
+#include <cstdio>    // for remove
+#include <cstdlib>   // for exit
 #include <deque>     // for deque
 #include <iomanip>   // for operat...
 #include <iostream>  // for operat...
 #include <map>       // for map
 #include <memory>    // for allocator
 #include <stdexcept> // for runtim...
-#include <stdio.h>   // for remove
-#include <stdlib.h>  // for exit
 #include <string>    // for string
 #include <unistd.h>  // for symlink
 #include <utility>   // for pair

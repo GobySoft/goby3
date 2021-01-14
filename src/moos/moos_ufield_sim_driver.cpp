@@ -24,10 +24,10 @@
 
 #include "moos_ufield_sim_driver.h"
 
+#include <cstdint>   // for uint64_t
 #include <list>      // for operator!=
 #include <ostream>   // for operator<<
 #include <stdexcept> // for runtime_error
-#include <stdint.h>  // for uint64_t
 #include <string>    // for operator<<
 #include <unistd.h>  // for sleep
 

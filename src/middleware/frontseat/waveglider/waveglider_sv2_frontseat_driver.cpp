@@ -23,10 +23,10 @@
 
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <exception>
 #include <list>
 #include <ostream>
-#include <stdlib.h>
 #include <type_traits>
 
 #include <boost/bind.hpp>

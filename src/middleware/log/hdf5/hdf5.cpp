@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <cstddef> // for size_t
 #include <cstdint>  // for uint64_t, int...
-#include <stddef.h> // for size_t
 
 #include <boost/algorithm/string/classification.hpp>   // for is_any_ofF
 #include <boost/algorithm/string/predicate_facade.hpp> // for predicate_facade

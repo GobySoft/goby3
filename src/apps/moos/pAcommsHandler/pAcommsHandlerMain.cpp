@@ -23,10 +23,10 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm> // for max
+#include <cstdlib>   // for exit
 #include <dlfcn.h>   // for dlclose
 #include <iostream>  // for operat...
 #include <map>       // for map
-#include <stdlib.h>  // for exit
 #include <string>    // for string
 #include <utility>   // for pair
 #include <vector>    // for vector

@@ -44,7 +44,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/lic
 
 #include <algorithm> // for max
-#include <assert.h>  // for assert
+#include <cassert>   // for assert
 
 #include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_cast
 #include <boost/units/operators.hpp>               // for units
