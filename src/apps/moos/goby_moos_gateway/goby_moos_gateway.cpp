@@ -23,15 +23,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <algorithm>        // for copy
-#include <bits/exception.h> // for exception
-#include <dlfcn.h>          // for dlsym
-#include <iostream>         // for operat...
-#include <map>              // for operat...
-#include <stdlib.h>         // for exit
-#include <string>           // for string
-#include <unordered_map>    // for operat...
-#include <vector>           // for vector
+#include <algorithm>     // for copy
+#include <dlfcn.h>       // for dlsym
+#include <exception>     // for exception
+#include <iostream>      // for operat...
+#include <map>           // for operat...
+#include <stdlib.h>      // for exit
+#include <string>        // for string
+#include <unordered_map> // for operat...
+#include <vector>        // for vector
 
 #include <boost/algorithm/string/classification.hpp> // for is_any...
 #include <boost/algorithm/string/split.hpp>          // for split

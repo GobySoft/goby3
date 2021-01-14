@@ -31,11 +31,7 @@
 #include <vector>   // for vector
 
 #include <boost/algorithm/string/replace.hpp> // for replace_all
-#include <yaml-cpp/node/detail/iterator.h>    // for iterator_base
-#include <yaml-cpp/node/impl.h>               // for Node::operator[]
-#include <yaml-cpp/node/iterator.h>           // for iterator_value
-#include <yaml-cpp/node/node.h>               // for Node
-#include <yaml-cpp/node/parse.h>              // for LoadFile
+#include <yaml-cpp/yaml.h>
 
 #include "actions.h"                             // for VisualizeParameters
 #include "goby/middleware/transport/interface.h" // for Necessity, Necessit...

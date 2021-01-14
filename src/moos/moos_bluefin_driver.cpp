@@ -45,7 +45,6 @@
 #include <boost/signals2/signal.hpp>                        // for signal
 #include <boost/units/quantity.hpp>                         // for quantity
 #include <boost/units/systems/si/time.hpp>                  // for seconds
-#include <google/protobuf/stubs/port.h>                     // for int32
 
 #include "goby/acomms/amac/mac_manager.h"               // for MACManager
 #include "goby/time/convert.h"                          // for convert_...

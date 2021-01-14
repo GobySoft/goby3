@@ -53,7 +53,6 @@
 #include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexical_cast
 #include <google/protobuf/descriptor.h>              // for FieldDescriptor
 #include <google/protobuf/message.h>                 // for Reflection
-#include <google/protobuf/stubs/port.h>              // for uint32, uint64
 #include <google/protobuf/text_format.h>             // for TextFormat
 
 #include "dccl/dynamic_protobuf_manager.h"             // for DynamicProtob...
