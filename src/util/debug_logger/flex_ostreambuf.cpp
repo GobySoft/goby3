@@ -46,6 +46,7 @@
 #include <boost/date_time/posix_time/posix_time_io.hpp>     // for operator<<
 #include <boost/date_time/posix_time/ptime.hpp>             // for ptime
 
+#include "goby/exception.h"
 #include "goby/time/convert.h"                      // for SystemCl...
 #include "goby/time/system_clock.h"                 // for SystemClock
 #include "goby/util/debug_logger/flex_ostreambuf.h" // for FlexOStr...
