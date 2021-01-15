@@ -132,14 +132,15 @@ template <class Derived> struct IOSubscribeTransporter<Derived, PubSubLayer::INT
 
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
-          PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
+          PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
+          template <class> class ThreadType>
 class IOThread
-    : public goby::middleware::SimpleThread<IOConfig>,
+    : public ThreadType<IOConfig>,
       public IOPublishTransporter<IOThread<line_in_group, line_out_group, publish_layer,
-                                           subscribe_layer, IOConfig, SocketType>,
+                                           subscribe_layer, IOConfig, SocketType, ThreadType>,
                                   publish_layer>,
       public IOSubscribeTransporter<IOThread<line_in_group, line_out_group, publish_layer,
-                                             subscribe_layer, IOConfig, SocketType>,
+                                             subscribe_layer, IOConfig, SocketType, ThreadType>,
                                     subscribe_layer>
 {
   public:
@@ -147,7 +148,7 @@ class IOThread
     /// \param config A reference to the configuration read by the main application at launch
     /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
     IOThread(const IOConfig& config, int index = -1, std::string glog_group = "i/o")
-        : goby::middleware::SimpleThread<IOConfig>(config, this->loop_max_frequency(), index),
+        : ThreadType<IOConfig>(config, this->loop_max_frequency(), index),
           glog_group_(glog_group + " / t" + goby::middleware::thread_id().substr(0, 6))
     {
         auto data_out_callback =
@@ -330,9 +331,11 @@ void basic_async_write(IOThreadImplementation* this_thread,
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
+          goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
+          template <class> class ThreadType>
 void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publish_layer,
-                                            subscribe_layer, IOConfig, SocketType>::try_open()
+                                            subscribe_layer, IOConfig, SocketType,
+                                            ThreadType>::try_open()
 {
     try
     {
@@ -388,9 +391,11 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
+          goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
+          template <class> class ThreadType>
 void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publish_layer,
-                                            subscribe_layer, IOConfig, SocketType>::loop()
+                                            subscribe_layer, IOConfig, SocketType,
+                                            ThreadType>::loop()
 {
     if (socket_ && socket_->is_open())
     {
@@ -412,10 +417,11 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
+          goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
+          template <class> class ThreadType>
 void goby::middleware::io::detail::IOThread<
-    line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
-    SocketType>::handle_read_error(const boost::system::error_code& ec)
+    line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig, SocketType,
+    ThreadType>::handle_read_error(const boost::system::error_code& ec)
 {
     protobuf::IOStatus status;
     status.set_state(protobuf::IO__CRITICAL_FAILURE);
@@ -434,10 +440,11 @@ void goby::middleware::io::detail::IOThread<
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType>
+          goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
+          template <class> class ThreadType>
 void goby::middleware::io::detail::IOThread<
-    line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
-    SocketType>::handle_write_error(const boost::system::error_code& ec)
+    line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig, SocketType,
+    ThreadType>::handle_write_error(const boost::system::error_code& ec)
 {
     protobuf::IOStatus status;
     status.set_state(protobuf::IO__CRITICAL_FAILURE);

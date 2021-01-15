@@ -72,14 +72,15 @@ template <const goby::middleware::Group& line_in_group,
           // by default publish all incoming traffic to interprocess for logging
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           // but only subscribe on interthread for outgoing traffic
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
+          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+          template <class> class ThreadType = goby::middleware::SimpleThread>
 class PTYThread : public detail::IOThread<line_in_group, line_out_group, publish_layer,
                                           subscribe_layer, goby::middleware::protobuf::PTYConfig,
-                                          boost::asio::posix::stream_descriptor>
+                                          boost::asio::posix::stream_descriptor, ThreadType>
 {
     using Base = detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
                                   goby::middleware::protobuf::PTYConfig,
-                                  boost::asio::posix::stream_descriptor>;
+                                  boost::asio::posix::stream_descriptor, ThreadType>;
 
   public:
     /// \brief Constructs the thread.
@@ -108,9 +109,9 @@ class PTYThread : public detail::IOThread<line_in_group, line_out_group, publish
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
 void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publish_layer,
-                                             subscribe_layer>::open_socket()
+                                             subscribe_layer, ThreadType>::open_socket()
 {
     // remove old symlink
     const char* pty_external_symlink = this->cfg().port().c_str();

@@ -156,17 +156,14 @@ class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThrea
 };
 
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          // by default publish all incoming traffic to interprocess for logging
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          // but only subscribe on interthread for outgoing traffic
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          typename Config = goby::middleware::protobuf::TCPServerConfig>
-class TCPServerThread : public IOThread<line_in_group, line_out_group, publish_layer,
-                                        subscribe_layer, Config, boost::asio::ip::tcp::acceptor>
+          const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
+          PubSubLayer subscribe_layer, typename Config, template <class> class ThreadType>
+class TCPServerThread
+    : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
+                      boost::asio::ip::tcp::acceptor, ThreadType>
 {
     using Base = IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-                          boost::asio::ip::tcp::acceptor>;
+                          boost::asio::ip::tcp::acceptor, ThreadType>;
 
     using ConfigType = Config;
 
@@ -203,8 +200,8 @@ class TCPServerThread : public IOThread<line_in_group, line_out_group, publish_l
 
     boost::asio::ip::tcp::socket tcp_socket_;
 
-    std::set<std::shared_ptr<TCPSession<
-        TCPServerThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config>>>>
+    std::set<std::shared_ptr<TCPSession<TCPServerThread<
+        line_in_group, line_out_group, publish_layer, subscribe_layer, Config, ThreadType>>>>
         clients_;
 };
 } // namespace detail
@@ -215,9 +212,11 @@ class TCPServerThread : public IOThread<line_in_group, line_out_group, publish_l
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename Config>
+          goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
+          template <class> class ThreadType>
 void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group, publish_layer,
-                                                   subscribe_layer, Config>::open_acceptor()
+                                                   subscribe_layer, Config,
+                                                   ThreadType>::open_acceptor()
 {
     auto& acceptor = this->mutable_socket();
     acceptor.open(boost::asio::ip::tcp::v4());
@@ -244,9 +243,11 @@ void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename Config>
+          goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
+          template <class> class ThreadType>
 void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group, publish_layer,
-                                                   subscribe_layer, Config>::async_accept()
+                                                   subscribe_layer, Config,
+                                                   ThreadType>::async_accept()
 {
     auto& acceptor = this->mutable_socket();
     acceptor.async_accept(tcp_socket_, [this](boost::system::error_code ec) {
@@ -270,10 +271,11 @@ void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename Config>
+          goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
+          template <class> class ThreadType>
 void goby::middleware::io::detail::TCPServerThread<
-    line_in_group, line_out_group, publish_layer, subscribe_layer,
-    Config>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
+    line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
+    ThreadType>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
 {
     if (!io_msg->has_tcp_dest())
         throw(goby::Exception("TCPServerThread requires 'tcp_dest' field to be set in IOData"));

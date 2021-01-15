@@ -49,17 +49,14 @@ namespace io
 namespace detail
 {
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          // by default publish all incoming traffic to interprocess for logging
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          // but only subscribe on interthread for outgoing traffic
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          typename Config = goby::middleware::protobuf::TCPClientConfig>
-class TCPClientThread : public IOThread<line_in_group, line_out_group, publish_layer,
-                                        subscribe_layer, Config, boost::asio::ip::tcp::socket>
+          const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
+          PubSubLayer subscribe_layer, typename Config, template <class> class ThreadType>
+class TCPClientThread
+    : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
+                      boost::asio::ip::tcp::socket, ThreadType>
 {
     using Base = IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-                          boost::asio::ip::tcp::socket>;
+                          boost::asio::ip::tcp::socket, ThreadType>;
 
     using ConfigType = Config;
 

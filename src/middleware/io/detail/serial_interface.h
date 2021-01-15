@@ -53,17 +53,15 @@ namespace io
 namespace detail
 {
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          // by default publish all incoming traffic to interprocess for logging
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          // but only subscribe on interthread for outgoing traffic
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-class SerialThread
-    : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                      goby::middleware::protobuf::SerialConfig, boost::asio::serial_port>
+          const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
+          PubSubLayer subscribe_layer, template <class> class ThreadType>
+class SerialThread : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                     goby::middleware::protobuf::SerialConfig,
+                                     boost::asio::serial_port, ThreadType>
 {
-    using Base = IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                          goby::middleware::protobuf::SerialConfig, boost::asio::serial_port>;
+    using Base =
+        IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                 goby::middleware::protobuf::SerialConfig, boost::asio::serial_port, ThreadType>;
 
   public:
     /// \brief Constructs the thread.
@@ -137,9 +135,9 @@ class SerialThread
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
 void goby::middleware::io::detail::SerialThread<line_in_group, line_out_group, publish_layer,
-                                                subscribe_layer>::open_socket()
+                                                subscribe_layer, ThreadType>::open_socket()
 {
     this->mutable_serial_port().open(this->cfg().port());
     using boost::asio::serial_port_base;

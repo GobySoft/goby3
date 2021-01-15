@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UDPMAVLink20190815H
-#define UDPMAVLink20190815H
+#ifndef GOBY_MIDDLEWARE_IO_MAVLINK_UDP_H
+#define GOBY_MIDDLEWARE_IO_MAVLINK_UDP_H
 
 #include <iosfwd> // for size_t
 
@@ -59,13 +59,13 @@ namespace middleware
 namespace io
 {
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-using UDPThreadMAVLinkBase = IOThreadMAVLink<
-    line_in_group, line_out_group, publish_layer, subscribe_layer,
-    UDPPointToPointThread<line_in_group, line_out_group, publish_layer, subscribe_layer>,
-    goby::middleware::protobuf::UDPPointToPointConfig>;
+          const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
+          PubSubLayer subscribe_layer, template <class> class ThreadType>
+using UDPThreadMAVLinkBase =
+    IOThreadMAVLink<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                    UDPPointToPointThread<line_in_group, line_out_group, publish_layer,
+                                          subscribe_layer, ThreadType>,
+                    goby::middleware::protobuf::UDPPointToPointConfig>;
 
 /// \brief Reads/Writes MAVLink message packages from/to udp socket
 /// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the udp socket
@@ -73,14 +73,15 @@ using UDPThreadMAVLinkBase = IOThreadMAVLink<
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-class UDPThreadMAVLink
-    : public UDPThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer>
+          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+          template <class> class ThreadType = goby::middleware::SimpleThread>
+class UDPThreadMAVLink : public UDPThreadMAVLinkBase<line_in_group, line_out_group, publish_layer,
+                                                     subscribe_layer, ThreadType>
 {
   public:
     UDPThreadMAVLink(const goby::middleware::protobuf::UDPPointToPointConfig& config)
-        : UDPThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer>(
-              config)
+        : UDPThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                               ThreadType>(config)
     {
     }
 
@@ -99,9 +100,9 @@ class UDPThreadMAVLink
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
 void goby::middleware::io::UDPThreadMAVLink<line_in_group, line_out_group, publish_layer,
-                                            subscribe_layer>::async_read()
+                                            subscribe_layer, ThreadType>::async_read()
 {
     this->mutable_socket().async_receive_from(
         boost::asio::buffer(this->buffer()), sender_endpoint_,
