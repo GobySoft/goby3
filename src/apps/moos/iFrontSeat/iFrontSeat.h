@@ -25,19 +25,38 @@
 #ifndef GOBY_APPS_MOOS_IFRONTSEAT_IFRONTSEAT_H
 #define GOBY_APPS_MOOS_IFRONTSEAT_IFRONTSEAT_H
 
-#include "goby/moos/goby_moos_app.h"
+#include <memory> // for unique_ptr
 
-#include "goby/middleware/frontseat/interface.h"
-#include "goby/moos/protobuf/iFrontSeat_config.pb.h"
+#include "goby/middleware/frontseat/interface.h" // for InterfaceBase
+#include "goby/moos/goby_moos_app.h"             // for GobyMOOSApp
+#include "legacy_translator.h"                   // for FrontSeatLegacyTran...
 
-#include "legacy_translator.h"
+class CMOOSMsg;
 
 namespace goby
 {
+namespace middleware
+{
+namespace frontseat
+{
+namespace protobuf
+{
+class CommandResponse;
+class InterfaceData;
+class Raw;
+} // namespace protobuf
+} // namespace frontseat
+} // namespace middleware
+
 namespace apps
 {
 namespace moos
 {
+namespace protobuf
+{
+class iFrontSeatConfig;
+} // namespace protobuf
+
 class iFrontSeat : public goby::moos::GobyMOOSApp
 {
   public:

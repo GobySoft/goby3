@@ -24,10 +24,21 @@
 #ifndef GOBY_MIDDLEWARE_IO_DETAIL_TCP_CLIENT_INTERFACE_H
 #define GOBY_MIDDLEWARE_IO_DETAIL_TCP_CLIENT_INTERFACE_H
 
-#include <boost/asio/ip/tcp.hpp>
+#include <memory> // for shared_ptr, __sh...
+#include <string> // for string, to_string
 
-#include "goby/middleware/io/detail/io_interface.h"
-#include "goby/middleware/protobuf/tcp_config.pb.h"
+#include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer, IOT...
+#include "goby/middleware/protobuf/io.pb.h"         // for IOData, TCPEndPo...
+#include "goby/middleware/protobuf/tcp_config.pb.h" // for TCPClientConfig
+#include <boost/asio/ip/tcp.hpp>                    // for tcp, tcp::endpoint
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
 
 namespace goby
 {

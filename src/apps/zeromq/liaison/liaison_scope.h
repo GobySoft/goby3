@@ -25,28 +25,46 @@
 #ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_SCOPE_H
 #define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_SCOPE_H
 
-#include <boost/circular_buffer.hpp>
-#include <thread>
+#include <algorithm>     // for max
+#include <map>           // for operator!=, map
+#include <memory>        // for shared_ptr, __sh...
+#include <ostream>       // for operator<<, basi...
+#include <set>           // for set
+#include <string>        // for string
+#include <unordered_map> // for unordered_map<>:...
+#include <utility>       // for pair
+#include <vector>        // for vector
 
-#include <Wt/WBorder>
-#include <Wt/WBoxLayout>
-#include <Wt/WColor>
-#include <Wt/WCssDecorationStyle>
-#include <Wt/WEvent>
-#include <Wt/WSortFilterProxyModel>
-#include <Wt/WStandardItemModel>
-#include <Wt/WText>
-#include <Wt/WTimer>
-#include <Wt/WTreeView>
-#include <Wt/WVBoxLayout>
+#include <Wt/WContainerWidget>             // for WContainerWidget
+#include <Wt/WEvent>                       // for WKeyEvent
+#include <Wt/WStandardItemModel>           // for WStandardItemModel
+#include <Wt/WTimer>                       // for WTimer
+#include <Wt/WTreeView>                    // for WTreeView
+#include <boost/circular_buffer.hpp>       // for circular_buffer
+#include <boost/units/quantity.hpp>        // for operator/
+#include <dccl/dynamic_protobuf_manager.h> // for DynamicProtobufM...
+#include <google/protobuf/message.h>       // for Message
 
-#include "goby/zeromq/liaison/liaison_container.h"
-#include "goby/zeromq/protobuf/liaison_config.pb.h"
+#include "goby/middleware/group.h"                  // for Group
+#include "goby/middleware/marshalling/interface.h"  // for MarshallingScheme
+#include "goby/util/debug_logger/flex_ostream.h"    // for operator<<, Flex...
+#include "goby/zeromq/liaison/liaison_container.h"  // for LiaisonCommsThread
+#include "goby/zeromq/protobuf/liaison_config.pb.h" // for LiaisonConfig (p...
 
 namespace Wt
 {
-class WStandardItemModel;
-}
+class WAbstractItemModel;
+class WComboBox;
+class WGroupBox;
+class WLineEdit;
+class WPushButton;
+class WSortFilterProxyModel;
+class WStandardItem;
+class WStringListModel;
+class WText;
+class WVBoxLayout;
+class WWidget;
+} // namespace Wt
 
 namespace goby
 {

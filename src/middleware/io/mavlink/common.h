@@ -24,13 +24,28 @@
 #ifndef MAVLinkCommon20190815H
 #define MAVLinkCommon20190815H
 
+#include <cstdint> // for uint8_t
+#include <memory>  // for shared_ptr, __sh...
+#include <sstream> // for basic_ostream<>:...
+#include <string>  // for string
+#include <vector>  // for vector
+
 #include <mavlink/v2.0/common/common.hpp>
 
-#include "goby/middleware/marshalling/mavlink.h"
+#include "goby/exception.h"                         // for Exception
+#include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer, Pub...
+#include "goby/middleware/marshalling/interface.h"  // for MarshallingScheme
+#include "goby/middleware/marshalling/mavlink.h"    // for SerializerParser...
+#include "goby/middleware/protobuf/io.pb.h"         // for IOData
+#include "goby/util/debug_logger/flex_ostream.h"    // for operator<<, Flex...
 
-#include "goby/middleware/group.h"
-#include "goby/middleware/io/detail/io_interface.h"
-#include "goby/middleware/protobuf/io.pb.h"
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
 
 namespace goby
 {

@@ -29,6 +29,7 @@
 #include <deque>
 #include <memory>
 
+#include "goby/acomms/protobuf/udp_multicast_driver.pb.h"
 #include "goby/middleware/marshalling/dccl.h"
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/transport/intervehicle.h"

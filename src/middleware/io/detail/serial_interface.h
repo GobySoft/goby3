@@ -24,13 +24,25 @@
 #ifndef SerialInterface20190718H
 #define SerialInterface20190718H
 
-#include <boost/asio/serial_port.hpp>
-#include <boost/asio/streambuf.hpp>
-#include <boost/asio/write.hpp>
-#include <boost/units/systems/si/prefixes.hpp>
+#include <memory>      // for shared_ptr
+#include <ostream>     // for endl
+#include <string>      // for operator+
+#include <sys/ioctl.h> // for ioctl, TIOCM...
 
-#include "goby/middleware/io/detail/io_interface.h"
-#include "goby/middleware/protobuf/serial_config.pb.h"
+#include <boost/asio/serial_port.hpp> // for serial_port
+
+#include "goby/middleware/io/detail/io_interface.h"     // for PubSubLayer
+#include "goby/middleware/protobuf/io.pb.h"             // for SerialCommand
+#include "goby/middleware/protobuf/serial_config.pb.h"  // for SerialConfig
+#include "goby/util/debug_logger/flex_ostream.h"        // for glog, FlexOs...
+#include "goby/util/debug_logger/logger_manipulators.h" // for group
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
 
 namespace goby
 {

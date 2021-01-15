@@ -24,16 +24,12 @@
 #ifndef GOBY_UTIL_GEODESY_H
 #define GOBY_UTIL_GEODESY_H
 
-#include <limits>
-
-#include <boost/units/quantity.hpp>
-#include <boost/units/systems/angle/degrees.hpp>
-#include <boost/units/systems/si/length.hpp>
+#include <boost/units/quantity.hpp>              // for quantity
+#include <boost/units/systems/angle/degrees.hpp> // for plane_angle
+#include <boost/units/systems/si/length.hpp>     // for length
 
 #define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
-#include <proj_api.h>
-
-#include "goby/util/sci.h"
+#include <proj_api.h> // for projPJ
 
 namespace goby
 {

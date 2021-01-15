@@ -24,14 +24,14 @@
 #ifndef GOBY_MIDDLEWARE_MARSHALLING_INTERFACE_H
 #define GOBY_MIDDLEWARE_MARSHALLING_INTERFACE_H
 
-#include <map>
-#include <mutex>
-#include <type_traits>
-#include <typeindex>
-#include <unordered_map>
-#include <vector>
+#include <map>         // for map
+#include <memory>      // for share...
+#include <string>      // for string
+#include <type_traits> // for is_void
+#include <utility>     // for pair
+#include <vector>      // for vector
 
-#include "goby/middleware/marshalling/detail/primitive_type.h"
+#include "goby/middleware/marshalling/detail/primitive_type.h" // for primi...
 
 namespace goby
 {
@@ -150,7 +150,17 @@ template <typename DataType, typename Transporter> constexpr int transporter_sch
 
 /// \brief Placeholder to provide an interface for the scheme() function family
 ///
-/// Specializations must provide the numeric marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum for known schemes) given a DataType and perhaps a enable_if template parameter
+/// Specializations must provide the numeric marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum for known schemes) given a DataType and perhaps a enable_if template parameter. These functions must be defined *before* they are used (due to C++ rules on constexpr functions), which typically means including the appropriate "marshalling" header(s) before include the relevant "transport" header(s). For example:
+///
+/// ```
+/// // include Protobuf marshalling scheme definition (with scheme() function definition)
+/// #include "goby/middleware/marshalling/protobuf.h"
+///
+/// // include InterProcessPortal definition (that uses the scheme() function in its template default parameters)
+/// #include "goby/zeromq/transport/interprocess.h"
+/// ```
+///
+///
 /// \tparam DataType data type that the specialization can handle
 template <typename DataType,
           typename std::enable_if<std::is_same<DataType, void>::value>::type* = nullptr>

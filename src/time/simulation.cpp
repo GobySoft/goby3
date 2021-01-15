@@ -22,10 +22,16 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <chrono> // for system_clock::tim...
 
-#include "goby/time/convert.h"
-#include "goby/time/simulation.h"
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>    // for ptime
+#include <boost/date_time/time.hpp>                // for base_time<>::date...
+#include <boost/date_time/time_system_counted.hpp> // for counted_time_syst...
+
+#include "goby/time/convert.h"      // for SystemClock::now
+#include "goby/time/simulation.h"   // for SimulatorSettings
+#include "goby/time/system_clock.h" // for SystemClock
 
 bool goby::time::SimulatorSettings::using_sim_time = false;
 int goby::time::SimulatorSettings::warp_factor = 1;

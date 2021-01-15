@@ -21,15 +21,34 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-// for kill
-#include <csignal>
-#include <sys/types.h>
+#include <algorithm>     // for copy
+#include <csignal>       // for kill
+#include <cstdlib>       // for EXIT_F...
+#include <map>           // for operat...
+#include <ostream>       // for endl
+#include <set>           // for set
+#include <string>        // for string
+#include <unordered_map> // for operat...
+#include <utility>       // for pair
+#include <vector>        // for vector
+
+#include <boost/units/quantity.hpp>             // for operator*
+#include <boost/units/systems/si/frequency.hpp> // for frequency
+#include <boost/units/unit.hpp>                 // for unit
 
 #include "goby/middleware/marshalling/protobuf.h"
-#include "goby/middleware/protobuf/terminate.pb.h"
-#include "goby/middleware/terminate/groups.h"
-#include "goby/zeromq/application/single_thread.h"
-#include "goby/zeromq/protobuf/terminate_config.pb.h"
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/protobuf/terminate.pb.h"            // for Termin...
+#include "goby/middleware/terminate/groups.h"                 // for termin...
+#include "goby/time/convert.h"                                // for System...
+#include "goby/time/system_clock.h"                           // for System...
+#include "goby/time/types.h"                                  // for MicroTime
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/zeromq/application/single_thread.h"            // for Single...
+#include "goby/zeromq/protobuf/terminate_config.pb.h"         // for Termin...
+#include "goby/zeromq/transport/interprocess.h"               // for InterP...
 
 using goby::glog;
 

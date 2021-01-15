@@ -27,7 +27,13 @@
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_SERIAL_CLIENT_H
 #define GOBY_UTIL_LINEBASEDCOMMS_SERIAL_CLIENT_H
 
-#include "client_base.h"
+#include <algorithm> // for copy, copy_backward
+#include <string>    // for string, operator!=
+
+#include <boost/asio/read_until.hpp>  // for async_read_until
+#include <boost/asio/serial_port.hpp> // for serial_port
+
+#include "client_base.h" // for LineBasedClient
 
 namespace goby
 {

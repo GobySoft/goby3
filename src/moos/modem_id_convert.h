@@ -25,10 +25,9 @@
 #ifndef GOBY_MOOS_MODEM_ID_CONVERT_H
 #define GOBY_MOOS_MODEM_ID_CONVERT_H
 
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <sstream>
+#include <cstddef> // for size_t
+#include <map>      // for map
+#include <string>   // for string
 
 namespace goby
 {

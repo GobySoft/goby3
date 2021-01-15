@@ -22,6 +22,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <deque>   // for deque
+#include <set>     // for operator!=, _Rb_tree_iterator
+#include <utility> // for pair, make_pair
+
+#include <boost/asio/error.hpp>        // for basic_errors, make_error_code
+#include <boost/asio/placeholders.hpp> // for error
+
 #include "tcp_server.h"
 
 std::shared_ptr<goby::util::TCPConnection>

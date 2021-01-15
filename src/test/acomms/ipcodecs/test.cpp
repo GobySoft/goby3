@@ -21,10 +21,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/acomms/ip_codecs.h"
 
 #include <arpa/inet.h>
+#include <dccl/codec.h>
 #include <netinet/in.h>
+
+#include "goby/acomms/ip_codecs.h"
+#include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 using namespace goby::util::logger;
 using goby::glog;

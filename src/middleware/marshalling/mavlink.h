@@ -24,12 +24,23 @@
 #ifndef MarshallingMAVLink20190718H
 #define MarshallingMAVLink20190718H
 
-#include "interface.h"
-
-#include "goby/exception.h"
-#include "goby/util/debug_logger.h"
+#include <array>         // for array<>::iterator
+#include <cstdint>       // for uint8_t, uint32_t
+#include <memory>        // for shared_ptr, make_sh...
+#include <mutex>         // for mutex, lock_guard
+#include <ostream>       // for basic_ostream, endl
+#include <string>        // for operator<<, string
+#include <tuple>         // for tuple, make_tuple
+#include <type_traits>   // for enable_if, is_base_of
+#include <unordered_map> // for unordered_map, oper...
+#include <utility>       // for make_pair, pair
+#include <vector>        // for vector
 
 #include <mavlink/v2.0/common/common.hpp>
+
+#include "goby/util/debug_logger/flex_ostream.h" // for operator<<, FlexOst...
+
+#include "interface.h" // for MarshallingScheme
 
 namespace goby
 {

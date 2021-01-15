@@ -24,20 +24,48 @@
 #ifndef IO_COMMON_20190815H
 #define IO_COMMON_20190815H
 
-#include "goby/util/asio-compat.h"
+#include <chrono>    // for seconds
+#include <exception> // for exception
+#include <memory>    // for shared_ptr
+#include <mutex>     // for mutex, lock_...
+#include <ostream>   // for endl, size_t
+#include <string>    // for string, oper...
+#include <thread>    // for thread
+#include <unistd.h>  // for usleep
 
-#ifdef USE_BOOST_IO_SERVICE
-#include <boost/asio/io_service.hpp>
-#else
-#include <boost/asio/io_context.hpp>
-#endif
+#include <boost/asio/write.hpp>        // for async_write
+#include <boost/system/error_code.hpp> // for error_code
 
-#include "goby/exception.h"
-#include "goby/middleware/application/multi_thread.h"
-#include "goby/middleware/common.h"
-#include "goby/middleware/io/groups.h"
-#include "goby/middleware/protobuf/io.pb.h"
-#include "goby/time/steady_clock.h"
+#include "goby/exception.h"                           // for Exception
+#include "goby/middleware/application/multi_thread.h" // for SimpleThread
+#include "goby/middleware/common.h"                   // for thread_id
+#include "goby/middleware/io/groups.h"                // for status
+#include "goby/middleware/protobuf/io.pb.h"           // for IOError, IOS...
+#include "goby/time/steady_clock.h"                   // for SteadyClock
+#include "goby/util/asio_compat.h"
+#include "goby/util/debug_logger.h" // for glog
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+class InterThreadTransporter;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+template <typename InnerTransporter> class InterProcessForwarder;
+}
+} // namespace goby
 
 namespace goby
 {

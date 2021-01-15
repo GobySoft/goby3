@@ -29,6 +29,7 @@
 #include <dccl/field_codec_manager.h>
 
 #include "goby/acomms/protobuf/iridium_driver.pb.h"
+#include "goby/time/system_clock.h"
 
 namespace goby
 {

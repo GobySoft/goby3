@@ -25,10 +25,11 @@
 #ifndef GOBY_APPS_ZEROMQ_FRONTSEAT_INTERFACE_FRONTSEAT_INTERFACE_H
 #define GOBY_APPS_ZEROMQ_FRONTSEAT_INTERFACE_FRONTSEAT_INTERFACE_H
 
-#include "goby/middleware/marshalling/protobuf.h"
-#include "goby/middleware/frontseat/interface.h"
-#include "goby/zeromq/application/multi_thread.h"
-#include "goby/zeromq/protobuf/frontseat_interface_config.pb.h"
+#include <memory> // for unique_ptr
+
+#include "goby/middleware/frontseat/interface.h"                // for InterfaceBase
+#include "goby/zeromq/application/multi_thread.h"               // for MultiThreadApp...
+#include "goby/zeromq/protobuf/frontseat_interface_config.pb.h" // for Fron...
 
 namespace goby
 {

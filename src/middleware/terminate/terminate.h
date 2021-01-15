@@ -29,6 +29,7 @@
 
 #include "goby/util/debug_logger.h"
 
+#include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/terminate.pb.h"
 #include "goby/middleware/terminate/groups.h"
 

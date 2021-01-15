@@ -21,13 +21,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <cstdlib>
-#include <dlfcn.h>
-#include <iostream>
+#include <cstdlib>  // for exit
+#include <dlfcn.h>  // for dlopen
+#include <iostream> // for operat...
+#include <memory>   // for shared...
 
-#include "goby/util/debug_logger.h"
-
-#include "goby/middleware/log/hdf5/hdf5.h"
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/log/hdf5/hdf5.h"                    // for Writer
+#include "goby/middleware/log/hdf5/hdf5_plugin.h"             // for HDF5Pl...
+#include "goby/middleware/protobuf/hdf5.pb.h"                 // for HDF5Co...
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/util/debug_logger/flex_ostreambuf.h"           // for DIE
 
 void* plugin_handle = nullptr;
 

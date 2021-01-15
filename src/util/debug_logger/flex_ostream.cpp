@@ -22,9 +22,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <cassert> // for assert
+
 #include "goby/util/debug_logger/flex_ostream.h"
-#include "goby/exception.h"
-#include "logger_manipulators.h"
+#include "goby/util/debug_logger/logger_manipulators.h" // for die, Group
 
 using namespace goby::util::logger;
 

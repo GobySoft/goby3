@@ -25,18 +25,23 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_H
 
-#include "goby/time.h"
+#include <cstdint> // for uint32_t
+#include <iosfwd>   // for ostream
+#include <memory>   // for shared_ptr
 
-#include "goby/util/linebasedcomms/tcp_client.h"
-
-#include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/acomms/protobuf/iridium_driver.pb.h"
-#include "goby/acomms/protobuf/rudics_shore.pb.h"
-
-#include "iridium_driver_fsm.h"
+#include "goby/acomms/modemdriver/driver_base.h"    // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
+#include "goby/acomms/protobuf/iridium_driver.pb.h" // for Config, MessageT...
+#include "goby/acomms/protobuf/modem_message.pb.h"  // for ModemTransmission
+#include "iridium_driver_fsm.h"                     // for IridiumDriverFSM
 
 namespace goby
 {
+namespace util
+{
+class TCPClient;
+} // namespace util
+
 namespace acomms
 {
 class IridiumDriver : public ModemDriverBase

@@ -34,6 +34,7 @@
 
 #include "goby/middleware/group.h"
 
+#include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
 #include "goby/middleware/transport/serialization_handlers.h"

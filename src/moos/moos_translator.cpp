@@ -22,12 +22,32 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/algorithm/string.hpp>
-#include <boost/math/special_functions/fpclassify.hpp>
+#include <cctype> // for isdigit
+#include <cmath>  // for floor
+#include <memory>  // for allocato...
 
-#include "goby/acomms/dccl.h"
-#include "goby/util/seawater.h"
+#include <boost/algorithm/string/case_conv.hpp>             // for to_lower...
+#include <boost/bind.hpp>                                   // for bind_t, arg
+#include <boost/date_time/posix_time/posix_time_config.hpp> // for time_dur...
+#include <boost/date_time/posix_time/ptime.hpp>             // for ptime
+#include <boost/date_time/time.hpp>                         // for base_tim...
+#include <boost/date_time/time_system_counted.hpp>          // for counted_...
+#include <boost/format.hpp>                                 // for basic_al...
+#include <boost/math/special_functions/fpclassify.hpp>      // for isnan
+#include <boost/units/absolute.hpp>                         // for absolute
+#include <boost/units/quantity.hpp>                         // for operator*
+#include <boost/units/systems/si/length.hpp>                // for length
+#include <boost/units/systems/si/time.hpp>                  // for seconds
+#include <boost/units/systems/si/velocity.hpp>              // for meters_p...
+#include <boost/units/systems/temperature/celsius.hpp>      // for temperature
+#include <boost/units/unit.hpp>                             // for unit
 
+#include "goby/moos/transitional/message_algorithms.h" // for DCCLAlgo...
+#include "goby/moos/transitional/message_val.h"        // for DCCLMess...
+#include "goby/time/convert.h"                         // for convert
+#include "goby/util/debug_logger/flex_ostream.h"       // for operator<<
+#include "goby/util/debug_logger/flex_ostreambuf.h"    // for DEBUG1
+#include "goby/util/seawater/soundspeed.h"             // for mackenzi...
 #include "moos_translator.h"
 
 const double NaN = std::numeric_limits<double>::quiet_NaN();

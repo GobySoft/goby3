@@ -25,19 +25,23 @@
 #ifndef GOBY_MOOS_MOOS_UFIELD_SIM_DRIVER_H
 #define GOBY_MOOS_MOOS_UFIELD_SIM_DRIVER_H
 
-#include "goby/moos/moos_header.h"
-#include "goby/moos/protobuf/ufield_sim_driver.pb.h"
+#include <MOOS/libMOOS/Comms/MOOSCommClient.h> // for CMOOSCommClient
 
-//#include <boost/bimap.hpp>
-
-#include "goby/time.h"
-
-#include "goby/acomms/modemdriver/driver_base.h"
-
-#include "goby/moos/modem_id_convert.h"
+#include "goby/acomms/modemdriver/driver_base.h"     // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h"     // for DriverConfig
+#include "goby/moos/modem_id_convert.h"              // for ModemIdConvert
+#include "goby/moos/protobuf/ufield_sim_driver.pb.h" // for Config
 
 namespace goby
 {
+namespace acomms
+{
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
+} // namespace acomms
+
 namespace moos
 {
 /// \brief provides an simulator driver to the uFldNodeComms MOOS module: http://oceanai.mit.edu/moos-ivp/pmwiki/pmwiki.php?n=Modules.UFldNodeComms

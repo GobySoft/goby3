@@ -24,9 +24,33 @@
 #ifndef UDPMAVLink20190815H
 #define UDPMAVLink20190815H
 
-#include "goby/middleware/io/mavlink/common.h"
+#include <iosfwd> // for size_t
 
-#include "goby/middleware/io/udp_point_to_point.h"
+#include <boost/asio/buffer.hpp>       // for buffer
+#include <boost/asio/ip/udp.hpp>       // for udp, udp::endpoint
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer, Pub...
+#include "goby/middleware/io/mavlink/common.h"      // for IOThreadMAVLink
+#include "goby/middleware/io/udp_point_to_point.h"  // for UDPPointToPointT...
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class UDPPointToPointConfig;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {

@@ -25,15 +25,21 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_ABC_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_ABC_DRIVER_H
 
-#include "goby/time.h"
+#include <map>    // for map
+#include <string> // for string
 
-#include "driver_base.h"
-#include "goby/acomms/protobuf/abc_driver.pb.h"
+#include "driver_base.h"                         // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h" // for DriverConfig
 
 namespace goby
 {
 namespace acomms
 {
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
+
 /// \brief provides an API to the imaginary ABC modem (as an example how to write drivers)
 /// \ingroup acomms_api
 ///

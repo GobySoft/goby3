@@ -25,6 +25,8 @@
 #ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_GROUPS_H
 #define GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_GROUPS_H
 
+#include "goby/middleware/group.h"
+
 namespace goby
 {
 namespace middleware

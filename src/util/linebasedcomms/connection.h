@@ -25,6 +25,10 @@
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_CONNECTION_H
 #define GOBY_UTIL_LINEBASEDCOMMS_CONNECTION_H
 
+#include <boost/asio/placeholders.hpp>
+#include <boost/asio/streambuf.hpp>
+#include <boost/asio/write.hpp>
+
 #include "goby/time.h"
 #include "goby/util/debug_logger.h"
 

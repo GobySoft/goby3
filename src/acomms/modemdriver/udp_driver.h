@@ -25,20 +25,36 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_UDP_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_UDP_DRIVER_H
 
-#include "goby/time.h"
+#include <array>    // for array
+#include <cstddef>  // for size_t
+#include <cstdint>  // for uint32_t
+#include <map>      // for multimap
+#include <memory>   // for unique_ptr
+#include <set>      // for set
 
-#include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/acomms/protobuf/udp_driver.pb.h"
+#include <boost/asio/ip/udp.hpp> // for udp, udp::endpoint
 
-#include "goby/util/asio-compat.h"
-#include <boost/asio.hpp>
+#include "goby/acomms/modemdriver/driver_base.h" // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h" // for DriverConfig
+#include "goby/util/asio_compat.h"               // for io_context
 
-#include <boost/bind.hpp>
+namespace boost
+{
+namespace system
+{
+class error_code;
+} // namespace system
+} // namespace boost
 
 namespace goby
 {
 namespace acomms
 {
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
+
 class UDPDriver : public ModemDriverBase
 {
   public:

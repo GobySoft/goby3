@@ -25,21 +25,23 @@
 #ifndef GOBY_MIDDLEWARE_FRONTSEAT_IVER_IVER_DRIVER_H
 #define GOBY_MIDDLEWARE_FRONTSEAT_IVER_IVER_DRIVER_H
 
-#include <boost/bimap.hpp>
+#include <iomanip>
+#include <memory>
+#include <ostream>
+#include <string>
+
 #include <boost/units/quantity.hpp>
 #include <boost/units/systems/angle/degrees.hpp>
-#include <boost/units/systems/si.hpp>
-#include <boost/units/systems/si/prefixes.hpp>
-
-#include <dccl/common.h>
+#include <boost/units/systems/si/time.hpp> // for time
+#include <dccl/common.h>                   // for round
 
 #include "goby/middleware/frontseat/interface.h"
 #include "goby/middleware/frontseat/iver/iver_driver.pb.h"
-#include "goby/util/linebasedcomms/serial_client.h"
-#include "goby/util/primitive_types.h"
-#include "goby/util/sci.h"
-
 #include "goby/middleware/frontseat/iver/iver_driver_config.pb.h"
+#include "goby/middleware/protobuf/frontseat.pb.h"
+#include "goby/middleware/protobuf/frontseat_data.pb.h"
+#include "goby/time/system_clock.h"
+#include "goby/util/linebasedcomms/serial_client.h"
 
 namespace goby
 {
@@ -47,6 +49,11 @@ namespace middleware
 {
 namespace frontseat
 {
+namespace protobuf
+{
+class Config;
+} // namespace protobuf
+
 class Iver : public InterfaceBase
 {
   public:

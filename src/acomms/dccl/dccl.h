@@ -25,14 +25,42 @@
 #ifndef GOBY_ACOMMS_DCCL_DCCL_H
 #define GOBY_ACOMMS_DCCL_DCCL_H
 
-#include "goby/acomms/protobuf/dccl.pb.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
+#include <list>    // for list
+#include <memory>  // for shared_ptr
+#include <ostream> // for endl, ostream
+#include <set>     // for set
+#include <string>  // for string, oper...
 
-#include "dccl/codec.h"
-#include "dccl/codecs2/field_codec_default.h"
-#include "dccl/field_codec_id.h"
-#include "dccl/internal/field_codec_message_stack.h"
+#include <dccl/bitset.h>                              // for Bitset
+#include <dccl/codecs2/field_codec_default_message.h> // for DefaultMessa...
+#include <dccl/common.h>                              // for int64, uint64
+#include <dccl/exception.h>                           // for Exception
+#include <dccl/field_codec.h>                         // for FieldCodecBase
+#include <dccl/field_codec_fixed.h>                   // for TypedFixedFi...
+#include <dccl/field_codec_manager.h>                 // for FieldCodecMa...
+#include <dccl/field_codec_typed.h>                   // for RepeatedType...
+#include <dccl/internal/field_codec_message_stack.h>
+#include <dccl/logger.h>                   // for DECODE, ENCODE
+#include <dccl/option_extensions.pb.h>     // for DCCLMessageO...
+#include <google/protobuf/descriptor.h>    // for Descriptor
+#include <google/protobuf/descriptor.pb.h> // for MessageOptions
+
+#include "dccl/codec.h"                                 // for Codec
+#include "dccl/codecs2/field_codec_default.h"           // for DefaultBoolC...
+#include "dccl/field_codec_id.h"                        // for DefaultIdent...
+#include "goby/acomms/protobuf/dccl.pb.h"               // for DCCLConfig
+#include "goby/util/binary.h"                           // for hex_encode
+#include "goby/util/debug_logger/flex_ostream.h"        // for operator<<
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for WARN, DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
+
+namespace google
+{
+namespace protobuf
+{
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {
@@ -64,7 +92,7 @@ class MessageHandler : public dccl::internal::MessageStack
 
 template <typename TimeType> class TimeCodec : public dccl::v2::TimeCodecBase<TimeType, 0>
 {
-    BOOST_STATIC_ASSERT(sizeof(TimeCodec) == 0);
+    static_assert(sizeof(TimeCodec) == 0, "TimeCodec must be specialized");
 };
 
 template <> class TimeCodec<dccl::uint64> : public dccl::v2::TimeCodecBase<dccl::uint64, 1000000>

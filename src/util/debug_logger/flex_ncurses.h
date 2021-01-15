@@ -25,15 +25,15 @@
 #ifndef GOBY_UTIL_DEBUG_LOGGER_FLEX_NCURSES_H
 #define GOBY_UTIL_DEBUG_LOGGER_FLEX_NCURSES_H
 
-#include <deque>
-#include <set>
-#include <string>
-#include <thread>
-#include <vector>
+#include <cstddef> // for size_t
+#include <map>      // for multimap, multimap<>...
+#include <set>      // for set
+#include <string>   // for string
+#include <vector>   // for vector
 
-#include "goby/time.h"
+#include <boost/date_time/posix_time/ptime.hpp> // for ptime
 
-#include "term_color.h"
+#include "term_color.h" // for Colors, Colors::Color
 
 namespace goby
 {
@@ -85,7 +85,6 @@ class FlexNCurses
     //@}
 
   private:
-    class Panel;
     void putline(const std::string& s, unsigned scrn, bool refresh = true);
 
     void putlines(unsigned scrn,

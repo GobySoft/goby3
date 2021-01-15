@@ -21,13 +21,21 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <fstream>
-#include <iostream>
+#include <iostream> // for operator<<, char_tr...
+#include <map>      // for map, map<>::mapped_...
+#include <memory>   // for allocator, shared_ptr
+#include <set>      // for set
+#include <stdlib.h> // for exit, EXIT_FAILURE
+#include <string>   // for string, operator+
+#include <utility>  // for pair, make_pair
+#include <vector>   // for vector
 
-#include "actions.h"
-#include "pubsub_entry.h"
-
+#include <boost/algorithm/string/replace.hpp> // for replace_all
 #include <yaml-cpp/yaml.h>
+
+#include "actions.h"                             // for VisualizeParameters
+#include "goby/middleware/transport/interface.h" // for Necessity, Necessit...
+#include "pubsub_entry.h"                        // for PubSubEntry, Thread
 
 using goby::clang::PubSubEntry;
 

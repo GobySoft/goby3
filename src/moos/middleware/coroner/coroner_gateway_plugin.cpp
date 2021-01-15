@@ -21,12 +21,39 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <ostream> // for basic_ostream
+#include <string>  // for operator<<
+#include <vector>  // for vector
+
+#include <MOOS/libMOOS/Comms/MOOSCommClient.h> // for CMOOSCommCl...
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>        // for CMOOSMsg
+#include <boost/units/quantity.hpp>            // for operator/
+#include <google/protobuf/descriptor.h>        // for Descriptor
+
 #include "goby/middleware/marshalling/protobuf.h"
 
-#include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/coroner/groups.h"              // for health_report
+#include "goby/middleware/protobuf/coroner.pb.h"         // for VehicleHealth
+#include "goby/middleware/transport/interprocess.h"      // for InterProces...
+#include "goby/moos/middleware/moos_plugin_translator.h" // for Translator
+#include "goby/moos/moos_protobuf_helpers.h"             // for serialize_f...
+#include "goby/moos/moos_translator.h"                   // for MOOSTranslator
+#include "goby/util/debug_logger/flex_ostream.h"         // for operator<<
+#include "goby/zeromq/application/multi_thread.h"        // for MultiThread...
 
-#include "goby/moos/middleware/moos_plugin_translator.h"
-#include "goby/moos/moos_translator.h"
+namespace goby
+{
+namespace apps
+{
+namespace moos
+{
+namespace protobuf
+{
+class GobyMOOSGatewayConfig;
+} // namespace protobuf
+} // namespace moos
+} // namespace apps
+} // namespace goby
 
 using goby::glog;
 

@@ -25,6 +25,7 @@
 #define CORONER_20191125H
 
 #include "goby/middleware/coroner/groups.h"
+#include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/coroner.pb.h"
 
 #endif

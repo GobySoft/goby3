@@ -24,13 +24,14 @@
 #ifndef SerializeParseProtobuf20190717H
 #define SerializeParseProtobuf20190717H
 
-#include "interface.h"
+#include <mutex>
 
 #include <google/protobuf/message.h>
-
 #include <dccl/dynamic_protobuf_manager.h>
 
 #include "goby/middleware/protobuf/intervehicle.pb.h"
+
+#include "interface.h"
 
 namespace goby
 {

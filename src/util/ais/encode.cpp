@@ -43,9 +43,16 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/lic
 
-#include <boost/units/base_units/metric/knot.hpp>
+#include <algorithm> // for max
+#include <cassert>   // for assert
+
+#include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_cast
+#include <boost/units/operators.hpp>               // for units
+#include <boost/units/unit.hpp>                    // for unit
 
 #include "encode.h"
+#include "goby/util/linebasedcomms/nmea_sentence.h" // for NMEASentence
+#include "goby/util/protobuf/ais.pb.h"              // for Position, Voyage
 
 std::atomic<int> goby::util::ais::Encoder::sequence_id_{0};
 

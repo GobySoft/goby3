@@ -25,40 +25,63 @@
 #ifndef GOBY_APPS_MOOS_PACOMMSHANDLER_PACOMMSHANDLER_H
 #define GOBY_APPS_MOOS_PACOMMSHANDLER_PACOMMSHANDLER_H
 
-#include <fstream>
-#include <iostream>
+#include <map>    // for map
+#include <memory> // for shared_ptr
+#include <set>    // for set
+#include <string> // for string
+#include <vector> // for vector
 
-#include <google/protobuf/descriptor.h>
+#include <boost/asio/basic_waitable_timer.hpp> // for basic_waita...
+#include <boost/smart_ptr/shared_ptr.hpp>      // for shared_ptr
 
-#include "goby/util/asio-compat.h"
-#include <boost/asio/basic_waitable_timer.hpp>
+#include "goby/acomms/amac/mac_manager.h"                // for MACManager
+#include "goby/acomms/modemdriver/driver_base.h"         // for ModemDriver...
+#include "goby/acomms/queue/queue_manager.h"             // for QueueManager
+#include "goby/moos/goby_moos_app.h"                     // for GobyMOOSApp
+#include "goby/moos/moos_translator.h"                   // for MOOSTranslator
+#include "goby/moos/protobuf/pAcommsHandler_config.pb.h" // for pAcommsHand...
+#include "goby/time/system_clock.h"                      // for SystemClock
+#include "goby/util/asio_compat.h"
 
-#include <boost/bimap.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-
-#include "goby/acomms.h"
-#include "goby/util.h"
-
-#include "dccl/dynamic_protobuf_manager.h"
-#include "goby/moos/goby_moos_app.h"
-#include "goby/moos/moos_translator.h"
-
-#include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/moos/protobuf/pAcommsHandler_config.pb.h"
-
+class CMOOSMsg;
 namespace goby
 {
 namespace acomms
 {
+class DCCLCodec;
+class ModemDriverException;
+class RouteManager;
 namespace protobuf
 {
-class ModemDataTransmission;
-}
+class DriverConfig;
+class ModemRaw;
+class ModemTransmission;
+} // namespace protobuf
 } // namespace acomms
+namespace moos
+{
+namespace protobuf
+{
+class TranslatorEntry;
+} // namespace protobuf
+} // namespace moos
 } // namespace goby
+namespace google
+{
+namespace protobuf
+{
+class Descriptor;
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace boost
 {
+namespace system
+{
+class error_code;
+} // namespace system
+
 inline bool operator<(const shared_ptr<goby::acomms::ModemDriverBase>& lhs,
                       const shared_ptr<goby::acomms::ModemDriverBase>& rhs)
 {

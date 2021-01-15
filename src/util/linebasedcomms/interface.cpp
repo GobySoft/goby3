@@ -22,9 +22,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <unistd.h> // for sleep
+
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/exception.h"                         // for Exception
+#include "goby/util/debug_logger/flex_ostream.h"    // for FlexOstream, glog
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for lock
+
 #include "interface.h"
-#include "goby/exception.h"
-#include "goby/util/debug_logger.h"
 
 goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
     : work_(io_), active_(false)

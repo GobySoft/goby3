@@ -25,13 +25,16 @@
 #ifndef GOBY_MIDDLEWARE_FRONTSEAT_INTERFACE_H
 #define GOBY_MIDDLEWARE_FRONTSEAT_INTERFACE_H
 
-#include <boost/signals2.hpp>
+#include <memory> // for unique_ptr
+#include <string> // for string
 
-#include "goby/middleware/frontseat/exception.h"
-#include "goby/middleware/protobuf/frontseat.pb.h"
-#include "goby/middleware/protobuf/frontseat_config.pb.h"
-#include "goby/time.h"
-#include "goby/util/geodesy.h"
+#include <boost/signals2/signal.hpp>      // for signal
+#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
+
+#include "goby/middleware/protobuf/frontseat.pb.h"        // for InterfaceS...
+#include "goby/middleware/protobuf/frontseat_config.pb.h" // for Config
+#include "goby/time/types.h"                              // for MicroTime
+#include "goby/util/geodesy.h"                            // for UTMGeodesy
 
 namespace goby
 {
@@ -46,6 +49,12 @@ namespace middleware
 {
 namespace frontseat
 {
+namespace protobuf
+{
+class CTDSample;
+class NodeStatus;
+} // namespace protobuf
+
 class InterfaceBase
 {
   public:

@@ -22,7 +22,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "pTranslator.h"
+#include <dccl/dynamic_protobuf_manager.h> // for Dynami...
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/moos/goby_moos_app.h"                          // for run
+#include "goby/moos/transitional/message_algorithms.h"        // for DCCLAl...
+
+#include "pTranslator.h" // for CpTran...
 
 int main(int argc, char* argv[])
 {

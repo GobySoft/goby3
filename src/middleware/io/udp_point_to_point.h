@@ -24,7 +24,36 @@
 #ifndef UDP_POINT_TO_POINT_20190815H
 #define UDP_POINT_TO_POINT_20190815H
 
+#include <iosfwd> // for size_t
+#include <memory> // for shared_ptr, __sh...
+#include <string> // for to_string
+
+#include <boost/asio/buffer.hpp>       // for buffer
+#include <boost/asio/ip/udp.hpp>       // for udp, udp::endpoint
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer, Pub...
+#include "goby/middleware/protobuf/io.pb.h"         // for IOData
+
 #include "udp_one_to_many.h"
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class UDPPointToPointConfig;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {

@@ -23,6 +23,14 @@
 
 #include "log_entry.h"
 
+#include <algorithm>                             // for copy, max
+#include <boost/iterator/iterator_facade.hpp>    // for operator!=, iter...
+#include <boost/multi_index/sequenced_index.hpp> // for operator==
+
+#include "goby/middleware/marshalling/interface.h"  // for MarshallingScheme
+#include "goby/util/debug_logger/flex_ostream.h"    // for operator<<, Flex...
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for DEBUG1, WARN
+
 using goby::middleware::log::LogEntry;
 
 std::map<int, boost::bimap<std::string,

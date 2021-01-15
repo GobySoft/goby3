@@ -23,15 +23,50 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <algorithm>
+#include <boost/algorithm/string/classification.hpp>   // for is_any_ofF
+#include <boost/algorithm/string/predicate.hpp>        // for all
+#include <boost/algorithm/string/predicate_facade.hpp> // for predicate...
+#include <boost/algorithm/string/trim.hpp>             // for trim_copy
+#include <boost/asio/serial_port.hpp>                  // for serial_port
+#include <boost/circular_buffer.hpp>                   // for circular_...
+#include <boost/function.hpp>                          // for function
+#include <boost/signals2/expired_slot.hpp>             // for expired_slot
+#include <boost/signals2/signal.hpp>                   // for signal
+#include <boost/statechart/state_machine.hpp>          // for state_mac...
+#include <cerrno>                                      // for errno
+#include <chrono>                                      // for operator/
+#include <cstring>                                     // for strerror
+#include <dccl/common.h>                               // for operator<<
+#include <dccl/option_extensions.pb.h>                 // for DCCLField...
+#include <google/protobuf/descriptor.h>                // for Descriptor
+#include <google/protobuf/descriptor.pb.h>             // for FieldOptions
+#include <list>                                        // for operator!=
+#include <ostream>                                     // for operator<<
+#include <string>                                      // for string
+#include <sys/ioctl.h>                                 // for ioctl
+#include <typeinfo>                                    // for bad_cast
+#include <unistd.h>                                    // for usleep
 
+#include "goby/acomms/acomms_constants.h"                  // for BITS_IN_BYTE
+#include "goby/acomms/modemdriver/driver_exception.h"      // for ModemDriv...
+#include "goby/acomms/modemdriver/iridium_driver_common.h" // for RATE_RUDICS
+#include "goby/acomms/modemdriver/rudics_packet.h"         // for serialize...
+#include "goby/acomms/protobuf/modem_driver_status.pb.h"   // for ModemDriv...
+#include "goby/time/system_clock.h"                        // for SystemClock
+#include "goby/util/binary.h"                              // for hex_encode
+#include "goby/util/debug_logger/flex_ostream.h"           // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"        // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h"    // for operator<<
+#include "goby/util/linebasedcomms/interface.h"            // for LineBased...
+#include "goby/util/linebasedcomms/serial_client.h"        // for SerialClient
+#include "goby/util/linebasedcomms/tcp_client.h"           // for TCPClient
+#include "goby/util/protobuf/io.h"                         // for operator<<
 #include "iridium_driver.h"
 
-#include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/acomms/modemdriver/rudics_packet.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+namespace dccl
+{
+class Codec;
+} // namespace dccl
 
 using goby::glog;
 using namespace goby::util::logger;

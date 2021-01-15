@@ -23,12 +23,25 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <dlfcn.h>
+#include <algorithm>     // for copy
+#include <cstdlib>       // for exit
+#include <dlfcn.h>       // for dlsym
+#include <exception>     // for exception
+#include <iostream>      // for operat...
+#include <map>           // for operat...
+#include <string>        // for string
+#include <unordered_map> // for operat...
+#include <vector>        // for vector
 
-#include "goby/middleware/marshalling/protobuf.h"
-#include "goby/moos/middleware/moos_plugin_translator.h"
-#include "goby/moos/protobuf/moos_gateway_config.pb.h"
-#include "goby/zeromq/application/multi_thread.h"
+#include <boost/algorithm/string/classification.hpp> // for is_any...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/units/quantity.hpp>                  // for operator/
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/moos/protobuf/moos_gateway_config.pb.h"        // for GobyMO...
+#include "goby/util/debug_logger.h"
+#include "goby/zeromq/application/multi_thread.h" // for MultiT...
 
 using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
 using AppBase = goby::zeromq::MultiThreadApplication<GobyMOOSGatewayConfig>;

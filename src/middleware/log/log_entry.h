@@ -24,16 +24,19 @@
 #ifndef GOBY_MIDDLEWARE_LOG_LOG_ENTRY_H
 #define GOBY_MIDDLEWARE_LOG_LOG_ENTRY_H
 
-#include <boost/bimap.hpp>
-#include <boost/crc.hpp>
-#include <cstdint>
-#include <utility>
+#include <boost/bimap.hpp> // for bimap
+#include <boost/crc.hpp>   // for crc_32_type
+#include <cstdint>         // for uint16_t, uint32_t, uint64_t, uin...
+#include <functional>      // for function
+#include <istream>         // for ostream, istream, basic_ostream::...
+#include <limits>          // for numeric_limits
+#include <map>             // for map
+#include <stdexcept>       // for runtime_error
+#include <string>          // for string, allocator, operator+, ope...
+#include <utility>         // for move
+#include <vector>          // for vector
 
-#include "goby/exception.h"
-#include "goby/util/debug_logger.h"
-
-#include "goby/middleware/group.h"
-#include "goby/middleware/marshalling/interface.h"
+#include "goby/middleware/group.h" // for Group, DynamicGroup
 
 namespace goby
 {

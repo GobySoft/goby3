@@ -24,10 +24,28 @@
 #ifndef UDP_ONE_TO_MANY_20190829H
 #define UDP_ONE_TO_MANY_20190829H
 
+#include <array>                 // for array
+#include <boost/asio/buffer.hpp> // for buffer
 #include <boost/asio/ip/udp.hpp>
+#include <boost/asio/ip/udp.hpp>       // for udp, udp::endpoint
+#include <boost/asio/socket_base.hpp>  // for socket_base
+#include <boost/system/error_code.hpp> // for error_code
+#include <cstddef>                     // for size_t
+#include <memory>                      // for shared_ptr, __s...
+#include <string>                      // for string, to_string
 
-#include "goby/middleware/io/detail/io_interface.h"
-#include "goby/middleware/protobuf/udp_config.pb.h"
+#include "goby/exception.h"                         // for Exception
+#include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer
+#include "goby/middleware/protobuf/io.pb.h"         // for IOData, UDPEndP...
+#include "goby/middleware/protobuf/udp_config.pb.h" // for UDPOneToManyConfig
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
 
 namespace goby
 {

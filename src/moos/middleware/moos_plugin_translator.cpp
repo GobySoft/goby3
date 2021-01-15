@@ -21,10 +21,23 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/marshalling/protobuf.h"
+#include <chrono>  // for operator>, seconds
+#include <iomanip> // for operator<<, set...
+#include <limits>  // for numeric_limits
 
-#include "goby/moos/moos_translator.h"
-#include "goby/moos/protobuf/goby_moos_app.pb.h"
+#include <MOOS/libMOOS/Comms/CommsTypes.h>           // for MOOSMSG_LIST
+#include <MOOS/libMOOS/Comms/MOOSAsyncCommClient.h>  // for MOOSAsyncCommCl...
+#include <MOOS/libMOOS/Comms/MOOSCommClient.h>       // for CMOOSCommClient
+#include <MOOS/libMOOS/Utils/MOOSUtilityFunctions.h> // for MOOSTime, SetMO...
+
+#include "goby/middleware/protobuf/app_config.pb.h" // for AppConfig, AppC...
+#include "goby/moos/moos_protobuf_helpers.h"        // for set_moos_technique
+#include "goby/moos/protobuf/goby_moos_app.pb.h"    // for GobyMOOSAppConfig
+#include "goby/time/convert.h"                      // for SystemClock::now
+#include "goby/time/types.h"                        // for SITime
+#include "goby/util/debug_logger/flex_ostream.h"    // for operator<<, glog
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for DEBUG1, logger
+
 #include "moos_plugin_translator.h"
 
 using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;

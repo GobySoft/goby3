@@ -24,10 +24,34 @@
 #ifndef SerialLineBased20190718H
 #define SerialLineBased20190718H
 
-#include <regex>
+#include <istream> // for istream, bas...
+#include <string>  // for string
 
-#include "goby/middleware/io/detail/serial_interface.h"
-#include "goby/middleware/io/line_based/common.h"
+#include <boost/asio/read_until.hpp>   // for async_read_u...
+#include <boost/asio/streambuf.hpp>    // for streambuf
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/middleware/io/detail/io_interface.h"     // for PubSubLayer
+#include "goby/middleware/io/detail/serial_interface.h" // for SerialThread
+#include "goby/middleware/io/line_based/common.h"       // for match_regex
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class SerialConfig;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {

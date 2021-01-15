@@ -26,23 +26,51 @@
 #ifndef GOBY_APPS_MOOS_PTRANSLATOR_PTRANSLATOR_H
 #define GOBY_APPS_MOOS_PTRANSLATOR_PTRANSLATOR_H
 
-#include <google/protobuf/descriptor.h>
+#include <memory> // for shared_ptr
+#include <vector> // for vector
 
-#include "goby/util/asio-compat.h"
-#include <boost/asio.hpp>
+#include <boost/asio/basic_waitable_timer.hpp> // for basic_waitable_timer
 
-#include "dccl/dynamic_protobuf_manager.h"
-#include "goby/moos/goby_moos_app.h"
-#include "goby/moos/moos_translator.h"
+#include "goby/moos/goby_moos_app.h"   // for GobyMOOSApp
+#include "goby/moos/moos_translator.h" // for MOOSTranslator
+#include "goby/time/system_clock.h"    // for SystemClock
+#include "goby/util/asio_compat.h"
 
-#include "goby/apps/moos/pTranslator/pTranslator_config.pb.h"
+class CMOOSMsg;
+namespace boost
+{
+namespace system
+{
+class error_code;
+} // namespace system
+} // namespace boost
+namespace google
+{
+namespace protobuf
+{
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {
+namespace moos
+{
+namespace protobuf
+{
+class TranslatorEntry;
+} // namespace protobuf
+} // namespace moos
+
 namespace apps
 {
 namespace moos
 {
+namespace protobuf
+{
+class pTranslatorConfig;
+} // namespace protobuf
+
 class CpTranslator : public goby::moos::GobyMOOSApp
 {
   public:

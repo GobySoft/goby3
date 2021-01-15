@@ -24,10 +24,32 @@
 #ifndef GOBY_MIDDLEWARE_IO_DETAIL_TCP_SERVER_INTERFACE_H
 #define GOBY_MIDDLEWARE_IO_DETAIL_TCP_SERVER_INTERFACE_H
 
-#include <boost/asio/ip/tcp.hpp>
+#include <memory>  // for shared_ptr
+#include <ostream> // for endl, basic_...
+#include <set>     // for set
+#include <string>  // for operator<<
+#include <utility> // for move
 
-#include "goby/middleware/io/detail/io_interface.h"
-#include "goby/middleware/protobuf/tcp_config.pb.h"
+#include <boost/asio/buffer.hpp>       // for buffer
+#include <boost/asio/error.hpp>        // for eof, make_er...
+#include <boost/asio/ip/tcp.hpp>       // for tcp, tcp::en...
+#include <boost/asio/write.hpp>        // for async_write
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/exception.h"                             // for Exception
+#include "goby/middleware/io/detail/io_interface.h"     // for PubSubLayer
+#include "goby/middleware/io/groups.h"                  // for tcp_server_e...
+#include "goby/middleware/protobuf/io.pb.h"             // for TCPServerEvent
+#include "goby/middleware/protobuf/tcp_config.pb.h"     // for TCPServerConfig
+#include "goby/util/debug_logger/flex_ostream.h"        // for glog, FlexOs...
+#include "goby/util/debug_logger/logger_manipulators.h" // for group
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
 
 namespace goby
 {

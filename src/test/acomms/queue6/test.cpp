@@ -24,6 +24,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/acomms/connect.h"
+#include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/acomms/queue.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"

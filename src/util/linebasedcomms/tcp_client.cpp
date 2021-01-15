@@ -22,12 +22,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/util/as.h"
-#include "goby/util/debug_logger.h"
+#include <ostream> // for basic_ostream
+#include <utility> // for move
+
+#include <boost/asio/error.hpp>                      // for host_not_found
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/system/error_code.hpp>               // for error_code
+
+#include "goby/util/as.h" // for as
+#include "goby/util/asio_compat.h"
+#include "goby/util/debug_logger/flex_ostream.h"    // for operator<<, Fle...
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for WARN, logger
 
 #include "tcp_client.h"
-
-#include <utility>
 
 goby::util::TCPClient::TCPClient(std::string server, unsigned port,
                                  const std::string& delimiter /*= "\r\n"*/,

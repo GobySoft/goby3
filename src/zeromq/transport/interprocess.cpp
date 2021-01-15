@@ -21,9 +21,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "interprocess.h"
+#include <algorithm>   // for copy, max, copy_backward, equal, set_d...
+#include <cstring>     // for memcpy, size_t
+#include <ostream>     // for endl, basic_ostream, basic_ostream<>::...
+#include <stdexcept>   // for runtime_error
+#include <type_traits> // for __success_type<>::type
+#include <utility>     // for pair, move
 
-#include <utility>
+#include "interprocess.h"
 
 using goby::glog;
 using namespace goby::util::logger;

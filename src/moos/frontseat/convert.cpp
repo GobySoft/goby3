@@ -23,6 +23,20 @@
 
 #include "convert.h"
 
+#include <iomanip> // for operator<<
+#include <ostream> // for basic_ostream
+
+#include <MOOS/libMOOS/Comms/MOOSCommClient.h>    // for CMOOSCommClient
+#include <boost/units/base_units/si/meter.hpp>    // for si
+#include <boost/units/quantity.hpp>               // for quantity
+#include <boost/units/systems/angle/degrees.hpp>  // for degrees, pla...
+#include <boost/units/systems/si/length.hpp>      // for length
+#include <boost/units/systems/si/plane_angle.hpp> // for plane_angle
+#include <boost/units/systems/si/time.hpp>        // for seconds
+#include <boost/units/systems/si/velocity.hpp>    // for velocity
+
+#include "goby/middleware/protobuf/frontseat_data.pb.h" // for NodeStatus
+
 void goby::moos::convert_and_publish_node_status(
     const goby::middleware::frontseat::protobuf::NodeStatus& status, CMOOSCommClient& moos_comms)
 {

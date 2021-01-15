@@ -25,16 +25,36 @@
 #ifndef GOBY_MIDDLEWARE_IO_CAN_H
 #define GOBY_MIDDLEWARE_IO_CAN_H
 
-#include <boost/asio/posix/stream_descriptor.hpp>
-#include <boost/asio/streambuf.hpp>
-#include <boost/asio/write.hpp>
-#include <boost/units/systems/si/prefixes.hpp>
+#include <errno.h>         // for errno
+#include <linux/can.h>     // for can_frame, socka...
+#include <linux/can/raw.h> // for CAN_RAW_FILTER
+#include <memory>          // for make_shared, sha...
+#include <net/if.h>        // for ifreq, ifr_ifindex
+#include <stdint.h>        // for uint32_t, uint8_t
+#include <string.h>        // for strcpy, strerror
+#include <string>          // for string, operator+
+#include <sys/ioctl.h>     // for ioctl, SIOCGIFINDEX
+#include <sys/socket.h>    // for bind, setsockopt
+#include <tuple>           // for make_tuple, tuple
+#include <vector>          // for vector
 
-#include <linux/can.h>
-#include <linux/can/raw.h>
+#include <boost/asio/buffer.hpp>                  // for buffer
+#include <boost/asio/posix/stream_descriptor.hpp> // for stream_descriptor
+#include <boost/asio/read.hpp>                    // for async_read
+#include <boost/bind.hpp>                         // for bind
+#include <boost/core/ref.hpp>                     // for ref
 
-#include "goby/middleware/io/detail/io_interface.h"
-#include "goby/middleware/protobuf/can_config.pb.h"
+#include "goby/exception.h"                         // for Exception
+#include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer, IOT...
+#include "goby/middleware/protobuf/can_config.pb.h" // for CanConfig, CanCo...
+#include "goby/middleware/protobuf/io.pb.h"         // for IOData
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
 
 namespace goby
 {

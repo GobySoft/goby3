@@ -24,13 +24,14 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_SBD_H
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_SBD_H
 
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/enable_shared_from_this.hpp>
+
 #include "goby/acomms/protobuf/iridium_sbd_directip.pb.h"
 #include "goby/acomms/protobuf/rudics_shore.pb.h"
 #include "goby/time.h"
 #include "goby/util/binary.h"
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/enable_shared_from_this.hpp>
 
 namespace goby
 {

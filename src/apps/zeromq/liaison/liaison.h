@@ -25,20 +25,14 @@
 #ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_H
 #define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_H
 
-#include <google/protobuf/descriptor.h>
-#include <mutex>
+#include <atomic>     // for atomic
+#include <functional> // for function
+#include <string>     // for string
+#include <vector>     // for vector
 
-#include <Wt/WApplication>
-#include <Wt/WContainerWidget>
-#include <Wt/WEnvironment>
-#include <Wt/WMenu>
-#include <Wt/WServer>
-#include <Wt/WString>
-#include <Wt/WTimer>
+#include <Wt/WServer> // for WServer
 
-#include "goby/middleware/marshalling/protobuf.h"
-#include "goby/zeromq/application/multi_thread.h"
-#include "goby/zeromq/liaison/liaison_container.h"
+#include "goby/zeromq/application/multi_thread.h" // for MultiThreadApp...
 #include "goby/zeromq/protobuf/liaison_config.pb.h"
 
 namespace goby

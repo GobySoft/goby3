@@ -23,6 +23,7 @@
 
 #include <deque>
 
+#include "goby/acomms/protobuf/udp_driver.pb.h"
 #include "goby/middleware/marshalling/cstr.h"
 #include "goby/middleware/marshalling/dccl.h"
 #include "goby/middleware/marshalling/protobuf.h"

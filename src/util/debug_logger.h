@@ -28,6 +28,8 @@
 #define STREAMLOGGERCOURTESY20091211H
 
 #include "goby/util/debug_logger/flex_ostream.h"
+#include "goby/util/debug_logger/flex_ostreambuf.h"
 #include "goby/util/debug_logger/logger_manipulators.h"
+#include "goby/util/debug_logger/term_color.h"
 
 #endif

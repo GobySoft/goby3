@@ -22,18 +22,31 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/protobuf/option_extensions.pb.h"
+#include <algorithm> // for max
+#include <array>     // for array, array...
+#include <cstdint>   // for int_least32_t
+#include <cstdio>    // for pclose, feof
+#include <cstdlib>   // for exit, EXIT_S...
+#include <iostream>  // for cout, cerr
+#include <iterator>  // for istreambuf_i...
+#include <utility>   // for pair
+
+#include <boost/algorithm/string/replace.hpp>           // for replace_all
+#include <boost/filesystem.hpp>                         // for path, BOOST_...
+#include <boost/program_options/parsers.hpp>            // for basic_comman...
+#include <boost/program_options/positional_options.hpp> // for positional_o...
+#include <google/protobuf/descriptor.pb.h>              // for MessageTypeT...
+#include <google/protobuf/dynamic_message.h>            // for DynamicMessa...
+#include <google/protobuf/message.h>                    // for Reflection
+#include <google/protobuf/text_format.h>                // for TextFormat::...
 
 #include "configuration_reader.h"
-
-#include "goby/exception.h"
-#include "goby/util/debug_logger/flex_ostream.h"
-#include "goby/util/debug_logger/term_color.h"
-#include "goby/version.h"
-#include <algorithm>
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include <google/protobuf/dynamic_message.h>
+#include "goby/protobuf/option_extensions.pb.h"     // for GobyFieldOpt...
+#include "goby/util/debug_logger/flex_ostream.h"    // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for DIE
+#include "goby/util/debug_logger/term_color.h"      // for esc_nocolor
+#include "goby/util/protobuf/debug_logger.pb.h"     // for GLogConfig
+#include "goby/version.h"                           // for version_message
 
 // brings std::ostream& red, etc. into scope
 using namespace goby::util::tcolor;

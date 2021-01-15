@@ -22,12 +22,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/algorithm/string.hpp>
-#include <boost/crc.hpp>
-#include <netinet/in.h>
+#include <algorithm> // for replace, remove_if
+#include <cstring>   // for memcpy
 
-#include "goby/util/base_convert.h"
-#include "goby/util/binary.h"
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/crc.hpp>                             // for crc_32_type
+#include <netinet/in.h>                              // for htonl, ntohl
+
+#include "goby/util/base_convert.h" // for base_convert
 #include "rudics_packet.h"
 
 void goby::acomms::serialize_rudics_packet(std::string bytes, std::string* rudics_pkt,

@@ -28,15 +28,32 @@
 // > basic_frontseat_modem_simulator 54321
 // 2. run goby_frontseat_interface or iFrontSeat connecting to that port
 
-#include <limits>
-#include <map>
-#include <sstream>
-#include <string>
+#include <cmath>       // for isnan, cos, sin
+#include <cstdlib>     // for exit, abs
+#include <iomanip>     // for operator<<, set...
+#include <iostream>    // for operator<<, bas...
+#include <limits>      // for numeric_limits
+#include <map>         // for map, map<>::map...
+#include <memory>      // for unique_ptr
+#include <stdexcept>   // for runtime_error
+#include <string>      // for string, basic_s...
+#include <type_traits> // for __decay_and_str...
+#include <unistd.h>    // for sleep, usleep
+#include <utility>     // for pair, make_pair
+#include <vector>      // for vector
 
-#include "goby/util/as.h"
-#include "goby/util/constants.h"
-#include "goby/util/geodesy.h"
-#include "goby/util/linebasedcomms.h"
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim
+#include <boost/units/quantity.hpp>                  // for operator*, quan...
+#include <boost/units/systems/angle/degrees.hpp>     // for plane_angle
+#include <boost/units/systems/si/length.hpp>         // for length, meters
+
+#include "goby/util/as.h"                         // for as
+#include "goby/util/constants.h"                  // for NaN, pi
+#include "goby/util/geodesy.h"                    // for UTMGeodesy, UTM...
+#include "goby/util/linebasedcomms/tcp_server.h"  // for TCPServer
+#include "goby/util/protobuf/linebasedcomms.pb.h" // for Datagram
 
 struct VehicleConfig
 {

@@ -27,6 +27,8 @@
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>
 
+#include "goby/util/binary.h"
+
 namespace goby
 {
 namespace middleware
