@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef AIS_ENCODE_20191021H
-#define AIS_ENCODE_20191021H
+#ifndef GOBY_UTIL_AIS_ENCODE_H
+#define GOBY_UTIL_AIS_ENCODE_H
 
 #include <atomic>
 #include <cstdint>
@@ -48,16 +48,16 @@ class EncoderException : public std::runtime_error
 class Encoder
 {
   public:
-    Encoder(goby::util::ais::protobuf::Position pos);
-    Encoder(goby::util::ais::protobuf::Voyage voy, int part_num = 0);
+    Encoder(const goby::util::ais::protobuf::Position& pos);
+    Encoder(const goby::util::ais::protobuf::Voyage& voy, int part_num = 0);
 
     boost::dynamic_bitset<> as_bitset() const { return bits_; }
 
     std::vector<NMEASentence> as_nmea() const;
 
   private:
-    void encode_msg_18(goby::util::ais::protobuf::Position pos);
-    void encode_msg_24(goby::util::ais::protobuf::Voyage voy, std::uint32_t part_num);
+    void encode_msg_18(const goby::util::ais::protobuf::Position& pos);
+    void encode_msg_24(const goby::util::ais::protobuf::Voyage& voy, std::uint32_t part_num);
 
     boost::units::quantity<boost::units::degree::plane_angle>
     wrap_0_360(boost::units::quantity<boost::units::degree::plane_angle> in)

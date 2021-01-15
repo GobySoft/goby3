@@ -45,7 +45,7 @@ class GobyMOOSGateway
 {
   public:
     GobyMOOSGateway();
-    ~GobyMOOSGateway();
+    ~GobyMOOSGateway() override;
 
     static std::vector<void*> dl_handles_;
 
@@ -107,7 +107,7 @@ goby::moos::GobyMOOSGateway::GobyMOOSGateway()
     for (void* handle : dl_handles_)
     {
         using plugin_load_func = void (*)(AppBase*);
-        plugin_load_func load_ptr = (plugin_load_func)dlsym(handle, "goby3_moos_gateway_load");
+        auto load_ptr = (plugin_load_func)dlsym(handle, "goby3_moos_gateway_load");
         (*load_ptr)(this);
     }
 }
@@ -117,8 +117,7 @@ goby::moos::GobyMOOSGateway::~GobyMOOSGateway()
     for (void* handle : dl_handles_)
     {
         using plugin_unload_func = void (*)(AppBase*);
-        plugin_unload_func unload_ptr =
-            (plugin_unload_func)dlsym(handle, "goby3_moos_gateway_unload");
+        auto unload_ptr = (plugin_unload_func)dlsym(handle, "goby3_moos_gateway_unload");
 
         if (unload_ptr)
             (*unload_ptr)(this);

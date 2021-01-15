@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DYNAMICMOOSVARSH
-#define DYNAMICMOOSVARSH
+#ifndef GOBY_MOOS_DYNAMIC_MOOS_VARS_H
+#define GOBY_MOOS_DYNAMIC_MOOS_VARS_H
 
 #include "goby/moos/moos_header.h"
 
@@ -41,8 +41,7 @@ class DynamicMOOSVars
     // read the whole list
     void update_moos_vars(const MOOSMSG_LIST& NewMail)
     {
-        for (MOOSMSG_LIST::const_iterator p = NewMail.begin(), n = NewMail.end(); p != n; ++p)
-            vars[p->GetKey()] = *p;
+        for (const auto& p : NewMail) vars[p.GetKey()] = p;
     }
 
     // update a single variable at a time

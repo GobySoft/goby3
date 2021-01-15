@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef FrontSeatBase20130220H
-#define FrontSeatBase20130220H
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_INTERFACE_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_INTERFACE_H
 
 #include <boost/signals2.hpp>
 
@@ -49,9 +49,9 @@ namespace frontseat
 class InterfaceBase
 {
   public:
-    InterfaceBase(const protobuf::Config& cfg);
+    InterfaceBase(protobuf::Config cfg);
 
-    virtual ~InterfaceBase() {}
+    virtual ~InterfaceBase() = default;
 
     virtual void send_command_to_frontseat(const protobuf::CommandRequest& command) = 0;
     virtual void send_data_to_frontseat(const protobuf::InterfaceData& data) = 0;

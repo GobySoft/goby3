@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MOOS_FRONTSEAT_CONVERT_H
+#define GOBY_MOOS_FRONTSEAT_CONVERT_H
 
 #include "goby/middleware/protobuf/frontseat_data.pb.h"
 #include "goby/moos/moos_header.h"
@@ -34,3 +35,5 @@ void convert_and_publish_node_status(
     const goby::middleware::frontseat::protobuf::NodeStatus& status, CMOOSCommClient& moos_comms);
 }
 } // namespace goby
+
+#endif

@@ -25,9 +25,12 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <memory>
+
 #include <sstream>
 
 #include <boost/date_time.hpp>
+#include <utility>
 
 #include "goby/util/debug_logger/flex_ostreambuf.h"
 
@@ -54,7 +57,7 @@ goby::util::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
       name_("no name"),
       die_flag_(false),
       current_verbosity_(logger::UNKNOWN),
-      curses_(0),
+      curses_(nullptr),
       start_time_(time::SystemClock::now<boost::posix_time::ptime>()),
       is_gui_(false),
       highest_verbosity_(logger::QUIET),
@@ -88,14 +91,13 @@ void goby::util::FlexOStreamBuf::add_stream(logger::Verbosity verbosity, std::os
     }
 
     if (!stream_exists)
-        streams_.push_back(StreamConfig(os, verbosity));
+        streams_.emplace_back(os, verbosity);
 
     highest_verbosity_ = logger::QUIET;
-    for (std::vector<StreamConfig>::const_iterator it = streams_.begin(), end = streams_.end();
-         it != end; ++it)
+    for (auto stream : streams_)
     {
-        if (it->verbosity() > highest_verbosity_)
-            highest_verbosity_ = it->verbosity();
+        if (stream.verbosity() > highest_verbosity_)
+            highest_verbosity_ = stream.verbosity();
     }
 }
 
@@ -115,7 +117,7 @@ void goby::util::FlexOStreamBuf::enable_gui()
 
     curses_->recalculate_win();
 
-    input_thread_ = std::shared_ptr<std::thread>(new std::thread([&]() { curses_->run_input(); }));
+    input_thread_ = std::make_shared<std::thread>([&]() { curses_->run_input(); });
 #else
     // suppress -Wunused-private-field
     (void)curses_;
@@ -129,7 +131,7 @@ void goby::util::FlexOStreamBuf::add_group(const std::string& name, logger::Grou
 {
     //    if(groups_.count(name)) return;
 
-    groups_[name] = g;
+    groups_[name] = std::move(g);
 
 #ifdef HAS_NCURSES
     if (is_gui_)
@@ -147,7 +149,7 @@ int goby::util::FlexOStreamBuf::overflow(int c /*= EOF*/)
     if (c == EOF)
         return c;
     else if (c == '\n')
-        buffer_.push_back(std::string());
+        buffer_.emplace_back();
     else
         buffer_.back().push_back(c);
 

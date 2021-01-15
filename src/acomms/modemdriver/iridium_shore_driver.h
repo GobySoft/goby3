@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IridiumShoreDriver20140508H
-#define IridiumShoreDriver20140508H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_DRIVER_H
 
 #include <boost/bimap.hpp>
 #include <boost/circular_buffer.hpp>
@@ -44,15 +44,15 @@ class IridiumShoreDriver : public ModemDriverBase
 {
   public:
     IridiumShoreDriver();
-    ~IridiumShoreDriver();
-    void startup(const protobuf::DriverConfig& cfg);
+    ~IridiumShoreDriver() override;
+    void startup(const protobuf::DriverConfig& cfg) override;
 
     void modem_init();
 
-    void shutdown();
-    void do_work();
+    void shutdown() override;
+    void do_work() override;
 
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
     void process_transmission(protobuf::ModemTransmission msg);
 
   private:
@@ -69,9 +69,9 @@ class IridiumShoreDriver : public ModemDriverBase
     void send_sbd_mt(const std::string& bytes, const std::string& imei);
 
     void rudics_send(const std::string& data, ModemId id);
-    void rudics_disconnect(std::shared_ptr<RUDICSConnection> connection);
-    void rudics_line(const std::string& line, std::shared_ptr<RUDICSConnection> connection);
-    void rudics_connect(std::shared_ptr<RUDICSConnection> connection);
+    void rudics_disconnect(const std::shared_ptr<RUDICSConnection>& connection);
+    void rudics_line(const std::string& line, const std::shared_ptr<RUDICSConnection>& connection);
+    void rudics_connect(const std::shared_ptr<RUDICSConnection>& connection);
 
     const iridium::protobuf::Config& iridium_driver_cfg() const
     {
@@ -88,7 +88,7 @@ class IridiumShoreDriver : public ModemDriverBase
 
     protobuf::ModemTransmission rudics_mac_msg_;
 
-    std::uint32_t next_frame_;
+    std::uint32_t next_frame_{0};
 
     struct RemoteNode
     {
@@ -112,7 +112,7 @@ class IridiumShoreDriver : public ModemDriverBase
     // maps remote modem to connection
     boost::bimap<ModemId, std::shared_ptr<RUDICSConnection> > clients_;
 
-    typedef std::string IMEI;
+    using IMEI = std::string;
     std::map<ModemId, IMEI> modem_id_to_imei_;
 };
 } // namespace acomms

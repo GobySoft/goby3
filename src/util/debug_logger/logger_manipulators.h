@@ -22,11 +22,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LoggerManipulators20091110H
-#define LoggerManipulators20091110H
+#ifndef GOBY_UTIL_DEBUG_LOGGER_LOGGER_MANIPULATORS_H
+#define GOBY_UTIL_DEBUG_LOGGER_LOGGER_MANIPULATORS_H
 
 #include <iostream>
 #include <string>
+#include <utility>
 
 #include "term_color.h"
 
@@ -67,9 +68,9 @@ inline std::ostream& debug3(std::ostream& os) { return (os << "D3: "); }
 class Group
 {
   public:
-    Group(const std::string& name = "", const std::string& description = "",
+    Group(std::string name = "", std::string description = "",
           goby::util::Colors::Color color = goby::util::Colors::nocolor)
-        : name_(name), description_(description), color_(color), enabled_(true)
+        : name_(std::move(name)), description_(std::move(description)), color_(color)
     {
     }
 
@@ -97,14 +98,14 @@ class Group
     std::string name_;
     std::string description_;
     goby::util::Colors::Color color_;
-    bool enabled_;
+    bool enabled_{true};
 };
 
 /// Helper class for enabling the group(std::string) manipulator
 class GroupSetter
 {
   public:
-    explicit GroupSetter(const std::string& s) : group_(s) {}
+    explicit GroupSetter(std::string s) : group_(std::move(s)) {}
     void operator()(std::ostream& os) const;
     void operator()(goby::util::FlexOstream& os) const;
 
@@ -132,7 +133,7 @@ using goby::util::logger::operator<<;
 
 inline goby::util::logger::GroupSetter group(std::string n)
 {
-    return (goby::util::logger::GroupSetter(n));
+    return (goby::util::logger::GroupSetter(std::move(n)));
 }
 
 #endif

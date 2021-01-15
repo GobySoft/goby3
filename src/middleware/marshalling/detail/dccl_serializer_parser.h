@@ -21,8 +21,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCLSerializerParserBase20191105H
-#define DCCLSerializerParserBase20191105H
+#ifndef GOBY_MIDDLEWARE_MARSHALLING_DETAIL_DCCL_SERIALIZER_PARSER_H
+#define GOBY_MIDDLEWARE_MARSHALLING_DETAIL_DCCL_SERIALIZER_PARSER_H
+
+#include <memory>
 
 #include <mutex>
 #include <unordered_map>
@@ -64,7 +66,7 @@ struct DCCLSerializerParserHelperBase
     template <typename DataType> struct Loader : public LoaderBase
     {
         Loader() { codec().load<DataType>(); }
-        ~Loader() { codec().unload<DataType>(); }
+        ~Loader() override { codec().unload<DataType>(); }
     };
 
     struct LoaderDynamic : public LoaderBase
@@ -73,7 +75,7 @@ struct DCCLSerializerParserHelperBase
         {
             codec().load(desc_);
         }
-        ~LoaderDynamic() { codec().unload(desc_); }
+        ~LoaderDynamic() override { codec().unload(desc_); }
 
       private:
         const google::protobuf::Descriptor* desc_;
@@ -103,7 +105,7 @@ struct DCCLSerializerParserHelperBase
     static dccl::Codec& codec()
     {
         if (!codec_)
-            codec_.reset(new dccl::Codec);
+            codec_ = std::make_unique<dccl::Codec>();
         return *codec_;
     }
 
@@ -126,7 +128,7 @@ struct DCCLSerializerParserHelperBase
         return codec().id(begin, end);
     }
 
-    static unsigned id(const std::string full_name)
+    static unsigned id(const std::string& full_name)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         auto* desc = dccl::DynamicProtobufManager::find_descriptor(full_name);

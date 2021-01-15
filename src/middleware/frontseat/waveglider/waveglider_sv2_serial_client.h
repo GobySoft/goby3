@@ -21,10 +21,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_SERIAL_CLIENT_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_SERIAL_CLIENT_H
+
 #include <memory>
 
 #include "goby/util/asio-compat.h"
 #include <boost/asio.hpp>
+#include <utility>
 
 #include <dccl/binary.h>
 
@@ -41,7 +45,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
                                                        std::string name, int baud = 115200)
     {
         return std::shared_ptr<SV2SerialConnection>(
-            new SV2SerialConnection(io_context, name, baud));
+            new SV2SerialConnection(io_context, std::move(name), baud));
     }
 
     boost::asio::serial_port& socket() { return socket_; }
@@ -67,7 +71,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
                                  boost::bind(&SV2SerialConnection::handle_write, this, _1, _2));
     }
 
-    ~SV2SerialConnection() {}
+    ~SV2SerialConnection() = default;
 
     boost::signals2::signal<void(const std::string& message)> message_signal;
 
@@ -79,7 +83,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
         PART_COMPLETE
     };
 
-    SV2SerialConnection(boost::asio::io_context& io_context, std::string name, int baud)
+    SV2SerialConnection(boost::asio::io_context& io_context, const std::string& name, int baud)
         : socket_(io_context),
           message_(SV2_MAX_SIZE * 2) // leave room for escape chars (in theory, every byte)
     {
@@ -108,7 +112,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
             boost::asio::serial_port_base::stop_bits::one));
     }
 
-    void handle_write(const boost::system::error_code& error, size_t bytes_transferred)
+    void handle_write(const boost::system::error_code& error, size_t /*bytes_transferred*/)
     {
         if (error)
         {
@@ -304,3 +308,5 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
 } // namespace frontseat
 } // namespace middleware
 } // namespace goby
+
+#endif

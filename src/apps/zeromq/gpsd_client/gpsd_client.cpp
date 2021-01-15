@@ -63,8 +63,8 @@ goby::time::SITime parse_time(std::string s)
 
 goby::apps::zeromq::GPSDClient::GPSDClient()
     : goby::zeromq::SingleThreadApplication<protobuf::GPSDConfig>(this->loop_max_frequency()),
-      gps_rec_(cfg().hostname().c_str(), std::to_string(cfg().port()).c_str()),
-      publish_all_(false)
+      gps_rec_(cfg().hostname().c_str(), std::to_string(cfg().port()).c_str())
+
 {
     if (cfg().device_name_size())
     {
@@ -86,7 +86,7 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
     }
 
     // compare devices from our config to what gps_rec has in it's list.
-    if (gps_rec_.stream(WATCH_ENABLE | WATCH_JSON) == NULL)
+    if (gps_rec_.stream(WATCH_ENABLE | WATCH_JSON) == nullptr)
     {
         glog.is_die() && glog << "No GPSD running." << std::endl;
     }
@@ -99,7 +99,7 @@ void goby::apps::zeromq::GPSDClient::loop()
         return;
 
     // read until a new message is received
-    if (gps_rec_.read() == NULL)
+    if (gps_rec_.read() == nullptr)
     {
         glog.is_die() && glog << "Read error.." << std::endl;
     }

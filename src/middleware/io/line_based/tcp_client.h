@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_TCP_CLIENT_H
+#define GOBY_MIDDLEWARE_IO_LINE_BASED_TCP_CLIENT_H
 
 #include <regex>
 
@@ -98,3 +99,5 @@ void goby::middleware::io::TCPClientThreadLineBased<line_in_group, line_out_grou
             }
         });
 }
+
+#endif

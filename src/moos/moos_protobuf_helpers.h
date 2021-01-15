@@ -23,8 +23,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MOOSPROTOBUFHELPERS20110216H
-#define MOOSPROTOBUFHELPERS20110216H
+#ifndef GOBY_MOOS_MOOS_PROTOBUF_HELPERS_H
+#define GOBY_MOOS_MOOS_PROTOBUF_HELPERS_H
 
 #include <limits>
 #include <regex>
@@ -62,22 +62,19 @@ run_serialize_algorithms(const google::protobuf::Message& in,
     const google::protobuf::Descriptor* desc = in.GetDescriptor();
 
     // run algorithms
-    typedef google::protobuf::RepeatedPtrField<
-        protobuf::TranslatorEntry::PublishSerializer::Algorithm>::const_iterator const_iterator;
-
     std::map<int, std::string> modified_values;
 
-    for (const_iterator it = algorithms.begin(), n = algorithms.end(); it != n; ++it)
+    for (const auto& algorithm : algorithms)
     {
         const google::protobuf::FieldDescriptor* primary_field_desc =
-            desc->FindFieldByNumber(it->primary_field());
+            desc->FindFieldByNumber(algorithm.primary_field());
 
         if (!primary_field_desc || primary_field_desc->is_repeated())
             continue;
 
         std::string primary_val;
 
-        if (!modified_values.count(it->output_virtual_field()))
+        if (!modified_values.count(algorithm.output_virtual_field()))
         {
             google::protobuf::TextFormat::PrintFieldValueToString(in, primary_field_desc, -1,
                                                                   &primary_val);
@@ -85,36 +82,37 @@ run_serialize_algorithms(const google::protobuf::Message& in,
         }
         else
         {
-            primary_val = modified_values[it->output_virtual_field()];
+            primary_val = modified_values[algorithm.output_virtual_field()];
         }
 
         goby::moos::transitional::DCCLMessageVal val(primary_val);
         std::vector<goby::moos::transitional::DCCLMessageVal> ref;
-        for (int i = 0, m = it->reference_field_size(); i < m; ++i)
+        for (int i = 0, m = algorithm.reference_field_size(); i < m; ++i)
         {
             const google::protobuf::FieldDescriptor* field_desc =
-                desc->FindFieldByNumber(it->reference_field(i));
+                desc->FindFieldByNumber(algorithm.reference_field(i));
 
             if (field_desc && !field_desc->is_repeated())
             {
                 std::string ref_value;
                 google::protobuf::TextFormat::PrintFieldValueToString(in, field_desc, -1,
                                                                       &ref_value);
-                ref.push_back(ref_value);
+                ref.emplace_back(ref_value);
             }
             else
             {
-                throw(std::runtime_error("Reference field given is invalid or repeated (must be "
-                                         "optional or required): " +
-                                         goby::util::as<std::string>(it->reference_field(i))));
+                throw(
+                    std::runtime_error("Reference field given is invalid or repeated (must be "
+                                       "optional or required): " +
+                                       goby::util::as<std::string>(algorithm.reference_field(i))));
             }
         }
 
-        moos::transitional::DCCLAlgorithmPerformer::getInstance()->run_algorithm(it->name(), val,
-                                                                                 ref);
+        moos::transitional::DCCLAlgorithmPerformer::getInstance()->run_algorithm(algorithm.name(),
+                                                                                 val, ref);
 
         val = std::string(val);
-        modified_values[it->output_virtual_field()] = std::string(val);
+        modified_values[algorithm.output_virtual_field()] = std::string(val);
     }
 
     return modified_values;
@@ -390,34 +388,26 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
         }
 
         std::map<int, std::string> additional_values = run_serialize_algorithms(in, algorithms);
-        for (std::map<int, std::string>::const_iterator it = additional_values.begin(),
-                                                        n = additional_values.end();
-             it != n; ++it)
+        for (const auto& additional_value : additional_values)
         {
             out_ss << ",";
 
             std::string key;
-
-            typedef google::protobuf::RepeatedPtrField<
-                protobuf::TranslatorEntry::PublishSerializer::Algorithm>::const_iterator
-                const_iterator;
-
             int primary_field = 0;
-            for (const_iterator alg_it = algorithms.begin(), alg_n = algorithms.end();
-                 alg_it != alg_n; ++alg_it)
+            for (const auto& algorithm : algorithms)
             {
-                if (alg_it->output_virtual_field() == it->first)
+                if (algorithm.output_virtual_field() == additional_value.first)
                 {
                     if (!key.empty())
                         key += "+";
 
-                    key += alg_it->name();
-                    primary_field = alg_it->primary_field();
+                    key += algorithm.name();
+                    primary_field = algorithm.primary_field();
                 }
             }
             key += "(" + desc->FindFieldByNumber(primary_field)->name() + ")";
 
-            out_ss << key << "=" << it->second;
+            out_ss << key << "=" << additional_value.second;
         }
 
         *out = out_ss.str();
@@ -448,19 +438,14 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
                     if (goby::moos::val_from_string(val, in, field_desc->name()))
                     {
                         // run algorithms
-                        typedef google::protobuf::RepeatedPtrField<
-                            protobuf::TranslatorEntry::CreateParser::Algorithm>::const_iterator
-                            const_iterator;
-
-                        for (const_iterator it = algorithms.begin(), n = algorithms.end(); it != n;
-                             ++it)
+                        for (const auto& algorithm : algorithms)
                         {
                             goby::moos::transitional::DCCLMessageVal extract_val(val);
 
-                            if (it->primary_field() == field_desc->number())
+                            if (algorithm.primary_field() == field_desc->number())
                                 moos::transitional::DCCLAlgorithmPerformer::getInstance()
                                     ->run_algorithm(
-                                        it->name(), extract_val,
+                                        algorithm.name(), extract_val,
                                         std::vector<goby::moos::transitional::DCCLMessageVal>());
 
                             val = std::string(extract_val);
@@ -675,10 +660,8 @@ class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_COMMA_SEPARATED_KEY_E
         const google::protobuf::Reflection* refl = proto_msg->GetReflection();
         if (field_desc->is_repeated())
         {
-            for (int j = 0, m = values.size(); j < m; ++j)
+            for (const auto& v : values)
             {
-                const std::string& v = values[j];
-
                 switch (field_desc->cpp_type())
                 {
                     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
@@ -856,12 +839,10 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
         // run algorithms
         std::map<int, std::string> modified_values = run_serialize_algorithms(in, algorithms);
 
-        for (std::map<int, std::string>::const_iterator it = modified_values.begin(),
-                                                        n = modified_values.end();
-             it != n; ++it)
+        for (const auto& modified_value : modified_values)
         {
-            if (it->first > max_field_number)
-                max_field_number = it->first;
+            if (modified_value.first > max_field_number)
+                max_field_number = modified_value.first;
         }
 
         std::string mutable_format_temp = mutable_format;
@@ -880,7 +861,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
 
             ++max_field_number;
 
-            const google::protobuf::FieldDescriptor* field_desc = 0;
+            const google::protobuf::FieldDescriptor* field_desc = nullptr;
             const google::protobuf::Reflection* sub_refl = refl;
             const google::protobuf::Message* sub_message = &in;
 
@@ -1172,11 +1153,11 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                 ++i; // now *i is the next separator
                 std::string extract = str.substr(0, lower_str.find(*i));
 
-                if (specifier.find(":") != std::string::npos)
+                if (specifier.find(':') != std::string::npos)
                 {
                     std::vector<std::string> subfields;
                     boost::split(subfields, specifier, boost::is_any_of(":"));
-                    const google::protobuf::FieldDescriptor* field_desc = 0;
+                    const google::protobuf::FieldDescriptor* field_desc = nullptr;
                     const google::protobuf::Reflection* sub_refl = refl;
                     google::protobuf::Message* sub_message = out;
 
@@ -1241,19 +1222,14 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                                      " not in message " + desc->full_name()));
 
                         // run algorithms
-                        typedef google::protobuf::RepeatedPtrField<
-                            protobuf::TranslatorEntry::CreateParser::Algorithm>::const_iterator
-                            const_iterator;
-
-                        for (const_iterator it = algorithms.begin(), n = algorithms.end(); it != n;
-                             ++it)
+                        for (const auto& algorithm : algorithms)
                         {
                             goby::moos::transitional::DCCLMessageVal extract_val(extract);
 
-                            if (it->primary_field() == field_index)
+                            if (algorithm.primary_field() == field_index)
                                 moos::transitional::DCCLAlgorithmPerformer::getInstance()
                                     ->run_algorithm(
-                                        it->name(), extract_val,
+                                        algorithm.name(), extract_val,
                                         std::vector<goby::moos::transitional::DCCLMessageVal>());
 
                             extract = std::string(extract_val);
@@ -1265,7 +1241,7 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                         else
                             boost::split(parts, extract, boost::is_any_of(repeated_delimiter));
 
-                        for (int j = 0, m = parts.size(); j < m; ++j)
+                        for (auto& part : parts)
                         {
                             switch (field_desc->cpp_type())
                             {
@@ -1279,13 +1255,12 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                         ? (is_indexed_repeated_field
                                                ? refl->MutableRepeatedMessage(out, field_desc,
                                                                               value_index)
-                                                     ->ParseFromString(
-                                                         goby::util::hex_decode(parts[j]))
+                                                     ->ParseFromString(goby::util::hex_decode(part))
                                                : refl->AddMessage(out, field_desc)
                                                      ->ParseFromString(
-                                                         goby::util::hex_decode(parts[j])))
+                                                         goby::util::hex_decode(part)))
                                         : refl->MutableMessage(out, field_desc)
-                                              ->ParseFromString(goby::util::hex_decode(parts[j]));
+                                              ->ParseFromString(goby::util::hex_decode(part));
                                     break;
 
                                 case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
@@ -1299,15 +1274,13 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                         ? (is_indexed_repeated_field
                                                ? refl->SetRepeatedInt32(
                                                      out, field_desc, value_index,
-                                                     goby::util::as<google::protobuf::int32>(
-                                                         parts[j]))
+                                                     goby::util::as<google::protobuf::int32>(part))
                                                : refl->AddInt32(
                                                      out, field_desc,
-                                                     goby::util::as<google::protobuf::int32>(
-                                                         parts[j])))
+                                                     goby::util::as<google::protobuf::int32>(part)))
                                         : refl->SetInt32(
                                               out, field_desc,
-                                              goby::util::as<google::protobuf::int32>(parts[j]));
+                                              goby::util::as<google::protobuf::int32>(part));
                                     break;
 
                                 case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
@@ -1321,15 +1294,13 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                         ? (is_indexed_repeated_field
                                                ? refl->SetRepeatedInt64(
                                                      out, field_desc, value_index,
-                                                     goby::util::as<google::protobuf::int64>(
-                                                         parts[j]))
+                                                     goby::util::as<google::protobuf::int64>(part))
                                                : refl->AddInt64(
                                                      out, field_desc,
-                                                     goby::util::as<google::protobuf::int64>(
-                                                         parts[j])))
+                                                     goby::util::as<google::protobuf::int64>(part)))
                                         : refl->SetInt64(
                                               out, field_desc,
-                                              goby::util::as<google::protobuf::int64>(parts[j]));
+                                              goby::util::as<google::protobuf::int64>(part));
                                     break;
 
                                 case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
@@ -1343,15 +1314,14 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                         ? (is_indexed_repeated_field
                                                ? refl->SetRepeatedUInt32(
                                                      out, field_desc, value_index,
-                                                     goby::util::as<google::protobuf::uint32>(
-                                                         parts[j]))
+                                                     goby::util::as<google::protobuf::uint32>(part))
                                                : refl->AddUInt32(
                                                      out, field_desc,
                                                      goby::util::as<google::protobuf::uint32>(
-                                                         parts[j])))
+                                                         part)))
                                         : refl->SetUInt32(
                                               out, field_desc,
-                                              goby::util::as<google::protobuf::uint32>(parts[j]));
+                                              goby::util::as<google::protobuf::uint32>(part));
                                     break;
 
                                 case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
@@ -1365,15 +1335,14 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                         ? (is_indexed_repeated_field
                                                ? refl->SetRepeatedUInt64(
                                                      out, field_desc, value_index,
-                                                     goby::util::as<google::protobuf::uint64>(
-                                                         parts[j]))
+                                                     goby::util::as<google::protobuf::uint64>(part))
                                                : refl->AddUInt64(
                                                      out, field_desc,
                                                      goby::util::as<google::protobuf::uint64>(
-                                                         parts[j])))
+                                                         part)))
                                         : refl->SetUInt64(
                                               out, field_desc,
-                                              goby::util::as<google::protobuf::uint64>(parts[j]));
+                                              goby::util::as<google::protobuf::uint64>(part));
                                     break;
 
                                 case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
@@ -1385,13 +1354,12 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                     }
                                     field_desc->is_repeated()
                                         ? (is_indexed_repeated_field
-                                               ? refl->SetRepeatedBool(
-                                                     out, field_desc, value_index,
-                                                     goby::util::as<bool>(parts[j]))
+                                               ? refl->SetRepeatedBool(out, field_desc, value_index,
+                                                                       goby::util::as<bool>(part))
                                                : refl->AddBool(out, field_desc,
-                                                               goby::util::as<bool>(parts[j])))
+                                                               goby::util::as<bool>(part)))
                                         : refl->SetBool(out, field_desc,
-                                                        goby::util::as<bool>(parts[j]));
+                                                        goby::util::as<bool>(part));
                                     break;
 
                                 case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
@@ -1404,9 +1372,9 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                     field_desc->is_repeated()
                                         ? (is_indexed_repeated_field
                                                ? refl->SetRepeatedString(out, field_desc,
-                                                                         value_index, parts[j])
-                                               : refl->AddString(out, field_desc, parts[j]))
-                                        : refl->SetString(out, field_desc, parts[j]);
+                                                                         value_index, part)
+                                               : refl->AddString(out, field_desc, part))
+                                        : refl->SetString(out, field_desc, part);
                                     break;
 
                                 case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
@@ -1418,13 +1386,13 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                     }
                                     field_desc->is_repeated()
                                         ? (is_indexed_repeated_field
-                                               ? refl->SetRepeatedFloat(
-                                                     out, field_desc, value_index,
-                                                     goby::util::as<float>(parts[j]))
+                                               ? refl->SetRepeatedFloat(out, field_desc,
+                                                                        value_index,
+                                                                        goby::util::as<float>(part))
                                                : refl->AddFloat(out, field_desc,
-                                                                goby::util::as<float>(parts[j])))
+                                                                goby::util::as<float>(part)))
                                         : refl->SetFloat(out, field_desc,
-                                                         goby::util::as<float>(parts[j]));
+                                                         goby::util::as<float>(part));
                                     break;
 
                                 case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
@@ -1438,11 +1406,11 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                         ? (is_indexed_repeated_field
                                                ? refl->SetRepeatedDouble(
                                                      out, field_desc, value_index,
-                                                     goby::util::as<double>(parts[j]))
+                                                     goby::util::as<double>(part))
                                                : refl->AddDouble(out, field_desc,
-                                                                 goby::util::as<double>(parts[j])))
+                                                                 goby::util::as<double>(part)))
                                         : refl->SetDouble(out, field_desc,
-                                                          goby::util::as<double>(parts[j]));
+                                                          goby::util::as<double>(part));
                                     break;
 
                                 case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
@@ -1455,8 +1423,8 @@ template <> class MOOSTranslation<protobuf::TranslatorEntry::TECHNIQUE_FORMAT>
                                     }
                                     std::string enum_value =
                                         ((use_short_enum)
-                                             ? add_name_to_enum(parts[j], field_desc->name())
-                                             : parts[j]);
+                                             ? add_name_to_enum(part, field_desc->name())
+                                             : part);
 
                                     const google::protobuf::EnumValueDescriptor* enum_desc =
                                         refl->GetEnum(*out, field_desc)

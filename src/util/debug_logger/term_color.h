@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TermColor20091211H
-#define TermColor20091211H
+#ifndef GOBY_UTIL_DEBUG_LOGGER_TERM_COLOR_H
+#define GOBY_UTIL_DEBUG_LOGGER_TERM_COLOR_H
 
 #include <iostream>
 #include <map>
@@ -161,10 +161,10 @@ class TermColor
 
   private:
     TermColor();
-    ~TermColor() {}
+    ~TermColor() = default;
 
-    TermColor(const TermColor&);
-    TermColor& operator=(const TermColor&);
+    TermColor(const TermColor&) = delete;
+    TermColor& operator=(const TermColor&) = delete;
 
     static TermColor* get_instance()
     {

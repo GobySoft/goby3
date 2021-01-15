@@ -31,8 +31,8 @@
 
 /* Copyright (c) 2020 mission systems pty ltd */
 
-#ifndef PopotoDriver2020
-#define PopotoDriver2020
+#ifndef GOBY_ACOMMS_MODEMDRIVER_POPOTO_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_POPOTO_DRIVER_H
 
 #include <iostream>
 #include <string>
@@ -50,7 +50,7 @@ class PopotoDriver : public ModemDriverBase
 {
   public:
     PopotoDriver();
-    ~PopotoDriver();
+    ~PopotoDriver() override;
 
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;
@@ -71,7 +71,7 @@ class PopotoDriver : public ModemDriverBase
 
     void DecodeHeader(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
     void DecodeGobyHeader(std::uint8_t header, protobuf::ModemTransmission& m);
-    void ProcessJSON(std::string message, protobuf::ModemTransmission& m);
+    void ProcessJSON(const std::string& message, protobuf::ModemTransmission& m);
 
     const popoto::protobuf::Config& popoto_driver_cfg() const
     {
@@ -80,7 +80,7 @@ class PopotoDriver : public ModemDriverBase
 
     static std::string json_to_binary(const nlohmann::json& element);
     static std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes);
-    static std::string StripString(std::string in, std::string p);
+    static std::string StripString(std::string in, const std::string& p);
 
   private:
     protobuf::DriverConfig driver_cfg_;

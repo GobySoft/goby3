@@ -61,7 +61,7 @@ class SerialMux
             goby::middleware::io::PubSubLayer::INTERTHREAD>;
 
         interthread().subscribe<groups::pty_secondary_in>(
-            [this](std::shared_ptr<const goby::middleware::protobuf::IOData> from_pty) {
+            [this](const std::shared_ptr<const goby::middleware::protobuf::IOData>& from_pty) {
                 if (allow_write_.count(from_pty->index()))
                 {
                     auto to_serial =

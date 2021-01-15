@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef QueueManager20091204_H
-#define QueueManager20091204_H
+#ifndef GOBY_ACOMMS_QUEUE_QUEUE_MANAGER_H
+#define GOBY_ACOMMS_QUEUE_QUEUE_MANAGER_H
 
 #include <boost/bind.hpp>
 #include <boost/signals2.hpp>
@@ -59,7 +59,7 @@ class QueueManager
     /// constructor
     QueueManager();
     /// destructor
-    ~QueueManager() {}
+    ~QueueManager() = default;
 
     /// \name Initialization Methods
     ///
@@ -224,8 +224,8 @@ class QueueManager
         signal_in_route;
 
   private:
-    QueueManager(const QueueManager&);
-    QueueManager& operator=(const QueueManager&);
+    QueueManager(const QueueManager&) = delete;
+    QueueManager& operator=(const QueueManager&) = delete;
     //@}
 
     void qsize(Queue* q);
@@ -257,7 +257,7 @@ class QueueManager
     std::multimap<unsigned, Queue*> waiting_for_ack_;
 
     // the first *user* frame sets the tone (dest & ack) for the entire packet (all %modem frames)
-    unsigned packet_ack_;
+    unsigned packet_ack_{0};
     int packet_dest_;
 
     typedef int ModemId;
@@ -289,11 +289,11 @@ class QueueManager
 
         bool has(unsigned id, goby::acomms::protobuf::Manipulator manip) const
         {
-            typedef std::multimap<unsigned, goby::acomms::protobuf::Manipulator>::const_iterator
-                iterator;
+            using iterator =
+                std::multimap<unsigned int, goby::acomms::protobuf::Manipulator>::const_iterator;
             std::pair<iterator, iterator> p = manips_.equal_range(id);
 
-            for (iterator it = p.first; it != p.second; ++it)
+            for (auto it = p.first; it != p.second; ++it)
             {
                 if (it->second == manip)
                     return true;

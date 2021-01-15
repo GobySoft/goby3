@@ -32,8 +32,8 @@
 
 #include "geodesy.h"
 
-goby::util::UTMGeodesy::UTMGeodesy(LatLonPoint origin)
-    : origin_geo_(origin), origin_zone_(0), pj_utm_(0), pj_latlong_(0)
+goby::util::UTMGeodesy::UTMGeodesy(const LatLonPoint& origin)
+    : origin_geo_(origin), origin_zone_(0), pj_utm_(nullptr), pj_latlong_(nullptr)
 {
     double origin_lon_deg = origin.lon / boost::units::degree::degrees;
     origin_zone_ = (static_cast<int>(std::floor((origin_lon_deg + 180) / 6)) + 1) % 60;
@@ -53,7 +53,7 @@ goby::util::UTMGeodesy::UTMGeodesy(LatLonPoint origin)
                boost::units::si::radians;
 
     int err;
-    if ((err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &x, &y, NULL)))
+    if ((err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &x, &y, nullptr)))
         throw(
             goby::Exception(std::string("Failed to transform datum, reason: ") + pj_strerrno(err)));
 
@@ -68,7 +68,7 @@ goby::util::UTMGeodesy::~UTMGeodesy()
     pj_free(pj_latlong_);
 }
 
-goby::util::UTMGeodesy::XYPoint goby::util::UTMGeodesy::convert(LatLonPoint geo) const
+goby::util::UTMGeodesy::XYPoint goby::util::UTMGeodesy::convert(const LatLonPoint& geo) const
 {
     double x =
         boost::units::quantity<boost::units::si::plane_angle>(geo.lon) / boost::units::si::radians;
@@ -76,7 +76,7 @@ goby::util::UTMGeodesy::XYPoint goby::util::UTMGeodesy::convert(LatLonPoint geo)
         boost::units::quantity<boost::units::si::plane_angle>(geo.lat) / boost::units::si::radians;
 
     int err;
-    if ((err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &x, &y, NULL)))
+    if ((err = pj_transform(pj_latlong_, pj_utm_, 1, 1, &x, &y, nullptr)))
     {
         std::stringstream err_ss;
         err_ss << "Failed to transform (lat,lon) = (" << geo.lat << "," << geo.lon
@@ -90,13 +90,13 @@ goby::util::UTMGeodesy::XYPoint goby::util::UTMGeodesy::convert(LatLonPoint geo)
     return utm;
 }
 
-goby::util::UTMGeodesy::LatLonPoint goby::util::UTMGeodesy::convert(XYPoint utm) const
+goby::util::UTMGeodesy::LatLonPoint goby::util::UTMGeodesy::convert(const XYPoint& utm) const
 {
     double lon = (utm.x + origin_utm_.x) / boost::units::si::meters;
     double lat = (utm.y + origin_utm_.y) / boost::units::si::meters;
 
     int err;
-    if ((err = pj_transform(pj_utm_, pj_latlong_, 1, 1, &lon, &lat, NULL)))
+    if ((err = pj_transform(pj_utm_, pj_latlong_, 1, 1, &lon, &lat, nullptr)))
     {
         std::stringstream err_ss;
         err_ss << "Failed to transform (x,y) = (" << utm.x << "," << utm.y

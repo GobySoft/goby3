@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MOOS_MIDDLEWARE_FRONTSEAT_FRONTSEAT_GATEWAY_PLUGIN_H
+#define GOBY_MOOS_MIDDLEWARE_FRONTSEAT_FRONTSEAT_GATEWAY_PLUGIN_H
 
 #include "goby/middleware/marshalling/protobuf.h"
 
@@ -57,7 +58,7 @@ class FrontSeatTranslation : public goby::moos::Translator
             {"SPEED", "HEADING", "DEPTH", "PITCH", "ROLL", "Z_RATE", "ALTITUDE"});
         for (const auto& var : desired_buffer_params) moos().add_buffer("DESIRED_" + var);
         moos().add_trigger("DESIRED_SPEED",
-                           [this](const CMOOSMsg& msg) { convert_desired_setpoints(); });
+                           [this](const CMOOSMsg& /*msg*/) { convert_desired_setpoints(); });
 
         moos().add_trigger("IVPHELM_STATE", [this](const CMOOSMsg& msg) {
             goby::middleware::frontseat::protobuf::HelmStateReport helm_state_report;
@@ -80,3 +81,5 @@ class FrontSeatTranslation : public goby::moos::Translator
 };
 } // namespace moos
 } // namespace goby
+
+#endif

@@ -24,6 +24,8 @@
 
 #include <dlfcn.h>
 
+#include <memory>
+
 #include "goby/moos/moos_string.h"
 #include "goby/time/io.h"
 
@@ -35,7 +37,7 @@ using goby::moos::operator<<;
 using goby::apps::moos::protobuf::pTranslatorConfig;
 
 pTranslatorConfig goby::apps::moos::CpTranslator::cfg_;
-goby::apps::moos::CpTranslator* goby::apps::moos::CpTranslator::inst_ = 0;
+goby::apps::moos::CpTranslator* goby::apps::moos::CpTranslator::inst_ = nullptr;
 
 goby::apps::moos::CpTranslator* goby::apps::moos::CpTranslator::get_instance()
 {
@@ -100,7 +102,7 @@ goby::apps::moos::CpTranslator::CpTranslator()
         else if (cfg_.translator_entry(i).trigger().type() ==
                  goby::moos::protobuf::TranslatorEntry::Trigger::TRIGGER_TIME)
         {
-            timers_.push_back(std::shared_ptr<Timer>(new Timer(timer_io_context_)));
+            timers_.push_back(std::make_shared<Timer>(timer_io_context_));
 
             Timer& new_timer = *timers_.back();
 
@@ -125,7 +127,7 @@ goby::apps::moos::CpTranslator::CpTranslator()
     }
 }
 
-goby::apps::moos::CpTranslator::~CpTranslator() {}
+goby::apps::moos::CpTranslator::~CpTranslator() = default;
 
 void goby::apps::moos::CpTranslator::loop() { timer_io_context_.poll(); }
 
@@ -162,11 +164,10 @@ void goby::apps::moos::CpTranslator::create_on_multiplex_publish(const CMOOSMsg&
     {
         out = translator_.protobuf_to_inverse_moos(*msg);
 
-        for (std::multimap<std::string, CMOOSMsg>::iterator it = out.begin(), n = out.end();
-             it != n; ++it)
+        for (auto& it : out)
         {
-            glog.is(VERBOSE) && glog << "Inverse Publishing: " << it->second.GetKey() << std::endl;
-            publish(it->second);
+            glog.is(VERBOSE) && glog << "Inverse Publishing: " << it.second.GetKey() << std::endl;
+            publish(it.second);
         }
     }
     catch (std::exception& e)
@@ -218,16 +219,15 @@ void goby::apps::moos::CpTranslator::do_translation(
 }
 
 void goby::apps::moos::CpTranslator::do_publish(
-    std::shared_ptr<google::protobuf::Message> created_message)
+    const std::shared_ptr<google::protobuf::Message>& created_message)
 {
     std::multimap<std::string, CMOOSMsg> out;
 
     out = translator_.protobuf_to_moos(*created_message);
 
-    for (std::multimap<std::string, CMOOSMsg>::iterator it = out.begin(), n = out.end(); it != n;
-         ++it)
+    for (auto& it : out)
     {
-        glog.is(VERBOSE) && glog << "Publishing: " << it->second << std::endl;
-        publish(it->second);
+        glog.is(VERBOSE) && glog << "Publishing: " << it.second << std::endl;
+        publish(it.second);
     }
 }

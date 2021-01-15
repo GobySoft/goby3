@@ -49,7 +49,7 @@
 
 std::atomic<int> goby::util::ais::Encoder::sequence_id_{0};
 
-goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Position pos)
+goby::util::ais::Encoder::Encoder(const goby::util::ais::protobuf::Position& pos)
 {
     switch (pos.message_id())
     {
@@ -68,7 +68,7 @@ goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Position pos)
     }
 }
 
-goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Voyage voy, int part_num)
+goby::util::ais::Encoder::Encoder(const goby::util::ais::protobuf::Voyage& voy, int part_num)
 {
     switch (voy.message_id())
     {
@@ -144,7 +144,7 @@ std::vector<goby::util::NMEASentence> goby::util::ais::Encoder::as_nmea() const
     return nmeas;
 }
 
-void goby::util::ais::Encoder::encode_msg_18(goby::util::ais::protobuf::Position pos)
+void goby::util::ais::Encoder::encode_msg_18(const goby::util::ais::protobuf::Position& pos)
 {
     using namespace boost::units;
 
@@ -182,7 +182,7 @@ void goby::util::ais::Encoder::encode_msg_18(goby::util::ais::protobuf::Position
     assert(bits_.size() == 168);
 }
 
-void goby::util::ais::Encoder::encode_msg_24(goby::util::ais::protobuf::Voyage voy,
+void goby::util::ais::Encoder::encode_msg_24(const goby::util::ais::protobuf::Voyage& voy,
                                              std::uint32_t part_num)
 {
     channel_ = RadioChannel::CLASS_B;

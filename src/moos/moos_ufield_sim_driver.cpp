@@ -38,7 +38,7 @@ using namespace goby::util::logger;
 
 namespace micromodem = goby::acomms::micromodem;
 
-goby::moos::UFldDriver::UFldDriver() : last_ccmpc_dest_(-1) {}
+goby::moos::UFldDriver::UFldDriver() = default;
 
 void goby::moos::UFldDriver::startup(const goby::acomms::protobuf::DriverConfig& cfg)
 {
@@ -201,12 +201,12 @@ void goby::moos::UFldDriver::do_work()
     MOOSMSG_LIST msgs;
     if (moos_client_.Fetch(msgs))
     {
-        for (MOOSMSG_LIST::iterator it = msgs.begin(), end = msgs.end(); it != end; ++it)
+        for (auto& it : msgs)
         {
             const std::string& in_moos_var = ufld_driver_cfg_.incoming_moos_var();
-            if (it->GetKey() == in_moos_var)
+            if (it.GetKey() == in_moos_var)
             {
-                const std::string& value = it->GetString();
+                const std::string& value = it.GetString();
 
                 glog.is(DEBUG1) && glog << group(glog_in_group()) << in_moos_var << ": " << value
                                         << std::endl;
@@ -218,7 +218,7 @@ void goby::moos::UFldDriver::do_work()
                 msg.ParseFromString(hex_decode(value));
                 receive_message(msg);
             }
-            else if (it->GetKey() == ufld_driver_cfg_.micromodem_mimic().range_report_var())
+            else if (it.GetKey() == ufld_driver_cfg_.micromodem_mimic().range_report_var())
             {
                 // response to our modem "ping"
                 // e.g "range=1722.3869,target=resolution,time=1364413337.272"
@@ -227,11 +227,11 @@ void goby::moos::UFldDriver::do_work()
                     goby::acomms::protobuf::ModemTransmission m;
                     std::string target;
                     double range, time;
-                    if (!val_from_string(target, it->GetString(), "target"))
+                    if (!val_from_string(target, it.GetString(), "target"))
                         throw(std::runtime_error("No `target` field"));
-                    if (!val_from_string(range, it->GetString(), "range"))
+                    if (!val_from_string(range, it.GetString(), "range"))
                         throw(std::runtime_error("No `range` field"));
-                    if (!val_from_string(time, it->GetString(), "time"))
+                    if (!val_from_string(time, it.GetString(), "time"))
                         throw(std::runtime_error("No `time` field"));
 
                     if (target != modem_lookup_.get_name_from_id(last_ccmpc_dest_))

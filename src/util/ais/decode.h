@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef AIS_DECODE_20191021H
-#define AIS_DECODE_20191021H
+#ifndef GOBY_UTIL_AIS_DECODE_H
+#define GOBY_UTIL_AIS_DECODE_H
 
 #include <ais.h>
 #include <vdm.h>
@@ -48,11 +48,11 @@ class Decoder
 {
   public:
     Decoder();
-    Decoder(NMEASentence nmea) : Decoder(std::vector<NMEASentence>(1, nmea)) {}
-    Decoder(std::vector<NMEASentence> nmeas);
+    Decoder(const NMEASentence& nmea) : Decoder(std::vector<NMEASentence>(1, nmea)) {}
+    Decoder(const std::vector<NMEASentence>& nmeas);
 
     // returns true if message is complete
-    bool push(NMEASentence nmea);
+    bool push(const NMEASentence& nmea);
 
     bool complete() { return ais_msg_ != nullptr; }
 
@@ -105,7 +105,7 @@ class Decoder
     }
 
     template <typename LibAisMessage>
-    void set_shared_fields(goby::util::ais::protobuf::Voyage& voy, const LibAisMessage& ais,
+    void set_shared_fields(goby::util::ais::protobuf::Voyage& /*voy*/, const LibAisMessage& ais,
                            int part_num)
     {
         using namespace boost::units;

@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef FlexOstream20091211H
-#define FlexOstream20091211H
+#ifndef GOBY_UTIL_DEBUG_LOGGER_FLEX_OSTREAM_H
+#define GOBY_UTIL_DEBUG_LOGGER_FLEX_OSTREAM_H
 
 #include <iomanip>
 #include <iostream>
@@ -43,7 +43,7 @@ namespace util
 class FlexOstream : public std::ostream
 {
   public:
-    FlexOstream() : std::ostream(&sb_), sb_(this), lock_action_(logger_lock::none)
+    FlexOstream() : std::ostream(&sb_), sb_(this)
     {
         ++instances_;
         if (instances_ > 1)
@@ -55,7 +55,7 @@ class FlexOstream : public std::ostream
             exit(EXIT_FAILURE);
         }
     }
-    ~FlexOstream() {}
+    ~FlexOstream() override = default;
 
     /// \name Initialization
     //@{
@@ -86,7 +86,7 @@ class FlexOstream : public std::ostream
     bool is_debug3() { return is(goby::util::logger::DEBUG3); }
 
     /// Attach a stream object (e.g. std::cout, std::ofstream, ...) to the logger with desired verbosity
-    void add_stream(logger::Verbosity verbosity = logger::VERBOSE, std::ostream* os = 0)
+    void add_stream(logger::Verbosity verbosity = logger::VERBOSE, std::ostream* os = nullptr)
     {
         std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
         sb_.add_stream(verbosity, os);
@@ -94,7 +94,7 @@ class FlexOstream : public std::ostream
 
     void add_stream(goby::util::protobuf::GLogConfig::Verbosity verbosity =
                         goby::util::protobuf::GLogConfig::VERBOSE,
-                    std::ostream* os = 0)
+                    std::ostream* os = nullptr)
     {
         std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
         sb_.add_stream(static_cast<logger::Verbosity>(verbosity), os);
@@ -168,7 +168,7 @@ class FlexOstream : public std::ostream
 
   private:
     FlexOStreamBuf sb_;
-    logger_lock::LockAction lock_action_;
+    logger_lock::LockAction lock_action_{logger_lock::none};
 };
 
 inline std::ostream& operator<<(FlexOstream& out, char c) { return std::operator<<(out, c); }
@@ -215,7 +215,7 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
     {
     }
 
-    void AddError(int line, int column, const std::string& message)
+    void AddError(int line, int column, const std::string& message) override
     {
         using goby::util::logger::WARN;
 
@@ -224,7 +224,7 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
                                           << message << std::endl;
         has_errors_ = true;
     }
-    void AddWarning(int line, int column, const std::string& message)
+    void AddWarning(int line, int column, const std::string& message) override
     {
         using goby::util::logger::WARN;
 
@@ -235,7 +235,7 @@ class FlexOStreamErrorCollector : public google::protobuf::io::ErrorCollector
         has_warnings_ = true;
     }
 
-    void print_original(int line, int column)
+    void print_original(int line, int /*column*/)
     {
         using goby::util::logger::WARN;
 

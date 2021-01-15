@@ -38,15 +38,14 @@ using namespace goby::util::logger;
 
 std::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
 
-goby::acomms::IridiumDriver::IridiumDriver()
-    : fsm_(driver_cfg_), last_triple_plus_time_(0), serial_fd_(-1), next_frame_(0)
+goby::acomms::IridiumDriver::IridiumDriver() : fsm_(driver_cfg_)
 {
     init_iridium_dccl();
 
     //    assert(byte_string_to_uint32(uint32_to_byte_string(16540)) == 16540);
 }
 
-goby::acomms::IridiumDriver::~IridiumDriver() {}
+goby::acomms::IridiumDriver::~IridiumDriver() = default;
 
 void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
 {
@@ -226,7 +225,7 @@ void goby::acomms::IridiumDriver::do_work()
     //    display_state_cfg(&glog);
     double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
-    const iridium::fsm::OnCall* on_call = fsm_.state_cast<const iridium::fsm::OnCall*>();
+    const auto* on_call = fsm_.state_cast<const iridium::fsm::OnCall*>();
 
     if (on_call)
     {
@@ -385,7 +384,7 @@ void goby::acomms::IridiumDriver::display_state_cfg(std::ostream* os)
 
         const iridium::fsm::IridiumDriverFSM::state_base_type* pState = &*pLeafState;
 
-        while (pState != 0)
+        while (pState != nullptr)
         {
             if (pState != &*pLeafState)
             {

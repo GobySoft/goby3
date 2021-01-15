@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ASIOLineBasedInterface20100715H
-#define ASIOLineBasedInterface20100715H
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_INTERFACE_H
+#define GOBY_UTIL_LINEBASEDCOMMS_INTERFACE_H
 
 #include <deque>
 #include <fstream>
@@ -50,7 +50,7 @@ class LineBasedInterface
 {
   public:
     LineBasedInterface(const std::string& delimiter);
-    virtual ~LineBasedInterface() {}
+    virtual ~LineBasedInterface() = default;
 
     // start the connection
     void start();

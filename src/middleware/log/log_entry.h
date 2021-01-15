@@ -21,12 +21,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LogEntry20171127H
-#define LogEntry20171127H
+#ifndef GOBY_MIDDLEWARE_LOG_LOG_ENTRY_H
+#define GOBY_MIDDLEWARE_LOG_LOG_ENTRY_H
 
 #include <boost/bimap.hpp>
 #include <boost/crc.hpp>
 #include <cstdint>
+#include <utility>
 
 #include "goby/exception.h"
 #include "goby/util/debug_logger.h"
@@ -55,15 +56,15 @@ template <> struct uint<1>
 };
 template <> struct uint<2>
 {
-    typedef std::uint16_t type;
+    using type = std::uint16_t;
 };
 template <> struct uint<4>
 {
-    typedef std::uint32_t type;
+    using type = std::uint32_t;
 };
 template <> struct uint<8>
 {
-    typedef std::uint64_t type;
+    using type = std::uint64_t;
 };
 
 struct LogFilter
@@ -116,9 +117,11 @@ class LogEntry
         filter_hook;
 
   public:
-    LogEntry(const std::vector<unsigned char>& data, int scheme, const std::string& type,
-             const Group& group)
-        : data_(data), scheme_(scheme), type_(type), group_(std::string(group))
+    LogEntry(std::vector<unsigned char> data, int scheme, std::string type, const Group& group)
+        : data_(std::move(data)),
+          scheme_(scheme),
+          type_(std::move(type)),
+          group_(std::string(group))
     {
     }
 
@@ -174,7 +177,8 @@ class LogEntry
         s->write(cs_str.data(), cs_str.size());
     }
 
-    template <typename Unsigned> Unsigned read_one(std::istream* s, boost::crc_32_type* crc = 0)
+    template <typename Unsigned>
+    Unsigned read_one(std::istream* s, boost::crc_32_type* crc = nullptr)
     {
         auto size = std::numeric_limits<Unsigned>::digits / 8;
         std::string str(size, '\0');

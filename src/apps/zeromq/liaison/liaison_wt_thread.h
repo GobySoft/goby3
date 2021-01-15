@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISONWTTHREAD20110609H
-#define LIAISONWTTHREAD20110609H
+#ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_WT_THREAD_H
+#define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_WT_THREAD_H
 
 #include <Wt/WApplication>
 #include <Wt/WContainerWidget>
@@ -46,7 +46,7 @@ class LiaisonWtThread : public Wt::WApplication
 {
   public:
     LiaisonWtThread(const Wt::WEnvironment& env, protobuf::LiaisonConfig app_cfg);
-    ~LiaisonWtThread();
+    ~LiaisonWtThread() override;
 
     LiaisonWtThread(const LiaisonWtThread&) = delete;
     LiaisonWtThread& operator=(const LiaisonWtThread&) = delete;

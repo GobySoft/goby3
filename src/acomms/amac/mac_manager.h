@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MAC20091019H
-#define MAC20091019H
+#ifndef GOBY_ACOMMS_AMAC_MAC_MANAGER_H
+#define GOBY_ACOMMS_AMAC_MAC_MANAGER_H
 
 #include "goby/acomms/modem_driver.h"
 #include "goby/acomms/protobuf/amac.pb.h"
@@ -129,7 +129,7 @@ class MACManager : public std::list<protobuf::ModemTransmission>
 
     unsigned cycles_since_reference_;
 
-    bool started_up_;
+    bool started_up_{false};
 
     std::string glog_mac_group_;
     static int count_;

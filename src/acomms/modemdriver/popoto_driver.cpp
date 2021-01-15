@@ -33,6 +33,7 @@
 
 #include "popoto_driver.h"
 #include <iostream>
+#include <utility>
 
 #include "driver_exception.h"
 #include "goby/util/binary.h"
@@ -43,8 +44,8 @@ using goby::glog;
 using namespace goby::util::logger;
 using json = nlohmann::json;
 
-goby::acomms::PopotoDriver::PopotoDriver() {}
-goby::acomms::PopotoDriver::~PopotoDriver() {}
+goby::acomms::PopotoDriver::PopotoDriver() = default;
+goby::acomms::PopotoDriver::~PopotoDriver() = default;
 
 void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
 {
@@ -264,7 +265,7 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
 
     // To send a bin msg it needs to be in 8 bit CSV values
     std::stringstream raw;
-    raw << "transmitJSON {\"Payload\":{\"Data\":[" << jsonStr << "]}}"
+    raw << R"(transmitJSON {"Payload":{"Data":[)" << jsonStr << "]}}"
         << "\n";
 
     // Send the raw string to terminal for debugging
@@ -446,12 +447,12 @@ void goby::acomms::PopotoDriver::DecodeHeader(std::vector<uint8_t> data,
 }
 
 // The only msg that is important for the dccl driver is the header and data. We will just print everything else to terminal for the moment
-void goby::acomms::PopotoDriver::ProcessJSON(std::string message,
+void goby::acomms::PopotoDriver::ProcessJSON(const std::string& message,
                                              protobuf::ModemTransmission& modem_msg)
 {
     json j = json::parse(message);
     json::iterator it = j.begin();
-    std::string label = it.key();
+    const std::string& label = it.key();
     std::string str;
 
     protobuf::ModemRaw raw;
@@ -488,9 +489,9 @@ void goby::acomms::PopotoDriver::ProcessJSON(std::string message,
     }
 }
 // Remove popoto trash from the incoming serial string
-std::string goby::acomms::PopotoDriver::StripString(std::string in, std::string p)
+std::string goby::acomms::PopotoDriver::StripString(std::string in, const std::string& p)
 {
-    std::string out = in;
+    std::string out = std::move(in);
     std::string::size_type n = p.length();
     for (std::string::size_type i = out.find(p); i != std::string::npos; i = out.find(p))
         out.erase(i, n);

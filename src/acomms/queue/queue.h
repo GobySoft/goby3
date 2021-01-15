@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Queue20080605H
-#define Queue20080605H
+#ifndef GOBY_ACOMMS_QUEUE_QUEUE_H
+#define GOBY_ACOMMS_QUEUE_QUEUE_H
 
 #include <bitset>
 #include <deque>
@@ -57,16 +57,16 @@ struct QueuedMessage
 };
 
 typedef std::list<QueuedMessage>::iterator messages_it;
-typedef std::multimap<unsigned, messages_it>::iterator waiting_for_ack_it;
+using waiting_for_ack_it = std::multimap<unsigned int, messages_it>::iterator;
 
 class Queue
 {
   public:
     Queue(const google::protobuf::Descriptor* desc, QueueManager* parent,
-          const protobuf::QueuedMessageEntry& cfg = protobuf::QueuedMessageEntry());
+          protobuf::QueuedMessageEntry cfg = protobuf::QueuedMessageEntry());
 
-    bool push_message(std::shared_ptr<google::protobuf::Message> dccl_msg);
-    bool push_message(std::shared_ptr<google::protobuf::Message> dccl_msg,
+    bool push_message(const std::shared_ptr<google::protobuf::Message>& dccl_msg);
+    bool push_message(const std::shared_ptr<google::protobuf::Message>& dccl_msg,
                       protobuf::QueuedMessageMeta meta);
 
     protobuf::QueuedMessageMeta meta_from_msg(const google::protobuf::Message& dccl_msg);
@@ -125,7 +125,7 @@ class Queue
     void set_latest_metadata(const google::protobuf::FieldDescriptor* field,
                              const boost::any& field_value, const boost::any& wire_value);
 
-    double time_duration2double(boost::posix_time::time_duration time_of_day);
+    double time_duration2double(const boost::posix_time::time_duration& time_of_day);
 
   private:
     Queue& operator=(const Queue&);

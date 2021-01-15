@@ -27,6 +27,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <memory>
+
 #include <sstream>
 
 #include <boost/algorithm/string.hpp>
@@ -69,24 +71,12 @@ std::mutex goby::acomms::MMDriver::dccl_mutex_;
 
 goby::acomms::MMDriver::MMDriver()
     : last_write_time_(time::SystemClock::now()),
-      waiting_for_modem_(false),
-      waiting_for_multimsg_(false),
-      startup_done_(false),
-      global_fail_count_(0),
-      present_fail_count_(0),
-      clock_set_(false),
+
       last_hydroid_gateway_gps_request_(time::SystemClock::now()),
-      is_hydroid_gateway_(false),
-      expected_remaining_caxst_(0),
-      expected_remaining_cacst_(0),
-      expected_ack_destination_(0),
-      local_cccyc_(false),
+
       last_keep_alive_time_(std::chrono::seconds(0)),
-      last_multimsg_rx_time_(std::chrono::seconds(0)),
-      using_application_acks_(false),
-      application_ack_max_frames_(0),
-      next_frame_(0),
-      serial_fd_(-1)
+      last_multimsg_rx_time_(std::chrono::seconds(0))
+
 {
     initialize_talkers();
 }
@@ -127,7 +117,7 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
             application_ack_ids_.insert(id);
 
         std::lock_guard<std::mutex> l(dccl_mutex_);
-        dccl_.reset(new dccl::Codec);
+        dccl_ = std::make_unique<dccl::Codec>();
         dccl_->load<micromodem::protobuf::MMApplicationAck>();
     }
 
@@ -423,8 +413,7 @@ void goby::acomms::MMDriver::set_clock()
     {
         NMEASentence nmea("$CCTMS", NMEASentence::IGNORE);
         std::stringstream iso_time;
-        boost::posix_time::time_facet* facet =
-            new boost::posix_time::time_facet("%Y-%m-%dT%H:%M:%SZ");
+        auto* facet = new boost::posix_time::time_facet("%Y-%m-%dT%H:%M:%SZ");
         iso_time.imbue(std::locale(iso_time.getloc(), facet));
         iso_time << (p + boost::posix_time::seconds(1));
         nmea.push_back(iso_time.str());
@@ -529,7 +518,7 @@ void goby::acomms::MMDriver::shutdown()
     modem_close();
 }
 
-goby::acomms::MMDriver::~MMDriver() {}
+goby::acomms::MMDriver::~MMDriver() = default;
 
 //
 // LOOP
@@ -1564,7 +1553,7 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
             time_field = 1;
 
         std::string t = nmea.at(time_field).substr(0, nmea.at(time_field).size() - 1);
-        boost::posix_time::time_input_facet* tif = new boost::posix_time::time_input_facet;
+        auto* tif = new boost::posix_time::time_input_facet;
         tif->set_iso_extended_format();
         std::istringstream iso_time(t);
         iso_time.imbue(std::locale(std::locale::classic(), tif));
@@ -1842,7 +1831,7 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
     // we're receiving
     else
     {
-        unsigned rate = as<std::uint32_t>(nmea[4]);
+        auto rate = as<std::uint32_t>(nmea[4]);
         if (local_cccyc_ && rate != 0) // clear flag for next cycle
         {
             // if we poll for rates > 0, we get *two* CACYC - the one from the poll and the one from the message
@@ -1851,7 +1840,7 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
             return;
         }
 
-        unsigned num_frames = as<std::uint32_t>(nmea[6]);
+        auto num_frames = as<std::uint32_t>(nmea[6]);
         if (!frames_waiting_to_receive_.empty())
         {
             glog.is(DEBUG1) && glog << group(glog_out_group()) << warn << "flushing "
@@ -1914,17 +1903,13 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
         // build up message to ack
         micromodem::protobuf::MMApplicationAck acks;
 
-        for (std::map<unsigned, std::set<unsigned>>::const_iterator it = frames_to_ack_.begin(),
-                                                                    end = frames_to_ack_.end();
-             it != end; ++it)
+        for (const auto& it : frames_to_ack_)
         {
             micromodem::protobuf::MMApplicationAck::AckPart& acks_part = *acks.add_part();
-            acks_part.set_ack_dest(it->first);
+            acks_part.set_ack_dest(it.first);
 
             std::uint32_t acked_frames = 0;
-            for (std::set<unsigned>::const_iterator jt = it->second.begin(),
-                                                    jend = it->second.end();
-                 jt != jend; ++jt)
+            for (auto jt = it.second.begin(), jend = it.second.end(); jt != jend; ++jt)
                 acked_frames |= (1ul << *jt);
 
             acks_part.set_acked_frames(acked_frames);

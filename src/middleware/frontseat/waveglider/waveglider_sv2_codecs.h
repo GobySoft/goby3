@@ -21,6 +21,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_CODECS_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_CODECS_H
+
 #include <dccl.h>
 #include <dccl/field_codec_id.h>
 
@@ -41,28 +44,28 @@ namespace frontseat
 class SV2IdentifierCodec : public dccl::DefaultIdentifierCodec
 {
   private:
-    dccl::Bitset encode() { return encode(0); }
+    dccl::Bitset encode() override { return encode(0); }
 
-    dccl::Bitset encode(const dccl::uint32& wire_value)
+    dccl::Bitset encode(const dccl::uint32& wire_value) override
     {
         return dccl::Bitset(size(), wire_value - 0x7E0000);
     }
 
-    dccl::uint32 decode(dccl::Bitset* bits) { return 0x7E0000 + bits->to<dccl::uint32>(); }
+    dccl::uint32 decode(dccl::Bitset* bits) override { return 0x7E0000 + bits->to<dccl::uint32>(); }
 
-    unsigned size() { return 2 * dccl::BITS_IN_BYTE; }
+    unsigned size() override { return 2 * dccl::BITS_IN_BYTE; }
 
-    unsigned size(const dccl::uint32& field_value) { return size(); }
+    unsigned size(const dccl::uint32& /*field_value*/) override { return size(); }
 
-    unsigned max_size() { return size(); }
+    unsigned max_size() override { return size(); }
 
-    unsigned min_size() { return size(); }
+    unsigned min_size() override { return size(); }
 };
 
 template <typename Integer> class SV2NumericCodec : public dccl::TypedFixedFieldCodec<Integer>
 {
   private:
-    unsigned size()
+    unsigned size() override
     {
         dccl::uint64 v = dccl::FieldCodecBase::dccl_field_options().max() + 1;
         unsigned r = 0;
@@ -70,20 +73,22 @@ template <typename Integer> class SV2NumericCodec : public dccl::TypedFixedField
         return r;
     }
 
-    dccl::Bitset encode() { return dccl::Bitset(size()); }
+    dccl::Bitset encode() override { return dccl::Bitset(size()); }
 
     // this works because both DCCL and the SV2 protocol uses little-endian representation
-    dccl::Bitset encode(const Integer& i)
+    dccl::Bitset encode(const Integer& i) override
     {
         dccl::Bitset b;
         b.from<Integer>(i, size());
         return b;
     }
 
-    Integer decode(dccl::Bitset* bits) { return bits->to<Integer>(); }
+    Integer decode(dccl::Bitset* bits) override { return bits->to<Integer>(); }
 
-    void validate() {}
+    void validate() override {}
 };
 } // namespace frontseat
 } // namespace middleware
 } // namespace goby
+
+#endif

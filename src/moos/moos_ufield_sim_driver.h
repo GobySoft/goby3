@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UFieldSimDriver20120214H
-#define UFieldSimDriver20120214H
+#ifndef GOBY_MOOS_MOOS_UFIELD_SIM_DRIVER_H
+#define GOBY_MOOS_MOOS_UFIELD_SIM_DRIVER_H
 
 #include "goby/moos/moos_header.h"
 #include "goby/moos/protobuf/ufield_sim_driver.pb.h"
@@ -47,10 +47,10 @@ class UFldDriver : public goby::acomms::ModemDriverBase
 {
   public:
     UFldDriver();
-    void startup(const goby::acomms::protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m);
+    void startup(const goby::acomms::protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m) override;
 
   private:
     void send_message(const goby::acomms::protobuf::ModemTransmission& msg);
@@ -75,7 +75,7 @@ class UFldDriver : public goby::acomms::ModemDriverBase
     //boost::bimap<int, std::string> modem_id2name_;
     goby::moos::ModemIdConvert modem_lookup_;
 
-    int last_ccmpc_dest_;
+    int last_ccmpc_dest_{-1};
 };
 } // namespace moos
 } // namespace goby

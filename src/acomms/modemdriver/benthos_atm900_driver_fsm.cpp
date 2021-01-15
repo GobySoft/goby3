@@ -80,7 +80,7 @@ goby::acomms::benthos::fsm::ReceiveData::ReceiveData(my_context ctx)
 {
     try
     {
-        if (const EvReceive* ev_rx = dynamic_cast<const EvReceive*>(triggering_event()))
+        if (const auto* ev_rx = dynamic_cast<const EvReceive*>(triggering_event()))
         {
             std::string first = ev_rx->first_;
             // remove extra spaces in the string
@@ -200,20 +200,20 @@ void goby::acomms::benthos::fsm::ReceiveData::in_state_react(const EvRxSerial& e
             statmap.insert(std::make_pair("SPD", (int)STAT_SPD));
             statmap.insert(std::make_pair("CCERR", (int)STAT_CCERR));
 
-            for (unsigned i = 0; i < stats.size(); ++i)
+            for (const auto& stat : stats)
             {
-                std::string::size_type col_pos = stats[i].find(":");
+                std::string::size_type col_pos = stat.find(':');
                 if (col_pos == std::string::npos)
                     continue;
 
-                std::string key_str = stats[i].substr(0, col_pos);
+                std::string key_str = stat.substr(0, col_pos);
 
                 std::map<std::string, int>::const_iterator it = statmap.find(key_str);
                 if (it == statmap.end())
                     continue;
 
-                StatField field = static_cast<StatField>(it->second);
-                std::string val_str = stats[i].substr(col_pos + 1);
+                auto field = static_cast<StatField>(it->second);
+                std::string val_str = stat.substr(col_pos + 1);
                 boost::trim(val_str);
                 boost::trim_left_if(val_str, boost::is_any_of("+0"));
                 if (val_str.empty())
@@ -289,7 +289,7 @@ void goby::acomms::benthos::fsm::Range::in_state_react(const EvRxSerial& e)
             const std::string ms = "ms)";
 
             std::string::size_type range_pos = in.find(range);
-            std::string::size_type col_pos = in.find(":");
+            std::string::size_type col_pos = in.find(':');
             std::string::size_type rt_start_pos = in.find(roundtrip);
             std::string::size_type rt_end_pos = in.find(ms);
 

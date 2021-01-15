@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_APPS_ZEROMQ_GPSD_CLIENT_GPSD_CLIENT_H
+#define GOBY_APPS_ZEROMQ_GPSD_CLIENT_GPSD_CLIENT_H
 
 #include <gps.h>
 
@@ -57,8 +58,10 @@ class GPSDClient : public goby::zeromq::SingleThreadApplication<protobuf::GPSDCo
     gpsmm gps_rec_;
 
     std::set<std::string> device_list_;
-    bool publish_all_;
+    bool publish_all_{false};
 };
 } // namespace zeromq
 } // namespace apps
 } // namespace goby
+
+#endif

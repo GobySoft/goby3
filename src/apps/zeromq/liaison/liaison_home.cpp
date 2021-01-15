@@ -28,7 +28,7 @@ using namespace Wt;
 
 goby::apps::zeromq::LiaisonHome::LiaisonHome() : main_layout_(new Wt::WVBoxLayout(this))
 {
-    Wt::WContainerWidget* top_text = new Wt::WContainerWidget(this);
+    auto* top_text = new Wt::WContainerWidget(this);
     main_layout_->addWidget(top_text);
 
     top_text->addWidget(new WText("Welcome to Goby Liaison: an extensible tool for commanding and "

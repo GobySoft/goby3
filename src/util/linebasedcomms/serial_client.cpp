@@ -25,14 +25,15 @@
 #include <iostream>
 
 #include <thread>
+#include <utility>
 
 #include "serial_client.h"
 
-goby::util::SerialClient::SerialClient(const std::string& name, unsigned baud,
+goby::util::SerialClient::SerialClient(std::string name, unsigned baud,
                                        const std::string& delimiter)
     : LineBasedClient<boost::asio::serial_port>(delimiter),
       serial_port_(io_),
-      name_(name),
+      name_(std::move(name)),
       baud_(baud)
 {
 }

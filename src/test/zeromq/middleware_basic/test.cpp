@@ -44,7 +44,7 @@ extern constexpr goby::middleware::Group ctd{"CTD"};
 extern constexpr goby::middleware::Group ctd2{"CTD2"};
 extern constexpr goby::middleware::Group temp{"TEMP"};
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
@@ -69,9 +69,11 @@ int main(int argc, char* argv[])
     s.set_salinity(38.5);
 
     std::cout << "Should be DCCL" << std::endl;
-    assert(goby::middleware::scheme<decltype(s)>() == goby::middleware::MarshallingScheme::DCCL);
+    static_assert(
+        goby::middleware::scheme<decltype(s)>() == goby::middleware::MarshallingScheme::DCCL, "");
     // Interprocess defaults to PROTOBUF for DCCL types
-    assert(zmq_blank.scheme<decltype(s)>() == goby::middleware::MarshallingScheme::PROTOBUF);
+    static_assert(zmq_blank.scheme<decltype(s)>() == goby::middleware::MarshallingScheme::PROTOBUF,
+                  "");
     zmq_blank.publish<ctd>(s);
 
     std::shared_ptr<CTDSample> sp(new CTDSample);

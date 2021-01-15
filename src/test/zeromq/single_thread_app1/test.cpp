@@ -27,11 +27,12 @@
 #include "goby/zeromq/application/single_thread.h"
 
 #include <boost/units/io.hpp>
+#include <memory>
+
 #include <sys/types.h>
 #include <sys/wait.h>
 
 #include "goby/test/zeromq/single_thread_app1/test.pb.h"
-using goby::glog;
 using namespace goby::util::logger;
 using namespace goby::test::zeromq::protobuf;
 
@@ -116,12 +117,12 @@ int main(int argc, char* argv[])
         goby::zeromq::protobuf::InterProcessManagerHold hold;
         hold.add_required_client("TestApp");
 
-        manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(1));
+        manager_context = std::make_unique<zmq::context_t>(1);
+        router_context = std::make_unique<zmq::context_t>(1);
         goby::zeromq::Router router(*router_context, cfg);
-        t2.reset(new std::thread([&] { router.run(); }));
+        t2 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
-        t3.reset(new std::thread([&] { manager.run(); }));
+        t3 = std::make_unique<std::thread>([&] { manager.run(); });
         int wstatus;
         wait(&wstatus);
         router_context.reset();

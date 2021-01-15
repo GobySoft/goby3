@@ -45,12 +45,12 @@
 
 #include "decode.h"
 
-goby::util::ais::Decoder::Decoder(std::vector<NMEASentence> nmeas)
+goby::util::ais::Decoder::Decoder(const std::vector<NMEASentence>& nmeas)
 {
     for (const auto& nmea : nmeas) push(nmea);
 }
 
-bool goby::util::ais::Decoder::push(goby::util::NMEASentence nmea)
+bool goby::util::ais::Decoder::push(const goby::util::NMEASentence& nmea)
 {
     if (complete())
         throw(DecoderException("Message already decoded, no more NMEA lines required."));

@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_TIME_ASIO_H
+#define GOBY_TIME_ASIO_H
 
 #include <boost/asio/time_traits.hpp>
 #include <boost/date_time.hpp>
@@ -71,3 +72,5 @@ template <> struct time_traits<goby::time::ASIOGobyTime>
 };
 } // namespace asio
 } // namespace boost
+
+#endif

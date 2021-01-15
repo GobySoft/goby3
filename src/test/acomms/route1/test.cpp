@@ -48,7 +48,6 @@
 
 using namespace goby::util::logger;
 using namespace goby::acomms;
-using goby::util::as;
 using namespace boost::posix_time;
 using goby::acomms::udp::protobuf::config;
 using goby::test::acomms::protobuf::RouteMessage;
@@ -70,7 +69,7 @@ bool received_message = false;
 
 RouteMessage in_msg;
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     goby::glog.set_name(argv[0]);
@@ -133,7 +132,7 @@ int main(int argc, char* argv[])
     d_cfg2.set_modem_id(ID_2_1);
     d_cfg3.set_modem_id(ID_3_1);
 
-    srand(time(NULL));
+    srand(time(nullptr));
     int port1 = rand() % 1000 + 50020;
     int port2 = port1 + 1;
 
@@ -245,9 +244,9 @@ int main(int argc, char* argv[])
     }
 }
 
-void handle_receive1(const google::protobuf::Message& msg) { assert(false); }
+void handle_receive1(const google::protobuf::Message& /*msg*/) { assert(false); }
 
-void handle_receive2(const google::protobuf::Message& msg) { assert(false); }
+void handle_receive2(const google::protobuf::Message& /*msg*/) { assert(false); }
 
 void handle_receive3(const google::protobuf::Message& msg)
 {
@@ -257,7 +256,7 @@ void handle_receive3(const google::protobuf::Message& msg)
     assert(in_msg.SerializeAsString() == msg.SerializeAsString());
 }
 
-void handle_modem_receive3(const protobuf::ModemTransmission& message)
+void handle_modem_receive3(const protobuf::ModemTransmission& /*message*/)
 {
     goby::acomms::DCCLCodec* dccl = goby::acomms::DCCLCodec::get();
     goby::acomms::protobuf::DCCLConfig dccl_cfg;

@@ -30,7 +30,6 @@
 #include "legacy_translator.h"
 
 namespace gpb = goby::middleware::frontseat::protobuf;
-using goby::glog;
 using namespace goby::util::logger;
 
 goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs)
@@ -41,10 +40,11 @@ goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSea
         std::vector<std::string> ctd_params(
             {"CONDUCTIVITY", "TEMPERATURE", "PRESSURE", "SALINITY"});
 
-        for (std::vector<std::string>::const_iterator it = ctd_params.begin(),
-                                                      end = ctd_params.end();
-             it != end; ++it)
-        { ifs_->subscribe("CTD_" + *it, &FrontSeatLegacyTranslator::handle_mail_ctd, this, 1); }
+        for (const auto& ctd_param : ctd_params)
+        {
+            ifs_->subscribe("CTD_" + ctd_param, &FrontSeatLegacyTranslator::handle_mail_ctd, this,
+                            1);
+        }
 
         ctd_sample_.set_temperature(std::numeric_limits<double>::quiet_NaN());
         ctd_sample_.set_pressure(std::numeric_limits<double>::quiet_NaN());
@@ -59,11 +59,9 @@ goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSea
         std::vector<std::string> desired_params(
             {"HEADING", "SPEED", "DEPTH", "PITCH", "ROLL", "Z_RATE", "ALTITUDE"});
 
-        for (std::vector<std::string>::const_iterator it = desired_params.begin(),
-                                                      end = desired_params.end();
-             it != end; ++it)
+        for (const auto& desired_param : desired_params)
         {
-            ifs_->subscribe("DESIRED_" + *it,
+            ifs_->subscribe("DESIRED_" + desired_param,
                             &FrontSeatLegacyTranslator::handle_mail_desired_course, this, 1);
         }
     }
@@ -245,7 +243,8 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_modem_raw(const CM
                      data);
 }
 
-void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(gpb::InterfaceState state)
+void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(
+    gpb::InterfaceState /*state*/)
 {
     gpb::InterfaceStatus status = ifs_->frontseat_->status();
     if (status.frontseat_state() == gpb::FRONTSEAT_ACCEPTING_COMMANDS)

@@ -29,7 +29,7 @@
 
 #include "goby/middleware/log/hdf5/hdf5.h"
 
-void* plugin_handle = 0;
+void* plugin_handle = nullptr;
 
 using namespace goby::util::logger;
 using goby::glog;
@@ -55,7 +55,7 @@ class WriterApp : public goby::middleware::Application<goby::middleware::protobu
     void load();
     void collect();
     void write() { writer_.write(); }
-    void run() {}
+    void run() override {}
 
   private:
     std::shared_ptr<goby::middleware::HDF5Plugin> plugin_;
@@ -70,7 +70,7 @@ void goby::middleware::hdf5::WriterApp::load()
 {
     typedef goby::middleware::HDF5Plugin* (*plugin_func)(
         const goby::middleware::protobuf::HDF5Config*);
-    plugin_func plugin_ptr = (plugin_func)dlsym(plugin_handle, "goby_hdf5_load");
+    auto plugin_ptr = (plugin_func)dlsym(plugin_handle, "goby_hdf5_load");
 
     if (!plugin_ptr)
         glog.is(DIE) &&

@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISON20110609H
-#define LIAISON20110609H
+#ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_H
+#define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_H
 
 #include <google/protobuf/descriptor.h>
 #include <mutex>
@@ -51,7 +51,7 @@ class Liaison : public goby::zeromq::MultiThreadApplication<protobuf::LiaisonCon
 {
   public:
     Liaison();
-    ~Liaison()
+    ~Liaison() override
     {
         terminating_ = true;
         wt_server_.stop();

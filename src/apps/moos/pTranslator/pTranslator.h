@@ -23,8 +23,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef pTranslatorH
-#define pTranslatorH
+#ifndef GOBY_APPS_MOOS_PTRANSLATOR_PTRANSLATOR_H
+#define GOBY_APPS_MOOS_PTRANSLATOR_PTRANSLATOR_H
 
 #include <google/protobuf/descriptor.h>
 
@@ -52,9 +52,9 @@ class CpTranslator : public goby::moos::GobyMOOSApp
   private:
     typedef boost::asio::basic_waitable_timer<goby::time::SystemClock> Timer;
     CpTranslator();
-    ~CpTranslator();
+    ~CpTranslator() override;
 
-    void loop(); // from GobyMOOSApp
+    void loop() override; // from GobyMOOSApp
 
     void create_on_publish(const CMOOSMsg& trigger_msg,
                            const goby::moos::protobuf::TranslatorEntry& entry);
@@ -64,7 +64,7 @@ class CpTranslator : public goby::moos::GobyMOOSApp
                          const goby::moos::protobuf::TranslatorEntry& entry, Timer* timer);
 
     void do_translation(const goby::moos::protobuf::TranslatorEntry& entry);
-    void do_publish(std::shared_ptr<google::protobuf::Message> created_message);
+    void do_publish(const std::shared_ptr<google::protobuf::Message>& created_message);
 
   private:
     enum

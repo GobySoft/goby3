@@ -180,7 +180,7 @@ struct SerializerParserHelper<std::tuple<Integer, Integer, DataType>, Marshallin
 
     // use numeric type name since that's all we have with mavlink_message_t alone
     static std::string type_name() { return std::to_string(DataType::MSG_ID); }
-    static std::string type_name(const std::tuple<Integer, Integer, DataType>& d)
+    static std::string type_name(const std::tuple<Integer, Integer, DataType>& /*d*/)
     {
         return type_name();
     }
@@ -188,7 +188,7 @@ struct SerializerParserHelper<std::tuple<Integer, Integer, DataType>, Marshallin
     template <typename CharIterator>
     static std::shared_ptr<std::tuple<Integer, Integer, DataType>>
     parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-          const std::string& type = type_name())
+          const std::string& /*type*/ = type_name())
     {
         auto msg =
             SerializerParserHelper<mavlink::mavlink_message_t, MarshallingScheme::MAVLINK>::parse(
@@ -217,12 +217,12 @@ template <typename DataType> struct SerializerParserHelper<DataType, Marshalling
         return SerializerParserHelper<std::tuple<int, int, DataType>,
                                       MarshallingScheme::MAVLINK>::type_name();
     }
-    static std::string type_name(const DataType& d) { return type_name(); }
+    static std::string type_name(const DataType& /*d*/) { return type_name(); }
 
     template <typename CharIterator>
     static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
                                            CharIterator& actual_end,
-                                           const std::string& type = type_name())
+                                           const std::string& /*type*/ = type_name())
     {
         auto packet_with_metadata =
             SerializerParserHelper<std::tuple<int, int, DataType>,

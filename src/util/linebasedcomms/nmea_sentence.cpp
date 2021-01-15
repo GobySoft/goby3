@@ -74,7 +74,7 @@ unsigned char goby::util::NMEASentence::checksum(const std::string& s)
 
     if (s.empty())
         throw bad_nmea_sentence("NMEASentence::checksum: no message provided.");
-    std::string::size_type star = s.find_first_of("*");
+    std::string::size_type star = s.find_first_of('*');
     std::string::size_type dollar = s.find_first_of("$!");
 
     if (dollar == std::string::npos)
@@ -91,7 +91,7 @@ std::string goby::util::NMEASentence::message_no_cs() const
 {
     std::string message = "";
 
-    for (const_iterator it = begin(), n = end(); it < n; ++it) message += *it + ",";
+    for (auto it = begin(), n = end(); it < n; ++it) message += *it + ",";
 
     // kill last ","
     message.resize(message.size() - 1);

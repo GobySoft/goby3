@@ -66,7 +66,7 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
         ++ready;
     }
 
-    void post(const Widget& widget)
+    void post(const Widget& /*widget*/)
     {
         // assert(widget.b() == rx_count_);
         ++rx_count_;

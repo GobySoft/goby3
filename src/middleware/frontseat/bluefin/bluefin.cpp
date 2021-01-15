@@ -77,7 +77,7 @@ goby::middleware::frontseat::Bluefin::Bluefin(const gpb::Config& cfg)
                                     "using 'use_rpm_table_for_speed == true'"
                                  << std::endl;
 
-        for (auto entry : bf_config_.rpm_table())
+        for (const auto& entry : bf_config_.rpm_table())
             speed_to_rpm_.insert(std::make_pair(entry.speed(), entry.rpm()));
     }
 
@@ -120,10 +120,8 @@ void goby::middleware::frontseat::Bluefin::send_command_to_frontseat(
 {
     if (command.has_cancel_request_id())
     {
-        for (std::map<gpb::BluefinExtraCommands::BluefinCommand, gpb::CommandRequest>::iterator
-                 it = outstanding_requests_.begin(),
-                 end = outstanding_requests_.end();
-             it != end; ++it)
+        for (auto it = outstanding_requests_.begin(), end = outstanding_requests_.end(); it != end;
+             ++it)
         {
             if (it->second.request_id() == command.cancel_request_id())
             {
@@ -422,22 +420,20 @@ void goby::middleware::frontseat::Bluefin::check_send_heartbeat()
                 payload_status_.begin(),
                 payload_status_.upper_bound(gtime::SystemClock::now<gtime::MicroTime>()));
 
-            for (auto it = payload_status_.begin(), end = payload_status_.end(); it != end; ++it)
+            for (auto& payload_status : payload_status_)
             {
                 // only display the newest from a given ID
-                if (!seen_ids.count(it->second.id()))
+                if (!seen_ids.count(payload_status.second.id()))
                 {
-                    ok = ok && it->second.all_ok();
-                    seen_ids[it->second.id()] = it->second.msg();
+                    ok = ok && payload_status.second.all_ok();
+                    seen_ids[payload_status.second.id()] = payload_status.second.msg();
                 }
             }
 
-            for (std::map<int, std::string>::const_iterator it = seen_ids.begin(),
-                                                            end = seen_ids.end();
-                 it != end; ++it)
+            for (const auto& seen_id : seen_ids)
             {
                 status += "; ";
-                status += it->second;
+                status += seen_id.second;
             }
         }
 
@@ -496,11 +492,9 @@ void goby::middleware::frontseat::Bluefin::initialize_huxley()
     NMEASentence nmea("$BPLOG", NMEASentence::IGNORE);
     nmea.push_back("");
     nmea.push_back("ON");
-    for (std::vector<SentenceIDs>::const_iterator it = log_requests.begin(),
-                                                  end = log_requests.end();
-         it != end; ++it)
+    for (auto log_request : log_requests)
     {
-        nmea[1] = sentence_id_map_.right.at(*it);
+        nmea[1] = sentence_id_map_.right.at(log_request);
         append_to_write_queue(nmea);
     }
 

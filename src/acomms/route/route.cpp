@@ -28,7 +28,6 @@
 #include "route.h"
 
 using goby::glog;
-using goby::util::as;
 using namespace goby::util::logger;
 
 void goby::acomms::RouteManager::set_cfg(const protobuf::RouteManagerConfig& cfg)
@@ -97,7 +96,8 @@ int goby::acomms::RouteManager::route_index(int modem_id)
 }
 
 void goby::acomms::RouteManager::handle_out(protobuf::QueuedMessageMeta* meta,
-                                            const google::protobuf::Message& data_msg, int modem_id)
+                                            const google::protobuf::Message& /*data_msg*/,
+                                            int modem_id)
 {
     glog.is(DEBUG1) && glog << group("goby::acomms::route")
                             << "Trying to route outgoing message to destination: " << meta->dest()

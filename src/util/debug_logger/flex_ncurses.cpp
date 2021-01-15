@@ -44,18 +44,6 @@ using boost::posix_time::ptime;
 // defined in flex_ostreambuf.cpp
 extern std::mutex curses_mutex;
 
-goby::util::FlexNCurses::FlexNCurses()
-    : xmax_(0),
-      ymax_(0),
-      xwinN_(1),
-      ywinN_(1),
-      foot_window_(0),
-      is_locked_(false),
-      locked_panel_(0),
-      alive_(true)
-{
-}
-
 void goby::util::FlexNCurses::startup()
 {
     initscr();
@@ -143,18 +131,18 @@ void goby::util::FlexNCurses::recalculate_win()
     {
         delwin(static_cast<WINDOW*>(panels_[i].window()));
         delwin(static_cast<WINDOW*>(panels_[i].head_window()));
-        panels_[i].window(0);
-        panels_[i].head_window(0);
+        panels_[i].window(nullptr);
+        panels_[i].head_window(nullptr);
     }
     for (void* p : vert_windows_)
     {
         delwin(static_cast<WINDOW*>(p));
-        p = 0;
+        p = nullptr;
     }
     for (void* p : col_end_windows_)
     {
         delwin(static_cast<WINDOW*>(p));
-        p = 0;
+        p = nullptr;
     }
     delwin(static_cast<WINDOW*>(foot_window_));
 
@@ -176,7 +164,7 @@ void goby::util::FlexNCurses::recalculate_win()
         int col = panels_[i].col();
         int ystart = 0;
 
-        for (std::set<size_t>::iterator it = unique_panels_.begin(); (*it) < i; ++it)
+        for (auto it = unique_panels_.begin(); (*it) < i; ++it)
         {
             if (panels_[*it].col() == col)
                 ystart += panels_[*it].ywidth();
@@ -277,7 +265,7 @@ void goby::util::FlexNCurses::putline(const std::string& s, unsigned scrn,
 
     if (scrn < panels_.size())
     {
-        WINDOW* win = static_cast<WINDOW*>(panels_[scrn].window());
+        auto* win = static_cast<WINDOW*>(panels_[scrn].window());
         if (!win)
             return;
 
@@ -375,7 +363,7 @@ bool goby::util::FlexNCurses::in_window(void* p, int y, int x)
 
 void goby::util::FlexNCurses::write_head_title(size_t i)
 {
-    WINDOW* win = static_cast<WINDOW*>(panels_[i].head_window());
+    auto* win = static_cast<WINDOW*>(panels_[i].head_window());
 
     (void)wattrset(win, color2attr_t(util::Colors::lt_white));
 
@@ -584,8 +572,7 @@ void goby::util::FlexNCurses::move_up()
 void goby::util::FlexNCurses::move_down()
 {
     //    BOOST_REVERSE_FOREACH(size_t i, unique_panels_)
-    for (std::set<size_t>::reverse_iterator it = unique_panels_.rbegin(), n = unique_panels_.rend();
-         it != n; ++it)
+    for (auto it = unique_panels_.rbegin(), n = unique_panels_.rend(); it != n; ++it)
     {
         size_t i = *it;
         if (!last_in_col(i) && panels_[i].selected())
@@ -597,8 +584,7 @@ void goby::util::FlexNCurses::move_down()
 void goby::util::FlexNCurses::move_right()
 {
     //    BOOST_REVERSE_FOREACH(size_t i, unique_panels_)
-    for (std::set<size_t>::reverse_iterator it = unique_panels_.rbegin(), n = unique_panels_.rend();
-         it != n; ++it)
+    for (auto it = unique_panels_.rbegin(), n = unique_panels_.rend(); it != n; ++it)
     {
         size_t i = *it;
         size_t rpanel = right(i);
@@ -795,7 +781,7 @@ void goby::util::FlexNCurses::redraw_lines(int j, int offset /* = -1 */)
         const std::multimap<ptime, std::string>& hist = get_history(j, panels_[j].ywidth());
         int past = min(static_cast<int>(hist.size()), panels_[j].ywidth() - 1);
 
-        std::multimap<ptime, std::string>::const_iterator a_it = hist.end();
+        auto a_it = hist.end();
         for (int k = 0; k < past; ++k) --a_it;
 
         putlines(j, a_it, hist.end());
@@ -807,10 +793,10 @@ void goby::util::FlexNCurses::redraw_lines(int j, int offset /* = -1 */)
 
         int eff_offset = min(static_cast<int>(hist.size()) - past, offset);
 
-        std::multimap<ptime, std::string>::const_iterator a_it = hist.begin();
+        auto a_it = hist.begin();
         for (int k = 0; k < eff_offset; ++k) ++a_it;
 
-        std::multimap<ptime, std::string>::const_iterator o_it = a_it;
+        auto o_it = a_it;
         for (int k = 0; k < past; ++k) ++o_it;
 
         putlines(j, a_it, o_it);

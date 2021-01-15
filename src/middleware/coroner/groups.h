@@ -22,9 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
-#ifndef CORONER_GROUPS_20191125H
-#define CORONER_GROUPS_20191125H
+#ifndef GOBY_MIDDLEWARE_CORONER_GROUPS_H
+#define GOBY_MIDDLEWARE_CORONER_GROUPS_H
 
 #include "goby/middleware/group.h"
 

@@ -73,7 +73,7 @@ void read_log(int test)
 
         auto temp_samples = pb_plugin.parse_message(entry);
         assert(temp_samples.size() == 1 && temp_samples[0]);
-        TempSample& t = dynamic_cast<TempSample&>(*temp_samples[0]);
+        auto& t = dynamic_cast<TempSample&>(*temp_samples[0]);
         assert(t.temperature() == 500);
     }
     catch (goby::middleware::log::LogException& e)
@@ -104,8 +104,8 @@ void read_log(int test)
         auto ctd_samples = dccl_plugin.parse_message(entry);
         assert(ctd_samples.size() == 2 && ctd_samples[0] && ctd_samples[1]);
 
-        CTDSample& ctd1 = dynamic_cast<CTDSample&>(*ctd_samples[0]);
-        CTDSample& ctd2 = dynamic_cast<CTDSample&>(*ctd_samples[1]);
+        auto& ctd1 = dynamic_cast<CTDSample&>(*ctd_samples[0]);
+        auto& ctd2 = dynamic_cast<CTDSample&>(*ctd_samples[1]);
         assert(ctd1.temperature() == i * 2 + 5);
         assert(ctd2.temperature() == (i * 2 + 1) + 5);
     }
@@ -236,7 +236,7 @@ void write_log(int test)
     }
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);

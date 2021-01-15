@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UDPMulticastModemDriver20190620H
-#define UDPMulticastModemDriver20190620H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_UDP_MULTICAST_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_UDP_MULTICAST_DRIVER_H
 
 #include "goby/time.h"
 
@@ -41,7 +41,7 @@ class UDPMulticastDriver : public ModemDriverBase
 {
   public:
     UDPMulticastDriver();
-    ~UDPMulticastDriver();
+    ~UDPMulticastDriver() override;
 
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;

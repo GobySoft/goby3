@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef WavegliderSV2FrontSeat20150909H
-#define WavegliderSV2FrontSeat20150909H
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_FRONTSEAT_DRIVER_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_WAVEGLIDER_WAVEGLIDER_SV2_FRONTSEAT_DRIVER_H
 
 #include <boost/bimap.hpp>
 #include <boost/circular_buffer.hpp>

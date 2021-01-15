@@ -23,6 +23,8 @@
 
 #include "interprocess.h"
 
+#include <utility>
+
 using goby::glog;
 using namespace goby::util::logger;
 
@@ -138,8 +140,7 @@ void goby::zeromq::InterProcessPortalMainThread::publish(const std::string& iden
     }
     else
     {
-        publish_queue_.push_back(
-            std::make_pair(identifier, std::vector<char>(bytes, bytes + size)));
+        publish_queue_.emplace_back(identifier, std::vector<char>(bytes, bytes + size));
     }
 }
 
@@ -205,7 +206,7 @@ goby::zeromq::InterProcessPortalReadThread::InterProcessPortalReadThread(
       subscribe_socket_(context, ZMQ_SUB),
       manager_socket_(context, ZMQ_REQ),
       alive_(alive),
-      poller_cv_(poller_cv)
+      poller_cv_(std::move(poller_cv))
 {
     poll_items_.resize(NUMBER_SOCKETS);
     poll_items_[SOCKET_CONTROL] = {(void*)control_socket_, 0, ZMQ_POLLIN, 0};
@@ -448,7 +449,7 @@ unsigned goby::zeromq::Router::last_port(zmq::socket_t& socket)
         throw(std::runtime_error("Could not retrieve ZMQ_LAST_ENDPOINT"));
 
     std::string last_ep(last_endpoint);
-    unsigned port = std::stoi(last_ep.substr(last_ep.find_last_of(":") + 1));
+    unsigned port = std::stoi(last_ep.substr(last_ep.find_last_of(':') + 1));
     return port;
 }
 

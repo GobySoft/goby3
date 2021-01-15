@@ -21,8 +21,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterProcessZeroMQ20170807H
-#define TransportInterProcessZeroMQ20170807H
+#ifndef GOBY_ZEROMQ_TRANSPORT_INTERPROCESS_H
+#define GOBY_ZEROMQ_TRANSPORT_INTERPROCESS_H
+
+#include <memory>
 
 #include <tuple>
 #include <zmq.hpp>
@@ -205,7 +207,7 @@ class InterProcessPortalImplementation
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
         // start zmq read thread
-        zmq_thread_.reset(new std::thread([this]() { zmq_read_thread_.run(); }));
+        zmq_thread_ = std::make_unique<std::thread>([this]() { zmq_read_thread_.run(); });
 
         while (!zmq_main_.subscribe_ready())
         {
@@ -228,7 +230,7 @@ class InterProcessPortalImplementation
 
     template <typename Data, int scheme>
     void _publish(const Data& d, const goby::middleware::Group& group,
-                  const middleware::Publisher<Data>& publisher)
+                  const middleware::Publisher<Data>& /*publisher*/)
     {
         std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
         std::string identifier = _make_fully_qualified_identifier<Data, scheme>(d, group) + '\0';
@@ -238,7 +240,7 @@ class InterProcessPortalImplementation
     template <typename Data, int scheme>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f,
                     const goby::middleware::Group& group,
-                    const middleware::Subscriber<Data>& subscriber)
+                    const middleware::Subscriber<Data>& /*subscriber*/)
     {
         std::string identifier =
             _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
@@ -246,7 +248,7 @@ class InterProcessPortalImplementation
         auto subscription = std::make_shared<middleware::SerializationSubscription<Data, scheme>>(
             f, group,
             middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
-                                         [=](const Data& d) { return group; }));
+                                         [=](const Data& /*d*/) { return group; }));
 
         if (forwarder_subscriptions_.count(identifier) == 0 &&
             portal_subscriptions_.count(identifier) == 0)
@@ -266,9 +268,9 @@ class InterProcessPortalImplementation
     }
 
     template <typename Data, int scheme>
-    void
-    _unsubscribe(const goby::middleware::Group& group,
-                 const middleware::Subscriber<Data>& subscriber = middleware::Subscriber<Data>())
+    void _unsubscribe(
+        const goby::middleware::Group& group,
+        const middleware::Subscriber<Data>& /*subscriber*/ = middleware::Subscriber<Data>())
     {
         std::string identifier =
             _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
@@ -280,7 +282,7 @@ class InterProcessPortalImplementation
             zmq_main_.unsubscribe(identifier);
     }
 
-    void _unsubscribe_all(const std::string subscriber_id = to_string(std::this_thread::get_id()))
+    void _unsubscribe_all(const std::string& subscriber_id = to_string(std::this_thread::get_id()))
     {
         // portal unsubscribe
         if (subscriber_id == to_string(std::this_thread::get_id()))
@@ -409,7 +411,7 @@ class InterProcessPortalImplementation
     }
 
     void _receive_subscription_forwarded(
-        std::shared_ptr<const middleware::SerializationHandlerBase<>> subscription)
+        const std::shared_ptr<const middleware::SerializationHandlerBase<>>& subscription)
     {
         std::string identifier = _make_identifier(subscription->type_name(), subscription->scheme(),
                                                   subscription->subscribed_group(),
@@ -449,7 +451,7 @@ class InterProcessPortalImplementation
         }
     }
 
-    void _forwarder_unsubscribe(std::string subscriber_id, std::string identifier)
+    void _forwarder_unsubscribe(const std::string& subscriber_id, const std::string& identifier)
     {
         auto it = forwarder_subscription_identifiers_[subscriber_id].find(identifier);
         if (it != forwarder_subscription_identifiers_[subscriber_id].end())
@@ -485,7 +487,8 @@ class InterProcessPortalImplementation
         _subscribe_regex(subscription);
     }
 
-    void _subscribe_regex(std::shared_ptr<const middleware::SerializationSubscriptionRegex> new_sub)
+    void _subscribe_regex(
+        const std::shared_ptr<const middleware::SerializationSubscriptionRegex>& new_sub)
     {
         if (regex_subscriptions_.empty())
             zmq_main_.subscribe("/");
@@ -554,7 +557,7 @@ class InterProcessPortalImplementation
             previous_slash = slash_pos;
         }
         return std::make_tuple(elem[0], middleware::MarshallingScheme::from_string(elem[1]),
-                               elem[2], std::stoi(elem[3]), std::stoull(elem[4], 0, 16));
+                               elem[2], std::stoi(elem[3]), std::stoull(elem[4], nullptr, 16));
     }
 
     template <typename Key>

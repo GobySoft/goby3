@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UDPModemDriver20120409H
-#define UDPModemDriver20120409H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_UDP_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_UDP_DRIVER_H
 
 #include "goby/time.h"
 
@@ -43,7 +43,7 @@ class UDPDriver : public ModemDriverBase
 {
   public:
     UDPDriver();
-    ~UDPDriver();
+    ~UDPDriver() override;
 
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;

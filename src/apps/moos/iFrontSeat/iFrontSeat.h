@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef iFrontSeat20130220H
-#define iFrontSeat20130220H
+#ifndef GOBY_APPS_MOOS_IFRONTSEAT_IFRONTSEAT_H
+#define GOBY_APPS_MOOS_IFRONTSEAT_IFRONTSEAT_H
 
 #include "goby/moos/goby_moos_app.h"
 
@@ -48,12 +48,12 @@ class iFrontSeat : public goby::moos::GobyMOOSApp
 
   private:
     iFrontSeat();
-    ~iFrontSeat() {}
-    iFrontSeat(const iFrontSeat&);
-    iFrontSeat& operator=(const iFrontSeat&);
+    ~iFrontSeat() override = default;
+    iFrontSeat(const iFrontSeat&) = delete;
+    iFrontSeat& operator=(const iFrontSeat&) = delete;
 
     // synchronous event
-    void loop();
+    void loop() override;
     void status_loop();
 
     // mail handlers

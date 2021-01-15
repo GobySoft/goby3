@@ -45,11 +45,11 @@ GobyMessage msg_in1, msg_in2;
 void handle_ack(const goby::acomms::protobuf::ModemTransmission& ack_msg,
                 const google::protobuf::Message& orig_msg);
 
-void qsize(goby::acomms::protobuf::QueueSize size);
+void qsize(const goby::acomms::protobuf::QueueSize& size);
 
 void handle_receive(const google::protobuf::Message& msg);
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
@@ -134,7 +134,7 @@ void handle_receive(const google::protobuf::Message& msg)
     ++receive_count;
 }
 
-void qsize(goby::acomms::protobuf::QueueSize size) { goby_message_qsize = size.size(); }
+void qsize(const goby::acomms::protobuf::QueueSize& size) { goby_message_qsize = size.size(); }
 
 void handle_ack(const goby::acomms::protobuf::ModemTransmission& ack_msg,
                 const google::protobuf::Message& orig_msg)

@@ -40,7 +40,7 @@ using namespace goby::util::tcolor;
 int goby::acomms::MACManager::count_;
 
 goby::acomms::MACManager::MACManager()
-    : current_slot_(std::list<protobuf::ModemTransmission>::begin()), started_up_(false)
+    : current_slot_(std::list<protobuf::ModemTransmission>::begin())
 {
     ++count_;
 
@@ -48,7 +48,7 @@ goby::acomms::MACManager::MACManager()
     goby::glog.add_group(glog_mac_group_, util::Colors::blue);
 }
 
-goby::acomms::MACManager::~MACManager() {}
+goby::acomms::MACManager::~MACManager() = default;
 
 void goby::acomms::MACManager::startup(const protobuf::MACConfig& cfg)
 {
@@ -155,10 +155,7 @@ void goby::acomms::MACManager::begin_slot()
     {
         glog << group(glog_mac_group_) << "Cycle order: [";
 
-        for (std::list<protobuf::ModemTransmission>::iterator
-                 it = std::list<protobuf::ModemTransmission>::begin(),
-                 n = end();
-             it != n; ++it)
+        for (auto it = std::list<protobuf::ModemTransmission>::begin(), n = end(); it != n; ++it)
         {
             if (it == current_slot_)
                 glog << group(glog_mac_group_) << " " << green;
@@ -300,7 +297,6 @@ goby::time::SystemClock::duration goby::acomms::MACManager::cycle_duration()
 
 std::ostream& goby::acomms::operator<<(std::ostream& os, const MACManager& mac)
 {
-    for (std::list<protobuf::ModemTransmission>::const_iterator it = mac.begin(), n = mac.end();
-         it != n; ++it)
-    { os << *it; } return os;
+    for (const auto& it : mac) { os << it; }
+    return os;
 }

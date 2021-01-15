@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCLCOMPAT20131116H
-#define DCCLCOMPAT20131116H
+#ifndef GOBY_ACOMMS_DCCL_DCCL_H
+#define GOBY_ACOMMS_DCCL_DCCL_H
 
 #include "goby/acomms/protobuf/dccl.pb.h"
 #include "goby/util/binary.h"
@@ -39,24 +39,26 @@ namespace goby
 namespace acomms
 {
 typedef dccl::Exception DCCLException;
-typedef dccl::NullValueException DCCLNullValueException;
+using DCCLNullValueException = dccl::NullValueException;
 
-typedef dccl::DefaultIdentifierCodec DCCLDefaultIdentifierCodec;
+using DCCLDefaultIdentifierCodec = dccl::DefaultIdentifierCodec;
 template <typename WireType, typename FieldType = WireType>
 class DefaultNumericFieldCodec : public dccl::v2::DefaultNumericFieldCodec<WireType, FieldType>
 {
 };
 
-typedef dccl::v2::DefaultBoolCodec DCCLDefaultBoolCodec;
-typedef dccl::v2::DefaultStringCodec DCCLDefaultStringCodec;
-typedef dccl::v2::DefaultBytesCodec DCCLDefaultBytesCodec;
-typedef dccl::v2::DefaultEnumCodec DCCLDefaultEnumCodec;
+using DCCLDefaultBoolCodec = dccl::v2::DefaultBoolCodec;
+using DCCLDefaultStringCodec = dccl::v2::DefaultStringCodec;
+using DCCLDefaultBytesCodec = dccl::v2::DefaultBytesCodec;
+using DCCLDefaultEnumCodec = dccl::v2::DefaultEnumCodec;
 
 class MessageHandler : public dccl::internal::MessageStack
 {
   public:
-    MessageHandler(const google::protobuf::FieldDescriptor* field = 0) : MessageStack(field) {}
-    typedef dccl::MessagePart MessagePart;
+    MessageHandler(const google::protobuf::FieldDescriptor* field = nullptr) : MessageStack(field)
+    {
+    }
+    using MessagePart = dccl::MessagePart;
     static const MessagePart HEAD = dccl::HEAD, BODY = dccl::BODY, UNKNOWN = dccl::UNKNOWN;
 };
 
@@ -79,37 +81,37 @@ template <typename T> class StaticCodec : public dccl::v2::StaticCodec<T>
 {
 };
 
-typedef dccl::v2::DefaultMessageCodec DCCLDefaultMessageCodec;
+using DCCLDefaultMessageCodec = dccl::v2::DefaultMessageCodec;
 
-typedef dccl::FieldCodecBase DCCLFieldCodecBase;
+using DCCLFieldCodecBase = dccl::FieldCodecBase;
 
 template <typename WireType, typename FieldType = WireType>
 struct DCCLTypedFieldCodec : public dccl::TypedFieldCodec<WireType, FieldType>
 {
-    typedef dccl::FieldCodecBase DCCLFieldCodecBase;
+    using DCCLFieldCodecBase = dccl::FieldCodecBase;
 };
 
 template <typename WireType, typename FieldType = WireType>
 struct DCCLTypedFixedFieldCodec : public dccl::TypedFixedFieldCodec<WireType, FieldType>
 {
-    typedef dccl::FieldCodecBase DCCLFieldCodecBase;
+    using DCCLFieldCodecBase = dccl::FieldCodecBase;
 };
 
 template <typename WireType, typename FieldType = WireType>
 struct DCCLRepeatedTypedFieldCodec : public dccl::RepeatedTypedFieldCodec<WireType, FieldType>
 {
-    typedef dccl::FieldCodecBase DCCLFieldCodecBase;
+    using DCCLFieldCodecBase = dccl::FieldCodecBase;
 };
 
-typedef dccl::FieldCodecManager DCCLFieldCodecManager;
+using DCCLFieldCodecManager = dccl::FieldCodecManager;
 //        typedef dccl::TypedFieldCodec DCCLTypedFieldCodec;
-typedef dccl::FieldCodecManager DCCLFieldCodecManager;
-typedef dccl::internal::FromProtoCppTypeBase FromProtoCppTypeBase;
+using DCCLFieldCodecManager = dccl::FieldCodecManager;
+using FromProtoCppTypeBase = dccl::internal::FromProtoCppTypeBase;
 //       typedef dccl::FromProtoType FromProtoType;
 // typedef dccl::FromProtoCppType FromProtoCppType;
 //typedef dccl::ToProtoCppType ToProtoCppType;
-typedef dccl::Bitset Bitset;
-typedef dccl::internal::TypeHelper DCCLTypeHelper;
+using Bitset = dccl::Bitset;
+using DCCLTypeHelper = dccl::internal::TypeHelper;
 
 class DCCLCodec
 {
@@ -270,24 +272,19 @@ class DCCLCodec
     {
         codec_.reset(new dccl::Codec(identifier));
 
-        for (std::set<void*>::const_iterator it = loaded_libs_.begin(), end = loaded_libs_.end();
-             it != end; ++it)
-            load_shared_library_codecs(*it);
+        for (auto loaded_lib : loaded_libs_) load_shared_library_codecs(loaded_lib);
 
-        for (std::set<const google::protobuf::Descriptor*>::const_iterator
-                 it = loaded_msgs_.begin(),
-                 end = loaded_msgs_.end();
-             it != end; ++it)
+        for (auto loaded_msg : loaded_msgs_)
         {
             try
             {
-                validate(*it);
+                validate(loaded_msg);
             }
             catch (dccl::Exception& e)
             {
-                glog.is(util::logger::WARN) && glog << "Failed to reload " << (*it)->full_name()
-                                                    << " after ID codec change: " << e.what()
-                                                    << std::endl;
+                glog.is(util::logger::WARN) &&
+                    glog << "Failed to reload " << loaded_msg->full_name()
+                         << " after ID codec change: " << e.what() << std::endl;
             }
         }
     }
@@ -299,9 +296,9 @@ class DCCLCodec
   private:
     DCCLCodec();
 
-    ~DCCLCodec() {}
-    DCCLCodec(const DCCLCodec&);
-    DCCLCodec& operator=(const DCCLCodec&);
+    ~DCCLCodec() = default;
+    DCCLCodec(const DCCLCodec&) = delete;
+    DCCLCodec& operator=(const DCCLCodec&) = delete;
 
     void process_cfg(bool new_id_codec)
     {
@@ -319,7 +316,8 @@ class DCCLCodec
         }
     }
 
-    void dlog_message(const std::string& msg, dccl::logger::Verbosity vrb, dccl::logger::Group grp)
+    void dlog_message(const std::string& msg, dccl::logger::Verbosity /*vrb*/,
+                      dccl::logger::Group grp)
     {
         if (grp == dccl::logger::DECODE)
             goby::glog << group(glog_decode_group_) << msg << std::endl;

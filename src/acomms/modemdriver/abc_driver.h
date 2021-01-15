@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Modem20110225H
-#define Modem20110225H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_ABC_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_ABC_DRIVER_H
 
 #include "goby/time.h"
 
@@ -41,10 +41,10 @@ class ABCDriver : public ModemDriverBase
 {
   public:
     ABCDriver();
-    void startup(const protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void startup(const protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
 
   private:
     void parse_in(const std::string& in, std::map<std::string, std::string>* out);

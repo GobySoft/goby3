@@ -31,14 +31,16 @@
 
 #include "interface.h"
 
+#include <utility>
+
 namespace gpb = goby::middleware::frontseat::protobuf;
 using goby::glog;
 using namespace goby::util::logger;
 using namespace goby::util::tcolor;
 using goby::time::MicroTime;
 
-goby::middleware::frontseat::InterfaceBase::InterfaceBase(const protobuf::Config& cfg)
-    : cfg_(cfg),
+goby::middleware::frontseat::InterfaceBase::InterfaceBase(protobuf::Config cfg)
+    : cfg_(std::move(cfg)),
       helm_state_(gpb::HELM_NOT_RUNNING),
       state_(gpb::INTERFACE_STANDBY),
       start_time_(goby::time::SystemClock::now<MicroTime>()),

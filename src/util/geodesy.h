@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GobyGeodesy20180312H
-#define GobyGeodesy20180312H
+#ifndef GOBY_UTIL_GEODESY_H
+#define GOBY_UTIL_GEODESY_H
 
 #include <limits>
 
@@ -54,15 +54,15 @@ class UTMGeodesy
         boost::units::quantity<boost::units::si::length> y;
     };
 
-    UTMGeodesy(LatLonPoint origin);
+    UTMGeodesy(const LatLonPoint& origin);
     virtual ~UTMGeodesy();
 
     LatLonPoint origin_geo() const { return origin_geo_; }
     XYPoint origin_utm() const { return origin_utm_; }
     int origin_utm_zone() const { return origin_zone_; }
 
-    LatLonPoint convert(XYPoint utm) const;
-    XYPoint convert(LatLonPoint geo) const;
+    LatLonPoint convert(const XYPoint& utm) const;
+    XYPoint convert(const LatLonPoint& geo) const;
 
   private:
     LatLonPoint origin_geo_;

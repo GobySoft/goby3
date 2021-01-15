@@ -21,6 +21,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef GOBY_TEST_ZEROMQ_MIDDLEWARE_BASIC_TEST_SCHEME_H
+#define GOBY_TEST_ZEROMQ_MIDDLEWARE_BASIC_TEST_SCHEME_H
+
 #include "goby/middleware/marshalling/interface.h"
 #include <vector>
 
@@ -53,7 +56,7 @@ struct SerializerParserHelper<std::deque<char>, test::middleware::MyMarshallingS
 
     static std::string type_name() { return "DEQUECHAR"; }
 
-    static std::string type_name(const std::deque<char>& d) { return type_name(); }
+    static std::string type_name(const std::deque<char>& /*d*/) { return type_name(); }
 
     static std::deque<char> parse(const std::vector<char>& bytes)
     {
@@ -65,9 +68,12 @@ struct SerializerParserHelper<std::deque<char>, test::middleware::MyMarshallingS
 };
 
 template <typename T>
-constexpr int scheme(typename std::enable_if<std::is_same<T, std::deque<char> >::value>::type* = 0)
+constexpr int
+scheme(typename std::enable_if<std::is_same<T, std::deque<char>>::value>::type* = nullptr)
 {
     return test::middleware::MyMarshallingScheme::DEQUECHAR;
 }
 } // namespace middleware
 } // namespace goby
+
+#endif

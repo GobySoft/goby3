@@ -37,7 +37,6 @@ using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
-using goby::acomms::operator<<;
 using goby::util::NMEASentence;
 
 goby::moos::BluefinCommsDriver::BluefinCommsDriver(goby::acomms::MACManager* mac)
@@ -186,24 +185,24 @@ void goby::moos::BluefinCommsDriver::do_work()
     MOOSMSG_LIST msgs;
     if (moos_client_.Fetch(msgs))
     {
-        for (MOOSMSG_LIST::iterator it = msgs.begin(), end = msgs.end(); it != end; ++it)
+        for (auto& msg : msgs)
         {
             const std::string& in_moos_var = bluefin_driver_cfg_.nmea_in_moos_var();
-            const std::string& s_val = it->GetString();
+            const std::string& s_val = msg.GetString();
 
             const std::string raw = "raw: \"";
             const std::string::size_type raw_pos = s_val.find(raw);
             if (raw_pos == std::string::npos)
                 continue;
 
-            const std::string::size_type end_pos = s_val.find("\"", raw_pos + raw.size());
+            const std::string::size_type end_pos = s_val.find('\"', raw_pos + raw.size());
             if (end_pos == std::string::npos)
                 continue;
 
             std::string value =
                 s_val.substr(raw_pos + raw.size(), end_pos - (raw_pos + raw.size()));
 
-            if (it->GetKey() == in_moos_var &&
+            if (msg.GetKey() == in_moos_var &&
                 (value.substr(0, 5) == "$BFCP" || value.substr(0, 6) == "$BFCMA"))
             {
                 goby::acomms::protobuf::ModemRaw in_raw;

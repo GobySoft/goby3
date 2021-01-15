@@ -22,11 +22,11 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IridiumModemDriver20130903H
-#define IridiumModemDriver20130903H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_RUDICS_PACKET_H
+#define GOBY_ACOMMS_MODEMDRIVER_RUDICS_PACKET_H
 
+#include <cstdint>
 #include <stdexcept>
-#include <stdint.h>
 #include <string>
 
 namespace goby
@@ -48,7 +48,7 @@ void parse_rudics_packet(std::string* bytes, std::string rudics_pkt,
                                                        std::string(1, 0xff),
                          bool include_crc = true);
 std::string uint32_to_byte_string(uint32_t i);
-uint32_t byte_string_to_uint32(std::string s);
+uint32_t byte_string_to_uint32(const std::string& s);
 } // namespace acomms
 } // namespace goby
 

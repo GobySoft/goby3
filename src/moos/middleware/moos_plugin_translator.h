@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MOOS_PLUGIN_TRANSLATOR_20171020H
-#define MOOS_PLUGIN_TRANSLATOR_20171020H
+#ifndef GOBY_MOOS_MIDDLEWARE_MOOS_PLUGIN_TRANSLATOR_H
+#define GOBY_MOOS_MIDDLEWARE_MOOS_PLUGIN_TRANSLATOR_H
 
 #include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"
 #include "goby/middleware/application/multi_thread.h"
@@ -54,7 +54,8 @@ class TranslatorBase
     {
       public:
         // MOOS
-        void add_trigger(const std::string& moos_var, std::function<void(const CMOOSMsg&)> func)
+        void add_trigger(const std::string& moos_var,
+                         const std::function<void(const CMOOSMsg&)>& func)
         {
             trigger_vars_.insert(std::make_pair(moos_var, func));
         }

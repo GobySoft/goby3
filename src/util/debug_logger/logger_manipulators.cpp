@@ -42,7 +42,7 @@ void goby::util::logger::GroupSetter::operator()(std::ostream& os) const
 {
     try
     {
-        goby::util::FlexOstream& flex = dynamic_cast<goby::util::FlexOstream&>(os);
+        auto& flex = dynamic_cast<goby::util::FlexOstream&>(os);
         flex.set_group(group_);
     }
     catch (...)

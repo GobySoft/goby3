@@ -44,7 +44,7 @@ std::uint16_t goby::acomms::net_checksum(const std::string& data)
 {
     std::uint32_t sum = 0;
     int len = data.size();
-    std::uint16_t* p = (std::uint16_t*)&data[0];
+    auto* p = (std::uint16_t*)&data[0];
 
     while (len > 1)
     {

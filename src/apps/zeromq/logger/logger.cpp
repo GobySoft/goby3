@@ -75,7 +75,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         dccl_plugin_.register_write_hooks(log_);
     }
 
-    ~Logger()
+    ~Logger() override
     {
         log_.close();
         // set read only
@@ -122,15 +122,15 @@ int main(int argc, char* argv[])
     // unblock signals
     sigset_t empty_mask;
     sigemptyset(&empty_mask);
-    pthread_sigmask(SIG_SETMASK, &empty_mask, 0);
+    pthread_sigmask(SIG_SETMASK, &empty_mask, nullptr);
 
     struct sigaction action;
     action.sa_handler = &signal_handler;
 
     // register the usual quitting signals
-    sigaction(SIGINT, &action, 0);
-    sigaction(SIGTERM, &action, 0);
-    sigaction(SIGQUIT, &action, 0);
+    sigaction(SIGINT, &action, nullptr);
+    sigaction(SIGTERM, &action, nullptr);
+    sigaction(SIGQUIT, &action, nullptr);
 
     // wait for the app to quit
     t.join();
@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-void signal_handler(int sig) { goby::apps::zeromq::Logger::do_quit = true; }
+void signal_handler(int /*sig*/) { goby::apps::zeromq::Logger::do_quit = true; }
 
 void goby::apps::zeromq::Logger::log(const std::vector<unsigned char>& data, int scheme,
                                const std::string& type, const goby::middleware::Group& group)

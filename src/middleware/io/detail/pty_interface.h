@@ -21,7 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_IO_DETAIL_PTY_INTERFACE_H
+#define GOBY_MIDDLEWARE_IO_DETAIL_PTY_INTERFACE_H
 
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -163,3 +164,5 @@ void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publ
     if (symlink(pty_external_path, pty_external_symlink) == -1)
         throw(goby::Exception(std::string("Could not create symlink: ") + pty_external_symlink));
 }
+
+#endif

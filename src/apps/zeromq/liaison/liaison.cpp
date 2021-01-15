@@ -54,23 +54,21 @@ int main(int argc, char* argv[])
         std::vector<std::string> plugin_vec;
         boost::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
 
-        for (int i = 0, n = plugin_vec.size(); i < n; ++i)
+        for (auto& i : plugin_vec)
         {
-            glog.is(VERBOSE) && glog << "Loading liaison plugin library: " << plugin_vec[i]
-                                     << std::endl;
-            void* handle = dlopen(plugin_vec[i].c_str(), RTLD_LAZY);
+            glog.is(VERBOSE) && glog << "Loading liaison plugin library: " << i << std::endl;
+            void* handle = dlopen(i.c_str(), RTLD_LAZY);
             if (handle)
                 goby::apps::zeromq::Liaison::plugin_handles_.push_back(handle);
             else
-                glog.is(DIE) && glog << "Failed to open library: " << plugin_vec[i] << std::endl;
+                glog.is(DIE) && glog << "Failed to open library: " << i << std::endl;
         }
     }
 
     int return_value = goby::run<goby::apps::zeromq::Liaison>(argc, argv);
     //    dccl::DynamicProtobufManager::protobuf_shutdown();
 
-    for (int i = 0, n = goby::apps::zeromq::Liaison::plugin_handles_.size(); i < n; ++i)
-        dlclose(goby::apps::zeromq::Liaison::plugin_handles_[i]);
+    for (auto& plugin_handle : goby::apps::zeromq::Liaison::plugin_handles_) dlclose(plugin_handle);
 
     return return_value;
 }

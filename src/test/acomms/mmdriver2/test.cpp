@@ -36,7 +36,6 @@
 using namespace goby::acomms;
 using namespace goby::util::logger;
 using namespace goby::util::logger_lock;
-using goby::util::as;
 using namespace boost::posix_time;
 using goby::acomms::protobuf::ModemTransmission;
 
@@ -77,13 +76,13 @@ class MMDriverTest2
     std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics> > driver1_receive,
         driver2_receive;
 
-    bool modems_running_;
+    bool modems_running_{true};
 };
 } // namespace acomms
 } // namespace test
 } // namespace goby
 
-goby::test::acomms::MMDriverTest2::MMDriverTest2() : modems_running_(true)
+goby::test::acomms::MMDriverTest2::MMDriverTest2()
 {
     goby::glog.set_lock_action(lock);
 
@@ -194,18 +193,15 @@ void goby::test::acomms::MMDriverTest2::summary(
     goby::glog.is(VERBOSE) && goby::glog << "*** Begin modem " << cfg.modem_id()
                                          << " receive summary" << std::endl;
 
-    for (std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics> >::const_iterator
-             it = receive.begin(),
-             end = receive.end();
-         it != end; ++it)
+    for (const auto& it : receive)
     {
         goby::glog.is(VERBOSE) && goby::glog << "** Showing stats for this transmission (last "
                                                 "transmission before this reception occured): "
-                                             << app_cfg().transmission(it->first).DebugString()
+                                             << app_cfg().transmission(it.first).DebugString()
                                              << std::flush;
 
         const std::vector<micromodem::protobuf::ReceiveStatistics>& current_receive_vector =
-            it->second;
+            it.second;
 
         std::multiset<micromodem::protobuf::PacketType> type;
         std::multiset<micromodem::protobuf::ReceiveMode> mode;
@@ -228,8 +224,7 @@ void goby::test::acomms::MMDriverTest2::summary(
         {
             if (micromodem::protobuf::PacketType_IsValid(j))
             {
-                micromodem::protobuf::PacketType jt =
-                    static_cast<micromodem::protobuf::PacketType>(j);
+                auto jt = static_cast<micromodem::protobuf::PacketType>(j);
                 goby::glog.is(VERBOSE) && goby::glog << "\t"
                                                      << micromodem::protobuf::PacketType_Name(jt)
                                                      << ": " << type.count(jt) << std::endl;
@@ -242,8 +237,7 @@ void goby::test::acomms::MMDriverTest2::summary(
         {
             if (micromodem::protobuf::ReceiveMode_IsValid(j))
             {
-                micromodem::protobuf::ReceiveMode jt =
-                    static_cast<micromodem::protobuf::ReceiveMode>(j);
+                auto jt = static_cast<micromodem::protobuf::ReceiveMode>(j);
                 goby::glog.is(VERBOSE) && goby::glog << "\t"
                                                      << micromodem::protobuf::ReceiveMode_Name(jt)
                                                      << ": " << mode.count(jt) << std::endl;
@@ -256,8 +250,7 @@ void goby::test::acomms::MMDriverTest2::summary(
         {
             if (micromodem::protobuf::PSKErrorCode_IsValid(j))
             {
-                micromodem::protobuf::PSKErrorCode jt =
-                    static_cast<micromodem::protobuf::PSKErrorCode>(j);
+                auto jt = static_cast<micromodem::protobuf::PSKErrorCode>(j);
                 goby::glog.is(VERBOSE) && goby::glog << "\t"
                                                      << micromodem::protobuf::PSKErrorCode_Name(jt)
                                                      << ": " << code.count(jt) << std::endl;

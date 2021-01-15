@@ -286,7 +286,7 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvAck& e)
     }
 }
 
-boost::statechart::result goby::acomms::iridium::fsm::Dial::react(const EvNoCarrier& x)
+boost::statechart::result goby::acomms::iridium::fsm::Dial::react(const EvNoCarrier& /*x*/)
 {
     const int redial_wait_seconds = 2;
     glog.is(DEBUG1) && glog << group("iridiumdriver") << "Redialing in " << redial_wait_seconds

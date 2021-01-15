@@ -31,9 +31,9 @@
 struct TestClock
 {
     typedef std::chrono::microseconds duration;
-    typedef duration::rep rep;
-    typedef duration::period period;
-    typedef std::chrono::time_point<TestClock> time_point;
+    using rep = duration::rep;
+    using period = duration::period;
+    using time_point = std::chrono::time_point<TestClock>;
     static const bool is_steady = true;
 
     static time_point now() noexcept { return sim_now_; }
@@ -66,7 +66,7 @@ struct GLogSetup
         goby::glog.set_name("test");
     }
 
-    ~GLogSetup() {}
+    ~GLogSetup() = default;
 };
 
 BOOST_GLOBAL_FIXTURE(GLogSetup);
@@ -250,7 +250,7 @@ struct DynamicBufferFixture
         buffer.create(goby::acomms::BROADCAST_ID, "B", cfg2);
     }
 
-    ~DynamicBufferFixture() {}
+    ~DynamicBufferFixture() = default;
 
     goby::acomms::DynamicBuffer<std::string, TestClock> buffer;
 };
@@ -600,7 +600,7 @@ struct MultiIDDynamicBufferFixture
         buffer.create(2, "B", cfg2);
     }
 
-    ~MultiIDDynamicBufferFixture() {}
+    ~MultiIDDynamicBufferFixture() = default;
 
     goby::acomms::DynamicBuffer<std::string, TestClock> buffer;
 };

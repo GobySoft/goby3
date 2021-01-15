@@ -114,7 +114,7 @@ std::string goby::acomms::uint32_to_byte_string(uint32_t i)
     return std::string(u.c, 4);
 }
 
-uint32_t goby::acomms::byte_string_to_uint32(std::string s)
+uint32_t goby::acomms::byte_string_to_uint32(const std::string& s)
 {
     union u_t {
         uint32_t i;

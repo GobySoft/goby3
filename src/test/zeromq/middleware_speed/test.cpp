@@ -28,6 +28,7 @@
 #include <deque>
 
 #include <boost/units/io.hpp>
+#include <memory>
 
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/transport/interthread.h"
@@ -56,7 +57,6 @@ std::atomic<double> end(0);
 
 std::mutex cout_mutex;
 
-using goby::glog;
 using namespace goby::util::logger;
 
 constexpr goby::middleware::Group sample1_group{"Sample1"};
@@ -135,7 +135,7 @@ void publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 }
 
 // child process
-void handle_sample1(const Type& sample)
+void handle_sample1(const Type& /*sample*/)
 {
     if (ipc_receive_count == 0)
     {
@@ -220,13 +220,13 @@ int main(int argc, char* argv[])
         std::unique_ptr<zmq::context_t> manager_context;
         std::unique_ptr<zmq::context_t> router_context;
 
-        manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(1));
+        manager_context = std::make_unique<zmq::context_t>(1);
+        router_context = std::make_unique<zmq::context_t>(1);
 
         goby::zeromq::Router router(*router_context, cfg);
-        t10.reset(new std::thread([&] { router.run(); }));
+        t10 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, cfg, router);
-        t11.reset(new std::thread([&] { manager.run(); }));
+        t11 = std::make_unique<std::thread>([&] { manager.run(); });
         //        sleep(1);
         std::thread t1([&] { publisher(cfg); });
         int wstatus = 0;

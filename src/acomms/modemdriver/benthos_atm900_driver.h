@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef BenthosATM900Driver20161221H
-#define BenthosATM900Driver20161221H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_H
 
 #include <dccl/codec.h>
 #include <dccl/field_codec_fixed.h>
@@ -44,10 +44,10 @@ class BenthosATM900Driver : public ModemDriverBase
 {
   public:
     BenthosATM900Driver();
-    void startup(const protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void startup(const protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
 
   private:
     void receive(const protobuf::ModemTransmission& msg);
@@ -73,10 +73,10 @@ class BenthosATM900Driver : public ModemDriverBase
 // placeholder id codec that uses no bits, since we're always sending just this message on the wire
 class NoOpIdentifierCodec : public dccl::TypedFixedFieldCodec<dccl::uint32>
 {
-    dccl::Bitset encode() { return dccl::Bitset(); }
-    dccl::Bitset encode(const std::uint32_t& wire_value) { return dccl::Bitset(); }
-    dccl::uint32 decode(dccl::Bitset* bits) { return 0; }
-    virtual unsigned size() { return 0; }
+    dccl::Bitset encode() override { return dccl::Bitset(); }
+    dccl::Bitset encode(const std::uint32_t& /*wire_value*/) override { return dccl::Bitset(); }
+    dccl::uint32 decode(dccl::Bitset* /*bits*/) override { return 0; }
+    unsigned size() override { return 0; }
 };
 
 extern std::shared_ptr<dccl::Codec> benthos_header_dccl_;
@@ -129,10 +129,10 @@ inline void parse_benthos_modem_message(std::string in,
     std::vector<std::string> encoded_frames;
     boost::split(encoded_frames, in, boost::is_any_of("\r"), boost::token_compress_on);
 
-    for (int i = 0, n = encoded_frames.size(); i < n; ++i)
+    for (auto& encoded_frame : encoded_frames)
     {
-        if (!encoded_frames[i].empty())
-            parse_rudics_packet(out->add_frame(), encoded_frames[i] + "\r", "\r", false);
+        if (!encoded_frame.empty())
+            parse_rudics_packet(out->add_frame(), encoded_frame + "\r", "\r", false);
     }
 }
 

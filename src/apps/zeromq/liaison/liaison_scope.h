@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISONSCOPE20110609H
-#define LIAISONSCOPE20110609H
+#ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_SCOPE_H
+#define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_SCOPE_H
 
 #include <boost/circular_buffer.hpp>
 #include <thread>
@@ -61,7 +61,8 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
   public:
     LiaisonScope(const protobuf::LiaisonConfig& cfg);
 
-    void inbox(const std::string& group, std::shared_ptr<const google::protobuf::Message> msg);
+    void inbox(const std::string& group,
+               const std::shared_ptr<const google::protobuf::Message>& msg);
 
     void handle_message(const std::string& group, const google::protobuf::Message& msg,
                         bool fresh_message);
@@ -82,9 +83,9 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     bool is_paused() { return controls_div_->is_paused_; }
 
   private:
-    void handle_global_key(Wt::WKeyEvent event);
+    void handle_global_key(const Wt::WKeyEvent& event);
 
-    void focus()
+    void focus() override
     {
         if (last_scope_state_ == ACTIVE)
             resume();
@@ -94,7 +95,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         last_scope_state_ = UNKNOWN;
     }
 
-    void unfocus()
+    void unfocus() override
     {
         if (last_scope_state_ == UNKNOWN)
         {
@@ -104,7 +105,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     }
 
     friend class ScopeCommsThread;
-    void cleanup()
+    void cleanup() override
     {
         // we must resume the scope as this stops the background thread, allowing the ZeroMQService for the scope to be safely deleted. This is inelegant, but a by product of how Wt destructs the root object *after* this class (and thus all the local class objects).
         resume();
@@ -132,7 +133,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     {
         SubscriptionsContainer(Wt::WStandardItemModel* model, Wt::WStringListModel* history_model,
                                std::map<std::string, int>& msg_map,
-                               Wt::WContainerWidget* parent = 0);
+                               Wt::WContainerWidget* parent = nullptr);
 
         Wt::WStandardItemModel* model_;
         Wt::WStringListModel* history_model_;
@@ -146,7 +147,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
                          Wt::WContainerWidget* parent);
 
         void handle_add_history();
-        void handle_remove_history(std::string type);
+        void handle_remove_history(const std::string& type);
         void add_history(const protobuf::ProtobufScopeConfig::HistoryConfig& config);
         void toggle_history_plot(Wt::WWidget* plot);
         void display_message(const std::string& group, const google::protobuf::Message& msg);
@@ -180,8 +181,8 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     {
         ControlsContainer(Wt::WTimer* timer, bool start_paused, LiaisonScope* scope,
                           SubscriptionsContainer* subscriptions_div,
-                          Wt::WContainerWidget* parent = 0);
-        ~ControlsContainer();
+                          Wt::WContainerWidget* parent = nullptr);
+        ~ControlsContainer() override;
 
         void handle_play_pause(bool toggle_state);
 
@@ -203,7 +204,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     {
         RegexFilterContainer(Wt::WStandardItemModel* model, Wt::WSortFilterProxyModel* proxy,
                              const protobuf::ProtobufScopeConfig& pb_scope_config,
-                             Wt::WContainerWidget* parent = 0);
+                             Wt::WContainerWidget* parent = nullptr);
 
         void handle_set_regex_filter();
         void handle_clear_regex_filter();
@@ -238,7 +239,7 @@ class LiaisonScopeProtobufTreeView : public Wt::WTreeView
 {
   public:
     LiaisonScopeProtobufTreeView(const protobuf::ProtobufScopeConfig& pb_scope_config,
-                                 int scope_height, Wt::WContainerWidget* parent = 0);
+                                 int scope_height, Wt::WContainerWidget* parent = nullptr);
 
   private:
     //           void handle_double_click(const Wt::WModelIndex& index, const Wt::WMouseEvent& event);
@@ -248,7 +249,7 @@ class LiaisonScopeProtobufModel : public Wt::WStandardItemModel
 {
   public:
     LiaisonScopeProtobufModel(const protobuf::ProtobufScopeConfig& pb_scope_config,
-                              Wt::WContainerWidget* parent = 0);
+                              Wt::WContainerWidget* parent = nullptr);
 };
 
 class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
@@ -257,7 +258,7 @@ class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
     ScopeCommsThread(LiaisonScope* scope, const protobuf::LiaisonConfig& config, int index)
         : LiaisonCommsThread<LiaisonScope>(scope, config, index), scope_(scope)
     {
-        auto subscription_handler = [this](const std::vector<unsigned char>& data, int scheme,
+        auto subscription_handler = [this](const std::vector<unsigned char>& data, int /*scheme*/,
                                            const std::string& type,
                                            const goby::middleware::Group& group) {
             std::string gr = group;
@@ -278,7 +279,7 @@ class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
         interprocess().subscribe_regex(subscription_handler,
                                        {goby::middleware::MarshallingScheme::PROTOBUF}, ".*", ".*");
     }
-    ~ScopeCommsThread() {}
+    ~ScopeCommsThread() override = default;
 
   private:
     friend class LiaisonScope;

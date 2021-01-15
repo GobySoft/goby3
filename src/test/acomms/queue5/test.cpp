@@ -49,13 +49,13 @@ bool provide_data = true;
 void handle_encode_on_demand(const goby::acomms::protobuf::ModemTransmission& request_msg,
                              google::protobuf::Message* data_msg);
 
-void qsize(goby::acomms::protobuf::QueueSize size);
+void qsize(const goby::acomms::protobuf::QueueSize& size);
 
 void handle_receive(const google::protobuf::Message& msg);
 
 void request_test(int request_bytes, int expected_encode_requests, int expected_messages_sent);
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
@@ -142,7 +142,7 @@ void request_test(int request_bytes, int expected_encode_requests, int expected_
     q_manager.handle_modem_receive(transmit_msg);
 }
 
-void handle_encode_on_demand(const goby::acomms::protobuf::ModemTransmission& request_msg,
+void handle_encode_on_demand(const goby::acomms::protobuf::ModemTransmission& /*request_msg*/,
                              google::protobuf::Message* data_msg)
 {
     GobyMessage msg;
@@ -157,7 +157,7 @@ void handle_encode_on_demand(const goby::acomms::protobuf::ModemTransmission& re
     ++encode_on_demand_count;
 }
 
-void qsize(goby::acomms::protobuf::QueueSize size) { goby_message_qsize = size.size(); }
+void qsize(const goby::acomms::protobuf::QueueSize& size) { goby_message_qsize = size.size(); }
 
 void handle_receive(const google::protobuf::Message& in_msg)
 {

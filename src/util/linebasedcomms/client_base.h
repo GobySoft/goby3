@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ClientBase20100628H
-#define ClientBase20100628H
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_CLIENT_BASE_H
+#define GOBY_UTIL_LINEBASEDCOMMS_CLIENT_BASE_H
 
 #include "connection.h"
 #include "interface.h"
@@ -45,14 +45,14 @@ class LineBasedClient : public LineBasedInterface, public LineBasedConnection<AS
     {
     }
 
-    virtual ~LineBasedClient() {}
+    ~LineBasedClient() override = default;
 
-    virtual ASIOAsyncReadStream& socket() = 0;
-    virtual std::string local_endpoint() = 0;
-    virtual std::string remote_endpoint() = 0;
+    ASIOAsyncReadStream& socket() override = 0;
+    std::string local_endpoint() override = 0;
+    std::string remote_endpoint() override = 0;
 
     // from LineBasedInterface
-    void do_start()
+    void do_start() override
     {
         last_start_time_ = time::SystemClock::now<boost::posix_time::ptime>();
 
@@ -68,7 +68,7 @@ class LineBasedClient : public LineBasedInterface, public LineBasedConnection<AS
     virtual bool start_specific() = 0;
 
     // from LineBasedInterface
-    void do_write(const protobuf::Datagram& line)
+    void do_write(const protobuf::Datagram& line) override
     {
         bool write_in_progress = !LineBasedConnection<ASIOAsyncReadStream>::out().empty();
         LineBasedConnection<ASIOAsyncReadStream>::out().push_back(line);
@@ -78,7 +78,7 @@ class LineBasedClient : public LineBasedInterface, public LineBasedConnection<AS
     }
 
     // from LineBasedInterface
-    void do_close(const boost::system::error_code& error)
+    void do_close(const boost::system::error_code& error) override
     {
         if (error ==
             boost::asio::error::operation_aborted) // if this call is the result of a timer cancel()
@@ -102,13 +102,13 @@ class LineBasedClient : public LineBasedInterface, public LineBasedConnection<AS
     }
 
     // same as do_close in this case
-    void socket_close(const boost::system::error_code& error) { do_close(error); }
+    void socket_close(const boost::system::error_code& error) override { do_close(error); }
 
   private:
     boost::posix_time::ptime last_start_time_;
 
-    LineBasedClient(const LineBasedClient&);
-    LineBasedClient& operator=(const LineBasedClient&);
+    LineBasedClient(const LineBasedClient&) = delete;
+    LineBasedClient& operator=(const LineBasedClient&) = delete;
 
     int retry_interval_;
 };

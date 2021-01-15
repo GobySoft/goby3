@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerializeParse20160607H
-#define SerializeParse20160607H
+#ifndef GOBY_MIDDLEWARE_MARSHALLING_INTERFACE_H
+#define GOBY_MIDDLEWARE_MARSHALLING_INTERFACE_H
 
 #include <map>
 #include <mutex>
@@ -72,7 +72,7 @@ struct MarshallingScheme
     ///
     /// \param s string representation of marshalling scheme, e.g. "PROTOBUF" or "450"
     /// \return integer representation (e.g. 1 or 450).
-    static int from_string(std::string s)
+    static int from_string(const std::string& s)
     {
         auto it = s2e.find(s);
         return it != s2e.end() ? it->second : std::stoi(s);
@@ -95,7 +95,7 @@ struct MarshallingScheme
 template <typename DataType, int scheme, class Enable = void> struct SerializerParserHelper
 {
     /// \brief Given data, produce a vector of bytes
-    static std::vector<char> serialize(const DataType& msg)
+    static std::vector<char> serialize(const DataType& /*msg*/)
     {
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
         return std::vector<char>();
@@ -109,7 +109,7 @@ template <typename DataType, int scheme, class Enable = void> struct SerializerP
     }
 
     /// \brief The marshalling scheme specific string name for this type, given a instantiation of the type (useful for specializations that can handle multiple types using runtime introspection)
-    static std::string type_name(const DataType& d)
+    static std::string type_name(const DataType& /*d*/)
     {
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
         return std::string();
@@ -131,7 +131,6 @@ template <typename DataType, int scheme, class Enable = void> struct SerializerP
         static_assert(std::is_void<Enable>::value, "SerializerParserHelper must be specialized");
         return std::shared_ptr<DataType>();
     }
-
 };
 
 //

@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISONHOME20110609H
-#define LIAISONHOME20110609H
+#ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_HOME_H
+#define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_HOME_H
 
 #include <Wt/WBorder>
 #include <Wt/WColor>

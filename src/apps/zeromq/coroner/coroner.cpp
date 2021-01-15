@@ -64,7 +64,7 @@ class Coroner : public goby::zeromq::SingleThreadApplication<protobuf::CoronerCo
                 });
     }
 
-    ~Coroner() {}
+    ~Coroner() override = default;
 
   private:
     void loop() override

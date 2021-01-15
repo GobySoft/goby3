@@ -27,6 +27,7 @@
 
 #include <boost/lexical_cast.hpp>
 #include <boost/numeric/conversion/cast.hpp>
+#include <utility>
 
 #include "goby/util/as.h"
 #include "goby/util/sci.h"
@@ -109,7 +110,7 @@ goby::moos::transitional::DCCLMessageVal::DCCLMessageVal(const std::vector<DCCLM
 
 void goby::moos::transitional::DCCLMessageVal::set(std::string sval)
 {
-    sval_ = sval;
+    sval_ = std::move(sval);
     type_ = cpp_string;
 }
 void goby::moos::transitional::DCCLMessageVal::set(double dval,
@@ -202,7 +203,7 @@ bool goby::moos::transitional::DCCLMessageVal::get(long& t) const
         case cpp_string:
             try
             {
-                double d = boost::lexical_cast<double>(sval_);
+                auto d = boost::lexical_cast<double>(sval_);
                 t = boost::numeric_cast<long>(dccl::round(d, 0));
             }
             catch (...)
