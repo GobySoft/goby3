@@ -30,6 +30,8 @@
 #include "goby/util/protobuf/io.h"
 #include "goby/util/sci.h"
 
+#include "goby/time/convert.h"
+
 goby::acomms::MACManager mac;
 const int num_cycles_check = 3;
 int first_cycle = -1;

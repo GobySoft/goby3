@@ -44,6 +44,8 @@
 #include "goby/util/debug_logger.h"                // for glog
 #include "goby/util/protobuf/io.h"                 // for operator<<
 
+#include "goby/time/convert.h"
+
 using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
