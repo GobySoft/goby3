@@ -50,27 +50,8 @@ namespace goby
 namespace middleware
 {
 class Group;
-}
-} // namespace goby
-namespace goby
-{
-namespace middleware
-{
 class InterThreadTransporter;
-}
-} // namespace goby
-namespace goby
-{
-namespace middleware
-{
 template <typename InnerTransporter> class InterProcessForwarder;
-}
-} // namespace goby
-
-namespace goby
-{
-namespace middleware
-{
 namespace io
 {
 enum class PubSubLayer
@@ -205,7 +186,7 @@ class IOThread
 
         protobuf::IOStatus status;
         status.set_state(protobuf::IO__LINK_CLOSED);
-        this->interthread().template publish<goby::middleware::io::groups::status>(status);
+        this->interthread().template publish<line_in_group>(status);
 
         this->subscribe_transporter()
             .template unsubscribe<line_out_group, goby::middleware::protobuf::IOData>();
@@ -352,8 +333,11 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
         backoff_interval_ = min_backoff_interval_;
 
         protobuf::IOStatus status;
+        if (this->index() != -1)
+            status.set_index(this->index());
+
         status.set_state(protobuf::IO__LINK_OPEN);
-        this->interthread().template publish<goby::middleware::io::groups::status>(status);
+        this->interthread().template publish<line_in_group>(status);
 
         goby::glog.is_debug2() && goby::glog << group(glog_group_) << "Successfully opened socket"
                                              << std::endl;
@@ -365,11 +349,14 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
     catch (const std::exception& e)
     {
         protobuf::IOStatus status;
+        if (this->index() != -1)
+            status.set_index(this->index());
+
         status.set_state(protobuf::IO__CRITICAL_FAILURE);
         goby::middleware::protobuf::IOError& error = *status.mutable_error();
         error.set_code(goby::middleware::protobuf::IOError::IO__INIT_FAILURE);
         error.set_text(e.what() + std::string(": config (") + this->cfg().ShortDebugString() + ")");
-        this->interthread().template publish<goby::middleware::io::groups::status>(status);
+        this->interthread().template publish<line_in_group>(status);
 
         goby::glog.is_warn() && goby::glog << group(glog_group_)
                                            << "Failed to open/configure socket/serial_port: "
@@ -424,11 +411,14 @@ void goby::middleware::io::detail::IOThread<
     ThreadType>::handle_read_error(const boost::system::error_code& ec)
 {
     protobuf::IOStatus status;
+    if (this->index() != -1)
+        status.set_index(this->index());
+
     status.set_state(protobuf::IO__CRITICAL_FAILURE);
     goby::middleware::protobuf::IOError& error = *status.mutable_error();
     error.set_code(goby::middleware::protobuf::IOError::IO__READ_FAILURE);
     error.set_text(ec.message());
-    this->interthread().template publish<goby::middleware::io::groups::status>(status);
+    this->interthread().template publish<line_in_group>(status);
 
     goby::glog.is_warn() && goby::glog << group(glog_group_)
                                        << "Failed to read from the socket/serial_port: "
@@ -447,11 +437,14 @@ void goby::middleware::io::detail::IOThread<
     ThreadType>::handle_write_error(const boost::system::error_code& ec)
 {
     protobuf::IOStatus status;
+    if (this->index() != -1)
+        status.set_index(this->index());
+
     status.set_state(protobuf::IO__CRITICAL_FAILURE);
     goby::middleware::protobuf::IOError& error = *status.mutable_error();
     error.set_code(goby::middleware::protobuf::IOError::IO__WRITE_FAILURE);
     error.set_text(ec.message());
-    this->interthread().template publish<goby::middleware::io::groups::status>(status);
+    this->interthread().template publish<line_in_group>(status);
 
     goby::glog.is_warn() && goby::glog << group(glog_group_)
                                        << "Failed to write to the socket/serial_port: "

@@ -33,7 +33,10 @@
 
 #include <boost/bind.hpp> // for bind_t, list_av_1<...
 
+#include "goby/middleware/group.h"
+#include "goby/middleware/transport/interthread.h"
 #include "goby/util/asio_compat.h"
+#include "goby/util/linebasedcomms/thread_stub.h"
 #include "goby/util/protobuf/linebasedcomms.pb.h" // for Datagram
 
 namespace boost
@@ -48,19 +51,30 @@ namespace goby
 {
 namespace util
 {
+namespace groups
+{
+constexpr goby::middleware::Group linebasedcomms_in{"goby::util::LineBasedInterface::in"};
+constexpr goby::middleware::Group linebasedcomms_out{"goby::util::LineBasedInterface::out"};
+} // namespace groups
+
 /// basic interface class for all the derived serial (and networking mimics) line-based nodes (serial, tcp, udp, etc.)
 class LineBasedInterface
 {
   public:
     LineBasedInterface(const std::string& delimiter);
-    virtual ~LineBasedInterface() = default;
+    virtual ~LineBasedInterface();
 
     // start the connection
     void start();
     // close the connection cleanly
     void close();
     // is the connection alive and well?
-    bool active() { return active_; }
+    bool active()
+    {
+        // ensure we've received any status messages first
+        interthread_.poll(std::chrono::seconds(0));
+        return active_;
+    }
 
     void sleep(int sec);
 
@@ -95,23 +109,30 @@ class LineBasedInterface
     boost::asio::io_context& io_context() { return io_; }
 
   protected:
-    // all implementors of this line based interface must provide do_start, do_write, do_close, and put all read data into "in_"
     virtual void do_start() = 0;
-    virtual void do_write(const protobuf::Datagram& line) = 0;
-    virtual void do_close(const boost::system::error_code& error) = 0;
+    virtual void do_close() = 0;
+
+    //    virtual void socket_close(const boost::system::error_code& error) = 0;
+
+    virtual std::string local_endpoint() = 0;
+    virtual std::string remote_endpoint() { return ""; };
 
     void set_active(bool active) { active_ = active; }
 
     std::string delimiter_;
-    boost::asio::io_context io_;         // the main IO service that runs this connection
-    std::deque<protobuf::Datagram> in_;  // buffered read data
+    boost::asio::io_context io_;        // the main IO service that runs this connection
+    std::deque<protobuf::Datagram> in_; // buffered read data
     std::mutex in_mutex_;
-
-    template <typename ASIOAsyncReadStream> friend class LineBasedConnection;
 
     std::string& delimiter() { return delimiter_; }
     std::deque<goby::util::protobuf::Datagram>& in() { return in_; }
     std::mutex& in_mutex() { return in_mutex_; }
+
+    goby::middleware::InterThreadTransporter& interthread() { return interthread_; }
+
+    int index() { return index_; }
+
+    virtual void do_subscribe(){};
 
   private:
     class IOLauncher
@@ -137,6 +158,11 @@ class LineBasedInterface
 
     boost::asio::io_context::work work_;
     bool active_; // remains true while this object is still operating
+
+    goby::middleware::InterThreadTransporter interthread_;
+
+    int index_;
+    static std::atomic<int> count_;
 };
 
 } // namespace util

@@ -74,33 +74,54 @@ class SerialThread : public IOThread<line_in_group, line_out_group, publish_laye
             [this](std::shared_ptr<const goby::middleware::protobuf::SerialCommand> cmd) {
                 goby::glog.is_debug2() && goby::glog << group(this->glog_group()) << "< [Command] "
                                                      << cmd->ShortDebugString() << std::endl;
-                switch (cmd->command())
+                if (!cmd->has_index() || cmd->index() == this->index())
                 {
-                    case protobuf::SerialCommand::SEND_BREAK:
-                        if (this->socket_is_open())
-                            this->mutable_serial_port().send_break();
-                        break;
+                    switch (cmd->command())
+                    {
+                        case protobuf::SerialCommand::SEND_BREAK:
+                            if (this->socket_is_open())
+                                this->mutable_serial_port().send_break();
+                            break;
 
-                        // sets RTS high, needed for PHSEN and PCO2W comms
-                    case protobuf::SerialCommand::RTS_HIGH:
-                        if (this->socket_is_open())
-                        {
-                            int fd = this->mutable_serial_port().native_handle();
-                            int RTS_flag = TIOCM_RTS;
-                            // TIOCMBIS - set bit
-                            ioctl(fd, TIOCMBIS, &RTS_flag);
-                        }
-                        break;
+                            // sets RTS high, needed for PHSEN and PCO2W comms
+                        case protobuf::SerialCommand::RTS_HIGH:
+                            if (this->socket_is_open())
+                            {
+                                int fd = this->mutable_serial_port().native_handle();
+                                int RTS_flag = TIOCM_RTS;
+                                // TIOCMBIS - set bit
+                                ioctl(fd, TIOCMBIS, &RTS_flag);
+                            }
+                            break;
 
-                    case protobuf::SerialCommand::RTS_LOW:
-                        if (this->socket_is_open())
-                        {
-                            int fd = this->mutable_serial_port().native_handle();
-                            int RTS_flag = TIOCM_RTS;
-                            // TIOCMBIC - clear bit
-                            ioctl(fd, TIOCMBIC, &RTS_flag);
-                        }
-                        break;
+                        case protobuf::SerialCommand::RTS_LOW:
+                            if (this->socket_is_open())
+                            {
+                                int fd = this->mutable_serial_port().native_handle();
+                                int RTS_flag = TIOCM_RTS;
+                                // TIOCMBIC - clear bit
+                                ioctl(fd, TIOCMBIC, &RTS_flag);
+                            }
+                            break;
+                        case protobuf::SerialCommand::DTR_HIGH:
+                            if (this->socket_is_open())
+                            {
+                                int fd = this->mutable_serial_port().native_handle();
+                                int DTR_flag = TIOCM_DTR;
+                                ioctl(fd, TIOCMBIS, &DTR_flag);
+                            }
+                            break;
+
+                        case protobuf::SerialCommand::DTR_LOW:
+                            if (this->socket_is_open())
+                            {
+                                int fd = this->mutable_serial_port().native_handle();
+                                int DTR_flag = TIOCM_DTR;
+                                ioctl(fd, TIOCMBIC, &DTR_flag);
+                            }
+                            break;
+                    }
+                    publish_status();
                 }
             };
 
@@ -123,6 +144,24 @@ class SerialThread : public IOThread<line_in_group, line_out_group, publish_laye
     void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) override
     {
         basic_async_write(this, io_msg);
+    }
+
+    void publish_status()
+    {
+        auto status_msg = std::make_shared<protobuf::SerialStatus>();
+        if (this->index() != -1)
+            status_msg->set_index(this->index());
+
+        if (this->socket_is_open())
+        {
+            int fd = this->mutable_serial_port().native_handle();
+            int status = 0;
+            // TIOCMGET - get the status of bits
+            ioctl(fd, TIOCMGET, &status);
+            status_msg->set_rts(status & TIOCM_RTS);
+            status_msg->set_dtr(status & TIOCM_DTR);
+        }
+        this->publish_transporter().template publish<line_in_group>(status_msg);
     }
 
     void open_socket() override;
@@ -165,6 +204,8 @@ void goby::middleware::io::detail::SerialThread<line_in_group, line_out_group, p
         serial_port_base::parity(serial_port_base::parity::none));
     this->mutable_serial_port().set_option(
         serial_port_base::stop_bits(serial_port_base::stop_bits::one));
+
+    publish_status();
 }
 
 #endif

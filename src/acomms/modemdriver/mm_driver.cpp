@@ -156,11 +156,6 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
 
     if (driver_cfg_.connection_type() == protobuf::DriverConfig::CONNECTION_SERIAL)
     {
-        // Grab our native file descrpitor for the serial port.  Only works for linux.
-        // Used to change control lines (e.g. RTS) w/ linux through IOCTL calls.
-        // Would need #ifdef's for conditional compling if other platforms become desired.
-        serial_fd_ = dynamic_cast<util::SerialClient&>(modem()).socket().native_handle();
-
         // The MM2 (at least, possibly MM1 as well) has an issue where serial comms are
         // garbled when RTS is asserted and hardware flow control is disabled (HFC0).
         // HFC is disabled by default on MM boot so we need to make sure
@@ -214,35 +209,14 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
 
 void goby::acomms::MMDriver::set_rts(bool state)
 {
-    int status;
-    if (ioctl(serial_fd_, TIOCMGET, &status) == -1)
-    {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
-    }
-
-    glog.is(DEBUG1) && glog << group(glog_out_group()) << "Setting RTS to "
-                            << (state ? "high" : "low") << std::endl;
-    if (state)
-        status |= TIOCM_RTS;
-    else
-        status &= ~TIOCM_RTS;
-    if (ioctl(serial_fd_, TIOCMSET, &status) == -1)
-    {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
-    }
-}
-
-bool goby::acomms::MMDriver::query_rts()
-{
-    int status;
-    if (ioctl(serial_fd_, TIOCMGET, &status) == -1)
-    {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
-    }
-    return (status & TIOCM_RTS);
+    // Grab our native file descrpitor for the serial port.  Only works for linux.
+    // Used to change control lines (e.g. RTS) w/ linux through IOCTL calls.
+    // Would need #ifdef's for conditional compling if other platforms become desired.
+    auto& serial_client = dynamic_cast<util::SerialClient&>(modem());
+    middleware::protobuf::SerialCommand command;
+    command.set_command(state ? middleware::protobuf::SerialCommand::RTS_HIGH
+                              : middleware::protobuf::SerialCommand::RTS_LOW);
+    serial_client.send_command(command);
 }
 
 void goby::acomms::MMDriver::update_cfg(const protobuf::DriverConfig& cfg)
@@ -487,24 +461,24 @@ void goby::acomms::MMDriver::write_cfg()
     write_single_cfg("SRC," + as<std::string>(driver_cfg_.modem_id()));
 
     // enforce REV to be enabled, we use it for current time and detecting modem reboots
-    if(!mm_driver_cfg().has_revision())
+    if (!mm_driver_cfg().has_revision())
     {
-      write_single_cfg("REV,1");
+        write_single_cfg("REV,1");
     }
     else // unless revision is manually specified
     {
-      write_single_cfg("REV,0");
-      revision_.mm_major = mm_driver_cfg().revision().mm_major();
-      revision_.mm_minor = mm_driver_cfg().revision().mm_minor();
-      revision_.mm_patch = mm_driver_cfg().revision().mm_patch();
+        write_single_cfg("REV,0");
+        revision_.mm_major = mm_driver_cfg().revision().mm_major();
+        revision_.mm_minor = mm_driver_cfg().revision().mm_minor();
+        revision_.mm_patch = mm_driver_cfg().revision().mm_patch();
     }
-    
+
     // enforce RXP to be enabled, we use it to detect start of received message
     write_single_cfg("RXP,1");
 
-    if(mm_driver_cfg().use_base64_fdp())
+    if (mm_driver_cfg().use_base64_fdp())
     {
-      write_single_cfg("recv.base64data,1");
+        write_single_cfg("recv.base64data,1");
     }
 }
 
@@ -813,7 +787,9 @@ void goby::acomms::MMDriver::cctdp(protobuf::ModemTransmission* msg)
         {
             if (!using_application_acks_)
             {
-	      glog.is(WARN) && glog << "Firmware ACK not yet supported for FDP. Enable application acks (use_application_acks: true) for ACK capability."
+                glog.is(WARN) &&
+                    glog << "Firmware ACK not yet supported for FDP. Enable application acks "
+                            "(use_application_acks: true) for ACK capability."
                          << std::endl;
             }
             else
@@ -826,13 +802,13 @@ void goby::acomms::MMDriver::cctdp(protobuf::ModemTransmission* msg)
         nmea.push_back(0); // ack
         nmea.push_back(0); // reserved
 
-	// pad to even bytes to avoid bug with Micro-Modem
-	if (revision_.mm_major == 2 && revision_.mm_minor == 0 && revision_.mm_patch < 35490)
-	{
+        // pad to even bytes to avoid bug with Micro-Modem
+        if (revision_.mm_major == 2 && revision_.mm_minor == 0 && revision_.mm_patch < 35490)
+        {
             if (msg->frame(0).size() & 1)
                 *msg->mutable_frame(0) += '\0';
-	}
-	
+        }
+
         nmea.push_back(goby::util::hex_encode(msg->frame(0))); //HHHH
         append_to_write_queue(nmea);
     }
@@ -1482,14 +1458,14 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
         }
         else
         {
-	  if(mm_driver_cfg().use_base64_fdp())
-	    {
-	      frame += dccl::b64_decode(frames[f * num_fields + DATA]);
-	    }
-	  else
-	    {
-	      frame += goby::util::hex_decode(frames[f * num_fields + DATA]);
-	    }
+            if (mm_driver_cfg().use_base64_fdp())
+            {
+                frame += dccl::b64_decode(frames[f * num_fields + DATA]);
+            }
+            else
+            {
+                frame += goby::util::hex_decode(frames[f * num_fields + DATA]);
+            }
         }
     }
 
@@ -1500,9 +1476,9 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
     }
     else
     {
-      m->add_frame(frame);
-      if (using_application_acks_)
-	process_incoming_app_ack(m);
+        m->add_frame(frame);
+        if (using_application_acks_)
+            process_incoming_app_ack(m);
     }
 
     glog.is(DEBUG1) && glog << group(glog_in_group())

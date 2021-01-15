@@ -38,6 +38,7 @@
 
 #include "goby/middleware/common.h"
 #include "goby/middleware/group.h"
+#include "goby/time/simulation.h"
 
 namespace goby
 {
@@ -127,6 +128,9 @@ template <typename Config, typename TransporterType> class Thread
     std::type_index type_index() { return type_i_; }
     void set_type_index(std::type_index type_i) { type_i_ = type_i; }
 
+    static constexpr goby::middleware::Group shutdown_group_{"goby::middleware::Thread::shutdown"};
+    static constexpr goby::middleware::Group joinable_group_{"goby::middleware::Thread::joinable"};
+
   protected:
     Thread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
            int index = -1)
@@ -196,9 +200,6 @@ template <typename Config, typename TransporterType> class Thread
     }
 
     bool alive() { return alive_ && *alive_; }
-
-    static constexpr goby::middleware::Group shutdown_group_{"goby::middleware::Thread::shutdown"};
-    static constexpr goby::middleware::Group joinable_group_{"goby::middleware::Thread::joinable"};
 
   private:
     void do_subscribe()

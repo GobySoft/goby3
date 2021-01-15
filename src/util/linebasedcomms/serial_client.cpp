@@ -32,37 +32,50 @@
 
 goby::util::SerialClient::SerialClient(std::string name, unsigned baud,
                                        const std::string& delimiter)
-    : LineBasedClient<boost::asio::serial_port>(delimiter),
-      serial_port_(io_),
-      name_(std::move(name)),
-      baud_(baud)
+    : LineBasedInterface(delimiter), name_(std::move(name)), baud_(baud)
 {
+    interthread().subscribe<groups::linebasedcomms_in>(
+        [this](const goby::middleware::protobuf::SerialStatus& status) {
+            if (status.index() == this->index())
+            {
+                glog.is_debug2() && glog << "[SERIAL STATUS]:  " << status.DebugString()
+                                         << std::endl;
+                status_ = status;
+            }
+        });
 }
 
-bool goby::util::SerialClient::start_specific()
+void goby::util::SerialClient::do_start()
 {
-    try
+    goby::middleware::protobuf::SerialConfig cfg;
+    cfg.set_port(name_);
+    cfg.set_baud(baud_);
+    cfg.set_end_of_line(delimiter());
+
+    serial_alive_ = true;
+    serial_thread_ = std::make_unique<std::thread>([=]() {
+        Thread serial(cfg, this->index());
+        serial.run(serial_alive_);
+    });
+}
+
+void goby::util::SerialClient::do_close()
+{
+    serial_alive_ = false;
+
+    if (serial_thread_)
     {
-        serial_port_.open(name_);
+        middleware::ThreadIdentifier ti;
+        ti.type_i = std::type_index(typeid(Thread));
+        ti.index = index();
+        interthread().publish<groups::linebasedcomms_out>(ti);
+
+        serial_thread_->join();
+        serial_thread_.reset();
     }
-    catch (std::exception& e)
-    {
-        serial_port_.close();
-        return false;
-    }
+}
 
-    serial_port_.set_option(boost::asio::serial_port_base::baud_rate(baud_));
-
-    // no flow control
-    serial_port_.set_option(boost::asio::serial_port_base::flow_control(
-        boost::asio::serial_port_base::flow_control::none));
-
-    // 8N1
-    serial_port_.set_option(boost::asio::serial_port_base::character_size(8));
-    serial_port_.set_option(
-        boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
-    serial_port_.set_option(
-        boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
-
-    return true;
+void goby::util::SerialClient::send_command(const middleware::protobuf::SerialCommand& command)
+{
+    interthread().publish<groups::linebasedcomms_out>(command);
 }

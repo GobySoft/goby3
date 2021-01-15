@@ -22,25 +22,29 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-// credit for much of this goes to Jeff Gray-3 (http://www.nabble.com/Simple-serial-port-demonstration-with-boost-asio-asynchronous-I-O-p19849520.html)
+// Old interface - replaced for most uses by middleware/io/line_based/serial.h
 
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_SERIAL_CLIENT_H
 #define GOBY_UTIL_LINEBASEDCOMMS_SERIAL_CLIENT_H
 
 #include <algorithm> // for copy, copy_backward
 #include <string>    // for string, operator!=
+#include <thread>
 
 #include <boost/asio/read_until.hpp>  // for async_read_until
 #include <boost/asio/serial_port.hpp> // for serial_port
 
-#include "client_base.h" // for LineBasedClient
+#include "goby/middleware/io/line_based/serial.h"
+#include "goby/middleware/protobuf/io.pb.h"
+
+#include "interface.h"
 
 namespace goby
 {
 namespace util
 {
 /// provides a basic client for line by line text based communications over a 8N1 tty (such as an RS-232 serial link) without flow control
-class SerialClient : public LineBasedClient<boost::asio::serial_port>
+class SerialClient : public LineBasedInterface
 {
   public:
     /// \brief create a serial client
@@ -64,19 +68,31 @@ class SerialClient : public LineBasedClient<boost::asio::serial_port>
     /// baud rate, e.g. 4800
     unsigned baud() const { return baud_; }
 
-    boost::asio::serial_port& socket() override { return serial_port_; }
     /// our serial port, e.g. "/dev/ttyUSB1"
     std::string local_endpoint() override { return name_; }
     /// who knows where the serial port goes?! (empty string)
     std::string remote_endpoint() override { return ""; }
 
-  private:
-    bool start_specific() override;
+    void send_command(const middleware::protobuf::SerialCommand& command);
+    const middleware::protobuf::SerialStatus& read_status() { return status_; }
 
   private:
-    boost::asio::serial_port serial_port_; // the serial port this instance is connected to
+    void do_start() override;
+    void do_close() override;
+
+  private:
     std::string name_;
     unsigned baud_;
+
+    using Thread = goby::middleware::io::SerialThreadLineBased<
+        groups::linebasedcomms_in, groups::linebasedcomms_out,
+        goby::middleware::io::PubSubLayer::INTERTHREAD,
+        goby::middleware::io::PubSubLayer::INTERTHREAD, goby::util::LineBasedCommsThreadStub>;
+
+    std::atomic<bool> serial_alive_{false};
+    std::unique_ptr<std::thread> serial_thread_;
+
+    middleware::protobuf::SerialStatus status_;
 };
 } // namespace util
 } // namespace goby

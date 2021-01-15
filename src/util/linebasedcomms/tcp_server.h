@@ -44,8 +44,8 @@
 #include "goby/util/asio_compat.h"
 #include "goby/util/protobuf/linebasedcomms.pb.h" // for Datagram
 
-#include "connection.h" // for LineBasedConn...
-#include "interface.h"  // for LineBasedInte...
+//#include "connection.h" // for LineBasedConn...
+#include "interface.h" // for LineBasedInte...
 
 namespace goby
 {
@@ -71,16 +71,19 @@ class TCPServer : public LineBasedInterface
     typedef std::string Endpoint;
     void close(const Endpoint& endpoint)
     {
-        io_.post(boost::bind(&TCPServer::do_close, this, boost::system::error_code(), endpoint));
+        io_.post(boost::bind(&TCPServer::do_close, this, endpoint));
     }
 
     /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230
-    std::string local_endpoint() { return goby::util::as<std::string>(acceptor_.local_endpoint()); }
+    std::string local_endpoint() override
+    {
+        return goby::util::as<std::string>(acceptor_.local_endpoint());
+    }
 
-    const std::map<Endpoint, std::shared_ptr<TCPConnection> >& connections();
+    const std::map<Endpoint, std::shared_ptr<TCPConnection>>& connections();
 
     friend class TCPConnection;
-    friend class LineBasedConnection<boost::asio::ip::tcp::socket>;
+    //    friend class LineBasedConnection<boost::asio::ip::tcp::socket>;
 
   private:
     void do_start() override
@@ -89,9 +92,8 @@ class TCPServer : public LineBasedInterface
         set_active(true);
     }
 
-    void do_write(const protobuf::Datagram& line) override;
-    void do_close(const boost::system::error_code& error) override { do_close(error, ""); }
-    void do_close(const boost::system::error_code& error, const Endpoint& endpt);
+    void do_close() override { do_close(""); }
+    void do_close(const Endpoint& endpt);
 
   private:
     void start_accept();
@@ -102,24 +104,24 @@ class TCPServer : public LineBasedInterface
     std::string server_;
     boost::asio::ip::tcp::acceptor acceptor_;
     std::shared_ptr<TCPConnection> new_connection_;
-    std::map<Endpoint, std::shared_ptr<TCPConnection> > connections_;
+    std::map<Endpoint, std::shared_ptr<TCPConnection>> connections_;
 };
 
-class TCPConnection : public boost::enable_shared_from_this<TCPConnection>,
-                      public LineBasedConnection<boost::asio::ip::tcp::socket>
+class TCPConnection : public boost::enable_shared_from_this<TCPConnection>
+//                      public LineBasedConnection<boost::asio::ip::tcp::socket>
 {
   public:
     static std::shared_ptr<TCPConnection> create(LineBasedInterface* interface);
 
-    boost::asio::ip::tcp::socket& socket() override { return socket_; }
+    //    boost::asio::ip::tcp::socket& socket() override { return socket_; }
 
     void start()
     {
-#ifdef USE_BOOST_IO_SERVICE
-        socket_.get_io_service().post(boost::bind(&TCPConnection::read_start, this));
-#else
-        boost::asio::post(socket_.get_executor(), boost::bind(&TCPConnection::read_start, this));
-#endif
+        //#ifdef USE_BOOST_IO_SERVICE
+        //        socket_.get_io_service().post(boost::bind(&TCPConnection::read_start, this));
+        //#else
+        //boost::asio::post(socket_.get_executor(), boost::bind(&TCPConnection::read_start, this));
+        //#endif
     }
 
     void write(const protobuf::Datagram& msg)
@@ -132,31 +134,25 @@ class TCPConnection : public boost::enable_shared_from_this<TCPConnection>,
 #endif
     }
 
-    void close(const boost::system::error_code& error)
+    void close()
     {
-#ifdef USE_BOOST_IO_SERVICE
-        socket_.get_io_service().post(boost::bind(&TCPConnection::socket_close, this, error));
-#else
-        boost::asio::post(socket_.get_executor(),
-                          boost::bind(&TCPConnection::socket_close, this, error));
-#endif
+        // #ifdef USE_BOOST_IO_SERVICE
+        //         socket_.get_io_service().post(boost::bind(&TCPConnection::socket_close, this, error));
+        // #else
+        //         boost::asio::post(socket_.get_executor(),
+        //                           boost::bind(&TCPConnection::socket_close, this, error));
+        // #endif
     }
 
-    std::string local_endpoint() override
-    {
-        return goby::util::as<std::string>(socket_.local_endpoint());
-    }
-    std::string remote_endpoint() override
-    {
-        return goby::util::as<std::string>(socket_.remote_endpoint());
-    }
+    std::string local_endpoint() { return goby::util::as<std::string>(socket_.local_endpoint()); }
+    std::string remote_endpoint() { return goby::util::as<std::string>(socket_.remote_endpoint()); }
 
   private:
     void socket_write(const protobuf::Datagram& line);
-    void socket_close(const boost::system::error_code& error) override;
+    //    void socket_close(const boost::system::error_code& error) override;
 
     TCPConnection(LineBasedInterface* interface)
-        : LineBasedConnection<boost::asio::ip::tcp::socket>(interface),
+        : //LineBasedConnection<boost::asio::ip::tcp::socket>(interface),
           socket_(interface->io_context())
     {
     }

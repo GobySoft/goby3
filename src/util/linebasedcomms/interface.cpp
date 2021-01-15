@@ -26,49 +26,91 @@
 
 #include <boost/system/error_code.hpp> // for error_code
 
-#include "goby/exception.h"                         // for Exception
+#include "goby/exception.h" // for Exception
+#include "goby/middleware/io/groups.h"
+#include "goby/middleware/protobuf/io.pb.h"
+#include "goby/time/convert.h"
+#include "goby/time/system_clock.h"
+#include "goby/util/as.h"
 #include "goby/util/debug_logger/flex_ostream.h"    // for FlexOstream, glog
 #include "goby/util/debug_logger/flex_ostreambuf.h" // for lock
 
 #include "interface.h"
 
+std::atomic<int> goby::util::LineBasedInterface::count_{0};
+
 goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
-    : work_(io_), active_(false)
+    : work_(io_), active_(false), index_{count_++}
 {
     goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
     if (delimiter.empty())
         throw Exception("Line based comms started with null string as delimiter!");
 
+    interthread_.subscribe<groups::linebasedcomms_in>(
+        [this](const goby::middleware::protobuf::IOData& data) {
+            if (data.index() == index_)
+            {
+                glog.is_debug2() && glog << "[DATA IN]:  " << data.DebugString() << std::endl;
+
+                in_.emplace_back();
+                auto& in = in_.back();
+                in.set_data(data.data());
+
+                if (data.has_tcp_src())
+                    in.set_src(data.tcp_src().addr() + ":" + std::to_string(data.tcp_src().port()));
+                if (data.has_tcp_dest())
+                    in.set_dest(data.tcp_dest().addr() + ":" +
+                                std::to_string(data.tcp_dest().port()));
+
+                in.set_time(goby::time::SystemClock::now<goby::time::SITime>().value());
+            }
+        });
+
+    interthread_.subscribe<groups::linebasedcomms_in>(
+        [this](const goby::middleware::protobuf::IOStatus& status) {
+            if (status.index() == index_)
+            {
+                glog.is_debug2() && glog << "[STATUS]:  " << status.DebugString() << std::endl;
+                if (status.state() == middleware::protobuf::IO__LINK_OPEN)
+                    active_ = true;
+                else
+                    active_ = false;
+            }
+        });
+
     delimiter_ = delimiter;
-    io_launcher_.reset(new IOLauncher(io_));
+    //    io_launcher_.reset(new IOLauncher(io_));
 }
+
+goby::util::LineBasedInterface::~LineBasedInterface() { interthread_.unsubscribe_all(); }
 
 void goby::util::LineBasedInterface::start()
 {
     if (active_)
         return;
-
-    //    active_ = true;
-    io_.post(boost::bind(&LineBasedInterface::do_start, this));
+    do_start();
 }
 
 void goby::util::LineBasedInterface::clear()
 {
-    std::lock_guard<std::mutex> lock(in_mutex_);
+    interthread_.poll(std::chrono::seconds(0));
+    //    std::lock_guard<std::mutex> lock(in_mutex_);
     in_.clear();
 }
 
 bool goby::util::LineBasedInterface::readline(protobuf::Datagram* msg,
                                               AccessOrder order /* = OLDEST_FIRST */)
 {
+    interthread_.poll(std::chrono::seconds(0));
+
     if (in_.empty())
     {
         return false;
     }
     else
     {
-        std::lock_guard<std::mutex> lock(in_mutex_);
+        //        std::lock_guard<std::mutex> lock(in_mutex_);
         switch (order)
         {
             case NEWEST_FIRST:
@@ -88,13 +130,15 @@ bool goby::util::LineBasedInterface::readline(protobuf::Datagram* msg,
 bool goby::util::LineBasedInterface::readline(std::string* s,
                                               AccessOrder order /* = OLDEST_FIRST */)
 {
+    interthread_.poll(std::chrono::seconds(0));
+
     if (in_.empty())
     {
         return false;
     }
     else
     {
-        std::lock_guard<std::mutex> lock(in_mutex_);
+        //        std::lock_guard<std::mutex> lock(in_mutex_);
         switch (order)
         {
             case NEWEST_FIRST:
@@ -111,16 +155,42 @@ bool goby::util::LineBasedInterface::readline(std::string* s,
     }
 }
 
-// pass the write data via the io service in the other thread
 void goby::util::LineBasedInterface::write(const protobuf::Datagram& msg)
 {
-    io_.post(boost::bind(&LineBasedInterface::do_write, this, msg));
+    auto io_data = std::make_shared<goby::middleware::protobuf::IOData>();
+    io_data->set_data(msg.data());
+    io_data->set_index(index_);
+
+    if (msg.has_src() && msg.has_dest())
+    {
+        try
+        {
+            middleware::protobuf::TCPEndPoint& io_src = *io_data->mutable_tcp_src();
+            middleware::protobuf::TCPEndPoint& io_dest = *io_data->mutable_tcp_dest();
+            const std::string& src = msg.src();
+            const std::string& dest = msg.dest();
+
+            auto src_colon_pos = src.find(':');
+            auto dest_colon_pos = dest.find(':');
+
+            if (src_colon_pos != std::string::npos)
+            {
+                io_src.set_addr(src.substr(0, src_colon_pos));
+                io_src.set_port(goby::util::as<unsigned>(src.substr(src_colon_pos + 1)));
+            }
+            if (dest_colon_pos != std::string::npos)
+            {
+                io_dest.set_addr(dest.substr(0, dest_colon_pos));
+                io_dest.set_port(goby::util::as<unsigned>(dest.substr(dest_colon_pos + 1)));
+            }
+        }
+        catch (std::exception& e)
+        {
+        }
+    }
+    interthread_.publish<groups::linebasedcomms_out>(io_data);
+    interthread_.poll(std::chrono::seconds(0));
 }
 
-// call the do_close function via the io service in the other thread
-void goby::util::LineBasedInterface::close()
-{
-    io_.post(boost::bind(&LineBasedInterface::do_close, this, boost::system::error_code()));
-}
-
-void goby::util::LineBasedInterface::sleep(int sec) { io_.post(boost::bind(::sleep, sec)); }
+void goby::util::LineBasedInterface::close() { do_close(); }
+void goby::util::LineBasedInterface::sleep(int sec) { ::sleep(sec); }

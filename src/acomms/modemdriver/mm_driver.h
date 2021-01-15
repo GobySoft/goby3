@@ -224,7 +224,6 @@ class MMDriver : public ModemDriverBase
 
     // Serial port methods
     void set_rts(bool state);
-    bool query_rts();
 
     const micromodem::protobuf::Config& mm_driver_cfg() const
     {
@@ -389,8 +388,6 @@ class MMDriver : public ModemDriverBase
     std::unique_ptr<dccl::Codec> dccl_;
     // DCCL requires full memory barrier...
     static std::mutex dccl_mutex_;
-
-    int serial_fd_{-1};
 };
 } // namespace acomms
 } // namespace goby
