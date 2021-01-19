@@ -50,13 +50,14 @@ namespace detail
 {
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
-          PubSubLayer subscribe_layer, typename Config, template <class> class ThreadType>
+          PubSubLayer subscribe_layer, typename Config, template <class> class ThreadType,
+          bool use_indexed_groups = false>
 class TCPClientThread
     : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-                      boost::asio::ip::tcp::socket, ThreadType>
+                      boost::asio::ip::tcp::socket, ThreadType, use_indexed_groups>
 {
     using Base = IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-                          boost::asio::ip::tcp::socket, ThreadType>;
+                          boost::asio::ip::tcp::socket, ThreadType, use_indexed_groups>;
 
     using ConfigType = Config;
 

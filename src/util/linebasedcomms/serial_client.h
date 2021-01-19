@@ -55,7 +55,7 @@ class SerialClient : public LineBasedInterface
     SerialClient(std::string name = "", unsigned baud = 9600,
                  const std::string& delimiter = "\r\n");
 
-    ~SerialClient() override = default;
+    ~SerialClient() override;
 
     /// set serial port name, e.g. "/dev/ttyS0"
     void set_name(const std::string& name) { name_ = name; }
@@ -87,7 +87,7 @@ class SerialClient : public LineBasedInterface
     using Thread = goby::middleware::io::SerialThreadLineBased<
         groups::linebasedcomms_in, groups::linebasedcomms_out,
         goby::middleware::io::PubSubLayer::INTERTHREAD,
-        goby::middleware::io::PubSubLayer::INTERTHREAD, goby::util::LineBasedCommsThreadStub>;
+        goby::middleware::io::PubSubLayer::INTERTHREAD, goby::util::LineBasedCommsThreadStub, true>;
 
     std::atomic<bool> serial_alive_{false};
     std::unique_ptr<std::thread> serial_thread_;

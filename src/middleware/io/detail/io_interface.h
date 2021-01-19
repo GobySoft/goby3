@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IO_COMMON_20190815H
-#define IO_COMMON_20190815H
+#ifndef GOBY_MIDDLEWARE_IO_DETAIL_IO_INTERFACE_H
+#define GOBY_MIDDLEWARE_IO_DETAIL_IO_INTERFACE_H
 
 #include <chrono>    // for seconds
 #include <exception> // for exception
@@ -45,6 +45,8 @@
 #include "goby/util/asio_compat.h"
 #include "goby/util/debug_logger.h" // for glog
 
+#include "io_transporters.h"
+
 namespace goby
 {
 namespace middleware
@@ -54,12 +56,6 @@ class InterThreadTransporter;
 template <typename InnerTransporter> class InterProcessForwarder;
 namespace io
 {
-enum class PubSubLayer
-{
-    INTERTHREAD,
-    INTERPROCESS
-};
-
 namespace detail
 {
 template <typename ProtobufEndpoint, typename ASIOEndpoint>
@@ -71,65 +67,35 @@ ProtobufEndpoint endpoint_convert(const ASIOEndpoint& asio_ep)
     return pb_ep;
 }
 
-template <class Derived, PubSubLayer layer> struct IOPublishTransporter
-{
-};
-
-template <class Derived> struct IOPublishTransporter<Derived, PubSubLayer::INTERTHREAD>
-{
-    InterThreadTransporter& publish_transporter()
-    {
-        return static_cast<Derived*>(this)->interthread();
-    }
-};
-
-template <class Derived> struct IOPublishTransporter<Derived, PubSubLayer::INTERPROCESS>
-{
-    InterProcessForwarder<InterThreadTransporter>& publish_transporter()
-    {
-        return static_cast<Derived*>(this)->interprocess();
-    }
-};
-
-template <class Derived, PubSubLayer layer> struct IOSubscribeTransporter
-{
-};
-
-template <class Derived> struct IOSubscribeTransporter<Derived, PubSubLayer::INTERTHREAD>
-{
-    InterThreadTransporter& subscribe_transporter()
-    {
-        return static_cast<Derived*>(this)->interthread();
-    }
-};
-
-template <class Derived> struct IOSubscribeTransporter<Derived, PubSubLayer::INTERPROCESS>
-{
-    InterProcessForwarder<InterThreadTransporter>& subscribe_transporter()
-    {
-        return static_cast<Derived*>(this)->interprocess();
-    }
-};
-
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
           PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
-          template <class> class ThreadType>
-class IOThread
-    : public ThreadType<IOConfig>,
-      public IOPublishTransporter<IOThread<line_in_group, line_out_group, publish_layer,
-                                           subscribe_layer, IOConfig, SocketType, ThreadType>,
-                                  publish_layer>,
-      public IOSubscribeTransporter<IOThread<line_in_group, line_out_group, publish_layer,
-                                             subscribe_layer, IOConfig, SocketType, ThreadType>,
-                                    subscribe_layer>
+          template <class> class ThreadType, bool use_indexed_groups = false>
+class IOThread : public ThreadType<IOConfig>,
+                 public IOPublishTransporter<
+                     IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                              IOConfig, SocketType, ThreadType, use_indexed_groups>,
+                     line_in_group, publish_layer, use_indexed_groups>,
+                 public IOSubscribeTransporter<
+                     IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                              IOConfig, SocketType, ThreadType, use_indexed_groups>,
+                     line_out_group, subscribe_layer, use_indexed_groups>
 {
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the configuration read by the main application at launch
     /// \param index Thread index for multiple instances in a given application (-1 indicates a single instance)
-    IOThread(const IOConfig& config, int index = -1, std::string glog_group = "i/o")
+    /// \param glog_group String name for group to use for glog
+    IOThread(const IOConfig& config, int index, std::string glog_group = "i/o")
         : ThreadType<IOConfig>(config, this->loop_max_frequency(), index),
+          IOPublishTransporter<
+              IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
+                       SocketType, ThreadType, use_indexed_groups>,
+              line_in_group, publish_layer, use_indexed_groups>(index),
+          IOSubscribeTransporter<
+              IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
+                       SocketType, ThreadType, use_indexed_groups>,
+              line_out_group, subscribe_layer, use_indexed_groups>(index),
           glog_group_(glog_group + " / t" + goby::middleware::thread_id().substr(0, 6))
     {
         auto data_out_callback =
@@ -140,9 +106,7 @@ class IOThread
                 }
             };
 
-        this->subscribe_transporter()
-            .template subscribe<line_out_group, goby::middleware::protobuf::IOData>(
-                data_out_callback);
+        this->template subscribe_out<goby::middleware::protobuf::IOData>(data_out_callback);
 
         if (!glog_group_added_)
         {
@@ -184,12 +148,11 @@ class IOThread
         if (incoming_mail_notify_thread_)
             incoming_mail_notify_thread_->detach();
 
-        protobuf::IOStatus status;
-        status.set_state(protobuf::IO__LINK_CLOSED);
-        this->interthread().template publish<line_in_group>(status);
+        auto status = std::make_shared<protobuf::IOStatus>();
+        status->set_state(protobuf::IO__LINK_CLOSED);
 
-        this->subscribe_transporter()
-            .template unsubscribe<line_out_group, goby::middleware::protobuf::IOData>();
+        this->publish_in(status);
+        this->template unsubscribe_out<goby::middleware::protobuf::IOData>();
     }
 
     template <class IOThreadImplementation>
@@ -230,7 +193,7 @@ class IOThread
                        << ((this->index() == -1) ? std::string() : std::to_string(this->index()))
                        << " " << io_msg->ShortDebugString() << std::endl;
 
-        this->publish_transporter().template publish<line_in_group>(io_msg);
+        this->publish_in(io_msg);
     }
 
     void handle_write_success(std::size_t bytes_transferred) {}
@@ -313,10 +276,10 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
-          template <class> class ThreadType>
+          template <class> class ThreadType, bool use_indexed_groups>
 void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publish_layer,
-                                            subscribe_layer, IOConfig, SocketType,
-                                            ThreadType>::try_open()
+                                            subscribe_layer, IOConfig, SocketType, ThreadType,
+                                            use_indexed_groups>::try_open()
 {
     try
     {
@@ -332,12 +295,12 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
         // successful, reset backoff
         backoff_interval_ = min_backoff_interval_;
 
-        protobuf::IOStatus status;
+        auto status = std::make_shared<protobuf::IOStatus>();
         if (this->index() != -1)
-            status.set_index(this->index());
+            status->set_index(this->index());
 
-        status.set_state(protobuf::IO__LINK_OPEN);
-        this->interthread().template publish<line_in_group>(status);
+        status->set_state(protobuf::IO__LINK_OPEN);
+        this->publish_in(status);
 
         goby::glog.is_debug2() && goby::glog << group(glog_group_) << "Successfully opened socket"
                                              << std::endl;
@@ -348,15 +311,15 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
     }
     catch (const std::exception& e)
     {
-        protobuf::IOStatus status;
+        auto status = std::make_shared<protobuf::IOStatus>();
         if (this->index() != -1)
-            status.set_index(this->index());
+            status->set_index(this->index());
 
-        status.set_state(protobuf::IO__CRITICAL_FAILURE);
-        goby::middleware::protobuf::IOError& error = *status.mutable_error();
+        status->set_state(protobuf::IO__CRITICAL_FAILURE);
+        goby::middleware::protobuf::IOError& error = *status->mutable_error();
         error.set_code(goby::middleware::protobuf::IOError::IO__INIT_FAILURE);
         error.set_text(e.what() + std::string(": config (") + this->cfg().ShortDebugString() + ")");
-        this->interthread().template publish<line_in_group>(status);
+        this->publish_in(status);
 
         goby::glog.is_warn() && goby::glog << group(glog_group_)
                                            << "Failed to open/configure socket/serial_port: "
@@ -379,10 +342,10 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
-          template <class> class ThreadType>
+          template <class> class ThreadType, bool use_indexed_groups>
 void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publish_layer,
-                                            subscribe_layer, IOConfig, SocketType,
-                                            ThreadType>::loop()
+                                            subscribe_layer, IOConfig, SocketType, ThreadType,
+                                            use_indexed_groups>::loop()
 {
     if (socket_ && socket_->is_open())
     {
@@ -405,20 +368,20 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
-          template <class> class ThreadType>
+          template <class> class ThreadType, bool use_indexed_groups>
 void goby::middleware::io::detail::IOThread<
-    line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig, SocketType,
-    ThreadType>::handle_read_error(const boost::system::error_code& ec)
+    line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig, SocketType, ThreadType,
+    use_indexed_groups>::handle_read_error(const boost::system::error_code& ec)
 {
-    protobuf::IOStatus status;
+    auto status = std::make_shared<protobuf::IOStatus>();
     if (this->index() != -1)
-        status.set_index(this->index());
+        status->set_index(this->index());
 
-    status.set_state(protobuf::IO__CRITICAL_FAILURE);
-    goby::middleware::protobuf::IOError& error = *status.mutable_error();
+    status->set_state(protobuf::IO__CRITICAL_FAILURE);
+    goby::middleware::protobuf::IOError& error = *status->mutable_error();
     error.set_code(goby::middleware::protobuf::IOError::IO__READ_FAILURE);
     error.set_text(ec.message());
-    this->interthread().template publish<line_in_group>(status);
+    this->publish_in(status);
 
     goby::glog.is_warn() && goby::glog << group(glog_group_)
                                        << "Failed to read from the socket/serial_port: "
@@ -431,20 +394,20 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
-          template <class> class ThreadType>
+          template <class> class ThreadType, bool use_indexed_groups>
 void goby::middleware::io::detail::IOThread<
-    line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig, SocketType,
-    ThreadType>::handle_write_error(const boost::system::error_code& ec)
+    line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig, SocketType, ThreadType,
+    use_indexed_groups>::handle_write_error(const boost::system::error_code& ec)
 {
-    protobuf::IOStatus status;
+    auto status = std::make_shared<protobuf::IOStatus>();
     if (this->index() != -1)
-        status.set_index(this->index());
+        status->set_index(this->index());
 
-    status.set_state(protobuf::IO__CRITICAL_FAILURE);
-    goby::middleware::protobuf::IOError& error = *status.mutable_error();
+    status->set_state(protobuf::IO__CRITICAL_FAILURE);
+    goby::middleware::protobuf::IOError& error = *status->mutable_error();
     error.set_code(goby::middleware::protobuf::IOError::IO__WRITE_FAILURE);
     error.set_text(ec.message());
-    this->interthread().template publish<line_in_group>(status);
+    this->publish_in(status);
 
     goby::glog.is_warn() && goby::glog << group(glog_group_)
                                        << "Failed to write to the socket/serial_port: "

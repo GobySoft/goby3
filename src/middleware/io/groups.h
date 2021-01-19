@@ -36,9 +36,6 @@ namespace io
 {
 namespace groups
 {
-constexpr goby::middleware::Group status{"goby::middleware::io::status"};
-
-constexpr goby::middleware::Group tcp_server_event{"goby::middleware::io::tcp::server_event"};
 
 constexpr goby::middleware::Group mavlink_raw_in{"goby::apps::zeromq::mavlink_raw_in"};
 constexpr goby::middleware::Group mavlink_raw_out{"goby::apps::zeromq::mavlink_raw_out"};

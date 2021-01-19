@@ -40,18 +40,22 @@
 std::atomic<int> goby::util::LineBasedInterface::count_{0};
 
 goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
-    : work_(io_), active_(false), index_{count_++}
+    : work_(io_),
+      active_(false),
+      index_{count_++},
+      in_group_(std::string(groups::linebasedcomms_in), index_),
+      out_group_(std::string(groups::linebasedcomms_out), index_)
 {
     goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
     if (delimiter.empty())
         throw Exception("Line based comms started with null string as delimiter!");
 
-    interthread_.subscribe<groups::linebasedcomms_in>(
+    interthread_.subscribe_dynamic<goby::middleware::protobuf::IOData>(
         [this](const goby::middleware::protobuf::IOData& data) {
             if (data.index() == index_)
             {
-                glog.is_debug2() && glog << "[DATA IN]:  " << data.DebugString() << std::endl;
+                //                glog.is_debug2() && glog << "[DATA IN]:  " << data.DebugString() << std::endl;
 
                 in_.emplace_back();
                 auto& in = in_.back();
@@ -65,25 +69,28 @@ goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
 
                 in.set_time(goby::time::SystemClock::now<goby::time::SITime>().value());
             }
-        });
+        },
+        in_group_);
 
-    interthread_.subscribe<groups::linebasedcomms_in>(
+    interthread_.subscribe_dynamic<goby::middleware::protobuf::IOStatus>(
         [this](const goby::middleware::protobuf::IOStatus& status) {
             if (status.index() == index_)
             {
-                glog.is_debug2() && glog << "[STATUS]:  " << status.DebugString() << std::endl;
+                //                glog.is_debug2() && glog << "[STATUS]:  " << status.DebugString() << std::endl;
+
                 if (status.state() == middleware::protobuf::IO__LINK_OPEN)
                     active_ = true;
                 else
                     active_ = false;
             }
-        });
+        },
+        in_group_);
 
     delimiter_ = delimiter;
     //    io_launcher_.reset(new IOLauncher(io_));
 }
 
-goby::util::LineBasedInterface::~LineBasedInterface() { interthread_.unsubscribe_all(); }
+goby::util::LineBasedInterface::~LineBasedInterface() {}
 
 void goby::util::LineBasedInterface::start()
 {
@@ -188,7 +195,8 @@ void goby::util::LineBasedInterface::write(const protobuf::Datagram& msg)
         {
         }
     }
-    interthread_.publish<groups::linebasedcomms_out>(io_data);
+
+    interthread_.publish_dynamic(io_data, out_group_);
     interthread_.poll(std::chrono::seconds(0));
 }
 

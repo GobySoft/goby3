@@ -134,6 +134,9 @@ class LineBasedInterface
 
     virtual void do_subscribe(){};
 
+    goby::middleware::DynamicGroup& in_group() { return in_group_; }
+    goby::middleware::DynamicGroup& out_group() { return out_group_; }
+
   private:
     class IOLauncher
     {
@@ -163,6 +166,9 @@ class LineBasedInterface
 
     int index_;
     static std::atomic<int> count_;
+
+    goby::middleware::DynamicGroup in_group_;
+    goby::middleware::DynamicGroup out_group_;
 };
 
 } // namespace util

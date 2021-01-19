@@ -78,25 +78,25 @@ class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThrea
 
     virtual ~TCPSession()
     {
-        goby::middleware::protobuf::TCPServerEvent event;
-        event.set_event(goby::middleware::protobuf::TCPServerEvent::EVENT_DISCONNECT);
-        *event.mutable_client_endpoint() =
+        auto event = std::make_shared<goby::middleware::protobuf::TCPServerEvent>();
+        event->set_event(goby::middleware::protobuf::TCPServerEvent::EVENT_DISCONNECT);
+        *event->mutable_client_endpoint() =
             endpoint_convert<protobuf::TCPEndPoint>(remote_endpoint_);
-        event.set_number_of_clients(server_.clients_.size());
-        server_.interthread().template publish<groups::tcp_server_event>(event);
+        event->set_number_of_clients(server_.clients_.size());
+        server_.publish_in(event);
     }
 
     void start()
     {
         server_.clients_.insert(this->shared_from_this());
 
-        goby::middleware::protobuf::TCPServerEvent event;
-        event.set_event(goby::middleware::protobuf::TCPServerEvent::EVENT_CONNECT);
-        *event.mutable_client_endpoint() =
+        auto event = std::make_shared<goby::middleware::protobuf::TCPServerEvent>();
+        event->set_event(goby::middleware::protobuf::TCPServerEvent::EVENT_CONNECT);
+        *event->mutable_client_endpoint() =
             endpoint_convert<protobuf::TCPEndPoint>(remote_endpoint_);
-        event.set_number_of_clients(server_.clients_.size());
+        event->set_number_of_clients(server_.clients_.size());
 
-        server_.interthread().template publish<groups::tcp_server_event>(event);
+        server_.publish_in(event);
         async_read();
     }
 
@@ -157,13 +157,14 @@ class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThrea
 
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
-          PubSubLayer subscribe_layer, typename Config, template <class> class ThreadType>
+          PubSubLayer subscribe_layer, typename Config, template <class> class ThreadType,
+          bool use_indexed_groups = false>
 class TCPServerThread
     : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-                      boost::asio::ip::tcp::acceptor, ThreadType>
+                      boost::asio::ip::tcp::acceptor, ThreadType, use_indexed_groups>
 {
     using Base = IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-                          boost::asio::ip::tcp::acceptor, ThreadType>;
+                          boost::asio::ip::tcp::acceptor, ThreadType, use_indexed_groups>;
 
     using ConfigType = Config;
 
@@ -200,8 +201,9 @@ class TCPServerThread
 
     boost::asio::ip::tcp::socket tcp_socket_;
 
-    std::set<std::shared_ptr<TCPSession<TCPServerThread<
-        line_in_group, line_out_group, publish_layer, subscribe_layer, Config, ThreadType>>>>
+    std::set<std::shared_ptr<
+        TCPSession<TCPServerThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                   Config, ThreadType, use_indexed_groups>>>>
         clients_;
 };
 } // namespace detail
@@ -213,10 +215,10 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
-          template <class> class ThreadType>
+          template <class> class ThreadType, bool use_indexed_groups>
 void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group, publish_layer,
-                                                   subscribe_layer, Config,
-                                                   ThreadType>::open_acceptor()
+                                                   subscribe_layer, Config, ThreadType,
+                                                   use_indexed_groups>::open_acceptor()
 {
     auto& acceptor = this->mutable_socket();
     acceptor.open(boost::asio::ip::tcp::v4());
@@ -244,10 +246,10 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
-          template <class> class ThreadType>
+          template <class> class ThreadType, bool use_indexed_groups>
 void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group, publish_layer,
-                                                   subscribe_layer, Config,
-                                                   ThreadType>::async_accept()
+                                                   subscribe_layer, Config, ThreadType,
+                                                   use_indexed_groups>::async_accept()
 {
     auto& acceptor = this->mutable_socket();
     acceptor.async_accept(tcp_socket_, [this](boost::system::error_code ec) {
@@ -272,10 +274,11 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
-          template <class> class ThreadType>
+          template <class> class ThreadType, bool use_indexed_groups>
 void goby::middleware::io::detail::TCPServerThread<
-    line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-    ThreadType>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
+    line_in_group, line_out_group, publish_layer, subscribe_layer, Config, ThreadType,
+    use_indexed_groups>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData>
+                                         io_msg)
 {
     if (!io_msg->has_tcp_dest())
         throw(goby::Exception("TCPServerThread requires 'tcp_dest' field to be set in IOData"));

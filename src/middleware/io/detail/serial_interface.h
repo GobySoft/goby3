@@ -54,14 +54,15 @@ namespace detail
 {
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
-          PubSubLayer subscribe_layer, template <class> class ThreadType>
+          PubSubLayer subscribe_layer, template <class> class ThreadType,
+          bool use_indexed_groups = false>
 class SerialThread : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
                                      goby::middleware::protobuf::SerialConfig,
-                                     boost::asio::serial_port, ThreadType>
+                                     boost::asio::serial_port, ThreadType, use_indexed_groups>
 {
-    using Base =
-        IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                 goby::middleware::protobuf::SerialConfig, boost::asio::serial_port, ThreadType>;
+    using Base = IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                          goby::middleware::protobuf::SerialConfig, boost::asio::serial_port,
+                          ThreadType, use_indexed_groups>;
 
   public:
     /// \brief Constructs the thread.
@@ -125,16 +126,11 @@ class SerialThread : public IOThread<line_in_group, line_out_group, publish_laye
                 }
             };
 
-        this->subscribe_transporter()
-            .template subscribe<line_out_group, goby::middleware::protobuf::SerialCommand>(
-                command_out_callback);
+        this->template subscribe_out<goby::middleware::protobuf::SerialCommand>(
+            command_out_callback);
     }
 
-    ~SerialThread()
-    {
-        this->subscribe_transporter()
-            .template unsubscribe<line_out_group, goby::middleware::protobuf::SerialCommand>();
-    }
+    ~SerialThread() { this->template unsubscribe_out<goby::middleware::protobuf::SerialCommand>(); }
 
   protected:
     /// \brief Access the (mutable) serial_port object
@@ -161,7 +157,8 @@ class SerialThread : public IOThread<line_in_group, line_out_group, publish_laye
             status_msg->set_rts(status & TIOCM_RTS);
             status_msg->set_dtr(status & TIOCM_DTR);
         }
-        this->publish_transporter().template publish<line_in_group>(status_msg);
+
+        this->publish_in(status_msg);
     }
 
     void open_socket() override;
@@ -174,9 +171,11 @@ class SerialThread : public IOThread<line_in_group, line_out_group, publish_laye
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType,
+          bool use_indexed_groups>
 void goby::middleware::io::detail::SerialThread<line_in_group, line_out_group, publish_layer,
-                                                subscribe_layer, ThreadType>::open_socket()
+                                                subscribe_layer, ThreadType,
+                                                use_indexed_groups>::open_socket()
 {
     this->mutable_serial_port().open(this->cfg().port());
     using boost::asio::serial_port_base;

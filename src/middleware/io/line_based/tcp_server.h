@@ -100,13 +100,14 @@ template <const goby::middleware::Group& line_in_group,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
           typename Config = goby::middleware::protobuf::TCPServerConfig,
-          template <class> class ThreadType = goby::middleware::SimpleThread>
+          template <class> class ThreadType = goby::middleware::SimpleThread,
+          bool use_indexed_groups = false>
 class TCPServerThreadLineBased
     : public detail::TCPServerThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                     Config, ThreadType>
+                                     Config, ThreadType, use_indexed_groups>
 {
     using Base = detail::TCPServerThread<line_in_group, line_out_group, publish_layer,
-                                         subscribe_layer, Config, ThreadType>;
+                                         subscribe_layer, Config, ThreadType, use_indexed_groups>;
 
   public:
     TCPServerThreadLineBased(const Config& config) : Base(config) {}
