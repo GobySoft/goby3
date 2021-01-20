@@ -60,14 +60,30 @@ message SerialStatus
 
 message TCPServerEvent
 {
+    optional int32 index = 1 [default = -1];
+    enum Event
+    {
+        EVENT_BIND = 0;
+        EVENT_CONNECT = 1;
+        EVENT_DISCONNECT = 2;
+    }
+    required Event event = 2;
+    optional TCPEndPoint local_endpoint = 3;
+    optional TCPEndPoint remote_endpoint = 4;
+    optional int32 number_of_clients = 5;
+}
+
+message TCPClientEvent
+{
+    optional int32 index = 1 [default = -1];
     enum Event
     {
         EVENT_CONNECT = 1;
         EVENT_DISCONNECT = 2;
     }
-    required Event event = 1;
-    optional TCPEndPoint client_endpoint = 2;
-    optional int32 number_of_clients = 3;
+    required Event event = 2;
+    optional TCPEndPoint local_endpoint = 3;
+    optional TCPEndPoint remote_endpoint = 4;
 }
 
 enum IOState

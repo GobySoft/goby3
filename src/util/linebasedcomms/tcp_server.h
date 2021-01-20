@@ -25,34 +25,20 @@
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_TCP_SERVER_H
 #define GOBY_UTIL_LINEBASEDCOMMS_TCP_SERVER_H
 
-#include <iostream> // for ios_base::fai...
-#include <map>      // for map
-#include <memory>   // for shared_ptr
-#include <string>   // for string, basic...
+#include <atomic>
+#include <memory>
+#include <string>
+#include <thread>
 
-#include <boost/asio/basic_socket.hpp>          // for basic_socket<...
-#include <boost/asio/basic_socket_acceptor.hpp> // for basic_socket_...
-#include <boost/asio/ip/basic_endpoint.hpp>     // for operator<<
-#include <boost/asio/ip/tcp.hpp>                // for tcp::socket, tcp
-#include <boost/asio/read_until.hpp>
-#include <boost/bind.hpp>                              // for bind_t, list_...
-#include <boost/lexical_cast/bad_lexical_cast.hpp>     // for bad_lexical_cast
-#include <boost/smart_ptr/enable_shared_from_this.hpp> // for enable_shared...
-#include <boost/system/error_code.hpp>                 // for error_code
+#include "goby/middleware/io/line_based/tcp_server.h"
+#include "goby/middleware/protobuf/io.pb.h"
 
-#include "goby/util/as.h" // for as
-#include "goby/util/asio_compat.h"
-#include "goby/util/protobuf/linebasedcomms.pb.h" // for Datagram
-
-//#include "connection.h" // for LineBasedConn...
-#include "interface.h" // for LineBasedInte...
+#include "interface.h"
 
 namespace goby
 {
 namespace util
 {
-class TCPConnection;
-
 /// provides a basic TCP server for line by line text based communications to a one or more remote TCP clients
 class TCPServer : public LineBasedInterface
 {
@@ -61,107 +47,42 @@ class TCPServer : public LineBasedInterface
     ///
     /// \param port port of the server (use 50000+ to avoid problems with special system ports)
     /// \param delimiter string used to split lines
-    TCPServer(unsigned port, const std::string& delimiter = "\r\n")
-        : LineBasedInterface(delimiter),
-          acceptor_(io_context(), boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
-    {
-    }
-    ~TCPServer() override = default;
+    TCPServer(unsigned port, const std::string& delimiter = "\r\n");
+    ~TCPServer() override;
 
-    typedef std::string Endpoint;
-    void close(const Endpoint& endpoint)
-    {
-        io_.post(boost::bind(&TCPServer::do_close, this, endpoint));
-    }
-
-    /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230
+    /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230)
     std::string local_endpoint() override
     {
-        return goby::util::as<std::string>(acceptor_.local_endpoint());
+        return local_endpoint_.addr() + ":" + std::to_string(local_endpoint_.port());
     }
 
-    const std::map<Endpoint, std::shared_ptr<TCPConnection>>& connections();
-
-    friend class TCPConnection;
-    //    friend class LineBasedConnection<boost::asio::ip::tcp::socket>;
-
-  private:
-    void do_start() override
+    const std::set<middleware::protobuf::TCPEndPoint>& remote_endpoints()
     {
-        start_accept();
-        set_active(true);
+        return remote_endpoints_;
     }
 
-    void do_close() override { do_close(""); }
-    void do_close(const Endpoint& endpt);
+  private:
+    void do_start() override;
+    void do_close() override;
 
   private:
-    void start_accept();
-    void handle_accept(const std::shared_ptr<TCPConnection>& new_connection,
-                       const boost::system::error_code& error);
+    using Thread = goby::middleware::io::TCPServerThreadLineBased<
+        groups::linebasedcomms_in, groups::linebasedcomms_out,
+        goby::middleware::io::PubSubLayer::INTERTHREAD,
+        goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::protobuf::TCPServerConfig,
+        goby::util::LineBasedCommsThreadStub, true>;
 
-  private:
-    std::string server_;
-    boost::asio::ip::tcp::acceptor acceptor_;
-    std::shared_ptr<TCPConnection> new_connection_;
-    std::map<Endpoint, std::shared_ptr<TCPConnection>> connections_;
+    std::atomic<bool> tcp_alive_{false};
+    std::unique_ptr<std::thread> tcp_thread_;
+    unsigned port_;
+
+    goby::middleware::protobuf::TCPServerEvent event_;
+
+    goby::middleware::protobuf::TCPEndPoint local_endpoint_;
+    std::set<middleware::protobuf::TCPEndPoint> remote_endpoints_;
 };
 
-class TCPConnection : public boost::enable_shared_from_this<TCPConnection>
-//                      public LineBasedConnection<boost::asio::ip::tcp::socket>
-{
-  public:
-    static std::shared_ptr<TCPConnection> create(LineBasedInterface* interface);
-
-    //    boost::asio::ip::tcp::socket& socket() override { return socket_; }
-
-    void start()
-    {
-        //#ifdef USE_BOOST_IO_SERVICE
-        //        socket_.get_io_service().post(boost::bind(&TCPConnection::read_start, this));
-        //#else
-        //boost::asio::post(socket_.get_executor(), boost::bind(&TCPConnection::read_start, this));
-        //#endif
-    }
-
-    void write(const protobuf::Datagram& msg)
-    {
-#ifdef USE_BOOST_IO_SERVICE
-        socket_.get_io_service().post(boost::bind(&TCPConnection::socket_write, this, msg));
-#else
-        boost::asio::post(socket_.get_executor(),
-                          boost::bind(&TCPConnection::socket_write, this, msg));
-#endif
-    }
-
-    void close()
-    {
-        // #ifdef USE_BOOST_IO_SERVICE
-        //         socket_.get_io_service().post(boost::bind(&TCPConnection::socket_close, this, error));
-        // #else
-        //         boost::asio::post(socket_.get_executor(),
-        //                           boost::bind(&TCPConnection::socket_close, this, error));
-        // #endif
-    }
-
-    std::string local_endpoint() { return goby::util::as<std::string>(socket_.local_endpoint()); }
-    std::string remote_endpoint() { return goby::util::as<std::string>(socket_.remote_endpoint()); }
-
-  private:
-    void socket_write(const protobuf::Datagram& line);
-    //    void socket_close(const boost::system::error_code& error) override;
-
-    TCPConnection(LineBasedInterface* interface)
-        : //LineBasedConnection<boost::asio::ip::tcp::socket>(interface),
-          socket_(interface->io_context())
-    {
-    }
-
-  private:
-    boost::asio::ip::tcp::socket socket_;
-};
 } // namespace util
-
 } // namespace goby
 
 #endif

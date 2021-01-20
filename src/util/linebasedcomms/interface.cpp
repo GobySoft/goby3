@@ -40,8 +40,7 @@
 std::atomic<int> goby::util::LineBasedInterface::count_{0};
 
 goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
-    : work_(io_),
-      active_(false),
+    : active_(false),
       index_{count_++},
       in_group_(std::string(groups::linebasedcomms_in), index_),
       out_group_(std::string(groups::linebasedcomms_out), index_)
@@ -169,23 +168,35 @@ void goby::util::LineBasedInterface::write(const protobuf::Datagram& msg)
     io_data->set_data(msg.data());
     io_data->set_index(index_);
 
-    if (msg.has_src() && msg.has_dest())
+    if (msg.has_src())
     {
         try
         {
             middleware::protobuf::TCPEndPoint& io_src = *io_data->mutable_tcp_src();
-            middleware::protobuf::TCPEndPoint& io_dest = *io_data->mutable_tcp_dest();
             const std::string& src = msg.src();
-            const std::string& dest = msg.dest();
 
             auto src_colon_pos = src.find(':');
-            auto dest_colon_pos = dest.find(':');
 
             if (src_colon_pos != std::string::npos)
             {
                 io_src.set_addr(src.substr(0, src_colon_pos));
                 io_src.set_port(goby::util::as<unsigned>(src.substr(src_colon_pos + 1)));
             }
+        }
+        catch (std::exception& e)
+        {
+        }
+    }
+
+    if (msg.has_dest())
+    {
+        try
+        {
+            middleware::protobuf::TCPEndPoint& io_dest = *io_data->mutable_tcp_dest();
+            const std::string& dest = msg.dest();
+
+            auto dest_colon_pos = dest.find(':');
+
             if (dest_colon_pos != std::string::npos)
             {
                 io_dest.set_addr(dest.substr(0, dest_colon_pos));
@@ -195,6 +206,11 @@ void goby::util::LineBasedInterface::write(const protobuf::Datagram& msg)
         catch (std::exception& e)
         {
         }
+    }
+    else
+    {
+        middleware::protobuf::TCPEndPoint& io_dest = *io_data->mutable_tcp_dest();
+        io_dest.set_all_clients(true);
     }
 
     interthread_.publish_dynamic(io_data, out_group_);

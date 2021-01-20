@@ -106,27 +106,17 @@ class LineBasedInterface
     void set_delimiter(const std::string& s) { delimiter_ = s; }
     std::string delimiter() const { return delimiter_; }
 
-    boost::asio::io_context& io_context() { return io_; }
-
   protected:
     virtual void do_start() = 0;
     virtual void do_close() = 0;
-
-    //    virtual void socket_close(const boost::system::error_code& error) = 0;
 
     virtual std::string local_endpoint() = 0;
     virtual std::string remote_endpoint() { return ""; };
 
     void set_active(bool active) { active_ = active; }
 
-    std::string delimiter_;
-    boost::asio::io_context io_;        // the main IO service that runs this connection
-    std::deque<protobuf::Datagram> in_; // buffered read data
-    std::mutex in_mutex_;
-
     std::string& delimiter() { return delimiter_; }
     std::deque<goby::util::protobuf::Datagram>& in() { return in_; }
-    std::mutex& in_mutex() { return in_mutex_; }
 
     goby::middleware::InterThreadTransporter& interthread() { return interthread_; }
 
@@ -140,28 +130,9 @@ class LineBasedInterface
     bool io_thread_ready() { return io_thread_ready_; }
 
   private:
-    class IOLauncher
-    {
-      public:
-        IOLauncher(boost::asio::io_context& io)
-            : io_(io), t_(boost::bind(&boost::asio::io_context::run, &io))
-        {
-        }
+    std::string delimiter_;
+    std::deque<protobuf::Datagram> in_; // buffered read data
 
-        ~IOLauncher()
-        {
-            io_.stop();
-            t_.join();
-        }
-
-      private:
-        boost::asio::io_context& io_;
-        std::thread t_;
-    };
-
-    std::shared_ptr<IOLauncher> io_launcher_;
-
-    boost::asio::io_context::work work_;
     bool active_; // remains true while this object is still operating
 
     int index_;

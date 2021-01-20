@@ -25,28 +25,22 @@
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_TCP_CLIENT_H
 #define GOBY_UTIL_LINEBASEDCOMMS_TCP_CLIENT_H
 
-#include <algorithm> // for copy, copy_backward
-#include <ios>       // for ios_base::failure
-#include <string>    // for string, operator!=
+#include <atomic>
+#include <memory>
+#include <string>
+#include <thread>
 
-#include <boost/asio/basic_socket.hpp>             // for basic_socket<>::e...
-#include <boost/asio/ip/basic_endpoint.hpp>        // for operator<<
-#include <boost/asio/ip/tcp.hpp>                   // for tcp::socket, tcp
-#include <boost/asio/read_until.hpp>               // for async_read_until
-#include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_cast
+#include "goby/middleware/io/line_based/tcp_client.h"
+#include "goby/middleware/protobuf/io.pb.h"
 
-#include "goby/util/as.h" // for as
-
-#include "client_base.h" // for LineBasedClient
+#include "interface.h"
 
 namespace goby
 {
 namespace util
 {
-template <typename ASIOAsyncReadStream> class LineBasedConnection;
-
 /// provides a basic TCP client for line by line text based communications to a remote TCP server
-class TCPClient : public LineBasedClient<boost::asio::ip::tcp::socket>
+class TCPClient : public LineBasedInterface
 {
   public:
     /// \brief create a TCPClient
@@ -57,30 +51,40 @@ class TCPClient : public LineBasedClient<boost::asio::ip::tcp::socket>
     /// \param retry_interval Time between reconnects in seconds
     TCPClient(std::string server, unsigned port, const std::string& delimiter = "\r\n",
               int retry_interval = 10);
+    ~TCPClient() override;
 
-    boost::asio::ip::tcp::socket& socket() override { return socket_; }
-
-    /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230
+    /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230)
     std::string local_endpoint() override
     {
-        return goby::util::as<std::string>(socket_.local_endpoint());
+        return local_endpoint_.addr() + ":" + std::to_string(local_endpoint_.port());
     }
-    /// \brief string representation of the remote endpoint, (e.g. 192.168.1.106:50000
+    /// \brief string representation of the remote endpoint, (e.g. 192.168.1.106:50000)
     std::string remote_endpoint() override
     {
-        return goby::util::as<std::string>(socket_.remote_endpoint());
+        return remote_endpoint_.addr() + ":" + std::to_string(remote_endpoint_.port());
     }
 
   private:
-    bool start_specific() override;
-
-    friend class TCPConnection;
-    friend class LineBasedConnection<boost::asio::ip::tcp::socket>;
+    void do_start() override;
+    void do_close() override;
 
   private:
-    boost::asio::ip::tcp::socket socket_;
     std::string server_;
-    std::string port_;
+    unsigned port_;
+
+    using Thread = goby::middleware::io::TCPClientThreadLineBased<
+        groups::linebasedcomms_in, groups::linebasedcomms_out,
+        goby::middleware::io::PubSubLayer::INTERTHREAD,
+        goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::protobuf::TCPClientConfig,
+        goby::util::LineBasedCommsThreadStub, true>;
+
+    std::atomic<bool> tcp_alive_{false};
+    std::unique_ptr<std::thread> tcp_thread_;
+
+    goby::middleware::protobuf::TCPClientEvent event_;
+
+    goby::middleware::protobuf::TCPEndPoint remote_endpoint_;
+    goby::middleware::protobuf::TCPEndPoint local_endpoint_;
 };
 } // namespace util
 } // namespace goby

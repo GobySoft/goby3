@@ -1,0 +1,4 @@
+add_executable(goby_test_linebasedcomms_tcp test.cpp)
+add_test(goby_test_linebasedcomms_tcp ${goby_BIN_DIR}/goby_test_linebasedcomms_tcp)
+target_link_libraries(goby_test_linebasedcomms_tcp goby)
+

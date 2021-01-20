@@ -55,15 +55,22 @@ namespace goby
 {
 namespace middleware
 {
+namespace protobuf
+{
+inline bool operator<(const TCPEndPoint& ep_a, const TCPEndPoint& ep_b)
+{
+    return (ep_a.addr() == ep_b.addr()) ? ep_a.port() < ep_b.port() : ep_a.addr() < ep_b.addr();
+}
+
+inline bool operator==(const TCPEndPoint& ep_a, const TCPEndPoint& ep_b)
+{
+    return (ep_a.addr() == ep_b.addr()) && (ep_a.port() == ep_b.port());
+}
+} // namespace protobuf
 namespace io
 {
 namespace detail
 {
-bool operator==(const protobuf::TCPEndPoint& ep_a, const protobuf::TCPEndPoint& ep_b)
-{
-    return (ep_a.addr() == ep_b.addr()) && (ep_a.port() == ep_b.port());
-}
-
 template <typename TCPServerThreadType>
 class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThreadType>>
 {
@@ -79,10 +86,15 @@ class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThrea
     virtual ~TCPSession()
     {
         auto event = std::make_shared<goby::middleware::protobuf::TCPServerEvent>();
+        if (server_.index() != -1)
+            event->set_index(server_.index());
         event->set_event(goby::middleware::protobuf::TCPServerEvent::EVENT_DISCONNECT);
-        *event->mutable_client_endpoint() =
+        *event->mutable_local_endpoint() = endpoint_convert<protobuf::TCPEndPoint>(local_endpoint_);
+        *event->mutable_remote_endpoint() =
             endpoint_convert<protobuf::TCPEndPoint>(remote_endpoint_);
         event->set_number_of_clients(server_.clients_.size());
+        goby::glog.is_debug2() && goby::glog << group(server_.glog_group())
+                                             << "Event: " << event->ShortDebugString() << std::endl;
         server_.publish_in(event);
     }
 
@@ -91,11 +103,15 @@ class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThrea
         server_.clients_.insert(this->shared_from_this());
 
         auto event = std::make_shared<goby::middleware::protobuf::TCPServerEvent>();
+        if (server_.index() != -1)
+            event->set_index(server_.index());
         event->set_event(goby::middleware::protobuf::TCPServerEvent::EVENT_CONNECT);
-        *event->mutable_client_endpoint() =
+        *event->mutable_local_endpoint() = endpoint_convert<protobuf::TCPEndPoint>(local_endpoint_);
+        *event->mutable_remote_endpoint() =
             endpoint_convert<protobuf::TCPEndPoint>(remote_endpoint_);
         event->set_number_of_clients(server_.clients_.size());
-
+        goby::glog.is_debug2() && goby::glog << group(server_.glog_group())
+                                             << "Event: " << event->ShortDebugString() << std::endl;
         server_.publish_in(event);
         async_read();
     }
@@ -171,8 +187,8 @@ class TCPServerThread
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    TCPServerThread(const Config& config)
-        : Base(config, -1, std::string("tcp-l: ") + std::to_string(config.bind_port())),
+    TCPServerThread(const Config& config, int index = -1)
+        : Base(config, index, std::string("tcp-l: ") + std::to_string(config.bind_port())),
           tcp_socket_(this->mutable_io())
     {
     }
@@ -240,6 +256,15 @@ void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group
                    << " and began listening" << std::endl;
 
     local_endpoint_ = acceptor.local_endpoint();
+
+    auto event = std::make_shared<goby::middleware::protobuf::TCPServerEvent>();
+    if (this->index() != -1)
+        event->set_index(this->index());
+    event->set_event(goby::middleware::protobuf::TCPServerEvent::EVENT_BIND);
+    *event->mutable_local_endpoint() = endpoint_convert<protobuf::TCPEndPoint>(local_endpoint_);
+    goby::glog.is_debug2() && goby::glog << group(this->glog_group())
+                                         << "Event: " << event->ShortDebugString() << std::endl;
+    this->publish_in(event);
 }
 
 template <const goby::middleware::Group& line_in_group,

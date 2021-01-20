@@ -27,12 +27,10 @@
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_SERIAL_CLIENT_H
 #define GOBY_UTIL_LINEBASEDCOMMS_SERIAL_CLIENT_H
 
-#include <algorithm> // for copy, copy_backward
-#include <string>    // for string, operator!=
+#include <atomic>
+#include <memory>
+#include <string> // for string, operator!=
 #include <thread>
-
-#include <boost/asio/read_until.hpp>  // for async_read_until
-#include <boost/asio/serial_port.hpp> // for serial_port
 
 #include "goby/middleware/io/line_based/serial.h"
 #include "goby/middleware/protobuf/io.pb.h"

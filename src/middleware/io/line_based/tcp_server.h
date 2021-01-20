@@ -110,7 +110,7 @@ class TCPServerThreadLineBased
                                          subscribe_layer, Config, ThreadType, use_indexed_groups>;
 
   public:
-    TCPServerThreadLineBased(const Config& config) : Base(config) {}
+    TCPServerThreadLineBased(const Config& config, int index = -1) : Base(config, index) {}
 
   private:
     void start_session(boost::asio::ip::tcp::socket tcp_socket)

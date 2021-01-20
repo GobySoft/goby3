@@ -75,7 +75,19 @@ class TCPClientThread
                                std::to_string(this->cfg().remote_port())});
     }
 
-    ~TCPClientThread() {}
+    ~TCPClientThread()
+    {
+        auto event = std::make_shared<goby::middleware::protobuf::TCPClientEvent>();
+        if (this->index() != -1)
+            event->set_index(this->index());
+        event->set_event(goby::middleware::protobuf::TCPClientEvent::EVENT_DISCONNECT);
+        *event->mutable_local_endpoint() = endpoint_convert<protobuf::TCPEndPoint>(local_endpoint_);
+        *event->mutable_remote_endpoint() =
+            endpoint_convert<protobuf::TCPEndPoint>(remote_endpoint_);
+        goby::glog.is_debug2() && goby::glog << group(this->glog_group())
+                                             << "Event: " << event->ShortDebugString() << std::endl;
+        this->publish_in(event);
+    }
 
   protected:
     void insert_endpoints(std::shared_ptr<goby::middleware::protobuf::IOData>& io_msg)
@@ -91,9 +103,21 @@ class TCPClientThread
     }
 
     /// \brief Tries to open the tcp client socket, and if fails publishes an error
-    void open_socket()
+    void open_socket() override
     {
         this->mutable_socket().connect(remote_endpoint_);
+
+        auto event = std::make_shared<goby::middleware::protobuf::TCPClientEvent>();
+        if (this->index() != -1)
+            event->set_index(this->index());
+        event->set_event(goby::middleware::protobuf::TCPClientEvent::EVENT_CONNECT);
+        *event->mutable_local_endpoint() = endpoint_convert<protobuf::TCPEndPoint>(local_endpoint_);
+        *event->mutable_remote_endpoint() =
+            endpoint_convert<protobuf::TCPEndPoint>(remote_endpoint_);
+        goby::glog.is_debug2() && goby::glog << group(this->glog_group())
+                                             << "Event: " << event->ShortDebugString() << std::endl;
+        this->publish_in(event);
+
         local_endpoint_ = this->mutable_socket().local_endpoint();
     }
 
