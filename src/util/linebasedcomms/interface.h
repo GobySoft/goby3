@@ -162,13 +162,14 @@ class LineBasedInterface
     boost::asio::io_context::work work_;
     bool active_; // remains true while this object is still operating
 
-    goby::middleware::InterThreadTransporter interthread_;
-
     int index_;
     static std::atomic<int> count_;
 
+    // DynamicGroups must outlive interthread_ since they hold the std::string used by the underlying Group
     goby::middleware::DynamicGroup in_group_;
     goby::middleware::DynamicGroup out_group_;
+
+    goby::middleware::InterThreadTransporter interthread_;
 };
 
 } // namespace util

@@ -120,6 +120,7 @@ template <typename Config, typename TransporterType> class Thread
         do_subscribe();
         initialize();
         while (alive) { run_once(); }
+        finalize();
     }
 
     /// \return the Thread index (for multiple instantiations)
@@ -196,7 +197,6 @@ template <typename Config, typename TransporterType> class Thread
     void thread_quit()
     {
         (*alive_) = false;
-        finalize();
     }
 
     bool alive() { return alive_ && *alive_; }
@@ -214,6 +214,7 @@ template <typename Config, typename TransporterType> class Thread
             .innermost()
             .template subscribe<shutdown_group_, ThreadIdentifier, MarshallingScheme::CXX_OBJECT>(
                 [this](const ThreadIdentifier ti) {
+
                     if (ti.all_threads ||
                         (ti.type_i == this->type_index() && ti.index == this->index()))
                         this->thread_quit();

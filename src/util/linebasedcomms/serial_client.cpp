@@ -64,15 +64,9 @@ void goby::util::SerialClient::do_start()
 
 void goby::util::SerialClient::do_close()
 {
-    serial_alive_ = false;
-
     if (serial_thread_)
     {
-        middleware::ThreadIdentifier ti;
-        ti.type_i = std::type_index(typeid(Thread));
-        ti.index = index();
-        interthread().publish_dynamic(ti, out_group());
-
+        serial_alive_ = false;
         serial_thread_->join();
         serial_thread_.reset();
     }
