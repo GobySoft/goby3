@@ -137,6 +137,8 @@ class LineBasedInterface
     goby::middleware::DynamicGroup& in_group() { return in_group_; }
     goby::middleware::DynamicGroup& out_group() { return out_group_; }
 
+    bool io_thread_ready() { return io_thread_ready_; }
+
   private:
     class IOLauncher
     {
@@ -170,6 +172,8 @@ class LineBasedInterface
     goby::middleware::DynamicGroup out_group_;
 
     goby::middleware::InterThreadTransporter interthread_;
+
+    bool io_thread_ready_{false};
 };
 
 } // namespace util

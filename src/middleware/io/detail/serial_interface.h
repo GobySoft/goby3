@@ -158,6 +158,9 @@ class SerialThread : public IOThread<line_in_group, line_out_group, publish_laye
             status_msg->set_dtr(status & TIOCM_DTR);
         }
 
+        goby::glog.is_debug2() && goby::glog << group(this->glog_group()) << "< [Status] "
+                                             << status_msg->ShortDebugString() << std::endl;
+
         this->publish_in(status_msg);
     }
 

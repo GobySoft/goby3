@@ -73,8 +73,8 @@ goby::util::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
       curses_(nullptr),
       start_time_(time::SystemClock::now<boost::posix_time::ptime>()),
       is_gui_(false),
-      highest_verbosity_(logger::QUIET),
-      parent_(parent)
+      highest_verbosity_(logger::QUIET)
+//      parent_(parent)
 
 {
     logger::Group no_group("", "Ungrouped messages");
@@ -157,7 +157,7 @@ void goby::util::FlexOStreamBuf::add_group(const std::string& name, logger::Grou
 
 int goby::util::FlexOStreamBuf::overflow(int c /*= EOF*/)
 {
-    parent_->set_unset_verbosity();
+    //    parent_->set_unset_verbosity();
 
     if (c == EOF)
         return c;
@@ -175,10 +175,12 @@ int goby::util::FlexOStreamBuf::sync()
     if (current_verbosity_ == logger::UNKNOWN && lock_action_ == logger_lock::lock)
     {
         std::cerr
-            << "== Misuse of goby::glog in threaded mode: must use 'goby.is(...) && glog' syntax"
+            << "== Misuse of goby::glog in threaded mode: must use 'glog.is_*() && glog' syntax. "
+               "For example, glog.is_verbose() && glog << \"My message\" << std::endl;"
             << std::endl;
         std::cerr << "== Offending line: " << buffer_.front() << std::endl;
         assert(!(lock_action_ == logger_lock::lock && current_verbosity_ == logger::UNKNOWN));
+        exit(EXIT_FAILURE);
         return 0;
     }
 

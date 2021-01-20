@@ -83,6 +83,7 @@ goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
                 else
                     active_ = false;
             }
+            io_thread_ready_ = true;
         },
         in_group_);
 

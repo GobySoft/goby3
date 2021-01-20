@@ -69,6 +69,7 @@ template <typename Config, typename TransporterType> class Thread
     std::atomic<bool>* alive_{nullptr};
     std::type_index type_i_{std::type_index(typeid(void))};
     std::string thread_id_;
+    bool finalize_run_{false};
 
   public:
     using Transporter = TransporterType;
@@ -120,7 +121,11 @@ template <typename Config, typename TransporterType> class Thread
         do_subscribe();
         initialize();
         while (alive) { run_once(); }
-        finalize();
+        if (!finalize_run_)
+        {
+            finalize();
+            finalize_run_ = true;
+        }
     }
 
     /// \return the Thread index (for multiple instantiations)
@@ -197,6 +202,11 @@ template <typename Config, typename TransporterType> class Thread
     void thread_quit()
     {
         (*alive_) = false;
+        if (!finalize_run_)
+        {
+            finalize();
+            finalize_run_ = true;
+        }
     }
 
     bool alive() { return alive_ && *alive_; }
@@ -214,10 +224,11 @@ template <typename Config, typename TransporterType> class Thread
             .innermost()
             .template subscribe<shutdown_group_, ThreadIdentifier, MarshallingScheme::CXX_OBJECT>(
                 [this](const ThreadIdentifier ti) {
-
                     if (ti.all_threads ||
                         (ti.type_i == this->type_index() && ti.index == this->index()))
+                    {
                         this->thread_quit();
+                    }
                 });
     }
 };

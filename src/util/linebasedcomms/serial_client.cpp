@@ -37,11 +37,7 @@ goby::util::SerialClient::SerialClient(std::string name, unsigned baud,
     interthread().subscribe_dynamic<goby::middleware::protobuf::SerialStatus>(
         [this](const goby::middleware::protobuf::SerialStatus& status) {
             if (status.index() == this->index())
-            {
-                glog.is_debug2() && glog << "[SERIAL STATUS]:  " << status.DebugString()
-                                         << std::endl;
                 status_ = status;
-            }
         },
         in_group());
 }
@@ -58,6 +54,8 @@ void goby::util::SerialClient::do_start()
     serial_alive_ = true;
     serial_thread_ = std::make_unique<std::thread>([cfg, this]() {
         Thread serial(cfg, this->index());
+        auto type_i = std::type_index(typeid(Thread));
+        serial.set_type_index(type_i);
         serial.run(serial_alive_);
     });
 }
@@ -66,7 +64,13 @@ void goby::util::SerialClient::do_close()
 {
     if (serial_thread_)
     {
-        serial_alive_ = false;
+        // wait for the first status message to ensure that shutdown_group_ has been subscribed to
+        // only relevant for very fast do_open()/do_close()
+        while (!io_thread_ready()) interthread().poll(std::chrono::milliseconds(10));
+
+        auto type_i = std::type_index(typeid(Thread));
+        middleware::ThreadIdentifier ti{type_i, index()};
+        interthread().publish<Thread::shutdown_group_>(ti);
         serial_thread_->join();
         serial_thread_.reset();
     }

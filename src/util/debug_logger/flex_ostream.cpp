@@ -70,7 +70,7 @@ std::ostream& goby::util::FlexOstream::operator<<(std::ostream& (*pf)(std::ostre
 {
     if (pf == die)
         sb_.set_die_flag(true);
-    set_unset_verbosity();
+    //    set_unset_verbosity();
     return std::ostream::operator<<(pf);
 }
 
