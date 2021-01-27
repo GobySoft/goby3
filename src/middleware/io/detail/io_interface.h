@@ -56,6 +56,11 @@ class InterThreadTransporter;
 template <typename InnerTransporter> class InterProcessForwarder;
 namespace io
 {
+enum class ThreadState
+{
+    SUBSCRIPTIONS_COMPLETE
+};
+
 namespace detail
 {
 template <typename ProtobufEndpoint, typename ASIOEndpoint>
@@ -140,7 +145,7 @@ class IOThread : public ThreadType<IOConfig>,
         incoming_mail_notify_thread_.reset();
     }
 
-    ~IOThread()
+    virtual ~IOThread()
     {
         socket_.reset();
 

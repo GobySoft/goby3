@@ -128,9 +128,15 @@ class SerialThread : public IOThread<line_in_group, line_out_group, publish_laye
 
         this->template subscribe_out<goby::middleware::protobuf::SerialCommand>(
             command_out_callback);
+
+        auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+        this->interthread().template publish<line_in_group>(ready);
     }
 
-    ~SerialThread() { this->template unsubscribe_out<goby::middleware::protobuf::SerialCommand>(); }
+    ~SerialThread() override
+    {
+        this->template unsubscribe_out<goby::middleware::protobuf::SerialCommand>();
+    }
 
   protected:
     /// \brief Access the (mutable) serial_port object

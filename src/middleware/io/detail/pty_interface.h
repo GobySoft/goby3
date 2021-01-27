@@ -89,9 +89,11 @@ class PTYThread : public detail::IOThread<line_in_group, line_out_group, publish
     PTYThread(const goby::middleware::protobuf::PTYConfig& config, int index = -1)
         : Base(config, index, std::string("pty: ") + config.port())
     {
+        auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+        this->interthread().template publish<line_in_group>(ready);
     }
 
-    ~PTYThread() {}
+    ~PTYThread() override {}
 
   private:
     void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) override

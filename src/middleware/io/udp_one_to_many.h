@@ -71,12 +71,17 @@ class UDPOneToManyThread
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    UDPOneToManyThread(const Config& config)
+    UDPOneToManyThread(const Config& config, bool is_final = true)
         : Base(config, -1, std::string("udp: ") + std::to_string(config.bind_port()))
     {
+        if (is_final)
+        {
+            auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+            this->interthread().template publish<line_in_group>(ready);
+        }
     }
 
-    ~UDPOneToManyThread() {}
+    ~UDPOneToManyThread() override {}
 
   protected:
     /// \brief Starts an asynchronous read on the udp socket.

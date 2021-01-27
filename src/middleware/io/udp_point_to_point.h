@@ -79,15 +79,18 @@ class UDPPointToPointThread
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
     UDPPointToPointThread(const goby::middleware::protobuf::UDPPointToPointConfig& config)
-        : Base(config)
+        : Base(config, false)
     {
         boost::asio::ip::udp::resolver resolver(this->mutable_io());
         remote_endpoint_ =
             *resolver.resolve({boost::asio::ip::udp::v4(), this->cfg().remote_address(),
                                std::to_string(this->cfg().remote_port())});
+
+        auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+        this->interthread().template publish<line_in_group>(ready);
     }
 
-    ~UDPPointToPointThread() {}
+    ~UDPPointToPointThread() override {}
 
   private:
     /// \brief Starts an asynchronous write from data published

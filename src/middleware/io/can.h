@@ -104,9 +104,11 @@ class CanThread : public detail::IOThread<line_in_group, line_out_group, publish
     CanThread(const goby::middleware::protobuf::CanConfig& config, int index = -1)
         : Base(config, index, std::string("can: ") + config.interface())
     {
+        auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+        this->interthread().template publish<line_in_group>(ready);
     }
 
-    ~CanThread() {}
+    ~CanThread() override {}
 
   private:
     void async_read() override;

@@ -216,10 +216,9 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         if (on_thread_decl)
         {
             thread = as_string(*on_thread_decl);
-            for (auto it = on_thread_decl->bases_begin(), end = on_thread_decl->bases_end();
-                 it != end; ++it)
-                bases.insert(as_string(*(it->getType()->getAsCXXRecordDecl())));
+            insert_bases(bases, on_thread_decl);
         }
+
         bases_[thread] = bases;
 
         for (auto base : bases) parents_[base].insert(thread);
@@ -319,6 +318,17 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
     std::string as_string(const clang::CXXRecordDecl& cxx_decl)
     {
         return as_string(*(cxx_decl.getTypeForDecl()));
+    }
+
+    // recursively insert all base classes
+    void insert_bases(std::set<std::string>& bases, const clang::CXXRecordDecl* thread_decl)
+    {
+        std::string thread = as_string(*thread_decl);
+        for (auto it = thread_decl->bases_begin(), end = thread_decl->bases_end(); it != end; ++it)
+        {
+            bases.insert(as_string(*(it->getType()->getAsCXXRecordDecl())));
+            insert_bases(bases, it->getType()->getAsCXXRecordDecl());
+        }
     }
 
   private:

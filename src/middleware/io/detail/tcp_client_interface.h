@@ -73,9 +73,12 @@ class TCPClientThread
         remote_endpoint_ =
             *resolver.resolve({boost::asio::ip::tcp::v4(), this->cfg().remote_address(),
                                std::to_string(this->cfg().remote_port())});
+
+        auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+        this->interthread().template publish<line_in_group>(ready);
     }
 
-    ~TCPClientThread()
+    ~TCPClientThread() override
     {
         auto event = std::make_shared<goby::middleware::protobuf::TCPClientEvent>();
         if (this->index() != -1)

@@ -191,9 +191,11 @@ class TCPServerThread
         : Base(config, index, std::string("tcp-l: ") + std::to_string(config.bind_port())),
           tcp_socket_(this->mutable_io())
     {
+        auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+        this->interthread().template publish<line_in_group>(ready);
     }
 
-    virtual ~TCPServerThread() {}
+    ~TCPServerThread() override {}
 
     template <typename TCPServerThreadType> friend class TCPSession;
 
