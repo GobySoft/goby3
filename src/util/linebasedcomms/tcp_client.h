@@ -65,6 +65,7 @@ class TCPClient : public LineBasedInterface
     }
 
   private:
+    void do_subscribe() override;
     void do_start() override;
     void do_close() override;
 

@@ -61,6 +61,21 @@ int main(int /*argc*/, char* argv[])
         assert(!client.readline(&line));
     }
 
+    // client to server
+    {
+        std::string line;
+        assert(!server.readline(&line));
+        assert(!client.readline(&line));
+        std::string test_string = "hello,world!\r\n";
+        client.write(test_string);
+        sleep(1);
+        std::string s;
+        assert(server.readline(&s));
+        assert(s == test_string);
+        assert(!server.readline(&line));
+        assert(!client.readline(&line));
+    }
+
     glog.is_verbose() && glog << client_endpoint << std::endl;
 
     // server to one client

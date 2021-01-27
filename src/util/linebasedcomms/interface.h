@@ -122,12 +122,16 @@ class LineBasedInterface
 
     int index() { return index_; }
 
-    virtual void do_subscribe(){};
+    virtual void do_subscribe() = 0;
 
     goby::middleware::DynamicGroup& in_group() { return in_group_; }
     goby::middleware::DynamicGroup& out_group() { return out_group_; }
 
     bool io_thread_ready() { return io_thread_ready_; }
+
+  private:
+    void subscribe();
+    void poll();
 
   private:
     std::string delimiter_;
@@ -145,6 +149,8 @@ class LineBasedInterface
     goby::middleware::InterThreadTransporter interthread_;
 
     bool io_thread_ready_{false};
+
+    std::thread::id current_thread_;
 };
 
 } // namespace util

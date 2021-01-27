@@ -34,6 +34,12 @@ goby::util::SerialClient::SerialClient(std::string name, unsigned baud,
                                        const std::string& delimiter)
     : LineBasedInterface(delimiter), name_(std::move(name)), baud_(baud)
 {
+}
+
+goby::util::SerialClient::~SerialClient() { do_close(); }
+
+void goby::util::SerialClient::do_subscribe()
+{
     interthread().subscribe_dynamic<goby::middleware::protobuf::SerialStatus>(
         [this](const goby::middleware::protobuf::SerialStatus& status) {
             if (status.index() == this->index())
@@ -42,22 +48,23 @@ goby::util::SerialClient::SerialClient(std::string name, unsigned baud,
         in_group());
 }
 
-goby::util::SerialClient::~SerialClient() { do_close(); }
-
 void goby::util::SerialClient::do_start()
 {
-    goby::middleware::protobuf::SerialConfig cfg;
-    cfg.set_port(name_);
-    cfg.set_baud(baud_);
-    cfg.set_end_of_line(delimiter());
+    if (!serial_thread_)
+    {
+        goby::middleware::protobuf::SerialConfig cfg;
+        cfg.set_port(name_);
+        cfg.set_baud(baud_);
+        cfg.set_end_of_line(delimiter());
 
-    serial_alive_ = true;
-    serial_thread_ = std::make_unique<std::thread>([cfg, this]() {
-        Thread serial(cfg, this->index());
-        auto type_i = std::type_index(typeid(Thread));
-        serial.set_type_index(type_i);
-        serial.run(serial_alive_);
-    });
+        serial_alive_ = true;
+        serial_thread_ = std::make_unique<std::thread>([cfg, this]() {
+            Thread serial(cfg, this->index());
+            auto type_i = std::type_index(typeid(Thread));
+            serial.set_type_index(type_i);
+            serial.run(serial_alive_);
+        });
+    }
 }
 
 void goby::util::SerialClient::do_close()

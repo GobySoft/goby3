@@ -27,6 +27,12 @@
 goby::util::TCPServer::TCPServer(unsigned port, const std::string& delimiter)
     : LineBasedInterface(delimiter), port_(port)
 {
+}
+
+goby::util::TCPServer::~TCPServer() { do_close(); }
+
+void goby::util::TCPServer::do_subscribe()
+{
     interthread().subscribe_dynamic<goby::middleware::protobuf::TCPServerEvent>(
         [this](const goby::middleware::protobuf::TCPServerEvent& event) {
             if (event.index() == this->index())
@@ -46,22 +52,23 @@ goby::util::TCPServer::TCPServer(unsigned port, const std::string& delimiter)
         in_group());
 }
 
-goby::util::TCPServer::~TCPServer() { do_close(); }
-
 void goby::util::TCPServer::do_start()
 {
-    goby::middleware::protobuf::TCPServerConfig cfg;
-    cfg.set_bind_port(port_);
-    cfg.set_end_of_line(delimiter());
-    cfg.set_set_reuseaddr(true);
+    if (!tcp_thread_)
+    {
+        goby::middleware::protobuf::TCPServerConfig cfg;
+        cfg.set_bind_port(port_);
+        cfg.set_end_of_line(delimiter());
+        cfg.set_set_reuseaddr(true);
 
-    tcp_alive_ = true;
-    tcp_thread_ = std::make_unique<std::thread>([cfg, this]() {
-        Thread tcp(cfg, this->index());
-        auto type_i = std::type_index(typeid(Thread));
-        tcp.set_type_index(type_i);
-        tcp.run(tcp_alive_);
-    });
+        tcp_alive_ = true;
+        tcp_thread_ = std::make_unique<std::thread>([cfg, this]() {
+            Thread tcp(cfg, this->index());
+            auto type_i = std::type_index(typeid(Thread));
+            tcp.set_type_index(type_i);
+            tcp.run(tcp_alive_);
+        });
+    }
 }
 
 void goby::util::TCPServer::do_close()

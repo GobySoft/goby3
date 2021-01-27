@@ -36,6 +36,12 @@ goby::util::TCPClient::TCPClient(std::string server, unsigned port,
                                  int retry_interval /*=  10*/)
     : LineBasedInterface(delimiter), server_(std::move(server)), port_(port)
 {
+}
+
+goby::util::TCPClient::~TCPClient() { do_close(); }
+
+void goby::util::TCPClient::do_subscribe()
+{
     interthread().subscribe_dynamic<goby::middleware::protobuf::TCPClientEvent>(
         [this](const goby::middleware::protobuf::TCPClientEvent& event) {
             if (event.index() == this->index())
@@ -50,22 +56,23 @@ goby::util::TCPClient::TCPClient(std::string server, unsigned port,
         in_group());
 }
 
-goby::util::TCPClient::~TCPClient() { do_close(); }
-
 void goby::util::TCPClient::do_start()
 {
-    goby::middleware::protobuf::TCPClientConfig cfg;
-    cfg.set_remote_address(server_);
-    cfg.set_remote_port(port_);
-    cfg.set_end_of_line(delimiter());
+    if (!tcp_thread_)
+    {
+        goby::middleware::protobuf::TCPClientConfig cfg;
+        cfg.set_remote_address(server_);
+        cfg.set_remote_port(port_);
+        cfg.set_end_of_line(delimiter());
 
-    tcp_alive_ = true;
-    tcp_thread_ = std::make_unique<std::thread>([cfg, this]() {
-        Thread tcp(cfg, this->index());
-        auto type_i = std::type_index(typeid(Thread));
-        tcp.set_type_index(type_i);
-        tcp.run(tcp_alive_);
-    });
+        tcp_alive_ = true;
+        tcp_thread_ = std::make_unique<std::thread>([cfg, this]() {
+            Thread tcp(cfg, this->index());
+            auto type_i = std::type_index(typeid(Thread));
+            tcp.set_type_index(type_i);
+            tcp.run(tcp_alive_);
+        });
+    }
 }
 
 void goby::util::TCPClient::do_close()

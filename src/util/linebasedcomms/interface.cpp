@@ -49,12 +49,18 @@ goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
 
     if (delimiter.empty())
         throw Exception("Line based comms started with null string as delimiter!");
+    delimiter_ = delimiter;
+}
 
+goby::util::LineBasedInterface::~LineBasedInterface() {}
+
+void goby::util::LineBasedInterface::subscribe()
+{
     interthread_.subscribe_dynamic<goby::middleware::protobuf::IOData>(
         [this](const goby::middleware::protobuf::IOData& data) {
             if (data.index() == index_)
             {
-                //                glog.is_debug2() && glog << "[DATA IN]:  " << data.DebugString() << std::endl;
+                //    glog.is_debug2() && glog << "[DATA IN]:  " << data.DebugString() << std::endl;
 
                 in_.emplace_back();
                 auto& in = in_.back();
@@ -86,22 +92,36 @@ goby::util::LineBasedInterface::LineBasedInterface(const std::string& delimiter)
         },
         in_group_);
 
-    delimiter_ = delimiter;
-    //    io_launcher_.reset(new IOLauncher(io_));
+    // implementations
+    do_subscribe();
 }
 
-goby::util::LineBasedInterface::~LineBasedInterface() {}
+void goby::util::LineBasedInterface::poll()
+{
+    auto thread_id = std::this_thread::get_id();
+    if (thread_id != current_thread_)
+    {
+        goby::glog.is_warn() &&
+            goby::glog << "Thread switch detected from start() or last readline()/write(). "
+                          "Resubscribing as new thread."
+                       << std::endl;
+        current_thread_ = thread_id;
+        subscribe();
+    }
+
+    interthread_.poll(std::chrono::seconds(0));
+}
 
 void goby::util::LineBasedInterface::start()
 {
-    if (active_)
-        return;
+    current_thread_ = std::this_thread::get_id();
+    subscribe();
     do_start();
 }
 
 void goby::util::LineBasedInterface::clear()
 {
-    interthread_.poll(std::chrono::seconds(0));
+    poll();
     //    std::lock_guard<std::mutex> lock(in_mutex_);
     in_.clear();
 }
@@ -109,7 +129,7 @@ void goby::util::LineBasedInterface::clear()
 bool goby::util::LineBasedInterface::readline(protobuf::Datagram* msg,
                                               AccessOrder order /* = OLDEST_FIRST */)
 {
-    interthread_.poll(std::chrono::seconds(0));
+    poll();
 
     if (in_.empty())
     {
@@ -137,7 +157,7 @@ bool goby::util::LineBasedInterface::readline(protobuf::Datagram* msg,
 bool goby::util::LineBasedInterface::readline(std::string* s,
                                               AccessOrder order /* = OLDEST_FIRST */)
 {
-    interthread_.poll(std::chrono::seconds(0));
+    poll();
 
     if (in_.empty())
     {
@@ -214,7 +234,7 @@ void goby::util::LineBasedInterface::write(const protobuf::Datagram& msg)
     }
 
     interthread_.publish_dynamic(io_data, out_group_);
-    interthread_.poll(std::chrono::seconds(0));
+    poll();
 }
 
 void goby::util::LineBasedInterface::close() { do_close(); }

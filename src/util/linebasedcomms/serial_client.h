@@ -77,6 +77,7 @@ class SerialClient : public LineBasedInterface
   private:
     void do_start() override;
     void do_close() override;
+    void do_subscribe() override;
 
   private:
     std::string name_;
