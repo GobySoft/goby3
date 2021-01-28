@@ -363,9 +363,15 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
     {
         decltype(next_open_attempt_) now(goby::time::SteadyClock::now());
         if (now > next_open_attempt_)
+        {
             try_open();
+        }
         else
+        {
+            // poll in case we need to quit
+            io_.poll();
             usleep(100000); // avoid pegging CPU while waiting to attempt reopening socket
+        }
     }
 }
 
