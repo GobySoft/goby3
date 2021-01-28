@@ -27,8 +27,8 @@
 // massachusetts institute of technology (mit)
 // laboratory for autonomous marine sensing systems (lamss)
 
-#ifndef DEPTHH
-#define DEPTHH
+#ifndef GOBY_UTIL_SEAWATER_DEPTH_H
+#define GOBY_UTIL_SEAWATER_DEPTH_H
 
 #include <cmath>
 

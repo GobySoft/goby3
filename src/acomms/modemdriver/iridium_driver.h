@@ -89,8 +89,6 @@ class IridiumDriver : public ModemDriverBase
 
     protobuf::ModemTransmission rudics_mac_msg_;
 
-    int serial_fd_{-1};
-
     std::uint32_t next_frame_{0};
 };
 } // namespace acomms

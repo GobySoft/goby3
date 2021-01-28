@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IridiumShoreSBD20150508H
-#define IridiumShoreSBD20150508H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_RUDICS_H
+#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_RUDICS_H
 
 #include "goby/util/asio_compat.h"
 #include <boost/asio.hpp>

@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Group20170807H
-#define Group20170807H
+#ifndef GOBY_MIDDLEWARE_GROUP_H
+#define GOBY_MIDDLEWARE_GROUP_H
 
 #include <memory>
 #include <string>
@@ -61,6 +61,8 @@ class Group
     static constexpr std::uint8_t broadcast_group{0};
     /// Special group number representing an invalid numeric group (unsuitable for intervehicle and outer layers)
     static constexpr std::uint8_t invalid_numeric_group{255};
+
+    static constexpr std::uint8_t maximum_valid_group{254};
 
     /// \brief Construct a group with a (C-style) string and possibly a numeric value (when this Group will be used on intervehicle and outer layers).
     constexpr Group(const char* c, std::uint8_t i = invalid_numeric_group) : c_(c), i_(i) {}
@@ -108,13 +110,7 @@ inline bool operator==(const Group& a, const Group& b)
 
 inline bool operator!=(const Group& a, const Group& b) { return !(a == b); }
 
-inline std::ostream& operator<<(std::ostream& os, const Group& g)
-{
-    if (g.c_str() != nullptr)
-        return (os << std::string(g) + "::" + std::to_string(g.numeric()));
-    else
-        return (os << g.numeric());
-}
+inline std::ostream& operator<<(std::ostream& os, const Group& g) { return (os << std::string(g)); }
 
 /// \brief Implementation of Group for dynamic (run-time) instantiations. Use Group directly for static (compile-time) instantiations.
 class DynamicGroup : public Group

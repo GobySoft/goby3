@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SEAWATER_20190530H
-#define SEAWATER_20190530H
+#ifndef GOBY_UTIL_SEAWATER_H
+#define GOBY_UTIL_SEAWATER_H
 
 #include "seawater/depth.h"
 #include "seawater/pressure.h"

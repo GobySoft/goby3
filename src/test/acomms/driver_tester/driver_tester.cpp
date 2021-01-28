@@ -29,6 +29,7 @@
 #include "goby/time/convert.h"
 #include "goby/util/protobuf/io.h"
 
+using goby::glog;
 using namespace goby::util::logger;
 using namespace goby::acomms;
 using namespace boost::posix_time;
@@ -66,8 +67,8 @@ goby::test::acomms::DriverTester::DriverTester(
     goby::acomms::connect(&driver2_->signal_data_request, this,
                           &DriverTester::handle_data_request2);
 
-    goby::glog << cfg1.DebugString() << std::endl;
-    goby::glog << cfg2.DebugString() << std::endl;
+    glog.is_verbose() && glog << cfg1.DebugString() << std::endl;
+    glog.is_verbose() && glog << cfg2.DebugString() << std::endl;
 
     driver1_->startup(cfg1);
     driver2_->startup(cfg2);
@@ -116,14 +117,15 @@ int goby::test::acomms::DriverTester::run()
                 case 5: test5(); break;
                 case 6: test6(); break;
                 case -1:
-                    goby::glog << group("test") << "all tests passed" << std::endl;
+                    glog.is_verbose() && glog << group("test") << "all tests passed" << std::endl;
                     driver1_->shutdown();
                     driver2_->shutdown();
 
                     return 0;
             }
 
-            goby::glog << "Test " << group("test") << test_number_ << " passed." << std::endl;
+            glog.is_verbose() && glog << "Test " << group("test") << test_number_ << " passed."
+                                      << std::endl;
             ++tests_to_run_index_;
 
             if (tests_to_run_index_ < static_cast<int>(tests_to_run_.size()))
@@ -137,7 +139,7 @@ int goby::test::acomms::DriverTester::run()
     }
     catch (std::exception& e)
     {
-        goby::glog << warn << "Exception: " << e.what() << std::endl;
+        glog.is_verbose() && glog << warn << "Exception: " << e.what() << std::endl;
         sleep(5);
         exit(2);
     }
@@ -145,7 +147,7 @@ int goby::test::acomms::DriverTester::run()
 
 void goby::test::acomms::DriverTester::handle_data_request1(protobuf::ModemTransmission* msg)
 {
-    goby::glog << group("driver1") << "Data request: " << *msg << std::endl;
+    glog.is_verbose() && glog << group("driver1") << "Data request: " << *msg << std::endl;
 
     switch (test_number_)
     {
@@ -179,23 +181,23 @@ void goby::test::acomms::DriverTester::handle_data_request1(protobuf::ModemTrans
         break;
     }
 
-    goby::glog << group("driver1") << "Post data request: " << *msg << std::endl;
+    glog.is_verbose() && glog << group("driver1") << "Post data request: " << *msg << std::endl;
 }
 
 void goby::test::acomms::DriverTester::handle_modify_transmission1(protobuf::ModemTransmission* msg)
 {
-    goby::glog << group("driver1") << "Can modify: " << *msg << std::endl;
+    glog.is_verbose() && glog << group("driver1") << "Can modify: " << *msg << std::endl;
 }
 
 void goby::test::acomms::DriverTester::handle_transmit_result1(
     const protobuf::ModemTransmission& msg)
 {
-    goby::glog << group("driver1") << "Completed transmit: " << msg << std::endl;
+    glog.is_verbose() && glog << group("driver1") << "Completed transmit: " << msg << std::endl;
 }
 
 void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::ModemTransmission& msg)
 {
-    goby::glog << group("driver1") << "Received: " << msg << std::endl;
+    glog.is_verbose() && glog << group("driver1") << "Received: " << msg << std::endl;
 
     switch (test_number_)
     {
@@ -323,7 +325,7 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
 
 void goby::test::acomms::DriverTester::handle_data_request2(protobuf::ModemTransmission* msg)
 {
-    goby::glog << group("driver2") << "Data request: " << *msg << std::endl;
+    glog.is_verbose() && glog << group("driver2") << "Data request: " << *msg << std::endl;
 
     switch (test_number_)
     {
@@ -358,23 +360,23 @@ void goby::test::acomms::DriverTester::handle_data_request2(protobuf::ModemTrans
         }
     }
 
-    goby::glog << group("driver2") << "Post data request: " << *msg << std::endl;
+    glog.is_verbose() && glog << group("driver2") << "Post data request: " << *msg << std::endl;
 }
 
 void goby::test::acomms::DriverTester::handle_modify_transmission2(protobuf::ModemTransmission* msg)
 {
-    goby::glog << group("driver2") << "Can modify: " << *msg << std::endl;
+    glog.is_verbose() && glog << group("driver2") << "Can modify: " << *msg << std::endl;
 }
 
 void goby::test::acomms::DriverTester::handle_transmit_result2(
     const protobuf::ModemTransmission& msg)
 {
-    goby::glog << group("driver2") << "Completed transmit: " << msg << std::endl;
+    glog.is_verbose() && glog << group("driver2") << "Completed transmit: " << msg << std::endl;
 }
 
 void goby::test::acomms::DriverTester::handle_data_receive2(const protobuf::ModemTransmission& msg)
 {
-    goby::glog << group("driver2") << "Received: " << msg << std::endl;
+    glog.is_verbose() && glog << group("driver2") << "Received: " << msg << std::endl;
 
     switch (test_number_)
     {
@@ -434,7 +436,7 @@ void goby::test::acomms::DriverTester::handle_data_receive2(const protobuf::Mode
 void goby::test::acomms::DriverTester::test0()
 {
     // ping test
-    goby::glog << group("test") << "Ping test" << std::endl;
+    glog.is_verbose() && glog << group("test") << "Ping test" << std::endl;
 
     protobuf::ModemTransmission transmit;
 
@@ -470,7 +472,7 @@ void goby::test::acomms::DriverTester::test0()
 
 void goby::test::acomms::DriverTester::test1()
 {
-    goby::glog << group("test") << "Remus LBL test" << std::endl;
+    glog.is_verbose() && glog << group("test") << "Remus LBL test" << std::endl;
 
     protobuf::ModemTransmission transmit;
 
@@ -499,7 +501,7 @@ void goby::test::acomms::DriverTester::test1()
 
 void goby::test::acomms::DriverTester::test2()
 {
-    goby::glog << group("test") << "Narrowband LBL test" << std::endl;
+    glog.is_verbose() && glog << group("test") << "Narrowband LBL test" << std::endl;
 
     protobuf::ModemTransmission transmit;
 
@@ -534,7 +536,7 @@ void goby::test::acomms::DriverTester::test2()
 
 void goby::test::acomms::DriverTester::test3()
 {
-    goby::glog << group("test") << "Mini data test" << std::endl;
+    glog.is_verbose() && glog << group("test") << "Mini data test" << std::endl;
 
     protobuf::ModemTransmission transmit;
 
@@ -561,7 +563,7 @@ void goby::test::acomms::DriverTester::test3()
 
 void goby::test::acomms::DriverTester::test4()
 {
-    goby::glog << group("test") << "Rate 0 test" << std::endl;
+    glog.is_verbose() && glog << group("test") << "Rate 0 test" << std::endl;
 
     protobuf::ModemTransmission transmit;
 
@@ -587,7 +589,7 @@ void goby::test::acomms::DriverTester::test4()
 
 void goby::test::acomms::DriverTester::test5()
 {
-    goby::glog << group("test") << "Rate 2 test" << std::endl;
+    glog.is_verbose() && glog << group("test") << "Rate 2 test" << std::endl;
 
     protobuf::ModemTransmission transmit;
 
@@ -614,7 +616,7 @@ void goby::test::acomms::DriverTester::test5()
 
 void goby::test::acomms::DriverTester::test6()
 {
-    goby::glog << group("test") << "FDP data test" << std::endl;
+    glog.is_verbose() && glog << group("test") << "FDP data test" << std::endl;
 
     protobuf::ModemTransmission transmit;
 

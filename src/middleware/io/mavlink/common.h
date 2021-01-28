@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MAVLinkCommon20190815H
-#define MAVLinkCommon20190815H
+#ifndef GOBY_MIDDLEWARE_IO_MAVLINK_COMMON_H
+#define GOBY_MIDDLEWARE_IO_MAVLINK_COMMON_H
 
 #include <cstdint> // for uint8_t
 #include <memory>  // for shared_ptr, __sh...
@@ -92,7 +92,7 @@ class IOThreadMAVLink : public IOThreadBase
   private:
     void clear_buffers()
     {
-        msg_ = {};
+        msg_ = std::make_shared<mavlink::mavlink_message_t>();
         status_ = {};
         msg_buffer_ = {};
         status_buffer_ = {};
@@ -100,7 +100,9 @@ class IOThreadMAVLink : public IOThreadBase
 
   private:
     std::array<char, MAVLINK_MAX_PACKET_LEN> buffer_;
-    mavlink::mavlink_message_t msg_{}, msg_buffer_{};
+    std::shared_ptr<mavlink::mavlink_message_t> msg_ =
+        std::make_shared<mavlink::mavlink_message_t>();
+    mavlink::mavlink_message_t msg_buffer_{};
     mavlink::mavlink_status_t status_{}, status_buffer_{};
 };
 } // namespace io
@@ -120,8 +122,8 @@ void goby::middleware::io::IOThreadMAVLink<line_in_group, line_out_group, publis
     {
         try
         {
-            auto res = mavlink::mavlink_frame_char_buffer(&msg_buffer_, &status_buffer_, *c, &msg_,
-                                                          &status_);
+            auto res = mavlink::mavlink_frame_char_buffer(&msg_buffer_, &status_buffer_, *c,
+                                                          msg_.get(), &status_);
             switch (res)
             {
                 case mavlink::MAVLINK_FRAMING_BAD_CRC:
@@ -129,7 +131,7 @@ void goby::middleware::io::IOThreadMAVLink<line_in_group, line_out_group, publis
                     {
                         break; // keep parsing
                     }
-                    else if (mavlink::mavlink_get_msg_entry(msg_.msgid) == nullptr)
+                    else if (mavlink::mavlink_get_msg_entry(msg_->msgid) == nullptr)
                     {
                         goby::glog.is_debug3() &&
                             goby::glog << "BAD CRC decoding MAVLink msg, but "
@@ -147,13 +149,13 @@ void goby::middleware::io::IOThreadMAVLink<line_in_group, line_out_group, publis
 
                 case mavlink::MAVLINK_FRAMING_OK:
                 {
-                    goby::glog.is_debug3() && goby::glog << "Parsed message of id: " << msg_.msgid
+                    goby::glog.is_debug3() && goby::glog << "Parsed message of id: " << msg_->msgid
                                                          << std::endl;
 
-                    this->publish_transporter().template publish<line_in_group>(msg_);
+                    this->publish_in(msg_);
 
                     std::array<uint8_t, MAVLINK_MAX_PACKET_LEN> buffer;
-                    auto length = mavlink::mavlink_msg_to_send_buffer(&buffer[0], &msg_);
+                    auto length = mavlink::mavlink_msg_to_send_buffer(&buffer[0], msg_.get());
                     std::string bytes(buffer.begin(), buffer.begin() + length);
                     this->handle_read_success(length, bytes);
                     break;

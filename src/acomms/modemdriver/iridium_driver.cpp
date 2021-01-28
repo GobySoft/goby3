@@ -131,7 +131,6 @@ void goby::acomms::IridiumDriver::modem_init()
 
         if (iridium_driver_cfg().use_dtr() && modem().active() && !dtr_set)
         {
-            serial_fd_ = dynamic_cast<util::SerialClient&>(modem()).socket().native_handle();
             set_dtr(true);
             glog.is(DEBUG1) && glog << group(glog_out_group()) << "DTR is: " << query_dtr()
                                     << std::endl;
@@ -151,35 +150,26 @@ void goby::acomms::IridiumDriver::modem_init()
 
 void goby::acomms::IridiumDriver::set_dtr(bool state)
 {
-    int status;
-    if (ioctl(serial_fd_, TIOCMGET, &status) == -1)
-    {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
-    }
-
-    glog.is(DEBUG1) && glog << group(glog_out_group()) << "Setting DTR to "
-                            << (state ? "high" : "low") << std::endl;
-    if (state)
-        status |= TIOCM_DTR;
-    else
-        status &= ~TIOCM_DTR;
-    if (ioctl(serial_fd_, TIOCMSET, &status) == -1)
-    {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
-    }
+    auto& serial_client = dynamic_cast<util::SerialClient&>(modem());
+    middleware::protobuf::SerialCommand command;
+    command.set_command(state ? middleware::protobuf::SerialCommand::DTR_HIGH
+                              : middleware::protobuf::SerialCommand::DTR_LOW);
+    serial_client.send_command(command);
 }
 
 bool goby::acomms::IridiumDriver::query_dtr()
 {
-    int status;
-    if (ioctl(serial_fd_, TIOCMGET, &status) == -1)
+    auto& serial_client = dynamic_cast<util::SerialClient&>(modem());
+
+    if (!serial_client.read_status().has_dtr())
     {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
+        glog.is(WARN) && glog << "No serial status information available" << std::endl;
+        return false;
     }
-    return (status & TIOCM_DTR);
+    else
+    {
+        return serial_client.read_status().dtr();
+    }
 }
 
 void goby::acomms::IridiumDriver::hangup()

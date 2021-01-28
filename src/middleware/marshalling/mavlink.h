@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MarshallingMAVLink20190718H
-#define MarshallingMAVLink20190718H
+#ifndef GOBY_MIDDLEWARE_MARSHALLING_MAVLINK_H
+#define GOBY_MIDDLEWARE_MARSHALLING_MAVLINK_H
 
 #include <array>         // for array<>::iterator
 #include <cstdint>       // for uint8_t, uint32_t

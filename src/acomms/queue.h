@@ -24,8 +24,8 @@
 
 // courtesy header for the Queueing Library (libqueue)
 
-#ifndef QUEUECOURTESY20091211H
-#define QUEUECOURTESY20091211H
+#ifndef GOBY_ACOMMS_QUEUE_H
+#define GOBY_ACOMMS_QUEUE_H
 
 #include "goby/acomms/queue/queue_manager.h"
 

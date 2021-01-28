@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerialInterface20190718H
-#define SerialInterface20190718H
+#ifndef GOBY_MIDDLEWARE_IO_DETAIL_SERIAL_INTERFACE_H
+#define GOBY_MIDDLEWARE_IO_DETAIL_SERIAL_INTERFACE_H
 
 #include <memory>      // for shared_ptr
 #include <ostream>     // for endl
@@ -53,17 +53,16 @@ namespace io
 namespace detail
 {
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          // by default publish all incoming traffic to interprocess for logging
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          // but only subscribe on interthread for outgoing traffic
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-class SerialThread
-    : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                      goby::middleware::protobuf::SerialConfig, boost::asio::serial_port>
+          const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
+          PubSubLayer subscribe_layer, template <class> class ThreadType,
+          bool use_indexed_groups = false>
+class SerialThread : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                     goby::middleware::protobuf::SerialConfig,
+                                     boost::asio::serial_port, ThreadType, use_indexed_groups>
 {
     using Base = IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                          goby::middleware::protobuf::SerialConfig, boost::asio::serial_port>;
+                          goby::middleware::protobuf::SerialConfig, boost::asio::serial_port,
+                          ThreadType, use_indexed_groups>;
 
   public:
     /// \brief Constructs the thread.
@@ -76,45 +75,67 @@ class SerialThread
             [this](std::shared_ptr<const goby::middleware::protobuf::SerialCommand> cmd) {
                 goby::glog.is_debug2() && goby::glog << group(this->glog_group()) << "< [Command] "
                                                      << cmd->ShortDebugString() << std::endl;
-                switch (cmd->command())
+                if (!cmd->has_index() || cmd->index() == this->index())
                 {
-                    case protobuf::SerialCommand::SEND_BREAK:
-                        if (this->socket_is_open())
-                            this->mutable_serial_port().send_break();
-                        break;
+                    switch (cmd->command())
+                    {
+                        case protobuf::SerialCommand::SEND_BREAK:
+                            if (this->socket_is_open())
+                                this->mutable_serial_port().send_break();
+                            break;
 
-                        // sets RTS high, needed for PHSEN and PCO2W comms
-                    case protobuf::SerialCommand::RTS_HIGH:
-                        if (this->socket_is_open())
-                        {
-                            int fd = this->mutable_serial_port().native_handle();
-                            int RTS_flag = TIOCM_RTS;
-                            // TIOCMBIS - set bit
-                            ioctl(fd, TIOCMBIS, &RTS_flag);
-                        }
-                        break;
+                            // sets RTS high, needed for PHSEN and PCO2W comms
+                        case protobuf::SerialCommand::RTS_HIGH:
+                            if (this->socket_is_open())
+                            {
+                                int fd = this->mutable_serial_port().native_handle();
+                                int RTS_flag = TIOCM_RTS;
+                                // TIOCMBIS - set bit
+                                ioctl(fd, TIOCMBIS, &RTS_flag);
+                            }
+                            break;
 
-                    case protobuf::SerialCommand::RTS_LOW:
-                        if (this->socket_is_open())
-                        {
-                            int fd = this->mutable_serial_port().native_handle();
-                            int RTS_flag = TIOCM_RTS;
-                            // TIOCMBIC - clear bit
-                            ioctl(fd, TIOCMBIC, &RTS_flag);
-                        }
-                        break;
+                        case protobuf::SerialCommand::RTS_LOW:
+                            if (this->socket_is_open())
+                            {
+                                int fd = this->mutable_serial_port().native_handle();
+                                int RTS_flag = TIOCM_RTS;
+                                // TIOCMBIC - clear bit
+                                ioctl(fd, TIOCMBIC, &RTS_flag);
+                            }
+                            break;
+                        case protobuf::SerialCommand::DTR_HIGH:
+                            if (this->socket_is_open())
+                            {
+                                int fd = this->mutable_serial_port().native_handle();
+                                int DTR_flag = TIOCM_DTR;
+                                ioctl(fd, TIOCMBIS, &DTR_flag);
+                            }
+                            break;
+
+                        case protobuf::SerialCommand::DTR_LOW:
+                            if (this->socket_is_open())
+                            {
+                                int fd = this->mutable_serial_port().native_handle();
+                                int DTR_flag = TIOCM_DTR;
+                                ioctl(fd, TIOCMBIC, &DTR_flag);
+                            }
+                            break;
+                    }
+                    publish_status();
                 }
             };
 
-        this->subscribe_transporter()
-            .template subscribe<line_out_group, goby::middleware::protobuf::SerialCommand>(
-                command_out_callback);
+        this->template subscribe_out<goby::middleware::protobuf::SerialCommand>(
+            command_out_callback);
+
+        auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+        this->interthread().template publish<line_in_group>(ready);
     }
 
-    ~SerialThread()
+    ~SerialThread() override
     {
-        this->subscribe_transporter()
-            .template unsubscribe<line_out_group, goby::middleware::protobuf::SerialCommand>();
+        this->template unsubscribe_out<goby::middleware::protobuf::SerialCommand>();
     }
 
   protected:
@@ -127,6 +148,28 @@ class SerialThread
         basic_async_write(this, io_msg);
     }
 
+    void publish_status()
+    {
+        auto status_msg = std::make_shared<protobuf::SerialStatus>();
+        if (this->index() != -1)
+            status_msg->set_index(this->index());
+
+        if (this->socket_is_open())
+        {
+            int fd = this->mutable_serial_port().native_handle();
+            int status = 0;
+            // TIOCMGET - get the status of bits
+            ioctl(fd, TIOCMGET, &status);
+            status_msg->set_rts(status & TIOCM_RTS);
+            status_msg->set_dtr(status & TIOCM_DTR);
+        }
+
+        goby::glog.is_debug2() && goby::glog << group(this->glog_group()) << "< [Status] "
+                                             << status_msg->ShortDebugString() << std::endl;
+
+        this->publish_in(status_msg);
+    }
+
     void open_socket() override;
 };
 } // namespace detail
@@ -137,9 +180,11 @@ class SerialThread
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType,
+          bool use_indexed_groups>
 void goby::middleware::io::detail::SerialThread<line_in_group, line_out_group, publish_layer,
-                                                subscribe_layer>::open_socket()
+                                                subscribe_layer, ThreadType,
+                                                use_indexed_groups>::open_socket()
 {
     this->mutable_serial_port().open(this->cfg().port());
     using boost::asio::serial_port_base;
@@ -167,6 +212,8 @@ void goby::middleware::io::detail::SerialThread<line_in_group, line_out_group, p
         serial_port_base::parity(serial_port_base::parity::none));
     this->mutable_serial_port().set_option(
         serial_port_base::stop_bits(serial_port_base::stop_bits::one));
+
+    publish_status();
 }
 
 #endif

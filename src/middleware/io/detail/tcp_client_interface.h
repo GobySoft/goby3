@@ -49,17 +49,15 @@ namespace io
 namespace detail
 {
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          // by default publish all incoming traffic to interprocess for logging
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          // but only subscribe on interthread for outgoing traffic
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          typename Config = goby::middleware::protobuf::TCPClientConfig>
-class TCPClientThread : public IOThread<line_in_group, line_out_group, publish_layer,
-                                        subscribe_layer, Config, boost::asio::ip::tcp::socket>
+          const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
+          PubSubLayer subscribe_layer, typename Config, template <class> class ThreadType,
+          bool use_indexed_groups = false>
+class TCPClientThread
+    : public IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
+                      boost::asio::ip::tcp::socket, ThreadType, use_indexed_groups>
 {
     using Base = IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-                          boost::asio::ip::tcp::socket>;
+                          boost::asio::ip::tcp::socket, ThreadType, use_indexed_groups>;
 
     using ConfigType = Config;
 
@@ -75,9 +73,24 @@ class TCPClientThread : public IOThread<line_in_group, line_out_group, publish_l
         remote_endpoint_ =
             *resolver.resolve({boost::asio::ip::tcp::v4(), this->cfg().remote_address(),
                                std::to_string(this->cfg().remote_port())});
+
+        auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+        this->interthread().template publish<line_in_group>(ready);
     }
 
-    ~TCPClientThread() {}
+    ~TCPClientThread() override
+    {
+        auto event = std::make_shared<goby::middleware::protobuf::TCPClientEvent>();
+        if (this->index() != -1)
+            event->set_index(this->index());
+        event->set_event(goby::middleware::protobuf::TCPClientEvent::EVENT_DISCONNECT);
+        *event->mutable_local_endpoint() = endpoint_convert<protobuf::TCPEndPoint>(local_endpoint_);
+        *event->mutable_remote_endpoint() =
+            endpoint_convert<protobuf::TCPEndPoint>(remote_endpoint_);
+        goby::glog.is_debug2() && goby::glog << group(this->glog_group())
+                                             << "Event: " << event->ShortDebugString() << std::endl;
+        this->publish_in(event);
+    }
 
   protected:
     void insert_endpoints(std::shared_ptr<goby::middleware::protobuf::IOData>& io_msg)
@@ -93,9 +106,21 @@ class TCPClientThread : public IOThread<line_in_group, line_out_group, publish_l
     }
 
     /// \brief Tries to open the tcp client socket, and if fails publishes an error
-    void open_socket()
+    void open_socket() override
     {
         this->mutable_socket().connect(remote_endpoint_);
+
+        auto event = std::make_shared<goby::middleware::protobuf::TCPClientEvent>();
+        if (this->index() != -1)
+            event->set_index(this->index());
+        event->set_event(goby::middleware::protobuf::TCPClientEvent::EVENT_CONNECT);
+        *event->mutable_local_endpoint() = endpoint_convert<protobuf::TCPEndPoint>(local_endpoint_);
+        *event->mutable_remote_endpoint() =
+            endpoint_convert<protobuf::TCPEndPoint>(remote_endpoint_);
+        goby::glog.is_debug2() && goby::glog << group(this->glog_group())
+                                             << "Event: " << event->ShortDebugString() << std::endl;
+        this->publish_in(event);
+
         local_endpoint_ = this->mutable_socket().local_endpoint();
     }
 

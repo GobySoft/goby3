@@ -73,7 +73,7 @@ std::ostream& goby::util::logger::basic_log_header(std::ostream& os, const std::
 goby::util::FlexOstream& goby::util::logger::operator<<(goby::util::FlexOstream& os,
                                                         const GroupSetter& gs)
 {
-    os.set_unset_verbosity();
+    //    os.set_unset_verbosity();
     gs(os);
     return (os);
 }

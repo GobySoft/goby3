@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LOG_PLUGIN_20190123_H
-#define LOG_PLUGIN_20190123_H
+#ifndef GOBY_MIDDLEWARE_LOG_LOG_PLUGIN_H
+#define GOBY_MIDDLEWARE_LOG_LOG_PLUGIN_H
 
 #include "goby/middleware/log/log_entry.h"
 #include "goby/middleware/marshalling/interface.h"

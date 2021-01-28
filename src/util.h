@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UTILCOURTESY20100713H
-#define UTILCOURTESY20100713H
+#ifndef GOBY_UTIL_H
+#define GOBY_UTIL_H
 
 #include "goby/util/as.h"
 #include "goby/util/base_convert.h"

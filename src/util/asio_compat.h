@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ASIO20200428H
-#define ASIO20200428H
+#ifndef GOBY_UTIL_ASIO_COMPAT_H
+#define GOBY_UTIL_ASIO_COMPAT_H
 
 #include <boost/version.hpp>
 

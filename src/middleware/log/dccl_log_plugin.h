@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCL_LOG_20190123_H
-#define DCCL_LOG_20190123_H
+#ifndef GOBY_MIDDLEWARE_LOG_DCCL_LOG_PLUGIN_H
+#define GOBY_MIDDLEWARE_LOG_DCCL_LOG_PLUGIN_H
 
 #include <dccl/codec.h>
 

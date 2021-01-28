@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Time20100713H
-#define Time20100713H
+#ifndef GOBY_TIME_LEGACY_H
+#define GOBY_TIME_LEGACY_H
 
 #include <ctime>
 #include <sys/time.h>

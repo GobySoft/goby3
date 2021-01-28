@@ -21,6 +21,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef GOBY_ACOMMS_BUFFER_DYNAMIC_BUFFER_H
+#define GOBY_ACOMMS_BUFFER_DYNAMIC_BUFFER_H
+
 #include <deque>
 #include <type_traits>
 #include <unordered_map>
@@ -615,3 +618,5 @@ template <typename T, typename Clock> std::atomic<int> DynamicBuffer<T, Clock>::
 
 } // namespace acomms
 } // namespace goby
+
+#endif

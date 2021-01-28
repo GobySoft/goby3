@@ -22,6 +22,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef GOBY_MOOS_MOOS_SERIALIZER_H
+#define GOBY_MOOS_MOOS_SERIALIZER_H
+
 #include <string>
 
 #include "goby/moos/moos_header.h"
@@ -52,3 +55,5 @@ class MOOSSerializer
 };
 } // namespace moos
 } // namespace goby
+
+#endif

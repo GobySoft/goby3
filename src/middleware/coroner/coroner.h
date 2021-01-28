@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef CORONER_20191125H
-#define CORONER_20191125H
+#ifndef GOBY_MIDDLEWARE_CORONER_H
+#define GOBY_MIDDLEWARE_CORONER_H
 
 #include "goby/middleware/coroner/groups.h"
 #include "goby/middleware/marshalling/protobuf.h"

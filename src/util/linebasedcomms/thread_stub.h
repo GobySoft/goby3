@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2020:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,29 +22,34 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_VERSION_H
-#define GOBY_VERSION_H
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_THREAD_STUB
+#define GOBY_UTIL_LINEBASEDCOMMS_THREAD_STUB
 
-#include <sstream>
-#include <string>
-
-#define GOBY_VERSION_MAJOR @GOBY_VERSION_MAJOR@
-#define GOBY_VERSION_MINOR @GOBY_VERSION_MINOR@
-#define GOBY_VERSION_PATCH @GOBY_VERSION_PATCH@
+#include "goby/middleware/application/thread.h"
+#include "goby/middleware/transport/interthread.h"
 
 namespace goby
 {
-const std::string VERSION_STRING = "@GOBY_VERSION@";
-const std::string VERSION_DATE = "@GOBY_VERSION_DATE@";
-
-inline std::string version_message()
+namespace util
 {
-    std::stringstream ss;
-    ss << "This is Version " << goby::VERSION_STRING
-       << " of the Goby Underwater Autonomy Project released on " << goby::VERSION_DATE
-       << ".\n See https://github.com/GobySoft/goby3 to search for updates.";
-    return ss.str();
-}
+template <typename Config>
+class LineBasedCommsThreadStub
+    : public middleware::Thread<Config, middleware::InterThreadTransporter>
+{
+  public:
+    LineBasedCommsThreadStub(const Config& cfg, double loop_freq_hertz, int index)
+        : middleware::Thread<Config, middleware::InterThreadTransporter>(
+              cfg, &interthread_, loop_freq_hertz * boost::units::si::hertz, index)
+    {
+    }
+    ~LineBasedCommsThreadStub() = default;
+
+    middleware::InterThreadTransporter& interthread() { return interthread_; }
+
+  private:
+    middleware::InterThreadTransporter interthread_;
+};
+} // namespace util
 } // namespace goby
 
 #endif

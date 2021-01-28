@@ -144,11 +144,11 @@ class FlexOstream : public std::ostream
     void refresh() { sb_.refresh(); }
     void set_group(const std::string& s) { sb_.group_name(s); }
 
-    void set_unset_verbosity()
-    {
-        if (sb_.verbosity_depth() == goby::util::logger::UNKNOWN)
-            this->is(goby::util::logger::VERBOSE);
-    }
+    // void set_unset_verbosity()
+    // {
+    //     if (sb_.verbosity_depth() == goby::util::logger::UNKNOWN)
+    //         this->is(goby::util::logger::VERBOSE);
+    // }
 
   private:
     FlexOstream(const FlexOstream&);

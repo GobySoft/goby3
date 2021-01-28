@@ -65,11 +65,13 @@ namespace io
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-class PTYThreadLineBased
-    : public detail::PTYThread<line_in_group, line_out_group, publish_layer, subscribe_layer>
+          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+          template <class> class ThreadType = goby::middleware::SimpleThread>
+class PTYThreadLineBased : public detail::PTYThread<line_in_group, line_out_group, publish_layer,
+                                                    subscribe_layer, ThreadType>
 {
-    using Base = detail::PTYThread<line_in_group, line_out_group, publish_layer, subscribe_layer>;
+    using Base = detail::PTYThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                   ThreadType>;
 
   public:
     /// \brief Constructs the thread.
@@ -97,9 +99,9 @@ class PTYThreadLineBased
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
 void goby::middleware::io::PTYThreadLineBased<line_in_group, line_out_group, publish_layer,
-                                              subscribe_layer>::async_read()
+                                              subscribe_layer, ThreadType>::async_read()
 {
     boost::asio::async_read_until(
         this->mutable_socket(), buffer_, eol_matcher_,

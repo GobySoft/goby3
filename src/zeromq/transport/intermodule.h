@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterModuleZeroMQ20201006H
-#define TransportInterModuleZeroMQ20201006H
+#ifndef GOBY_ZEROMQ_TRANSPORT_INTERMODULE_H
+#define GOBY_ZEROMQ_TRANSPORT_INTERMODULE_H
 
 #include "goby/middleware/transport/intermodule.h"
 

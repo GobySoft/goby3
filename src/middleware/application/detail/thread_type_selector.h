@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ThreadTypeSelector20191105H
-#define ThreadTypeSelector20191105H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_DETAIL_THREAD_TYPE_SELECTOR_H
+#define GOBY_MIDDLEWARE_APPLICATION_DETAIL_THREAD_TYPE_SELECTOR_H
 
 #include <memory>
 

@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterVehicle20160810H
-#define TransportInterVehicle20160810H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_H
+#define GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_H
 
 #include <atomic>
 #include <functional>

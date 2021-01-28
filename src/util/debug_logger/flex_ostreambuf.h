@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef FlexOStreamBuf20091110H
-#define FlexOStreamBuf20091110H
+#ifndef GOBY_UTIL_DEBUG_LOGGER_FLEX_OSTREAMBUF_H
+#define GOBY_UTIL_DEBUG_LOGGER_FLEX_OSTREAMBUF_H
 
 #include <atomic>
 #include <cstdio>
@@ -69,7 +69,7 @@ extern std::recursive_mutex mutex;
 
 enum Verbosity
 {
-    UNKNOWN = 4,
+    UNKNOWN = 3,
     QUIET = protobuf::GLogConfig::QUIET,
     WARN = protobuf::GLogConfig::WARN,
     VERBOSE = protobuf::GLogConfig::VERBOSE,
@@ -176,7 +176,7 @@ class FlexOStreamBuf : public std::streambuf
     std::atomic<logger::Verbosity> highest_verbosity_;
 
     std::atomic<logger_lock::LockAction> lock_action_;
-    FlexOstream* parent_;
+    //    FlexOstream* parent_;
 };
 } // namespace util
 } // namespace goby

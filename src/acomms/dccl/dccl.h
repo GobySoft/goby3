@@ -344,17 +344,28 @@ class DCCLCodec
         }
     }
 
-    void dlog_message(const std::string& msg, dccl::logger::Verbosity /*vrb*/,
-                      dccl::logger::Group grp)
+    void dlog_message(const std::string& msg, dccl::logger::Verbosity vrb, dccl::logger::Group grp)
     {
-        if (grp == dccl::logger::DECODE)
-            goby::glog << group(glog_decode_group_) << msg << std::endl;
-        else if (grp == dccl::logger::ENCODE)
-            goby::glog << group(glog_encode_group_) << msg << std::endl;
-        else if (grp == dccl::logger::SIZE)
-            goby::glog << group(glog_encode_group_) << " {size} " << msg << std::endl;
-        else
-            goby::glog << group(glog_encode_group_) << msg << std::endl;
+        std::string glog_group =
+            (grp == dccl::logger::DECODE) ? glog_decode_group_ : glog_encode_group_;
+        std::string prefix = (grp == dccl::logger::SIZE) ? " {size} " : "";
+        auto glog_vrb = goby::util::logger::VERBOSE;
+        switch (vrb)
+        {
+            case dccl::logger::WARN_PLUS:
+            case dccl::logger::WARN: glog_vrb = goby::util::logger::WARN; break;
+            default:
+            case dccl::logger::INFO_PLUS:
+            case dccl::logger::INFO: glog_vrb = goby::util::logger::VERBOSE; break;
+            case dccl::logger::DEBUG1_PLUS:
+            case dccl::logger::DEBUG1: glog_vrb = goby::util::logger::DEBUG1; break;
+            case dccl::logger::DEBUG2_PLUS:
+            case dccl::logger::DEBUG2: glog_vrb = goby::util::logger::DEBUG2; break;
+            case dccl::logger::DEBUG3_PLUS:
+            case dccl::logger::DEBUG3: glog_vrb = goby::util::logger::DEBUG3; break;
+        }
+
+        goby::glog.is(glog_vrb) && goby::glog << group(glog_group) << prefix << msg << std::endl;
     }
 
   private:

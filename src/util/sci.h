@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SCI20100713H
-#define SCI20100713H
+#ifndef GOBY_UTIL_SCI_H
+#define GOBY_UTIL_SCI_H
 
 #include <cmath>
 #include <map>

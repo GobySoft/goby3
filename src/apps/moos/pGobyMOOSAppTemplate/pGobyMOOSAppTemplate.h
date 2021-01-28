@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef pGobyMOOSAppTemplate20150102H
-#define pGobyMOOSAppTemplate20150102H
+#ifndef GOBY_APPS_MOOS_PGOBYMOOSAPPTEMPLATE_H
+#define GOBY_APPS_MOOS_PGOBYMOOSAPPTEMPLATE_H
 
 #include "goby/moos/goby_moos_app.h"
 

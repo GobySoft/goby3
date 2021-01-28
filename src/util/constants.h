@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef CONSTANTS_20190606H
-#define CONSTANTS_20190606H
+#ifndef GOBY_UTIL_CONSTANTS_H
+#define GOBY_UTIL_CONSTANTS_H
 
 #include <limits>
 

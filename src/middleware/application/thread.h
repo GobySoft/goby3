@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef THREAD20170616H
-#define THREAD20170616H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_THREAD_H
+#define GOBY_MIDDLEWARE_APPLICATION_THREAD_H
 
 #include <atomic>
 #include <chrono>
@@ -38,6 +38,7 @@
 
 #include "goby/middleware/common.h"
 #include "goby/middleware/group.h"
+#include "goby/time/simulation.h"
 
 namespace goby
 {
@@ -68,6 +69,7 @@ template <typename Config, typename TransporterType> class Thread
     std::atomic<bool>* alive_{nullptr};
     std::type_index type_i_{std::type_index(typeid(void))};
     std::string thread_id_;
+    bool finalize_run_{false};
 
   public:
     using Transporter = TransporterType;
@@ -119,6 +121,11 @@ template <typename Config, typename TransporterType> class Thread
         do_subscribe();
         initialize();
         while (alive) { run_once(); }
+        if (!finalize_run_)
+        {
+            finalize();
+            finalize_run_ = true;
+        }
     }
 
     /// \return the Thread index (for multiple instantiations)
@@ -126,6 +133,9 @@ template <typename Config, typename TransporterType> class Thread
 
     std::type_index type_index() { return type_i_; }
     void set_type_index(std::type_index type_i) { type_i_ = type_i; }
+
+    static constexpr goby::middleware::Group shutdown_group_{"goby::middleware::Thread::shutdown"};
+    static constexpr goby::middleware::Group joinable_group_{"goby::middleware::Thread::joinable"};
 
   protected:
     Thread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
@@ -192,13 +202,14 @@ template <typename Config, typename TransporterType> class Thread
     void thread_quit()
     {
         (*alive_) = false;
-        finalize();
+        if (!finalize_run_)
+        {
+            finalize();
+            finalize_run_ = true;
+        }
     }
 
     bool alive() { return alive_ && *alive_; }
-
-    static constexpr goby::middleware::Group shutdown_group_{"goby::middleware::Thread::shutdown"};
-    static constexpr goby::middleware::Group joinable_group_{"goby::middleware::Thread::joinable"};
 
   private:
     void do_subscribe()
@@ -215,7 +226,9 @@ template <typename Config, typename TransporterType> class Thread
                 [this](const ThreadIdentifier ti) {
                     if (ti.all_threads ||
                         (ti.type_i == this->type_index() && ti.index == this->index()))
+                    {
                         this->thread_quit();
+                    }
                 });
     }
 };

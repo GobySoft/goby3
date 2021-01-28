@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef CONFIGURATOR_20181205H
-#define CONFIGURATOR_20181205H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_CONFIGURATOR_H
+#define GOBY_MIDDLEWARE_APPLICATION_CONFIGURATOR_H
 
 #include "goby/middleware/application/configuration_reader.h"
 #include "goby/middleware/protobuf/app_config.pb.h"

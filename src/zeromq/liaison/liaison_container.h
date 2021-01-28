@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISONCONTAINER20130128H
-#define LIAISONCONTAINER20130128H
+#ifndef GOBY_ZEROMQ_LIAISON_LIAISON_CONTAINER_H
+#define GOBY_ZEROMQ_LIAISON_LIAISON_CONTAINER_H
 
 #include <queue>
 

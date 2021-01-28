@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterModule20201006H
-#define TransportInterModule20201006H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERMODULE_H
+#define GOBY_MIDDLEWARE_TRANSPORT_INTERMODULE_H
 
 #include <atomic>
 #include <functional>

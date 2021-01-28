@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterProcess20160622H
-#define TransportInterProcess20160622H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERPROCESS_H
+#define GOBY_MIDDLEWARE_TRANSPORT_INTERPROCESS_H
 
 #include <atomic>
 #include <functional>
