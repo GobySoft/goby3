@@ -41,7 +41,7 @@
 #include "goby/acomms/modemdriver/driver_base.h"
 #include "goby/middleware/application/thread.h"
 #include "goby/middleware/group.h"
-#include "goby/middleware/marshalling/detail/dccl_serializer_parser.h"
+#include "goby/middleware/marshalling/dccl.h"
 #include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/protobuf/intervehicle_transporter_config.pb.h"
