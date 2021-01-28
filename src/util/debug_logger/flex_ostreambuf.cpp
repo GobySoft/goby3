@@ -142,12 +142,13 @@ void goby::util::FlexOStreamBuf::enable_gui()
 
 void goby::util::FlexOStreamBuf::add_group(const std::string& name, logger::Group g)
 {
-    //    if(groups_.count(name)) return;
+    bool group_existed = groups_.count(name);
 
     groups_[name] = std::move(g);
 
 #ifdef HAS_NCURSES
-    if (is_gui_)
+    // only create a new window if this group didn't exist before
+    if (is_gui_ && !group_existed)
     {
         std::lock_guard<std::mutex> lock(curses_mutex);
         curses_->add_win(&groups_[name]);
