@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerialLineBased20190718H
-#define SerialLineBased20190718H
+#ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_SERIAL_H
+#define GOBY_MIDDLEWARE_IO_LINE_BASED_SERIAL_H
 
 #include <istream> // for istream, bas...
 #include <string>  // for string

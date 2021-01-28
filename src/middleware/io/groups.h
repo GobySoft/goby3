@@ -23,8 +23,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IO_GROUPS_20190718H
-#define IO_GROUPS_20190718H
+#ifndef GOBY_MIDDLEWARE_IO_GROUPS_H
+#define GOBY_MIDDLEWARE_IO_GROUPS_H
 
 #include "goby/middleware/group.h"
 

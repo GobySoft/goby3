@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MULTITHREADAPPLICATION20170616H
-#define MULTITHREADAPPLICATION20170616H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_MULTI_THREAD_H
+#define GOBY_MIDDLEWARE_APPLICATION_MULTI_THREAD_H
 
 #include <boost/units/systems/si.hpp>
 

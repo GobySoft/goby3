@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VERSION20110304H
-#define VERSION20110304H
+#ifndef GOBY_VERSION_H
+#define GOBY_VERSION_H
 
 #include <sstream>
 #include <string>

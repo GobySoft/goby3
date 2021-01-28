@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef THREAD20170616H
-#define THREAD20170616H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_THREAD_H
+#define GOBY_MIDDLEWARE_APPLICATION_THREAD_H
 
 #include <atomic>
 #include <chrono>

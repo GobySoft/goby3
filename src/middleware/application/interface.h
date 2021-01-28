@@ -23,8 +23,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef APPLICATIONBASE320161120H
-#define APPLICATIONBASE320161120H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_INTERFACE_H
+#define GOBY_MIDDLEWARE_APPLICATION_INTERFACE_H
 
 #include <chrono>
 #include <csignal>

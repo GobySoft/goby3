@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TIME_SYSTEM_CLOCK_20190530H
-#define TIME_SYSTEM_CLOCK_20190530H
+#ifndef GOBY_TIME_SYSTEM_CLOCK_H
+#define GOBY_TIME_SYSTEM_CLOCK_H
 
 #include <chrono>
 #include <cstdint>

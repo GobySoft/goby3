@@ -23,8 +23,8 @@
 
 #include "goby/middleware/group.h"
 
-#ifndef GROUPS_20190816H
-#define GROUPS_20190816H
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_GROUPS_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_GROUPS_H
 
 namespace goby
 {

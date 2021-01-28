@@ -27,8 +27,8 @@
 // massachusetts institute of technology (mit)
 // laboratory for autonomous marine sensing systems (lamss)
 
-#ifndef PRESSUREH
-#define PRESSUREH
+#ifndef GOBY_UTIL_SEAWATER_PRESSURE_H
+#define GOBY_UTIL_SEAWATER_PRESSURE_H
 
 #include <cmath>
 

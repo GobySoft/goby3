@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MAVLinkCommon20190815H
-#define MAVLinkCommon20190815H
+#ifndef GOBY_MIDDLEWARE_IO_MAVLINK_COMMON_H
+#define GOBY_MIDDLEWARE_IO_MAVLINK_COMMON_H
 
 #include <cstdint> // for uint8_t
 #include <memory>  // for shared_ptr, __sh...

@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef BINARY20100713H
-#define BINARY20100713H
+#ifndef GOBY_UTIL_BINARY_H
+#define GOBY_UTIL_BINARY_H
 
 #include <cmath>
 #include <iomanip>

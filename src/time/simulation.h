@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TIME_SIMULATION_20190530H
-#define TIME_SIMULATION_20190530H
+#ifndef GOBY_TIME_SIMULATION_H
+#define GOBY_TIME_SIMULATION_H
 
 #include <chrono>
 

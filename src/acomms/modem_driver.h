@@ -24,8 +24,8 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 // courtesy header for the acoustic modem driver (libmodemdriver)
-#ifndef MODEMDRIVERCOURTESY20091211H
-#define MODEMDRIVERCOURTESY20091211H
+#ifndef GOBY_ACOMMS_MODEM_DRIVER_H
+#define GOBY_ACOMMS_MODEM_DRIVER_H
 
 // driver base class
 #include "goby/acomms/modemdriver/driver_base.h"

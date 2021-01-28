@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Common20200603H
-#define Common20200603H
+#ifndef GOBY_MIDDLEWARE_COMMON_H
+#define GOBY_MIDDLEWARE_COMMON_H
 
 #include <fstream>
 #include <sstream>

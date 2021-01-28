@@ -24,8 +24,8 @@
 
 // courtesy header for the Stream Logging library (libstreamlogger)
 
-#ifndef STREAMLOGGERCOURTESY20091211H
-#define STREAMLOGGERCOURTESY20091211H
+#ifndef GOBY_UTIL_DEBUG_LOGGER_H
+#define GOBY_UTIL_DEBUG_LOGGER_H
 
 #include "goby/util/debug_logger/flex_ostream.h"
 #include "goby/util/debug_logger/flex_ostreambuf.h"

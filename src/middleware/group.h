@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Group20170807H
-#define Group20170807H
+#ifndef GOBY_MIDDLEWARE_GROUP_H
+#define GOBY_MIDDLEWARE_GROUP_H
 
 #include <memory>
 #include <string>

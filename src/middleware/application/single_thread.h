@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SINGLETHREADAPPLICATION20161120H
-#define SINGLETHREADAPPLICATION20161120H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_SINGLE_THREAD_H
+#define GOBY_MIDDLEWARE_APPLICATION_SINGLE_THREAD_H
 
 #include <boost/units/systems/si.hpp>
 

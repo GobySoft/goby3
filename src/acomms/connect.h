@@ -24,8 +24,8 @@
 
 // gives functions for connecting the slots and signals of the goby-acomms libraries together
 
-#ifndef CONNECT20110121H
-#define CONNECT20110121H
+#ifndef GOBY_ACOMMS_CONNECT_H
+#define GOBY_ACOMMS_CONNECT_H
 
 #include <boost/bind.hpp>
 #include <boost/signals2.hpp>

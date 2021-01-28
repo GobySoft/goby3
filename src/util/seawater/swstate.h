@@ -27,8 +27,8 @@
 // massachusetts institute of technology (mit)
 // laboratory for autonomous marine sensing systems (lamss)
 
-#ifndef SWSTATEH
-#define SWSTATEH
+#ifndef GOBY_UTIL_SEAWATER_SWSTATE_H
+#define GOBY_UTIL_SEAWATER_SWSTATE_H
 
 #include <cmath>
 

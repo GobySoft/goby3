@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UDP_ONE_TO_MANY_20190829H
-#define UDP_ONE_TO_MANY_20190829H
+#ifndef GOBY_MIDDLEWARE_IO_UDP_ONE_TO_MANY_H
+#define GOBY_MIDDLEWARE_IO_UDP_ONE_TO_MANY_H
 
 #include <array>                 // for array
 #include <boost/asio/buffer.hpp> // for buffer

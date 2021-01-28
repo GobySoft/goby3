@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerializeParseString20190717H
-#define SerializeParseString20190717H
+#ifndef GOBY_MIDDLEWARE_MARSHALLING_CSTR_H
+#define GOBY_MIDDLEWARE_MARSHALLING_CSTR_H
 
 #include <vector>
 

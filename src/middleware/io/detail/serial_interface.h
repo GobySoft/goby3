@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerialInterface20190718H
-#define SerialInterface20190718H
+#ifndef GOBY_MIDDLEWARE_IO_DETAIL_SERIAL_INTERFACE_H
+#define GOBY_MIDDLEWARE_IO_DETAIL_SERIAL_INTERFACE_H
 
 #include <memory>      // for shared_ptr
 #include <ostream>     // for endl
