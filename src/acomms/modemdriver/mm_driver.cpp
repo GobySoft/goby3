@@ -209,9 +209,6 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
 
 void goby::acomms::MMDriver::set_rts(bool state)
 {
-    // Grab our native file descrpitor for the serial port.  Only works for linux.
-    // Used to change control lines (e.g. RTS) w/ linux through IOCTL calls.
-    // Would need #ifdef's for conditional compling if other platforms become desired.
     auto& serial_client = dynamic_cast<util::SerialClient&>(modem());
     middleware::protobuf::SerialCommand command;
     command.set_command(state ? middleware::protobuf::SerialCommand::RTS_HIGH
