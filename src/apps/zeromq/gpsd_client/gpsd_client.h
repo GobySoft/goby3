@@ -1,8 +1,9 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Shawn Dooley <shawn@shawndooley.net>
+//   Toby Schneider <toby@gobysoft.org>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Binaries
