@@ -106,24 +106,10 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
                 });
 
         for (const auto& target_name : cfg().target_name())
-        {
-            goby::middleware::protobuf::TerminateRequest req;
-            req.set_target_name(target_name);
             waiting_for_response_names_.insert(target_name);
-            glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString()
-                                     << std::endl;
-            interprocess().publish<middleware::groups::terminate_request>(req);
-        }
 
         for (const auto& target_pid : cfg().target_pid())
-        {
-            goby::middleware::protobuf::TerminateRequest req;
-            req.set_target_pid(target_pid);
             waiting_for_response_pids_.insert(target_pid);
-            glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString()
-                                     << std::endl;
-            interprocess().publish<middleware::groups::terminate_request>(req);
-        }
     }
 
     ~Terminate() override = default;
@@ -131,6 +117,24 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
   private:
     void loop() override
     {
+        for (const auto& target_name : waiting_for_response_names_)
+        {
+            goby::middleware::protobuf::TerminateRequest req;
+            req.set_target_name(target_name);
+            glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString()
+                                     << std::endl;
+            interprocess().publish<middleware::groups::terminate_request>(req);
+        }
+
+        for (const auto& target_pid : waiting_for_response_pids_)
+        {
+            goby::middleware::protobuf::TerminateRequest req;
+            req.set_target_pid(target_pid);
+            glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString()
+                                     << std::endl;
+            interprocess().publish<middleware::groups::terminate_request>(req);
+        }
+
         // clear any processes that have exited
         for (auto it = running_pids_.begin(); it != running_pids_.end();)
         {
