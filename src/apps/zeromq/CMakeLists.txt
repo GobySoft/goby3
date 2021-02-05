@@ -16,3 +16,8 @@ endif()
 if(enable_gpsd)
   add_subdirectory(gpsd_client)
 endif()
+
+if(enable_mysql)
+  add_subdirectory(geov)
+endif()
+
