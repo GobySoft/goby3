@@ -16,7 +16,8 @@ usage()
     echo -e "----------------"
     echo -e "" 
     echo -e "Options:"
-    echo -e "\t-h\t\tShow help."    
+    echo -e "\t-h\t\tShow help."
+    echo -e "\t-r\t\tLaunch applications all in the current terminal)"
     echo -e "\t-s\t\tLaunch applications in a detached GNU 'screen' session (requires 'apt install screen')"
 #    echo -e "\t-t\t\tLaunch applications in their own gnome-terminal tab (implies -b)" 
     echo -e "\t-n\t\tLaunch applications detached using 'nohup' (implies -b)"
@@ -44,7 +45,7 @@ launch_fail()
 
 check_launch_type_unset()
 {
-    [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
+    [ "$launch" != screen ] && echo "Error: -r, -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
 }
 
 do_kill()
@@ -104,7 +105,7 @@ do_kill()
 }
 
 launch_delay=10
-launch=normal
+launch=screen
 launch_time=$(date -u +%Y%m%dT%H%M%S)
 platform=$launch_time
 background=false
@@ -113,9 +114,10 @@ sigkill_delay=10000
 # in s
 sigterm_delay=10
 
-while getopts ":hsnxd:bp:k:m:" opt; do
+while getopts ":rhsnxd:bp:k:m:" opt; do
     case $opt in
         h) usage; exit 1 ;;
+        r) check_launch_type_unset; launch=normal ;;
         s) check_launch_type_unset; launch=screen ;;
         n) check_launch_type_unset; launch=nohup; background=true ;;
 #        t) check_launch_type_unset; launch=gnometerm; background=true ;;

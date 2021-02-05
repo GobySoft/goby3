@@ -1,0 +1,36 @@
+syntax = "proto2";
+
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/middleware/protobuf/pty_config.proto";
+import "goby/middleware/protobuf/tcp_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+import "dccl/option_extensions.proto";
+
+package goby.apps.zeromq.protobuf;
+
+message OpenCPNInterfaceConfig
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+
+    oneof io
+    {
+        goby.middleware.protobuf.TCPServerConfig ais_server = 5;
+        goby.middleware.protobuf.PTYConfig ais_serial = 6;
+    }
+
+    // "981-988 used for daughter craft"
+    optional int32 mmsi_start = 10 [default = 988700000];
+    // how many status reports to estimate speed over ground / course over
+    // ground
+    optional int32 filter_length = 11 [default = 2];
+
+    optional double position_report_interval = 12
+        [default = 1, (dccl.field) = {units {base_dimensions: "T"}}];
+    optional double voyage_report_interval = 13
+        [default = 30, (dccl.field) = {units {base_dimensions: "T"}}];
+}
