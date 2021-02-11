@@ -103,8 +103,8 @@ void goby::middleware::frontseat::BasicSimulatorFrontSeatInterface::check_connec
     if (!tcp_.active())
     {
         // in a real driver, change this to try to reconnect (see Bluefin driver example)
-        glog.is(DIE) && glog << "Connection to FrontSeat failed: " << sim_config_.tcp_address()
-                             << ":" << sim_config_.tcp_port() << std::endl;
+        glog.is(WARN) && glog << "Connection to FrontSeat failed: " << sim_config_.tcp_address()
+                              << ":" << sim_config_.tcp_port() << std::endl;
     }
     else
     {
