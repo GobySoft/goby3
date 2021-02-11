@@ -15,6 +15,13 @@ usage()
     echo -e "goby_logger --log_dir /media/data/logs"   
     echo -e "----------------"
     echo -e "" 
+    echo -e "Optionally, the <launchfile> can contain directives (separated by commas) before each launch line that modify the behavior of that line. The current directives are [kill=SIGNAL] and [env=ENVIRONMENTAL_VARIABLE=value], for example:"
+    echo -e "----------------"
+    echo -e "[kill=SIGTERM] MOOSDB /tmp/auv.moos"
+    echo -e "[env=LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:/home/toby/goby3/build/lib] goby_liaison liaison.pb.cfg"
+    echo -e "[env=FOO=bar, kill=SIGINT] some_app"
+    echo -e "----------------"
+    echo -e "" 
     echo -e "Options:"
     echo -e "\t-h\t\tShow help."
     echo -e "\t-r\t\tLaunch applications all in the current terminal)"
@@ -182,7 +189,6 @@ else
     fi
 fi
 
-     
 # actually launch the lines
 gnterm=()
 while IFS= read -r line
@@ -239,6 +245,7 @@ do
             echo "Launched ($pid) $cmd"
             ppid+=($pid)
             spid+=($pid)
+            spid_cmd+=("$cmd")
             ;;
         xterm)
             setsid xterm  -T $name -e "bash -c \"$esccmd\""&
@@ -255,6 +262,7 @@ do
             echo "Launched (xterm: $parent_pid, child: $child_pid) $cmd"
             ppid+=($parent_pid)
             spid+=($child_pid)
+            spid_cmd+=("$cmd")
             ;;
         nohup)
             nohup bash -c "$esccmd"&
@@ -262,6 +270,7 @@ do
             echo "Launched ($pid) $cmd"
             ppid+=($pid)
             spid+=($pid)
+            spid_cmd+=("$cmd")
             ;;
         gnometerm)
             gnterm+=(--tab -e "bash -c \"echo -ne \\\"\\033]0;${name}\\007\\\"; $esccmd\"")
@@ -281,11 +290,11 @@ do
             echo "Launched (screen: $parent_pid, child: $child_pid) $cmd"
             ppid+=($parent_pid)
             spid+=($child_pid)
+            spid_cmd+=("$cmd")
             ;;       
     esac
     if [ $launch != gnometerm ]; then
         i=$((${#ppid[@]}-1))
-        spid_cmd[i]=$(ps --pid ${spid[i]} -o cmd=)
 
         # avoid association with this shell so we can kill them later without "Terminated" warning
         disown ${ppid[i]} >& /dev/null
@@ -294,6 +303,13 @@ do
     fi    
 done < <(sed 's/#.*//' "$launchfile" | sed '/^\s*$/d')
 
+# check that everything is still running 1 second after launch
+sleep 1
+for ((i=0; i<${#spid[@]}; ++i)); do 
+    p=${spid[i]}
+    cmd=${spid_cmd[i]}
+    kill -0 $p >& /dev/null || launch_fail "$cmd";
+done
 
 if [ $launch = gnometerm ]; then 
     gnome-terminal --maximize "${gnterm[@]}"
