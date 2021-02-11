@@ -112,7 +112,7 @@ class SimpleThread
 /// For example, to create timer that expires every two seconds:
 /// ```
 /// launch_thread<goby::middleware::TimerThread<0>>(0.5*boost::units::si::hertz);
-/// interthread().subscribe_empty<goby::middleware::TimerThread<0>::group>([]() { std::cout << "Timer expired." << std::endl; });
+/// interthread().subscribe_empty<goby::middleware::TimerThread<0>::expire_group>([]() { std::cout << "Timer expired." << std::endl; });
 /// ```
 template <int i>
 class TimerThread
