@@ -118,7 +118,7 @@ void goby::acomms::UDPMulticastDriver::do_work() { io_context_.poll(); }
 void goby::acomms::UDPMulticastDriver::receive_message(const protobuf::ModemTransmission& msg)
 {
     if (msg.type() == protobuf::ModemTransmission::DATA && msg.ack_requested() &&
-        msg.dest() != BROADCAST_ID)
+        msg.dest() == driver_cfg_.modem_id())
     {
         // make any acks
         protobuf::ModemTransmission ack;
