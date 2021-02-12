@@ -49,3 +49,41 @@ std::chrono::system_clock::time_point create_reference_time()
 
 std::chrono::system_clock::time_point
     goby::time::SimulatorSettings::reference_time(create_reference_time());
+
+goby::time::SystemClock::time_point
+goby::time::SystemClock::warp(const std::chrono::system_clock::time_point& real_time)
+{
+    using namespace std::chrono;
+
+    // warp time (t) by warp factor (w), relative to reference_time (t0)
+    // so t_sim = (t-t0)*w+t0
+    std::int64_t microseconds_since_reference =
+        (real_time - SimulatorSettings::reference_time) / microseconds(1);
+    std::int64_t warped_microseconds_since_reference =
+        SimulatorSettings::warp_factor * microseconds_since_reference;
+    return time_point(duration_cast<goby::time::SystemClock::duration>(
+                          microseconds(warped_microseconds_since_reference)) +
+                      duration_cast<goby::time::SystemClock::duration>(
+                          SimulatorSettings::reference_time.time_since_epoch()));
+}
+
+std::chrono::system_clock::time_point
+goby::time::SystemClock::unwarp(const goby::time::SystemClock::time_point& sim_time)
+{
+    using namespace std::chrono;
+
+    // t = (t_sim-t0)/w + t0
+    std::int64_t warped_microseconds_since_reference =
+        (duration_cast<goby::time::SystemClock::duration>(sim_time.time_since_epoch()) -
+         duration_cast<goby::time::SystemClock::duration>(
+             SimulatorSettings::reference_time.time_since_epoch())) /
+        microseconds(1);
+
+    std::int64_t microseconds_since_reference =
+        warped_microseconds_since_reference / SimulatorSettings::warp_factor;
+
+    return system_clock::time_point(
+        duration_cast<system_clock::duration>(microseconds(microseconds_since_reference)) +
+        duration_cast<system_clock::duration>(
+            SimulatorSettings::reference_time.time_since_epoch()));
+}
