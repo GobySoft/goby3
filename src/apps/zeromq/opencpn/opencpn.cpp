@@ -40,12 +40,17 @@ class OpenCPNInterface : public ApplicationBase
     void handle_status(const goby::middleware::frontseat::protobuf::NodeStatus& frontseat_nav);
 
   private:
-    // vehicle name to converter
-    std::map<std::string, goby::middleware::AISConverter> converters_;
+    // vehicle name to data
+    struct VehicleData
+    {
+        goby::middleware::AISConverter converter;
+        goby::time::SystemClock::time_point last_ais_pos_t{std::chrono::seconds(0)},
+            last_ais_voy_t{std::chrono::seconds(0)};
+    };
+
+    std::map<std::string, VehicleData> vehicles_;
     int next_mmsi_;
 
-    goby::time::SystemClock::time_point last_ais_pos_t_{std::chrono::seconds(0)},
-        last_ais_voy_t_{std::chrono::seconds(0)};
     goby::time::SystemClock::duration ais_pos_dt_, ais_voy_dt_;
 };
 } // namespace zeromq
@@ -78,27 +83,28 @@ goby::apps::zeromq::OpenCPNInterface::OpenCPNInterface()
 void goby::apps::zeromq::OpenCPNInterface::handle_status(
     const goby::middleware::frontseat::protobuf::NodeStatus& frontseat_nav)
 {
-    if (!converters_.count(frontseat_nav.name()))
-        converters_.insert(
-            std::make_pair(frontseat_nav.name(),
-                           goby::middleware::AISConverter(next_mmsi_++, cfg().filter_length())));
+    if (!vehicles_.count(frontseat_nav.name()))
+        vehicles_.insert(std::make_pair(
+            frontseat_nav.name(),
+            VehicleData({goby::middleware::AISConverter(next_mmsi_++, cfg().filter_length())})));
 
-    auto& converter_ = converters_.at(frontseat_nav.name());
+    auto& vehicle_data = vehicles_.at(frontseat_nav.name());
+    auto& converter = vehicle_data.converter;
 
-    converter_.add_status(frontseat_nav);
+    converter.add_status(frontseat_nav);
     std::pair<goby::util::ais::protobuf::Position, goby::util::ais::protobuf::Voyage> ais_b_msg =
-        converter_.latest_node_status_to_ais_b();
+        converter.latest_node_status_to_ais_b();
 
     auto now = goby::time::SystemClock::now();
-    bool write_pos = (now > last_ais_pos_t_ + ais_pos_dt_);
-    bool write_voy = (now > last_ais_voy_t_ + ais_voy_dt_);
+    bool write_pos = (now > vehicle_data.last_ais_pos_t + ais_pos_dt_);
+    bool write_voy = (now > vehicle_data.last_ais_voy_t + ais_voy_dt_);
 
     std::vector<goby::util::NMEASentence> nmeas;
     if (write_pos)
     {
         goby::util::ais::Encoder pos_encoder(ais_b_msg.first);
         nmeas = pos_encoder.as_nmea();
-        last_ais_pos_t_ = now;
+        vehicle_data.last_ais_pos_t = now;
     }
     if (write_voy)
     {
@@ -108,7 +114,7 @@ void goby::apps::zeromq::OpenCPNInterface::handle_status(
         std::copy(nmeas_0.begin(), nmeas_0.end(), std::back_inserter(nmeas));
         auto nmeas_1 = voy_encoder_part1.as_nmea();
         std::copy(nmeas_1.begin(), nmeas_1.end(), std::back_inserter(nmeas));
-        last_ais_voy_t_ = now;
+        vehicle_data.last_ais_voy_t = now;
     }
 
     for (auto nmea : nmeas)
