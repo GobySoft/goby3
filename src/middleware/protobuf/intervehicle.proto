@@ -95,8 +95,8 @@ message Subscription
 
 message Header
 {
-    required int32 src = 1 [(dccl.field) = {min: 0 max: 255}];
-    repeated int32 dest = 2 [(dccl.field) = {min: 0 max: 255 max_repeat: 4}];
+    required int32 src = 1 [(dccl.field) = {min: 0 max: 65535}];
+    repeated int32 dest = 2 [(dccl.field) = {min: 0 max: 65535 max_repeat: 4}];
 }
 
 message DCCLPacket
