@@ -87,6 +87,8 @@ template <typename Data> class Subscriber
     /// \return the subscription request expired callback (or an empty function if none is set)
     subscribe_expired_func_type subscribe_expired_func() const { return subscribe_expired_func_; }
 
+    bool has_group_func() const { return bool(group_func_); }
+
   private:
     goby::middleware::protobuf::TransporterConfig cfg_;
     group_func_type group_func_;
