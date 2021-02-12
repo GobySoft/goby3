@@ -286,8 +286,13 @@ void goby::apps::zeromq::GEOVInterface::handle_status(
     std::string nlat = goby::util::as<std::string>(frontseat_nav.global_fix().lat());
     std::string nlong = goby::util::as<std::string>(frontseat_nav.global_fix().lon());
 
-    double utc_time = frontseat_nav.time_with_units<goby::time::SITime>().value() /
-                      cfg().app().simulation().time().warp_factor();
+    // unwarp time for use in GEOV
+    double utc_time = goby::time::convert<goby::time::SITime>(
+                          goby::time::SystemClock::unwarp(
+                              goby::time::convert<goby::time::SystemClock::time_point>(
+                                  frontseat_nav.time_with_units())))
+                          .value();
+
     std::string nav_hdg_val = goby::util::as<std::string>(
         frontseat_nav.pose()
             .heading_with_units<boost::units::quantity<boost::units::degree::plane_angle>>()

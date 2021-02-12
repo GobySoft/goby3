@@ -167,6 +167,14 @@ class ModemDriverThread
 
     void _try_create_or_update_buffer(modem_id_type dest_id, const subbuffer_id_type& buffer_id);
 
+    modem_id_type _broadcast_id() { return cfg().modem_id() & cfg().subnet_mask(); }
+
+    // id within subnet
+    modem_id_type _id_within_subnet(modem_id_type id) { return id - _broadcast_id(); }
+
+    // full id
+    modem_id_type _full_id(modem_id_type id_in_subnet) { return id_in_subnet + _broadcast_id(); }
+
     bool _dest_is_in_subnet(modem_id_type dest_id)
     {
         bool dest_in_subnet =

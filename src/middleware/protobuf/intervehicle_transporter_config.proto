@@ -16,7 +16,8 @@ message TransporterConfig
     
     optional goby.acomms.protobuf.DynamicBufferConfig buffer = 10;
 
-
+    optional bool broadcast = 20 [default = false];
+    
     // message LinkConfig
     // {
     //     enum LinkPolicy

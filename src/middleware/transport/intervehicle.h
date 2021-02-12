@@ -318,6 +318,14 @@ class InterVehicleTransporterBase
                     throw(InvalidSubscription(ss.str()));
                 }
 
+                if (subscriber.cfg().intervehicle().broadcast() &&
+                    subscriber.cfg().intervehicle().buffer().ack_required())
+                {
+                    std::stringstream ss;
+                    ss << "Error: Broadcast subscriptions cannot have ack_required: true";
+                    throw(InvalidSubscription(ss.str()));
+                }
+
                 auto subscription =
                     std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(
                         func, group, subscriber);
