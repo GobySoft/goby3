@@ -120,7 +120,7 @@ do_kill()
 
     gobyd_interprocess_1line=$(echo "${gobyd_interprocess}" | tr '\n' ' ')
     if [ "$parallel_shutdown" = true ]; then
-        echo "Excecuting parallel shutdown, but delaying quitting gobyd (if any)"
+        echo "Executing parallel shutdown, but delaying quitting gobyd (if any)"
         export -f do_killone
         parallel --link do_killone ::: ${spid[@]} ::: "${spid_cmd[@]}" ::: ${spid_sig[@]} ::: "${gobyd_interprocess_1line}" ::: ${sigterm_delay} ::: ${sigkill_delay} ::: true
     fi
@@ -205,10 +205,10 @@ num_gobyd=$(echo "$gobyd_line" | wc -l)
 
 use_goby_terminate=true
 if [[ "$num_gobyd" != "1" ]]; then
-    echo "Warning: multiple instances of 'gobyd' found - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
+    echo "Note: multiple instances of 'gobyd' found - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
     use_goby_terminate=false
 elif [[ "$gobyd_line"  == "" ]]; then
-    echo "Warning: failed to find line for launching 'gobyd' - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
+    echo "Note: no line found for launching 'gobyd' - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
     use_goby_terminate=false
 else
     gobyd_escline=$(echo "$gobyd_line" | sed 's/"/\\"/g')
@@ -253,7 +253,7 @@ do
                     fi
                     ;;
                 env)
-                    echo "Exporting $value"
+#                    echo "Exporting $value"
                     export $value
                     ;;
                 *)
