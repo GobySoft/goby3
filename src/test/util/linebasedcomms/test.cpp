@@ -77,14 +77,16 @@ int main(int /*argc*/, char* argv[])
         client.write(test_string);
         sleep(1);
         goby::util::protobuf::Datagram d;
-        assert(server.readline(&d));
+        bool data_was_read = server.readline(&d);
+        assert(data_was_read);
+        std::cout << "client to server:" << d.ShortDebugString() << std::endl;
         assert(d.data() == test_string);
         client_endpoint = d.src();
         assert(!server.readline(&line));
         assert(!client.readline(&line));
     }
 
-    // client to server
+    // client to server, no endpoint info
     {
         std::string line;
         assert(!server.readline(&line));
