@@ -82,7 +82,7 @@ void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
                               cfg_path_desc.c_str())(
         "exec_cfg_path,C", boost::program_options::value<std::string>(&exec_cfg_path),
         "File (script) to execute to create the configuration for this app. Output of application "
-        "must be an encoded Protobuf message for this application's configuration.")(
+        "must be a TextFormat Protobuf message for this application's configuration.")(
         "help,h", "writes this help message")(
         "app_name,a", boost::program_options::value<std::string>(),
         app_name_desc.c_str())("example_config,e", "writes an example .pb.cfg file")(
@@ -212,7 +212,9 @@ void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
                 if (value.empty())
                     throw(ConfigException("No data passed from -C script"));
 
-                message->ParsePartialFromString(value);
+                google::protobuf::TextFormat::Parser parser;
+                parser.AllowPartialMessage(true);
+                parser.ParseFromString(value, message);
             }
         }
 
