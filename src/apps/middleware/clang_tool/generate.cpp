@@ -256,7 +256,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         if (!group_int.empty())
         {
             if (!group.empty())
-                group += "::";
+                group += ";";
             group += group_int;
         }
 

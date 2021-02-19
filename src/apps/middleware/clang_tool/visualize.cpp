@@ -338,18 +338,22 @@ const auto recommended_style = "tapered";
 const auto optional_style = "solid";
 const auto regex_style = "dotted";
 
-std::string node_name(std::string p, std::string a, std::string th)
+void escape_for_dot(std::string& s)
 {
-    std::vector<char> reserved{{':', '&', '<', '>', ' ', ',', '-'}};
-
+    std::vector<char> reserved{{':', '&', '<', '>', ' ', ',', '-', '#'}};
     for (char r : reserved)
     {
         std::string search(1, r);
         auto replacement = "_" + std::to_string(static_cast<int>(r)) + "_";
-        boost::replace_all(p, search, replacement);
-        boost::replace_all(a, search, replacement);
-        boost::replace_all(th, search, replacement);
+        boost::replace_all(s, search, replacement);
     }
+}
+
+std::string node_name(std::string p, std::string a, std::string th)
+{
+    escape_for_dot(p);
+    escape_for_dot(a);
+    escape_for_dot(th);
 
     return p + "_" + a + "_" + th;
 }
@@ -363,6 +367,10 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
     std::string group = pub.group;
     std::string scheme = pub.scheme;
     std::string type = pub.type;
+
+    auto last_colon = group.find_last_of(":");
+    std::string group_without_namespace =
+        (last_colon == std::string::npos) ? group : group.substr(last_colon + 1);
 
     viz::html_escape(group);
     viz::html_escape(scheme);
@@ -387,9 +395,10 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
     auto label = pub.publish_index_str();
     auto tooltip = label + ": " + pub.group + " | " + pub.scheme + " | " + pub.type;
     auto ret = pub_str + "->" + sub_str + "[fontsize=7,headlabel=\"" + label + "\",taillabel=\"" +
-               label + "\",xlabel=\"" + label + ": " + group + "\",color=\"" + color +
-               "\",style=" + style + ",tooltip=\"" + tooltip + "\",labeltooltip=\"" + tooltip +
-               "\",headtooltip=\"" + tooltip + "\",penwidth=0.5,arrowhead=vee,arrowsize=0.3]\n";
+               label + "\",xlabel=<" + label + "[" + group_without_namespace + "]>,color=\"" +
+               color + "\",style=" + style + ",tooltip=\"" + tooltip + "\",labeltooltip=\"" +
+               tooltip + "\",headtooltip=\"" + tooltip +
+               "\",penwidth=0.5,arrowhead=vee,arrowsize=0.3]\n";
 
     return ret;
 }
@@ -411,16 +420,19 @@ std::string disconnected_publication(std::string pub_platform, std::string pub_a
     if (g_params.omit_disconnected)
         return "";
 
+    std::string esccolor = color;
+    escape_for_dot(esccolor);
+
     // hide inner publications without subscribers.
     if (pub.is_inner_pub)
         return "";
     else
-        return node_name(pub_platform, pub_application, pub.thread) + "_no_subscribers_" + color +
-               " [label=\"\",style=invis] \n" +
+        return node_name(pub_platform, pub_application, pub.thread) + "_no_subscribers_" +
+               esccolor + " [label=\"\",style=invis] \n" +
                connection_with_label_final(pub,
                                            node_name(pub_platform, pub_application, pub.thread),
                                            node_name(pub_platform, pub_application, pub.thread) +
-                                               "_no_subscribers_" + color,
+                                               "_no_subscribers_" + esccolor,
                                            color, goby::middleware::Necessity::OPTIONAL, false);
 }
 
@@ -434,8 +446,11 @@ std::string disconnected_subscription(std::string sub_platform, std::string sub_
     if (necessity == goby::middleware::Necessity::REQUIRED)
         color = "red";
 
+    std::string esccolor = color;
+    escape_for_dot(esccolor);
+
     auto pub_node =
-        node_name(sub_platform, sub_application, sub.thread) + "_no_publishers_" + color;
+        node_name(sub_platform, sub_application, sub.thread) + "_no_publishers_" + esccolor;
 
     g_node_name_to_thread[pub_node] = std::make_shared<viz::Thread>();
 
@@ -444,11 +459,11 @@ std::string disconnected_subscription(std::string sub_platform, std::string sub_
 
     g_pubs_in_use[pub_node][sub.layer].insert(std::make_pair(fake_pub.publish_index, fake_pub));
 
-    return node_name(sub_platform, sub_application, sub.thread) + "_no_publishers_" + color +
+    return node_name(sub_platform, sub_application, sub.thread) + "_no_publishers_" + esccolor +
            "  \n" +
            connection_with_label_final(
                fake_pub,
-               node_name(sub_platform, sub_application, sub.thread) + "_no_publishers_" + color,
+               node_name(sub_platform, sub_application, sub.thread) + "_no_publishers_" + esccolor,
                node_name(sub_platform, sub_application, sub.thread), color, necessity, is_regex);
 }
 
@@ -551,7 +566,8 @@ void write_vehicle_connections(
                     if (!is_group_included(sub.group))
                         continue;
 
-                    if (goby::clang::connects(pub, sub))
+                    // ignore self connections
+                    if (goby::clang::connects(pub, sub) && sub_platform.name != pub_platform.name)
                     {
                         remove_disconnected(
                             pub, sub, disconnected_pubs,
@@ -669,6 +685,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
     int cluster = 0;
     ofs << "digraph " << deployment.name << " { \n";
     ofs << "\tsplines=" << g_params.dot_splines << "\n";
+    ofs << "\tnewrank=true\n";
 
     std::map<std::string, std::map<std::string, std::set<PubSubEntry>>> platform_disconnected_subs;
     for (const auto& sub_platform : deployment.platforms)
