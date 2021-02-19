@@ -150,9 +150,16 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
         return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
                                  subscribe_parameters_matcher, containing_class_matcher);
     }
+    else if (method == "subscribe_type_regex")
+    {
+        auto subscribe_regex_parameters_matcher = callee(base_pubsub_parameters_matcher);
+        return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
+                                 subscribe_regex_parameters_matcher, containing_class_matcher);
+    }
     else
     {
-        throw(std::runtime_error("method must be 'publish' or 'subscribe'"));
+        throw(
+            std::runtime_error("method must be 'publish', 'subscribe', or 'subscribe_type_regex'"));
     }
 }
 
@@ -249,7 +256,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         if (!group_int.empty())
         {
             if (!group.empty())
-                group += "::";
+                group += ";";
             group += group_int;
         }
 
@@ -269,6 +276,13 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
             necessity = static_cast<goby::middleware::Necessity>(
                 necessity_arg->getAsIntegral().getExtValue());
 
+        auto method = pubsub_call_expr->getMethodDecl()->getNameAsString();
+        bool is_regex = (method.find("regex") != std::string::npos);
+
+        auto direction = (method.find("publish") != std::string::npos)
+                             ? goby::clang::PubSubEntry::Direction::PUBLISH
+                             : goby::clang::PubSubEntry::Direction::SUBSCRIBE;
+
         std::set<std::string> internal_groups{
             "goby::middleware::interprocess::to_portal",
             "goby::middleware::interprocess::regex",
@@ -287,10 +301,8 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         if (internal_groups.count(group))
             return;
 
-        entries_.emplace(layer,
-                         (necessity_arg) ? goby::clang::PubSubEntry::Direction::SUBSCRIBE
-                                         : goby::clang::PubSubEntry::Direction::PUBLISH,
-                         thread, group, scheme, type, thread_is_known, necessity);
+        entries_.emplace(layer, direction, thread, group, scheme, type, thread_is_known, necessity,
+                         is_regex);
     }
 
     const std::set<PubSubEntry>& entries() const { return entries_; }
@@ -346,6 +358,7 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
 
     finder.addMatcher(pubsub_matcher("publish"), &publish_aggregator);
     finder.addMatcher(pubsub_matcher("subscribe"), &subscribe_aggregator);
+    finder.addMatcher(pubsub_matcher("subscribe_type_regex"), &subscribe_aggregator);
 
     if (output_file.empty())
         output_file = target_name + "_interface.yml";

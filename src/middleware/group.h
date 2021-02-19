@@ -84,7 +84,7 @@ class Group
             if (i_ == invalid_numeric_group)
                 return std::string(c_);
             else
-                return std::string(c_) + "::" + std::to_string(i_);
+                return std::string(c_) + ";" + std::to_string(i_);
         }
         else
         {
