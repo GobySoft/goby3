@@ -321,13 +321,22 @@ inline std::ostream& operator<<(std::ostream& os, const Deployment& d)
 
 } // namespace viz
 
-const auto vehicle_color = "darkgreen";
-const auto process_color = "dodgerblue4";
-const auto thread_color = "purple4";
+// darkgreen
+const auto vehicle_color = "#006400";
+
+// dodgerblue4
+const auto process_color = "#104e8b";
+
+// purple4
+const auto thread_color = "#551a8b";
+
+// 0xXX transparency value (0-255)
+const auto box_transparency = "20";
 
 const auto required_style = "bold";
 const auto recommended_style = "tapered";
 const auto optional_style = "solid";
+const auto regex_style = "dotted";
 
 std::string node_name(std::string p, std::string a, std::string th)
 {
@@ -347,7 +356,7 @@ std::string node_name(std::string p, std::string a, std::string th)
 
 std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_str,
                                         std::string sub_str, std::string color,
-                                        goby::middleware::Necessity necessity)
+                                        goby::middleware::Necessity necessity, bool is_regex)
 {
     g_pubs_in_use[pub_str][pub.layer].insert(std::make_pair(pub.publish_index, pub));
 
@@ -357,7 +366,7 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
 
     viz::html_escape(group);
     viz::html_escape(scheme);
-    viz::html_escape(type);
+    viz::html_escape(type, false, false);
 
     std::string style;
     switch (necessity)
@@ -367,6 +376,9 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
         case goby::middleware::Necessity::OPTIONAL: style = optional_style; break;
     }
 
+    if (is_regex)
+        style = regex_style;
+
     // return pub_str + "->" + sub_str + "[xlabel=<<b><font point-size=\"10\">" + group +
     //        "</font></b><br/><font point-size=\"6\">" + scheme +
     //        "</font><br/><font point-size=\"8\">" + type + "</font>>" + ",color=" + color +
@@ -375,8 +387,8 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
     auto label = pub.publish_index_str();
     auto tooltip = label + ": " + pub.group + " | " + pub.scheme + " | " + pub.type;
     auto ret = pub_str + "->" + sub_str + "[fontsize=7,headlabel=\"" + label + "\",taillabel=\"" +
-               label + "\",xlabel=\"" + label + ": " + group + "\",color=" + color +
-               ",style=" + style + ",tooltip=\"" + tooltip + "\",labeltooltip=\"" + tooltip +
+               label + "\",xlabel=\"" + label + ": " + group + "\",color=\"" + color +
+               "\",style=" + style + ",tooltip=\"" + tooltip + "\",labeltooltip=\"" + tooltip +
                "\",headtooltip=\"" + tooltip + "\",penwidth=0.5,arrowhead=vee,arrowsize=0.3]\n";
 
     return ret;
@@ -385,11 +397,12 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
 std::string connection_with_label(std::string pub_platform, std::string pub_application,
                                   const PubSubEntry& pub, std::string sub_platform,
                                   std::string sub_application, const PubSubEntry& sub,
-                                  std::string color, goby::middleware::Necessity necessity)
+                                  std::string color, goby::middleware::Necessity necessity,
+                                  bool is_regex)
 {
     return connection_with_label_final(pub, node_name(pub_platform, pub_application, pub.thread),
                                        node_name(sub_platform, sub_application, sub.thread), color,
-                                       necessity);
+                                       necessity, is_regex);
 }
 
 std::string disconnected_publication(std::string pub_platform, std::string pub_application,
@@ -408,12 +421,12 @@ std::string disconnected_publication(std::string pub_platform, std::string pub_a
                                            node_name(pub_platform, pub_application, pub.thread),
                                            node_name(pub_platform, pub_application, pub.thread) +
                                                "_no_subscribers_" + color,
-                                           color, goby::middleware::Necessity::OPTIONAL);
+                                           color, goby::middleware::Necessity::OPTIONAL, false);
 }
 
 std::string disconnected_subscription(std::string sub_platform, std::string sub_application,
                                       const PubSubEntry& sub, std::string color,
-                                      goby::middleware::Necessity necessity)
+                                      goby::middleware::Necessity necessity, bool is_regex)
 {
     if (g_params.omit_disconnected && necessity != goby::middleware::Necessity::REQUIRED)
         return "";
@@ -427,7 +440,7 @@ std::string disconnected_subscription(std::string sub_platform, std::string sub_
     g_node_name_to_thread[pub_node] = std::make_shared<viz::Thread>();
 
     PubSubEntry fake_pub(sub.layer, PubSubEntry::Direction::PUBLISH, sub.thread, sub.group,
-                         sub.scheme, sub.type, sub.thread_is_known, sub.necessity);
+                         sub.scheme, sub.type, sub.thread_is_known, sub.necessity, sub.is_regex);
 
     g_pubs_in_use[pub_node][sub.layer].insert(std::make_pair(fake_pub.publish_index, fake_pub));
 
@@ -436,7 +449,7 @@ std::string disconnected_subscription(std::string sub_platform, std::string sub_
            connection_with_label_final(
                fake_pub,
                node_name(sub_platform, sub_application, sub.thread) + "_no_publishers_" + color,
-               node_name(sub_platform, sub_application, sub.thread), color, necessity);
+               node_name(sub_platform, sub_application, sub.thread), color, necessity, is_regex);
 }
 
 void write_thread_connections(std::ofstream& ofs, const viz::Platform& platform,
@@ -465,7 +478,7 @@ void write_thread_connections(std::ofstream& ofs, const viz::Platform& platform,
                     ofs << "\t\t\t"
                         << connection_with_label(platform.name, application.name, pub,
                                                  platform.name, application.name, sub, thread_color,
-                                                 sub.necessity)
+                                                 sub.necessity, sub.is_regex)
                         << "\n";
                 }
             }
@@ -504,7 +517,7 @@ void write_process_connections(std::ofstream& ofs, const viz::Platform& platform
                     ofs << "\t\t"
                         << connection_with_label(platform.name, pub_application.name, pub,
                                                  platform.name, sub_application.second.name, sub,
-                                                 process_color, sub.necessity)
+                                                 process_color, sub.necessity, sub.is_regex)
                         << "\n";
                 }
             }
@@ -547,7 +560,8 @@ void write_vehicle_connections(
                         ofs << "\t"
                             << connection_with_label(pub_platform.name, pub_application.name, pub,
                                                      sub_platform.name, sub_application.second.name,
-                                                     sub, vehicle_color, sub.necessity)
+                                                     sub, vehicle_color, sub.necessity,
+                                                     sub.is_regex)
                             << "\n";
                     }
                 }
@@ -681,6 +695,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
         ofs << "\t\tlabel=<<b>" << platform_display_name << "</b>>\n";
         ofs << "\t\tfontcolor=\"" << vehicle_color << "\"\n";
         ofs << "\t\tpenwidth=2\n";
+        ofs << "\t\tpencolor=\"" << vehicle_color << box_transparency << "\"\n";
 
         std::map<std::string, std::set<PubSubEntry>> process_disconnected_subs;
         for (const auto& application : platform.applications)
@@ -703,6 +718,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             ofs << "\t\t\tlabel=<<b>" << application_display_name << "</b>>\n";
             ofs << "\t\t\tfontcolor=\"" << process_color << "\"\n";
             ofs << "\t\t\tpenwidth=2\n";
+            ofs << "\t\t\tpencolor=\"" << process_color << box_transparency << "\"\n";
 
             std::set<PubSubEntry> thread_disconnected_subs;
             for (const auto& thread_p : application.second.threads)
@@ -729,7 +745,9 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
                     node_name(platform.name, application.second.name, thread->most_derived_name());
                 g_node_name_to_thread[node] = thread;
 
-                ofs << "\t\t\t" << node << "\n";
+                ofs << "\t\t\t" << node << "[penwidth=2,color=\"" << thread_color
+                    << box_transparency << "\"]"
+                    << "\n";
                 // << " [label=<<font color=\"" << thread_color << "\">" << thread_display_name
                 // << "</font><br/>" + pub_key + ">,shape=box,style="
                 // << (thread->known ? "solid" : "dashed") << "]\n";
@@ -739,7 +757,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             {
                 ofs << "\t\t\t"
                     << disconnected_subscription(platform.name, application.second.name, sub,
-                                                 thread_color, sub.necessity)
+                                                 thread_color, sub.necessity, sub.is_regex)
                     << "\n";
             }
 
@@ -754,7 +772,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             {
                 ofs << "\t\t"
                     << disconnected_subscription(platform.name, sub_p.first, sub, process_color,
-                                                 sub.necessity)
+                                                 sub.necessity, sub.is_regex)
                     << "\n";
             }
         }
@@ -774,7 +792,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             {
                 ofs << "\t"
                     << disconnected_subscription(sub_plat_p.first, sub_app_p.first, sub,
-                                                 vehicle_color, sub.necessity)
+                                                 vehicle_color, sub.necessity, sub.is_regex)
                     << "\n";
             }
         }
@@ -802,7 +820,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
 
                 viz::html_escape(group);
                 viz::html_escape(scheme);
-                viz::html_escape(type);
+                viz::html_escape(type, false, false);
 
                 std::string layer_color;
                 switch (layer)
