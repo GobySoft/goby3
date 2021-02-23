@@ -97,3 +97,21 @@ message BasicApplicationConfig
 
 goby::middleware::Application reads the `app` field, and goby::zeromq::InterProcessPortal reads the `interprocess` field. Don't be confused by the use of `optional` here: these fields could be omitted from the instantiated configuration (and defaults will be used), but the fields must always be present in the Protobuf message descriptor (.proto file).
 
+## More detail on InterProcessPortal implementation
+
+The zeromq::InterProcessPortal is composed of two threads:
+
+- InterProcessPortalMainThread: The main thread (same thread that the InterProcessPortal is run in). This handles the ZMQ PUB socket (for outgoing published data). This isn't a new thread, rather a convenience class for separating the InterProcessPortal from its implementation.
+- InterProcessPortalReadThread: A second thread spawned by the InterProcessPortalMainThread that handles the ZMQ REQ (for synchronous manager requests), and ZMQ SUB socket (for incoming subscribed data).
+
+This architecture is necessary so that we can properly handle incoming data from ZMQ and then notify the Goby poller's condition variable. 
+
+The two threads communicate through an asynchronous ZMQ INPROC pair (ZMQ_PAIR) of sockets using the goby::zeromq::protobuf::InprocControl message.
+
+`gobyd` contains the `Manager` and `Router` components. The `Router` consists of a ZMQ XSUB/XPUB proxy for multiple publisher to multiple subscriber message passing. The `Manager` provides the clients with the socket configuration (PROVIDE_PUB_SUB_SOCKETS) for publishing and subscribing via the `Router`. In addition, it keeps track of a list of required clients via the "hold" functionality and once all clients have published that they are "ready" (typically this means all necessary subscriptions have been made), the Manager replies to the PROVIDE_HOLD_STATE message with `hold: false`, that is the hold is off and all clients may now begin publishing. This interaction is carried out using publish/subscribe (instead of the REP/REQ socket) since by doing so, the InterProcessPortal ensures that publications can successfully be made, bypassing any connection startup lag that can (and does) exist in connecting the ZMQ sockets.
+
+Note that the InterProcessPortal will buffer publications before the hold is released so that client applications can publish() messages immediately and the messages will be sent once the connection is up (and all required clients, if any, have informed the Manager that they are ready).
+
+The following sequence diagram attempts to show all the interactions between the InterProcessPortal, its underlying threads, and the Manager/Router components:
+
+![Sequence diagram for InterProcessPortal](images/zeromq_portal_sequence.svg)
