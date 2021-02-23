@@ -72,10 +72,8 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
 
     goby::zeromq::Manager make_manager()
     {
-        return app_cfg().has_hold()
-                   ? goby::zeromq::Manager(*manager_context_, app_cfg().interprocess(), router_,
-                                           app_cfg().hold())
-                   : goby::zeromq::Manager(*manager_context_, app_cfg().interprocess(), router_);
+        return goby::zeromq::Manager(*manager_context_, app_cfg().interprocess(), router_,
+                                     app_cfg().hold());
     }
 
   private:
@@ -103,9 +101,8 @@ class DaemonConfigurator : public goby::middleware::ProtobufConfigurator<protobu
 
         cfg.mutable_interprocess()->set_client_name(cfg.app().name());
 
-        // add ourself to the hold list if any are specified
-        if (cfg.has_hold())
-            cfg.mutable_hold()->add_required_client(cfg.app().name());
+        // add ourselves to the hold list so that clients don't publish until we're ready
+        cfg.mutable_hold()->add_required_client(cfg.app().name());
 
         if (cfg.has_intervehicle())
         {
