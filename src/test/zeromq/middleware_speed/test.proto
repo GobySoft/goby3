@@ -2,6 +2,11 @@ syntax = "proto2";
 
 package goby.test.zeromq.protobuf;
 
+message Ready
+{
+}
+
+
 message Sample
 {
     required double temperature = 1;

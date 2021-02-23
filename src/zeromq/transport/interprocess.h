@@ -73,6 +73,12 @@ template <typename Data> class Publisher;
 
 namespace zeromq
 {
+namespace groups
+{
+constexpr goby::middleware::Group manager_request{"goby::zeromq::_internal_manager_request"};
+constexpr goby::middleware::Group manager_response{"goby::zeromq::_internal_manager_response"};
+} // namespace groups
+
 void setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg);
 
 #ifdef USE_OLD_ZMQ_CPP_API
@@ -104,7 +110,8 @@ class InterProcessPortalMainThread
     void set_hold_state(bool hold);
     bool hold_state() { return hold_; }
 
-    void publish(const std::string& identifier, const char* bytes, int size);
+    void publish(const std::string& identifier, const char* bytes, int size,
+                 bool ignore_buffer = false);
     void subscribe(const std::string& identifier);
     void unsubscribe(const std::string& identifier);
     void reader_shutdown();
@@ -168,7 +175,6 @@ class InterProcessPortalReadThread
         NUMBER_SOCKETS = 3
     };
     bool have_pubsub_sockets_{false};
-    bool ready_{false};
     bool hold_{true};
     bool manager_waiting_for_reply_{false};
 
@@ -218,12 +224,7 @@ class InterProcessPortalImplementation
     }
 
     /// \brief When using hold functionality, call when the process is ready to receive publications (typically done after most or all subscribe calls)
-    void ready()
-    {
-        protobuf::InprocControl control;
-        control.set_type(protobuf::InprocControl::READY);
-        zmq_main_.send_control_msg(control);
-    }
+    void ready() { ready_ = true; }
 
     /// \brief When using hold functionality, returns whether the system is holding (true) and thus waiting for all processes to connect and be ready, or running (false).
     bool hold_state() { return zmq_main_.hold_state(); }
@@ -251,20 +252,43 @@ class InterProcessPortalImplementation
                         break;
                     default: break;
                 }
-
-                if (control_msg.has_hold())
-                    zmq_main_.set_hold_state(control_msg.hold());
             }
         }
+
+        //
+        // Handle hold state request/response using pub sub so that we ensure
+        // publishing and subscribe is completely functionaly before releasing the hold
+        //
+        _subscribe<protobuf::ManagerResponse, middleware::MarshallingScheme::PROTOBUF>(
+            [this](std::shared_ptr<const protobuf::ManagerResponse> response) {
+                goby::glog.is_debug3() && goby::glog << "Received ManagerResponse: "
+                                                     << response->ShortDebugString() << std::endl;
+                if (response->request() == protobuf::PROVIDE_HOLD_STATE &&
+                    response->client_pid() == getpid() &&
+                    response->client_name() == cfg_.client_name())
+                {
+                    zmq_main_.set_hold_state(response->hold());
+                }
+
+                // we're good to go now, so let's unsubscribe to this group
+                if (zmq_main_.publish_ready())
+                {
+                    _unsubscribe<protobuf::ManagerResponse,
+                                 middleware::MarshallingScheme::PROTOBUF>(
+                        groups::manager_response,
+                        middleware::Subscriber<protobuf::ManagerResponse>());
+                }
+            },
+            groups::manager_response, middleware::Subscriber<protobuf::ManagerResponse>());
     }
 
     template <typename Data, int scheme>
     void _publish(const Data& d, const goby::middleware::Group& group,
-                  const middleware::Publisher<Data>& /*publisher*/)
+                  const middleware::Publisher<Data>& /*publisher*/, bool ignore_buffer = false)
     {
         std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
         std::string identifier = _make_fully_qualified_identifier<Data, scheme>(d, group) + '\0';
-        zmq_main_.publish(identifier, &bytes[0], bytes.size());
+        zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer);
     }
 
     template <typename Data, int scheme>
@@ -418,9 +442,23 @@ class InterProcessPortalImplementation
                 }
                 break;
 
-                case protobuf::InprocControl::HOLD_STATE:
-                    zmq_main_.set_hold_state(control_msg.hold());
-                    break;
+                case protobuf::InprocControl::REQUEST_HOLD_STATE:
+                {
+                    protobuf::ManagerRequest req;
+
+                    req.set_ready(ready_);
+                    req.set_request(protobuf::PROVIDE_HOLD_STATE);
+                    req.set_client_name(cfg_.client_name());
+                    req.set_client_pid(getpid());
+
+                    goby::glog.is_debug3() && goby::glog << "Published ManagerRequest: "
+                                                         << req.ShortDebugString() << std::endl;
+
+                    _publish<protobuf::ManagerRequest, middleware::MarshallingScheme::PROTOBUF>(
+                        req, groups::manager_request,
+                        middleware::Publisher<protobuf::ManagerRequest>(), true);
+                }
+                break;
 
                 default: break;
             }
@@ -634,6 +672,8 @@ class InterProcessPortalImplementation
     std::string process_{std::to_string(getpid())};
     std::unordered_map<int, std::string> schemes_;
     std::unordered_map<std::thread::id, std::string> threads_;
+
+    bool ready_{false};
 };
 
 class Router
@@ -663,10 +703,7 @@ class Manager
 {
   public:
     Manager(zmq::context_t& context, const protobuf::InterProcessPortalConfig& cfg,
-            const Router& router)
-        : context_(context), cfg_(cfg), router_(router)
-    {
-    }
+            const Router& router);
 
     Manager(zmq::context_t& context, const protobuf::InterProcessPortalConfig& cfg,
             const Router& router, const protobuf::InterProcessManagerHold& hold)
@@ -676,6 +713,11 @@ class Manager
     }
 
     void run();
+
+    protobuf::ManagerResponse handle_request(const protobuf::ManagerRequest& pb_request);
+    protobuf::Socket publish_socket_cfg();
+    protobuf::Socket subscribe_socket_cfg();
+
     bool hold_state();
 
   private:
@@ -685,6 +727,28 @@ class Manager
     zmq::context_t& context_;
     const protobuf::InterProcessPortalConfig& cfg_;
     const Router& router_;
+
+    std::vector<zmq::pollitem_t> poll_items_;
+    enum
+    {
+        SOCKET_MANAGER = 0,
+        SOCKET_SUBSCRIBE = 1,
+    };
+    enum
+    {
+        NUMBER_SOCKETS = 2
+    };
+
+    std::unique_ptr<zmq::socket_t> manager_socket_;
+    std::unique_ptr<zmq::socket_t> subscribe_socket_;
+    std::unique_ptr<zmq::socket_t> publish_socket_;
+
+    // TODO don't hard code
+    std::string zmq_filter_req_{std::string("/goby::zeromq::_internal_manager_request/PROTOBUF/"
+                                            "goby.zeromq.protobuf.ManagerRequest/")};
+    std::string zmq_filter_rep_{std::string("/goby::zeromq::_internal_manager_response/PROTOBUF/"
+                                            "goby.zeromq.protobuf.ManagerResponse/0/0/") +
+                                std::string(1, '\0')};
 };
 
 template <typename InnerTransporter = middleware::NullTransporter>

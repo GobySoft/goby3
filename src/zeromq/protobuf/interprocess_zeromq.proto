@@ -15,10 +15,13 @@ message ManagerRequest
     required Request request = 1
         [(goby.field).description =
              "Request to be made of the Manager (gobyd)"];
-    optional string client_name = 2
+    required string client_name = 2
         [(goby.field).description =
              "Unique name for the client making the request"];
-    optional bool ready = 3 [
+    required int32 client_pid = 3
+        [(goby.field).description =
+             "PID for the client making the request"];
+    optional bool ready = 4 [
         default = false,
         (goby.field).description =
             "Client is ready to commence accepting publications (all required "
@@ -90,11 +93,12 @@ message Socket
 message ManagerResponse
 {
     required Request request = 1;
-    optional string client_name = 2;
-    optional Socket publish_socket = 3;
-    optional Socket subscribe_socket = 4;
-    optional bool hold = 5 [
-        default = false,
+    required string client_name = 2;
+    required int32 client_pid = 3;
+    optional Socket publish_socket = 4;
+    optional Socket subscribe_socket = 5;
+    optional bool hold = 6 [
+        default = true,
         (goby.field).description =
             "Used to synchronize start of multiple processes. If true, wait "
             "until receiving a hold == false before publishing data"
@@ -112,8 +116,8 @@ message InprocControl
         UNSUBSCRIBE_ACK = 5;    // read -> main
         RECEIVE = 6;            // read -> main
         SHUTDOWN = 7;           // main -> read
-        READY = 8;              // main -> read
-        HOLD_STATE = 9;         // read -> main
+        REQUEST_HOLD_STATE = 9; // read -> main
+        NOTIFY_HOLD_STATE = 10; // main -> read
     }
     required InprocControlType type = 1;
 

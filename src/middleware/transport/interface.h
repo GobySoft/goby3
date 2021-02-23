@@ -377,10 +377,12 @@ int goby::middleware::PollerInterface::_poll_all(
             cv_->wait(*lock); // wait_until doesn't work well with time_point::max()
             poll_items = _transporter_poll(lock);
 
-            if (poll_items == 0)
-                goby::glog.is(goby::util::logger::DEBUG3) &&
-                    goby::glog << "PollerInterface condition_variable: no data (spurious?) wakeup"
-                               << std::endl;
+            // TODO: fix this message now that zeromq::InterProcessPortal can have
+            // a condition_variable trigger for REQUEST_HOLD_STATE
+            //if (poll_items == 0)
+            //                goby::glog.is(goby::util::logger::DEBUG3) &&
+            //                    goby::glog << "PollerInterface condition_variable: no data (spurious?) wakeup"
+            //                               << std::endl;
         }
         else
         {
