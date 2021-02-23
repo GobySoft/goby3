@@ -65,9 +65,9 @@ message InterProcessPortalConfig
             "Manager (gobyd) is unresponsive"
     ];
 
-    required string client_name = 20
+    optional string client_name = 20
         [(goby.field).description =
-             "Unique name for InterProcessPortal."];
+             "Unique name for InterProcessPortal. Defaults to app.name"];
 }
 
 message InterProcessManagerHold

@@ -24,6 +24,8 @@
 #ifndef GOBY_ZEROMQ_TRANSPORT_INTERPROCESS_H
 #define GOBY_ZEROMQ_TRANSPORT_INTERPROCESS_H
 
+#include "goby/middleware/marshalling/protobuf.h"
+
 #include <atomic>             // for atomic
 #include <chrono>             // for mill...
 #include <condition_variable> // for cond...
@@ -80,6 +82,72 @@ constexpr goby::middleware::Group manager_response{"goby::zeromq::_internal_mana
 } // namespace groups
 
 void setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg);
+
+enum class IdentifierWildcard
+{
+    NO_WILDCARDS,
+    THREAD_WILDCARD,
+    PROCESS_THREAD_WILDCARD
+};
+
+// scheme
+inline std::string identifier_part_to_string(int i)
+{
+    return middleware::MarshallingScheme::to_string(i);
+}
+inline std::string identifier_part_to_string(std::thread::id i)
+{
+    return goby::middleware::thread_id(i);
+}
+
+/// Given key, find the string in the map, or create it (to_string) and store it, and return the string.
+template <typename Key>
+const std::string& id_component(const Key& k, std::unordered_map<Key, std::string>& map)
+{
+    auto it = map.find(k);
+    if (it != map.end())
+        return it->second;
+
+    std::string v = identifier_part_to_string(k) + "/";
+    auto it_pair = map.insert(std::make_pair(k, v));
+    return it_pair.first->second;
+}
+
+inline std::string
+make_identifier(const std::string& type_name, int scheme, const std::string& group,
+                IdentifierWildcard wildcard, const std::string& process,
+                std::unordered_map<int, std::string>* schemes_buffer = nullptr,
+                std::unordered_map<std::thread::id, std::string>* threads_buffer = nullptr)
+{
+    switch (wildcard)
+    {
+        default:
+        case IdentifierWildcard::NO_WILDCARDS:
+        {
+            auto thread = std::this_thread::get_id();
+            return ("/" + group + "/" +
+                    (schemes_buffer ? id_component(scheme, *schemes_buffer)
+                                    : std::string(identifier_part_to_string(scheme) + "/")) +
+                    type_name + "/" + process + "/" +
+                    (threads_buffer ? id_component(thread, *threads_buffer)
+                                    : std::string(identifier_part_to_string(thread) + "/")));
+        }
+        case IdentifierWildcard::THREAD_WILDCARD:
+        {
+            return ("/" + group + "/" +
+                    (schemes_buffer ? id_component(scheme, *schemes_buffer)
+                                    : std::string(identifier_part_to_string(scheme) + "/")) +
+                    type_name + "/" + process + "/");
+        }
+        case IdentifierWildcard::PROCESS_THREAD_WILDCARD:
+        {
+            return ("/" + group + "/" +
+                    (schemes_buffer ? id_component(scheme, *schemes_buffer)
+                                    : std::string(identifier_part_to_string(scheme) + "/")) +
+                    type_name + "/");
+        }
+    }
+}
 
 #ifdef USE_OLD_ZMQ_CPP_API
 using zmq_recv_flags_type = int;
@@ -336,10 +404,11 @@ class InterProcessPortalImplementation
             zmq_main_.unsubscribe(identifier);
     }
 
-    void _unsubscribe_all(const std::string& subscriber_id = to_string(std::this_thread::get_id()))
+    void _unsubscribe_all(
+        const std::string& subscriber_id = identifier_part_to_string(std::this_thread::get_id()))
     {
         // portal unsubscribe
-        if (subscriber_id == to_string(std::this_thread::get_id()))
+        if (subscriber_id == identifier_part_to_string(std::this_thread::get_id()))
         {
             for (const auto& p : portal_subscriptions_)
             {
@@ -429,7 +498,7 @@ class InterProcessPortalImplementation
                         {
                             // only post at most once for forwarders as the threads will filter
                             bool is_forwarded_sub =
-                                sub.first != to_string(std::this_thread::get_id());
+                                sub.first != identifier_part_to_string(std::this_thread::get_id());
                             if (is_forwarded_sub && forwarder_subscription_posted)
                                 continue;
 
@@ -564,13 +633,6 @@ class InterProcessPortalImplementation
         regex_subscriptions_.insert(std::make_pair(new_sub->subscriber_id(), new_sub));
     }
 
-    enum class IdentifierWildcard
-    {
-        NO_WILDCARDS,
-        THREAD_WILDCARD,
-        PROCESS_THREAD_WILDCARD
-    };
-
     template <typename Data, int scheme>
     std::string _make_identifier(const goby::middleware::Group& group, IdentifierWildcard wildcard)
     {
@@ -597,18 +659,7 @@ class InterProcessPortalImplementation
     std::string _make_identifier(const std::string& type_name, int scheme, const std::string& group,
                                  IdentifierWildcard wildcard)
     {
-        switch (wildcard)
-        {
-            default:
-            case IdentifierWildcard::NO_WILDCARDS:
-                return ("/" + group + "/" + id_component(scheme, schemes_) + type_name + "/" +
-                        process_ + "/" + id_component(std::this_thread::get_id(), threads_));
-            case IdentifierWildcard::THREAD_WILDCARD:
-                return ("/" + group + "/" + id_component(scheme, schemes_) + type_name + "/" +
-                        process_ + "/");
-            case IdentifierWildcard::PROCESS_THREAD_WILDCARD:
-                return ("/" + group + "/" + id_component(scheme, schemes_) + type_name + "/");
-        }
+        return make_identifier(type_name, scheme, group, wildcard, process_, &schemes_, &threads_);
     }
 
     // group, scheme, type, process, thread
@@ -627,23 +678,6 @@ class InterProcessPortalImplementation
         return std::make_tuple(elem[0], middleware::MarshallingScheme::from_string(elem[1]),
                                elem[2], std::stoi(elem[3]), std::stoull(elem[4], nullptr, 16));
     }
-
-    template <typename Key>
-    const std::string& id_component(const Key& k, std::unordered_map<Key, std::string>& map)
-    {
-        auto it = map.find(k);
-        if (it != map.end())
-            return it->second;
-
-        std::string v = to_string(k) + "/";
-        auto it_pair = map.insert(std::make_pair(k, v));
-        return it_pair.first->second;
-    }
-
-    static std::string to_string(std::thread::id i) { return goby::middleware::thread_id(i); }
-
-    // used by scheme
-    static std::string to_string(int i) { return middleware::MarshallingScheme::to_string(i); }
 
   private:
     const protobuf::InterProcessPortalConfig cfg_;
@@ -743,13 +777,20 @@ class Manager
     std::unique_ptr<zmq::socket_t> subscribe_socket_;
     std::unique_ptr<zmq::socket_t> publish_socket_;
 
-    // TODO don't hard code
-    std::string zmq_filter_req_{std::string("/goby::zeromq::_internal_manager_request/PROTOBUF/"
-                                            "goby.zeromq.protobuf.ManagerRequest/")};
-    std::string zmq_filter_rep_{std::string("/goby::zeromq::_internal_manager_response/PROTOBUF/"
-                                            "goby.zeromq.protobuf.ManagerResponse/0/0/") +
-                                std::string(1, '\0')};
-};
+    std::string zmq_filter_req_{make_identifier(
+        middleware::SerializerParserHelper<
+            protobuf::ManagerRequest, middleware::scheme<protobuf::ManagerRequest>()>::type_name(),
+        middleware::scheme<protobuf::ManagerRequest>(), groups::manager_request,
+        IdentifierWildcard::PROCESS_THREAD_WILDCARD, std::to_string(getpid()))};
+
+    std::string zmq_filter_rep_{
+        make_identifier(middleware::SerializerParserHelper<
+                            protobuf::ManagerResponse,
+                            middleware::scheme<protobuf::ManagerResponse>()>::type_name(),
+                        middleware::scheme<protobuf::ManagerResponse>(), groups::manager_response,
+                        IdentifierWildcard::NO_WILDCARDS, std::to_string(getpid())) +
+        std::string(1, '\0')};
+}; // namespace zeromq
 
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterProcessPortal =

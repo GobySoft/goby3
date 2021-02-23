@@ -32,7 +32,8 @@ namespace detail
 {
 template <typename Config> inline Config make_interprocess_config(Config cfg, std::string app_name)
 {
-    cfg.set_client_name(app_name);
+    if (!cfg.has_client_name())
+        cfg.set_client_name(app_name);
     return cfg;
 }
 
