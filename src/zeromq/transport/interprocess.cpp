@@ -120,6 +120,17 @@ void goby::zeromq::InterProcessPortalMainThread::set_hold_state(bool hold)
     {
         hold_ = hold;
 
+        // TODO: this is necessary to allow initial ZMQ subscription forwarding
+        // messages to flow through the system so that we don't lose the
+        // first publication to subscriptions that happened before "hold: false"
+        // Find some way to remove this delay!
+        // Without this, we have problems losing the initial publications to
+        // goby::middleware::intervehicle::modem_subscription_forward_tx from
+        // the InterVehicle layer.
+        // Can we do this by replacing the PUB socket with an XPUB and checking
+        // for a subscriber?
+        sleep(1);
+
         glog.is(DEBUG3) && glog << "InterProcessPortal**Main**Thread: Hold off" << std::endl;
 
         // publish any queued up messages
