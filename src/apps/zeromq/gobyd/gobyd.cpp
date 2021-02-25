@@ -171,6 +171,7 @@ goby::apps::zeromq::Daemon::Daemon()
                 quit();
         });
 
+    glog.is(VERBOSE) && glog << "gobyd is ready" << std::endl;
     interprocess_.ready();
 }
 

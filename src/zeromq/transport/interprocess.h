@@ -325,7 +325,7 @@ class InterProcessPortalImplementation
 
         //
         // Handle hold state request/response using pub sub so that we ensure
-        // publishing and subscribe is completely functionaly before releasing the hold
+        // publishing and subscribe is completely functional before releasing the hold
         //
         _subscribe<protobuf::ManagerResponse, middleware::MarshallingScheme::PROTOBUF>(
             [this](std::shared_ptr<const protobuf::ManagerResponse> response) {
