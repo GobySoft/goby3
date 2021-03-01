@@ -28,10 +28,8 @@
 #include <set>    // for set
 #include <string> // for string
 
-#include <gps.h> // for gpsmm
-
-#include "goby/util/thirdparty/nlohmann/json.hpp"  // for json
-#include "goby/zeromq/application/single_thread.h" // for SingleThreadA...
+#include "goby/util/thirdparty/nlohmann/json.hpp" // for json
+#include "goby/zeromq/application/multi_thread.h"
 #include "goby/zeromq/protobuf/gps_config.pb.h"
 
 namespace goby
@@ -40,21 +38,19 @@ namespace apps
 {
 namespace zeromq
 {
-class GPSDClient : public goby::zeromq::SingleThreadApplication<protobuf::GPSDConfig>
+class GPSDClient : public goby::zeromq::MultiThreadApplication<protobuf::GPSDConfig>
 {
   public:
     GPSDClient();
 
   private:
-    void loop() override;
+    void handle_response(nlohmann::json& json_data);
 
     void handle_tpv(nlohmann::json& data);
     void handle_sky(nlohmann::json& data);
     void handle_att(nlohmann::json& data);
 
   private:
-    gpsmm gps_rec_;
-
     std::set<std::string> device_list_;
     bool publish_all_{false};
 };

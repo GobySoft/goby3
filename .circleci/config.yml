@@ -95,10 +95,9 @@ job-template-amd64: &job-template-amd64
           true
     - run: &run-update-apt
         name: Update apt packages
-        # TODO: Remove libgps-dev, libmysqlclient-dev from this command once all Docker containers are updated to include it
+        # TODO: Remove libmysqlclient-dev from this command once all Docker containers are updated to include it
         command: |
           apt-get update && apt-get dist-upgrade -y &&
-          apt-get install libgps-dev:${TARGET_ARCH} -y &&
           (apt-get install default-libmysqlclient-dev:${TARGET_ARCH} -y ||
           apt-get install libmysqlclient-dev:${TARGET_ARCH} -y)
     - run: &run-build

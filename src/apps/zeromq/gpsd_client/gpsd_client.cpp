@@ -42,26 +42,28 @@
 #include <boost/units/systems/si/length.hpp>           // for length
 #include <boost/units/systems/si/time.hpp>             // for second
 #include <boost/units/unit.hpp>                        // for operator/
-#include <gps.h>                                       // for WATCH_...
-#include <libgpsmm.h>                                  // for gpsmm
 
 #include "goby/middleware/marshalling/protobuf.h"
 
 #include "goby/middleware/application/configuration_reader.h" // for Config...
 #include "goby/middleware/application/interface.h"            // for run
 #include "goby/middleware/gpsd/groups.h"                      // for att, sky
-#include "goby/middleware/protobuf/geographic.pb.h"           // for LatLon...
-#include "goby/middleware/protobuf/gpsd.pb.h"                 // for TimePo...
-#include "goby/time/convert.h"                                // for convert
-#include "goby/time/types.h"                                  // for SITime
-#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
-#include "goby/util/thirdparty/nlohmann/json.hpp"             // for json
-#include "goby/zeromq/protobuf/gps_config.pb.h"               // for GPSDCo...
-#include "goby/zeromq/transport/interprocess.h"               // for InterP...
+#include "goby/middleware/io/line_based/tcp_client.h"
+#include "goby/middleware/protobuf/geographic.pb.h" // for LatLon...
+#include "goby/middleware/protobuf/gpsd.pb.h"       // for TimePo...
+#include "goby/time/convert.h"                      // for convert
+#include "goby/time/types.h"                        // for SITime
+#include "goby/util/debug_logger/flex_ostream.h"    // for operat...
+#include "goby/util/thirdparty/nlohmann/json.hpp"   // for json
+#include "goby/zeromq/protobuf/gps_config.pb.h"     // for GPSDCo...
+#include "goby/zeromq/transport/interprocess.h"     // for InterP...
 
 #include "gpsd_client.h"
 
 using goby::glog;
+
+constexpr goby::middleware::Group tcp_in{"tcp_in"};
+constexpr goby::middleware::Group tcp_out{"tcp_out"};
 
 namespace
 {
@@ -83,10 +85,24 @@ goby::time::SITime parse_time(std::string s)
 }
 } // end of Anonymous namespace
 
-goby::apps::zeromq::GPSDClient::GPSDClient()
-    : goby::zeromq::SingleThreadApplication<protobuf::GPSDConfig>(this->loop_max_frequency()),
-      gps_rec_(cfg().hostname().c_str(), std::to_string(cfg().port()).c_str())
+class GPSDClientConfigurator
+    : public goby::middleware::ProtobufConfigurator<goby::apps::zeromq::protobuf::GPSDConfig>
+{
+  public:
+    GPSDClientConfigurator(int argc, char* argv[])
+        : goby::middleware::ProtobufConfigurator<goby::apps::zeromq::protobuf::GPSDConfig>(argc,
+                                                                                           argv)
+    {
+        auto& cfg = mutable_cfg();
+        auto& gpsd = *cfg.mutable_gpsd();
+        if (!gpsd.has_remote_address())
+            gpsd.set_remote_address("127.0.0.1");
+        if (!gpsd.has_remote_port())
+            gpsd.set_remote_port(2947);
+    }
+};
 
+goby::apps::zeromq::GPSDClient::GPSDClient()
 {
     if (cfg().device_name_size())
     {
@@ -100,61 +116,60 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
                                << std::endl;
     }
 
-    if (!gps_rec_.is_open())
-    {
-        // Check constructor success.
-        glog.is_die() && glog << "Could not connect to GPSD at " << cfg().hostname()
-                              << " port: " << cfg().port() << std::endl;
-    }
+    using TCPThread = goby::middleware::io::TCPClientThreadLineBased<
+        tcp_in, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD,
+        goby::middleware::io::PubSubLayer::INTERTHREAD>;
+    launch_thread<TCPThread>(cfg().gpsd());
 
-    // compare devices from our config to what gps_rec has in it's list.
-    if (gps_rec_.stream(WATCH_ENABLE | WATCH_JSON) == nullptr)
-    {
-        glog.is_die() && glog << "No GPSD running." << std::endl;
-    }
-}
-
-void goby::apps::zeromq::GPSDClient::loop()
-{
-    // Notify data missing?
-    if (!gps_rec_.waiting(1000))
-        return;
-
-    // read until a new message is received
-    if (gps_rec_.read() == nullptr)
-    {
-        glog.is_die() && glog << "Read error.." << std::endl;
-    }
-    else
-    {
+    interthread().subscribe<tcp_in>([this](const goby::middleware::protobuf::IOData& data) {
         try
         {
-            using json = nlohmann::json;
-
-            std::string line(gps_rec_.data());
-            // the buffer returned does not include a length, but we can
-            // read until the newline which is the end of the valid JSON message
-            line = line.substr(0, line.find('\n'));
-            boost::trim(line);
-
-            json json_data = json::parse(line);
-
-            if (json_data.contains("class"))
-            {
-                auto& j_class = json_data["class"];
-                if (j_class == "TPV")
-                    handle_tpv(json_data);
-                else if (j_class == "SKY")
-                    handle_sky(json_data);
-                else if (j_class == "ATT")
-                    handle_att(json_data);
-            }
+            auto json_data = nlohmann::json::parse(data.data());
+            handle_response(json_data);
         }
-        catch (std::exception& e)
+        catch (const std::exception& e)
         {
-            glog.is_debug2() && glog << "Exception:\r\n" << e.what() << std::endl;
-            glog.is_debug2() && glog << "\r\n" << gps_rec_.data() << "\r\n" << std::endl;
+            glog.is_warn() && glog << "Exception parsing incoming data: " << e.what() << std::endl;
         }
+    });
+
+    interthread().subscribe<tcp_in>(
+        [this](const goby::middleware::protobuf::TCPClientEvent& event) {
+            if (event.event() == goby::middleware::protobuf::TCPClientEvent::EVENT_CONNECT)
+            {
+                goby::middleware::protobuf::IOData cmd;
+                nlohmann::json watch_params;
+                watch_params["class"] = "WATCH";
+                watch_params["enable"] = true;
+                watch_params["json"] = true;
+                watch_params["nmea"] = false;
+                watch_params["raw"] = 0;
+                watch_params["scaled"] = false;
+                watch_params["split24"] = false;
+                watch_params["pps"] = false;
+
+                if (device_list_.size() == 1)
+                    watch_params["device"] = *device_list_.begin();
+
+                cmd.set_data("?WATCH=" + watch_params.dump());
+                interthread().publish<tcp_out>(cmd);
+            }
+        });
+}
+
+void goby::apps::zeromq::GPSDClient::handle_response(nlohmann::json& json_data)
+{
+    if (json_data.contains("class"))
+    {
+        auto& j_class = json_data["class"];
+        if (j_class == "TPV")
+            handle_tpv(json_data);
+        else if (j_class == "SKY")
+            handle_sky(json_data);
+        else if (j_class == "ATT")
+            handle_att(json_data);
+        else if (j_class == "ERROR")
+            glog.is_warn() && glog << "GPSD returns error: " << json_data.dump() << std::endl;
     }
 }
 
@@ -353,4 +368,7 @@ void goby::apps::zeromq::GPSDClient::handle_att(nlohmann::json& data)
     }
 }
 
-int main(int argc, char* argv[]) { return goby::run<goby::apps::zeromq::GPSDClient>(argc, argv); }
+int main(int argc, char* argv[])
+{
+    return goby::run<goby::apps::zeromq::GPSDClient>(GPSDClientConfigurator(argc, argv));
+}
