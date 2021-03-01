@@ -3,6 +3,7 @@ add_subdirectory(logger)
 add_subdirectory(terminate)
 add_subdirectory(coroner)
 add_subdirectory(frontseat_interface)
+add_subdirectory(opencpn)
 
 if(enable_wt)
   add_subdirectory(liaison)
@@ -15,3 +16,8 @@ endif()
 if(enable_gpsd)
   add_subdirectory(gpsd_client)
 endif()
+
+if(enable_mysql)
+  add_subdirectory(geov)
+endif()
+

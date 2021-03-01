@@ -151,7 +151,10 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     goby::acomms::bind(mac_, *driver_);
 
     mac_.startup(cfg().mac());
-    driver_->startup(cfg().driver());
+
+    auto driver_cfg = cfg().driver();
+    driver_cfg.set_modem_id(_id_within_subnet(cfg().driver().modem_id()));
+    driver_->startup(driver_cfg);
 
     subscription_key_.set_marshalling_scheme(MarshallingScheme::DCCL);
     subscription_key_.set_type(intervehicle::protobuf::Subscription::descriptor()->full_name());
@@ -201,7 +204,11 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
     if (subscription.has_metadata())
         detail::DCCLSerializerParserHelperBase::load_metadata(subscription.metadata());
 
-    subscription.mutable_header()->set_src(cfg().driver().modem_id());
+    if (subscription.intervehicle().broadcast())
+        subscription.mutable_header()->set_src(_broadcast_id());
+    else
+        subscription.mutable_header()->set_src(cfg().driver().modem_id());
+
     for (auto dest : subscription.header().dest())
     {
         if (!_dest_is_in_subnet(dest))
@@ -297,7 +304,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
     if (!msg->has_ack_requested())
         msg->set_ack_requested(false);
 
-    msg->set_dest(dest);
+    // convert src,dest to values with in subnet for modems that can't address large ids
+    // e.g. 0x34 -> 0x04 for subnet mask 0xFFF0
+    msg->set_src(_id_within_subnet(msg->src()));
+    msg->set_dest(_id_within_subnet(dest));
 }
 
 goby::middleware::intervehicle::ModemDriverThread::subbuffer_id_type
@@ -531,12 +541,16 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
 {
     glog.is(DEBUG1) && glog << group(glog_group_) << "Received: " << rx_msg.ShortDebugString()
                             << std::endl;
+
+    int full_dest = _full_id(rx_msg.dest());
+    int full_src = _full_id(rx_msg.src());
+
     if (rx_msg.type() == goby::acomms::protobuf::ModemTransmission::ACK)
     {
-        if (rx_msg.dest() != cfg().driver().modem_id())
+        if (full_dest != cfg().driver().modem_id())
         {
             glog.is(WARN) && glog << group(glog_group_)
-                                  << "ignoring ack for modem_id = " << rx_msg.dest() << std::endl;
+                                  << "ignoring ack for modem_id = " << full_dest << std::endl;
             return;
         }
         for (int i = 0, n = rx_msg.acked_frame_size(); i < n; ++i)
@@ -544,17 +558,17 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
             int frame_number = rx_msg.acked_frame(i);
             if (!pending_ack_.count(frame_number))
             {
-                glog.is(DEBUG1) &&
-                    glog << group(glog_group_) << "got ack but we were not expecting one from "
-                         << rx_msg.src() << " for frame " << frame_number << std::endl;
+                glog.is(DEBUG1) && glog << group(glog_group_)
+                                        << "got ack but we were not expecting one from " << full_src
+                                        << " for frame " << frame_number << std::endl;
                 continue;
             }
             else
             {
                 protobuf::AckMessagePair ack_pair;
                 protobuf::AckData& ack_data = *ack_pair.mutable_data();
-                ack_data.mutable_header()->set_src(rx_msg.src());
-                ack_data.mutable_header()->add_dest(rx_msg.dest());
+                ack_data.mutable_header()->set_src(full_src);
+                ack_data.mutable_header()->add_dest(full_dest);
                 auto now = goby::time::SteadyClock::now();
 
                 auto values_to_ack_it = pending_ack_.find(frame_number);
@@ -581,8 +595,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
     }
     else
     {
-        if (rx_msg.dest() == goby::acomms::BROADCAST_ID ||
-            rx_msg.dest() == cfg().driver().modem_id())
+        if (full_dest == _broadcast_id() || full_dest == cfg().driver().modem_id())
         {
             for (auto& frame : rx_msg.frame())
             {

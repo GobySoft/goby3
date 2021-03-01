@@ -145,6 +145,9 @@ void goby::zeromq::InterProcessPortalMainThread::publish(const std::string& iden
     }
     else
     {
+        glog.is(DEBUG3) && glog << "Buffering publication of " << size << " bytes to ["
+                                << identifier.substr(0, identifier.size() - 1) << "]" << std::endl;
+
         publish_queue_.emplace_back(identifier, std::vector<char>(bytes, bytes + size));
     }
 }

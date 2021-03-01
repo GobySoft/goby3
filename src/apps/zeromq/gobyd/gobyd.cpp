@@ -167,8 +167,6 @@ goby::apps::zeromq::Daemon::Daemon()
     // as gobyd mediates all interprocess() comms; wait until we get our result back from goby_terminate before shutting down
     interprocess_.subscribe<goby::middleware::groups::terminate_result>(
         [this](const goby::middleware::protobuf::TerminateResult& result) {
-            std::cout << result.DebugString() << std::endl;
-
             auto our_pid = getpid();
             if (result.has_target_pid() &&
                 static_cast<decltype(our_pid)>(result.target_pid()) == our_pid &&

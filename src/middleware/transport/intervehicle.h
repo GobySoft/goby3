@@ -44,6 +44,18 @@ namespace goby
 {
 namespace middleware
 {
+class InvalidSubscription : public Exception
+{
+  public:
+    InvalidSubscription(const std::string& e) : Exception(e) {}
+};
+
+class InvalidPublication : public Exception
+{
+  public:
+    InvalidPublication(const std::string& e) : Exception(e) {}
+};
+
 class InvalidUnsubscription : public Exception
 {
   public:
@@ -247,6 +259,17 @@ class InterVehicleTransporterBase
     std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
     _set_up_publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
+        if (group.numeric() != Group::broadcast_group && !publisher.has_set_group_func())
+        {
+            std::stringstream ss;
+            ss << "Error: Publisher must have set_group_func in order to publish to a "
+                  "non-broadcast Group ("
+               << group
+               << "). The set_group_func modifies the contents of the outgoing message to store "
+                  "the group information.";
+            throw(InvalidPublication(ss.str()));
+        }
+
         auto data = intervehicle::serialize_publication(d, group, publisher);
 
         if (publisher.cfg().intervehicle().buffer().ack_required())
@@ -284,6 +307,25 @@ class InterVehicleTransporterBase
         {
             case SubscriptionAction::SUBSCRIBE:
             {
+                if (group.numeric() != Group::broadcast_group && !subscriber.has_group_func())
+                {
+                    std::stringstream ss;
+                    ss << "Error: Subscriber must have group_func in order to subscribe to "
+                          "non-broadcast Group ("
+                       << group
+                       << "). The group_func returns the appropriate Group based on the contents "
+                          "of the incoming message.";
+                    throw(InvalidSubscription(ss.str()));
+                }
+
+                if (subscriber.cfg().intervehicle().broadcast() &&
+                    subscriber.cfg().intervehicle().buffer().ack_required())
+                {
+                    std::stringstream ss;
+                    ss << "Error: Broadcast subscriptions cannot have ack_required: true";
+                    throw(InvalidSubscription(ss.str()));
+                }
+
                 auto subscription =
                     std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(
                         func, group, subscriber);
@@ -386,6 +428,9 @@ class InterVehicleTransporterBase
 
     void _receive(const intervehicle::protobuf::DCCLForwardedData& packets)
     {
+        goby::glog.is_debug3() && goby::glog << "Received DCCLForwarded data: "
+                                             << packets.ShortDebugString() << std::endl;
+
         for (const auto& packet : packets.frame())
         {
             for (auto p : this->subscriptions_[packet.dccl_id()])

@@ -151,36 +151,30 @@ int main(int argc, char* argv[])
             }
         }
 
-        constexpr int u_dt = 100; // microseconds
-        usleep(u_dt);
-        ++i;
-        if (i >= 1000000 / (u_dt * control_freq * warp))
+        time_in_mission++;
+        if (started() && time_in_mission / control_freq > duration)
         {
-            i = 0;
-            time_in_mission++;
-            if (started() && time_in_mission / control_freq > duration)
-            {
-                datum_lat = goby::util::NaN<double>;
-                datum_lon = goby::util::NaN<double>;
-                server.write("CTRL,STATE:IDLE\r\n");
-            }
-
-            if (started())
-            {
-                compute_state();
-
-                auto ll = geodesy->convert(
-                    {vehicle_.x * boost::units::si::meters, vehicle_.y * boost::units::si::meters});
-                std::stringstream nav_ss;
-                nav_ss << "NAV,"
-                       << "LAT:" << std::setprecision(10) << ll.lat.value() << ","
-                       << "LON:" << std::setprecision(10) << ll.lon.value() << ","
-                       << "DEPTH:" << -vehicle_.z << ","
-                       << "HEADING:" << vehicle_.hdg << ","
-                       << "SPEED:" << vehicle_.v << "\r\n";
-                server.write(nav_ss.str());
-            }
+            datum_lat = goby::util::NaN<double>;
+            datum_lon = goby::util::NaN<double>;
+            server.write("CTRL,STATE:IDLE\r\n");
         }
+
+        if (started())
+        {
+            compute_state();
+
+            auto ll = geodesy->convert(
+                {vehicle_.x * boost::units::si::meters, vehicle_.y * boost::units::si::meters});
+            std::stringstream nav_ss;
+            nav_ss << "NAV,"
+                   << "LAT:" << std::setprecision(10) << ll.lat.value() << ","
+                   << "LON:" << std::setprecision(10) << ll.lon.value() << ","
+                   << "DEPTH:" << -vehicle_.z << ","
+                   << "HEADING:" << vehicle_.hdg << ","
+                   << "SPEED:" << vehicle_.v << "\r\n";
+            server.write(nav_ss.str());
+        }
+        usleep(1000000 / (control_freq * warp));
     }
 
     std::cerr << "server failed..." << std::endl;

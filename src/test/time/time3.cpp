@@ -87,6 +87,16 @@ int main()
     SimulatorSettings::using_sim_time = true;
 
     {
+        auto now_microseconds_warped = convert<MicroTime>(
+            SystemClock::warp(convert<std::chrono::system_clock::time_point>(now_microseconds)));
+        auto now_microseconds_unwarped = convert<MicroTime>(
+            SystemClock::unwarp(convert<SystemClock::time_point>(now_microseconds_warped)));
+        std::cout << "original now (warped 10):\t\t" << now_microseconds_warped << std::endl;
+        std::cout << "original now (unwarped 10):\t\t" << now_microseconds_unwarped << std::endl;
+        assert(now_microseconds_unwarped == now_microseconds);
+    }
+
+    {
         std::cout << "warp reference: " << convert<MicroTime>(SimulatorSettings::reference_time)
                   << std::endl;
         auto ref_ptime = convert<boost::posix_time::ptime>(SimulatorSettings::reference_time);
@@ -102,11 +112,25 @@ int main()
 
         auto now_warped_microseconds = SystemClock::now<MicroTime>();
         std::cout << "now (warped 10):\t\t" << now_warped_microseconds << std::endl;
+
+        auto now_unwarped_microseconds = convert<MicroTime>(
+            SystemClock::unwarp(convert<SystemClock::time_point>(now_warped_microseconds)));
+        std::cout << "now (unwarped 10):\t\t" << now_unwarped_microseconds << std::endl;
+
+        auto now_rewarped_microseconds = convert<MicroTime>(SystemClock::warp(
+            convert<std::chrono::system_clock::time_point>(now_unwarped_microseconds)));
+        std::cout << "now (rewarped 10):\t\t" << now_rewarped_microseconds << std::endl;
+        assert(now_warped_microseconds == now_rewarped_microseconds);
+
         auto now_warped_ptime = convert<boost::posix_time::ptime>(now_warped_microseconds);
 
         std::cout << "\tas ptime: " << now_warped_ptime << std::endl;
 
         assert(now_warped_microseconds > now_microseconds);
+
+        std::cout << "now (unwarped 10):\t\t" << now_unwarped_microseconds << std::endl;
+
+        assert(now_warped_microseconds == now_rewarped_microseconds);
     }
 
     {
@@ -140,6 +164,14 @@ int main()
 
         assert((now_warped_time.time_since_epoch() / SimulatorSettings::warp_factor -
                 now_unwarped_time.time_since_epoch()) < std::chrono::seconds(1));
+
+        auto now_microseconds_warped = convert<MicroTime>(
+            SystemClock::warp(convert<std::chrono::system_clock::time_point>(now_microseconds)));
+        auto now_microseconds_unwarped = convert<MicroTime>(
+            SystemClock::unwarp(convert<SystemClock::time_point>(now_microseconds_warped)));
+        std::cout << "original now (warped 10):\t\t" << now_microseconds_warped << std::endl;
+        std::cout << "original now (unwarped 10):\t\t" << now_microseconds_unwarped << std::endl;
+        assert(now_microseconds_unwarped == now_microseconds);
     }
 
     {

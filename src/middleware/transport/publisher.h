@@ -92,6 +92,8 @@ template <typename Data> class Publisher
     /// \brief Returns the expired data callback  (or an empty function if none is set)
     expired_func_type expired_func() const { return expired_func_; }
 
+    bool has_set_group_func() const { return bool(set_group_func_); }
+
   private:
     goby::middleware::protobuf::TransporterConfig cfg_;
     set_group_func_type set_group_func_;
