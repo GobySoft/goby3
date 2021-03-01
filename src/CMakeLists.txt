@@ -159,19 +159,6 @@ macro(generate_middleware_interfaces target)
   endif()
 endmacro()
 
-
-## GPSD
-set(GPSD_DOC_STRING "Build the GPSD components (requires libgps-dev)")
-find_file(GPSD_HEADER_PATH gps.h)
-if(GPSD_HEADER_PATH)
-  message(STATUS "Using GSPD header at ${GPSD_HEADER_PATH}")
-  option(enable_gpsd ${GPSD_DOC_STRING} ON)
-else()
-  message(">> setting enable_gpsd to OFF ... if you need this functionality: 1) install libgps (\"apt install libgps-dev\"; 2) run cmake -Denable_gpsd=ON")
-  option(enable_gpsd ${GPSD_DOC_STRING} OFF)
-endif()
-
-
 ## Mysql (for GEOV)
 set(MYSQL_DOC_STRING "Build the MySQL components (requires libmysqlclient-dev)")
 find_package(MYSQL QUIET)
