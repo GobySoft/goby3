@@ -149,7 +149,8 @@ template <typename Config, typename TransporterType> class Thread
         if (loop_frequency_hertz() > 0 &&
             loop_frequency_hertz() != std::numeric_limits<double>::infinity())
         {
-            unsigned long long microsec_interval = 1000000.0 / loop_frequency_hertz();
+            unsigned long long microsec_interval =
+                1000000.0 / (loop_frequency_hertz() * time::SimulatorSettings::warp_factor);
 
             unsigned long long ticks_since_epoch =
                 std::chrono::duration_cast<std::chrono::microseconds>(loop_time_.time_since_epoch())

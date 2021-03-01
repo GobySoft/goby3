@@ -120,19 +120,36 @@ void goby::zeromq::InterProcessPortalMainThread::set_hold_state(bool hold)
     {
         hold_ = hold;
 
-        glog.is(DEBUG3) && glog << "InterProcessPortalMainThread hold off" << std::endl;
+        // TODO: this is necessary to allow initial ZMQ subscription forwarding
+        // messages to flow through the system so that we don't lose the
+        // first publication to subscriptions that happened before "hold: false"
+        // Find some way to remove this delay!
+        // Without this, we have problems losing the initial publications to
+        // goby::middleware::intervehicle::modem_subscription_forward_tx from
+        // the InterVehicle layer.
+        // Can we do this by replacing the PUB socket with an XPUB and checking
+        // for a subscriber?
+        sleep(1);
+
+        glog.is(DEBUG3) && glog << "InterProcessPortal**Main**Thread: Hold off" << std::endl;
 
         // publish any queued up messages
         for (auto& pub_pair : publish_queue_)
             publish(pub_pair.first, &pub_pair.second[0], pub_pair.second.size());
         publish_queue_.clear();
     }
+
+    protobuf::InprocControl control;
+    control.set_type(protobuf::InprocControl::NOTIFY_HOLD_STATE);
+    control.set_hold(hold);
+    send_control_msg(control);
 }
 
 void goby::zeromq::InterProcessPortalMainThread::publish(const std::string& identifier,
-                                                         const char* bytes, int size)
+                                                         const char* bytes, int size,
+                                                         bool ignore_buffer)
 {
-    if (publish_ready())
+    if (publish_ready() || ignore_buffer)
     {
         zmq::message_t msg(identifier.size() + size);
         memcpy(msg.data(), identifier.data(), identifier.size());
@@ -258,10 +275,9 @@ void goby::zeromq::InterProcessPortalReadThread::run()
             protobuf::ManagerRequest req;
             if (!have_pubsub_sockets_)
             {
-                req.set_ready(ready_);
                 req.set_request(protobuf::PROVIDE_PUB_SUB_SOCKETS);
-                if (cfg_.has_client_name())
-                    req.set_client_name(cfg_.client_name());
+                req.set_client_name(cfg_.client_name());
+                req.set_client_pid(getpid());
 
                 send_manager_request(req);
 
@@ -278,18 +294,13 @@ void goby::zeromq::InterProcessPortalReadThread::run()
             }
             else if (hold_ && goby::time::SystemClock::now() >= next_hold_state_request_time_)
             {
-                req.set_ready(ready_);
-
-                req.set_request(protobuf::PROVIDE_HOLD_STATE);
-                if (cfg_.has_client_name())
-                    req.set_client_name(cfg_.client_name());
-
-                if (!manager_waiting_for_reply_)
-                {
-                    send_manager_request(req);
-                    next_hold_state_request_time_ += hold_state_request_period_;
-                }
-                poll(cfg_.manager_timeout_seconds() * 1000);
+                goby::glog.is_debug3() &&
+                    goby::glog << "InterProcessPortalReadThread requesting hold state" << std::endl;
+                protobuf::InprocControl control;
+                control.set_type(protobuf::InprocControl::REQUEST_HOLD_STATE);
+                send_control_msg(control);
+                next_hold_state_request_time_ =
+                    goby::time::SystemClock::now() + hold_state_request_period_;
             }
             else
             {
@@ -377,10 +388,12 @@ void goby::zeromq::InterProcessPortalReadThread::control_data(const zmq::message
             alive_ = false;
             break;
         }
-        case protobuf::InprocControl::READY:
+        case protobuf::InprocControl::NOTIFY_HOLD_STATE:
         {
-            glog.is(DEBUG2) && glog << "read thread: READY" << std::endl;
-            ready_ = true;
+            if (hold_ && !control_msg.hold())
+                glog.is(DEBUG3) && glog << "InterProcessPortal**Read**Thread: Hold off"
+                                        << std::endl;
+            hold_ = control_msg.hold();
             break;
         }
 
@@ -400,6 +413,9 @@ void goby::zeromq::InterProcessPortalReadThread::manager_data(const zmq::message
     // manager (gobyd) reply
     protobuf::ManagerResponse response;
     response.ParseFromArray(zmq_msg.data(), zmq_msg.size());
+
+    glog.is(DEBUG3) && glog << "Received manager response: " << response.DebugString() << std::endl;
+
     if (response.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
     {
         if (response.subscribe_socket().transport() == protobuf::Socket::TCP)
@@ -416,21 +432,8 @@ void goby::zeromq::InterProcessPortalReadThread::manager_data(const zmq::message
         send_control_msg(control);
 
         have_pubsub_sockets_ = true;
-
-        glog.is(DEBUG3) && glog << "Received manager sockets: " << response.DebugString()
-                                << std::endl;
     }
-    else if (response.request() == protobuf::PROVIDE_HOLD_STATE)
-    {
-        if (hold_ && !response.hold())
-            glog.is(DEBUG3) && glog << "InterProcessPortalReadThread: Hold off" << std::endl;
-        hold_ = response.hold();
 
-        protobuf::InprocControl control;
-        control.set_type(protobuf::InprocControl::HOLD_STATE);
-        control.set_hold(response.hold());
-        send_control_msg(control);
-    }
     manager_waiting_for_reply_ = false;
 }
 
@@ -519,9 +522,23 @@ void goby::zeromq::Router::run()
 //
 // Manager
 //
-void goby::zeromq::Manager::run()
+
+goby::zeromq::Manager::Manager(zmq::context_t& context,
+                               const protobuf::InterProcessPortalConfig& cfg, const Router& router)
+    : context_(context),
+      cfg_(cfg),
+      router_(router),
+      manager_socket_(std::make_unique<zmq::socket_t>(context_, ZMQ_REP)),
+      subscribe_socket_(std::make_unique<zmq::socket_t>(context_, ZMQ_SUB)),
+      publish_socket_(std::make_unique<zmq::socket_t>(context_, ZMQ_PUB))
 {
-    zmq::socket_t socket(context_, ZMQ_REP);
+    setup_socket(*subscribe_socket_, subscribe_socket_cfg());
+    setup_socket(*publish_socket_, publish_socket_cfg());
+    poll_items_.resize(NUMBER_SOCKETS);
+    poll_items_[SOCKET_MANAGER] = {(void*)*manager_socket_, 0, ZMQ_POLLIN, 0};
+    poll_items_[SOCKET_SUBSCRIBE] = {(void*)*subscribe_socket_, 0, ZMQ_POLLIN, 0};
+
+    subscribe_socket_->setsockopt(ZMQ_SUBSCRIBE, zmq_filter_req_.c_str(), zmq_filter_req_.size());
 
     switch (cfg_.transport())
     {
@@ -531,96 +548,175 @@ void goby::zeromq::Manager::run()
                 "ipc://" +
                 ((cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) +
                  ".manager");
-            socket.bind(sock_name.c_str());
+            manager_socket_->bind(sock_name.c_str());
             break;
         }
         case protobuf::InterProcessPortalConfig::TCP:
         {
             std::string sock_name = "tcp://*:" + std::to_string(cfg_.tcp_port());
-            socket.bind(sock_name.c_str());
+            manager_socket_->bind(sock_name.c_str());
             break;
         }
     }
+}
 
+void goby::zeromq::Manager::run()
+{
     try
     {
         while (true)
         {
-            zmq::message_t request;
-            zmq_socket_recv(socket, request);
-
-            protobuf::ManagerRequest pb_request;
-            pb_request.ParseFromArray((char*)request.data(), request.size());
-
-            glog.is(DEBUG3) && glog << "(Manager) Received request: " << pb_request.DebugString()
-                                    << std::endl;
-
-            while (cfg_.transport() == protobuf::InterProcessPortalConfig::TCP &&
-                   (router_.pub_port == 0 || router_.sub_port == 0))
-                usleep(1e4);
-
-            protobuf::ManagerResponse pb_response;
-            pb_response.set_request(pb_request.request());
-
-            if (pb_request.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
+            zmq::poll(&poll_items_[0], poll_items_.size(), -1);
+            for (int i = 0, n = poll_items_.size(); i < n; ++i)
             {
-                protobuf::Socket* subscribe_socket = pb_response.mutable_subscribe_socket();
-                protobuf::Socket* publish_socket = pb_response.mutable_publish_socket();
-                subscribe_socket->set_socket_type(protobuf::Socket::SUBSCRIBE);
-                publish_socket->set_socket_type(protobuf::Socket::PUBLISH);
-                subscribe_socket->set_connect_or_bind(protobuf::Socket::CONNECT);
-                publish_socket->set_connect_or_bind(protobuf::Socket::CONNECT);
-
-                subscribe_socket->set_send_queue_size(cfg_.send_queue_size());
-                subscribe_socket->set_receive_queue_size(cfg_.receive_queue_size());
-                publish_socket->set_send_queue_size(cfg_.send_queue_size());
-                publish_socket->set_receive_queue_size(cfg_.receive_queue_size());
-
-                switch (cfg_.transport())
+                if (poll_items_[i].revents & ZMQ_POLLIN)
                 {
-                    case protobuf::InterProcessPortalConfig::IPC:
-                        subscribe_socket->set_transport(protobuf::Socket::IPC);
-                        publish_socket->set_transport(protobuf::Socket::IPC);
-                        subscribe_socket->set_socket_name((cfg_.has_socket_name()
-                                                               ? cfg_.socket_name()
-                                                               : "/tmp/goby_" + cfg_.platform()) +
-                                                          ".xpub");
-                        publish_socket->set_socket_name((cfg_.has_socket_name()
-                                                             ? cfg_.socket_name()
-                                                             : "/tmp/goby_" + cfg_.platform()) +
-                                                        ".xsub");
-                        break;
-                    case protobuf::InterProcessPortalConfig::TCP:
-                        subscribe_socket->set_transport(protobuf::Socket::TCP);
-                        publish_socket->set_transport(protobuf::Socket::TCP);
-                        subscribe_socket->set_ethernet_port(
-                            router_.pub_port); // our publish is their subscribe
-                        publish_socket->set_ethernet_port(router_.sub_port);
-                        break;
+                    zmq::message_t request;
+                    switch (i)
+                    {
+                        case SOCKET_MANAGER:
+                        {
+                            zmq_socket_recv(*manager_socket_, request);
+
+                            protobuf::ManagerRequest pb_request;
+                            pb_request.ParseFromArray((char*)request.data(), request.size());
+
+                            auto pb_response = handle_request(pb_request);
+
+                            zmq::message_t reply(pb_response.ByteSize());
+                            pb_response.SerializeToArray((char*)reply.data(), reply.size());
+                            manager_socket_->send(reply, zmq_send_flags_none);
+                            break;
+                        }
+                        case SOCKET_SUBSCRIBE:
+                            zmq_socket_recv(*subscribe_socket_, request);
+                            protobuf::ManagerRequest pb_request;
+                            auto null_delim_it =
+                                std::find((char*)request.data(),
+                                          (char*)request.data() + request.size(), '\0');
+                            pb_request.ParseFromArray(null_delim_it + 1, (char*)request.data() +
+                                                                             request.size() -
+                                                                             (null_delim_it + 1));
+
+                            auto pb_response = handle_request(pb_request);
+
+                            glog.is_debug3() && glog << "Manager:: Sending response: "
+                                                     << pb_response.DebugString() << std::endl;
+
+                            auto size = pb_response.ByteSize();
+                            zmq::message_t reply(zmq_filter_rep_.size() + size);
+                            memcpy(reply.data(), zmq_filter_rep_.data(), zmq_filter_rep_.size());
+                            pb_response.SerializeToArray(
+                                static_cast<char*>(reply.data()) + zmq_filter_rep_.size(), size);
+
+                            publish_socket_->send(reply, zmq_send_flags_none);
+                            break;
+                    }
                 }
             }
-
-            if (pb_request.ready() && required_clients_.count(pb_request.client_name()))
-                reported_clients_.insert(pb_request.client_name());
-
-            if (pb_request.has_client_name())
-                pb_response.set_client_name(pb_request.client_name());
-
-            pb_response.set_hold(hold_state());
-
-            zmq::message_t reply(pb_response.ByteSize());
-            pb_response.SerializeToArray((char*)reply.data(), reply.size());
-            socket.send(reply, zmq_send_flags_none);
         }
     }
     catch (const zmq::error_t& e)
     {
         // context terminated
         if (e.num() == ETERM)
+        {
+            manager_socket_.reset();
+            subscribe_socket_.reset();
+            publish_socket_.reset();
             return;
+        }
         else
+        {
             throw(e);
+        }
     }
+}
+
+goby::zeromq::protobuf::ManagerResponse
+goby::zeromq::Manager::handle_request(const protobuf::ManagerRequest& pb_request)
+{
+    glog.is(DEBUG3) && glog << "(Manager) Received request: " << pb_request.DebugString()
+                            << std::endl;
+
+    protobuf::ManagerResponse pb_response;
+    pb_response.set_request(pb_request.request());
+
+    pb_response.set_client_name(pb_request.client_name());
+    pb_response.set_client_pid(pb_request.client_pid());
+
+    if (pb_request.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
+    {
+        *pb_response.mutable_subscribe_socket() = subscribe_socket_cfg();
+        *pb_response.mutable_publish_socket() = publish_socket_cfg();
+    }
+    else if (pb_request.request() == protobuf::PROVIDE_HOLD_STATE)
+    {
+        if (pb_request.ready() && required_clients_.count(pb_request.client_name()))
+            reported_clients_.insert(pb_request.client_name());
+
+        pb_response.set_hold(hold_state());
+    }
+
+    return pb_response;
+}
+
+goby::zeromq::protobuf::Socket goby::zeromq::Manager::publish_socket_cfg()
+{
+    protobuf::Socket publish_socket;
+
+    while (cfg_.transport() == protobuf::InterProcessPortalConfig::TCP && (router_.pub_port == 0))
+        usleep(1e4);
+
+    publish_socket.set_socket_type(protobuf::Socket::PUBLISH);
+    publish_socket.set_connect_or_bind(protobuf::Socket::CONNECT);
+
+    publish_socket.set_send_queue_size(cfg_.send_queue_size());
+    publish_socket.set_receive_queue_size(cfg_.receive_queue_size());
+
+    switch (cfg_.transport())
+    {
+        case protobuf::InterProcessPortalConfig::IPC:
+            publish_socket.set_transport(protobuf::Socket::IPC);
+            publish_socket.set_socket_name(
+                (cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) +
+                ".xsub");
+            break;
+        case protobuf::InterProcessPortalConfig::TCP:
+            publish_socket.set_transport(protobuf::Socket::TCP);
+            publish_socket.set_ethernet_port(router_.sub_port);
+            break;
+    }
+    return publish_socket;
+}
+
+goby::zeromq::protobuf::Socket goby::zeromq::Manager::subscribe_socket_cfg()
+{
+    while (cfg_.transport() == protobuf::InterProcessPortalConfig::TCP && (router_.sub_port == 0))
+        usleep(1e4);
+
+    protobuf::Socket subscribe_socket;
+
+    subscribe_socket.set_socket_type(protobuf::Socket::SUBSCRIBE);
+    subscribe_socket.set_connect_or_bind(protobuf::Socket::CONNECT);
+    subscribe_socket.set_send_queue_size(cfg_.send_queue_size());
+    subscribe_socket.set_receive_queue_size(cfg_.receive_queue_size());
+
+    switch (cfg_.transport())
+    {
+        case protobuf::InterProcessPortalConfig::IPC:
+            subscribe_socket.set_transport(protobuf::Socket::IPC);
+            subscribe_socket.set_socket_name(
+                (cfg_.has_socket_name() ? cfg_.socket_name() : "/tmp/goby_" + cfg_.platform()) +
+                ".xpub");
+            break;
+        case protobuf::InterProcessPortalConfig::TCP:
+            subscribe_socket.set_transport(protobuf::Socket::TCP);
+            subscribe_socket.set_ethernet_port(router_.pub_port); // our publish is their subscribe
+            break;
+    }
+
+    return subscribe_socket;
 }
 
 bool goby::zeromq::Manager::hold_state()

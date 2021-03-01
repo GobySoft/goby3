@@ -191,13 +191,14 @@ spid_sig=()
 
 # copy launchfile to allow multiple reads
 origlaunchfile=${@:$OPTIND:1}
+if [ ! -e "$origlaunchfile" ]; then
+    echo "Error: must provide a valid launchfile: \"$origlaunchfile\" does not exist. For help use -h."
+    exit 1
+fi
+
 launchfile="/tmp/goby_$$.launch"
 cat ${origlaunchfile} > ${launchfile}
 
-if [ ! -e "$launchfile" ]; then
-    echo "Error: must provide a valid launchfile: \"$launchfile\" does not exist. For help use -h."
-    exit 1
-fi
 
 # search for gobyd so we can use the same interprocess { } configuration for goby_terminate
 gobyd_line=$(cat "$launchfile" | egrep "^ *[/a-zA-Z0-9_]*gobyd")

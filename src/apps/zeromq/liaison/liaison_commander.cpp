@@ -141,12 +141,18 @@ to_string(const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProto
 
     if (grouplayer.layer() >= goby::middleware::protobuf::LAYER_INTERVEHICLE)
     {
-        if (groupnum == goby::middleware::Group::invalid_numeric_group &&
-            grouplayer.has_group_numeric_field_name())
-            groupnum_str =
-                std::string("/{value of \"" + grouplayer.group_numeric_field_name() + "\"}");
+        if (groupnum == goby::middleware::Group::invalid_numeric_group)
+        {
+            if (grouplayer.has_group_numeric_field_name())
+                groupnum_str =
+                    std::string("/{value of \"" + grouplayer.group_numeric_field_name() + "\"}");
+            else
+                groupnum_str = std::string("/") + std::to_string(grouplayer.group_numeric());
+        }
         else
+        {
             groupnum_str = std::string("/") + std::to_string(groupnum);
+        }
     }
 
     return grouplayer.group() + groupnum_str + " [" +

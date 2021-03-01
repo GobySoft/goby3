@@ -58,8 +58,11 @@ std::atomic<double> end(0);
 std::mutex cout_mutex;
 
 using namespace goby::util::logger;
+using goby::test::zeromq::protobuf::Ready;
 
 constexpr goby::middleware::Group sample1_group{"Sample1"};
+constexpr goby::middleware::Group subscriber_ready_group{"sready"};
+constexpr goby::middleware::Group publisher_ready_group{"pready"};
 
 #ifdef LARGE_MESSAGE
 using Type = goby::test::zeromq::protobuf::Large;
@@ -67,7 +70,7 @@ const int max_publish = 1000;
 #else
 
 using Type = goby::test::zeromq::protobuf::Sample;
-const int max_publish = 1000;
+const int max_publish = 10000;
 #endif
 
 // parent process - thread 1
@@ -107,7 +110,13 @@ void publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
     else if (test == 1)
     {
         goby::zeromq::InterProcessPortal<> zmq(cfg);
-        sleep(1);
+        zmq.ready();
+
+        zmq.publish<publisher_ready_group, Ready>(Ready());
+        bool subscriber_ready = false;
+        zmq.subscribe<subscriber_ready_group, Ready>(
+            [&subscriber_ready](const Ready& ready) { subscriber_ready = true; });
+        while (!subscriber_ready) { zmq.poll(); }
 
         std::cout << "Start: " << std::setprecision(15)
                   << goby::time::SystemClock::now<goby::time::SITime>() << std::endl;
@@ -135,7 +144,7 @@ void publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 }
 
 // child process
-void handle_sample1(const Type& /*sample*/)
+void handle_sample1(const Type& sample)
 {
     if (ipc_receive_count == 0)
     {
@@ -144,11 +153,11 @@ void handle_sample1(const Type& /*sample*/)
                   << goby::time::SystemClock::now<goby::time::SITime>() << std::endl;
     }
 
-    //std::cout << sample.ShortDebugString() << std::endl;
+    //    std::cout << sample.ShortDebugString() << std::endl;
     ++ipc_receive_count;
 
-    //    if((ipc_receive_count % 100000) == 0)
-    //    std::cout << ipc_receive_count << std::endl;
+    if ((ipc_receive_count % 100000) == 0)
+        std::cout << ipc_receive_count << std::endl;
 
     if (ipc_receive_count == max_publish)
     {
@@ -179,6 +188,14 @@ void subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         goby::zeromq::InterProcessPortal<> zmq(cfg);
         zmq.subscribe<sample1_group, Type>(&handle_sample1);
         std::cout << "Subscribed. " << std::endl;
+        zmq.ready();
+
+        bool publisher_ready = false;
+        zmq.subscribe<publisher_ready_group, Ready>(
+            [&publisher_ready](const Ready& ready) { publisher_ready = true; });
+        while (!publisher_ready) { zmq.poll(); }
+        zmq.publish<subscriber_ready_group, Ready>(Ready());
+
         while (ipc_receive_count < max_publish) { zmq.poll(); }
     }
 }
@@ -206,7 +223,7 @@ int main(int argc, char* argv[])
         is_child = (child_pid == 0);
     }
 
-    // goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
+    //    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
 
     //std::string os_name = std::string("/tmp/goby_test_middleware4_") + (is_child ? "subscriber" : "publisher");
     //std::ofstream os(os_name.c_str());
@@ -223,12 +240,19 @@ int main(int argc, char* argv[])
         manager_context = std::make_unique<zmq::context_t>(1);
         router_context = std::make_unique<zmq::context_t>(1);
 
+        goby::zeromq::protobuf::InterProcessManagerHold hold;
+        hold.add_required_client("subscriber");
+        hold.add_required_client("publisher");
+
         goby::zeromq::Router router(*router_context, cfg);
         t10 = std::make_unique<std::thread>([&] { router.run(); });
-        goby::zeromq::Manager manager(*manager_context, cfg, router);
+        goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
         t11 = std::make_unique<std::thread>([&] { manager.run(); });
         //        sleep(1);
-        std::thread t1([&] { publisher(cfg); });
+
+        auto pub_cfg = cfg;
+        pub_cfg.set_client_name("publisher");
+        std::thread t1([&] { publisher(pub_cfg); });
         int wstatus = 0;
         if (test == 0)
         {
@@ -242,6 +266,7 @@ int main(int argc, char* argv[])
 
         forward = false;
         t1.join();
+
         manager_context.reset();
         router_context.reset();
         t10->join();
@@ -251,7 +276,9 @@ int main(int argc, char* argv[])
     }
     else
     {
-        std::thread t1([&] { subscriber(cfg); });
+        auto sub_cfg = cfg;
+        sub_cfg.set_client_name("subscriber");
+        std::thread t1([&] { subscriber(sub_cfg); });
         t1.join();
     }
 
