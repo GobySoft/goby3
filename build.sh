@@ -14,5 +14,5 @@ mkdir -p build
 pushd build >& /dev/null
 (set -x; cmake .. ${GOBY_CMAKE_FLAGS})
 echo "Building Goby"
-(set -x; cmake --build . -- ${GOBY_MAKE_FLAGS} $@ )
+(set -x; cmake --build . -- -j`nproc` ${GOBY_MAKE_FLAGS} $@ )
 popd >& /dev/null
