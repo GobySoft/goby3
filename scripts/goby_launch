@@ -255,7 +255,7 @@ do
                     ;;
                 env)
 #                    echo "Exporting $value"
-                    export $value
+                    eval "export $value"
                     ;;
                 *)
                     echo "Invalid [$key=$value]: directive key: " $key
