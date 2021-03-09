@@ -3,7 +3,10 @@ add_subdirectory(logger)
 add_subdirectory(terminate)
 add_subdirectory(coroner)
 add_subdirectory(frontseat_interface)
-add_subdirectory(opencpn)
+
+if(enable_ais)
+  add_subdirectory(opencpn)
+endif()
 
 if(enable_wt)
   add_subdirectory(liaison)
