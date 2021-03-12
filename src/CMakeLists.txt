@@ -168,7 +168,7 @@ if(MYSQL_FOUND)
   option(enable_mysql ${MYSQL_DOC_STRING} ON)
 else()
   message(">> setting enable_mysql to OFF ... if you need this functionality: 1) install libmysqlclient-dev (\"apt install libmysqlclient-dev\"; 2) run cmake -Denable_mysql=ON")
-  option(enable_gpsd ${MYSQL_DOC_STRING} OFF)
+  option(enable_mysql ${MYSQL_DOC_STRING} OFF)
 endif()
 
 ## set flags

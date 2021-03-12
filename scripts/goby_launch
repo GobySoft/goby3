@@ -26,6 +26,7 @@ usage()
     echo -e "\t-h\t\tShow help."
     echo -e "\t-r\t\tLaunch applications all in the current terminal)"
     echo -e "\t-s\t\tLaunch applications in a detached GNU 'screen' session (requires 'apt install screen')"
+    echo -e "\t-L\t\tWrite screen debug -Logfiles to ${screen_log_prefix}*"
 #    echo -e "\t-t\t\tLaunch applications in their own gnome-terminal tab (implies -b)" 
     echo -e "\t-n\t\tLaunch applications detached using 'nohup' (implies -b)"
     echo -e "\t-x\t\tLaunch applications in their own xterm"
@@ -140,8 +141,13 @@ do_kill()
     exit 0;
 }
 
+# clean up from last launch
+screen_log_prefix=/tmp/goby_launch_screen
+rm -f ${screen_log_prefix}*
+
 launch_delay=10
 launch=screen
+screen_debug=false
 launch_time=$(date -u +%Y%m%dT%H%M%S)
 platform=$launch_time
 background=false
@@ -151,7 +157,7 @@ sigkill_delay=10000
 sigterm_delay=10
 parallel_shutdown=false
 
-while getopts ":rhsnxPd:bp:k:m:" opt; do
+while getopts ":rhsnxPLd:bp:k:m:" opt; do
     case $opt in
         h) usage; exit 1 ;;
         r) check_launch_type_unset; launch=normal ;;
@@ -165,6 +171,7 @@ while getopts ":rhsnxPd:bp:k:m:" opt; do
         k) sigkill_delay=$(($OPTARG*1000)) ;;
         m) sigterm_delay=$OPTARG ;;
         P) parallel_shutdown=true ;;
+        L) screen_debug=true ;;
         \?)
             echo "Invalid option: -$OPTARG. For help use -h."
             exit  1
@@ -223,6 +230,7 @@ fi
 
 # actually launch the lines
 gnterm=()
+line_index=0
 while IFS= read -r line
 do
     cmd=$(echo "$line" | sed 's/^ *\[.*\]//')
@@ -255,7 +263,7 @@ do
                     ;;
                 env)
 #                    echo "Exporting $value"
-                    export $value
+                    eval "export $value"
                     ;;
                 *)
                     echo "Invalid [$key=$value]: directive key: " $key
@@ -269,12 +277,16 @@ do
     
     esccmd=$(echo $cmd | sed 's/"/\\"/g')
     bin=$(echo $cmd | cut -d " " -f 1)
-    name=$platform.${bin##*/}
+    name=$platform.${bin##*/}    
+    extra=
+    if [ ! -z "$directive_str" ]; then
+        extra="[$directive_str]"
+    fi
     case $launch in
         normal)            
             bash -c "$cmd"&
             pid=$!
-            echo "Launched ($pid) $cmd"
+            echo "Launched ($pid) $cmd $extra"
             ppid+=($pid)
             spid+=($pid)
             spid_cmd+=("$cmd")
@@ -291,7 +303,7 @@ do
                 kill -0 $parent_pid >& /dev/null || launch_fail $cmd;
                 sleep 0.01
             done
-            echo "Launched (xterm: $parent_pid, child: $child_pid) $cmd"
+            echo "Launched (xterm: $parent_pid, child: $child_pid) $cmd $extra"
             ppid+=($parent_pid)
             spid+=($child_pid)
             spid_cmd+=("$cmd")
@@ -308,7 +320,11 @@ do
             gnterm+=(--tab -e "bash -c \"echo -ne \\\"\\033]0;${name}\\007\\\"; $esccmd\"")
             ;;       
         screen)
-            screen -DmS $name /bin/bash -c "exec $cmd"&
+            screen_log_cmd=
+            if [ "$screen_debug" = true ]; then
+                screen_log_cmd="-L -Logfile ${screen_log_prefix}_${name}_${line_index}"
+            fi
+            screen -DmS ${name} ${screen_log_cmd} /bin/bash -c "exec $cmd"&
             # pid of screen
             parent_pid=$!
             # pid of process in screen
@@ -319,7 +335,8 @@ do
                 kill -0 $parent_pid >& /dev/null || launch_fail $cmd;
                 sleep 0.01
             done
-            echo "Launched (screen: $parent_pid, child: $child_pid) $cmd"
+               
+            echo "Launched (screen: $parent_pid, child: $child_pid) $cmd $extra"
             ppid+=($parent_pid)
             spid+=($child_pid)
             spid_cmd+=("$cmd")
@@ -332,7 +349,9 @@ do
         disown ${ppid[i]} >& /dev/null
         disown ${spid[i]} >& /dev/null
         sleep ${launch_delay}E-3
-    fi    
+    fi
+
+    line_index=$((line_index+1))
 done < <(sed 's/#.*//' "$launchfile" | sed '/^\s*$/d')
 
 # check that everything is still running 1 second after launch
@@ -352,8 +371,12 @@ fi
 
 case $launch in
     screen)
-        (set -x; screen -ls)
+        echo "Screen sessions (screen -ls): "
+        screen -ls | cut -f 2 | cut -d "." -f 2-3 | head -n-1 | tail -n+2 | sort | xargs printf "\t%s\n"
         echo "Use 'screen -r <name>' to (re)attach session"
+        if [ "$screen_debug" = true ]; then
+            echo "Screen debug logs (-Logfile) are written to ${screen_log_prefix}*"
+        fi
     ;;
 esac
 

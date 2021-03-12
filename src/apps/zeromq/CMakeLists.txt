@@ -16,9 +16,7 @@ if(enable_mavlink)
   add_subdirectory(mavlink_gateway)
 endif()
 
-if(enable_gpsd)
-  add_subdirectory(gpsd_client)
-endif()
+add_subdirectory(gpsd_client)
 
 if(enable_mysql)
   add_subdirectory(geov)

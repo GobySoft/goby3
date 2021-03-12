@@ -96,7 +96,7 @@ template <typename N1, typename N2> N2 linear_interpolate(N1 a, const std::map<N
         --l_it;
         auto a_u = u_it->first, a_l = l_it->first;
         auto b_u = u_it->second, b_l = l_it->second;
-        return ((a - a_l) / (a_l - a_u)) * (b_l - b_u) + b_l;
+        return static_cast<double>((a - a_l) / (a_l - a_u)) * (b_l - b_u) + b_l;
     }
 }
 
