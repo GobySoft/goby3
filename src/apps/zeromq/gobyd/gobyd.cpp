@@ -81,8 +81,8 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
     std::unique_ptr<zmq::context_t> router_context_;
     std::unique_ptr<zmq::context_t> manager_context_;
     goby::zeromq::Router router_;
-    goby::zeromq::Manager manager_;
     std::unique_ptr<std::thread> router_thread_;
+    goby::zeromq::Manager manager_;
     std::unique_ptr<std::thread> manager_thread_;
 
     // For hosting an InterVehiclePortal
@@ -131,8 +131,8 @@ goby::apps::zeromq::Daemon::Daemon()
     : router_context_(new zmq::context_t(app_cfg().router_threads())),
       manager_context_(new zmq::context_t(1)),
       router_(*router_context_, app_cfg().interprocess()),
-      manager_(make_manager()),
       router_thread_(new std::thread([&] { router_.run(); })),
+      manager_(make_manager()),
       manager_thread_(new std::thread([&] { manager_.run(); })),
       interprocess_(app_cfg().interprocess())
 {

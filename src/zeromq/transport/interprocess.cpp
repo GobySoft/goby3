@@ -665,7 +665,7 @@ goby::zeromq::protobuf::Socket goby::zeromq::Manager::publish_socket_cfg()
 {
     protobuf::Socket publish_socket;
 
-    while (cfg_.transport() == protobuf::InterProcessPortalConfig::TCP && (router_.pub_port == 0))
+    while (cfg_.transport() == protobuf::InterProcessPortalConfig::TCP && (router_.sub_port == 0))
         usleep(1e4);
 
     publish_socket.set_socket_type(protobuf::Socket::PUBLISH);
@@ -692,7 +692,7 @@ goby::zeromq::protobuf::Socket goby::zeromq::Manager::publish_socket_cfg()
 
 goby::zeromq::protobuf::Socket goby::zeromq::Manager::subscribe_socket_cfg()
 {
-    while (cfg_.transport() == protobuf::InterProcessPortalConfig::TCP && (router_.sub_port == 0))
+    while (cfg_.transport() == protobuf::InterProcessPortalConfig::TCP && (router_.pub_port == 0))
         usleep(1e4);
 
     protobuf::Socket subscribe_socket;
