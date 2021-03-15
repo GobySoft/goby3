@@ -223,7 +223,7 @@ goby::apps::zeromq::Liaison::Liaison()
             Wt::WServer::instance()->ioService().post(expire_sessions_);
     };
 
-    expire_sessions_();
+    Wt::WServer::instance()->ioService().post(expire_sessions_);
 }
 
 void goby::apps::zeromq::Liaison::load_proto_file(const std::string& path)
