@@ -21,6 +21,8 @@ usage()
     echo -e "[env=LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:/home/toby/goby3/build/lib] goby_liaison liaison.pb.cfg"
     echo -e "[env=FOO=bar, kill=SIGINT] some_app"
     echo -e "----------------"
+    echo -e ""
+    echo -e "If a file called preseed.goby exists in the working directory, goby_launch will 'source' it before continuing with the rest of the launch"
     echo -e "" 
     echo -e "Options:"
     echo -e "\t-h\t\tShow help."
@@ -35,7 +37,7 @@ usage()
     echo -e "\t-p vehicle1\tPlatform name"
     echo -e "\t-m 10\t\tDelay in seconds after sending goby_terminate before escalating to SIGTERM"
     echo -e "\t-k 10\t\tDelay in seconds after sending SIGTERM before escalating to SIGKILL"
-    echo -i "\t-P\tExecute kill commands in parallel"
+    echo -e "\t-P\t\tExecute kill commands in parallel"
 }
 
 num_running_proc()
@@ -201,6 +203,12 @@ origlaunchfile=${@:$OPTIND:1}
 if [ ! -e "$origlaunchfile" ]; then
     echo "Error: must provide a valid launchfile: \"$origlaunchfile\" does not exist. For help use -h."
     exit 1
+fi
+
+preseed="$(dirname $origlaunchfile)/preseed.goby"
+if [ -e "$preseed" ]; then
+    echo "source $preseed"
+    source $preseed;
 fi
 
 launchfile="/tmp/goby_$$.launch"
