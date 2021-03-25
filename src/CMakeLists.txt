@@ -118,12 +118,12 @@ else()
 endif()
 
 if(enable_wt)
-  goby_find_required_package(WtGoby)    
+  goby_find_required_package(WtGoby)
   include_directories(${Wt_INCLUDE_DIR})
   set(Wt_RESOURCES_DIR "${Wt_RESOURCES_DIR_BASE}/share/Wt/resources")
   add_custom_command(OUTPUT WtResourcesLink COMMAND ${CMAKE_COMMAND} -E create_symlink ${Wt_RESOURCES_DIR} ${goby_SHARE_DIR}/goby/liaison/resources)
   add_custom_target(wt_link ALL DEPENDS WtResourcesLink)
-endif()  
+endif()
 
 ## Mavlink
 set(MAVLINK_DOC_STRING "Build the MAVLink marshalling language support library (requires MavLink C++11 v2.0 headers, libmavlink-dev)")
@@ -152,7 +152,7 @@ endif()
 ## LLVM (for goby_clang_tool)
 include(FindLLVMForGoby)
 
-macro(generate_middleware_interfaces target) 
+macro(generate_middleware_interfaces target)
   if(enable_llvm)
     goby_export_interface(${target} ${goby_INTERFACES_DIR} ${target}_YML_OUT)
     add_custom_target(${target}_interface ALL DEPENDS ${${target}_YML_OUT})
@@ -170,7 +170,7 @@ macro(goby_install_lib target_lib component)
   set(config_target "goby_${component}-config")
   string(TOUPPER ${component} component_upper)
   set(library_list "GOBY_${component_upper}_LIBRARY_LIST")
-  
+
   install(TARGETS ${target_lib} EXPORT ${config_target}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -179,10 +179,12 @@ macro(goby_install_lib target_lib component)
 endmacro()
 
 ## boost
-goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
+set(GOBY_BOOST_VER "1.58.0" CACHE STRING "CUSTOM BOOST PATH")
+
+goby_find_required_package(Boost ${GOBY_BOOST_VER} REQUIRED EXACT COMPONENTS system date_time program_options filesystem)
 include_directories(${Boost_INCLUDE_DIRS})
 
-protobuf_generate_cpp(BASE_PROTO_SRCS BASE_PROTO_HDRS 
+protobuf_generate_cpp(BASE_PROTO_SRCS BASE_PROTO_HDRS
   protobuf/option_extensions.proto
   )
 
