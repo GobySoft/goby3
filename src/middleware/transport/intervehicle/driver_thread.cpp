@@ -257,8 +257,9 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
     auto it = pending_ack_.lower_bound(msg->frame_start()), end = pending_ack_.end();
     while (it != end)
     {
-        goby::glog << group(glog_group_) << "Erasing " << it->second.size()
-                   << " values not acked for frame " << it->first << std::endl;
+        goby::glog.is_debug1() && goby::glog << group(glog_group_) << "Erasing "
+                                             << it->second.size() << " values not acked for frame "
+                                             << it->first << std::endl;
         it = pending_ack_.erase(it);
     }
 
