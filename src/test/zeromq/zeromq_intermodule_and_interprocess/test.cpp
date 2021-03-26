@@ -318,18 +318,6 @@ int main(int /*argc*/, char* argv[])
             im_hold.add_required_client("portal_subscriber");
             im_hold.add_required_client("portal_publisher");
 
-            goby::zeromq::protobuf::InterProcessManagerHold ipc_hold1;
-            ipc_hold1.add_required_client("portal_publisher");
-            ipc_hold1.add_required_client("forwarder_publisher");
-
-            goby::zeromq::protobuf::InterProcessManagerHold ipc_hold2;
-            ipc_hold2.add_required_client("portal_subscriber");
-            ipc_hold2.add_required_client("forwarder_subscriber");
-
-            goby::zeromq::protobuf::InterProcessManagerHold im_hold;
-            im_hold.add_required_client("portal_subscriber");
-            im_hold.add_required_client("portal_publisher");
-
             goby::zeromq::Router router1(*router1_context, interprocess_cfg1);
             mt1 = std::make_unique<std::thread>([&] { router1.run(); });
             goby::zeromq::Manager manager1(*manager1_context, interprocess_cfg1, router1,

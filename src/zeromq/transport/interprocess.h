@@ -320,9 +320,6 @@ class InterProcessPortalImplementation
                         break;
                     default: break;
                 }
-
-                if (control_msg.has_hold())
-                    zmq_main_.set_hold_state(control_msg.hold());
             }
         }
 
@@ -749,15 +746,7 @@ class Manager
         for (const auto& req_c : hold.required_client()) required_clients_.insert(req_c);
     }
 
-    Manager(zmq::context_t& context, const protobuf::InterProcessPortalConfig& cfg,
-            const Router& router, const protobuf::InterProcessManagerHold& hold)
-        : Manager(context, cfg, router)
-    {
-        for (const auto& req_c : hold.required_client()) required_clients_.insert(req_c);
-    }
-
     void run();
-    bool hold_state();
 
     protobuf::ManagerResponse handle_request(const protobuf::ManagerRequest& pb_request);
     protobuf::Socket publish_socket_cfg();

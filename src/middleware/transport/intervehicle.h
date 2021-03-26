@@ -26,7 +26,6 @@
 
 #include <atomic>
 #include <functional>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>

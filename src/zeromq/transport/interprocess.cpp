@@ -433,6 +433,7 @@ void goby::zeromq::InterProcessPortalReadThread::manager_data(const zmq::message
 
         have_pubsub_sockets_ = true;
     }
+
     manager_waiting_for_reply_ = false;
 }
 
@@ -716,24 +717,6 @@ goby::zeromq::protobuf::Socket goby::zeromq::Manager::subscribe_socket_cfg()
     }
 
     return subscribe_socket;
-}
-
-bool goby::zeromq::Manager::hold_state()
-{
-    bool hold = reported_clients_ != required_clients_;
-    if (hold && goby::glog.is_debug3())
-    {
-        std::vector<std::string> missing(required_clients_.size());
-        auto it = std::set_difference(required_clients_.begin(), required_clients_.end(),
-                                      reported_clients_.begin(), reported_clients_.end(),
-                                      missing.begin());
-        missing.resize(it - missing.begin());
-
-        goby::glog << "Hold on: waiting for: ";
-        for (const auto& m : missing) goby::glog << m << ", ";
-        goby::glog << std::endl;
-    }
-    return hold;
 }
 
 bool goby::zeromq::Manager::hold_state()

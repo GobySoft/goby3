@@ -194,15 +194,9 @@ void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_laye
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-<<<<<<< HEAD
-          goby::middleware::io::PubSubLayer subscribe_layer>
-void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_layer,
-                                     subscribe_layer>::async_read()
-=======
           goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
 void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
                                      ThreadType>::async_read()
->>>>>>> upstream/3.0
 {
     boost::asio::async_read(this->mutable_socket(),
                             boost::asio::buffer(&receive_frame_, sizeof(receive_frame_)),

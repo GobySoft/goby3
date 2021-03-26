@@ -54,8 +54,6 @@
 #include "goby/time/types.h"
 #include "goby/util/debug_logger/flex_ostream.h"
 
-#include "goby/middleware/transport/intervehicle/groups.h"
-
 namespace goby
 {
 namespace acomms

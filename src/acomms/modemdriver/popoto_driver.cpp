@@ -278,7 +278,7 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
     char* g_header = (char*)&goby_header;
     std::uint8_t bytes1[2] = {goby_header >> 8, goby_header & 0xff};
 
-    std::cerr << (int) bytes1[0] << " " << (int) bytes1[1] << std::endl; 
+    std::cerr << (int) bytes1[0] << " " << (int) bytes1[1] << std::endl;
     std::string jsonStr = binary_to_json(&bytes1[0], 2);
     if (msg.type() == protobuf::ModemTransmission::DATA)
     {
@@ -301,7 +301,7 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
 
     // To send a bin msg it needs to be in 8 bit CSV values
     std::stringstream raw;
-    raw << "transmitJSON {\"Payload\":{\"Data\":[" << jsonStr << "]}}"
+    raw << R"(transmitJSON {"Payload":{"Data":[)" << jsonStr << "]}}"
         << "\n";
 
     // Send the raw string to terminal for debugging
@@ -402,10 +402,10 @@ std::string goby::acomms::PopotoDriver::binary_to_json(const std::uint8_t* buf, 
 {
     std::string output;
 
-    for (int i = 0; i < num_bytes; i++)
+    for (int i = 0, n = num_bytes; i < n; i++)
     {
         output.append(std::to_string((uint8_t)buf[i]));
-        if (i < num_bytes - 1)
+        if (i < n - 1)
         {
             output.append(",");
         }

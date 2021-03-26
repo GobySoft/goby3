@@ -131,10 +131,6 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
                 driver_ = std::make_unique<goby::acomms::PopotoDriver>();
                 break;
 
-            case goby::acomms::protobuf::DRIVER_POPOTO:
-                driver_.reset(new goby::acomms::PopotoDriver);
-                break;
-
             case goby::acomms::protobuf::DRIVER_NONE:
             case goby::acomms::protobuf::DRIVER_ABC_EXAMPLE_MODEM:
             case goby::acomms::protobuf::DRIVER_UFIELD_SIM_DRIVER:

@@ -155,10 +155,6 @@ int main(int /*argc*/, char* argv[])
         hold.add_required_client("subscriber");
         hold.add_required_client("publisher");
 
-        goby::zeromq::protobuf::InterProcessManagerHold hold;
-        hold.add_required_client("subscriber");
-        hold.add_required_client("publisher");
-
         goby::zeromq::Router router(*router_context, cfg);
         t2 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
