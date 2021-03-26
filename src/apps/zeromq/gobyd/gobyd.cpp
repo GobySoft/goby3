@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,15 +21,36 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/application/interface.h"
-#include "goby/middleware/gobyd/groups.h"
-#include "goby/middleware/protobuf/intervehicle.pb.h"
-#include "goby/middleware/transport/intervehicle.h"
-#include "goby/zeromq/transport/interprocess.h"
+#include <algorithm>     // for max, copy
+#include <iostream>      // for endl
+#include <map>           // for operat...
+#include <memory>        // for unique...
+#include <string>        // for operat...
+#include <thread>        // for thread
+#include <tuple>         // for tie
+#include <unistd.h>      // for getpid
+#include <unordered_map> // for operat...
+#include <vector>        // for vector
 
-#include "goby/zeromq/protobuf/gobyd_config.pb.h"
+#include <boost/units/quantity.hpp> // for operator/
+#include <zmq.hpp>                  // for context_t
 
-#include "goby/middleware/terminate/terminate.h"
+#include "goby/middleware/marshalling/protobuf.h"
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/configurator.h"         // for Protob...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/protobuf/app_config.pb.h"           // for AppConfig
+#include "goby/middleware/protobuf/intervehicle.pb.h"         // for Repeat...
+#include "goby/middleware/protobuf/terminate.pb.h"            // for Termin...
+#include "goby/middleware/terminate/groups.h"                 // for termin...
+#include "goby/middleware/terminate/terminate.h"              // for check_...
+#include "goby/middleware/transport/interthread.h"            // for InterT...
+#include "goby/middleware/transport/intervehicle.h"           // for InterV...
+#include "goby/util/debug_logger.h"
+#include "goby/zeromq/protobuf/gobyd_config.pb.h"        // for GobyDa...
+#include "goby/zeromq/protobuf/interprocess_config.pb.h" // for InterP...
+#include "goby/zeromq/transport/interprocess.h"          // for InterP...
 
 using namespace goby::util::logger;
 using goby::glog;
@@ -44,17 +65,15 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
 {
   public:
     Daemon();
-    ~Daemon();
+    ~Daemon() override;
 
   private:
     void run() override;
 
     goby::zeromq::Manager make_manager()
     {
-        return app_cfg().has_hold()
-                   ? goby::zeromq::Manager(*manager_context_, app_cfg().interprocess(), router_,
-                                           app_cfg().hold())
-                   : goby::zeromq::Manager(*manager_context_, app_cfg().interprocess(), router_);
+        return goby::zeromq::Manager(*manager_context_, app_cfg().interprocess(), router_,
+                                     app_cfg().hold());
     }
 
   private:
@@ -62,8 +81,8 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
     std::unique_ptr<zmq::context_t> router_context_;
     std::unique_ptr<zmq::context_t> manager_context_;
     goby::zeromq::Router router_;
-    goby::zeromq::Manager manager_;
     std::unique_ptr<std::thread> router_thread_;
+    goby::zeromq::Manager manager_;
     std::unique_ptr<std::thread> manager_thread_;
 
     // For hosting an InterVehiclePortal
@@ -82,9 +101,8 @@ class DaemonConfigurator : public goby::middleware::ProtobufConfigurator<protobu
 
         cfg.mutable_interprocess()->set_client_name(cfg.app().name());
 
-        // add ourself to the hold list if any are specified
-        if (cfg.has_hold())
-            cfg.mutable_hold()->add_required_client(cfg.app().name());
+        // add ourselves to the hold list so that clients don't publish until we're ready
+        cfg.mutable_hold()->add_required_client(cfg.app().name());
 
         if (cfg.has_intervehicle())
         {
@@ -113,8 +131,8 @@ goby::apps::zeromq::Daemon::Daemon()
     : router_context_(new zmq::context_t(app_cfg().router_threads())),
       manager_context_(new zmq::context_t(1)),
       router_(*router_context_, app_cfg().interprocess()),
-      manager_(make_manager()),
       router_thread_(new std::thread([&] { router_.run(); })),
+      manager_(make_manager()),
       manager_thread_(new std::thread([&] { manager_.run(); })),
       interprocess_(app_cfg().interprocess())
 {
@@ -125,8 +143,9 @@ goby::apps::zeromq::Daemon::Daemon()
     }
 
     if (app_cfg().has_intervehicle())
-        intervehicle_.reset(new goby::middleware::InterVehiclePortal<decltype(interprocess_)>(
-            interprocess_, app_cfg().intervehicle()));
+        intervehicle_ =
+            std::make_unique<goby::middleware::InterVehiclePortal<decltype(interprocess_)>>(
+                interprocess_, app_cfg().intervehicle());
 
     // handle goby_terminate request
     interprocess_.subscribe<goby::middleware::groups::terminate_request,
@@ -145,12 +164,14 @@ goby::apps::zeromq::Daemon::Daemon()
     // as gobyd mediates all interprocess() comms; wait until we get our result back from goby_terminate before shutting down
     interprocess_.subscribe<goby::middleware::groups::terminate_result>(
         [this](const goby::middleware::protobuf::TerminateResult& result) {
-            std::cout << result.DebugString() << std::endl;
-            if (result.has_target_pid() && result.target_pid() == getpid() &&
+            auto our_pid = getpid();
+            if (result.has_target_pid() &&
+                static_cast<decltype(our_pid)>(result.target_pid()) == our_pid &&
                 result.result() == goby::middleware::protobuf::TerminateResult::PROCESS_RESPONDED)
                 quit();
         });
 
+    glog.is(VERBOSE) && glog << "=== gobyd is ready ===" << std::endl;
     interprocess_.ready();
 }
 

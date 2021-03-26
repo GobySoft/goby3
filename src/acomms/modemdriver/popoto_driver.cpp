@@ -1,9 +1,9 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
-//   Thomas McCabe <tom.mccabe@missionsystems.com.au>
 //   Toby Schneider <toby@gobysoft.org>
+//   Thomas McCabe <tom.mccabe@missionsystems.com.au>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -32,19 +32,32 @@
 /* Copyright (c) 2020 mission systems pty ltd */
 
 #include "popoto_driver.h"
-#include <iostream>
 
-#include "driver_exception.h"
-#include "goby/util/binary.h"
+#include <cstdint>          // for uint8_t
+#include <initializer_list> // for initializer...
+#include <iostream>         // for operator<<
+#include <list>             // for operator!=
+#include <unistd.h>         // for usleep
+#include <utility>          // for move
+
+#include <boost/algorithm/string/trim.hpp> // for trim_copy
+#include <boost/signals2/signal.hpp>       // for signal
+
+#include "goby/acomms/acomms_constants.h"                // for BROADCAST_ID
+#include "goby/acomms/protobuf/modem_driver_status.pb.h" // for ModemDriver...
+#include "goby/exception.h"                              // for Exception
+#include "goby/util/binary.h"                            // for hex_encode
 #include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+#include "goby/util/protobuf/io.h" // for operator<<
+
+#include "driver_exception.h" // for ModemDriver...
 
 using goby::glog;
 using namespace goby::util::logger;
 using json = nlohmann::json;
 
-goby::acomms::PopotoDriver::PopotoDriver() {}
-goby::acomms::PopotoDriver::~PopotoDriver() {}
+goby::acomms::PopotoDriver::PopotoDriver() = default;
+goby::acomms::PopotoDriver::~PopotoDriver() = default;
 
 void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
 {
@@ -194,7 +207,7 @@ void goby::acomms::PopotoDriver::handle_initiate_transmission(
 void goby::acomms::PopotoDriver::send_wake(void)
 {
     std::stringstream message;
-    message << "ping " << 50 << std::endl;
+    message << "ping " << popoto_driver_cfg().modem_power() << std::endl;
 
     signal_and_write(message.str());
 }

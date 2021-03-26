@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -43,13 +43,20 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/lic
 
-#include <boost/units/base_units/metric/knot.hpp>
+#include <algorithm> // for max
+#include <cassert>   // for assert
+
+#include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_cast
+#include <boost/units/operators.hpp>               // for units
+#include <boost/units/unit.hpp>                    // for unit
 
 #include "encode.h"
+#include "goby/util/linebasedcomms/nmea_sentence.h" // for NMEASentence
+#include "goby/util/protobuf/ais.pb.h"              // for Position, Voyage
 
 std::atomic<int> goby::util::ais::Encoder::sequence_id_{0};
 
-goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Position pos)
+goby::util::ais::Encoder::Encoder(const goby::util::ais::protobuf::Position& pos)
 {
     switch (pos.message_id())
     {
@@ -68,7 +75,7 @@ goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Position pos)
     }
 }
 
-goby::util::ais::Encoder::Encoder(goby::util::ais::protobuf::Voyage voy, int part_num)
+goby::util::ais::Encoder::Encoder(const goby::util::ais::protobuf::Voyage& voy, int part_num)
 {
     switch (voy.message_id())
     {
@@ -144,7 +151,7 @@ std::vector<goby::util::NMEASentence> goby::util::ais::Encoder::as_nmea() const
     return nmeas;
 }
 
-void goby::util::ais::Encoder::encode_msg_18(goby::util::ais::protobuf::Position pos)
+void goby::util::ais::Encoder::encode_msg_18(const goby::util::ais::protobuf::Position& pos)
 {
     using namespace boost::units;
 
@@ -182,7 +189,7 @@ void goby::util::ais::Encoder::encode_msg_18(goby::util::ais::protobuf::Position
     assert(bits_.size() == 168);
 }
 
-void goby::util::ais::Encoder::encode_msg_24(goby::util::ais::protobuf::Voyage voy,
+void goby::util::ais::Encoder::encode_msg_24(const goby::util::ais::protobuf::Voyage& voy,
                                              std::uint32_t part_num)
 {
     channel_ = RadioChannel::CLASS_B;

@@ -1,4 +1,4 @@
-// Copyright 2017-2020:
+// Copyright 2017-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -22,16 +22,39 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <fstream>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <algorithm>     // for copy, max
+#include <atomic>        // for atomic
+#include <chrono>        // for time_p...
+#include <csignal>       // for sigaction
+#include <dlfcn.h>       // for dlclose
+#include <fcntl.h>       // for S_IRGRP
+#include <fstream>       // for operat...
+#include <functional>    // for _Bind
+#include <map>           // for operat...
+#include <string>        // for allocator
+#include <sys/stat.h>    // for chmod
+#include <thread>        // for thread
+#include <unordered_map> // for operat...
+#include <vector>        // for vector
 
-#include "goby/middleware/log.h"
-#include "goby/middleware/log/dccl_log_plugin.h"
-#include "goby/middleware/log/protobuf_log_plugin.h"
-#include "goby/time.h"
-#include "goby/zeromq/application/single_thread.h"
-#include "goby/zeromq/protobuf/logger_config.pb.h"
+#include <boost/units/quantity.hpp>             // for operator*
+#include <boost/units/systems/si/frequency.hpp> // for frequency
+
+#include "goby/middleware/marshalling/protobuf.h"
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/group.h"                            // for operat...
+#include "goby/middleware/log/dccl_log_plugin.h"              // for DCCLPl...
+#include "goby/middleware/log/log_entry.h"                    // for LogEntry
+#include "goby/middleware/log/protobuf_log_plugin.h"          // for Protob...
+#include "goby/middleware/marshalling/interface.h"            // for Marsha...
+#include "goby/time/convert.h"                                // for file_str
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/zeromq/application/single_thread.h"            // for Single...
+#include "goby/zeromq/protobuf/interprocess_config.pb.h"      // for InterP...
+#include "goby/zeromq/protobuf/logger_config.pb.h"            // for Logger...
+#include "goby/zeromq/transport/interprocess.h"               // for InterP...
 
 using goby::glog;
 
@@ -75,7 +98,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         dccl_plugin_.register_write_hooks(log_);
     }
 
-    ~Logger()
+    ~Logger() override
     {
         log_.close();
         // set read only
@@ -122,15 +145,15 @@ int main(int argc, char* argv[])
     // unblock signals
     sigset_t empty_mask;
     sigemptyset(&empty_mask);
-    pthread_sigmask(SIG_SETMASK, &empty_mask, 0);
+    pthread_sigmask(SIG_SETMASK, &empty_mask, nullptr);
 
     struct sigaction action;
     action.sa_handler = &signal_handler;
 
     // register the usual quitting signals
-    sigaction(SIGINT, &action, 0);
-    sigaction(SIGTERM, &action, 0);
-    sigaction(SIGQUIT, &action, 0);
+    sigaction(SIGINT, &action, nullptr);
+    sigaction(SIGTERM, &action, nullptr);
+    sigaction(SIGQUIT, &action, nullptr);
 
     // wait for the app to quit
     t.join();
@@ -138,7 +161,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-void signal_handler(int sig) { goby::apps::zeromq::Logger::do_quit = true; }
+void signal_handler(int /*sig*/) { goby::apps::zeromq::Logger::do_quit = true; }
 
 void goby::apps::zeromq::Logger::log(const std::vector<unsigned char>& data, int scheme,
                                const std::string& type, const goby::middleware::Group& group)

@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,15 +22,34 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/acomms/connect.h"
-#include "goby/middleware/frontseat/bluefin/bluefin.pb.h"
-#include "goby/moos/frontseat/convert.h"
+#include <limits>  // for numeric_l...
+#include <list>    // for operator!=
+#include <memory>  // for unique_ptr
+#include <ostream> // for operator<<
+#include <string>  // for string
+#include <vector>  // for vector
 
-#include "iFrontSeat.h"
+#include <MOOS/libMOOS/Comms/MOOSAsyncCommClient.h>        // for MOOSAsync...
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>                    // for CMOOSMsg
+#include <boost/algorithm/string/trim.hpp>                 // for trim_copy
+#include <boost/bind.hpp>                                  // for bind_t, arg
+#include <boost/numeric/conversion/converter_policies.hpp> // for bad_numer...
+#include <boost/signals2/signal.hpp>                       // for signal
+
+#include "goby/acomms/connect.h"                          // for connect
+#include "goby/acomms/protobuf/modem_message.pb.h"        // for ModemRaw
+#include "goby/middleware/frontseat/bluefin/bluefin.pb.h" // for BluefinEx...
+#include "goby/middleware/frontseat/interface.h"          // for Interface...
+#include "goby/moos/frontseat/convert.h"                  // for convert_a...
+#include "goby/moos/moos_protobuf_helpers.h"              // for parse_for...
+#include "goby/moos/protobuf/iFrontSeat_config.pb.h"      // for iFrontSea...
+#include "goby/util/as.h"                                 // for as
+#include "goby/util/debug_logger/flex_ostreambuf.h"       // for logger
+
+#include "iFrontSeat.h" // for iFrontSeat
 #include "legacy_translator.h"
 
 namespace gpb = goby::middleware::frontseat::protobuf;
-using goby::glog;
 using namespace goby::util::logger;
 
 goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSeat* fs)
@@ -41,10 +60,11 @@ goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSea
         std::vector<std::string> ctd_params(
             {"CONDUCTIVITY", "TEMPERATURE", "PRESSURE", "SALINITY"});
 
-        for (std::vector<std::string>::const_iterator it = ctd_params.begin(),
-                                                      end = ctd_params.end();
-             it != end; ++it)
-        { ifs_->subscribe("CTD_" + *it, &FrontSeatLegacyTranslator::handle_mail_ctd, this, 1); }
+        for (const auto& ctd_param : ctd_params)
+        {
+            ifs_->subscribe("CTD_" + ctd_param, &FrontSeatLegacyTranslator::handle_mail_ctd, this,
+                            1);
+        }
 
         ctd_sample_.set_temperature(std::numeric_limits<double>::quiet_NaN());
         ctd_sample_.set_pressure(std::numeric_limits<double>::quiet_NaN());
@@ -59,11 +79,9 @@ goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSea
         std::vector<std::string> desired_params(
             {"HEADING", "SPEED", "DEPTH", "PITCH", "ROLL", "Z_RATE", "ALTITUDE"});
 
-        for (std::vector<std::string>::const_iterator it = desired_params.begin(),
-                                                      end = desired_params.end();
-             it != end; ++it)
+        for (const auto& desired_param : desired_params)
         {
-            ifs_->subscribe("DESIRED_" + *it,
+            ifs_->subscribe("DESIRED_" + desired_param,
                             &FrontSeatLegacyTranslator::handle_mail_desired_course, this, 1);
         }
     }
@@ -245,7 +263,8 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_modem_raw(const CM
                      data);
 }
 
-void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(gpb::InterfaceState state)
+void goby::apps::moos::FrontSeatLegacyTranslator::set_fs_bs_ready_flags(
+    gpb::InterfaceState /*state*/)
 {
     gpb::InterfaceStatus status = ifs_->frontseat_->status();
     if (status.frontseat_state() == gpb::FRONTSEAT_ACCEPTING_COMMANDS)

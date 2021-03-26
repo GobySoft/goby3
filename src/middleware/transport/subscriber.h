@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Subscriber20190627H
-#define Subscriber20190627H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_SUBSCRIBER_H
+#define GOBY_MIDDLEWARE_TRANSPORT_SUBSCRIBER_H
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/protobuf/transporter_config.pb.h"
@@ -86,6 +86,8 @@ template <typename Data> class Subscriber
     subscribed_func_type subscribed_func() const { return subscribed_func_; }
     /// \return the subscription request expired callback (or an empty function if none is set)
     subscribe_expired_func_type subscribe_expired_func() const { return subscribe_expired_func_; }
+
+    bool has_group_func() const { return bool(group_func_); }
 
   private:
     goby::middleware::protobuf::TransporterConfig cfg_;

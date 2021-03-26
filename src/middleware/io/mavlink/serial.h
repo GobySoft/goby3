@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,12 +21,37 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerialMAVLink20190719H
-#define SerialMAVLink20190719H
+#ifndef GOBY_MIDDLEWARE_IO_MAVLINK_SERIAL_H
+#define GOBY_MIDDLEWARE_IO_MAVLINK_SERIAL_H
 
-#include "goby/middleware/io/mavlink/common.h"
+#include <iosfwd> // for size_t
 
-#include "goby/middleware/io/detail/serial_interface.h"
+#include <boost/asio/buffer.hpp>               // for buffer
+#include <boost/asio/completion_condition.hpp> // for transfer_at_...
+#include <boost/asio/read.hpp>                 // for async_read
+#include <boost/system/error_code.hpp>         // for error_code
+
+#include "goby/middleware/io/detail/io_interface.h"     // for PubSubLayer
+#include "goby/middleware/io/detail/serial_interface.h" // for SerialThread
+#include "goby/middleware/io/mavlink/common.h"          // for IOThreadMAVLink
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class SerialConfig;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {
@@ -35,12 +60,11 @@ namespace middleware
 namespace io
 {
 template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
+          const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
+          PubSubLayer subscribe_layer, template <class> class ThreadType>
 using SerialThreadMAVLinkBase = IOThreadMAVLink<
     line_in_group, line_out_group, publish_layer, subscribe_layer,
-    detail::SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>,
+    detail::SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer, ThreadType>,
     goby::middleware::protobuf::SerialConfig>;
 
 /// \brief Reads/Writes MAVLink message packages from/to serial port
@@ -49,14 +73,16 @@ using SerialThreadMAVLinkBase = IOThreadMAVLink<
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
+          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+          template <class> class ThreadType = goby::middleware::SimpleThread>
 class SerialThreadMAVLink
-    : public SerialThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer>
+    : public SerialThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                     ThreadType>
 {
   public:
     SerialThreadMAVLink(const goby::middleware::protobuf::SerialConfig& config)
-        : SerialThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer>(
-              config)
+        : SerialThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                  ThreadType>(config)
     {
     }
 
@@ -72,9 +98,9 @@ class SerialThreadMAVLink
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
 void goby::middleware::io::SerialThreadMAVLink<line_in_group, line_out_group, publish_layer,
-                                               subscribe_layer>::async_read()
+                                               subscribe_layer, ThreadType>::async_read()
 {
     boost::asio::async_read(
         this->mutable_serial_port(), boost::asio::buffer(this->buffer()),

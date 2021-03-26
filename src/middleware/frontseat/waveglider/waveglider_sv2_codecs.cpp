@@ -1,4 +1,4 @@
-// Copyright 2017-2020:
+// Copyright 2017-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,10 +21,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <boost/any.hpp>
+#include <dccl/codec.h>
 #include <dccl/codecs3/field_codec_default.h>
+#include <dccl/codecs3/field_codec_default_message.h>
+#include <dccl/exception.h>
+#include <dccl/field_codec_manager.h>
+#include <dccl/option_extensions.pb.h>
+#include <google/protobuf/descriptor.h>
 
+#include "goby/middleware/frontseat/waveglider/waveglider_sv2_frontseat_driver.pb.h"
 #include "waveglider_sv2_codecs.h"
-#include "waveglider_sv2_frontseat_driver.pb.h"
 
 extern "C"
 {

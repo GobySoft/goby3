@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,6 +23,10 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "mavlink.h"
+
+#include <cstdint>                        // for uint32_t
+#include <mavlink/v2.0/common/common.hpp> // for MESSAGE_ENTRIES
+#include <mavlink/v2.0/message.hpp>       // for mavlink_get_msg_entry
 
 std::unordered_map<uint32_t, mavlink::mavlink_msg_entry_t>
     goby::middleware::MAVLinkRegistry::entries_;

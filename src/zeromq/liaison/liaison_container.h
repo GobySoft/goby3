@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISONCONTAINER20130128H
-#define LIAISONCONTAINER20130128H
+#ifndef GOBY_ZEROMQ_LIAISON_LIAISON_CONTAINER_H
+#define GOBY_ZEROMQ_LIAISON_LIAISON_CONTAINER_H
 
 #include <queue>
 
@@ -32,8 +32,9 @@
 #include <Wt/WText>
 #include <Wt/WTimer>
 
-#include "goby/middleware/group.h"
 #include "goby/middleware/marshalling/protobuf.h"
+
+#include "goby/middleware/group.h"
 #include "goby/zeromq/application/multi_thread.h"
 #include "goby/zeromq/protobuf/liaison_config.pb.h"
 

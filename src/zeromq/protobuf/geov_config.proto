@@ -1,0 +1,43 @@
+syntax = "proto2";
+
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+import "dccl/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
+
+package goby.apps.zeromq.protobuf;
+
+message GEOVInterfaceConfig
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+
+    optional bool simulation = 3 [
+        (goby.field).description =
+            "If true, write to simulation mode user in GEOV",
+        default = false
+    ];
+
+    required string mysql_host = 4
+        [(goby.field).description =
+             "IP Address or domain name for GEOV MYSQL server"];
+    required string mysql_user = 5
+        [(goby.field).description = "User name for GEOV input"];
+    required string mysql_password = 6
+        [(goby.field).description = "Password for GEOV input"];
+    optional int32 mysql_port = 7 [
+        (goby.field).description = "Port for GEOV MYSQL server",
+        default = 3306
+    ];
+    optional string mysql_core_db_name = 8 [
+        (goby.field).description = "Name of core GEOV database",
+        default = "geov_core"
+    ];
+
+    optional double position_report_interval = 12
+        [default = 1, (dccl.field) = {units {base_dimensions: "T"}}];
+}

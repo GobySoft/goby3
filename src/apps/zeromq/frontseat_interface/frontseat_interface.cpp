@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,15 +21,46 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/frontseat/groups.h"
-#include "goby/middleware/protobuf/frontseat.pb.h"
+#include <algorithm>     // for max
+#include <cstdlib>       // for exit
+#include <dlfcn.h>       // for dlopen
+#include <exception>     // for exce...
+#include <iostream>      // for endl
+#include <list>          // for oper...
+#include <map>           // for oper...
+#include <string>        // for oper...
+#include <unordered_map> // for oper...
+#include <vector>        // for vector
+
+#include <boost/function.hpp>                   // for func...
+#include <boost/signals2/mutex.hpp>             // for mutex
+#include <boost/signals2/signal.hpp>            // for signal
+#include <boost/smart_ptr/shared_ptr.hpp>       // for shar...
+#include <boost/units/quantity.hpp>             // for oper...
+#include <boost/units/systems/si/frequency.hpp> // for freq...
+#include <boost/units/systems/si/time.hpp>      // for time
+
+#include "goby/middleware/marshalling/protobuf.h" // for scheme
+
+#include "goby/middleware/application/configuration_reader.h"   // for Conf...
+#include "goby/middleware/application/configurator.h"           // for Prot...
+#include "goby/middleware/application/interface.h"              // for run
+#include "goby/middleware/frontseat/groups.h"                   // for comm...
+#include "goby/middleware/protobuf/app_config.pb.h"             // for AppC...
+#include "goby/middleware/protobuf/frontseat.pb.h"              // for Inte...
+#include "goby/middleware/protobuf/frontseat_config.pb.h"       // for Config
+#include "goby/middleware/protobuf/frontseat_data.pb.h"         // for Node...
+#include "goby/util/debug_logger/flex_ostream.h"                // for oper...
+#include "goby/zeromq/protobuf/frontseat_interface_config.pb.h" // for Fron...
+#include "goby/zeromq/protobuf/interprocess_config.pb.h"        // for Inte...
+#include "goby/zeromq/transport/interprocess.h"                 // for Inte...
 
 #include "frontseat_interface.h"
 
 using goby::glog;
 namespace frontseat = goby::middleware::frontseat;
 
-void* goby::apps::zeromq::FrontSeatInterface::driver_library_handle_ = 0;
+void* goby::apps::zeromq::FrontSeatInterface::driver_library_handle_ = nullptr;
 
 namespace goby
 {
@@ -86,7 +117,7 @@ frontseat::InterfaceBase*
 load_driver(const goby::apps::zeromq::protobuf::FrontSeatInterfaceConfig& cfg)
 {
     typedef frontseat::InterfaceBase* (*driver_load_func)(frontseat::protobuf::Config*);
-    driver_load_func driver_load_ptr = (driver_load_func)dlsym(
+    auto driver_load_ptr = (driver_load_func)dlsym(
         goby::apps::zeromq::FrontSeatInterface::driver_library_handle_, "frontseat_driver_load");
 
     if (!driver_load_ptr)

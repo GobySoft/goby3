@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,10 +21,37 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_PTY_H
+#define GOBY_MIDDLEWARE_IO_LINE_BASED_PTY_H
 
-#include "goby/middleware/io/detail/pty_interface.h"
-#include "goby/middleware/io/line_based/common.h"
+#include <istream> // for istream, basic_...
+#include <string>  // for string
+
+#include <boost/asio/read_until.hpp>   // for async_read_until
+#include <boost/asio/streambuf.hpp>    // for streambuf
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/middleware/io/detail/io_interface.h"  // for PubSubLayer
+#include "goby/middleware/io/detail/pty_interface.h" // for PTYThread
+#include "goby/middleware/io/line_based/common.h"    // for match_regex
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class PTYConfig;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {
@@ -38,11 +65,13 @@ namespace io
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
-class PTYThreadLineBased
-    : public detail::PTYThread<line_in_group, line_out_group, publish_layer, subscribe_layer>
+          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+          template <class> class ThreadType = goby::middleware::SimpleThread>
+class PTYThreadLineBased : public detail::PTYThread<line_in_group, line_out_group, publish_layer,
+                                                    subscribe_layer, ThreadType>
 {
-    using Base = detail::PTYThread<line_in_group, line_out_group, publish_layer, subscribe_layer>;
+    using Base = detail::PTYThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                   ThreadType>;
 
   public:
     /// \brief Constructs the thread.
@@ -70,9 +99,9 @@ class PTYThreadLineBased
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
 void goby::middleware::io::PTYThreadLineBased<line_in_group, line_out_group, publish_layer,
-                                              subscribe_layer>::async_read()
+                                              subscribe_layer, ThreadType>::async_read()
 {
     boost::asio::async_read_until(
         this->mutable_socket(), buffer_, eol_matcher_,
@@ -91,3 +120,5 @@ void goby::middleware::io::PTYThreadLineBased<line_in_group, line_out_group, pub
             }
         });
 }
+
+#endif

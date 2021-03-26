@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,7 +22,27 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "pAcommsHandler.h"
+#include <algorithm> // for max
+#include <cstdlib>   // for exit
+#include <dlfcn.h>   // for dlclose
+#include <iostream>  // for operat...
+#include <map>       // for map
+#include <string>    // for string
+#include <utility>   // for pair
+#include <vector>    // for vector
+
+#include <boost/algorithm/string/classification.hpp> // for is_any...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <dccl/dynamic_protobuf_manager.h>           // for Dynami...
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/moos/goby_moos_app.h"                          // for run
+#include "goby/moos/transitional/message_algorithms.h"        // for DCCLAl...
+#include "goby/util/debug_logger/flex_ostream.h"              // for FlexOs...
+#include "goby/util/debug_logger/flex_ostreambuf.h"           // for logger
+#include "goby/util/debug_logger/term_color.h"                // for Colors
+
+#include "pAcommsHandler.h" // for CpAcom...
 
 std::vector<void*> plugin_handles_;
 
@@ -41,21 +61,20 @@ int main(int argc, char* argv[])
         std::vector<std::string> plugin_vec;
         boost::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
 
-        for (int i = 0, n = plugin_vec.size(); i < n; ++i)
+        for (auto& i : plugin_vec)
         {
-            std::cout << "Loading pAcommsHandler plugin library: " << plugin_vec[i] << std::endl;
-            void* handle = dlopen(plugin_vec[i].c_str(), RTLD_LAZY);
+            std::cout << "Loading pAcommsHandler plugin library: " << i << std::endl;
+            void* handle = dlopen(i.c_str(), RTLD_LAZY);
 
             if (handle)
                 plugin_handles_.push_back(handle);
             else
             {
-                std::cerr << "Failed to open library: " << plugin_vec[i] << std::endl;
+                std::cerr << "Failed to open library: " << i << std::endl;
                 exit(EXIT_FAILURE);
             }
 
-            const char* (*name_function)(void) =
-                (const char* (*)(void))dlsym(handle, "goby_driver_name");
+            const auto name_function = (const char* (*)(void))dlsym(handle, "goby_driver_name");
             if (name_function)
                 goby::apps::moos::CpAcommsHandler::driver_plugins_.insert(
                     std::make_pair(std::string((*name_function)()), handle));
@@ -68,7 +87,7 @@ int main(int argc, char* argv[])
     goby::apps::moos::CpAcommsHandler::delete_instance();
     dccl::DynamicProtobufManager::protobuf_shutdown();
 
-    for (int i = 0, n = plugin_handles_.size(); i < n; ++i) dlclose(plugin_handles_[i]);
+    for (auto& plugin_handle : plugin_handles_) dlclose(plugin_handle);
 
     return return_value;
 }

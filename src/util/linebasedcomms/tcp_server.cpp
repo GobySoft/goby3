@@ -1,4 +1,4 @@
-// Copyright 2010-2020:
+// Copyright 2010-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,105 +24,63 @@
 
 #include "tcp_server.h"
 
-std::shared_ptr<goby::util::TCPConnection>
-goby::util::TCPConnection::create(LineBasedInterface* interface)
+goby::util::TCPServer::TCPServer(unsigned port, const std::string& delimiter)
+    : LineBasedInterface(delimiter), port_(port)
 {
-    return std::shared_ptr<TCPConnection>(new TCPConnection(interface));
 }
 
-void goby::util::TCPConnection::socket_write(const protobuf::Datagram& line) // give it a string
+goby::util::TCPServer::~TCPServer() { do_close(); }
+
+void goby::util::TCPServer::do_subscribe()
 {
-    bool write_in_progress = !out().empty(); // is there anything currently being written?
-    out().push_back(line);                   // store in write buffer
-    if (!write_in_progress)                  // if nothing is currently being written, then start
-        write_start();
+    interthread().subscribe_dynamic<goby::middleware::protobuf::TCPServerEvent>(
+        [this](const goby::middleware::protobuf::TCPServerEvent& event) {
+            if (event.index() == this->index())
+            {
+                event_ = event;
+                if (event.event() == middleware::protobuf::TCPServerEvent::EVENT_BIND &&
+                    event.has_local_endpoint())
+                    local_endpoint_ = event.local_endpoint();
+                else if (event.event() == middleware::protobuf::TCPServerEvent::EVENT_CONNECT &&
+                         event.has_remote_endpoint())
+                    remote_endpoints_.insert(event.remote_endpoint());
+                else if (event.event() == middleware::protobuf::TCPServerEvent::EVENT_DISCONNECT &&
+                         event.has_remote_endpoint())
+                    remote_endpoints_.erase(event.remote_endpoint());
+            }
+        },
+        in_group());
 }
 
-void goby::util::TCPConnection::socket_close(const boost::system::error_code& error)
-{ // something has gone wrong, so close the socket & make this object inactive
-    if (error ==
-        boost::asio::error::operation_aborted) // if this call is thex result of a timer cancel()
-        return; // ignore it because the connection cancelled the timer
-
-    if (error)
-        socket_.close();
-}
-
-void goby::util::TCPServer::do_write(const protobuf::Datagram& line)
+void goby::util::TCPServer::do_start()
 {
-    if (line.has_dest())
+    if (!tcp_thread_)
     {
-        std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator it =
-            connections_.find(line.dest());
-        if (it != connections_.end())
-            (it->second)->write(line);
-    }
-    else
-    {
-        for (std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator
-                 it = connections_.begin(),
-                 end = connections_.end();
-             it != end; ++it)
-            (it->second)->write(line);
-    }
-}
+        goby::middleware::protobuf::TCPServerConfig cfg;
+        cfg.set_bind_port(port_);
+        cfg.set_end_of_line(delimiter());
+        cfg.set_set_reuseaddr(true);
 
-// close all the connections, it's up to the clients to try to reconnect
-void goby::util::TCPServer::do_close(const boost::system::error_code& error,
-                                     goby::util::TCPServer::Endpoint endpt /* = ""*/)
-{
-    if (!endpt.empty())
-    {
-        std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator it = connections_.find(endpt);
-        if (it != connections_.end())
-            (it->second)->close(error);
-    }
-    else
-    {
-        for (std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator
-                 it = connections_.begin(),
-                 end = connections_.end();
-             it != end; ++it)
-            (it->second)->close(error);
+        tcp_alive_ = true;
+        tcp_thread_ = std::make_unique<std::thread>([cfg, this]() {
+            Thread tcp(cfg, this->index());
+            auto type_i = std::type_index(typeid(Thread));
+            tcp.set_type_index(type_i);
+            tcp.run(tcp_alive_);
+        });
     }
 }
 
-const std::map<goby::util::TCPServer::Endpoint, std::shared_ptr<goby::util::TCPConnection> >&
-goby::util::TCPServer::connections()
+void goby::util::TCPServer::do_close()
 {
-    typedef std::map<Endpoint, std::shared_ptr<TCPConnection> >::iterator It;
-    It it = connections_.begin(), it_end = connections_.end();
-    while (it != it_end)
+    if (tcp_thread_)
     {
-        if (!(it->second)->socket().is_open())
-        {
-            It to_delete = it;
-            ++it; // increment before erasing!
-            connections_.erase(to_delete);
-        }
-        else
-        {
-            ++it;
-        }
-    }
-    return connections_;
-}
+        while (!io_thread_ready()) interthread().poll(std::chrono::milliseconds(10));
 
-void goby::util::TCPServer::start_accept()
-{
-    new_connection_ = TCPConnection::create(this);
-    acceptor_.async_accept(new_connection_->socket(),
-                           boost::bind(&TCPServer::handle_accept, this, new_connection_,
-                                       boost::asio::placeholders::error));
-}
-
-void goby::util::TCPServer::handle_accept(std::shared_ptr<TCPConnection> new_connection,
-                                          const boost::system::error_code& error)
-{
-    if (!error)
-    {
-        new_connection_->start();
-        connections_.insert(std::make_pair(new_connection_->remote_endpoint(), new_connection_));
-        start_accept();
+        auto type_i = std::type_index(typeid(Thread));
+        middleware::ThreadIdentifier ti{type_i, index()};
+        interthread().publish<Thread::shutdown_group_>(ti);
+        tcp_thread_->join();
+        tcp_thread_.reset();
     }
 }

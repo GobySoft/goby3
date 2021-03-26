@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,28 +22,38 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef QueueManager20091204_H
-#define QueueManager20091204_H
+#ifndef GOBY_ACOMMS_QUEUE_QUEUE_MANAGER_H
+#define GOBY_ACOMMS_QUEUE_QUEUE_MANAGER_H
 
-#include <boost/bind.hpp>
-#include <boost/signals2.hpp>
-#include <limits>
-#include <set>
+#include <iosfwd>  // for ostream
+#include <list>    // for list
+#include <map>     // for allocator, multimap
+#include <memory>  // for shared_ptr, __sha...
+#include <set>     // for set
+#include <string>  // for string, operator+
+#include <utility> // for pair, make_pair
 
-#include "goby/acomms/dccl.h"
-#include "goby/acomms/protobuf/network_ack.pb.h"
-#include "goby/acomms/protobuf/queue.pb.h"
+#include <boost/signals2/signal.hpp>    // for signal
+#include <google/protobuf/descriptor.h> // for Descriptor
+#include <google/protobuf/message.h>    // for Message
 
-#include <deque>
-#include <map>
+#include "goby/acomms/dccl/dccl.h"               // for DCCLCodec
+#include "goby/acomms/protobuf/manipulator.pb.h" // for Manipulator
+#include "goby/acomms/protobuf/network_ack.pb.h" // for NetworkAck, Netwo...
+#include "goby/acomms/protobuf/queue.pb.h"       // for QueuedMessageEntr...
+#include "goby/util/as.h"                        // for as
 
-#include "queue.h"
-#include "queue_exception.h"
+#include "queue.h"           // for Queue
+#include "queue_exception.h" // for QueueException
 
 namespace goby
 {
 namespace acomms
 {
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
 /// \class QueueManager queue.h goby/acomms/queue.h
 /// \brief provides an API to the goby-acomms Queuing Library.
 /// \ingroup acomms_api
@@ -59,7 +69,7 @@ class QueueManager
     /// constructor
     QueueManager();
     /// destructor
-    ~QueueManager() {}
+    ~QueueManager() = default;
 
     /// \name Initialization Methods
     ///
@@ -224,8 +234,8 @@ class QueueManager
         signal_in_route;
 
   private:
-    QueueManager(const QueueManager&);
-    QueueManager& operator=(const QueueManager&);
+    QueueManager(const QueueManager&) = delete;
+    QueueManager& operator=(const QueueManager&) = delete;
     //@}
 
     void qsize(Queue* q);
@@ -257,7 +267,7 @@ class QueueManager
     std::multimap<unsigned, Queue*> waiting_for_ack_;
 
     // the first *user* frame sets the tone (dest & ack) for the entire packet (all %modem frames)
-    unsigned packet_ack_;
+    unsigned packet_ack_{0};
     int packet_dest_;
 
     typedef int ModemId;
@@ -289,11 +299,11 @@ class QueueManager
 
         bool has(unsigned id, goby::acomms::protobuf::Manipulator manip) const
         {
-            typedef std::multimap<unsigned, goby::acomms::protobuf::Manipulator>::const_iterator
-                iterator;
+            using iterator =
+                std::multimap<unsigned int, goby::acomms::protobuf::Manipulator>::const_iterator;
             std::pair<iterator, iterator> p = manips_.equal_range(id);
 
-            for (iterator it = p.first; it != p.second; ++it)
+            for (auto it = p.first; it != p.second; ++it)
             {
                 if (it->second == manip)
                     return true;

@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,23 +22,31 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef BluefinCommsDriver20130412H
-#define BluefinCommsDriver20130412H
+#ifndef GOBY_MOOS_MOOS_BLUEFIN_DRIVER_H
+#define GOBY_MOOS_MOOS_BLUEFIN_DRIVER_H
 
-#include "goby/moos/moos_header.h"
+#include <map>    // for map
+#include <string> // for string
 
-#include <boost/bimap.hpp>
+#include <MOOS/libMOOS/Comms/MOOSCommClient.h> // for CMOOSCommClient
+#include <boost/bimap.hpp>                     // for bimap
 
-#include "goby/time.h"
-
-#include "goby/acomms/amac.h"
-#include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/moos/protobuf/bluefin_driver.pb.h"
-
-#include "goby/moos/modem_id_convert.h"
+#include "goby/acomms/modemdriver/driver_base.h"   // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h"   // for DriverConfig
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTransmission
+#include "goby/moos/protobuf/bluefin_driver.pb.h"  // for Config
 
 namespace goby
 {
+namespace acomms
+{
+class MACManager;
+} // namespace acomms
+namespace util
+{
+class NMEASentence;
+} // namespace util
+
 namespace moos
 {
 /// \brief provides a driver for the Bluefin Huxley communications infrastructure (initially uses SonarDyne as underlying hardware)
@@ -48,10 +56,10 @@ class BluefinCommsDriver : public goby::acomms::ModemDriverBase
 {
   public:
     BluefinCommsDriver(goby::acomms::MACManager* mac);
-    void startup(const goby::acomms::protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m);
+    void startup(const goby::acomms::protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m) override;
 
   private:
     std::string unix_time2nmea_time(double time);

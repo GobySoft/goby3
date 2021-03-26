@@ -1,4 +1,4 @@
-// Copyright 2010-2020:
+// Copyright 2010-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,33 +22,23 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TCPServer20100719H
-#define TCPServer20100719H
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_TCP_SERVER_H
+#define GOBY_UTIL_LINEBASEDCOMMS_TCP_SERVER_H
 
-#include <deque>
-#include <iostream>
-#include <set>
-#include <string>
-
-#include "goby/util/asio-compat.h"
-#include <boost/asio.hpp>
-
-#include <boost/bind.hpp>
-#include <boost/enable_shared_from_this.hpp>
+#include <atomic>
 #include <memory>
+#include <string>
+#include <thread>
 
-#include "goby/util/as.h"
-#include "goby/util/asio-compat.h"
+#include "goby/middleware/io/line_based/tcp_server.h"
+#include "goby/middleware/protobuf/io.pb.h"
 
-#include "connection.h"
 #include "interface.h"
 
 namespace goby
 {
 namespace util
 {
-class TCPConnection;
-
 /// provides a basic TCP server for line by line text based communications to a one or more remote TCP clients
 class TCPServer : public LineBasedInterface
 {
@@ -57,105 +47,43 @@ class TCPServer : public LineBasedInterface
     ///
     /// \param port port of the server (use 50000+ to avoid problems with special system ports)
     /// \param delimiter string used to split lines
-    TCPServer(unsigned port, const std::string& delimiter = "\r\n")
-        : LineBasedInterface(delimiter),
-          acceptor_(io_context(), boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
-    {
-    }
-    virtual ~TCPServer() {}
+    TCPServer(unsigned port, const std::string& delimiter = "\r\n");
+    ~TCPServer() override;
 
-    typedef std::string Endpoint;
-    void close(const Endpoint& endpoint)
+    /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230)
+    std::string local_endpoint() override
     {
-        io_.post(boost::bind(&TCPServer::do_close, this, boost::system::error_code(), endpoint));
+        return local_endpoint_.addr() + ":" + std::to_string(local_endpoint_.port());
     }
 
-    /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230
-    std::string local_endpoint() { return goby::util::as<std::string>(acceptor_.local_endpoint()); }
-
-    const std::map<Endpoint, std::shared_ptr<TCPConnection> >& connections();
-
-    friend class TCPConnection;
-    friend class LineBasedConnection<boost::asio::ip::tcp::socket>;
-
-  private:
-    void do_start()
+    const std::set<middleware::protobuf::TCPEndPoint>& remote_endpoints()
     {
-        start_accept();
-        set_active(true);
+        return remote_endpoints_;
     }
 
-    void do_write(const protobuf::Datagram& line);
-    void do_close(const boost::system::error_code& error) { do_close(error, ""); }
-    void do_close(const boost::system::error_code& error, Endpoint endpt);
+  private:
+    void do_subscribe() override;
+    void do_start() override;
+    void do_close() override;
 
   private:
-    void start_accept();
-    void handle_accept(std::shared_ptr<TCPConnection> new_connection,
-                       const boost::system::error_code& error);
+    using Thread = goby::middleware::io::TCPServerThreadLineBased<
+        groups::linebasedcomms_in, groups::linebasedcomms_out,
+        goby::middleware::io::PubSubLayer::INTERTHREAD,
+        goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::protobuf::TCPServerConfig,
+        goby::util::LineBasedCommsThreadStub, true>;
 
-  private:
-    std::string server_;
-    boost::asio::ip::tcp::acceptor acceptor_;
-    std::shared_ptr<TCPConnection> new_connection_;
-    std::map<Endpoint, std::shared_ptr<TCPConnection> > connections_;
+    std::atomic<bool> tcp_alive_{false};
+    std::unique_ptr<std::thread> tcp_thread_;
+    unsigned port_;
+
+    goby::middleware::protobuf::TCPServerEvent event_;
+
+    goby::middleware::protobuf::TCPEndPoint local_endpoint_;
+    std::set<middleware::protobuf::TCPEndPoint> remote_endpoints_;
 };
 
-class TCPConnection : public boost::enable_shared_from_this<TCPConnection>,
-                      public LineBasedConnection<boost::asio::ip::tcp::socket>
-{
-  public:
-    static std::shared_ptr<TCPConnection> create(LineBasedInterface* interface);
-
-    boost::asio::ip::tcp::socket& socket() { return socket_; }
-
-    void start()
-    {
-#ifdef USE_BOOST_IO_SERVICE
-        socket_.get_io_service().post(boost::bind(&TCPConnection::read_start, this));
-#else
-        boost::asio::post(socket_.get_executor(), boost::bind(&TCPConnection::read_start, this));
-#endif
-    }
-
-    void write(const protobuf::Datagram& msg)
-    {
-#ifdef USE_BOOST_IO_SERVICE
-        socket_.get_io_service().post(boost::bind(&TCPConnection::socket_write, this, msg));
-#else
-        boost::asio::post(socket_.get_executor(),
-                          boost::bind(&TCPConnection::socket_write, this, msg));
-#endif
-    }
-
-    void close(const boost::system::error_code& error)
-    {
-#ifdef USE_BOOST_IO_SERVICE
-        socket_.get_io_service().post(boost::bind(&TCPConnection::socket_close, this, error));
-#else
-        boost::asio::post(socket_.get_executor(),
-                          boost::bind(&TCPConnection::socket_close, this, error));
-#endif
-    }
-
-    std::string local_endpoint() { return goby::util::as<std::string>(socket_.local_endpoint()); }
-    std::string remote_endpoint() { return goby::util::as<std::string>(socket_.remote_endpoint()); }
-
-  private:
-    void socket_write(const protobuf::Datagram& line);
-    void socket_close(const boost::system::error_code& error);
-
-    TCPConnection(LineBasedInterface* interface)
-        : LineBasedConnection<boost::asio::ip::tcp::socket>(interface),
-          socket_(interface->io_context())
-    {
-    }
-
-  private:
-    boost::asio::ip::tcp::socket socket_;
-};
 } // namespace util
-
 } // namespace goby
 
 #endif

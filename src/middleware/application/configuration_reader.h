@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,27 +22,29 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef CONFIGURATIONREADER20100929H
-#define CONFIGURATIONREADER20100929H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_CONFIGURATION_READER_H
+#define GOBY_MIDDLEWARE_APPLICATION_CONFIGURATION_READER_H
 
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <vector>
+#include <fstream> // for ostream
+#include <string>  // for string
+#include <vector>  // for vector
 
-#include <boost/program_options.hpp>
+#include <boost/lexical_cast/bad_lexical_cast.hpp>       // for bad_lexical...
+#include <boost/program_options/options_description.hpp> // for options_des...
+#include <boost/program_options/value_semantic.hpp>      // for value, bool...
+#include <boost/program_options/variables_map.hpp>       // for variable_va...
+#include <google/protobuf/descriptor.h>                  // for FieldDescri...
 
-#include <google/protobuf/descriptor.h>
-#include <google/protobuf/descriptor.pb.h>
-#include <google/protobuf/io/zero_copy_stream.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/message.h>
-#include <google/protobuf/text_format.h>
+#include "goby/exception.h" // for Exception
+#include "goby/util/as.h"   // for as
 
-#include "goby/exception.h"
-#include "goby/util/as.h"
-
-class AppBaseConfig;
+namespace google
+{
+namespace protobuf
+{
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {

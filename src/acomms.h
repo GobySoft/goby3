@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,8 +24,8 @@
 
 // courtesy header for all the goby acomms libraries
 
-#ifndef ACOMMSCOURTESY20100713H
-#define ACOMMSCOURTESY20100713H
+#ifndef GOBY_ACOMMS_ACOMMS_H
+#define GOBY_ACOMMS_ACOMMS_H
 
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/amac.h"

@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,15 +22,22 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/acomms/dccl.h"
-#include "message.h"
-#include "message_algorithms.h"
-#include "message_val.h"
+#include <algorithm> // for max
+#include <memory>    // for shared_ptr, __s...
 
-#include "goby/util/as.h"
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/erase.hpp>          // for erase_all_copy
+#include <boost/algorithm/string/split.hpp>          // for split
+
+#include "goby/acomms/dccl/dccl.h" // for DCCLException
+
+#include "message.h" // for DCCLMessage
+#include "message_algorithms.h"
+#include "message_val.h" // for DCCLMessageVal
+#include "message_var.h" // for DCCLMessageVar
 
 goby::moos::transitional::DCCLAlgorithmPerformer*
-    goby::moos::transitional::DCCLAlgorithmPerformer::inst_ = 0;
+    goby::moos::transitional::DCCLAlgorithmPerformer::inst_ = nullptr;
 
 // singleton class, use this to get pointer
 goby::moos::transitional::DCCLAlgorithmPerformer*
@@ -62,8 +69,7 @@ void goby::moos::transitional::DCCLAlgorithmPerformer::algorithm(
 
     for (std::vector<std::string>::size_type i = 1, n = ref_vars.size(); i < n; ++i)
     {
-        std::map<std::string, std::vector<DCCLMessageVal> >::const_iterator it =
-            vals.find(ref_vars[i]);
+        auto it = vals.find(ref_vars[i]);
         if (it != vals.end())
         {
             if (array_index < it->second.size())

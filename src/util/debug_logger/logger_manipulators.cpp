@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,9 +22,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/posix_time_io.hpp> // for operator<<
+#include <chrono>                                       // for time_point
+#include <iomanip>                                      // for operator<<
+#include <iterator>                                     // for ostreambuf_i...
+#include <sstream>                                      // for basic_string...
+
+#include "goby/time/convert.h" // for str
+
+#include "flex_ostream.h" // for FlexOstream
 #include "logger_manipulators.h"
-#include "flex_ostream.h"
-#include "goby/time.h"
 
 std::ostream& goby::util::logger::operator<<(std::ostream& os, const goby::util::logger::Group& g)
 {
@@ -42,7 +50,7 @@ void goby::util::logger::GroupSetter::operator()(std::ostream& os) const
 {
     try
     {
-        goby::util::FlexOstream& flex = dynamic_cast<goby::util::FlexOstream&>(os);
+        auto& flex = dynamic_cast<goby::util::FlexOstream&>(os);
         flex.set_group(group_);
     }
     catch (...)
@@ -65,7 +73,7 @@ std::ostream& goby::util::logger::basic_log_header(std::ostream& os, const std::
 goby::util::FlexOstream& goby::util::logger::operator<<(goby::util::FlexOstream& os,
                                                         const GroupSetter& gs)
 {
-    os.set_unset_verbosity();
+    //    os.set_unset_verbosity();
     gs(os);
     return (os);
 }

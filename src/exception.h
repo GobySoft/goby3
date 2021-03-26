@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Exception20101005H
-#define Exception20101005H
+#ifndef GOBY_EXCEPTION_H
+#define GOBY_EXCEPTION_H
 
 #include <exception>
 #include <stdexcept>

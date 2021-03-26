@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -54,8 +54,8 @@
 // 'Conversion between conductivity and PSS-78 salinity' at
 // http://www.code10.info/index.php?option=com_content&view=category&id=54&Itemid=79
 
-#ifndef SALINITY_IMPL_20190606H
-#define SALINITY_IMPL_20190606H
+#ifndef GOBY_UTIL_SEAWATER_DETAIL_SALINITY_IMPL_H
+#define GOBY_UTIL_SEAWATER_DETAIL_SALINITY_IMPL_H
 
 namespace goby
 {

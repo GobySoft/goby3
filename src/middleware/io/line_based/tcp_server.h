@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,10 +21,31 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_TCP_SERVER_H
+#define GOBY_MIDDLEWARE_IO_LINE_BASED_TCP_SERVER_H
 
-#include "goby/middleware/io/detail/tcp_server_interface.h"
-#include "goby/middleware/io/line_based/common.h"
+#include <istream> // for istream
+#include <memory>  // for make_shared
+#include <string>  // for basic_st...
+#include <utility> // for move
+
+#include <boost/asio/ip/tcp.hpp>       // for tcp, tcp...
+#include <boost/asio/read_until.hpp>   // for async_re...
+#include <boost/asio/streambuf.hpp>    // for streambuf
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/middleware/io/detail/io_interface.h"         // for PubSubLayer
+#include "goby/middleware/io/detail/tcp_server_interface.h" // for TCPServe...
+#include "goby/middleware/io/line_based/common.h"           // for match_regex
+#include "goby/middleware/protobuf/io.pb.h"                 // for IOData
+#include "goby/middleware/protobuf/tcp_config.pb.h"         // for TCPServe...
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
 
 namespace goby
 {
@@ -78,16 +99,18 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          typename Config = goby::middleware::protobuf::TCPServerConfig>
+          typename Config = goby::middleware::protobuf::TCPServerConfig,
+          template <class> class ThreadType = goby::middleware::SimpleThread,
+          bool use_indexed_groups = false>
 class TCPServerThreadLineBased
     : public detail::TCPServerThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                     Config>
+                                     Config, ThreadType, use_indexed_groups>
 {
     using Base = detail::TCPServerThread<line_in_group, line_out_group, publish_layer,
-                                         subscribe_layer, Config>;
+                                         subscribe_layer, Config, ThreadType, use_indexed_groups>;
 
   public:
-    TCPServerThreadLineBased(const Config& config) : Base(config) {}
+    TCPServerThreadLineBased(const Config& config, int index = -1) : Base(config, index) {}
 
   private:
     void start_session(boost::asio::ip::tcp::socket tcp_socket)
@@ -99,3 +122,5 @@ class TCPServerThreadLineBased
 } // namespace io
 } // namespace middleware
 } // namespace goby
+
+#endif

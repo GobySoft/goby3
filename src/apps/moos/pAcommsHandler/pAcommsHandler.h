@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,43 +22,66 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef pAcommsHandlerH
-#define pAcommsHandlerH
+#ifndef GOBY_APPS_MOOS_PACOMMSHANDLER_PACOMMSHANDLER_H
+#define GOBY_APPS_MOOS_PACOMMSHANDLER_PACOMMSHANDLER_H
 
-#include <fstream>
-#include <iostream>
+#include <map>    // for map
+#include <memory> // for shared_ptr
+#include <set>    // for set
+#include <string> // for string
+#include <vector> // for vector
 
-#include <google/protobuf/descriptor.h>
+#include <boost/asio/basic_waitable_timer.hpp> // for basic_waita...
+#include <boost/smart_ptr/shared_ptr.hpp>      // for shared_ptr
 
-#include "goby/util/asio-compat.h"
-#include <boost/asio/basic_waitable_timer.hpp>
+#include "goby/acomms/amac/mac_manager.h"                // for MACManager
+#include "goby/acomms/modemdriver/driver_base.h"         // for ModemDriver...
+#include "goby/acomms/queue/queue_manager.h"             // for QueueManager
+#include "goby/moos/goby_moos_app.h"                     // for GobyMOOSApp
+#include "goby/moos/moos_translator.h"                   // for MOOSTranslator
+#include "goby/moos/protobuf/pAcommsHandler_config.pb.h" // for pAcommsHand...
+#include "goby/time/system_clock.h"                      // for SystemClock
+#include "goby/util/asio_compat.h"
 
-#include <boost/bimap.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-
-#include "goby/acomms.h"
-#include "goby/util.h"
-
-#include "dccl/dynamic_protobuf_manager.h"
-#include "goby/moos/goby_moos_app.h"
-#include "goby/moos/moos_translator.h"
-
-#include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/moos/protobuf/pAcommsHandler_config.pb.h"
-
+class CMOOSMsg;
 namespace goby
 {
 namespace acomms
 {
+class DCCLCodec;
+class ModemDriverException;
+class RouteManager;
 namespace protobuf
 {
-class ModemDataTransmission;
-}
+class DriverConfig;
+class ModemRaw;
+class ModemTransmission;
+} // namespace protobuf
 } // namespace acomms
+namespace moos
+{
+namespace protobuf
+{
+class TranslatorEntry;
+} // namespace protobuf
+} // namespace moos
 } // namespace goby
+namespace google
+{
+namespace protobuf
+{
+class Descriptor;
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace boost
 {
+namespace system
+{
+class error_code;
+} // namespace system
+
 inline bool operator<(const shared_ptr<goby::acomms::ModemDriverBase>& lhs,
                       const shared_ptr<goby::acomms::ModemDriverBase>& rhs)
 {
@@ -86,8 +109,8 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
     typedef boost::asio::basic_waitable_timer<goby::time::SystemClock> Timer;
 
     CpAcommsHandler();
-    ~CpAcommsHandler();
-    void loop(); // from GobyMOOSApp
+    ~CpAcommsHandler() override;
+    void loop() override; // from GobyMOOSApp
 
     void process_configuration();
     void create_driver(std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
@@ -113,6 +136,7 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
     void handle_mac_cycle_update(const CMOOSMsg& msg);
     void handle_flush_queue(const CMOOSMsg& msg);
     void handle_external_initiate_transmission(const CMOOSMsg& msg);
+    void handle_external_driver_receive(const CMOOSMsg& msg);
 
     void handle_config_file_request(const CMOOSMsg& msg);
 
@@ -126,7 +150,7 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
     void driver_bind();
     void driver_unbind();
     void
-    driver_reset(std::shared_ptr<goby::acomms::ModemDriverBase> driver,
+    driver_reset(const std::shared_ptr<goby::acomms::ModemDriverBase>& driver,
                  const goby::acomms::ModemDriverException& e,
                  protobuf::pAcommsHandlerConfig::DriverFailureApproach::DriverFailureTechnique =
                      cfg_.driver_failure_approach().technique());
@@ -140,7 +164,6 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
 
   private:
     goby::moos::MOOSTranslator translator_;
-
 
     // new DCCL2 codec
     goby::acomms::DCCLCodec* dccl_;
@@ -161,9 +184,9 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
     boost::asio::io_context timer_io_context_;
     boost::asio::io_context::work work_;
 
-    goby::acomms::RouteManager* router_;
+    goby::acomms::RouteManager* router_{nullptr};
 
-    std::vector<std::shared_ptr<Timer> > timers_;
+    std::vector<std::shared_ptr<Timer>> timers_;
 
     std::map<std::shared_ptr<goby::acomms::ModemDriverBase>, double> driver_restart_time_;
 

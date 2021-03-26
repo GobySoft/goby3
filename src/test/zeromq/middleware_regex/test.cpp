@@ -1,4 +1,4 @@
-// Copyright 2017-2020:
+// Copyright 2017-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -32,7 +32,9 @@
 #include "goby/util/debug_logger.h"
 #include "goby/zeromq/transport/interprocess.h"
 
-#include "test.pb.h"
+#include "goby/test/zeromq/middleware_regex/test.pb.h"
+
+#include <memory>
 
 #include <zmq.hpp>
 
@@ -104,7 +106,7 @@ void subscriber()
     ipc.subscribe_regex(&handle_all, {goby::middleware::MarshallingScheme::ALL_SCHEMES});
 
     ipc.subscribe_type_regex<sample1, google::protobuf::Message>(
-        [&](std::shared_ptr<const google::protobuf::Message> msg, const std::string& type) {
+        [&](const std::shared_ptr<const google::protobuf::Message>& msg, const std::string& type) {
             glog.is(DEBUG1) &&
                 glog << "(template) InterProcessForwarder received publication of type: " << type
                      << " with values: " << msg->ShortDebugString() << std::endl;
@@ -145,7 +147,7 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         {goby::middleware::MarshallingScheme::PROTOBUF}, ".*Sample", "Sample1|Sample2");
 
     ipc.subscribe_type_regex<sample1, google::protobuf::Message>(
-        [&](std::shared_ptr<const google::protobuf::Message> msg, const std::string& type) {
+        [&](const std::shared_ptr<const google::protobuf::Message>& msg, const std::string& type) {
             glog.is(DEBUG1) &&
                 glog << "(template) InterProcessPortal received publication of type: " << type
                      << " with values: " << msg->ShortDebugString() << std::endl;
@@ -157,7 +159,7 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         ".*Sample");
 
     ipc.subscribe_type_regex<sample_special_chars, google::protobuf::Message>(
-        [&](std::shared_ptr<const google::protobuf::Message> msg, const std::string& type) {
+        [&](const std::shared_ptr<const google::protobuf::Message>& msg, const std::string& type) {
             glog.is(DEBUG1) &&
                 glog << "(special chars) InterProcessPortal received publication of type: " << type
                      << " with values: " << msg->ShortDebugString() << std::endl;
@@ -176,7 +178,7 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
     assert(special_chars_receive);
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::zeromq::protobuf::InterProcessPortalConfig cfg;
     cfg.set_platform("test4");
@@ -199,13 +201,13 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> router_context;
     if (!is_child)
     {
-        manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(1));
+        manager_context = std::make_unique<zmq::context_t>(1);
+        router_context = std::make_unique<zmq::context_t>(1);
 
         goby::zeromq::Router router(*router_context, cfg);
-        t4.reset(new std::thread([&] { router.run(); }));
+        t4 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, cfg, router);
-        t5.reset(new std::thread([&] { manager.run(); }));
+        t5 = std::make_unique<std::thread>([&] { manager.run(); });
         sleep(1);
         std::thread t3([&] { zmq_forward(cfg); });
         while (!zmq_ready) usleep(1e5);

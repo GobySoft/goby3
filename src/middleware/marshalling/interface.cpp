@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -33,7 +33,7 @@ const std::map<int, std::string> goby::middleware::MarshallingScheme::e2s = {
 std::map<std::string, int> invert_map(const std::map<int, std::string>& e2s)
 {
     std::map<std::string, int> s2e;
-    for (auto p : e2s) s2e.insert(std::make_pair(p.second, p.first));
+    for (const auto& p : e2s) s2e.insert(std::make_pair(p.second, p.first));
     return s2e;
 }
 const std::map<std::string, int> goby::middleware::MarshallingScheme::s2e(invert_map(e2s));

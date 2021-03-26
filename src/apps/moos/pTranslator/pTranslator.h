@@ -1,10 +1,9 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Russ Webber <russ@rw.id.au>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Binaries
@@ -23,26 +22,54 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef pTranslatorH
-#define pTranslatorH
+#ifndef GOBY_APPS_MOOS_PTRANSLATOR_PTRANSLATOR_H
+#define GOBY_APPS_MOOS_PTRANSLATOR_PTRANSLATOR_H
 
-#include <google/protobuf/descriptor.h>
+#include <memory> // for shared_ptr
+#include <vector> // for vector
 
-#include "goby/util/asio-compat.h"
-#include <boost/asio.hpp>
+#include <boost/asio/basic_waitable_timer.hpp> // for basic_waitable_timer
 
-#include "dccl/dynamic_protobuf_manager.h"
-#include "goby/moos/goby_moos_app.h"
-#include "goby/moos/moos_translator.h"
+#include "goby/moos/goby_moos_app.h"   // for GobyMOOSApp
+#include "goby/moos/moos_translator.h" // for MOOSTranslator
+#include "goby/time/system_clock.h"    // for SystemClock
+#include "goby/util/asio_compat.h"
 
-#include "pTranslator_config.pb.h"
+class CMOOSMsg;
+namespace boost
+{
+namespace system
+{
+class error_code;
+} // namespace system
+} // namespace boost
+namespace google
+{
+namespace protobuf
+{
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {
+namespace moos
+{
+namespace protobuf
+{
+class TranslatorEntry;
+} // namespace protobuf
+} // namespace moos
+
 namespace apps
 {
 namespace moos
 {
+namespace protobuf
+{
+class pTranslatorConfig;
+} // namespace protobuf
+
 class CpTranslator : public goby::moos::GobyMOOSApp
 {
   public:
@@ -52,9 +79,9 @@ class CpTranslator : public goby::moos::GobyMOOSApp
   private:
     typedef boost::asio::basic_waitable_timer<goby::time::SystemClock> Timer;
     CpTranslator();
-    ~CpTranslator();
+    ~CpTranslator() override;
 
-    void loop(); // from GobyMOOSApp
+    void loop() override; // from GobyMOOSApp
 
     void create_on_publish(const CMOOSMsg& trigger_msg,
                            const goby::moos::protobuf::TranslatorEntry& entry);
@@ -64,7 +91,7 @@ class CpTranslator : public goby::moos::GobyMOOSApp
                          const goby::moos::protobuf::TranslatorEntry& entry, Timer* timer);
 
     void do_translation(const goby::moos::protobuf::TranslatorEntry& entry);
-    void do_publish(std::shared_ptr<google::protobuf::Message> created_message);
+    void do_publish(const std::shared_ptr<google::protobuf::Message>& created_message);
 
   private:
     enum

@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,11 +24,17 @@
 
 #include "liaison_home.h"
 
+#include <Wt/WBreak>           // for WBreak
+#include <Wt/WContainerWidget> // for WContainerWidget
+#include <Wt/WLength>          // for Wt
+#include <Wt/WText>            // for WText
+#include <Wt/WVBoxLayout>      // for WVBoxLayout
+
 using namespace Wt;
 
 goby::apps::zeromq::LiaisonHome::LiaisonHome() : main_layout_(new Wt::WVBoxLayout(this))
 {
-    Wt::WContainerWidget* top_text = new Wt::WContainerWidget(this);
+    auto* top_text = new Wt::WContainerWidget(this);
     main_layout_->addWidget(top_text);
 
     top_text->addWidget(new WText("Welcome to Goby Liaison: an extensible tool for commanding and "

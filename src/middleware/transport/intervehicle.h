@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterVehicle20160810H
-#define TransportInterVehicle20160810H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_H
+#define GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_H
 
 #include <atomic>
 #include <functional>
@@ -31,16 +31,32 @@
 #include <thread>
 #include <unistd.h>
 
-#include "goby/middleware/protobuf/intervehicle.pb.h"
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
+#include "goby/middleware/marshalling/dccl.h"
+
+#include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/transport/interthread.h" // used for InterVehiclePortal implementation
 #include "goby/middleware/transport/intervehicle/driver_thread.h"
+#include "goby/middleware/transport/intervehicle/groups.h"
 #include "goby/middleware/transport/serialization_handlers.h"
 
 namespace goby
 {
 namespace middleware
 {
+class InvalidSubscription : public Exception
+{
+  public:
+    InvalidSubscription(const std::string& e) : Exception(e) {}
+};
+
+class InvalidPublication : public Exception
+{
+  public:
+    InvalidPublication(const std::string& e) : Exception(e) {}
+};
+
 class InvalidUnsubscription : public Exception
 {
   public:
@@ -244,6 +260,17 @@ class InterVehicleTransporterBase
     std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
     _set_up_publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
+        if (group.numeric() != Group::broadcast_group && !publisher.has_set_group_func())
+        {
+            std::stringstream ss;
+            ss << "Error: Publisher must have set_group_func in order to publish to a "
+                  "non-broadcast Group ("
+               << group
+               << "). The set_group_func modifies the contents of the outgoing message to store "
+                  "the group information.";
+            throw(InvalidPublication(ss.str()));
+        }
+
         auto data = intervehicle::serialize_publication(d, group, publisher);
 
         if (publisher.cfg().intervehicle().buffer().ack_required())
@@ -281,6 +308,25 @@ class InterVehicleTransporterBase
         {
             case SubscriptionAction::SUBSCRIBE:
             {
+                if (group.numeric() != Group::broadcast_group && !subscriber.has_group_func())
+                {
+                    std::stringstream ss;
+                    ss << "Error: Subscriber must have group_func in order to subscribe to "
+                          "non-broadcast Group ("
+                       << group
+                       << "). The group_func returns the appropriate Group based on the contents "
+                          "of the incoming message.";
+                    throw(InvalidSubscription(ss.str()));
+                }
+
+                if (subscriber.cfg().intervehicle().broadcast() &&
+                    subscriber.cfg().intervehicle().buffer().ack_required())
+                {
+                    std::stringstream ss;
+                    ss << "Error: Broadcast subscriptions cannot have ack_required: true";
+                    throw(InvalidSubscription(ss.str()));
+                }
+
                 auto subscription =
                     std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(
                         func, group, subscriber);
@@ -383,6 +429,9 @@ class InterVehicleTransporterBase
 
     void _receive(const intervehicle::protobuf::DCCLForwardedData& packets)
     {
+        goby::glog.is_debug3() && goby::glog << "Received DCCLForwarded data: "
+                                             << packets.ShortDebugString() << std::endl;
+
         for (const auto& packet : packets.frame())
         {
             for (auto p : this->subscriptions_[packet.dccl_id()])

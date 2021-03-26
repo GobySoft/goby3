@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,28 +21,39 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCLSerializerParserBase20191105H
-#define DCCLSerializerParserBase20191105H
+#ifndef GOBY_MIDDLEWARE_MARSHALLING_DETAIL_DCCL_SERIALIZER_PARSER_H
+#define GOBY_MIDDLEWARE_MARSHALLING_DETAIL_DCCL_SERIALIZER_PARSER_H
 
-#include <mutex>
-#include <unordered_map>
+#include <memory>        // for unique_ptr
+#include <mutex>         // for mutex, lock_guard
+#include <ostream>       // for basic_ostream
+#include <set>           // for set
+#include <string>        // for string, operat...
+#include <unordered_map> // for unordered_map
+#include <utility>       // for pair, make_pair
 
-#include <dccl/codec.h>
+#include <dccl/codec.h>                    // for Codec
+#include <dccl/dynamic_protobuf_manager.h> // for DynamicProtobu...
 
-#include "goby/middleware/protobuf/intervehicle.pb.h"
-#include "goby/util/debug_logger.h"
+#include "goby/middleware/protobuf/intervehicle.pb.h" // for DCCLForwardedData
+#include "goby/util/debug_logger/flex_ostream.h"      // for operator<<
+
+namespace google
+{
+namespace protobuf
+{
+class Descriptor;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {
 namespace middleware
 {
-namespace intervehicle
-{
 namespace protobuf
 {
-class Subscription;
-}
-} // namespace intervehicle
+class SerializerProtobufMetadata;
+} // namespace protobuf
 
 namespace detail
 {
@@ -64,7 +75,7 @@ struct DCCLSerializerParserHelperBase
     template <typename DataType> struct Loader : public LoaderBase
     {
         Loader() { codec().load<DataType>(); }
-        ~Loader() { codec().unload<DataType>(); }
+        ~Loader() override { codec().unload<DataType>(); }
     };
 
     struct LoaderDynamic : public LoaderBase
@@ -73,7 +84,7 @@ struct DCCLSerializerParserHelperBase
         {
             codec().load(desc_);
         }
-        ~LoaderDynamic() { codec().unload(desc_); }
+        ~LoaderDynamic() override { codec().unload(desc_); }
 
       private:
         const google::protobuf::Descriptor* desc_;
@@ -103,7 +114,7 @@ struct DCCLSerializerParserHelperBase
     static dccl::Codec& codec()
     {
         if (!codec_)
-            codec_.reset(new dccl::Codec);
+            codec_ = std::make_unique<dccl::Codec>();
         return *codec_;
     }
 
@@ -126,7 +137,7 @@ struct DCCLSerializerParserHelperBase
         return codec().id(begin, end);
     }
 
-    static unsigned id(const std::string full_name)
+    static unsigned id(const std::string& full_name)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
         auto* desc = dccl::DynamicProtobufManager::find_descriptor(full_name);

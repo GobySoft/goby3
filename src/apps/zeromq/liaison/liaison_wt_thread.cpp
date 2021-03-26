@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,22 +22,44 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <dlfcn.h>
+#include <chrono>      // for time_point
+#include <list>        // for operator!=
+#include <ostream>     // for basic_ostre...
+#include <string>      // for operator+
+#include <type_traits> // for __decay_and...
+#include <utility>     // for pair, make_...
+#include <vector>      // for vector
 
-#include <Wt/WAnchor>
-#include <Wt/WHBoxLayout>
-#include <Wt/WImage>
-#include <Wt/WStackedWidget>
-#include <Wt/WText>
-#include <Wt/WVBoxLayout>
+#include <Wt/WAnchor>                     // for WAnchor
+#include <Wt/WContainerWidget>            // for WContainerW...
+#include <Wt/WFlags>                      // for Wt
+#include <Wt/WGlobal>                     // for TargetNewWi...
+#include <Wt/WImage>                      // for WImage
+#include <Wt/WLink>                       // for WLink
+#include <Wt/WMenu>                       // for WMenu
+#include <Wt/WSignal>                     // for Signal
+#include <Wt/WStackedWidget>              // for WStackedWidget
+#include <Wt/WString>                     // for operator<<
+#include <Wt/WText>                       // for WText
+#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
+#include <dlfcn.h>                        // for dlsym
 
-#include "dccl/dynamic_protobuf_manager.h"
-#include "goby/time.h"
+#include "goby/time/convert.h"                           // for file_str
+#include "goby/util/debug_logger/flex_ostream.h"         // for operator<<
+#include "goby/util/debug_logger/flex_ostreambuf.h"      // for DEBUG1, WARN
+#include "goby/zeromq/liaison/liaison_container.h"       // for LiaisonCont...
+#include "goby/zeromq/protobuf/interprocess_config.pb.h" // for InterProces...
 
-#include "liaison_commander.h"
-#include "liaison_home.h"
-#include "liaison_scope.h"
+#include "liaison.h"           // for Liaison
+#include "liaison_commander.h" // for LiaisonComm...
+#include "liaison_home.h"      // for LiaisonHome
+#include "liaison_scope.h"     // for LiaisonScope
 #include "liaison_wt_thread.h"
+
+namespace Wt
+{
+class WMenuItem;
+} // namespace Wt
 
 using goby::glog;
 using namespace Wt;
@@ -45,8 +67,8 @@ using namespace goby::util::logger;
 using goby::zeromq::LiaisonContainer;
 
 goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env,
-                                               protobuf::LiaisonConfig app_cfg)
-    : Wt::WApplication(env), app_cfg_(app_cfg)
+                                                     protobuf::LiaisonConfig app_cfg)
+    : Wt::WApplication(env), app_cfg_(std::move(app_cfg))
 {
     Wt::WString title_text("goby liaison: " + app_cfg_.interprocess().platform());
     setTitle(title_text);
@@ -60,23 +82,22 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     /*
      * Set up the title
      */
-    WContainerWidget* header_div = new WContainerWidget(root());
+    auto* header_div = new WContainerWidget(root());
     header_div->setId("header");
 
-    WText* header = new WText(title_text, header_div);
+    auto* header = new WText(title_text, header_div);
     header->setId("header");
 
-    WImage* goby_logo = new WImage("images/gobysoft_logo_dot_org_small.png");
-    WAnchor* goby_logo_a =
-        new WAnchor("http://gobysoft.org/#/software/goby", goby_logo, header_div);
+    auto* goby_logo = new WImage("images/gobysoft_logo_dot_org_small.png");
+    auto* goby_logo_a = new WAnchor("http://gobysoft.org/#/software/goby", goby_logo, header_div);
     goby_logo_a->setId("goby_logo");
     goby_logo_a->setStyleClass("no_ul");
     goby_logo_a->setTarget(TargetNewWindow);
 
     if (app_cfg_.has_upper_right_logo())
     {
-        WImage* goby_lp_image = new WImage(app_cfg_.upper_right_logo());
-        WAnchor* goby_lp_image_a = new WAnchor(
+        auto* goby_lp_image = new WImage(app_cfg_.upper_right_logo());
+        auto* goby_lp_image_a = new WAnchor(
             app_cfg_.has_upper_right_logo_link() ? app_cfg_.upper_right_logo_link() : "",
             goby_lp_image, header_div);
         goby_lp_image_a->setId("lp_logo");
@@ -86,10 +107,10 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
 
     new WText("<hr/>", root());
 
-    WContainerWidget* menu_div = new WContainerWidget(root());
+    auto* menu_div = new WContainerWidget(root());
     menu_div->setStyleClass("menu");
 
-    WContainerWidget* contents_div = new WContainerWidget(root());
+    auto* contents_div = new WContainerWidget(root());
     contents_div->setId("contents");
     contents_stack_ = new WStackedWidget(contents_div);
     contents_stack_->setStyleClass("fill");
@@ -110,15 +131,14 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     using liaison_load_func = std::vector<goby::zeromq::LiaisonContainer*> (*)(
         const protobuf::LiaisonConfig& cfg);
 
-    for (int i = 0, n = Liaison::plugin_handles_.size(); i < n; ++i)
+    for (auto& plugin_handle : Liaison::plugin_handles_)
     {
-        liaison_load_func liaison_load_ptr =
-            (liaison_load_func)dlsym(Liaison::plugin_handles_[i], "goby3_liaison_load");
+        auto liaison_load_ptr = (liaison_load_func)dlsym(plugin_handle, "goby3_liaison_load");
 
         if (liaison_load_ptr)
         {
             std::vector<goby::zeromq::LiaisonContainer*> containers = (*liaison_load_ptr)(app_cfg_);
-            for (int j = 0, m = containers.size(); j < m; ++j) add_to_menu(menu_, containers[j]);
+            for (auto& container : containers) add_to_menu(menu_, container);
         }
         else
         {
@@ -137,9 +157,9 @@ goby::apps::zeromq::LiaisonWtThread::~LiaisonWtThread()
 {
     // run on all children
     const std::vector<WMenuItem*>& items = menu_->items();
-    for (int i = 0, n = items.size(); i < n; ++i)
+    for (auto item : items)
     {
-        LiaisonContainer* contents = menu_contents_[items[i]];
+        LiaisonContainer* contents = menu_contents_[item];
         if (contents)
         {
             glog.is(DEBUG1) && glog << "Liaison: Cleanup : " << contents->name() << std::endl;
@@ -170,11 +190,11 @@ void goby::apps::zeromq::LiaisonWtThread::handle_menu_selection(Wt::WMenuItem* i
 
     // unfocus all others
     const std::vector<WMenuItem*>& items = menu_->items();
-    for (int i = 0, n = items.size(); i < n; ++i)
+    for (auto i : items)
     {
-        if (items[i] != item)
+        if (i != item)
         {
-            LiaisonContainer* other_contents = menu_contents_[items[i]];
+            LiaisonContainer* other_contents = menu_contents_[i];
             if (other_contents)
             {
                 glog.is(DEBUG1) && glog << "Liaison: Unfocused : " << other_contents->name()

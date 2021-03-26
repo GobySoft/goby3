@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef PUBSUB_ENTRY_20190801H
-#define PUBSUB_ENTRY_20190801H
+#ifndef GOBY_APPS_MIDDLEWARE_CLANG_TOOL_PUBSUB_ENTRY_H
+#define GOBY_APPS_MIDDLEWARE_CLANG_TOOL_PUBSUB_ENTRY_H
 
 #include <boost/algorithm/string.hpp>
 #include <string>
@@ -82,11 +82,15 @@ struct PubSubEntry
         if (inner_node && inner_node.as<bool>())
             is_inner_pub = true;
 
+        auto is_regex_node = yaml["is_regex"];
+        if (is_regex_node && is_regex_node.as<bool>())
+            is_regex = true;
+
         init();
     }
 
     PubSubEntry(Layer l, Direction d, std::string th, std::string g, std::string s, std::string t,
-                bool tk, goby::middleware::Necessity n)
+                bool tk, goby::middleware::Necessity n, bool r)
         : layer(l),
           direction(d),
           thread(th),
@@ -94,7 +98,8 @@ struct PubSubEntry
           scheme(s),
           type(t),
           thread_is_known(tk),
-          necessity(n)
+          necessity(n),
+          is_regex(r)
     {
         init();
     }
@@ -131,6 +136,7 @@ struct PubSubEntry
     std::string type;
     bool thread_is_known{true};
     goby::middleware::Necessity necessity{goby::middleware::Necessity::OPTIONAL};
+    bool is_regex{false};
     bool is_inner_pub{false};
     int publish_index{-1};
 
@@ -170,6 +176,9 @@ struct PubSubEntry
         // publication was automatically added to this scope from an outer publisher
         if (inner_pub)
             entry_map.add("inner", "true");
+
+        if (is_regex)
+            entry_map.add("is_regex", "true");
     }
 
     std::string as_string(goby::middleware::Necessity n) const
@@ -178,6 +187,7 @@ struct PubSubEntry
         {
             case goby::middleware::Necessity::REQUIRED: return "required";
             case goby::middleware::Necessity::RECOMMENDED: return "recommended";
+            default:
             case goby::middleware::Necessity::OPTIONAL: return "optional";
         }
     }
@@ -215,9 +225,24 @@ inline bool operator<(const PubSubEntry& a, const PubSubEntry& b)
 
 inline bool connects(const PubSubEntry& a, const PubSubEntry& b)
 {
-    return a.layer == b.layer && a.group == b.group &&
-           (a.scheme == b.scheme || a.scheme == "CXX_OBJECT" || b.scheme == "CXX_OBJECT") &&
-           a.type == b.type;
+    bool connects =
+        (a.layer == b.layer && a.group == b.group &&
+         (a.scheme == b.scheme || a.scheme == "CXX_OBJECT" || b.scheme == "CXX_OBJECT") &&
+         a.type == b.type);
+
+    // check special cases
+    if (!connects)
+    {
+        if (a.scheme == b.scheme && a.scheme == "MAVLINK")
+        {
+            // mavlink_message_t (mavlink::_mavlink_message) could be decoded as any mavlink type, so connect these
+            if (a.layer == b.layer && a.group == b.group &&
+                (a.type == "mavlink::__mavlink_message" || b.type == "mavlink::__mavlink_message"))
+                connects = true;
+        }
+    }
+
+    return connects;
 }
 
 inline void remove_disconnected(PubSubEntry pub, PubSubEntry sub,
@@ -288,7 +313,8 @@ struct Thread
     std::set<goby::clang::PubSubEntry> interthread_subscribes;
 };
 
-inline void html_escape(std::string& s)
+inline void html_escape(std::string& s, bool do_break_before_lt = true,
+                        bool do_break_after_commas = true)
 {
     using boost::algorithm::replace_all;
     replace_all(s, "&", "&amp;");
@@ -297,11 +323,15 @@ inline void html_escape(std::string& s)
     replace_all(s, "<", "&lt;");
     replace_all(s, ">", "&gt;");
 
-    boost::algorithm::replace_first(s, "&lt;", "<br/>&lt;");
-    replace_all(s, "&lt;", "<font point-size=\"10\">&lt;");
-    replace_all(s, "&gt;", "&gt;</font>");
+    if (do_break_before_lt)
+    {
+        boost::algorithm::replace_first(s, "&lt;", "<br/>&lt;");
+        replace_all(s, "&lt;", "<font point-size=\"8\">&lt;");
+        replace_all(s, "&gt;", "&gt;</font>");
+    }
 
-    replace_all(s, ", ", ",<br/>");
+    if (do_break_after_commas)
+        replace_all(s, ", ", ",<br/>");
 }
 
 } // namespace viz

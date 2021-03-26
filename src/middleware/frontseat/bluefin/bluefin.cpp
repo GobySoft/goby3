@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,15 +23,48 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/algorithm/string/replace.hpp>
-#include <boost/format.hpp>
-#include <boost/math/special_functions/fpclassify.hpp> // for isnan
+#include <algorithm>   // for copy
+#include <chrono>      // for time_...
+#include <iterator>    // for ostre...
+#include <list>        // for opera...
+#include <ratio>       // for ratio
+#include <sstream>     // for basic...
+#include <type_traits> // for __suc...
+#include <utility>     // for pair
+#include <vector>      // for vector
 
-#include "goby/util/as.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/sci.h"
+#include <boost/algorithm/string/case_conv.hpp> // for to_up...
+#include <boost/algorithm/string/replace.hpp>   // for repla...
+#include <boost/algorithm/string/trim.hpp>      // for trim
+#include <boost/bimap.hpp>
+#include <boost/date_time/gregorian/gregorian.hpp>          // for grego...
+#include <boost/date_time/posix_time/posix_time_config.hpp> // for time_...
+#include <boost/date_time/posix_time/posix_time_io.hpp>     // for opera...
+#include <boost/date_time/posix_time/ptime.hpp>             // for ptime
+#include <boost/date_time/time.hpp>                         // for base_...
+#include <boost/date_time/time_system_counted.hpp>          // for count...
+#include <boost/detail/basic_pointerbuf.hpp>                // for basic...
+#include <boost/format.hpp>                                 // for basic...
+#include <boost/function.hpp>                               // for function
+#include <boost/iterator/iterator_traits.hpp>               // for itera...
+#include <boost/lexical_cast/bad_lexical_cast.hpp>          // for bad_l...
+#include <boost/math/special_functions/fpclassify.hpp>      // for isnan
+#include <boost/signals2/expired_slot.hpp>                  // for expir...
+#include <boost/signals2/signal.hpp>                        // for signal
+#include <boost/units/quantity.hpp>                         // for quantity
 
-#include "dccl/binary.h"
+#include "dccl/binary.h"                                  // for b64_e...
+#include "goby/acomms/protobuf/modem_message.pb.h"        // for ModemRaw
+#include "goby/middleware/frontseat/exception.h"          // for Excep...
+#include "goby/middleware/protobuf/frontseat_config.pb.h" // for Config
+#include "goby/time/convert.h"                            // for conve...
+#include "goby/time/simulation.h"                         // for time
+#include "goby/util/as.h"                                 // for as
+#include "goby/util/debug_logger/flex_ostream.h"          // for opera...
+#include "goby/util/debug_logger/flex_ostreambuf.h"       // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h"   // for warn
+#include "goby/util/debug_logger/term_color.h"            // for tcolor
+#include "goby/util/sci.h"                                // for linea...
 
 #include "bluefin.h"
 
@@ -77,7 +110,7 @@ goby::middleware::frontseat::Bluefin::Bluefin(const gpb::Config& cfg)
                                     "using 'use_rpm_table_for_speed == true'"
                                  << std::endl;
 
-        for (auto entry : bf_config_.rpm_table())
+        for (const auto& entry : bf_config_.rpm_table())
             speed_to_rpm_.insert(std::make_pair(entry.speed(), entry.rpm()));
     }
 
@@ -120,10 +153,8 @@ void goby::middleware::frontseat::Bluefin::send_command_to_frontseat(
 {
     if (command.has_cancel_request_id())
     {
-        for (std::map<gpb::BluefinExtraCommands::BluefinCommand, gpb::CommandRequest>::iterator
-                 it = outstanding_requests_.begin(),
-                 end = outstanding_requests_.end();
-             it != end; ++it)
+        for (auto it = outstanding_requests_.begin(), end = outstanding_requests_.end(); it != end;
+             ++it)
         {
             if (it->second.request_id() == command.cancel_request_id())
             {
@@ -422,22 +453,20 @@ void goby::middleware::frontseat::Bluefin::check_send_heartbeat()
                 payload_status_.begin(),
                 payload_status_.upper_bound(gtime::SystemClock::now<gtime::MicroTime>()));
 
-            for (auto it = payload_status_.begin(), end = payload_status_.end(); it != end; ++it)
+            for (auto& payload_status : payload_status_)
             {
                 // only display the newest from a given ID
-                if (!seen_ids.count(it->second.id()))
+                if (!seen_ids.count(payload_status.second.id()))
                 {
-                    ok = ok && it->second.all_ok();
-                    seen_ids[it->second.id()] = it->second.msg();
+                    ok = ok && payload_status.second.all_ok();
+                    seen_ids[payload_status.second.id()] = payload_status.second.msg();
                 }
             }
 
-            for (std::map<int, std::string>::const_iterator it = seen_ids.begin(),
-                                                            end = seen_ids.end();
-                 it != end; ++it)
+            for (const auto& seen_id : seen_ids)
             {
                 status += "; ";
-                status += it->second;
+                status += seen_id.second;
             }
         }
 
@@ -496,11 +525,9 @@ void goby::middleware::frontseat::Bluefin::initialize_huxley()
     NMEASentence nmea("$BPLOG", NMEASentence::IGNORE);
     nmea.push_back("");
     nmea.push_back("ON");
-    for (std::vector<SentenceIDs>::const_iterator it = log_requests.begin(),
-                                                  end = log_requests.end();
-         it != end; ++it)
+    for (auto log_request : log_requests)
     {
-        nmea[1] = sentence_id_map_.right.at(*it);
+        nmea[1] = sentence_id_map_.right.at(log_request);
         append_to_write_queue(nmea);
     }
 

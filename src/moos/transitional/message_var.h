@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MESSAGE_VAR20091211H
-#define MESSAGE_VAR20091211H
+#ifndef GOBY_MOOS_TRANSITIONAL_MESSAGE_VAR_H
+#define GOBY_MOOS_TRANSITIONAL_MESSAGE_VAR_H
 
 #include <bitset>
 #include <cmath>
@@ -32,6 +32,8 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
+#include <utility>
+
 #include <vector>
 
 #include <boost/lexical_cast.hpp>
@@ -56,28 +58,31 @@ class DCCLMessageVar
     // Added in Goby2 for transition to new Protobuf structure
     virtual void write_schema_to_dccl2(std::ofstream* proto_file, int sequence_number) {}
 
-    DCCLMessageVar() {}
+    DCCLMessageVar() = default;
 
     // set
-    void set_name(std::string name) { name_ = name; }
+    void set_name(std::string name) { name_ = std::move(name); }
     void set_source_var(std::string source_var)
     {
-        source_var_ = source_var;
+        source_var_ = std::move(source_var);
         source_set_ = true;
     }
-    void set_source_key(std::string source_key) { source_key_ = source_key; }
+    void set_source_key(std::string source_key) { source_key_ = std::move(source_key); }
     void set_source_set(bool source_set) { source_set_ = source_set; }
     void set_algorithms(const std::vector<std::string>& algorithm) { algorithms_ = algorithm; }
 
     // should be overloaded by derived types if supported
-    virtual void set_max(const std::string& s) { bad_overload("set_max()"); }
-    virtual void set_min(const std::string& s) { bad_overload("set_min()"); }
-    virtual void set_precision(const std::string& s) { bad_overload("set_precision()"); }
-    virtual void set_max_length(const std::string& s) { bad_overload("set_max_length()"); }
-    virtual void set_num_bytes(const std::string& s) { bad_overload("set_num_bytes()"); }
-    virtual void set_static_val(const std::string& static_val) { bad_overload("set_static_val()"); }
-    virtual void add_enum(std::string senum) { bad_overload("add_enum()"); }
-    virtual void set_max_delta(const std::string& s) { bad_overload("set_max_delta()"); }
+    virtual void set_max(const std::string& /*s*/) { bad_overload("set_max()"); }
+    virtual void set_min(const std::string& /*s*/) { bad_overload("set_min()"); }
+    virtual void set_precision(const std::string& /*s*/) { bad_overload("set_precision()"); }
+    virtual void set_max_length(const std::string& /*s*/) { bad_overload("set_max_length()"); }
+    virtual void set_num_bytes(const std::string& /*s*/) { bad_overload("set_num_bytes()"); }
+    virtual void set_static_val(const std::string& /*static_val*/)
+    {
+        bad_overload("set_static_val()");
+    }
+    virtual void add_enum(std::string /*senum*/) { bad_overload("add_enum()"); }
+    virtual void set_max_delta(const std::string& /*s*/) { bad_overload("set_max_delta()"); }
 
     void set_array_length(unsigned u) { array_length_ = u; }
     void set_array_length(const std::string& s)
@@ -118,7 +123,7 @@ class DCCLMessageVar
     virtual std::vector<std::string>* enums()
     {
         bad_overload("enums()");
-        return 0;
+        return nullptr;
     }
 
     unsigned array_length() const { return array_length_; }
@@ -147,7 +152,8 @@ class DCCLMessageVar
 
     virtual std::string additional_option_extensions() { return ""; }
 
-    virtual void set_defaults_specific(DCCLMessageVal& v, unsigned modem_id, unsigned id)
+    virtual void set_defaults_specific(DCCLMessageVal& /*v*/, unsigned /*modem_id*/,
+                                       unsigned /*id*/)
     {
         bad_overload("set_defaults_specific()");
     }

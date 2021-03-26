@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,16 +21,29 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MOOS_FRONTSEAT_CONVERT_H
+#define GOBY_MOOS_FRONTSEAT_CONVERT_H
 
-#include "goby/middleware/protobuf/frontseat_data.pb.h"
-#include "goby/moos/moos_header.h"
+class CMOOSCommClient;
 
 namespace goby
 {
+namespace middleware
+{
+namespace frontseat
+{
+namespace protobuf
+{
+class NodeStatus;
+} // namespace protobuf
+} // namespace frontseat
+} // namespace middleware
+
 namespace moos
 {
 void convert_and_publish_node_status(
     const goby::middleware::frontseat::protobuf::NodeStatus& status, CMOOSCommClient& moos_comms);
 }
 } // namespace goby
+
+#endif

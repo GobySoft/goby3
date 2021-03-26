@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,18 +22,24 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Modem20110225H
-#define Modem20110225H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_ABC_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_ABC_DRIVER_H
 
-#include "goby/time.h"
+#include <map>    // for map
+#include <string> // for string
 
-#include "driver_base.h"
-#include "goby/acomms/protobuf/abc_driver.pb.h"
+#include "driver_base.h"                         // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h" // for DriverConfig
 
 namespace goby
 {
 namespace acomms
 {
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
+
 /// \brief provides an API to the imaginary ABC modem (as an example how to write drivers)
 /// \ingroup acomms_api
 ///
@@ -41,10 +47,10 @@ class ABCDriver : public ModemDriverBase
 {
   public:
     ABCDriver();
-    void startup(const protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void startup(const protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
 
   private:
     void parse_in(const std::string& in, std::map<std::string, std::string>* out);

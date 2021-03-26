@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,26 +22,32 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DriverBase20091214H
-#define DriverBase20091214H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_DRIVER_BASE_H
+#define GOBY_ACOMMS_MODEMDRIVER_DRIVER_BASE_H
 
-#include <boost/signals2.hpp>
-#include <thread>
-
-#include "goby/acomms/acomms_constants.h"
-#include "goby/acomms/protobuf/driver_base.pb.h"
-#include "goby/acomms/protobuf/modem_message.pb.h"
-#include "goby/util/linebasedcomms.h"
+#include <atomic>                         // for atomic
+#include <boost/signals2/signal.hpp>      // for signal
+#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
+#include <iosfwd>                         // for ofstream
+#include <memory>                         // for shared_ptr, __shared_p...
+#include <string>                         // for string
 
 namespace goby
 {
 namespace util
 {
-class FlexOstream;
-}
+class LineBasedInterface;
+} // namespace util
 
 namespace acomms
 {
+namespace protobuf
+{
+class DriverConfig;
+class ModemRaw;
+class ModemTransmission;
+} // namespace protobuf
+
 /// \class ModemDriverBase driver_base.h goby/acomms/modem_driver.h
 /// \ingroup acomms_api
 /// \brief provides an abstract base class for acoustic modem drivers. This is subclassed by the various drivers for different manufacturers' modems.
@@ -173,7 +179,7 @@ class ModemDriverBase
     std::string glog_in_group_;
 
     std::shared_ptr<std::ofstream> raw_fs_;
-    bool raw_fs_connections_made_;
+    bool raw_fs_connections_made_{false};
     int order_;
 };
 } // namespace acomms

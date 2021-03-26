@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,16 +22,27 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <algorithm> // for max
+#include <cstdlib>   // for atoi
+#include <fstream>   // for operator<<, bas...
+#include <memory>    // for allocator_trait...
+#include <string>    // for string, basic_s...
+#include <utility>   // for pair
+#include <vector>    // for vector
+
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/predicate.hpp>      // for iequals
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexical_cast
+
+#include "goby/util/as.h" // for as
+
 #include "modem_id_convert.h"
-#include "goby/util/as.h"
-#include <boost/algorithm/string.hpp>
-#include <string>
-#include <vector>
 
 using namespace std;
 using goby::util::as;
 
-std::string goby::moos::ModemIdConvert::read_lookup_file(string path)
+std::string goby::moos::ModemIdConvert::read_lookup_file(const string& path)
 {
     stringstream ss;
     ss << "***********************************" << endl;
@@ -140,12 +151,12 @@ string goby::moos::ModemIdConvert::get_location_from_id(int id)
         return as<string>(id);
 }
 
-int goby::moos::ModemIdConvert::get_id_from_name(string name)
+int goby::moos::ModemIdConvert::get_id_from_name(const string& name)
 {
-    for (map<int, string>::iterator it = names_.begin(); it != names_.end(); ++it)
+    for (auto& it : names_)
     {
-        if (boost::iequals(it->second, name))
-            return it->first;
+        if (boost::iequals(it.second, name))
+            return it.first;
     }
 
     return int(as<double>(name));

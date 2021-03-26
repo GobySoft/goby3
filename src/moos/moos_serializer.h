@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -21,6 +21,9 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
+
+#ifndef GOBY_MOOS_MOOS_SERIALIZER_H
+#define GOBY_MOOS_MOOS_SERIALIZER_H
 
 #include <string>
 
@@ -52,3 +55,5 @@ class MOOSSerializer
 };
 } // namespace moos
 } // namespace goby
+
+#endif

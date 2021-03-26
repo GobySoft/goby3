@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -27,10 +27,12 @@
 #include "goby/zeromq/application/multi_thread.h"
 
 #include <boost/units/io.hpp>
+#include <memory>
+
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "test.pb.h"
+#include "goby/test/zeromq/multi_thread_app1/test.pb.h"
 using goby::glog;
 
 using namespace goby::test::zeromq::protobuf;
@@ -92,7 +94,7 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
         ready = true;
     }
 
-    ~TestThreadRx() {}
+    ~TestThreadRx() override = default;
 
     void post(const Widget& widget)
     {
@@ -219,12 +221,12 @@ int main(int argc, char* argv[])
         hold.add_required_client("TestAppRx");
         hold.add_required_client("TestAppTx");
 
-        manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(1));
+        manager_context = std::make_unique<zmq::context_t>(1);
+        router_context = std::make_unique<zmq::context_t>(1);
         goby::zeromq::Router router(*router_context, cfg);
-        t2.reset(new std::thread([&] { router.run(); }));
+        t2 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
-        t3.reset(new std::thread([&] { manager.run(); }));
+        t3 = std::make_unique<std::thread>([&] { manager.run(); });
         int wstatus;
         wait(&wstatus);
         router_context.reset();

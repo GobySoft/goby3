@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,25 +24,49 @@
 
 #include "udp_driver.h"
 
-#include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/acomms/modemdriver/mm_driver.h"
-#include "goby/util/binary.h"
+#include <list>    // for operator!=
+#include <memory>  // for unique_ptr
+#include <ostream> // for basic_ostream
+#include <string>  // for string, oper...
+#include <utility> // for pair, make_pair
+
+#include <boost/asio/basic_datagram_socket.hpp>      // for basic_datagr...
+#include <boost/asio/buffer.hpp>                     // for buffer, muta...
+#include <boost/asio/ip/address.hpp>                 // for address
+#include <boost/asio/ip/basic_endpoint.hpp>          // for basic_endpoint
+#include <boost/asio/ip/basic_resolver.hpp>          // for basic_resolv...
+#include <boost/asio/ip/basic_resolver_entry.hpp>    // for basic_resolv...
+#include <boost/asio/ip/basic_resolver_iterator.hpp> // for basic_resolv...
+#include <boost/bind.hpp>                            // for bind_t, arg
+#include <boost/function.hpp>                        // for function
+#include <boost/signals2/signal.hpp>                 // for signal
+#include <boost/system/error_code.hpp>               // for error_code
+#include <boost/units/quantity.hpp>                  // for quantity
+
+#include "goby/acomms/acomms_constants.h"          // for BROADCAST_ID
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTransmi...
+#include "goby/acomms/protobuf/udp_driver.pb.h"    // for Config, Conf...
+#include "goby/time/convert.h"                     // for SystemClock:...
+#include "goby/time/system_clock.h"                // for SystemClock
+#include "goby/time/types.h"                       // for MicroTime
+#include "goby/util/as.h"                          // for as
+#include "goby/util/asio_compat.h"                 // for io_context
+#include "goby/util/binary.h"                      // for hex_encode
 #include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+#include "goby/util/protobuf/io.h" // for operator<<
 
 using goby::glog;
-using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
 
-goby::acomms::UDPDriver::UDPDriver() {}
-goby::acomms::UDPDriver::~UDPDriver() {}
+goby::acomms::UDPDriver::UDPDriver() = default;
+goby::acomms::UDPDriver::~UDPDriver() = default;
 
 void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 {
     driver_cfg_ = cfg;
 
-    socket_.reset(new boost::asio::ip::udp::socket(io_context_));
+    socket_ = std::make_unique<boost::asio::ip::udp::socket>(io_context_);
     const auto& local = driver_cfg_.GetExtension(udp::protobuf::config).local();
     socket_->open(boost::asio::ip::udp::v4());
     socket_->bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), local.port()));

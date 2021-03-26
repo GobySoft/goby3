@@ -1,4 +1,4 @@
-// Copyright 2017-2020:
+// Copyright 2017-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterfaces20170808H
-#define TransportInterfaces20170808H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_DETAIL_INTERFACE_H
+#define GOBY_MIDDLEWARE_TRANSPORT_DETAIL_INTERFACE_H
 
 #include <chrono>
 #include <condition_variable>
@@ -377,10 +377,12 @@ int goby::middleware::PollerInterface::_poll_all(
             cv_->wait(*lock); // wait_until doesn't work well with time_point::max()
             poll_items = _transporter_poll(lock);
 
-            if (poll_items == 0)
-                goby::glog.is(goby::util::logger::DEBUG3) &&
-                    goby::glog << "PollerInterface condition_variable: no data (spurious?) wakeup"
-                               << std::endl;
+            // TODO: fix this message now that zeromq::InterProcessPortal can have
+            // a condition_variable trigger for REQUEST_HOLD_STATE
+            //if (poll_items == 0)
+            //                goby::glog.is(goby::util::logger::DEBUG3) &&
+            //                    goby::glog << "PollerInterface condition_variable: no data (spurious?) wakeup"
+            //                               << std::endl;
         }
         else
         {

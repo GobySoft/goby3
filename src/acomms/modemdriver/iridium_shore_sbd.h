@@ -1,4 +1,4 @@
-// Copyright 2015-2020:
+// Copyright 2015-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,16 +21,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IridiumShoreSBD20150227H
-#define IridiumShoreSBD20150227H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_SBD_H
+#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_SBD_H
+
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/enable_shared_from_this.hpp>
 
 #include "goby/acomms/protobuf/iridium_sbd_directip.pb.h"
 #include "goby/acomms/protobuf/rudics_shore.pb.h"
 #include "goby/time.h"
 #include "goby/util/binary.h"
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/enable_shared_from_this.hpp>
 
 namespace goby
 {

@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,11 +23,28 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "abc_driver.h"
-#include "driver_exception.h"
 
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+#include <cstdint>   // for int32_t
+#include <exception> // for exception
+#include <list>      // for operator!=
+#include <ostream>   // for operator<<
+#include <utility>   // for pair, make_pair
+#include <vector>    // for vector
+
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim, trim_copy
+
+#include "goby/acomms/protobuf/abc_driver.pb.h"    // for Config, Mess...
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTransmi...
+#include "goby/time/system_clock.h"                // for SystemClock
+#include "goby/time/types.h"                       // for MicroTime
+#include "goby/util/as.h"                          // for as
+#include "goby/util/binary.h"                      // for hex_decode
+#include "goby/util/debug_logger.h"                // for glog
+#include "goby/util/protobuf/io.h"                 // for operator<<
+
+#include "goby/time/convert.h"
 
 using goby::glog;
 using goby::util::hex_decode;

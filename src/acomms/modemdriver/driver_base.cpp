@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,20 +22,38 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/format.hpp>
-
-#include "goby/acomms/connect.h"
-#include "goby/util/debug_logger.h"
+#include <boost/bind.hpp>                                   // for bind_t, arg
+#include <boost/date_time/posix_time/posix_time_config.hpp> // for posix_time
+#include <boost/date_time/posix_time/posix_time_types.hpp>  // for second_c...
+#include <boost/date_time/posix_time/time_formatters.hpp>   // for to_iso_s...
+#include <boost/format.hpp>                                 // for basic_al...
+#include <boost/lexical_cast/bad_lexical_cast.hpp>          // for bad_lexi...
+#include <fstream>                                          // for basic_os...
+#include <list>                                             // for operator!=
+#include <unistd.h>                                         // for usleep
 
 #include "driver_base.h"
-#include "driver_exception.h"
+#include "driver_exception.h"                            // for ModemDri...
+#include "goby/acomms/connect.h"                         // for connect
+#include "goby/acomms/protobuf/driver_base.pb.h"         // for DriverCo...
+#include "goby/acomms/protobuf/modem_driver_status.pb.h" // for ModemDri...
+#include "goby/acomms/protobuf/modem_message.pb.h"       // for ModemRaw
+#include "goby/util/as.h"                                // for as
+#include "goby/util/debug_logger/flex_ostream.h"         // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"      // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h"  // for operator<<
+#include "goby/util/debug_logger/term_color.h"           // for Colors
+#include "goby/util/linebasedcomms/interface.h"          // for LineBase...
+#include "goby/util/linebasedcomms/serial_client.h"      // for SerialCl...
+#include "goby/util/linebasedcomms/tcp_client.h"         // for TCPClient
+#include "goby/util/linebasedcomms/tcp_server.h"         // for TCPServer
 
 using namespace goby::util::logger;
 using namespace goby::util::logger_lock;
 
 std::atomic<int> goby::acomms::ModemDriverBase::count_(0);
 
-goby::acomms::ModemDriverBase::ModemDriverBase() : raw_fs_connections_made_(false), order_(++count_)
+goby::acomms::ModemDriverBase::ModemDriverBase() : order_(++count_)
 {
     glog_out_group_ = "goby::acomms::modemdriver::out::" + goby::util::as<std::string>(order_);
     glog_in_group_ = "goby::acomms::modemdriver::in::" + goby::util::as<std::string>(order_);
@@ -174,7 +192,7 @@ void goby::acomms::ModemDriverBase::write_raw(const protobuf::ModemRaw& msg, boo
     *raw_fs_ << msg.raw() << std::endl;
 }
 
-void goby::acomms::ModemDriverBase::update_cfg(const protobuf::DriverConfig& cfg)
+void goby::acomms::ModemDriverBase::update_cfg(const protobuf::DriverConfig& /*cfg*/)
 {
     goby::glog.is(WARN) && goby::glog << group(glog_out_group_)
                                       << "Updating configuration is not implemented in this driver."

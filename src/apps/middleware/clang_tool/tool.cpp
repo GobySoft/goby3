@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,15 +21,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <iostream>
+#include <iostream> // for operator<<, endl, bas...
+#include <stdlib.h> // for exit, EXIT_FAILURE
+#include <string>   // for string
 
-#include "clang/Frontend/FrontendActions.h"
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "clang/Tooling/Tooling.h"
+#include <llvm/ADT/ArrayRef.h>  // for ArrayRef
+#include <llvm/ADT/StringRef.h> // for StringRef
 
-#include "llvm/Support/CommandLine.h"
-
-#include "actions.h"
+#include "actions.h"                           // for generate, visualize
+#include "clang/Tooling/CommonOptionsParser.h" // for CommonOptionsParser
+#include "clang/Tooling/Tooling.h"             // for ClangTool
+#include "llvm/Support/CommandLine.h"          // for opt, cat, desc, value...
 
 namespace cl = llvm::cl;
 

@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MOOSAIS201910122H
-#define MOOSAIS201910122H
+#ifndef GOBY_MIDDLEWARE_AIS_H
+#define GOBY_MIDDLEWARE_AIS_H
 
 #include <numeric>
 
@@ -118,11 +118,16 @@ class AISConverter
         auto cogs_sin_mean =
             std::accumulate(cogs_sin.begin(), cogs_sin.end(), 0.0) / cogs_sin.size();
 
-        pos.set_speed_over_ground_with_units(sog_sum / quantity<si::dimensionless>(sogs.size()));
+        if (status.speed().has_over_ground())
+            pos.set_speed_over_ground_with_units(status.speed().over_ground_with_units());
+        else
+            pos.set_speed_over_ground_with_units(sog_sum /
+                                                 quantity<si::dimensionless>(sogs.size()));
 
         decltype(ninety_degrees) cog_heading_mean(
             boost::units::atan2(quantity<si::dimensionless>(cogs_sin_mean),
                                 quantity<si::dimensionless>(cogs_cos_mean)));
+
         pos.set_course_over_ground_with_units(ninety_degrees - cog_heading_mean);
 
         Voyage voy;

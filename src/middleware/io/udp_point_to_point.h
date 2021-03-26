@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,10 +21,39 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UDP_POINT_TO_POINT_20190815H
-#define UDP_POINT_TO_POINT_20190815H
+#ifndef GOBY_MIDDLEWARE_IO_UDP_POINT_TO_POINT_H
+#define GOBY_MIDDLEWARE_IO_UDP_POINT_TO_POINT_H
+
+#include <iosfwd> // for size_t
+#include <memory> // for shared_ptr, __sh...
+#include <string> // for to_string
+
+#include <boost/asio/buffer.hpp>       // for buffer
+#include <boost/asio/ip/udp.hpp>       // for udp, udp::endpoint
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer, Pub...
+#include "goby/middleware/protobuf/io.pb.h"         // for IOData
 
 #include "udp_one_to_many.h"
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class UDPPointToPointConfig;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {
@@ -37,27 +66,31 @@ template <const goby::middleware::Group& line_in_group,
           // by default publish all incoming traffic to interprocess for logging
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           // but only subscribe on interthread for outgoing traffic
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
+          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+          template <class> class ThreadType = goby::middleware::SimpleThread>
 class UDPPointToPointThread
     : public UDPOneToManyThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                goby::middleware::protobuf::UDPPointToPointConfig>
+                                goby::middleware::protobuf::UDPPointToPointConfig, ThreadType>
 {
     using Base = UDPOneToManyThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                    goby::middleware::protobuf::UDPPointToPointConfig>;
+                                    goby::middleware::protobuf::UDPPointToPointConfig, ThreadType>;
 
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
     UDPPointToPointThread(const goby::middleware::protobuf::UDPPointToPointConfig& config)
-        : Base(config)
+        : Base(config, false)
     {
         boost::asio::ip::udp::resolver resolver(this->mutable_io());
         remote_endpoint_ =
             *resolver.resolve({boost::asio::ip::udp::v4(), this->cfg().remote_address(),
                                std::to_string(this->cfg().remote_port())});
+
+        auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+        this->interthread().template publish<line_in_group>(ready);
     }
 
-    ~UDPPointToPointThread() {}
+    ~UDPPointToPointThread() override {}
 
   private:
     /// \brief Starts an asynchronous write from data published
@@ -73,10 +106,10 @@ class UDPPointToPointThread
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
 void goby::middleware::io::UDPPointToPointThread<
-    line_in_group, line_out_group, publish_layer,
-    subscribe_layer>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
+    line_in_group, line_out_group, publish_layer, subscribe_layer,
+    ThreadType>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
 {
     this->mutable_socket().async_send_to(
         boost::asio::buffer(io_msg->data()), remote_endpoint_,

@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef Publisher20190627H
-#define Publisher20190627H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_PUBLISHER_H
+#define GOBY_MIDDLEWARE_TRANSPORT_PUBLISHER_H
 
 #include <functional>
 
@@ -91,6 +91,8 @@ template <typename Data> class Publisher
     acked_func_type acked_func() const { return acked_func_; }
     /// \brief Returns the expired data callback  (or an empty function if none is set)
     expired_func_type expired_func() const { return expired_func_; }
+
+    bool has_set_group_func() const { return bool(set_group_func_); }
 
   private:
     goby::middleware::protobuf::TransporterConfig cfg_;

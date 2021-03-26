@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -20,6 +20,9 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
+
+#ifndef GOBY_ACOMMS_BUFFER_DYNAMIC_BUFFER_H
+#define GOBY_ACOMMS_BUFFER_DYNAMIC_BUFFER_H
 
 #include <deque>
 #include <type_traits>
@@ -615,3 +618,5 @@ template <typename T, typename Clock> std::atomic<int> DynamicBuffer<T, Clock>::
 
 } // namespace acomms
 } // namespace goby
+
+#endif

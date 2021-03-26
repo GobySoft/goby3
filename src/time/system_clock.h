@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TIME_SYSTEM_CLOCK_20190530H
-#define TIME_SYSTEM_CLOCK_20190530H
+#ifndef GOBY_TIME_SYSTEM_CLOCK_H
+#define GOBY_TIME_SYSTEM_CLOCK_H
 
 #include <chrono>
 #include <cstdint>
@@ -66,25 +66,19 @@ struct SystemClock
         auto now = system_clock::now();
 
         if (!SimulatorSettings::using_sim_time)
-        {
             return time_point(duration_cast<duration>(now.time_since_epoch()));
-        }
         else
-        {
-            // warp time (t) by warp factor (w), relative to reference_time (t0)
-            // so t_sim = (t-t0)*w+t0
-            std::int64_t microseconds_since_reference =
-                (now - SimulatorSettings::reference_time) / microseconds(1);
-            std::int64_t warped_microseconds_since_reference =
-                SimulatorSettings::warp_factor * microseconds_since_reference;
-            return time_point(
-                duration_cast<duration>(microseconds(warped_microseconds_since_reference)) +
-                duration_cast<duration>(SimulatorSettings::reference_time.time_since_epoch()));
-        }
+            return warp(now);
     }
 
     /// \brief return the current system clock time in one of the representations supported by the convert() family of functions
     template <typename TimeType> static TimeType now();
+
+    static goby::time::SystemClock::time_point
+    warp(const std::chrono::system_clock::time_point& real_time);
+
+    static std::chrono::system_clock::time_point
+    unwarp(const goby::time::SystemClock::time_point& sim_time);
 };
 
 } // namespace time

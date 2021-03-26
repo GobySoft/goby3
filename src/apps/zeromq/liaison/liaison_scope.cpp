@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,26 +22,46 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <list> // for operator!=, ope...
+
+#include <Wt/WApplication>                           // for WApplication, wApp
+#include <Wt/WBreak>                                 // for WBreak
+#include <Wt/WComboBox>                              // for WComboBox
+#include <Wt/WDateTime>                              // for WDateTime
+#include <Wt/WGlobal>                                // for Horizontal, Key_P
+#include <Wt/WGroupBox>                              // for WGroupBox
+#include <Wt/WLength>                                // for WLength, WLengt...
+#include <Wt/WLineEdit>                              // for WLineEdit
+#include <Wt/WModelIndex>                            // for DescendingOrder
+#include <Wt/WPushButton>                            // for WPushButton
+#include <Wt/WSignal>                                // for EventSignal
+#include <Wt/WSortFilterProxyModel>                  // for WSortFilterProx...
+#include <Wt/WStandardItem>                          // for WStandardItem
+#include <Wt/WString>                                // for WString
+#include <Wt/WStringListModel>                       // for WStringListModel
+#include <Wt/WText>                                  // for WText
+#include <Wt/WTimer>                                 // for WTimer
+#include <Wt/WVBoxLayout>                            // for WVBoxLayout
+#include <Wt/WWidget>                                // for WWidget
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim
+#include <boost/any.hpp>                             // for any_cast
+#include <boost/bind.hpp>                            // for bind_t, list_av...
+#include <boost/date_time/posix_time/ptime.hpp>      // for ptime
+#include <boost/smart_ptr/shared_ptr.hpp>            // for shared_ptr
+#include <google/protobuf/descriptor.h>              // for Descriptor
+
+#include "goby/time/convert.h"                      // for SystemClock::now
+#include "goby/time/system_clock.h"                 // for SystemClock
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for DEBUG2, logger
+
 #include "liaison_scope.h"
 
-#include <Wt/Chart/WCartesianChart>
-#include <Wt/WAnchor>
-#include <Wt/WApplication>
-#include <Wt/WDateTime>
-#include <Wt/WGroupBox>
-#include <Wt/WLineEdit>
-#include <Wt/WPanel>
-#include <Wt/WPushButton>
-#include <Wt/WSelectionBox>
-#include <Wt/WSortFilterProxyModel>
-#include <Wt/WStandardItem>
-#include <Wt/WStringListModel>
-#include <Wt/WTable>
-#include <Wt/WTextArea>
-#include <Wt/WTimer>
-#include <Wt/WVBoxLayout>
-
-#include "goby/time.h"
+namespace Wt
+{
+class WAbstractItemModel;
+} // namespace Wt
 
 using namespace Wt;
 using namespace goby::util::logger_lock;
@@ -165,7 +185,7 @@ void goby::apps::zeromq::LiaisonScope::update_row(const std::string& group,
         attach_pb_rows(items, msg);
 }
 
-void goby::apps::zeromq::LiaisonScope::handle_global_key(Wt::WKeyEvent event)
+void goby::apps::zeromq::LiaisonScope::handle_global_key(const Wt::WKeyEvent& event)
 {
     switch (event.key())
     {
@@ -194,13 +214,12 @@ void goby::apps::zeromq::LiaisonScope::resume()
     history_header_div_->flush_buffer();
 }
 
-void goby::apps::zeromq::LiaisonScope::inbox(const std::string& group,
-                                       std::shared_ptr<const google::protobuf::Message> msg)
+void goby::apps::zeromq::LiaisonScope::inbox(
+    const std::string& group, const std::shared_ptr<const google::protobuf::Message>& msg)
 {
     if (is_paused())
     {
-        std::map<std::string, HistoryContainer::MVC>::iterator hist_it =
-            history_header_div_->history_models_.find(group);
+        auto hist_it = history_header_div_->history_models_.find(group);
         if (hist_it != history_header_div_->history_models_.end())
         {
             // buffer for later display
@@ -220,7 +239,7 @@ void goby::apps::zeromq::LiaisonScope::handle_message(const std::string& group,
                                                 bool fresh_message)
 {
     //    glog.is(DEBUG1) && glog << "LiaisonScope: got message:  " << msg << std::endl;
-    std::map<std::string, int>::iterator it = msg_map_.find(group);
+    auto it = msg_map_.find(group);
     if (it != msg_map_.end())
     {
         std::vector<WStandardItem*> items;
@@ -290,7 +309,7 @@ goby::apps::zeromq::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(
 // }
 
 goby::apps::zeromq::LiaisonScopeProtobufModel::LiaisonScopeProtobufModel(
-    const protobuf::ProtobufScopeConfig& pb_scope_config, Wt::WContainerWidget* parent /*= 0*/)
+    const protobuf::ProtobufScopeConfig& /*pb_scope_config*/, Wt::WContainerWidget* parent /*= 0*/)
     : WStandardItemModel(0, protobuf::ProtobufScopeConfig::COLUMN_MAX + 1, parent)
 {
     this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_GROUP, Horizontal,
@@ -397,10 +416,10 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
 
     if (!history_models_.count(selected_key))
     {
-        Wt::WGroupBox* new_container = new WGroupBox("History");
+        auto* new_container = new WGroupBox("History");
 
-        Wt::WContainerWidget* text_container = new WContainerWidget(new_container);
-        WPushButton* remove_history_button = new WPushButton(selected_key, text_container);
+        auto* text_container = new WContainerWidget(new_container);
+        auto* remove_history_button = new WPushButton(selected_key, text_container);
 
         remove_history_button->clicked().connect(
             boost::bind(&HistoryContainer::handle_remove_history, this, selected_key));
@@ -414,7 +433,7 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
         Wt::WStandardItemModel* new_model =
             new LiaisonScopeProtobufModel(pb_scope_config_, new_container);
 
-        Wt::WSortFilterProxyModel* new_proxy = new Wt::WSortFilterProxyModel(new_container);
+        auto* new_proxy = new Wt::WSortFilterProxyModel(new_container);
         new_proxy->setSourceModel(new_model);
 
         // Chart::WCartesianChart* chart = new Chart::WCartesianChart(new_container);
@@ -469,7 +488,8 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
     }
 }
 
-void goby::apps::zeromq::LiaisonScope::HistoryContainer::handle_remove_history(std::string key)
+void goby::apps::zeromq::LiaisonScope::HistoryContainer::handle_remove_history(
+    const std::string& key)
 {
     glog.is(DEBUG2) && glog << "LiaisonScope: removing history for: " << key << std::endl;
 
@@ -492,7 +512,7 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::toggle_history_plot(Wt:
 void goby::apps::zeromq::LiaisonScope::HistoryContainer::display_message(
     const std::string& group, const google::protobuf::Message& msg)
 {
-    std::map<std::string, HistoryContainer::MVC>::iterator hist_it = history_models_.find(group);
+    auto hist_it = history_models_.find(group);
     if (hist_it != history_models_.end())
     {
         // when the pb_row children exist, Wt segfaults when removing the parent... for now don't attach pb_rows for history items

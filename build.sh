@@ -10,11 +10,9 @@ fi
 
 set -e -u
 echo "Configuring Goby"
-echo "cmake .. ${GOBY_CMAKE_FLAGS}"
 mkdir -p build
 pushd build >& /dev/null
-cmake .. ${GOBY_CMAKE_FLAGS}
+(set -x; cmake .. ${GOBY_CMAKE_FLAGS})
 echo "Building Goby"
-echo "make ${GOBY_MAKE_FLAGS} $@"
-make ${GOBY_MAKE_FLAGS} $@
+(set -x; cmake --build . -- -j`nproc` ${GOBY_MAKE_FLAGS} $@ )
 popd >& /dev/null

@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,13 +21,31 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <boost/units/quantity.hpp> // for operator/
+#include <memory>                   // for shared...
+#include <ostream>                  // for basic_...
+#include <regex>                    // for match_...
+#include <set>                      // for set
+#include <string>                   // for operat...
+#include <unordered_map>            // for unorde...
+#include <vector>                   // for vector
+
 #include "goby/middleware/marshalling/protobuf.h"
 
-#include "goby/middleware/application/multi_thread.h"
-#include "goby/middleware/io/line_based/pty.h"
-#include "goby/middleware/io/line_based/serial.h"
-
-#include "config.pb.h"
+#include "goby/apps/middleware/serial_mux/config.pb.h"        // for Serial...
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/application/multi_thread.h"         // for MultiT...
+#include "goby/middleware/group.h"                            // for Group
+#include "goby/middleware/io/detail/io_interface.h"           // for PubSub...
+#include "goby/middleware/io/line_based/pty.h"                // for PTYThr...
+#include "goby/middleware/io/line_based/serial.h"             // for Serial...
+#include "goby/middleware/protobuf/io.pb.h"                   // for IOData
+#include "goby/middleware/protobuf/pty_config.pb.h"           // for PTYConfig
+#include "goby/middleware/protobuf/serial_config.pb.h"        // for Serial...
+#include "goby/middleware/transport/interthread.h"            // for InterT...
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/util/debug_logger/logger_manipulators.h"       // for operat...
 
 namespace goby
 {
@@ -61,7 +79,7 @@ class SerialMux
             goby::middleware::io::PubSubLayer::INTERTHREAD>;
 
         interthread().subscribe<groups::pty_secondary_in>(
-            [this](std::shared_ptr<const goby::middleware::protobuf::IOData> from_pty) {
+            [this](const std::shared_ptr<const goby::middleware::protobuf::IOData>& from_pty) {
                 if (allow_write_.count(from_pty->index()))
                 {
                     auto to_serial =

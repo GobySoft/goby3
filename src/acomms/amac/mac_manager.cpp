@@ -1,4 +1,4 @@
-// Copyright 2010-2020:
+// Copyright 2010-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,15 +22,21 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <cmath>
-#include <iostream>
+#include <boost/date_time/posix_time/posix_time_duration.hpp> // for seconds
+#include <boost/date_time/posix_time/ptime.hpp>               // for ptime
+#include <cstdlib>                                            // for abs
+#include <iostream>                                           // for basic_...
 
-#include <boost/date_time/gregorian/gregorian_types.hpp>
-
-#include "goby/time/io.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
-
+#include "goby/acomms/acomms_constants.h"               // for BROADC...
+#include "goby/time/convert.h"                          // for convert
+#include "goby/time/io.h"                               // for operat...
+#include "goby/time/types.h"                            // for MicroTime
+#include "goby/util/as.h"                               // for as
+#include "goby/util/debug_logger/flex_ostream.h"        // for operat...
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h" // for operat...
+#include "goby/util/debug_logger/term_color.h"          // for green
+#include "goby/util/protobuf/io.h"                      // for operat...
 #include "mac_manager.h"
 
 using goby::glog;
@@ -40,7 +46,7 @@ using namespace goby::util::tcolor;
 int goby::acomms::MACManager::count_;
 
 goby::acomms::MACManager::MACManager()
-    : current_slot_(std::list<protobuf::ModemTransmission>::begin()), started_up_(false)
+    : current_slot_(std::list<protobuf::ModemTransmission>::begin())
 {
     ++count_;
 
@@ -48,7 +54,7 @@ goby::acomms::MACManager::MACManager()
     goby::glog.add_group(glog_mac_group_, util::Colors::blue);
 }
 
-goby::acomms::MACManager::~MACManager() {}
+goby::acomms::MACManager::~MACManager() = default;
 
 void goby::acomms::MACManager::startup(const protobuf::MACConfig& cfg)
 {
@@ -155,10 +161,7 @@ void goby::acomms::MACManager::begin_slot()
     {
         glog << group(glog_mac_group_) << "Cycle order: [";
 
-        for (std::list<protobuf::ModemTransmission>::iterator
-                 it = std::list<protobuf::ModemTransmission>::begin(),
-                 n = end();
-             it != n; ++it)
+        for (auto it = std::list<protobuf::ModemTransmission>::begin(), n = end(); it != n; ++it)
         {
             if (it == current_slot_)
                 glog << group(glog_mac_group_) << " " << green;
@@ -300,7 +303,6 @@ goby::time::SystemClock::duration goby::acomms::MACManager::cycle_duration()
 
 std::ostream& goby::acomms::operator<<(std::ostream& os, const MACManager& mac)
 {
-    for (std::list<protobuf::ModemTransmission>::const_iterator it = mac.begin(), n = mac.end();
-         it != n; ++it)
-    { os << *it; } return os;
+    for (const auto& it : mac) { os << it; }
+    return os;
 }

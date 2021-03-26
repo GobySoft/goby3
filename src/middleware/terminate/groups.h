@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,9 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
-#ifndef TERMINATE_GROUPS_20181128H
-#define TERMINATE_GROUPS_20181128H
+#ifndef GOBY_MIDDLEWARE_TERMINATE_GROUPS_H
+#define GOBY_MIDDLEWARE_TERMINATE_GROUPS_H
 
 #include "goby/middleware/group.h"
 

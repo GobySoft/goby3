@@ -1,4 +1,4 @@
-// Copyright 2017-2020:
+// Copyright 2017-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,41 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/acomms/bind.h"
-#include "goby/acomms/modem_driver.h"
+#include <deque>         // for deque
+#include <limits>        // for numeric_...
+#include <list>          // for operator!=
+#include <memory>        // for allocator
+#include <type_traits>   // for __decay_...
+#include <unordered_map> // for unordere...
+#include <utility>       // for pair
+
+#include <boost/function.hpp>                   // for function
+#include <boost/signals2/signal.hpp>            // for mutex
+#include <boost/smart_ptr/shared_ptr.hpp>       // for shared_ptr
+#include <boost/units/systems/si/frequency.hpp> // for frequency
+#include <google/protobuf/descriptor.h>         // for Descriptor
+
+#include "goby/middleware/marshalling/protobuf.h"
+
+#include "goby/acomms/acomms_constants.h"                   // for BROADCAS...
+#include "goby/acomms/bind.h"                               // for bind
+#include "goby/acomms/modemdriver/benthos_atm900_driver.h"  // for BenthosA...
+#include "goby/acomms/modemdriver/iridium_driver.h"         // for IridiumD...
+#include "goby/acomms/modemdriver/iridium_shore_driver.h"   // for IridiumS...
+#include "goby/acomms/modemdriver/mm_driver.h"              // for MMDriver
+#include "goby/acomms/modemdriver/popoto_driver.h"          // for PopotoDr...
+#include "goby/acomms/modemdriver/udp_driver.h"             // for UDPDriver
+#include "goby/acomms/modemdriver/udp_multicast_driver.h"   // for UDPMulti...
+#include "goby/acomms/protobuf/buffer.pb.h"                 // for DynamicB...
+#include "goby/acomms/protobuf/driver_base.pb.h"            // for DriverCo...
+#include "goby/acomms/protobuf/modem_message.pb.h"          // for ModemTra...
+#include "goby/exception.h"                                 // for Exception
+#include "goby/middleware/protobuf/transporter_config.pb.h" // for Transpor...
+#include "goby/middleware/transport/intervehicle/groups.h"  // for metadata...
+#include "goby/middleware/transport/publisher.h"            // for Publisher
+#include "goby/util/debug_logger/flex_ostreambuf.h"         // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h"     // for operator<<
+#include "goby/util/debug_logger/term_color.h"              // for Colors
 
 #include "driver_thread.h"
 
@@ -40,22 +73,24 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
 
 {
     goby::glog.add_group(glog_group_, util::Colors::blue);
-    interthread_.reset(new InterThreadTransporter);
-    interprocess_.reset(new InterProcessForwarder<InterThreadTransporter>(*interthread_));
+    interthread_ = std::make_unique<InterThreadTransporter>();
+    interprocess_ = std::make_unique<InterProcessForwarder<InterThreadTransporter>>(*interthread_);
     this->set_transporter(interprocess_.get());
 
     interprocess_->subscribe<groups::modem_data_out, SerializerTransporterMessage>(
-        [this](std::shared_ptr<const SerializerTransporterMessage> msg) { _buffer_message(msg); });
+        [this](std::shared_ptr<const SerializerTransporterMessage> msg) {
+            _buffer_message(std::move(msg));
+        });
 
     interprocess_->subscribe<groups::modem_subscription_forward_tx,
                              intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
-        [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
+        [this](const std::shared_ptr<const intervehicle::protobuf::Subscription>& subscription) {
             _forward_subscription(*subscription);
         });
 
     interprocess_->subscribe<groups::modem_subscription_forward_rx,
                              intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
-        [this](std::shared_ptr<const intervehicle::protobuf::Subscription> subscription) {
+        [this](const std::shared_ptr<const intervehicle::protobuf::Subscription>& subscription) {
             _accept_subscription(*subscription);
         });
 
@@ -69,27 +104,31 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
         switch (cfg().driver().driver_type())
         {
             case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
-                driver_.reset(new goby::acomms::MMDriver);
+                driver_ = std::make_unique<goby::acomms::MMDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_IRIDIUM:
-                driver_.reset(new goby::acomms::IridiumDriver);
+                driver_ = std::make_unique<goby::acomms::IridiumDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_UDP:
-                driver_.reset(new goby::acomms::UDPDriver);
+                driver_ = std::make_unique<goby::acomms::UDPDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
-                driver_.reset(new goby::acomms::UDPMulticastDriver);
+                driver_ = std::make_unique<goby::acomms::UDPMulticastDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
-                driver_.reset(new goby::acomms::IridiumShoreDriver);
+                driver_ = std::make_unique<goby::acomms::IridiumShoreDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_BENTHOS_ATM900:
-                driver_.reset(new goby::acomms::BenthosATM900Driver);
+                driver_ = std::make_unique<goby::acomms::BenthosATM900Driver>();
+                break;
+
+            case goby::acomms::protobuf::DRIVER_POPOTO:
+                driver_ = std::make_unique<goby::acomms::PopotoDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_POPOTO:
@@ -116,7 +155,10 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     goby::acomms::bind(mac_, *driver_);
 
     mac_.startup(cfg().mac());
-    driver_->startup(cfg().driver());
+
+    auto driver_cfg = cfg().driver();
+    driver_cfg.set_modem_id(_id_within_subnet(cfg().driver().modem_id()));
+    driver_->startup(driver_cfg);
 
     subscription_key_.set_marshalling_scheme(MarshallingScheme::DCCL);
     subscription_key_.set_type(intervehicle::protobuf::Subscription::descriptor()->full_name());
@@ -166,7 +208,11 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
     if (subscription.has_metadata())
         detail::DCCLSerializerParserHelperBase::load_metadata(subscription.metadata());
 
-    subscription.mutable_header()->set_src(cfg().driver().modem_id());
+    if (subscription.intervehicle().broadcast())
+        subscription.mutable_header()->set_src(_broadcast_id());
+    else
+        subscription.mutable_header()->set_src(cfg().driver().modem_id());
+
     for (auto dest : subscription.header().dest())
     {
         if (!_dest_is_in_subnet(dest))
@@ -258,7 +304,14 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
             }
         }
     }
-    msg->set_dest(dest);
+
+    if (!msg->has_ack_requested())
+        msg->set_ack_requested(false);
+
+    // convert src,dest to values with in subnet for modems that can't address large ids
+    // e.g. 0x34 -> 0x04 for subnet mask 0xFFF0
+    msg->set_src(_id_within_subnet(msg->src()));
+    msg->set_dest(_id_within_subnet(dest));
 }
 
 goby::middleware::intervehicle::ModemDriverThread::subbuffer_id_type
@@ -353,7 +406,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_try_create_or_update_buffer(
-    modem_id_type dest_id, subbuffer_id_type buffer_id)
+    modem_id_type dest_id, const subbuffer_id_type& buffer_id)
 {
     auto pub_it_pair = publisher_buffer_cfg_.equal_range(buffer_id);
     auto& dest_subscriber_buffer_cfg = subscriber_buffer_cfg_[dest_id];
@@ -400,7 +453,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_try_create_or_update_bu
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_buffer_message(
-    std::shared_ptr<const SerializerTransporterMessage> msg)
+    const std::shared_ptr<const SerializerTransporterMessage>& msg)
 {
     if (msg->key().has_metadata())
         detail::DCCLSerializerParserHelperBase::load_metadata(msg->key().metadata());
@@ -492,12 +545,16 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
 {
     glog.is(DEBUG1) && glog << group(glog_group_) << "Received: " << rx_msg.ShortDebugString()
                             << std::endl;
+
+    int full_dest = _full_id(rx_msg.dest());
+    int full_src = _full_id(rx_msg.src());
+
     if (rx_msg.type() == goby::acomms::protobuf::ModemTransmission::ACK)
     {
-        if (rx_msg.dest() != cfg().driver().modem_id())
+        if (full_dest != cfg().driver().modem_id())
         {
             glog.is(WARN) && glog << group(glog_group_)
-                                  << "ignoring ack for modem_id = " << rx_msg.dest() << std::endl;
+                                  << "ignoring ack for modem_id = " << full_dest << std::endl;
             return;
         }
         for (int i = 0, n = rx_msg.acked_frame_size(); i < n; ++i)
@@ -505,17 +562,17 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
             int frame_number = rx_msg.acked_frame(i);
             if (!pending_ack_.count(frame_number))
             {
-                glog.is(DEBUG1) &&
-                    glog << group(glog_group_) << "got ack but we were not expecting one from "
-                         << rx_msg.src() << " for frame " << frame_number << std::endl;
+                glog.is(DEBUG1) && glog << group(glog_group_)
+                                        << "got ack but we were not expecting one from " << full_src
+                                        << " for frame " << frame_number << std::endl;
                 continue;
             }
             else
             {
                 protobuf::AckMessagePair ack_pair;
                 protobuf::AckData& ack_data = *ack_pair.mutable_data();
-                ack_data.mutable_header()->set_src(rx_msg.src());
-                ack_data.mutable_header()->add_dest(rx_msg.dest());
+                ack_data.mutable_header()->set_src(full_src);
+                ack_data.mutable_header()->add_dest(full_dest);
                 auto now = goby::time::SteadyClock::now();
 
                 auto values_to_ack_it = pending_ack_.find(frame_number);
@@ -542,8 +599,7 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
     }
     else
     {
-        if (rx_msg.dest() == goby::acomms::BROADCAST_ID ||
-            rx_msg.dest() == cfg().driver().modem_id())
+        if (full_dest == _broadcast_id() || full_dest == cfg().driver().modem_id())
         {
             for (auto& frame : rx_msg.frame())
             {

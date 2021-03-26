@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,12 +24,9 @@
 
 // courtesy header for the ASIO line-based comms library
 
-#ifndef LINEBASEDCOMMSCOURTESY20091211H
-#define LINEBASEDCOMMSCOURTESY20091211H
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_H
+#define GOBY_UTIL_LINEBASEDCOMMS_H
 
-#include "goby/util/linebasedcomms/client_base.h"
-#include "goby/util/linebasedcomms/connection.h"
-#include "goby/util/linebasedcomms/interface.h"
 #include "goby/util/linebasedcomms/nmea_sentence.h"
 #include "goby/util/linebasedcomms/serial_client.h"
 #include "goby/util/linebasedcomms/tcp_client.h"

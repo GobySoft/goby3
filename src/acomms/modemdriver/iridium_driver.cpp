@@ -1,10 +1,9 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Russ Webber <russ@rw.id.au>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -23,30 +22,64 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <algorithm>
+#include <boost/algorithm/string/classification.hpp>   // for is_any_ofF
+#include <boost/algorithm/string/predicate.hpp>        // for all
+#include <boost/algorithm/string/predicate_facade.hpp> // for predicate...
+#include <boost/algorithm/string/trim.hpp>             // for trim_copy
+#include <boost/asio/serial_port.hpp>                  // for serial_port
+#include <boost/circular_buffer.hpp>                   // for circular_...
+#include <boost/function.hpp>                          // for function
+#include <boost/signals2/expired_slot.hpp>             // for expired_slot
+#include <boost/signals2/signal.hpp>                   // for signal
+#include <boost/statechart/state_machine.hpp>          // for state_mac...
+#include <cerrno>                                      // for errno
+#include <chrono>                                      // for operator/
+#include <cstring>                                     // for strerror
+#include <dccl/common.h>                               // for operator<<
+#include <dccl/option_extensions.pb.h>                 // for DCCLField...
+#include <google/protobuf/descriptor.h>                // for Descriptor
+#include <google/protobuf/descriptor.pb.h>             // for FieldOptions
+#include <list>                                        // for operator!=
+#include <ostream>                                     // for operator<<
+#include <string>                                      // for string
+#include <sys/ioctl.h>                                 // for ioctl
+#include <typeinfo>                                    // for bad_cast
+#include <unistd.h>                                    // for usleep
 
+#include "goby/acomms/acomms_constants.h"                  // for BITS_IN_BYTE
+#include "goby/acomms/modemdriver/driver_exception.h"      // for ModemDriv...
+#include "goby/acomms/modemdriver/iridium_driver_common.h" // for RATE_RUDICS
+#include "goby/acomms/modemdriver/rudics_packet.h"         // for serialize...
+#include "goby/acomms/protobuf/modem_driver_status.pb.h"   // for ModemDriv...
+#include "goby/time/system_clock.h"                        // for SystemClock
+#include "goby/util/binary.h"                              // for hex_encode
+#include "goby/util/debug_logger/flex_ostream.h"           // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"        // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h"    // for operator<<
+#include "goby/util/linebasedcomms/interface.h"            // for LineBased...
+#include "goby/util/linebasedcomms/serial_client.h"        // for SerialClient
+#include "goby/util/linebasedcomms/tcp_client.h"           // for TCPClient
+#include "goby/util/protobuf/io.h"                         // for operator<<
 #include "iridium_driver.h"
 
-#include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/acomms/modemdriver/rudics_packet.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+namespace dccl
+{
+class Codec;
+} // namespace dccl
 
 using goby::glog;
 using namespace goby::util::logger;
 
 std::shared_ptr<dccl::Codec> goby::acomms::iridium_header_dccl_;
 
-goby::acomms::IridiumDriver::IridiumDriver()
-    : fsm_(driver_cfg_), last_triple_plus_time_(0), serial_fd_(-1), next_frame_(0)
+goby::acomms::IridiumDriver::IridiumDriver() : fsm_(driver_cfg_)
 {
     init_iridium_dccl();
 
     //    assert(byte_string_to_uint32(uint32_to_byte_string(16540)) == 16540);
 }
 
-goby::acomms::IridiumDriver::~IridiumDriver() {}
+goby::acomms::IridiumDriver::~IridiumDriver() = default;
 
 void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
 {
@@ -97,7 +130,6 @@ void goby::acomms::IridiumDriver::modem_init()
 
         if (iridium_driver_cfg().use_dtr() && modem().active() && !dtr_set)
         {
-            serial_fd_ = dynamic_cast<util::SerialClient&>(modem()).socket().native_handle();
             set_dtr(true);
             glog.is(DEBUG1) && glog << group(glog_out_group()) << "DTR is: " << query_dtr()
                                     << std::endl;
@@ -117,35 +149,26 @@ void goby::acomms::IridiumDriver::modem_init()
 
 void goby::acomms::IridiumDriver::set_dtr(bool state)
 {
-    int status;
-    if (ioctl(serial_fd_, TIOCMGET, &status) == -1)
-    {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
-    }
-
-    glog.is(DEBUG1) && glog << group(glog_out_group()) << "Setting DTR to "
-                            << (state ? "high" : "low") << std::endl;
-    if (state)
-        status |= TIOCM_DTR;
-    else
-        status &= ~TIOCM_DTR;
-    if (ioctl(serial_fd_, TIOCMSET, &status) == -1)
-    {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
-    }
+    auto& serial_client = dynamic_cast<util::SerialClient&>(modem());
+    middleware::protobuf::SerialCommand command;
+    command.set_command(state ? middleware::protobuf::SerialCommand::DTR_HIGH
+                              : middleware::protobuf::SerialCommand::DTR_LOW);
+    serial_client.send_command(command);
 }
 
 bool goby::acomms::IridiumDriver::query_dtr()
 {
-    int status;
-    if (ioctl(serial_fd_, TIOCMGET, &status) == -1)
+    auto& serial_client = dynamic_cast<util::SerialClient&>(modem());
+
+    if (!serial_client.read_status().has_dtr())
     {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
+        glog.is(WARN) && glog << "No serial status information available" << std::endl;
+        return false;
     }
-    return (status & TIOCM_DTR);
+    else
+    {
+        return serial_client.read_status().dtr();
+    }
 }
 
 void goby::acomms::IridiumDriver::hangup()
@@ -226,7 +249,7 @@ void goby::acomms::IridiumDriver::do_work()
     //    display_state_cfg(&glog);
     double now = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
 
-    const iridium::fsm::OnCall* on_call = fsm_.state_cast<const iridium::fsm::OnCall*>();
+    const auto* on_call = fsm_.state_cast<const iridium::fsm::OnCall*>();
 
     if (on_call)
     {
@@ -385,7 +408,7 @@ void goby::acomms::IridiumDriver::display_state_cfg(std::ostream* os)
 
         const iridium::fsm::IridiumDriverFSM::state_base_type* pState = &*pLeafState;
 
-        while (pState != 0)
+        while (pState != nullptr)
         {
             if (pState != &*pLeafState)
             {

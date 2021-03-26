@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,16 +22,16 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/classification.hpp>
+#include <boost/circular_buffer.hpp>
+#include <chrono>      // for operator/, seconds, tim...
+#include <memory>      // for allocator_traits<>::val...
+#include <type_traits> // for __decay_and_strip<>::__...
+#include <unistd.h>    // for sleep
 
-#include "goby/acomms/acomms_constants.h"
-#include "goby/time.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-
+#include "goby/acomms/acomms_constants.h" // for BITS_IN_BYTE
+#include "goby/time/system_clock.h"       // for SystemClock, SystemCloc...
 #include "iridium_driver_fsm.h"
-#include "rudics_packet.h"
+#include "rudics_packet.h" // for parse_rudics_packet
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -286,7 +286,7 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvAck& e)
     }
 }
 
-boost::statechart::result goby::acomms::iridium::fsm::Dial::react(const EvNoCarrier& x)
+boost::statechart::result goby::acomms::iridium::fsm::Dial::react(const EvNoCarrier& /*x*/)
 {
     const int redial_wait_seconds = 2;
     glog.is(DEBUG1) && glog << group("iridiumdriver") << "Redialing in " << redial_wait_seconds

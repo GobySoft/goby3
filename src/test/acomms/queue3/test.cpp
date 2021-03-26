@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -26,12 +26,13 @@
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/connect.h"
 #include "goby/acomms/dccl.h"
+#include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/acomms/queue.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
 
-#include "test.pb.h"
+#include "goby/test/acomms/dccl3/test.pb.h"
 // tests basic DCCL queuing with non-BROADCAST destination
 
 using goby::test::acomms::protobuf::GobyMessage;
@@ -52,11 +53,11 @@ int handle_ack_count = 0;
 
 void handle_receive(const google::protobuf::Message& msg);
 
-void qsize(goby::acomms::protobuf::QueueSize size);
+void qsize(const goby::acomms::protobuf::QueueSize& size);
 void handle_ack(const goby::acomms::protobuf::ModemTransmission& ack_msg,
                 const google::protobuf::Message& orig_msg);
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cout);
     goby::glog.set_name(argv[0]);
@@ -206,7 +207,7 @@ void handle_receive(const google::protobuf::Message& msg)
     ++receive_count;
 }
 
-void qsize(goby::acomms::protobuf::QueueSize size) { goby_message_qsize = size.size(); }
+void qsize(const goby::acomms::protobuf::QueueSize& size) { goby_message_qsize = size.size(); }
 
 void handle_ack(const goby::acomms::protobuf::ModemTransmission& ack_msg,
                 const google::protobuf::Message& orig_msg)

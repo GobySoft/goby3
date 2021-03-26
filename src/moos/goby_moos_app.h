@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,28 +23,72 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBYMOOSAPP20100726H
-#define GOBYMOOSAPP20100726H
+#ifndef GOBY_MOOS_GOBY_MOOS_APP_H
+#define GOBY_MOOS_GOBY_MOOS_APP_H
 
-#include <map>
+#include <chrono>    // for system...
+#include <cstdio>    // for remove
+#include <cstdlib>   // for exit
+#include <deque>     // for deque
+#include <iomanip>   // for operat...
+#include <iostream>  // for operat...
+#include <map>       // for map
+#include <memory>    // for allocator
+#include <stdexcept> // for runtim...
+#include <string>    // for string
+#include <unistd.h>  // for symlink
+#include <utility>   // for pair
+#include <vector>    // for vector
 
-#include <boost/algorithm/string.hpp>
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/function.hpp>
-#include <boost/signals2.hpp>
+#include <MOOS/libMOOS/App/MOOSApp.h>                       // for CMOOSApp
+#include <MOOS/libMOOS/Comms/CommsTypes.h>                  // for MOOSMS...
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>                     // for CMOOSMsg
+#include <MOOS/libMOOS/Utils/MOOSFileReader.h>              // for CMOOSF...
+#include <MOOS/libMOOS/Utils/MOOSUtilityFunctions.h>        // for MOOSTime
+#include <boost/algorithm/string/erase.hpp>                 // for erase_...
+#include <boost/algorithm/string/find.hpp>                  // for ifind_...
+#include <boost/algorithm/string/predicate.hpp>             // for iequals
+#include <boost/algorithm/string/replace.hpp>               // for replac...
+#include <boost/algorithm/string/trim.hpp>                  // for trim_copy
+#include <boost/bind.hpp>                                   // for bind, _1
+#include <boost/date_time/posix_time/posix_time_config.hpp> // for posix_...
+#include <boost/date_time/posix_time/posix_time_types.hpp>  // for second...
+#include <boost/date_time/posix_time/time_formatters.hpp>   // for to_iso...
+#include <boost/filesystem.hpp>                             // for path
+#include <boost/function.hpp>                               // for function
+#include <boost/lexical_cast/bad_lexical_cast.hpp>          // for bad_le...
+#include <boost/program_options/options_description.hpp>    // for operat...
+#include <boost/program_options/parsers.hpp>                // for basic_...
+#include <boost/program_options/positional_options.hpp>     // for positi...
+#include <boost/program_options/value_semantic.hpp>         // for value
+#include <boost/program_options/variables_map.hpp>          // for variab...
+#include <boost/range/iterator_range_core.hpp>              // for iterat...
+#include <boost/signals2/signal.hpp>                        // for signal
+#include <boost/smart_ptr/shared_ptr.hpp>                   // for shared...
+#include <boost/units/quantity.hpp>                         // for operator/
+#include <boost/units/systems/si/time.hpp>                  // for seconds
+#include <google/protobuf/descriptor.h>                     // for FieldD...
+#include <google/protobuf/descriptor.pb.h>                  // for FieldO...
+#include <google/protobuf/message.h>                        // for Reflec...
+#include <google/protobuf/text_format.h>                    // for TextFo...
 
-#include "dynamic_moos_vars.h"
-#include "goby/exception.h"
-#include "goby/middleware/application/configuration_reader.h"
-#include "goby/moos/moos_header.h"
-#include "goby/moos/moos_translator.h"
-#include "goby/moos/protobuf/goby_moos_app.pb.h"
-#include "goby/time.h"
-#include "goby/util/as.h"
-#include "goby/util/debug_logger.h"
-#include "moos_protobuf_helpers.h"
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/moos/moos_protobuf_helpers.h"                  // for set_mo...
+#include "goby/moos/moos_translator.h"                        // for MOOSTr...
+#include "goby/moos/protobuf/goby_moos_app.pb.h"              // for GobyMO...
+#include "goby/moos/protobuf/translator.pb.h"                 // for Transl...
+#include "goby/protobuf/option_extensions.pb.h"               // for GobyFi...
+#include "goby/time/convert.h"                                // for System...
+#include "goby/time/simulation.h"                             // for Simula...
+#include "goby/time/system_clock.h"                           // for System...
+#include "goby/time/types.h"                                  // for SITime
+#include "goby/util/as.h"                                     // for as
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/util/debug_logger/flex_ostreambuf.h"           // for WARN
+#include "goby/util/debug_logger/term_color.h"                // for esc_no...
+#include "goby/util/protobuf/debug_logger.pb.h"               // for GLogCo...
+
+#include "dynamic_moos_vars.h" // for Dynami...
 
 namespace goby
 {
@@ -68,10 +112,10 @@ inline void protobuf_inbox(const CMOOSMsg& msg,
 class MOOSAppShell : public CMOOSApp
 {
   protected:
-    bool Iterate() { return true; }
-    bool OnStartUp() { return true; }
-    bool OnConnectToServer() { return true; }
-    bool OnNewMail(MOOSMSG_LIST& NewMail) { return true; }
+    bool Iterate() override { return true; }
+    bool OnStartUp() override { return true; }
+    bool OnConnectToServer() override { return true; }
+    bool OnNewMail(MOOSMSG_LIST& /*NewMail*/) override { return true; }
     void RegisterVariables() {}
     void PostReport() {}
 };
@@ -104,7 +148,7 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
         glog.is(goby::util::logger::DEBUG2) && glog << cfg->DebugString() << std::endl;
     }
 
-    virtual ~GobyMOOSAppSelector() {}
+    ~GobyMOOSAppSelector() override = default;
 
     template <typename ProtobufMessage>
     void publish_pb(const std::string& key, const ProtobufMessage& msg)
@@ -140,7 +184,8 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     goby::moos::DynamicMOOSVars& dynamic_vars() { return dynamic_vars_; }
     double start_time() const { return start_time_; }
 
-    void subscribe(const std::string& var, InboxFunc handler = InboxFunc(), int blackout = 0);
+    void subscribe(const std::string& var, const InboxFunc& handler = InboxFunc(),
+                   int blackout = 0);
 
     template <typename V, typename A1>
     void subscribe(const std::string& var, void (V::*mem_func)(A1), V* obj, int blackout = 0)
@@ -150,7 +195,7 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
 
     // wildcard
     void subscribe(const std::string& var_pattern, const std::string& app_pattern,
-                   InboxFunc handler = InboxFunc(), int blackout = 0);
+                   const InboxFunc& handler = InboxFunc(), int blackout = 0);
 
     template <typename V, typename A1>
     void subscribe(const std::string& var_pattern, const std::string& app_pattern,
@@ -174,7 +219,7 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
                   blackout);
     }
 
-    void register_timer(int period_seconds, boost::function<void()> handler)
+    void register_timer(int period_seconds, const boost::function<void()>& handler)
     {
         int now = (goby::time::SystemClock::now<goby::time::SITime>() / boost::units::si::seconds) /
                   period_seconds;
@@ -234,11 +279,11 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
 
   private:
     // from CMOOSApp
-    bool Iterate();
-    bool OnStartUp();
-    bool OnConnectToServer();
-    bool OnDisconnectFromServer();
-    bool OnNewMail(MOOSMSG_LIST& NewMail);
+    bool Iterate() override;
+    bool OnStartUp() override;
+    bool OnConnectToServer() override;
+    bool OnDisconnectFromServer() override;
+    bool OnNewMail(MOOSMSG_LIST& NewMail) override;
     void try_subscribing();
     void do_subscriptions();
 
@@ -323,7 +368,7 @@ template <class MOOSAppType>
 std::string goby::moos::GobyMOOSAppSelector<MOOSAppType>::application_name_;
 
 template <class MOOSAppType> int goby::moos::GobyMOOSAppSelector<MOOSAppType>::argc_ = 0;
-template <class MOOSAppType> char** goby::moos::GobyMOOSAppSelector<MOOSAppType>::argv_ = 0;
+template <class MOOSAppType> char** goby::moos::GobyMOOSAppSelector<MOOSAppType>::argv_ = nullptr;
 
 template <class MOOSAppType> bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::Iterate()
 {
@@ -385,9 +430,8 @@ bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::OnNewMail(MOOSMSG_LIST& NewMa
     // for AppCasting (otherwise no-op)
     MOOSAppType::OnNewMail(NewMail);
 
-    for (MOOSMSG_LIST::const_iterator it = NewMail.begin(), end = NewMail.end(); it != end; ++it)
+    for (const auto& msg : NewMail)
     {
-        const CMOOSMsg& msg = *it;
         goby::glog.is(goby::util::logger::DEBUG3) &&
             goby::glog << "Received mail: " << msg.GetKey() << ", time: " << std::setprecision(15)
                        << msg.GetTime() << std::endl;
@@ -406,16 +450,11 @@ bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::OnNewMail(MOOSMSG_LIST& NewMa
         else if (mail_handlers_.count(msg.GetKey()))
             (*mail_handlers_[msg.GetKey()])(msg);
 
-        for (std::map<
-                 std::pair<std::string, std::string>,
-                 std::shared_ptr<boost::signals2::signal<void(const CMOOSMsg&msg)> > >::iterator
-                 it = wildcard_mail_handlers_.begin(),
-                 end = wildcard_mail_handlers_.end();
-             it != end; ++it)
+        for (auto& wildcard_mail_handler : wildcard_mail_handlers_)
         {
-            if (MOOSWildCmp(it->first.first, msg.GetKey()) &&
-                MOOSWildCmp(it->first.second, msg.GetSource()))
-                (*(it->second))(msg);
+            if (MOOSWildCmp(wildcard_mail_handler.first.first, msg.GetKey()) &&
+                MOOSWildCmp(wildcard_mail_handler.first.second, msg.GetSource()))
+                (*(wildcard_mail_handler.second))(msg);
         }
     }
 
@@ -444,13 +483,8 @@ template <class MOOSAppType> bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::
     connected_ = true;
     try_subscribing();
 
-    for (google::protobuf::RepeatedPtrField<
-             protobuf::GobyMOOSAppConfig::Initializer>::const_iterator
-             it = common_cfg_.initializer().begin(),
-             end = common_cfg_.initializer().end();
-         it != end; ++it)
+    for (const auto& ini : common_cfg_.initializer())
     {
-        const protobuf::GobyMOOSAppConfig::Initializer& ini = *it;
         if (ini.has_global_cfg_var())
         {
             std::string result;
@@ -488,13 +522,13 @@ template <class MOOSAppType> bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::
 
 template <class MOOSAppType>
 void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var,
-                                                             InboxFunc handler,
+                                                             const InboxFunc& handler,
                                                              int blackout /* = 0 */)
 {
     goby::glog.is(goby::util::logger::VERBOSE) &&
         goby::glog << "subscribing for MOOS variable: " << var << " @ " << blackout << std::endl;
 
-    pending_subscriptions_.push_back(std::make_pair(var, blackout));
+    pending_subscriptions_.emplace_back(var, blackout);
     try_subscribing();
 
     if (!mail_handlers_[var])
@@ -507,7 +541,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& 
 template <class MOOSAppType>
 void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var_pattern,
                                                              const std::string& app_pattern,
-                                                             InboxFunc handler,
+                                                             const InboxFunc& handler,
                                                              int blackout /* = 0 */)
 {
     goby::glog.is(goby::util::logger::VERBOSE) &&
@@ -515,13 +549,12 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& 
                    << ", app pattern: " << app_pattern << " @ " << blackout << std::endl;
 
     std::pair<std::string, std::string> key = std::make_pair(var_pattern, app_pattern);
-    wildcard_pending_subscriptions_.push_back(std::make_pair(key, blackout));
+    wildcard_pending_subscriptions_.emplace_back(key, blackout);
     try_subscribing();
 
     if (!wildcard_mail_handlers_.count(key))
         wildcard_mail_handlers_.insert(std::make_pair(
-            key, std::shared_ptr<boost::signals2::signal<void(const CMOOSMsg& msg)> >(
-                     new boost::signals2::signal<void(const CMOOSMsg& msg)>)));
+            key, std::make_shared<boost::signals2::signal<void(const CMOOSMsg& msg)>>()));
 
     if (handler)
         wildcard_mail_handlers_[key]->connect(handler);

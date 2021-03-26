@@ -12,6 +12,7 @@ message Config
 
     optional string name = 1;
     optional LatLonPoint origin = 2;
+    optional VehicleType type = 3 [default = AUV];
 
     optional bool require_helm = 10 [
         default = true,

@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,15 +21,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <cstdlib>
-#include <dlfcn.h>
-#include <iostream>
+#include <cstdlib>  // for exit
+#include <dlfcn.h>  // for dlopen
+#include <iostream> // for operat...
+#include <memory>   // for shared...
 
-#include "goby/util/debug_logger.h"
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/log/hdf5/hdf5.h"                    // for Writer
+#include "goby/middleware/log/hdf5/hdf5_plugin.h"             // for HDF5Pl...
+#include "goby/middleware/protobuf/hdf5.pb.h"                 // for HDF5Co...
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/util/debug_logger/flex_ostreambuf.h"           // for DIE
 
-#include "goby/middleware/log/hdf5/hdf5.h"
-
-void* plugin_handle = 0;
+void* plugin_handle = nullptr;
 
 using namespace goby::util::logger;
 using goby::glog;
@@ -55,7 +60,7 @@ class WriterApp : public goby::middleware::Application<goby::middleware::protobu
     void load();
     void collect();
     void write() { writer_.write(); }
-    void run() {}
+    void run() override {}
 
   private:
     std::shared_ptr<goby::middleware::HDF5Plugin> plugin_;
@@ -70,7 +75,7 @@ void goby::middleware::hdf5::WriterApp::load()
 {
     typedef goby::middleware::HDF5Plugin* (*plugin_func)(
         const goby::middleware::protobuf::HDF5Config*);
-    plugin_func plugin_ptr = (plugin_func)dlsym(plugin_handle, "goby_hdf5_load");
+    auto plugin_ptr = (plugin_func)dlsym(plugin_handle, "goby_hdf5_load");
 
     if (!plugin_ptr)
         glog.is(DIE) &&

@@ -2,12 +2,15 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/interprocess_config.proto
   protobuf/interprocess_zeromq.proto
   protobuf/gobyd_config.proto
+  protobuf/gps_config.proto
   protobuf/logger_config.proto
   protobuf/liaison_config.proto
   protobuf/terminate_config.proto
   protobuf/mavlink_gateway_config.proto
   protobuf/coroner_config.proto
   protobuf/frontseat_interface_config.proto
+  protobuf/opencpn_config.proto
+  protobuf/geov_config.proto
   )
 
 set(SRC

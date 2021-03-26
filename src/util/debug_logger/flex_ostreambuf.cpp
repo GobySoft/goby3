@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,24 +22,41 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <iomanip>
-#include <iostream>
-#include <limits>
-#include <sstream>
+#include <algorithm> // for copy, max
+#include <atomic>    // for atomic
+#include <cassert>   // for assert
+#include <chrono>    // for time_point
+#include <cstdio>    // for EOF
+#include <cstdlib>   // for exit
+#include <deque>     // for deque
+#include <iomanip>   // for operator<<
+#include <iostream>  // for operator<<
+#include <iterator>  // for ostreamb...
+#include <map>       // for map, map...
+#include <memory>    // for make_shared
+#include <mutex>     // for mutex
+#include <sstream>   // for basic_st...
+#include <string>    // for string
+#include <thread>    // for thread
+#include <utility>   // for move, pair
+#include <vector>    // for vector
 
-#include <boost/date_time.hpp>
-
-#include "goby/util/debug_logger/flex_ostreambuf.h"
-
-#ifdef HAS_NCURSES
-#include "flex_ncurses.h"
-#endif
-#include "flex_ostream.h"
+#include <boost/date_time/gregorian/gregorian.hpp>          // for date
+#include <boost/date_time/posix_time/posix_time_config.hpp> // for time_dur...
+#include <boost/date_time/posix_time/posix_time_io.hpp>     // for operator<<
+#include <boost/date_time/posix_time/ptime.hpp>             // for ptime
 
 #include "goby/exception.h"
-#include "goby/time.h"
-#include "goby/util/sci.h"
-#include "logger_manipulators.h"
+#include "goby/time/convert.h"                      // for SystemCl...
+#include "goby/time/system_clock.h"                 // for SystemClock
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for FlexOStr...
+#include "goby/util/debug_logger/term_color.h"      // for esc_nocolor
+
+#ifdef HAS_NCURSES
+#include "flex_ncurses.h" // for FlexNCurses
+#endif
+#include "flex_ostream.h"        // for FlexOstream
+#include "logger_manipulators.h" // for Group
 
 using goby::time::SystemClock;
 
@@ -54,11 +71,11 @@ goby::util::FlexOStreamBuf::FlexOStreamBuf(FlexOstream* parent)
       name_("no name"),
       die_flag_(false),
       current_verbosity_(logger::UNKNOWN),
-      curses_(0),
+      curses_(nullptr),
       start_time_(time::SystemClock::now<boost::posix_time::ptime>()),
       is_gui_(false),
-      highest_verbosity_(logger::QUIET),
-      parent_(parent)
+      highest_verbosity_(logger::QUIET)
+//      parent_(parent)
 
 {
     logger::Group no_group("", "Ungrouped messages");
@@ -88,14 +105,13 @@ void goby::util::FlexOStreamBuf::add_stream(logger::Verbosity verbosity, std::os
     }
 
     if (!stream_exists)
-        streams_.push_back(StreamConfig(os, verbosity));
+        streams_.emplace_back(os, verbosity);
 
     highest_verbosity_ = logger::QUIET;
-    for (std::vector<StreamConfig>::const_iterator it = streams_.begin(), end = streams_.end();
-         it != end; ++it)
+    for (auto stream : streams_)
     {
-        if (it->verbosity() > highest_verbosity_)
-            highest_verbosity_ = it->verbosity();
+        if (stream.verbosity() > highest_verbosity_)
+            highest_verbosity_ = stream.verbosity();
     }
 }
 
@@ -115,7 +131,7 @@ void goby::util::FlexOStreamBuf::enable_gui()
 
     curses_->recalculate_win();
 
-    input_thread_ = std::shared_ptr<std::thread>(new std::thread([&]() { curses_->run_input(); }));
+    input_thread_ = std::make_shared<std::thread>([&]() { curses_->run_input(); });
 #else
     // suppress -Wunused-private-field
     (void)curses_;
@@ -127,12 +143,13 @@ void goby::util::FlexOStreamBuf::enable_gui()
 
 void goby::util::FlexOStreamBuf::add_group(const std::string& name, logger::Group g)
 {
-    //    if(groups_.count(name)) return;
+    bool group_existed = groups_.count(name);
 
-    groups_[name] = g;
+    groups_[name] = std::move(g);
 
 #ifdef HAS_NCURSES
-    if (is_gui_)
+    // only create a new window if this group didn't exist before
+    if (is_gui_ && !group_existed)
     {
         std::lock_guard<std::mutex> lock(curses_mutex);
         curses_->add_win(&groups_[name]);
@@ -142,12 +159,12 @@ void goby::util::FlexOStreamBuf::add_group(const std::string& name, logger::Grou
 
 int goby::util::FlexOStreamBuf::overflow(int c /*= EOF*/)
 {
-    parent_->set_unset_verbosity();
+    //    parent_->set_unset_verbosity();
 
     if (c == EOF)
         return c;
     else if (c == '\n')
-        buffer_.push_back(std::string());
+        buffer_.emplace_back();
     else
         buffer_.back().push_back(c);
 
@@ -160,10 +177,12 @@ int goby::util::FlexOStreamBuf::sync()
     if (current_verbosity_ == logger::UNKNOWN && lock_action_ == logger_lock::lock)
     {
         std::cerr
-            << "== Misuse of goby::glog in threaded mode: must use 'goby.is(...) && glog' syntax"
+            << "== Misuse of goby::glog in threaded mode: must use 'glog.is_*() && glog' syntax. "
+               "For example, glog.is_verbose() && glog << \"My message\" << std::endl;"
             << std::endl;
         std::cerr << "== Offending line: " << buffer_.front() << std::endl;
         assert(!(lock_action_ == logger_lock::lock && current_verbosity_ == logger::UNKNOWN));
+        exit(EXIT_FAILURE);
         return 0;
     }
 

@@ -38,25 +38,52 @@ message IOData
 
 message SerialCommand
 {
+    optional int32 index = 1 [default = -1];
+
     enum Command
     {
         SEND_BREAK = 1;
         RTS_HIGH = 2;
         RTS_LOW = 3;
+        DTR_HIGH = 4;
+        DTR_LOW = 5;
     }
-    required Command command = 1;
+    required Command command = 2;
+}
+
+message SerialStatus
+{
+    optional int32 index = 1 [default = -1];
+    optional bool rts = 2;
+    optional bool dtr = 3;
 }
 
 message TCPServerEvent
 {
+    optional int32 index = 1 [default = -1];
+    enum Event
+    {
+        EVENT_BIND = 0;
+        EVENT_CONNECT = 1;
+        EVENT_DISCONNECT = 2;
+    }
+    required Event event = 2;
+    optional TCPEndPoint local_endpoint = 3;
+    optional TCPEndPoint remote_endpoint = 4;
+    optional int32 number_of_clients = 5;
+}
+
+message TCPClientEvent
+{
+    optional int32 index = 1 [default = -1];
     enum Event
     {
         EVENT_CONNECT = 1;
         EVENT_DISCONNECT = 2;
     }
-    required Event event = 1;
-    optional TCPEndPoint client_endpoint = 2;
-    optional int32 number_of_clients = 3;
+    required Event event = 2;
+    optional TCPEndPoint local_endpoint = 3;
+    optional TCPEndPoint remote_endpoint = 4;
 }
 
 enum IOState
@@ -82,6 +109,7 @@ message IOError
 
 message IOStatus
 {
-    required IOState state = 1;
-    optional IOError error = 2;
+    optional int32 index = 1 [default = -1];
+    required IOState state = 2;
+    optional IOError error = 3;
 }

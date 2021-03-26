@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -26,6 +26,7 @@
 
 #include "../driver_tester/driver_tester.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
+#include "goby/acomms/protobuf/udp_driver.pb.h"
 #include <cstdlib>
 
 using goby::acomms::udp::protobuf::config;
@@ -69,7 +70,7 @@ int main(int argc, char* argv[])
 
     cfg1.set_modem_id(1);
 
-    srand(time(NULL));
+    srand(time(nullptr));
     int port1 = rand() % 1000 + 50000;
     int port2 = port1 + 1;
 

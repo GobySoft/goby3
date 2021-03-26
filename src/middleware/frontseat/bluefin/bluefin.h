@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,18 +22,24 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef BluefinFrontSeat20130220H
-#define BluefinFrontSeat20130220H
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_BLUEFIN_BLUEFIN_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_BLUEFIN_BLUEFIN_H
 
-#include <boost/bimap.hpp>
+#include <deque>  // for deque
+#include <map>    // for map
+#include <string> // for string
 
-#include "goby/util/linebasedcomms/nmea_sentence.h"
-#include "goby/util/linebasedcomms/tcp_client.h"
+#include <boost/bimap/bimap.hpp> // for bimap
 
-#include "goby/middleware/frontseat/interface.h"
-
-#include "goby/middleware/frontseat/bluefin/bluefin.pb.h"
-#include "goby/middleware/frontseat/bluefin/bluefin_config.pb.h"
+#include "goby/middleware/frontseat/bluefin/bluefin.pb.h"        // for Blu...
+#include "goby/middleware/frontseat/bluefin/bluefin_config.pb.h" // for Blu...
+#include "goby/middleware/frontseat/interface.h"                 // for Int...
+#include "goby/middleware/protobuf/frontseat.pb.h"               // for Fro...
+#include "goby/middleware/protobuf/frontseat_data.pb.h"          // for Nod...
+#include "goby/time/system_clock.h"                              // for Sys...
+#include "goby/time/types.h"                                     // for Mic...
+#include "goby/util/linebasedcomms/nmea_sentence.h"              // for NME...
+#include "goby/util/linebasedcomms/tcp_client.h"                 // for TCP...
 
 namespace goby
 {
@@ -41,6 +47,11 @@ namespace middleware
 {
 namespace frontseat
 {
+namespace protobuf
+{
+class Config;
+} // namespace protobuf
+
 class Bluefin : public InterfaceBase
 {
   public:

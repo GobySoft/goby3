@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TypeHelpers20200702H
-#define TypeHelpers20200702H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_DETAIL_TYPE_HELPERS_H
+#define GOBY_MIDDLEWARE_TRANSPORT_DETAIL_TYPE_HELPERS_H
 
 namespace goby
 {

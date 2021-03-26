@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,13 +21,23 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterThread20160609H
-#define TransportInterThread20160609H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERTHREAD_H
+#define GOBY_MIDDLEWARE_TRANSPORT_INTERTHREAD_H
 
-#include "goby/middleware/group.h"
-#include "goby/middleware/transport/detail/subscription_store.h"
-#include "goby/middleware/transport/null.h"
-#include "goby/middleware/transport/poller.h"
+#include <functional> // for fun...
+#include <memory>     // for sha...
+#include <mutex>      // for mutex
+#include <thread>     // for get_id
+
+#include "goby/exception.h"                                      // for Exc...
+#include "goby/middleware/group.h"                               // for Group
+#include "goby/middleware/marshalling/interface.h"               // for Mar...
+#include "goby/middleware/transport/detail/subscription_store.h" // for Sub...
+#include "goby/middleware/transport/interface.h"                 // for Sta...
+#include "goby/middleware/transport/null.h"                      // for Nul...
+#include "goby/middleware/transport/poller.h"                    // for Poller
+#include "goby/middleware/transport/publisher.h"                 // for Pub...
+#include "goby/middleware/transport/subscriber.h"                // for Sub...
 
 namespace goby
 {
@@ -136,10 +146,9 @@ class InterThreadTransporter
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
-    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = scheme<Data>()>
     void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
-                           const Subscriber<Data>& subscriber = Subscriber<Data>())
+                           const Subscriber<Data>& /*subscriber*/ = Subscriber<Data>())
     {
         check_validity_runtime(group);
         detail::SubscriptionStore<Data>::subscribe([=](std::shared_ptr<const Data> pd) { f(*pd); },
@@ -154,10 +163,9 @@ class InterThreadTransporter
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
-    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
     template <typename Data, int scheme = scheme<Data>()>
     void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
-                           const Subscriber<Data>& subscriber = Subscriber<Data>())
+                           const Subscriber<Data>& /*subscriber*/ = Subscriber<Data>())
     {
         check_validity_runtime(group);
         detail::SubscriptionStore<Data>::subscribe(
@@ -166,9 +174,10 @@ class InterThreadTransporter
     }
 
     /// \brief Subscribe with no data (used to receive a signal from another thread)
-    template <const Group& group> void subscribe_empty(std::function<void()> f)
+    template <const Group& group> void subscribe_empty(const std::function<void()>& f)
     {
-        subscribe_dynamic<EmptyMessage>([=](std::shared_ptr<const EmptyMessage>) { f(); }, group);
+        subscribe_dynamic<EmptyMessage>([=](const std::shared_ptr<const EmptyMessage>&) { f(); },
+                                        group);
     }
 
     /// \brief Unsubscribe to a specific run-time defined group and data type. Where possible, prefer the static variant in StaticTransporterInterface::unsubscribe()
@@ -178,7 +187,7 @@ class InterThreadTransporter
     /// \param group group to unsubscribe from (typically a DynamicGroup)
     template <typename Data, int scheme = scheme<Data>()>
     void unsubscribe_dynamic(const Group& group,
-                             const Subscriber<Data>& subscriber = Subscriber<Data>())
+                             const Subscriber<Data>& /*subscriber*/ = Subscriber<Data>())
     {
         check_validity_runtime(group);
         detail::SubscriptionStore<Data>::unsubscribe(group, std::this_thread::get_id());

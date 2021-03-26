@@ -1,4 +1,4 @@
-// Copyright 2010-2020:
+// Copyright 2010-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SOUNDSPEED_20190606H
-#define SOUNDSPEED_20190606H
+#ifndef GOBY_UTIL_SEAWATER_SOUNDSPEED_H
+#define GOBY_UTIL_SEAWATER_SOUNDSPEED_H
 
 #include <stdexcept>
 

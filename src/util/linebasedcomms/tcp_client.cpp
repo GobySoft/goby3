@@ -1,4 +1,4 @@
-// Copyright 2010-2020:
+// Copyright 2010-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,52 +22,69 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/util/as.h"
-#include "goby/util/debug_logger.h"
+#include <ostream> // for basic_ostream
+#include <utility> // for move
+
+#include "goby/util/asio_compat.h"
+#include "goby/util/debug_logger/flex_ostream.h"    // for operator<<, Fle...
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for WARN, logger
 
 #include "tcp_client.h"
 
-goby::util::TCPClient::TCPClient(const std::string& server, unsigned port,
+goby::util::TCPClient::TCPClient(std::string server, unsigned port,
                                  const std::string& delimiter /*= "\r\n"*/,
                                  int retry_interval /*=  10*/)
-    : LineBasedClient<boost::asio::ip::tcp::socket>(delimiter, retry_interval),
-      socket_(io_),
-      server_(server),
-      port_(as<std::string>(port))
+    : LineBasedInterface(delimiter), server_(std::move(server)), port_(port)
 {
 }
 
-bool goby::util::TCPClient::start_specific()
+goby::util::TCPClient::~TCPClient() { do_close(); }
+
+void goby::util::TCPClient::do_subscribe()
 {
-    using namespace goby::util::logger;
-    using goby::glog;
+    interthread().subscribe_dynamic<goby::middleware::protobuf::TCPClientEvent>(
+        [this](const goby::middleware::protobuf::TCPClientEvent& event) {
+            if (event.index() == this->index())
+            {
+                event_ = event;
+                if (event.has_local_endpoint())
+                    local_endpoint_ = event.local_endpoint();
+                if (event.has_remote_endpoint())
+                    remote_endpoint_ = event.remote_endpoint();
+            }
+        },
+        in_group());
+}
 
-    boost::asio::ip::tcp::resolver resolver(io_);
-    boost::asio::ip::tcp::resolver::query query(
-        server_, port_, boost::asio::ip::resolver_query_base::numeric_service);
-
-    boost::system::error_code resolver_error = boost::asio::error::host_not_found;
-    boost::asio::ip::tcp::resolver::iterator endpoint_iterator =
-        resolver.resolve(query, resolver_error);
-    if (resolver_error)
+void goby::util::TCPClient::do_start()
+{
+    if (!tcp_thread_)
     {
-        glog.is(WARN) && glog << "Error resolving address: " << server_ << ":" << port_ << ": "
-                              << resolver_error.message() << std::endl;
-        return false;
+        goby::middleware::protobuf::TCPClientConfig cfg;
+        cfg.set_remote_address(server_);
+        cfg.set_remote_port(port_);
+        cfg.set_end_of_line(delimiter());
+
+        tcp_alive_ = true;
+        tcp_thread_ = std::make_unique<std::thread>([cfg, this]() {
+            Thread tcp(cfg, this->index());
+            auto type_i = std::type_index(typeid(Thread));
+            tcp.set_type_index(type_i);
+            tcp.run(tcp_alive_);
+        });
     }
+}
 
-    boost::asio::ip::tcp::resolver::iterator end;
-
-    boost::system::error_code error = boost::asio::error::host_not_found;
-    while (error && endpoint_iterator != end)
+void goby::util::TCPClient::do_close()
+{
+    if (tcp_thread_)
     {
-        socket_.close();
-        socket_.connect(*endpoint_iterator++, error);
+        while (!io_thread_ready()) interthread().poll(std::chrono::milliseconds(10));
+
+        auto type_i = std::type_index(typeid(Thread));
+        middleware::ThreadIdentifier ti{type_i, index()};
+        interthread().publish<Thread::shutdown_group_>(ti);
+        tcp_thread_->join();
+        tcp_thread_.reset();
     }
-
-    if (error)
-        glog.is(WARN) && glog << "Error connecting to address: " << server_ << ":" << port_ << ": "
-                              << error.message() << std::endl;
-
-    return error ? false : true;
 }

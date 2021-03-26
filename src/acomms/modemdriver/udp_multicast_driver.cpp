@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,18 +24,31 @@
 
 #include "udp_multicast_driver.h"
 
-#include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/util/binary.h"
+#include <list>    // for operator!=
+#include <ostream> // for basic_ostream
+#include <string>  // for operator<<
+
+#include <boost/asio/buffer.hpp>       // for buffer, muta...
+#include <boost/asio/ip/address.hpp>   // for address
+#include <boost/asio/ip/multicast.hpp> // for join_group
+#include <boost/asio/socket_base.hpp>  // for socket_base:...
+#include <boost/function.hpp>          // for function
+#include <boost/signals2/signal.hpp>   // for signal
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/acomms/acomms_constants.h"          // for BROADCAST_ID
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTransmi...
+#include "goby/util/asio_compat.h"                 // for io_context
+#include "goby/util/binary.h"                      // for hex_encode
 #include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+#include "goby/util/protobuf/io.h" // for operator<<
 
 using goby::glog;
-using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
 
-goby::acomms::UDPMulticastDriver::UDPMulticastDriver() {}
-goby::acomms::UDPMulticastDriver::~UDPMulticastDriver() {}
+goby::acomms::UDPMulticastDriver::UDPMulticastDriver() = default;
+goby::acomms::UDPMulticastDriver::~UDPMulticastDriver() = default;
 
 void goby::acomms::UDPMulticastDriver::startup(const protobuf::DriverConfig& cfg)
 {
@@ -105,7 +118,7 @@ void goby::acomms::UDPMulticastDriver::do_work() { io_context_.poll(); }
 void goby::acomms::UDPMulticastDriver::receive_message(const protobuf::ModemTransmission& msg)
 {
     if (msg.type() == protobuf::ModemTransmission::DATA && msg.ack_requested() &&
-        msg.dest() != BROADCAST_ID)
+        msg.dest() == driver_cfg_.modem_id())
     {
         // make any acks
         protobuf::ModemTransmission ack;

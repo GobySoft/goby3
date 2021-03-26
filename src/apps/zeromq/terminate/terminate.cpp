@@ -1,4 +1,4 @@
-// Copyright 2018-2020:
+// Copyright 2018-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,15 +21,34 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-// for kill
-#include <signal.h>
-#include <sys/types.h>
+#include <algorithm>     // for copy
+#include <csignal>       // for kill
+#include <cstdlib>       // for EXIT_F...
+#include <map>           // for operat...
+#include <ostream>       // for endl
+#include <set>           // for set
+#include <string>        // for string
+#include <unordered_map> // for operat...
+#include <utility>       // for pair
+#include <vector>        // for vector
+
+#include <boost/units/quantity.hpp>             // for operator*
+#include <boost/units/systems/si/frequency.hpp> // for frequency
+#include <boost/units/unit.hpp>                 // for unit
 
 #include "goby/middleware/marshalling/protobuf.h"
-#include "goby/middleware/protobuf/terminate.pb.h"
-#include "goby/middleware/terminate/groups.h"
-#include "goby/zeromq/application/single_thread.h"
-#include "goby/zeromq/protobuf/terminate_config.pb.h"
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/protobuf/terminate.pb.h"            // for Termin...
+#include "goby/middleware/terminate/groups.h"                 // for termin...
+#include "goby/time/convert.h"                                // for System...
+#include "goby/time/system_clock.h"                           // for System...
+#include "goby/time/types.h"                                  // for MicroTime
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/zeromq/application/single_thread.h"            // for Single...
+#include "goby/zeromq/protobuf/terminate_config.pb.h"         // for Termin...
+#include "goby/zeromq/transport/interprocess.h"               // for InterP...
 
 using goby::glog;
 
@@ -74,7 +93,7 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
                             std::make_pair(response.target_pid(), response.target_name()));
                     }
 
-                    std::string target_name = response.target_name();
+                    const std::string& target_name = response.target_name();
                     auto name_it = waiting_for_response_names_.find(target_name);
                     if (name_it != waiting_for_response_names_.end())
                     {
@@ -87,31 +106,35 @@ class Terminate : public goby::zeromq::SingleThreadApplication<protobuf::Termina
                 });
 
         for (const auto& target_name : cfg().target_name())
-        {
-            goby::middleware::protobuf::TerminateRequest req;
-            req.set_target_name(target_name);
             waiting_for_response_names_.insert(target_name);
-            glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString()
-                                     << std::endl;
-            interprocess().publish<middleware::groups::terminate_request>(req);
-        }
 
         for (const auto& target_pid : cfg().target_pid())
-        {
-            goby::middleware::protobuf::TerminateRequest req;
-            req.set_target_pid(target_pid);
             waiting_for_response_pids_.insert(target_pid);
-            glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString()
-                                     << std::endl;
-            interprocess().publish<middleware::groups::terminate_request>(req);
-        }
     }
 
-    ~Terminate() {}
+    ~Terminate() override = default;
 
   private:
     void loop() override
     {
+        for (const auto& target_name : waiting_for_response_names_)
+        {
+            goby::middleware::protobuf::TerminateRequest req;
+            req.set_target_name(target_name);
+            glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString()
+                                     << std::endl;
+            interprocess().publish<middleware::groups::terminate_request>(req);
+        }
+
+        for (const auto& target_pid : waiting_for_response_pids_)
+        {
+            goby::middleware::protobuf::TerminateRequest req;
+            req.set_target_pid(target_pid);
+            glog.is_debug2() && glog << "Sending terminate request: " << req.ShortDebugString()
+                                     << std::endl;
+            interprocess().publish<middleware::groups::terminate_request>(req);
+        }
+
         // clear any processes that have exited
         for (auto it = running_pids_.begin(); it != running_pids_.end();)
         {

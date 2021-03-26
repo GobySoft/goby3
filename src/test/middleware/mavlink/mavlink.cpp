@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -36,7 +36,7 @@ struct GlogConfig
         goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
         goby::glog.set_name("mavlink");
     }
-    ~GlogConfig() {}
+    ~GlogConfig() = default;
 };
 
 BOOST_GLOBAL_FIXTURE(GlogConfig);

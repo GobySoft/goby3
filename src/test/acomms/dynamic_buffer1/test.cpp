@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -31,9 +31,9 @@
 struct TestClock
 {
     typedef std::chrono::microseconds duration;
-    typedef duration::rep rep;
-    typedef duration::period period;
-    typedef std::chrono::time_point<TestClock> time_point;
+    using rep = duration::rep;
+    using period = duration::period;
+    using time_point = std::chrono::time_point<TestClock>;
     static const bool is_steady = true;
 
     static time_point now() noexcept { return sim_now_; }
@@ -66,7 +66,7 @@ struct GLogSetup
         goby::glog.set_name("test");
     }
 
-    ~GLogSetup() {}
+    ~GLogSetup() = default;
 };
 
 BOOST_GLOBAL_FIXTURE(GLogSetup);
@@ -116,6 +116,22 @@ BOOST_AUTO_TEST_CASE(check_multi_configuration)
     expected_cfg.set_value_base(15);
     expected_cfg.set_max_queue(10);
     expected_cfg.set_newest_first(false);
+
+    goby::acomms::DynamicSubBuffer<std::string> buffer({cfg1, cfg2});
+    BOOST_CHECK_MESSAGE(expected_cfg.SerializeAsString() == buffer.cfg().SerializeAsString(),
+                        "Expected " << expected_cfg.ShortDebugString()
+                                    << ", got: " << buffer.cfg().ShortDebugString());
+}
+
+BOOST_AUTO_TEST_CASE(check_multi_configuration2)
+{
+    goby::acomms::protobuf::DynamicBufferConfig cfg1;
+
+    goby::acomms::protobuf::DynamicBufferConfig cfg2;
+    cfg2.set_ack_required(false);
+
+    goby::acomms::protobuf::DynamicBufferConfig expected_cfg;
+    expected_cfg.set_ack_required(false);
 
     goby::acomms::DynamicSubBuffer<std::string> buffer({cfg1, cfg2});
     BOOST_CHECK_MESSAGE(expected_cfg.SerializeAsString() == buffer.cfg().SerializeAsString(),
@@ -234,7 +250,7 @@ struct DynamicBufferFixture
         buffer.create(goby::acomms::BROADCAST_ID, "B", cfg2);
     }
 
-    ~DynamicBufferFixture() {}
+    ~DynamicBufferFixture() = default;
 
     goby::acomms::DynamicBuffer<std::string, TestClock> buffer;
 };
@@ -584,7 +600,7 @@ struct MultiIDDynamicBufferFixture
         buffer.create(2, "B", cfg2);
     }
 
-    ~MultiIDDynamicBufferFixture() {}
+    ~MultiIDDynamicBufferFixture() = default;
 
     goby::acomms::DynamicBuffer<std::string, TestClock> buffer;
 };

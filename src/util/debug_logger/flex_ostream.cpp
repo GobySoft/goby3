@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,9 +22,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <cassert> // for assert
+
 #include "goby/util/debug_logger/flex_ostream.h"
-#include "goby/exception.h"
-#include "logger_manipulators.h"
+#include "goby/util/debug_logger/logger_manipulators.h" // for die, Group
 
 using namespace goby::util::logger;
 
@@ -69,7 +70,7 @@ std::ostream& goby::util::FlexOstream::operator<<(std::ostream& (*pf)(std::ostre
 {
     if (pf == die)
         sb_.set_die_flag(true);
-    set_unset_verbosity();
+    //    set_unset_verbosity();
     return std::ostream::operator<<(pf);
 }
 

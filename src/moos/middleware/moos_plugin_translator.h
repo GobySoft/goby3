@@ -1,4 +1,4 @@
-// Copyright 2017-2020:
+// Copyright 2017-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,15 +21,27 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MOOS_PLUGIN_TRANSLATOR_20171020H
-#define MOOS_PLUGIN_TRANSLATOR_20171020H
+#ifndef GOBY_MOOS_MIDDLEWARE_MOOS_PLUGIN_TRANSLATOR_H
+#define GOBY_MOOS_MIDDLEWARE_MOOS_PLUGIN_TRANSLATOR_H
 
-#include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"
-#include "goby/middleware/application/multi_thread.h"
-#include "goby/middleware/transport/interthread.h"
-#include "goby/moos/protobuf/moos_gateway_config.pb.h"
-#include "goby/zeromq/application/multi_thread.h"
-#include "goby/zeromq/transport/interprocess.h"
+#include <functional> // for function
+#include <map>        // for map
+#include <ostream>    // for operator<<
+#include <set>        // for set
+#include <string>     // for string, basic...
+#include <thread>     // for get_id, opera...
+#include <utility>    // for pair, make_pair
+
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>         // for CMOOSMsg
+#include <boost/units/quantity.hpp>             // for operator*
+#include <boost/units/systems/si/frequency.hpp> // for frequency, hertz
+
+#include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"    // for MOOSAsyncComm...
+#include "goby/middleware/application/multi_thread.h"  // for SimpleThread
+#include "goby/moos/protobuf/moos_gateway_config.pb.h" // for GobyMOOSGatew...
+#include "goby/time/system_clock.h"                    // for SystemClock
+
+class CMOOSCommClient;
 
 namespace goby
 {
@@ -54,7 +66,8 @@ class TranslatorBase
     {
       public:
         // MOOS
-        void add_trigger(const std::string& moos_var, std::function<void(const CMOOSMsg&)> func)
+        void add_trigger(const std::string& moos_var,
+                         const std::function<void(const CMOOSMsg&)>& func)
         {
             trigger_vars_.insert(std::make_pair(moos_var, func));
         }

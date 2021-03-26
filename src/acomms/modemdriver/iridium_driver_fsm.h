@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,26 +22,41 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IridiumModemDriverFSM20130826H
-#define IridiumModemDriverFSM20130826H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_FSM_H
+#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_FSM_H
 
-#include <boost/circular_buffer.hpp>
+#include <algorithm> // for for_each
+#include <iostream>  // for basic_ost...
+#include <locale>    // for locale
+#include <string>    // for string
+#include <utility>   // for move, pair
+#include <vector>    // for vector
 
-#include <boost/mpl/list.hpp>
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim
+#include <boost/bind.hpp>                            // for bind_t, arg
+#include <boost/circular_buffer.hpp>                 // for circular_...
+#include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexic...
+#include <boost/mpl/list.hpp>                        // for list
+#include <boost/smart_ptr/intrusive_ptr.hpp>         // for intrusive...
 #include <boost/statechart/custom_reaction.hpp>
-#include <boost/statechart/deep_history.hpp>
-#include <boost/statechart/event.hpp>
-#include <boost/statechart/in_state_reaction.hpp>
-#include <boost/statechart/simple_state.hpp>
-#include <boost/statechart/state.hpp>
-#include <boost/statechart/state_machine.hpp>
-#include <boost/statechart/transition.hpp>
-#include <iostream>
+#include <boost/statechart/event.hpp>             // for event
+#include <boost/statechart/in_state_reaction.hpp> // for in_state_...
+#include <boost/statechart/result.hpp>            // for reaction_...
+#include <boost/statechart/simple_state.hpp>      // for simple_st...
+#include <boost/statechart/state.hpp>             // for state
+#include <boost/statechart/state_machine.hpp>     // for state_mac...
+#include <boost/statechart/transition.hpp>        // for transition
 
-#include "goby/acomms/modemdriver/iridium_driver_common.h"
-#include "goby/acomms/protobuf/iridium_driver.pb.h"
-#include "goby/acomms/protobuf/modem_message.pb.h"
-#include "goby/util/as.h"
+#include "goby/acomms/modemdriver/iridium_driver_common.h" // for OnCallBase
+#include "goby/acomms/protobuf/driver_base.pb.h"           // for DriverConfig
+#include "goby/acomms/protobuf/iridium_driver.pb.h"        // for Config
+#include "goby/acomms/protobuf/modem_message.pb.h"         // for ModemTran...
+#include "goby/util/as.h"                                  // for as
+#include "goby/util/debug_logger/flex_ostream.h"           // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"        // for DEBUG1, WARN
+#include "goby/util/debug_logger/logger_manipulators.h"    // for operator<<
 
 namespace goby
 {
@@ -52,8 +67,7 @@ namespace iridium
 inline unsigned sbd_csum(const std::string& data)
 {
     unsigned int csum = 0;
-    for (std::string::const_iterator it = data.begin(), end = data.end(); it != end; ++it)
-        csum += *it & 0xFF;
+    for (char it : data) csum += it & 0xFF;
     return csum;
 }
 
@@ -61,7 +75,7 @@ namespace fsm
 {
 struct StateNotify
 {
-    StateNotify(const std::string& name) : name_(name)
+    StateNotify(std::string name) : name_(std::move(name))
     {
         glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << name_ << std::endl;
     }
@@ -94,7 +108,7 @@ struct EvTxOnCallSerial : boost::statechart::event<EvTxOnCallSerial>
 
 struct EvAck : boost::statechart::event<EvAck>
 {
-    EvAck(const std::string& response) : response_(response) {}
+    EvAck(std::string response) : response_(std::move(response)) {}
 
     std::string response_;
 };
@@ -139,8 +153,8 @@ struct EvConfigured : boost::statechart::event<EvConfigured>
 };
 struct EvSBDBeginData : boost::statechart::event<EvSBDBeginData>
 {
-    EvSBDBeginData(const std::string& data = "", bool in_response_to_ring_alert = false)
-        : data_(data), in_response_to_ring_alert_(in_response_to_ring_alert)
+    EvSBDBeginData(std::string data = "", bool in_response_to_ring_alert = false)
+        : data_(std::move(data)), in_response_to_ring_alert_(in_response_to_ring_alert)
     {
     }
     std::string data_;
@@ -159,7 +173,7 @@ struct EvSBDWriteComplete : boost::statechart::event<EvSBDWriteComplete>
 };
 struct EvSBDTransmitComplete : boost::statechart::event<EvSBDTransmitComplete>
 {
-    EvSBDTransmitComplete(const std::string& sbdi) : sbdi_(sbdi) {}
+    EvSBDTransmitComplete(std::string sbdi) : sbdi_(std::move(sbdi)) {}
     std::string sbdi_;
 };
 struct EvSBDReceiveComplete : boost::statechart::event<EvSBDReceiveComplete>
@@ -173,15 +187,10 @@ struct Configure;
 struct Ready;
 struct Answer;
 struct Dial;
-struct HangingUp;
-struct PostDisconnected;
-
 struct Online;
 struct OnCall;
 struct NotOnCall;
-
 struct SBD;
-struct SBDConfigure;
 struct SBDReady;
 struct SBDClearBuffers;
 struct SBDWrite;
@@ -269,20 +278,19 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
     void in_state_react(const EvAck&);
 
     Command() : StateNotify("Command"), at_out_(AT_BUFFER_CAPACITY) {}
-    ~Command() {}
+    ~Command() override = default;
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::in_state_reaction<EvRxSerial, Command, &Command::in_state_react>,
         boost::statechart::in_state_reaction<EvTxSerial, Command, &Command::in_state_react>,
         boost::statechart::transition<EvOnline, Online>,
-        boost::statechart::in_state_reaction<EvAck, Command, &Command::in_state_react> >
-        reactions;
+        boost::statechart::in_state_reaction<EvAck, Command, &Command::in_state_react>>;
 
     struct ATSentenceMeta
     {
-        ATSentenceMeta() : last_send_time_(0), tries_(0) {}
-        double last_send_time_;
-        int tries_;
+        ATSentenceMeta() = default;
+        double last_send_time_{0};
+        int tries_{0};
     };
 
     void push_at_command(const std::string& cmd)
@@ -321,23 +329,23 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
 
 struct Configure : boost::statechart::state<Configure, Command::orthogonal<0> >, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
-    Configure(my_context ctx) : my_base(ctx), StateNotify("Configure")
+    Configure(my_context ctx) : my_base(std::move(ctx)), StateNotify("Configure")
     {
         context<Command>().push_at_command("");
         const auto& iridium_driver_config = context<IridiumDriverFSM>().iridium_driver_cfg();
         for (int i = 0, n = iridium_driver_config.config_size(); i < n; ++i)
         { context<Command>().push_at_command(iridium_driver_config.config(i)); } }
 
-    ~Configure() { post_event(EvConfigured()); }
+    ~Configure() override { post_event(EvConfigured()); }
 };
 
 struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0> >, StateNotify
 {
   public:
     Ready() : StateNotify("Ready") {}
-    ~Ready() {}
+    ~Ready() override = default;
 
     boost::statechart::result react(const EvDial&)
     {
@@ -354,9 +362,8 @@ struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0> >, 
         }
     }
 
-    typedef boost::mpl::list<boost::statechart::transition<EvRing, Answer>,
-                             boost::statechart::custom_reaction<EvDial> >
-        reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvRing, Answer>,
+                                       boost::statechart::custom_reaction<EvDial>>;
 
   private:
 };
@@ -364,14 +371,14 @@ struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0> >, 
 struct HangingUp : boost::statechart::state<HangingUp, Command::orthogonal<0> >, StateNotify
 {
   public:
-    HangingUp(my_context ctx) : my_base(ctx), StateNotify("HangingUp")
+    HangingUp(my_context ctx) : my_base(std::move(ctx)), StateNotify("HangingUp")
     {
         context<Command>().push_at_command("+++");
         context<Command>().push_at_command("H");
     }
-    ~HangingUp() {}
+    ~HangingUp() override = default;
 
-    typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
   private:
 };
@@ -380,25 +387,28 @@ struct PostDisconnected : boost::statechart::state<PostDisconnected, Command::or
                           StateNotify
 {
   public:
-    PostDisconnected(my_context ctx) : my_base(ctx), StateNotify("PostDisconnected")
+    PostDisconnected(my_context ctx) : my_base(std::move(ctx)), StateNotify("PostDisconnected")
     {
         glog.is(goby::util::logger::DEBUG1) &&
             glog << group("iridiumdriver") << "Disconnected; checking error details: " << std::endl;
         context<Command>().push_at_command("+CEER");
     }
-    ~PostDisconnected() {}
+    ~PostDisconnected() override = default;
 
-    typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
   private:
 };
 
 struct Dial : boost::statechart::state<Dial, Command::orthogonal<0> >, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::custom_reaction<EvNoCarrier> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvNoCarrier>>;
 
-    Dial(my_context ctx) : my_base(ctx), StateNotify("Dial"), dial_attempts_(0) { dial(); }
-    ~Dial() {}
+    Dial(my_context ctx) : my_base(std::move(ctx)), StateNotify("Dial"), dial_attempts_(0)
+    {
+        dial();
+    }
+    ~Dial() override = default;
 
     boost::statechart::result react(const EvNoCarrier&);
     void dial();
@@ -409,45 +419,44 @@ struct Dial : boost::statechart::state<Dial, Command::orthogonal<0> >, StateNoti
 
 struct Answer : boost::statechart::state<Answer, Command::orthogonal<0> >, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvNoCarrier, Ready> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvNoCarrier, Ready>>;
 
-    Answer(my_context ctx) : my_base(ctx), StateNotify("Answer")
+    Answer(my_context ctx) : my_base(std::move(ctx)), StateNotify("Answer")
     {
         context<Command>().push_at_command("A");
     }
-    ~Answer() {}
+    ~Answer() override = default;
 };
 
 // Online
 struct Online : boost::statechart::simple_state<Online, Active::orthogonal<0> >, StateNotify
 {
     Online() : StateNotify("Online") {}
-    ~Online() {}
+    ~Online() override = default;
 
     void in_state_react(const EvRxSerial&);
     void in_state_react(const EvTxSerial&);
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::transition<EvHangup, HangingUp>,
         boost::statechart::transition<EvDisconnect, PostDisconnected>,
         boost::statechart::in_state_reaction<EvRxSerial, Online, &Online::in_state_react>,
-        boost::statechart::in_state_reaction<EvTxSerial, Online, &Online::in_state_react> >
-        reactions;
+        boost::statechart::in_state_reaction<EvTxSerial, Online, &Online::in_state_react>>;
 };
 
 // Orthogonal on-call / not-on-call
 struct NotOnCall : boost::statechart::simple_state<NotOnCall, Active::orthogonal<1> >, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvConnect, OnCall> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvConnect, OnCall>>;
 
     NotOnCall() : StateNotify("NotOnCall") {}
-    ~NotOnCall() {}
+    ~NotOnCall() override = default;
 };
 
 struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateNotify, OnCallBase
 {
   public:
-    OnCall(my_context ctx) : my_base(ctx), StateNotify("OnCall")
+    OnCall(my_context ctx) : my_base(std::move(ctx)), StateNotify("OnCall")
     {
         // add a brief identifier that is *different* than the "~" which is what PPP uses
         // add a carriage return to clear out any garbage
@@ -457,7 +466,7 @@ struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateN
         // connecting necessarily puts the DTE online
         post_event(EvOnline());
     }
-    ~OnCall()
+    ~OnCall() override
     {
         // signal the disconnect event for the command state to handle
         glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver") << "Sent "
@@ -470,14 +479,11 @@ struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateN
     void in_state_react(const EvTxOnCallSerial&);
     void in_state_react(const EvSendBye&);
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::transition<EvNoCarrier, NotOnCall>,
         boost::statechart::in_state_reaction<EvRxOnCallSerial, OnCall, &OnCall::in_state_react>,
         boost::statechart::in_state_reaction<EvTxOnCallSerial, OnCall, &OnCall::in_state_react>,
-        boost::statechart::in_state_reaction<EvSendBye, OnCall, &OnCall::in_state_react>
-
-        >
-        reactions;
+        boost::statechart::in_state_reaction<EvSendBye, OnCall, &OnCall::in_state_react>>;
 
   private:
 };
@@ -485,7 +491,7 @@ struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateN
 struct SBD : boost::statechart::simple_state<SBD, Command::orthogonal<1>, SBDReady>, StateNotify
 {
     SBD() : StateNotify("SBD") {}
-    ~SBD() {}
+    ~SBD() override = default;
 
     void set_data(const EvSBDBeginData& e)
     {
@@ -532,32 +538,31 @@ struct SBD : boost::statechart::simple_state<SBD, Command::orthogonal<1>, SBDRea
 
 struct SBDReady : boost::statechart::simple_state<SBDReady, SBD>, StateNotify
 {
-    typedef boost::mpl::list<
-        boost::statechart::transition<EvSBDBeginData, SBDClearBuffers, SBD, &SBD::set_data> >
-        reactions;
+    using reactions = boost::mpl::list<
+        boost::statechart::transition<EvSBDBeginData, SBDClearBuffers, SBD, &SBD::set_data>>;
 
     SBDReady() : StateNotify("SBDReady") {}
 
-    ~SBDReady() {}
+    ~SBDReady() override = default;
 };
 
 struct SBDClearBuffers : boost::statechart::state<SBDClearBuffers, SBD>, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvSBDSendBufferCleared, SBDWrite> >
-        reactions;
+    using reactions =
+        boost::mpl::list<boost::statechart::transition<EvSBDSendBufferCleared, SBDWrite>>;
 
-    SBDClearBuffers(my_context ctx) : my_base(ctx), StateNotify("SBDClearBuffers")
+    SBDClearBuffers(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDClearBuffers")
     {
         context<Command>().clear_sbd_rx_buffer();
         context<Command>().push_at_command("+SBDD2");
     }
 
-    ~SBDClearBuffers() {}
+    ~SBDClearBuffers() override = default;
 };
 
 struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
 {
-    SBDWrite(my_context ctx) : my_base(ctx), StateNotify("SBDWrite")
+    SBDWrite(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDWrite")
     {
         if (context<SBD>().data().empty())
         {
@@ -581,25 +586,24 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
         context<IridiumDriverFSM>().serial_tx_buffer().push_back(context<SBD>().data());
     }
 
-    ~SBDWrite() {}
+    ~SBDWrite() override = default;
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::in_state_reaction<EvSBDWriteReady, SBDWrite, &SBDWrite::in_state_react>,
-        boost::statechart::transition<EvSBDWriteComplete, SBDTransmit> >
-        reactions;
+        boost::statechart::transition<EvSBDWriteComplete, SBDTransmit>>;
 };
 
 struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::custom_reaction<EvSBDTransmitComplete> > reactions;
-    SBDTransmit(my_context ctx) : my_base(ctx), StateNotify("SBDTransmit")
+    using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvSBDTransmitComplete>>;
+    SBDTransmit(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDTransmit")
     {
         if (context<SBD>().in_response_to_ring_alert())
             context<Command>().push_at_command("+SBDIXA");
         else
             context<Command>().push_at_command("+SBDIX");
     }
-    ~SBDTransmit() { context<SBD>().clear_data(); }
+    ~SBDTransmit() override { context<SBD>().clear_data(); }
 
     std::string mo_status_as_string(int code)
     {
@@ -723,13 +727,13 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
 
 struct SBDReceive : boost::statechart::state<SBDReceive, SBD>, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvSBDReceiveComplete, SBDReady> >
-        reactions;
-    SBDReceive(my_context ctx) : my_base(ctx), StateNotify("SBDReceive")
+    using reactions =
+        boost::mpl::list<boost::statechart::transition<EvSBDReceiveComplete, SBDReady>>;
+    SBDReceive(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDReceive")
     {
         context<Command>().push_at_command("+SBDRB");
     }
-    ~SBDReceive() {}
+    ~SBDReceive() override = default;
 };
 
 } // namespace fsm

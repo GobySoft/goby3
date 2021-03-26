@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerializeParseDCCL20190717H
-#define SerializeParseDCCL20190717H
+#ifndef GOBY_MIDDLEWARE_MARSHALLING_DCCL_H
+#define GOBY_MIDDLEWARE_MARSHALLING_DCCL_H
 
 #include "detail/dccl_serializer_parser.h"
 

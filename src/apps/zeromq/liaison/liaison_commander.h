@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,34 +22,21 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISONCOMMANDER20110609H
-#define LIAISONCOMMANDER20110609H
+#ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_COMMANDER_H
+#define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_COMMANDER_H
 
-#include <Wt/WAbstractListModel>
-#include <Wt/WBorder>
-#include <Wt/WBreak>
-#include <Wt/WColor>
-#include <Wt/WComboBox>
-#include <Wt/WCssDecorationStyle>
-#include <Wt/WDateTime>
-#include <Wt/WDialog>
-#include <Wt/WGroupBox>
-#include <Wt/WLabel>
-#include <Wt/WLineEdit>
-#include <Wt/WPushButton>
-#include <Wt/WSpinBox>
-#include <Wt/WStackedWidget>
-#include <Wt/WString>
-#include <Wt/WStringListModel>
-#include <Wt/WTableCell>
-#include <Wt/WTableView>
-#include <Wt/WText>
-#include <Wt/WTimer>
-#include <Wt/WTreeTable>
-#include <Wt/WTreeTableNode>
-#include <Wt/WTreeView>
-#include <Wt/WVBoxLayout>
-#include <Wt/WValidator>
+#include <algorithm>     // for max
+#include <cstdint>       // for uint64_t
+#include <deque>         // for deque
+#include <functional>    // for _Bind, bind
+#include <map>           // for operator!=
+#include <memory>        // for allocator
+#include <mutex>         // for mutex
+#include <set>           // for set
+#include <string>        // for string
+#include <unordered_map> // for unordered_...
+#include <utility>       // for pair
+#include <vector>        // for vector
 
 #include <Wt/Dbo/FixedSqlConnectionPool>
 #include <Wt/Dbo/Impl>
@@ -58,14 +45,54 @@
 #include <Wt/Dbo/SqlTraits>
 #include <Wt/Dbo/WtSqlTraits>
 #include <Wt/Dbo/backend/Sqlite3>
+#include <Wt/WContainerWidget>                            // for WContainer...
+#include <Wt/WDateTime>                                   // for WDateTime
+#include <Wt/WEvent>                                      // for WMouseEvent
+#include <Wt/WGroupBox>                                   // for WGroupBox
+#include <Wt/WLength>                                     // for WLength
+#include <Wt/WPushButton>                                 // for WPushButton
+#include <Wt/WString>                                     // for WString
+#include <Wt/WTimer>                                      // for WTimer
+#include <Wt/WTreeTableNode>                              // for WTreeTable...
+#include <boost/date_time/posix_time/ptime.hpp>           // for ptime
+#include <boost/date_time/posix_time/time_formatters.hpp> // for to_simple_...
+#include <boost/units/quantity.hpp>                       // for operator/
+#include <google/protobuf/message.h>                      // for Message
 
-#include "goby/time.h"
-#include "goby/util/as.h"
-#include "goby/util/debug_logger.h"
-#include "goby/zeromq/liaison/liaison_container.h"
-#include "goby/zeromq/protobuf/liaison_config.pb.h"
+#include "goby/middleware/group.h"                    // for Group
+#include "goby/middleware/marshalling/interface.h"    // for Marshallin...
+#include "goby/middleware/protobuf/intervehicle.pb.h" // for AckData
+#include "goby/middleware/transport/interprocess.h"   // for InterProce...
+#include "goby/middleware/transport/publisher.h"      // for Publisher
+#include "goby/time/convert.h"                        // for SystemCloc...
+#include "goby/time/system_clock.h"                   // for SystemClock
+#include "goby/util/debug_logger/flex_ostream.h"      // for operator<<
+#include "goby/zeromq/liaison/liaison_container.h"    // for LiaisonCom...
+#include "goby/zeromq/protobuf/liaison_config.pb.h"   // for ProtobufCo...
 
-#include "liaison.h"
+namespace Wt
+{
+class WComboBox;
+class WDialog;
+class WFormWidget;
+class WIconPair;
+class WLabel;
+class WLineEdit;
+class WModelIndex;
+class WPanel;
+class WStackedWidget;
+class WTreeTable;
+class WTreeView;
+class WValidator;
+} // namespace Wt
+namespace google
+{
+namespace protobuf
+{
+class Descriptor;
+class FieldDescriptor;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {
@@ -76,8 +103,8 @@ namespace zeromq
 class LiaisonTreeTableNode : public Wt::WTreeTableNode
 {
   public:
-    LiaisonTreeTableNode(const Wt::WString& labelText, Wt::WIconPair* labelIcon = 0,
-                         Wt::WTreeTableNode* parentNode = 0)
+    LiaisonTreeTableNode(const Wt::WString& labelText, Wt::WIconPair* labelIcon = nullptr,
+                         Wt::WTreeTableNode* parentNode = nullptr)
         : Wt::WTreeTableNode(labelText, labelIcon, parentNode)
     {
         this->labelArea()->setHeight(Wt::WLength(2.5, Wt::WLength::FontEm));
@@ -140,13 +167,13 @@ class LiaisonCommander
 {
   public:
     LiaisonCommander(const protobuf::LiaisonConfig& cfg);
-    ~LiaisonCommander();
+    ~LiaisonCommander() override;
     void loop();
 
   private:
-    void focus() { commander_timer_.start(); }
+    void focus() override { commander_timer_.start(); }
 
-    void unfocus() { commander_timer_.stop(); }
+    void unfocus() override { commander_timer_.stop(); }
 
     friend class CommanderCommsThread;
     void display_notify_subscription(const std::vector<unsigned char>& data, int scheme,
@@ -154,7 +181,7 @@ class LiaisonCommander
                                      const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::
                                          NotificationSubscription::Color& background_color);
 
-    void display_notify(const google::protobuf::Message& pb_msg, std::string title,
+    void display_notify(const google::protobuf::Message& pb_msg, const std::string& title,
                         const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::
                             NotificationSubscription::Color& background_color);
 
@@ -164,7 +191,6 @@ class LiaisonCommander
 
     struct ControlsContainer : Wt::WGroupBox
     {
-        struct CommandContainer;
 
         ControlsContainer(const protobuf::ProtobufCommanderConfig& pb_commander_config,
                           Wt::WStackedWidget* commands_div, LiaisonCommander* parent);
@@ -189,10 +215,10 @@ class LiaisonCommander
             void generate_root();
 
             void generate_tree(Wt::WTreeTableNode* parent, google::protobuf::Message* message,
-                               std::string parent_hierarchy = "");
+                               const std::string& parent_hierarchy = "");
             void generate_tree_row(Wt::WTreeTableNode* parent, google::protobuf::Message* message,
                                    const google::protobuf::FieldDescriptor* field_desc,
-                                   std::string parent_hierarchy = "");
+                                   const std::string& parent_hierarchy = "");
 
             void generate_tree_field(Wt::WFormWidget*& value_field,
                                      google::protobuf::Message* message,
@@ -244,13 +270,13 @@ class LiaisonCommander
                                               google::protobuf::Message* message,
                                               const google::protobuf::FieldDescriptor* field_desc,
                                               Wt::WPushButton* field, Wt::WTreeTableNode* parent,
-                                              std::string parent_hierarchy);
+                                              const std::string& parent_hierarchy);
 
             void handle_load_external_data(const Wt::WMouseEvent& mouse,
                                            google::protobuf::Message* message,
                                            const google::protobuf::FieldDescriptor* field_desc,
                                            Wt::WPushButton* field, Wt::WTreeTableNode* parent,
-                                           std::string parent_hierarchy);
+                                           const std::string& parent_hierarchy);
 
             std::pair<const google::protobuf::FieldDescriptor*,
                       std::vector<google::protobuf::Message*>>
@@ -269,7 +295,7 @@ class LiaisonCommander
             void handle_repeated_size_change(int size, google::protobuf::Message* message,
                                              const google::protobuf::FieldDescriptor* field_desc,
                                              Wt::WTreeTableNode* parent,
-                                             std::string parent_hierarchy);
+                                             const std::string& parent_hierarchy);
 
             void handle_database_double_click(const Wt::WModelIndex& index,
                                               const Wt::WMouseEvent& event);
@@ -290,11 +316,11 @@ class LiaisonCommander
             };
 
             void handle_database_dialog(DatabaseDialogResponse response,
-                                        std::shared_ptr<google::protobuf::Message> message,
-                                        std::string group, std::string layer);
+                                        const std::shared_ptr<google::protobuf::Message>& message,
+                                        const std::string& group, const std::string& layer);
 
             void handle_external_data(std::string type, std::string group,
-                                      std::shared_ptr<const google::protobuf::Message> msg);
+                                      const std::shared_ptr<const google::protobuf::Message>& msg);
 
             std::string create_field_hierarchy(const google::protobuf::FieldDescriptor* field_desc);
 
@@ -427,7 +453,7 @@ class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonComm
                 notify.group_regex());
         }
     }
-    ~CommanderCommsThread() {}
+    ~CommanderCommsThread() override = default;
 
   private:
     void set_command_group(google::protobuf::Message& command, const goby::middleware::Group& group)

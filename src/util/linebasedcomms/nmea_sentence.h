@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,17 +22,20 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef NMEASentence20091211H
-#define NMEASentence20091211H
+#ifndef GOBY_UTIL_LINEBASEDCOMMS_NMEA_SENTENCE_H
+#define GOBY_UTIL_LINEBASEDCOMMS_NMEA_SENTENCE_H
 
-#include <exception>
-#include <sstream>
-#include <stdexcept>
-#include <vector>
+#include <algorithm> // for max
+#include <memory>    // for allocator_trait...
+#include <sstream>   // for ostream
+#include <stdexcept> // for runtime_error
+#include <string>    // for string, operator+
+#include <vector>    // for vector
 
-#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/split.hpp>          // for split
 
-#include "goby/util/as.h"
+#include "goby/util/as.h" // for as
 
 namespace goby
 {
@@ -55,7 +58,7 @@ class NMEASentence : public std::vector<std::string>
         REQUIRE
     };
 
-    NMEASentence() {}
+    NMEASentence() = default;
     NMEASentence(std::string s, strategy cs_strat = VALIDATE);
 
     // Bare message, no checksum or \r\n

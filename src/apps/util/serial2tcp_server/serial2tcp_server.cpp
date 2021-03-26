@@ -1,4 +1,4 @@
-// Copyright 2010-2020:
+// Copyright 2010-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,10 +22,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <iostream>
+#include <iostream> // for operator<<, endl
+#include <string>   // for string
+#include <unistd.h> // for usleep
 
-#include "goby/util/as.h"
-#include "goby/util/linebasedcomms.h"
+#include "goby/util/as.h"                           // for as
+#include "goby/util/linebasedcomms/serial_client.h" // for SerialClient
+#include "goby/util/linebasedcomms/tcp_server.h"    // for TCPServer
 
 using goby::util::as;
 

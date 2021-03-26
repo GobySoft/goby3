@@ -1,13 +1,13 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Russ Webber <russ@rw.id.au>
 //   Mike Godin <mikegodin@yahoo.com>
-//   Zac Berkowitz <zberkowitz@whoi.edu>
+//   Russ Webber <russ@rw.id.au>
 //   Jeff Walls <jeff@luigi>
+//   Zac Berkowitz <zberkowitz@whoi.edu>
 //   Chris Murphy <cmurphy@bluefinrobotics.com>
 //
 //
@@ -27,18 +27,51 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <sstream>
+#include <algorithm>   // for copy, max
+#include <cerrno>      // for errno
+#include <chrono>      // for seconds
+#include <cmath>       // for abs
+#include <cstdlib>     // for abs
+#include <cstring>     // for strerror
+#include <iterator>    // for ostrea...
+#include <list>        // for operat...
+#include <locale>      // for locale
+#include <memory>      // for allocator
+#include <sstream>     // for basic_...
+#include <stdexcept>   // for out_of...
+#include <sys/ioctl.h> // for ioctl
+#include <unistd.h>    // for usleep
+#include <utility>     // for pair
+#include <vector>      // for vector
 
-#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/case_conv.hpp>      // for to_upp...
+#include <boost/algorithm/string/classification.hpp> // for is_any...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim
+#include <boost/date_time/date.hpp>                  // for date<>...
+#include <boost/date_time/gregorian/gregorian.hpp>   // for date
+#include <boost/date_time/posix_time/ptime.hpp>      // for ptime
+#include <boost/date_time/time.hpp>                  // for base_t...
+#include <boost/signals2/signal.hpp>                 // for signal
+#include <dccl/binary.h>                             // for b64_de...
+#include <dccl/codec.h>                              // for Codec
+#include <dccl/common.h>                             // for operat...
 
-#include <dccl/bitset.h>
+#include "goby/acomms/acomms_constants.h"                // for BROADC...
+#include "goby/acomms/protobuf/modem_driver_status.pb.h" // for ModemD...
+#include "goby/time/convert.h"                           // for System...
+#include "goby/time/types.h"                             // for MicroTime
+#include "goby/util/as.h"                                // for as
+#include "goby/util/binary.h"                            // for hex_de...
+#include "goby/util/debug_logger/flex_ostream.h"         // for FlexOs...
+#include "goby/util/debug_logger/flex_ostreambuf.h"      // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h"  // for operat...
+#include "goby/util/debug_logger/term_color.h"           // for magenta
+#include "goby/util/linebasedcomms/interface.h"          // for LineBa...
+#include "goby/util/linebasedcomms/serial_client.h"      // for Serial...
+#include "goby/util/protobuf/io.h"                       // for operat...
 
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
-#include "goby/util/sci.h"
-
-#include "driver_exception.h"
+#include "driver_exception.h" // for ModemD...
 #include "mm_driver.h"
 
 using goby::glog;
@@ -69,24 +102,12 @@ std::mutex goby::acomms::MMDriver::dccl_mutex_;
 
 goby::acomms::MMDriver::MMDriver()
     : last_write_time_(time::SystemClock::now()),
-      waiting_for_modem_(false),
-      waiting_for_multimsg_(false),
-      startup_done_(false),
-      global_fail_count_(0),
-      present_fail_count_(0),
-      clock_set_(false),
+
       last_hydroid_gateway_gps_request_(time::SystemClock::now()),
-      is_hydroid_gateway_(false),
-      expected_remaining_caxst_(0),
-      expected_remaining_cacst_(0),
-      expected_ack_destination_(0),
-      local_cccyc_(false),
+
       last_keep_alive_time_(std::chrono::seconds(0)),
-      last_multimsg_rx_time_(std::chrono::seconds(0)),
-      using_application_acks_(false),
-      application_ack_max_frames_(0),
-      next_frame_(0),
-      serial_fd_(-1)
+      last_multimsg_rx_time_(std::chrono::seconds(0))
+
 {
     initialize_talkers();
 }
@@ -127,7 +148,7 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
             application_ack_ids_.insert(id);
 
         std::lock_guard<std::mutex> l(dccl_mutex_);
-        dccl_.reset(new dccl::Codec);
+        dccl_ = std::make_unique<dccl::Codec>();
         dccl_->load<micromodem::protobuf::MMApplicationAck>();
     }
 
@@ -135,11 +156,6 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
 
     if (driver_cfg_.connection_type() == protobuf::DriverConfig::CONNECTION_SERIAL)
     {
-        // Grab our native file descrpitor for the serial port.  Only works for linux.
-        // Used to change control lines (e.g. RTS) w/ linux through IOCTL calls.
-        // Would need #ifdef's for conditional compling if other platforms become desired.
-        serial_fd_ = dynamic_cast<util::SerialClient&>(modem()).socket().native_handle();
-
         // The MM2 (at least, possibly MM1 as well) has an issue where serial comms are
         // garbled when RTS is asserted and hardware flow control is disabled (HFC0).
         // HFC is disabled by default on MM boot so we need to make sure
@@ -193,35 +209,11 @@ void goby::acomms::MMDriver::startup(const protobuf::DriverConfig& cfg)
 
 void goby::acomms::MMDriver::set_rts(bool state)
 {
-    int status;
-    if (ioctl(serial_fd_, TIOCMGET, &status) == -1)
-    {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
-    }
-
-    glog.is(DEBUG1) && glog << group(glog_out_group()) << "Setting RTS to "
-                            << (state ? "high" : "low") << std::endl;
-    if (state)
-        status |= TIOCM_RTS;
-    else
-        status &= ~TIOCM_RTS;
-    if (ioctl(serial_fd_, TIOCMSET, &status) == -1)
-    {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
-    }
-}
-
-bool goby::acomms::MMDriver::query_rts()
-{
-    int status;
-    if (ioctl(serial_fd_, TIOCMGET, &status) == -1)
-    {
-        glog.is(DEBUG1) && glog << group(glog_out_group()) << warn
-                                << "IOCTL failed: " << strerror(errno) << std::endl;
-    }
-    return (status & TIOCM_RTS);
+    auto& serial_client = dynamic_cast<util::SerialClient&>(modem());
+    middleware::protobuf::SerialCommand command;
+    command.set_command(state ? middleware::protobuf::SerialCommand::RTS_HIGH
+                              : middleware::protobuf::SerialCommand::RTS_LOW);
+    serial_client.send_command(command);
 }
 
 void goby::acomms::MMDriver::update_cfg(const protobuf::DriverConfig& cfg)
@@ -423,8 +415,7 @@ void goby::acomms::MMDriver::set_clock()
     {
         NMEASentence nmea("$CCTMS", NMEASentence::IGNORE);
         std::stringstream iso_time;
-        boost::posix_time::time_facet* facet =
-            new boost::posix_time::time_facet("%Y-%m-%dT%H:%M:%SZ");
+        auto* facet = new boost::posix_time::time_facet("%Y-%m-%dT%H:%M:%SZ");
         iso_time.imbue(std::locale(iso_time.getloc(), facet));
         iso_time << (p + boost::posix_time::seconds(1));
         nmea.push_back(iso_time.str());
@@ -467,24 +458,24 @@ void goby::acomms::MMDriver::write_cfg()
     write_single_cfg("SRC," + as<std::string>(driver_cfg_.modem_id()));
 
     // enforce REV to be enabled, we use it for current time and detecting modem reboots
-    if(!mm_driver_cfg().has_revision())
+    if (!mm_driver_cfg().has_revision())
     {
-      write_single_cfg("REV,1");
+        write_single_cfg("REV,1");
     }
     else // unless revision is manually specified
     {
-      write_single_cfg("REV,0");
-      revision_.mm_major = mm_driver_cfg().revision().mm_major();
-      revision_.mm_minor = mm_driver_cfg().revision().mm_minor();
-      revision_.mm_patch = mm_driver_cfg().revision().mm_patch();
+        write_single_cfg("REV,0");
+        revision_.mm_major = mm_driver_cfg().revision().mm_major();
+        revision_.mm_minor = mm_driver_cfg().revision().mm_minor();
+        revision_.mm_patch = mm_driver_cfg().revision().mm_patch();
     }
-    
+
     // enforce RXP to be enabled, we use it to detect start of received message
     write_single_cfg("RXP,1");
 
-    if(mm_driver_cfg().use_base64_fdp())
+    if (mm_driver_cfg().use_base64_fdp())
     {
-      write_single_cfg("recv.base64data,1");
+        write_single_cfg("recv.base64data,1");
     }
 }
 
@@ -529,7 +520,7 @@ void goby::acomms::MMDriver::shutdown()
     modem_close();
 }
 
-goby::acomms::MMDriver::~MMDriver() {}
+goby::acomms::MMDriver::~MMDriver() = default;
 
 //
 // LOOP
@@ -793,7 +784,9 @@ void goby::acomms::MMDriver::cctdp(protobuf::ModemTransmission* msg)
         {
             if (!using_application_acks_)
             {
-	      glog.is(WARN) && glog << "Firmware ACK not yet supported for FDP. Enable application acks (use_application_acks: true) for ACK capability."
+                glog.is(WARN) &&
+                    glog << "Firmware ACK not yet supported for FDP. Enable application acks "
+                            "(use_application_acks: true) for ACK capability."
                          << std::endl;
             }
             else
@@ -806,13 +799,13 @@ void goby::acomms::MMDriver::cctdp(protobuf::ModemTransmission* msg)
         nmea.push_back(0); // ack
         nmea.push_back(0); // reserved
 
-	// pad to even bytes to avoid bug with Micro-Modem
-	if (revision_.mm_major == 2 && revision_.mm_minor == 0 && revision_.mm_patch < 35490)
-	{
+        // pad to even bytes to avoid bug with Micro-Modem
+        if (revision_.mm_major == 2 && revision_.mm_minor == 0 && revision_.mm_patch < 35490)
+        {
             if (msg->frame(0).size() & 1)
                 *msg->mutable_frame(0) += '\0';
-	}
-	
+        }
+
         nmea.push_back(goby::util::hex_encode(msg->frame(0))); //HHHH
         append_to_write_queue(nmea);
     }
@@ -1462,14 +1455,14 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
         }
         else
         {
-	  if(mm_driver_cfg().use_base64_fdp())
-	    {
-	      frame += dccl::b64_decode(frames[f * num_fields + DATA]);
-	    }
-	  else
-	    {
-	      frame += goby::util::hex_decode(frames[f * num_fields + DATA]);
-	    }
+            if (mm_driver_cfg().use_base64_fdp())
+            {
+                frame += dccl::b64_decode(frames[f * num_fields + DATA]);
+            }
+            else
+            {
+                frame += goby::util::hex_decode(frames[f * num_fields + DATA]);
+            }
         }
     }
 
@@ -1480,9 +1473,9 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
     }
     else
     {
-      m->add_frame(frame);
-      if (using_application_acks_)
-	process_incoming_app_ack(m);
+        m->add_frame(frame);
+        if (using_application_acks_)
+            process_incoming_app_ack(m);
     }
 
     glog.is(DEBUG1) && glog << group(glog_in_group())
@@ -1564,7 +1557,7 @@ void goby::acomms::MMDriver::receive_time(const NMEASentence& nmea, SentenceIDs 
             time_field = 1;
 
         std::string t = nmea.at(time_field).substr(0, nmea.at(time_field).size() - 1);
-        boost::posix_time::time_input_facet* tif = new boost::posix_time::time_input_facet;
+        auto* tif = new boost::posix_time::time_input_facet;
         tif->set_iso_extended_format();
         std::istringstream iso_time(t);
         iso_time.imbue(std::locale(std::locale::classic(), tif));
@@ -1842,7 +1835,7 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
     // we're receiving
     else
     {
-        unsigned rate = as<std::uint32_t>(nmea[4]);
+        auto rate = as<std::uint32_t>(nmea[4]);
         if (local_cccyc_ && rate != 0) // clear flag for next cycle
         {
             // if we poll for rates > 0, we get *two* CACYC - the one from the poll and the one from the message
@@ -1851,7 +1844,7 @@ void goby::acomms::MMDriver::cacyc(const NMEASentence& nmea, protobuf::ModemTran
             return;
         }
 
-        unsigned num_frames = as<std::uint32_t>(nmea[6]);
+        auto num_frames = as<std::uint32_t>(nmea[6]);
         if (!frames_waiting_to_receive_.empty())
         {
             glog.is(DEBUG1) && glog << group(glog_out_group()) << warn << "flushing "
@@ -1914,17 +1907,13 @@ void goby::acomms::MMDriver::process_outgoing_app_ack(protobuf::ModemTransmissio
         // build up message to ack
         micromodem::protobuf::MMApplicationAck acks;
 
-        for (std::map<unsigned, std::set<unsigned>>::const_iterator it = frames_to_ack_.begin(),
-                                                                    end = frames_to_ack_.end();
-             it != end; ++it)
+        for (const auto& it : frames_to_ack_)
         {
             micromodem::protobuf::MMApplicationAck::AckPart& acks_part = *acks.add_part();
-            acks_part.set_ack_dest(it->first);
+            acks_part.set_ack_dest(it.first);
 
             std::uint32_t acked_frames = 0;
-            for (std::set<unsigned>::const_iterator jt = it->second.begin(),
-                                                    jend = it->second.end();
-                 jt != jend; ++jt)
+            for (auto jt = it.second.begin(), jend = it.second.end(); jt != jend; ++jt)
                 acked_frames |= (1ul << *jt);
 
             acks_part.set_acked_frames(acked_frames);

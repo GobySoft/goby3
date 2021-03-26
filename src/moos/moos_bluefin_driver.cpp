@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,21 +23,43 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "moos_bluefin_driver.h"
-#include "goby/acomms/modemdriver/driver_exception.h"
-#include "goby/acomms/protobuf/mm_driver.pb.h"
-#include "goby/moos/moos_protobuf_helpers.h"
-#include "goby/moos/moos_string.h"
-#include "goby/time.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/linebasedcomms/nmea_sentence.h"
-#include <boost/format.hpp>
+
+#include <chrono>   // for operator/
+#include <list>     // for operator!=
+#include <ostream>  // for operator<<
+#include <unistd.h> // for sleep
+#include <utility>  // for make_pair
+
+#include <MOOS/libMOOS/Comms/CommsTypes.h>                  // for MOOSMSG_...
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>                     // for CMOOSMsg
+#include <boost/algorithm/string/case_conv.hpp>             // for to_upper...
+#include <boost/date_time/gregorian/gregorian.hpp>          // for gregoria...
+#include <boost/date_time/posix_time/posix_time_config.hpp> // for time_dur...
+#include <boost/date_time/posix_time/ptime.hpp>             // for ptime
+#include <boost/date_time/time.hpp>                         // for base_tim...
+#include <boost/date_time/time_system_counted.hpp>          // for counted_...
+#include <boost/format.hpp>                                 // for basic_al...
+#include <boost/function.hpp>                               // for function
+#include <boost/lexical_cast/bad_lexical_cast.hpp>          // for bad_lexi...
+#include <boost/signals2/expired_slot.hpp>                  // for expired_...
+#include <boost/signals2/signal.hpp>                        // for signal
+#include <boost/units/quantity.hpp>                         // for quantity
+#include <boost/units/systems/si/time.hpp>                  // for seconds
+
+#include "goby/acomms/amac/mac_manager.h"               // for MACManager
+#include "goby/time/convert.h"                          // for convert_...
+#include "goby/time/system_clock.h"                     // for SystemClock
+#include "goby/time/types.h"                            // for MicroTime
+#include "goby/util/binary.h"                           // for hex_decode
+#include "goby/util/debug_logger/flex_ostream.h"        // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
+#include "goby/util/linebasedcomms/nmea_sentence.h"     // for NMEASent...
 
 using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
-using goby::acomms::operator<<;
 using goby::util::NMEASentence;
 
 goby::moos::BluefinCommsDriver::BluefinCommsDriver(goby::acomms::MACManager* mac)
@@ -186,24 +208,24 @@ void goby::moos::BluefinCommsDriver::do_work()
     MOOSMSG_LIST msgs;
     if (moos_client_.Fetch(msgs))
     {
-        for (MOOSMSG_LIST::iterator it = msgs.begin(), end = msgs.end(); it != end; ++it)
+        for (auto& msg : msgs)
         {
             const std::string& in_moos_var = bluefin_driver_cfg_.nmea_in_moos_var();
-            const std::string& s_val = it->GetString();
+            const std::string& s_val = msg.GetString();
 
             const std::string raw = "raw: \"";
             const std::string::size_type raw_pos = s_val.find(raw);
             if (raw_pos == std::string::npos)
                 continue;
 
-            const std::string::size_type end_pos = s_val.find("\"", raw_pos + raw.size());
+            const std::string::size_type end_pos = s_val.find('\"', raw_pos + raw.size());
             if (end_pos == std::string::npos)
                 continue;
 
             std::string value =
                 s_val.substr(raw_pos + raw.size(), end_pos - (raw_pos + raw.size()));
 
-            if (it->GetKey() == in_moos_var &&
+            if (msg.GetKey() == in_moos_var &&
                 (value.substr(0, 5) == "$BFCP" || value.substr(0, 6) == "$BFCMA"))
             {
                 goby::acomms::protobuf::ModemRaw in_raw;

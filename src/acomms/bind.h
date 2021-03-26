@@ -1,4 +1,4 @@
-// Copyright 2010-2020:
+// Copyright 2010-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,8 +24,8 @@
 
 // gives functions for binding the goby-acomms libraries together
 
-#ifndef BIND20100120H
-#define BIND20100120H
+#ifndef GOBY_ACOMMS_BIND_H
+#define GOBY_ACOMMS_BIND_H
 
 #include <boost/bind.hpp>
 

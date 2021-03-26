@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,13 +21,37 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerialLineBased20190718H
-#define SerialLineBased20190718H
+#ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_SERIAL_H
+#define GOBY_MIDDLEWARE_IO_LINE_BASED_SERIAL_H
 
-#include <regex>
+#include <istream> // for istream, bas...
+#include <string>  // for string
 
-#include "goby/middleware/io/detail/serial_interface.h"
-#include "goby/middleware/io/line_based/common.h"
+#include <boost/asio/read_until.hpp>   // for async_read_u...
+#include <boost/asio/streambuf.hpp>    // for streambuf
+#include <boost/system/error_code.hpp> // for error_code
+
+#include "goby/middleware/io/detail/io_interface.h"     // for PubSubLayer
+#include "goby/middleware/io/detail/serial_interface.h" // for SerialThread
+#include "goby/middleware/io/line_based/common.h"       // for match_regex
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class SerialConfig;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {
@@ -41,12 +65,15 @@ namespace io
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
+          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+          template <class> class ThreadType = goby::middleware::SimpleThread,
+          bool use_indexed_groups = false>
 class SerialThreadLineBased
-    : public detail::SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>
+    : public detail::SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                  ThreadType, use_indexed_groups>
 {
-    using Base =
-        detail::SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer>;
+    using Base = detail::SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                                      ThreadType, use_indexed_groups>;
 
   public:
     /// \brief Constructs the thread.
@@ -74,9 +101,11 @@ class SerialThreadLineBased
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType,
+          bool use_indexed_groups>
 void goby::middleware::io::SerialThreadLineBased<line_in_group, line_out_group, publish_layer,
-                                                 subscribe_layer>::async_read()
+                                                 subscribe_layer, ThreadType,
+                                                 use_indexed_groups>::async_read()
 {
     boost::asio::async_read_until(
         this->mutable_serial_port(), buffer_, eol_matcher_,

@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,12 +22,36 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/exception.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/seawater.h"
-#include "goby/util/seawater/depth.h"
-#include "goby/util/seawater/salinity.h"
-#include "goby/util/seawater/swstate.h"
+#include <limits>    // for numeric_limits
+#include <list>      // for operator==
+#include <ostream>   // for operator<<
+#include <stdexcept> // for out_of_range
+#include <utility>   // for move
+
+#include <boost/bind.hpp>                          // for bind_t, list...
+#include <boost/function.hpp>                      // for function
+#include <boost/signals2/expired_slot.hpp>         // for expired_slot
+#include <boost/signals2/mutex.hpp>                // for mutex
+#include <boost/units/absolute.hpp>                // for absolute
+#include <boost/units/quantity.hpp>                // for quantity
+#include <boost/units/systems/angle/degrees.hpp>   // for plane_angle
+#include <boost/units/systems/si/length.hpp>       // for length
+#include <boost/units/systems/si/mass_density.hpp> // for kilograms_pe...
+#include <boost/units/unit.hpp>                    // for unit
+
+#include "goby/exception.h"                             // for Exception
+#include "goby/middleware/frontseat/exception.h"        // for Exception
+#include "goby/middleware/protobuf/frontseat_data.pb.h" // for CTDSample
+#include "goby/time/convert.h"                          // for SystemClock:...
+#include "goby/time/system_clock.h"                     // for SystemClock
+#include "goby/util/debug_logger/flex_ostream.h"        // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1, DIE
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
+#include "goby/util/debug_logger/term_color.h"          // for magenta, noc...
+#include "goby/util/seawater/depth.h"                   // for depth
+#include "goby/util/seawater/salinity.h"                // for salinity
+#include "goby/util/seawater/soundspeed.h"              // for mackenzie_so...
+#include "goby/util/seawater/swstate.h"                 // for density_anomaly
 
 #include "interface.h"
 
@@ -37,8 +61,8 @@ using namespace goby::util::logger;
 using namespace goby::util::tcolor;
 using goby::time::MicroTime;
 
-goby::middleware::frontseat::InterfaceBase::InterfaceBase(const protobuf::Config& cfg)
-    : cfg_(cfg),
+goby::middleware::frontseat::InterfaceBase::InterfaceBase(protobuf::Config cfg)
+    : cfg_(std::move(cfg)),
       helm_state_(gpb::HELM_NOT_RUNNING),
       state_(gpb::INTERFACE_STANDBY),
       start_time_(goby::time::SystemClock::now<MicroTime>()),
@@ -260,6 +284,9 @@ void goby::middleware::frontseat::InterfaceBase::compute_missing(gpb::NodeStatus
 {
     if (!status->has_name())
         status->set_name(cfg_.name());
+
+    if (!status->has_type())
+        status->set_type(cfg_.type());
 
     if (!status->has_time())
         status->set_time_with_units(goby::time::SystemClock::now<goby::time::SITime>());

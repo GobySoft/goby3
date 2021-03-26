@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,23 +21,41 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <fstream>
-#include <iostream>
-#include <sstream>
+#include <functional> // for function
+#include <iostream>   // for operator<<, basic...
+#include <iterator>   // for operator!=, rever...
+#include <map>        // for _Rb_tree_const_it...
+#include <memory>     // for allocator, unique...
+#include <set>        // for set
+#include <stdexcept>  // for runtime_error
+#include <stdlib.h>   // for exit, EXIT_FAILURE
+#include <string>     // for string, basic_string
+#include <utility>    // for pair, make_pair
 
-#include "yaml_raii.h"
-#include <yaml-cpp/yaml.h>
+#include <boost/algorithm/string/erase.hpp>        // for erase_all
+#include <boost/iterator/iterator_traits.hpp>      // for iterator_value<>:...
+#include <clang/AST/DeclCXX.h>                     // for CXXRecordDecl
+#include <clang/AST/Expr.h>                        // for Expr, IntegerLiteral
+#include <clang/AST/ExprCXX.h>                     // for CXXMemberCallExpr
+#include <clang/AST/PrettyPrinter.h>               // for PrintingPolicy
+#include <clang/AST/TemplateBase.h>                // for TemplateArgument
+#include <clang/AST/Type.h>                        // for QualType, Type
+#include <clang/ASTMatchers/ASTMatchersInternal.h> // for VariadicFunction
+#include <clang/Basic/LangOptions.h>               // for LangOptions
+#include <llvm/ADT/APInt.h>                        // for APInt
+#include <llvm/ADT/APSInt.h>                       // for APSInt
+#include <llvm/ADT/StringRef.h>                    // for StringRef
+#include <llvm/Support/raw_ostream.h>              // for raw_string_ostream
+#include <yaml-cpp/emitter.h>                      // for operator<<, Emitter
 
-#include "goby/middleware/marshalling/interface.h"
-#include "goby/middleware/transport/interface.h"
-
-#include "clang/ASTMatchers/ASTMatchFinder.h"
-#include "clang/ASTMatchers/ASTMatchers.h"
-#include "clang/Frontend/FrontendActions.h"
-#include "clang/Tooling/Tooling.h"
-
-#include "actions.h"
-#include "pubsub_entry.h"
+#include "actions.h"                               // for generate
+#include "goby/middleware/marshalling/interface.h" // for MarshallingScheme
+#include "goby/middleware/transport/interface.h"   // for Necessity, Necess...
+#include "pubsub_entry.h"                          // for Layer, PubSubEntry
+#include "yaml_raii.h"                             // for YMap, YSeq
+#include "clang/ASTMatchers/ASTMatchFinder.h"      // for MatchFinder::Matc...
+#include "clang/ASTMatchers/ASTMatchers.h"         // for hasName, callee
+#include "clang/Tooling/Tooling.h"                 // for newFrontendAction...
 
 using goby::clang::Layer;
 using goby::clang::PubSubEntry;
@@ -132,9 +150,16 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
         return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
                                  subscribe_parameters_matcher, containing_class_matcher);
     }
+    else if (method == "subscribe_type_regex")
+    {
+        auto subscribe_regex_parameters_matcher = callee(base_pubsub_parameters_matcher);
+        return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
+                                 subscribe_regex_parameters_matcher, containing_class_matcher);
+    }
     else
     {
-        throw(std::runtime_error("method must be 'publish' or 'subscribe'"));
+        throw(
+            std::runtime_error("method must be 'publish', 'subscribe', or 'subscribe_type_regex'"));
     }
 }
 
@@ -198,10 +223,9 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         if (on_thread_decl)
         {
             thread = as_string(*on_thread_decl);
-            for (auto it = on_thread_decl->bases_begin(), end = on_thread_decl->bases_end();
-                 it != end; ++it)
-                bases.insert(as_string(*(it->getType()->getAsCXXRecordDecl())));
+            insert_bases(bases, on_thread_decl);
         }
+
         bases_[thread] = bases;
 
         for (auto base : bases) parents_[base].insert(thread);
@@ -232,7 +256,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         if (!group_int.empty())
         {
             if (!group.empty())
-                group += "::";
+                group += ";";
             group += group_int;
         }
 
@@ -252,6 +276,13 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
             necessity = static_cast<goby::middleware::Necessity>(
                 necessity_arg->getAsIntegral().getExtValue());
 
+        auto method = pubsub_call_expr->getMethodDecl()->getNameAsString();
+        bool is_regex = (method.find("regex") != std::string::npos);
+
+        auto direction = (method.find("publish") != std::string::npos)
+                             ? goby::clang::PubSubEntry::Direction::PUBLISH
+                             : goby::clang::PubSubEntry::Direction::SUBSCRIBE;
+
         std::set<std::string> internal_groups{
             "goby::middleware::interprocess::to_portal",
             "goby::middleware::interprocess::regex",
@@ -270,10 +301,8 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         if (internal_groups.count(group))
             return;
 
-        entries_.emplace(layer,
-                         (necessity_arg) ? goby::clang::PubSubEntry::Direction::SUBSCRIBE
-                                         : goby::clang::PubSubEntry::Direction::PUBLISH,
-                         thread, group, scheme, type, thread_is_known, necessity);
+        entries_.emplace(layer, direction, thread, group, scheme, type, thread_is_known, necessity,
+                         is_regex);
     }
 
     const std::set<PubSubEntry>& entries() const { return entries_; }
@@ -303,6 +332,17 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         return as_string(*(cxx_decl.getTypeForDecl()));
     }
 
+    // recursively insert all base classes
+    void insert_bases(std::set<std::string>& bases, const clang::CXXRecordDecl* thread_decl)
+    {
+        std::string thread = as_string(*thread_decl);
+        for (auto it = thread_decl->bases_begin(), end = thread_decl->bases_end(); it != end; ++it)
+        {
+            bases.insert(as_string(*(it->getType()->getAsCXXRecordDecl())));
+            insert_bases(bases, it->getType()->getAsCXXRecordDecl());
+        }
+    }
+
   private:
     std::set<PubSubEntry> entries_;
     // map thread to bases
@@ -318,6 +358,7 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
 
     finder.addMatcher(pubsub_matcher("publish"), &publish_aggregator);
     finder.addMatcher(pubsub_matcher("subscribe"), &subscribe_aggregator);
+    finder.addMatcher(pubsub_matcher("subscribe_type_regex"), &subscribe_aggregator);
 
     if (output_file.empty())
         output_file = target_name + "_interface.yml";

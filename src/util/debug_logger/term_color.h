@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,13 +22,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TermColor20091211H
-#define TermColor20091211H
+#ifndef GOBY_UTIL_DEBUG_LOGGER_TERM_COLOR_H
+#define GOBY_UTIL_DEBUG_LOGGER_TERM_COLOR_H
 
-#include <iostream>
-#include <map>
-#include <memory>
-#include <string>
+#include <iostream> // for ostream
+#include <map>      // for map
+#include <string>   // for string
+#include <utility>  // for pair
 
 namespace goby
 {
@@ -161,10 +161,10 @@ class TermColor
 
   private:
     TermColor();
-    ~TermColor() {}
+    ~TermColor() = default;
 
-    TermColor(const TermColor&);
-    TermColor& operator=(const TermColor&);
+    TermColor(const TermColor&) = delete;
+    TermColor& operator=(const TermColor&) = delete;
 
     static TermColor* get_instance()
     {

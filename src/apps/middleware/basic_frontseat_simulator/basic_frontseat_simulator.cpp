@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -28,15 +28,32 @@
 // > basic_frontseat_modem_simulator 54321
 // 2. run goby_frontseat_interface or iFrontSeat connecting to that port
 
-#include <limits>
-#include <map>
-#include <sstream>
-#include <string>
+#include <cmath>       // for isnan, cos, sin
+#include <cstdlib>     // for exit, abs
+#include <iomanip>     // for operator<<, set...
+#include <iostream>    // for operator<<, bas...
+#include <limits>      // for numeric_limits
+#include <map>         // for map, map<>::map...
+#include <memory>      // for unique_ptr
+#include <stdexcept>   // for runtime_error
+#include <string>      // for string, basic_s...
+#include <type_traits> // for __decay_and_str...
+#include <unistd.h>    // for sleep, usleep
+#include <utility>     // for pair, make_pair
+#include <vector>      // for vector
 
-#include "goby/util/as.h"
-#include "goby/util/constants.h"
-#include "goby/util/geodesy.h"
-#include "goby/util/linebasedcomms.h"
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim
+#include <boost/units/quantity.hpp>                  // for operator*, quan...
+#include <boost/units/systems/angle/degrees.hpp>     // for plane_angle
+#include <boost/units/systems/si/length.hpp>         // for length, meters
+
+#include "goby/util/as.h"                         // for as
+#include "goby/util/constants.h"                  // for NaN, pi
+#include "goby/util/geodesy.h"                    // for UTMGeodesy, UTM...
+#include "goby/util/linebasedcomms/tcp_server.h"  // for TCPServer
+#include "goby/util/protobuf/linebasedcomms.pb.h" // for Datagram
 
 struct VehicleConfig
 {
@@ -134,36 +151,30 @@ int main(int argc, char* argv[])
             }
         }
 
-        constexpr int u_dt = 100; // microseconds
-        usleep(u_dt);
-        ++i;
-        if (i >= 1000000 / (u_dt * control_freq * warp))
+        time_in_mission++;
+        if (started() && time_in_mission / control_freq > duration)
         {
-            i = 0;
-            time_in_mission++;
-            if (started() && time_in_mission / control_freq > duration)
-            {
-                datum_lat = goby::util::NaN<double>;
-                datum_lon = goby::util::NaN<double>;
-                server.write("CTRL,STATE:IDLE\r\n");
-            }
-
-            if (started())
-            {
-                compute_state();
-
-                auto ll = geodesy->convert(
-                    {vehicle_.x * boost::units::si::meters, vehicle_.y * boost::units::si::meters});
-                std::stringstream nav_ss;
-                nav_ss << "NAV,"
-                       << "LAT:" << std::setprecision(10) << ll.lat.value() << ","
-                       << "LON:" << std::setprecision(10) << ll.lon.value() << ","
-                       << "DEPTH:" << -vehicle_.z << ","
-                       << "HEADING:" << vehicle_.hdg << ","
-                       << "SPEED:" << vehicle_.v << "\r\n";
-                server.write(nav_ss.str());
-            }
+            datum_lat = goby::util::NaN<double>;
+            datum_lon = goby::util::NaN<double>;
+            server.write("CTRL,STATE:IDLE\r\n");
         }
+
+        if (started())
+        {
+            compute_state();
+
+            auto ll = geodesy->convert(
+                {vehicle_.x * boost::units::si::meters, vehicle_.y * boost::units::si::meters});
+            std::stringstream nav_ss;
+            nav_ss << "NAV,"
+                   << "LAT:" << std::setprecision(10) << ll.lat.value() << ","
+                   << "LON:" << std::setprecision(10) << ll.lon.value() << ","
+                   << "DEPTH:" << -vehicle_.z << ","
+                   << "HEADING:" << vehicle_.hdg << ","
+                   << "SPEED:" << vehicle_.v << "\r\n";
+            server.write(nav_ss.str());
+        }
+        usleep(1000000 / (control_freq * warp));
     }
 
     std::cerr << "server failed..." << std::endl;

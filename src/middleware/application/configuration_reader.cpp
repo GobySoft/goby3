@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,18 +22,31 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/protobuf/option_extensions.pb.h"
+#include <algorithm> // for max
+#include <array>     // for array, array...
+#include <cstdint>   // for int_least32_t
+#include <cstdio>    // for pclose, feof
+#include <cstdlib>   // for exit, EXIT_S...
+#include <iostream>  // for cout, cerr
+#include <iterator>  // for istreambuf_i...
+#include <utility>   // for pair
+
+#include <boost/algorithm/string/replace.hpp>           // for replace_all
+#include <boost/filesystem.hpp>                         // for path, BOOST_...
+#include <boost/program_options/parsers.hpp>            // for basic_comman...
+#include <boost/program_options/positional_options.hpp> // for positional_o...
+#include <google/protobuf/descriptor.pb.h>              // for MessageTypeT...
+#include <google/protobuf/dynamic_message.h>            // for DynamicMessa...
+#include <google/protobuf/message.h>                    // for Reflection
+#include <google/protobuf/text_format.h>                // for TextFormat::...
 
 #include "configuration_reader.h"
-
-#include "goby/exception.h"
-#include "goby/util/debug_logger/flex_ostream.h"
-#include "goby/util/debug_logger/term_color.h"
-#include "goby/version.h"
-#include <algorithm>
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include <google/protobuf/dynamic_message.h>
+#include "goby/protobuf/option_extensions.pb.h"     // for GobyFieldOpt...
+#include "goby/util/debug_logger/flex_ostream.h"    // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h" // for DIE
+#include "goby/util/debug_logger/term_color.h"      // for esc_nocolor
+#include "goby/util/protobuf/debug_logger.pb.h"     // for GLogConfig
+#include "goby/version.h"                           // for version_message
 
 // brings std::ostream& red, etc. into scope
 using namespace goby::util::tcolor;
@@ -69,7 +82,7 @@ void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
                               cfg_path_desc.c_str())(
         "exec_cfg_path,C", boost::program_options::value<std::string>(&exec_cfg_path),
         "File (script) to execute to create the configuration for this app. Output of application "
-        "must be an encoded Protobuf message for this application's configuration.")(
+        "must be a TextFormat Protobuf message for this application's configuration.")(
         "help,h", "writes this help message")(
         "app_name,a", boost::program_options::value<std::string>(),
         app_name_desc.c_str())("example_config,e", "writes an example .pb.cfg file")(
@@ -199,7 +212,9 @@ void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
                 if (value.empty())
                     throw(ConfigException("No data passed from -C script"));
 
-                message->ParsePartialFromString(value);
+                google::protobuf::TextFormat::Parser parser;
+                parser.AllowPartialMessage(true);
+                parser.ParseFromString(value, message);
             }
         }
 
@@ -218,7 +233,7 @@ void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
 }
 
 void goby::middleware::ConfigReader::set_protobuf_program_option(
-    const boost::program_options::variables_map& var_map, google::protobuf::Message& message,
+    const boost::program_options::variables_map& /*var_map*/, google::protobuf::Message& message,
     const std::string& full_name, const boost::program_options::variable_value& value)
 {
     const google::protobuf::Descriptor* desc = message.GetDescriptor();
@@ -233,7 +248,7 @@ void goby::middleware::ConfigReader::set_protobuf_program_option(
         switch (field_desc->cpp_type())
         {
             case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-                for (std::string v : value.as<std::vector<std::string> >())
+                for (const std::string& v : value.as<std::vector<std::string>>())
                 {
                     google::protobuf::TextFormat::Parser parser;
                     parser.AllowPartialMessage(true);
@@ -285,7 +300,7 @@ void goby::middleware::ConfigReader::set_protobuf_program_option(
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
-                for (std::string v : value.as<std::vector<std::string> >())
+                for (const std::string& v : value.as<std::vector<std::string>>())
                 {
                     const google::protobuf::EnumValueDescriptor* enum_desc =
                         field_desc->enum_type()->FindValueByName(v);
@@ -374,7 +389,7 @@ void goby::middleware::ConfigReader::get_protobuf_program_options(
         const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
         const std::string& field_name = field_desc->name();
 
-        std::string cli_name = field_name;
+        const std::string& cli_name = field_name;
         std::stringstream human_desc_ss;
         human_desc_ss << util::esc_lt_blue
                       << field_desc->options().GetExtension(goby::field).description();
@@ -490,10 +505,8 @@ void goby::middleware::ConfigReader::build_description(const google::protobuf::D
 
     std::vector<const google::protobuf::FieldDescriptor*> extensions;
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
-    for (int i = 0, n = extensions.size(); i < n; ++i)
+    for (auto field_desc : extensions)
     {
-        const google::protobuf::FieldDescriptor* field_desc = extensions[i];
-
         if (field_desc->options().GetExtension(goby::field).cfg().action() ==
             goby::GobyFieldOptions::ConfigurationOptions::NEVER)
             continue;
@@ -654,7 +667,7 @@ std::string goby::middleware::ConfigReader::word_wrap(std::string s, unsigned wi
 
     while (s.length() > width)
     {
-        std::string::size_type pos_newline = s.find("\n");
+        std::string::size_type pos_newline = s.find('\n');
         std::string::size_type pos_delim = s.substr(0, width).find_last_of(delim);
         if (pos_newline < width)
         {

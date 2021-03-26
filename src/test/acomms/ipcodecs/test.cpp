@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,10 +21,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/acomms/ip_codecs.h"
-
 #include <arpa/inet.h>
+#include <dccl/codec.h>
 #include <netinet/in.h>
+
+#include "goby/acomms/ip_codecs.h"
+#include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 using namespace goby::util::logger;
 using goby::glog;
@@ -50,7 +53,7 @@ void ip_test(const std::string& hex, dccl::Codec& dccl_1)
     assert(goby::acomms::net_checksum(test) == orig_cs);
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);

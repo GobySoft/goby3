@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,16 +22,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef FrontSeatBase20130220H
-#define FrontSeatBase20130220H
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_INTERFACE_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_INTERFACE_H
 
-#include <boost/signals2.hpp>
+#include <memory> // for unique_ptr
+#include <string> // for string
 
-#include "goby/middleware/frontseat/exception.h"
-#include "goby/middleware/protobuf/frontseat.pb.h"
-#include "goby/middleware/protobuf/frontseat_config.pb.h"
-#include "goby/time.h"
-#include "goby/util/geodesy.h"
+#include <boost/signals2/signal.hpp>      // for signal
+#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
+
+#include "goby/middleware/protobuf/frontseat.pb.h"        // for InterfaceS...
+#include "goby/middleware/protobuf/frontseat_config.pb.h" // for Config
+#include "goby/time/types.h"                              // for MicroTime
+#include "goby/util/geodesy.h"                            // for UTMGeodesy
 
 namespace goby
 {
@@ -46,12 +49,18 @@ namespace middleware
 {
 namespace frontseat
 {
+namespace protobuf
+{
+class CTDSample;
+class NodeStatus;
+} // namespace protobuf
+
 class InterfaceBase
 {
   public:
-    InterfaceBase(const protobuf::Config& cfg);
+    InterfaceBase(protobuf::Config cfg);
 
-    virtual ~InterfaceBase() {}
+    virtual ~InterfaceBase() = default;
 
     virtual void send_command_to_frontseat(const protobuf::CommandRequest& command) = 0;
     virtual void send_data_to_frontseat(const protobuf::InterfaceData& data) = 0;

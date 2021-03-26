@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,8 +24,8 @@
 
 // courtesy header for the Acoustic MAC Library (libamac)
 
-#ifndef AMACCOURTESY20091211H
-#define AMACCOURTESY20091211H
+#ifndef GOBY_ACOMMS_AMAC_H
+#define GOBY_ACOMMS_AMAC_H
 
 #include "goby/acomms/amac/mac_manager.h"
 

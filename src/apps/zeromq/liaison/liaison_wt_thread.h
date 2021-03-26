@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,22 +22,30 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef LIAISONWTTHREAD20110609H
-#define LIAISONWTTHREAD20110609H
+#ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_WT_THREAD_H
+#define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_WT_THREAD_H
 
-#include <Wt/WApplication>
-#include <Wt/WContainerWidget>
-#include <Wt/WEnvironment>
-#include <Wt/WMenu>
-#include <Wt/WServer>
-#include <Wt/WString>
-#include <Wt/WTimer>
+#include <map> // for map
 
-#include "goby/zeromq/protobuf/liaison_config.pb.h"
-#include "liaison.h"
+#include <Wt/WApplication> // for WApplication
+#include <Wt/WEnvironment> // for WEnvironment
+
+#include "goby/zeromq/protobuf/liaison_config.pb.h" // for LiaisonConfig
+
+namespace Wt
+{
+class WMenu;
+class WMenuItem;
+class WStackedWidget;
+} // namespace Wt
 
 namespace goby
 {
+namespace zeromq
+{
+class LiaisonContainer;
+} // namespace zeromq
+
 namespace apps
 {
 namespace zeromq
@@ -46,7 +54,7 @@ class LiaisonWtThread : public Wt::WApplication
 {
   public:
     LiaisonWtThread(const Wt::WEnvironment& env, protobuf::LiaisonConfig app_cfg);
-    ~LiaisonWtThread();
+    ~LiaisonWtThread() override;
 
     LiaisonWtThread(const LiaisonWtThread&) = delete;
     LiaisonWtThread& operator=(const LiaisonWtThread&) = delete;

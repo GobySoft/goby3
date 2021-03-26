@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,9 +22,48 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/util/debug_logger.h"
+#include <algorithm> // for copy
+#include <cmath>     // for sqrt
+#include <deque>     // for deque
+#include <limits>    // for num...
+#include <list>      // for ope...
+#include <map>       // for map
+#include <memory>    // for all...
+#include <ostream>   // for ios...
+#include <string>    // for string
 
-#include "bluefin.h"
+#include <boost/algorithm/string/case_conv.hpp>        // for to_...
+#include <boost/algorithm/string/predicate.hpp>        // for ieq...
+#include <boost/bimap.hpp>                             // for bimap
+#include <boost/date_time/gregorian/gregorian.hpp>     // for gre...
+#include <boost/function.hpp>                          // for fun...
+#include <boost/lexical_cast/bad_lexical_cast.hpp>     // for bad...
+#include <boost/signals2/expired_slot.hpp>             // for exp...
+#include <boost/signals2/signal.hpp>                   // for signal
+#include <boost/units/absolute.hpp>                    // for ope...
+#include <boost/units/quantity.hpp>                    // for ope...
+#include <boost/units/systems/si/length.hpp>           // for length
+#include <boost/units/systems/si/time.hpp>             // for sec...
+#include <boost/units/systems/si/velocity.hpp>         // for met...
+#include <boost/units/systems/temperature/celsius.hpp> // for tem...
+
+#include "goby/middleware/frontseat/bluefin/bluefin.pb.h"        // for Blu...
+#include "goby/middleware/frontseat/bluefin/bluefin_config.pb.h" // for Blu...
+#include "goby/middleware/protobuf/frontseat.pb.h"               // for Int...
+#include "goby/middleware/protobuf/frontseat_data.pb.h"          // for Nod...
+#include "goby/time/convert.h"                                   // for con...
+#include "goby/time/simulation.h"                                // for time
+#include "goby/time/system_clock.h"                              // for Sys...
+#include "goby/time/types.h"                                     // for Mic...
+#include "goby/util/as.h"                                        // for as
+#include "goby/util/debug_logger/flex_ostream.h"                 // for Fle...
+#include "goby/util/debug_logger/flex_ostreambuf.h"              // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h"          // for warn
+#include "goby/util/debug_logger/term_color.h"                   // for tcolor
+#include "goby/util/linebasedcomms/nmea_sentence.h"              // for NME...
+#include "goby/util/units/rpm/system.hpp"                        // for ang...
+
+#include "bluefin.h" // for Blu...
 
 namespace gpb = goby::middleware::frontseat::protobuf;
 namespace gtime = goby::time;
@@ -59,7 +98,7 @@ void goby::middleware::frontseat::Bluefin::bfack(const goby::util::NMEASentence&
         REQUEST_PENDING = 3
     };
 
-    AckStatus status = static_cast<AckStatus>(nmea.as<int>(ACK_STATUS));
+    auto status = static_cast<AckStatus>(nmea.as<int>(ACK_STATUS));
 
     std::string acked_sentence = nmea.at(COMMAND_NAME);
 
@@ -80,7 +119,7 @@ void goby::middleware::frontseat::Bluefin::bfack(const goby::util::NMEASentence&
             glog.is(DEBUG1) && glog << "Huxley reports that our " << acked_sentence
                                     << " request is pending." << std::endl;
             if (!out_.empty())
-                pending_.push_back(out_.front().message());
+                pending_.emplace_back(out_.front().message());
             break;
     }
 
@@ -139,7 +178,7 @@ void goby::middleware::frontseat::Bluefin::bfack(const goby::util::NMEASentence&
     waiting_for_huxley_ = false;
 }
 
-void goby::middleware::frontseat::Bluefin::bfmsc(const goby::util::NMEASentence& nmea)
+void goby::middleware::frontseat::Bluefin::bfmsc(const goby::util::NMEASentence& /*nmea*/)
 {
     // TODO: See if there is something to the message contents
     // BF manual says: Arbitrary textual message. Semantics determined by the payload.
@@ -176,8 +215,8 @@ void goby::middleware::frontseat::Bluefin::bfnvg(const goby::util::NMEASentence&
     const std::string& lat_string = nmea.at(LATITUDE);
     if (lat_string.length() > 2)
     {
-        double lat_deg = goby::util::as<double>(lat_string.substr(0, 2));
-        double lat_min = goby::util::as<double>(lat_string.substr(2, lat_string.size()));
+        auto lat_deg = goby::util::as<double>(lat_string.substr(0, 2));
+        auto lat_min = goby::util::as<double>(lat_string.substr(2, lat_string.size()));
         double lat = lat_deg + lat_min / 60;
         status_.mutable_global_fix()->set_lat((nmea.at(LAT_HEMISPHERE) == "S") ? -lat : lat);
     }
@@ -189,8 +228,8 @@ void goby::middleware::frontseat::Bluefin::bfnvg(const goby::util::NMEASentence&
     const std::string& lon_string = nmea.at(LONGITUDE);
     if (lon_string.length() > 2)
     {
-        double lon_deg = goby::util::as<double>(lon_string.substr(0, 3));
-        double lon_min = goby::util::as<double>(lon_string.substr(3, nmea.at(4).size()));
+        auto lon_deg = goby::util::as<double>(lon_string.substr(0, 3));
+        auto lon_min = goby::util::as<double>(lon_string.substr(3, nmea.at(4).size()));
         double lon = lon_deg + lon_min / 60;
         status_.mutable_global_fix()->set_lon((nmea.at(LON_HEMISPHERE) == "W") ? -lon : lon);
     }
@@ -227,8 +266,8 @@ void goby::middleware::frontseat::Bluefin::bfnvr(const goby::util::NMEASentence&
     // auto status_time = status_.time_with_units();
     // auto dt = gtime::convert_from_nmea<decltype(status_time)>(nmea.at(TIMESTAMP)) - status_time;
 
-    double east_speed = nmea.as<double>(EAST_VELOCITY);
-    double north_speed = nmea.as<double>(NORTH_VELOCITY);
+    auto east_speed = nmea.as<double>(EAST_VELOCITY);
+    auto north_speed = nmea.as<double>(NORTH_VELOCITY);
 
     status_.mutable_pose()->set_pitch_rate(nmea.as<double>(PITCH_RATE));
     status_.mutable_pose()->set_roll_rate(nmea.as<double>(ROLL_RATE));
@@ -256,7 +295,7 @@ void goby::middleware::frontseat::Bluefin::bfsvs(const goby::util::NMEASentence&
     // We don't use this, choosing to calculate it ourselves from the CTD
 }
 
-void goby::middleware::frontseat::Bluefin::bfsht(const goby::util::NMEASentence& nmea)
+void goby::middleware::frontseat::Bluefin::bfsht(const goby::util::NMEASentence& /*nmea*/)
 {
     glog.is(WARN) && glog << "Bluefin sent us the SHT message: they are shutting down!"
                           << std::endl;

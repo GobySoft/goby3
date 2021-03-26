@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterProcess20160622H
-#define TransportInterProcess20160622H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERPROCESS_H
+#define GOBY_MIDDLEWARE_TRANSPORT_INTERPROCESS_H
 
 #include <atomic>
 #include <functional>
@@ -34,6 +34,7 @@
 
 #include "goby/middleware/group.h"
 
+#include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
 #include "goby/middleware/transport/serialization_handlers.h"

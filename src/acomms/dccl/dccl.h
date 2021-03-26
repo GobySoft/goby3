@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,47 +22,77 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCLCOMPAT20131116H
-#define DCCLCOMPAT20131116H
+#ifndef GOBY_ACOMMS_DCCL_DCCL_H
+#define GOBY_ACOMMS_DCCL_DCCL_H
 
-#include "goby/acomms/protobuf/dccl.pb.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
+#include <list>    // for list
+#include <memory>  // for shared_ptr
+#include <ostream> // for endl, ostream
+#include <set>     // for set
+#include <string>  // for string, oper...
 
-#include "dccl/codec.h"
-#include "dccl/codecs2/field_codec_default.h"
-#include "dccl/field_codec_id.h"
-#include "dccl/internal/field_codec_message_stack.h"
+#include <dccl/bitset.h>                              // for Bitset
+#include <dccl/codecs2/field_codec_default_message.h> // for DefaultMessa...
+#include <dccl/common.h>                              // for int64, uint64
+#include <dccl/exception.h>                           // for Exception
+#include <dccl/field_codec.h>                         // for FieldCodecBase
+#include <dccl/field_codec_fixed.h>                   // for TypedFixedFi...
+#include <dccl/field_codec_manager.h>                 // for FieldCodecMa...
+#include <dccl/field_codec_typed.h>                   // for RepeatedType...
+#include <dccl/internal/field_codec_message_stack.h>
+#include <dccl/logger.h>                   // for DECODE, ENCODE
+#include <dccl/option_extensions.pb.h>     // for DCCLMessageO...
+#include <google/protobuf/descriptor.h>    // for Descriptor
+#include <google/protobuf/descriptor.pb.h> // for MessageOptions
+
+#include "dccl/codec.h"                                 // for Codec
+#include "dccl/codecs2/field_codec_default.h"           // for DefaultBoolC...
+#include "dccl/field_codec_id.h"                        // for DefaultIdent...
+#include "goby/acomms/protobuf/dccl.pb.h"               // for DCCLConfig
+#include "goby/util/binary.h"                           // for hex_encode
+#include "goby/util/debug_logger/flex_ostream.h"        // for operator<<
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for WARN, DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
+
+namespace google
+{
+namespace protobuf
+{
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {
 namespace acomms
 {
 typedef dccl::Exception DCCLException;
-typedef dccl::NullValueException DCCLNullValueException;
+using DCCLNullValueException = dccl::NullValueException;
 
-typedef dccl::DefaultIdentifierCodec DCCLDefaultIdentifierCodec;
+using DCCLDefaultIdentifierCodec = dccl::DefaultIdentifierCodec;
 template <typename WireType, typename FieldType = WireType>
 class DefaultNumericFieldCodec : public dccl::v2::DefaultNumericFieldCodec<WireType, FieldType>
 {
 };
 
-typedef dccl::v2::DefaultBoolCodec DCCLDefaultBoolCodec;
-typedef dccl::v2::DefaultStringCodec DCCLDefaultStringCodec;
-typedef dccl::v2::DefaultBytesCodec DCCLDefaultBytesCodec;
-typedef dccl::v2::DefaultEnumCodec DCCLDefaultEnumCodec;
+using DCCLDefaultBoolCodec = dccl::v2::DefaultBoolCodec;
+using DCCLDefaultStringCodec = dccl::v2::DefaultStringCodec;
+using DCCLDefaultBytesCodec = dccl::v2::DefaultBytesCodec;
+using DCCLDefaultEnumCodec = dccl::v2::DefaultEnumCodec;
 
 class MessageHandler : public dccl::internal::MessageStack
 {
   public:
-    MessageHandler(const google::protobuf::FieldDescriptor* field = 0) : MessageStack(field) {}
-    typedef dccl::MessagePart MessagePart;
+    MessageHandler(const google::protobuf::FieldDescriptor* field = nullptr) : MessageStack(field)
+    {
+    }
+    using MessagePart = dccl::MessagePart;
     static const MessagePart HEAD = dccl::HEAD, BODY = dccl::BODY, UNKNOWN = dccl::UNKNOWN;
 };
 
 template <typename TimeType> class TimeCodec : public dccl::v2::TimeCodecBase<TimeType, 0>
 {
-    BOOST_STATIC_ASSERT(sizeof(TimeCodec) == 0);
+    static_assert(sizeof(TimeCodec) == 0, "TimeCodec must be specialized");
 };
 
 template <> class TimeCodec<dccl::uint64> : public dccl::v2::TimeCodecBase<dccl::uint64, 1000000>
@@ -79,37 +109,37 @@ template <typename T> class StaticCodec : public dccl::v2::StaticCodec<T>
 {
 };
 
-typedef dccl::v2::DefaultMessageCodec DCCLDefaultMessageCodec;
+using DCCLDefaultMessageCodec = dccl::v2::DefaultMessageCodec;
 
-typedef dccl::FieldCodecBase DCCLFieldCodecBase;
+using DCCLFieldCodecBase = dccl::FieldCodecBase;
 
 template <typename WireType, typename FieldType = WireType>
 struct DCCLTypedFieldCodec : public dccl::TypedFieldCodec<WireType, FieldType>
 {
-    typedef dccl::FieldCodecBase DCCLFieldCodecBase;
+    using DCCLFieldCodecBase = dccl::FieldCodecBase;
 };
 
 template <typename WireType, typename FieldType = WireType>
 struct DCCLTypedFixedFieldCodec : public dccl::TypedFixedFieldCodec<WireType, FieldType>
 {
-    typedef dccl::FieldCodecBase DCCLFieldCodecBase;
+    using DCCLFieldCodecBase = dccl::FieldCodecBase;
 };
 
 template <typename WireType, typename FieldType = WireType>
 struct DCCLRepeatedTypedFieldCodec : public dccl::RepeatedTypedFieldCodec<WireType, FieldType>
 {
-    typedef dccl::FieldCodecBase DCCLFieldCodecBase;
+    using DCCLFieldCodecBase = dccl::FieldCodecBase;
 };
 
-typedef dccl::FieldCodecManager DCCLFieldCodecManager;
+using DCCLFieldCodecManager = dccl::FieldCodecManager;
 //        typedef dccl::TypedFieldCodec DCCLTypedFieldCodec;
-typedef dccl::FieldCodecManager DCCLFieldCodecManager;
-typedef dccl::internal::FromProtoCppTypeBase FromProtoCppTypeBase;
+using DCCLFieldCodecManager = dccl::FieldCodecManager;
+using FromProtoCppTypeBase = dccl::internal::FromProtoCppTypeBase;
 //       typedef dccl::FromProtoType FromProtoType;
 // typedef dccl::FromProtoCppType FromProtoCppType;
 //typedef dccl::ToProtoCppType ToProtoCppType;
-typedef dccl::Bitset Bitset;
-typedef dccl::internal::TypeHelper DCCLTypeHelper;
+using Bitset = dccl::Bitset;
+using DCCLTypeHelper = dccl::internal::TypeHelper;
 
 class DCCLCodec
 {
@@ -270,24 +300,19 @@ class DCCLCodec
     {
         codec_.reset(new dccl::Codec(identifier));
 
-        for (std::set<void*>::const_iterator it = loaded_libs_.begin(), end = loaded_libs_.end();
-             it != end; ++it)
-            load_shared_library_codecs(*it);
+        for (auto loaded_lib : loaded_libs_) load_shared_library_codecs(loaded_lib);
 
-        for (std::set<const google::protobuf::Descriptor*>::const_iterator
-                 it = loaded_msgs_.begin(),
-                 end = loaded_msgs_.end();
-             it != end; ++it)
+        for (auto loaded_msg : loaded_msgs_)
         {
             try
             {
-                validate(*it);
+                validate(loaded_msg);
             }
             catch (dccl::Exception& e)
             {
-                glog.is(util::logger::WARN) && glog << "Failed to reload " << (*it)->full_name()
-                                                    << " after ID codec change: " << e.what()
-                                                    << std::endl;
+                glog.is(util::logger::WARN) &&
+                    glog << "Failed to reload " << loaded_msg->full_name()
+                         << " after ID codec change: " << e.what() << std::endl;
             }
         }
     }
@@ -299,9 +324,9 @@ class DCCLCodec
   private:
     DCCLCodec();
 
-    ~DCCLCodec() {}
-    DCCLCodec(const DCCLCodec&);
-    DCCLCodec& operator=(const DCCLCodec&);
+    ~DCCLCodec() = default;
+    DCCLCodec(const DCCLCodec&) = delete;
+    DCCLCodec& operator=(const DCCLCodec&) = delete;
 
     void process_cfg(bool new_id_codec)
     {
@@ -321,14 +346,26 @@ class DCCLCodec
 
     void dlog_message(const std::string& msg, dccl::logger::Verbosity vrb, dccl::logger::Group grp)
     {
-        if (grp == dccl::logger::DECODE)
-            goby::glog << group(glog_decode_group_) << msg << std::endl;
-        else if (grp == dccl::logger::ENCODE)
-            goby::glog << group(glog_encode_group_) << msg << std::endl;
-        else if (grp == dccl::logger::SIZE)
-            goby::glog << group(glog_encode_group_) << " {size} " << msg << std::endl;
-        else
-            goby::glog << group(glog_encode_group_) << msg << std::endl;
+        std::string glog_group =
+            (grp == dccl::logger::DECODE) ? glog_decode_group_ : glog_encode_group_;
+        std::string prefix = (grp == dccl::logger::SIZE) ? " {size} " : "";
+        auto glog_vrb = goby::util::logger::VERBOSE;
+        switch (vrb)
+        {
+            case dccl::logger::WARN_PLUS:
+            case dccl::logger::WARN: glog_vrb = goby::util::logger::WARN; break;
+            default:
+            case dccl::logger::INFO_PLUS:
+            case dccl::logger::INFO: glog_vrb = goby::util::logger::VERBOSE; break;
+            case dccl::logger::DEBUG1_PLUS:
+            case dccl::logger::DEBUG1: glog_vrb = goby::util::logger::DEBUG1; break;
+            case dccl::logger::DEBUG2_PLUS:
+            case dccl::logger::DEBUG2: glog_vrb = goby::util::logger::DEBUG2; break;
+            case dccl::logger::DEBUG3_PLUS:
+            case dccl::logger::DEBUG3: glog_vrb = goby::util::logger::DEBUG3; break;
+        }
+
+        goby::glog.is(glog_vrb) && goby::glog << group(glog_group) << prefix << msg << std::endl;
     }
 
   private:

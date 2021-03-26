@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,15 +21,26 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MarshallingMAVLink20190718H
-#define MarshallingMAVLink20190718H
+#ifndef GOBY_MIDDLEWARE_MARSHALLING_MAVLINK_H
+#define GOBY_MIDDLEWARE_MARSHALLING_MAVLINK_H
 
-#include "interface.h"
-
-#include "goby/exception.h"
-#include "goby/util/debug_logger.h"
+#include <array>         // for array<>::iterator
+#include <cstdint>       // for uint8_t, uint32_t
+#include <memory>        // for shared_ptr, make_sh...
+#include <mutex>         // for mutex, lock_guard
+#include <ostream>       // for basic_ostream, endl
+#include <string>        // for operator<<, string
+#include <tuple>         // for tuple, make_tuple
+#include <type_traits>   // for enable_if, is_base_of
+#include <unordered_map> // for unordered_map, oper...
+#include <utility>       // for make_pair, pair
+#include <vector>        // for vector
 
 #include <mavlink/v2.0/common/common.hpp>
+
+#include "goby/util/debug_logger/flex_ostream.h" // for operator<<, FlexOst...
+
+#include "interface.h" // for MarshallingScheme
 
 namespace goby
 {
@@ -180,7 +191,7 @@ struct SerializerParserHelper<std::tuple<Integer, Integer, DataType>, Marshallin
 
     // use numeric type name since that's all we have with mavlink_message_t alone
     static std::string type_name() { return std::to_string(DataType::MSG_ID); }
-    static std::string type_name(const std::tuple<Integer, Integer, DataType>& d)
+    static std::string type_name(const std::tuple<Integer, Integer, DataType>& /*d*/)
     {
         return type_name();
     }
@@ -188,7 +199,7 @@ struct SerializerParserHelper<std::tuple<Integer, Integer, DataType>, Marshallin
     template <typename CharIterator>
     static std::shared_ptr<std::tuple<Integer, Integer, DataType>>
     parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-          const std::string& type = type_name())
+          const std::string& /*type*/ = type_name())
     {
         auto msg =
             SerializerParserHelper<mavlink::mavlink_message_t, MarshallingScheme::MAVLINK>::parse(
@@ -217,12 +228,12 @@ template <typename DataType> struct SerializerParserHelper<DataType, Marshalling
         return SerializerParserHelper<std::tuple<int, int, DataType>,
                                       MarshallingScheme::MAVLINK>::type_name();
     }
-    static std::string type_name(const DataType& d) { return type_name(); }
+    static std::string type_name(const DataType& /*d*/) { return type_name(); }
 
     template <typename CharIterator>
     static std::shared_ptr<DataType> parse(CharIterator bytes_begin, CharIterator bytes_end,
                                            CharIterator& actual_end,
-                                           const std::string& type = type_name())
+                                           const std::string& /*type*/ = type_name())
     {
         auto packet_with_metadata =
             SerializerParserHelper<std::tuple<int, int, DataType>,

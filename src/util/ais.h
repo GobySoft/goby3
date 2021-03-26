@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef AIS_20191021H
-#define AIS_20191021H
+#ifndef GOBY_UTIL_AIS_H
+#define GOBY_UTIL_AIS_H
 
 #include "ais/decode.h"
 #include "ais/encode.h"

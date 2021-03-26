@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -27,13 +27,12 @@
 #include "goby/time.h"
 #include "goby/util/binary.h"
 
-#include "test.pb.h"
-#include "test2.pb.h"
+#include "goby/test/acomms/dccl1/test.pb.h"
+#include "goby/test/middleware/hdf5/test2.pb.h"
 
 using namespace goby::test::middleware;
 
 using goby::test::acomms::protobuf::EmbeddedMsg1;
-using goby::test::acomms::protobuf::EmbeddedMsg2;
 using goby::test::acomms::protobuf::TestMsg;
 
 namespace goby
@@ -48,7 +47,7 @@ class TestHDF5Plugin : public goby::middleware::HDF5Plugin
     TestHDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg);
 
   private:
-    bool provide_entry(goby::middleware::HDF5ProtobufEntry* entry);
+    bool provide_entry(goby::middleware::HDF5ProtobufEntry* entry) override;
     void fill_message(TestMsg& msg_in);
     void fill_message(protobuf::TestHDF5Message& msg);
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,31 +21,36 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBYHDF520160524H
-#define GOBYHDF520160524H
+#ifndef GOBY_MIDDLEWARE_LOG_HDF5_HDF5_H
+#define GOBY_MIDDLEWARE_LOG_HDF5_HDF5_H
 
-#include <boost/algorithm/string.hpp>
-#include <boost/range/algorithm/replace_if.hpp>
+#include <algorithm> // for max
+#include <cstdint>   // for uint64_t
+#include <deque>     // for deque
+#include <map>       // for map, multimap
+#include <memory>    // for shared_ptr
+#include <string>    // for string
+#include <utility>   // for move
+#include <vector>    // for vector
 
-#include "H5Cpp.h"
+#include <H5Cpp.h>
+#include <google/protobuf/descriptor.h> // for FieldDescriptor
+#include <google/protobuf/message.h>    // for Message, Reflection
 
-#include "goby/middleware/application/interface.h"
-#include "goby/middleware/protobuf/hdf5.pb.h"
-#include "goby/util/binary.h"
-
-#include "hdf5_plugin.h"
-#include "hdf5_predicate.h"
-#include "hdf5_protobuf_values.h"
+#include "hdf5_predicate.h"       // for predicate
+#include "hdf5_protobuf_values.h" // for PBMeta, retrieve_default_value
 
 namespace goby
 {
 namespace middleware
 {
+struct HDF5ProtobufEntry;
+
 namespace hdf5
 {
 struct MessageCollection
 {
-    MessageCollection(const std::string& n) : name(n) {}
+    MessageCollection(std::string n) : name(std::move(n)) {}
     std::string name;
 
     // time -> Message contents
@@ -54,7 +59,7 @@ struct MessageCollection
 
 struct Channel
 {
-    Channel(const std::string& n) : name(n) {}
+    Channel(std::string n) : name(std::move(n)) {}
     std::string name;
 
     void add_message(const goby::middleware::HDF5ProtobufEntry& entry);
@@ -77,7 +82,7 @@ class GroupFactory
     {
       public:
         // for root group (already exists)
-        GroupWrapper(H5::Group group) : group_(group) {}
+        GroupWrapper(const H5::Group& group) : group_(group) {}
 
         // for children groups
         GroupWrapper(const std::string& name, H5::Group& parent) : group_(parent.createGroup(name))
@@ -133,7 +138,7 @@ class Writer
                       const std::vector<T>& data, const std::vector<hsize_t>& hs,
                       const T& default_value);
 
-    void write_vector(const std::string& group, const std::string dataset_name,
+    void write_vector(const std::string& group, const std::string& dataset_name,
                       const std::vector<std::string>& data, const std::vector<hsize_t>& hs,
                       const std::string& default_value);
 
@@ -154,12 +159,12 @@ void Writer::write_field(const std::string& group,
     {
         // pass one to figure out field size
         int max_field_size = 0;
-        for (unsigned i = 0, n = messages.size(); i < n; ++i)
+        for (auto message : messages)
         {
-            if (messages[i])
+            if (message)
             {
-                const google::protobuf::Reflection* refl = messages[i]->GetReflection();
-                int field_size = refl->FieldSize(*messages[i], field_desc);
+                const google::protobuf::Reflection* refl = message->GetReflection();
+                int field_size = refl->FieldSize(*message, field_desc);
                 if (field_size > max_field_size)
                     max_field_size = field_size;
             }

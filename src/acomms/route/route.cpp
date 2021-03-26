@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,13 +22,20 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/util/as.h"
-#include "goby/util/debug_logger.h"
+#include <ostream> // for basic_ostrea...
+#include <string>  // for operator<<
+
+#include <google/protobuf/descriptor.h> // for Descriptor
+#include <google/protobuf/message.h>    // for Message
+
+#include "goby/acomms/protobuf/queue.pb.h"              // for QueuedMessag...
+#include "goby/acomms/queue/queue_manager.h"            // for QueueManager
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1, logger
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
 
 #include "route.h"
 
 using goby::glog;
-using goby::util::as;
 using namespace goby::util::logger;
 
 void goby::acomms::RouteManager::set_cfg(const protobuf::RouteManagerConfig& cfg)
@@ -97,7 +104,8 @@ int goby::acomms::RouteManager::route_index(int modem_id)
 }
 
 void goby::acomms::RouteManager::handle_out(protobuf::QueuedMessageMeta* meta,
-                                            const google::protobuf::Message& data_msg, int modem_id)
+                                            const google::protobuf::Message& /*data_msg*/,
+                                            int modem_id)
 {
     glog.is(DEBUG1) && glog << group("goby::acomms::route")
                             << "Trying to route outgoing message to destination: " << meta->dest()

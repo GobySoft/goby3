@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,12 +22,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MESSAGE_VAL20091211H
-#define MESSAGE_VAL20091211H
+#ifndef GOBY_MOOS_TRANSITIONAL_MESSAGE_VAL_H
+#define GOBY_MOOS_TRANSITIONAL_MESSAGE_VAL_H
 
-#include <iostream>
+#include <iostream> // for ostream
+#include <string>   // for string, basic_string
+#include <vector>   // for vector
 
-#include "dccl_constants.h"
+#include "dccl_constants.h" // for DCCLCppType, cpp_notype
 
 namespace goby
 {

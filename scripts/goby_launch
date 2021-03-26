@@ -15,9 +15,20 @@ usage()
     echo -e "goby_logger --log_dir /media/data/logs"   
     echo -e "----------------"
     echo -e "" 
+    echo -e "Optionally, the <launchfile> can contain directives (separated by commas) before each launch line that modify the behavior of that line. The current directives are [kill=SIGNAL] and [env=ENVIRONMENTAL_VARIABLE=value], for example:"
+    echo -e "----------------"
+    echo -e "[kill=SIGTERM] MOOSDB /tmp/auv.moos"
+    echo -e "[env=LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:/home/toby/goby3/build/lib] goby_liaison liaison.pb.cfg"
+    echo -e "[env=FOO=bar, kill=SIGINT] some_app"
+    echo -e "----------------"
+    echo -e ""
+    echo -e "If a file called preseed.goby exists in the working directory, goby_launch will 'source' it before continuing with the rest of the launch"
+    echo -e "" 
     echo -e "Options:"
-    echo -e "\t-h\t\tShow help."    
+    echo -e "\t-h\t\tShow help."
+    echo -e "\t-r\t\tLaunch applications all in the current terminal)"
     echo -e "\t-s\t\tLaunch applications in a detached GNU 'screen' session (requires 'apt install screen')"
+    echo -e "\t-L\t\tWrite screen debug -Logfiles to ${screen_log_prefix}*"
 #    echo -e "\t-t\t\tLaunch applications in their own gnome-terminal tab (implies -b)" 
     echo -e "\t-n\t\tLaunch applications detached using 'nohup' (implies -b)"
     echo -e "\t-x\t\tLaunch applications in their own xterm"
@@ -26,6 +37,7 @@ usage()
     echo -e "\t-p vehicle1\tPlatform name"
     echo -e "\t-m 10\t\tDelay in seconds after sending goby_terminate before escalating to SIGTERM"
     echo -e "\t-k 10\t\tDelay in seconds after sending SIGTERM before escalating to SIGKILL"
+    echo -e "\t-P\t\tExecute kill commands in parallel"
 }
 
 num_running_proc()
@@ -44,7 +56,60 @@ launch_fail()
 
 check_launch_type_unset()
 {
-    [ "$launch" != normal ] && echo "Error: -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
+    [ "$launch" != screen ] && echo "Error: -r, -n, -t, -x, and -s are mutually exclusive. For help use -h." && exit 1
+}
+
+do_killone()
+{
+    p=$1
+    cmd=$2
+    sig=$3
+    gobyd_interprocess=$4
+    sigterm_delay=$5
+    sigkill_delay=$6
+    parallel=$7
+
+    
+    # don't kill anything that's already dead
+    kill -0 $p >& /dev/null || return
+
+    
+    if [ "$sig" = "goby_terminate" ]; then
+
+        if [ "$parallel" = true ]; then
+            # don't kill gobyd yet
+            echo $cmd | grep -q "^ *[/a-zA-Z0-9_]*gobyd" && return
+        fi
+        
+        # run goby_terminate to cleanly shutdown processes
+        echo -n "goby_terminate: $p (was $cmd)"
+        if goby_terminate --response_timeout ${sigterm_delay} --target_pid $p <(echo ${gobyd_interprocess});
+        then
+            echo -e " .... success"
+            return 0
+        fi
+        
+        sig=SIGTERM
+        # if goby_terminate failed, use SIGTERM, then SIGKILL
+        echo -e "\n=== WARNING ===: Process $p did not respond to goby_terminate, sending $sig"        
+    fi
+    
+    echo -n "$sig: $p (was $cmd)"
+    kill -$sig $p
+    
+    elapsed_ms=0
+    while $(kill -0 $p 2>/dev/null); do 
+        sleep 0.1
+        elapsed_ms=$(($elapsed_ms + 100))
+        # if necessary, escalate to SIGKILL
+        if (($elapsed_ms > $sigkill_delay)); then
+            echo -e "\n====== WARNING ======: Process $p did not respond to SIGTERM after $sigkill_delay ms, sending SIGKILL"
+            echo -n "SIGKILL: $p (was $cmd)"
+            kill -SIGKILL $p
+            break;
+        fi
+    done
+    echo -e " .... success"
 }
 
 do_kill()
@@ -56,55 +121,35 @@ do_kill()
     echo ""
     echo "Cleaning up..."
 
-    # send SIGTERM to all the child processes
-    for ((i=$((${#spid[@]}-1)); i>=0; --i)); do 
-        p=${spid[i]}
-        cmd=${spid_cmd[i]}
-        sig=${spid_sig[i]}
+    gobyd_interprocess_1line=$(echo "${gobyd_interprocess}" | tr '\n' ' ')
+    if [ "$parallel_shutdown" = true ]; then
+        echo "Executing parallel shutdown, but delaying quitting gobyd (if any)"
+        export -f do_killone
+        parallel --link do_killone ::: ${spid[@]} ::: "${spid_cmd[@]}" ::: ${spid_sig[@]} ::: "${gobyd_interprocess_1line}" ::: ${sigterm_delay} ::: ${sigkill_delay} ::: true
+    fi
 
-        kill -0 $p >& /dev/null || continue
-
-        if [ "$sig" = "goby_terminate" ]; then
-            # run goby_terminate to cleanly shutdown processes
-            echo -n "goby_terminate: $p (was $cmd)"
-            if goby_terminate --response_timeout ${sigterm_delay} --target_pid $p <(echo ${gobyd_interprocess});
-            then
-                echo -e " .... success"
-                continue
-            fi
-
-            sig=SIGTERM
-            # if goby_terminate failed, use SIGTERM, then SIGKILL
-            echo -e "\n=== WARNING ===: Process $p did not respond to goby_terminate, sending $sig"
-        fi
-        
-        echo -n "$sig: $p (was $cmd)"
-        kill -$sig $p
-
-        elapsed_ms=0
-        while $(kill -0 $p 2>/dev/null); do 
-            sleep 0.1
-            elapsed_ms=$(($elapsed_ms + 100))
-            # if necessary, escalate to SIGKILL
-            if (($elapsed_ms > $sigkill_delay)); then
-                echo -e "\n====== WARNING ======: Process $p did not respond to SIGTERM after $sigkill_delay ms, sending SIGKILL"
-                echo -n "SIGKILL: $p (was $cmd)"
-                kill -SIGKILL $p
-                break;
-            fi
-        done
-        echo -e " .... success"
-    done
-
+    # kill everything in non-parallel mode, or gobyd if left over in parallel mode
+    for ((i=$((${#spid[@]}-1)); i>=0; --i)); do
+        do_killone ${spid[i]} "${spid_cmd[i]}" ${spid_sig[i]} "${gobyd_interprocess_1line}" ${sigterm_delay} ${sigkill_delay} false
+    done       
+    
+    
     spid=()
 
     rm $launchfile;
-    
+
+    echo "[${platform}]: All processes exited"
+
     exit 0;
 }
 
+# clean up from last launch
+screen_log_prefix=/tmp/goby_launch_screen
+rm -f ${screen_log_prefix}*
+
 launch_delay=10
-launch=normal
+launch=screen
+screen_debug=false
 launch_time=$(date -u +%Y%m%dT%H%M%S)
 platform=$launch_time
 background=false
@@ -112,10 +157,12 @@ background=false
 sigkill_delay=10000
 # in s
 sigterm_delay=10
+parallel_shutdown=false
 
-while getopts ":hsnxd:bp:k:m:" opt; do
+while getopts ":rhsnxPLd:bp:k:m:" opt; do
     case $opt in
         h) usage; exit 1 ;;
+        r) check_launch_type_unset; launch=normal ;;
         s) check_launch_type_unset; launch=screen ;;
         n) check_launch_type_unset; launch=nohup; background=true ;;
 #        t) check_launch_type_unset; launch=gnometerm; background=true ;;
@@ -125,6 +172,8 @@ while getopts ":hsnxd:bp:k:m:" opt; do
         b) background=true ;;
         k) sigkill_delay=$(($OPTARG*1000)) ;;
         m) sigterm_delay=$OPTARG ;;
+        P) parallel_shutdown=true ;;
+        L) screen_debug=true ;;
         \?)
             echo "Invalid option: -$OPTARG. For help use -h."
             exit  1
@@ -151,13 +200,20 @@ spid_sig=()
 
 # copy launchfile to allow multiple reads
 origlaunchfile=${@:$OPTIND:1}
+if [ ! -e "$origlaunchfile" ]; then
+    echo "Error: must provide a valid launchfile: \"$origlaunchfile\" does not exist. For help use -h."
+    exit 1
+fi
+
+preseed="$(dirname $origlaunchfile)/preseed.goby"
+if [ -e "$preseed" ]; then
+    echo "source $preseed"
+    source $preseed;
+fi
+
 launchfile="/tmp/goby_$$.launch"
 cat ${origlaunchfile} > ${launchfile}
 
-if [ ! -e "$launchfile" ]; then
-    echo "Error: must provide a valid launchfile: \"$launchfile\" does not exist. For help use -h."
-    exit 1
-fi
 
 # search for gobyd so we can use the same interprocess { } configuration for goby_terminate
 gobyd_line=$(cat "$launchfile" | egrep "^ *[/a-zA-Z0-9_]*gobyd")
@@ -165,10 +221,10 @@ num_gobyd=$(echo "$gobyd_line" | wc -l)
 
 use_goby_terminate=true
 if [[ "$num_gobyd" != "1" ]]; then
-    echo "Warning: multiple instances of 'gobyd' found - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
+    echo "Note: multiple instances of 'gobyd' found - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
     use_goby_terminate=false
 elif [[ "$gobyd_line"  == "" ]]; then
-    echo "Warning: failed to find line for launching 'gobyd' - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
+    echo "Note: no line found for launching 'gobyd' - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
     use_goby_terminate=false
 else
     gobyd_escline=$(echo "$gobyd_line" | sed 's/"/\\"/g')
@@ -180,9 +236,9 @@ else
     fi
 fi
 
-     
 # actually launch the lines
 gnterm=()
+line_index=0
 while IFS= read -r line
 do
     cmd=$(echo "$line" | sed 's/^ *\[.*\]//')
@@ -214,8 +270,8 @@ do
                     fi
                     ;;
                 env)
-                    echo "Exporting $value"
-                    export $value
+#                    echo "Exporting $value"
+                    eval "export $value"
                     ;;
                 *)
                     echo "Invalid [$key=$value]: directive key: " $key
@@ -229,14 +285,19 @@ do
     
     esccmd=$(echo $cmd | sed 's/"/\\"/g')
     bin=$(echo $cmd | cut -d " " -f 1)
-    name=$platform.${bin##*/}
+    name=$platform.${bin##*/}    
+    extra=
+    if [ ! -z "$directive_str" ]; then
+        extra="[$directive_str]"
+    fi
     case $launch in
         normal)            
             bash -c "$cmd"&
             pid=$!
-            echo "Launched ($pid) $cmd"
+            echo "Launched ($pid) $cmd $extra"
             ppid+=($pid)
             spid+=($pid)
+            spid_cmd+=("$cmd")
             ;;
         xterm)
             setsid xterm  -T $name -e "bash -c \"$esccmd\""&
@@ -250,9 +311,10 @@ do
                 kill -0 $parent_pid >& /dev/null || launch_fail $cmd;
                 sleep 0.01
             done
-            echo "Launched (xterm: $parent_pid, child: $child_pid) $cmd"
+            echo "Launched (xterm: $parent_pid, child: $child_pid) $cmd $extra"
             ppid+=($parent_pid)
             spid+=($child_pid)
+            spid_cmd+=("$cmd")
             ;;
         nohup)
             nohup bash -c "$esccmd"&
@@ -260,12 +322,17 @@ do
             echo "Launched ($pid) $cmd"
             ppid+=($pid)
             spid+=($pid)
+            spid_cmd+=("$cmd")
             ;;
         gnometerm)
             gnterm+=(--tab -e "bash -c \"echo -ne \\\"\\033]0;${name}\\007\\\"; $esccmd\"")
             ;;       
         screen)
-            screen -DmS $name /bin/bash -c "exec $cmd"&
+            screen_log_cmd=
+            if [ "$screen_debug" = true ]; then
+                screen_log_cmd="-L -Logfile ${screen_log_prefix}_${name}_${line_index}"
+            fi
+            screen -DmS ${name} ${screen_log_cmd} /bin/bash -c "exec $cmd"&
             # pid of screen
             parent_pid=$!
             # pid of process in screen
@@ -276,22 +343,32 @@ do
                 kill -0 $parent_pid >& /dev/null || launch_fail $cmd;
                 sleep 0.01
             done
-            echo "Launched (screen: $parent_pid, child: $child_pid) $cmd"
+               
+            echo "Launched (screen: $parent_pid, child: $child_pid) $cmd $extra"
             ppid+=($parent_pid)
             spid+=($child_pid)
+            spid_cmd+=("$cmd")
             ;;       
     esac
     if [ $launch != gnometerm ]; then
         i=$((${#ppid[@]}-1))
-        spid_cmd[i]=$(ps --pid ${spid[i]} -o cmd=)
 
         # avoid association with this shell so we can kill them later without "Terminated" warning
         disown ${ppid[i]} >& /dev/null
         disown ${spid[i]} >& /dev/null
         sleep ${launch_delay}E-3
-    fi    
+    fi
+
+    line_index=$((line_index+1))
 done < <(sed 's/#.*//' "$launchfile" | sed '/^\s*$/d')
 
+# check that everything is still running 1 second after launch
+sleep 1
+for ((i=0; i<${#spid[@]}; ++i)); do 
+    p=${spid[i]}
+    cmd=${spid_cmd[i]}
+    kill -0 $p >& /dev/null || launch_fail "$cmd";
+done
 
 if [ $launch = gnometerm ]; then 
     gnome-terminal --maximize "${gnterm[@]}"
@@ -302,8 +379,12 @@ fi
 
 case $launch in
     screen)
-        (set -x; screen -ls)
+        echo "Screen sessions (screen -ls): "
+        screen -ls | cut -f 2 | cut -d "." -f 2-3 | head -n-1 | tail -n+2 | sort | xargs printf "\t%s\n"
         echo "Use 'screen -r <name>' to (re)attach session"
+        if [ "$screen_debug" = true ]; then
+            echo "Screen debug logs (-Logfile) are written to ${screen_log_prefix}*"
+        fi
     ;;
 esac
 
@@ -322,7 +403,6 @@ if [ "$background" = false ]; then
         fi
         sleep 5            
     done
-    echo "[${platform}]: All processes exited"
 else
     if [ $launch = "gnometerm" ]; then 
         echo -e "To quit, close the gnome-terminal window(s)"

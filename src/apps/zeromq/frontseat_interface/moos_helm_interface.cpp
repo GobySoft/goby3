@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <ostream>
+#include <vector>
+
+#include <boost/units/quantity.hpp>
+
+#include "goby/middleware/protobuf/app_config.pb.h"
 #include "goby/moos/middleware/frontseat/frontseat_gateway_plugin.h"
+#include "goby/moos/protobuf/moos_gateway_config.pb.h"
 #include "goby/moos/protobuf/moos_helm_frontseat_interface_config.pb.h"
+#include "goby/util/debug_logger/flex_ostream.h"
+#include "goby/zeromq/protobuf/frontseat_interface_config.pb.h"
 
 #include "frontseat_interface.h"
 

@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,16 +21,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerializeParseProtobuf20190717H
-#define SerializeParseProtobuf20190717H
+#ifndef GOBY_MIDDLEWARE_MARSHALLING_PROTOBUF_H
+#define GOBY_MIDDLEWARE_MARSHALLING_PROTOBUF_H
 
-#include "interface.h"
+#include <mutex>
 
 #include <google/protobuf/message.h>
-
 #include <dccl/dynamic_protobuf_manager.h>
 
 #include "goby/middleware/protobuf/intervehicle.pb.h"
+
+#include "interface.h"
 
 namespace goby
 {

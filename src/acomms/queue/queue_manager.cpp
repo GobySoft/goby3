@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,15 +23,28 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "dccl/dynamic_protobuf_manager.h"
+#include <cassert> // for assert
+#include <cstdint> // for int32_t
+#include <memory>   // for shared...
+#include <ostream>  // for operat...
+#include <vector>   // for vector
 
-#include "goby/acomms/dccl.h"
-#include "goby/time.h"
-#include "goby/util/binary.h"
+#include <boost/date_time/posix_time/posix_time_duration.hpp> // for micros...
+#include <boost/date_time/posix_time/ptime.hpp>               // for ptime
+#include <boost/date_time/time.hpp>                           // for base_time
+#include <boost/function.hpp>                                 // for function
+#include <boost/signals2/expired_slot.hpp>                    // for expire...
+#include <dccl/exception.h>                                   // for Exception
+
+#include "dccl/dynamic_protobuf_manager.h"         // for Dynami...
+#include "goby/acomms/acomms_constants.h"          // for BROADC...
+#include "goby/acomms/protobuf/dccl.pb.h"          // for DCCLCo...
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemT...
+#include "goby/time/convert.h"                     // for System...
+#include "goby/time/system_clock.h"                // for System...
+#include "goby/util/binary.h"                      // for hex_en...
 #include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
-
-#include "queue_constants.h"
+#include "goby/util/protobuf/io.h" // for operat...
 #include "queue_manager.h"
 
 using goby::glog;
@@ -41,7 +54,7 @@ using namespace goby::util::logger;
 int goby::acomms::QueueManager::count_ = 0;
 
 goby::acomms::QueueManager::QueueManager()
-    : packet_ack_(0), packet_dest_(BROADCAST_ID), codec_(goby::acomms::DCCLCodec::get())
+    : packet_dest_(BROADCAST_ID), codec_(goby::acomms::DCCLCodec::get())
 {
     ++count_;
 
@@ -104,9 +117,8 @@ void goby::acomms::QueueManager::add_queue(
     }
     else
     {
-        std::pair<std::map<unsigned, std::shared_ptr<Queue> >::iterator, bool> new_q_pair =
-            queues_.insert(
-                std::make_pair(dccl_id, std::shared_ptr<Queue>(new Queue(desc, this, queue_cfg))));
+        std::pair<std::map<unsigned, std::shared_ptr<Queue>>::iterator, bool> new_q_pair =
+            queues_.insert(std::make_pair(dccl_id, std::make_shared<Queue>(desc, this, queue_cfg)));
 
         Queue& new_q = *((new_q_pair.first)->second);
 
@@ -119,14 +131,12 @@ void goby::acomms::QueueManager::add_queue(
 
 void goby::acomms::QueueManager::do_work()
 {
-    for (std::map<unsigned, std::shared_ptr<Queue> >::iterator it = queues_.begin(),
-                                                               n = queues_.end();
-         it != n; ++it)
+    for (auto& queue : queues_)
     {
-        std::vector<std::shared_ptr<google::protobuf::Message> > expired_msgs =
-            it->second->expire();
+        std::vector<std::shared_ptr<google::protobuf::Message>> expired_msgs =
+            queue.second->expire();
 
-        for (std::shared_ptr<google::protobuf::Message> expire : expired_msgs)
+        for (const std::shared_ptr<google::protobuf::Message>& expire : expired_msgs)
         {
             signal_expire(*expire);
             if (network_ack_src_ids_.count(meta_from_msg(*expire).src()))
@@ -137,7 +147,7 @@ void goby::acomms::QueueManager::do_work()
 
 void goby::acomms::QueueManager::push_message(const google::protobuf::Message& dccl_msg)
 {
-    push_message(dccl_msg, 0);
+    push_message(dccl_msg, nullptr);
 }
 
 void goby::acomms::QueueManager::push_message(const google::protobuf::Message& dccl_msg,
@@ -164,7 +174,7 @@ void goby::acomms::QueueManager::push_message(const google::protobuf::Message& d
 
 void goby::acomms::QueueManager::flush_queue(const protobuf::QueueFlush& flush)
 {
-    std::map<unsigned, std::shared_ptr<Queue> >::iterator it = queues_.find(flush.dccl_id());
+    auto it = queues_.find(flush.dccl_id());
 
     if (it != queues_.end())
     {
@@ -183,17 +193,14 @@ void goby::acomms::QueueManager::flush_queue(const protobuf::QueueFlush& flush)
 void goby::acomms::QueueManager::info_all(std::ostream* os) const
 {
     *os << "= Begin QueueManager [[" << queues_.size() << " queues total]] =" << std::endl;
-    for (std::map<unsigned, std::shared_ptr<Queue> >::const_iterator it = queues_.begin(),
-                                                                     n = queues_.end();
-         it != n; ++it)
-        info(it->second->descriptor(), os);
+    for (const auto& queue : queues_) info(queue.second->descriptor(), os);
     *os << "= End QueueManager =";
 }
 
 void goby::acomms::QueueManager::info(const google::protobuf::Descriptor* desc,
                                       std::ostream* os) const
 {
-    std::map<unsigned, std::shared_ptr<Queue> >::const_iterator it = queues_.find(codec_->id(desc));
+    auto it = queues_.find(codec_->id(desc));
 
     if (it != queues_.end())
         it->second->info(os);
@@ -226,7 +233,7 @@ void goby::acomms::QueueManager::handle_modem_data_request(protobuf::ModemTransm
                   total_frames = msg->max_num_frames() + msg->frame_start();
          frame_number < total_frames; ++frame_number)
     {
-        std::string* data = 0;
+        std::string* data = nullptr;
         if ((frame_number - msg->frame_start()) < (unsigned)msg->frame_size())
             data = msg->mutable_frame(frame_number - msg->frame_start());
         else
@@ -383,7 +390,7 @@ void goby::acomms::QueueManager::handle_modem_data_request(protobuf::ModemTransm
                     // encode all the messages but the last (these must be unencrypted)
                     if (dccl_msgs.size() > 1)
                     {
-                        std::list<QueuedMessage>::iterator it_back = dccl_msgs.end();
+                        auto it_back = dccl_msgs.end();
                         --it_back;
                         *data +=
                             encode_repeated(std::list<QueuedMessage>(dccl_msgs.begin(), it_back));
@@ -505,9 +512,7 @@ unsigned goby::acomms::QueueManager::size_repeated(const std::list<QueuedMessage
 
 void goby::acomms::QueueManager::clear_packet(const protobuf::ModemTransmission& message)
 {
-    for (std::multimap<unsigned, Queue*>::iterator it = waiting_for_ack_.begin(),
-                                                   end = waiting_for_ack_.end();
-         it != end;)
+    for (auto it = waiting_for_ack_.begin(), end = waiting_for_ack_.end(); it != end;)
     {
         if (it->second->clear_ack_queue(message.frame_start()))
             waiting_for_ack_.erase(it++);
@@ -521,24 +526,22 @@ void goby::acomms::QueueManager::clear_packet(const protobuf::ModemTransmission&
 
 goby::acomms::Queue*
 goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& request_msg,
-                                             const std::string& data, bool first_user_frame)
+                                             const std::string& data, bool /*first_user_frame*/)
 {
     // competition between variable about who gets to send
     double winning_priority = 0;
     boost::posix_time::ptime winning_last_send_time;
 
-    Queue* winning_queue = 0;
+    Queue* winning_queue = nullptr;
 
     glog.is(DEBUG1) && glog << group(glog_priority_group_) << "Starting priority contest\n"
                             << "\tRequesting " << request_msg.max_num_frames() << " frame(s), have "
                             << data.size() << "/" << request_msg.max_frame_bytes() << "B"
                             << std::endl;
 
-    for (std::map<unsigned, std::shared_ptr<Queue> >::iterator it = queues_.begin(),
-                                                               n = queues_.end();
-         it != n; ++it)
+    for (auto& queue : queues_)
     {
-        Queue& q = *(it->second);
+        Queue& q = *(queue.second);
 
         // encode on demand
         if (manip_manager_.has(codec_->id(q.descriptor()), protobuf::ON_DEMAND) &&
@@ -610,7 +613,7 @@ void goby::acomms::QueueManager::process_modem_ack(const protobuf::ModemTransmis
             glog.is(DEBUG1) && glog << group(glog_in_group_) << "received ack for us from "
                                     << ack_msg.src() << " for frame " << frame_number << std::endl;
 
-            std::multimap<unsigned, Queue*>::iterator it = waiting_for_ack_.find(frame_number);
+            auto it = waiting_for_ack_.find(frame_number);
             while (it != waiting_for_ack_.end())
             {
                 Queue* q = it->second;

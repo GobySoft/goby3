@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,22 +22,41 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef iFrontSeat20130220H
-#define iFrontSeat20130220H
+#ifndef GOBY_APPS_MOOS_IFRONTSEAT_IFRONTSEAT_H
+#define GOBY_APPS_MOOS_IFRONTSEAT_IFRONTSEAT_H
 
-#include "goby/moos/goby_moos_app.h"
+#include <memory> // for unique_ptr
 
-#include "goby/middleware/frontseat/interface.h"
-#include "goby/moos/protobuf/iFrontSeat_config.pb.h"
+#include "goby/middleware/frontseat/interface.h" // for InterfaceBase
+#include "goby/moos/goby_moos_app.h"             // for GobyMOOSApp
+#include "legacy_translator.h"                   // for FrontSeatLegacyTran...
 
-#include "legacy_translator.h"
+class CMOOSMsg;
 
 namespace goby
 {
+namespace middleware
+{
+namespace frontseat
+{
+namespace protobuf
+{
+class CommandResponse;
+class InterfaceData;
+class Raw;
+} // namespace protobuf
+} // namespace frontseat
+} // namespace middleware
+
 namespace apps
 {
 namespace moos
 {
+namespace protobuf
+{
+class iFrontSeatConfig;
+} // namespace protobuf
+
 class iFrontSeat : public goby::moos::GobyMOOSApp
 {
   public:
@@ -48,12 +67,12 @@ class iFrontSeat : public goby::moos::GobyMOOSApp
 
   private:
     iFrontSeat();
-    ~iFrontSeat() {}
-    iFrontSeat(const iFrontSeat&);
-    iFrontSeat& operator=(const iFrontSeat&);
+    ~iFrontSeat() override = default;
+    iFrontSeat(const iFrontSeat&) = delete;
+    iFrontSeat& operator=(const iFrontSeat&) = delete;
 
     // synchronous event
-    void loop();
+    void loop() override;
     void status_loop();
 
     // mail handlers

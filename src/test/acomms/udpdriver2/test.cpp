@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -26,6 +26,9 @@
 
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
+#include "goby/acomms/protobuf/modem_message.pb.h"
+#include "goby/acomms/protobuf/udp_driver.pb.h"
+#include "goby/util/as.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"

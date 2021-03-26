@@ -1,4 +1,4 @@
-// Copyright 2010-2020:
+// Copyright 2010-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,15 +22,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MAC20091019H
-#define MAC20091019H
+#ifndef GOBY_ACOMMS_AMAC_MAC_MANAGER_H
+#define GOBY_ACOMMS_AMAC_MAC_MANAGER_H
 
-#include "goby/acomms/modem_driver.h"
-#include "goby/acomms/protobuf/amac.pb.h"
-#include "goby/acomms/protobuf/amac_config.pb.h"
-#include "goby/acomms/protobuf/modem_message.pb.h"
-#include "goby/time.h"
-#include "goby/util/as.h"
+#include <boost/signals2/signal.hpp>      // for signal
+#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
+#include <chrono>                         // for seconds
+#include <iosfwd>                         // for ostream
+#include <list>                           // for list, list<>::ite...
+#include <string>                         // for operator==, string
+
+#include "goby/acomms/protobuf/amac_config.pb.h"   // for MACConfig
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTransmission
+#include "goby/time/system_clock.h"                // for SystemClock, Syst...
 
 namespace goby
 {
@@ -129,7 +133,7 @@ class MACManager : public std::list<protobuf::ModemTransmission>
 
     unsigned cycles_since_reference_;
 
-    bool started_up_;
+    bool started_up_{false};
 
     std::string glog_mac_group_;
     static int count_;

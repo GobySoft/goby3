@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -32,12 +32,24 @@
 // > ...
 // 3. run your application connecting to /tmp/ttyFAKE1, /tmp/ttyFAKE2, etc. They will all act in the same "broadcast" pool
 
-#include <map>
-#include <string>
+#include <cstdlib>     // for exit
+#include <iostream>    // for operator<<, bas...
+#include <map>         // for map, map<>::map...
+#include <stdexcept>   // for runtime_error
+#include <string>      // for string, basic_s...
+#include <type_traits> // for __decay_and_str...
+#include <unistd.h>    // for sleep, usleep
+#include <utility>     // for pair, make_pair
+#include <vector>      // for vector
 
-#include "goby/acomms/acomms_constants.h" // for BROADCAST_ID
-#include "goby/util/as.h"
-#include "goby/util/linebasedcomms.h"
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim
+
+#include "goby/acomms/acomms_constants.h"         // for BROADCAST_ID
+#include "goby/util/as.h"                         // for as
+#include "goby/util/linebasedcomms/tcp_server.h"  // for TCPServer
+#include "goby/util/protobuf/linebasedcomms.pb.h" // for Datagram
 
 std::map<int, std::string> modem_id2endpoint;
 
@@ -112,15 +124,12 @@ int main(int argc, char* argv[])
 
                         if (dest == goby::acomms::BROADCAST_ID)
                         {
-                            typedef std::map<int, std::string>::const_iterator const_iterator;
-                            for (const_iterator it = modem_id2endpoint.begin(),
-                                                n = modem_id2endpoint.end();
-                                 it != n; ++it)
+                            for (const auto& it : modem_id2endpoint)
                             {
                                 // do not send it back to the originator
-                                if (it->first != src)
+                                if (it.first != src)
                                 {
-                                    out.set_dest(it->second);
+                                    out.set_dest(it.second);
                                     std::cout << "Sending: " << out.ShortDebugString() << std::endl;
                                     server.write(out);
                                 }

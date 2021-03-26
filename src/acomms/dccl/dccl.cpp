@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,6 +23,11 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "dccl.h"
+
+#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
+#include <dccl/codec.h>                   // for Codec
+
+#include "goby/util/debug_logger/term_color.h" // for Colors, Colors::lt_blue
 
 std::string goby::acomms::DCCLCodec::glog_encode_group_ = "goby::acomms::dccl::encode";
 std::string goby::acomms::DCCLCodec::glog_decode_group_ = "goby::acomms::dccl::decode";

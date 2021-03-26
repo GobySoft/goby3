@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,25 +22,42 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MOOS_TRANSLATOR_H
-#define MOOS_TRANSLATOR_H
+#ifndef GOBY_MOOS_MOOS_TRANSLATOR_H
+#define GOBY_MOOS_MOOS_TRANSLATOR_H
 
-#include "goby/moos/moos_header.h"
-#include "moos_geodesy.h"
-#include <map>
-#include <set>
-#include <string>
+#include <limits>    // for numeric_limits
+#include <map>       // for map, multimap
+#include <mutex>     // for lock_guard, mutex
+#include <ostream>   // for operator<<, bas...
+#include <set>       // for set
+#include <stdexcept> // for runtime_error
+#include <string>    // for basic_string
+#include <utility>   // for pair, make_pair
+#include <vector>    // for vector
 
-#include "dccl/dynamic_protobuf_manager.h"
-#include "goby/moos/modem_id_convert.h"
-#include "goby/moos/moos_protobuf_helpers.h"
-#include "goby/moos/protobuf/translator.pb.h"
-#include "goby/moos/transitional/message_algorithms.h"
+#include <MOOS/libMOOS/Comms/MOOSMsg.h>              // for CMOOSMsg, MOOS_...
+#include <MOOS/libMOOS/Utils/MOOSUtilityFunctions.h> // for MOOSTime
+#include <boost/lexical_cast.hpp>                    // for lexical_cast
+#include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexical_cast
+#include <google/protobuf/descriptor.h>              // for Descriptor
+#include <google/protobuf/message.h>                 // for Message
+
+#include "dccl/dynamic_protobuf_manager.h"    // for DynamicProtobuf...
+#include "goby/moos/modem_id_convert.h"       // for ModemIdConvert
+#include "goby/moos/moos_protobuf_helpers.h"  // for MOOSTranslation
+#include "goby/moos/protobuf/translator.pb.h" // for TranslatorEntry
+#include "goby/util/as.h"                     // for as
+#include "moos_geodesy.h"                     // for CMOOSGeodesy
 
 namespace goby
 {
 namespace moos
 {
+namespace transitional
+{
+class DCCLMessageVal;
+} // namespace transitional
+
 void alg_power_to_dB(moos::transitional::DCCLMessageVal& val_to_mod);
 void alg_dB_to_power(moos::transitional::DCCLMessageVal& val_to_mod);
 
@@ -106,19 +123,14 @@ class MOOSTranslator
 
     void add_entry(const std::set<goby::moos::protobuf::TranslatorEntry>& entries)
     {
-        for (std::set<goby::moos::protobuf::TranslatorEntry>::const_iterator it = entries.begin(),
-                                                                             n = entries.end();
-             it != n; ++it)
-        { add_entry(*it); } }
+        for (const auto& entry : entries) { add_entry(entry); }
+    }
 
     void add_entry(
         const google::protobuf::RepeatedPtrField<goby::moos::protobuf::TranslatorEntry>& entries)
     {
-        for (google::protobuf::RepeatedPtrField<
-                 goby::moos::protobuf::TranslatorEntry>::const_iterator it = entries.begin(),
-                                                                        n = entries.end();
-             it != n; ++it)
-        { add_entry(*it); } }
+        for (const auto& entry : entries) { add_entry(entry); }
+    }
 
     // ownership of returned pointer goes to caller (must use smart pointer or call delete)
     template <typename GoogleProtobufMessagePointer, class StringCMOOSMsgMap>
@@ -154,7 +166,7 @@ class MOOSTranslator
         {
             try
             {
-                double return_double = boost::lexical_cast<double>(str);
+                auto return_double = boost::lexical_cast<double>(str);
                 return CMOOSMsg(MOOS_NOTIFY, var, return_double);
             }
             catch (boost::bad_lexical_cast&)
@@ -201,13 +213,10 @@ inline std::ostream& operator<<(std::ostream& os, const MOOSTranslator& tl)
     os << "= Begin MOOSTranslator =\n";
 
     int i = 0;
-    for (std::map<std::string, goby::moos::protobuf::TranslatorEntry>::const_iterator
-             it = tl.dictionary().begin(),
-             n = tl.dictionary().end();
-         it != n; ++it)
+    for (const auto& it : tl.dictionary())
     {
         os << "== Begin Entry " << i << " ==\n"
-           << it->second.DebugString() << "== End Entry " << i << " ==\n";
+           << it.second.DebugString() << "== End Entry " << i << " ==\n";
 
         ++i;
     }
@@ -421,7 +430,7 @@ goby::moos::MOOSTranslator::protobuf_to_inverse_moos(const google::protobuf::Mes
             // fake the trigger last so that all other inputs get read in first
             typedef std::multimap<std::string, CMOOSMsg>::iterator It;
             std::pair<It, It> p = moos_msgs.equal_range(entry.trigger().moos_var());
-            for (It it = p.first; it != p.second; ++it) it->second.m_dfTime = MOOSTime();
+            for (auto it = p.first; it != p.second; ++it) it->second.m_dfTime = MOOSTime();
         }
         else
         {
@@ -463,8 +472,7 @@ goby::moos::MOOSTranslator::moos_to_protobuf(const StringCMOOSMsgMap& moos_varia
 
     for (int i = 0, n = entry.create_size(); i < n; ++i)
     {
-        std::multimap<std::string, CMOOSMsg>::const_iterator it =
-            moos_variables.find(entry.create(i).moos_var());
+        auto it = moos_variables.find(entry.create(i).moos_var());
         std::string source_string =
             (it == moos_variables.end())
                 ? ""

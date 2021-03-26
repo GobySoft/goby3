@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,9 +23,11 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/algorithm/string.hpp>
+#include <iomanip> // for operator<<, setfill, setw
 
-#include "goby/util/binary.h"
+#include <boost/algorithm/string/trim.hpp> // for trim
+
+#include "goby/util/binary.h" // for hex_string2number
 
 #include "nmea_sentence.h"
 
@@ -74,7 +76,7 @@ unsigned char goby::util::NMEASentence::checksum(const std::string& s)
 
     if (s.empty())
         throw bad_nmea_sentence("NMEASentence::checksum: no message provided.");
-    std::string::size_type star = s.find_first_of("*");
+    std::string::size_type star = s.find_first_of('*');
     std::string::size_type dollar = s.find_first_of("$!");
 
     if (dollar == std::string::npos)
@@ -91,7 +93,7 @@ std::string goby::util::NMEASentence::message_no_cs() const
 {
     std::string message = "";
 
-    for (const_iterator it = begin(), n = end(); it < n; ++it) message += *it + ",";
+    for (auto it = begin(), n = end(); it < n; ++it) message += *it + ",";
 
     // kill last ","
     message.resize(message.size() - 1);

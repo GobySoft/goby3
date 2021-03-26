@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,12 +24,13 @@
 
 // defines translations for backwards compatible use (hopefully temporary)
 // with iHuxley
-#ifndef LegacyTranslator20130222H
-#define LegacyTranslator20130222H
+#ifndef GOBY_APPS_MOOS_IFRONTSEAT_LEGACY_TRANSLATOR_H
+#define GOBY_APPS_MOOS_IFRONTSEAT_LEGACY_TRANSLATOR_H
 
-#include "goby/moos/moos_header.h"
+#include "goby/middleware/protobuf/frontseat.pb.h"      // for CommandReque...
+#include "goby/middleware/protobuf/frontseat_data.pb.h" // for CTDSample
 
-#include "goby/middleware/frontseat/interface.h"
+class CMOOSMsg;
 
 namespace goby
 {
@@ -38,6 +39,7 @@ namespace apps
 namespace moos
 {
 class iFrontSeat;
+
 class FrontSeatLegacyTranslator
 {
   public:

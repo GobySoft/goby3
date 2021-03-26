@@ -1,0 +1,17 @@
+syntax = "proto2";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/tcp_config.proto";
+
+package goby.apps.zeromq.protobuf;
+
+message GPSDConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+
+    required goby.middleware.protobuf.TCPClientConfig gpsd = 3;
+
+    repeated string device_name = 5;
+}

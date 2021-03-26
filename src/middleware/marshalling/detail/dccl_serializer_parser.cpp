@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,11 +21,28 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/protobuf/intervehicle.pb.h"
-#include "goby/middleware/protobuf/serializer_transporter.pb.h"
-#include "goby/util/debug_logger.h"
+#include <list> // for oper...
+#include <map>  // for map
+
+#include <dccl/logger.h>                   // for Logger
+#include <google/protobuf/descriptor.pb.h> // for File...
+#include <google/protobuf/message.h>       // for Message
+
+#include "goby/middleware/protobuf/intervehicle.pb.h"           // for DCCL...
+#include "goby/middleware/protobuf/serializer_transporter.pb.h" // for Seri...
+#include "goby/util/debug_logger/flex_ostreambuf.h"             // for DEBUG3
+#include "goby/util/debug_logger/logger_manipulators.h"         // for oper...
+#include "goby/util/debug_logger/term_color.h"                  // for Colors
 
 #include "dccl_serializer_parser.h"
+
+namespace google
+{
+namespace protobuf
+{
+class Descriptor;
+} // namespace protobuf
+} // namespace google
 
 std::unique_ptr<dccl::Codec>
     goby::middleware::detail::DCCLSerializerParserHelperBase::codec_(nullptr);
@@ -116,7 +133,7 @@ void goby::middleware::detail::DCCLSerializerParserHelperBase::setup_dlog()
         glog.add_group(glog_dccl_group, util::Colors::lt_magenta);
 
         auto dlog_lambda = [=](const std::string& msg, dccl::logger::Verbosity vrb,
-                               dccl::logger::Group grp) {
+                               dccl::logger::Group /*grp*/) {
             switch (vrb)
             {
                 case dccl::logger::WARN:

@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SerializationHandlers20191104H
-#define SerializationHandlers20191104H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_SERIALIZATION_HANDLERS_H
+#define GOBY_MIDDLEWARE_TRANSPORT_SERIALIZATION_HANDLERS_H
 
 #include <chrono>
 #include <memory>
@@ -388,6 +388,7 @@ class SerializationInterModuleSubscription : public SerializationHandlerBase<>
     {
         switch (sub_cfg_.action())
         {
+            default:
             case intermodule::protobuf::Subscription::SUBSCRIBE:
                 return SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE;
             case intermodule::protobuf::Subscription::UNSUBSCRIBE:

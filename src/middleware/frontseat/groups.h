@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -23,8 +23,8 @@
 
 #include "goby/middleware/group.h"
 
-#ifndef GROUPS_20190816H
-#define GROUPS_20190816H
+#ifndef GOBY_MIDDLEWARE_FRONTSEAT_GROUPS_H
+#define GOBY_MIDDLEWARE_FRONTSEAT_GROUPS_H
 
 namespace goby
 {

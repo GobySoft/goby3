@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -31,8 +31,12 @@
 #include "goby/middleware/transport/interthread.h"
 #include "goby/zeromq/transport/interprocess.h"
 
+#include "goby/test/zeromq/middleware_interprocess_forwarder/test.pb.h"
 #include "goby/util/debug_logger.h"
-#include "test.pb.h"
+
+#include <memory>
+
+#include <utility>
 
 #include <zmq.hpp>
 
@@ -142,7 +146,7 @@ void handle_sample2(const Sample& sample)
     }
 }
 
-void handle_widget(std::shared_ptr<const Widget> widget)
+void handle_widget(const std::shared_ptr<const Widget>& widget)
 {
     static int receive_count3 = 0;
     glog.is(DEBUG1) && glog << "InterProcess widget received publication: "
@@ -155,7 +159,7 @@ void handle_widget(std::shared_ptr<const Widget> widget)
 void subscriber()
 {
     ipc_child().subscribe_dynamic<Sample>(
-        [](std::shared_ptr<const Sample> s) { handle_sample1(*s); }, sample1);
+        [](const std::shared_ptr<const Sample>& s) { handle_sample1(*s); }, sample1);
     ipc_child().subscribe<sample2, Sample>(&handle_sample2);
     ipc_child().subscribe<widget, Widget>(&handle_widget);
 
@@ -181,9 +185,9 @@ class ThreadSubscriber
     {
         inproc2_.subscribe<sample1, Sample>([&](const Sample& s) { handle_sample1(s); });
         inproc2_.subscribe<sample2, Sample>(
-            [&](std::shared_ptr<const Sample> s) { handle_sample2(s); });
+            [&](std::shared_ptr<const Sample> s) { handle_sample2(std::move(s)); });
         inproc2_.subscribe<widget, Widget>(
-            [&](std::shared_ptr<const Widget> w) { handle_widget1(w); });
+            [&](std::shared_ptr<const Widget> w) { handle_widget1(std::move(w)); });
         ++ready;
         while (receive_count1 < max_publish || receive_count2 < (max_publish / 2) ||
                receive_count3 < max_publish)
@@ -201,14 +205,14 @@ class ThreadSubscriber
     }
 
   private:
-    void handle_sample1(Sample sample)
+    void handle_sample1(const Sample& sample)
     {
         std::thread::id this_id = std::this_thread::get_id();
         glog.is(DEBUG1) && glog << this_id << ": Received1: " << sample.DebugString() << std::endl;
         assert(sample.a() == receive_count1);
         ++receive_count1;
     }
-    void handle_sample2(std::shared_ptr<const Sample> sample)
+    void handle_sample2(const std::shared_ptr<const Sample>& sample)
     {
         std::thread::id this_id = std::this_thread::get_id();
         glog.is(DEBUG1) && glog << this_id << ": Received2: " << sample->DebugString() << std::endl;
@@ -224,7 +228,7 @@ class ThreadSubscriber
         }
     }
 
-    void handle_widget1(std::shared_ptr<const Widget> widget)
+    void handle_widget1(const std::shared_ptr<const Widget>& widget)
     {
         std::thread::id this_id = std::this_thread::get_id();
         glog.is(DEBUG1) && glog << this_id << ": Received3: " << widget->DebugString() << std::endl;
@@ -251,10 +255,10 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 
         assert(s.a() <= 3 * max_publish / 4);
     });
-    zmq.subscribe<sample2, Sample>([&](std::shared_ptr<const Sample> s) {
+    zmq.subscribe<sample2, Sample>([&](const std::shared_ptr<const Sample>& s) {
         glog.is(DEBUG1) && glog << "Portal Received2: " << s->DebugString() << std::endl;
     });
-    zmq.subscribe<widget, Widget>([&](std::shared_ptr<const Widget> w) {
+    zmq.subscribe<widget, Widget>([&](const std::shared_ptr<const Widget>& w) {
         glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString() << std::endl;
     });
 
@@ -272,7 +276,7 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
 } // namespace test
 } // namespace goby
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::zeromq::protobuf::InterProcessPortalConfig cfg;
     cfg.set_platform("test3");
@@ -298,8 +302,8 @@ int main(int argc, char* argv[])
     auto launch_sub_threads = [&]() {
         for (int i = 0; i < max_subs; ++i)
         {
-            threads.push_back(std::thread(
-                std::bind(&goby::test::zeromq::ThreadSubscriber::run, &thread_subscribers.at(i))));
+            threads.emplace_back(
+                std::bind(&goby::test::zeromq::ThreadSubscriber::run, &thread_subscribers.at(i)));
         }
     };
 
@@ -322,17 +326,21 @@ int main(int argc, char* argv[])
     }
     else
     {
-        manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(1));
+        manager_context = std::make_unique<zmq::context_t>(1);
+        router_context = std::make_unique<zmq::context_t>(1);
+
+        goby::zeromq::protobuf::InterProcessManagerHold hold;
+        hold.add_required_client("subscriber");
+        hold.add_required_client("publisher");
 
         goby::zeromq::protobuf::InterProcessManagerHold hold;
         hold.add_required_client("subscriber");
         hold.add_required_client("publisher");
 
         goby::zeromq::Router router(*router_context, cfg);
-        t4.reset(new std::thread([&] { router.run(); }));
+        t4 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
-        t5.reset(new std::thread([&] { manager.run(); }));
+        t5 = std::make_unique<std::thread>([&] { manager.run(); });
 
         auto pub_cfg = cfg;
         pub_cfg.set_client_name("publisher");

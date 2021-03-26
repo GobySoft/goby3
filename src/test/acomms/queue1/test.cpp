@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -25,12 +25,13 @@
 
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/connect.h"
+#include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/acomms/queue.h"
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
 
-#include "test.pb.h"
+#include "goby/test/acomms/queue1/test.pb.h"
 
 using goby::test::acomms::protobuf::TestMsg;
 
@@ -41,7 +42,7 @@ TestMsg test_msg1;
 
 void handle_receive(const google::protobuf::Message& msg);
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);

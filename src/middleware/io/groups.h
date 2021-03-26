@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,8 +23,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IO_GROUPS_20190718H
-#define IO_GROUPS_20190718H
+#ifndef GOBY_MIDDLEWARE_IO_GROUPS_H
+#define GOBY_MIDDLEWARE_IO_GROUPS_H
 
 #include "goby/middleware/group.h"
 
@@ -36,9 +36,6 @@ namespace io
 {
 namespace groups
 {
-constexpr goby::middleware::Group status{"goby::middleware::io::status"};
-
-constexpr goby::middleware::Group tcp_server_event{"goby::middleware::io::tcp::server_event"};
 
 constexpr goby::middleware::Group mavlink_raw_in{"goby::apps::zeromq::mavlink_raw_in"};
 constexpr goby::middleware::Group mavlink_raw_out{"goby::apps::zeromq::mavlink_raw_out"};

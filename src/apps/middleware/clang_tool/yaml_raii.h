@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef YAMLRAII_20190801_H
-#define YAMLRAII_20190801_H
+#ifndef GOBY_APPS_MIDDLEWARE_CLANG_TOOL_YAML_RAII_H
+#define GOBY_APPS_MIDDLEWARE_CLANG_TOOL_YAML_RAII_H
 
 #include "yaml-cpp/yaml.h"
 

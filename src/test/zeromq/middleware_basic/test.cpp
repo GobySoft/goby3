@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -23,6 +23,7 @@
 
 #include <deque>
 
+#include "goby/acomms/protobuf/udp_driver.pb.h"
 #include "goby/middleware/marshalling/cstr.h"
 #include "goby/middleware/marshalling/dccl.h"
 #include "goby/middleware/marshalling/protobuf.h"
@@ -34,8 +35,8 @@
 #include "goby/middleware/transport/intervehicle.h"
 #include "goby/zeromq/transport/interprocess.h"
 
+#include "goby/test/zeromq/middleware_basic/test.pb.h"
 #include "goby/util/debug_logger.h"
-#include "test.pb.h"
 
 using goby::test::zeromq::protobuf::CTDSample;
 using goby::test::zeromq::protobuf::TempSample;
@@ -44,7 +45,7 @@ extern constexpr goby::middleware::Group ctd{"CTD"};
 extern constexpr goby::middleware::Group ctd2{"CTD2"};
 extern constexpr goby::middleware::Group temp{"TEMP"};
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
@@ -69,9 +70,11 @@ int main(int argc, char* argv[])
     s.set_salinity(38.5);
 
     std::cout << "Should be DCCL" << std::endl;
-    assert(goby::middleware::scheme<decltype(s)>() == goby::middleware::MarshallingScheme::DCCL);
+    static_assert(
+        goby::middleware::scheme<decltype(s)>() == goby::middleware::MarshallingScheme::DCCL, "");
     // Interprocess defaults to PROTOBUF for DCCL types
-    assert(zmq_blank.scheme<decltype(s)>() == goby::middleware::MarshallingScheme::PROTOBUF);
+    static_assert(zmq_blank.scheme<decltype(s)>() == goby::middleware::MarshallingScheme::PROTOBUF,
+                  "");
     zmq_blank.publish<ctd>(s);
 
     std::shared_ptr<CTDSample> sp(new CTDSample);
@@ -119,7 +122,7 @@ int main(int argc, char* argv[])
     }
 
     goby::middleware::InterVehiclePortal<decltype(zmq)> slow(zmq, slow_cfg);
-    slow.publish_dynamic(s, {"slow", 1});
+    slow.publish_dynamic(s, {"slow", goby::middleware::Group::broadcast_group});
 
     router_context.reset();
     manager_context.reset();

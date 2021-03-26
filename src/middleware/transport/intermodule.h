@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TransportInterModule20201006H
-#define TransportInterModule20201006H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERMODULE_H
+#define GOBY_MIDDLEWARE_TRANSPORT_INTERMODULE_H
 
 #include <atomic>
 #include <functional>

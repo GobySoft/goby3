@@ -1,4 +1,4 @@
-// Copyright 2010-2020:
+// Copyright 2010-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SCI20100713H
-#define SCI20100713H
+#ifndef GOBY_UTIL_SCI_H
+#define GOBY_UTIL_SCI_H
 
 #include <cmath>
 #include <map>
@@ -96,7 +96,7 @@ template <typename N1, typename N2> N2 linear_interpolate(N1 a, const std::map<N
         --l_it;
         auto a_u = u_it->first, a_l = l_it->first;
         auto b_u = u_it->second, b_l = l_it->second;
-        return ((a - a_l) / (a_l - a_u)) * (b_l - b_u) + b_l;
+        return static_cast<double>((a - a_l) / (a_l - a_u)) * (b_l - b_u) + b_l;
     }
 }
 

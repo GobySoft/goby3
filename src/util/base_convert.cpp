@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -25,12 +25,12 @@
 #include "base_convert.h"
 
 #ifdef HAS_GMP
-#include <boost/multiprecision/gmp.hpp>
+#include <boost/multiprecision/gmp.hpp> // for divide_qr
 #else
 #include <boost/multiprecision/cpp_int.hpp>
 #endif
 
-#include <boost/multiprecision/integer.hpp>
+#include <boost/multiprecision/number.hpp>
 
 void goby::util::base_convert(const std::string& source, std::string* sink, int source_base,
                               int sink_base)

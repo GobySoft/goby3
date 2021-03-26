@@ -1,4 +1,4 @@
-// Copyright 2018-2020:
+// Copyright 2018-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TIME_CONVERT_20190530H
-#define TIME_CONVERT_20190530H
+#ifndef GOBY_TIME_CONVERT_H
+#define GOBY_TIME_CONVERT_H
 
 #include <chrono>
 #include <sstream>

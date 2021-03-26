@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,10 +21,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SINGLETHREADAPPLICATION20161120H
-#define SINGLETHREADAPPLICATION20161120H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_SINGLE_THREAD_H
+#define GOBY_MIDDLEWARE_APPLICATION_SINGLE_THREAD_H
 
 #include <boost/units/systems/si.hpp>
+
+#include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/terminate/terminate.h"
 
 #include "goby/middleware/application/detail/interprocess_common.h"
 #include "goby/middleware/application/interface.h"
@@ -33,8 +36,6 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/intervehicle.h"
 
-#include "goby/middleware/coroner/coroner.h"
-#include "goby/middleware/terminate/terminate.h"
 
 namespace goby
 {

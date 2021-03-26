@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,15 +22,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <typeinfo> // for bad_cast
+
+#include "flex_ostream.h" // for operator<<, FlexOstream
 #include "term_color.h"
-#include "flex_ostream.h"
 
 // TODO(tes): See if this dynamic cast is unncessary now
 std::ostream& goby::util::tcolor::add_escape_code(std::ostream& os, const std::string& esc_code)
 {
     try
     {
-        FlexOstream& flex = dynamic_cast<FlexOstream&>(os);
+        auto& flex = dynamic_cast<FlexOstream&>(os);
         return (flex << esc_code);
     }
     catch (const std::bad_cast& e)

@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,17 +21,43 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_IO_DETAIL_PTY_INTERFACE_H
+#define GOBY_MIDDLEWARE_IO_DETAIL_PTY_INTERFACE_H
 
-#include <boost/asio/posix/stream_descriptor.hpp>
-#include <boost/asio/streambuf.hpp>
-#include <boost/asio/write.hpp>
-#include <boost/units/systems/si/prefixes.hpp>
+#include <errno.h>    // for errno
+#include <fcntl.h>    // for O_NOCTTY, O_RDWR
+#include <memory>     // for shared_ptr
+#include <stdio.h>    // for remove
+#include <stdlib.h>   // for grantpt, posix_o...
+#include <string.h>   // for strerror
+#include <string>     // for operator+, string
+#include <sys/stat.h> // for lstat, stat, S_I...
+#include <termios.h>  // for cfsetspeed, cfma...
+#include <unistd.h>   // for symlink
 
-#include "goby/middleware/io/detail/io_interface.h"
-#include "goby/middleware/protobuf/pty_config.pb.h"
+#include <boost/asio/posix/stream_descriptor.hpp> // for stream_descriptor
 
-#include <sys/stat.h>
+#include "goby/exception.h"                         // for Exception
+#include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer, IOT...
+#include "goby/middleware/protobuf/pty_config.pb.h" // for PTYConfig
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
+namespace goby
+{
+namespace middleware
+{
+namespace protobuf
+{
+class IOData;
+}
+} // namespace middleware
+} // namespace goby
 
 namespace goby
 {
@@ -46,14 +72,15 @@ template <const goby::middleware::Group& line_in_group,
           // by default publish all incoming traffic to interprocess for logging
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           // but only subscribe on interthread for outgoing traffic
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD>
+          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+          template <class> class ThreadType = goby::middleware::SimpleThread>
 class PTYThread : public detail::IOThread<line_in_group, line_out_group, publish_layer,
                                           subscribe_layer, goby::middleware::protobuf::PTYConfig,
-                                          boost::asio::posix::stream_descriptor>
+                                          boost::asio::posix::stream_descriptor, ThreadType>
 {
     using Base = detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
                                   goby::middleware::protobuf::PTYConfig,
-                                  boost::asio::posix::stream_descriptor>;
+                                  boost::asio::posix::stream_descriptor, ThreadType>;
 
   public:
     /// \brief Constructs the thread.
@@ -62,9 +89,11 @@ class PTYThread : public detail::IOThread<line_in_group, line_out_group, publish
     PTYThread(const goby::middleware::protobuf::PTYConfig& config, int index = -1)
         : Base(config, index, std::string("pty: ") + config.port())
     {
+        auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+        this->interthread().template publish<line_in_group>(ready);
     }
 
-    ~PTYThread() {}
+    ~PTYThread() override {}
 
   private:
     void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) override
@@ -82,9 +111,9 @@ class PTYThread : public detail::IOThread<line_in_group, line_out_group, publish
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
 void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publish_layer,
-                                             subscribe_layer>::open_socket()
+                                             subscribe_layer, ThreadType>::open_socket()
 {
     // remove old symlink
     const char* pty_external_symlink = this->cfg().port().c_str();
@@ -163,3 +192,5 @@ void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publ
     if (symlink(pty_external_path, pty_external_symlink) == -1)
         throw(goby::Exception(std::string("Could not create symlink: ") + pty_external_symlink));
 }
+
+#endif

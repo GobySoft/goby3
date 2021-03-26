@@ -1,4 +1,4 @@
-// Copyright 2012-2020:
+// Copyright 2012-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DCCL_LOG_20190123_H
-#define DCCL_LOG_20190123_H
+#ifndef GOBY_MIDDLEWARE_LOG_DCCL_LOG_PLUGIN_H
+#define GOBY_MIDDLEWARE_LOG_DCCL_LOG_PLUGIN_H
 
 #include <dccl/codec.h>
 

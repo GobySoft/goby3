@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,23 +22,37 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef AIS_ENCODE_20191021H
-#define AIS_ENCODE_20191021H
+#ifndef GOBY_UTIL_AIS_ENCODE_H
+#define GOBY_UTIL_AIS_ENCODE_H
 
-#include <atomic>
-#include <cstdint>
+#include <atomic>    // for atomic
+#include <cmath>     // for round
+#include <cstdint>   // for uint32_t, uint8_t
+#include <stdexcept> // for runtime_error
+#include <string>    // for string, allocator
+#include <vector>    // for vector
 
-#include <boost/dynamic_bitset.hpp>
-
-#include "goby/util/linebasedcomms/nmea_sentence.h"
-#include "goby/util/protobuf/ais.pb.h"
+#include <boost/algorithm/string/case_conv.hpp>    // for to_upper
+#include <boost/dynamic_bitset/dynamic_bitset.hpp> // for dynamic_bitset
+#include <boost/units/base_unit.hpp>               // for base_unit<>::unit...
+#include <boost/units/base_units/metric/knot.hpp>  // for knot_base_unit
+#include <boost/units/quantity.hpp>                // for quantity, operator*
+#include <boost/units/systems/angle/degrees.hpp>   // for plane_angle, degrees
 
 namespace goby
 {
 namespace util
 {
+class NMEASentence;
+
 namespace ais
 {
+namespace protobuf
+{
+class Position;
+class Voyage;
+} // namespace protobuf
+
 class EncoderException : public std::runtime_error
 {
   public:
@@ -48,16 +62,16 @@ class EncoderException : public std::runtime_error
 class Encoder
 {
   public:
-    Encoder(goby::util::ais::protobuf::Position pos);
-    Encoder(goby::util::ais::protobuf::Voyage voy, int part_num = 0);
+    Encoder(const goby::util::ais::protobuf::Position& pos);
+    Encoder(const goby::util::ais::protobuf::Voyage& voy, int part_num = 0);
 
     boost::dynamic_bitset<> as_bitset() const { return bits_; }
 
     std::vector<NMEASentence> as_nmea() const;
 
   private:
-    void encode_msg_18(goby::util::ais::protobuf::Position pos);
-    void encode_msg_24(goby::util::ais::protobuf::Voyage voy, std::uint32_t part_num);
+    void encode_msg_18(const goby::util::ais::protobuf::Position& pos);
+    void encode_msg_24(const goby::util::ais::protobuf::Voyage& voy, std::uint32_t part_num);
 
     boost::units::quantity<boost::units::degree::plane_angle>
     wrap_0_360(boost::units::quantity<boost::units::degree::plane_angle> in)
@@ -95,6 +109,7 @@ class Encoder
     }
 
     struct AISField;
+
     void concatenate_bitset(const std::vector<AISField>& fields)
     {
         for (auto it = fields.rbegin(), end = fields.rend(); it != end; ++it)

@@ -1,9 +1,9 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
-//   Thomas McCabe <tom.mccabe@missionsystems.com.au>
 //   Toby Schneider <toby@gobysoft.org>
+//   Thomas McCabe <tom.mccabe@missionsystems.com.au>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -31,16 +31,20 @@
 
 /* Copyright (c) 2020 mission systems pty ltd */
 
-#ifndef PopotoDriver2020
-#define PopotoDriver2020
+#ifndef GOBY_ACOMMS_MODEMDRIVER_POPOTO_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_POPOTO_DRIVER_H
 
-#include <iostream>
-#include <string>
+#include <cstddef> // for size_t
+#include <cstdint> // for uint8_t
+#include <map>      // for map
+#include <string>   // for string
+#include <vector>   // for vector
 
-#include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/acomms/protobuf/popoto_driver.pb.h"
-#include "goby/time.h"
-#include "goby/util/thirdparty/nlohmann/json.hpp"
+#include "goby/acomms/modemdriver/driver_base.h"   // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h"   // for DriverConfig
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTransmission
+#include "goby/acomms/protobuf/popoto_driver.pb.h" // for Config, MessageTy...
+#include "goby/util/thirdparty/nlohmann/json.hpp"  // for json
 
 namespace goby
 {
@@ -50,7 +54,7 @@ class PopotoDriver : public ModemDriverBase
 {
   public:
     PopotoDriver();
-    ~PopotoDriver();
+    ~PopotoDriver() override;
 
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;

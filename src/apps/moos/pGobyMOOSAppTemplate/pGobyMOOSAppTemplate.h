@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef pGobyMOOSAppTemplate20150102H
-#define pGobyMOOSAppTemplate20150102H
+#ifndef GOBY_APPS_MOOS_PGOBYMOOSAPPTEMPLATE_H
+#define GOBY_APPS_MOOS_PGOBYMOOSAPPTEMPLATE_H
 
 #include "goby/moos/goby_moos_app.h"
 

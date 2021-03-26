@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,16 +22,21 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <iomanip>
-#include <stdexcept>
+#include <cmath>   // for log10
+#include <cstdlib> // for abs
+#include <iomanip>  // for operator<<, setpr...
+#include <limits>   // for numeric_limits
+#include <utility>  // for move
 
-#include <boost/lexical_cast.hpp>
-#include <boost/numeric/conversion/cast.hpp>
+#include <boost/algorithm/string/predicate.hpp>    // for iequals
+#include <boost/core/enable_if.hpp>                // for enable_if_c<>::type
+#include <boost/lexical_cast.hpp>                  // for lexical_cast
+#include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_cast
+#include <boost/numeric/conversion/cast.hpp>       // for numeric_cast
 
-#include "goby/util/as.h"
-#include "goby/util/sci.h"
+#include "goby/acomms/dccl/dccl.h" // for DCCLException
+#include "goby/util/as.h"          // for as
 
-#include "goby/acomms/dccl.h"
 #include "message_val.h"
 
 using goby::util::as;
@@ -109,7 +114,7 @@ goby::moos::transitional::DCCLMessageVal::DCCLMessageVal(const std::vector<DCCLM
 
 void goby::moos::transitional::DCCLMessageVal::set(std::string sval)
 {
-    sval_ = sval;
+    sval_ = std::move(sval);
     type_ = cpp_string;
 }
 void goby::moos::transitional::DCCLMessageVal::set(double dval,
@@ -202,7 +207,7 @@ bool goby::moos::transitional::DCCLMessageVal::get(long& t) const
         case cpp_string:
             try
             {
-                double d = boost::lexical_cast<double>(sval_);
+                auto d = boost::lexical_cast<double>(sval_);
                 t = boost::numeric_cast<long>(dccl::round(d, 0));
             }
             catch (...)

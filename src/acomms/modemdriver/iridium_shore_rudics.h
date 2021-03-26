@@ -1,4 +1,4 @@
-// Copyright 2015-2020:
+// Copyright 2015-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,10 +21,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IridiumShoreSBD20150508H
-#define IridiumShoreSBD20150508H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_RUDICS_H
+#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_RUDICS_H
 
-#include "goby/util/asio-compat.h"
+#include "goby/util/asio_compat.h"
 #include <boost/asio.hpp>
 
 #include <boost/bind.hpp>
@@ -32,6 +32,7 @@
 
 #include "goby/time.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 namespace goby
 {

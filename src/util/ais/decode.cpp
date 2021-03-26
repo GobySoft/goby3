@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -43,14 +43,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/lic
 
+#include <boost/units/base_dimension.hpp> // for list
+#include <boost/units/quantity.hpp>       // for operator*, operator/, quan...
+
 #include "decode.h"
 
-goby::util::ais::Decoder::Decoder(std::vector<NMEASentence> nmeas)
+goby::util::ais::Decoder::Decoder(const std::vector<NMEASentence>& nmeas)
 {
     for (const auto& nmea : nmeas) push(nmea);
 }
 
-bool goby::util::ais::Decoder::push(goby::util::NMEASentence nmea)
+bool goby::util::ais::Decoder::push(const goby::util::NMEASentence& nmea)
 {
     if (complete())
         throw(DecoderException("Message already decoded, no more NMEA lines required."));

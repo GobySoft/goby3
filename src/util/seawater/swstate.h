@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -27,8 +27,8 @@
 // massachusetts institute of technology (mit)
 // laboratory for autonomous marine sensing systems (lamss)
 
-#ifndef SWSTATEH
-#define SWSTATEH
+#ifndef GOBY_UTIL_SEAWATER_SWSTATE_H
+#define GOBY_UTIL_SEAWATER_SWSTATE_H
 
 #include <cmath>
 

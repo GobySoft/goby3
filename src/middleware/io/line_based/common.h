@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,9 +21,26 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef GOBY_MIDDLEWARE_IO_LINE_BASED_COMMON_H
+#define GOBY_MIDDLEWARE_IO_LINE_BASED_COMMON_H
 
-#include <regex>
+#include <atomic>   // for atomic
+#include <locale>   // for ctype, use_facet, locale
+#include <map>      // for map
+#include <regex>    // for _NFA, match_results, regex, regex_search
+#include <sstream>  // for basic_stringbuf<>::int_type, basic_stringbuf<>::...
+#include <stddef.h> // for size_t
+#include <string>   // for string
+#include <utility>  // for make_pair, pair
+#include <vector>   // for vector
+
+namespace boost
+{
+namespace asio
+{
+template <typename T> struct is_match_condition;
+}
+} // namespace boost
 
 namespace goby
 {
@@ -82,3 +99,5 @@ template <> struct is_match_condition<goby::middleware::io::match_regex> : publi
 };
 } // namespace asio
 } // namespace boost
+
+#endif

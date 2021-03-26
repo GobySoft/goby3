@@ -1,4 +1,4 @@
-// Copyright 2015-2020:
+// Copyright 2015-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,14 +21,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IridiumDriverCommon20150508H
-#define IridiumDriverCommon20150508H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_COMMON_H
+#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_COMMON_H
 
 #include <dccl/codec.h>
 #include <dccl/field_codec_fixed.h>
 #include <dccl/field_codec_manager.h>
 
 #include "goby/acomms/protobuf/iridium_driver.pb.h"
+#include "goby/time/system_clock.h"
 
 namespace goby
 {

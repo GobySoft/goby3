@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -30,8 +30,10 @@
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/zeromq/transport/interprocess.h"
 
+#include "goby/test/zeromq/zeromq_portal_without_interthread/test.pb.h"
 #include "goby/util/debug_logger.h"
-#include "test.pb.h"
+
+#include <memory>
 
 #include <zmq.hpp>
 
@@ -89,7 +91,7 @@ void handle_sample1(const Sample& sample)
     ++ipc_receive_count;
 }
 
-void handle_sample2(std::shared_ptr<const Sample> sample)
+void handle_sample2(const std::shared_ptr<const Sample>& sample)
 {
     glog.is(DEBUG1) && glog << "InterProcessPortal received publication sample2: "
                             << sample->ShortDebugString() << std::endl;
@@ -120,7 +122,7 @@ void subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
     glog.is(DEBUG1) && glog << "Subscriber complete." << std::endl;
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::zeromq::protobuf::InterProcessPortalConfig cfg;
     cfg.set_platform("test4");
@@ -146,17 +148,21 @@ int main(int argc, char* argv[])
     std::unique_ptr<zmq::context_t> router_context;
     if (!is_child)
     {
-        manager_context.reset(new zmq::context_t(1));
-        router_context.reset(new zmq::context_t(10));
+        manager_context = std::make_unique<zmq::context_t>(1);
+        router_context = std::make_unique<zmq::context_t>(10);
+
+        goby::zeromq::protobuf::InterProcessManagerHold hold;
+        hold.add_required_client("subscriber");
+        hold.add_required_client("publisher");
 
         goby::zeromq::protobuf::InterProcessManagerHold hold;
         hold.add_required_client("subscriber");
         hold.add_required_client("publisher");
 
         goby::zeromq::Router router(*router_context, cfg);
-        t2.reset(new std::thread([&] { router.run(); }));
+        t2 = std::make_unique<std::thread>([&] { router.run(); });
         goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
-        t3.reset(new std::thread([&] { manager.run(); }));
+        t3 = std::make_unique<std::thread>([&] { manager.run(); });
 
         auto pub_cfg = cfg;
         pub_cfg.set_client_name("publisher");

@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,36 +22,41 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef IridiumModemDriver20130823H
-#define IridiumModemDriver20130823H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_H
 
-#include "goby/time.h"
+#include <cstdint> // for uint32_t
+#include <iosfwd>   // for ostream
+#include <memory>   // for shared_ptr
 
-#include "goby/util/linebasedcomms/tcp_client.h"
-
-#include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/acomms/protobuf/iridium_driver.pb.h"
-#include "goby/acomms/protobuf/rudics_shore.pb.h"
-
-#include "iridium_driver_fsm.h"
+#include "goby/acomms/modemdriver/driver_base.h"    // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
+#include "goby/acomms/protobuf/iridium_driver.pb.h" // for Config, MessageT...
+#include "goby/acomms/protobuf/modem_message.pb.h"  // for ModemTransmission
+#include "iridium_driver_fsm.h"                     // for IridiumDriverFSM
 
 namespace goby
 {
+namespace util
+{
+class TCPClient;
+} // namespace util
+
 namespace acomms
 {
 class IridiumDriver : public ModemDriverBase
 {
   public:
     IridiumDriver();
-    ~IridiumDriver();
-    void startup(const protobuf::DriverConfig& cfg);
+    ~IridiumDriver() override;
+    void startup(const protobuf::DriverConfig& cfg) override;
 
     void modem_init();
 
-    void shutdown();
-    void do_work();
+    void shutdown() override;
+    void do_work() override;
 
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
     void process_transmission(protobuf::ModemTransmission msg, bool dial);
 
   private:
@@ -76,7 +81,7 @@ class IridiumDriver : public ModemDriverBase
 
     std::shared_ptr<goby::util::TCPClient> debug_client_;
 
-    double last_triple_plus_time_;
+    double last_triple_plus_time_{0};
     enum
     {
         TRIPLE_PLUS_WAIT = 2
@@ -84,9 +89,7 @@ class IridiumDriver : public ModemDriverBase
 
     protobuf::ModemTransmission rudics_mac_msg_;
 
-    int serial_fd_;
-
-    std::uint32_t next_frame_;
+    std::uint32_t next_frame_{0};
 };
 } // namespace acomms
 } // namespace goby

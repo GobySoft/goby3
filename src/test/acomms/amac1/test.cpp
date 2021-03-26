@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -30,6 +30,8 @@
 #include "goby/util/protobuf/io.h"
 #include "goby/util/sci.h"
 
+#include "goby/time/convert.h"
+
 goby::acomms::MACManager mac;
 const int num_cycles_check = 3;
 int first_cycle = -1;
@@ -57,7 +59,7 @@ void initiate_transmission(const goby::acomms::protobuf::ModemTransmission& msg)
     assert(dccl::round(cycles_since_day - dccl::round(cycles_since_day, 0), 1) == 0);
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);

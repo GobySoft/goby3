@@ -1,4 +1,4 @@
-// Copyright 2017-2020:
+// Copyright 2017-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -30,7 +30,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "test.pb.h"
+#include "goby/test/zeromq/multi_thread_app2/test.pb.h"
 using goby::glog;
 using namespace goby::util::logger;
 using namespace goby::test::zeromq::protobuf;
@@ -66,7 +66,7 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
         ++ready;
     }
 
-    void post(const Widget& widget)
+    void post(const Widget& /*widget*/)
     {
         // assert(widget.b() == rx_count_);
         ++rx_count_;

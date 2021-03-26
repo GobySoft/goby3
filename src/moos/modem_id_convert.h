@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,13 +22,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MODEM_ID_CONVERTH
-#define MODEM_ID_CONVERTH
+#ifndef GOBY_MOOS_MODEM_ID_CONVERT_H
+#define GOBY_MOOS_MODEM_ID_CONVERT_H
 
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <sstream>
+#include <cstddef> // for size_t
+#include <map>      // for map
+#include <string>   // for string
 
 namespace goby
 {
@@ -37,14 +36,14 @@ namespace moos
 class ModemIdConvert
 {
   public:
-    ModemIdConvert() : max_name_length_(0), max_id_(0) {}
+    ModemIdConvert() = default;
 
-    std::string read_lookup_file(std::string path);
+    std::string read_lookup_file(const std::string& path);
 
     std::string get_name_from_id(int id);
     std::string get_type_from_id(int id);
     std::string get_location_from_id(int id);
-    int get_id_from_name(std::string name);
+    int get_id_from_name(const std::string& name);
 
     size_t max_name_length() { return max_name_length_; }
     int max_id() { return max_id_; }
@@ -56,8 +55,8 @@ class ModemIdConvert
     std::map<int, std::string> types_;
     std::map<int, std::string> locations_;
 
-    size_t max_name_length_;
-    int max_id_;
+    size_t max_name_length_{0};
+    int max_id_{0};
 };
 } // namespace moos
 } // namespace goby

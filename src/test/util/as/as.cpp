@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,6 +22,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <utility>
+
 #include "goby/util/as.h"
 
 namespace goby
@@ -40,7 +42,7 @@ enum MyEnum
 class MyClass
 {
   public:
-    MyClass(int a = 0, std::string b = "") : a(a), b(b) {}
+    MyClass(int a = 0, std::string b = "") : a(a), b(std::move(b)) {}
 
     bool operator==(const MyClass& other) { return (other.a == a) && (other.b == b); }
 

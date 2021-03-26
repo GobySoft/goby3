@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,7 +24,7 @@
 
 #include "goby/time.h"
 #include "goby/time/legacy.h"
-#include "stdint.h"
+#include <cstdint>
 
 using goby::common::goby_time;
 using goby::util::as;

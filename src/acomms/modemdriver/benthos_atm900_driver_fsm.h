@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,31 +21,45 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef BenthosATM900DriverFSM20161221H
-#define BenthosATM900DriverFSM20161221H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_FSM_H
+#define GOBY_ACOMMS_MODEMDRIVER_BENTHOS_ATM900_DRIVER_FSM_H
 
-#include <boost/circular_buffer.hpp>
+#include <iostream> // for basic_ostrea...
+#include <memory>   // for allocator
+#include <string>   // for string, oper...
+#include <utility>  // for move, pair
 
-#include <boost/format.hpp>
+#include <boost/circular_buffer.hpp>               // for circular_buffer
+#include <boost/date_time/date.hpp>                // for date<>::day_...
+#include <boost/date_time/gregorian_calendar.hpp>  // for gregorian_ca...
+#include <boost/date_time/posix_time/ptime.hpp>    // for ptime
+#include <boost/date_time/time.hpp>                // for base_time<>:...
+#include <boost/date_time/time_system_counted.hpp> // for counted_time...
+#include <boost/format.hpp>                        // for basic_altstr...
+#include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_...
 #include <boost/mpl/list.hpp>
+#include <boost/smart_ptr/intrusive_ptr.hpp> // for intrusive_ptr
 #include <boost/statechart/custom_reaction.hpp>
 #include <boost/statechart/deep_history.hpp>
-#include <boost/statechart/event.hpp>
-#include <boost/statechart/in_state_reaction.hpp>
-#include <boost/statechart/simple_state.hpp>
-#include <boost/statechart/state.hpp>
-#include <boost/statechart/state_machine.hpp>
-#include <boost/statechart/transition.hpp>
-#include <iostream>
+#include <boost/statechart/event.hpp>             // for event
+#include <boost/statechart/event_base.hpp>        // for event_base
+#include <boost/statechart/in_state_reaction.hpp> // for in_state_rea...
+#include <boost/statechart/result.hpp>            // for reaction_result
+#include <boost/statechart/simple_state.hpp>      // for simple_state...
+#include <boost/statechart/state.hpp>             // for state, state...
+#include <boost/statechart/state_machine.hpp>     // for state_machine
+#include <boost/statechart/transition.hpp>        // for transition
 
-#include "goby/acomms/acomms_constants.h"
-#include "goby/time.h"
-#include "goby/util/as.h"
-#include "goby/util/binary.h"
-#include "goby/util/debug_logger.h"
-
-#include "goby/acomms/protobuf/benthos_atm900.pb.h"
-#include "goby/acomms/protobuf/modem_message.pb.h"
+#include "goby/acomms/acomms_constants.h"               // for BROADCAST_ID
+#include "goby/acomms/protobuf/benthos_atm900.pb.h"     // for Config, Mess...
+#include "goby/acomms/protobuf/driver_base.pb.h"        // for DriverConfig
+#include "goby/acomms/protobuf/modem_message.pb.h"      // for ModemTransmi...
+#include "goby/time/convert.h"                          // for SystemClock:...
+#include "goby/time/system_clock.h"                     // for SystemClock
+#include "goby/util/as.h"                               // for as
+#include "goby/util/debug_logger/flex_ostream.h"        // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
 
 namespace goby
 {
@@ -66,7 +80,7 @@ struct EvTxSerial : boost::statechart::event<EvTxSerial>
 
 struct EvAck : boost::statechart::event<EvAck>
 {
-    EvAck(const std::string& response) : response_(response) {}
+    EvAck(std::string response) : response_(std::move(response)) {}
 
     std::string response_;
 };
@@ -116,7 +130,7 @@ struct EvTransmitBegun : boost::statechart::event<EvTransmitBegun>
 
 struct EvReceive : boost::statechart::event<EvReceive>
 {
-    EvReceive(const std::string& first) : first_(first) {}
+    EvReceive(std::string first) : first_(std::move(first)) {}
     std::string first_;
 };
 
@@ -139,7 +153,6 @@ struct SetClock;
 struct Dial;
 struct LowPower;
 struct Range;
-
 struct Online;
 struct Listen;
 struct TransmitData;
@@ -210,7 +223,7 @@ struct BenthosATM900FSM : boost::statechart::state_machine<BenthosATM900FSM, Act
 
 struct StateNotify
 {
-    StateNotify(const std::string& name) : name_(name)
+    StateNotify(std::string name) : name_(std::move(name))
     {
         glog.is(goby::util::logger::DEBUG1) && glog << group("benthosatm900::fsm") << name_
                                                     << std::endl;
@@ -231,7 +244,7 @@ struct Active : boost::statechart::simple_state<Active, BenthosATM900FSM, Comman
                 StateNotify
 {
     Active() : StateNotify("Active") {}
-    ~Active() {}
+    ~Active() override = default;
 
     void in_state_react(const EvRxSerial&);
 
@@ -245,15 +258,13 @@ struct Active : boost::statechart::simple_state<Active, BenthosATM900FSM, Comman
 struct ReceiveData : boost::statechart::state<ReceiveData, BenthosATM900FSM>, StateNotify
 {
     ReceiveData(my_context ctx);
-    ~ReceiveData() {}
+    ~ReceiveData() override = default;
 
     void in_state_react(const EvRxSerial&);
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::in_state_reaction<EvRxSerial, ReceiveData, &ReceiveData::in_state_react>,
-        boost::statechart::transition<EvReceiveComplete,
-                                      boost::statechart::deep_history<Command> > >
-        reactions;
+        boost::statechart::transition<EvReceiveComplete, boost::statechart::deep_history<Command>>>;
 
     goby::acomms::protobuf::ModemTransmission rx_msg_;
     unsigned reported_size_;
@@ -289,19 +300,18 @@ struct Command : boost::statechart::simple_state<Command, Active, Configure,
         // the modem seems to like to reset the OpMode
         context<Command>().push_clam_command("@OpMode=0");
     }
-    ~Command() {}
+    ~Command() override = default;
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::custom_reaction<EvConnect>,
         boost::statechart::in_state_reaction<EvAck, Command, &Command::in_state_react>,
-        boost::statechart::in_state_reaction<EvTxSerial, Command, &Command::in_state_react> >
-        reactions;
+        boost::statechart::in_state_reaction<EvTxSerial, Command, &Command::in_state_react>>;
 
     struct ATSentenceMeta
     {
-        ATSentenceMeta() : last_send_time_(0), tries_(0) {}
-        double last_send_time_;
-        int tries_;
+        ATSentenceMeta() = default;
+        double last_send_time_{0};
+        int tries_{0};
     };
 
     void push_at_command(std::string cmd)
@@ -337,9 +347,9 @@ struct Command : boost::statechart::simple_state<Command, Active, Configure,
 
 struct Configure : boost::statechart::state<Configure, Command>, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, SetClock> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, SetClock>>;
 
-    Configure(my_context ctx) : my_base(ctx), StateNotify("Configure")
+    Configure(my_context ctx) : my_base(std::move(ctx)), StateNotify("Configure")
     {
         context<Command>().push_at_command("");
 
@@ -394,14 +404,14 @@ struct Configure : boost::statechart::state<Configure, Command>, StateNotify
         // context<Command>().push_clam_command("cfg store /ffs/goby.ini");
     }
 
-    ~Configure() {}
+    ~Configure() override = default;
 };
 
 struct SetClock : boost::statechart::state<SetClock, Command>, StateNotify
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
-    SetClock(my_context ctx) : my_base(ctx), StateNotify("SetClock")
+    SetClock(my_context ctx) : my_base(std::move(ctx)), StateNotify("SetClock")
     {
         auto p = time::SystemClock::now<boost::posix_time::ptime>();
 
@@ -414,7 +424,7 @@ struct SetClock : boost::statechart::state<SetClock, Command>, StateNotify
         context<Command>().push_clam_command("date " + time_str + " " + date_str);
     }
 
-    ~SetClock() {}
+    ~SetClock() override = default;
 };
 
 struct Ready : boost::statechart::simple_state<Ready, Command>, StateNotify
@@ -424,13 +434,12 @@ struct Ready : boost::statechart::simple_state<Ready, Command>, StateNotify
 
   public:
     Ready() : StateNotify("Ready") {}
-    ~Ready() {}
+    ~Ready() override = default;
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::transition<EvDial, Dial>, boost::statechart::transition<EvRange, Range>,
         boost::statechart::in_state_reaction<EvRequestLowPower, Ready, &Ready::in_state_react>,
-        boost::statechart::transition<EvLowPower, LowPower> >
-        reactions;
+        boost::statechart::transition<EvLowPower, LowPower>>;
 };
 
 struct Dial : boost::statechart::state<Dial, Command>, StateNotify
@@ -447,9 +456,12 @@ struct Dial : boost::statechart::state<Dial, Command>, StateNotify
     };
 
     Dial(my_context ctx)
-        : my_base(ctx), StateNotify("Dial"), dest_(BENTHOS_BROADCAST_ID), rate_(DEFAULT_RATE)
+        : my_base(std::move(ctx)),
+          StateNotify("Dial"),
+          dest_(BENTHOS_BROADCAST_ID),
+          rate_(DEFAULT_RATE)
     {
-        if (const EvDial* evdial = dynamic_cast<const EvDial*>(triggering_event()))
+        if (const auto* evdial = dynamic_cast<const EvDial*>(triggering_event()))
         {
             dest_ = evdial->dest_;
             if (dest_ == goby::acomms::BROADCAST_ID)
@@ -462,7 +474,7 @@ struct Dial : boost::statechart::state<Dial, Command>, StateNotify
         context<Command>().push_clam_command("@TxRate=" + goby::util::as<std::string>(rate_));
         context<Command>().push_at_command("O");
     }
-    ~Dial() {}
+    ~Dial() override = default;
 
   private:
     int dest_;
@@ -471,28 +483,27 @@ struct Dial : boost::statechart::state<Dial, Command>, StateNotify
 
 struct LowPower : boost::statechart::state<LowPower, Command>, StateNotify
 {
-    LowPower(my_context ctx) : my_base(ctx), StateNotify("LowPower") {}
-    ~LowPower() {}
+    LowPower(my_context ctx) : my_base(std::move(ctx)), StateNotify("LowPower") {}
+    ~LowPower() override = default;
 };
 
 struct Range : boost::statechart::state<Range, Command>, StateNotify
 {
     void in_state_react(const EvRxSerial&);
 
-    Range(my_context ctx) : my_base(ctx), StateNotify("Range"), dest_(0)
+    Range(my_context ctx) : my_base(std::move(ctx)), StateNotify("Range"), dest_(0)
     {
-        if (const EvRange* ev = dynamic_cast<const EvRange*>(triggering_event()))
+        if (const auto* ev = dynamic_cast<const EvRange*>(triggering_event()))
         {
             dest_ = ev->dest_;
         }
         context<Command>().push_at_command("R" + goby::util::as<std::string>(dest_));
     }
-    ~Range() {}
+    ~Range() override = default;
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::transition<EvRangingComplete, Ready>,
-        boost::statechart::in_state_reaction<EvRxSerial, Range, &Range::in_state_react> >
-        reactions;
+        boost::statechart::in_state_reaction<EvRxSerial, Range, &Range::in_state_react>>;
 
   private:
     int dest_;
@@ -501,40 +512,38 @@ struct Range : boost::statechart::state<Range, Command>, StateNotify
 // Online
 struct Online : boost::statechart::state<Online, Active, Listen>, StateNotify
 {
-    Online(my_context ctx) : my_base(ctx), StateNotify("Online") {}
-    ~Online() {}
+    Online(my_context ctx) : my_base(std::move(ctx)), StateNotify("Online") {}
+    ~Online() override = default;
 
-    typedef boost::mpl::list<
-        boost::statechart::transition<EvShellPrompt, boost::statechart::deep_history<Command> > >
-        reactions;
+    using reactions = boost::mpl::list<
+        boost::statechart::transition<EvShellPrompt, boost::statechart::deep_history<Command>>>;
 };
 
 struct Listen : boost::statechart::state<Listen, Online>, StateNotify
 {
-    Listen(my_context ctx) : my_base(ctx), StateNotify("Listen")
+    Listen(my_context ctx) : my_base(std::move(ctx)), StateNotify("Listen")
     {
         if (!context<BenthosATM900FSM>().data_out().empty())
             post_event(EvTransmit());
     }
-    ~Listen() {}
+    ~Listen() override = default;
 
-    typedef boost::mpl::list<boost::statechart::transition<EvTransmit, TransmitData> > reactions;
+    using reactions = boost::mpl::list<boost::statechart::transition<EvTransmit, TransmitData>>;
 };
 
 struct TransmitData : boost::statechart::state<TransmitData, Online>, StateNotify
 {
-    TransmitData(my_context ctx) : my_base(ctx), StateNotify("TransmitData") {}
-    ~TransmitData() {}
+    TransmitData(my_context ctx) : my_base(std::move(ctx)), StateNotify("TransmitData") {}
+    ~TransmitData() override = default;
 
     void in_state_react(const EvTxSerial&);
     void in_state_react(const EvAck&);
 
-    typedef boost::mpl::list<
+    using reactions = boost::mpl::list<
         boost::statechart::transition<EvTransmitBegun, Ready>,
         boost::statechart::in_state_reaction<EvTxSerial, TransmitData,
                                              &TransmitData::in_state_react>,
-        boost::statechart::in_state_reaction<EvAck, TransmitData, &TransmitData::in_state_react> >
-        reactions;
+        boost::statechart::in_state_reaction<EvAck, TransmitData, &TransmitData::in_state_react>>;
 };
 
 } // namespace fsm

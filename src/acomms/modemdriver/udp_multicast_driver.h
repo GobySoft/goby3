@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,26 +22,42 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UDPMulticastModemDriver20190620H
-#define UDPMulticastModemDriver20190620H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_UDP_MULTICAST_DRIVER_H
+#define GOBY_ACOMMS_MODEMDRIVER_UDP_MULTICAST_DRIVER_H
 
-#include "goby/time.h"
+#include <array>                 // for array
+#include <boost/asio/ip/udp.hpp> // for udp, udp::...
+#include <cstddef>               // for size_t
+#include <cstdint>               // for uint32_t
+#include <map>                   // for map
 
-#include "goby/acomms/modemdriver/driver_base.h"
-#include "goby/acomms/protobuf/udp_multicast_driver.pb.h"
+#include "goby/acomms/modemdriver/driver_base.h"          // for ModemDrive...
+#include "goby/acomms/protobuf/driver_base.pb.h"          // for DriverConfig
+#include "goby/acomms/protobuf/udp_multicast_driver.pb.h" // for Config
+#include "goby/util/asio_compat.h"
 
-#include "goby/util/asio-compat.h"
-#include <boost/asio.hpp>
+namespace boost
+{
+namespace system
+{
+class error_code;
+} // namespace system
+} // namespace boost
 
 namespace goby
 {
 namespace acomms
 {
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
+
 class UDPMulticastDriver : public ModemDriverBase
 {
   public:
     UDPMulticastDriver();
-    ~UDPMulticastDriver();
+    ~UDPMulticastDriver() override;
 
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;

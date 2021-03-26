@@ -1,4 +1,4 @@
-// Copyright 2018-2020:
+// Copyright 2018-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,14 +21,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef TERMINATE_20181128H
-#define TERMINATE_20181128H
+#ifndef GOBY_MIDDLEWARE_TERMINATE_TERMINATE_H
+#define GOBY_MIDDLEWARE_TERMINATE_TERMINATE_H
 
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "goby/util/debug_logger.h"
 
+#include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/terminate.pb.h"
 #include "goby/middleware/terminate/groups.h"
 

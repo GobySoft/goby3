@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,19 +21,38 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef DriverThread20190619H
-#define DriverThread20190619H
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_DRIVER_THREAD_H
+#define GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_DRIVER_THREAD_H
 
-#include "goby/acomms/amac.h"
+#include <algorithm>
+#include <chrono>
+#include <cstddef>
+#include <map>
+#include <memory>
+#include <ostream>
+#include <set>
+#include <string>
+#include <vector>
+
+#include <boost/units/quantity.hpp>
+
+#include "goby/acomms/amac/mac_manager.h"
 #include "goby/acomms/buffer/dynamic_buffer.h"
-
-#include "goby/middleware/marshalling/dccl.h"
-
+#include "goby/acomms/modemdriver/driver_base.h"
 #include "goby/middleware/application/thread.h"
 #include "goby/middleware/group.h"
+#include "goby/middleware/marshalling/dccl.h"
+#include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/protobuf/intervehicle.pb.h"
+#include "goby/middleware/protobuf/intervehicle_transporter_config.pb.h"
+#include "goby/middleware/protobuf/serializer_transporter.pb.h"
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
+#include "goby/time/convert.h"
+#include "goby/time/steady_clock.h"
+#include "goby/time/system_clock.h"
+#include "goby/time/types.h"
+#include "goby/util/debug_logger/flex_ostream.h"
 
 #include "goby/middleware/transport/intervehicle/groups.h"
 
@@ -41,12 +60,16 @@ namespace goby
 {
 namespace acomms
 {
-class ModemDriverBase;
-
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
 } // namespace acomms
 
 namespace middleware
 {
+template <typename Data> class Publisher;
+
 namespace protobuf
 {
 inline size_t data_size(const SerializerTransporterMessage& msg) { return msg.data().size(); }
@@ -91,7 +114,7 @@ std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
 serialize_publication(const Data& d, const Group& group, const Publisher<Data>& publisher)
 {
     std::vector<char> bytes(SerializerParserHelper<Data, MarshallingScheme::DCCL>::serialize(d));
-    std::string* sbytes = new std::string(bytes.begin(), bytes.end());
+    auto* sbytes = new std::string(bytes.begin(), bytes.end());
     auto msg = std::make_shared<goby::middleware::protobuf::SerializerTransporterMessage>();
 
     auto* key = msg->mutable_key();
@@ -122,7 +145,7 @@ class ModemDriverThread
   private:
     void _data_request(goby::acomms::protobuf::ModemTransmission* msg);
     void _buffer_message(
-        std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage> msg);
+        const std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage>& msg);
     void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
     void _forward_subscription(intervehicle::protobuf::Subscription subscription);
     void _accept_subscription(const intervehicle::protobuf::Subscription& subscription);
@@ -144,7 +167,15 @@ class ModemDriverThread
         return _create_buffer_id(subscription.dccl_id(), subscription.group());
     }
 
-    void _try_create_or_update_buffer(modem_id_type dest_id, subbuffer_id_type buffer_id);
+    void _try_create_or_update_buffer(modem_id_type dest_id, const subbuffer_id_type& buffer_id);
+
+    modem_id_type _broadcast_id() { return cfg().modem_id() & cfg().subnet_mask(); }
+
+    // id within subnet
+    modem_id_type _id_within_subnet(modem_id_type id) { return id - _broadcast_id(); }
+
+    // full id
+    modem_id_type _full_id(modem_id_type id_in_subnet) { return id_in_subnet + _broadcast_id(); }
 
     bool _dest_is_in_subnet(modem_id_type dest_id)
     {
@@ -154,7 +185,7 @@ class ModemDriverThread
             goby::glog.is_debug3() && goby::glog
                                           << "Dest: " << dest_id
                                           << " is not in subnet (our id: " << cfg().modem_id()
-                                          << ", mask: " << cfg().subnet_mask() << std::endl;
+                                          << ", mask: " << cfg().subnet_mask() << ")" << std::endl;
 
         return dest_in_subnet;
     }

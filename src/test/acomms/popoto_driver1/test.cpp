@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -65,7 +65,6 @@
 #include "goby/acomms/modemdriver/popoto_driver.h"
 #include <cstdlib>
 
-using goby::acomms::popoto::protobuf::config;
 
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 

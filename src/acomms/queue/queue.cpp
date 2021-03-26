@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,37 +22,65 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "dccl/dynamic_protobuf_manager.h"
+#include <algorithm> // for max
+#include <iterator>  // for ostrea...
+#include <limits>    // for numeri...
+#include <sstream>   // for basic_...
+#include <stdexcept> // for out_of...
+#include <utility>   // for pair
 
-#include "goby/acomms/acomms_constants.h"
-#include "goby/acomms/dccl.h"
-#include "goby/util/debug_logger.h"
-#include "goby/util/protobuf/io.h"
+#include <boost/algorithm/string/classification.hpp>          // for is_any...
+#include <boost/algorithm/string/split.hpp>                   // for split
+#include <boost/date_time/gregorian/greg_date.hpp>            // for date
+#include <boost/date_time/posix_time/posix_time_duration.hpp> // for seconds
+#include <boost/date_time/posix_time/posix_time_io.hpp>       // for operat...
+#include <boost/date_time/time.hpp>                           // for base_time
+#include <boost/operators.hpp>                                // for operator>
+#include <boost/signals2/signal.hpp>                          // for signal
+#include <boost/type_index.hpp>                               // for type_info
+#include <boost/units/systems/si/time.hpp>                    // for seconds
+#include <boost/units/unit.hpp>                               // for unit
+#include <cstdint>                                            // for uint64_t
+#include <dccl/field_codec.h>                                 // for FromPr...
+#include <google/protobuf/message.h>                          // for Message
+
+#include "dccl/dynamic_protobuf_manager.h"              // for Dynami...
+#include "goby/acomms/acomms_constants.h"               // for BROADC...
+#include "goby/acomms/protobuf/manipulator.pb.h"        // for LOOPBACK
+#include "goby/acomms/protobuf/modem_message.pb.h"      // for ModemT...
+#include "goby/time/system_clock.h"                     // for System...
+#include "goby/time/types.h"                            // for MicroTime
+#include "goby/util/as.h"                               // for as
+#include "goby/util/debug_logger/flex_ostream.h"        // for FlexOs...
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h" // for operat...
+#include "goby/util/protobuf/io.h"                      // for operat...
 
 #include "queue.h"
-#include "queue_manager.h"
+#include "queue_exception.h" // for QueueE...
+#include "queue_manager.h"   // for QueueM...
 
 using namespace goby::util::logger;
 using goby::util::as;
 
 goby::acomms::Queue::Queue(const google::protobuf::Descriptor* desc, QueueManager* parent,
-                           const protobuf::QueuedMessageEntry& cfg)
+                           protobuf::QueuedMessageEntry cfg)
     : desc_(desc),
       parent_(parent),
-      cfg_(cfg),
+      cfg_(std::move(cfg)),
       last_send_time_(time::SystemClock::now<boost::posix_time::ptime>())
 {
     process_cfg();
 }
 
 // add a new message
-bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message> dccl_msg)
+bool goby::acomms::Queue::push_message(const std::shared_ptr<google::protobuf::Message>& dccl_msg)
 {
     protobuf::QueuedMessageMeta meta = meta_from_msg(*dccl_msg);
     return push_message(dccl_msg, meta);
 }
 
-bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message> dccl_msg,
+bool goby::acomms::Queue::push_message(const std::shared_ptr<google::protobuf::Message>& dccl_msg,
                                        protobuf::QueuedMessageMeta meta)
 {
     // loopback if set
@@ -115,7 +143,7 @@ bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message
 
     if (!meta.has_ack_requested())
         meta.set_ack_requested(queue_message_options().ack());
-    messages_.push_back(QueuedMessage());
+    messages_.emplace_back();
     messages_.back().meta = meta;
     messages_.back().dccl_msg = dccl_msg;
 
@@ -131,7 +159,7 @@ bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message
     if (queue_message_options().max_queue() &&
         messages_.size() > queue_message_options().max_queue())
     {
-        messages_it it_to_erase =
+        auto it_to_erase =
             queue_message_options().newest_first() ? messages_.begin() : messages_.end();
 
         // want "back" iterator not "end"
@@ -139,7 +167,7 @@ bool goby::acomms::Queue::push_message(std::shared_ptr<google::protobuf::Message
             --it_to_erase;
 
         // if we were waiting for an ack for this, erase that too
-        waiting_for_ack_it it = find_ack_value(it_to_erase);
+        auto it = find_ack_value(it_to_erase);
         if (it != waiting_for_ack_.end())
             waiting_for_ack_.erase(it);
 
@@ -287,8 +315,7 @@ boost::any goby::acomms::Queue::find_queue_field(const std::string& field_name,
 
 goby::acomms::messages_it goby::acomms::Queue::next_message_it()
 {
-    messages_it it_to_give =
-        queue_message_options().newest_first() ? messages_.end() : messages_.begin();
+    auto it_to_give = queue_message_options().newest_first() ? messages_.end() : messages_.begin();
     if (it_to_give == messages_.end())
         --it_to_give; // want "back" iterator not "end"
 
@@ -301,7 +328,7 @@ goby::acomms::messages_it goby::acomms::Queue::next_message_it()
 
 goby::acomms::QueuedMessage goby::acomms::Queue::give_data(unsigned frame)
 {
-    messages_it it_to_give = next_message_it();
+    auto it_to_give = next_message_it();
 
     bool ack = it_to_give->meta.ack_requested();
     // broadcast cannot acknowledge
@@ -324,7 +351,8 @@ goby::acomms::QueuedMessage goby::acomms::Queue::give_data(unsigned frame)
     return *it_to_give;
 }
 
-double goby::acomms::Queue::time_duration2double(boost::posix_time::time_duration time_of_day)
+double
+goby::acomms::Queue::time_duration2double(const boost::posix_time::time_duration& time_of_day)
 {
     using namespace boost::posix_time;
 
@@ -404,15 +432,14 @@ bool goby::acomms::Queue::get_priority_values(double* priority,
     }
 }
 
-bool goby::acomms::Queue::pop_message(unsigned frame)
+bool goby::acomms::Queue::pop_message(unsigned /*frame*/)
 {
-    std::list<QueuedMessage>::iterator back_it = messages_.end();
+    auto back_it = messages_.end();
     --back_it; // gives us "back" iterator
-    std::list<QueuedMessage>::iterator front_it = messages_.begin();
+    auto front_it = messages_.begin();
 
     // find the first message that isn't waiting for an ack
-    std::list<QueuedMessage>::iterator it =
-        queue_message_options().newest_first() ? back_it : front_it;
+    auto it = queue_message_options().newest_first() ? back_it : front_it;
 
     while (true)
     {
@@ -438,7 +465,7 @@ bool goby::acomms::Queue::pop_message_ack(unsigned frame,
     if (waiting_for_ack_.count(frame))
     {
         // remove a messages in this frame that needs ack
-        waiting_for_ack_it it = waiting_for_ack_.find(frame);
+        auto it = waiting_for_ack_.find(frame);
         removed_msg = (it->second)->dccl_msg;
 
         stream_for_pop(*it->second);
@@ -486,7 +513,7 @@ std::vector<std::shared_ptr<google::protobuf::Message> > goby::acomms::Queue::ex
                                     << "/" << queue_message_options().max_queue()
                                     << "): " << *messages_.front().dccl_msg << std::endl;
             // if we were waiting for an ack for this, erase that too
-            waiting_for_ack_it it = find_ack_value(messages_.begin());
+            auto it = find_ack_value(messages_.begin());
             if (it != waiting_for_ack_.end())
                 waiting_for_ack_.erase(it);
 
@@ -503,8 +530,8 @@ std::vector<std::shared_ptr<google::protobuf::Message> > goby::acomms::Queue::ex
 
 goby::acomms::waiting_for_ack_it goby::acomms::Queue::find_ack_value(messages_it it_to_find)
 {
-    waiting_for_ack_it n = waiting_for_ack_.end();
-    for (waiting_for_ack_it it = waiting_for_ack_.begin(); it != n; ++it)
+    auto n = waiting_for_ack_.end();
+    for (auto it = waiting_for_ack_.begin(); it != n; ++it)
     {
         if (it->second == it_to_find)
             return it;
@@ -532,7 +559,7 @@ void goby::acomms::Queue::flush()
 
 bool goby::acomms::Queue::clear_ack_queue(unsigned start_frame)
 {
-    for (waiting_for_ack_it it = waiting_for_ack_.begin(), end = waiting_for_ack_.end(); it != end;)
+    for (auto it = waiting_for_ack_.begin(), end = waiting_for_ack_.end(); it != end;)
     {
         // clear out acks for frames whose ack wait time has expired (or whose frame
         // number has come around again. This should avoid losing unack'd data.

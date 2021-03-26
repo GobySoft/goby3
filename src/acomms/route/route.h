@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,22 +22,39 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ROUTE20120410
-#define ROUTE20120410
+#ifndef GOBY_ACOMMS_ROUTE_ROUTE_H
+#define GOBY_ACOMMS_ROUTE_ROUTE_H
 
-#include "goby/acomms/protobuf/queue.pb.h"
-#include "goby/acomms/protobuf/route.pb.h"
-#include "goby/acomms/queue/queue_manager.h"
+#include <cstdint> // for uint32_t
+#include <map>      // for map
+
+#include "goby/acomms/protobuf/route.pb.h"       // for RouteManagerConfig
+#include "goby/util/debug_logger/flex_ostream.h" // for FlexOstream, glog
+#include "goby/util/debug_logger/term_color.h"   // for Colors, Colors::yellow
+
+namespace google
+{
+namespace protobuf
+{
+class Message;
+} // namespace protobuf
+} // namespace google
 
 namespace goby
 {
 namespace acomms
 {
+class QueueManager;
+namespace protobuf
+{
+class QueuedMessageMeta;
+} // namespace protobuf
+
 class RouteManager
 {
   public:
     RouteManager() { glog.add_group("goby::acomms::route", util::Colors::yellow); }
-    ~RouteManager() {}
+    ~RouteManager() = default;
 
     void set_cfg(const protobuf::RouteManagerConfig& cfg);
     void merge_cfg(const protobuf::RouteManagerConfig& cfg);
@@ -58,8 +75,8 @@ class RouteManager
     int find_next_route_hop(int us, int dest);
 
   private:
-    RouteManager(const RouteManager&);
-    RouteManager& operator=(const RouteManager&);
+    RouteManager(const RouteManager&) = delete;
+    RouteManager& operator=(const RouteManager&) = delete;
 
     void process_cfg();
 

@@ -1,4 +1,4 @@
-// Copyright 2020:
+// Copyright 2020-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,31 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/util/as.h"
-#include "goby/util/debug_logger.h"
+#include <chrono>      // for seconds
+#include <list>        // for operator!=
+#include <ostream>     // for operator<<
+#include <ratio>       // for ratio
+#include <type_traits> // for __decay_an...
+#include <unistd.h>    // for sleep
+#include <utility>     // for pair, make...
+#include <vector>      // for vector
+
+#include <boost/algorithm/string/classification.hpp> // for is_any_ofF
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/algorithm/string/trim.hpp>           // for trim
+#include <boost/detail/basic_pointerbuf.hpp>         // for basic_poin...
+#include <boost/function.hpp>                        // for function
+#include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexica...
+#include <boost/signals2/expired_slot.hpp>           // for expired_slot
+#include <boost/signals2/signal.hpp>                 // for signal
+
+#include "goby/middleware/protobuf/frontseat_config.pb.h" // for Config
+#include "goby/middleware/protobuf/frontseat_data.pb.h"   // for NodeStatus
+#include "goby/util/as.h"                                 // for as
+#include "goby/util/debug_logger/flex_ostream.h"          // for operator<<
+#include "goby/util/debug_logger/flex_ostreambuf.h"       // for VERBOSE
+#include "goby/util/debug_logger/logger_manipulators.h"   // for warn
+#include "goby/util/debug_logger/term_color.h"            // for tcolor
 
 #include "basic_simulator_frontseat_driver.h"
 
@@ -80,8 +103,8 @@ void goby::middleware::frontseat::BasicSimulatorFrontSeatInterface::check_connec
     if (!tcp_.active())
     {
         // in a real driver, change this to try to reconnect (see Bluefin driver example)
-        glog.is(DIE) && glog << "Connection to FrontSeat failed: " << sim_config_.tcp_address()
-                             << ":" << sim_config_.tcp_port() << std::endl;
+        glog.is(WARN) && glog << "Connection to FrontSeat failed: " << sim_config_.tcp_address()
+                              << ":" << sim_config_.tcp_port() << std::endl;
     }
     else
     {

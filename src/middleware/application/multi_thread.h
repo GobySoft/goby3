@@ -1,4 +1,4 @@
-// Copyright 2017-2020:
+// Copyright 2017-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,10 +21,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MULTITHREADAPPLICATION20170616H
-#define MULTITHREADAPPLICATION20170616H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_MULTI_THREAD_H
+#define GOBY_MIDDLEWARE_APPLICATION_MULTI_THREAD_H
 
 #include <boost/units/systems/si.hpp>
+
+#include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/terminate/terminate.h"
 
 #include "goby/exception.h"
 #include "goby/middleware/application/detail/interprocess_common.h"
@@ -35,9 +38,6 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 #include "goby/middleware/transport/intervehicle.h"
-
-#include "goby/middleware/coroner/coroner.h"
-#include "goby/middleware/terminate/terminate.h"
 
 namespace goby
 {
@@ -112,7 +112,7 @@ class SimpleThread
 /// For example, to create timer that expires every two seconds:
 /// ```
 /// launch_thread<goby::middleware::TimerThread<0>>(0.5*boost::units::si::hertz);
-/// interthread().subscribe_empty<goby::middleware::TimerThread<0>::group>([]() { std::cout << "Timer expired." << std::endl; });
+/// interthread().subscribe_empty<goby::middleware::TimerThread<0>::expire_group>([]() { std::cout << "Timer expired." << std::endl; });
 /// ```
 template <int i>
 class TimerThread

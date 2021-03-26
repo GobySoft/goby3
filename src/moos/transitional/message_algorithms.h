@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,17 +22,16 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef MESSAGE_ALGORITHMS20091211H
-#define MESSAGE_ALGORITHMS20091211H
+#ifndef GOBY_MOOS_TRANSITIONAL_MESSAGE_ALGORITHMS_H
+#define GOBY_MOOS_TRANSITIONAL_MESSAGE_ALGORITHMS_H
 
-#include <cctype>
-#include <iostream>
-#include <map>
-#include <string>
-#include <vector>
+#include <map>     // for map, map<>::mapped_type
+#include <string>  // for string
+#include <utility> // for move
+#include <vector>  // for vector
 
-#include <boost/algorithm/string.hpp>
-#include <boost/function.hpp>
+#include <boost/function.hpp> // for function
+
 namespace goby
 {
 namespace moos
@@ -45,11 +44,11 @@ class DCCLMessage;
 /// \brief boost::function for a function taking a single DCCLMessageVal reference. Used for algorithm callbacks.
 ///
 /// Think of this as a generalized version of a function pointer (void (*)(DCCLMessageVal&)). See http://www.boost.org/doc/libs/1_34_0/doc/html/function.html for more on boost:function.
-typedef boost::function<void(DCCLMessageVal&)> AlgFunction1;
+using AlgFunction1 = boost::function<void(DCCLMessageVal&)>;
 /// \brief boost::function for a function taking a dccl::MessageVal reference, and the MessageVal of a second part of the message. Used for algorithm callbacks.
 ///
 /// Think of this as a generalized version of a function pointer (void (*)(DCCLMessageVal&, const DCCLMessageVal&). See http://www.boost.org/doc/libs/1_34_0/doc/html/function.html for more on boost:function.
-typedef boost::function<void(DCCLMessageVal&, const std::vector<DCCLMessageVal>&)> AlgFunction2;
+using AlgFunction2 = boost::function<void(DCCLMessageVal&, const std::vector<DCCLMessageVal>&)>;
 
 class DCCLAlgorithmPerformer
 {
@@ -63,9 +62,15 @@ class DCCLAlgorithmPerformer
     void run_algorithm(const std::string& algorithm, DCCLMessageVal& in,
                        const std::vector<DCCLMessageVal>& ref);
 
-    void add_algorithm(const std::string& name, AlgFunction1 func) { adv_map1_[name] = func; }
+    void add_algorithm(const std::string& name, AlgFunction1 func)
+    {
+        adv_map1_[name] = std::move(func);
+    }
 
-    void add_adv_algorithm(const std::string& name, AlgFunction2 func) { adv_map2_[name] = func; }
+    void add_adv_algorithm(const std::string& name, AlgFunction2 func)
+    {
+        adv_map2_[name] = std::move(func);
+    }
 
     void check_algorithm(const std::string& alg, const DCCLMessage& msg);
 
@@ -74,10 +79,10 @@ class DCCLAlgorithmPerformer
     std::map<std::string, AlgFunction1> adv_map1_;
     std::map<std::string, AlgFunction2> adv_map2_;
 
-    DCCLAlgorithmPerformer() {}
+    DCCLAlgorithmPerformer() = default;
 
-    DCCLAlgorithmPerformer(const DCCLAlgorithmPerformer&);
-    DCCLAlgorithmPerformer& operator=(const DCCLAlgorithmPerformer&);
+    DCCLAlgorithmPerformer(const DCCLAlgorithmPerformer&) = delete;
+    DCCLAlgorithmPerformer& operator=(const DCCLAlgorithmPerformer&) = delete;
 };
 } // namespace transitional
 } // namespace moos

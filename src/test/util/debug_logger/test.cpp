@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -30,7 +30,7 @@
 using goby::glog;
 
 /// asserts false if called - used for testing proper short-circuiting of logger calls
-inline std::ostream& stream_assert(std::ostream& os) { assert(false); }
+inline std::ostream& stream_assert(std::ostream& /*os*/) { assert(false); }
 
 using namespace goby::util::logger;
 
@@ -42,10 +42,10 @@ namespace util
 {
 struct A
 {
-    A() : i(0) {}
+    A() = default;
     A(int i) : i(i) {}
 
-    int i;
+    int i{0};
 };
 
 std::ostream& operator<<(std::ostream& out, const A& a) { return out << a.i; }

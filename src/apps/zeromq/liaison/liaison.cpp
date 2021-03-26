@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,21 +22,51 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/filesystem.hpp>
+#include <algorithm>     // for max, copy
+#include <chrono>        // for seconds
+#include <cstdlib>       // for getenv
+#include <cstring>       // for strcpy
+#include <dlfcn.h>       // for dlclose
+#include <map>           // for operat...
+#include <memory>        // for allocator
+#include <ostream>       // for basic_...
+#include <stdexcept>     // for runtim...
+#include <type_traits>   // for __succ...
+#include <unistd.h>      // for usleep
+#include <unordered_map> // for operat...
 
-#include <Wt/WAnchor>
-#include <Wt/WHBoxLayout>
-#include <Wt/WIOService>
-#include <Wt/WImage>
-#include <Wt/WStackedWidget>
-#include <Wt/WText>
-#include <Wt/WVBoxLayout>
+#include <Wt/WFlags>                                 // for Wt
+#include <Wt/WGlobal>                                // for Applic...
+#include <Wt/WIOService>                             // for WIOSer...
+#include <boost/algorithm/string/classification.hpp> // for is_any...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/filesystem.hpp>                      // for direct...
+#include <boost/iterator/iterator_facade.hpp>        // for iterat...
+#include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_le...
+#include <boost/system/error_code.hpp>               // for error_...
+#include <boost/units/quantity.hpp>                  // for operator/
+#include <google/protobuf/descriptor.h>              // for Descri...
 
-#include "dccl/dynamic_protobuf_manager.h"
-#include "goby/time.h"
+#include "goby/middleware/marshalling/protobuf.h"
+
+#include "dccl/dynamic_protobuf_manager.h"                    // for Dynami...
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/protobuf/app_config.pb.h"           // for AppConfig
+#include "goby/time/steady_clock.h"                           // for Steady...
+#include "goby/util/as.h"                                     // for as
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/util/debug_logger/flex_ostreambuf.h"           // for DIE
+#include "goby/zeromq/protobuf/liaison_config.pb.h"           // for Liaiso...
 
 #include "liaison.h"
-#include "liaison_wt_thread.h"
+#include "liaison_wt_thread.h" // for Liaiso...
+
+namespace Wt
+{
+class WApplication;
+class WEnvironment;
+} // namespace Wt
 
 using goby::glog;
 using namespace Wt;
@@ -54,23 +84,21 @@ int main(int argc, char* argv[])
         std::vector<std::string> plugin_vec;
         boost::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
 
-        for (int i = 0, n = plugin_vec.size(); i < n; ++i)
+        for (auto& i : plugin_vec)
         {
-            glog.is(VERBOSE) && glog << "Loading liaison plugin library: " << plugin_vec[i]
-                                     << std::endl;
-            void* handle = dlopen(plugin_vec[i].c_str(), RTLD_LAZY);
+            glog.is(VERBOSE) && glog << "Loading liaison plugin library: " << i << std::endl;
+            void* handle = dlopen(i.c_str(), RTLD_LAZY);
             if (handle)
                 goby::apps::zeromq::Liaison::plugin_handles_.push_back(handle);
             else
-                glog.is(DIE) && glog << "Failed to open library: " << plugin_vec[i] << std::endl;
+                glog.is(DIE) && glog << "Failed to open library: " << i << std::endl;
         }
     }
 
     int return_value = goby::run<goby::apps::zeromq::Liaison>(argc, argv);
     //    dccl::DynamicProtobufManager::protobuf_shutdown();
 
-    for (int i = 0, n = goby::apps::zeromq::Liaison::plugin_handles_.size(); i < n; ++i)
-        dlclose(goby::apps::zeromq::Liaison::plugin_handles_[i]);
+    for (auto& plugin_handle : goby::apps::zeromq::Liaison::plugin_handles_) dlclose(plugin_handle);
 
     return return_value;
 }
@@ -195,7 +223,7 @@ goby::apps::zeromq::Liaison::Liaison()
             Wt::WServer::instance()->ioService().post(expire_sessions_);
     };
 
-    expire_sessions_();
+    Wt::WServer::instance()->ioService().post(expire_sessions_);
 }
 
 void goby::apps::zeromq::Liaison::load_proto_file(const std::string& path)

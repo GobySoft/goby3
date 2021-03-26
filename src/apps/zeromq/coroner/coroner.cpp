@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,11 +21,34 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/coroner/groups.h"
+#include <algorithm>     // for copy
+#include <chrono>        // for duration
+#include <map>           // for operat...
+#include <ostream>       // for basic_...
+#include <ratio>         // for ratio
+#include <set>           // for set
+#include <string>        // for string
+#include <type_traits>   // for __succ...
+#include <unordered_map> // for operat...
+#include <utility>       // for pair
+#include <vector>        // for vector
+
+#include <boost/units/systems/si/frequency.hpp> // for frequency
+
 #include "goby/middleware/marshalling/protobuf.h"
-#include "goby/middleware/protobuf/coroner.pb.h"
-#include "goby/zeromq/application/single_thread.h"
-#include "goby/zeromq/protobuf/coroner_config.pb.h"
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/coroner/groups.h"                   // for health...
+#include "goby/middleware/protobuf/coroner.pb.h"              // for Proces...
+#include "goby/time/convert.h"                                // for conver...
+#include "goby/time/system_clock.h"                           // for System...
+#include "goby/time/types.h"                                  // for MicroTime
+#include "goby/util/debug_logger.h"                           // for operat...
+#include "goby/zeromq/application/single_thread.h"            // for Single...
+#include "goby/zeromq/protobuf/coroner_config.pb.h"           // for Corone...
+#include "goby/zeromq/protobuf/interprocess_config.pb.h"      // for InterP...
+#include "goby/zeromq/transport/interprocess.h"               // for InterP...
 
 using goby::glog;
 
@@ -64,7 +87,7 @@ class Coroner : public goby::zeromq::SingleThreadApplication<protobuf::CoronerCo
                 });
     }
 
-    ~Coroner() {}
+    ~Coroner() override = default;
 
   private:
     void loop() override

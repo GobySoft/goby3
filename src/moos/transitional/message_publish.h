@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,11 +22,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef PUBLISH20091211H
-#define PUBLISH20091211H
+#ifndef GOBY_MOOS_TRANSITIONAL_MESSAGE_PUBLISH_H
+#define GOBY_MOOS_TRANSITIONAL_MESSAGE_PUBLISH_H
 
 #include <iostream>
 #include <sstream>
+#include <utility>
+
 #include <vector>
 
 #include <boost/format.hpp>
@@ -50,26 +52,22 @@ class DCCLMessage;
 class DCCLPublish
 {
   public:
-    DCCLPublish()
-        : var_(""), format_(""), format_set_(false), use_all_names_(false), type_(cpp_notype),
-          ap_(DCCLAlgorithmPerformer::getInstance()), repeat_(1)
-    {
-    }
+    DCCLPublish() : var_(""), format_(""), ap_(DCCLAlgorithmPerformer::getInstance()) {}
 
     //set
 
-    void set_var(std::string var) { var_ = var; }
+    void set_var(std::string var) { var_ = std::move(var); }
     void set_format(std::string format)
     {
-        format_ = format;
+        format_ = std::move(format);
         format_set_ = true;
     }
     void set_use_all_names(bool use_all_names) { use_all_names_ = use_all_names; }
     void set_type(DCCLCppType type) { type_ = type; }
 
     void add_name(const std::string& name) { names_.push_back(name); }
-    void add_message_var(std::shared_ptr<DCCLMessageVar> mv) { message_vars_.push_back(mv); }
-    void add_algorithms(const std::vector<std::string> algorithms)
+    void add_message_var(const std::shared_ptr<DCCLMessageVar>& mv) { message_vars_.push_back(mv); }
+    void add_algorithms(const std::vector<std::string>& algorithms)
     {
         algorithms_.push_back(algorithms);
     }
@@ -94,14 +92,14 @@ class DCCLPublish
   private:
     std::string var_;
     std::string format_;
-    bool format_set_;
-    bool use_all_names_;
-    DCCLCppType type_;
+    bool format_set_{false};
+    bool use_all_names_{false};
+    DCCLCppType type_{cpp_notype};
     std::vector<std::string> names_;
     std::vector<std::shared_ptr<DCCLMessageVar> > message_vars_;
     std::vector<std::vector<std::string> > algorithms_;
     DCCLAlgorithmPerformer* ap_;
-    unsigned repeat_;
+    unsigned repeat_{1};
 };
 } // namespace transitional
 } // namespace goby

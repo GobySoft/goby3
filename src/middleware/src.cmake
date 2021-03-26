@@ -8,6 +8,7 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/log_tool_config.proto
   middleware/protobuf/terminate.proto
   middleware/protobuf/io.proto
+  middleware/protobuf/gpsd.proto
   middleware/protobuf/serial_config.proto
   middleware/protobuf/can_config.proto
   middleware/protobuf/udp_config.proto

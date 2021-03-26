@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,20 +21,33 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/filesystem/path.hpp>
+#include <algorithm>                       // for max
+#include <dccl/dynamic_protobuf_manager.h> // for Dynami...
+#include <dlfcn.h>                         // for dlclose
+#include <map>                             // for map
+#include <memory>                          // for unique...
+#include <ostream>                         // for operat...
+#include <string>                          // for operat...
+#include <utility>                         // for pair
+#include <vector>                          // for vector
 
-#include "goby/middleware/application/interface.h"
+#include <boost/filesystem.hpp> // for path
 
-#include "goby/middleware/log.h"
-#include "goby/middleware/protobuf/log_tool_config.pb.h"
-
-#include "goby/middleware/log/dccl_log_plugin.h"
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/group.h"                            // for operat...
+#include "goby/middleware/log/dccl_log_plugin.h"              // for DCCLPl...
+#include "goby/middleware/log/log_entry.h"                    // for LogEntry
+#include "goby/middleware/log/log_plugin.h"                   // for LogPlugin
+#include "goby/middleware/marshalling/interface.h"            // for Marsha...
+#include "goby/middleware/protobuf/log_tool_config.pb.h"      // for LogToo...
+#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
 
 #ifdef HAS_HDF5
-#include "goby/middleware/log/hdf5/hdf5.h"
+#include "goby/middleware/log/hdf5/hdf5.h" // for Writer
 #endif
 
-#include "goby/middleware/log/protobuf_log_plugin.h"
+#include "goby/middleware/log/protobuf_log_plugin.h" // for Protob...
 
 using goby::glog;
 
@@ -49,7 +62,7 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
 {
   public:
     LogTool();
-    ~LogTool()
+    ~LogTool() override
     {
 #ifdef HAS_HDF5
         if (app_cfg().format() == protobuf::LogToolConfig::HDF5)
@@ -116,7 +129,7 @@ goby::apps::middleware::LogTool::LogTool()
         case protobuf::LogToolConfig::DEBUG_TEXT: f_out_.open(output_file_path_.c_str()); break;
 #ifdef HAS_HDF5
         case protobuf::LogToolConfig::HDF5:
-            h5_writer_.reset(new goby::middleware::hdf5::Writer(output_file_path_));
+            h5_writer_ = std::make_unique<goby::middleware::hdf5::Writer>(output_file_path_);
             break;
 #endif
         default:
@@ -136,10 +149,10 @@ goby::apps::middleware::LogTool::LogTool()
         dl_handles_.push_back(lib_handle);
     }
 
-    plugins_[goby::middleware::MarshallingScheme::PROTOBUF].reset(
-        new goby::middleware::log::ProtobufPlugin);
-    plugins_[goby::middleware::MarshallingScheme::DCCL].reset(
-        new goby::middleware::log::DCCLPlugin);
+    plugins_[goby::middleware::MarshallingScheme::PROTOBUF] =
+        std::make_unique<goby::middleware::log::ProtobufPlugin>();
+    plugins_[goby::middleware::MarshallingScheme::DCCL] =
+        std::make_unique<goby::middleware::log::DCCLPlugin>();
 
     for (auto& p : plugins_) p.second->register_read_hooks(f_in_);
 

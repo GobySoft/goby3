@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,12 +23,25 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <dlfcn.h>
+#include <algorithm>     // for copy
+#include <cstdlib>       // for exit
+#include <dlfcn.h>       // for dlsym
+#include <exception>     // for exception
+#include <iostream>      // for operat...
+#include <map>           // for operat...
+#include <string>        // for string
+#include <unordered_map> // for operat...
+#include <vector>        // for vector
 
-#include "goby/middleware/marshalling/protobuf.h"
-#include "goby/moos/middleware/moos_plugin_translator.h"
-#include "goby/moos/protobuf/moos_gateway_config.pb.h"
-#include "goby/zeromq/application/multi_thread.h"
+#include <boost/algorithm/string/classification.hpp> // for is_any...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/units/quantity.hpp>                  // for operator/
+
+#include "goby/middleware/application/configuration_reader.h" // for Config...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/moos/protobuf/moos_gateway_config.pb.h"        // for GobyMO...
+#include "goby/util/debug_logger.h"
+#include "goby/zeromq/application/multi_thread.h" // for MultiT...
 
 using goby::apps::moos::protobuf::GobyMOOSGatewayConfig;
 using AppBase = goby::zeromq::MultiThreadApplication<GobyMOOSGatewayConfig>;
@@ -45,7 +58,7 @@ class GobyMOOSGateway
 {
   public:
     GobyMOOSGateway();
-    ~GobyMOOSGateway();
+    ~GobyMOOSGateway() override;
 
     static std::vector<void*> dl_handles_;
 
@@ -107,7 +120,7 @@ goby::moos::GobyMOOSGateway::GobyMOOSGateway()
     for (void* handle : dl_handles_)
     {
         using plugin_load_func = void (*)(AppBase*);
-        plugin_load_func load_ptr = (plugin_load_func)dlsym(handle, "goby3_moos_gateway_load");
+        auto load_ptr = (plugin_load_func)dlsym(handle, "goby3_moos_gateway_load");
         (*load_ptr)(this);
     }
 }
@@ -117,8 +130,7 @@ goby::moos::GobyMOOSGateway::~GobyMOOSGateway()
     for (void* handle : dl_handles_)
     {
         using plugin_unload_func = void (*)(AppBase*);
-        plugin_unload_func unload_ptr =
-            (plugin_unload_func)dlsym(handle, "goby3_moos_gateway_unload");
+        auto unload_ptr = (plugin_unload_func)dlsym(handle, "goby3_moos_gateway_unload");
 
         if (unload_ptr)
             (*unload_ptr)(this);

@@ -1,4 +1,4 @@
-// Copyright 2016-2020:
+// Copyright 2016-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef HDF5_PLUGIN20160523H
-#define HDF5_PLUGIN20160523H
+#ifndef GOBY_MIDDLEWARE_LOG_HDF5_HDF5_PLUGIN_H
+#define GOBY_MIDDLEWARE_LOG_HDF5_HDF5_PLUGIN_H
 
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>
@@ -47,7 +47,7 @@ struct HDF5ProtobufEntry
     /// Actual message contents
     std::shared_ptr<google::protobuf::Message> msg;
 
-    HDF5ProtobufEntry() {}
+    HDF5ProtobufEntry() = default;
 
     /// Clear the values
     void clear()
@@ -77,7 +77,7 @@ class HDF5Plugin
 {
   public:
     HDF5Plugin(const goby::middleware::protobuf::HDF5Config* cfg) {}
-    virtual ~HDF5Plugin() {}
+    virtual ~HDF5Plugin() = default;
 
     /// \brief Implement this function in the plugin to provide a single Protobuf message and related metadata to the goby_hdf5 tool.
     ///

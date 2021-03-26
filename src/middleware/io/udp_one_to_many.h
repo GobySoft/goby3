@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,13 +21,31 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UDP_ONE_TO_MANY_20190829H
-#define UDP_ONE_TO_MANY_20190829H
+#ifndef GOBY_MIDDLEWARE_IO_UDP_ONE_TO_MANY_H
+#define GOBY_MIDDLEWARE_IO_UDP_ONE_TO_MANY_H
 
+#include <array>                 // for array
+#include <boost/asio/buffer.hpp> // for buffer
 #include <boost/asio/ip/udp.hpp>
+#include <boost/asio/ip/udp.hpp>       // for udp, udp::endpoint
+#include <boost/asio/socket_base.hpp>  // for socket_base
+#include <boost/system/error_code.hpp> // for error_code
+#include <cstddef>                     // for size_t
+#include <memory>                      // for shared_ptr, __s...
+#include <string>                      // for string, to_string
 
-#include "goby/middleware/io/detail/io_interface.h"
-#include "goby/middleware/protobuf/udp_config.pb.h"
+#include "goby/exception.h"                         // for Exception
+#include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer
+#include "goby/middleware/protobuf/io.pb.h"         // for IOData, UDPEndP...
+#include "goby/middleware/protobuf/udp_config.pb.h" // for UDPOneToManyConfig
+
+namespace goby
+{
+namespace middleware
+{
+class Group;
+}
+} // namespace goby
 
 namespace goby
 {
@@ -41,23 +59,29 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          typename Config = goby::middleware::protobuf::UDPOneToManyConfig>
+          typename Config = goby::middleware::protobuf::UDPOneToManyConfig,
+          template <class> class ThreadType = goby::middleware::SimpleThread>
 class UDPOneToManyThread
     : public detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-                              boost::asio::ip::udp::socket>
+                              boost::asio::ip::udp::socket, ThreadType>
 {
     using Base = detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                  Config, boost::asio::ip::udp::socket>;
+                                  Config, boost::asio::ip::udp::socket, ThreadType>;
 
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    UDPOneToManyThread(const Config& config)
+    UDPOneToManyThread(const Config& config, bool is_final = true)
         : Base(config, -1, std::string("udp: ") + std::to_string(config.bind_port()))
     {
+        if (is_final)
+        {
+            auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
+            this->interthread().template publish<line_in_group>(ready);
+        }
     }
 
-    ~UDPOneToManyThread() {}
+    ~UDPOneToManyThread() override {}
 
   protected:
     /// \brief Starts an asynchronous read on the udp socket.
@@ -84,9 +108,10 @@ class UDPOneToManyThread
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename Config>
+          goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
+          template <class> class ThreadType>
 void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, publish_layer,
-                                              subscribe_layer, Config>::open_socket()
+                                              subscribe_layer, Config, ThreadType>::open_socket()
 {
     this->mutable_socket().open(boost::asio::ip::udp::v4());
 
@@ -111,9 +136,10 @@ void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, pub
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename Config>
+          goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
+          template <class> class ThreadType>
 void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, publish_layer,
-                                              subscribe_layer, Config>::async_read()
+                                              subscribe_layer, Config, ThreadType>::async_read()
 {
     this->mutable_socket().async_receive_from(
         boost::asio::buffer(rx_message_), sender_endpoint_,
@@ -142,10 +168,11 @@ void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, pub
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, typename Config>
+          goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
+          template <class> class ThreadType>
 void goby::middleware::io::UDPOneToManyThread<
-    line_in_group, line_out_group, publish_layer, subscribe_layer,
-    Config>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
+    line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
+    ThreadType>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
 {
     if (!io_msg->has_udp_dest())
         throw(goby::Exception("UDPOneToManyThread requires 'udp_dest' field to be set in IOData"));

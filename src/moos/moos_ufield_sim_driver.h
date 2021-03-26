@@ -1,4 +1,4 @@
-// Copyright 2011-2020:
+// Copyright 2011-2021:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,22 +22,26 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UFieldSimDriver20120214H
-#define UFieldSimDriver20120214H
+#ifndef GOBY_MOOS_MOOS_UFIELD_SIM_DRIVER_H
+#define GOBY_MOOS_MOOS_UFIELD_SIM_DRIVER_H
 
-#include "goby/moos/moos_header.h"
-#include "goby/moos/protobuf/ufield_sim_driver.pb.h"
+#include <MOOS/libMOOS/Comms/MOOSCommClient.h> // for CMOOSCommClient
 
-//#include <boost/bimap.hpp>
-
-#include "goby/time.h"
-
-#include "goby/acomms/modemdriver/driver_base.h"
-
-#include "goby/moos/modem_id_convert.h"
+#include "goby/acomms/modemdriver/driver_base.h"     // for ModemDriverBase
+#include "goby/acomms/protobuf/driver_base.pb.h"     // for DriverConfig
+#include "goby/moos/modem_id_convert.h"              // for ModemIdConvert
+#include "goby/moos/protobuf/ufield_sim_driver.pb.h" // for Config
 
 namespace goby
 {
+namespace acomms
+{
+namespace protobuf
+{
+class ModemTransmission;
+} // namespace protobuf
+} // namespace acomms
+
 namespace moos
 {
 /// \brief provides an simulator driver to the uFldNodeComms MOOS module: http://oceanai.mit.edu/moos-ivp/pmwiki/pmwiki.php?n=Modules.UFldNodeComms
@@ -47,10 +51,10 @@ class UFldDriver : public goby::acomms::ModemDriverBase
 {
   public:
     UFldDriver();
-    void startup(const goby::acomms::protobuf::DriverConfig& cfg);
-    void shutdown();
-    void do_work();
-    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m);
+    void startup(const goby::acomms::protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m) override;
 
   private:
     void send_message(const goby::acomms::protobuf::ModemTransmission& msg);
@@ -75,7 +79,7 @@ class UFldDriver : public goby::acomms::ModemDriverBase
     //boost::bimap<int, std::string> modem_id2name_;
     goby::moos::ModemIdConvert modem_lookup_;
 
-    int last_ccmpc_dest_;
+    int last_ccmpc_dest_{-1};
 };
 } // namespace moos
 } // namespace goby

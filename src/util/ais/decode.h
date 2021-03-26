@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,16 +21,29 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef AIS_DECODE_20191021H
-#define AIS_DECODE_20191021H
+#ifndef GOBY_UTIL_AIS_DECODE_H
+#define GOBY_UTIL_AIS_DECODE_H
 
-#include <ais.h>
-#include <vdm.h>
+#include <memory>    // for unique_ptr
+#include <ostream>   // for operator<<
+#include <stdexcept> // for runtime_error
+#include <string>    // for string
+#include <vector>    // for vector
 
-#include <boost/units/base_units/metric/knot.hpp>
+#include <ais.h>                                       // for string, ostream
+#include <boost/algorithm/string/classification.hpp>   // for pred_orF, is_...
+#include <boost/algorithm/string/predicate_facade.hpp> // for predicate_facade
+#include <boost/algorithm/string/trim.hpp>             // for trim_if
+#include <boost/units/base_unit.hpp>                   // for base_unit<>::...
+#include <boost/units/base_units/metric/knot.hpp>      // for knot_base_unit
+#include <boost/units/operators.hpp>                   // for units
+#include <boost/units/systems/angle/degrees.hpp>       // for degrees
+#include <boost/units/systems/si/length.hpp>           // for meters
+#include <boost/units/systems/si/time.hpp>             // for seconds
+#include <vdm.h>                                       // for VdmStream
 
-#include "goby/util/linebasedcomms/nmea_sentence.h"
-#include "goby/util/protobuf/ais.pb.h"
+#include "goby/util/linebasedcomms/nmea_sentence.h" // for NMEASentence
+#include "goby/util/protobuf/ais.pb.h"              // for Voyage, Position
 
 namespace goby
 {
@@ -48,11 +61,11 @@ class Decoder
 {
   public:
     Decoder();
-    Decoder(NMEASentence nmea) : Decoder(std::vector<NMEASentence>(1, nmea)) {}
-    Decoder(std::vector<NMEASentence> nmeas);
+    Decoder(const NMEASentence& nmea) : Decoder(std::vector<NMEASentence>(1, nmea)) {}
+    Decoder(const std::vector<NMEASentence>& nmeas);
 
     // returns true if message is complete
-    bool push(NMEASentence nmea);
+    bool push(const NMEASentence& nmea);
 
     bool complete() { return ais_msg_ != nullptr; }
 
@@ -105,7 +118,7 @@ class Decoder
     }
 
     template <typename LibAisMessage>
-    void set_shared_fields(goby::util::ais::protobuf::Voyage& voy, const LibAisMessage& ais,
+    void set_shared_fields(goby::util::ais::protobuf::Voyage& /*voy*/, const LibAisMessage& ais,
                            int part_num)
     {
         using namespace boost::units;

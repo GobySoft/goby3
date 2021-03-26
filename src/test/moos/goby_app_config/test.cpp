@@ -1,4 +1,4 @@
-// Copyright 2018-2020:
+// Copyright 2018-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "config.pb.h"
 #include "goby/moos/goby_moos_app.h"
+#include "goby/test/moos/goby_app_config/config.pb.h"
 
 namespace goby
 {
@@ -43,8 +43,8 @@ class GobyMOOSAppTest : public goby::moos::GobyMOOSApp
         std::cout << "All tests passed. " << std::endl;
     }
 
-    ~GobyMOOSAppTest() {}
-    void loop() {}
+    ~GobyMOOSAppTest() override = default;
+    void loop() override {}
     static GobyMOOSAppTest* inst_;
 };
 } // namespace moos
@@ -52,7 +52,7 @@ class GobyMOOSAppTest : public goby::moos::GobyMOOSApp
 } // namespace goby
 
 std::shared_ptr<goby::test::moos::protobuf::AppConfig> master_config;
-goby::test::moos::GobyMOOSAppTest* goby::test::moos::GobyMOOSAppTest::inst_ = 0;
+goby::test::moos::GobyMOOSAppTest* goby::test::moos::GobyMOOSAppTest::inst_ = nullptr;
 
 goby::test::moos::GobyMOOSAppTest* goby::test::moos::GobyMOOSAppTest::get_instance()
 {

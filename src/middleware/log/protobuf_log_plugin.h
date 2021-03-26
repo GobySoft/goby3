@@ -1,4 +1,4 @@
-// Copyright 2019-2020:
+// Copyright 2019-2021:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,8 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef PROTOBUF_LOGGER_20190123_H
-#define PROTOBUF_LOGGER_20190123_H
+#ifndef GOBY_MIDDLEWARE_LOG_PROTOBUF_LOG_PLUGIN_H
+#define GOBY_MIDDLEWARE_LOG_PROTOBUF_LOG_PLUGIN_H
 
 #include "goby/middleware/log.h"
 #include "goby/middleware/marshalling/protobuf.h"
