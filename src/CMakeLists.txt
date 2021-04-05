@@ -191,7 +191,14 @@ endmacro()
 
 ## boost
 set(GOBY_BOOST_VER "1.58.0" CACHE STRING "CUSTOM BOOST PATH")
-goby_find_required_package(Boost ${GOBY_BOOST_VER} REQUIRED EXACT COMPONENTS system date_time program_options filesystem)
+#set(Boost_DEBUG ON)
+## use the exact version if one is given, else doesn't matter
+if(GOBY_BOOST_VER MATCHES "1.58.0")
+    goby_find_required_package(Boost ${GOBY_BOOST_VER} REQUIRED COMPONENTS system date_time program_options filesystem)
+else()
+    goby_find_required_package(Boost ${GOBY_BOOST_VER} REQUIRED EXACT COMPONENTS system date_time program_options filesystem)
+endif()
+
 include_directories(${Boost_INCLUDE_DIRS})
 
 protobuf_generate_cpp(BASE_PROTO_SRCS BASE_PROTO_HDRS 
