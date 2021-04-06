@@ -151,7 +151,7 @@ void goby::acomms::PopotoDriver::handle_initiate_transmission(
                 ModemDriverBase::signal_data_request(&msg);
 
             next_frame_ += msg.frame_size();
-            if (next_frame_ >= 6)
+            if (next_frame_ >= 255)
                 next_frame_ = 0;
 
             if (msg.frame_size() > 0 && msg.frame(0).size() > 0)
