@@ -249,10 +249,6 @@ void goby::acomms::PopotoDriver::send_ping(protobuf::ModemTransmission& msg)
 // ------------------------------------- Send -------------------------------------------------
 void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
 {
-    std::stringstream out_msg;
-    int d = msg.frame_start();
-    out_msg << "ACK: " << d;
-
     // Set bitrate
     // Bitrates with Popoto modem: map these onto 0-5
     std::vector<std::string> rate_to_speed{"setRate80\n",   "setRate640\n",  "setRate1280\n",
@@ -283,9 +279,7 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
     std::string jsonStr = binary_to_json(&bytes1[0], 2);
     if (msg.type() == protobuf::ModemTransmission::DATA)
     {
-        protobuf::ModemRaw raw_out;
-        raw_out.set_raw(out_msg.str());
-        ModemDriverBase::signal_raw_incoming(raw_out);
+        signal_transmit_result(msg);
         std::vector<std::uint8_t> bytes(msg.frame(0).begin(), msg.frame(0).end());
         jsonStr += "," + binary_to_json(&bytes[0], bytes.size());
     }
@@ -509,12 +503,6 @@ void goby::acomms::PopotoDriver::ProcessJSON(std::string message,
             *modem_msg.add_frame() = data.substr(2);
         else if (modem_msg.type() == protobuf::ModemTransmission::ACK){
             modem_msg.add_acked_frame(data[1]);
-            std::stringstream out_msg;
-            int d = modem_msg.acked_frame(0);
-            out_msg << "GOT ACK FROM FRAME " << d;
-            protobuf::ModemRaw raw_out;
-            raw_out.set_raw(out_msg.str());
-            ModemDriverBase::signal_raw_incoming(raw_out);
         }
     }
     else if (label == "Alert")
