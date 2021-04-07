@@ -190,11 +190,7 @@ macro(goby_install_lib target_lib component)
 endmacro()
 
 ## boost
-set(GOBY_BOOST_VER "1.58.0" CACHE STRING "CUSTOM BOOST PATH")
-#set(Boost_DEBUG ON)
-## use the exact version if one is given, else doesn't matter
 goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
-
 include_directories(${Boost_INCLUDE_DIRS})
 
 protobuf_generate_cpp(BASE_PROTO_SRCS BASE_PROTO_HDRS 
