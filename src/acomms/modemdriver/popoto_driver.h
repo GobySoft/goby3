@@ -71,12 +71,11 @@ class PopotoDriver : public ModemDriverBase
     void parse_in(const std::string& in, std::map<std::string, std::string>* out);
     void signal_and_write(const std::string& raw);
 
-    std::uint8_t CreateGobyHeader(const protobuf::ModemTransmission& m);
+    std::uint16_t CreateGobyHeader(const protobuf::ModemTransmission& m);
 
     void DecodeHeader(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
-    void DecodeGobyHeader(std::uint8_t header, protobuf::ModemTransmission& m);
-    void ProcessJSON(const std::string& message, protobuf::ModemTransmission& m);
-
+    void DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num, protobuf::ModemTransmission& m);
+    void ProcessJSON(const std::string& message,protobuf::ModemTransmission& modem_msg);
     const popoto::protobuf::Config& popoto_driver_cfg() const
     {
         return driver_cfg_.GetExtension(popoto::protobuf::config);
@@ -84,11 +83,12 @@ class PopotoDriver : public ModemDriverBase
 
     static std::string json_to_binary(const nlohmann::json& element);
     static std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes);
-    static std::string StripString(std::string in, const std::string& p);
+    static std::string StripString(std::string in, std::string p);
 
   private:
     protobuf::DriverConfig driver_cfg_;
     int sender_id_{0};
+    std::uint32_t next_frame_{0};
     protobuf::ModemTransmission modem_msg_;
 
     static constexpr int DEFAULT_BAUD{115200};
