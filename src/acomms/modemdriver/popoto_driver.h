@@ -75,8 +75,7 @@ class PopotoDriver : public ModemDriverBase
 
     void DecodeHeader(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
     void DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num, protobuf::ModemTransmission& m);
-    void ProcessJSON(std::string message, protobuf::ModemTransmission& m);
-
+    void ProcessJSON(const std::string& message,protobuf::ModemTransmission& modem_msg);
     const popoto::protobuf::Config& popoto_driver_cfg() const
     {
         return driver_cfg_.GetExtension(popoto::protobuf::config);

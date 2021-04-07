@@ -480,12 +480,12 @@ void goby::acomms::PopotoDriver::DecodeHeader(std::vector<uint8_t> data,
 }
 
 // The only msg that is important for the dccl driver is the header and data. We will just print everything else to terminal for the moment
-void goby::acomms::PopotoDriver::ProcessJSON(std::string message,
+void goby::acomms::PopotoDriver::ProcessJSON(const std::string& message,
                                              protobuf::ModemTransmission& modem_msg)
 {
     json j = json::parse(message);
     json::iterator it = j.begin();
-    std::string label = it.key();
+    const std::string& label = it.key();
     std::string str;
 
     protobuf::ModemRaw raw;
@@ -525,7 +525,7 @@ void goby::acomms::PopotoDriver::ProcessJSON(std::string message,
 // Remove popoto trash from the incoming serial string
 std::string goby::acomms::PopotoDriver::StripString(std::string in, std::string p)
 {
-    std::string out = in;
+    std::string out = std::move(in);
     std::string::size_type n = p.length();
     for (std::string::size_type i = out.find(p); i != std::string::npos; i = out.find(p))
         out.erase(i, n);
@@ -561,10 +561,6 @@ std::uint16_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::Modem
 void goby::acomms::PopotoDriver::DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num,
                                                   protobuf::ModemTransmission& m)
 {
-    //std::uint8_t bytes[2] = {header >> 8, header & 0xff};
-
-    glog.is(DEBUG1) && glog << (int) header << " " << (int) ack_num << std::endl;
-
     m.set_type(( header & (1 << GOBY_HEADER_TYPE)) ? protobuf::ModemTransmission::ACK
                                                   : protobuf::ModemTransmission::DATA);
     if (m.type() == protobuf::ModemTransmission::DATA){
