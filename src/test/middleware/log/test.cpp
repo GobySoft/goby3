@@ -142,8 +142,8 @@ void write_log(int test, int version)
     {
         default: break;
         case 1:
-            // insert some chars at the beginning of the file
-            out_log_file << "foo";
+            // insert some chars at the beginning of the file (longer than version byte string)
+            out_log_file << "foooo";
             break;
     }
 
