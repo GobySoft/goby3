@@ -108,15 +108,16 @@ class LogEntry
     static constexpr uint<scheme_bytes_>::type scheme_type_index_{0xFFFE};
 
     static constexpr int version_bytes_{4};
-    static constexpr int current_version{2};
+    static constexpr int compiled_current_version{2};
+    static int current_version_;
     // "invalid_version" until version is read or written
     static uint<version_bytes_>::type version_;
     static constexpr decltype(version_) invalid_version{0};
 
-    static std::map<int, std::function<void(const std::string& type)> > new_type_hook;
-    static std::map<int, std::function<void(const Group& group)> > new_group_hook;
+    static std::map<int, std::function<void(const std::string& type)>> new_type_hook;
+    static std::map<int, std::function<void(const Group& group)>> new_group_hook;
 
-    static std::map<LogFilter, std::function<void(const std::vector<unsigned char>& data)> >
+    static std::map<LogFilter, std::function<void(const std::vector<unsigned char>& data)>>
         filter_hook;
 
   public:
@@ -131,6 +132,9 @@ class LogEntry
     LogEntry() : group_("") {}
     void parse_version(std::istream* s);
     void parse(std::istream* s);
+
+    // used by the unit tests to override version numbers
+    static void set_current_version(decltype(version_) version) { current_version_ = version; }
 
     // [GBY3][size: 4][scheme: 2][group: 2][type: 2][data][crc32: 4]
     // if scheme == 0xFFFF what follows is not data, but the string value for the group index
@@ -152,6 +156,7 @@ class LogEntry
         group_index_ = 1;
         type_index_ = 1;
         version_ = invalid_version;
+        current_version_ = compiled_current_version;
     }
 
   private:
@@ -219,18 +224,18 @@ class LogEntry
     DynamicGroup group_;
 
     // map (scheme -> map (group_name -> group_index)
-    static std::map<int, boost::bimap<std::string, uint<group_bytes_>::type> > groups_;
+    static std::map<int, boost::bimap<std::string, uint<group_bytes_>::type>> groups_;
     static uint<group_bytes_>::type group_index_;
 
     // map (scheme -> map (group_name -> group_index)
-    static std::map<int, boost::bimap<std::string, uint<type_bytes_>::type> > types_;
+    static std::map<int, boost::bimap<std::string, uint<type_bytes_>::type>> types_;
     static uint<type_bytes_>::type type_index_;
 
     const std::string magic_{"GBY3"};
 };
 
+} // namespace log
 } // namespace middleware
 } // namespace goby
-} // namespace log
 
 #endif

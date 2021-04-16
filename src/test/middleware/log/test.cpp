@@ -29,22 +29,26 @@
 
 #include "goby/test/middleware/log/test.pb.h"
 
+using goby::middleware::log::LogEntry;
 using goby::test::middleware::protobuf::CTDSample;
 using goby::test::middleware::protobuf::TempSample;
-using goby::middleware::log::LogEntry;
 
 constexpr goby::middleware::Group tempgroup("groups::temp");
 constexpr goby::middleware::Group ctdgroup("groups::ctd");
 int nctd = 6;
 
 dccl::Codec codec;
-goby::middleware::log::ProtobufPlugin pb_plugin;
-goby::middleware::log::DCCLPlugin dccl_plugin;
 
-void read_log(int test)
+void read_log(int test, int version)
 {
+    goby::middleware::log::ProtobufPlugin pb_plugin;
+    goby::middleware::log::DCCLPlugin dccl_plugin;
     LogEntry::reset();
     dccl::DynamicProtobufManager::reset();
+
+    // can't read version since we corrupted it
+    if (test == 1 && version < LogEntry::compiled_current_version)
+        LogEntry::set_current_version(version);
 
     LogEntry::new_type_hook[goby::middleware::MarshallingScheme::DCCL] =
         [&](const std::string& type) {
@@ -124,9 +128,12 @@ void read_log(int test)
     }
 }
 
-void write_log(int test)
+void write_log(int test, int version)
 {
+    goby::middleware::log::ProtobufPlugin pb_plugin;
+    goby::middleware::log::DCCLPlugin dccl_plugin;
     LogEntry::reset();
+    LogEntry::set_current_version(version);
     std::ofstream out_log_file("/tmp/goby3_test_log.goby");
     pb_plugin.register_write_hooks(out_log_file);
     dccl_plugin.register_write_hooks(out_log_file);
@@ -146,7 +153,7 @@ void write_log(int test)
         std::vector<unsigned char> data(t.ByteSize());
         t.SerializeToArray(&data[0], data.size());
         LogEntry entry(data, goby::middleware::MarshallingScheme::PROTOBUF,
-                                         TempSample::descriptor()->full_name(), tempgroup);
+                       TempSample::descriptor()->full_name(), tempgroup);
         entry.serialize(&out_log_file);
     }
 
@@ -161,8 +168,7 @@ void write_log(int test)
         {
             // corrupt the previous entry
             auto pos = out_log_file.tellp();
-            out_log_file.seekp(pos -
-                               std::ios::streamoff(LogEntry::crc_bytes_ + 2));
+            out_log_file.seekp(pos - std::ios::streamoff(LogEntry::crc_bytes_ + 2));
             out_log_file.put(0);
             out_log_file.seekp(pos);
             break;
@@ -172,11 +178,11 @@ void write_log(int test)
         {
             // corrupt the start (index) data
             auto pos = out_log_file.tellp();
-            out_log_file.seekp(LogEntry::version_bytes_ +
-                                   LogEntry::magic_bytes_ +
-                                   LogEntry::size_bytes_ +
-                                   LogEntry::scheme_bytes_ +
-                                   LogEntry::group_bytes_ - 1,
+            auto version_bytes = LogEntry::version_bytes_;
+            if (version == 1)
+                version_bytes = 0;
+            out_log_file.seekp(version_bytes + LogEntry::magic_bytes_ + LogEntry::size_bytes_ +
+                                   LogEntry::scheme_bytes_ + LogEntry::group_bytes_ - 1,
                                out_log_file.beg);
             out_log_file.put(0);
             out_log_file.seekp(pos);
@@ -190,10 +196,8 @@ void write_log(int test)
 
             out_log_file.seekp(
                 pos - std::ios::streamoff(LogEntry::crc_bytes_ + t.ByteSize() +
-                                          LogEntry::type_bytes_ +
-                                          LogEntry::group_bytes_ +
-                                          LogEntry::scheme_bytes_ +
-                                          LogEntry::size_bytes_ - 1));
+                                          LogEntry::type_bytes_ + LogEntry::group_bytes_ +
+                                          LogEntry::scheme_bytes_ + LogEntry::size_bytes_ - 1));
             out_log_file.put(0xFF);
             out_log_file.seekp(pos);
         }
@@ -203,11 +207,10 @@ void write_log(int test)
             // corrupt the size field to make it just larger than the message
             auto pos = out_log_file.tellp();
 
-            out_log_file.seekp(
-                pos - std::ios::streamoff(LogEntry::crc_bytes_ + t.ByteSize() +
-                                          LogEntry::type_bytes_ +
-                                          LogEntry::group_bytes_ +
-                                          LogEntry::scheme_bytes_ + 1));
+            out_log_file.seekp(pos -
+                               std::ios::streamoff(LogEntry::crc_bytes_ + t.ByteSize() +
+                                                   LogEntry::type_bytes_ + LogEntry::group_bytes_ +
+                                                   LogEntry::scheme_bytes_ + 1));
             out_log_file.put(0x14);
             out_log_file.seekp(pos);
         }
@@ -229,7 +232,7 @@ void write_log(int test)
 
         std::vector<unsigned char> data(encoded.begin(), encoded.end());
         LogEntry entry(data, goby::middleware::MarshallingScheme::DCCL,
-                                         CTDSample::descriptor()->full_name(), ctdgroup);
+                       CTDSample::descriptor()->full_name(), ctdgroup);
         entry.serialize(&out_log_file);
         ctds.push_back(ctd1);
         ctds.push_back(ctd2);
@@ -244,12 +247,16 @@ int main(int /*argc*/, char* argv[])
     codec.load<CTDSample>();
 
     int ntests = 7;
+    int nversions = 2;
 
-    for (int test = 0; test < ntests; ++test)
+    for (int version = 1; version <= nversions; ++version)
     {
-        std::cout << "Running test " << test << std::endl;
-        write_log(test);
-        read_log(test);
+        for (int test = 0; test < ntests; ++test)
+        {
+            std::cout << "Running test " << test << ", log version: " << version << std::endl;
+            write_log(test, version);
+            read_log(test, version);
+        }
     }
 
     std::cout << "all tests passed" << std::endl;
