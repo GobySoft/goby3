@@ -48,4 +48,3 @@ set(ACOMMS_SRC
   acomms/modemdriver/popoto_driver.cpp
   ${ACOMMS_PROTO_SRCS} ${ACOMMS_PROTO_HDRS}
   )
-

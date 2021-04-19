@@ -76,6 +76,7 @@ class PopotoDriver : public ModemDriverBase
     void DecodeHeader(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
     void DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num, protobuf::ModemTransmission& m);
     void ProcessJSON(const std::string& message,protobuf::ModemTransmission& modem_msg);
+    std::string change_to_popoto_json(std::string input, size_t pos, std::string setval, std::string num_type);
     const popoto::protobuf::Config& popoto_driver_cfg() const
     {
         return driver_cfg_.GetExtension(popoto::protobuf::config);
@@ -100,6 +101,13 @@ class PopotoDriver : public ModemDriverBase
         GOBY_HEADER_TYPE = 0,       // 0 == Data, 1 == Ack
         GOBY_HEADER_ACK_REQUEST = 1 // 0 == no ack requested, 1 == ack requested
     };
+
+    enum ConnectionType
+    {
+        SERIAL_CONNECTION = 0,       // 0 == Data, 1 == Ack
+        ETHERNET_CONNECTION = 1 // 0 == no ack requested, 1 == ack requested
+    }; ConnectionType myConnection;
+
 };
 } // namespace acomms
 } // namespace goby

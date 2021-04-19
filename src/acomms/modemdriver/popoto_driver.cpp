@@ -42,7 +42,12 @@
 
 #include <boost/algorithm/string/trim.hpp> // for trim_copy
 #include <boost/signals2/signal.hpp>       // for signal
+#include <boost/asio/socket_base.hpp>  // for socket_base:...
+#include <boost/asio/ip/multicast.hpp> // for join_group
+#include <boost/asio/buffer.hpp>       // for buffer, muta...
+#include <boost/asio/ip/address.hpp>   // for address
 
+#include "goby/util/asio_compat.h"                       // for io_context
 #include "goby/acomms/acomms_constants.h"                // for BROADCAST_ID
 #include "goby/acomms/protobuf/modem_driver_status.pb.h" // for ModemDriver...
 #include "goby/exception.h"                              // for Exception
@@ -52,9 +57,20 @@
 
 #include "driver_exception.h" // for ModemDriver...
 
+#include "popoto_client.hpp" // For popoto api (Ethernet driver)
+
 using goby::glog;
 using namespace goby::util::logger;
 using json = nlohmann::json;
+
+void Popoto0PCMHandler(void *Pcm, int Len);
+popoto_client *popoto0;
+volatile float Eng;
+volatile int pegCount = 0;
+volatile FILE *fpOut0 = NULL;
+volatile FILE *fpOut1 = NULL;
+volatile uint32_t EngCount;
+float Gain = 1;
 
 goby::acomms::PopotoDriver::PopotoDriver() = default;
 goby::acomms::PopotoDriver::~PopotoDriver() = default;
@@ -71,6 +87,23 @@ void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
     // Set the default baud
     if (!driver_cfg_.has_serial_baud())
         driver_cfg_.set_serial_baud(DEFAULT_BAUD);
+
+    if (popoto_driver_cfg().local().has_ip() && popoto_driver_cfg().local().has_port()){
+        std::string ip = popoto_driver_cfg().local().ip();
+        std::string port = popoto_driver_cfg().local().port();
+
+        std::cerr << "IP: " << ip << std::endl;
+        std::cerr << "port: " << port << std::endl;
+
+        myConnection = ETHERNET_CONNECTION;
+        popoto0 =
+        new popoto_client(ip, stoi(port), Popoto0PCMHandler); //  Initialize with the IP, port and PCM callback routine.
+    }
+    else
+    {
+        myConnection = SERIAL_CONNECTION;
+    }
+
 
     glog.is(DEBUG1) && glog << group(glog_out_group()) << "PopotoDriver: Starting modem..."
                             << std::endl;
@@ -270,7 +303,6 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
     signal_and_write(raw1.str());
 
     auto goby_header = CreateGobyHeader(msg);
-    char* g_header = (char*)&goby_header;
     std::uint8_t bytes1[2] = {goby_header >> 8, goby_header & 0xff};
 
     glog.is(DEBUG1) && glog << "header bytes " << (int) bytes1[0] << " "
@@ -381,12 +413,62 @@ void goby::acomms::PopotoDriver::do_work()
 // --------------------------- Write over the wire ------------------------------------------------
 void goby::acomms::PopotoDriver::signal_and_write(const std::string& raw)
 {
-    protobuf::ModemRaw raw_msg;
-    raw_msg.set_raw(raw);
-    ModemDriverBase::signal_raw_outgoing(raw_msg);
+    std::string raw_cp = raw;
+    std::string message = raw;
 
-    glog.is(DEBUG1) && glog << group(glog_out_group()) << boost::trim_copy(raw) << std::endl;
-    ModemDriverBase::modem_write(raw);
+    if (myConnection == SERIAL_CONNECTION)
+    {
+        protobuf::ModemRaw raw_msg;
+        raw_msg.set_raw(raw);
+        ModemDriverBase::signal_raw_outgoing(raw_msg);
+
+        glog.is(DEBUG1) && glog << group(glog_out_group()) << boost::trim_copy(raw) << std::endl;
+        ModemDriverBase::modem_write(raw);
+    }
+    else if (myConnection == ETHERNET_CONNECTION)
+    {
+        size_t pos = 0;
+        std::string setvali = "setvaluei";
+        std::string setvalf = "setvaluef";
+
+        if (pos = raw.find(setvali) < strlen(raw.c_str()))
+        {
+            message = change_to_popoto_json(raw_cp, pos, setvali, "int ");
+        }
+        else if (pos = raw.find(setvalf) < strlen(raw.c_str()))
+        {
+            message = change_to_popoto_json(raw_cp, pos, setvalf, "float ");
+        }
+        else if (pos = raw.find(setvali) < strlen(raw.c_str()))
+        {
+            message = change_to_popoto_json(raw_cp, pos, setvali, "int ");
+        }
+        else if (pos = raw.find(setvalf) < strlen(raw.c_str()))
+        {
+            message = change_to_popoto_json(raw_cp, pos, setvalf, "float ");
+        }
+        std::cerr << "MSG on the wire: "<< message << "\n";
+        //popoto0->SendCommand(message); // Set the rate to 80
+    }
+}
+std::string goby::acomms::PopotoDriver::change_to_popoto_json(std::string input, size_t pos, std::string setval,
+                                                                        std::string num_type)
+{
+    size_t i = 0;
+    std::string message = input;
+
+    std::string new_raw = input.substr(0, pos+setval.length());
+    std::cerr << input << std::endl;
+    input.erase(0, pos+setval.length());
+
+    std::cerr << "input: " << input << std::endl;
+    for ( ; i < input.length(); i++ ){ if ( isdigit(input[i]) ) break; }
+    std::string number = input.substr(i, input.length() - i -1);
+    // /number.erase(std::remove(number.begin(), number.end(), '\n'), number.end());
+    input = input.erase(i, i+number.length());
+    message = "SetValue " + input + num_type + number + " 0";
+
+    return message;
 }
 
 // Converts the dccl binary to the required comma seperated bytes
@@ -567,4 +649,31 @@ void goby::acomms::PopotoDriver::DecodeGobyHeader(std::uint8_t header, std::uint
         m.set_ack_requested( header & (1 << GOBY_HEADER_ACK_REQUEST));
         m.set_frame_start( ack_num );
     }
+}
+
+void Popoto0PCMHandler(void *Pcm, int Len)
+{
+    FILE *fp = (FILE *)fpOut0;
+    popotoPCMPacket pcmPkt;
+
+    if (Len != sizeof(pcmPkt))
+        cout << "Error in PcmHandler" << endl;
+    if (fp != NULL)
+    {
+        while (popoto0->pcmInQ.size() > 0)
+        {
+            popoto0->pcmInQ.pop_front(pcmPkt);
+            fwrite((void *)&pcmPkt.Pcm[0], sizeof(float), sizeof(pcmPkt.Pcm) / sizeof(float), fp);
+        }
+    }
+    for (int i = 0; i < sizeof(pcmPkt.Pcm) / sizeof(float); i++)
+    {
+        popotoPCMPacket *p = (popotoPCMPacket *)Pcm;
+        float ftmp = p->Pcm[i] * p->Pcm[i];
+        if (ftmp < 100)
+            Eng += ftmp;
+    }
+    EngCount += sizeof(pcmPkt.Pcm) / sizeof(float);
+
+    pegCount++;
 }
