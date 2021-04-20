@@ -77,6 +77,8 @@ class PopotoDriver : public ModemDriverBase
     void DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num, protobuf::ModemTransmission& m);
     void ProcessJSON(const std::string& message,protobuf::ModemTransmission& modem_msg);
     std::string change_to_popoto_json(std::string input, size_t pos, std::string setval, std::string num_type);
+    std::string setrate_to_payload_mode(std::string setRate);
+
     const popoto::protobuf::Config& popoto_driver_cfg() const
     {
         return driver_cfg_.GetExtension(popoto::protobuf::config);
@@ -107,6 +109,15 @@ class PopotoDriver : public ModemDriverBase
         SERIAL_CONNECTION = 0,       // 0 == Data, 1 == Ack
         ETHERNET_CONNECTION = 1 // 0 == no ack requested, 1 == ack requested
     }; ConnectionType myConnection;
+
+    // Bitrates with Popoto modem: map these onto 0-5
+    std::vector<std::string> rate_to_speed{"setRate80\n",   "setRate640\n",  "setRate1280\n",
+                                           "setRate2560\n", "setRate5120\n", "setRate10240\n"};
+
+    const std::string setvali = "setvaluei";
+    const std::string setvalf = "setvaluef";
+    const std::string getvali = "getvaluei";
+    const std::string getvalf = "getvaluef";
 
 };
 } // namespace acomms

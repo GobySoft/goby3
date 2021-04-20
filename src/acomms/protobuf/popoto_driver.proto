@@ -7,15 +7,14 @@ import "goby/acomms/protobuf/driver_base.proto"; // load up message DriverBaseCo
 import "goby/acomms/protobuf/modem_message.proto";
 
 package goby.acomms.popoto.protobuf;
-
-message Config
-{
-    message ModemAddress
+message ModemAddress
     {
         required string ip = 2 [default = "127.0.0.1"];
         required string port = 3 [default = "17000"];
     }
 
+message Config
+{
     optional int32 start_timeout = 1 [
         default = 30,
         (goby.field).description =
@@ -37,7 +36,7 @@ message Config
         (goby.field).description = "Modem Tx strength 1-100W"
     ];
 
-    required ModemAddress local = 4 [(goby.field).description =
+    optional ModemAddress local = 4 [(goby.field).description =
                                      "The IP and port of the local modem "
                                      "(default port is 17000)"];
 }
