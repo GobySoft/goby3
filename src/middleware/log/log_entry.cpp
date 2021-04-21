@@ -27,7 +27,9 @@
 #include <boost/iterator/iterator_facade.hpp>    // for operator!=, iter...
 #include <boost/multi_index/sequenced_index.hpp> // for operator==
 
-#include "goby/middleware/marshalling/interface.h"  // for MarshallingScheme
+#include "goby/middleware/marshalling/interface.h" // for MarshallingScheme
+#include "goby/time/convert.h"
+#include "goby/time/types.h"
 #include "goby/util/debug_logger/flex_ostream.h"    // for operator<<, Flex...
 #include "goby/util/debug_logger/flex_ostreambuf.h" // for DEBUG1, WARN
 
@@ -35,7 +37,8 @@ enum VersionFeatures
 {
     VERSION_ADD_TYPE_GROUP_HOOKS = 2,
     VERSION_ADD_VERSION_NUMBER = 2,
-    VERSION_ADD_SCHEME_TO_GROUP_TYPE_MAPPING = 2
+    VERSION_ADD_SCHEME_TO_GROUP_TYPE_MAPPING = 2,
+    VERSION_ADD_TIMESTAMP = 3
 };
 
 using goby::middleware::log::LogEntry;
@@ -137,6 +140,8 @@ void LogEntry::parse(std::istream* s)
 
         auto size(read_one<uint<size_bytes_>::type>(s, &crc));
         decltype(size) fixed_field_size = scheme_bytes_ + group_bytes_ + type_bytes_ + crc_bytes_;
+        if (version_ >= VERSION_ADD_TIMESTAMP)
+            fixed_field_size += timestamp_bytes_;
 
         if (size < fixed_field_size)
             throw(log::LogException("Invalid size read: " + std::to_string(size) +
@@ -150,6 +155,13 @@ void LogEntry::parse(std::istream* s)
         scheme = read_one<uint<scheme_bytes_>::type>(s, &crc);
         auto group_index(read_one<uint<group_bytes_>::type>(s, &crc));
         auto type_index(read_one<uint<type_bytes_>::type>(s, &crc));
+        if (version_ >= VERSION_ADD_TIMESTAMP)
+        {
+            auto timestamp(read_one<uint<timestamp_bytes_>::type>(s, &crc));
+            glog.is(DEBUG2) && glog << "Timestamp: " << timestamp << " microseconds" << std::endl;
+            timestamp_ = goby::time::convert<decltype(timestamp_)>(
+                timestamp * boost::units::si::micro * boost::units::si::seconds);
+        }
 
         auto data_start_pos = s->tellg();
         try
@@ -354,4 +366,40 @@ void LogEntry::serialize(std::ostream* s) const
                data_.size());
 
     s->exceptions(old_except_mask);
+}
+
+void LogEntry::_serialize(std::ostream* s, uint<scheme_bytes_>::type scheme,
+                          uint<group_bytes_>::type group_index, uint<type_bytes_>::type type_index,
+                          const char* data, int data_size) const
+{
+    std::string group_str(netint_to_string(group_index));
+    std::string type_str(netint_to_string(type_index));
+    std::string scheme_str(netint_to_string(scheme));
+
+    uint<size_bytes_>::type size =
+        scheme_bytes_ + group_bytes_ + type_bytes_ + data_size + crc_bytes_;
+
+    if (version_ >= VERSION_ADD_TIMESTAMP)
+        size += timestamp_bytes_;
+
+    std::string size_str(netint_to_string(size));
+
+    auto header = magic_ + size_str + scheme_str + group_str + type_str;
+    if (version_ >= VERSION_ADD_TIMESTAMP)
+    {
+        std::uint64_t timestamp = goby::time::convert<goby::time::MicroTime>(timestamp_).value();
+        std::string timestamp_str(netint_to_string(timestamp));
+        header += timestamp_str;
+    }
+
+    s->write(header.data(), header.size());
+    s->write(data, data_size);
+
+    boost::crc_32_type crc;
+    crc.process_bytes(header.data(), header.size());
+    crc.process_bytes(data, data_size);
+
+    uint<crc_bytes_>::type cs(crc.checksum());
+    std::string cs_str(netint_to_string(cs));
+    s->write(cs_str.data(), cs_str.size());
 }

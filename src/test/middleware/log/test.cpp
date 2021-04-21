@@ -39,6 +39,8 @@ int nctd = 6;
 
 dccl::Codec codec;
 
+goby::time::SystemClock::time_point start_time{goby::time::SystemClock::now()};
+
 void read_log(int test, int version)
 {
     goby::middleware::log::ProtobufPlugin pb_plugin;
@@ -75,6 +77,9 @@ void read_log(int test, int version)
         assert(entry.group() == tempgroup);
         assert(entry.type() == TempSample::descriptor()->full_name());
 
+        if (version >= 3)
+            assert(entry.timestamp() == start_time);
+
         auto temp_samples = pb_plugin.parse_message(entry);
         assert(temp_samples.size() == 1 && temp_samples[0]);
         auto& t = dynamic_cast<TempSample&>(*temp_samples[0]);
@@ -104,6 +109,8 @@ void read_log(int test, int version)
         assert(entry.scheme() == goby::middleware::MarshallingScheme::DCCL);
         assert(entry.group() == ctdgroup);
         assert(entry.type() == CTDSample::descriptor()->full_name());
+        if (version >= 3)
+            assert(entry.timestamp() == start_time + std::chrono::seconds(1));
 
         auto ctd_samples = dccl_plugin.parse_message(entry);
         assert(ctd_samples.size() == 2 && ctd_samples[0] && ctd_samples[1]);
@@ -153,7 +160,7 @@ void write_log(int test, int version)
         std::vector<unsigned char> data(t.ByteSize());
         t.SerializeToArray(&data[0], data.size());
         LogEntry entry(data, goby::middleware::MarshallingScheme::PROTOBUF,
-                       TempSample::descriptor()->full_name(), tempgroup);
+                       TempSample::descriptor()->full_name(), tempgroup, start_time);
         entry.serialize(&out_log_file);
     }
 
@@ -232,7 +239,8 @@ void write_log(int test, int version)
 
         std::vector<unsigned char> data(encoded.begin(), encoded.end());
         LogEntry entry(data, goby::middleware::MarshallingScheme::DCCL,
-                       CTDSample::descriptor()->full_name(), ctdgroup);
+                       CTDSample::descriptor()->full_name(), ctdgroup,
+                       start_time + std::chrono::seconds(1));
         entry.serialize(&out_log_file);
         ctds.push_back(ctd1);
         ctds.push_back(ctd2);
@@ -247,7 +255,7 @@ int main(int /*argc*/, char* argv[])
     codec.load<CTDSample>();
 
     int ntests = 7;
-    int nversions = 2;
+    int nversions = 3;
 
     for (int version = 1; version <= nversions; ++version)
     {
