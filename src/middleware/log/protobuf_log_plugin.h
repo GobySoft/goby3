@@ -27,6 +27,7 @@
 #include "goby/middleware/log.h"
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
+#include "goby/time/convert.h"
 #include "log_plugin.h"
 
 namespace goby
@@ -69,6 +70,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             hdf5_entries.emplace_back();
             goby::middleware::HDF5ProtobufEntry& hdf5_entry = hdf5_entries.back();
             hdf5_entry.channel = log_entry.group();
+            hdf5_entry.time = goby::time::convert<decltype(hdf5_entry.time)>(log_entry.timestamp());
             hdf5_entry.msg = msg;
         }
         return hdf5_entries;

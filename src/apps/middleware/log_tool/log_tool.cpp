@@ -175,7 +175,10 @@ goby::apps::middleware::LogTool::LogTool()
                     {
                         auto debug_text_msg = plugin->second->debug_text_message(log_entry);
                         f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
-                               << log_entry.type() << " | " << debug_text_msg << std::endl;
+                               << log_entry.type() << " | "
+                               << goby::time::convert<boost::posix_time::ptime>(
+                                      log_entry.timestamp())
+                               << " | " << debug_text_msg << std::endl;
                         break;
                     }
                     case protobuf::LogToolConfig::HDF5: {
