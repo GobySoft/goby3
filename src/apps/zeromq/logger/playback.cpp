@@ -47,8 +47,12 @@ class Playback : public goby::zeromq::SingleThreadApplication<protobuf::Playback
           playback_start_(goby::time::SystemClock::now() +
                           goby::time::convert_duration<goby::time::SystemClock::duration>(
                               cfg().playback_start_delay_with_units())),
-          group_regex_(cfg().group_regex())
+          group_regex_(cfg().group_regex()),
+          internal_group_regex_("goby::zeromq::_internal_.*")
     {
+        for (auto filter : cfg().type_filter())
+            type_regex_.insert(std::make_pair(filter.scheme(), filter.regex()));
+
         for (const auto& lib : cfg().load_shared_library())
         {
             void* lib_handle = dlopen(lib.c_str(), RTLD_LAZY);
@@ -123,7 +127,31 @@ class Playback : public goby::zeromq::SingleThreadApplication<protobuf::Playback
 
     bool is_filtered()
     {
+        std::string group = next_log_entry_.group();
+        bool internal_group_is_filtered = std::regex_match(group, internal_group_regex_);
+
         // check regex and type_filters
+        bool group_is_filtered = true;
+        if (std::regex_match(group, group_regex_))
+            group_is_filtered = false;
+
+        bool type_is_filtered = true;
+        if (!type_regex_.empty())
+        {
+            auto it_p = type_regex_.equal_range(next_log_entry_.scheme());
+            for (auto it = it_p.first; it != it_p.second; ++it)
+            {
+                if (std::regex_match(next_log_entry_.type(), it->second))
+                    type_is_filtered = false;
+            }
+        }
+        else
+        {
+            // if no type_filters are set, allow all messages
+            type_is_filtered = false;
+        }
+
+        return internal_group_is_filtered || group_is_filtered || type_is_filtered;
     }
 
   private:
@@ -141,6 +169,8 @@ class Playback : public goby::zeromq::SingleThreadApplication<protobuf::Playback
     goby::time::SystemClock::time_point playback_start_;
 
     std::regex group_regex_;
+    std::regex internal_group_regex_;
+    std::multimap<int, std::regex> type_regex_;
 };
 } // namespace zeromq
 } // namespace apps

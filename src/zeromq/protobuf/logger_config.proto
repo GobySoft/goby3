@@ -35,11 +35,11 @@ message PlaybackConfig
     optional double playback_start_delay = 12
         [default = 1, (dccl.field).units.base_dimensions = "T"];
 
-    optional string group_regex = 20;
+    optional string group_regex = 20 [default = ".*"];
     message TypeFilter
     {
         required int32 scheme = 1;
-        optional string type_regex = 2;
+        optional string regex = 2 [default = ".*"];
     }
     repeated TypeFilter type_filter = 21;
 
