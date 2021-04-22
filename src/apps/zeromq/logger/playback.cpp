@@ -85,16 +85,26 @@ class Playback : public goby::zeromq::SingleThreadApplication<protobuf::Playback
             // playback the entry
             if (!is_filtered())
             {
-                std::cout << "Playing back: " << next_log_entry_.scheme() << " | "
-                          << next_log_entry_.group() << " | " << next_log_entry_.type() << " | "
-                          << goby::time::convert<boost::posix_time::ptime>(
-                                 next_log_entry_.timestamp())
-                          << std::endl;
+                glog.is_verbose() && glog << "Playing back: " << next_log_entry_.scheme() << " | "
+                                          << next_log_entry_.group() << " | "
+                                          << next_log_entry_.type() << " | "
+                                          << goby::time::convert<boost::posix_time::ptime>(
+                                                 next_log_entry_.timestamp())
+                                          << std::endl;
+
+                std::vector<char> data(next_log_entry_.data().begin(),
+                                       next_log_entry_.data().end());
+
+                interprocess().publish_serialized(next_log_entry_.type(), next_log_entry_.scheme(),
+                                                  data, next_log_entry_.group());
             }
 
             // read the next entry
             read_next_entry();
         }
+
+        if (do_quit_)
+            quit();
     }
 
     void read_next_entry()
@@ -112,12 +122,17 @@ class Playback : public goby::zeromq::SingleThreadApplication<protobuf::Playback
         {
             if (!f_in_.eof())
                 glog.is_warn() && glog << "Error processing input log: " << e.what() << std::endl;
-            quit();
+            else
+                glog.is_verbose() && glog << "Reached EOF" << std::endl;
+            do_quit_ = true;
         }
     }
 
     bool is_time_to_publish()
     {
+        if (do_quit_)
+            return false;
+
         auto now = goby::time::SystemClock::now();
         auto dt_log = next_log_entry_.timestamp() - log_start_;
         auto dt_wall = now - playback_start_;
@@ -171,6 +186,8 @@ class Playback : public goby::zeromq::SingleThreadApplication<protobuf::Playback
     std::regex group_regex_;
     std::regex internal_group_regex_;
     std::multimap<int, std::regex> type_regex_;
+
+    bool do_quit_{false};
 };
 } // namespace zeromq
 } // namespace apps
