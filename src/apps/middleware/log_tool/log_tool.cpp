@@ -37,6 +37,7 @@
 #include "goby/middleware/application/interface.h"            // for run
 #include "goby/middleware/group.h"                            // for operat...
 #include "goby/middleware/log/dccl_log_plugin.h"              // for DCCLPl...
+#include "goby/middleware/log/json_log_plugin.h"
 #include "goby/middleware/log/log_entry.h"                    // for LogEntry
 #include "goby/middleware/log/log_plugin.h"                   // for LogPlugin
 #include "goby/middleware/marshalling/interface.h"            // for Marsha...
@@ -153,6 +154,8 @@ goby::apps::middleware::LogTool::LogTool()
         std::make_unique<goby::middleware::log::ProtobufPlugin>();
     plugins_[goby::middleware::MarshallingScheme::DCCL] =
         std::make_unique<goby::middleware::log::DCCLPlugin>();
+    plugins_[goby::middleware::MarshallingScheme::JSON] =
+        std::make_unique<goby::middleware::log::JSONPlugin>();
 
     for (auto& p : plugins_) p.second->register_read_hooks(f_in_);
 

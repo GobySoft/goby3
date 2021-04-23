@@ -137,7 +137,7 @@ class Playback : public goby::zeromq::SingleThreadApplication<protobuf::Playback
         auto dt_log = next_log_entry_.timestamp() - log_start_;
         auto dt_wall = now - playback_start_;
         // as much wall time has elapsed (modified by rate) as log time
-        return (dt_wall * cfg().rate()) >= dt_log;
+        return (dt_wall * cfg().rate()) >= (dt_log * cfg().app().simulation().time().warp_factor());
     }
 
     bool is_filtered()
