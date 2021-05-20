@@ -79,6 +79,10 @@ OS_RELEASE_FILE=/etc/os-release
 # detect distro ID (e.g. "debian")
 OS_ID=$(egrep "^ID=" ${OS_RELEASE_FILE} | cut -d = -f 2)
 
+if [[ "$OS_ID" == raspbian ]]; then
+   OS_ID=debian
+fi
+
 case $OS_ID in
     ubuntu)
         RELEASE_CODENAME=$(egrep "^VERSION_CODENAME=" ${OS_RELEASE_FILE} | cut -d = -f 2)
