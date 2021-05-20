@@ -102,3 +102,21 @@ BOOST_AUTO_TEST_CASE(gps_rmc)
     BOOST_CHECK_EQUAL(rmc, rmc2);
     std::cout << rmc2.serialize().message() << std::endl;
 }
+
+BOOST_AUTO_TEST_CASE(gps_hdt)
+{
+    std::string orig = "$GPHDT,75.5664,T*36";
+    goby::util::NMEASentence nmea_in(orig);
+    goby::util::gps::HDT hdt(nmea_in);
+    BOOST_CHECK(close_enough(hdt.true_heading->value(), 75.5664, 4));
+
+    auto nmea = hdt.serialize();
+
+    std::cout << orig << std::endl;
+    std::cout << nmea.message() << std::endl;
+
+    // reparse output and check equality
+    goby::util::gps::HDT hdt2(nmea);
+    BOOST_CHECK_EQUAL(hdt, hdt2);
+    std::cout << hdt2.serialize().message() << std::endl;
+}

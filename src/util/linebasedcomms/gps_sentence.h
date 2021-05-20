@@ -88,6 +88,37 @@ std::ostream& operator<<(std::ostream& os, const RMC& rmc)
     return (os << rmc.serialize().message());
 }
 
+struct HDT
+{
+  public:
+    HDT() = default;
+
+    HDT(const NMEASentence& sentence) { parse(sentence); }
+
+    void parse(const NMEASentence& sentence);
+    NMEASentence serialize(std::string talker_id = "GP") const;
+
+    boost::optional<boost::units::quantity<boost::units::degree::plane_angle>> true_heading;
+
+    enum Fields
+    {
+        HEADING = 1,
+        T = 2
+    };
+    constexpr static int min_size = HEADING + 1; // HEADING + talker
+    constexpr static int size = T + 1;
+};
+
+bool operator==(const HDT& hdt1, const HDT& hdt2)
+{
+    return hdt1.serialize().message() == hdt2.serialize().message();
+}
+
+std::ostream& operator<<(std::ostream& os, const HDT& hdt)
+{
+    return (os << hdt.serialize().message());
+}
+
 } // namespace gps
 } // namespace util
 } // namespace goby

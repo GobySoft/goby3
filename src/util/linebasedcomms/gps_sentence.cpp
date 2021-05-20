@@ -142,3 +142,30 @@ goby::util::NMEASentence goby::util::gps::RMC::serialize(std::string talker_id,
 
     return nmea;
 }
+
+void goby::util::gps::HDT::parse(const NMEASentence& sentence)
+{
+    if (sentence.size() >= min_size)
+    {
+        if (!sentence.at(HEADING).empty())
+            true_heading = sentence.as<double>(HEADING) * boost::units::degree::degree;
+    }
+}
+
+goby::util::NMEASentence goby::util::gps::HDT::serialize(std::string talker_id) const
+{
+    goby::util::NMEASentence nmea("$" + talker_id + "HDT", goby::util::NMEASentence::IGNORE);
+    nmea.resize(size);
+    nmea[T] = "T";
+    if (true_heading)
+    {
+        boost::units::quantity<boost::units::degree::plane_angle> wrapped_heading = *true_heading;
+        decltype(wrapped_heading) one_rev = 360.0 * boost::units::degree::degrees;
+        while (wrapped_heading < 0.0 * boost::units::degree::degrees) wrapped_heading += one_rev;
+        while (wrapped_heading >= one_rev) wrapped_heading -= one_rev;
+
+        nmea[HEADING] = boost::str(boost::format("%3.4f") % wrapped_heading.value());
+    }
+
+    return nmea;
+}
