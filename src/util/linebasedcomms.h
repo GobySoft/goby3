@@ -27,6 +27,7 @@
 #ifndef GOBY_UTIL_LINEBASEDCOMMS_H
 #define GOBY_UTIL_LINEBASEDCOMMS_H
 
+#include "goby/util/linebasedcomms/gps_sentence.h"
 #include "goby/util/linebasedcomms/nmea_sentence.h"
 #include "goby/util/linebasedcomms/serial_client.h"
 #include "goby/util/linebasedcomms/tcp_client.h"

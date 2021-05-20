@@ -8,6 +8,7 @@ set(UTIL_SRC
   util/base_convert.cpp
   util/linebasedcomms/interface.cpp
   util/linebasedcomms/nmea_sentence.cpp
+  util/linebasedcomms/gps_sentence.cpp
   util/linebasedcomms/serial_client.cpp
   util/linebasedcomms/tcp_client.cpp
   util/linebasedcomms/tcp_server.cpp
