@@ -18,6 +18,8 @@ message LatLonPoint
 
     optional double depth = 3
         [default = 0, (dccl.field) = {units {derived_dimensions: "length"}}];
+    optional double altitude = 4
+        [(dccl.field).units.derived_dimensions = "length", default = nan];
 }
 
 // protobuf contents of $GPWPL message

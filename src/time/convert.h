@@ -57,17 +57,16 @@ ToTimeType convert(FromTimeType from_time)
 /// \tparam FromTimeType The type of the input time
 /// \param from_time Time to convert
 /// \return Converted time
-template <
-    typename ToTimeType, typename FromTimeType,
-    typename ToUnitType = typename ToTimeType::unit_type,
-    typename ToValueType = typename ToTimeType::value_type,
-    typename FromUnitType = typename FromTimeType::unit_type,
-    typename FromValueType = typename FromTimeType::value_type,
-    typename std::enable_if<
-        !std::is_same<ToTimeType, FromTimeType>{} &&
-            std::is_same<ToTimeType, boost::units::quantity<ToUnitType, ToValueType> >{} &&
-            std::is_same<FromTimeType, boost::units::quantity<FromUnitType, FromValueType> >{},
-        int>::type = 0>
+template <typename ToTimeType, typename FromTimeType,
+          typename ToUnitType = typename ToTimeType::unit_type,
+          typename ToValueType = typename ToTimeType::value_type,
+          typename FromUnitType = typename FromTimeType::unit_type,
+          typename FromValueType = typename FromTimeType::value_type,
+          typename std::enable_if<
+              !std::is_same<ToTimeType, FromTimeType>{} &&
+                  std::is_same<ToTimeType, boost::units::quantity<ToUnitType, ToValueType>>{} &&
+                  std::is_same<FromTimeType, boost::units::quantity<FromUnitType, FromValueType>>{},
+              int>::type = 0>
 ToTimeType convert(FromTimeType from_time)
 {
     return ToTimeType(from_time);
@@ -83,7 +82,7 @@ template <typename ToTimeType, typename FromTimeType,
           typename ToUnitType = typename ToTimeType::unit_type,
           typename ToValueType = typename ToTimeType::value_type,
           typename std::enable_if<
-              std::is_same<ToTimeType, boost::units::quantity<ToUnitType, ToValueType> >{} &&
+              std::is_same<ToTimeType, boost::units::quantity<ToUnitType, ToValueType>>{} &&
                   (std::is_same<FromTimeType, SystemClock::time_point>{} ||
                    std::is_same<FromTimeType, std::chrono::system_clock::time_point>{}),
               int>::type = 0>
@@ -103,15 +102,14 @@ ToTimeType convert(FromTimeType from_time)
 /// \tparam FromTimeType The type of the input time
 /// \param from_time Time to convert
 /// \return Converted time
-template <
-    typename ToTimeType, typename FromTimeType,
-    typename FromUnitType = typename FromTimeType::unit_type,
-    typename FromValueType = typename FromTimeType::value_type,
-    typename std::enable_if<
-        (std::is_same<ToTimeType, SystemClock::time_point>{} ||
-         std::is_same<ToTimeType, std::chrono::system_clock::time_point>{}) &&
-            std::is_same<FromTimeType, boost::units::quantity<FromUnitType, FromValueType> >{},
-        int>::type = 0>
+template <typename ToTimeType, typename FromTimeType,
+          typename FromUnitType = typename FromTimeType::unit_type,
+          typename FromValueType = typename FromTimeType::value_type,
+          typename std::enable_if<
+              (std::is_same<ToTimeType, SystemClock::time_point>{} ||
+               std::is_same<ToTimeType, std::chrono::system_clock::time_point>{}) &&
+                  std::is_same<FromTimeType, boost::units::quantity<FromUnitType, FromValueType>>{},
+              int>::type = 0>
 ToTimeType convert(FromTimeType from_time)
 {
     std::int64_t microsecs_since_epoch = MicroTime(from_time).value();
@@ -236,8 +234,8 @@ template <
     typename FromValueType = typename FromDurationType::value_type,
     typename std::enable_if<
         !std::is_same<ToDurationType, FromDurationType>{} &&
-            std::is_same<ToDurationType, boost::units::quantity<ToUnitType, ToValueType> >{} &&
-            std::is_same<FromDurationType, boost::units::quantity<FromUnitType, FromValueType> >{},
+            std::is_same<ToDurationType, boost::units::quantity<ToUnitType, ToValueType>>{} &&
+            std::is_same<FromDurationType, boost::units::quantity<FromUnitType, FromValueType>>{},
         int>::type = 0>
 ToDurationType convert_duration(FromDurationType from_duration)
 {
@@ -258,8 +256,8 @@ template <
     typename FromPeriodType = typename FromDurationType::period,
     typename std::enable_if<
         !std::is_same<ToDurationType, FromDurationType>{} &&
-            std::is_same<ToDurationType, boost::units::quantity<ToUnitType, ToValueType> >{} &&
-            std::is_same<FromDurationType, std::chrono::duration<FromRepType, FromPeriodType> >{},
+            std::is_same<ToDurationType, boost::units::quantity<ToUnitType, ToValueType>>{} &&
+            std::is_same<FromDurationType, std::chrono::duration<FromRepType, FromPeriodType>>{},
         int>::type = 0>
 ToDurationType convert_duration(FromDurationType from_duration)
 {
@@ -281,8 +279,8 @@ template <
     typename FromValueType = typename FromDurationType::value_type,
     typename std::enable_if<
         !std::is_same<ToDurationType, FromDurationType>{} &&
-            std::is_same<ToDurationType, std::chrono::duration<ToRepType, ToPeriodType> >{} &&
-            std::is_same<FromDurationType, boost::units::quantity<FromUnitType, FromValueType> >{},
+            std::is_same<ToDurationType, std::chrono::duration<ToRepType, ToPeriodType>>{} &&
+            std::is_same<FromDurationType, boost::units::quantity<FromUnitType, FromValueType>>{},
         int>::type = 0>
 ToDurationType convert_duration(FromDurationType from_duration)
 {
@@ -294,33 +292,33 @@ ToDurationType convert_duration(FromDurationType from_duration)
 /// \brief Convert from NMEA0183 time representations (i.e. "HHMMSS[.SSSS]") to any time format supported by the goby::time::convert function family. This function assumes the time is from the current day.
 ///
 /// \tparam ToTimeType The type of the returned (converted) time
-/// \param mt NMEA0183 time of day as string (e.g. "124511" or "12.4511.1234" with variable fractional seconds up and including microsecond precision
+/// \param utc NMEA0183 time of day as string (e.g. "124511" or "124511.1234" with variable fractional seconds up and including microsecond precision
 /// \param return_date Date assigned to the input time when returned as a time point (defaults to the current day in UTC)
 /// \return Converted time
 template <typename ToTimeType>
 ToTimeType
-convert_from_nmea(const std::string& mt,
+convert_from_nmea(const std::string& utc,
                   boost::gregorian::date return_date = boost::gregorian::day_clock::universal_day())
 {
     using namespace boost::posix_time;
     using namespace boost::gregorian;
 
-    std::string::size_type dot_pos = mt.find('.');
+    std::string::size_type dot_pos = utc.find('.');
 
     // must be at least HHMMSS
-    if (mt.length() < 6)
+    if (utc.length() < 6)
         return convert<ToTimeType>(ptime(not_a_date_time));
     else
     {
         std::string s_fs = "0";
         // has some fractional seconds
         if (dot_pos != std::string::npos)
-            s_fs = mt.substr(dot_pos + 1); // everything after the "."
+            s_fs = utc.substr(dot_pos + 1); // everything after the "."
         else
-            dot_pos = mt.size();
+            dot_pos = utc.size();
 
-        std::string s_hour = mt.substr(dot_pos - 6, 2), s_min = mt.substr(dot_pos - 4, 2),
-                    s_sec = mt.substr(dot_pos - 2, 2);
+        std::string s_hour = utc.substr(dot_pos - 6, 2), s_min = utc.substr(dot_pos - 4, 2),
+                    s_sec = utc.substr(dot_pos - 2, 2);
 
         try
         {
@@ -333,6 +331,43 @@ convert_from_nmea(const std::string& mt,
                 boost::posix_time::time_duration(hour, min, sec, 0) + microseconds(micro_sec));
             boost::posix_time::ptime return_time(return_date, return_duration);
             return convert<ToTimeType>(return_time);
+        }
+        catch (boost::bad_lexical_cast&)
+        {
+            return convert<ToTimeType>(ptime(not_a_date_time));
+        }
+    }
+}
+
+/// \brief Convert from NMEA0183 time representations (i.e. "HHMMSS[.SSSS]") to any time format supported by the goby::time::convert function family. This function assumes the time is from the current day.
+///
+/// \tparam ToTimeType The type of the returned (converted) time
+/// \param utc NMEA0183 time of day as string (e.g. "124511" or "124511.1234" with variable fractional seconds up and including microsecond precision
+/// \param date NMEA0183 date as string (e.g. "120120" for December 01, 2020)
+/// \return Converted time
+template <typename ToTimeType>
+ToTimeType convert_from_nmea(const std::string& utc, const std::string& date)
+{
+    using namespace boost::posix_time;
+    using namespace boost::gregorian;
+    if (date.length() != 6)
+        return convert<ToTimeType>(ptime(not_a_date_time));
+    else
+    {
+        try
+        {
+            int day = boost::lexical_cast<int>(date.substr(0, 2));
+            int month = boost::lexical_cast<int>(date.substr(2, 2));
+            int year = boost::lexical_cast<int>(date.substr(4, 2));
+
+            // year that GPS was started
+            if (year >= 78)
+                year += 1900;
+            else
+                year += 2000;
+
+            boost::gregorian::date d(year, month, day);
+            return convert_from_nmea<ToTimeType>(utc, d);
         }
         catch (boost::bad_lexical_cast&)
         {
