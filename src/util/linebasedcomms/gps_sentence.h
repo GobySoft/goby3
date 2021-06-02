@@ -78,12 +78,12 @@ struct RMC
     constexpr static int min_size = MAG_VARIATION_EW + 1; // MAG_VARIATION_EW + talker
 };
 
-bool operator==(const RMC& rmc1, const RMC& rmc2)
+inline bool operator==(const RMC& rmc1, const RMC& rmc2)
 {
     return rmc1.serialize().message() == rmc2.serialize().message();
 }
 
-std::ostream& operator<<(std::ostream& os, const RMC& rmc)
+inline std::ostream& operator<<(std::ostream& os, const RMC& rmc)
 {
     return (os << rmc.serialize().message());
 }
@@ -109,12 +109,12 @@ struct HDT
     constexpr static int size = T + 1;
 };
 
-bool operator==(const HDT& hdt1, const HDT& hdt2)
+inline bool operator==(const HDT& hdt1, const HDT& hdt2)
 {
     return hdt1.serialize().message() == hdt2.serialize().message();
 }
 
-std::ostream& operator<<(std::ostream& os, const HDT& hdt)
+inline std::ostream& operator<<(std::ostream& os, const HDT& hdt)
 {
     return (os << hdt.serialize().message());
 }
