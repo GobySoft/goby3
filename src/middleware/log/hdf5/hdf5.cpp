@@ -381,16 +381,18 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
     std::vector<char> data_char;
     std::vector<hsize_t> hs = hs_outer;
 
+    std::vector<std::uint32_t> sizes;
     size_t max_size = 0;
     for (const auto& i : data)
     {
+        sizes.push_back(i.size());
         if (i.size() > max_size)
             max_size = i.size();
     }
 
     for (auto d : data)
     {
-        d.resize(max_size, ' ');
+        d.resize(max_size, '\0');
         for (char c : d) data_char.push_back(c);
     }
     hs.push_back(max_size);
@@ -401,6 +403,8 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
 
     if (data_char.size())
         dataset.write(&data_char[0], H5::PredType::NATIVE_CHAR);
+
+    write_vector(group, dataset_name + "_size", sizes, hs_outer, std::uint32_t(0));
 
     const int rank = 1;
     hsize_t att_hs[] = {1};
