@@ -646,3 +646,32 @@ BOOST_FIXTURE_TEST_CASE(two_destination_contest, goby::test::MultiIDDynamicBuffe
         BOOST_CHECK_EQUAL(buffer.size(), 1);
     }
 }
+
+BOOST_AUTO_TEST_CASE(check_infinity)
+{
+    auto now = TestClock::now();
+
+    goby::acomms::protobuf::DynamicBufferConfig cfg1;
+    cfg1.set_ack_required(false);
+    cfg1.set_ttl(std::numeric_limits<double>::infinity());
+    cfg1.set_value_base(std::numeric_limits<double>::infinity());
+    cfg1.set_max_queue(5);
+
+    goby::acomms::protobuf::DynamicBufferConfig cfg2;
+    cfg2.set_ack_required(false);
+    cfg2.set_ttl(std::numeric_limits<double>::infinity());
+    cfg2.set_value_base(100);
+    cfg2.set_max_queue(5);
+
+    goby::acomms::DynamicBuffer<std::string, TestClock> buffer;
+    buffer.create(1, "A", cfg1);
+    buffer.create(2, "B", cfg2);
+
+    buffer.push({1, "A", now, "1"});
+    buffer.push({2, "B", now, "2"});
+    TestClock::increment(std::chrono::milliseconds(1));
+
+    BOOST_CHECK_EQUAL(buffer.sub(1, "A").top_value().first,
+                      std::numeric_limits<double>::infinity());
+    BOOST_CHECK_EQUAL(buffer.sub(2, "B").top_value().first, 0);
+}

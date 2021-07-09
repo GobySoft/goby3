@@ -225,12 +225,22 @@ void goby::middleware::intervehicle::ModemDriverThread::_forward_subscription(
                 std::result_of<decltype (&goby::acomms::protobuf::DynamicBufferConfig::value_base)(
                     goby::acomms::protobuf::DynamicBufferConfig)>::type;
 
-            // set subscriptions to maximum value
+            // set subscriptions to maximum value if not otherwise set
             if (!subscription_buffer_cfg.has_value_base())
                 subscription_buffer_cfg.set_value_base(
                     std::numeric_limits<value_base_type>::has_infinity
                         ? std::numeric_limits<value_base_type>::infinity()
                         : std::numeric_limits<value_base_type>::max());
+
+            using ttl_type =
+                std::result_of<decltype (&goby::acomms::protobuf::DynamicBufferConfig::ttl)(
+                    goby::acomms::protobuf::DynamicBufferConfig)>::type;
+
+            // set subscriptions to infinite time to live if not otherwise set
+            if (!subscription_buffer_cfg.has_ttl())
+                subscription_buffer_cfg.set_ttl(std::numeric_limits<ttl_type>::has_infinity
+                                                    ? std::numeric_limits<ttl_type>::infinity()
+                                                    : std::numeric_limits<ttl_type>::max());
 
             buffer_.create(dest, buffer_id, subscription_buffer_cfg);
             subscription_subbuffers_.insert(dest);

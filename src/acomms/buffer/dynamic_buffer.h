@@ -219,9 +219,19 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
 
         double dt = std::chrono::duration_cast<Duration>(reference - last_access_).count();
         double ttl = goby::time::convert_duration<Duration>(cfg_.ttl_with_units()).count();
+        if (std::isinf(cfg_.ttl()))
+            ttl = cfg_.ttl();
+
         double v_b = cfg_.value_base();
 
-        double v = v_b * dt / ttl;
+        double v = std::numeric_limits<double>::quiet_NaN();
+
+        // special case where ttl and value base are both infinity, set value to infinity
+        if (std::isinf(cfg_.ttl()) && std::isinf(cfg_.value_base()))
+            v = std::numeric_limits<double>::infinity();
+        else
+            v = v_b * dt / ttl;
+
         return std::make_pair(v, ValueResult::VALUE_PROVIDED);
     }
 
