@@ -60,7 +60,7 @@ class DecoderException : public std::runtime_error
 class Decoder
 {
   public:
-    Decoder();
+    Decoder() {}
     Decoder(const NMEASentence& nmea) : Decoder(std::vector<NMEASentence>(1, nmea)) {}
     Decoder(const std::vector<NMEASentence>& nmeas);
 
