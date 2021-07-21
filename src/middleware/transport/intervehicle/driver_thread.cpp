@@ -63,6 +63,63 @@ using goby::glog;
 using namespace goby::util::logger;
 using goby::middleware::protobuf::SerializerTransporterMessage;
 
+std::map<std::string, void*> load_plugins()
+{
+    std::map<std::string, void*> driver_plugins;
+
+    // load plugins from environmental variable
+    std::string s_plugins;
+    char* legacy_plugins = getenv("PACOMMSHANDLER_PLUGINS");
+    if (legacy_plugins)
+        s_plugins = std::string(legacy_plugins);
+
+    char* plugins = getenv("GOBY_MODEMDRIVER_PLUGINS");
+    if (plugins)
+    {
+        if (!s_plugins.empty())
+            s_plugins += ";";
+        s_plugins += std::string(plugins);
+    }
+
+    if (!s_plugins.empty())
+    {
+        std::vector<std::string> plugin_vec;
+        boost::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
+
+        for (auto& i : plugin_vec)
+        {
+            std::vector<void*> plugin_handles_;
+
+            std::cout << "Loading ModemDriver plugin library: " << i << std::endl;
+            void* handle = dlopen(i.c_str(), RTLD_LAZY);
+
+            if (handle)
+                plugin_handles_.push_back(handle);
+            else
+            {
+                std::cerr << "Failed to open library: " << i << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            const auto name_function = (const char* (*)(void))dlsym(handle, "goby_driver_name");
+            if (name_function)
+            {
+                driver_plugins.insert(std::make_pair(std::string((*name_function)()), handle));
+            }
+            else
+            {
+                std::cerr << "Library must define \"goby_driver_name()\" as extern \"C\":" << i
+                          << std::endl;
+            }
+        }
+    }
+
+    return driver_plugins;
+}
+
+std::map<std::string, void*>
+    goby::middleware::intervehicle::ModemDriverThread::driver_plugins_(load_plugins());
+
 goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     const intervehicle::protobuf::PortalConfig::LinkConfig& config)
     : goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
@@ -96,8 +153,31 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
 
     if (cfg().driver().has_driver_name())
     {
-        throw(goby::Exception("Driver plugins not yet supported by InterVehicle transporters: use "
-                              "driver_type enumerations."));
+        std::map<std::string, void*>::const_iterator driver_it =
+            driver_plugins_.find(cfg().driver().driver_name());
+
+        if (driver_it == driver_plugins_.end())
+            glog.is_die() && glog << "Could not find driver_plugin_name '"
+                                  << cfg().driver().driver_name()
+                                  << "'. Make sure it is loaded using the GOBY_MODEMDRIVER_PLUGINS "
+                                     "environmental var"
+                                  << std::endl;
+        else
+        {
+            auto driver_function = (goby::acomms::ModemDriverBase * (*)(void))
+                dlsym(driver_it->second, "goby_make_driver");
+
+            if (!driver_function)
+            {
+                glog.is(DIE) && glog << "Could not load goby::acomms::ModemDriverBase* "
+                                        "goby_make_driver() for driver name '"
+                                     << cfg().driver().driver_name() << "'." << std::endl;
+            }
+            else
+            {
+                driver_.reset((*driver_function)());
+            }
+        }
     }
     else
     {
