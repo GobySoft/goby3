@@ -4,6 +4,7 @@ import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/amac_config.proto";
 import "goby/acomms/protobuf/buffer.proto";
+import "goby/acomms/protobuf/modem_message.proto";
 import "goby/middleware/protobuf/intervehicle_transporter_config.proto";
 import "goby/middleware/protobuf/serializer_transporter.proto";
 
@@ -97,6 +98,7 @@ message Header
 {
     required int32 src = 1 [(dccl.field) = {min: 0 max: 65535}];
     repeated int32 dest = 2 [(dccl.field) = {min: 0 max: 65535 max_repeat: 4}];
+    optional goby.acomms.protobuf.ModemTransmission modem_msg = 10 [(dccl.field).omit = true];
 }
 
 message DCCLPacket
@@ -109,7 +111,8 @@ message DCCLPacket
 // IDs loaded
 message DCCLForwardedData
 {
-    repeated DCCLPacket frame = 1;
+    required Header header = 1;
+    repeated DCCLPacket frame = 2;
 }
 
 message AckData
