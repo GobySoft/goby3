@@ -310,7 +310,13 @@ class InterProcessForwarder
                     std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage>
                         msg) { _receive_regex_data_forwarded(msg); });
     }
-    virtual ~InterProcessForwarder() { this->unsubscribe_all(); }
+    virtual ~InterProcessForwarder()
+    {
+        this->unsubscribe_all();
+
+        // TODO - remove by adding in an explicit handshake with the unsubscribe_all publication so that we don't delete ourself (and thus our inner()) before the Portal has deleted all the subscriptions
+        usleep(1e5);
+    }
 
     friend Base;
 

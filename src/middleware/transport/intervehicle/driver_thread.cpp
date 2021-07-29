@@ -600,8 +600,11 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
         {
             for (auto& frame : rx_msg.frame())
             {
-                const intervehicle::protobuf::DCCLForwardedData packets(
+                intervehicle::protobuf::DCCLForwardedData packets(
                     detail::DCCLSerializerParserHelperBase::unpack(frame));
+                packets.mutable_header()->set_src(full_src);
+                packets.mutable_header()->add_dest(full_dest);
+                *packets.mutable_header()->mutable_modem_msg() = rx_msg;
                 interprocess_->publish<groups::modem_data_in>(packets);
             }
         }
