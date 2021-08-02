@@ -179,7 +179,7 @@ void goby::apps::moos::iFrontSeat::handle_lat_origin(const CMOOSMsg& msg)
    }
 }
 
-void goby::apps::moos::iFrontSeat::::handle_lon_origin(const CMOOSMsg& msg)
+void goby::apps::moos::iFrontSeat::handle_lon_origin(const CMOOSMsg& msg)
 {
  double new_lon = msg.GetDouble();
  if (!isnan(new_lon))
@@ -194,8 +194,8 @@ void goby::apps::moos::iFrontSeat::loop()
 {
   if (new_origin_)
     {
-      update_utm_datum(lat_origin_,lon_origin_);
-      new_origin_ = false;
+        frontseat_->update_utm_datum(lat_origin_, lon_origin_);
+        new_origin_ = false;
     }
     frontseat_->do_work();
 
