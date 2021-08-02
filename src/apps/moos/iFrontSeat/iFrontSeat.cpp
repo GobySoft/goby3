@@ -161,10 +161,42 @@ goby::apps::moos::iFrontSeat::iFrontSeat()
 
     register_timer(cfg_.frontseat_cfg().status_period(),
                    boost::bind(&iFrontSeat::status_loop, this));
+
+    // Dynamic UTM. H. Schmidt 7/30/21
+    new_origin_ = false;
+    subscribe("LAT_ORIGIN", &iFrontSeat::handle_lat_origin, this);
+    subscribe("LONG_ORIGIN", &iFrontSeat::handle_lon_origin, this);
+
 }
+
+void goby::apps::moos::iFrontSeat::handle_lat_origin(const CMOOSMsg& msg)
+{
+ double new_lat = msg.GetDouble();
+ if (!isnan(new_lat))
+   {
+     lat_origin_ = new_lat;
+     new_origin_ = true;
+   }
+}
+
+void goby::apps::moos::iFrontSeat::::handle_lon_origin(const CMOOSMsg& msg)
+{
+ double new_lon = msg.GetDouble();
+ if (!isnan(new_lon))
+   {
+     lon_origin_ = new_lon;
+     new_origin_ = true;
+   }
+}
+
 
 void goby::apps::moos::iFrontSeat::loop()
 {
+  if (new_origin_)
+    {
+      update_utm_datum(lat_origin_,lon_origin_);
+      new_origin_ = false;
+    }
     frontseat_->do_work();
 
     if (cfg_.frontseat_cfg().exit_on_error() && (frontseat_->state() == gpb::INTERFACE_FS_ERROR ||

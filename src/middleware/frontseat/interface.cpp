@@ -322,3 +322,14 @@ void goby::middleware::frontseat::InterfaceBase::compute_missing(gpb::NodeStatus
         status->mutable_local_fix()->set_y_with_units(xy.y);
     }
 }
+
+void goby::middleware::frontseat::InterfaceBase::update_utm_datum(double lat_origin,
+								  double lon_origin)
+{
+  boost::units::quantity<boost::units::degree::plane_angle> lat =
+    lat_origin;
+  boost::units::quantity<boost::units::degree::plane_angle> lon =
+    lon_origin;
+  
+  geodesy_.reset(new goby::util::UTMGeodesy({lat, lon});
+}

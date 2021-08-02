@@ -104,6 +104,9 @@ class InterfaceBase
     void compute_missing(protobuf::CTDSample* ctd_sample);
     void compute_missing(protobuf::NodeStatus* status);
 
+    // Dynamic UTM update
+    void update_utm_datum(double lat_origin, double lon_origin);
+
     friend class goby::apps::moos::FrontSeatLegacyTranslator; // to access the signal_state_change
   private:
     void check_error_states();
@@ -131,6 +134,7 @@ class InterfaceBase
 
     std::unique_ptr<goby::util::UTMGeodesy> geodesy_;
 
+    
     std::string glog_out_group_, glog_in_group_;
 };
 } // namespace frontseat
