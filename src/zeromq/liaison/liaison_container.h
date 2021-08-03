@@ -65,7 +65,10 @@ class LiaisonContainer : public Wt::WContainerWidget
         /* addWidget(new Wt::WText("<hr/>")); */
     }
 
-    virtual ~LiaisonContainer() {}
+    virtual ~LiaisonContainer()
+    {
+        goby::glog.is_debug2() && goby::glog << "~LiaisonContainer(): " << name() << std::endl;
+    }
 
     void set_name(const Wt::WString& name) { name_.setText(name); }
 
@@ -133,6 +136,9 @@ class LiaisonContainerWithComms : public LiaisonContainer
                                                << std::endl;
             std::rethrow_exception(thread_exception_);
         }
+
+        goby::glog.is_debug2() && goby::glog << "~LiaisonContainerWithComms(): " << name()
+                                             << std::endl;
     }
 
     void post_to_wt(std::function<void()> func)
