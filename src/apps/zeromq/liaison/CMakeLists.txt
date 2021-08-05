@@ -12,7 +12,6 @@ add_executable(goby_liaison
 generate_middleware_interfaces(goby_liaison)
 
 target_link_libraries(goby_liaison
-  "-rdynamic"
   ${Boost_LIBRARIES}
   ${Wt_LIBRARIES}
   pthread
