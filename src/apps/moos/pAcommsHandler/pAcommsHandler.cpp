@@ -186,12 +186,44 @@ goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
 
     subscribe(cfg_.moos_var().prefix() + cfg_.moos_var().driver_receive(),
               &CpAcommsHandler::handle_external_driver_receive, this);
+
+    // Dynamic UTM. H. Schmidt 7/30/21
+    new_origin_ = false;
+    GobyMOOSApp::subscribe("LAT_ORIGIN", &CpAcommsHandler::handle_lat_origin, this);
+    GobyMOOSApp::subscribe("LONG_ORIGIN", &CpAcommsHandler::handle_lon_origin, this);
+
 }
 
 goby::apps::moos::CpAcommsHandler::~CpAcommsHandler() = default;
 
+void goby::apps::moos::CpAcommsHandler::handle_lat_origin(const CMOOSMsg& msg)
+{
+ double new_lat = msg.GetDouble();
+ if (!isnan(new_lat))
+   {
+     lat_origin_ = new_lat;
+     new_origin_ = true;
+   }
+}
+
+void goby::apps::moos::CpAcommsHandler::handle_lon_origin(const CMOOSMsg& msg)
+{
+ double new_lon = msg.GetDouble();
+ if (!isnan(new_lon))
+   {
+     lon_origin_ = new_lon;
+     new_origin_ = true;
+   }
+}
+
 void goby::apps::moos::CpAcommsHandler::loop()
 {
+  if (new_origin_)
+    {
+      translator_.initialize(lat_origin_, lon_origin_, cfg_.modem_id_lookup_path());
+      new_origin_ = false;
+    }
+
     timer_io_context_.poll();
 
     if (driver_restart_time_.size())
