@@ -93,6 +93,9 @@ class CpTranslator : public goby::moos::GobyMOOSApp
     void do_translation(const goby::moos::protobuf::TranslatorEntry& entry);
     void do_publish(const std::shared_ptr<google::protobuf::Message>& created_message);
 
+    void handle_lat_origin(const CMOOSMsg& msg);
+    void handle_lon_origin(const CMOOSMsg& msg);
+
   private:
     enum
     {
@@ -101,6 +104,10 @@ class CpTranslator : public goby::moos::GobyMOOSApp
 
     goby::moos::MOOSTranslator translator_;
 
+  double lat_origin_;
+  double lon_origin_;
+  bool new_origin_;
+  
     boost::asio::io_context timer_io_context_;
     boost::asio::io_context::work work_;
 

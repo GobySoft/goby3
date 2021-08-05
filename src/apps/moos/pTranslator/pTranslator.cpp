@@ -151,11 +151,46 @@ goby::apps::moos::CpTranslator::CpTranslator()
         GobyMOOSApp::subscribe(cfg_.multiplex_create_moos_var(i),
                                &CpTranslator::create_on_multiplex_publish, this);
     }
+
+    // Dynamic UTM. H. Schmidt 7/30/21
+    new_origin_ = false;
+    GobyMOOSApp::subscribe("LAT_ORIGIN", &CpTranslator::handle_lat_origin, this);
+    GobyMOOSApp::subscribe("LONG_ORIGIN", &CpTranslator::handle_lon_origin, this);
+
 }
 
 goby::apps::moos::CpTranslator::~CpTranslator() = default;
 
-void goby::apps::moos::CpTranslator::loop() { timer_io_context_.poll(); }
+void goby::apps::moos::CpTranslator::handle_lat_origin(const CMOOSMsg& msg)
+{
+ double new_lat = msg.GetDouble();
+ if (!isnan(new_lat))
+   {
+     lat_origin_ = new_lat;
+     new_origin_ = true;
+   }
+}
+
+void goby::apps::moos::CpTranslator::handle_lon_origin(const CMOOSMsg& msg)
+{
+ double new_lon = msg.GetDouble();
+ if (!isnan(new_lon))
+   {
+     lon_origin_ = new_lon;
+     new_origin_ = true;
+   }
+}
+
+void goby::apps::moos::CpTranslator::loop()
+{
+  if (new_origin_)
+    {
+      translator_.initialize(lat_origin_, lon_origin_, cfg_.modem_id_lookup_path());
+      new_origin_ = false;
+    }
+
+  timer_io_context_.poll();
+}
 
 void goby::apps::moos::CpTranslator::create_on_publish(
     const CMOOSMsg& trigger_msg, const goby::moos::protobuf::TranslatorEntry& entry)
