@@ -68,6 +68,7 @@ class InterThreadTransporter
     virtual ~InterThreadTransporter()
     {
         detail::SubscriptionStoreBase::unsubscribe_all(std::this_thread::get_id());
+        detail::SubscriptionStoreBase::remove(std::this_thread::get_id());
     }
 
     /// \brief Scheme for interthread is always MarshallingScheme::CXX_OBJECT as the data are not serialized, but rather passed around using shared pointers
