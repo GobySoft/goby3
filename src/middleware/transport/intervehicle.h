@@ -326,9 +326,9 @@ class InterVehicleTransporterBase
                     throw(InvalidSubscription(ss.str()));
                 }
 
-                auto subscription =
-                    std::make_shared<SerializationSubscription<Data, MarshallingScheme::DCCL>>(
-                        func, group, subscriber);
+                auto subscription = std::make_shared<
+                    IntervehicleSerializationSubscription<Data, MarshallingScheme::DCCL>>(
+                    func, group, subscriber);
 
                 this->subscriptions_[dccl_id][group] = subscription;
             }
@@ -434,7 +434,7 @@ class InterVehicleTransporterBase
         for (const auto& packet : packets.frame())
         {
             for (auto p : this->subscriptions_[packet.dccl_id()])
-                p.second->post(packet.data().begin(), packet.data().end());
+                p.second->post(packet.data().begin(), packet.data().end(), packets.header());
         }
     }
 
@@ -480,7 +480,8 @@ class InterVehicleTransporterBase
     // maps DCCL ID to map of Group->subscription
     // only one subscription allowed per IntervehicleForwarder/Portal (new subscription overwrites old one)
     std::unordered_map<
-        int, std::unordered_map<std::string, std::shared_ptr<const SerializationHandlerBase<>>>>
+        int, std::unordered_map<std::string, std::shared_ptr<const SerializationHandlerBase<
+                                                 intervehicle::protobuf::Header>>>>
         subscriptions_;
 
   private:
@@ -727,9 +728,9 @@ class InterVehiclePortal
                                       intervehicle::protobuf::Subscription,
                                       MarshallingScheme::PROTOBUF>(d);
             };
-            auto subscription =
-                std::make_shared<SerializationSubscription<Subscription, MarshallingScheme::DCCL>>(
-                    subscribe_lambda);
+            auto subscription = std::make_shared<
+                IntervehicleSerializationSubscription<Subscription, MarshallingScheme::DCCL>>(
+                subscribe_lambda);
 
             auto dccl_id = SerializerParserHelper<Subscription, MarshallingScheme::DCCL>::id();
             this->subscriptions_[dccl_id].insert(

@@ -23,7 +23,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cstddef> // for size_t
-#include <cstdint>  // for uint64_t, int...
+#include <cstdint> // for uint64_t, int...
 
 #include <boost/algorithm/string/classification.hpp>   // for is_any_ofF
 #include <boost/algorithm/string/predicate_facade.hpp> // for predicate_facade
@@ -32,6 +32,7 @@
 #include <dccl/dynamic_protobuf_manager.h>             // for DynamicProtob...
 
 #include "goby/time/types.h" // for MicroTime
+#include "goby/util/debug_logger.h"
 
 #include "hdf5.h"
 #include "hdf5_plugin.h" // for HDF5ProtobufE...
@@ -110,6 +111,8 @@ void goby::middleware::hdf5::Writer::write()
 void goby::middleware::hdf5::Writer::write_channel(const std::string& group,
                                                    const goby::middleware::hdf5::Channel& channel)
 {
+    glog.is_verbose() && glog << "Writing HDF5 group: " << group << std::endl;
+
     for (const auto& entry : channel.entries)
         write_message_collection(group + "/" + entry.first, entry.second);
 }
@@ -259,7 +262,11 @@ void goby::middleware::hdf5::Writer::write_field_selector(
     switch (field_desc->cpp_type())
     {
         case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-            write_embedded_message(group, field_desc, messages, hs);
+            if (field_desc->message_type()->full_name() == "google.protobuf.FileDescriptorProto")
+                glog.is_warn() && glog << "Omitting google.protobuf.FileDescriptorProto"
+                                       << std::endl;
+            else
+                write_embedded_message(group, field_desc, messages, hs);
             break;
 
         case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
@@ -374,16 +381,18 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
     std::vector<char> data_char;
     std::vector<hsize_t> hs = hs_outer;
 
+    std::vector<std::uint32_t> sizes;
     size_t max_size = 0;
     for (const auto& i : data)
     {
+        sizes.push_back(i.size());
         if (i.size() > max_size)
             max_size = i.size();
     }
 
     for (auto d : data)
     {
-        d.resize(max_size, ' ');
+        d.resize(max_size, '\0');
         for (char c : d) data_char.push_back(c);
     }
     hs.push_back(max_size);
@@ -394,6 +403,8 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
 
     if (data_char.size())
         dataset.write(&data_char[0], H5::PredType::NATIVE_CHAR);
+
+    write_vector(group, dataset_name + "_size", sizes, hs_outer, std::uint32_t(0));
 
     const int rank = 1;
     hsize_t att_hs[] = {1};

@@ -117,6 +117,14 @@ class InterProcessTransporterBase
         publish_dynamic<Data, scheme>(std::shared_ptr<const Data>(data), group, publisher);
     }
 
+    /// \brief Publish a message that has already been serialized for the given scheme
+    void publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
+                            const goby::middleware::Group& group)
+    {
+        check_validity_runtime(group);
+        static_cast<Derived*>(this)->_publish_serialized(type_name, scheme, bytes, group);
+    }
+
     /// \brief Subscribe to a specific run-time defined group and data type (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
     ///
     /// \tparam Data data type to subscribe to.
@@ -302,7 +310,13 @@ class InterProcessForwarder
                     std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage>
                         msg) { _receive_regex_data_forwarded(msg); });
     }
-    virtual ~InterProcessForwarder() { this->unsubscribe_all(); }
+    virtual ~InterProcessForwarder()
+    {
+        this->unsubscribe_all();
+
+        // TODO - remove by adding in an explicit handshake with the unsubscribe_all publication so that we don't delete ourself (and thus our inner()) before the Portal has deleted all the subscriptions
+        usleep(1e5);
+    }
 
     friend Base;
 
@@ -322,6 +336,20 @@ class InterProcessForwarder
         msg->set_allocated_data(sbytes);
 
         *key->mutable_cfg() = publisher.cfg();
+
+        this->inner().template publish<Base::to_portal_group_>(msg);
+    }
+
+    void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
+                             const goby::middleware::Group& group)
+    {
+        auto msg = std::make_shared<goby::middleware::protobuf::SerializerTransporterMessage>();
+        auto* key = msg->mutable_key();
+
+        key->set_marshalling_scheme(scheme);
+        key->set_type(type_name);
+        key->set_group(std::string(group));
+        msg->set_data(std::string(bytes.begin(), bytes.end()));
 
         this->inner().template publish<Base::to_portal_group_>(msg);
     }

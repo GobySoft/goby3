@@ -35,6 +35,7 @@
 
 #include "goby/middleware/common.h"
 #include "goby/middleware/protobuf/intermodule.pb.h"
+#include "goby/middleware/protobuf/intervehicle.pb.h"
 #include "goby/middleware/protobuf/serializer_transporter.pb.h"
 
 #include "interface.h"
@@ -122,7 +123,7 @@ bool operator==(const SerializationHandlerBase<Metadata>& s1,
            s1.subscribed_group() == s2.subscribed_group() && s1.action() == s2.action();
 }
 
-/// \brief Represents a subscription to a serialized data type (interprocess and outer layers).
+/// \brief Represents a subscription to a serialized data type (interprocess layer).
 ///
 /// \tparam Data Subscribed data type
 /// \tparam scheme_id Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum).
@@ -174,6 +175,83 @@ class SerializationSubscription : public SerializationHandlerBase<>
         CharIterator actual_end;
         auto msg = SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end,
                                                                   actual_end, type_name_);
+
+        if (subscribed_group() == subscriber_.group(*msg) && handler_)
+            handler_(msg);
+
+        return actual_end;
+    }
+
+  private:
+    HandlerType handler_;
+    const std::string type_name_;
+    const Group group_;
+    Subscriber<Data> subscriber_;
+};
+
+/// \brief Represents a subscription to a serialized data type (intervehicle layer).
+///
+/// \tparam Data Subscribed data type
+/// \tparam scheme_id Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum).
+template <typename Data, int scheme_id>
+class IntervehicleSerializationSubscription
+    : public SerializationHandlerBase<intervehicle::protobuf::Header>
+{
+  public:
+    typedef std::function<void(std::shared_ptr<const Data> data)> HandlerType;
+
+    IntervehicleSerializationSubscription(HandlerType handler,
+                                          const Group& group = Group(Group::broadcast_group),
+                                          const Subscriber<Data>& subscriber = Subscriber<Data>())
+        : handler_(handler),
+          type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
+          group_(group),
+          subscriber_(subscriber)
+    {
+    }
+
+    // handle an incoming message
+    std::string::const_iterator post(std::string::const_iterator b, std::string::const_iterator e,
+                                     const intervehicle::protobuf::Header& header) const override
+    {
+        return _post(b, e, header);
+    }
+
+    std::vector<char>::const_iterator
+    post(std::vector<char>::const_iterator b, std::vector<char>::const_iterator e,
+         const intervehicle::protobuf::Header& header) const override
+    {
+        return _post(b, e, header);
+    }
+
+    const char* post(const char* b, const char* e,
+                     const intervehicle::protobuf::Header& header) const override
+    {
+        return _post(b, e, header);
+    }
+
+    SerializationHandlerBase<intervehicle::protobuf::Header>::SubscriptionAction
+    action() const override
+    {
+        return SerializationHandlerBase<
+            intervehicle::protobuf::Header>::SubscriptionAction::SUBSCRIBE;
+    }
+
+    // getters
+    const std::string& type_name() const override { return type_name_; }
+    const Group& subscribed_group() const override { return group_; }
+    int scheme() const override { return scheme_id; }
+
+  private:
+    template <typename CharIterator>
+    CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end,
+                       const intervehicle::protobuf::Header& header) const
+    {
+        CharIterator actual_end;
+        auto msg = SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end,
+                                                                  actual_end, type_name_);
+
+        subscriber_.set_link_data(*msg, header);
 
         if (subscribed_group() == subscriber_.group(*msg) && handler_)
             handler_(msg);

@@ -230,21 +230,15 @@ template <>
 void retrieve_default_value(std::string* val, const google::protobuf::FieldDescriptor* field_desc)
 {
     *val = field_desc->default_value_string();
-    if (field_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES)
-        *val = goby::util::hex_encode(*val);
 }
 template <> void retrieve_empty_value(std::string* val) { val->clear(); }
 template <> void retrieve_single_value(std::string* val, PBMeta m)
 {
     *val = m.refl->GetString(m.msg, m.field_desc);
-    if (m.field_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES)
-        *val = goby::util::hex_encode(*val);
 }
 template <> void retrieve_repeated_value(std::string* val, int index, PBMeta m)
 {
     *val = m.refl->GetRepeatedString(m.msg, m.field_desc, index);
-    if (m.field_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES)
-        *val = goby::util::hex_encode(*val);
 }
 
 } // namespace hdf5
