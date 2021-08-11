@@ -78,6 +78,9 @@ goby::apps::moos::CpTranslator::CpTranslator()
     : goby::moos::GobyMOOSApp(&cfg_),
       translator_(cfg_.translator_entry(), cfg_.common().lat_origin(), cfg_.common().lon_origin(),
                   cfg_.modem_id_lookup_path()),
+      lat_origin_(std::numeric_limits<double>::quiet_NaN()),
+      lon_origin_(std::numeric_limits<double>::quiet_NaN()),
+      new_origin_(false),
       work_(timer_io_context_)
 {
     dccl::DynamicProtobufManager::enable_compilation();
@@ -153,7 +156,6 @@ goby::apps::moos::CpTranslator::CpTranslator()
     }
 
     // Dynamic UTM. H. Schmidt 7/30/21
-    new_origin_ = false;
     GobyMOOSApp::subscribe("LAT_ORIGIN", &CpTranslator::handle_lat_origin, this);
     GobyMOOSApp::subscribe("LONG_ORIGIN", &CpTranslator::handle_lon_origin, this);
 
@@ -183,10 +185,10 @@ void goby::apps::moos::CpTranslator::handle_lon_origin(const CMOOSMsg& msg)
 
 void goby::apps::moos::CpTranslator::loop()
 {
-  if (new_origin_)
+    if (new_origin_ && !isnan(lat_origin_) && !isnan(lon_origin_))
     {
-      translator_.initialize(lat_origin_, lon_origin_, cfg_.modem_id_lookup_path());
-      new_origin_ = false;
+        translator_.update_utm_datum(lat_origin_, lon_origin_);
+        new_origin_ = false;
     }
 
   timer_io_context_.poll();

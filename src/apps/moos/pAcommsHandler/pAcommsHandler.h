@@ -167,11 +167,11 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
   private:
     goby::moos::MOOSTranslator translator_;
 
-  double lat_origin_;
-  double lon_origin_;
-  bool new_origin_;
-  
-     // new DCCL2 codec
+    double lat_origin_;
+    double lon_origin_;
+    bool new_origin_;
+
+    // new DCCL2 codec
     goby::acomms::DCCLCodec* dccl_;
 
     // manages queues and does additional packing

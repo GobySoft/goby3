@@ -105,7 +105,7 @@ class InterfaceBase
     void compute_missing(protobuf::NodeStatus* status);
 
     // Dynamic UTM update
-    void update_utm_datum(double lat_origin, double lon_origin);
+    void update_utm_datum(goby::util::UTMGeodesy::LatLonPoint datum);
 
     friend class goby::apps::moos::FrontSeatLegacyTranslator; // to access the signal_state_change
   private:

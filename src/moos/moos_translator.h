@@ -181,12 +181,13 @@ class MOOSTranslator
         }
     }
 
-  public:
+    void update_utm_datum(double lat_origin, double lon_origin);
+
+  private:
     void initialize(double lat_origin = std::numeric_limits<double>::quiet_NaN(),
                     double lon_origin = std::numeric_limits<double>::quiet_NaN(),
                     const std::string& modem_id_lookup_path = "");
 
-  private:
     void alg_lat2utm_y(moos::transitional::DCCLMessageVal& mv,
                        const std::vector<moos::transitional::DCCLMessageVal>& ref_vals);
 

@@ -104,10 +104,10 @@ class CpTranslator : public goby::moos::GobyMOOSApp
 
     goby::moos::MOOSTranslator translator_;
 
-  double lat_origin_;
-  double lon_origin_;
-  bool new_origin_;
-  
+    double lat_origin_;
+    double lon_origin_;
+    bool new_origin_;
+
     boost::asio::io_context timer_io_context_;
     boost::asio::io_context::work work_;
 
