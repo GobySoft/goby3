@@ -251,6 +251,12 @@ void goby::apps::zeromq::FrontSeatInterface::setup_subscriptions()
                 frontseat_->send_raw_to_frontseat(data);
         });
 
+    interprocess().subscribe<frontseat::groups::datum_update>(
+        [this](const frontseat::protobuf::DatumUpdate& datum_update) {
+            frontseat_->update_utm_datum(
+                {datum_update.datum().lat_with_units(), datum_update.datum().lon_with_units()});
+        });
+
     frontseat_->signal_raw_from_frontseat.connect([this](const frontseat::protobuf::Raw& data) {
         interprocess().publish<frontseat::groups::raw_in>(data);
     });

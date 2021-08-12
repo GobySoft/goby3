@@ -103,3 +103,4 @@ message Raw
     optional RawType type = 2 [default = RAW_ASCII];
     optional string description = 3;
 }
+

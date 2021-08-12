@@ -216,3 +216,14 @@ message CTDSample
     optional DensityAlgorithm density_algorithm = 32
         [default = DENSITY_ALGORITHM_UNKNOWN];
 }
+
+
+message DatumUpdate
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    required .goby.middleware.protobuf.LatLonPoint datum = 1;
+}
+
