@@ -289,7 +289,8 @@ struct ModuleParams
 
 struct Module
 {
-    Module(const std::string& n, const std::vector<ModuleParams>& params) : name(n)
+    Module(const std::string& n, const std::vector<ModuleParams>& params, bool nam = false)
+        : name(n), not_a_module(nam)
     {
         // each yaml represents a given application
         for (const auto& param : params)
@@ -316,6 +317,7 @@ struct Module
 
     std::string name;
     std::map<std::string, Application> applications;
+    bool not_a_module;
 };
 
 inline bool operator<(const Module& a, const Module& b) { return a.name < b.name; }
@@ -331,13 +333,15 @@ struct PlatformParams
 {
     std::string module;
     std::vector<ModuleParams> module_params;
+    bool not_a_module;
 };
 
 struct Platform
 {
     Platform(const std::string& n, const std::vector<PlatformParams>& params) : name(n)
     {
-        for (const auto& param : params) modules.emplace(param.module, param.module_params);
+        for (const auto& param : params)
+            modules.emplace(param.module, param.module_params, param.not_a_module);
     }
 
     std::string name;
@@ -786,7 +790,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             }
 
             build_module_params(module_params, interfaces_node);
-            platform_params[platform_name] = {{"nomodule", module_params}};
+            platform_params[platform_name] = {{"nomodule", module_params, true}};
         }
         else
         {
@@ -877,17 +881,22 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             }
         }
 
+        bool has_modules =
+            !(platform.modules.size() == 1 && platform.modules.begin()->not_a_module);
         for (const auto& module : platform.modules)
         {
-            ofs << "\tsubgraph cluster_" << cluster++ << " {\n";
+            if (has_modules)
+            {
+                ofs << "\tsubgraph cluster_" << cluster++ << " {\n";
 
-            auto module_display_name = module.name;
-            viz::html_escape(module_display_name);
+                auto module_display_name = module.name;
+                viz::html_escape(module_display_name);
 
-            ofs << "\t\tlabel=<<b>" << module_display_name << "</b>>\n";
-            ofs << "\t\tfontcolor=\"" << module_color << "\"\n";
-            ofs << "\t\tpenwidth=2\n";
-            ofs << "\t\tpencolor=\"" << module_color << box_transparency << "\"\n";
+                ofs << "\t\tlabel=<<b>" << module_display_name << "</b>>\n";
+                ofs << "\t\tfontcolor=\"" << module_color << "\"\n";
+                ofs << "\t\tpenwidth=2\n";
+                ofs << "\t\tpencolor=\"" << module_color << box_transparency << "\"\n";
+            }
 
             std::map<std::string, std::set<PubSubEntry>> process_disconnected_subs;
             for (const auto& application : module.applications)
@@ -971,7 +980,10 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
                 }
             }
 
-            ofs << "\t}\n";
+            if (has_modules)
+            {
+                ofs << "\t}\n";
+            }
 
             for (const auto& application : module.applications)
                 write_module_connections(ofs, deployment, platform, module, application.second,
