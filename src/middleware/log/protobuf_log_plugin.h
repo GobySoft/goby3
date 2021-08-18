@@ -27,6 +27,7 @@
 #include "goby/middleware/log.h"
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
+#include "goby/time/convert.h"
 #include "log_plugin.h"
 
 namespace goby
@@ -69,6 +70,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             hdf5_entries.emplace_back();
             goby::middleware::HDF5ProtobufEntry& hdf5_entry = hdf5_entries.back();
             hdf5_entry.channel = log_entry.group();
+            hdf5_entry.time = goby::time::convert<decltype(hdf5_entry.time)>(log_entry.timestamp());
             hdf5_entry.msg = msg;
         }
         return hdf5_entries;
@@ -78,12 +80,18 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
     {
         LogEntry::filter_hook[{static_cast<int>(scheme), static_cast<std::string>(file_desc_group),
                                google::protobuf::FileDescriptorProto::descriptor()->full_name()}] =
-            [](const std::vector<unsigned char>& data) {
+            [&](const std::vector<unsigned char>& data) {
                 google::protobuf::FileDescriptorProto file_desc_proto;
                 file_desc_proto.ParseFromArray(&data[0], data.size());
-                goby::glog.is_debug1() && goby::glog << "Adding: " << file_desc_proto.name()
-                                                     << std::endl;
-                dccl::DynamicProtobufManager::add_protobuf_file(file_desc_proto);
+
+                if (!read_file_desc_names_.count(file_desc_proto.name()))
+                {
+                    goby::glog.is_debug1() && goby::glog << "Adding: " << file_desc_proto.name()
+                                                         << std::endl;
+
+                    dccl::DynamicProtobufManager::add_protobuf_file(file_desc_proto);
+                    read_file_desc_names_.insert(file_desc_proto.name());
+                }
             };
     }
 
@@ -168,6 +176,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
 
   private:
     std::set<const google::protobuf::FileDescriptor*> written_file_desc_;
+    std::set<std::string> read_file_desc_names_;
 };
 
 class ProtobufPlugin : public ProtobufPluginBase<goby::middleware::MarshallingScheme::PROTOBUF>

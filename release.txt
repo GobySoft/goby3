@@ -1,6 +1,20 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.1
+
+### Bug fixes
+
+- Fix segfault in goby_liaison when thread_id was reused by the OS.
+
+
+
+****************
+Version 3.0.0
+
+First stable release of Goby3 nested communications middleware.
+
+****************
 Version 3.0.0~beta*
 
 ### Middleware

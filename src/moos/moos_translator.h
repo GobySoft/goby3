@@ -181,6 +181,8 @@ class MOOSTranslator
         }
     }
 
+    void update_utm_datum(double lat_origin, double lon_origin);
+
   private:
     void initialize(double lat_origin = std::numeric_limits<double>::quiet_NaN(),
                     double lon_origin = std::numeric_limits<double>::quiet_NaN(),

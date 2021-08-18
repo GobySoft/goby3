@@ -60,6 +60,7 @@ message LiaisonConfig
     // MOOS - 1000 to 1099
     // DRC -  1100
     // WIP -  1200 to 1299
+    // Jaiabot - 1300 
     extensions 1000 to max;
 }
 

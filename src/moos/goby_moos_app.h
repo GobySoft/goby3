@@ -626,7 +626,9 @@ int goby::moos::GobyMOOSAppSelector<MOOSAppType>::fetch_moos_globals(
     for (int i = 0, n = desc->field_count(); i < n; ++i)
     {
         const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
-        if (field_desc->is_repeated())
+
+        // we don't support repeated fields or oneof fields containing MOOS globals
+        if (field_desc->is_repeated() || field_desc->containing_oneof())
             continue;
 
         std::string moos_global = field_desc->options().GetExtension(goby::field).moos_global();
@@ -870,6 +872,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
             parser.RecordErrorsTo(&error_collector);
             parser.AllowPartialMessage(true);
             parser.ParseFromString(protobuf_text, cfg);
+
             if (error_collector.has_errors() || error_collector.has_warnings())
             {
                 goby::glog.is(goby::util::logger::DIE) &&

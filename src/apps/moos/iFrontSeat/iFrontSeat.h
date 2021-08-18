@@ -88,7 +88,9 @@ class iFrontSeat : public goby::moos::GobyMOOSApp
         const goby::middleware::frontseat::protobuf::InterfaceData& data);
     void handle_driver_raw_in(const goby::middleware::frontseat::protobuf::Raw& data);
     void handle_driver_raw_out(const goby::middleware::frontseat::protobuf::Raw& data);
-
+    void handle_lat_origin(const CMOOSMsg& msg);
+    void handle_lon_origin(const CMOOSMsg& msg);
+    
   private:
     std::unique_ptr<goby::middleware::frontseat::InterfaceBase> frontseat_;
 
@@ -96,6 +98,10 @@ class iFrontSeat : public goby::moos::GobyMOOSApp
 
     static protobuf::iFrontSeatConfig cfg_;
     static iFrontSeat* inst_;
+
+    double lat_origin_;
+    double lon_origin_;
+    bool new_origin_;
 };
 } // namespace moos
 } // namespace apps

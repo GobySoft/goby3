@@ -128,8 +128,8 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     add_to_menu(menu_, new LiaisonScope(app_cfg_));
     add_to_menu(menu_, new LiaisonCommander(app_cfg_));
 
-    using liaison_load_func = std::vector<goby::zeromq::LiaisonContainer*> (*)(
-        const protobuf::LiaisonConfig& cfg);
+    using liaison_load_func =
+        std::vector<goby::zeromq::LiaisonContainer*> (*)(const protobuf::LiaisonConfig& cfg);
 
     for (auto& plugin_handle : Liaison::plugin_handles_)
     {

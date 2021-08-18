@@ -1,6 +1,8 @@
 syntax = "proto2";
 import "goby/middleware/protobuf/app_config.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
+import "dccl/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 
 package goby.apps.zeromq.protobuf;
 
@@ -15,5 +17,33 @@ message LoggerConfig
     optional string group_regex = 5 [default = ".*"];
 
     repeated string load_shared_library = 10;
-    
+}
+
+message PlaybackConfig
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+
+    required string input_file = 10 [(goby.field).description =
+                                         "Input goby_logger file to read (e.g. "
+                                         "'vehicle_20200204T121314.goby')"];
+
+    optional double rate = 11 [default = 1];
+
+    optional double playback_start_delay = 12
+        [default = 1, (dccl.field).units.base_dimensions = "T"];
+
+    optional string group_regex = 20 [default = ".*"];
+    message TypeFilter
+    {
+        required int32 scheme = 1;
+        optional string regex = 2 [default = ".*"];
+    }
+    repeated TypeFilter type_filter = 21;
+
+    repeated string load_shared_library = 40
+        [(goby.field).description =
+             "Load a shared library (e.g. to load Protobuf files)"];
 }
