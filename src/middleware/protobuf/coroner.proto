@@ -28,6 +28,8 @@ message ThreadHealth
     repeated ThreadHealth child = 11;
     optional Error error = 20;
     optional string error_message = 21;
+
+    extensions 1000 to max;
 }
 
 message ProcessHealth
