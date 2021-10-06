@@ -102,5 +102,7 @@ message Raw
     }
     optional RawType type = 2 [default = RAW_ASCII];
     optional string description = 3;
+
+    extensions 1000 to max;
 }
 
