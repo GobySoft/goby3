@@ -76,10 +76,6 @@ job-template-amd64: &job-template-amd64
   working_directory: /root/goby3
   steps:
     - checkout
-    - run: &run-add-packages-key
-        name: Install packages.gobysoft.org key
-        command: |
-          apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE
     - run: &run-add-continuous-packages
         name: Add continuous build package sources.list (if not a tagged release)
         command: |
@@ -103,7 +99,6 @@ job-template-amd64: &job-template-amd64
 job-template-deb-amd64: &job-template-deb-amd64
   <<: *job-template-amd64
   steps:
-    - run: *run-add-packages-key
     - run: *run-add-continuous-packages
     - run: *run-update-apt
     - run: &run-import-gpg
@@ -493,7 +488,6 @@ jobs:
     <<: *job-template-sanitizers
     steps:
       - checkout
-      - run: *run-add-packages-key
       - run: *run-add-continuous-packages
       - run: *run-update-apt
       - run:
@@ -513,7 +507,6 @@ jobs:
     <<: *job-template-sanitizers
     steps:
       - checkout
-      - run: *run-add-packages-key
       - run: *run-add-continuous-packages
       - run: *run-update-apt
       - run:
@@ -526,7 +519,6 @@ jobs:
     <<: *job-template-sanitizers
     steps:
       - checkout
-      - run: *run-add-packages-key
       - run: *run-add-continuous-packages
       - run: *run-update-apt
       - run: 
@@ -537,7 +529,6 @@ jobs:
     <<: *job-template-sanitizers
     steps:
       - checkout
-      - run: *run-add-packages-key
       - run: *run-add-continuous-packages
       - run: *run-update-apt
       - run:
