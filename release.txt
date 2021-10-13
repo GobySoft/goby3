@@ -1,6 +1,15 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.2
+
+### Middleware
+
+- Support for intermodule in goby_clang_tool
+- Added extensions to frontseat and health messages
+
+
+****************
 Version 3.0.1
 
 ### Bug fixes

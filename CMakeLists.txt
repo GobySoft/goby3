@@ -58,7 +58,7 @@ endif()
 
 set(GOBY_VERSION_MAJOR "3")
 set(GOBY_VERSION_MINOR "0")
-set(GOBY_VERSION_PATCH "1")
+set(GOBY_VERSION_PATCH "2")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    message(STATUS "Compiling in Git source tree.")

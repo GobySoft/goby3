@@ -4,6 +4,7 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   Henrik Schmidt <henrik@mit.edu>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries

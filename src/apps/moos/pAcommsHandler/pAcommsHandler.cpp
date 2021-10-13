@@ -4,6 +4,7 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   Henrik Schmidt <henrik@mit.edu>
 //   Thomas McCabe <tom.mccabe@missionsystems.com.au>
 //
 //
