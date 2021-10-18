@@ -141,6 +141,86 @@ inline std::ostream& operator<<(std::ostream& os, const HDT& hdt)
     return (os << hdt.serialize().message());
 }
 
+struct WPL
+{
+  public:
+    WPL() = default;
+
+    WPL(const NMEASentence& sentence) { parse(sentence); }
+
+    void parse(const NMEASentence& sentence);
+    NMEASentence serialize(std::string talker_id = "EC") const;
+
+    boost::optional<boost::units::quantity<boost::units::degree::plane_angle>> latitude;
+    boost::optional<boost::units::quantity<boost::units::degree::plane_angle>> longitude;
+    boost::optional<std::string> name;
+
+    enum Fields
+    {
+        LATITUDE = 1,
+        LATITUDE_NS = 2,
+        LONGITUDE = 3,
+        LONGITUDE_EW = 4,
+        NAME = 5
+    };
+    constexpr static int min_size = NAME + 1; // NAME + talker
+    constexpr static int size = min_size;
+};
+
+inline bool operator==(const WPL& wpl1, const WPL& wpl2)
+{
+    return wpl1.serialize().message() == wpl2.serialize().message();
+}
+
+inline std::ostream& operator<<(std::ostream& os, const WPL& wpl)
+{
+    return (os << wpl.serialize().message());
+}
+
+struct RTE
+{
+  public:
+    RTE() = default;
+
+    RTE(const NMEASentence& sentence) { parse(sentence); }
+
+    void parse(const NMEASentence& sentence);
+    NMEASentence serialize(std::string talker_id = "EC") const;
+
+    boost::optional<std::string> name;
+    std::vector<std::string> waypoint_names;
+    boost::optional<int> total_number_sentences;
+    boost::optional<int> current_sentence_index; // starting at 1
+    enum RouteType
+    {
+        ROUTE_TYPE__INVALID,
+        ROUTE_TYPE__COMPLETE = 'c',
+        ROUTE_TYPE__WORKING_ROUTE = 'w'
+    };
+    RouteType type{ROUTE_TYPE__INVALID};
+
+    enum Fields
+    {
+        TOTAL_NUMBER_SENTENCES = 1,
+        CURRENT_SENTENCE_INDEX = 2,
+        ROUTE_TYPE = 3,
+        NAME = 4,
+        FIRST_WAYPOINT_NAME = 5
+        // then waypoint names until end of sentence
+    };
+    constexpr static int min_size = FIRST_WAYPOINT_NAME + 1; // FIRST_WAYPOINT_NAME + talker
+};
+
+inline bool operator==(const RTE& rte1, const RTE& rte2)
+{
+    return rte1.serialize().message() == rte2.serialize().message();
+}
+
+inline std::ostream& operator<<(std::ostream& os, const RTE& rte)
+{
+    return (os << rte.serialize().message());
+}
+
 } // namespace gps
 } // namespace util
 } // namespace goby

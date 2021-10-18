@@ -120,3 +120,72 @@ BOOST_AUTO_TEST_CASE(gps_hdt)
     BOOST_CHECK_EQUAL(hdt, hdt2);
     std::cout << hdt2.serialize().message() << std::endl;
 }
+
+BOOST_AUTO_TEST_CASE(gps_wpl)
+{
+    std::string orig = "$ECWPL,4135.868,N,07043.697,W,*45";
+    goby::util::NMEASentence nmea_in(orig);
+    goby::util::gps::WPL wpl(nmea_in);
+    BOOST_CHECK(close_enough(wpl.latitude->value(), 41.5978, 4));
+    BOOST_CHECK(close_enough(wpl.longitude->value(), -70.7282, 4));
+
+    auto nmea = wpl.serialize();
+
+    std::cout << orig << std::endl;
+    std::cout << nmea.message() << std::endl;
+
+    // reparse output and check equality
+    goby::util::gps::WPL wpl2(nmea);
+    BOOST_CHECK_EQUAL(wpl, wpl2);
+    std::cout << wpl2.serialize().message() << std::endl;
+}
+
+//$ECRTE,3,1,c,test,001,002*31
+//$ECRTE,3,2,c,test,003,004*36
+//$ECRTE,3,3,c,test,005*29
+BOOST_AUTO_TEST_CASE(gps_rte1)
+{
+    std::string orig = "$ECRTE,3,1,c,test,001,002*31";
+    goby::util::NMEASentence nmea_in(orig);
+    goby::util::gps::RTE rte(nmea_in);
+    BOOST_CHECK_EQUAL(*rte.total_number_sentences, 3);
+    BOOST_CHECK_EQUAL(*rte.current_sentence_index, 1);
+    BOOST_CHECK_EQUAL(rte.type, goby::util::gps::RTE::ROUTE_TYPE__COMPLETE);
+    BOOST_CHECK_EQUAL(*rte.name, "test");
+    BOOST_CHECK_EQUAL(rte.waypoint_names.size(), 2);
+    BOOST_CHECK_EQUAL(rte.waypoint_names.at(0), "001");
+    BOOST_CHECK_EQUAL(rte.waypoint_names.at(1), "002");
+
+    auto nmea = rte.serialize();
+
+    std::cout << orig << std::endl;
+    std::cout << nmea.message() << std::endl;
+
+    // reparse output and check equality
+    goby::util::gps::RTE rte2(nmea);
+    BOOST_CHECK_EQUAL(rte, rte2);
+    std::cout << rte2.serialize().message() << std::endl;
+}
+// rte2 is same as rte1 really, so skip
+BOOST_AUTO_TEST_CASE(gps_rte3)
+{
+    std::string orig = "$ECRTE,3,3,c,test,005*29";
+    goby::util::NMEASentence nmea_in(orig);
+    goby::util::gps::RTE rte(nmea_in);
+    BOOST_CHECK_EQUAL(*rte.total_number_sentences, 3);
+    BOOST_CHECK_EQUAL(*rte.current_sentence_index, 3);
+    BOOST_CHECK_EQUAL(rte.type, goby::util::gps::RTE::ROUTE_TYPE__COMPLETE);
+    BOOST_CHECK_EQUAL(*rte.name, "test");
+    BOOST_CHECK_EQUAL(rte.waypoint_names.size(), 1);
+    BOOST_CHECK_EQUAL(rte.waypoint_names.at(0), "005");
+
+    auto nmea = rte.serialize();
+
+    std::cout << orig << std::endl;
+    std::cout << nmea.message() << std::endl;
+
+    // reparse output and check equality
+    goby::util::gps::RTE rte2(nmea);
+    BOOST_CHECK_EQUAL(rte, rte2);
+    std::cout << rte2.serialize().message() << std::endl;
+}
