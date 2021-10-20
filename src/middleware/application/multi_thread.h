@@ -27,6 +27,7 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/navigation/navigation.h"
 #include "goby/middleware/terminate/terminate.h"
 
 #include "goby/exception.h"
@@ -341,6 +342,12 @@ class MultiThreadApplication
                 resp.set_pid(getpid());
                 this->thread_health(*resp.mutable_main());
                 this->interprocess().template publish<groups::health_response>(resp);
+            });
+
+        this->interprocess().template subscribe<goby::middleware::groups::datum_update>(
+            [this](const protobuf::DatumUpdate& datum_update) {
+                this->configure_geodesy(
+                    {datum_update.datum().lat_with_units(), datum_update.datum().lon_with_units()});
             });
     }
 

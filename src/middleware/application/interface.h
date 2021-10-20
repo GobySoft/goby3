@@ -123,7 +123,13 @@ template <typename Config> class Application
             throw(goby::Exception("No lat_origin and lon_origin defined for requested UTMGeodesy"));
     }
 
+    /// \brief Returns if the geodesy tool is configured with a datum.
+    bool has_geodesy() { return geodesy_ ? true : false; }
+
     std::string app_name() { return app3_base_configuration_->name(); }
+
+  protected:
+    void configure_geodesy(goby::util::UTMGeodesy::LatLonPoint datum);
 
   private:
     template <typename App>
@@ -133,7 +139,6 @@ template <typename Config> class Application
     int __run();
 
     void configure_logger();
-    void configure_geodesy();
 
   private:
     // sets configuration (before Application construction)
@@ -167,7 +172,8 @@ template <typename Config> goby::middleware::Application<Config>::Application() 
 
     configure_logger();
     if (app3_base_configuration_->has_geodesy())
-        configure_geodesy();
+        configure_geodesy({app3_base_configuration_->geodesy().lat_origin_with_units(),
+                           app3_base_configuration_->geodesy().lon_origin_with_units()});
 
     if (!app3_base_configuration_->IsInitialized())
         throw(middleware::ConfigException("Invalid base configuration"));
@@ -247,11 +253,11 @@ template <typename Config> void goby::middleware::Application<Config>::configure
         goby::middleware::detail::DCCLSerializerParserHelperBase::setup_dlog();
 }
 
-template <typename Config> void goby::middleware::Application<Config>::configure_geodesy()
+template <typename Config>
+void goby::middleware::Application<Config>::configure_geodesy(
+    goby::util::UTMGeodesy::LatLonPoint datum)
 {
-    geodesy_.reset(
-        new goby::util::UTMGeodesy({app3_base_configuration_->geodesy().lat_origin_with_units(),
-                                    app3_base_configuration_->geodesy().lon_origin_with_units()}));
+    geodesy_.reset(new goby::util::UTMGeodesy(datum));
 }
 
 template <typename Config> int goby::middleware::Application<Config>::__run()
