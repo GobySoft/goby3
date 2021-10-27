@@ -24,6 +24,7 @@
 #include <iostream> // for operator<<, char_tr...
 #include <map>      // for map, map<>::mapped_...
 #include <memory>   // for allocator, shared_ptr
+#include <regex>
 #include <set>      // for set
 #include <stdlib.h> // for exit, EXIT_FAILURE
 #include <string>   // for string, operator+
@@ -46,6 +47,15 @@ std::map<std::string, std::map<goby::clang::Layer, std::map<int, PubSubEntry>>> 
 // node_name -> thread_display_name
 std::map<std::string, std::shared_ptr<viz::Thread>> g_node_name_to_thread;
 
+bool is_node_included(const std::string& node)
+{
+    static const std::regex omit_regex(g_params.omit_node_regex);
+    if (!g_params.omit_node_regex.empty() && std::regex_match(node, omit_regex))
+        return false;
+    else
+        return true;
+}
+
 bool is_group_included(const std::string& group)
 {
     static const std::set<std::string> internal_groups{
@@ -67,7 +77,11 @@ bool is_group_included(const std::string& group)
     static const std::set<std::string> coroner_groups{"goby::health::request",
                                                       "goby::health::response"};
 
-    if (internal_groups.count(group) && !g_params.include_internal)
+    static const std::regex omit_regex(g_params.omit_group_regex);
+
+    if (!g_params.omit_group_regex.empty() && std::regex_match(group, omit_regex))
+        return false;
+    else if (internal_groups.count(group) && !g_params.include_internal)
         return false;
     else if (terminate_groups.count(group) && !g_params.include_terminate)
         return false;
@@ -364,7 +378,8 @@ struct Deployment
         : name(n)
     {
         for (const auto& platform_yaml_p : platform_params)
-        { platforms.emplace(platform_yaml_p.first, platform_yaml_p.second); } }
+        { platforms.emplace(platform_yaml_p.first, platform_yaml_p.second); }
+    }
 
     std::string name;
     std::set<Platform> platforms;
@@ -857,7 +872,11 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
     {
         ofs << "\tsubgraph cluster_" << cluster++ << " {\n";
 
+        if (!is_node_included(platform.name))
+            continue;
+
         auto platform_display_name = platform.name;
+
         viz::html_escape(platform_display_name);
 
         ofs << "\t\tlabel=<<b>" << platform_display_name << "</b>>\n";
@@ -889,6 +908,9 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             {
                 ofs << "\tsubgraph cluster_" << cluster++ << " {\n";
 
+                if (!is_node_included(module.name))
+                    continue;
+
                 auto module_display_name = module.name;
                 viz::html_escape(module_display_name);
 
@@ -913,6 +935,10 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
             for (const auto& application : module.applications)
             {
                 ofs << "\t\tsubgraph cluster_" << cluster++ << " {\n";
+
+                if (!is_node_included(application.second.name))
+                    continue;
+
                 auto application_display_name = application.second.name;
                 viz::html_escape(application_display_name);
 
@@ -938,6 +964,9 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
                 for (const auto& thread_p : application.second.threads)
                 {
                     const auto& thread = thread_p.second;
+
+                    if (!is_node_included(thread->most_derived_name()))
+                        continue;
 
                     write_thread_connections(ofs, platform, module, application.second, *thread,
                                              thread_disconnected_subs);
