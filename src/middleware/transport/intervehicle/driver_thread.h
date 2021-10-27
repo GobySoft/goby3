@@ -215,6 +215,8 @@ class ModemDriverThread
     goby::acomms::MACManager mac_;
 
     std::string glog_group_;
+
+    static std::map<std::string, void*> driver_plugins_;
 };
 
 } // namespace intervehicle
