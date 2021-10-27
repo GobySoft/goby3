@@ -52,6 +52,8 @@ struct VisualizeParameters
     bool include_terminate;
     bool include_internal;
     std::string dot_splines;
+    std::string omit_group_regex;
+    std::string omit_node_regex;
 };
 
 int visualize(const std::vector<std::string>& ymls, const VisualizeParameters& params);
