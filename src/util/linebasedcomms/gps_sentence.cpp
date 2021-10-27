@@ -192,3 +192,94 @@ goby::util::NMEASentence goby::util::gps::HDT::serialize(std::string talker_id) 
 
     return nmea;
 }
+
+void goby::util::gps::WPL::parse(const NMEASentence& sentence)
+{
+    if (sentence.size() >= min_size)
+    {
+        if ((!sentence.at(LATITUDE).empty()) && (!sentence.at(LATITUDE_NS).empty()))
+        {
+            latitude = nmea_geo_to_decimal(sentence.at(LATITUDE), sentence.as<char>(LATITUDE_NS)) *
+                       boost::units::degree::degree;
+        }
+
+        if ((!sentence.at(LONGITUDE).empty()) && (!sentence.at(LONGITUDE_EW).empty()))
+        {
+            longitude =
+                nmea_geo_to_decimal(sentence.at(LONGITUDE), sentence.as<char>(LONGITUDE_EW)) *
+                boost::units::degree::degree;
+        }
+
+        if (!sentence.at(NAME).empty())
+            name = sentence.at(NAME);
+    }
+}
+
+goby::util::NMEASentence goby::util::gps::WPL::serialize(std::string talker_id) const
+{
+    goby::util::NMEASentence nmea("$" + talker_id + "WPL", goby::util::NMEASentence::IGNORE);
+    nmea.resize(size);
+
+    if (latitude)
+        std::tie(nmea[LATITUDE], nmea[LATITUDE_NS]) = decimal_to_nmea_geo(latitude->value(), LAT);
+
+    if (longitude)
+        std::tie(nmea[LONGITUDE], nmea[LONGITUDE_EW]) =
+            decimal_to_nmea_geo(longitude->value(), LON);
+
+    if (name)
+        nmea[NAME] = name.get();
+
+    return nmea;
+}
+
+void goby::util::gps::RTE::parse(const NMEASentence& sentence)
+{
+    if (sentence.size() >= min_size)
+    {
+        if (!sentence.at(TOTAL_NUMBER_SENTENCES).empty())
+            total_number_sentences = sentence.as<int>(TOTAL_NUMBER_SENTENCES);
+
+        if (!sentence.at(CURRENT_SENTENCE_INDEX).empty())
+            current_sentence_index = sentence.as<int>(CURRENT_SENTENCE_INDEX);
+
+        switch (sentence.as<char>(ROUTE_TYPE))
+        {
+            default: break;
+            case ROUTE_TYPE__COMPLETE: type = ROUTE_TYPE__COMPLETE; break;
+            case ROUTE_TYPE__WORKING_ROUTE: type = ROUTE_TYPE__WORKING_ROUTE; break;
+        }
+
+        if (!sentence.at(NAME).empty())
+            name = sentence.at(NAME);
+
+        for (int i = FIRST_WAYPOINT_NAME, n = sentence.size(); i < n; ++i)
+            waypoint_names.push_back(sentence[i]);
+    }
+}
+
+goby::util::NMEASentence goby::util::gps::RTE::serialize(std::string talker_id) const
+{
+    goby::util::NMEASentence nmea("$" + talker_id + "RTE", goby::util::NMEASentence::IGNORE);
+    nmea.resize(min_size);
+
+    if (total_number_sentences)
+        nmea[TOTAL_NUMBER_SENTENCES] = std::to_string(total_number_sentences.get());
+
+    if (current_sentence_index)
+        nmea[CURRENT_SENTENCE_INDEX] = std::to_string(current_sentence_index.get());
+
+    if (type != ROUTE_TYPE__INVALID)
+        nmea[ROUTE_TYPE] = static_cast<char>(type);
+
+    if (name)
+        nmea[NAME] = name.get();
+
+    if (waypoint_names.size() > 0)
+        nmea[FIRST_WAYPOINT_NAME] = waypoint_names[0];
+
+    for (std::vector<std::string>::size_type i = 1, n = waypoint_names.size(); i < n; ++i)
+        nmea.push_back(waypoint_names[i]);
+
+    return nmea;
+}

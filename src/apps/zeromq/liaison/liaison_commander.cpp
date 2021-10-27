@@ -1169,9 +1169,6 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
 
-    if (field_desc->options().GetExtension(dccl::field).omit())
-        return;
-
     int index = parent->childNodes().size();
 
     auto* node =
