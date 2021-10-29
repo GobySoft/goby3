@@ -1,13 +1,22 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.3
+
+### Middleware
+
+- Support for update to geodesy conversion datum at runtime using publication to goby::datum_update
+- Support shared library plugins for modem drivers in InterVehicleTransporter (and thus gobyd)
+- Add parsing of RTE and WPL messages from OpenCPN for receiving data from the map (routes and waypoints).
+- Added regex for optionally omitting certain groups and/or nodes from the goby_clang_tool visualization.
+
+****************
 Version 3.0.2
 
 ### Middleware
 
 - Support for intermodule in goby_clang_tool
 - Added extensions to frontseat and health messages
-
 
 ****************
 Version 3.0.1

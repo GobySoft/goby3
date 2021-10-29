@@ -2,7 +2,6 @@
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
-//   Shawn Dooley <shawn@shawndooley.net>
 //   Toby Schneider <toby@gobysoft.org>
 //
 //
