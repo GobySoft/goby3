@@ -53,6 +53,17 @@ constexpr Group metadata_request{"goby::middleware::intervehicle::metadata_reque
 
 constexpr Group subscription_report{"goby::middleware::intervehicle::subscription_report"};
 
+// direct connection to ModemDriverBase signals
+constexpr Group modem_receive{"goby::middleware::intervehicle::modem_receive"};
+constexpr Group modem_transmit_result{"goby::middleware::intervehicle::modem_transmit_result"};
+constexpr Group modem_raw_incoming{"goby::middleware::intervehicle::modem_raw_incoming"};
+constexpr Group modem_raw_outgoing{"goby::middleware::intervehicle::modem_raw_outgoing"};
+
+// direct connection to MACManager signals
+constexpr Group mac_initiate_transmission{
+    "goby::middleware::intervehicle::mac_initiate_transmission"};
+constexpr Group mac_slot_start{"goby::middleware::intervehicle::mac_slot_start"};
+
 } // namespace groups
 } // namespace intervehicle
 } // namespace middleware
