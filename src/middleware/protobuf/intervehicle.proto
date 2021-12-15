@@ -37,7 +37,7 @@ message PortalConfig
             default = 1.0,
             (goby.field).description =
                 "Time to wait before resending the same data (ARQ wait).",
-            (dccl.field) = {units {base_dimensions: "T"}}
+            (dccl.field) = { units { base_dimensions: "T" } }
         ];
     }
 
@@ -78,7 +78,7 @@ message Subscription
     required Header header = 1;
     optional uint64 time = 2 [(dccl.field) = {
         omit: true
-        units {prefix: "micro" base_dimensions: "T"}
+        units { prefix: "micro" base_dimensions: "T" }
     }];
 
     enum Action
@@ -88,17 +88,19 @@ message Subscription
     }
     required Action action = 3;
 
-    required uint32 dccl_id = 5 [(dccl.field) = {min: 1 max: 32767}];
-    required uint32 group = 6 [(dccl.field) = {min: 0 max: 255}];
+    required uint32 dccl_id = 5 [(dccl.field) = { min: 1 max: 32767 }];
+    required uint32 group = 6 [(dccl.field) = { min: 0 max: 255 }];
     optional TransporterConfig intervehicle = 10;
     optional goby.middleware.protobuf.SerializerProtobufMetadata metadata = 20;
 }
 
 message Header
 {
-    required int32 src = 1 [(dccl.field) = {min: 0 max: 65535}];
-    repeated int32 dest = 2 [(dccl.field) = {min: 0 max: 65535 max_repeat: 4}];
-    optional goby.acomms.protobuf.ModemTransmission modem_msg = 10 [(dccl.field).omit = true];
+    required int32 src = 1 [(dccl.field) = { min: 0 max: 65535 }];
+    repeated int32 dest = 2
+        [(dccl.field) = { min: 0 max: 65535 max_repeat: 4 }];
+    optional goby.acomms.protobuf.ModemTransmission modem_msg = 10
+        [(dccl.field).omit = true];
 }
 
 message DCCLPacket
@@ -127,7 +129,7 @@ message AckData
 
     required int64 latency = 2 [
         (goby.field).description = "Time between queuing and acknowledgement",
-        (dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}
+        (dccl.field) = { units { prefix: "micro" base_dimensions: "T" } }
     ];
 }
 
@@ -143,7 +145,7 @@ message ExpireData
 
     required int64 latency = 2 [
         (goby.field).description = "Time between queuing and expiration",
-        (dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}
+        (dccl.field) = { units { prefix: "micro" base_dimensions: "T" } }
     ];
 
     enum ExpireReason
@@ -188,7 +190,19 @@ message SubscriptionPersistCollection
 
     required uint64 time = 1 [(dccl.field) = {
         omit: true
-        units {prefix: "micro" base_dimensions: "T"}
+        units { prefix: "micro" base_dimensions: "T" }
     }];
     repeated Subscription subscription = 2;
+}
+
+message ModemTransmissionWithLinkID
+{
+    required uint32 link_modem_id = 1;
+    required goby.acomms.protobuf.ModemTransmission data = 2;
+}
+
+message ModemRawWithLinkID
+{
+    required uint32 link_modem_id = 1;
+    required goby.acomms.protobuf.ModemRaw data = 2;
 }

@@ -222,6 +222,35 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
         }
     }
 
+    driver_->signal_receive.connect([&](const goby::acomms::protobuf::ModemTransmission& rx_msg) {
+        protobuf::ModemTransmissionWithLinkID msg_with_id;
+        msg_with_id.set_link_modem_id(cfg().modem_id());
+        *msg_with_id.mutable_data() = rx_msg;
+        interprocess_->publish<groups::modem_receive>(msg_with_id);
+    });
+
+    driver_->signal_transmit_result.connect(
+        [&](const goby::acomms::protobuf::ModemTransmission& tx_msg) {
+            protobuf::ModemTransmissionWithLinkID msg_with_id;
+            msg_with_id.set_link_modem_id(cfg().modem_id());
+            *msg_with_id.mutable_data() = tx_msg;
+            interprocess_->publish<groups::modem_transmit_result>(msg_with_id);
+        });
+
+    driver_->signal_raw_incoming.connect([&](const goby::acomms::protobuf::ModemRaw& msg) {
+        protobuf::ModemRawWithLinkID msg_with_id;
+        msg_with_id.set_link_modem_id(cfg().modem_id());
+        *msg_with_id.mutable_data() = msg;
+        interprocess_->publish<groups::modem_raw_incoming>(msg_with_id);
+    });
+
+    driver_->signal_raw_outgoing.connect([&](const goby::acomms::protobuf::ModemRaw& msg) {
+        protobuf::ModemRawWithLinkID msg_with_id;
+        msg_with_id.set_link_modem_id(cfg().modem_id());
+        *msg_with_id.mutable_data() = msg;
+        interprocess_->publish<groups::modem_raw_outgoing>(msg_with_id);
+    });
+
     driver_->signal_receive.connect(
         [&](const goby::acomms::protobuf::ModemTransmission& rx_msg) { _receive(rx_msg); });
 
@@ -229,6 +258,21 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
         [&](goby::acomms::protobuf::ModemTransmission* msg) { this->_data_request(msg); });
 
     goby::acomms::bind(mac_, *driver_);
+
+    mac_.signal_initiate_transmission.connect(
+        [&](const goby::acomms::protobuf::ModemTransmission& msg) {
+            protobuf::ModemTransmissionWithLinkID msg_with_id;
+            msg_with_id.set_link_modem_id(cfg().modem_id());
+            *msg_with_id.mutable_data() = msg;
+            interprocess_->publish<groups::mac_initiate_transmission>(msg_with_id);
+        });
+
+    mac_.signal_slot_start.connect([&](const goby::acomms::protobuf::ModemTransmission& msg) {
+        protobuf::ModemTransmissionWithLinkID msg_with_id;
+        msg_with_id.set_link_modem_id(cfg().modem_id());
+        *msg_with_id.mutable_data() = msg;
+        interprocess_->publish<groups::mac_slot_start>(msg_with_id);
+    });
 
     mac_.startup(cfg().mac());
 
