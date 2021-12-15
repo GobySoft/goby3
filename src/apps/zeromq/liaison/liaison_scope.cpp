@@ -119,7 +119,7 @@ void goby::apps::zeromq::LiaisonScope::loop()
 }
 
 void goby::apps::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WStandardItem*>& items,
-                                                const google::protobuf::Message& pb_msg)
+                                                      const google::protobuf::Message& pb_msg)
 {
     Wt::WStandardItem* key_item = items[protobuf::ProtobufScopeConfig::COLUMN_GROUP];
 
@@ -129,10 +129,12 @@ void goby::apps::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WSta
 
     boost::split(result, debug_string, boost::is_any_of("\n"));
 
-    key_item->setRowCount(result.size());
+    // workaround to ensure that the rows always show on an expanded message when different messages have different lengths
+    int row_count = std::max<int>(result.size(), key_item->rowCount());
+    key_item->setRowCount(row_count);
     key_item->setColumnCount(protobuf::ProtobufScopeConfig::COLUMN_MAX + 1);
 
-    for (int i = 0, n = result.size(); i < n; ++i)
+    for (int i = 0, n = key_item->rowCount(); i < n; ++i)
     {
         for (int j = 0; j <= protobuf::ProtobufScopeConfig::COLUMN_MAX; ++j)
         {
@@ -141,7 +143,10 @@ void goby::apps::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WSta
 
             if (j == protobuf::ProtobufScopeConfig::COLUMN_VALUE)
             {
-                key_item->child(i, j)->setText(result[i]);
+                if (i < result.size())
+                    key_item->child(i, j)->setText(result[i]);
+                else
+                    key_item->child(i, j)->setText("");
             }
             else
             {
@@ -153,9 +158,8 @@ void goby::apps::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WSta
     }
 }
 
-std::vector<Wt::WStandardItem*>
-goby::apps::zeromq::LiaisonScope::create_row(const std::string& group,
-                                       const google::protobuf::Message& msg, bool do_attach_pb_rows)
+std::vector<Wt::WStandardItem*> goby::apps::zeromq::LiaisonScope::create_row(
+    const std::string& group, const google::protobuf::Message& msg, bool do_attach_pb_rows)
 {
     std::vector<Wt::WStandardItem*> items;
     for (int i = 0; i <= protobuf::ProtobufScopeConfig::COLUMN_MAX; ++i)
@@ -166,9 +170,9 @@ goby::apps::zeromq::LiaisonScope::create_row(const std::string& group,
 }
 
 void goby::apps::zeromq::LiaisonScope::update_row(const std::string& group,
-                                            const google::protobuf::Message& msg,
-                                            const std::vector<WStandardItem*>& items,
-                                            bool do_attach_pb_rows)
+                                                  const google::protobuf::Message& msg,
+                                                  const std::vector<WStandardItem*>& items,
+                                                  bool do_attach_pb_rows)
 {
     items[protobuf::ProtobufScopeConfig::COLUMN_GROUP]->setText(group);
 
@@ -235,8 +239,8 @@ void goby::apps::zeromq::LiaisonScope::inbox(
 }
 
 void goby::apps::zeromq::LiaisonScope::handle_message(const std::string& group,
-                                                const google::protobuf::Message& msg,
-                                                bool fresh_message)
+                                                      const google::protobuf::Message& msg,
+                                                      bool fresh_message)
 {
     //    glog.is(DEBUG1) && glog << "LiaisonScope: got message:  " << msg << std::endl;
     auto it = msg_map_.find(group);
