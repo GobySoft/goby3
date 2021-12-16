@@ -1,6 +1,22 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.4
+
+### Middleware
+
+- Add publications from the IntervehiclePortal (gobyd) for various Goby-Acomms signals (driver / AMAC)
+
+### ZeroMQ
+
+- Fix Liaison Scope truncating messages in drop-down when the messages vary in size within the same Group
+
+### Util
+
+- Fix bug in AIS encoding for negative lat/lon (was undefined behavior, but exhibits the problem only on ARM processors)
+
+
+****************
 Version 3.0.3
 
 ### Middleware
