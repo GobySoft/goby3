@@ -109,6 +109,7 @@ class Encoder
     }
 
     struct AISField;
+    friend std::ostream& operator<<(std::ostream& os, const Encoder::AISField& ais);
 
     void concatenate_bitset(const std::vector<AISField>& fields)
     {
@@ -170,6 +171,17 @@ class Encoder
 
     static std::atomic<int> sequence_id_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Encoder::AISField& ais)
+{
+    os << "l:" << static_cast<int>(ais.len) << ", ";
+    if (ais.is_string)
+        os << "s: " << ais.s;
+    else
+        os << "u: " << ais.u;
+
+    return os;
+}
 
 } // namespace ais
 } // namespace util

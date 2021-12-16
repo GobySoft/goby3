@@ -185,6 +185,9 @@ void goby::util::ais::Encoder::encode_msg_18(const goby::util::ais::protobuf::Po
          393222} // Because Class B "CS" does not use any Communication State information, this field shall be filled with the following value: 1100000000000000110.
     };
 
+    for (int i = 0, n = fields.size(); i < n; ++i)
+    { std::cout << "[" << i << "] " << fields[i] << std::endl; }
+
     concatenate_bitset(fields);
     assert(bits_.size() == 168);
 }
