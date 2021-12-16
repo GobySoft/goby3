@@ -170,17 +170,17 @@ void goby::util::ais::Encoder::encode_msg_18(const goby::util::ais::protobuf::Po
         {12, pos.has_course_over_ground() ? ais_angle(pos.course_over_ground_with_units(), 1)
                                           : 3600}, // cog in 0.1 degrees
         {9, pos.has_true_heading() ? ais_angle(pos.true_heading_with_units(), 0)
-                                   : 511},               // heading in 1 degree
-        {6, static_cast<uint32_t>(pos.report_second())}, // report sec
-        {2},                                             // regional reserved
-        {1, 1},                                          // CS Unit,  1 = Class B "CS" unit
-        {1},                                             // Display flag
-        {1},                                             // DSC flag
-        {1},                                             // Band flag
-        {1},                                             // Message 22 flag
-        {1},                                             // Assigned mode
-        {1, pos.raim()},                                 // RAIM
-        {1, 1},                                          // (always "1" for Class-B "CS")
+                                   : 511},                    // heading in 1 degree
+        {6, static_cast<std::uint32_t>(pos.report_second())}, // report sec
+        {2},                                                  // regional reserved
+        {1, 1},                                               // CS Unit,  1 = Class B "CS" unit
+        {1},                                                  // Display flag
+        {1},                                                  // DSC flag
+        {1},                                                  // Band flag
+        {1},                                                  // Message 22 flag
+        {1},                                                  // Assigned mode
+        {1, pos.raim()},                                      // RAIM
+        {1, 1},                                               // (always "1" for Class-B "CS")
         {19,
          393222} // Because Class B "CS" does not use any Communication State information, this field shall be filled with the following value: 1100000000000000110.
     };
