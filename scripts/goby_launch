@@ -212,7 +212,8 @@ if [ -e "$preseed" ]; then
 fi
 
 launchfile="/tmp/goby_$$.launch"
-cat ${origlaunchfile} > ${launchfile}
+# echo adds a newline at the end which is required in case one doesn't exist
+echo | cat ${origlaunchfile} - > ${launchfile}
 
 
 # search for gobyd so we can use the same interprocess { } configuration for goby_terminate
