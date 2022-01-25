@@ -59,6 +59,11 @@ void cobs_async_write(Thread* this_thread,
         cobs_encoded.resize(cobs_size);
         cobs_encoded += cobs_eol;
 
+        goby::glog.is_debug2() && goby::glog << group(this_thread->glog_group()) << "COBS ("
+                                             << cobs_encoded.size() << "B) <"
+                                             << " " << goby::util::hex_encode(cobs_encoded)
+                                             << std::endl;
+
         boost::asio::async_write(this_thread->mutable_socket(), boost::asio::buffer(cobs_encoded),
                                  [this_thread, cobs_encoded](const boost::system::error_code& ec,
                                                              std::size_t bytes_transferred) {
@@ -96,9 +101,15 @@ void cobs_async_read(Thread* this_thread,
                 std::istream is(&this_thread->buffer_);
                 is.read(&bytes[0], bytes_transferred);
 
+                goby::glog.is_debug2() && goby::glog << group(this_thread->glog_group()) << "COBS ("
+                                                     << bytes.size() << "B) >"
+                                                     << " " << goby::util::hex_encode(bytes)
+                                                     << std::endl;
+
                 auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();
                 auto& cobs_decoded = *io_msg->mutable_data();
                 cobs_decoded = std::string(bytes_transferred, '\0');
+
                 int decoded_size =
                     cobs_decode(reinterpret_cast<const uint8_t*>(bytes.data()), bytes_transferred,
                                 reinterpret_cast<uint8_t*>(&cobs_decoded[0]));
