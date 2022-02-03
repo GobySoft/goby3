@@ -1,6 +1,22 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.5
+
+### Middleware
+
+- Added IO threads (TCP, Serial, PTY) for the Consistent Overhead Byte Stuffing (COBS) packet framing algorithm, which is a easy to implement scheme for delimiting binary packets on a stream protocol.
+- Changed file_log to be a singular field, and added -z flags (which can be repeated, e.g. -zz or -zzz) for quickly changing the file log verbosity on the command line.
+
+### ZeroMQ
+
+- Add symlink for latest log in goby_logger.
+
+
+****************
+
+
+****************
 Version 3.0.4
 
 ### Middleware
