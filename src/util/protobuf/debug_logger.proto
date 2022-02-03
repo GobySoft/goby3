@@ -46,10 +46,9 @@ message GLogConfig
             (goby.field).description = "Verbosity for this file log"
         ];
     }
-    repeated FileLog file_log = 3
+    optional FileLog file_log = 3
         [(goby.field).description =
-             "Open one or more files for (debug) logging."];
-
+             "Open a file for (debug) logging."];
     
     optional bool show_dccl_log = 4 [default = false];
 }
