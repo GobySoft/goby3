@@ -72,13 +72,22 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
     Logger()
         : goby::zeromq::SingleThreadApplication<protobuf::LoggerConfig>(1 *
                                                                         boost::units::si::hertz),
-          log_file_path_(std::string(cfg().log_dir() + "/" + cfg().interprocess().platform() + "_" +
-                                     goby::time::file_str() + ".goby")),
+          log_file_base_(
+              std::string(cfg().log_dir() + "/" + cfg().interprocess().platform() + "_")),
+          log_file_path_(log_file_base_ + goby::time::file_str() + ".goby"),
           log_(log_file_path_.c_str(), std::ofstream::binary)
     {
         if (!log_.is_open())
             glog.is_die() && glog << "Failed to open log in directory: " << cfg().log_dir()
                                   << std::endl;
+
+        std::string file_symlink = log_file_base_ + "latest.goby";
+        remove(file_symlink.c_str());
+        int result = symlink(realpath(log_file_path_.c_str(), NULL), file_symlink.c_str());
+        if (result != 0)
+            glog.is_warn() &&
+                glog << "Cannot create symlink to latest file. Continuing onwards anyway"
+                     << std::endl;
 
         namespace sp = std::placeholders;
         interprocess().subscribe_regex(
@@ -118,6 +127,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
     static std::atomic<bool> do_quit;
 
   private:
+    std::string log_file_base_;
     std::string log_file_path_;
     std::ofstream log_;
 
@@ -127,8 +137,8 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
     goby::middleware::log::DCCLPlugin dccl_plugin_;
 };
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
 
 std::atomic<bool> goby::apps::zeromq::Logger::do_quit{false};
 
@@ -164,7 +174,7 @@ int main(int argc, char* argv[])
 void signal_handler(int /*sig*/) { goby::apps::zeromq::Logger::do_quit = true; }
 
 void goby::apps::zeromq::Logger::log(const std::vector<unsigned char>& data, int scheme,
-                               const std::string& type, const goby::middleware::Group& group)
+                                     const std::string& type, const goby::middleware::Group& group)
 {
     glog.is_debug1() && glog << "Received " << data.size()
                              << " bytes to log to [scheme, type, group] = [" << scheme << ", "
