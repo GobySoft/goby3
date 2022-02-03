@@ -252,6 +252,7 @@ bool test_256_bytes_null_end_rt(void)
 
 int main(int argc, char* argv[])
 {
+#ifndef __clang_analyzer__
     test_single_null();
     test_hex1();
 
@@ -268,4 +269,5 @@ int main(int argc, char* argv[])
     test_256_bytes_null_end_rt();
 
     return 0;
+#endif
 }
