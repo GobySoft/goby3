@@ -1,6 +1,18 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.6
+
+### Util
+
+- Fix bug in geodesy where Zone 60 (174-180 degrees E) was report at Zone 0 (does not exist) and thus caused an exception.
+
+### Middleware
+
+- Add scheme to output of HDF5 file as field '_scheme_' to allow distinguishing between DCCL and PROTOBUF messages.
+
+
+****************
 Version 3.0.5
 
 ### Middleware
