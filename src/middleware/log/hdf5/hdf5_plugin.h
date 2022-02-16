@@ -47,6 +47,9 @@ struct HDF5ProtobufEntry
     /// Actual message contents
     std::shared_ptr<google::protobuf::Message> msg;
 
+    /// Scheme
+    int scheme{-1};
+
     HDF5ProtobufEntry() = default;
 
     /// Clear the values

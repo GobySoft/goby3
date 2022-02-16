@@ -53,8 +53,8 @@ struct MessageCollection
     MessageCollection(std::string n) : name(std::move(n)) {}
     std::string name;
 
-    // time -> Message contents
-    std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message>> entries;
+    // time -> ProtobufEntry
+    std::multimap<std::uint64_t, HDF5ProtobufEntry> entries;
 };
 
 struct Channel
@@ -114,6 +114,8 @@ class Writer
                              const goby::middleware::hdf5::MessageCollection& message_collection);
     void write_time(const std::string& group,
                     const goby::middleware::hdf5::MessageCollection& message_collection);
+    void write_scheme(const std::string& group,
+                      const goby::middleware::hdf5::MessageCollection& message_collection);
 
     void write_field_selector(const std::string& group,
                               const google::protobuf::FieldDescriptor* field_desc,
