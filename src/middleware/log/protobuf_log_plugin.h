@@ -71,6 +71,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             goby::middleware::HDF5ProtobufEntry& hdf5_entry = hdf5_entries.back();
             hdf5_entry.channel = log_entry.group();
             hdf5_entry.time = goby::time::convert<decltype(hdf5_entry.time)>(log_entry.timestamp());
+            hdf5_entry.scheme = scheme;
             hdf5_entry.msg = msg;
         }
         return hdf5_entries;

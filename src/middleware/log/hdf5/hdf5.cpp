@@ -48,7 +48,7 @@ void goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5Pr
             entries.insert(std::make_pair(msg_name, MessageCollection(msg_name)));
         it = itpair.first;
     }
-    it->second.entries.insert(std::make_pair(time::MicroTime(entry.time).value(), entry.msg));
+    it->second.entries.insert(std::make_pair(time::MicroTime(entry.time).value(), entry));
 }
 
 H5::Group& goby::middleware::hdf5::GroupFactory::fetch_group(const std::string& group_path)
@@ -121,17 +121,18 @@ void goby::middleware::hdf5::Writer::write_message_collection(
     const std::string& group, const goby::middleware::hdf5::MessageCollection& message_collection)
 {
     write_time(group, message_collection);
+    write_scheme(group, message_collection);
 
     auto write_field = [&, this](const google::protobuf::FieldDescriptor* field_desc) {
         std::vector<const google::protobuf::Message*> messages;
         for (const auto& entry : message_collection.entries)
-        { messages.push_back(entry.second.get()); } std::vector<hsize_t> hs;
+        { messages.push_back(entry.second.msg.get()); } std::vector<hsize_t> hs;
         hs.push_back(messages.size());
         write_field_selector(group, field_desc, messages, hs);
     };
 
     const google::protobuf::Descriptor* desc =
-        message_collection.entries.begin()->second->GetDescriptor();
+        message_collection.entries.begin()->second.msg->GetDescriptor();
     for (int i = 0, n = desc->field_count(); i < n; ++i)
     {
         const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
@@ -370,6 +371,22 @@ void goby::middleware::hdf5::Writer::write_time(
     hs.push_back(message_collection.entries.size());
     write_vector(group, "_utime_", utime, hs, (std::uint64_t)0);
     write_vector(group, "_datenum_", datenum, hs, (double)0);
+}
+
+void goby::middleware::hdf5::Writer::write_scheme(
+    const std::string& group, const goby::middleware::hdf5::MessageCollection& message_collection)
+{
+    std::vector<int> scheme(message_collection.entries.size(), 0);
+    int i = 0;
+    for (const auto& entry : message_collection.entries)
+    {
+        scheme[i] = entry.second.scheme;
+        ++i;
+    }
+
+    std::vector<hsize_t> hs;
+    hs.push_back(message_collection.entries.size());
+    write_vector(group, "_scheme_", scheme, hs, (int)0);
 }
 
 void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
