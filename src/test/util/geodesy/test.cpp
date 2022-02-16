@@ -78,6 +78,31 @@ int main()
         assert(double_cmp(utm.y / meters, 100, 3));
     }
 
+    {
+        goby::util::UTMGeodesy geodesy({41 * degrees, 175 * degrees});
+        std::cout << "zone: " << geodesy.origin_utm_zone() << std::endl;
+        assert(geodesy.origin_utm_zone() == 60);
+
+        auto geo = geodesy.convert(goby::util::UTMGeodesy::XYPoint({100 * meters, 100 * meters}));
+        auto origin_geo = geodesy.origin_geo();
+
+        std::cout << "geo origin: " << std::setprecision(std::numeric_limits<double>::digits10)
+                  << origin_geo.lat << ", " << origin_geo.lon << std::endl;
+        std::cout << "(x = 100, y = 100) as (lat, lon): ("
+                  << std::setprecision(std::numeric_limits<double>::digits10) << geo.lat << ", "
+                  << geo.lon << ")" << std::endl;
+
+        assert(double_cmp(geo.lat / degrees, 41.00092, 5));
+        assert(double_cmp(geo.lon / degrees, 175.001161, 5));
+
+        auto utm = geodesy.convert(geo);
+        std::cout << "reconvert as (x, y): ("
+                  << std::setprecision(std::numeric_limits<double>::digits10) << utm.x << ", "
+                  << utm.y << ")" << std::endl;
+        assert(double_cmp(utm.x / meters, 100, 3));
+        assert(double_cmp(utm.y / meters, 100, 3));
+    }
+
     std::cout << "all tests passed" << std::endl;
     return 0;
 }

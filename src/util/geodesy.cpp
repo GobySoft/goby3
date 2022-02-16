@@ -37,7 +37,7 @@ goby::util::UTMGeodesy::UTMGeodesy(const LatLonPoint& origin)
     : origin_geo_(origin), origin_zone_(0), pj_utm_(nullptr), pj_latlong_(nullptr)
 {
     double origin_lon_deg = origin.lon / boost::units::degree::degrees;
-    origin_zone_ = (static_cast<int>(std::floor((origin_lon_deg + 180) / 6)) + 1) % 60;
+    origin_zone_ = (static_cast<int>(std::floor((origin_lon_deg + 180) / 6))) % 60 + 1;
 
     std::stringstream proj_utm;
     proj_utm << "+proj=utm +ellps=WGS84 +zone=" << origin_zone_;
