@@ -57,7 +57,8 @@
 #include <boost/date_time/posix_time/ptime.hpp>           // for ptime
 #include <boost/date_time/posix_time/time_formatters.hpp> // for to_simple_...
 #include <boost/units/quantity.hpp>                       // for operator/
-#include <google/protobuf/message.h>                      // for Message
+#include <dccl/version.h>
+#include <google/protobuf/message.h> // for Message
 
 #include "goby/middleware/group.h"                    // for Group
 #include "goby/middleware/marshalling/interface.h"    // for Marshallin...
@@ -191,7 +192,6 @@ class LiaisonCommander
 
     struct ControlsContainer : Wt::WGroupBox
     {
-
         ControlsContainer(const protobuf::ProtobufCommanderConfig& pb_commander_config,
                           Wt::WStackedWidget* commands_div, LiaisonCommander* parent);
 
@@ -308,6 +308,17 @@ class LiaisonCommander
                     send_button_->setDisabled(false);
             }
 
+            void check_dynamics()
+            {
+#if DCCL_VERSION_MAJOR >= 4
+                if (has_dynamic_conditions_)
+                {
+                    dccl_dycon_.set_message(message_.get());
+                    generate_root();
+                }
+#endif
+            }
+
             enum DatabaseDialogResponse
             {
                 RESPONSE_EDIT,
@@ -375,6 +386,12 @@ class LiaisonCommander
             const protobuf::ProtobufCommanderConfig::LoadProtobuf& load_config_;
             LiaisonCommander* commander_;
             Wt::WPushButton* send_button_;
+
+#if DCCL_VERSION_MAJOR >= 4
+            // does any field in the message have dynamic conditions set?
+            bool has_dynamic_conditions_{false};
+            dccl::DynamicConditions dccl_dycon_;
+#endif
         };
 
         const protobuf::ProtobufCommanderConfig& pb_commander_config_;
