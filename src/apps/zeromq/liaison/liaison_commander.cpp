@@ -1801,7 +1801,10 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         has_dynamic_conditions_ = true;
 
     if (dccl_dycon_.has_omit_if())
-        value_field->setHidden(dccl_dycon_.omit(), Wt::WAnimation(Wt::WAnimation::Fade));
+    {
+        value_field->setHidden(dccl_dycon_.omit());
+    }
+
 #endif
 
     if (options.has_min() && options.has_max())
