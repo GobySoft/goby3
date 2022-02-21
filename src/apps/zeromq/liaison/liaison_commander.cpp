@@ -87,8 +87,9 @@
 #include <google/protobuf/descriptor.pb.h>              // for FieldOptions
 #include <google/protobuf/text_format.h>                // for TextFormat
 
-#include "dccl/dynamic_protobuf_manager.h"          // for DynamicProto...
-#include "goby/middleware/common.h"                 // for to_string
+#include "dccl/dynamic_protobuf_manager.h" // for DynamicProto...
+#include "goby/middleware/common.h"        // for to_string
+#include "goby/middleware/marshalling/dccl.h"
 #include "goby/middleware/protobuf/layer.pb.h"      // for Layer_Parse
 #include "goby/middleware/transport/interthread.h"  // for InterThreadT...
 #include "goby/middleware/transport/intervehicle.h" // for InterVehicle...
@@ -701,7 +702,24 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 
     auto* message_box = new WGroupBox("Message to send", dialog.contents());
     auto* message_div = new WContainerWidget(message_box);
-    new WText("<pre>" + current_command->message_->DebugString() + "</pre>", message_div);
+
+    auto message_to_send = current_command->message_;
+
+#if DCCL_VERSION_MAJOR >= 4
+    if (current_command->has_dynamic_conditions_)
+    {
+        // run through DCCL to omit / round fields as needed
+        using DCCLHelper = middleware::SerializerParserHelper<google::protobuf::Message,
+                                                              middleware::MarshallingScheme::DCCL>;
+        std::vector<char> bytes = DCCLHelper::serialize(*message_to_send);
+        std::vector<char>::iterator actual_end;
+        message_to_send =
+            DCCLHelper::parse(bytes.begin(), bytes.end(), actual_end,
+                              current_command->message_->GetDescriptor()->full_name());
+    }
+#endif
+
+    new WText("<pre>" + message_to_send->DebugString() + "</pre>", message_div);
 
     message_div->setMaximumSize(pb_commander_config_.modal_dimensions().width(),
                                 pb_commander_config_.modal_dimensions().height());
@@ -726,8 +744,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                     commander_->goby_thread()
                         ->interthread()
                         .publish_dynamic<google::protobuf::Message>(
-                            current_command->message_,
-                            goby::middleware::DynamicGroup(grouplayer.group()));
+                            message_to_send, goby::middleware::DynamicGroup(grouplayer.group()));
                 });
                 break;
             case goby::middleware::protobuf::LAYER_INTERMODULE:
@@ -736,8 +753,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                     commander_->goby_thread()
                         ->interprocess()
                         .publish_dynamic<google::protobuf::Message>(
-                            current_command->message_,
-                            goby::middleware::DynamicGroup(grouplayer.group()));
+                            message_to_send, goby::middleware::DynamicGroup(grouplayer.group()));
                 });
                 break;
             case goby::middleware::protobuf::LAYER_INTERVEHICLE:
@@ -746,7 +762,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                         ->intervehicle()
                         .publish_dynamic<google::protobuf::Message,
                                          goby::middleware::MarshallingScheme::DCCL>(
-                            current_command->message_,
+                            message_to_send,
                             goby::middleware::DynamicGroup(grouplayer.group(), group_numeric),
                             commander_->goby_thread()->command_publisher_);
                 });
@@ -754,10 +770,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         }
 
         auto* command_entry = new CommandEntry;
-        command_entry->protobuf_name = current_command->message_->GetDescriptor()->full_name();
-        command_entry->bytes.resize(current_command->message_->ByteSize());
-        current_command->message_->SerializeToArray(&command_entry->bytes[0],
-                                                    command_entry->bytes.size());
+        command_entry->protobuf_name = message_to_send->GetDescriptor()->full_name();
+        command_entry->bytes.resize(message_to_send->ByteSize());
+        message_to_send->SerializeToArray(&command_entry->bytes[0], command_entry->bytes.size());
         command_entry->address = wApp->environment().clientAddress();
         command_entry->group = grouplayer.group();
         command_entry->layer = goby::middleware::to_string(grouplayer.layer());
@@ -770,7 +785,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         if (command_entry->comment.empty())
         {
             command_entry->comment =
-                "[" + current_command->message_->ShortDebugString().substr(0, 100) + "...]";
+                "[" + message_to_send->ShortDebugString().substr(0, 100) + "...]";
         }
 
         command_entry->last_ack = 0;
@@ -954,6 +969,11 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     load_external_data(message_->GetDescriptor());
 
     generate_root();
+
+#if DCCL_VERSION_MAJOR >= 4
+    glog.is(DEBUG1) && glog << "has_dynamic_conditions? " << has_dynamic_conditions_ << std::endl;
+    check_dynamics();
+#endif
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1602,6 +1622,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         }
     }
     check_initialized();
+    check_dynamics();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1639,6 +1660,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     glog.is(DEBUG1) && glog << "The message is: " << message_->DebugString() << std::endl;
 
     check_initialized();
+    check_dynamics();
 }
 
 WLineEdit* goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1773,13 +1795,35 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 {
     const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
 
+#if DCCL_VERSION_MAJOR >= 4
+    dccl_dycon_.set_field(field_desc);
+    if (field_desc->options().GetExtension(dccl::field).has_dynamic_conditions())
+        has_dynamic_conditions_ = true;
+
+    if (dccl_dycon_.has_omit_if())
+        value_field->setHidden(dccl_dycon_.omit(), Wt::WAnimation(Wt::WAnimation::Fade));
+#endif
+
     if (options.has_min() && options.has_max())
     {
+        double min = options.min();
+        double max = options.max();
         WValidator* validator = value_field->validator();
+
+#if DCCL_VERSION_MAJOR >= 4
+        if (dccl_dycon_.has_max())
+            max = std::min(max, dccl_dycon_.max());
+        if (dccl_dycon_.has_min())
+            min = std::max(min, dccl_dycon_.min());
+
+        if (dccl_dycon_.has_required_if())
+            validator->setMandatory(field_desc->is_required() || dccl_dycon_.required());
+#endif
+
         if (auto* int_validator = dynamic_cast<WIntValidator*>(validator))
-            int_validator->setRange(options.min(), options.max());
+            int_validator->setRange(min, max);
         if (auto* double_validator = dynamic_cast<WDoubleValidator*>(validator))
-            double_validator->setRange(options.min(), options.max());
+            double_validator->setRange(min, max);
     }
 
     if (options.has_static_value())
@@ -1917,6 +1961,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 
     check_initialized();
+    check_dynamics();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1942,6 +1987,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         button->setText(MESSAGE_INCLUDE_TEXT);
     }
     check_initialized();
+    check_dynamics();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
