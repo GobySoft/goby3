@@ -8,6 +8,11 @@ add_library(goby_liaison_core SHARED
   liaison_scope.cpp
 )
 
+target_link_libraries(goby_liaison_core
+  goby
+  goby_zeromq
+  )
+
 add_executable(goby_liaison
   liaison.cpp
   )
@@ -26,8 +31,6 @@ set(LIB
   ${Boost_LIBRARIES}
   ${Wt_LIBRARIES}
   pthread
-  goby
-  goby_zeromq
   goby_liaison_core
 )
 
