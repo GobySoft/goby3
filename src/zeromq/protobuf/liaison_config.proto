@@ -54,6 +54,11 @@ message LiaisonConfig
     optional string upper_right_logo_link = 20
         [(goby.field).description = "Hyperlink for upper right image"];
 
+    
+    optional bool add_home_tab = 21 [default = true];
+    optional bool add_scope_tab = 22 [default = true];
+    optional bool add_commander_tab = 23 [default = true];
+    
     optional ProtobufCommanderConfig pb_commander_config = 900;
     optional ProtobufScopeConfig pb_scope_config = 901;
 

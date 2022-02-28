@@ -25,49 +25,4 @@
 #ifndef GOBY_APPS_ZEROMQ_LIAISON_LIAISON_H
 #define GOBY_APPS_ZEROMQ_LIAISON_LIAISON_H
 
-#include <atomic>     // for atomic
-#include <functional> // for function
-#include <string>     // for string
-#include <vector>     // for vector
-
-#include <Wt/WServer> // for WServer
-
-#include "goby/zeromq/application/multi_thread.h" // for MultiThreadApp...
-#include "goby/zeromq/protobuf/liaison_config.pb.h"
-
-namespace goby
-{
-namespace apps
-{
-namespace zeromq
-{
-class Liaison : public goby::zeromq::MultiThreadApplication<protobuf::LiaisonConfig>
-{
-  public:
-    Liaison();
-    ~Liaison() override
-    {
-        terminating_ = true;
-        wt_server_.stop();
-    }
-
-    void loop() override;
-
-    static std::vector<void*> plugin_handles_;
-
-  private:
-    void load_proto_file(const std::string& path);
-
-    friend class LiaisonWtThread;
-
-  private:
-    Wt::WServer wt_server_;
-    std::atomic<bool> terminating_{false};
-    std::function<void()> expire_sessions_;
-};
-
-} // namespace zeromq
-} // namespace apps
-} // namespace goby
-
 #endif

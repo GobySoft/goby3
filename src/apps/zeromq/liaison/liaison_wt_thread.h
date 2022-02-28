@@ -62,6 +62,8 @@ class LiaisonWtThread : public Wt::WApplication
     void add_to_menu(Wt::WMenu* menu, goby::zeromq::LiaisonContainer* container);
     void handle_menu_selection(Wt::WMenuItem* item);
 
+    static std::vector<void*> plugin_handles_;
+
   private:
     Wt::WMenu* menu_;
     Wt::WStackedWidget* contents_stack_;
