@@ -465,8 +465,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
             for (auto it = it_pair.first, end = it_pair.second; it != end; ++it)
             {
                 if (it->second.intervehicle() == subscription.intervehicle())
+                {
                     is_new_cfg = false;
-                break;
+                    break;
+                }
             }
 
             if (is_new_cfg)
