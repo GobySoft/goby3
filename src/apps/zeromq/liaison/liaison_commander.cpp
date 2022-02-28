@@ -617,6 +617,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::clear_message()
         auto* current_command = dynamic_cast<CommandContainer*>(commands_div_->currentWidget());
         current_command->message_->Clear();
         current_command->generate_root();
+        current_command->check_dynamics();
     }
 }
 
