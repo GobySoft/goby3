@@ -73,7 +73,7 @@ void LogEntry::parse_version(std::istream* s)
     {
         version_ = 1;
         // rewind
-        s->seekg(s->tellg() - std::ios::streamoff(version_bytes_));
+        s->seekg(s->tellg() - std::streamoff(version_bytes_));
     }
     else if (version_ > current_version_)
     {
@@ -127,7 +127,7 @@ void LogEntry::parse(std::istream* s)
             {
                 ++discarded;
                 // rewind to read the next byte
-                s->seekg(s->tellg() - std::ios::streamoff(magic_.size() - 1));
+                s->seekg(s->tellg() - std::streamoff(magic_.size() - 1));
             }
         }
 
