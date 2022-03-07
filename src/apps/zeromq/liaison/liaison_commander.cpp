@@ -1408,7 +1408,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                               : refl->GetFloat(*message, field_desc);
 
             auto* validator = new WDoubleValidator;
-            validator->setRange(std::numeric_limits<float>::min(),
+            validator->setRange(std::numeric_limits<float>::lowest(),
                                 std::numeric_limits<float>::max());
 
             value_field = generate_single_line_edit_field(
