@@ -207,7 +207,7 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
 #ifdef USE_BOOST_IO_SERVICE
         boost::asio::io_service& executor)
 #else
-        const boost::asio::executor& executor)
+        const boost::asio::ip::tcp::socket::executor_type& executor)
 #endif
     {
         return std::shared_ptr<SBDConnection>(new SBDConnection(executor));
@@ -238,7 +238,7 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
 #ifdef USE_BOOST_IO_SERVICE
         boost::asio::io_service& executor)
 #else
-        const boost::asio::executor& executor)
+        const boost::asio::ip::tcp::socket::executor_type& executor)
 #endif
         : socket_(executor), connect_time_(-1), message_(socket_), remote_endpoint_str_("Unknown")
     {

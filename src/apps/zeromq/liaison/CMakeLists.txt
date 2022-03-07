@@ -11,6 +11,7 @@ add_library(goby_liaison_core SHARED
 target_link_libraries(goby_liaison_core
   goby
   goby_zeromq
+  ${Wt_LIBRARIES}
   )
 
 add_executable(goby_liaison
@@ -28,8 +29,6 @@ target_compile_definitions(goby_liaison_standalone
 generate_middleware_interfaces(goby_liaison)
 
 set(LIB
-  ${Boost_LIBRARIES}
-  ${Wt_LIBRARIES}
   pthread
   goby_liaison_core
 )
