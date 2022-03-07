@@ -99,6 +99,10 @@
 #include "goby/util/debug_logger/flex_ostreambuf.h" // for DEBUG1, WARN
 #include "liaison_commander.h"
 
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
+
 namespace Wt
 {
 class WTreeNode;
@@ -774,7 +778,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 
         auto* command_entry = new CommandEntry;
         command_entry->protobuf_name = message_to_send->GetDescriptor()->full_name();
-        command_entry->bytes.resize(message_to_send->ByteSize());
+        command_entry->bytes.resize(message_to_send->ByteSizeLong());
         message_to_send->SerializeToArray(&command_entry->bytes[0], command_entry->bytes.size());
         command_entry->address = wApp->environment().clientAddress();
         command_entry->group = grouplayer.group();
@@ -1137,7 +1141,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     printer.SetUseShortRepeatedPrimitives(true);
     printer.PrintToString(*msg, &external_data->value);
 
-    external_data->bytes.resize(msg->ByteSize());
+    external_data->bytes.resize(msg->ByteSizeLong());
     msg->SerializeToArray(&external_data->bytes[0], external_data->bytes.size());
 
     session_->add(external_data);
