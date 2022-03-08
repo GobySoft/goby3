@@ -229,8 +229,9 @@ workflows:
           <<: *filter-template-non-master
       - amd64-buster-build:
           <<: *filter-template-non-master
-      - amd64-bullseye-build:
+      - amd64-bullseye-build:        
           <<: *filter-template-non-master
+
       - amd64-bionic-build:
           <<: *filter-template-non-master
       - amd64-focal-build:
@@ -418,7 +419,6 @@ jobs:
     environment:
       <<: *environment-template-common
       <<: *environment-template-bullseye
-
       
   amd64-bionic-build:
     <<: *job-template-amd64
@@ -509,6 +509,9 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-bullseye
       <<: *environment-template-amd64
+      # having OOM issues with Bullseye build
+      DEB_BUILD_OPTIONS: "parallel=2"
+      
   arm64-bullseye-deb-build: 
     <<: *job-template-deb-cross
     docker: *docker-arm64-bullseye
