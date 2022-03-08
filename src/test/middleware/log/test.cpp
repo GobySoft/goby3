@@ -29,6 +29,10 @@
 
 #include "goby/test/middleware/log/test.pb.h"
 
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
+
 using goby::middleware::log::LogEntry;
 using goby::test::middleware::protobuf::CTDSample;
 using goby::test::middleware::protobuf::TempSample;
@@ -157,7 +161,7 @@ void write_log(int test, int version)
     TempSample t;
     {
         t.set_temperature(500);
-        std::vector<unsigned char> data(t.ByteSize());
+        std::vector<unsigned char> data(t.ByteSizeLong());
         t.SerializeToArray(&data[0], data.size());
         LogEntry entry(data, goby::middleware::MarshallingScheme::PROTOBUF,
                        TempSample::descriptor()->full_name(), tempgroup, start_time);
@@ -175,7 +179,7 @@ void write_log(int test, int version)
         {
             // corrupt the previous entry
             auto pos = out_log_file.tellp();
-            out_log_file.seekp(pos - std::ios::streamoff(LogEntry::crc_bytes_ + 2));
+            out_log_file.seekp(pos - std::streamoff(LogEntry::crc_bytes_ + 2));
             out_log_file.put(0);
             out_log_file.seekp(pos);
             break;
@@ -201,10 +205,10 @@ void write_log(int test, int version)
             // corrupt the size field to make it larger than the file
             auto pos = out_log_file.tellp();
 
-            out_log_file.seekp(
-                pos - std::ios::streamoff(LogEntry::crc_bytes_ + t.ByteSize() +
-                                          LogEntry::type_bytes_ + LogEntry::group_bytes_ +
-                                          LogEntry::scheme_bytes_ + LogEntry::size_bytes_ - 1));
+            out_log_file.seekp(pos -
+                               std::streamoff(LogEntry::crc_bytes_ + t.ByteSizeLong() +
+                                              LogEntry::type_bytes_ + LogEntry::group_bytes_ +
+                                              LogEntry::scheme_bytes_ + LogEntry::size_bytes_ - 1));
             out_log_file.put(0xFF);
             out_log_file.seekp(pos);
         }
@@ -214,10 +218,9 @@ void write_log(int test, int version)
             // corrupt the size field to make it just larger than the message
             auto pos = out_log_file.tellp();
 
-            out_log_file.seekp(pos -
-                               std::ios::streamoff(LogEntry::crc_bytes_ + t.ByteSize() +
-                                                   LogEntry::type_bytes_ + LogEntry::group_bytes_ +
-                                                   LogEntry::scheme_bytes_ + 1));
+            out_log_file.seekp(pos - std::streamoff(LogEntry::crc_bytes_ + t.ByteSizeLong() +
+                                                    LogEntry::type_bytes_ + LogEntry::group_bytes_ +
+                                                    LogEntry::scheme_bytes_ + 1));
             out_log_file.put(0x14);
             out_log_file.seekp(pos);
         }

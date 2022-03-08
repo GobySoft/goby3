@@ -398,7 +398,6 @@ goby::middleware::frontseat::Iver::nmea_time_to_seconds(double nmea_time, int nm
 
     using namespace boost::posix_time;
     using namespace boost::gregorian;
-    ptime unix_epoch(date(1970, 1, 1), time_duration(0, 0, 0));
 
     int hours = nmea_time / 10000;
     nmea_time -= hours * 10000;

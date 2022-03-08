@@ -33,6 +33,10 @@
 
 #include "interface.h"
 
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
+
 namespace goby
 {
 namespace middleware
@@ -46,7 +50,7 @@ struct SerializerParserHelper<
     /// Serialize Protobuf message (standard Protobuf encoding)
     static std::vector<char> serialize(const DataType& msg)
     {
-        std::vector<char> bytes(msg.ByteSize(), 0);
+        std::vector<char> bytes(msg.ByteSizeLong(), 0);
         msg.SerializeToArray(bytes.data(), bytes.size());
         return bytes;
     }
@@ -71,7 +75,7 @@ struct SerializerParserHelper<
     {
         auto msg = std::make_shared<DataType>();
         msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
-        actual_end = bytes_begin + msg->ByteSize();
+        actual_end = bytes_begin + msg->ByteSizeLong();
         return msg;
     }
 };
@@ -82,7 +86,7 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
     /// Serialize Protobuf message (standard Protobuf encoding)
     static std::vector<char> serialize(const google::protobuf::Message& msg)
     {
-        std::vector<char> bytes(msg.ByteSize(), 0);
+        std::vector<char> bytes(msg.ByteSizeLong(), 0);
         msg.SerializeToArray(bytes.data(), bytes.size());
         return bytes;
     }
@@ -125,7 +129,7 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
         }
 
         msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
-        actual_end = bytes_begin + msg->ByteSize();
+        actual_end = bytes_begin + msg->ByteSizeLong();
         return msg;
     }
 };

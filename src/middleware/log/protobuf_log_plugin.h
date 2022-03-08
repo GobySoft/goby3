@@ -30,6 +30,10 @@
 #include "goby/time/convert.h"
 #include "log_plugin.h"
 
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
+
 namespace goby
 {
 namespace middleware
@@ -146,7 +150,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
 
             google::protobuf::FileDescriptorProto file_desc_proto;
             file_desc->CopyTo(&file_desc_proto);
-            std::vector<unsigned char> data(file_desc_proto.ByteSize());
+            std::vector<unsigned char> data(file_desc_proto.ByteSizeLong());
             file_desc_proto.SerializeToArray(&data[0], data.size());
             LogEntry entry(data, goby::middleware::MarshallingScheme::PROTOBUF,
                            google::protobuf::FileDescriptorProto::descriptor()->full_name(),

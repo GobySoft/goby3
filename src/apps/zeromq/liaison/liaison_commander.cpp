@@ -99,6 +99,10 @@
 #include "goby/util/debug_logger/flex_ostreambuf.h" // for DEBUG1, WARN
 #include "liaison_commander.h"
 
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
+
 namespace Wt
 {
 class WTreeNode;
@@ -617,6 +621,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::clear_message()
         auto* current_command = dynamic_cast<CommandContainer*>(commands_div_->currentWidget());
         current_command->message_->Clear();
         current_command->generate_root();
+        current_command->check_dynamics();
     }
 }
 
@@ -706,7 +711,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
     auto message_to_send = current_command->message_;
 
 #if DCCL_VERSION_MAJOR >= 4
-    if (current_command->has_dynamic_conditions_)
+    auto desc = current_command->message_->GetDescriptor();
+    if (current_command->has_dynamic_conditions_ &&
+        desc->options().GetExtension(dccl::msg).has_id())
     {
         // run through DCCL to omit / round fields as needed
         using DCCLHelper = middleware::SerializerParserHelper<google::protobuf::Message,
@@ -771,7 +778,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 
         auto* command_entry = new CommandEntry;
         command_entry->protobuf_name = message_to_send->GetDescriptor()->full_name();
-        command_entry->bytes.resize(message_to_send->ByteSize());
+        command_entry->bytes.resize(message_to_send->ByteSizeLong());
         message_to_send->SerializeToArray(&command_entry->bytes[0], command_entry->bytes.size());
         command_entry->address = wApp->environment().clientAddress();
         command_entry->group = grouplayer.group();
@@ -1134,7 +1141,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     printer.SetUseShortRepeatedPrimitives(true);
     printer.PrintToString(*msg, &external_data->value);
 
-    external_data->bytes.resize(msg->ByteSize());
+    external_data->bytes.resize(msg->ByteSizeLong());
     msg->SerializeToArray(&external_data->bytes[0], external_data->bytes.size());
 
     session_->add(external_data);
@@ -1161,9 +1168,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
     time_fields_.clear();
 
-    generate_tree(root, message_.get());
-
     root->expand();
+    generate_tree(root, message_.get());
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree(
@@ -1217,10 +1223,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         spin_box->valueChanged().connect(boost::bind(&CommandContainer::handle_repeated_size_change,
                                                      this, _1, message, field_desc, node,
-                                                     parent_hierarchy));
+                                                     parent_hierarchy, false));
 
         spin_box->setValue(refl->FieldSize(*message, field_desc));
-        spin_box->valueChanged().emit(refl->FieldSize(*message, field_desc));
+
+        handle_repeated_size_change(refl->FieldSize(*message, field_desc), message, field_desc,
+                                    node, parent_hierarchy, true);
 
         modify_field = spin_box;
     }
@@ -1240,13 +1248,13 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
                 button->clicked().connect(
                     boost::bind(&CommandContainer::handle_toggle_single_message, this, _1, message,
-                                field_desc, button, node, parent_hierarchy));
+                                field_desc, button, node, parent_hierarchy, false));
 
                 if (refl->HasField(*message, field_desc))
                 {
                     parent->expand();
                     handle_toggle_single_message(WMouseEvent(), message, field_desc, button, node,
-                                                 parent_hierarchy);
+                                                 parent_hierarchy, true);
                 }
 
                 modify_field = button;
@@ -1404,7 +1412,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                               : refl->GetFloat(*message, field_desc);
 
             auto* validator = new WDoubleValidator;
-            validator->setRange(std::numeric_limits<float>::min(),
+            validator->setRange(std::numeric_limits<float>::lowest(),
                                 std::numeric_limits<float>::max());
 
             value_field = generate_single_line_edit_field(
@@ -1911,7 +1919,8 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::strin
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_repeated_size_change(int desired_size, google::protobuf::Message* message,
                                 const google::protobuf::FieldDescriptor* field_desc,
-                                WTreeTableNode* parent, const std::string& parent_hierarchy)
+                                WTreeTableNode* parent, const std::string& parent_hierarchy,
+                                bool is_initial_generation)
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
 
@@ -1964,14 +1973,15 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 
     check_initialized();
-    check_dynamics();
+    if (!is_initial_generation)
+        check_dynamics();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_toggle_single_message(const WMouseEvent& /*mouse*/, google::protobuf::Message* message,
                                  const google::protobuf::FieldDescriptor* field_desc,
                                  WPushButton* button, WTreeTableNode* parent,
-                                 const std::string& parent_hierarchy)
+                                 const std::string& parent_hierarchy, bool is_initial_generation)
 {
     if (button->text() == MESSAGE_INCLUDE_TEXT)
     {
@@ -1990,7 +2000,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         button->setText(MESSAGE_INCLUDE_TEXT);
     }
     check_initialized();
-    check_dynamics();
+    if (!is_initial_generation)
+        check_dynamics();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::

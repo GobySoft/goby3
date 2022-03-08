@@ -270,7 +270,8 @@ class LiaisonCommander
                                               google::protobuf::Message* message,
                                               const google::protobuf::FieldDescriptor* field_desc,
                                               Wt::WPushButton* field, Wt::WTreeTableNode* parent,
-                                              const std::string& parent_hierarchy);
+                                              const std::string& parent_hierarchy,
+                                              bool is_initial_generation);
 
             void handle_load_external_data(const Wt::WMouseEvent& mouse,
                                            google::protobuf::Message* message,
@@ -295,7 +296,8 @@ class LiaisonCommander
             void handle_repeated_size_change(int size, google::protobuf::Message* message,
                                              const google::protobuf::FieldDescriptor* field_desc,
                                              Wt::WTreeTableNode* parent,
-                                             const std::string& parent_hierarchy);
+                                             const std::string& parent_hierarchy,
+                                             bool is_initial_generation);
 
             void handle_database_double_click(const Wt::WModelIndex& index,
                                               const Wt::WMouseEvent& event);

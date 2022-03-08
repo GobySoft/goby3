@@ -25,7 +25,7 @@
 // fixes linker problem with Boost 1.71 and Clang 10 with -g enabled:
 // /usr/bin/ld: ../../../../lib/libgoby.so.3.0.0~beta10+11+g47dd90bc-dirty: undefined reference to `boost::statechart::detail::no_context<goby::acomms::benthos::fsm::EvReset>::no_function(goby::acomms::benthos::fsm::EvReset const&)'
 
-#if __clang_major__ == 10
+#if __clang_major__ >= 10
 #ifndef GOBY_WORKAROUND_BOOST_STATECHART_NO_FUNCTION
 #define GOBY_WORKAROUND_BOOST_STATECHART_NO_FUNCTION
 template <class Event>
