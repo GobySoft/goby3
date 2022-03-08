@@ -163,7 +163,7 @@ job-template-deb-amd64: &job-template-deb-amd64
         command: |
           mkdir -p /root/deb &&
           find .. -maxdepth 1 -type f -exec cp {}  /root/deb \; &&
-          rm -f /root/deb/*-build-deps*.deb
+          rm -f /root/deb/*-build-deps*.*
     - run: &run-store-for-artifacts
         name: Store deb files for storing artifacts
         command: mkdir -p /tmp/deb && cp /root/deb/* /tmp/deb
