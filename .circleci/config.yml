@@ -12,7 +12,8 @@ environment-template-common: &environment-template-common
   
 environment-template-amd64: &environment-template-amd64
   TARGET_ARCH: "amd64"
-  DEB_BUILD_OPTIONS: "parallel=4"
+  # OOM issues on amd64 builds
+  DEB_BUILD_OPTIONS: "parallel=2"
   # one job only must do the source build for each distro
   DO_SOURCE_BUILD: "true"
 
@@ -508,10 +509,7 @@ jobs:
     environment:
       <<: *environment-template-common
       <<: *environment-template-bullseye
-      <<: *environment-template-amd64
-      # having OOM issues with Bullseye build
-      DEB_BUILD_OPTIONS: "parallel=2"
-      
+      <<: *environment-template-amd64      
   arm64-bullseye-deb-build: 
     <<: *job-template-deb-cross
     docker: *docker-arm64-bullseye
