@@ -289,6 +289,8 @@ class LiaisonCommander
                                            const google::protobuf::FieldDescriptor* field_desc,
                                            Wt::WLineEdit* field, int index);
 
+            void handle_focus_changed(Wt::WLineEdit* field);
+
             void handle_combo_field_changed(google::protobuf::Message* message,
                                             const google::protobuf::FieldDescriptor* field_desc,
                                             Wt::WComboBox* field, int index);

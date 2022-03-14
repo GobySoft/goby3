@@ -1178,13 +1178,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 {
 #if DCCL_VERSION_MAJOR >= 4
     if (has_dynamic_conditions_)
-    {
-        if (index >= 0)
-            dccl_dycon_.set_repeated_index(index);
-        else
-            dccl_dycon_.set_repeated_index(0);
-        dccl_dycon_.set_message(message, message_.get());
-    }
+        dccl_dycon_.regenerate(message, message_.get(), index);
 #endif
 
     const google::protobuf::Descriptor* desc = message->GetDescriptor();
@@ -1312,12 +1306,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 {
 #if DCCL_VERSION_MAJOR >= 4
     if (has_dynamic_conditions_)
-    {
-        // only set a new index if this is a repeated field
-        if (index >= 0)
-            dccl_dycon_.set_repeated_index(index);
-        dccl_dycon_.set_message(message, message_.get());
-    }
+        dccl_dycon_.regenerate(message, message_.get(), index);
 #endif
 
     const google::protobuf::Reflection* refl = message->GetReflection();
@@ -1720,7 +1709,16 @@ WLineEdit* goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandConta
     line_edit->changed().connect(boost::bind(&CommandContainer::handle_line_field_changed, this,
                                              message, field_desc, line_edit, index));
 
+    line_edit->focussed().connect(
+        boost::bind(&CommandContainer::handle_focus_changed, this, line_edit));
+
     return line_edit;
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    handle_focus_changed(Wt::WLineEdit* field)
+{
+    std::cout << "FOCUS: " << field << std::endl;
 }
 
 WComboBox*
