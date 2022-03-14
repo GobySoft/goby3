@@ -1173,8 +1173,20 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree(
-    WTreeTableNode* parent, google::protobuf::Message* message, const std::string& parent_hierarchy)
+    WTreeTableNode* parent, google::protobuf::Message* message, const std::string& parent_hierarchy,
+    int index)
 {
+#if DCCL_VERSION_MAJOR >= 4
+    if (has_dynamic_conditions_)
+    {
+        if (index >= 0)
+            dccl_dycon_.set_repeated_index(index);
+        else
+            dccl_dycon_.set_repeated_index(0);
+        dccl_dycon_.set_message(message, message_.get());
+    }
+#endif
+
     const google::protobuf::Descriptor* desc = message->GetDescriptor();
 
     for (int i = 0, n = desc->field_count(); i < n; ++i)
@@ -1298,6 +1310,16 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     WFormWidget*& value_field, google::protobuf::Message* message,
     const google::protobuf::FieldDescriptor* field_desc, int index /*= -1*/)
 {
+#if DCCL_VERSION_MAJOR >= 4
+    if (has_dynamic_conditions_)
+    {
+        // only set a new index if this is a repeated field
+        if (index >= 0)
+            dccl_dycon_.set_repeated_index(index);
+        dccl_dycon_.set_message(message, message_.get());
+    }
+#endif
+
     const google::protobuf::Reflection* refl = message->GetReflection();
 
     switch (field_desc->cpp_type())
@@ -1915,7 +1937,6 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::strin
 // {
 //     field_info_stack_->setCurrentIndex(field_info_index);
 // }
-
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_repeated_size_change(int desired_size, google::protobuf::Message* message,
                                 const google::protobuf::FieldDescriptor* field_desc,
@@ -1944,12 +1965,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             if (refl->FieldSize(*message, field_desc) <= index)
             {
                 generate_tree(node, refl->AddMessage(message, field_desc),
-                              parent_hierarchy + "." + field_desc->name());
+                              parent_hierarchy + "." + field_desc->name(), index);
             }
             else
             {
                 generate_tree(node, refl->MutableRepeatedMessage(message, field_desc, index),
-                              parent_hierarchy + "." + field_desc->name());
+                              parent_hierarchy + "." + field_desc->name(), index);
                 parent->expand();
             }
         }
