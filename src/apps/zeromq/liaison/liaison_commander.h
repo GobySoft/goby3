@@ -215,7 +215,7 @@ class LiaisonCommander
             void generate_root();
 
             void generate_tree(Wt::WTreeTableNode* parent, google::protobuf::Message* message,
-                               const std::string& parent_hierarchy = "");
+                               const std::string& parent_hierarchy = "", int index = -1);
             void generate_tree_row(Wt::WTreeTableNode* parent, google::protobuf::Message* message,
                                    const google::protobuf::FieldDescriptor* field_desc,
                                    const std::string& parent_hierarchy = "");
@@ -289,6 +289,8 @@ class LiaisonCommander
                                            const google::protobuf::FieldDescriptor* field_desc,
                                            Wt::WLineEdit* field, int index);
 
+            void handle_focus_changed(Wt::WLineEdit* field);
+
             void handle_combo_field_changed(google::protobuf::Message* message,
                                             const google::protobuf::FieldDescriptor* field_desc,
                                             Wt::WComboBox* field, int index);
@@ -314,10 +316,7 @@ class LiaisonCommander
             {
 #if DCCL_VERSION_MAJOR >= 4
                 if (has_dynamic_conditions_)
-                {
-                    dccl_dycon_.set_message(message_.get());
                     generate_root();
-                }
 #endif
             }
 

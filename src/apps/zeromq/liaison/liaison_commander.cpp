@@ -1173,8 +1173,14 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree(
-    WTreeTableNode* parent, google::protobuf::Message* message, const std::string& parent_hierarchy)
+    WTreeTableNode* parent, google::protobuf::Message* message, const std::string& parent_hierarchy,
+    int index)
 {
+#if DCCL_VERSION_MAJOR >= 4
+    if (has_dynamic_conditions_)
+        dccl_dycon_.regenerate(message, message_.get(), index);
+#endif
+
     const google::protobuf::Descriptor* desc = message->GetDescriptor();
 
     for (int i = 0, n = desc->field_count(); i < n; ++i)
@@ -1298,6 +1304,11 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     WFormWidget*& value_field, google::protobuf::Message* message,
     const google::protobuf::FieldDescriptor* field_desc, int index /*= -1*/)
 {
+#if DCCL_VERSION_MAJOR >= 4
+    if (has_dynamic_conditions_)
+        dccl_dycon_.regenerate(message, message_.get(), index);
+#endif
+
     const google::protobuf::Reflection* refl = message->GetReflection();
 
     switch (field_desc->cpp_type())
@@ -1698,7 +1709,16 @@ WLineEdit* goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandConta
     line_edit->changed().connect(boost::bind(&CommandContainer::handle_line_field_changed, this,
                                              message, field_desc, line_edit, index));
 
+    line_edit->focussed().connect(
+        boost::bind(&CommandContainer::handle_focus_changed, this, line_edit));
+
     return line_edit;
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    handle_focus_changed(Wt::WLineEdit* field)
+{
+    //    std::cout << "FOCUS: " << field << std::endl;
 }
 
 WComboBox*
@@ -1915,7 +1935,6 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::strin
 // {
 //     field_info_stack_->setCurrentIndex(field_info_index);
 // }
-
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_repeated_size_change(int desired_size, google::protobuf::Message* message,
                                 const google::protobuf::FieldDescriptor* field_desc,
@@ -1944,12 +1963,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             if (refl->FieldSize(*message, field_desc) <= index)
             {
                 generate_tree(node, refl->AddMessage(message, field_desc),
-                              parent_hierarchy + "." + field_desc->name());
+                              parent_hierarchy + "." + field_desc->name(), index);
             }
             else
             {
                 generate_tree(node, refl->MutableRepeatedMessage(message, field_desc, index),
-                              parent_hierarchy + "." + field_desc->name());
+                              parent_hierarchy + "." + field_desc->name(), index);
                 parent->expand();
             }
         }
