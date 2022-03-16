@@ -14,6 +14,10 @@ target_link_libraries(goby_liaison_core
   ${Wt_LIBRARIES}
   )
 
+set_target_properties(goby_liaison_core PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")
+
+goby_install_lib(goby_liaison_core zeromq)
+
 add_executable(goby_liaison
   liaison.cpp
   )
