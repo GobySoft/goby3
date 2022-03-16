@@ -1718,7 +1718,7 @@ WLineEdit* goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandConta
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_focus_changed(Wt::WLineEdit* field)
 {
-    std::cout << "FOCUS: " << field << std::endl;
+    //    std::cout << "FOCUS: " << field << std::endl;
 }
 
 WComboBox*
