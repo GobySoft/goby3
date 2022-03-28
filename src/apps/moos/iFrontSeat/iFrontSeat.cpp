@@ -281,12 +281,27 @@ void goby::apps::moos::iFrontSeat::handle_mail_helm_state(const CMOOSMsg& msg)
 {
     std::string sval = msg.GetString();
     boost::trim(sval);
-    if (boost::iequals(sval, "drive"))
-        frontseat_->set_helm_state(gpb::HELM_DRIVE);
-    else if (boost::iequals(sval, "park"))
-        frontseat_->set_helm_state(gpb::HELM_PARK);
+    std::string src = msg.GetSource();
+    boost::trim(src);
+    if (boost::iequals(src, "phelmivp"))
+    {
+        if (boost::iequals(sval, "drive"))
+            frontseat_->set_helm_state(gpb::HELM_DRIVE);
+        else if (boost::iequals(sval, "park"))
+            frontseat_->set_helm_state(gpb::HELM_PARK);
+    }
     else
-        frontseat_->set_helm_state(gpb::HELM_NOT_RUNNING);
+    {
+        if (boost::iequals(src, "phelmivp_standby"))
+        {
+            if (boost::iequals(sval, "drive+"))
+                frontseat_->set_helm_state(gpb::HELM_DRIVE);
+            else if (boost::iequals(sval, "park+"))
+                frontseat_->set_helm_state(gpb::HELM_PARK);
+        }
+        else
+            frontseat_->set_helm_state(gpb::HELM_NOT_RUNNING);
+    }
 }
 
 void goby::apps::moos::iFrontSeat::handle_driver_command_response(
