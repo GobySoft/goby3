@@ -140,7 +140,7 @@ to_group_layer(const std::string& group, const std::string& layer)
 std::string
 to_string(const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer&
               grouplayer,
-          std::uint8_t groupnum = goby::middleware::Group::invalid_numeric_group)
+          std::uint32_t groupnum = goby::middleware::Group::invalid_numeric_group)
 {
     std::string groupnum_str;
 
@@ -633,7 +633,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 
     auto grouplayer =
         current_command->publish_to_.at(current_command->group_selection_->currentIndex());
-    std::uint8_t group_numeric = grouplayer.group_numeric();
+    std::uint32_t group_numeric = grouplayer.group_numeric();
 
     // read the numeric group value out of the message if requested
     if (grouplayer.has_group_numeric_field_name())
@@ -649,8 +649,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
             {
                 auto val = refl->GetInt32(*current_command->message_, group_numeric_field_desc);
-                if (val >= std::numeric_limits<std::uint8_t>::min() &&
-                    val <= std::numeric_limits<std::uint8_t>::max())
+                if (val >= std::numeric_limits<std::uint32_t>::min() &&
+                    val <= std::numeric_limits<std::uint32_t>::max())
                     group_numeric = val;
                 break;
             }
@@ -658,7 +658,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
             {
                 auto val = refl->GetUInt32(*current_command->message_, group_numeric_field_desc);
-                if (val <= std::numeric_limits<std::uint8_t>::max())
+                if (val <= std::numeric_limits<std::uint32_t>::max())
                     group_numeric = val;
 
                 break;
@@ -667,8 +667,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
             {
                 auto val = refl->GetInt64(*current_command->message_, group_numeric_field_desc);
-                if (val >= std::numeric_limits<std::uint8_t>::min() &&
-                    val <= std::numeric_limits<std::uint8_t>::max())
+                if (val >= std::numeric_limits<std::uint32_t>::min() &&
+                    val <= std::numeric_limits<std::uint32_t>::max())
                     group_numeric = val;
 
                 break;
@@ -677,7 +677,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
             {
                 auto val = refl->GetUInt64(*current_command->message_, group_numeric_field_desc);
-                if (val <= std::numeric_limits<std::uint8_t>::max())
+                if (val <= std::numeric_limits<std::uint32_t>::max())
                     group_numeric = val;
 
                 break;
@@ -686,8 +686,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             {
                 auto val =
                     refl->GetEnum(*current_command->message_, group_numeric_field_desc)->number();
-                if (val >= std::numeric_limits<std::uint8_t>::min() &&
-                    val <= std::numeric_limits<std::uint8_t>::max())
+                if (val >= std::numeric_limits<std::uint32_t>::min() &&
+                    val <= std::numeric_limits<std::uint32_t>::max())
                     group_numeric = val;
 
                 break;
