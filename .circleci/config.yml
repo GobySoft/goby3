@@ -100,7 +100,7 @@ job-template-amd64: &job-template-amd64
         # TODO: Remove libdccl4-dev from this command once all Docker containers are updated to include it
         command: |
           apt-get update && apt-get dist-upgrade -y &&
-          apt-get install libdccl4-dev:${TARGET_ARCH} libdccl4:${TARGET_ARCH} dccl4-compiler
+          apt-get install libdccl4-dev:${TARGET_ARCH} libdccl4:${TARGET_ARCH} dccl4-compiler -y
     - run: &run-build
         name: Build
         command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_doc=ON -Dbuild_doc_pdf=OFF -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -- -j4
