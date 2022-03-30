@@ -100,6 +100,9 @@ job-template-amd64: &job-template-amd64
         # TODO: Remove libdccl4-dev from this command once all Docker containers are updated to include it
         command: |
           apt-get update && apt-get dist-upgrade -y &&
+          apt-get install libmysqlclient-dev:${TARGET_ARCH} -y ||
+          apt-get install libmariadb-dev:${TARGET_ARCH} libmariadb-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y ||
+          apt-get install libmariadbclient-dev:${TARGET_ARCH} libmariadbclient-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y) &&
           apt-get install libdccl4-dev:${TARGET_ARCH} libdccl4:${TARGET_ARCH} dccl4-compiler -y
     - run: &run-build
         name: Build
