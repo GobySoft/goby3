@@ -111,4 +111,5 @@ message DriverConfig
     // extension 1421 used by iridium_shore_driver.proto
     // extension 1441 used by benthos_atm900.proto
     // extension 1442 used by popoto.proto
+    // extension 1443 used by Jaiabot XBee
 }
