@@ -90,14 +90,13 @@ std::map<std::string, void*> load_plugins()
         {
             std::vector<void*> plugin_handles_;
 
-            std::cout << "Loading ModemDriver plugin library: " << i << std::endl;
             void* handle = dlopen(i.c_str(), RTLD_LAZY);
 
             if (handle)
                 plugin_handles_.push_back(handle);
             else
             {
-                std::cerr << "Failed to open library: " << i << std::endl;
+                std::cerr << "Failed to open ModemDriver plugin library: " << i << std::endl;
                 exit(EXIT_FAILURE);
             }
 
