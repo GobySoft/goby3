@@ -695,6 +695,8 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
                 protobuf::AckData& ack_data = *ack_pair.mutable_data();
                 ack_data.mutable_header()->set_src(full_src);
                 ack_data.mutable_header()->add_dest(full_dest);
+                *ack_data.mutable_header()->mutable_modem_msg() = rx_msg;
+
                 auto now = goby::time::SteadyClock::now();
 
                 auto values_to_ack_it = pending_ack_.find(frame_number);
