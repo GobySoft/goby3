@@ -85,6 +85,15 @@ void goby::moos::TranslatorBase::MOOSInterface::on_connect()
         comms_.Register(moos_var);
         glog.is(DEBUG1) && glog << "Subscribed for MOOS variable: " << moos_var << std::endl;
     }
+
+    for (const auto& filter_func_pair : trigger_wildcard_vars_)
+    {
+        const MOOS::MsgFilter& moos_filter = filter_func_pair.first;
+        comms_.Register(moos_filter.var_filter(), moos_filter.app_filter(), 0);
+        glog.is(DEBUG1) &&
+            glog << "Subscribed for MOOS wildcard: variable: " << moos_filter.var_filter()
+                 << ", app: " << moos_filter.app_filter() << std::endl;
+    }
 }
 
 void goby::moos::TranslatorBase::MOOSInterface::loop()
@@ -117,8 +126,17 @@ void goby::moos::TranslatorBase::MOOSInterface::loop()
     }
     for (const CMOOSMsg& msg : moos_msgs)
     {
-        auto it = trigger_vars_.find(msg.GetKey());
-        if (it != trigger_vars_.end())
-            it->second(msg);
+        {
+            auto it = trigger_vars_.find(msg.GetKey());
+            if (it != trigger_vars_.end())
+                it->second(msg);
+        }
+
+        for (const auto& filter_func_pair : trigger_wildcard_vars_)
+        {
+            const MOOS::MsgFilter& filter = filter_func_pair.first;
+            if (filter.Matches(msg))
+                filter_func_pair.second(msg);
+        }
     }
 }

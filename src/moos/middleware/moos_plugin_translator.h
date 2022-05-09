@@ -32,7 +32,8 @@
 #include <thread>     // for get_id, opera...
 #include <utility>    // for pair, make_pair
 
-#include <MOOS/libMOOS/Comms/MOOSMsg.h>         // for CMOOSMsg
+#include <MOOS/libMOOS/Comms/MOOSMsg.h> // for CMOOSMsg
+#include <MOOS/libMOOS/DB/MsgFilter.h>
 #include <boost/units/quantity.hpp>             // for operator*
 #include <boost/units/systems/si/frequency.hpp> // for frequency, hertz
 
@@ -71,6 +72,15 @@ class TranslatorBase
         {
             trigger_vars_.insert(std::make_pair(moos_var, func));
         }
+
+        void add_wildcard_trigger(const std::string& moos_var_wildcard,
+                                  const std::string& moos_app_wildcard,
+                                  const std::function<void(const CMOOSMsg&)>& func)
+        {
+            trigger_wildcard_vars_.insert(
+                std::make_pair(MOOS::MsgFilter(moos_app_wildcard, moos_var_wildcard), func));
+        }
+
         void add_buffer(const std::string& moos_var) { buffer_vars_.insert(moos_var); }
         std::map<std::string, CMOOSMsg>& buffer() { return buffer_; }
         CMOOSCommClient& comms() { return comms_; }
@@ -82,6 +92,7 @@ class TranslatorBase
 
       private:
         std::map<std::string, std::function<void(const CMOOSMsg&)>> trigger_vars_;
+        std::map<MOOS::MsgFilter, std::function<void(const CMOOSMsg&)>> trigger_wildcard_vars_;
         std::set<std::string> buffer_vars_;
         std::map<std::string, CMOOSMsg> buffer_;
         MOOS::MOOSAsyncCommClient comms_;
