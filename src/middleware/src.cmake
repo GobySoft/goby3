@@ -32,6 +32,7 @@ set(MIDDLEWARE_SRC
   middleware/application/configuration_reader.cpp
   middleware/log/log_entry.cpp
   middleware/frontseat/interface.cpp
+  middleware/coroner/coroner.cpp
   ${MIDDLEWARE_PROTO_SRCS} ${MIDDLEWARE_PROTO_HDRS} 
   )
 

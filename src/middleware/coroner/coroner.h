@@ -28,4 +28,34 @@
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/coroner.pb.h"
 
+#include "goby/middleware/application/simple_thread.h"
+
+namespace goby
+{
+namespace middleware
+{
+struct NullConfig
+{
+};
+
+class HealthMonitorThread : public SimpleThread<NullConfig>
+{
+  public:
+    HealthMonitorThread();
+
+  private:
+    void loop() override;
+    void initialize() override { this->set_name("health_monitor"); }
+
+  private:
+    protobuf::ProcessHealth health_response_;
+    // uid to response
+    std::map<int, std::shared_ptr<const protobuf::ThreadHealth>> child_responses_;
+    goby::time::SteadyClock::time_point last_health_request_time_;
+    const goby::time::SteadyClock::duration health_request_timeout_{std::chrono::seconds(1)};
+    bool waiting_for_responses_{false};
+};
+} // namespace middleware
+} // namespace goby
+
 #endif
