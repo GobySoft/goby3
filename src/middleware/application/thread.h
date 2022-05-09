@@ -29,6 +29,7 @@
 #include <memory>
 #include <mutex>
 #include <typeindex>
+#include <unistd.h> // for gettid
 
 #include <boost/units/systems/si.hpp>
 
