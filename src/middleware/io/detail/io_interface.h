@@ -101,7 +101,7 @@ class IOThread : public ThreadType<IOConfig>,
               IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
                        SocketType, ThreadType, use_indexed_groups>,
               line_out_group, subscribe_layer, use_indexed_groups>(index),
-          glog_group_(glog_group + " / t" + std::to_string(gettid())),
+          glog_group_(glog_group + " / t" + std::to_string(goby::middleware::gettid())),
           thread_name_(glog_group)
     {
         auto data_out_callback =

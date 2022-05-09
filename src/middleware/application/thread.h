@@ -29,7 +29,6 @@
 #include <memory>
 #include <mutex>
 #include <typeindex>
-#include <unistd.h> // for gettid
 
 #include <boost/units/systems/si.hpp>
 
@@ -159,7 +158,7 @@ template <typename Config, typename TransporterType> class Thread
           loop_time_(std::chrono::system_clock::now()),
           cfg_(cfg),
           index_(index),
-          thread_id_(gettid()),
+          thread_id_(goby::middleware::gettid()),
           thread_name_(std::to_string(thread_id_)),
           uid_(-1)
     {
