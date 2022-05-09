@@ -33,6 +33,7 @@
 #include "goby/exception.h"
 #include "goby/middleware/application/detail/interprocess_common.h"
 #include "goby/middleware/application/detail/thread_type_selector.h"
+#include "goby/middleware/application/groups.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/thread.h"
 
@@ -82,6 +83,13 @@ class SimpleThread
                 *interprocess_));
 
         this->set_transporter(intervehicle_.get());
+
+        this->interthread().template subscribe<groups::health_request>(
+            [this](const protobuf::HealthRequest& request) {
+                protobuf::ProcessHealth response;
+                this->thread_health(*response.mutable_main()->add_child());
+                this->interthread().template publish<groups::health_response>(response);
+            });
     }
 
     /// \brief Access the transporter on the intervehicle layer (which wraps interprocess and interthread)
@@ -104,6 +112,43 @@ class SimpleThread
     std::unique_ptr<InterProcessForwarder<InterThreadTransporter>> interprocess_;
     std::unique_ptr<InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
         intervehicle_;
+};
+
+template <class Config> class HealthMonitorThread : public SimpleThread<Config>
+{
+  public:
+    HealthMonitorThread(const Config& cfg)
+        : SimpleThread<Config>(cfg, 1.0 * boost::units::si::hertz)
+    {
+        // handle goby_coroner request
+        this->interprocess().template subscribe<groups::health_request, protobuf::HealthRequest>(
+            [this](const protobuf::HealthRequest& request) {
+                health_response_.Clear();
+                this->interthread().template publish<groups::health_request>(
+                    protobuf::HealthRequest());
+                last_health_request_time_ = goby::time::SteadyClock::now();
+            });
+
+        this->interthread().template subscribe<groups::health_response>(
+            [this](const protobuf::ProcessHealth& response) {
+                health_response_.MergeFrom(response);
+            });
+    }
+
+  private:
+    void loop() override
+    {
+        if (goby::time::SteadyClock::now() > last_health_request_time_ + health_request_timeout_)
+        {
+            if (health_response_.IsInitialized())
+                this->interprocess().template publish<groups::health_response>(health_response_);
+        }
+    }
+
+  private:
+    protobuf::ProcessHealth health_response_;
+    goby::time::SteadyClock::time_point last_health_request_time_;
+    const goby::time::SteadyClock::duration health_request_timeout_{std::chrono::seconds(1)};
 };
 
 /// \brief Thread that simply publishes an empty message on its loop interval to TimerThread::group
@@ -230,6 +275,9 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
             [this](const ThreadIdentifier& joinable) {
                 _join_thread(joinable.type_i, joinable.index);
             });
+
+        if (this->app_cfg().app().health_cfg().run_health_monitor_thread())
+            launch_thread<HealthMonitorThread<Config>>();
     }
 
     virtual ~MultiThreadApplicationBase() {}
@@ -320,28 +368,27 @@ class MultiThreadApplication
           intervehicle_(interprocess_)
     {
         // handle goby_terminate request
-        this->interprocess()
-            .template subscribe<groups::terminate_request, protobuf::TerminateRequest>(
-                [this](const protobuf::TerminateRequest& request) {
-                    bool match = false;
-                    protobuf::TerminateResponse resp;
-                    std::tie(match, resp) =
-                        terminate::check_terminate(request, this->app_cfg().app().name());
-                    if (match)
-                    {
-                        this->interprocess().template publish<groups::terminate_response>(resp);
-                        this->quit();
-                    }
-                });
+        this->interprocess().template subscribe<groups::terminate_request>(
+            [this](const protobuf::TerminateRequest& request) {
+                bool match = false;
+                protobuf::TerminateResponse resp;
+                std::tie(match, resp) =
+                    terminate::check_terminate(request, this->app_cfg().app().name());
+                if (match)
+                {
+                    this->interprocess().template publish<groups::terminate_response>(resp);
+                    this->quit();
+                }
+            });
 
-        // handle goby_coroner request
-        this->interprocess().template subscribe<groups::health_request, protobuf::HealthRequest>(
+        // handle request from HealthMonitor thread
+        this->interthread().template subscribe<groups::health_request>(
             [this](const protobuf::HealthRequest& request) {
-                protobuf::ProcessHealth resp;
-                resp.set_name(this->app_name());
-                resp.set_pid(getpid());
-                this->thread_health(*resp.mutable_main());
-                this->interprocess().template publish<groups::health_response>(resp);
+                protobuf::ProcessHealth response;
+                response.set_name(this->app_name());
+                response.set_pid(getpid());
+                this->thread_health(*response.mutable_main());
+                this->interthread().template publish<groups::health_response>(response);
             });
 
         this->interprocess().template subscribe<goby::middleware::groups::datum_update>(
@@ -349,6 +396,9 @@ class MultiThreadApplication
                 this->configure_geodesy(
                     {datum_update.datum().lat_with_units(), datum_update.datum().lon_with_units()});
             });
+
+        this->interprocess().template publish<goby::middleware::groups::configuration>(
+            this->app_cfg());
     }
 
     virtual ~MultiThreadApplication() {}
@@ -506,6 +556,7 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_join_th
                        << std::endl;
     }
 }
+
 } // namespace goby
 
 #endif

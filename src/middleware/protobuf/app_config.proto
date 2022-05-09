@@ -45,7 +45,7 @@ message AppConfig
                     "year). The time difference between now and the reference "
                     "time is multiplied by the warp factor to calculate the "
                     "modified simulation time",
-                (dccl.field).units = {prefix: "micro" base_dimensions: "T"}
+                (dccl.field).units = { prefix: "micro" base_dimensions: "T" }
             ];
         }
         optional Time time = 1;
@@ -66,6 +66,12 @@ message AppConfig
     }
     optional Geodesy geodesy = 30
         [(goby.field).description = "Geodesy related settings"];
+
+    message Health
+    {
+        optional bool run_health_monitor_thread = 1 [default = true];
+    }
+    optional Health health_cfg = 40;
 
     optional bool debug_cfg = 100 [
         default = false,

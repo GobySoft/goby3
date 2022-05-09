@@ -32,13 +32,13 @@
 #include "goby/middleware/frontseat/groups.h"
 #include "goby/middleware/protobuf/frontseat_data.pb.h"
 #include "goby/util/as.h"
-#include "goby/zeromq/application/multi_thread.h"
+#include "goby/zeromq/application/single_thread.h"
 #include "goby/zeromq/protobuf/geov_config.pb.h"
 
 using goby::glog;
 namespace si = boost::units::si;
 using ApplicationBase =
-    goby::zeromq::MultiThreadApplication<goby::apps::zeromq::protobuf::GEOVInterfaceConfig>;
+    goby::zeromq::SingleThreadApplication<goby::apps::zeromq::protobuf::GEOVInterfaceConfig>;
 
 namespace goby
 {

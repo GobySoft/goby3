@@ -31,6 +31,7 @@
 #include "goby/middleware/terminate/terminate.h"
 
 #include "goby/middleware/application/detail/interprocess_common.h"
+#include "goby/middleware/application/groups.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/thread.h"
 
@@ -105,6 +106,9 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
                 this->configure_geodesy(
                     {datum_update.datum().lat_with_units(), datum_update.datum().lon_with_units()});
             });
+
+        this->interprocess().template publish<goby::middleware::groups::configuration>(
+            this->app_cfg());
     }
 
     virtual ~SingleThreadApplication() {}
