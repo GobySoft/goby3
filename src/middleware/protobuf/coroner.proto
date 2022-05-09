@@ -39,6 +39,8 @@ message ProcessHealth
     optional uint32 pid = 2;
 
     required ThreadHealth main = 10;
+
+    extensions 1000 to max;
 }
 
 message VehicleHealth
@@ -51,4 +53,6 @@ message VehicleHealth
 
     required HealthState state = 10;
     repeated ProcessHealth process = 11;
+
+    extensions 1000 to max;
 }
