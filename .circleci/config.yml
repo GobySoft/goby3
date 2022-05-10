@@ -103,7 +103,8 @@ job-template-amd64: &job-template-amd64
           (apt-get install default-libmysqlclient-dev:${TARGET_ARCH} -y ||
           apt-get install libmysqlclient-dev:${TARGET_ARCH} -y ||
           apt-get install libmariadb-dev:${TARGET_ARCH} libmariadb-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y ||
-          apt-get install libmariadbclient-dev:${TARGET_ARCH} libmariadbclient-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y) &&
+          apt-get install libmariadbclient-dev:${TARGET_ARCH} libmariadbclient-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y)
+          [ -z "${CIRCLE_TAG}" ] &&
           apt-get install libdccl4-dev:${TARGET_ARCH} libdccl4:${TARGET_ARCH} dccl4-compiler -y
     - run: &run-build
         name: Build
