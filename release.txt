@@ -1,6 +1,26 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.7
+
+
+### Middleware
+- Change goby::middleware::Group numeric value from uint8 to uint32
+- Improve support for goby_coroner - MultiThreadApplication now queries its child threads and receives their health back to put in the overall report
+- gobyd now correctly quits (rather than hangs) if a ModemDriver has an uncaught exception
+
+### Liaison
+- Support for DCCL4 dynamic conditionals (when using DCCL4) in Liaison Commander forms
+
+### Build
+- Support Debian Bullseye
+
+### MOOS
+- Support pHelmIvP standby mode in iFrontSeat
+- Fix bug parsing MOOS log file when pLogger block is involved ("log=" value)
+- Add wildcard trigger option to TranslatorBase
+
+****************
 Version 3.0.6
 
 ### Util
