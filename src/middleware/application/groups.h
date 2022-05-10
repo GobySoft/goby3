@@ -1,5 +1,6 @@
-// Copyright 2017-2021:
+// Copyright 2009-2021:
 //   GobySoft, LLC (2013-)
+//   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
@@ -21,40 +22,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_MIDDLEWARE_CORONER_H
-#define GOBY_MIDDLEWARE_CORONER_H
+#ifndef GOBY_MIDDLEWARE_APPLICATION_GROUPS_H
+#define GOBY_MIDDLEWARE_APPLICATION_GROUPS_H
 
-#include "goby/middleware/coroner/groups.h"
-#include "goby/middleware/marshalling/protobuf.h"
-#include "goby/middleware/protobuf/coroner.pb.h"
-
-#include "goby/middleware/application/simple_thread.h"
+#include "goby/middleware/group.h"
 
 namespace goby
 {
 namespace middleware
 {
-struct NullConfig
+namespace groups
 {
-};
-
-class HealthMonitorThread : public SimpleThread<NullConfig>
-{
-  public:
-    HealthMonitorThread();
-
-  private:
-    void loop() override;
-    void initialize() override { this->set_name("health_monitor"); }
-
-  private:
-    protobuf::ProcessHealth health_response_;
-    // uid to response
-    std::map<int, std::shared_ptr<const protobuf::ThreadHealth>> child_responses_;
-    goby::time::SteadyClock::time_point last_health_request_time_;
-    const goby::time::SteadyClock::duration health_request_timeout_{std::chrono::seconds(1)};
-    bool waiting_for_responses_{false};
-};
+constexpr goby::middleware::Group configuration{"goby::configuration"};
+} // namespace groups
 } // namespace middleware
 } // namespace goby
 

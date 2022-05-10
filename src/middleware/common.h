@@ -27,7 +27,9 @@
 
 #include <fstream>
 #include <sstream>
+#include <sys/syscall.h>
 #include <thread>
+#include <unistd.h>
 
 #include <boost/algorithm/string.hpp>
 
@@ -45,11 +47,23 @@ inline std::string to_string(goby::middleware::protobuf::Layer layer)
     boost::to_lower(name);
     return name;
 }
+
+// unique portable thread id string from hashing std::thread::id
 inline std::string thread_id(std::thread::id i = std::this_thread::get_id())
 {
     std::stringstream ss;
     ss << std::hex << std::hash<std::thread::id>{}(i);
     return ss.str();
+}
+
+// Linux thread ID, useful because you can access it outside the system
+inline pid_t gettid()
+{
+#ifdef SYS_gettid
+    return syscall(SYS_gettid);
+#else
+#error "SYS_gettid unavailable on this system"
+#endif
 }
 
 inline std::string hostname()
@@ -69,6 +83,7 @@ inline std::string hostname()
     }
 };
 
+// hostname plus process ID
 inline std::string full_process_id()
 {
     static const std::string host_id = hostname();

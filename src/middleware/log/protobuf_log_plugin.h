@@ -176,6 +176,24 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
         else
         {
             insert_protobuf_file_desc(desc->file(), out_log_file);
+
+            auto insert_extensions =
+                [this, &out_log_file](
+                    const std::vector<const google::protobuf::FieldDescriptor*> extensions) {
+                    for (const auto* field_desc : extensions)
+                        insert_protobuf_file_desc(field_desc->containing_type()->file(),
+                                                  out_log_file);
+                };
+
+            std::vector<const google::protobuf::FieldDescriptor*> generated_extensions;
+            google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(
+                desc, &generated_extensions);
+            insert_extensions(generated_extensions);
+
+            std::vector<const google::protobuf::FieldDescriptor*> user_extensions;
+            dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(
+                desc, &user_extensions);
+            insert_extensions(user_extensions);
         }
     }
 

@@ -789,6 +789,7 @@ class InterVehiclePortal
                     goby::glog.is_warn() &&
                         goby::glog << "Modem driver thread had uncaught exception: " << e.what()
                                    << std::endl;
+                    throw;
                 }
             }));
         }
