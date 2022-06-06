@@ -1167,6 +1167,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     message_tree_table_->setTreeRoot(root, "Field");
 
     time_fields_.clear();
+    oneof_value_fields_.clear();
 
     root->expand();
     generate_tree(root, message_.get());
@@ -1203,10 +1204,15 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
     int index = parent->childNodes().size();
 
-    auto* node =
-        new LiaisonTreeTableNode(field_desc->is_extension() ? "[" + field_desc->full_name() + "]: "
-                                                            : field_desc->name() + ": ",
-                                 nullptr, parent);
+    std::string field_name =
+        field_desc->is_extension() ? "[" + field_desc->full_name() + "]" : field_desc->name();
+
+    if (field_desc->containing_oneof())
+        field_name += " (oneof " + field_desc->containing_oneof()->name() + ")";
+
+    field_name += +": ";
+
+    auto* node = new LiaisonTreeTableNode(field_name, nullptr, parent);
 
     if ((parent->styleClass() == STRIPE_ODD_CLASS && index % 2) ||
         (parent->styleClass() == STRIPE_EVEN_CLASS && !(index % 2)))
@@ -1217,6 +1223,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     WFormWidget* value_field = nullptr;
     WFormWidget* modify_field = nullptr;
     WFormWidget* external_data_field = nullptr;
+
     if (field_desc->is_repeated())
     {
         //        WContainerWidget* div = new WContainerWidget;
@@ -1283,7 +1290,11 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 
     if (value_field)
+    {
         node->setColumnWidget(1, value_field);
+        if (field_desc->containing_oneof())
+            oneof_value_fields_[field_desc->containing_oneof()].push_back(value_field);
+    }
 
     if (modify_field)
     {
@@ -1640,6 +1651,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             default: break;
         }
     }
+    update_oneofs(field_desc, field);
     check_initialized();
     check_dynamics();
 }
@@ -1678,6 +1690,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
     glog.is(DEBUG1) && glog << "The message is: " << message_->DebugString() << std::endl;
 
+    update_oneofs(field_desc, field);
     check_initialized();
     check_dynamics();
 }
