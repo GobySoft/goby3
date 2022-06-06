@@ -1156,7 +1156,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_root()
 {
-    glog.is_debug1() && glog << "Generating new root" << std::endl;
+    glog.is_debug1() && glog << "Generating new root with: " << message_->ShortDebugString()
+                             << std::endl;
 
     const google::protobuf::Descriptor* desc = message_->GetDescriptor();
 
@@ -1169,7 +1170,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     message_tree_table_->setTreeRoot(root, "Field");
 
     time_fields_.clear();
-    oneof_value_fields_.clear();
+    oneof_fields_.clear();
 
     root->expand();
 
@@ -1254,7 +1255,23 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     {
         if (field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE)
         {
-            if (field_desc->is_required())
+            bool is_required = field_desc->is_required();
+
+#if DCCL_VERSION_MAJOR >= 4
+            dccl_dycon_.set_field(field_desc);
+            if (field_desc->options().GetExtension(dccl::field).has_dynamic_conditions())
+                has_dynamic_conditions_ = true;
+
+            if (dccl_dycon_.has_required_if() && dccl_dycon_.required())
+                is_required = true;
+#endif
+
+#if DCCL_VERSION_MAJOR >= 4
+            if (dccl_dycon_.has_omit_if() && dccl_dycon_.omit())
+                return;
+#endif
+
+            if (is_required)
             {
                 generate_tree(node, message->GetReflection()->MutableMessage(message, field_desc),
                               parent_hierarchy + "." + field_desc->name());
@@ -1276,6 +1293,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                 }
 
                 modify_field = button;
+                if (field_desc->containing_oneof())
+                    oneof_fields_[field_desc->containing_oneof()].push_back(modify_field);
             }
         }
         else
@@ -1298,7 +1317,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     {
         node->setColumnWidget(1, value_field);
         if (field_desc->containing_oneof())
-            oneof_value_fields_[field_desc->containing_oneof()].push_back(value_field);
+            oneof_fields_[field_desc->containing_oneof()].push_back(value_field);
     }
 
     if (modify_field)
@@ -1833,9 +1852,48 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         }
 
         // don't update the dynamic fields after each automatic time update
+        bool skip = skip_dynamic_conditions_update_;
         skip_dynamic_conditions_update_ = true;
         line_edit->changed().emit();
-        skip_dynamic_conditions_update_ = false;
+        skip_dynamic_conditions_update_ = skip;
+    }
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::update_oneofs(
+    const google::protobuf::FieldDescriptor* field_desc, Wt::WFormWidget* changed_field)
+{
+    if (field_desc->containing_oneof())
+    {
+        for (auto* field : oneof_fields_[field_desc->containing_oneof()])
+        {
+            // clear all other fields in the oneof
+            if (field != changed_field)
+            {
+                // combo box value field
+                if (auto* combo_field = dynamic_cast<Wt::WComboBox*>(field))
+                {
+                    combo_field->setCurrentIndex(0);
+                }
+                // embedded message button
+                else if (auto* button_field = dynamic_cast<Wt::WPushButton*>(field))
+                {
+                    if (button_field->text() == MESSAGE_REMOVE_TEXT) // that is, message is included
+                    {
+                        bool skip = skip_dynamic_conditions_update_;
+                        skip_dynamic_conditions_update_ = true;
+                        glog.is_debug1() && glog << "Disabling: " << field_desc->full_name()
+                                                 << std::endl;
+                        button_field->clicked().emit(WMouseEvent());
+                        skip_dynamic_conditions_update_ = skip;
+                    }
+                }
+                // any other value field
+                else
+                {
+                    field->setValueText("");
+                }
+            }
+        }
     }
 }
 
@@ -2029,15 +2087,18 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                       parent_hierarchy + "." + field_desc->name());
 
         button->setText(MESSAGE_REMOVE_TEXT);
+        update_oneofs(field_desc, button);
     }
     else
     {
         const std::vector<WTreeNode*> children = parent->childNodes();
-        message->GetReflection()->ClearField(message, field_desc);
+        if (message->GetReflection()->HasField(*message, field_desc))
+            message->GetReflection()->ClearField(message, field_desc);
         for (auto i : children) parent->removeChildNode(i);
 
         button->setText(MESSAGE_INCLUDE_TEXT);
     }
+
     check_initialized();
     check_dynamics();
 }

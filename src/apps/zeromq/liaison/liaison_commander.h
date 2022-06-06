@@ -321,24 +321,7 @@ class LiaisonCommander
             }
 
             void update_oneofs(const google::protobuf::FieldDescriptor* field_desc,
-                               Wt::WFormWidget* changed_value_field)
-            {
-                if (field_desc->containing_oneof())
-                {
-                    for (auto* value_field : oneof_value_fields_[field_desc->containing_oneof()])
-                    {
-                        // clear all other fields in the oneof
-                        if (value_field != changed_value_field)
-                        {
-                            auto* combo_value_field = dynamic_cast<Wt::WComboBox*>(value_field);
-                            if (combo_value_field)
-                                combo_value_field->setCurrentIndex(0);
-                            else
-                                value_field->setValueText("");
-                        }
-                    }
-                }
-            }
+                               Wt::WFormWidget* changed_field);
 
             enum DatabaseDialogResponse
             {
@@ -416,7 +399,7 @@ class LiaisonCommander
             bool skip_dynamic_conditions_update_{true};
 
             std::map<const google::protobuf::OneofDescriptor*, std::vector<Wt::WFormWidget*>>
-                oneof_value_fields_;
+                oneof_fields_;
         };
 
         const protobuf::ProtobufCommanderConfig& pb_commander_config_;
