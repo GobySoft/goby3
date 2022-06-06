@@ -1156,6 +1156,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_root()
 {
+    glog.is_debug1() && glog << "Generating new root" << std::endl;
+
     const google::protobuf::Descriptor* desc = message_->GetDescriptor();
 
     // Create and set the root node
@@ -1170,7 +1172,10 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     oneof_value_fields_.clear();
 
     root->expand();
+
+    skip_dynamic_conditions_update_ = true;
     generate_tree(root, message_.get());
+    skip_dynamic_conditions_update_ = false;
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree(
@@ -1236,12 +1241,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         spin_box->valueChanged().connect(boost::bind(&CommandContainer::handle_repeated_size_change,
                                                      this, _1, message, field_desc, node,
-                                                     parent_hierarchy, false));
+                                                     parent_hierarchy));
 
         spin_box->setValue(refl->FieldSize(*message, field_desc));
 
         handle_repeated_size_change(refl->FieldSize(*message, field_desc), message, field_desc,
-                                    node, parent_hierarchy, true);
+                                    node, parent_hierarchy);
 
         modify_field = spin_box;
     }
@@ -1261,13 +1266,13 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
                 button->clicked().connect(
                     boost::bind(&CommandContainer::handle_toggle_single_message, this, _1, message,
-                                field_desc, button, node, parent_hierarchy, false));
+                                field_desc, button, node, parent_hierarchy));
 
                 if (refl->HasField(*message, field_desc))
                 {
                     parent->expand();
                     handle_toggle_single_message(WMouseEvent(), message, field_desc, button, node,
-                                                 parent_hierarchy, true);
+                                                 parent_hierarchy);
                 }
 
                 modify_field = button;
@@ -1826,7 +1831,11 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
                 break;
         }
+
+        // don't update the dynamic fields after each automatic time update
+        skip_dynamic_conditions_update_ = true;
         line_edit->changed().emit();
+        skip_dynamic_conditions_update_ = false;
     }
 }
 
@@ -1951,8 +1960,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::strin
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_repeated_size_change(int desired_size, google::protobuf::Message* message,
                                 const google::protobuf::FieldDescriptor* field_desc,
-                                WTreeTableNode* parent, const std::string& parent_hierarchy,
-                                bool is_initial_generation)
+                                WTreeTableNode* parent, const std::string& parent_hierarchy)
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
 
@@ -2005,15 +2013,14 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 
     check_initialized();
-    if (!is_initial_generation)
-        check_dynamics();
+    check_dynamics();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_toggle_single_message(const WMouseEvent& /*mouse*/, google::protobuf::Message* message,
                                  const google::protobuf::FieldDescriptor* field_desc,
                                  WPushButton* button, WTreeTableNode* parent,
-                                 const std::string& parent_hierarchy, bool is_initial_generation)
+                                 const std::string& parent_hierarchy)
 {
     if (button->text() == MESSAGE_INCLUDE_TEXT)
     {
@@ -2032,8 +2039,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         button->setText(MESSAGE_INCLUDE_TEXT);
     }
     check_initialized();
-    if (!is_initial_generation)
-        check_dynamics();
+    check_dynamics();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
