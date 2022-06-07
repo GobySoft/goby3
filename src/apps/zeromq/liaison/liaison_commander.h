@@ -45,6 +45,7 @@
 #include <Wt/Dbo/SqlTraits>
 #include <Wt/Dbo/WtSqlTraits>
 #include <Wt/Dbo/backend/Sqlite3>
+#include <Wt/WComboBox>
 #include <Wt/WContainerWidget>                            // for WContainer...
 #include <Wt/WDateTime>                                   // for WDateTime
 #include <Wt/WEvent>                                      // for WMouseEvent
@@ -270,8 +271,7 @@ class LiaisonCommander
                                               google::protobuf::Message* message,
                                               const google::protobuf::FieldDescriptor* field_desc,
                                               Wt::WPushButton* field, Wt::WTreeTableNode* parent,
-                                              const std::string& parent_hierarchy,
-                                              bool is_initial_generation);
+                                              const std::string& parent_hierarchy);
 
             void handle_load_external_data(const Wt::WMouseEvent& mouse,
                                            google::protobuf::Message* message,
@@ -298,8 +298,7 @@ class LiaisonCommander
             void handle_repeated_size_change(int size, google::protobuf::Message* message,
                                              const google::protobuf::FieldDescriptor* field_desc,
                                              Wt::WTreeTableNode* parent,
-                                             const std::string& parent_hierarchy,
-                                             bool is_initial_generation);
+                                             const std::string& parent_hierarchy);
 
             void handle_database_double_click(const Wt::WModelIndex& index,
                                               const Wt::WMouseEvent& event);
@@ -315,10 +314,14 @@ class LiaisonCommander
             void check_dynamics()
             {
 #if DCCL_VERSION_MAJOR >= 4
-                if (has_dynamic_conditions_)
+                if (has_dynamic_conditions_ && !skip_dynamic_conditions_update_ // avoid recursion
+                )
                     generate_root();
 #endif
             }
+
+            void update_oneofs(const google::protobuf::FieldDescriptor* field_desc,
+                               Wt::WFormWidget* changed_field);
 
             enum DatabaseDialogResponse
             {
@@ -393,6 +396,10 @@ class LiaisonCommander
             bool has_dynamic_conditions_{false};
             dccl::DynamicConditions dccl_dycon_;
 #endif
+            bool skip_dynamic_conditions_update_{true};
+
+            std::map<const google::protobuf::OneofDescriptor*, std::vector<Wt::WFormWidget*>>
+                oneof_fields_;
         };
 
         const protobuf::ProtobufCommanderConfig& pb_commander_config_;
