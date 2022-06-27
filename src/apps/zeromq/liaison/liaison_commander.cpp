@@ -1888,7 +1888,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                     }
                 }
                 // any other value field
-                else
+                else if (field)
                 {
                     field->setValueText("");
                 }
