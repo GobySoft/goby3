@@ -174,8 +174,8 @@ void goby::acomms::IridiumShoreDriver::do_work()
                         iridium_driver_cfg().hangup_seconds_after_empty())))
             {
                 glog.is(DEBUG1) && glog << "Hanging up by disconnecting" << std::endl;
-                typedef boost::bimap<ModemId,
-                                     std::shared_ptr<RUDICSConnection> >::left_map::iterator LeftIt;
+                typedef boost::bimap<ModemId, std::shared_ptr<RUDICSConnection>>::left_map::iterator
+                    LeftIt;
                 LeftIt client_it = clients_.left.find(id);
                 if (client_it != clients_.left.end())
                     rudics_server_->disconnect(client_it->second);
@@ -433,7 +433,8 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt(const std::string& bytes,
         tcp::resolver resolver(io_service);
         tcp::resolver::query query(
             iridium_shore_driver_cfg().mt_sbd_server_address(),
-            goby::util::as<std::string>(iridium_shore_driver_cfg().mt_sbd_server_port()));
+            goby::util::as<std::string>(iridium_shore_driver_cfg().mt_sbd_server_port()),
+            boost::asio::ip::resolver_query_base::numeric_service);
         tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
         tcp::resolver::iterator end;
 
