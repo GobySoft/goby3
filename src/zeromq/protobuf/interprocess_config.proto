@@ -59,7 +59,7 @@ message InterProcessPortalConfig
     ];
 
     optional uint32 manager_timeout_seconds = 10 [
-        default = 1,
+        default = 5,
         (goby.field).description =
             "How long to wait for a ManagerResponse before assuming the "
             "Manager (gobyd) is unresponsive"
