@@ -1,8 +1,16 @@
 Goby Release Notes (Major version 3)
 
 ****************
-Version 3.0.7
+Version 3.0.8
 
+### Liaison
+- Support for oneof in Commander fields
+
+### Bugs
+- Fix "Host not found" errors in various apps using Boost ASIO when loopback is the only interface configured.
+
+****************
+Version 3.0.7
 
 ### Middleware
 - Change goby::middleware::Group numeric value from uint8 to uint32
