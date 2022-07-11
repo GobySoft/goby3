@@ -382,7 +382,9 @@ jobs:
       - run:
           name: Get original source tarball
           command: |
-            export NEWVERSION="$(git describe --tags HEAD | sed 's/_/~/' | sed 's/-/+/g')"          
+            # use long format for continuous builds so they always rank after release builds
+            [ -z "${CIRCLE_TAG}" ] && export DESCRIBE_ARGS="--long" || export DESCRIBE_ARGS=""
+            export NEWVERSION="$(git describe --tags HEAD ${DESCRIBE_ARGS} | sed 's/_/~/' | sed 's/-/+/g')"
             git config tar.tar.xz.command "xz -c" &&
             mkdir -p /root/src &&
             git archive --prefix=goby3-${NEWVERSION}/ -o /root/src/goby3_${NEWVERSION}.orig.tar.xz HEAD;
