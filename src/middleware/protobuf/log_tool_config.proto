@@ -21,6 +21,7 @@ message LogToolConfig
     {
         DEBUG_TEXT = 1;
         HDF5 = 2;
+        JSON = 3;
     }
 
     optional OutputFormat format = 30 [default = DEBUG_TEXT];

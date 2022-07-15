@@ -24,6 +24,8 @@
 #ifndef GOBY_MIDDLEWARE_LOG_PROTOBUF_LOG_PLUGIN_H
 #define GOBY_MIDDLEWARE_LOG_PROTOBUF_LOG_PLUGIN_H
 
+#include <google/protobuf/util/json_util.h>
+
 #include "goby/middleware/log.h"
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
@@ -79,6 +81,24 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             hdf5_entry.msg = msg;
         }
         return hdf5_entries;
+    }
+
+    std::shared_ptr<nlohmann::json> json_message(LogEntry& log_entry) override
+    {
+        auto j = std::make_shared<nlohmann::json>();
+        auto msgs = parse_message(log_entry);
+
+        for (typename decltype(msgs)::size_type i = 0, n = msgs.size(); i < n; ++i)
+        {
+            std::string jstr;
+            google::protobuf::util::MessageToJsonString(*msgs[i], &jstr);
+
+            if (n > 1)
+                (*j)[n] = nlohmann::json::parse(jstr);
+            else
+                (*j) = nlohmann::json::parse(jstr);
+        }
+        return j;
     }
 
     void register_read_hooks(const std::ifstream& in_log_file) override
