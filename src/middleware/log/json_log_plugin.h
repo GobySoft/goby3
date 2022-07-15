@@ -44,6 +44,11 @@ class JSONPlugin : public LogPlugin
         return parse_message(log_entry)->dump();
     }
 
+    std::shared_ptr<nlohmann::json> json_message(LogEntry& log_entry) override
+    {
+        return parse_message(log_entry);
+    }
+
     void register_read_hooks(const std::ifstream& in_log_file) override {}
 
     void register_write_hooks(std::ofstream& out_log_file) override {}

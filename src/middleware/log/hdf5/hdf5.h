@@ -101,7 +101,7 @@ class GroupFactory
 class Writer
 {
   public:
-    Writer(const std::string& output_file);
+    Writer(const std::string& output_file, bool write_zero_length_dim = true);
 
     void add_entry(goby::middleware::HDF5ProtobufEntry entry);
 
@@ -149,6 +149,7 @@ class Writer
     std::map<std::string, goby::middleware::hdf5::Channel> channels_;
     H5::H5File h5file_;
     goby::middleware::hdf5::GroupFactory group_factory_;
+    bool write_zero_length_dim_;
 };
 
 template <typename T>
@@ -219,9 +220,14 @@ void Writer::write_vector(const std::string& group, const std::string dataset_na
                           const std::vector<T>& data, const std::vector<hsize_t>& hs,
                           const T& default_value)
 {
-    H5::DataSpace dataspace(hs.size(), hs.data(), hs.data());
+    std::unique_ptr<H5::DataSpace> dataspace;
     H5::Group& grp = group_factory_.fetch_group(group);
-    H5::DataSet dataset = grp.createDataSet(dataset_name, predicate<T>(), dataspace);
+    if (data.size() || write_zero_length_dim_)
+        dataspace = std::make_unique<H5::DataSpace>(hs.size(), hs.data(), hs.data());
+    else
+        dataspace = std::make_unique<H5::DataSpace>(H5S_NULL);
+
+    H5::DataSet dataset = grp.createDataSet(dataset_name, predicate<T>(), *dataspace);
     if (data.size())
         dataset.write(&data[0], predicate<T>());
 
