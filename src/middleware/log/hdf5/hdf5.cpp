@@ -82,8 +82,10 @@ goby::middleware::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::
     }
 }
 
-goby::middleware::hdf5::Writer::Writer(const std::string& output_file)
-    : h5file_(output_file, H5F_ACC_TRUNC), group_factory_(h5file_)
+goby::middleware::hdf5::Writer::Writer(const std::string& output_file, bool write_zero_length_dim)
+    : h5file_(output_file, H5F_ACC_TRUNC),
+      group_factory_(h5file_),
+      write_zero_length_dim_(write_zero_length_dim)
 {
 }
 
@@ -126,7 +128,8 @@ void goby::middleware::hdf5::Writer::write_message_collection(
     auto write_field = [&, this](const google::protobuf::FieldDescriptor* field_desc) {
         std::vector<const google::protobuf::Message*> messages;
         for (const auto& entry : message_collection.entries)
-        { messages.push_back(entry.second.msg.get()); } std::vector<hsize_t> hs;
+        { messages.push_back(entry.second.msg.get()); }
+        std::vector<hsize_t> hs;
         hs.push_back(messages.size());
         write_field_selector(group, field_desc, messages, hs);
     };
@@ -414,9 +417,14 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
     }
     hs.push_back(max_size);
 
-    H5::DataSpace dataspace(hs.size(), hs.data(), hs.data());
+    std::unique_ptr<H5::DataSpace> dataspace;
     H5::Group& grp = group_factory_.fetch_group(group);
-    H5::DataSet dataset = grp.createDataSet(dataset_name, H5::PredType::NATIVE_CHAR, dataspace);
+    if (data_char.size() || write_zero_length_dim_)
+        dataspace = std::make_unique<H5::DataSpace>(hs.size(), hs.data(), hs.data());
+    else
+        dataspace = std::make_unique<H5::DataSpace>(H5S_NULL);
+
+    H5::DataSet dataset = grp.createDataSet(dataset_name, H5::PredType::NATIVE_CHAR, *dataspace);
 
     if (data_char.size())
         dataset.write(&data_char[0], H5::PredType::NATIVE_CHAR);

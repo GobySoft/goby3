@@ -8,9 +8,9 @@ message LogToolConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
 
-    required string input_file = 10 [(goby.field).description =
-                                         "Input goby_logger file to read (e.g. "
-                                         "'vehicle_20200204T121314.goby')"];
+    required string input_file = 10
+        [(goby.field).description = "Input goby_logger file to read (e.g. "
+                                    "'vehicle_20200204T121314.goby')"];
     optional string output_file = 20
         [(goby.field).description =
              "Output file to write (default is determined by input_file name "
@@ -25,8 +25,9 @@ message LogToolConfig
 
     optional OutputFormat format = 30 [default = DEBUG_TEXT];
 
+    optional bool write_hdf5_zero_length_dim = 31 [default = true];
+
     repeated string load_shared_library = 40
         [(goby.field).description =
              "Load a shared library (e.g. to load Protobuf files)"];
-
 }
