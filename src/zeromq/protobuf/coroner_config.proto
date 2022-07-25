@@ -18,4 +18,6 @@ message CoronerConfig
         [default = 10, (dccl.field).units.base_dimensions = "T"];
     optional float response_timeout = 21
         [default = 5, (dccl.field).units.base_dimensions = "T"];
+
+    optional bool auto_add_new_apps = 22 [default = false];
 }
