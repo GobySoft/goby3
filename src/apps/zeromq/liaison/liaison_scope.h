@@ -190,7 +190,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         Wt::WPushButton* history_button_;
 
         boost::circular_buffer<
-            std::pair<std::string, std::shared_ptr<const google::protobuf::Message> > >
+            std::pair<std::string, std::shared_ptr<const google::protobuf::Message>>>
             buffer_;
         LiaisonScope* scope_;
     };
@@ -220,23 +220,27 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
 
     struct RegexFilterContainer : Wt::WContainerWidget
     {
-        RegexFilterContainer(Wt::WStandardItemModel* model, Wt::WSortFilterProxyModel* proxy,
+        RegexFilterContainer(LiaisonScope* scope, Wt::WSortFilterProxyModel* proxy,
                              const protobuf::ProtobufScopeConfig& pb_scope_config,
                              Wt::WContainerWidget* parent = nullptr);
 
         void handle_set_regex_filter();
-        void handle_clear_regex_filter();
+        void handle_clear_regex_filter(protobuf::ProtobufScopeConfig::Column column);
 
-        Wt::WStandardItemModel* model_;
+        LiaisonScope* scope_;
         Wt::WSortFilterProxyModel* proxy_;
-
         Wt::WText* hr_;
         Wt::WText* set_text_;
-        Wt::WComboBox* regex_column_select_;
-        Wt::WText* expression_text_;
-        Wt::WLineEdit* regex_filter_text_;
-        Wt::WPushButton* regex_filter_button_;
-        Wt::WPushButton* regex_filter_clear_;
+
+        struct RegexWidgets
+        {
+            Wt::WText* expression_text_;
+            Wt::WLineEdit* regex_filter_text_;
+            Wt::WPushButton* regex_filter_button_;
+            Wt::WPushButton* regex_filter_clear_;
+        };
+
+        std::map<protobuf::ProtobufScopeConfig::Column, RegexWidgets> widgets_;
     };
 
     Wt::WGroupBox* main_box_;
@@ -250,7 +254,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     // maps group into row
     std::map<std::string, int> msg_map_;
 
-    std::map<std::string, std::shared_ptr<const google::protobuf::Message> > paused_buffer_;
+    std::map<std::string, std::shared_ptr<const google::protobuf::Message>> paused_buffer_;
 };
 
 class LiaisonScopeProtobufTreeView : public Wt::WTreeView
@@ -283,7 +287,7 @@ class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
             try
             {
                 auto pb_msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                    std::shared_ptr<google::protobuf::Message> >(type);
+                    std::shared_ptr<google::protobuf::Message>>(type);
                 pb_msg->ParseFromArray(&data[0], data.size());
                 scope_->post_to_wt([=]() { scope_->inbox(gr, pb_msg); });
             }
@@ -294,18 +298,27 @@ class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
             }
         };
 
-        interprocess().subscribe_regex(subscription_handler,
-                                       {goby::middleware::MarshallingScheme::PROTOBUF}, ".*", ".*");
+        regex_subscription_ = interprocess().subscribe_regex(
+            subscription_handler, {goby::middleware::MarshallingScheme::PROTOBUF}, ".*", ".*");
     }
     ~ScopeCommsThread() override = default;
+
+    void update_subscription(std::string group_regex, std::string type_regex)
+    {
+        glog.is_debug1() && glog << "Updated subscriptions with group: [" << group_regex
+                                 << "], type: [" << type_regex << "]" << std::endl;
+        regex_subscription_->update_group_regex(group_regex);
+        regex_subscription_->update_type_regex(type_regex);
+    }
 
   private:
     friend class LiaisonScope;
     LiaisonScope* scope_;
+    std::shared_ptr<middleware::SerializationSubscriptionRegex> regex_subscription_;
 };
 
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
 
 #endif

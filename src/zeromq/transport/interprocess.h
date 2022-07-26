@@ -385,7 +385,7 @@ class InterProcessPortalImplementation
         portal_subscriptions_.insert(std::make_pair(identifier, subscription));
     }
 
-    void _subscribe_regex(
+    std::shared_ptr<middleware::SerializationSubscriptionRegex> _subscribe_regex(
         std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type,
                            const goby::middleware::Group& group)>
             f,
@@ -394,6 +394,7 @@ class InterProcessPortalImplementation
         auto new_sub = std::make_shared<middleware::SerializationSubscriptionRegex>(
             f, schemes, type_regex, group_regex);
         _subscribe_regex(new_sub);
+        return new_sub;
     }
 
     template <typename Data, int scheme>

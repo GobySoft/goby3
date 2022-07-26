@@ -81,7 +81,7 @@ goby::apps::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cf
                                           subscriptions_div_, main_box_)),
       history_header_div_(
           new HistoryContainer(main_layout_, history_model_, pb_scope_config_, this, main_box_)),
-      regex_filter_div_(new RegexFilterContainer(model_, proxy_, pb_scope_config_, main_box_)),
+      regex_filter_div_(new RegexFilterContainer(this, proxy_, pb_scope_config_, main_box_)),
       scope_tree_view_(new LiaisonScopeProtobufTreeView(
           pb_scope_config_, pb_scope_config_.scope_height(), main_box_)),
       bottom_fill_(new WContainerWidget)
@@ -242,7 +242,8 @@ void goby::apps::zeromq::LiaisonScope::handle_message(const std::string& group,
                                                       const google::protobuf::Message& msg,
                                                       bool fresh_message)
 {
-    //    glog.is(DEBUG1) && glog << "LiaisonScope: got message:  " << msg << std::endl;
+    glog.is(DEBUG1) && glog << "LiaisonScope: got message:  " << msg.ShortDebugString()
+                            << std::endl;
     auto it = msg_map_.find(group);
     if (it != msg_map_.end())
     {
@@ -538,39 +539,57 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::flush_buffer()
 }
 
 goby::apps::zeromq::LiaisonScope::RegexFilterContainer::RegexFilterContainer(
-    Wt::WStandardItemModel* model, Wt::WSortFilterProxyModel* proxy,
+    LiaisonScope* scope, Wt::WSortFilterProxyModel* proxy,
     const protobuf::ProtobufScopeConfig& pb_scope_config, Wt::WContainerWidget* parent /* = 0 */)
     : Wt::WContainerWidget(parent),
-      model_(model),
+      scope_(scope),
       proxy_(proxy),
       hr_(new WText("<hr />", this)),
-      set_text_(new WText(("Set regex filter: Column: "), this)),
-      regex_column_select_(new Wt::WComboBox(this)),
-      expression_text_(new WText((" Expression: "), this)),
-      regex_filter_text_(new WLineEdit(pb_scope_config.regex_filter_expression(), this)),
-      regex_filter_button_(new WPushButton("Set", this)),
-      regex_filter_clear_(new WPushButton("Clear", this))
+      set_text_(new WText(("Set regex filter: "), this))
 {
-    for (int i = 0, n = model_->columnCount(); i < n; ++i)
-        regex_column_select_->addItem(boost::any_cast<std::string>(model_->headerData(i)));
-    regex_column_select_->setCurrentIndex(pb_scope_config.regex_filter_column());
+    widgets_.emplace(std::make_pair(
+        protobuf::ProtobufScopeConfig::COLUMN_GROUP,
+        RegexWidgets{new WText((" Group Expression: "), this),
+                     new WLineEdit(pb_scope_config.group_regex_filter_expression(), this),
+                     new WPushButton("Set", this), new WPushButton("Clear", this)}));
+    widgets_.emplace(std::make_pair(
+        protobuf::ProtobufScopeConfig::COLUMN_TYPE,
+        RegexWidgets{new WText((" Type Expression: "), this),
+                     new WLineEdit(pb_scope_config.type_regex_filter_expression(), this),
+                     new WPushButton("Set", this), new WPushButton("Clear", this)}));
 
-    regex_filter_button_->clicked().connect(this, &RegexFilterContainer::handle_set_regex_filter);
-    regex_filter_clear_->clicked().connect(this, &RegexFilterContainer::handle_clear_regex_filter);
-    regex_filter_text_->enterPressed().connect(this,
-                                               &RegexFilterContainer::handle_set_regex_filter);
+    for (auto c :
+         {protobuf::ProtobufScopeConfig::COLUMN_GROUP, protobuf::ProtobufScopeConfig::COLUMN_TYPE})
+    {
+        widgets_[c].regex_filter_button_->clicked().connect(
+            this, &RegexFilterContainer::handle_set_regex_filter);
+        widgets_[c].regex_filter_clear_->clicked().connect(
+            boost::bind(&RegexFilterContainer::handle_clear_regex_filter, this, c));
+        widgets_[c].regex_filter_text_->enterPressed().connect(
+            this, &RegexFilterContainer::handle_set_regex_filter);
+    }
 
     handle_set_regex_filter();
 }
 
 void goby::apps::zeromq::LiaisonScope::RegexFilterContainer::handle_set_regex_filter()
 {
-    proxy_->setFilterKeyColumn(regex_column_select_->currentIndex());
-    proxy_->setFilterRegExp(regex_filter_text_->text());
+    std::string group_regex =
+        widgets_[protobuf::ProtobufScopeConfig::COLUMN_GROUP].regex_filter_text_->text().narrow();
+    std::string type_regex =
+        widgets_[protobuf::ProtobufScopeConfig::COLUMN_TYPE].regex_filter_text_->text().narrow();
+
+    scope_->post_to_comms(
+        [=]() { scope_->goby_thread()->update_subscription(group_regex, type_regex); });
+
+    proxy_->setFilterKeyColumn(protobuf::ProtobufScopeConfig::COLUMN_GROUP);
+    //    proxy_->setFilterRegExp(widgets_[protobuf::ProtobufScopeConfig::COLUMN_GROUP].regex_filter_text_->text());
+    proxy_->setFilterRegExp(".*");
 }
 
-void goby::apps::zeromq::LiaisonScope::RegexFilterContainer::handle_clear_regex_filter()
+void goby::apps::zeromq::LiaisonScope::RegexFilterContainer::handle_clear_regex_filter(
+    protobuf::ProtobufScopeConfig::Column column)
 {
-    regex_filter_text_->setText(".*");
+    widgets_[column].regex_filter_text_->setText(".*");
     handle_set_regex_filter();
 }

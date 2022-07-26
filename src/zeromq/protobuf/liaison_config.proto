@@ -210,20 +210,20 @@ message ProtobufScopeConfig
     optional Column sort_by_column = 3 [default = COLUMN_GROUP];
     optional bool sort_ascending = 4 [default = true];
     optional int32 scope_height = 5 [default = 500];
-    optional int32 history_height = 9 [default = 300];
+    optional int32 history_height = 6 [default = 300];
 
-    optional Column regex_filter_column = 6 [default = COLUMN_GROUP];
-    optional string regex_filter_expression = 7 [default = ".*"];
+    optional string group_regex_filter_expression = 7 [default = ".*"];
+    optional string type_regex_filter_expression = 8 [default = ".*"];
 
     message HistoryConfig
     {
         required string group = 1;
-        optional bool show_plot = 2 [default = false];
+        // optional bool show_plot = 2 [default = false];
         //    optional int32 plot_width = 3 [default = 800];
         //    optional int32 plot_height = 4 [default = 300];
     }
 
-    repeated HistoryConfig history = 8;
+    repeated HistoryConfig history = 9;
 
     optional int32 max_history_items = 10 [default = 100];
 }

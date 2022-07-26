@@ -178,13 +178,15 @@ class InterProcessTransporterBase
     /// \param schemes Set of marshalling schemes to match
     /// \param type_regex C++ regex to match type names (within one or more of the given schemes)
     /// \param group_regex C++ regex to match group names
-    void subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme,
-                                            const std::string& type, const Group& group)>
-                             f,
-                         const std::set<int>& schemes, const std::string& type_regex = ".*",
-                         const std::string& group_regex = ".*")
+    /// \return Shared pointer to SerializationSubscriptionRegex for later modification of regex parameters
+    std::shared_ptr<SerializationSubscriptionRegex>
+    subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme,
+                                       const std::string& type, const Group& group)>
+                        f,
+                    const std::set<int>& schemes, const std::string& type_regex = ".*",
+                    const std::string& group_regex = ".*")
     {
-        static_cast<Derived*>(this)->_subscribe_regex(f, schemes, type_regex, group_regex);
+        return static_cast<Derived*>(this)->_subscribe_regex(f, schemes, type_regex, group_regex);
     }
 
     /// \brief Subscribe to a number of types within a given group and scheme using a regular expression
@@ -195,8 +197,9 @@ class InterProcessTransporterBase
     /// \param group group to subscribe to (typically a DynamicGroup)
     /// \param f Callback function or lambda that is called upon receipt of any messages matching the given group and type regex
     /// \param type_regex C++ regex to match type names (within the given scheme)
+    /// \return Shared pointer to SerializationSubscriptionRegex for later modification of regex parameters
     template <typename Data, int scheme = scheme<Data>()>
-    void subscribe_type_regex(
+    std::shared_ptr<SerializationSubscriptionRegex> subscribe_type_regex(
         std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
         const Group& group, const std::string& type_regex = ".*")
     {
@@ -212,8 +215,8 @@ class InterProcessTransporterBase
             f(msg, type);
         };
 
-        static_cast<Derived*>(this)->_subscribe_regex(regex_lambda, {scheme}, type_regex,
-                                                      "^" + sanitized_group + "$");
+        return static_cast<Derived*>(this)->_subscribe_regex(regex_lambda, {scheme}, type_regex,
+                                                             "^" + sanitized_group + "$");
     }
 
     /// \brief Subscribe to a number of types within a given group and scheme using a regular expression
@@ -388,15 +391,17 @@ class InterProcessForwarder
 
     void _unsubscribe_all()
     {
+        regex_subscriptions_.clear();
         auto all = std::make_shared<SerializationUnSubscribeAll>();
         this->inner().template publish<Base::to_portal_group_, SerializationUnSubscribeAll>(all);
     }
 
-    void _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme,
-                                             const std::string& type, const Group& group)>
-                              f,
-                          const std::set<int>& schemes, const std::string& type_regex = ".*",
-                          const std::string& group_regex = ".*")
+    std::shared_ptr<SerializationSubscriptionRegex>
+    _subscribe_regex(std::function<void(const std::vector<unsigned char>&, int scheme,
+                                        const std::string& type, const Group& group)>
+                         f,
+                     const std::set<int>& schemes, const std::string& type_regex = ".*",
+                     const std::string& group_regex = ".*")
     {
         auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme,
                                             const std::string& type, const Group& group) {
@@ -417,6 +422,7 @@ class InterProcessForwarder
         auto local_subscription = std::shared_ptr<SerializationSubscriptionRegex>(
             new SerializationSubscriptionRegex(f, schemes, type_regex, group_regex));
         regex_subscriptions_.insert(local_subscription);
+        return local_subscription;
     }
 
     void _receive_regex_data_forwarded(
