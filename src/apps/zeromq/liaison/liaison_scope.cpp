@@ -132,6 +132,8 @@ void goby::apps::zeromq::LiaisonScope::view_clicked(const Wt::WModelIndex& proxy
 
 void goby::apps::zeromq::LiaisonScope::update_freq(double hertz)
 {
+    this->update_comms_freq(hertz);
+
     scope_timer_.stop();
     scope_timer_.setInterval(1 / hertz * 1.0e3);
     scope_timer_.start();
@@ -386,9 +388,15 @@ void goby::apps::zeromq::LiaisonScope::ControlsContainer::handle_play_pause(bool
         is_paused_ = !(is_paused_);
 
     if (is_paused_)
+    {
         refresh_button_->show();
+        freq_spin_->disable();
+    }
     else
+    {
         refresh_button_->hide();
+        freq_spin_->enable();
+    }
 
     is_paused_ ? pause() : resume();
 

@@ -180,6 +180,13 @@ class LiaisonContainerWithComms : public LiaisonContainer
         }
     }
 
+    void update_comms_freq(double hertz)
+    {
+        comms_timer_.stop();
+        comms_timer_.setInterval(1 / hertz * 1.0e3);
+        comms_timer_.start();
+    }
+
   private:
     // for comms
     std::mutex comms_to_wt_mutex;
