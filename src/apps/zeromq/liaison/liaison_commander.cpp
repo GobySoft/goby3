@@ -215,10 +215,20 @@ void goby::apps::zeromq::LiaisonCommander::display_notify(
         background_color)
 {
     auto* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
+    new_div->setOverflow(OverflowAuto);
+    new_div->setMaximumSize(400, 600);
 
     new WText("Message: " + goby::util::as<std::string>(
                                 controls_div_->incoming_message_stack_->children().size()),
               new_div);
+
+    new Wt::WBreak(new_div);
+
+    auto* minus = new WPushButton("-", new_div);
+    auto* plus = new WPushButton("+", new_div);
+    auto* remove = new WPushButton("x", new_div);
+    auto* remove_all = new WPushButton("X", new_div);
+    remove_all->setFloatSide(Wt::Right);
 
     auto* box = new WGroupBox(title, new_div);
 
@@ -226,12 +236,6 @@ void goby::apps::zeromq::LiaisonCommander::display_notify(
         background_color.r(), background_color.g(), background_color.b(), background_color.a()));
 
     new WText("<pre>" + pb_msg.DebugString() + "</pre>", box);
-
-    auto* minus = new WPushButton("-", new_div);
-    auto* plus = new WPushButton("+", new_div);
-    auto* remove = new WPushButton("x", new_div);
-    auto* remove_all = new WPushButton("X", new_div);
-    remove_all->setFloatSide(Wt::Right);
 
     plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
     minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);

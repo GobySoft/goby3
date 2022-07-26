@@ -64,6 +64,7 @@ class WStringListModel;
 class WText;
 class WVBoxLayout;
 class WWidget;
+class WDoubleSpinBox;
 } // namespace Wt
 
 namespace goby
@@ -89,16 +90,21 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
                                                const google::protobuf::Message& msg,
                                                bool do_attach_pb_rows = true);
     void attach_pb_rows(const std::vector<Wt::WStandardItem*>& items,
-                        const google::protobuf::Message& msg);
+                        const std::string& debug_string);
 
     void update_row(const std::string& group, const google::protobuf::Message& msg,
                     const std::vector<Wt::WStandardItem*>& items, bool do_attach_pb_rows = true);
+
+    void update_freq(double hertz);
 
     void loop();
 
     void pause();
     void resume();
     bool is_paused() { return controls_div_->is_paused_; }
+    void handle_refresh();
+
+    void view_clicked(const Wt::WModelIndex& index, const Wt::WMouseEvent& event);
 
   private:
     void handle_global_key(const Wt::WKeyEvent& event);
@@ -107,7 +113,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     {
         if (last_scope_state_ == ACTIVE)
             resume();
-        else if (last_scope_state_ == UNKNOWN)
+        else if (last_scope_state_ == UNKNOWN && !is_paused())
             scope_timer_.start();
 
         last_scope_state_ = UNKNOWN;
@@ -128,6 +134,8 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         // we must resume the scope as this stops the background thread, allowing the ZeroMQService for the scope to be safely deleted. This is inelegant, but a by product of how Wt destructs the root object *after* this class (and thus all the local class objects).
         resume();
     }
+
+    void display_notify(const std::string& value);
 
   private:
     const protobuf::ProtobufScopeConfig& pb_scope_config_;
@@ -171,6 +179,9 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         void display_message(const std::string& group, const google::protobuf::Message& msg);
         void flush_buffer();
 
+        void view_clicked(const Wt::WModelIndex& proxy_index, const Wt::WMouseEvent& event,
+                          Wt::WStandardItemModel* model, Wt::WSortFilterProxyModel* proxy);
+
         struct MVC
         {
             std::string key;
@@ -190,7 +201,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         Wt::WPushButton* history_button_;
 
         boost::circular_buffer<
-            std::pair<std::string, std::shared_ptr<const google::protobuf::Message> > >
+            std::pair<std::string, std::shared_ptr<const google::protobuf::Message>>>
             buffer_;
         LiaisonScope* scope_;
     };
@@ -198,45 +209,63 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     struct ControlsContainer : Wt::WContainerWidget
     {
         ControlsContainer(Wt::WTimer* timer, bool start_paused, LiaisonScope* scope,
-                          SubscriptionsContainer* subscriptions_div,
+                          SubscriptionsContainer* subscriptions_div, double freq,
                           Wt::WContainerWidget* parent = nullptr);
         ~ControlsContainer() override;
 
         void handle_play_pause(bool toggle_state);
+        void handle_refresh();
 
         void pause();
         void resume();
 
+        void increment_clicked_messages(const Wt::WMouseEvent& event);
+        void decrement_clicked_messages(const Wt::WMouseEvent& event);
+        void remove_clicked_message(const Wt::WMouseEvent& event);
+        void clear_clicked_messages(const Wt::WMouseEvent& event);
+
         Wt::WTimer* timer_;
 
-        Wt::WPushButton* play_pause_button_;
-
-        Wt::WText* spacer_;
         Wt::WText* play_state_;
+        Wt::WBreak* break1_;
+
+        Wt::WPushButton* play_pause_button_;
+        Wt::WPushButton* refresh_button_;
+
+        Wt::WBreak* break2_;
+        Wt::WText* freq_text_;
+        Wt::WDoubleSpinBox* freq_spin_;
+
         bool is_paused_;
         LiaisonScope* scope_;
         SubscriptionsContainer* subscriptions_div_;
+
+        Wt::WStackedWidget* clicked_message_stack_;
     };
 
     struct RegexFilterContainer : Wt::WContainerWidget
     {
-        RegexFilterContainer(Wt::WStandardItemModel* model, Wt::WSortFilterProxyModel* proxy,
+        RegexFilterContainer(LiaisonScope* scope, Wt::WSortFilterProxyModel* proxy,
                              const protobuf::ProtobufScopeConfig& pb_scope_config,
                              Wt::WContainerWidget* parent = nullptr);
 
         void handle_set_regex_filter();
-        void handle_clear_regex_filter();
+        void handle_clear_regex_filter(protobuf::ProtobufScopeConfig::Column column);
 
-        Wt::WStandardItemModel* model_;
+        LiaisonScope* scope_;
         Wt::WSortFilterProxyModel* proxy_;
-
         Wt::WText* hr_;
         Wt::WText* set_text_;
-        Wt::WComboBox* regex_column_select_;
-        Wt::WText* expression_text_;
-        Wt::WLineEdit* regex_filter_text_;
-        Wt::WPushButton* regex_filter_button_;
-        Wt::WPushButton* regex_filter_clear_;
+
+        struct RegexWidgets
+        {
+            Wt::WText* expression_text_;
+            Wt::WLineEdit* regex_filter_text_;
+            Wt::WPushButton* regex_filter_button_;
+            Wt::WPushButton* regex_filter_clear_;
+        };
+
+        std::map<protobuf::ProtobufScopeConfig::Column, RegexWidgets> widgets_;
     };
 
     Wt::WGroupBox* main_box_;
@@ -250,7 +279,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     // maps group into row
     std::map<std::string, int> msg_map_;
 
-    std::map<std::string, std::shared_ptr<const google::protobuf::Message> > paused_buffer_;
+    std::map<std::string, std::shared_ptr<const google::protobuf::Message>> paused_buffer_;
 };
 
 class LiaisonScopeProtobufTreeView : public Wt::WTreeView
@@ -283,7 +312,7 @@ class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
             try
             {
                 auto pb_msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                    std::shared_ptr<google::protobuf::Message> >(type);
+                    std::shared_ptr<google::protobuf::Message>>(type);
                 pb_msg->ParseFromArray(&data[0], data.size());
                 scope_->post_to_wt([=]() { scope_->inbox(gr, pb_msg); });
             }
@@ -294,18 +323,27 @@ class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
             }
         };
 
-        interprocess().subscribe_regex(subscription_handler,
-                                       {goby::middleware::MarshallingScheme::PROTOBUF}, ".*", ".*");
+        regex_subscription_ = interprocess().subscribe_regex(
+            subscription_handler, {goby::middleware::MarshallingScheme::PROTOBUF}, ".*", ".*");
     }
     ~ScopeCommsThread() override = default;
+
+    void update_subscription(std::string group_regex, std::string type_regex)
+    {
+        glog.is_debug1() && glog << "Updated subscriptions with group: [" << group_regex
+                                 << "], type: [" << type_regex << "]" << std::endl;
+        regex_subscription_->update_group_regex(group_regex);
+        regex_subscription_->update_type_regex(type_regex);
+    }
 
   private:
     friend class LiaisonScope;
     LiaisonScope* scope_;
+    std::shared_ptr<middleware::SerializationSubscriptionRegex> regex_subscription_;
 };
 
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
 
 #endif

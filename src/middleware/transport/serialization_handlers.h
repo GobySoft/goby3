@@ -391,6 +391,9 @@ class SerializationSubscriptionRegex
     {
     }
 
+    void update_type_regex(const std::string& type_regex) { type_regex_.assign(type_regex); }
+    void update_group_regex(const std::string& group_regex) { group_regex_.assign(group_regex); }
+
     // handle an incoming message
     // return true if posted
     template <typename CharIterator>
