@@ -90,7 +90,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
                                                const google::protobuf::Message& msg,
                                                bool do_attach_pb_rows = true);
     void attach_pb_rows(const std::vector<Wt::WStandardItem*>& items,
-                        const google::protobuf::Message& msg);
+                        const std::string& debug_string);
 
     void update_row(const std::string& group, const google::protobuf::Message& msg,
                     const std::vector<Wt::WStandardItem*>& items, bool do_attach_pb_rows = true);

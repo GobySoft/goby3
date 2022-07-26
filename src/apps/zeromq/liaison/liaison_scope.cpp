@@ -142,13 +142,11 @@ void goby::apps::zeromq::LiaisonScope::update_freq(double hertz)
 void goby::apps::zeromq::LiaisonScope::loop() { handle_refresh(); }
 
 void goby::apps::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WStandardItem*>& items,
-                                                      const google::protobuf::Message& pb_msg)
+                                                      const std::string& debug_string)
 {
     Wt::WStandardItem* key_item = items[protobuf::ProtobufScopeConfig::COLUMN_GROUP];
 
     std::vector<std::string> result;
-    std::string debug_string = pb_msg.DebugString();
-    boost::trim(debug_string);
 
     boost::split(result, debug_string, boost::is_any_of("\n"));
 
@@ -197,21 +195,23 @@ void goby::apps::zeromq::LiaisonScope::update_row(const std::string& group,
                                                   const std::vector<WStandardItem*>& items,
                                                   bool do_attach_pb_rows)
 {
+    std::string debug_string = msg.DebugString();
+
     items[protobuf::ProtobufScopeConfig::COLUMN_GROUP]->setText(group);
 
     items[protobuf::ProtobufScopeConfig::COLUMN_TYPE]->setText(msg.GetDescriptor()->full_name());
 
     items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(msg.ShortDebugString(),
                                                                 DisplayRole);
-    items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(msg.DebugString(), ToolTipRole);
-    items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(msg.DebugString(), UserRole);
+    items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(debug_string, ToolTipRole);
+    items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(debug_string, UserRole);
 
     items[protobuf::ProtobufScopeConfig::COLUMN_TIME]->setData(
         WDateTime::fromPosixTime(goby::time::SystemClock::now<boost::posix_time::ptime>()),
         DisplayRole);
 
     if (do_attach_pb_rows)
-        attach_pb_rows(items, msg);
+        attach_pb_rows(items, debug_string);
 }
 
 void goby::apps::zeromq::LiaisonScope::handle_refresh()
@@ -235,6 +235,16 @@ void goby::apps::zeromq::LiaisonScope::resume()
 void goby::apps::zeromq::LiaisonScope::inbox(
     const std::string& group, const std::shared_ptr<const google::protobuf::Message>& msg)
 {
+    if (msg->ByteSize() > pb_scope_config_.max_message_size_bytes())
+    {
+        glog.is_warn() && glog << "Discarding message [" << msg->GetDescriptor()->full_name()
+                               << " because it is larger than max_message_size_bytes ["
+                               << msg->ByteSize() << ">"
+                               << pb_scope_config_.max_message_size_bytes() << " ]." << std::endl;
+
+        return;
+    }
+
     //  if (is_paused())
     //  {
     auto hist_it = history_header_div_->history_models_.find(group);

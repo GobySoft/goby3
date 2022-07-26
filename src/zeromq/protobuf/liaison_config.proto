@@ -214,7 +214,7 @@ message ProtobufScopeConfig
 
     optional string group_regex_filter_expression = 7 [default = ".*"];
     optional string type_regex_filter_expression = 8 [default = ".*"];
-
+    
     message HistoryConfig
     {
         required string group = 1;
@@ -226,6 +226,9 @@ message ProtobufScopeConfig
     repeated HistoryConfig history = 9;
 
     optional int32 max_history_items = 10 [default = 100];
+    
+    optional int32 max_message_size_bytes = 20 [default = 2048];
+
 }
 
 message NetworkAckSet
