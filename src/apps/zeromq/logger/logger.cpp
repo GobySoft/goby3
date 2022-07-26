@@ -116,7 +116,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
                                 glog << "Received STOP_LOGGING but we were already stopped"
                                      << std::endl;
 
-                        logging_ = true;
+                        logging_ = false;
                         break;
 
                     case goby::middleware::protobuf::LoggerRequest::ROTATE_LOG:
