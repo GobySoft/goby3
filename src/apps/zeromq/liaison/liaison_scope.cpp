@@ -60,6 +60,10 @@
 
 #include "liaison_scope.h"
 
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
+
 namespace Wt
 {
 class WAbstractItemModel;
@@ -235,11 +239,11 @@ void goby::apps::zeromq::LiaisonScope::resume()
 void goby::apps::zeromq::LiaisonScope::inbox(
     const std::string& group, const std::shared_ptr<const google::protobuf::Message>& msg)
 {
-    if (msg->ByteSize() > pb_scope_config_.max_message_size_bytes())
+    if (msg->ByteSizeLong() > pb_scope_config_.max_message_size_bytes())
     {
         glog.is_warn() && glog << "Discarding message [" << msg->GetDescriptor()->full_name()
                                << " because it is larger than max_message_size_bytes ["
-                               << msg->ByteSize() << ">"
+                               << msg->ByteSizeLong() << ">"
                                << pb_scope_config_.max_message_size_bytes() << " ]." << std::endl;
 
         return;
