@@ -24,10 +24,11 @@
 
 #include <list> // for operator!=, ope...
 
-#include <Wt/WApplication>                           // for WApplication, wApp
-#include <Wt/WBreak>                                 // for WBreak
-#include <Wt/WComboBox>                              // for WComboBox
-#include <Wt/WDateTime>                              // for WDateTime
+#include <Wt/WApplication> // for WApplication, wApp
+#include <Wt/WBreak>       // for WBreak
+#include <Wt/WComboBox>    // for WComboBox
+#include <Wt/WDateTime>    // for WDateTime
+#include <Wt/WDoubleSpinBox>
 #include <Wt/WGlobal>                                // for Horizontal, Key_P
 #include <Wt/WGroupBox>                              // for WGroupBox
 #include <Wt/WLength>                                // for WLength, WLengt...
@@ -36,6 +37,7 @@
 #include <Wt/WPushButton>                            // for WPushButton
 #include <Wt/WSignal>                                // for EventSignal
 #include <Wt/WSortFilterProxyModel>                  // for WSortFilterProx...
+#include <Wt/WStackedWidget>                         // for WStackedWidget
 #include <Wt/WStandardItem>                          // for WStandardItem
 #include <Wt/WString>                                // for WString
 #include <Wt/WStringListModel>                       // for WStringListModel
@@ -78,7 +80,7 @@ goby::apps::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cf
       main_box_(new WGroupBox("Interprocess Messages")),
       subscriptions_div_(new SubscriptionsContainer(model_, history_model_, msg_map_, main_box_)),
       controls_div_(new ControlsContainer(&scope_timer_, cfg.start_paused(), this,
-                                          subscriptions_div_, main_box_)),
+                                          subscriptions_div_, cfg.update_freq(), main_box_)),
       history_header_div_(
           new HistoryContainer(main_layout_, history_model_, pb_scope_config_, this, main_box_)),
       regex_filter_div_(new RegexFilterContainer(this, proxy_, pb_scope_config_, main_box_)),
@@ -96,6 +98,8 @@ goby::apps::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cf
                                    pb_scope_config_.sort_ascending() ? AscendingOrder
                                                                      : DescendingOrder);
 
+    scope_tree_view_->clicked().connect(this, &LiaisonScope::view_clicked);
+
     main_layout_->addWidget(main_box_);
     //    main_layout_->setResizable(main_layout_->count()-1);
     //    main_layout_->addWidget(bottom_fill_, -1, AlignTop);
@@ -105,18 +109,35 @@ goby::apps::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cf
     for (int i = 0, n = pb_scope_config_.history_size(); i < n; ++i)
         history_header_div_->add_history(pb_scope_config_.history(i));
 
-    wApp->globalKeyPressed().connect(this, &LiaisonScope::handle_global_key);
-
-    scope_timer_.setInterval(1 / cfg.update_freq() * 1.0e3);
+    update_freq(cfg.update_freq());
     scope_timer_.timeout().connect(this, &LiaisonScope::loop);
 
     set_name("Scope");
 }
 
-void goby::apps::zeromq::LiaisonScope::loop()
+void goby::apps::zeromq::LiaisonScope::view_clicked(const Wt::WModelIndex& proxy_index,
+                                                    const Wt::WMouseEvent& event)
 {
-    glog.is(DEBUG2) && glog << "LiaisonScope: polling" << std::endl;
+    Wt::WModelIndex model_index = proxy_->mapToSource(proxy_index);
+    Wt::WStandardItem* item = model_->itemFromIndex(model_index);
+    try
+    {
+        display_notify(boost::any_cast<std::string>(item->data(UserRole)));
+    }
+    catch (...)
+    {
+        // no data in the UserRole
+    }
 }
+
+void goby::apps::zeromq::LiaisonScope::update_freq(double hertz)
+{
+    scope_timer_.stop();
+    scope_timer_.setInterval(1 / hertz * 1.0e3);
+    scope_timer_.start();
+}
+
+void goby::apps::zeromq::LiaisonScope::loop() { handle_refresh(); }
 
 void goby::apps::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WStandardItem*>& items,
                                                       const google::protobuf::Message& pb_msg)
@@ -180,6 +201,8 @@ void goby::apps::zeromq::LiaisonScope::update_row(const std::string& group,
 
     items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(msg.ShortDebugString(),
                                                                 DisplayRole);
+    items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(msg.DebugString(), ToolTipRole);
+    items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(msg.DebugString(), UserRole);
 
     items[protobuf::ProtobufScopeConfig::COLUMN_TIME]->setData(
         WDateTime::fromPosixTime(goby::time::SystemClock::now<boost::posix_time::ptime>()),
@@ -189,21 +212,13 @@ void goby::apps::zeromq::LiaisonScope::update_row(const std::string& group,
         attach_pb_rows(items, msg);
 }
 
-void goby::apps::zeromq::LiaisonScope::handle_global_key(const Wt::WKeyEvent& event)
+void goby::apps::zeromq::LiaisonScope::handle_refresh()
 {
-    switch (event.key())
-    {
-        // pull single update to display
-        case Key_R:
-            for (const auto& p : paused_buffer_) handle_message(p.first, *p.second, false);
-            history_header_div_->flush_buffer();
-            break;
+    // pull single update to display
+    for (const auto& p : paused_buffer_) handle_message(p.first, *p.second, false);
+    paused_buffer_.clear();
 
-            // toggle play/pause
-        case Key_P: controls_div_->handle_play_pause(true); break;
-
-        default: break;
-    }
+    history_header_div_->flush_buffer();
 }
 
 void goby::apps::zeromq::LiaisonScope::pause() { controls_div_->pause(); }
@@ -212,30 +227,27 @@ void goby::apps::zeromq::LiaisonScope::resume()
 {
     controls_div_->resume();
     // update with changes since the last we were playing
-
-    for (const auto& p : paused_buffer_) handle_message(p.first, *p.second, false);
-
-    history_header_div_->flush_buffer();
+    handle_refresh();
 }
 
 void goby::apps::zeromq::LiaisonScope::inbox(
     const std::string& group, const std::shared_ptr<const google::protobuf::Message>& msg)
 {
-    if (is_paused())
+    //  if (is_paused())
+    //  {
+    auto hist_it = history_header_div_->history_models_.find(group);
+    if (hist_it != history_header_div_->history_models_.end())
     {
-        auto hist_it = history_header_div_->history_models_.find(group);
-        if (hist_it != history_header_div_->history_models_.end())
-        {
-            // buffer for later display
-            history_header_div_->buffer_.push_back(std::make_pair(group, msg));
-        }
+        // buffer for later display
+        history_header_div_->buffer_.push_back(std::make_pair(group, msg));
+    }
 
-        paused_buffer_[group] = msg;
-    }
-    else
-    {
-        handle_message(group, *msg, true);
-    }
+    paused_buffer_[group] = msg;
+    //  }
+    //  else
+    //  {
+    //      handle_message(group, *msg, true);
+    //  }
 }
 
 void goby::apps::zeromq::LiaisonScope::handle_message(const std::string& group,
@@ -322,27 +334,42 @@ goby::apps::zeromq::LiaisonScopeProtobufModel::LiaisonScopeProtobufModel(
     this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_TYPE, Horizontal,
                         std::string("Protobuf Type"));
     this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_VALUE, Horizontal,
-                        std::string("Value"));
+                        std::string("Value (Click/Hover to visualize)"));
     this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_TIME, Horizontal,
                         std::string("Time"));
 }
 
 goby::apps::zeromq::LiaisonScope::ControlsContainer::ControlsContainer(
     Wt::WTimer* timer, bool start_paused, LiaisonScope* scope,
-    SubscriptionsContainer* subscriptions_div, Wt::WContainerWidget* parent)
+    SubscriptionsContainer* subscriptions_div, double freq, Wt::WContainerWidget* parent)
     : Wt::WContainerWidget(parent),
       timer_(timer),
-      play_pause_button_(new WPushButton("Play", this)),
-      spacer_(new Wt::WText(" ", this)),
       play_state_(new Wt::WText(this)),
+      break1_(new Wt::WBreak(this)),
+      play_pause_button_(new WPushButton("Play", this)),
+      refresh_button_(new WPushButton("Refresh", this)),
+      break2_(new Wt::WBreak(this)),
+      freq_text_(new Wt::WText(this)),
+      freq_spin_(new Wt::WDoubleSpinBox(this)),
       is_paused_(start_paused),
       scope_(scope),
-      subscriptions_div_(subscriptions_div)
+      subscriptions_div_(subscriptions_div),
+      clicked_message_stack_(new Wt::WStackedWidget(this))
 {
+    freq_text_->setText("Update freq (Hz): ");
+    freq_spin_->setMinimum(0.1);
+    freq_spin_->setDecimals(1);
+    freq_spin_->setSingleStep(1);
+    freq_spin_->setTextSize(5);
+    freq_spin_->setValue(freq);
+    freq_spin_->valueChanged().connect(scope_, &LiaisonScope::update_freq);
+
     play_pause_button_->clicked().connect(
         boost::bind(&ControlsContainer::handle_play_pause, this, true));
+    refresh_button_->clicked().connect(boost::bind(&ControlsContainer::handle_refresh, this));
 
     handle_play_pause(false);
+    clicked_message_stack_->addStyleClass("fixed-left");
 }
 
 goby::apps::zeromq::LiaisonScope::ControlsContainer::~ControlsContainer()
@@ -358,12 +385,21 @@ void goby::apps::zeromq::LiaisonScope::ControlsContainer::handle_play_pause(bool
     if (toggle_state)
         is_paused_ = !(is_paused_);
 
+    if (is_paused_)
+        refresh_button_->show();
+    else
+        refresh_button_->hide();
+
     is_paused_ ? pause() : resume();
 
     play_pause_button_->setText(is_paused_ ? "Play" : "Pause");
 
-    play_state_->setText(is_paused_ ? "Paused ([r] for a single refresh / [p] to resume). "
-                                    : "Playing... [p] to pause");
+    play_state_->setText(is_paused_ ? "Paused... " : "Playing...");
+}
+
+void goby::apps::zeromq::LiaisonScope::ControlsContainer::handle_refresh()
+{
+    scope_->handle_refresh();
 }
 
 void goby::apps::zeromq::LiaisonScope::ControlsContainer::pause()
@@ -490,6 +526,9 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
 
         new_proxy->setFilterRegExp(".*");
         new_tree->sortByColumn(protobuf::ProtobufScopeConfig::COLUMN_TIME, DescendingOrder);
+
+        new_tree->clicked().connect(
+            boost::bind(&HistoryContainer::view_clicked, this, _1, _2, mvc.model, mvc.proxy));
     }
 }
 
@@ -512,6 +551,22 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::toggle_history_plot(Wt:
         plot->show();
     else
         plot->hide();
+}
+
+void goby::apps::zeromq::LiaisonScope::HistoryContainer::view_clicked(
+    const Wt::WModelIndex& proxy_index, const Wt::WMouseEvent& event, Wt::WStandardItemModel* model,
+    Wt::WSortFilterProxyModel* proxy)
+{
+    Wt::WModelIndex model_index = proxy->mapToSource(proxy_index);
+    Wt::WStandardItem* item = model->itemFromIndex(model_index);
+    try
+    {
+        scope_->display_notify(boost::any_cast<std::string>(item->data(UserRole)));
+    }
+    catch (...)
+    {
+        // no data in the UserRole
+    }
 }
 
 void goby::apps::zeromq::LiaisonScope::HistoryContainer::display_message(
@@ -583,8 +638,9 @@ void goby::apps::zeromq::LiaisonScope::RegexFilterContainer::handle_set_regex_fi
         [=]() { scope_->goby_thread()->update_subscription(group_regex, type_regex); });
 
     proxy_->setFilterKeyColumn(protobuf::ProtobufScopeConfig::COLUMN_GROUP);
-    //    proxy_->setFilterRegExp(widgets_[protobuf::ProtobufScopeConfig::COLUMN_GROUP].regex_filter_text_->text());
-    proxy_->setFilterRegExp(".*");
+    proxy_->setFilterRegExp(
+        widgets_[protobuf::ProtobufScopeConfig::COLUMN_GROUP].regex_filter_text_->text());
+    //    proxy_->setFilterRegExp(".*");
 }
 
 void goby::apps::zeromq::LiaisonScope::RegexFilterContainer::handle_clear_regex_filter(
@@ -592,4 +648,69 @@ void goby::apps::zeromq::LiaisonScope::RegexFilterContainer::handle_clear_regex_
 {
     widgets_[column].regex_filter_text_->setText(".*");
     handle_set_regex_filter();
+}
+
+void goby::apps::zeromq::LiaisonScope::display_notify(const std::string& value)
+{
+    auto* new_div = new WContainerWidget(controls_div_->clicked_message_stack_);
+
+    new_div->setOverflow(OverflowAuto);
+    new_div->setMaximumSize(400, 600);
+
+    new WText("Message: " + goby::util::as<std::string>(
+                                controls_div_->clicked_message_stack_->children().size()),
+              new_div);
+
+    new Wt::WBreak(new_div);
+
+    auto* minus = new WPushButton("-", new_div);
+    auto* plus = new WPushButton("+", new_div);
+    auto* remove = new WPushButton("x", new_div);
+    auto* remove_all = new WPushButton("X", new_div);
+    remove_all->setFloatSide(Wt::Right);
+
+    auto* box = new WGroupBox("Clicked Message", new_div);
+
+    new WText("<pre>" + value + "</pre>", box);
+
+    plus->clicked().connect(controls_div_, &ControlsContainer::increment_clicked_messages);
+    minus->clicked().connect(controls_div_, &ControlsContainer::decrement_clicked_messages);
+    remove->clicked().connect(controls_div_, &ControlsContainer::remove_clicked_message);
+    remove_all->clicked().connect(controls_div_, &ControlsContainer::clear_clicked_messages);
+    controls_div_->clicked_message_stack_->setCurrentIndex(
+        controls_div_->clicked_message_stack_->children().size() - 1);
+}
+
+void goby::apps::zeromq::LiaisonScope::ControlsContainer::increment_clicked_messages(
+    const WMouseEvent& /*event*/)
+{
+    int new_index = clicked_message_stack_->currentIndex() + 1;
+    if (new_index == static_cast<int>(clicked_message_stack_->children().size()))
+        new_index = 0;
+
+    clicked_message_stack_->setCurrentIndex(new_index);
+}
+
+void goby::apps::zeromq::LiaisonScope::ControlsContainer::decrement_clicked_messages(
+    const WMouseEvent& /*event*/)
+{
+    int new_index = static_cast<int>(clicked_message_stack_->currentIndex()) - 1;
+    if (new_index < 0)
+        new_index = clicked_message_stack_->children().size() - 1;
+
+    clicked_message_stack_->setCurrentIndex(new_index);
+}
+
+void goby::apps::zeromq::LiaisonScope::ControlsContainer::remove_clicked_message(
+    const WMouseEvent& event)
+{
+    WWidget* remove = clicked_message_stack_->currentWidget();
+    decrement_clicked_messages(event);
+    clicked_message_stack_->removeWidget(remove);
+}
+
+void goby::apps::zeromq::LiaisonScope::ControlsContainer::clear_clicked_messages(
+    const WMouseEvent& event)
+{
+    while (clicked_message_stack_->children().size() > 0) remove_clicked_message(event);
 }

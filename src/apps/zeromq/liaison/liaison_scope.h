@@ -64,6 +64,7 @@ class WStringListModel;
 class WText;
 class WVBoxLayout;
 class WWidget;
+class WDoubleSpinBox;
 } // namespace Wt
 
 namespace goby
@@ -94,11 +95,16 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     void update_row(const std::string& group, const google::protobuf::Message& msg,
                     const std::vector<Wt::WStandardItem*>& items, bool do_attach_pb_rows = true);
 
+    void update_freq(double hertz);
+
     void loop();
 
     void pause();
     void resume();
     bool is_paused() { return controls_div_->is_paused_; }
+    void handle_refresh();
+
+    void view_clicked(const Wt::WModelIndex& index, const Wt::WMouseEvent& event);
 
   private:
     void handle_global_key(const Wt::WKeyEvent& event);
@@ -107,7 +113,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     {
         if (last_scope_state_ == ACTIVE)
             resume();
-        else if (last_scope_state_ == UNKNOWN)
+        else if (last_scope_state_ == UNKNOWN && !is_paused())
             scope_timer_.start();
 
         last_scope_state_ = UNKNOWN;
@@ -128,6 +134,8 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         // we must resume the scope as this stops the background thread, allowing the ZeroMQService for the scope to be safely deleted. This is inelegant, but a by product of how Wt destructs the root object *after* this class (and thus all the local class objects).
         resume();
     }
+
+    void display_notify(const std::string& value);
 
   private:
     const protobuf::ProtobufScopeConfig& pb_scope_config_;
@@ -171,6 +179,9 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         void display_message(const std::string& group, const google::protobuf::Message& msg);
         void flush_buffer();
 
+        void view_clicked(const Wt::WModelIndex& proxy_index, const Wt::WMouseEvent& event,
+                          Wt::WStandardItemModel* model, Wt::WSortFilterProxyModel* proxy);
+
         struct MVC
         {
             std::string key;
@@ -198,24 +209,38 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     struct ControlsContainer : Wt::WContainerWidget
     {
         ControlsContainer(Wt::WTimer* timer, bool start_paused, LiaisonScope* scope,
-                          SubscriptionsContainer* subscriptions_div,
+                          SubscriptionsContainer* subscriptions_div, double freq,
                           Wt::WContainerWidget* parent = nullptr);
         ~ControlsContainer() override;
 
         void handle_play_pause(bool toggle_state);
+        void handle_refresh();
 
         void pause();
         void resume();
 
+        void increment_clicked_messages(const Wt::WMouseEvent& event);
+        void decrement_clicked_messages(const Wt::WMouseEvent& event);
+        void remove_clicked_message(const Wt::WMouseEvent& event);
+        void clear_clicked_messages(const Wt::WMouseEvent& event);
+
         Wt::WTimer* timer_;
 
-        Wt::WPushButton* play_pause_button_;
-
-        Wt::WText* spacer_;
         Wt::WText* play_state_;
+        Wt::WBreak* break1_;
+
+        Wt::WPushButton* play_pause_button_;
+        Wt::WPushButton* refresh_button_;
+
+        Wt::WBreak* break2_;
+        Wt::WText* freq_text_;
+        Wt::WDoubleSpinBox* freq_spin_;
+
         bool is_paused_;
         LiaisonScope* scope_;
         SubscriptionsContainer* subscriptions_div_;
+
+        Wt::WStackedWidget* clicked_message_stack_;
     };
 
     struct RegexFilterContainer : Wt::WContainerWidget
