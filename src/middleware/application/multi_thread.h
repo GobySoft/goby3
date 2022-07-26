@@ -182,9 +182,6 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
             [this](const ThreadIdentifier& joinable) {
                 _join_thread(joinable.type_i, joinable.index);
             });
-
-        if (this->app_cfg().app().health_cfg().run_health_monitor_thread())
-            launch_thread_without_cfg<HealthMonitorThread>();
     }
 
     virtual ~MultiThreadApplicationBase() {}
@@ -325,6 +322,9 @@ class MultiThreadApplication
 
         this->interprocess().template publish<goby::middleware::groups::configuration>(
             this->app_cfg());
+
+        if (this->app_cfg().app().health_cfg().run_health_monitor_thread())
+            this->template launch_thread_without_cfg<HealthMonitorThread>();
     }
 
     virtual ~MultiThreadApplication() {}
