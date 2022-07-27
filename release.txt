@@ -1,6 +1,34 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.9
+
+### Logging
+
+- Add --format=JSON output to goby_log_tool and implemented it for Protobuf/DCCL, and JSON formats
+- Add flag --write_hdf5_zero_length_dim to goby_log_tool that when set to false does not write zero length dimensions to the HDF5 file (which caused problems with older HDF5 libraries on Windows). Default is true, which means this change does not affect the default behavior.
+- Add start/stop/rotate subscription to goby_logger.
+
+### Coroner
+
+- Do not automatically add apps that are not on --expected_name list unless --auto_add_new_apps is set. This changes the default behavior, which had the potential to be confusing (fixes https://github.com/GobySoft/goby3/issues/249).
+
+### Liaison
+
+Various efficiency improvements in Scope (fixes https://github.com/GobySoft/goby3/issues/250):
+
+- Set maximum message size to be handled (messages larger than this are omitted by the Scope) to avoid CPU lockups when huge messages are received
+- Improve regex functionality to exclude messages from processing rather than just from visualization. This should improve performance when omitting messages
+- Add update frequency to be configurable in the Scope UI.
+
+### Bugs
+
+- Fix race condition with subscription from HealthMonitorThread by ensure it's launched after InterProcessPortal is constructed. This should fix bug where apps where running fine but not responding to the goby_coroner health request.
+- Fix bug in goby_logger Protobuf/DCCL extension protos were not being embedded correctly in the .goby log file (no data was lost but the Protobufs were then required when running goby_log_tool). Partially fixes https://github.com/GobySoft/goby3/issues/247
+
+
+
+****************
 Version 3.0.8
 
 ### Liaison
