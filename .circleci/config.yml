@@ -13,7 +13,7 @@ environment-template-common: &environment-template-common
 environment-template-amd64: &environment-template-amd64
   TARGET_ARCH: "amd64"
   # OOM issues on amd64 builds
-  DEB_BUILD_OPTIONS: "parallel=2"
+  DEB_BUILD_OPTIONS: "parallel=4"
   # one job only must do the source build for each distro
   DO_SOURCE_BUILD: "true"
 
@@ -87,6 +87,7 @@ docker-armhf-focal: &docker-armhf-focal
 ## Pre-declare job templates
 job-template-amd64: &job-template-amd64
   working_directory: /root/goby3
+  resource_class: large
   steps:
     - checkout
     - run: &run-add-continuous-packages
@@ -195,7 +196,7 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-common
     <<: *environment-template-focal
     <<: *environment-template-amd64
-    SANITIZER_NUM_JOBS: 2
+    SANITIZER_NUM_JOBS: 4
     TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"    
   docker: *docker-base-focal
 
@@ -203,6 +204,8 @@ job-template-sanitizers: &job-template-sanitizers
 job-template-upload: &job-template-upload
   <<: *job-template-amd64
   docker: *docker-base-bionic
+  resource_class: small
+
 
   
 # which branches to run the Debian build and upload on

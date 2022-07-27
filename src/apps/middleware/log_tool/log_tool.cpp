@@ -222,6 +222,9 @@ goby::apps::middleware::LogTool::LogTool()
                     case protobuf::LogToolConfig::DEBUG_TEXT:
                         f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
                                << log_entry.type() << " | "
+                               << goby::time::convert<boost::posix_time::ptime>(
+                                      log_entry.timestamp())
+                               << " | "
                                << "Unable to parse message of " << log_entry.data().size()
                                << " bytes. Reason: " << e.what() << std::endl;
                         break;

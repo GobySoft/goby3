@@ -201,18 +201,30 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
                 [this, &out_log_file](
                     const std::vector<const google::protobuf::FieldDescriptor*> extensions) {
                     for (const auto* field_desc : extensions)
-                        insert_protobuf_file_desc(field_desc->containing_type()->file(),
-                                                  out_log_file);
+                    { insert_protobuf_file_desc(field_desc->file(), out_log_file); }
                 };
 
             std::vector<const google::protobuf::FieldDescriptor*> generated_extensions;
             google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(
                 desc, &generated_extensions);
+
+            for (const auto* desc : generated_extensions)
+                goby::glog.is_debug1() && goby::glog << "Found generated extension ["
+                                                     << desc->number() << "]: " << desc->full_name()
+                                                     << " in file: " << desc->file()->name()
+                                                     << std::endl;
+
             insert_extensions(generated_extensions);
 
             std::vector<const google::protobuf::FieldDescriptor*> user_extensions;
             dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(
                 desc, &user_extensions);
+
+            for (const auto* desc : user_extensions)
+                goby::glog.is_debug1() && goby::glog << "Found user extension [" << desc->number()
+                                                     << "]: " << desc->full_name()
+                                                     << " in file: " << desc->file()->name()
+                                                     << std::endl;
             insert_extensions(user_extensions);
         }
     }

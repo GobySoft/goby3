@@ -1,0 +1,16 @@
+syntax = "proto2";
+
+import "dccl/option_extensions.proto";
+
+package goby.middleware.protobuf;
+
+message LoggerRequest
+{
+    enum State
+    {
+        START_LOGGING = 1;
+        STOP_LOGGING = 2;
+        ROTATE_LOG = 3;
+    }
+    required State requested_state = 1;
+}
