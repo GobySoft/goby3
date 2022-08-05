@@ -249,6 +249,7 @@ void goby::middleware::frontseat::Iver::process_receive(const std::string& s)
                                                                   feet);
             status_.mutable_pose()->set_heading_with_units(nmea.as<double>(TRUEHEADING) *
                                                            boost::units::degree::degrees);
+            compute_missing(&status_);
 
             gpb::InterfaceData fs_data;
             gpb::IverState& iver_state = *fs_data.MutableExtension(gpb::iver_state);
