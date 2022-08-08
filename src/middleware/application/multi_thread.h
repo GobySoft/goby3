@@ -255,7 +255,7 @@ class MultiThreadApplication
     using Base = MultiThreadApplicationBase<
         Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>;
 
-    std::shared_ptr<protobuf::ProcessHealth> health_response_{new protobuf::ProcessHealth};
+    protobuf::ProcessHealth health_response_;
 
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)
@@ -290,19 +290,19 @@ class MultiThreadApplication
             });
 
         // handle request from HealthMonitor thread
-        health_response_->set_name(this->app_name());
-        health_response_->set_pid(getpid());
+        health_response_.set_name(this->app_name());
+        health_response_.set_pid(getpid());
 
         this->interthread().template subscribe<groups::health_request>(
             [this](const protobuf::HealthRequest& request) {
-                health_response_->mutable_main()->clear_child();
+                auto health_response = std::make_shared<protobuf::ProcessHealth>(health_response_);
                 // preseed all threads with error in case they don't respond
                 for (const auto& type_map_p : this->threads())
                 {
                     for (const auto& index_manager_p : type_map_p.second)
                     {
                         const auto& thread_manager = index_manager_p.second;
-                        auto& thread_health = *health_response_->mutable_main()->add_child();
+                        auto& thread_health = *health_response->mutable_main()->add_child();
                         thread_health.set_name(thread_manager.name);
                         thread_health.set_uid(thread_manager.uid);
                         thread_health.set_state(protobuf::HEALTH__FAILED);
@@ -310,8 +310,8 @@ class MultiThreadApplication
                     }
                 }
 
-                this->thread_health(*health_response_->mutable_main());
-                this->interthread().template publish<groups::health_response>(health_response_);
+                this->thread_health(*health_response->mutable_main());
+                this->interthread().template publish<groups::health_response>(health_response);
             });
 
         this->interprocess().template subscribe<goby::middleware::groups::datum_update>(
