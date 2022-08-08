@@ -56,8 +56,7 @@ void goby::middleware::HealthMonitorThread::loop()
     if (waiting_for_responses_ &&
         goby::time::SteadyClock::now() > last_health_request_time_ + health_request_timeout_)
     {
-        goby::middleware::protobuf::HealthState health_state =
-            goby::middleware::protobuf::HEALTH__OK;
+        goby::middleware::protobuf::HealthState health_state = health_response_.main().state();
 
         // overwrite any child responses we got
         for (auto& thread_health : *health_response_.mutable_main()->mutable_child())
@@ -76,5 +75,6 @@ void goby::middleware::HealthMonitorThread::loop()
 
         waiting_for_responses_ = false;
         child_responses_.clear();
+        health_response_.Clear();
     }
 }
