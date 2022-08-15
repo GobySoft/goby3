@@ -52,6 +52,8 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
                   "Scheme must be PROTOBUF or DCCL");
 
   public:
+    ProtobufPluginBase(bool user_pool_first) : user_pool_first_(user_pool_first) {}
+
     std::string debug_text_message(LogEntry& log_entry) override
     {
         auto msgs = parse_message(log_entry);
@@ -139,7 +141,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             try
             {
                 auto msg = SerializerParserHelper<google::protobuf::Message, scheme>::parse(
-                    bytes_begin, bytes_end, actual_end, log_entry.type());
+                    bytes_begin, bytes_end, actual_end, log_entry.type(), user_pool_first_);
                 msgs.push_back(msg);
             }
             catch (std::exception& e)
@@ -232,10 +234,16 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
   private:
     std::set<const google::protobuf::FileDescriptor*> written_file_desc_;
     std::set<std::string> read_file_desc_names_;
+    bool user_pool_first_;
 };
 
 class ProtobufPlugin : public ProtobufPluginBase<goby::middleware::MarshallingScheme::PROTOBUF>
 {
+  public:
+    ProtobufPlugin(bool user_pool_first = false)
+        : ProtobufPluginBase<goby::middleware::MarshallingScheme::PROTOBUF>(user_pool_first)
+    {
+    }
 };
 
 } // namespace log

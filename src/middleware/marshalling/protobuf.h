@@ -26,8 +26,8 @@
 
 #include <mutex>
 
-#include <google/protobuf/message.h>
 #include <dccl/dynamic_protobuf_manager.h>
+#include <google/protobuf/message.h>
 
 #include "goby/middleware/protobuf/intervehicle.pb.h"
 
@@ -117,7 +117,7 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
     template <typename CharIterator>
     static std::shared_ptr<google::protobuf::Message>
     parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-          const std::string& type)
+          const std::string& type, bool user_pool_first = false)
     {
         std::shared_ptr<google::protobuf::Message> msg;
 
@@ -125,7 +125,7 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
             static std::mutex dynamic_protobuf_manager_mutex;
             std::lock_guard<std::mutex> lock(dynamic_protobuf_manager_mutex);
             msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                std::shared_ptr<google::protobuf::Message>>(type);
+                std::shared_ptr<google::protobuf::Message>>(type, user_pool_first);
         }
 
         msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);

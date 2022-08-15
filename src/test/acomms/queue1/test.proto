@@ -7,6 +7,7 @@ message TestMsg
 {
     option (dccl.msg).id = 2;
     option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).codec_version = 3;
 
     // test default enc/dec
     optional double double_default_optional = 1 [

@@ -9,7 +9,8 @@ message GobyMessage
 {
     option (dccl.msg).id = 4;
     option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).codec_version = 3;
 
     required string telegram = 1 [(dccl.field).max_length = 10];
-    required Header header = 2;
+    required Header header = 2 [(dccl.field).in_head = true];
 }

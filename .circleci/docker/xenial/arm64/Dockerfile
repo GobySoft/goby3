@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Overwrite non-multiarch packages
 RUN apt-get update && \
-    apt-get -y install libdccl3-dev:arm64 \
+    apt-get -y install libdccl4-dev:arm64 \
             libcrypto++-dev:arm64 \
             libcrypto++9v5:arm64 \
             libwt-dev:arm64 libwtdbo-dev:arm64 libwtdbosqlite-dev:arm64 libwthttp-dev:arm64 \

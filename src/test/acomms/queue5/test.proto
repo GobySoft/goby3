@@ -7,6 +7,7 @@ message GobyMessage
 {
     option (dccl.msg).id = 4;
     option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).codec_version = 3;
 
     // one byte
     required int32 telegram = 1 [(dccl.field).min = 0, (dccl.field).max = 255];

@@ -145,12 +145,12 @@ struct SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL
     template <typename CharIterator>
     static std::shared_ptr<google::protobuf::Message>
     parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-          const std::string& type)
+          const std::string& type, bool user_pool_first = false)
     {
         std::lock_guard<std::mutex> lock(dccl_mutex_);
 
         auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
-            std::shared_ptr<google::protobuf::Message>>(type);
+            std::shared_ptr<google::protobuf::Message>>(type, user_pool_first);
 
         check_load(msg->GetDescriptor());
         actual_end = codec().decode(bytes_begin, bytes_end, msg.get());

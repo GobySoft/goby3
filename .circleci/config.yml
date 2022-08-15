@@ -105,7 +105,6 @@ job-template-amd64: &job-template-amd64
           apt-get install libmysqlclient-dev:${TARGET_ARCH} -y ||
           apt-get install libmariadb-dev:${TARGET_ARCH} libmariadb-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y ||
           apt-get install libmariadbclient-dev:${TARGET_ARCH} libmariadbclient-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y)
-          [ -z "${CIRCLE_TAG}" ] &&
           apt-get install libdccl4-dev:${TARGET_ARCH} libdccl4:${TARGET_ARCH} dccl4-compiler -y || true
     - run: &run-build
         name: Build
@@ -461,7 +460,7 @@ jobs:
           name: Install apt packages
           command: |
             apt-get update &&
-            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl3-dev dccl3-compiler
+            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler
       - checkout
       - run: 
           name: Build
