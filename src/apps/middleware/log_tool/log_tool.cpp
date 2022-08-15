@@ -154,9 +154,9 @@ goby::apps::middleware::LogTool::LogTool()
     }
 
     plugins_[goby::middleware::MarshallingScheme::PROTOBUF] =
-        std::make_unique<goby::middleware::log::ProtobufPlugin>();
+        std::make_unique<goby::middleware::log::ProtobufPlugin>(true /* user pool first to ensure we pick up all extensions embedded in the .goby */ );
     plugins_[goby::middleware::MarshallingScheme::DCCL] =
-        std::make_unique<goby::middleware::log::DCCLPlugin>();
+        std::make_unique<goby::middleware::log::DCCLPlugin>(true);
     plugins_[goby::middleware::MarshallingScheme::JSON] =
         std::make_unique<goby::middleware::log::JSONPlugin>();
 

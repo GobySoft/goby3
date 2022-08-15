@@ -39,6 +39,11 @@ namespace log
 {
 class DCCLPlugin : public ProtobufPluginBase<goby::middleware::MarshallingScheme::DCCL>
 {
+public:
+    DCCLPlugin(bool user_pool_first = false)
+        : ProtobufPluginBase<goby::middleware::MarshallingScheme::DCCL>(user_pool_first)
+    {
+    }
 };
 
 } // namespace log
