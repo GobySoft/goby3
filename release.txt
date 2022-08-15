@@ -1,6 +1,19 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.10
+
+### FrontSeat
+
+- Iver driver publish node status on $OSI update as well as on $C
+
+### Bugs
+
+- Fix health reporting bug from MultiThreadApplication that prevented reporting of health status less than OK
+- Fix Goby log tool to always pick up extensions.
+- Support updates in released DCCL4
+
+****************
 Version 3.0.9
 
 ### Logging

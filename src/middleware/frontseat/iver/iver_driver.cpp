@@ -3,6 +3,7 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   James D. Turner <james.turner@nrl.navy.mil>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
