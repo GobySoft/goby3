@@ -95,7 +95,7 @@ libprotobuf-dev libprotoc-dev protobuf-compiler
 # PROJ Geodetic Projections
 libproj-dev
 # DCCL
-libdccl3-dev dccl3-compiler
+libdccl4-dev dccl4-compiler
 ```
 
 Once you have resolved the dependencies, you can build from source using these steps:
