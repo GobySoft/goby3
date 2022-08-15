@@ -139,7 +139,8 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             try
             {
                 auto msg = SerializerParserHelper<google::protobuf::Message, scheme>::parse(
-                    bytes_begin, bytes_end, actual_end, log_entry.type());
+                    bytes_begin, bytes_end, actual_end, log_entry.type(),
+                    true /*user pool first for extensions*/);
                 msgs.push_back(msg);
             }
             catch (std::exception& e)
