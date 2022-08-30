@@ -42,7 +42,7 @@ validate_url()
 DEPENDS_RETVAL=
 depends()
 {
-    DEPENDS_RETVAL=$(apt-cache depends $1 | egrep "Depends|Recommends" | egrep --invert-match libgoby3-dev | sed 's/.*: //' | tr '\r\n' ' ')
+    DEPENDS_RETVAL=$(apt-cache depends $1 | egrep "Depends|Recommends" | egrep --invert-match libgoby3-dev | egrep --invert-match "<.*>|dccl3" | sed 's/.*: //' | tr '\r\n' ' ')
 }
 
 PACKAGE_SERIES=release
