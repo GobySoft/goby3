@@ -11,17 +11,17 @@ environment-template-common: &environment-template-common
 environment-template-amd64: &environment-template-amd64
   TARGET_ARCH: "amd64"
   # OOM issues on amd64 builds
-  DEB_BUILD_OPTIONS: "parallel=4"
+  DEB_BUILD_OPTIONS: "parallel=3"
   # one job only must do the source build for each distro
   DO_SOURCE_BUILD: "true"
 
 environment-template-arm64: &environment-template-arm64
   TARGET_ARCH: "arm64"
-  DEB_BUILD_OPTIONS: "parallel=4 nocheck"
+  DEB_BUILD_OPTIONS: "parallel=3 nocheck"
   
 environment-template-armhf: &environment-template-armhf
   TARGET_ARCH: "armhf"
-  DEB_BUILD_OPTIONS: "parallel=4 nocheck"
+  DEB_BUILD_OPTIONS: "parallel=3 nocheck"
   
 environment-template-buster: &environment-template-buster
   DISTRO_RELEASE_CODENAME: "buster"
@@ -333,8 +333,8 @@ workflows:
           <<: *filter-template-master-only
 
 
-      - amd64+ubsan-build:
-          <<: *filter-template-master-only          
+#      - amd64+ubsan-build:
+#          <<: *filter-template-master-only          
           
 jobs:
 
