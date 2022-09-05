@@ -33,13 +33,19 @@
 
 #include "geodesy.h"
 
-//#define USE_PROJ4
+#ifndef USE_PROJ4
+#include <proj.h> // proj6+
+
+// use proj4 API for Proj5
+#if PROJ_VERSION_MAJOR < 6
+#define USE_PROJ4
+#endif
+
+#endif
 
 #ifdef USE_PROJ4
 #define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
 #include <proj_api.h> // proj4
-#else
-#include <proj.h> // proj6+
 #endif
 
 goby::util::UTMGeodesy::UTMGeodesy(const LatLonPoint& origin)
