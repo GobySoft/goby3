@@ -76,6 +76,18 @@ extern "C"
     }
 }
 
+const char* driver_lib_name()
+{
+    const char* libname = getenv("IFRONTSEAT_DRIVER_LIBRARY");
+    if (!libname)
+        libname = getenv("FRONTSEAT_DRIVER_LIBRARY");
+
+    if (!libname)
+        throw(std::runtime_error("No IFRONTSEAT_DRIVER_LIBRARY or FRONTSEAT_DRIVER_LIBRARY!"));
+
+    return libname;
+}
+
 uint16_t crc_compute_incrementally(uint16_t crc, char a);
 uint16_t crc_compute(const std::string& buffer, unsigned offset, unsigned count, uint16_t seed);
 
@@ -88,7 +100,7 @@ goby::middleware::frontseat::WavegliderSV2::WavegliderSV2(const gpb::Config& cfg
       serial_(SV2SerialConnection::create(io_, waveglider_sv2_config_.pm_serial_port(),
                                           waveglider_sv2_config_.pm_serial_baud())),
       queued_messages_(1),
-      dccl_("SV2.id", getenv("IFRONTSEAT_DRIVER_LIBRARY"))
+      dccl_("SV2.id", driver_lib_name())
 {
     serial_->message_signal.connect(boost::bind(&WavegliderSV2::handle_sv2_message, this, _1));
     serial_->start();
