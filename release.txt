@@ -1,6 +1,19 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.11
+
+### Debian packages
+
+- Added support for Ubuntu Jammy (22.04)
+- Dropped support for end-of-life Debian Stretch (9)
+- Changed from Clang to GCC for building Debian packages to workaround ABI incompatibility problem with goby_liaison on Debian 10 armhf (and possibly other armhf builds).
+
+### Bugs
+
+- Add support for Proj.6+ API while maintaining support for Proj.4 old API.
+
+****************
 Version 3.0.10
 
 ### FrontSeat
