@@ -1,6 +1,13 @@
-find_path( PROJ_INCLUDE_DIR proj_api.h PATHS /usr/include/ )
+find_path(PROJ_OLD_INCLUDE_DIR proj_api.h)
+find_path(PROJ_INCLUDE_DIR proj.h)
 
-find_library( PROJ_LIBRARY NAMES proj PATHS /usr/lib/ )
+if(NOT PROJ_INCLUDE_DIR)
+  add_definitions("-DUSE_PROJ4")
+  set(PROJ_INCLUDE_DIR ${PROJ_OLD_INCLUDE_DIR})
+  message(STATUS "Using old Proj4 proj_api.h API as new proj.h not found")
+endif()
+
+find_library(PROJ_LIBRARY NAMES proj)
 
 mark_as_advanced( PROJ_INCLUDE_DIR PROJ_LIBRARY )
 
