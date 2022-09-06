@@ -39,6 +39,9 @@ environment-template-focal: &environment-template-focal
   DISTRO_RELEASE_CODENAME: "focal"
   DISTRO_RELEASE_VERSION: "ubuntu20.04"
 
+environment-template-jammy: &environment-template-jammy
+  DISTRO_RELEASE_CODENAME: "jammy"
+  DISTRO_RELEASE_VERSION: "ubuntu22.04"
   
 ## Pre-declare Docker containers
 docker-base-buster: &docker-base-buster
@@ -69,6 +72,13 @@ docker-arm64-focal: &docker-arm64-focal
   - image: gobysoft/goby3-ubuntu-build-arm64:20.04.1
 docker-armhf-focal: &docker-armhf-focal
   - image: gobysoft/goby3-ubuntu-build-armhf:20.04.1
+
+docker-base-jammy: &docker-base-jammy
+  - image: gobysoft/goby3-ubuntu-build-base:22.04.1
+docker-arm64-jammy: &docker-arm64-jammy
+  - image: gobysoft/goby3-ubuntu-build-arm64:22.04.1
+docker-armhf-jammy: &docker-armhf-jammy
+  - image: gobysoft/goby3-ubuntu-build-armhf:22.04.1
 
     
 ## Pre-declare job templates
@@ -173,16 +183,16 @@ job-template-deb-amd64: &job-template-deb-amd64
 job-template-deb-cross: &job-template-deb-cross
   <<: *job-template-deb-amd64
 
-# base sanitizer off Focal build
+# base sanitizer off Jammy build
 job-template-sanitizers: &job-template-sanitizers
   <<: *job-template-amd64
   environment:
     <<: *environment-template-common
-    <<: *environment-template-focal
+    <<: *environment-template-jammy
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 4
     TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"    
-  docker: *docker-base-focal
+  docker: *docker-base-jammy
 
 # Base upload off Bionic build
 job-template-upload: &job-template-upload
@@ -223,13 +233,15 @@ workflows:
           <<: *filter-template-non-master
       - amd64-bullseye-build:        
           <<: *filter-template-non-master
-
       - amd64-bionic-build:
           <<: *filter-template-non-master
       - amd64-focal-build:
           <<: *filter-template-non-master
+      - amd64-jammy-build:
+          <<: *filter-template-non-master
 
-      - amd64-focal-minimal-build:
+          
+      - amd64-jammy-minimal-build:
           <<: *filter-template-master-only
       
       - get-orig-source:
@@ -288,23 +300,38 @@ workflows:
           <<: *filter-template-master-only
           requires:
             - get-orig-source
-
+            
+      - amd64-jammy-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - arm64-jammy-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - armhf-jammy-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
             
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
           requires:
             - amd64-buster-deb-build
-            - amd64-bullseye-deb-build
-            - amd64-focal-deb-build
-            - amd64-bionic-deb-build
             - arm64-buster-deb-build
-            - arm64-bullseye-deb-build
-            - arm64-focal-deb-build
-            - arm64-bionic-deb-build
             - armhf-buster-deb-build
+            - amd64-bullseye-deb-build
+            - arm64-bullseye-deb-build
             - armhf-bullseye-deb-build
-            - armhf-focal-deb-build
+            - amd64-bionic-deb-build
+            - arm64-bionic-deb-build
             - armhf-bionic-deb-build
+            - amd64-focal-deb-build
+            - arm64-focal-deb-build
+            - armhf-focal-deb-build
+            - amd64-jammy-deb-build
+            - arm64-jammy-deb-build
+            - armhf-jammy-deb-build
 
       # only do the release upload on tagged builds
       - release-upload:
@@ -315,17 +342,20 @@ workflows:
               ignore: /.*/
           requires:
             - amd64-buster-deb-build
-            - amd64-bullseye-deb-build
-            - amd64-focal-deb-build
-            - amd64-bionic-deb-build
             - arm64-buster-deb-build
-            - arm64-bullseye-deb-build
-            - arm64-focal-deb-build
-            - arm64-bionic-deb-build
             - armhf-buster-deb-build
+            - amd64-bullseye-deb-build
+            - arm64-bullseye-deb-build
             - armhf-bullseye-deb-build
-            - armhf-focal-deb-build
+            - amd64-bionic-deb-build
+            - arm64-bionic-deb-build
             - armhf-bionic-deb-build
+            - amd64-focal-deb-build
+            - arm64-focal-deb-build
+            - armhf-focal-deb-build
+            - amd64-jammy-deb-build
+            - arm64-jammy-deb-build
+            - armhf-jammy-deb-build
             
       - amd64+scan-build:
           <<: *filter-template-master-only
@@ -400,10 +430,17 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-focal
 
+  amd64-jammy-build:
+    <<: *job-template-amd64
+    docker: *docker-base-jammy
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-jammy
       
-  amd64-focal-minimal-build:
+      
+  amd64-jammy-minimal-build:
     docker:
-      - image: ubuntu:focal
+      - image: ubuntu:jammy
     working_directory: /root/goby3
     environment:
       DEBIAN_FRONTEND: "noninteractive"
@@ -413,7 +450,7 @@ jobs:
           name: Install packages server
           command: |
             apt-get update && apt-get -y install dirmngr ca-certificates && \
-            echo "deb http://packages.gobysoft.org/ubuntu/release/ focal/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
+            echo "deb http://packages.gobysoft.org/ubuntu/release/ jammy/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
             apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE    
       - run: 
           name: Install apt packages
@@ -510,6 +547,28 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-focal
       <<: *environment-template-armhf
+  amd64-jammy-deb-build:
+    <<: *job-template-deb-amd64
+    docker: *docker-base-jammy
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-jammy
+      <<: *environment-template-amd64
+  arm64-jammy-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-arm64-jammy
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-jammy
+      <<: *environment-template-arm64
+  armhf-jammy-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-armhf-jammy
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-jammy
+      <<: *environment-template-armhf
+      
   amd64+scan-build:
     <<: *job-template-sanitizers
     steps:
