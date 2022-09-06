@@ -106,7 +106,8 @@ static cl::opt<bool>
 
 int main(int argc, const char** argv)
 {
-    clang::tooling::CommonOptionsParser SharedOptionsParser(argc, argv, Goby3ToolCategory);
+    llvm::Expected<clang::tooling::CommonOptionsParser> SharedOptionsParser =
+        clang::tooling::CommonOptionsParser::create(argc, argv, Goby3ToolCategory, llvm::cl::OneOrMore);
 
     if (Generate)
     {
@@ -115,8 +116,8 @@ int main(int argc, const char** argv)
             std::cerr << "Must specify -target when using -gen" << std::endl;
             exit(EXIT_FAILURE);
         }
-        clang::tooling::ClangTool Tool(SharedOptionsParser.getCompilations(),
-                                       SharedOptionsParser.getSourcePathList());
+        clang::tooling::ClangTool Tool(SharedOptionsParser->getCompilations(),
+                                       SharedOptionsParser->getSourcePathList());
         return goby::clang::generate(Tool, OutDir, OutFile, Target);
     }
     else if (Visualize)
@@ -132,7 +133,7 @@ int main(int argc, const char** argv)
                                                 OmitGroupRegex,
                                                 OmitNodeRegex};
 
-        return goby::clang::visualize(SharedOptionsParser.getSourcePathList(), params);
+        return goby::clang::visualize(SharedOptionsParser->getSourcePathList(), params);
     }
     else
     {
