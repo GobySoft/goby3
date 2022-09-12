@@ -104,7 +104,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
                                 glog << "Received START_LOGGING but we are already logging"
                                      << std::endl;
                         else
-                            glog.is_debug1() && glog << "Logging started" << std::endl;
+                            glog.is_verbose() && glog << "Logging started" << std::endl;
 
                         logging_ = true;
                         break;
@@ -115,13 +115,13 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
                                 glog << "Received STOP_LOGGING but we were already stopped"
                                      << std::endl;
                         else
-                            glog.is_debug1() && glog << "Logging stopped" << std::endl;
+                            glog.is_verbose() && glog << "Logging stopped" << std::endl;
 
                         logging_ = false;
                         break;
 
                     case goby::middleware::protobuf::LoggerRequest::ROTATE_LOG:
-                        glog.is_debug1() && glog << "Log rotated" << std::endl;
+                        glog.is_verbose() && glog << "Log rotated" << std::endl;
                         close_log();
                         open_log();
                         break;
