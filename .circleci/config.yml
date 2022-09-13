@@ -183,16 +183,16 @@ job-template-deb-amd64: &job-template-deb-amd64
 job-template-deb-cross: &job-template-deb-cross
   <<: *job-template-deb-amd64
 
-# base sanitizer off Jammy build
+# base sanitizer off Focal build
 job-template-sanitizers: &job-template-sanitizers
   <<: *job-template-amd64
   environment:
     <<: *environment-template-common
-    <<: *environment-template-jammy
+    <<: *environment-template-focal
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 4
     TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"    
-  docker: *docker-base-jammy
+  docker: *docker-base-focal
 
 # Base upload off Bionic build
 job-template-upload: &job-template-upload
@@ -237,8 +237,8 @@ workflows:
           <<: *filter-template-non-master
       - amd64-focal-build:
           <<: *filter-template-non-master
-      - amd64-jammy-build:
-          <<: *filter-template-non-master
+#      - amd64-jammy-build:
+#          <<: *filter-template-non-master
 
           
       - amd64-jammy-minimal-build:

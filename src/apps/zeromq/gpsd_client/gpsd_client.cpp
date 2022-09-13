@@ -119,7 +119,6 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
     using TCPThread = goby::middleware::io::TCPClientThreadLineBased<
         tcp_in, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD,
         goby::middleware::io::PubSubLayer::INTERTHREAD>;
-    launch_thread<TCPThread>(cfg().gpsd());
 
     interthread().subscribe<tcp_in>([this](const goby::middleware::protobuf::IOData& data) {
         try
@@ -137,6 +136,7 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
         [this](const goby::middleware::protobuf::TCPClientEvent& event) {
             if (event.event() == goby::middleware::protobuf::TCPClientEvent::EVENT_CONNECT)
             {
+                glog.is_debug1() && glog << "Received CONNECT event, sending WATCH" << std::endl;
                 goby::middleware::protobuf::IOData cmd;
                 nlohmann::json watch_params;
                 watch_params["class"] = "WATCH";
@@ -155,6 +155,10 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
                 interthread().publish<tcp_out>(cmd);
             }
         });
+
+    // launch after subscribing
+    launch_thread<TCPThread>(cfg().gpsd());
+
 }
 
 void goby::apps::zeromq::GPSDClient::handle_response(nlohmann::json& json_data)
