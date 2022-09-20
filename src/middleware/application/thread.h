@@ -62,7 +62,7 @@ template <typename Config, typename TransporterType> class Thread
     TransporterType* transporter_{nullptr};
 
     boost::units::quantity<boost::units::si::frequency> loop_frequency_;
-    std::chrono::system_clock::time_point loop_time_;
+    std::chrono::steady_clock::time_point loop_time_;
     unsigned long long loop_count_{0};
     const Config cfg_;
     int index_;
@@ -155,7 +155,7 @@ template <typename Config, typename TransporterType> class Thread
     Thread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
            int index = -1)
         : loop_frequency_(loop_freq),
-          loop_time_(std::chrono::system_clock::now()),
+          loop_time_(std::chrono::steady_clock::now()),
           cfg_(cfg),
           index_(index),
           thread_id_(goby::middleware::gettid()),
@@ -173,7 +173,7 @@ template <typename Config, typename TransporterType> class Thread
                     .count() /
                 microsec_interval;
 
-            loop_time_ = std::chrono::system_clock::time_point(
+            loop_time_ = std::chrono::steady_clock::time_point(
                 std::chrono::microseconds((ticks_since_epoch + 1) * microsec_interval));
         }
     }
