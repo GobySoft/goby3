@@ -191,7 +191,7 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-focal
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 4
-    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"    
+    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6"    
   docker: *docker-base-focal
 
 # Base upload off Bionic build
