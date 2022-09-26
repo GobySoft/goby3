@@ -1,6 +1,15 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.12
+
+### Bugs
+
+- Fix goby_gps race condition where it will occasionally miss the gpsd connect and thus never send the WATCH command (and thus never receive GPS data).
+- Switch Thread to use steady_clock to calculate loop() to reduce strange behavior if the system clock jumps (e.g. due to NTP correction on startup).
+
+
+****************
 Version 3.0.11
 
 ### Debian packages
