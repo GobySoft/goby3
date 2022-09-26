@@ -73,27 +73,11 @@ void goby::moos::TranslatorBase::MOOSInterface::on_connect()
     using goby::glog;
     using namespace goby::util::logger;
 
-    for (const auto& var_func_pair : trigger_vars_)
-    {
-        const std::string& moos_var = var_func_pair.first;
-        comms_.Register(moos_var);
-        glog.is(DEBUG1) && glog << "Subscribed for MOOS variable: " << moos_var << std::endl;
-    }
-
-    for (const std::string& moos_var : buffer_vars_)
-    {
-        comms_.Register(moos_var);
-        glog.is(DEBUG1) && glog << "Subscribed for MOOS variable: " << moos_var << std::endl;
-    }
-
+    for (const auto& var_func_pair : trigger_vars_) moos_register(var_func_pair.first);
+    for (const std::string& moos_var : buffer_vars_) moos_register(moos_var);
     for (const auto& filter_func_pair : trigger_wildcard_vars_)
-    {
-        const MOOS::MsgFilter& moos_filter = filter_func_pair.first;
-        comms_.Register(moos_filter.var_filter(), moos_filter.app_filter(), 0);
-        glog.is(DEBUG1) &&
-            glog << "Subscribed for MOOS wildcard: variable: " << moos_filter.var_filter()
-                 << ", app: " << moos_filter.app_filter() << std::endl;
-    }
+        moos_wildcard_register(filter_func_pair.first);
+    connected_ = true;
 }
 
 void goby::moos::TranslatorBase::MOOSInterface::loop()
