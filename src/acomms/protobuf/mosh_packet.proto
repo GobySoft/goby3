@@ -8,6 +8,7 @@ message MoshPacket
 {
     option (dccl.msg).id = 0x0200;
     option (dccl.msg).max_bytes = 64;
+    option (dccl.msg).codec_version = 3;
 
     required int32 src = 1 [
         (dccl.field).min = 1,

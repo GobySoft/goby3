@@ -31,6 +31,7 @@ message ThreadHealth
     optional string error_message = 21;
 
     extensions 1000 to max;
+    // 1000 - jaiabot
 }
 
 message ProcessHealth
@@ -41,6 +42,7 @@ message ProcessHealth
     required ThreadHealth main = 10;
 
     extensions 1000 to max;
+    // 1000 - jaiabot
 }
 
 message VehicleHealth
@@ -55,4 +57,5 @@ message VehicleHealth
     repeated ProcessHealth process = 11;
 
     extensions 1000 to max;
+    // 1000 - jaiabot
 }

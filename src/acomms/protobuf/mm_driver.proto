@@ -145,6 +145,7 @@ message RangingReply
     option (dccl.msg).id = 128;
     option (dccl.msg).max_bytes = 32;
     option (dccl.msg).unit_system = "si";
+    option (dccl.msg).codec_version = 3;
 
     // seconds
     repeated double one_way_travel_time = 1 [
@@ -205,7 +206,8 @@ message ReceiveStatistics
     option (dccl.msg) = {
         id: 129,
         max_bytes: 32,
-        unit_system: "si"
+        unit_system: "si",
+        codec_version: 3
     };
 
     // including in "version 0", or the original CACST

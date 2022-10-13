@@ -8,6 +8,7 @@ message NetworkAck
 {
     option (dccl.msg).id = 6;
     option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).codec_version = 3;
 
     required int32 message_src = 1 [
         (dccl.field).min = -1,
