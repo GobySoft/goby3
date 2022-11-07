@@ -1,6 +1,14 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.13
+
+### Bugs
+
+- Add missing codec_version to all Goby DCCL messages (required by DCCL4).
+- Fix bug in goby_moos_gateway where subscriptions won't happen after MOOS is connected
+
+****************
 Version 3.0.12
 
 ### Bugs
