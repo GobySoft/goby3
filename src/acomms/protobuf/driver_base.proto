@@ -104,10 +104,12 @@ message DriverConfig
     // (removed) extensions 1321-1340 used by pb_modem_driver.proto
     // extension 1341 used by udp_driver.proto
     // extension 1342 used by udp_multicast_driver.proto
+    // extension 1343 used by pluggable udp_multicast_driver (in goby3-examples)
     // extension 1361 used by bluefin_sim_driver.proto
     // extension 1381 used by iridium_driver.proto
     // extensions 1401-1420 used by MOOSSafir (external)
     // extension 1421 used by iridium_shore_driver.proto
     // extension 1441 used by benthos_atm900.proto
     // extension 1442 used by popoto.proto
+    // extension 1443 used by Jaiabot XBee
 }

@@ -34,4 +34,5 @@ message GobyMOOSGatewayConfig
 
     extensions 1000 to max;
     // 1000: LAMSS
+    // 1001: JaiaBot
 }

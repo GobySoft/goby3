@@ -1,4 +1,4 @@
-// Copyright 2020-2021:
+// Copyright 2020-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -119,6 +119,8 @@ class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThrea
     const boost::asio::ip::tcp::endpoint& remote_endpoint() { return remote_endpoint_; }
     const boost::asio::ip::tcp::endpoint& local_endpoint() { return local_endpoint_; }
 
+    const std::string& glog_group() { return server_.glog_group(); }
+
     // public so TCPServer can call this
     virtual void async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
     {
@@ -128,18 +130,26 @@ class TCPSession : public std::enable_shared_from_this<TCPSession<TCPServerThrea
             [this, self, io_msg](boost::system::error_code ec, std::size_t bytes_transferred) {
                 if (!ec)
                 {
-                    server_.handle_write_success(bytes_transferred);
+                    this->handle_write_success(bytes_transferred);
                 }
                 else
                 {
-                    goby::glog.is_warn() && goby::glog << "Write error: " << ec.message()
-                                                       << std::endl;
-                    server_.clients_.erase(this->shared_from_this());
+                    this->handle_write_error(ec);
                 }
             });
     }
 
   protected:
+    void handle_write_success(std::size_t bytes_transferred)
+    {
+        server_.handle_write_success(bytes_transferred);
+    }
+    void handle_write_error(const boost::system::error_code& ec)
+    {
+        goby::glog.is_warn() && goby::glog << "Write error: " << ec.message() << std::endl;
+        server_.clients_.erase(this->shared_from_this());
+    }
+
     void handle_read_success(std::size_t bytes_transferred,
                              std::shared_ptr<goby::middleware::protobuf::IOData> io_msg)
     {

@@ -1,4 +1,4 @@
-// Copyright 2018-2021:
+// Copyright 2018-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -28,8 +28,6 @@
 #include <boost/units/systems/angle/degrees.hpp> // for plane_angle
 #include <boost/units/systems/si/length.hpp>     // for length
 
-#define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
-#include <proj_api.h> // for projPJ
 
 namespace goby
 {
@@ -64,7 +62,12 @@ class UTMGeodesy
     LatLonPoint origin_geo_;
     int origin_zone_;
     XYPoint origin_utm_;
-    projPJ pj_utm_, pj_latlong_;
+
+    // proj4
+    void *pj4_utm_, *pj4_latlong_;
+
+    // proj6+
+    void *pj6_;
 };
 } // namespace util
 } // namespace goby

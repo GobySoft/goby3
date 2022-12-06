@@ -4,6 +4,7 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   Henrik Schmidt <henrik@mit.edu>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Binaries
@@ -146,6 +147,8 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
 
     void handle_encode_on_demand(const goby::acomms::protobuf::ModemTransmission& request_msg,
                                  google::protobuf::Message* data_msg);
+    void handle_lat_origin(const CMOOSMsg& msg);
+    void handle_lon_origin(const CMOOSMsg& msg);
 
     void driver_bind();
     void driver_unbind();
@@ -164,6 +167,10 @@ class CpAcommsHandler : public goby::moos::GobyMOOSApp
 
   private:
     goby::moos::MOOSTranslator translator_;
+
+    double lat_origin_;
+    double lon_origin_;
+    bool new_origin_;
 
     // new DCCL2 codec
     goby::acomms::DCCLCodec* dccl_;

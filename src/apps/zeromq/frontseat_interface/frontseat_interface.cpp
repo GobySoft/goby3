@@ -42,10 +42,11 @@
 
 #include "goby/middleware/marshalling/protobuf.h" // for scheme
 
-#include "goby/middleware/application/configuration_reader.h"   // for Conf...
-#include "goby/middleware/application/configurator.h"           // for Prot...
-#include "goby/middleware/application/interface.h"              // for run
-#include "goby/middleware/frontseat/groups.h"                   // for comm...
+#include "goby/middleware/application/configuration_reader.h" // for Conf...
+#include "goby/middleware/application/configurator.h"         // for Prot...
+#include "goby/middleware/application/interface.h"            // for run
+#include "goby/middleware/frontseat/groups.h"                 // for comm...
+#include "goby/middleware/navigation/navigation.h"
 #include "goby/middleware/protobuf/app_config.pb.h"             // for AppC...
 #include "goby/middleware/protobuf/frontseat.pb.h"              // for Inte...
 #include "goby/middleware/protobuf/frontseat_config.pb.h"       // for Config
@@ -249,6 +250,12 @@ void goby::apps::zeromq::FrontSeatInterface::setup_subscriptions()
                                          << std::endl;
             else
                 frontseat_->send_raw_to_frontseat(data);
+        });
+
+    interprocess().subscribe<goby::middleware::groups::datum_update>(
+        [this](const middleware::protobuf::DatumUpdate& datum_update) {
+            frontseat_->update_utm_datum(
+                {datum_update.datum().lat_with_units(), datum_update.datum().lon_with_units()});
         });
 
     frontseat_->signal_raw_from_frontseat.connect([this](const frontseat::protobuf::Raw& data) {

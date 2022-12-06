@@ -41,6 +41,8 @@ template <typename Data> class Subscriber
         typename Publisher<intervehicle::protobuf::Subscription>::acked_func_type;
     using subscribe_expired_func_type =
         typename Publisher<intervehicle::protobuf::Subscription>::expired_func_type;
+    using set_link_data_func_type =
+        std::function<void(Data&, const intervehicle::protobuf::Header&)>;
 
     /// \brief Construct a Subscriber with all available metadata and callbacks
     ///
@@ -52,19 +54,23 @@ template <typename Data> class Subscriber
                    goby::middleware::protobuf::TransporterConfig(),
                group_func_type group_func = group_func_type(),
                subscribed_func_type subscribed_func = subscribed_func_type(),
-               subscribe_expired_func_type subscribe_expired_func = subscribe_expired_func_type())
+               subscribe_expired_func_type subscribe_expired_func = subscribe_expired_func_type(),
+               set_link_data_func_type set_link_data_func = set_link_data_func_type())
         : cfg_(cfg),
           group_func_(group_func),
           subscribed_func_(subscribed_func),
-          subscribe_expired_func_(subscribe_expired_func)
+          subscribe_expired_func_(subscribe_expired_func),
+          set_link_data_func_(set_link_data_func)
     {
     }
 
     /// \brief Construct a Subscriber but without the group_func callback
     Subscriber(const goby::middleware::protobuf::TransporterConfig& cfg,
                subscribed_func_type subscribed_func,
-               subscribe_expired_func_type subscribe_expired_func = subscribe_expired_func_type())
-        : Subscriber(cfg, group_func_type(), subscribed_func, subscribe_expired_func)
+               subscribe_expired_func_type subscribe_expired_func = subscribe_expired_func_type(),
+               set_link_data_func_type set_link_data_func = set_link_data_func_type())
+        : Subscriber(cfg, group_func_type(), subscribed_func, subscribe_expired_func,
+                     set_link_data_func)
     {
     }
 
@@ -89,11 +95,19 @@ template <typename Data> class Subscriber
 
     bool has_group_func() const { return bool(group_func_); }
 
+    /// \brief Sets the link data in the message using the set_link_data_func. Only intended to be called by the various transporters.
+    void set_link_data(Data& data, const intervehicle::protobuf::Header& header) const
+    {
+        if (set_link_data_func_)
+            set_link_data_func_(data, header);
+    };
+
   private:
     goby::middleware::protobuf::TransporterConfig cfg_;
     group_func_type group_func_;
     subscribed_func_type subscribed_func_;
     subscribe_expired_func_type subscribe_expired_func_;
+    set_link_data_func_type set_link_data_func_;
 };
 } // namespace middleware
 } // namespace goby

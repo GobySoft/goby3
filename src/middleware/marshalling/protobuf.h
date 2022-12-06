@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -26,12 +26,16 @@
 
 #include <mutex>
 
-#include <google/protobuf/message.h>
 #include <dccl/dynamic_protobuf_manager.h>
+#include <google/protobuf/message.h>
 
 #include "goby/middleware/protobuf/intervehicle.pb.h"
 
 #include "interface.h"
+
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
 
 namespace goby
 {
@@ -46,7 +50,7 @@ struct SerializerParserHelper<
     /// Serialize Protobuf message (standard Protobuf encoding)
     static std::vector<char> serialize(const DataType& msg)
     {
-        std::vector<char> bytes(msg.ByteSize(), 0);
+        std::vector<char> bytes(msg.ByteSizeLong(), 0);
         msg.SerializeToArray(bytes.data(), bytes.size());
         return bytes;
     }
@@ -71,7 +75,7 @@ struct SerializerParserHelper<
     {
         auto msg = std::make_shared<DataType>();
         msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
-        actual_end = bytes_begin + msg->ByteSize();
+        actual_end = bytes_begin + msg->ByteSizeLong();
         return msg;
     }
 };
@@ -82,7 +86,7 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
     /// Serialize Protobuf message (standard Protobuf encoding)
     static std::vector<char> serialize(const google::protobuf::Message& msg)
     {
-        std::vector<char> bytes(msg.ByteSize(), 0);
+        std::vector<char> bytes(msg.ByteSizeLong(), 0);
         msg.SerializeToArray(bytes.data(), bytes.size());
         return bytes;
     }
@@ -113,7 +117,7 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
     template <typename CharIterator>
     static std::shared_ptr<google::protobuf::Message>
     parse(CharIterator bytes_begin, CharIterator bytes_end, CharIterator& actual_end,
-          const std::string& type)
+          const std::string& type, bool user_pool_first = false)
     {
         std::shared_ptr<google::protobuf::Message> msg;
 
@@ -121,11 +125,11 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
             static std::mutex dynamic_protobuf_manager_mutex;
             std::lock_guard<std::mutex> lock(dynamic_protobuf_manager_mutex);
             msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                std::shared_ptr<google::protobuf::Message>>(type);
+                std::shared_ptr<google::protobuf::Message>>(type, user_pool_first);
         }
 
         msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);
-        actual_end = bytes_begin + msg->ByteSize();
+        actual_end = bytes_begin + msg->ByteSizeLong();
         return msg;
     }
 };

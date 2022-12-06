@@ -8,6 +8,7 @@ message TimeUpdateRequest
 {
     option (dccl.msg).id = 0x0204;
     option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).codec_version = 3;
 
     required int32 src = 1 [
         (dccl.field).min = 1,
@@ -34,6 +35,7 @@ message TimeUpdateResponse
 {
     option (dccl.msg).id = 0x0205;
     option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).codec_version = 3;
 
     required int32 src = 1 [
         (dccl.field).min = 1,

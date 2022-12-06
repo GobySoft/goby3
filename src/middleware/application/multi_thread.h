@@ -1,4 +1,4 @@
-// Copyright 2017-2021:
+// Copyright 2017-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -24,15 +24,19 @@
 #ifndef GOBY_MIDDLEWARE_APPLICATION_MULTI_THREAD_H
 #define GOBY_MIDDLEWARE_APPLICATION_MULTI_THREAD_H
 
+#include <boost/core/demangle.hpp>
 #include <boost/units/systems/si.hpp>
 
 #include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/navigation/navigation.h"
 #include "goby/middleware/terminate/terminate.h"
 
 #include "goby/exception.h"
 #include "goby/middleware/application/detail/interprocess_common.h"
 #include "goby/middleware/application/detail/thread_type_selector.h"
+#include "goby/middleware/application/groups.h"
 #include "goby/middleware/application/interface.h"
+#include "goby/middleware/application/simple_thread.h"
 #include "goby/middleware/application/thread.h"
 
 #include "goby/middleware/transport/interprocess.h"
@@ -43,68 +47,6 @@ namespace goby
 {
 namespace middleware
 {
-/// \brief Implements Thread for a three layer middleware setup ([ intervehicle [ interprocess [ interthread ] ] ]) based around InterVehicleForwarder.
-///
-/// \tparam Config Configuration type
-/// Derive from this class to create standalone threads that can be launched and joined by MultiThreadApplication's launch_thread and join_thread methods.
-template <typename Config>
-class SimpleThread
-    : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
-{
-    using SimpleThreadBase =
-        Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>;
-
-  public:
-    /// \brief Construct a thread with a given configuration, optionally a loop frequency and/or index
-    ///
-    /// \param cfg Data to configure the code running in this thread
-    /// \param loop_freq_hertz The frequency at which to attempt to call loop(), assuming the thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
-    /// \param index Numeric index to identify this instantiation of the SimpleThread (only necessary if multiple Threads of the same type are created)
-    SimpleThread(const Config& cfg, double loop_freq_hertz = 0, int index = -1)
-        : SimpleThread(cfg, loop_freq_hertz * boost::units::si::hertz, index)
-    {
-    }
-
-    /// \brief Construct a thread with a given configuration, a loop frequency (using boost::units) and optionally an index
-    ///
-    /// \param cfg Data to configure the code running in this thread
-    /// \param loop_freq The frequency at which to attempt to call loop(), assuming the thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
-    /// \param index Numeric index to identify this instantiation of the SimpleThread (only necessary if multiple Threads of the same type are created)
-    SimpleThread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
-                 int index = -1)
-        : SimpleThreadBase(cfg, loop_freq, index)
-    {
-        interthread_.reset(new InterThreadTransporter);
-        interprocess_.reset(new InterProcessForwarder<InterThreadTransporter>(*interthread_));
-        intervehicle_.reset(
-            new InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>(
-                *interprocess_));
-
-        this->set_transporter(intervehicle_.get());
-    }
-
-    /// \brief Access the transporter on the intervehicle layer (which wraps interprocess and interthread)
-    InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>& intervehicle()
-    {
-        return this->transporter();
-    }
-
-    /// \brief Access the transporter on the interprocess layer (which wraps interthread)
-    InterProcessForwarder<InterThreadTransporter>& interprocess()
-    {
-        return this->transporter().inner();
-    }
-
-    /// \brief Access the transporter on the interthread layer (this is the innermost transporter)
-    InterThreadTransporter& interthread() { return this->transporter().innermost(); }
-
-  private:
-    std::unique_ptr<InterThreadTransporter> interthread_;
-    std::unique_ptr<InterProcessForwarder<InterThreadTransporter>> interprocess_;
-    std::unique_ptr<InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
-        intervehicle_;
-};
-
 /// \brief Thread that simply publishes an empty message on its loop interval to TimerThread::group
 ///
 /// This can be launched to provide a simple timer by subscribing to TimerThread::group.
@@ -164,34 +106,45 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
 
         std::atomic<bool> alive{true};
         std::string name;
+        int uid;
         std::unique_ptr<std::thread> thread;
     };
 
     static std::exception_ptr thread_exception_;
 
     std::map<std::type_index, std::map<int, ThreadManagement>> threads_;
+    int thread_uid_{0};
     int running_thread_count_{0};
     InterThreadTransporter interthread_;
 
   public:
     template <typename ThreadType> void launch_thread()
     {
-        _launch_thread<ThreadType, Config, false>(-1, this->app_cfg());
+        _launch_thread<ThreadType, Config, false, true>(-1, this->app_cfg());
     }
     template <typename ThreadType> void launch_thread(int index)
     {
-        _launch_thread<ThreadType, Config, true>(index, this->app_cfg());
+        _launch_thread<ThreadType, Config, true, true>(index, this->app_cfg());
     }
 
     template <typename ThreadType, typename ThreadConfig>
     void launch_thread(const ThreadConfig& cfg)
     {
-        _launch_thread<ThreadType, ThreadConfig, false>(-1, cfg);
+        _launch_thread<ThreadType, ThreadConfig, false, true>(-1, cfg);
     }
     template <typename ThreadType, typename ThreadConfig>
     void launch_thread(int index, const ThreadConfig& cfg)
     {
-        _launch_thread<ThreadType, ThreadConfig, true>(index, cfg);
+        _launch_thread<ThreadType, ThreadConfig, true, true>(index, cfg);
+    }
+
+    template <typename ThreadType> void launch_thread_without_cfg()
+    {
+        _launch_thread<ThreadType, Config, false, false>(-1, this->app_cfg());
+    }
+    template <typename ThreadType> void launch_thread_without_cfg(int index)
+    {
+        _launch_thread<ThreadType, Config, true, false>(index, this->app_cfg());
     }
 
     template <typename ThreadType> void join_thread(int index = -1)
@@ -236,6 +189,8 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
     InterThreadTransporter& interthread() { return interthread_; }
     virtual void post_finalize() override { join_all_threads(); }
 
+    std::map<std::type_index, std::map<int, ThreadManagement>>& threads() { return threads_; }
+
     void join_all_threads()
     {
         if (running_thread_count_ > 0)
@@ -279,7 +234,7 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
         }
     }
 
-    template <typename ThreadType, typename ThreadConfig, bool has_index>
+    template <typename ThreadType, typename ThreadConfig, bool has_index, bool has_config>
     void _launch_thread(int index, const ThreadConfig& cfg);
 
     void _join_thread(const std::type_index& type_i, int index);
@@ -300,6 +255,8 @@ class MultiThreadApplication
     using Base = MultiThreadApplicationBase<
         Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>;
 
+    protobuf::ProcessHealth health_response_;
+
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)
     ///
@@ -319,29 +276,55 @@ class MultiThreadApplication
           intervehicle_(interprocess_)
     {
         // handle goby_terminate request
-        this->interprocess()
-            .template subscribe<groups::terminate_request, protobuf::TerminateRequest>(
-                [this](const protobuf::TerminateRequest& request) {
-                    bool match = false;
-                    protobuf::TerminateResponse resp;
-                    std::tie(match, resp) =
-                        terminate::check_terminate(request, this->app_cfg().app().name());
-                    if (match)
-                    {
-                        this->interprocess().template publish<groups::terminate_response>(resp);
-                        this->quit();
-                    }
-                });
-
-        // handle goby_coroner request
-        this->interprocess().template subscribe<groups::health_request, protobuf::HealthRequest>(
-            [this](const protobuf::HealthRequest& request) {
-                protobuf::ProcessHealth resp;
-                resp.set_name(this->app_name());
-                resp.set_pid(getpid());
-                this->thread_health(*resp.mutable_main());
-                this->interprocess().template publish<groups::health_response>(resp);
+        this->interprocess().template subscribe<groups::terminate_request>(
+            [this](const protobuf::TerminateRequest& request) {
+                bool match = false;
+                protobuf::TerminateResponse resp;
+                std::tie(match, resp) =
+                    terminate::check_terminate(request, this->app_cfg().app().name());
+                if (match)
+                {
+                    this->interprocess().template publish<groups::terminate_response>(resp);
+                    this->quit();
+                }
             });
+
+        // handle request from HealthMonitor thread
+        health_response_.set_name(this->app_name());
+        health_response_.set_pid(getpid());
+
+        this->interthread().template subscribe<groups::health_request>(
+            [this](const protobuf::HealthRequest& request) {
+                auto health_response = std::make_shared<protobuf::ProcessHealth>(health_response_);
+                // preseed all threads with error in case they don't respond
+                for (const auto& type_map_p : this->threads())
+                {
+                    for (const auto& index_manager_p : type_map_p.second)
+                    {
+                        const auto& thread_manager = index_manager_p.second;
+                        auto& thread_health = *health_response->mutable_main()->add_child();
+                        thread_health.set_name(thread_manager.name);
+                        thread_health.set_uid(thread_manager.uid);
+                        thread_health.set_state(protobuf::HEALTH__FAILED);
+                        thread_health.set_error(protobuf::ERROR__THREAD_NOT_RESPONDING);
+                    }
+                }
+
+                this->thread_health(*health_response->mutable_main());
+                this->interthread().template publish<groups::health_response>(health_response);
+            });
+
+        this->interprocess().template subscribe<goby::middleware::groups::datum_update>(
+            [this](const protobuf::DatumUpdate& datum_update) {
+                this->configure_geodesy(
+                    {datum_update.datum().lat_with_units(), datum_update.datum().lon_with_units()});
+            });
+
+        this->interprocess().template publish<goby::middleware::groups::configuration>(
+            this->app_cfg());
+
+        if (this->app_cfg().app().health_cfg().run_health_monitor_thread())
+            this->template launch_thread_without_cfg<HealthMonitorThread>();
     }
 
     virtual ~MultiThreadApplication() {}
@@ -427,7 +410,7 @@ std::exception_ptr
     goby::middleware::MultiThreadApplicationBase<Config, Transporter>::thread_exception_(nullptr);
 
 template <class Config, class Transporter>
-template <typename ThreadType, typename ThreadConfig, bool has_index>
+template <typename ThreadType, typename ThreadConfig, bool has_index, bool has_config>
 void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_thread(
     int index, const ThreadConfig& cfg)
 {
@@ -439,15 +422,22 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
 
     auto& thread_manager = threads_[type_i][index];
     thread_manager.alive = true;
+    thread_manager.name = boost::core::demangle(typeid(ThreadType).name());
+    if (has_index)
+        thread_manager.name += "/" + std::to_string(index);
+    thread_manager.uid = thread_uid_++;
 
     // copy configuration
     auto thread_lambda = [this, type_i, index, cfg, &thread_manager]() {
         try
         {
             std::shared_ptr<ThreadType> goby_thread(
-                detail::ThreadTypeSelector<ThreadType, ThreadConfig, has_index>::thread(cfg,
-                                                                                        index));
+                detail::ThreadTypeSelector<ThreadType, ThreadConfig, has_index, has_config>::thread(
+                    cfg, index));
+
+            goby_thread->set_name(thread_manager.name);
             goby_thread->set_type_index(type_i);
+            goby_thread->set_uid(thread_manager.uid);
             goby_thread->run(thread_manager.alive);
         }
         catch (...)
@@ -458,8 +448,11 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
         interthread_.publish<MainThreadBase::joinable_group_>(ThreadIdentifier{type_i, index});
     };
 
-    thread_manager.name = std::string(typeid(ThreadType).name()) + "_index" + std::to_string(index);
     thread_manager.thread = std::unique_ptr<std::thread>(new std::thread(thread_lambda));
+
+    // set thread name for debugging purposes
+    pthread_setname_np(thread_manager.thread->native_handle(), thread_manager.name.c_str());
+
     ++running_thread_count_;
 }
 
@@ -499,6 +492,7 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_join_th
                        << std::endl;
     }
 }
+
 } // namespace goby
 
 #endif

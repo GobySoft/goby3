@@ -1,4 +1,4 @@
-// Copyright 2011-2021:
+// Copyright 2011-2022:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -45,6 +45,7 @@
 #include <Wt/Dbo/SqlTraits>
 #include <Wt/Dbo/WtSqlTraits>
 #include <Wt/Dbo/backend/Sqlite3>
+#include <Wt/WComboBox>
 #include <Wt/WContainerWidget>                            // for WContainer...
 #include <Wt/WDateTime>                                   // for WDateTime
 #include <Wt/WEvent>                                      // for WMouseEvent
@@ -57,7 +58,8 @@
 #include <boost/date_time/posix_time/ptime.hpp>           // for ptime
 #include <boost/date_time/posix_time/time_formatters.hpp> // for to_simple_...
 #include <boost/units/quantity.hpp>                       // for operator/
-#include <google/protobuf/message.h>                      // for Message
+#include <dccl/version.h>
+#include <google/protobuf/message.h> // for Message
 
 #include "goby/middleware/group.h"                    // for Group
 #include "goby/middleware/marshalling/interface.h"    // for Marshallin...
@@ -191,7 +193,6 @@ class LiaisonCommander
 
     struct ControlsContainer : Wt::WGroupBox
     {
-
         ControlsContainer(const protobuf::ProtobufCommanderConfig& pb_commander_config,
                           Wt::WStackedWidget* commands_div, LiaisonCommander* parent);
 
@@ -215,7 +216,7 @@ class LiaisonCommander
             void generate_root();
 
             void generate_tree(Wt::WTreeTableNode* parent, google::protobuf::Message* message,
-                               const std::string& parent_hierarchy = "");
+                               const std::string& parent_hierarchy = "", int index = -1);
             void generate_tree_row(Wt::WTreeTableNode* parent, google::protobuf::Message* message,
                                    const google::protobuf::FieldDescriptor* field_desc,
                                    const std::string& parent_hierarchy = "");
@@ -288,6 +289,8 @@ class LiaisonCommander
                                            const google::protobuf::FieldDescriptor* field_desc,
                                            Wt::WLineEdit* field, int index);
 
+            void handle_focus_changed(Wt::WLineEdit* field);
+
             void handle_combo_field_changed(google::protobuf::Message* message,
                                             const google::protobuf::FieldDescriptor* field_desc,
                                             Wt::WComboBox* field, int index);
@@ -307,6 +310,18 @@ class LiaisonCommander
                 else
                     send_button_->setDisabled(false);
             }
+
+            void check_dynamics()
+            {
+#if DCCL_VERSION_MAJOR >= 4
+                if (has_dynamic_conditions_ && !skip_dynamic_conditions_update_ // avoid recursion
+                )
+                    generate_root();
+#endif
+            }
+
+            void update_oneofs(const google::protobuf::FieldDescriptor* field_desc,
+                               Wt::WFormWidget* changed_field);
 
             enum DatabaseDialogResponse
             {
@@ -375,6 +390,16 @@ class LiaisonCommander
             const protobuf::ProtobufCommanderConfig::LoadProtobuf& load_config_;
             LiaisonCommander* commander_;
             Wt::WPushButton* send_button_;
+
+#if DCCL_VERSION_MAJOR >= 4
+            // does any field in the message have dynamic conditions set?
+            bool has_dynamic_conditions_{false};
+            dccl::DynamicConditions dccl_dycon_;
+#endif
+            bool skip_dynamic_conditions_update_{true};
+
+            std::map<const google::protobuf::OneofDescriptor*, std::vector<Wt::WFormWidget*>>
+                oneof_fields_;
         };
 
         const protobuf::ProtobufCommanderConfig& pb_commander_config_;

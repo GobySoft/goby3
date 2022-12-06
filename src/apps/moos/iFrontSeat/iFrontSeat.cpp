@@ -1,9 +1,10 @@
-// Copyright 2013-2021:
+// Copyright 2013-2022:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   Henrik Schmidt <henrik@mit.edu>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Binaries
@@ -133,7 +134,12 @@ load_driver(goby::apps::moos::protobuf::iFrontSeatConfig* cfg)
 }
 
 goby::apps::moos::iFrontSeat::iFrontSeat()
-    : goby::moos::GobyMOOSApp(&cfg_), frontseat_(load_driver(&cfg_)), translator_(this)
+    : goby::moos::GobyMOOSApp(&cfg_),
+      frontseat_(load_driver(&cfg_)),
+      translator_(this),
+      lat_origin_(std::numeric_limits<double>::quiet_NaN()),
+      lon_origin_(std::numeric_limits<double>::quiet_NaN()),
+      new_origin_(false)
 {
     // commands
     subscribe(cfg_.moos_var().prefix() + cfg_.moos_var().command_request(),
@@ -161,10 +167,45 @@ goby::apps::moos::iFrontSeat::iFrontSeat()
 
     register_timer(cfg_.frontseat_cfg().status_period(),
                    boost::bind(&iFrontSeat::status_loop, this));
+
+    // Dynamic UTM. H. Schmidt 7/30/21
+    subscribe("LAT_ORIGIN", &iFrontSeat::handle_lat_origin, this);
+    subscribe("LONG_ORIGIN", &iFrontSeat::handle_lon_origin, this);
+}
+
+void goby::apps::moos::iFrontSeat::handle_lat_origin(const CMOOSMsg& msg)
+{
+    double new_lat = msg.GetDouble();
+    if (!isnan(new_lat))
+    {
+        lat_origin_ = new_lat;
+        new_origin_ = true;
+    }
+}
+
+void goby::apps::moos::iFrontSeat::handle_lon_origin(const CMOOSMsg& msg)
+{
+    double new_lon = msg.GetDouble();
+    if (!isnan(new_lon))
+    {
+        lon_origin_ = new_lon;
+        new_origin_ = true;
+    }
 }
 
 void goby::apps::moos::iFrontSeat::loop()
 {
+    if (new_origin_ && !isnan(lat_origin_) && !isnan(lon_origin_))
+    {
+        boost::units::quantity<boost::units::degree::plane_angle> lat =
+            lat_origin_ * boost::units::degree::degrees;
+        boost::units::quantity<boost::units::degree::plane_angle> lon =
+            lon_origin_ * boost::units::degree::degrees;
+
+        frontseat_->update_utm_datum({lat, lon});
+
+        new_origin_ = false;
+    }
     frontseat_->do_work();
 
     if (cfg_.frontseat_cfg().exit_on_error() && (frontseat_->state() == gpb::INTERFACE_FS_ERROR ||
@@ -240,12 +281,27 @@ void goby::apps::moos::iFrontSeat::handle_mail_helm_state(const CMOOSMsg& msg)
 {
     std::string sval = msg.GetString();
     boost::trim(sval);
-    if (boost::iequals(sval, "drive"))
-        frontseat_->set_helm_state(gpb::HELM_DRIVE);
-    else if (boost::iequals(sval, "park"))
-        frontseat_->set_helm_state(gpb::HELM_PARK);
+    std::string src = msg.GetSource();
+    boost::trim(src);
+    if (boost::iequals(src, "phelmivp"))
+    {
+        if (boost::iequals(sval, "drive"))
+            frontseat_->set_helm_state(gpb::HELM_DRIVE);
+        else if (boost::iequals(sval, "park"))
+            frontseat_->set_helm_state(gpb::HELM_PARK);
+    }
     else
-        frontseat_->set_helm_state(gpb::HELM_NOT_RUNNING);
+    {
+        if (boost::iequals(src, "phelmivp_standby"))
+        {
+            if (boost::iequals(sval, "drive+"))
+                frontseat_->set_helm_state(gpb::HELM_DRIVE);
+            else if (boost::iequals(sval, "park+"))
+                frontseat_->set_helm_state(gpb::HELM_PARK);
+        }
+        else
+            frontseat_->set_helm_state(gpb::HELM_NOT_RUNNING);
+    }
 }
 
 void goby::apps::moos::iFrontSeat::handle_driver_command_response(

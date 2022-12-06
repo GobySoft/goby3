@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -26,6 +26,7 @@
 
 #include "goby/middleware/log/log_entry.h"
 #include "goby/middleware/marshalling/interface.h"
+#include "goby/middleware/marshalling/json.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
 
 #include "goby/middleware/log/hdf5/hdf5_plugin.h"
@@ -53,6 +54,11 @@ class LogPlugin
     virtual std::vector<goby::middleware::HDF5ProtobufEntry> hdf5_entry(LogEntry& log_entry)
     {
         throw(log::LogException("HDF5 is not supported by the scheme's plugin"));
+    }
+
+    virtual std::shared_ptr<nlohmann::json> json_message(LogEntry& log_entry)
+    {
+        throw(log::LogException("JSON is not supported by the scheme's plugin"));
     }
 };
 

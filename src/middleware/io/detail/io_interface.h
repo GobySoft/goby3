@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -101,7 +101,8 @@ class IOThread : public ThreadType<IOConfig>,
               IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
                        SocketType, ThreadType, use_indexed_groups>,
               line_out_group, subscribe_layer, use_indexed_groups>(index),
-          glog_group_(glog_group + " / t" + goby::middleware::thread_id().substr(0, 6))
+          glog_group_(glog_group + " / t" + std::to_string(goby::middleware::gettid())),
+          thread_name_(glog_group)
     {
         auto data_out_callback =
             [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
@@ -132,6 +133,8 @@ class IOThread : public ThreadType<IOConfig>,
                 io_.post([]() {});
             }
         }));
+
+        this->set_name(thread_name_);
     }
 
     void finalize() override
@@ -250,6 +253,7 @@ class IOThread : public ThreadType<IOConfig>,
     std::unique_ptr<std::thread> incoming_mail_notify_thread_;
 
     std::string glog_group_;
+    std::string thread_name_;
     bool glog_group_added_{false};
 };
 

@@ -37,6 +37,7 @@
 #include <vector>          // for vector
 
 #include "goby/middleware/group.h" // for Group, DynamicGroup
+#include "goby/time/system_clock.h"
 
 namespace goby
 {
@@ -55,7 +56,7 @@ template <int Bytes> struct uint
 };
 template <> struct uint<1>
 {
-    typedef std::uint8_t type;
+    using type = std::uint8_t;
 };
 template <> struct uint<2>
 {
@@ -103,28 +104,32 @@ class LogEntry
     static constexpr int scheme_bytes_{2};
     static constexpr int group_bytes_{2};
     static constexpr int type_bytes_{2};
+    static constexpr int timestamp_bytes_{8};
     static constexpr int crc_bytes_{4};
     static constexpr uint<scheme_bytes_>::type scheme_group_index_{0xFFFF};
     static constexpr uint<scheme_bytes_>::type scheme_type_index_{0xFFFE};
 
     static constexpr int version_bytes_{4};
-    static constexpr int current_version{2};
+    static constexpr int compiled_current_version{3};
+    static int current_version_;
     // "invalid_version" until version is read or written
     static uint<version_bytes_>::type version_;
     static constexpr decltype(version_) invalid_version{0};
 
-    static std::map<int, std::function<void(const std::string& type)> > new_type_hook;
-    static std::map<int, std::function<void(const Group& group)> > new_group_hook;
+    static std::map<int, std::function<void(const std::string& type)>> new_type_hook;
+    static std::map<int, std::function<void(const Group& group)>> new_group_hook;
 
-    static std::map<LogFilter, std::function<void(const std::vector<unsigned char>& data)> >
+    static std::map<LogFilter, std::function<void(const std::vector<unsigned char>& data)>>
         filter_hook;
 
   public:
-    LogEntry(std::vector<unsigned char> data, int scheme, std::string type, const Group& group)
+    LogEntry(std::vector<unsigned char> data, int scheme, std::string type, const Group& group,
+             goby::time::SystemClock::time_point timestamp = goby::time::SystemClock::now())
         : data_(std::move(data)),
           scheme_(scheme),
           type_(std::move(type)),
-          group_(std::string(group))
+          group_(std::string(group)),
+          timestamp_(std::move(timestamp))
     {
     }
 
@@ -132,7 +137,10 @@ class LogEntry
     void parse_version(std::istream* s);
     void parse(std::istream* s);
 
-    // [GBY3][size: 4][scheme: 2][group: 2][type: 2][data][crc32: 4]
+    // used by the unit tests to override version numbers
+    static void set_current_version(decltype(version_) version) { current_version_ = version; }
+
+    // [GBY3][size: 4][scheme: 2][group: 2][type: 2][timestamp: 8][data][crc32: 4]
     // if scheme == 0xFFFF what follows is not data, but the string value for the group index
     // if scheme == 0xFFFE what follows is not data, but the string value for the group index
     void serialize(std::ostream* s) const;
@@ -141,6 +149,8 @@ class LogEntry
     int scheme() const { return scheme_; }
     const std::string& type() const { return type_; }
     const Group& group() const { return group_; }
+    const goby::time::SystemClock::time_point& timestamp() const { return timestamp_; }
+
     static void reset()
     {
         groups_.clear();
@@ -152,33 +162,13 @@ class LogEntry
         group_index_ = 1;
         type_index_ = 1;
         version_ = invalid_version;
+        current_version_ = compiled_current_version;
     }
 
   private:
     void _serialize(std::ostream* s, uint<scheme_bytes_>::type scheme,
                     uint<group_bytes_>::type group_index, uint<type_bytes_>::type type_index,
-                    const char* data, int data_size) const
-    {
-        std::string group_str(netint_to_string(group_index));
-        std::string type_str(netint_to_string(type_index));
-        std::string scheme_str(netint_to_string(scheme));
-
-        uint<size_bytes_>::type size =
-            scheme_bytes_ + group_bytes_ + type_bytes_ + data_size + crc_bytes_;
-        std::string size_str(netint_to_string(size));
-
-        auto header = magic_ + size_str + scheme_str + group_str + type_str;
-        s->write(header.data(), header.size());
-        s->write(data, data_size);
-
-        boost::crc_32_type crc;
-        crc.process_bytes(header.data(), header.size());
-        crc.process_bytes(data, data_size);
-
-        uint<crc_bytes_>::type cs(crc.checksum());
-        std::string cs_str(netint_to_string(cs));
-        s->write(cs_str.data(), cs_str.size());
-    }
+                    const char* data, int data_size) const;
 
     template <typename Unsigned>
     Unsigned read_one(std::istream* s, boost::crc_32_type* crc = nullptr)
@@ -188,6 +178,7 @@ class LogEntry
         s->read(&str[0], size);
         if (crc)
             crc->process_bytes(&str[0], size);
+
         return string_to_netint<Unsigned>(str);
     }
 
@@ -208,7 +199,8 @@ class LogEntry
         if (s.size() < size)
             s.insert(0, size - s.size(), '\0');
 
-        for (decltype(size) i = 0; i < size; ++i) u |= (s[i] & 0xff) << ((size - (i + 1)) * 8);
+        for (decltype(size) i = 0; i < size; ++i)
+            u |= static_cast<Unsigned>(s[i] & 0xff) << ((size - (i + 1)) * 8);
         return u;
     }
 
@@ -217,20 +209,21 @@ class LogEntry
     uint<scheme_bytes_>::type scheme_;
     std::string type_;
     DynamicGroup group_;
+    goby::time::SystemClock::time_point timestamp_;
 
     // map (scheme -> map (group_name -> group_index)
-    static std::map<int, boost::bimap<std::string, uint<group_bytes_>::type> > groups_;
+    static std::map<int, boost::bimap<std::string, uint<group_bytes_>::type>> groups_;
     static uint<group_bytes_>::type group_index_;
 
     // map (scheme -> map (group_name -> group_index)
-    static std::map<int, boost::bimap<std::string, uint<type_bytes_>::type> > types_;
+    static std::map<int, boost::bimap<std::string, uint<type_bytes_>::type>> types_;
     static uint<type_bytes_>::type type_index_;
 
     const std::string magic_{"GBY3"};
 };
 
+} // namespace log
 } // namespace middleware
 } // namespace goby
-} // namespace log
 
 #endif

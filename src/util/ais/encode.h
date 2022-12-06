@@ -86,29 +86,30 @@ class Encoder
     template <typename AngleType, typename ValueType>
     std::uint32_t ais_latlon(boost::units::quantity<AngleType, ValueType> ll)
     {
-        return std::round(boost::units::quantity<boost::units::degree::plane_angle>(ll).value() *
-                          600000.0);
+        return static_cast<std::int32_t>(std::round(
+            boost::units::quantity<boost::units::degree::plane_angle>(ll).value() * 600000.0));
     }
 
     // 0 - 360 as tenths
     template <typename AngleType, typename ValueType>
     std::uint32_t ais_angle(boost::units::quantity<AngleType, ValueType> a, int precision)
     {
-        return std::round(
+        return static_cast<std::uint32_t>(std::round(
             wrap_0_360(boost::units::quantity<boost::units::degree::plane_angle>(a)).value() *
-            std::pow(10, precision));
+            std::pow(10, precision)));
     }
 
     // 1/10 knots
     template <typename SpeedType, typename ValueType>
     std::uint32_t ais_speed(boost::units::quantity<SpeedType, ValueType> s)
     {
-        return std::round(
+        return static_cast<std::uint32_t>(std::round(
             boost::units::quantity<boost::units::metric::knot_base_unit::unit_type>(s).value() *
-            10);
+            10));
     }
 
     struct AISField;
+    friend std::ostream& operator<<(std::ostream& os, const Encoder::AISField& ais);
 
     void concatenate_bitset(const std::vector<AISField>& fields)
     {
@@ -170,6 +171,19 @@ class Encoder
 
     static std::atomic<int> sequence_id_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Encoder::AISField& ais)
+{
+    os << "l:" << static_cast<int>(ais.len) << ", ";
+    if (ais.is_string)
+        os << "s: " << ais.s;
+    else
+    {
+        os << "u: " << ais.u;
+        os << ", i: " << static_cast<std::int32_t>(ais.u);
+    }
+    return os;
+}
 
 } // namespace ais
 } // namespace util

@@ -87,11 +87,17 @@ void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
         "app_name,a", boost::program_options::value<std::string>(),
         app_name_desc.c_str())("example_config,e", "writes an example .pb.cfg file")(
         "verbose,v", boost::program_options::value<std::string>()->implicit_value("")->multitoken(),
-        "output useful information to std::cout. -v is verbosity: verbose, -vv is verbosity: "
-        "debug1, -vvv is verbosity: debug2, -vvvv is verbosity: debug3")(
-        "ncurses,n",
-        "output useful information to an NCurses GUI instead of stdout. If set, this "
-        "parameter overrides --verbose settings.")("version,V", "writes the current version");
+        "output useful information to std::cout. -v is tty_verbosity: VERBOSE, -vv is "
+        "tty_verbosity: DEBUG1, -vvv is tty_verbosity: DEBUG2, -vvvv is tty_verbosity: DEBUG3")(
+        "glog_file_verbose,z",
+        boost::program_options::value<std::string>()->implicit_value("")->multitoken(),
+        "output useful information to a file (either in current directory or directory given by "
+        "-d). -z is verbosity: VERBOSE, -zz is verbosity: DEBUG1, -vvv is verbosity: "
+        "DEBUG2, -zzzz is verbosity: DEBUG3")("glog_file_dir,d",
+                                              boost::program_options::value<std::string>(),
+                                              "Directory for debug log (defaults to \".\"")(
+        "ncurses,n", "output useful information to an NCurses GUI instead of stdout.")(
+        "version,V", "writes the current version");
 
     std::string od_both_desc = "Typically given in " + *application_name +
                                " configuration file, but may be specified on the command line";
@@ -258,44 +264,41 @@ void goby::middleware::ConfigReader::set_protobuf_program_option(
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
-                for (google::protobuf::int32 v : value.as<std::vector<google::protobuf::int32> >())
+                for (google::protobuf::int32 v : value.as<std::vector<google::protobuf::int32>>())
                     refl->AddInt32(&message, field_desc, v);
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-                for (google::protobuf::int64 v : value.as<std::vector<google::protobuf::int64> >())
+                for (google::protobuf::int64 v : value.as<std::vector<google::protobuf::int64>>())
                     refl->AddInt64(&message, field_desc, v);
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
-                for (google::protobuf::uint32 v :
-                     value.as<std::vector<google::protobuf::uint32> >())
+                for (google::protobuf::uint32 v : value.as<std::vector<google::protobuf::uint32>>())
                     refl->AddUInt32(&message, field_desc, v);
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-                for (google::protobuf::uint64 v :
-                     value.as<std::vector<google::protobuf::uint64> >())
+                for (google::protobuf::uint64 v : value.as<std::vector<google::protobuf::uint64>>())
                     refl->AddUInt64(&message, field_desc, v);
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-                for (bool v : value.as<std::vector<bool> >())
-                    refl->AddBool(&message, field_desc, v);
+                for (bool v : value.as<std::vector<bool>>()) refl->AddBool(&message, field_desc, v);
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-                for (const std::string& v : value.as<std::vector<std::string> >())
+                for (const std::string& v : value.as<std::vector<std::string>>())
                     refl->AddString(&message, field_desc, v);
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-                for (float v : value.as<std::vector<float> >())
+                for (float v : value.as<std::vector<float>>())
                     refl->AddFloat(&message, field_desc, v);
                 break;
 
             case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-                for (double v : value.as<std::vector<double> >())
+                for (double v : value.as<std::vector<double>>())
                     refl->AddDouble(&message, field_desc, v);
                 break;
 

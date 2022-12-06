@@ -123,7 +123,13 @@ template <typename Config> class Application
             throw(goby::Exception("No lat_origin and lon_origin defined for requested UTMGeodesy"));
     }
 
+    /// \brief Returns if the geodesy tool is configured with a datum.
+    bool has_geodesy() { return geodesy_ ? true : false; }
+
     std::string app_name() { return app3_base_configuration_->name(); }
+
+  protected:
+    void configure_geodesy(goby::util::UTMGeodesy::LatLonPoint datum);
 
   private:
     template <typename App>
@@ -133,7 +139,6 @@ template <typename Config> class Application
     int __run();
 
     void configure_logger();
-    void configure_geodesy();
 
   private:
     // sets configuration (before Application construction)
@@ -144,7 +149,7 @@ template <typename Config> class Application
     int return_value_;
 
     // static here allows fout_ to live until program exit to log glog output
-    static std::vector<std::unique_ptr<std::ofstream>> fout_;
+    static std::unique_ptr<std::ofstream> fout_;
 
     std::unique_ptr<goby::util::UTMGeodesy> geodesy_;
 };
@@ -153,7 +158,7 @@ template <typename Config> class Application
 } // namespace goby
 
 template <typename Config>
-std::vector<std::unique_ptr<std::ofstream>> goby::middleware::Application<Config>::fout_;
+std::unique_ptr<std::ofstream> goby::middleware::Application<Config>::fout_;
 
 template <typename Config> std::unique_ptr<Config> goby::middleware::Application<Config>::app_cfg_;
 
@@ -167,7 +172,8 @@ template <typename Config> goby::middleware::Application<Config>::Application() 
 
     configure_logger();
     if (app3_base_configuration_->has_geodesy())
-        configure_geodesy();
+        configure_geodesy({app3_base_configuration_->geodesy().lat_origin_with_units(),
+                           app3_base_configuration_->geodesy().lon_origin_with_units()});
 
     if (!app3_base_configuration_->IsInitialized())
         throw(middleware::ConfigException("Invalid base configuration"));
@@ -190,10 +196,9 @@ template <typename Config> void goby::middleware::Application<Config>::configure
     if (app3_base_configuration_->glog_config().show_gui())
         glog.enable_gui();
 
-    fout_.resize(app3_base_configuration_->glog_config().file_log_size());
-    for (int i = 0, n = app3_base_configuration_->glog_config().file_log_size(); i < n; ++i)
+    if (app3_base_configuration_->glog_config().has_file_log())
     {
-        const auto& file_log = app3_base_configuration_->glog_config().file_log(i);
+        const auto& file_log = app3_base_configuration_->glog_config().file_log();
         std::string file_format_str;
 
         if (file_log.has_file_dir() && !file_log.file_dir().empty())
@@ -226,9 +231,9 @@ template <typename Config> void goby::middleware::Application<Config>::configure
 
         glog.is_verbose() && glog << "logging output to file: " << file_name << std::endl;
 
-        fout_[i].reset(new std::ofstream(file_name.c_str()));
+        fout_.reset(new std::ofstream(file_name.c_str()));
 
-        if (!fout_[i]->is_open())
+        if (!fout_->is_open())
             glog.is_die() && glog << "cannot write glog output to requested file: " << file_name
                                   << std::endl;
 
@@ -239,19 +244,18 @@ template <typename Config> void goby::middleware::Application<Config>::configure
                 glog << "Cannot create symlink to latest file. Continuing onwards anyway"
                      << std::endl;
 
-        glog.add_stream(app3_base_configuration_->glog_config().file_log(i).verbosity(),
-                        fout_[i].get());
+        glog.add_stream(file_log.verbosity(), fout_.get());
     }
 
     if (app3_base_configuration_->glog_config().show_dccl_log())
         goby::middleware::detail::DCCLSerializerParserHelperBase::setup_dlog();
 }
 
-template <typename Config> void goby::middleware::Application<Config>::configure_geodesy()
+template <typename Config>
+void goby::middleware::Application<Config>::configure_geodesy(
+    goby::util::UTMGeodesy::LatLonPoint datum)
 {
-    geodesy_.reset(
-        new goby::util::UTMGeodesy({app3_base_configuration_->geodesy().lat_origin_with_units(),
-                                    app3_base_configuration_->geodesy().lon_origin_with_units()}));
+    geodesy_.reset(new goby::util::UTMGeodesy(datum));
 }
 
 template <typename Config> int goby::middleware::Application<Config>::__run()

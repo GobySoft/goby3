@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -24,10 +24,17 @@
 #ifndef GOBY_MIDDLEWARE_LOG_PROTOBUF_LOG_PLUGIN_H
 #define GOBY_MIDDLEWARE_LOG_PROTOBUF_LOG_PLUGIN_H
 
+#include <google/protobuf/util/json_util.h>
+
 #include "goby/middleware/log.h"
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
+#include "goby/time/convert.h"
 #include "log_plugin.h"
+
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
 
 namespace goby
 {
@@ -45,6 +52,8 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
                   "Scheme must be PROTOBUF or DCCL");
 
   public:
+    ProtobufPluginBase(bool user_pool_first) : user_pool_first_(user_pool_first) {}
+
     std::string debug_text_message(LogEntry& log_entry) override
     {
         auto msgs = parse_message(log_entry);
@@ -69,21 +78,47 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             hdf5_entries.emplace_back();
             goby::middleware::HDF5ProtobufEntry& hdf5_entry = hdf5_entries.back();
             hdf5_entry.channel = log_entry.group();
+            hdf5_entry.time = goby::time::convert<decltype(hdf5_entry.time)>(log_entry.timestamp());
+            hdf5_entry.scheme = scheme;
             hdf5_entry.msg = msg;
         }
         return hdf5_entries;
+    }
+
+    std::shared_ptr<nlohmann::json> json_message(LogEntry& log_entry) override
+    {
+        auto j = std::make_shared<nlohmann::json>();
+        auto msgs = parse_message(log_entry);
+
+        for (typename decltype(msgs)::size_type i = 0, n = msgs.size(); i < n; ++i)
+        {
+            std::string jstr;
+            google::protobuf::util::MessageToJsonString(*msgs[i], &jstr);
+
+            if (n > 1)
+                (*j)[n] = nlohmann::json::parse(jstr);
+            else
+                (*j) = nlohmann::json::parse(jstr);
+        }
+        return j;
     }
 
     void register_read_hooks(const std::ifstream& in_log_file) override
     {
         LogEntry::filter_hook[{static_cast<int>(scheme), static_cast<std::string>(file_desc_group),
                                google::protobuf::FileDescriptorProto::descriptor()->full_name()}] =
-            [](const std::vector<unsigned char>& data) {
+            [&](const std::vector<unsigned char>& data) {
                 google::protobuf::FileDescriptorProto file_desc_proto;
                 file_desc_proto.ParseFromArray(&data[0], data.size());
-                goby::glog.is_debug1() && goby::glog << "Adding: " << file_desc_proto.name()
-                                                     << std::endl;
-                dccl::DynamicProtobufManager::add_protobuf_file(file_desc_proto);
+
+                if (!read_file_desc_names_.count(file_desc_proto.name()))
+                {
+                    goby::glog.is_debug1() && goby::glog << "Adding: " << file_desc_proto.name()
+                                                         << std::endl;
+
+                    dccl::DynamicProtobufManager::add_protobuf_file(file_desc_proto);
+                    read_file_desc_names_.insert(file_desc_proto.name());
+                }
             };
     }
 
@@ -106,7 +141,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             try
             {
                 auto msg = SerializerParserHelper<google::protobuf::Message, scheme>::parse(
-                    bytes_begin, bytes_end, actual_end, log_entry.type());
+                    bytes_begin, bytes_end, actual_end, log_entry.type(), user_pool_first_);
                 msgs.push_back(msg);
             }
             catch (std::exception& e)
@@ -137,7 +172,7 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
 
             google::protobuf::FileDescriptorProto file_desc_proto;
             file_desc->CopyTo(&file_desc_proto);
-            std::vector<unsigned char> data(file_desc_proto.ByteSize());
+            std::vector<unsigned char> data(file_desc_proto.ByteSizeLong());
             file_desc_proto.SerializeToArray(&data[0], data.size());
             LogEntry entry(data, goby::middleware::MarshallingScheme::PROTOBUF,
                            google::protobuf::FileDescriptorProto::descriptor()->full_name(),
@@ -163,15 +198,52 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
         else
         {
             insert_protobuf_file_desc(desc->file(), out_log_file);
+
+            auto insert_extensions =
+                [this, &out_log_file](
+                    const std::vector<const google::protobuf::FieldDescriptor*> extensions) {
+                    for (const auto* field_desc : extensions)
+                    { insert_protobuf_file_desc(field_desc->file(), out_log_file); }
+                };
+
+            std::vector<const google::protobuf::FieldDescriptor*> generated_extensions;
+            google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(
+                desc, &generated_extensions);
+
+            for (const auto* desc : generated_extensions)
+                goby::glog.is_debug1() && goby::glog << "Found generated extension ["
+                                                     << desc->number() << "]: " << desc->full_name()
+                                                     << " in file: " << desc->file()->name()
+                                                     << std::endl;
+
+            insert_extensions(generated_extensions);
+
+            std::vector<const google::protobuf::FieldDescriptor*> user_extensions;
+            dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(
+                desc, &user_extensions);
+
+            for (const auto* desc : user_extensions)
+                goby::glog.is_debug1() && goby::glog << "Found user extension [" << desc->number()
+                                                     << "]: " << desc->full_name()
+                                                     << " in file: " << desc->file()->name()
+                                                     << std::endl;
+            insert_extensions(user_extensions);
         }
     }
 
   private:
     std::set<const google::protobuf::FileDescriptor*> written_file_desc_;
+    std::set<std::string> read_file_desc_names_;
+    bool user_pool_first_;
 };
 
 class ProtobufPlugin : public ProtobufPluginBase<goby::middleware::MarshallingScheme::PROTOBUF>
 {
+  public:
+    ProtobufPlugin(bool user_pool_first = false)
+        : ProtobufPluginBase<goby::middleware::MarshallingScheme::PROTOBUF>(user_pool_first)
+    {
+    }
 };
 
 } // namespace log

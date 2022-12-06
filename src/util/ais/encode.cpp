@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -164,23 +164,24 @@ void goby::util::ais::Encoder::encode_msg_18(const goby::util::ais::protobuf::Po
         {30, static_cast<std::uint32_t>(pos.mmsi())},        // mmsi
         {8},                                                 // regional reserved
         {10, ais_speed(pos.speed_over_ground_with_units())}, // sog in 1/10 knots
-        {1, pos.position_accuracy()},           // position accuracy (0 = GNSS fix), (1 = DGPS)
+        {1, static_cast<std::uint32_t>(
+                pos.position_accuracy())},      // position accuracy (0 = GNSS fix), (1 = DGPS)
         {28, ais_latlon(pos.lon_with_units())}, // 1/10000 minutes
         {27, ais_latlon(pos.lat_with_units())}, // same as lon
         {12, pos.has_course_over_ground() ? ais_angle(pos.course_over_ground_with_units(), 1)
                                           : 3600}, // cog in 0.1 degrees
         {9, pos.has_true_heading() ? ais_angle(pos.true_heading_with_units(), 0)
-                                   : 511},               // heading in 1 degree
-        {6, static_cast<uint32_t>(pos.report_second())}, // report sec
-        {2},                                             // regional reserved
-        {1, 1},                                          // CS Unit,  1 = Class B "CS" unit
-        {1},                                             // Display flag
-        {1},                                             // DSC flag
-        {1},                                             // Band flag
-        {1},                                             // Message 22 flag
-        {1},                                             // Assigned mode
-        {1, pos.raim()},                                 // RAIM
-        {1, 1},                                          // (always "1" for Class-B "CS")
+                                   : 511},                    // heading in 1 degree
+        {6, static_cast<std::uint32_t>(pos.report_second())}, // report sec
+        {2},                                                  // regional reserved
+        {1, 1},                                               // CS Unit,  1 = Class B "CS" unit
+        {1},                                                  // Display flag
+        {1},                                                  // DSC flag
+        {1},                                                  // Band flag
+        {1},                                                  // Message 22 flag
+        {1},                                                  // Assigned mode
+        {1, pos.raim()},                                      // RAIM
+        {1, 1},                                               // (always "1" for Class-B "CS")
         {19,
          393222} // Because Class B "CS" does not use any Communication State information, this field shall be filled with the following value: 1100000000000000110.
     };
@@ -215,7 +216,7 @@ void goby::util::ais::Encoder::encode_msg_24(const goby::util::ais::protobuf::Vo
             {2},                                          // repeat indicator
             {30, static_cast<std::uint32_t>(voy.mmsi())}, // mmsi
             {2, part_num},                                // part num
-            {8, voy.type()},                              // ship type
+            {8, static_cast<std::uint32_t>(voy.type())},  // ship type
             {18, 0, "XXX", true},                         // vendor ID
             {4, 0},                                       // unit model code
             {20, 0},                                      // serial number

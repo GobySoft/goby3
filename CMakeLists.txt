@@ -58,7 +58,7 @@ endif()
 
 set(GOBY_VERSION_MAJOR "3")
 set(GOBY_VERSION_MINOR "0")
-set(GOBY_VERSION_PATCH "0~beta16")
+set(GOBY_VERSION_PATCH "13")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    message(STATUS "Compiling in Git source tree.")
@@ -87,7 +87,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    
 else()
    message(STATUS "Compiling from release tarball (${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}).")
-   set(GOBY_VERSION_DATE "2021.01.29")
+   set(GOBY_VERSION_DATE "2022.11.08")
 endif()
 
 set(GOBY_VERSION "${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}")
@@ -121,7 +121,7 @@ add_custom_command(OUTPUT ShareLink COMMAND ${CMAKE_COMMAND} -E create_symlink $
 add_custom_target(share_link ALL DEPENDS ShareLink)
 
 
-set(GOBY_DEBUG_OPTIONS -Wall -Werror)
+set(GOBY_DEBUG_OPTIONS -Wall -Werror -Wno-sign-compare -Wno-unknown-warning-option)
 add_compile_options("$<$<CONFIG:DEBUG>:${GOBY_DEBUG_OPTIONS}>")
 add_compile_options("$<$<CXX_COMPILER_ID:Clang>:-Wdocumentation>")
 

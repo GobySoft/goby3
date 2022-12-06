@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -53,8 +53,8 @@ struct MessageCollection
     MessageCollection(std::string n) : name(std::move(n)) {}
     std::string name;
 
-    // time -> Message contents
-    std::multimap<std::uint64_t, std::shared_ptr<google::protobuf::Message>> entries;
+    // time -> ProtobufEntry
+    std::multimap<std::uint64_t, HDF5ProtobufEntry> entries;
 };
 
 struct Channel
@@ -101,7 +101,7 @@ class GroupFactory
 class Writer
 {
   public:
-    Writer(const std::string& output_file);
+    Writer(const std::string& output_file, bool write_zero_length_dim = true);
 
     void add_entry(goby::middleware::HDF5ProtobufEntry entry);
 
@@ -114,6 +114,8 @@ class Writer
                              const goby::middleware::hdf5::MessageCollection& message_collection);
     void write_time(const std::string& group,
                     const goby::middleware::hdf5::MessageCollection& message_collection);
+    void write_scheme(const std::string& group,
+                      const goby::middleware::hdf5::MessageCollection& message_collection);
 
     void write_field_selector(const std::string& group,
                               const google::protobuf::FieldDescriptor* field_desc,
@@ -147,6 +149,7 @@ class Writer
     std::map<std::string, goby::middleware::hdf5::Channel> channels_;
     H5::H5File h5file_;
     goby::middleware::hdf5::GroupFactory group_factory_;
+    bool write_zero_length_dim_;
 };
 
 template <typename T>
@@ -217,9 +220,14 @@ void Writer::write_vector(const std::string& group, const std::string dataset_na
                           const std::vector<T>& data, const std::vector<hsize_t>& hs,
                           const T& default_value)
 {
-    H5::DataSpace dataspace(hs.size(), hs.data(), hs.data());
+    std::unique_ptr<H5::DataSpace> dataspace;
     H5::Group& grp = group_factory_.fetch_group(group);
-    H5::DataSet dataset = grp.createDataSet(dataset_name, predicate<T>(), dataspace);
+    if (data.size() || write_zero_length_dim_)
+        dataspace = std::make_unique<H5::DataSpace>(hs.size(), hs.data(), hs.data());
+    else
+        dataspace = std::make_unique<H5::DataSpace>(H5S_NULL);
+
+    H5::DataSet dataset = grp.createDataSet(dataset_name, predicate<T>(), *dataspace);
     if (data.size())
         dataset.write(&data[0], predicate<T>());
 

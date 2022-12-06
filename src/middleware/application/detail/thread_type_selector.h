@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -32,14 +32,15 @@ namespace middleware
 {
 namespace detail
 {
-/// \brief Selects which constructor to use based on whether the thread is launched with an index or not (that is, index == -1). Not directly called by user code.
-template <typename ThreadType, typename ThreadConfig, bool has_index> struct ThreadTypeSelector
+/// \brief Selects which constructor to use based on whether the thread is launched with an index or not (that is, index == -1), and with a configuration object or not. Not directly called by user code.
+template <typename ThreadType, typename ThreadConfig, bool has_index, bool has_config>
+struct ThreadTypeSelector
 {
 };
 
-/// \brief ThreadTypeSelector instantiation for calling a constructor \e without an index parameter, e.g. "MyThread(const MyConfig& cfg)"
+/// \brief ThreadTypeSelector instantiation for calling a constructor \e without an index parameter but \e with a configuration value, e.g. "MyThread(const MyConfig& cfg)"
 template <typename ThreadType, typename ThreadConfig>
-struct ThreadTypeSelector<ThreadType, ThreadConfig, false>
+struct ThreadTypeSelector<ThreadType, ThreadConfig, false, true>
 {
     static std::shared_ptr<ThreadType> thread(const ThreadConfig& cfg, int index = -1)
     {
@@ -47,15 +48,36 @@ struct ThreadTypeSelector<ThreadType, ThreadConfig, false>
     };
 };
 
-/// \brief ThreadTypeSelector instantiation for calling a constructor \e with an index parameter, e.g. "MyThread(const MyConfig& cfg, int index)"
+/// \brief ThreadTypeSelector instantiation for calling a constructor \e with an index parameter and a  configuration value, e.g. "MyThread(const MyConfig& cfg, int index)"
 template <typename ThreadType, typename ThreadConfig>
-struct ThreadTypeSelector<ThreadType, ThreadConfig, true>
+struct ThreadTypeSelector<ThreadType, ThreadConfig, true, true>
 {
     static std::shared_ptr<ThreadType> thread(const ThreadConfig& cfg, int index)
     {
         return std::make_shared<ThreadType>(cfg, index);
     };
 };
+
+/// \brief ThreadTypeSelector instantiation for calling a constructor \e without an index parameter ora configuration value, e.g. "MyThread()"
+template <typename ThreadType, typename ThreadConfig>
+struct ThreadTypeSelector<ThreadType, ThreadConfig, false, false>
+{
+    static std::shared_ptr<ThreadType> thread(const ThreadConfig& cfg, int index = -1)
+    {
+        return std::make_shared<ThreadType>();
+    };
+};
+
+/// \brief ThreadTypeSelector instantiation for calling a constructor \e with an index parameter and without a configuration value, e.g. "MyThread(int index)"
+template <typename ThreadType, typename ThreadConfig>
+struct ThreadTypeSelector<ThreadType, ThreadConfig, true, false>
+{
+    static std::shared_ptr<ThreadType> thread(const ThreadConfig& cfg, int index)
+    {
+        return std::make_shared<ThreadType>(index);
+    };
+};
+
 } // namespace detail
 } // namespace middleware
 } // namespace goby

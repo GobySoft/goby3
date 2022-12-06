@@ -1,5 +1,6 @@
 syntax = "proto2";
 import "dccl/option_extensions.proto";
+import "goby/middleware/protobuf/geographic.proto";
 
 package goby.middleware.frontseat.protobuf;
 
@@ -14,7 +15,7 @@ message NodeStatus
     optional VehicleType type = 3;
 
     // lat, lon, depth
-    required LatLonPoint global_fix = 10;
+    required .goby.middleware.protobuf.LatLonPoint global_fix = 10;
     // x, y, z on local cartesian grid
     optional CartesianCoordinate local_fix = 11;
 
@@ -24,6 +25,8 @@ message NodeStatus
     required Speed speed = 30;
 
     optional Source source = 40;
+
+    extensions 1000 to max;
 }
 
 message DesiredCourse
@@ -106,25 +109,8 @@ message Source
     optional Sensor depth = 2;
     optional Sensor speed = 3;
     optional Sensor heading = 4;
-}
 
-message LatLonPoint
-{
-    option (dccl.msg).unit_system = "si";
-
-    optional double lat = 1 [(dccl.field) = {units {
-                                 derived_dimensions: "plane_angle"
-                                 system: "angle::degree"
-                             }}];
-
-    optional double lon = 2 [(dccl.field) = {units {
-                                 derived_dimensions: "plane_angle"
-                                 system: "angle::degree"
-                             }}];
-    optional double depth = 3
-        [(dccl.field).units.derived_dimensions = "length", default = 0];
-    optional double altitude = 4
-        [(dccl.field).units.derived_dimensions = "length", default = nan];
+    extensions 1000 to max;
 }
 
 // computed from LatLonPoint
@@ -136,38 +122,38 @@ message CartesianCoordinate
     required double y = 2 [(dccl.field).units.derived_dimensions = "length"];
     optional double z = 3
         [(dccl.field).units.derived_dimensions = "length", default = 0];
+
+    extensions 1000 to max;
 }
 
 message EulerAngles
 {
     option (dccl.msg).unit_system = "si";
 
-    optional double roll = 1 [(dccl.field) = {units {
-                                  derived_dimensions: "plane_angle"
-                                  system: "angle::degree"
-                              }}];
-    optional double pitch = 2 [(dccl.field) = {units {
-                                   derived_dimensions: "plane_angle"
-                                   system: "angle::degree"
-                               }}];
-    optional double heading = 3 [(dccl.field) = {units {
-                                     derived_dimensions: "plane_angle"
-                                     system: "angle::degree"
-                                 }}];
+    optional double roll = 1 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle" system: "angle::degree" }
+    }];
+    optional double pitch = 2 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle" system: "angle::degree" }
+    }];
+    optional double heading = 3 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle" system: "angle::degree" }
+    }];
+    optional double course_over_ground = 4 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle" system: "angle::degree" }
+    }];
 
-    optional double roll_rate = 10 [(dccl.field) = {units {
-                                        derived_dimensions: "plane_angle/time"
-                                        system: "angle::degree"
-                                    }}];
-    optional double pitch_rate = 11 [(dccl.field) = {units {
-                                         derived_dimensions: "plane_angle/time"
-                                         system: "angle::degree"
-                                     }}];
-    optional double heading_rate = 12
-        [(dccl.field) = {units {
-             derived_dimensions: "plane_angle/time"
-             system: "angle::degree"
-         }}];
+    optional double roll_rate = 10 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle/time" system: "angle::degree" }
+    }];
+    optional double pitch_rate = 11 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle/time" system: "angle::degree" }
+    }];
+    optional double heading_rate = 12 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle/time" system: "angle::degree" }
+    }];
+
+    extensions 1000 to max;
 }
 
 message Speed
@@ -178,6 +164,8 @@ message Speed
         [(dccl.field).units.derived_dimensions = "length/time"];
     optional double over_water = 2
         [(dccl.field).units.derived_dimensions = "length/time"];
+
+    extensions 1000 to max;
 }
 
 message CTDSample
@@ -188,24 +176,25 @@ message CTDSample
 
     // required "primary" measurements
     optional double conductivity = 10
-        [(dccl.field).units = {derived_dimensions: "conductivity"}];
+        [(dccl.field).units = { derived_dimensions: "conductivity" }];
     required double temperature = 11 [(dccl.field).units = {
         system: "celsius"
         derived_dimensions: "temperature"
     }];
 
     required double pressure = 12
-        [(dccl.field).units = {base_dimensions: "M L^-1 T^-2"}];
+        [(dccl.field).units = { base_dimensions: "M L^-1 T^-2" }];
 
     // required "secondary" or calculated quantities (can be calculated
     // from "primary" measurements alone using empirical formulas).
-    required double salinity = 20 [(dccl.field).units = {base_dimensions: "-"}];
+    required double salinity = 20
+        [(dccl.field).units = { base_dimensions: "-" }];
     required double sound_speed = 21
-        [(dccl.field).units = {base_dimensions: "L T^-1"}];
+        [(dccl.field).units = { base_dimensions: "L T^-1" }];
     required double density = 22
-        [(dccl.field).units = {base_dimensions: "M L^-3"}];
+        [(dccl.field).units = { base_dimensions: "M L^-3" }];
 
-    required LatLonPoint global_fix = 23;
+    required .goby.middleware.protobuf.LatLonPoint global_fix = 23;
 
     // algorithm used for secondary quantities
     enum SalinityAlgorithm
@@ -233,4 +222,15 @@ message CTDSample
     }
     optional DensityAlgorithm density_algorithm = 32
         [default = DENSITY_ALGORITHM_UNKNOWN];
+
+    extensions 1000 to max;
+}
+
+message DatumUpdate
+{
+    option (dccl.msg) = {
+        unit_system: "si"
+    };
+
+    required .goby.middleware.protobuf.LatLonPoint datum = 1;
 }

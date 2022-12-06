@@ -4,6 +4,7 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   Henrik Schmidt <henrik@mit.edu>
 //   Thomas McCabe <tom.mccabe@missionsystems.com.au>
 //
 //
@@ -118,6 +119,9 @@ goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
     : goby::moos::GobyMOOSApp(&cfg_),
       translator_(goby::moos::protobuf::TranslatorEntry(), cfg_.common().lat_origin(),
                   cfg_.common().lon_origin(), cfg_.modem_id_lookup_path()),
+      lat_origin_(std::numeric_limits<double>::quiet_NaN()),
+      lon_origin_(std::numeric_limits<double>::quiet_NaN()),
+      new_origin_(false),
       dccl_(goby::acomms::DCCLCodec::get()),
       work_(timer_io_context_)
 
@@ -186,12 +190,42 @@ goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
 
     subscribe(cfg_.moos_var().prefix() + cfg_.moos_var().driver_receive(),
               &CpAcommsHandler::handle_external_driver_receive, this);
+
+    // Dynamic UTM. H. Schmidt 7/30/21
+    GobyMOOSApp::subscribe("LAT_ORIGIN", &CpAcommsHandler::handle_lat_origin, this);
+    GobyMOOSApp::subscribe("LONG_ORIGIN", &CpAcommsHandler::handle_lon_origin, this);
 }
 
 goby::apps::moos::CpAcommsHandler::~CpAcommsHandler() = default;
 
+void goby::apps::moos::CpAcommsHandler::handle_lat_origin(const CMOOSMsg& msg)
+{
+    double new_lat = msg.GetDouble();
+    if (!isnan(new_lat))
+    {
+        lat_origin_ = new_lat;
+        new_origin_ = true;
+    }
+}
+
+void goby::apps::moos::CpAcommsHandler::handle_lon_origin(const CMOOSMsg& msg)
+{
+    double new_lon = msg.GetDouble();
+    if (!isnan(new_lon))
+    {
+        lon_origin_ = new_lon;
+        new_origin_ = true;
+    }
+}
+
 void goby::apps::moos::CpAcommsHandler::loop()
 {
+    if (new_origin_ && !isnan(lat_origin_) && !isnan(lon_origin_))
+    {
+        translator_.update_utm_datum(lat_origin_, lon_origin_);
+        new_origin_ = false;
+    }
+
     timer_io_context_.poll();
 
     if (driver_restart_time_.size())

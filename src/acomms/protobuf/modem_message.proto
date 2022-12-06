@@ -122,6 +122,7 @@ message ModemTransmission
     // extensions 1401-1420 used by benthos_atm900.proto
     // extensions 1421-1440 used by mccs_driver.proto
     // extension 1441 used by popoto_driver.proto
+    // extensions 1500-1509 used by Jaiabot: https://github.com/jaiarobotics/jaiabot/
     extensions 1000 to max;
 }
 

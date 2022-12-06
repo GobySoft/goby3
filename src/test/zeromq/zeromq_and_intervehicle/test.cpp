@@ -432,8 +432,8 @@ void indirect_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig&
 
 int main(int argc, char* argv[])
 {
-    goby::time::SimulatorSettings::using_sim_time = true;
-    goby::time::SimulatorSettings::warp_factor = 20;
+    goby::time::SimulatorSettings::using_sim_time = false;
+    goby::time::SimulatorSettings::warp_factor = 1;
 
     if (argc >= 2)
         udp_port += std::atoi(argv[1]);

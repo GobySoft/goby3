@@ -1,4 +1,4 @@
-// Copyright 2012-2021:
+// Copyright 2012-2022:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -61,6 +61,8 @@ class LiaisonWtThread : public Wt::WApplication
 
     void add_to_menu(Wt::WMenu* menu, goby::zeromq::LiaisonContainer* container);
     void handle_menu_selection(Wt::WMenuItem* item);
+
+    static std::vector<void*> plugin_handles_;
 
   private:
     Wt::WMenu* menu_;

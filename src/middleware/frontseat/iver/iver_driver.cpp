@@ -1,8 +1,9 @@
-// Copyright 2017-2021:
+// Copyright 2017-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   James D. Turner <james.turner@nrl.navy.mil>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -249,10 +250,12 @@ void goby::middleware::frontseat::Iver::process_receive(const std::string& s)
                                                                   feet);
             status_.mutable_pose()->set_heading_with_units(nmea.as<double>(TRUEHEADING) *
                                                            boost::units::degree::degrees);
+            compute_missing(&status_);
 
             gpb::InterfaceData fs_data;
             gpb::IverState& iver_state = *fs_data.MutableExtension(gpb::iver_state);
             iver_state.set_mode(reported_mission_mode_);
+            fs_data.mutable_node_status()->CopyFrom(status_);
             signal_data_from_frontseat(fs_data);
         }
         else if (nmea.at(0).substr(0, 2) == "$C")
@@ -398,7 +401,6 @@ goby::middleware::frontseat::Iver::nmea_time_to_seconds(double nmea_time, int nm
 
     using namespace boost::posix_time;
     using namespace boost::gregorian;
-    ptime unix_epoch(date(1970, 1, 1), time_duration(0, 0, 0));
 
     int hours = nmea_time / 10000;
     nmea_time -= hours * 10000;

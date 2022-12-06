@@ -12,3 +12,5 @@ add_subdirectory(linebasedcomms)
 if(enable_ais)
   add_subdirectory(ais)
 endif()
+
+add_subdirectory(cobs)

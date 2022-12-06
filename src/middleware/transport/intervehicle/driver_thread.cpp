@@ -1,4 +1,4 @@
-// Copyright 2017-2021:
+// Copyright 2017-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -63,6 +63,62 @@ using goby::glog;
 using namespace goby::util::logger;
 using goby::middleware::protobuf::SerializerTransporterMessage;
 
+std::map<std::string, void*> load_plugins()
+{
+    std::map<std::string, void*> driver_plugins;
+
+    // load plugins from environmental variable
+    std::string s_plugins;
+    char* legacy_plugins = getenv("PACOMMSHANDLER_PLUGINS");
+    if (legacy_plugins)
+        s_plugins = std::string(legacy_plugins);
+
+    char* plugins = getenv("GOBY_MODEMDRIVER_PLUGINS");
+    if (plugins)
+    {
+        if (!s_plugins.empty())
+            s_plugins += ";";
+        s_plugins += std::string(plugins);
+    }
+
+    if (!s_plugins.empty())
+    {
+        std::vector<std::string> plugin_vec;
+        boost::split(plugin_vec, s_plugins, boost::is_any_of(";:,"));
+
+        for (auto& i : plugin_vec)
+        {
+            std::vector<void*> plugin_handles_;
+
+            void* handle = dlopen(i.c_str(), RTLD_LAZY);
+
+            if (handle)
+                plugin_handles_.push_back(handle);
+            else
+            {
+                std::cerr << "Failed to open ModemDriver plugin library: " << i << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            const auto name_function = (const char* (*)(void))dlsym(handle, "goby_driver_name");
+            if (name_function)
+            {
+                driver_plugins.insert(std::make_pair(std::string((*name_function)()), handle));
+            }
+            else
+            {
+                std::cerr << "Library must define \"goby_driver_name()\" as extern \"C\":" << i
+                          << std::endl;
+            }
+        }
+    }
+
+    return driver_plugins;
+}
+
+std::map<std::string, void*>
+    goby::middleware::intervehicle::ModemDriverThread::driver_plugins_(load_plugins());
+
 goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     const intervehicle::protobuf::PortalConfig::LinkConfig& config)
     : goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
@@ -96,8 +152,31 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
 
     if (cfg().driver().has_driver_name())
     {
-        throw(goby::Exception("Driver plugins not yet supported by InterVehicle transporters: use "
-                              "driver_type enumerations."));
+        std::map<std::string, void*>::const_iterator driver_it =
+            driver_plugins_.find(cfg().driver().driver_name());
+
+        if (driver_it == driver_plugins_.end())
+            glog.is_die() && glog << "Could not find driver_plugin_name '"
+                                  << cfg().driver().driver_name()
+                                  << "'. Make sure it is loaded using the GOBY_MODEMDRIVER_PLUGINS "
+                                     "environmental var"
+                                  << std::endl;
+        else
+        {
+            auto driver_function = (goby::acomms::ModemDriverBase * (*)(void))
+                dlsym(driver_it->second, "goby_make_driver");
+
+            if (!driver_function)
+            {
+                glog.is(DIE) && glog << "Could not load goby::acomms::ModemDriverBase* "
+                                        "goby_make_driver() for driver name '"
+                                     << cfg().driver().driver_name() << "'." << std::endl;
+            }
+            else
+            {
+                driver_.reset((*driver_function)());
+            }
+        }
     }
     else
     {
@@ -142,6 +221,35 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
         }
     }
 
+    driver_->signal_receive.connect([&](const goby::acomms::protobuf::ModemTransmission& rx_msg) {
+        protobuf::ModemTransmissionWithLinkID msg_with_id;
+        msg_with_id.set_link_modem_id(cfg().modem_id());
+        *msg_with_id.mutable_data() = rx_msg;
+        interprocess_->publish<groups::modem_receive>(msg_with_id);
+    });
+
+    driver_->signal_transmit_result.connect(
+        [&](const goby::acomms::protobuf::ModemTransmission& tx_msg) {
+            protobuf::ModemTransmissionWithLinkID msg_with_id;
+            msg_with_id.set_link_modem_id(cfg().modem_id());
+            *msg_with_id.mutable_data() = tx_msg;
+            interprocess_->publish<groups::modem_transmit_result>(msg_with_id);
+        });
+
+    driver_->signal_raw_incoming.connect([&](const goby::acomms::protobuf::ModemRaw& msg) {
+        protobuf::ModemRawWithLinkID msg_with_id;
+        msg_with_id.set_link_modem_id(cfg().modem_id());
+        *msg_with_id.mutable_data() = msg;
+        interprocess_->publish<groups::modem_raw_incoming>(msg_with_id);
+    });
+
+    driver_->signal_raw_outgoing.connect([&](const goby::acomms::protobuf::ModemRaw& msg) {
+        protobuf::ModemRawWithLinkID msg_with_id;
+        msg_with_id.set_link_modem_id(cfg().modem_id());
+        *msg_with_id.mutable_data() = msg;
+        interprocess_->publish<groups::modem_raw_outgoing>(msg_with_id);
+    });
+
     driver_->signal_receive.connect(
         [&](const goby::acomms::protobuf::ModemTransmission& rx_msg) { _receive(rx_msg); });
 
@@ -149,6 +257,21 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
         [&](goby::acomms::protobuf::ModemTransmission* msg) { this->_data_request(msg); });
 
     goby::acomms::bind(mac_, *driver_);
+
+    mac_.signal_initiate_transmission.connect(
+        [&](const goby::acomms::protobuf::ModemTransmission& msg) {
+            protobuf::ModemTransmissionWithLinkID msg_with_id;
+            msg_with_id.set_link_modem_id(cfg().modem_id());
+            *msg_with_id.mutable_data() = msg;
+            interprocess_->publish<groups::mac_initiate_transmission>(msg_with_id);
+        });
+
+    mac_.signal_slot_start.connect([&](const goby::acomms::protobuf::ModemTransmission& msg) {
+        protobuf::ModemTransmissionWithLinkID msg_with_id;
+        msg_with_id.set_link_modem_id(cfg().modem_id());
+        *msg_with_id.mutable_data() = msg;
+        interprocess_->publish<groups::mac_slot_start>(msg_with_id);
+    });
 
     mac_.startup(cfg().mac());
 
@@ -257,8 +380,9 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
     auto it = pending_ack_.lower_bound(msg->frame_start()), end = pending_ack_.end();
     while (it != end)
     {
-        goby::glog << group(glog_group_) << "Erasing " << it->second.size()
-                   << " values not acked for frame " << it->first << std::endl;
+        goby::glog.is_debug1() && goby::glog << group(glog_group_) << "Erasing "
+                                             << it->second.size() << " values not acked for frame "
+                                             << it->first << std::endl;
         it = pending_ack_.erase(it);
     }
 
@@ -340,8 +464,10 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
             for (auto it = it_pair.first, end = it_pair.second; it != end; ++it)
             {
                 if (it->second.intervehicle() == subscription.intervehicle())
+                {
                     is_new_cfg = false;
-                break;
+                    break;
+                }
             }
 
             if (is_new_cfg)
@@ -569,6 +695,8 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
                 protobuf::AckData& ack_data = *ack_pair.mutable_data();
                 ack_data.mutable_header()->set_src(full_src);
                 ack_data.mutable_header()->add_dest(full_dest);
+                *ack_data.mutable_header()->mutable_modem_msg() = rx_msg;
+
                 auto now = goby::time::SteadyClock::now();
 
                 auto values_to_ack_it = pending_ack_.find(frame_number);
@@ -599,8 +727,11 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
         {
             for (auto& frame : rx_msg.frame())
             {
-                const intervehicle::protobuf::DCCLForwardedData packets(
+                intervehicle::protobuf::DCCLForwardedData packets(
                     detail::DCCLSerializerParserHelperBase::unpack(frame));
+                packets.mutable_header()->set_src(full_src);
+                packets.mutable_header()->add_dest(full_dest);
+                *packets.mutable_header()->mutable_modem_msg() = rx_msg;
                 interprocess_->publish<groups::modem_data_in>(packets);
             }
         }

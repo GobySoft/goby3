@@ -1,4 +1,4 @@
-// Copyright 2020-2021:
+// Copyright 2020-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -239,7 +239,11 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         std::string group_int;
         if (group_int_lit)
         {
-            group_int = group_int_lit->getValue().toString(10, false);
+#if LLVM_VERSION_MAJOR >= 13
+            group_int = llvm::toString(group_int_lit->getValue(), /*radix*/ 10, /*signed*/ false);
+#else
+            group_int = group_int_lit->getValue().toString(/*radix*/ 10, /*signed*/ false);
+#endif
         }
         else
         {

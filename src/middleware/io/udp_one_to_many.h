@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -180,7 +180,8 @@ void goby::middleware::io::UDPOneToManyThread<
     boost::asio::ip::udp::resolver resolver(this->mutable_io());
     boost::asio::ip::udp::endpoint remote_endpoint =
         *resolver.resolve({boost::asio::ip::udp::v4(), io_msg->udp_dest().addr(),
-                           std::to_string(io_msg->udp_dest().port())});
+                           std::to_string(io_msg->udp_dest().port()),
+                           boost::asio::ip::resolver_query_base::numeric_service});
 
     this->mutable_socket().async_send_to(
         boost::asio::buffer(io_msg->data()), remote_endpoint,

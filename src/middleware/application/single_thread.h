@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -27,15 +27,16 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/navigation/navigation.h"
 #include "goby/middleware/terminate/terminate.h"
 
 #include "goby/middleware/application/detail/interprocess_common.h"
+#include "goby/middleware/application/groups.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/thread.h"
 
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/intervehicle.h"
-
 
 namespace goby
 {
@@ -99,6 +100,15 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
                 this->thread_health(*resp.mutable_main());
                 this->interprocess().template publish<groups::health_response>(resp);
             });
+
+        this->interprocess().template subscribe<goby::middleware::groups::datum_update>(
+            [this](const protobuf::DatumUpdate& datum_update) {
+                this->configure_geodesy(
+                    {datum_update.datum().lat_with_units(), datum_update.datum().lon_with_units()});
+            });
+
+        this->interprocess().template publish<goby::middleware::groups::configuration>(
+            this->app_cfg());
     }
 
     virtual ~SingleThreadApplication() {}

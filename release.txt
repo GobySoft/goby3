@@ -1,6 +1,181 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.13
+
+### Bugs
+
+- Add missing codec_version to all Goby DCCL messages (required by DCCL4).
+- Fix bug in goby_moos_gateway where subscriptions won't happen after MOOS is connected
+
+****************
+Version 3.0.12
+
+### Bugs
+
+- Fix goby_gps race condition where it will occasionally miss the gpsd connect and thus never send the WATCH command (and thus never receive GPS data).
+- Switch Thread to use steady_clock to calculate loop() to reduce strange behavior if the system clock jumps (e.g. due to NTP correction on startup).
+
+
+****************
+Version 3.0.11
+
+### Debian packages
+
+- Added support for Ubuntu Jammy (22.04)
+- Dropped support for end-of-life Debian Stretch (9)
+- Changed from Clang to GCC for building Debian packages to workaround ABI incompatibility problem with goby_liaison on Debian 10 armhf (and possibly other armhf builds).
+
+### Bugs
+
+- Add support for Proj.6+ API while maintaining support for Proj.4 old API.
+
+****************
+Version 3.0.10
+
+### FrontSeat
+
+- Iver driver publish node status on $OSI update as well as on $C
+
+### Bugs
+
+- Fix health reporting bug from MultiThreadApplication that prevented reporting of health status less than OK
+- Fix Goby log tool to always pick up extensions.
+- Support updates in released DCCL4
+
+****************
+Version 3.0.9
+
+### Logging
+
+- Add --format=JSON output to goby_log_tool and implemented it for Protobuf/DCCL, and JSON formats
+- Add flag --write_hdf5_zero_length_dim to goby_log_tool that when set to false does not write zero length dimensions to the HDF5 file (which caused problems with older HDF5 libraries on Windows). Default is true, which means this change does not affect the default behavior.
+- Add start/stop/rotate subscription to goby_logger.
+
+### Coroner
+
+- Do not automatically add apps that are not on --expected_name list unless --auto_add_new_apps is set. This changes the default behavior, which had the potential to be confusing (fixes https://github.com/GobySoft/goby3/issues/249).
+
+### Liaison
+
+Various efficiency improvements in Scope (fixes https://github.com/GobySoft/goby3/issues/250):
+
+- Set maximum message size to be handled (messages larger than this are omitted by the Scope) to avoid CPU lockups when huge messages are received
+- Improve regex functionality to exclude messages from processing rather than just from visualization. This should improve performance when omitting messages
+- Add update frequency to be configurable in the Scope UI.
+
+### Bugs
+
+- Fix race condition with subscription from HealthMonitorThread by ensure it's launched after InterProcessPortal is constructed. This should fix bug where apps where running fine but not responding to the goby_coroner health request.
+- Fix bug in goby_logger Protobuf/DCCL extension protos were not being embedded correctly in the .goby log file (no data was lost but the Protobufs were then required when running goby_log_tool). Partially fixes https://github.com/GobySoft/goby3/issues/247
+
+
+
+****************
+Version 3.0.8
+
+### Liaison
+- Support for oneof in Commander fields
+
+### Bugs
+- Fix "Host not found" errors in various apps using Boost ASIO when loopback is the only interface configured.
+
+****************
+Version 3.0.7
+
+### Middleware
+- Change goby::middleware::Group numeric value from uint8 to uint32
+- Improve support for goby_coroner - MultiThreadApplication now queries its child threads and receives their health back to put in the overall report
+- gobyd now correctly quits (rather than hangs) if a ModemDriver has an uncaught exception
+
+### Liaison
+- Support for DCCL4 dynamic conditionals (when using DCCL4) in Liaison Commander forms
+
+### Build
+- Support Debian Bullseye
+
+### MOOS
+- Support pHelmIvP standby mode in iFrontSeat
+- Fix bug parsing MOOS log file when pLogger block is involved ("log=" value)
+- Add wildcard trigger option to TranslatorBase
+
+****************
+Version 3.0.6
+
+### Util
+
+- Fix bug in geodesy where Zone 60 (174-180 degrees E) was report at Zone 0 (does not exist) and thus caused an exception.
+
+### Middleware
+
+- Add scheme to output of HDF5 file as field '_scheme_' to allow distinguishing between DCCL and PROTOBUF messages.
+
+
+****************
+Version 3.0.5
+
+### Middleware
+
+- Added IO threads (TCP, Serial, PTY) for the Consistent Overhead Byte Stuffing (COBS) packet framing algorithm, which is a easy to implement scheme for delimiting binary packets on a stream protocol.
+- Changed file_log to be a singular field, and added -z flags (which can be repeated, e.g. -zz or -zzz) for quickly changing the file log verbosity on the command line.
+
+### ZeroMQ
+
+- Add symlink for latest log in goby_logger.
+
+
+****************
+
+
+****************
+Version 3.0.4
+
+### Middleware
+
+- Add publications from the IntervehiclePortal (gobyd) for various Goby-Acomms signals (driver / AMAC)
+
+### ZeroMQ
+
+- Fix Liaison Scope truncating messages in drop-down when the messages vary in size within the same Group
+
+### Util
+
+- Fix bug in AIS encoding for negative lat/lon (was undefined behavior, but exhibits the problem only on ARM processors)
+
+
+****************
+Version 3.0.3
+
+### Middleware
+
+- Support for update to geodesy conversion datum at runtime using publication to goby::datum_update
+- Support shared library plugins for modem drivers in InterVehicleTransporter (and thus gobyd)
+- Add parsing of RTE and WPL messages from OpenCPN for receiving data from the map (routes and waypoints).
+- Added regex for optionally omitting certain groups and/or nodes from the goby_clang_tool visualization.
+
+****************
+Version 3.0.2
+
+### Middleware
+
+- Support for intermodule in goby_clang_tool
+- Added extensions to frontseat and health messages
+
+****************
+Version 3.0.1
+
+### Bug fixes
+
+- Fix segfault in goby_liaison when thread_id was reused by the OS.
+
+
+
+****************
+Version 3.0.0
+
+First stable release of Goby3 nested communications middleware.
+
+****************
 Version 3.0.0~beta*
 
 ### Middleware

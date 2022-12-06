@@ -4,9 +4,7 @@ import "dccl/option_extensions.proto";
 
 package goby.middleware.protobuf;
 
-message HealthRequest
-{
-}
+message HealthRequest {}
 
 enum HealthState
 {
@@ -18,16 +16,22 @@ enum HealthState
 enum Error
 {
     ERROR__PROCESS_DIED = 1;
+
+    ERROR__THREAD_NOT_RESPONDING = 100;
 }
 
 message ThreadHealth
 {
     required string name = 1;
-    optional string thread_id = 2;
+    optional int32 thread_id = 2;
+    optional int32 uid = 3;
     required HealthState state = 10;
     repeated ThreadHealth child = 11;
     optional Error error = 20;
     optional string error_message = 21;
+
+    extensions 1000 to max;
+    // 1000 - jaiabot
 }
 
 message ProcessHealth
@@ -36,15 +40,22 @@ message ProcessHealth
     optional uint32 pid = 2;
 
     required ThreadHealth main = 10;
+
+    extensions 1000 to max;
+    // 1000 - jaiabot
 }
 
 message VehicleHealth
 {
     option (dccl.msg).unit_system = "si";
 
-    required uint64 time = 1 [(dccl.field).units = {prefix: "micro" base_dimensions: "T"}];
+    required uint64 time = 1
+        [(dccl.field).units = { prefix: "micro" base_dimensions: "T" }];
     required string platform = 2;
 
     required HealthState state = 10;
     repeated ProcessHealth process = 11;
+
+    extensions 1000 to max;
+    // 1000 - jaiabot
 }

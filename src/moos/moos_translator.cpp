@@ -24,7 +24,7 @@
 
 #include <cctype> // for isdigit
 #include <cmath>  // for floor
-#include <memory>  // for allocato...
+#include <memory> // for allocato...
 
 #include <boost/algorithm/string/case_conv.hpp>             // for to_lower...
 #include <boost/bind.hpp>                                   // for bind_t, arg
@@ -51,6 +51,27 @@
 #include "moos_translator.h"
 
 const double NaN = std::numeric_limits<double>::quiet_NaN();
+
+void goby::moos::MOOSTranslator::update_utm_datum(double lat_origin, double lon_origin)
+{
+    if (!(boost::math::isnan)(lat_origin) && !(boost::math::isnan)(lon_origin))
+    {
+        if (geodesy_.Initialise(lat_origin, lon_origin))
+        {
+            moos::transitional::DCCLAlgorithmPerformer* ap =
+                moos::transitional::DCCLAlgorithmPerformer::getInstance();
+
+            ap->add_adv_algorithm("lat2utm_y",
+                                  boost::bind(&MOOSTranslator::alg_lat2utm_y, this, _1, _2));
+            ap->add_adv_algorithm("lon2utm_x",
+                                  boost::bind(&MOOSTranslator::alg_lon2utm_x, this, _1, _2));
+            ap->add_adv_algorithm("utm_x2lon",
+                                  boost::bind(&MOOSTranslator::alg_utm_x2lon, this, _1, _2));
+            ap->add_adv_algorithm("utm_y2lat",
+                                  boost::bind(&MOOSTranslator::alg_utm_y2lat, this, _1, _2));
+        }
+    }
+}
 
 void goby::moos::MOOSTranslator::initialize(double lat_origin, double lon_origin,
                                             const std::string& modem_id_lookup_path)
@@ -97,20 +118,7 @@ void goby::moos::MOOSTranslator::initialize(double lat_origin, double lon_origin
         //    goby::acomms::DCCLModemIdConverterCodec::add(it->second, it->first);
     }
 
-    if (!(boost::math::isnan)(lat_origin) && !(boost::math::isnan)(lon_origin))
-    {
-        if (geodesy_.Initialise(lat_origin, lon_origin))
-        {
-            ap->add_adv_algorithm("lat2utm_y",
-                                  boost::bind(&MOOSTranslator::alg_lat2utm_y, this, _1, _2));
-            ap->add_adv_algorithm("lon2utm_x",
-                                  boost::bind(&MOOSTranslator::alg_lon2utm_x, this, _1, _2));
-            ap->add_adv_algorithm("utm_x2lon",
-                                  boost::bind(&MOOSTranslator::alg_utm_x2lon, this, _1, _2));
-            ap->add_adv_algorithm("utm_y2lat",
-                                  boost::bind(&MOOSTranslator::alg_utm_y2lat, this, _1, _2));
-        }
-    }
+    update_utm_datum(lat_origin, lon_origin);
 }
 
 void goby::moos::alg_power_to_dB(moos::transitional::DCCLMessageVal& val_to_mod)
