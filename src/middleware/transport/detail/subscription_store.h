@@ -83,6 +83,12 @@ class SubscriptionStoreBase
         }
     }
 
+    static void remove(std::thread::id thread_id)
+    {
+        std::lock_guard<decltype(stores_mutex_)> lock(stores_mutex_);
+        stores_.erase(thread_id);
+    }
+
   protected:
     template <typename StoreType> static void insert(std::thread::id thread_id)
     {

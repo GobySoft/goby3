@@ -1,4 +1,4 @@
-// Copyright 2020-2021:
+// Copyright 2020-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -79,6 +79,14 @@ static cl::opt<bool> OmitDisconnected(
              "or subscribers without publishers"),
     cl::cat(Goby3ToolCategory));
 
+static cl::opt<std::string> OmitGroupRegex("omit-group-regex",
+                                           cl::desc("Regex of groups to omit for '-viz' action"),
+                                           cl::value_desc("foo.*"), cl::cat(Goby3ToolCategory));
+
+static cl::opt<std::string> OmitNodeRegex("omit-node-regex",
+                                          cl::desc("Regex of nodes to omit for '-viz' action"),
+                                          cl::value_desc("foo.*"), cl::cat(Goby3ToolCategory));
+
 static cl::opt<bool> IncludeTerminate("include-terminate",
                                       cl::desc("For '-viz', include goby_terminate groups"),
                                       cl::cat(Goby3ToolCategory));
@@ -98,7 +106,8 @@ static cl::opt<bool>
 
 int main(int argc, const char** argv)
 {
-    clang::tooling::CommonOptionsParser SharedOptionsParser(argc, argv, Goby3ToolCategory);
+    llvm::Expected<clang::tooling::CommonOptionsParser> SharedOptionsParser =
+        clang::tooling::CommonOptionsParser::create(argc, argv, Goby3ToolCategory, llvm::cl::OneOrMore);
 
     if (Generate)
     {
@@ -107,8 +116,8 @@ int main(int argc, const char** argv)
             std::cerr << "Must specify -target when using -gen" << std::endl;
             exit(EXIT_FAILURE);
         }
-        clang::tooling::ClangTool Tool(SharedOptionsParser.getCompilations(),
-                                       SharedOptionsParser.getSourcePathList());
+        clang::tooling::ClangTool Tool(SharedOptionsParser->getCompilations(),
+                                       SharedOptionsParser->getSourcePathList());
         return goby::clang::generate(Tool, OutDir, OutFile, Target);
     }
     else if (Visualize)
@@ -120,9 +129,11 @@ int main(int argc, const char** argv)
                                                 IncludeAll ? true : IncludeCoroner,
                                                 IncludeAll ? true : IncludeTerminate,
                                                 IncludeAll,
-                                                DotSplines};
+                                                DotSplines,
+                                                OmitGroupRegex,
+                                                OmitNodeRegex};
 
-        return goby::clang::visualize(SharedOptionsParser.getSourcePathList(), params);
+        return goby::clang::visualize(SharedOptionsParser->getSourcePathList(), params);
     }
     else
     {

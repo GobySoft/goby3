@@ -1,4 +1,4 @@
-// Copyright 2017-2021:
+// Copyright 2017-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -25,6 +25,7 @@
 #ifndef GOBY_MIDDLEWARE_GROUP_H
 #define GOBY_MIDDLEWARE_GROUP_H
 
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -58,20 +59,21 @@ class Group
 {
   public:
     /// Special group number representing the broadcast group (used when no grouping is required for a given type)
-    static constexpr std::uint8_t broadcast_group{0};
+    static constexpr std::uint32_t broadcast_group{0};
     /// Special group number representing an invalid numeric group (unsuitable for intervehicle and outer layers)
-    static constexpr std::uint8_t invalid_numeric_group{255};
+    static constexpr std::uint32_t invalid_numeric_group{std::numeric_limits<std::uint32_t>::max()};
 
-    static constexpr std::uint8_t maximum_valid_group{254};
+    static constexpr std::uint32_t maximum_valid_group{std::numeric_limits<std::uint32_t>::max() -
+                                                       1};
 
     /// \brief Construct a group with a (C-style) string and possibly a numeric value (when this Group will be used on intervehicle and outer layers).
-    constexpr Group(const char* c, std::uint8_t i = invalid_numeric_group) : c_(c), i_(i) {}
+    constexpr Group(const char* c, std::uint32_t i = invalid_numeric_group) : c_(c), i_(i) {}
 
     /// \brief Construct a group with only a numeric value
-    constexpr Group(std::uint8_t i = invalid_numeric_group) : i_(i) {}
+    constexpr Group(std::uint32_t i = invalid_numeric_group) : i_(i) {}
 
     /// \brief Access the group's numeric value
-    constexpr std::uint8_t numeric() const { return i_; }
+    constexpr std::uint32_t numeric() const { return i_; }
 
     /// \brief Access the group's string value as a C string
     constexpr const char* c_str() const { return c_; }
@@ -97,7 +99,7 @@ class Group
 
   private:
     const char* c_{nullptr};
-    std::uint8_t i_{invalid_numeric_group};
+    std::uint32_t i_{invalid_numeric_group};
 };
 
 inline bool operator==(const Group& a, const Group& b)
@@ -117,14 +119,14 @@ class DynamicGroup : public Group
 {
   public:
     /// \brief Construct a group with a string and possibly a numeric value (when this Group will be used on intervehicle and outer layers).
-    DynamicGroup(const std::string& s, std::uint8_t i = Group::invalid_numeric_group)
+    DynamicGroup(const std::string& s, std::uint32_t i = Group::invalid_numeric_group)
         : Group(i), s_(new std::string(s))
     {
         Group::set_c_str(s_->c_str());
     }
 
     /// \brief Construct a group with a numeric value only
-    DynamicGroup(std::uint8_t i) : Group(i) {}
+    DynamicGroup(std::uint32_t i) : Group(i) {}
 
   private:
     std::unique_ptr<const std::string> s_;

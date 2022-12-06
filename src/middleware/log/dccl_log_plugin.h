@@ -1,4 +1,4 @@
-// Copyright 2012-2021:
+// Copyright 2012-2022:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -39,6 +39,11 @@ namespace log
 {
 class DCCLPlugin : public ProtobufPluginBase<goby::middleware::MarshallingScheme::DCCL>
 {
+public:
+    DCCLPlugin(bool user_pool_first = false)
+        : ProtobufPluginBase<goby::middleware::MarshallingScheme::DCCL>(user_pool_first)
+    {
+    }
 };
 
 } // namespace log

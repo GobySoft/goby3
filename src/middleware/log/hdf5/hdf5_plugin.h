@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -46,6 +46,9 @@ struct HDF5ProtobufEntry
     time::MicroTime time{0 * boost::units::si::seconds};
     /// Actual message contents
     std::shared_ptr<google::protobuf::Message> msg;
+
+    /// Scheme
+    int scheme{-1};
 
     HDF5ProtobufEntry() = default;
 

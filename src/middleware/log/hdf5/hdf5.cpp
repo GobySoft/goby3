@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -23,7 +23,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cstddef> // for size_t
-#include <cstdint>  // for uint64_t, int...
+#include <cstdint> // for uint64_t, int...
 
 #include <boost/algorithm/string/classification.hpp>   // for is_any_ofF
 #include <boost/algorithm/string/predicate_facade.hpp> // for predicate_facade
@@ -32,6 +32,7 @@
 #include <dccl/dynamic_protobuf_manager.h>             // for DynamicProtob...
 
 #include "goby/time/types.h" // for MicroTime
+#include "goby/util/debug_logger.h"
 
 #include "hdf5.h"
 #include "hdf5_plugin.h" // for HDF5ProtobufE...
@@ -47,7 +48,7 @@ void goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5Pr
             entries.insert(std::make_pair(msg_name, MessageCollection(msg_name)));
         it = itpair.first;
     }
-    it->second.entries.insert(std::make_pair(time::MicroTime(entry.time).value(), entry.msg));
+    it->second.entries.insert(std::make_pair(time::MicroTime(entry.time).value(), entry));
 }
 
 H5::Group& goby::middleware::hdf5::GroupFactory::fetch_group(const std::string& group_path)
@@ -81,8 +82,10 @@ goby::middleware::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::
     }
 }
 
-goby::middleware::hdf5::Writer::Writer(const std::string& output_file)
-    : h5file_(output_file, H5F_ACC_TRUNC), group_factory_(h5file_)
+goby::middleware::hdf5::Writer::Writer(const std::string& output_file, bool write_zero_length_dim)
+    : h5file_(output_file, H5F_ACC_TRUNC),
+      group_factory_(h5file_),
+      write_zero_length_dim_(write_zero_length_dim)
 {
 }
 
@@ -110,6 +113,8 @@ void goby::middleware::hdf5::Writer::write()
 void goby::middleware::hdf5::Writer::write_channel(const std::string& group,
                                                    const goby::middleware::hdf5::Channel& channel)
 {
+    glog.is_verbose() && glog << "Writing HDF5 group: " << group << std::endl;
+
     for (const auto& entry : channel.entries)
         write_message_collection(group + "/" + entry.first, entry.second);
 }
@@ -118,17 +123,19 @@ void goby::middleware::hdf5::Writer::write_message_collection(
     const std::string& group, const goby::middleware::hdf5::MessageCollection& message_collection)
 {
     write_time(group, message_collection);
+    write_scheme(group, message_collection);
 
     auto write_field = [&, this](const google::protobuf::FieldDescriptor* field_desc) {
         std::vector<const google::protobuf::Message*> messages;
         for (const auto& entry : message_collection.entries)
-        { messages.push_back(entry.second.get()); } std::vector<hsize_t> hs;
+        { messages.push_back(entry.second.msg.get()); }
+        std::vector<hsize_t> hs;
         hs.push_back(messages.size());
         write_field_selector(group, field_desc, messages, hs);
     };
 
     const google::protobuf::Descriptor* desc =
-        message_collection.entries.begin()->second->GetDescriptor();
+        message_collection.entries.begin()->second.msg->GetDescriptor();
     for (int i = 0, n = desc->field_count(); i < n; ++i)
     {
         const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
@@ -259,7 +266,11 @@ void goby::middleware::hdf5::Writer::write_field_selector(
     switch (field_desc->cpp_type())
     {
         case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-            write_embedded_message(group, field_desc, messages, hs);
+            if (field_desc->message_type()->full_name() == "google.protobuf.FileDescriptorProto")
+                glog.is_warn() && glog << "Omitting google.protobuf.FileDescriptorProto"
+                                       << std::endl;
+            else
+                write_embedded_message(group, field_desc, messages, hs);
             break;
 
         case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
@@ -365,6 +376,22 @@ void goby::middleware::hdf5::Writer::write_time(
     write_vector(group, "_datenum_", datenum, hs, (double)0);
 }
 
+void goby::middleware::hdf5::Writer::write_scheme(
+    const std::string& group, const goby::middleware::hdf5::MessageCollection& message_collection)
+{
+    std::vector<int> scheme(message_collection.entries.size(), 0);
+    int i = 0;
+    for (const auto& entry : message_collection.entries)
+    {
+        scheme[i] = entry.second.scheme;
+        ++i;
+    }
+
+    std::vector<hsize_t> hs;
+    hs.push_back(message_collection.entries.size());
+    write_vector(group, "_scheme_", scheme, hs, (int)0);
+}
+
 void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
                                                   const std::string& dataset_name,
                                                   const std::vector<std::string>& data,
@@ -374,26 +401,35 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
     std::vector<char> data_char;
     std::vector<hsize_t> hs = hs_outer;
 
+    std::vector<std::uint32_t> sizes;
     size_t max_size = 0;
     for (const auto& i : data)
     {
+        sizes.push_back(i.size());
         if (i.size() > max_size)
             max_size = i.size();
     }
 
     for (auto d : data)
     {
-        d.resize(max_size, ' ');
+        d.resize(max_size, '\0');
         for (char c : d) data_char.push_back(c);
     }
     hs.push_back(max_size);
 
-    H5::DataSpace dataspace(hs.size(), hs.data(), hs.data());
+    std::unique_ptr<H5::DataSpace> dataspace;
     H5::Group& grp = group_factory_.fetch_group(group);
-    H5::DataSet dataset = grp.createDataSet(dataset_name, H5::PredType::NATIVE_CHAR, dataspace);
+    if (data_char.size() || write_zero_length_dim_)
+        dataspace = std::make_unique<H5::DataSpace>(hs.size(), hs.data(), hs.data());
+    else
+        dataspace = std::make_unique<H5::DataSpace>(H5S_NULL);
+
+    H5::DataSet dataset = grp.createDataSet(dataset_name, H5::PredType::NATIVE_CHAR, *dataspace);
 
     if (data_char.size())
         dataset.write(&data_char[0], H5::PredType::NATIVE_CHAR);
+
+    write_vector(group, dataset_name + "_size", sizes, hs_outer, std::uint32_t(0));
 
     const int rank = 1;
     hsize_t att_hs[] = {1};

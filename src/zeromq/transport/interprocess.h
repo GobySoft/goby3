@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -355,7 +355,14 @@ class InterProcessPortalImplementation
                   const middleware::Publisher<Data>& /*publisher*/, bool ignore_buffer = false)
     {
         std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
-        std::string identifier = _make_fully_qualified_identifier<Data, scheme>(d, group) + '\0';
+        std::string type_name = middleware::SerializerParserHelper<Data, scheme>::type_name(d);
+        _publish_serialized(type_name, scheme, bytes, group, ignore_buffer);
+    }
+
+    void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
+                             const goby::middleware::Group& group, bool ignore_buffer = false)
+    {
+        std::string identifier = _make_fully_qualified_identifier(type_name, scheme, group) + '\0';
         zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer);
     }
 
@@ -378,7 +385,7 @@ class InterProcessPortalImplementation
         portal_subscriptions_.insert(std::make_pair(identifier, subscription));
     }
 
-    void _subscribe_regex(
+    std::shared_ptr<middleware::SerializationSubscriptionRegex> _subscribe_regex(
         std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type,
                            const goby::middleware::Group& group)>
             f,
@@ -387,6 +394,7 @@ class InterProcessPortalImplementation
         auto new_sub = std::make_shared<middleware::SerializationSubscriptionRegex>(
             f, schemes, type_regex, group_regex);
         _subscribe_regex(new_sub);
+        return new_sub;
     }
 
     template <typename Data, int scheme>
@@ -640,11 +648,10 @@ class InterProcessPortalImplementation
                                 scheme, group, wildcard);
     }
 
-    template <typename Data, int scheme>
-    std::string _make_fully_qualified_identifier(const Data& d,
-                                                 const goby::middleware::Group& group)
+    std::string _make_fully_qualified_identifier(const std::string& type_name, int scheme,
+                                                 const std::string& group)
     {
-        return _make_identifier<Data, scheme>(d, group, IdentifierWildcard::THREAD_WILDCARD) +
+        return _make_identifier(type_name, scheme, group, IdentifierWildcard::THREAD_WILDCARD) +
                id_component(std::this_thread::get_id(), threads_);
     }
 

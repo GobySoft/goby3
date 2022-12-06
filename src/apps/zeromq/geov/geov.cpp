@@ -1,3 +1,26 @@
+// Copyright 2021-2022:
+//   GobySoft, LLC (2013-)
+//   Community contributors (see AUTHORS file)
+// File authors:
+//   Toby Schneider <toby@gobysoft.org>
+//
+//
+// This file is part of the Goby Underwater Autonomy Project Binaries
+// ("The Goby Binaries").
+//
+// The Goby Binaries are free software: you can redistribute them and/or modify
+// them under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 2 of the License, or
+// (at your option) any later version.
+//
+// The Goby Binaries are distributed in the hope that they will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Goby.  If not, see <http://www.gnu.org/licenses/>.
+
 #include <arpa/inet.h>
 #include <mysql/mysql.h>
 #include <netdb.h>
@@ -9,13 +32,13 @@
 #include "goby/middleware/frontseat/groups.h"
 #include "goby/middleware/protobuf/frontseat_data.pb.h"
 #include "goby/util/as.h"
-#include "goby/zeromq/application/multi_thread.h"
+#include "goby/zeromq/application/single_thread.h"
 #include "goby/zeromq/protobuf/geov_config.pb.h"
 
 using goby::glog;
 namespace si = boost::units::si;
 using ApplicationBase =
-    goby::zeromq::MultiThreadApplication<goby::apps::zeromq::protobuf::GEOVInterfaceConfig>;
+    goby::zeromq::SingleThreadApplication<goby::apps::zeromq::protobuf::GEOVInterfaceConfig>;
 
 namespace goby
 {

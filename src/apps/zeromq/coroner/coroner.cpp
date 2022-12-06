@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -78,7 +78,7 @@ class Coroner : public goby::zeromq::SingleThreadApplication<protobuf::CoronerCo
                     glog.is_debug1() && glog << "Received response: " << response.ShortDebugString()
                                              << std::endl;
                     responses_[response.name()] = response;
-                    if (!tracked_names_.count(response.name()))
+                    if (cfg().auto_add_new_apps() && !tracked_names_.count(response.name()))
                     {
                         glog.is_verbose() &&
                             glog << "Tracking new process name: " << response.name() << std::endl;

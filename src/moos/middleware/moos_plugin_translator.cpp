@@ -1,4 +1,4 @@
-// Copyright 2017-2021:
+// Copyright 2017-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -73,18 +73,11 @@ void goby::moos::TranslatorBase::MOOSInterface::on_connect()
     using goby::glog;
     using namespace goby::util::logger;
 
-    for (const auto& var_func_pair : trigger_vars_)
-    {
-        const std::string& moos_var = var_func_pair.first;
-        comms_.Register(moos_var);
-        glog.is(DEBUG1) && glog << "Subscribed for MOOS variable: " << moos_var << std::endl;
-    }
-
-    for (const std::string& moos_var : buffer_vars_)
-    {
-        comms_.Register(moos_var);
-        glog.is(DEBUG1) && glog << "Subscribed for MOOS variable: " << moos_var << std::endl;
-    }
+    for (const auto& var_func_pair : trigger_vars_) moos_register(var_func_pair.first);
+    for (const std::string& moos_var : buffer_vars_) moos_register(moos_var);
+    for (const auto& filter_func_pair : trigger_wildcard_vars_)
+        moos_wildcard_register(filter_func_pair.first);
+    connected_ = true;
 }
 
 void goby::moos::TranslatorBase::MOOSInterface::loop()
@@ -117,8 +110,17 @@ void goby::moos::TranslatorBase::MOOSInterface::loop()
     }
     for (const CMOOSMsg& msg : moos_msgs)
     {
-        auto it = trigger_vars_.find(msg.GetKey());
-        if (it != trigger_vars_.end())
-            it->second(msg);
+        {
+            auto it = trigger_vars_.find(msg.GetKey());
+            if (it != trigger_vars_.end())
+                it->second(msg);
+        }
+
+        for (const auto& filter_func_pair : trigger_wildcard_vars_)
+        {
+            const MOOS::MsgFilter& filter = filter_func_pair.first;
+            if (filter.Matches(msg))
+                filter_func_pair.second(msg);
+        }
     }
 }

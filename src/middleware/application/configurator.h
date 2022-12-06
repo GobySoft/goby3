@@ -176,6 +176,36 @@ void ProtobufConfigurator<Config>::merge_app_base_cfg(
                 break;
         }
     }
+
+    if (var_map.count("glog_file_verbose"))
+    {
+        switch (var_map["glog_file_verbose"].as<std::string>().size())
+        {
+            default:
+            case 0:
+                base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
+                    util::protobuf::GLogConfig::VERBOSE);
+                break;
+            case 1:
+                base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
+                    util::protobuf::GLogConfig::DEBUG1);
+                break;
+            case 2:
+                base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
+                    util::protobuf::GLogConfig::DEBUG2);
+                break;
+            case 3:
+                base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
+                    util::protobuf::GLogConfig::DEBUG3);
+                break;
+        }
+    }
+
+    if (var_map.count("glog_file_dir"))
+    {
+        base_cfg->mutable_glog_config()->mutable_file_log()->set_file_dir(
+            var_map["glog_file_dir"].as<std::string>());
+    }
 }
 
 } // namespace middleware

@@ -1,4 +1,4 @@
-// Copyright 2017-2021:
+// Copyright 2017-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -46,15 +46,17 @@
 #include "goby/middleware/application/interface.h"            // for run
 #include "goby/middleware/group.h"                            // for operat...
 #include "goby/middleware/log/dccl_log_plugin.h"              // for DCCLPl...
-#include "goby/middleware/log/log_entry.h"                    // for LogEntry
-#include "goby/middleware/log/protobuf_log_plugin.h"          // for Protob...
-#include "goby/middleware/marshalling/interface.h"            // for Marsha...
-#include "goby/time/convert.h"                                // for file_str
-#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
-#include "goby/zeromq/application/single_thread.h"            // for Single...
-#include "goby/zeromq/protobuf/interprocess_config.pb.h"      // for InterP...
-#include "goby/zeromq/protobuf/logger_config.pb.h"            // for Logger...
-#include "goby/zeromq/transport/interprocess.h"               // for InterP...
+#include "goby/middleware/log/groups.h"
+#include "goby/middleware/log/log_entry.h"           // for LogEntry
+#include "goby/middleware/log/protobuf_log_plugin.h" // for Protob...
+#include "goby/middleware/marshalling/interface.h"   // for Marsha...
+#include "goby/middleware/protobuf/logger.pb.h"
+#include "goby/time/convert.h"                           // for file_str
+#include "goby/util/debug_logger/flex_ostream.h"         // for operat...
+#include "goby/zeromq/application/single_thread.h"       // for Single...
+#include "goby/zeromq/protobuf/interprocess_config.pb.h" // for InterP...
+#include "goby/zeromq/protobuf/logger_config.pb.h"       // for Logger...
+#include "goby/zeromq/transport/interprocess.h"          // for InterP...
 
 using goby::glog;
 
@@ -72,13 +74,11 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
     Logger()
         : goby::zeromq::SingleThreadApplication<protobuf::LoggerConfig>(1 *
                                                                         boost::units::si::hertz),
-          log_file_path_(std::string(cfg().log_dir() + "/" + cfg().interprocess().platform() + "_" +
-                                     goby::time::file_str() + ".goby")),
-          log_(log_file_path_.c_str(), std::ofstream::binary)
+          log_file_base_(std::string(cfg().log_dir() + "/" + cfg().interprocess().platform() + "_"))
     {
-        if (!log_.is_open())
-            glog.is_die() && glog << "Failed to open log in directory: " << cfg().log_dir()
-                                  << std::endl;
+        open_log();
+
+        logging_ = cfg().log_at_startup();
 
         namespace sp = std::placeholders;
         interprocess().subscribe_regex(
@@ -94,17 +94,89 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
             dl_handles_.push_back(lib_handle);
         }
 
-        pb_plugin_.register_write_hooks(log_);
-        dccl_plugin_.register_write_hooks(log_);
+        interprocess().subscribe<goby::middleware::groups::logger_request>(
+            [this](const goby::middleware::protobuf::LoggerRequest& request) {
+                switch (request.requested_state())
+                {
+                    case goby::middleware::protobuf::LoggerRequest::START_LOGGING:
+                        if (logging_)
+                            glog.is_warn() &&
+                                glog << "Received START_LOGGING but we are already logging"
+                                     << std::endl;
+                        else
+                            glog.is_verbose() && glog << "Logging started" << std::endl;
+
+                        logging_ = true;
+                        break;
+
+                    case goby::middleware::protobuf::LoggerRequest::STOP_LOGGING:
+                        if (!logging_)
+                            glog.is_warn() &&
+                                glog << "Received STOP_LOGGING but we were already stopped"
+                                     << std::endl;
+                        else
+                            glog.is_verbose() && glog << "Logging stopped" << std::endl;
+
+                        logging_ = false;
+                        break;
+
+                    case goby::middleware::protobuf::LoggerRequest::ROTATE_LOG:
+                        glog.is_verbose() && glog << "Log rotated" << std::endl;
+                        close_log();
+                        open_log();
+                        break;
+                }
+            });
     }
 
     ~Logger() override
     {
-        log_.close();
-        // set read only
-        chmod(log_file_path_.c_str(), S_IRUSR | S_IRGRP);
+        close_log();
 
         for (void* handle : dl_handles_) dlclose(handle);
+    }
+
+    static std::atomic<bool> do_quit;
+
+  private:
+    void open_log()
+    {
+        pb_plugin_.reset(new goby::middleware::log::ProtobufPlugin);
+        dccl_plugin_.reset(new goby::middleware::log::DCCLPlugin);
+
+        log_file_path_ = log_file_base_ + goby::time::file_str() + ".goby";
+        log_.reset(new std::ofstream(log_file_path_.c_str(), std::ofstream::binary));
+
+        if (!log_->is_open())
+            glog.is_die() && glog << "Failed to open log in directory: " << cfg().log_dir()
+                                  << std::endl;
+        else
+            glog.is_verbose() && glog << "Logging to: " << log_file_path_ << std::endl;
+
+        pb_plugin_->register_write_hooks(*log_);
+        dccl_plugin_->register_write_hooks(*log_);
+
+        std::string file_symlink = log_file_base_ + "latest.goby";
+        remove(file_symlink.c_str());
+        int result = symlink(realpath(log_file_path_.c_str(), NULL), file_symlink.c_str());
+        if (result != 0)
+            glog.is_warn() &&
+                glog << "Cannot create symlink to latest file. Continuing onwards anyway"
+                     << std::endl;
+    }
+
+    void close_log()
+    {
+        glog.is_verbose() && glog << "Closing log at: " << log_file_path_ << std::endl;
+        log_->close();
+        log_.reset();
+        goby::middleware::log::LogEntry::reset();
+        
+        pb_plugin_.reset();
+        dccl_plugin_.reset();
+
+        // set read only
+        chmod(log_file_path_.c_str(), S_IRUSR | S_IRGRP);
     }
 
     void log(const std::vector<unsigned char>& data, int scheme, const std::string& type,
@@ -115,20 +187,21 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
             quit();
     }
 
-    static std::atomic<bool> do_quit;
-
   private:
+    std::string log_file_base_;
     std::string log_file_path_;
-    std::ofstream log_;
+    std::unique_ptr<std::ofstream> log_;
 
     std::vector<void*> dl_handles_;
 
-    goby::middleware::log::ProtobufPlugin pb_plugin_;
-    goby::middleware::log::DCCLPlugin dccl_plugin_;
+    std::unique_ptr<goby::middleware::log::ProtobufPlugin> pb_plugin_;
+    std::unique_ptr<goby::middleware::log::DCCLPlugin> dccl_plugin_;
+
+    bool logging_{true};
 };
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
 
 std::atomic<bool> goby::apps::zeromq::Logger::do_quit{false};
 
@@ -164,12 +237,15 @@ int main(int argc, char* argv[])
 void signal_handler(int /*sig*/) { goby::apps::zeromq::Logger::do_quit = true; }
 
 void goby::apps::zeromq::Logger::log(const std::vector<unsigned char>& data, int scheme,
-                               const std::string& type, const goby::middleware::Group& group)
+                                     const std::string& type, const goby::middleware::Group& group)
 {
+    if (!logging_)
+        return;
+
     glog.is_debug1() && glog << "Received " << data.size()
                              << " bytes to log to [scheme, type, group] = [" << scheme << ", "
                              << type << ", " << group << "]" << std::endl;
 
     goby::middleware::log::LogEntry entry(data, scheme, type, group);
-    entry.serialize(&log_);
+    entry.serialize(&*log_);
 }

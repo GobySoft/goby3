@@ -95,6 +95,7 @@ set(HDF5_DOC_STRING "Enable HDF5 file format tools (requires libhdf5-dev: https:
 if(HDF5_FOUND)
   option(enable_hdf5 ${HDF5_DOC_STRING} ON)
   include_directories(SYSTEM ${HDF5_INCLUDE_DIRS})
+  add_definitions(${HDF5_DEFINITIONS})
 else()
   option(enable_hdf5 ${HDF5_DOC_STRING} OFF)
   message(">> setting enable_hdf5 to OFF ... if you need this functionality: 1) install libhdf5-dev; 2) run cmake -Denable_hdf5=ON")
@@ -233,7 +234,7 @@ endif()
 
 
 if(enable_hdf5)
-  target_link_libraries(goby ${HDF5_LIBRARIES})
+  target_link_libraries(goby ${HDF5_CXX_LIBRARIES})
 endif()
 
 set_target_properties(goby PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")

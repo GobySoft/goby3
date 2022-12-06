@@ -1,4 +1,4 @@
-// Copyright 2017-2021:
+// Copyright 2017-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -32,7 +32,8 @@
 #include <thread>     // for get_id, opera...
 #include <utility>    // for pair, make_pair
 
-#include <MOOS/libMOOS/Comms/MOOSMsg.h>         // for CMOOSMsg
+#include <MOOS/libMOOS/Comms/MOOSMsg.h> // for CMOOSMsg
+#include <MOOS/libMOOS/DB/MsgFilter.h>
 #include <boost/units/quantity.hpp>             // for operator*
 #include <boost/units/systems/si/frequency.hpp> // for frequency, hertz
 
@@ -70,8 +71,26 @@ class TranslatorBase
                          const std::function<void(const CMOOSMsg&)>& func)
         {
             trigger_vars_.insert(std::make_pair(moos_var, func));
+            if (connected_)
+                moos_register(moos_var);
         }
-        void add_buffer(const std::string& moos_var) { buffer_vars_.insert(moos_var); }
+
+        void add_wildcard_trigger(const std::string& moos_var_wildcard,
+                                  const std::string& moos_app_wildcard,
+                                  const std::function<void(const CMOOSMsg&)>& func)
+        {
+            MOOS::MsgFilter moos_filter(moos_app_wildcard, moos_var_wildcard);
+            trigger_wildcard_vars_.insert(std::make_pair(moos_filter, func));
+            if (connected_)
+                moos_wildcard_register(moos_filter);
+        }
+
+        void add_buffer(const std::string& moos_var)
+        {
+            buffer_vars_.insert(moos_var);
+            if (connected_)
+                moos_register(moos_var);
+        }
         std::map<std::string, CMOOSMsg>& buffer() { return buffer_; }
         CMOOSCommClient& comms() { return comms_; }
         void loop();
@@ -80,12 +99,28 @@ class TranslatorBase
         friend bool TranslatorOnConnectCallBack(void* TranslatorBase);
         void on_connect();
 
+        void moos_register(const std::string& moos_var)
+        {
+            comms_.Register(moos_var);
+            goby::glog.is_debug1() && goby::glog << "Subscribed for MOOS variable: " << moos_var
+                                                 << std::endl;
+        }
+        void moos_wildcard_register(const MOOS::MsgFilter& moos_filter)
+        {
+            comms_.Register(moos_filter.var_filter(), moos_filter.app_filter(), 0);
+            goby::glog.is_debug1() &&
+                goby::glog << "Subscribed for MOOS wildcard: variable: " << moos_filter.var_filter()
+                           << ", app: " << moos_filter.app_filter() << std::endl;
+        }
+
       private:
         std::map<std::string, std::function<void(const CMOOSMsg&)>> trigger_vars_;
+        std::map<MOOS::MsgFilter, std::function<void(const CMOOSMsg&)>> trigger_wildcard_vars_;
         std::set<std::string> buffer_vars_;
         std::map<std::string, CMOOSMsg> buffer_;
         MOOS::MOOSAsyncCommClient comms_;
         goby::time::SystemClock::time_point next_time_publish_{goby::time::SystemClock::now()};
+        bool connected_{false};
     };
 
     friend bool TranslatorOnConnectCallBack(void* TranslatorBase);

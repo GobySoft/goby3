@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -37,11 +37,12 @@
 #include "goby/middleware/application/interface.h"            // for run
 #include "goby/middleware/group.h"                            // for operat...
 #include "goby/middleware/log/dccl_log_plugin.h"              // for DCCLPl...
-#include "goby/middleware/log/log_entry.h"                    // for LogEntry
-#include "goby/middleware/log/log_plugin.h"                   // for LogPlugin
-#include "goby/middleware/marshalling/interface.h"            // for Marsha...
-#include "goby/middleware/protobuf/log_tool_config.pb.h"      // for LogToo...
-#include "goby/util/debug_logger/flex_ostream.h"              // for operat...
+#include "goby/middleware/log/json_log_plugin.h"
+#include "goby/middleware/log/log_entry.h"               // for LogEntry
+#include "goby/middleware/log/log_plugin.h"              // for LogPlugin
+#include "goby/middleware/marshalling/interface.h"       // for Marsha...
+#include "goby/middleware/protobuf/log_tool_config.pb.h" // for LogToo...
+#include "goby/util/debug_logger/flex_ostream.h"         // for operat...
 
 #ifdef HAS_HDF5
 #include "goby/middleware/log/hdf5/hdf5.h" // for Writer
@@ -91,6 +92,7 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
             {
                 case protobuf::LogToolConfig::DEBUG_TEXT: output_file += ".txt"; break;
                 case protobuf::LogToolConfig::HDF5: output_file += ".h5"; break;
+                case protobuf::LogToolConfig::JSON: output_file += ".json"; break;
             }
             return output_file;
         }
@@ -127,9 +129,11 @@ goby::apps::middleware::LogTool::LogTool()
     switch (app_cfg().format())
     {
         case protobuf::LogToolConfig::DEBUG_TEXT: f_out_.open(output_file_path_.c_str()); break;
+        case protobuf::LogToolConfig::JSON: f_out_.open(output_file_path_.c_str()); break;
 #ifdef HAS_HDF5
         case protobuf::LogToolConfig::HDF5:
-            h5_writer_ = std::make_unique<goby::middleware::hdf5::Writer>(output_file_path_);
+            h5_writer_ = std::make_unique<goby::middleware::hdf5::Writer>(
+                output_file_path_, app_cfg().write_hdf5_zero_length_dim());
             break;
 #endif
         default:
@@ -150,9 +154,11 @@ goby::apps::middleware::LogTool::LogTool()
     }
 
     plugins_[goby::middleware::MarshallingScheme::PROTOBUF] =
-        std::make_unique<goby::middleware::log::ProtobufPlugin>();
+        std::make_unique<goby::middleware::log::ProtobufPlugin>(true /* user pool first to ensure we pick up all extensions embedded in the .goby */ );
     plugins_[goby::middleware::MarshallingScheme::DCCL] =
-        std::make_unique<goby::middleware::log::DCCLPlugin>();
+        std::make_unique<goby::middleware::log::DCCLPlugin>(true);
+    plugins_[goby::middleware::MarshallingScheme::JSON] =
+        std::make_unique<goby::middleware::log::JSONPlugin>();
 
     for (auto& p : plugins_) p.second->register_read_hooks(f_in_);
 
@@ -175,14 +181,31 @@ goby::apps::middleware::LogTool::LogTool()
                     {
                         auto debug_text_msg = plugin->second->debug_text_message(log_entry);
                         f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
-                               << log_entry.type() << " | " << debug_text_msg << std::endl;
+                               << log_entry.type() << " | "
+                               << goby::time::convert<boost::posix_time::ptime>(
+                                      log_entry.timestamp())
+                               << " | " << debug_text_msg << std::endl;
                         break;
                     }
-                    case protobuf::LogToolConfig::HDF5: {
+                    case protobuf::LogToolConfig::HDF5:
+                    {
 #ifdef HAS_HDF5
                         auto h5_entries = plugin->second->hdf5_entry(log_entry);
                         for (const auto& entry : h5_entries) h5_writer_->add_entry(entry);
 #endif
+                        break;
+                    }
+                    case protobuf::LogToolConfig::JSON:
+                    {
+                        std::shared_ptr<nlohmann::json> j = plugin->second->json_message(log_entry);
+                        (*j)["_scheme_"] = log_entry.scheme();
+                        (*j)["_utime_"] =
+                            goby::time::convert<goby::time::MicroTime>(log_entry.timestamp())
+                                .value();
+                        (*j)["_strtime_"] = goby::time::str(log_entry.timestamp());
+                        (*j)["_group_"] = log_entry.group();
+                        (*j)["_type_"] = log_entry.type();
+                        f_out_ << j->dump() << std::endl;
                         break;
                     }
                 }
@@ -199,11 +222,26 @@ goby::apps::middleware::LogTool::LogTool()
                     case protobuf::LogToolConfig::DEBUG_TEXT:
                         f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
                                << log_entry.type() << " | "
+                               << goby::time::convert<boost::posix_time::ptime>(
+                                      log_entry.timestamp())
+                               << " | "
                                << "Unable to parse message of " << log_entry.data().size()
                                << " bytes. Reason: " << e.what() << std::endl;
                         break;
                     case protobuf::LogToolConfig::HDF5:
                         // nothing useful to write to the HDF5 file
+                        break;
+
+                    case protobuf::LogToolConfig::JSON:
+                        auto j = std::make_shared<nlohmann::json>();
+                        (*j)["_scheme_"] = log_entry.scheme();
+                        (*j)["_utime_"] =
+                            goby::time::convert<goby::time::MicroTime>(log_entry.timestamp())
+                                .value();
+                        (*j)["_strtime_"] = goby::time::str(log_entry.timestamp());
+                        (*j)["_group_"] = log_entry.group();
+                        (*j)["_type_"] = log_entry.type();
+                        (*j)["_error_"] = "Could not parse message";
                         break;
                 }
             }

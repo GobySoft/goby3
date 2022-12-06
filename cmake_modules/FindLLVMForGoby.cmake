@@ -7,6 +7,7 @@ set(LLVM_OFF_STRING ">> setting enable_llvm to OFF ... if you need this function
 
 
 set(LLVM_CONFIG_FOUND OFF)
+set(LLVM_LIBRARY_FOUND OFF)
 set(LIBCLANG_FOUND OFF)
 set(YAML_CPP_FOUND OFF)
 
@@ -23,8 +24,9 @@ if(LLVM_CONFIG_EXECUTABLE)
     set(LLVM_CONFIG_FOUND ON)
     execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --cmakedir OUTPUT_VARIABLE LLVM_CMAKE_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
     message(STATUS "\tUsing LLVM CMake path: ${LLVM_CMAKE_DIR}")
-    find_package(LLVM REQUIRED CONFIG PATHS ${LLVM_CMAKE_DIR} NO_DEFAULT_PATH)
+    find_package(LLVM CONFIG PATHS ${LLVM_CMAKE_DIR} NO_DEFAULT_PATH)
     if(LLVM_FOUND)
+      set(LLVM_LIBRARY_FOUND ON)
       message(STATUS "\tFound LLVM version ${LLVM_PACKAGE_VERSION}: ${LLVM_INCLUDE_DIR}")      
       find_file(CLANG_TOOLING_INCLUDE Tooling.h PATHS ${LLVM_INCLUDE_DIR}/clang/Tooling NO_DEFAULT_PATH)
       if(CLANG_TOOLING_INCLUDE)
@@ -49,7 +51,7 @@ else()
   message(STATUS "llvm-config NOT found. (To install run 'apt install llvm-dev')")
 endif()
 
-if(LLVM_CONFIG_FOUND AND LIBCLANG_FOUND AND YAML_CPP_FOUND)
+if(LLVM_CONFIG_FOUND AND LLVM_LIBRARY_FOUND AND LIBCLANG_FOUND AND YAML_CPP_FOUND)
   option(enable_llvm ${GOBY_CLANG_TOOL_DOC_STRING} ON)
 else()
   option(enable_llvm ${GOBY_CLANG_TOOL_DOC_STRING} OFF)

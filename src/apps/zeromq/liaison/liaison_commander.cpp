@@ -1,4 +1,4 @@
-// Copyright 2009-2021:
+// Copyright 2009-2022:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -87,8 +87,9 @@
 #include <google/protobuf/descriptor.pb.h>              // for FieldOptions
 #include <google/protobuf/text_format.h>                // for TextFormat
 
-#include "dccl/dynamic_protobuf_manager.h"          // for DynamicProto...
-#include "goby/middleware/common.h"                 // for to_string
+#include "dccl/dynamic_protobuf_manager.h" // for DynamicProto...
+#include "goby/middleware/common.h"        // for to_string
+#include "goby/middleware/marshalling/dccl.h"
 #include "goby/middleware/protobuf/layer.pb.h"      // for Layer_Parse
 #include "goby/middleware/transport/interthread.h"  // for InterThreadT...
 #include "goby/middleware/transport/intervehicle.h" // for InterVehicle...
@@ -97,6 +98,10 @@
 #include "goby/util/binary.h"                       // for hex_encode
 #include "goby/util/debug_logger/flex_ostreambuf.h" // for DEBUG1, WARN
 #include "liaison_commander.h"
+
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
 
 namespace Wt
 {
@@ -135,7 +140,7 @@ to_group_layer(const std::string& group, const std::string& layer)
 std::string
 to_string(const goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer&
               grouplayer,
-          std::uint8_t groupnum = goby::middleware::Group::invalid_numeric_group)
+          std::uint32_t groupnum = goby::middleware::Group::invalid_numeric_group)
 {
     std::string groupnum_str;
 
@@ -210,10 +215,20 @@ void goby::apps::zeromq::LiaisonCommander::display_notify(
         background_color)
 {
     auto* new_div = new WContainerWidget(controls_div_->incoming_message_stack_);
+    new_div->setOverflow(OverflowAuto);
+    new_div->setMaximumSize(400, 600);
 
     new WText("Message: " + goby::util::as<std::string>(
                                 controls_div_->incoming_message_stack_->children().size()),
               new_div);
+
+    new Wt::WBreak(new_div);
+
+    auto* minus = new WPushButton("-", new_div);
+    auto* plus = new WPushButton("+", new_div);
+    auto* remove = new WPushButton("x", new_div);
+    auto* remove_all = new WPushButton("X", new_div);
+    remove_all->setFloatSide(Wt::Right);
 
     auto* box = new WGroupBox(title, new_div);
 
@@ -221,12 +236,6 @@ void goby::apps::zeromq::LiaisonCommander::display_notify(
         background_color.r(), background_color.g(), background_color.b(), background_color.a()));
 
     new WText("<pre>" + pb_msg.DebugString() + "</pre>", box);
-
-    auto* minus = new WPushButton("-", new_div);
-    auto* plus = new WPushButton("+", new_div);
-    auto* remove = new WPushButton("x", new_div);
-    auto* remove_all = new WPushButton("X", new_div);
-    remove_all->setFloatSide(Wt::Right);
 
     plus->clicked().connect(controls_div_, &ControlsContainer::increment_incoming_messages);
     minus->clicked().connect(controls_div_, &ControlsContainer::decrement_incoming_messages);
@@ -616,6 +625,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::clear_message()
         auto* current_command = dynamic_cast<CommandContainer*>(commands_div_->currentWidget());
         current_command->message_->Clear();
         current_command->generate_root();
+        current_command->check_dynamics();
     }
 }
 
@@ -627,7 +637,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 
     auto grouplayer =
         current_command->publish_to_.at(current_command->group_selection_->currentIndex());
-    std::uint8_t group_numeric = grouplayer.group_numeric();
+    std::uint32_t group_numeric = grouplayer.group_numeric();
 
     // read the numeric group value out of the message if requested
     if (grouplayer.has_group_numeric_field_name())
@@ -643,8 +653,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
             {
                 auto val = refl->GetInt32(*current_command->message_, group_numeric_field_desc);
-                if (val >= std::numeric_limits<std::uint8_t>::min() &&
-                    val <= std::numeric_limits<std::uint8_t>::max())
+                if (val >= std::numeric_limits<std::uint32_t>::min() &&
+                    val <= std::numeric_limits<std::uint32_t>::max())
                     group_numeric = val;
                 break;
             }
@@ -652,7 +662,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
             {
                 auto val = refl->GetUInt32(*current_command->message_, group_numeric_field_desc);
-                if (val <= std::numeric_limits<std::uint8_t>::max())
+                if (val <= std::numeric_limits<std::uint32_t>::max())
                     group_numeric = val;
 
                 break;
@@ -661,8 +671,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
             {
                 auto val = refl->GetInt64(*current_command->message_, group_numeric_field_desc);
-                if (val >= std::numeric_limits<std::uint8_t>::min() &&
-                    val <= std::numeric_limits<std::uint8_t>::max())
+                if (val >= std::numeric_limits<std::uint32_t>::min() &&
+                    val <= std::numeric_limits<std::uint32_t>::max())
                     group_numeric = val;
 
                 break;
@@ -671,7 +681,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
             {
                 auto val = refl->GetUInt64(*current_command->message_, group_numeric_field_desc);
-                if (val <= std::numeric_limits<std::uint8_t>::max())
+                if (val <= std::numeric_limits<std::uint32_t>::max())
                     group_numeric = val;
 
                 break;
@@ -680,8 +690,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
             {
                 auto val =
                     refl->GetEnum(*current_command->message_, group_numeric_field_desc)->number();
-                if (val >= std::numeric_limits<std::uint8_t>::min() &&
-                    val <= std::numeric_limits<std::uint8_t>::max())
+                if (val >= std::numeric_limits<std::uint32_t>::min() &&
+                    val <= std::numeric_limits<std::uint32_t>::max())
                     group_numeric = val;
 
                 break;
@@ -701,7 +711,26 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
 
     auto* message_box = new WGroupBox("Message to send", dialog.contents());
     auto* message_div = new WContainerWidget(message_box);
-    new WText("<pre>" + current_command->message_->DebugString() + "</pre>", message_div);
+
+    auto message_to_send = current_command->message_;
+
+#if DCCL_VERSION_MAJOR >= 4
+    auto desc = current_command->message_->GetDescriptor();
+    if (current_command->has_dynamic_conditions_ &&
+        desc->options().GetExtension(dccl::msg).has_id())
+    {
+        // run through DCCL to omit / round fields as needed
+        using DCCLHelper = middleware::SerializerParserHelper<google::protobuf::Message,
+                                                              middleware::MarshallingScheme::DCCL>;
+        std::vector<char> bytes = DCCLHelper::serialize(*message_to_send);
+        std::vector<char>::iterator actual_end;
+        message_to_send =
+            DCCLHelper::parse(bytes.begin(), bytes.end(), actual_end,
+                              current_command->message_->GetDescriptor()->full_name());
+    }
+#endif
+
+    new WText("<pre>" + message_to_send->DebugString() + "</pre>", message_div);
 
     message_div->setMaximumSize(pb_commander_config_.modal_dimensions().width(),
                                 pb_commander_config_.modal_dimensions().height());
@@ -726,8 +755,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                     commander_->goby_thread()
                         ->interthread()
                         .publish_dynamic<google::protobuf::Message>(
-                            current_command->message_,
-                            goby::middleware::DynamicGroup(grouplayer.group()));
+                            message_to_send, goby::middleware::DynamicGroup(grouplayer.group()));
                 });
                 break;
             case goby::middleware::protobuf::LAYER_INTERMODULE:
@@ -736,8 +764,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                     commander_->goby_thread()
                         ->interprocess()
                         .publish_dynamic<google::protobuf::Message>(
-                            current_command->message_,
-                            goby::middleware::DynamicGroup(grouplayer.group()));
+                            message_to_send, goby::middleware::DynamicGroup(grouplayer.group()));
                 });
                 break;
             case goby::middleware::protobuf::LAYER_INTERVEHICLE:
@@ -746,7 +773,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
                         ->intervehicle()
                         .publish_dynamic<google::protobuf::Message,
                                          goby::middleware::MarshallingScheme::DCCL>(
-                            current_command->message_,
+                            message_to_send,
                             goby::middleware::DynamicGroup(grouplayer.group(), group_numeric),
                             commander_->goby_thread()->command_publisher_);
                 });
@@ -754,10 +781,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         }
 
         auto* command_entry = new CommandEntry;
-        command_entry->protobuf_name = current_command->message_->GetDescriptor()->full_name();
-        command_entry->bytes.resize(current_command->message_->ByteSize());
-        current_command->message_->SerializeToArray(&command_entry->bytes[0],
-                                                    command_entry->bytes.size());
+        command_entry->protobuf_name = message_to_send->GetDescriptor()->full_name();
+        command_entry->bytes.resize(message_to_send->ByteSizeLong());
+        message_to_send->SerializeToArray(&command_entry->bytes[0], command_entry->bytes.size());
         command_entry->address = wApp->environment().clientAddress();
         command_entry->group = grouplayer.group();
         command_entry->layer = goby::middleware::to_string(grouplayer.layer());
@@ -770,7 +796,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
         if (command_entry->comment.empty())
         {
             command_entry->comment =
-                "[" + current_command->message_->ShortDebugString().substr(0, 100) + "...]";
+                "[" + message_to_send->ShortDebugString().substr(0, 100) + "...]";
         }
 
         command_entry->last_ack = 0;
@@ -954,6 +980,11 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     load_external_data(message_->GetDescriptor());
 
     generate_root();
+
+#if DCCL_VERSION_MAJOR >= 4
+    glog.is(DEBUG1) && glog << "has_dynamic_conditions? " << has_dynamic_conditions_ << std::endl;
+    check_dynamics();
+#endif
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1114,7 +1145,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     printer.SetUseShortRepeatedPrimitives(true);
     printer.PrintToString(*msg, &external_data->value);
 
-    external_data->bytes.resize(msg->ByteSize());
+    external_data->bytes.resize(msg->ByteSizeLong());
     msg->SerializeToArray(&external_data->bytes[0], external_data->bytes.size());
 
     session_->add(external_data);
@@ -1129,6 +1160,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_root()
 {
+    glog.is_debug1() && glog << "Generating new root with: " << message_->ShortDebugString()
+                             << std::endl;
+
     const google::protobuf::Descriptor* desc = message_->GetDescriptor();
 
     // Create and set the root node
@@ -1140,15 +1174,24 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     message_tree_table_->setTreeRoot(root, "Field");
 
     time_fields_.clear();
-
-    generate_tree(root, message_.get());
+    oneof_fields_.clear();
 
     root->expand();
+
+    skip_dynamic_conditions_update_ = true;
+    generate_tree(root, message_.get());
+    skip_dynamic_conditions_update_ = false;
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree(
-    WTreeTableNode* parent, google::protobuf::Message* message, const std::string& parent_hierarchy)
+    WTreeTableNode* parent, google::protobuf::Message* message, const std::string& parent_hierarchy,
+    int index)
 {
+#if DCCL_VERSION_MAJOR >= 4
+    if (has_dynamic_conditions_)
+        dccl_dycon_.regenerate(message, message_.get(), index);
+#endif
+
     const google::protobuf::Descriptor* desc = message->GetDescriptor();
 
     for (int i = 0, n = desc->field_count(); i < n; ++i)
@@ -1169,15 +1212,17 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
 
-    if (field_desc->options().GetExtension(dccl::field).omit())
-        return;
-
     int index = parent->childNodes().size();
 
-    auto* node =
-        new LiaisonTreeTableNode(field_desc->is_extension() ? "[" + field_desc->full_name() + "]: "
-                                                            : field_desc->name() + ": ",
-                                 nullptr, parent);
+    std::string field_name =
+        field_desc->is_extension() ? "[" + field_desc->full_name() + "]" : field_desc->name();
+
+    if (field_desc->containing_oneof())
+        field_name += " (oneof " + field_desc->containing_oneof()->name() + ")";
+
+    field_name += +": ";
+
+    auto* node = new LiaisonTreeTableNode(field_name, nullptr, parent);
 
     if ((parent->styleClass() == STRIPE_ODD_CLASS && index % 2) ||
         (parent->styleClass() == STRIPE_EVEN_CLASS && !(index % 2)))
@@ -1188,6 +1233,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     WFormWidget* value_field = nullptr;
     WFormWidget* modify_field = nullptr;
     WFormWidget* external_data_field = nullptr;
+
     if (field_desc->is_repeated())
     {
         //        WContainerWidget* div = new WContainerWidget;
@@ -1203,7 +1249,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                                                      parent_hierarchy));
 
         spin_box->setValue(refl->FieldSize(*message, field_desc));
-        spin_box->valueChanged().emit(refl->FieldSize(*message, field_desc));
+
+        handle_repeated_size_change(refl->FieldSize(*message, field_desc), message, field_desc,
+                                    node, parent_hierarchy);
 
         modify_field = spin_box;
     }
@@ -1211,7 +1259,23 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     {
         if (field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE)
         {
-            if (field_desc->is_required())
+            bool is_required = field_desc->is_required();
+
+#if DCCL_VERSION_MAJOR >= 4
+            dccl_dycon_.set_field(field_desc);
+            if (field_desc->options().GetExtension(dccl::field).has_dynamic_conditions())
+                has_dynamic_conditions_ = true;
+
+            if (dccl_dycon_.has_required_if() && dccl_dycon_.required())
+                is_required = true;
+#endif
+
+#if DCCL_VERSION_MAJOR >= 4
+            if (dccl_dycon_.has_omit_if() && dccl_dycon_.omit())
+                return;
+#endif
+
+            if (is_required)
             {
                 generate_tree(node, message->GetReflection()->MutableMessage(message, field_desc),
                               parent_hierarchy + "." + field_desc->name());
@@ -1233,6 +1297,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                 }
 
                 modify_field = button;
+                if (field_desc->containing_oneof())
+                    oneof_fields_[field_desc->containing_oneof()].push_back(modify_field);
             }
         }
         else
@@ -1252,7 +1318,11 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 
     if (value_field)
+    {
         node->setColumnWidget(1, value_field);
+        if (field_desc->containing_oneof())
+            oneof_fields_[field_desc->containing_oneof()].push_back(value_field);
+    }
 
     if (modify_field)
     {
@@ -1273,6 +1343,11 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     WFormWidget*& value_field, google::protobuf::Message* message,
     const google::protobuf::FieldDescriptor* field_desc, int index /*= -1*/)
 {
+#if DCCL_VERSION_MAJOR >= 4
+    if (has_dynamic_conditions_)
+        dccl_dycon_.regenerate(message, message_.get(), index);
+#endif
+
     const google::protobuf::Reflection* refl = message->GetReflection();
 
     switch (field_desc->cpp_type())
@@ -1387,7 +1462,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                               : refl->GetFloat(*message, field_desc);
 
             auto* validator = new WDoubleValidator;
-            validator->setRange(std::numeric_limits<float>::min(),
+            validator->setRange(std::numeric_limits<float>::lowest(),
                                 std::numeric_limits<float>::max());
 
             value_field = generate_single_line_edit_field(
@@ -1604,7 +1679,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             default: break;
         }
     }
+    update_oneofs(field_desc, field);
     check_initialized();
+    check_dynamics();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1641,7 +1718,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
     glog.is(DEBUG1) && glog << "The message is: " << message_->DebugString() << std::endl;
 
+    update_oneofs(field_desc, field);
     check_initialized();
+    check_dynamics();
 }
 
 WLineEdit* goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1671,7 +1750,16 @@ WLineEdit* goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandConta
     line_edit->changed().connect(boost::bind(&CommandContainer::handle_line_field_changed, this,
                                              message, field_desc, line_edit, index));
 
+    line_edit->focussed().connect(
+        boost::bind(&CommandContainer::handle_focus_changed, this, line_edit));
+
     return line_edit;
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
+    handle_focus_changed(Wt::WLineEdit* field)
+{
+    //    std::cout << "FOCUS: " << field << std::endl;
 }
 
 WComboBox*
@@ -1766,7 +1854,50 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
                 break;
         }
+
+        // don't update the dynamic fields after each automatic time update
+        bool skip = skip_dynamic_conditions_update_;
+        skip_dynamic_conditions_update_ = true;
         line_edit->changed().emit();
+        skip_dynamic_conditions_update_ = skip;
+    }
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::update_oneofs(
+    const google::protobuf::FieldDescriptor* field_desc, Wt::WFormWidget* changed_field)
+{
+    if (field_desc->containing_oneof())
+    {
+        for (auto* field : oneof_fields_[field_desc->containing_oneof()])
+        {
+            // clear all other fields in the oneof
+            if (field != changed_field)
+            {
+                // combo box value field
+                if (auto* combo_field = dynamic_cast<Wt::WComboBox*>(field))
+                {
+                    combo_field->setCurrentIndex(0);
+                }
+                // embedded message button
+                else if (auto* button_field = dynamic_cast<Wt::WPushButton*>(field))
+                {
+                    if (button_field->text() == MESSAGE_REMOVE_TEXT) // that is, message is included
+                    {
+                        bool skip = skip_dynamic_conditions_update_;
+                        skip_dynamic_conditions_update_ = true;
+                        glog.is_debug1() && glog << "Disabling: " << field_desc->full_name()
+                                                 << std::endl;
+                        button_field->clicked().emit(WMouseEvent());
+                        skip_dynamic_conditions_update_ = skip;
+                    }
+                }
+                // any other value field
+                else if (field)
+                {
+                    field->setValueText("");
+                }
+            }
+        }
     }
 }
 
@@ -1776,13 +1907,38 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 {
     const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
 
+#if DCCL_VERSION_MAJOR >= 4
+    dccl_dycon_.set_field(field_desc);
+    if (field_desc->options().GetExtension(dccl::field).has_dynamic_conditions())
+        has_dynamic_conditions_ = true;
+
+    if (dccl_dycon_.has_omit_if())
+    {
+        value_field->setHidden(dccl_dycon_.omit());
+    }
+
+#endif
+
     if (options.has_min() && options.has_max())
     {
+        double min = options.min();
+        double max = options.max();
         WValidator* validator = value_field->validator();
+
+#if DCCL_VERSION_MAJOR >= 4
+        if (dccl_dycon_.has_max())
+            max = std::min(max, dccl_dycon_.max());
+        if (dccl_dycon_.has_min())
+            min = std::max(min, dccl_dycon_.min());
+
+        if (dccl_dycon_.has_required_if())
+            validator->setMandatory(field_desc->is_required() || dccl_dycon_.required());
+#endif
+
         if (auto* int_validator = dynamic_cast<WIntValidator*>(validator))
-            int_validator->setRange(options.min(), options.max());
+            int_validator->setRange(min, max);
         if (auto* double_validator = dynamic_cast<WDoubleValidator*>(validator))
-            double_validator->setRange(options.min(), options.max());
+            double_validator->setRange(min, max);
     }
 
     if (options.has_static_value())
@@ -1863,7 +2019,6 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::strin
 // {
 //     field_info_stack_->setCurrentIndex(field_info_index);
 // }
-
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     handle_repeated_size_change(int desired_size, google::protobuf::Message* message,
                                 const google::protobuf::FieldDescriptor* field_desc,
@@ -1891,12 +2046,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             if (refl->FieldSize(*message, field_desc) <= index)
             {
                 generate_tree(node, refl->AddMessage(message, field_desc),
-                              parent_hierarchy + "." + field_desc->name());
+                              parent_hierarchy + "." + field_desc->name(), index);
             }
             else
             {
                 generate_tree(node, refl->MutableRepeatedMessage(message, field_desc, index),
-                              parent_hierarchy + "." + field_desc->name());
+                              parent_hierarchy + "." + field_desc->name(), index);
                 parent->expand();
             }
         }
@@ -1920,6 +2075,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 
     check_initialized();
+    check_dynamics();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1935,16 +2091,20 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                       parent_hierarchy + "." + field_desc->name());
 
         button->setText(MESSAGE_REMOVE_TEXT);
+        update_oneofs(field_desc, button);
     }
     else
     {
         const std::vector<WTreeNode*> children = parent->childNodes();
-        message->GetReflection()->ClearField(message, field_desc);
+        if (message->GetReflection()->HasField(*message, field_desc))
+            message->GetReflection()->ClearField(message, field_desc);
         for (auto i : children) parent->removeChildNode(i);
 
         button->setText(MESSAGE_INCLUDE_TEXT);
     }
+
     check_initialized();
+    check_dynamics();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::

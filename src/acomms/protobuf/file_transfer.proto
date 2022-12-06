@@ -8,6 +8,7 @@ message FileFragment
 {
     option (dccl.msg).id = 7;
     option (dccl.msg).max_bytes = 64;
+    option (dccl.msg).codec_version = 3;
 
     required int32 src = 1 [
         (dccl.field).min = -1,
@@ -35,6 +36,8 @@ message TransferRequest
 {
     option (dccl.msg).id = 8;
     option (dccl.msg).max_bytes = 64;
+    option (dccl.msg).codec_version = 3;
+
     required int32 src = 1 [
         (dccl.field).min = -1,
         (dccl.field).max = 62,
@@ -59,6 +62,7 @@ message TransferResponse
 {
     option (dccl.msg).id = 9;
     option (dccl.msg).max_bytes = 64;
+    option (dccl.msg).codec_version = 3;
 
     required int32 src = 1 [
         (dccl.field).min = -1,

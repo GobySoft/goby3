@@ -1,4 +1,4 @@
-// Copyright 2012-2021:
+// Copyright 2012-2022:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -66,6 +66,8 @@ using namespace Wt;
 using namespace goby::util::logger;
 using goby::zeromq::LiaisonContainer;
 
+std::vector<void*> goby::apps::zeromq::LiaisonWtThread::plugin_handles_;
+
 goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env,
                                                      protobuf::LiaisonConfig app_cfg)
     : Wt::WApplication(env), app_cfg_(std::move(app_cfg))
@@ -124,14 +126,17 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     menu_->setInternalPathEnabled();
     menu_->setInternalBasePath("/");
 
-    add_to_menu(menu_, new LiaisonHome);
-    add_to_menu(menu_, new LiaisonScope(app_cfg_));
-    add_to_menu(menu_, new LiaisonCommander(app_cfg_));
+    if (app_cfg_.add_home_tab())
+        add_to_menu(menu_, new LiaisonHome);
+    if (app_cfg_.add_scope_tab())
+        add_to_menu(menu_, new LiaisonScope(app_cfg_));
+    if (app_cfg_.add_commander_tab())
+        add_to_menu(menu_, new LiaisonCommander(app_cfg_));
 
-    using liaison_load_func = std::vector<goby::zeromq::LiaisonContainer*> (*)(
-        const protobuf::LiaisonConfig& cfg);
+    using liaison_load_func =
+        std::vector<goby::zeromq::LiaisonContainer*> (*)(const protobuf::LiaisonConfig& cfg);
 
-    for (auto& plugin_handle : Liaison::plugin_handles_)
+    for (auto& plugin_handle : plugin_handles_)
     {
         auto liaison_load_ptr = (liaison_load_func)dlsym(plugin_handle, "goby3_liaison_load");
 

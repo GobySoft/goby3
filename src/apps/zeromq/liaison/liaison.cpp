@@ -1,4 +1,4 @@
-// Copyright 2011-2021:
+// Copyright 2011-2022:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -23,21 +23,26 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>     // for max, copy
+#include <atomic>        // for atomic
 #include <chrono>        // for seconds
 #include <cstdlib>       // for getenv
 #include <cstring>       // for strcpy
 #include <dlfcn.h>       // for dlclose
+#include <functional>    // for function
 #include <map>           // for operat...
 #include <memory>        // for allocator
 #include <ostream>       // for basic_...
 #include <stdexcept>     // for runtim...
+#include <string>        // for string
 #include <type_traits>   // for __succ...
 #include <unistd.h>      // for usleep
 #include <unordered_map> // for operat...
+#include <vector>        // for vector
 
 #include <Wt/WFlags>                                 // for Wt
 #include <Wt/WGlobal>                                // for Applic...
 #include <Wt/WIOService>                             // for WIOSer...
+#include <Wt/WServer>                                // for WServer
 #include <boost/algorithm/string/classification.hpp> // for is_any...
 #include <boost/algorithm/string/split.hpp>          // for split
 #include <boost/filesystem.hpp>                      // for direct...
@@ -58,8 +63,12 @@
 #include "goby/util/debug_logger/flex_ostream.h"              // for operat...
 #include "goby/util/debug_logger/flex_ostreambuf.h"           // for DIE
 #include "goby/zeromq/protobuf/liaison_config.pb.h"           // for Liaiso...
+#ifdef LIAISON_STANDALONE
+#include "goby/middleware/application/multi_thread.h"
+#else
+#include "goby/zeromq/application/multi_thread.h" // for MultiThreadApp...
+#endif
 
-#include "liaison.h"
 #include "liaison_wt_thread.h" // for Liaiso...
 
 namespace Wt
@@ -72,7 +81,42 @@ using goby::glog;
 using namespace Wt;
 using namespace goby::util::logger;
 
-std::vector<void*> goby::apps::zeromq::Liaison::plugin_handles_;
+namespace goby
+{
+namespace apps
+{
+namespace zeromq
+{
+#ifdef LIAISON_STANDALONE
+class Liaison : public goby::middleware::MultiThreadStandaloneApplication<protobuf::LiaisonConfig>
+#else
+class Liaison : public goby::zeromq::MultiThreadApplication<protobuf::LiaisonConfig>
+#endif
+{
+  public:
+    Liaison();
+    ~Liaison() override
+    {
+        terminating_ = true;
+        wt_server_.stop();
+    }
+
+    void loop() override;
+
+  private:
+    void load_proto_file(const std::string& path);
+
+    friend class LiaisonWtThread;
+
+  private:
+    Wt::WServer wt_server_;
+    std::atomic<bool> terminating_{false};
+    std::function<void()> expire_sessions_;
+};
+
+} // namespace zeromq
+} // namespace apps
+} // namespace goby
 
 int main(int argc, char* argv[])
 {
@@ -89,7 +133,7 @@ int main(int argc, char* argv[])
             glog.is(VERBOSE) && glog << "Loading liaison plugin library: " << i << std::endl;
             void* handle = dlopen(i.c_str(), RTLD_LAZY);
             if (handle)
-                goby::apps::zeromq::Liaison::plugin_handles_.push_back(handle);
+                goby::apps::zeromq::LiaisonWtThread::plugin_handles_.push_back(handle);
             else
                 glog.is(DIE) && glog << "Failed to open library: " << i << std::endl;
         }
@@ -98,7 +142,8 @@ int main(int argc, char* argv[])
     int return_value = goby::run<goby::apps::zeromq::Liaison>(argc, argv);
     //    dccl::DynamicProtobufManager::protobuf_shutdown();
 
-    for (auto& plugin_handle : goby::apps::zeromq::Liaison::plugin_handles_) dlclose(plugin_handle);
+    for (auto& plugin_handle : goby::apps::zeromq::LiaisonWtThread::plugin_handles_)
+        dlclose(plugin_handle);
 
     return return_value;
 }

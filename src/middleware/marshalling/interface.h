@@ -55,7 +55,8 @@ struct MarshallingScheme
         //        CAPTN_PROTO = 3,
         //        MSGPACK = 4,
         CXX_OBJECT = 5,
-        MAVLINK = 6
+        MAVLINK = 6,
+        JSON = 7
     };
 
     /// \brief Convert a known marshalling scheme to a human-readable string or an unknown scheme to the string representation of its numeric value

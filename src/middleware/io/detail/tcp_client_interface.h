@@ -1,4 +1,4 @@
-// Copyright 2020-2021:
+// Copyright 2020-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -72,7 +72,8 @@ class TCPClientThread
         boost::asio::ip::tcp::resolver resolver(this->mutable_io());
         remote_endpoint_ =
             *resolver.resolve({boost::asio::ip::tcp::v4(), this->cfg().remote_address(),
-                               std::to_string(this->cfg().remote_port())});
+                               std::to_string(this->cfg().remote_port()),
+                               boost::asio::ip::resolver_query_base::numeric_service});
 
         auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
         this->interthread().template publish<line_in_group>(ready);

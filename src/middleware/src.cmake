@@ -21,6 +21,8 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/tcp_config.proto
   middleware/protobuf/intermodule.proto
   middleware/protobuf/pty_config.proto
+  middleware/protobuf/navigation.proto
+  middleware/protobuf/logger.proto 
   )
 
 set(MIDDLEWARE_SRC
@@ -31,6 +33,7 @@ set(MIDDLEWARE_SRC
   middleware/application/configuration_reader.cpp
   middleware/log/log_entry.cpp
   middleware/frontseat/interface.cpp
+  middleware/coroner/coroner.cpp
   ${MIDDLEWARE_PROTO_SRCS} ${MIDDLEWARE_PROTO_HDRS} 
   )
 

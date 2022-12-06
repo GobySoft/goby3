@@ -3,6 +3,7 @@ import "dccl/option_extensions.proto";
 
 import "goby/protobuf/option_extensions.proto";
 import "goby/middleware/protobuf/frontseat_data.proto";
+import "goby/middleware/protobuf/geographic.proto";
 
 package goby.middleware.frontseat.protobuf;
 
@@ -11,7 +12,7 @@ message Config
     option (dccl.msg).unit_system = "si";
 
     optional string name = 1;
-    optional LatLonPoint origin = 2;
+    optional .goby.middleware.protobuf.LatLonPoint origin = 2;
     optional VehicleType type = 3 [default = AUV];
 
     optional bool require_helm = 10 [

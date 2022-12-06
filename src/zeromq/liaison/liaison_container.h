@@ -1,4 +1,4 @@
-// Copyright 2013-2021:
+// Copyright 2013-2022:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -65,7 +65,10 @@ class LiaisonContainer : public Wt::WContainerWidget
         /* addWidget(new Wt::WText("<hr/>")); */
     }
 
-    virtual ~LiaisonContainer() {}
+    virtual ~LiaisonContainer()
+    {
+        goby::glog.is_debug2() && goby::glog << "~LiaisonContainer(): " << name() << std::endl;
+    }
 
     void set_name(const Wt::WString& name) { name_.setText(name); }
 
@@ -133,6 +136,9 @@ class LiaisonContainerWithComms : public LiaisonContainer
                                                << std::endl;
             std::rethrow_exception(thread_exception_);
         }
+
+        goby::glog.is_debug2() && goby::glog << "~LiaisonContainerWithComms(): " << name()
+                                             << std::endl;
     }
 
     void post_to_wt(std::function<void()> func)
@@ -172,6 +178,13 @@ class LiaisonContainerWithComms : public LiaisonContainer
             comms_to_wt_queue.front()();
             comms_to_wt_queue.pop();
         }
+    }
+
+    void update_comms_freq(double hertz)
+    {
+        comms_timer_.stop();
+        comms_timer_.setInterval(1 / hertz * 1.0e3);
+        comms_timer_.start();
     }
 
   private:

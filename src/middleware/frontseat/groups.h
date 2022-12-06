@@ -53,6 +53,7 @@ constexpr goby::middleware::Group helm_state{"goby::middleware::frontseat::helm_
 
 constexpr goby::middleware::Group status{"goby::middleware::frontseat::status"};
 
+
 } // namespace groups
 } // namespace frontseat
 } // namespace middleware

@@ -9,3 +9,6 @@ endif()
 if(enable_mavlink)
   add_subdirectory(mavlink)
 endif()
+
+add_subdirectory(json)
+

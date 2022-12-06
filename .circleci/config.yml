@@ -7,34 +7,29 @@ environment-template-common: &environment-template-common
   DEBEMAIL: "toby@gobysoft.org"
   QUILT_PATCHES: debian/patches
   QUILT_REFRESH_ARGS: "-p ab --no-timestamps --no-index --strip-trailing-whitespace"
-  CC: /usr/bin/clang
-  CXX: /usr/bin/clang++
   
 environment-template-amd64: &environment-template-amd64
   TARGET_ARCH: "amd64"
-  DEB_BUILD_OPTIONS: "parallel=4"
+  # OOM issues on amd64 builds
+  DEB_BUILD_OPTIONS: "parallel=3"
   # one job only must do the source build for each distro
   DO_SOURCE_BUILD: "true"
 
 environment-template-arm64: &environment-template-arm64
   TARGET_ARCH: "arm64"
-  DEB_BUILD_OPTIONS: "parallel=4 nocheck"
+  DEB_BUILD_OPTIONS: "parallel=3 nocheck"
   
 environment-template-armhf: &environment-template-armhf
   TARGET_ARCH: "armhf"
-  DEB_BUILD_OPTIONS: "parallel=4 nocheck"
+  DEB_BUILD_OPTIONS: "parallel=3 nocheck"
   
-environment-template-stretch: &environment-template-stretch
-  DISTRO_RELEASE_CODENAME: "stretch"
-  DISTRO_RELEASE_VERSION: "debian9"
-
 environment-template-buster: &environment-template-buster
   DISTRO_RELEASE_CODENAME: "buster"
   DISTRO_RELEASE_VERSION: "debian10"
-  
-environment-template-xenial: &environment-template-xenial
-  DISTRO_RELEASE_CODENAME: "xenial"
-  DISTRO_RELEASE_VERSION: "ubuntu16.04"
+
+environment-template-bullseye: &environment-template-bullseye
+  DISTRO_RELEASE_CODENAME: "bullseye"
+  DISTRO_RELEASE_VERSION: "debian11"
   
 environment-template-bionic: &environment-template-bionic
   DISTRO_RELEASE_CODENAME: "bionic"
@@ -44,29 +39,26 @@ environment-template-focal: &environment-template-focal
   DISTRO_RELEASE_CODENAME: "focal"
   DISTRO_RELEASE_VERSION: "ubuntu20.04"
 
+environment-template-jammy: &environment-template-jammy
+  DISTRO_RELEASE_CODENAME: "jammy"
+  DISTRO_RELEASE_VERSION: "ubuntu22.04"
   
 ## Pre-declare Docker containers
-docker-base-stretch: &docker-base-stretch
-  - image: gobysoft/goby3-debian-build-base:9.1
-docker-arm64-stretch: &docker-arm64-stretch
-  - image: gobysoft/goby3-debian-build-arm64:9.1
-docker-armhf-stretch: &docker-armhf-stretch
-  - image: gobysoft/goby3-debian-build-armhf:9.1
-
 docker-base-buster: &docker-base-buster
   - image: gobysoft/goby3-debian-build-base:10.1
 docker-arm64-buster: &docker-arm64-buster
   - image: gobysoft/goby3-debian-build-arm64:10.1
 docker-armhf-buster: &docker-armhf-buster
   - image: gobysoft/goby3-debian-build-armhf:10.1
+
+docker-base-bullseye: &docker-base-bullseye
+  - image: gobysoft/goby3-debian-build-base:11.1
+docker-arm64-bullseye: &docker-arm64-bullseye
+  - image: gobysoft/goby3-debian-build-arm64:11.1
+docker-armhf-bullseye: &docker-armhf-bullseye
+  - image: gobysoft/goby3-debian-build-armhf:11.1
+
     
-docker-base-xenial: &docker-base-xenial
-  - image: gobysoft/goby3-ubuntu-build-base:16.04.1
-docker-arm64-xenial: &docker-arm64-xenial
-  - image: gobysoft/goby3-ubuntu-build-arm64:16.04.1
-docker-armhf-xenial: &docker-armhf-xenial
-  - image: gobysoft/goby3-ubuntu-build-armhf:16.04.1
-  
 docker-base-bionic: &docker-base-bionic
   - image: gobysoft/goby3-ubuntu-build-base:18.04.1
 docker-arm64-bionic: &docker-arm64-bionic
@@ -81,10 +73,18 @@ docker-arm64-focal: &docker-arm64-focal
 docker-armhf-focal: &docker-armhf-focal
   - image: gobysoft/goby3-ubuntu-build-armhf:20.04.1
 
+docker-base-jammy: &docker-base-jammy
+  - image: gobysoft/goby3-ubuntu-build-base:22.04.1
+docker-arm64-jammy: &docker-arm64-jammy
+  - image: gobysoft/goby3-ubuntu-build-arm64:22.04.1
+docker-armhf-jammy: &docker-armhf-jammy
+  - image: gobysoft/goby3-ubuntu-build-armhf:22.04.1
+
     
 ## Pre-declare job templates
 job-template-amd64: &job-template-amd64
   working_directory: /root/goby3
+  resource_class: large
   steps:
     - checkout
     - run: &run-add-continuous-packages
@@ -95,11 +95,14 @@ job-template-amd64: &job-template-amd64
           true
     - run: &run-update-apt
         name: Update apt packages
-        # TODO: Remove libmysqlclient-dev from this command once all Docker containers are updated to include it
+        # TODO: Remove libdccl4-dev from this command once all Docker containers are updated to include it
         command: |
           apt-get update && apt-get dist-upgrade -y &&
           (apt-get install default-libmysqlclient-dev:${TARGET_ARCH} -y ||
-          apt-get install libmysqlclient-dev:${TARGET_ARCH} -y)
+          apt-get install libmysqlclient-dev:${TARGET_ARCH} -y ||
+          apt-get install libmariadb-dev:${TARGET_ARCH} libmariadb-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y ||
+          apt-get install libmariadbclient-dev:${TARGET_ARCH} libmariadbclient-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y)
+          apt-get install libdccl4-dev:${TARGET_ARCH} libdccl4:${TARGET_ARCH} dccl4-compiler -y || true
     - run: &run-build
         name: Build
         command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_doc=ON -Dbuild_doc_pdf=OFF -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -- -j4
@@ -131,13 +134,11 @@ job-template-deb-amd64: &job-template-deb-amd64
           git checkout origin/${CIRCLE_BRANCH} ||
           echo "No branch in debian called ${CIRCLE_BRANCH}, using $(git rev-parse --abbrev-ref HEAD)"
     - run: &run-nest-deb
-        name: Nest debian source into project source and comment out clang as build-depends (causes problems for cross-builds)
+        name: Nest debian source into project source
         command: |
           mv /root/debian ${CIRCLE_WORKING_DIRECTORY} &&
           cp /root/src/changelog ${CIRCLE_WORKING_DIRECTORY}/debian &&
-          sed -i "s/DISTRORELEASEVERSION/${DISTRO_RELEASE_VERSION}/;s/DISTRORELEASECODENAME/${DISTRO_RELEASE_CODENAME}/" ${CIRCLE_WORKING_DIRECTORY}/debian/changelog &&
-          sed -i 's/^\( *\)clang/#\1clang/' ${CIRCLE_WORKING_DIRECTORY}/debian/control &&
-          sed -i 's/^\( *\)lld/#\1lld/' ${CIRCLE_WORKING_DIRECTORY}/debian/control
+          sed -i "s/DISTRORELEASEVERSION/${DISTRO_RELEASE_VERSION}/;s/DISTRORELEASECODENAME/${DISTRO_RELEASE_CODENAME}/" ${CIRCLE_WORKING_DIRECTORY}/debian/changelog
     - run: &run-patch-version
         name: Patch the version patch number automatically in CMakeLists.txt
         command: |
@@ -159,7 +160,7 @@ job-template-deb-amd64: &job-template-deb-amd64
         command: |
           mkdir -p /root/deb &&
           find .. -maxdepth 1 -type f -exec cp {}  /root/deb \; &&
-          rm -f /root/deb/*-build-deps*.deb
+          rm -f /root/deb/*-build-deps*.*
     - run: &run-store-for-artifacts
         name: Store deb files for storing artifacts
         command: mkdir -p /tmp/deb && cp /root/deb/* /tmp/deb
@@ -189,14 +190,16 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-common
     <<: *environment-template-focal
     <<: *environment-template-amd64
-    SANITIZER_NUM_JOBS: 2
-    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt"    
+    SANITIZER_NUM_JOBS: 4
+    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6"    
   docker: *docker-base-focal
 
 # Base upload off Bionic build
 job-template-upload: &job-template-upload
   <<: *job-template-amd64
   docker: *docker-base-bionic
+  resource_class: small
+
 
   
 # which branches to run the Debian build and upload on
@@ -207,12 +210,14 @@ filter-template-master-only: &filter-template-master-only
     branches:
       only:
         - "3.0"
+        - "packages"
 
 filter-template-non-master: &filter-template-non-master
   filters:
     branches:
       ignore:
         - "3.0"
+        - "packages"
         
 ## Begin actual config
 version: 2
@@ -224,34 +229,23 @@ workflows:
 
       - amd64+tsan-build:
           <<: *filter-template-non-master
-#      - amd64-buster-build:
-#          <<: *filter-template-non-master
-#      - amd64-bionic-build:
-#          <<: *filter-template-non-master
+      - amd64-buster-build:
+          <<: *filter-template-non-master
+      - amd64-bullseye-build:        
+          <<: *filter-template-non-master
+      - amd64-bionic-build:
+          <<: *filter-template-non-master
       - amd64-focal-build:
           <<: *filter-template-non-master
-      - amd64-xenial-build:
-          <<: *filter-template-non-master
-      - amd64-stretch-build:
-          <<: *filter-template-non-master
+#      - amd64-jammy-build:
+#          <<: *filter-template-non-master
 
-      - amd64-focal-minimal-build:
+          
+      - amd64-jammy-minimal-build:
           <<: *filter-template-master-only
       
       - get-orig-source:
           <<: *filter-template-master-only
-      - amd64-stretch-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - get-orig-source
-      - arm64-stretch-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - amd64-stretch-deb-build
-      - armhf-stretch-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - arm64-stretch-deb-build
 
       - amd64-buster-deb-build:
           <<: *filter-template-master-only
@@ -260,25 +254,26 @@ workflows:
       - arm64-buster-deb-build:
           <<: *filter-template-master-only
           requires:
-            - amd64-buster-deb-build
+            - get-orig-source
       - armhf-buster-deb-build:
           <<: *filter-template-master-only
           requires:
-            - arm64-buster-deb-build
+            - get-orig-source
 
-            
-      - amd64-xenial-deb-build:
+      - amd64-bullseye-deb-build:
           <<: *filter-template-master-only
           requires:
             - get-orig-source
-      - arm64-xenial-deb-build:
+      - arm64-bullseye-deb-build:
           <<: *filter-template-master-only
           requires:
-            - amd64-xenial-deb-build
-      - armhf-xenial-deb-build:
+            - get-orig-source
+      - armhf-bullseye-deb-build:
           <<: *filter-template-master-only
           requires:
-            - arm64-xenial-deb-build
+            - get-orig-source
+
+            
             
       - amd64-bionic-deb-build:
           <<: *filter-template-master-only
@@ -287,11 +282,11 @@ workflows:
       - arm64-bionic-deb-build:
           <<: *filter-template-master-only
           requires:
-            - amd64-bionic-deb-build
+            - get-orig-source
       - armhf-bionic-deb-build:
           <<: *filter-template-master-only
           requires:
-            - arm64-bionic-deb-build
+            - get-orig-source
 
       - amd64-focal-deb-build:
           <<: *filter-template-master-only
@@ -300,21 +295,43 @@ workflows:
       - arm64-focal-deb-build:
           <<: *filter-template-master-only
           requires:
-            - amd64-focal-deb-build
+            - get-orig-source
       - armhf-focal-deb-build:
           <<: *filter-template-master-only
           requires:
-            - arm64-focal-deb-build
-
+            - get-orig-source
+            
+      - amd64-jammy-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - arm64-jammy-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - armhf-jammy-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
             
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
           requires:
-            - armhf-stretch-deb-build
+            - amd64-buster-deb-build
+            - arm64-buster-deb-build
             - armhf-buster-deb-build
-            - armhf-focal-deb-build
+            - amd64-bullseye-deb-build
+            - arm64-bullseye-deb-build
+            - armhf-bullseye-deb-build
+            - amd64-bionic-deb-build
+            - arm64-bionic-deb-build
             - armhf-bionic-deb-build
-            - armhf-xenial-deb-build
+            - amd64-focal-deb-build
+            - arm64-focal-deb-build
+            - armhf-focal-deb-build
+            - amd64-jammy-deb-build
+            - arm64-jammy-deb-build
+            - armhf-jammy-deb-build
 
       # only do the release upload on tagged builds
       - release-upload:
@@ -324,11 +341,21 @@ workflows:
             branches:
               ignore: /.*/
           requires:
-            - armhf-stretch-deb-build
+            - amd64-buster-deb-build
+            - arm64-buster-deb-build
             - armhf-buster-deb-build
-            - armhf-focal-deb-build
+            - amd64-bullseye-deb-build
+            - arm64-bullseye-deb-build
+            - armhf-bullseye-deb-build
+            - amd64-bionic-deb-build
+            - arm64-bionic-deb-build
             - armhf-bionic-deb-build
-            - armhf-xenial-deb-build
+            - amd64-focal-deb-build
+            - arm64-focal-deb-build
+            - armhf-focal-deb-build
+            - amd64-jammy-deb-build
+            - arm64-jammy-deb-build
+            - armhf-jammy-deb-build
             
       - amd64+scan-build:
           <<: *filter-template-master-only
@@ -336,7 +363,6 @@ workflows:
           <<: *filter-template-master-only
 
 
-# problem running this using clang with libcrypto++-dev 
 #      - amd64+ubsan-build:
 #          <<: *filter-template-master-only          
           
@@ -354,7 +380,9 @@ jobs:
       - run:
           name: Get original source tarball
           command: |
-            export NEWVERSION="$(git describe --tags HEAD | sed 's/_/~/' | sed 's/-/+/g')"          
+            # use long format for continuous builds so they always rank after release builds
+            [ -z "${CIRCLE_TAG}" ] && export DESCRIBE_ARGS="--long" || export DESCRIBE_ARGS=""
+            export NEWVERSION="$(git describe --tags HEAD ${DESCRIBE_ARGS} | sed 's/_/~/' | sed 's/-/+/g')"
             git config tar.tar.xz.command "xz -c" &&
             mkdir -p /root/src &&
             git archive --prefix=goby3-${NEWVERSION}/ -o /root/src/goby3_${NEWVERSION}.orig.tar.xz HEAD;
@@ -374,13 +402,6 @@ jobs:
             - '*.tar.xz'
             - 'changelog'
 
-  amd64-stretch-build:
-    <<: *job-template-amd64
-    docker: *docker-base-stretch
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-stretch
-
   amd64-buster-build:
     <<: *job-template-amd64
     docker: *docker-base-buster
@@ -388,14 +409,13 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-buster
 
-      
-  amd64-xenial-build:
+  amd64-bullseye-build:
     <<: *job-template-amd64
-    docker: *docker-base-xenial
+    docker: *docker-base-bullseye
     environment:
       <<: *environment-template-common
-      <<: *environment-template-xenial
-
+      <<: *environment-template-bullseye
+      
   amd64-bionic-build:
     <<: *job-template-amd64
     docker: *docker-base-bionic
@@ -410,10 +430,17 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-focal
 
+  amd64-jammy-build:
+    <<: *job-template-amd64
+    docker: *docker-base-jammy
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-jammy
       
-  amd64-focal-minimal-build:
+      
+  amd64-jammy-minimal-build:
     docker:
-      - image: ubuntu:focal
+      - image: ubuntu:jammy
     working_directory: /root/goby3
     environment:
       DEBIAN_FRONTEND: "noninteractive"
@@ -423,40 +450,19 @@ jobs:
           name: Install packages server
           command: |
             apt-get update && apt-get -y install dirmngr ca-certificates && \
-            echo "deb http://packages.gobysoft.org/ubuntu/release/ focal/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
+            echo "deb http://packages.gobysoft.org/ubuntu/release/ jammy/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
             apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE    
       - run: 
           name: Install apt packages
           command: |
             apt-get update &&
-            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl3-dev dccl3-compiler
+            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler
       - checkout
       - run: 
           name: Build
           command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
       - run: *run-tests
       
-  amd64-stretch-deb-build:
-    <<: *job-template-deb-amd64
-    docker: *docker-base-stretch
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-stretch
-      <<: *environment-template-amd64
-  arm64-stretch-deb-build: 
-    <<: *job-template-deb-cross
-    docker: *docker-arm64-stretch
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-stretch
-      <<: *environment-template-arm64
-  armhf-stretch-deb-build: 
-    <<: *job-template-deb-cross
-    docker: *docker-armhf-stretch
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-stretch
-      <<: *environment-template-armhf
   amd64-buster-deb-build:
     <<: *job-template-deb-amd64
     docker: *docker-base-buster
@@ -478,26 +484,26 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-buster
       <<: *environment-template-armhf
-  amd64-xenial-deb-build:
+  amd64-bullseye-deb-build:
     <<: *job-template-deb-amd64
-    docker: *docker-base-xenial
+    docker: *docker-base-bullseye
     environment:
       <<: *environment-template-common
-      <<: *environment-template-xenial
-      <<: *environment-template-amd64
-  arm64-xenial-deb-build: 
+      <<: *environment-template-bullseye
+      <<: *environment-template-amd64      
+  arm64-bullseye-deb-build: 
     <<: *job-template-deb-cross
-    docker: *docker-arm64-xenial
+    docker: *docker-arm64-bullseye
     environment:
       <<: *environment-template-common
-      <<: *environment-template-xenial
+      <<: *environment-template-bullseye
       <<: *environment-template-arm64
-  armhf-xenial-deb-build: 
+  armhf-bullseye-deb-build: 
     <<: *job-template-deb-cross
-    docker: *docker-armhf-xenial
+    docker: *docker-armhf-bullseye
     environment:
       <<: *environment-template-common
-      <<: *environment-template-xenial
+      <<: *environment-template-bullseye
       <<: *environment-template-armhf
   amd64-bionic-deb-build:
     <<: *job-template-deb-amd64
@@ -541,6 +547,28 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-focal
       <<: *environment-template-armhf
+  amd64-jammy-deb-build:
+    <<: *job-template-deb-amd64
+    docker: *docker-base-jammy
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-jammy
+      <<: *environment-template-amd64
+  arm64-jammy-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-arm64-jammy
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-jammy
+      <<: *environment-template-arm64
+  armhf-jammy-deb-build: 
+    <<: *job-template-deb-cross
+    docker: *docker-armhf-jammy
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-jammy
+      <<: *environment-template-armhf
+      
   amd64+scan-build:
     <<: *job-template-sanitizers
     steps:

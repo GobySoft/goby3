@@ -54,12 +54,19 @@ message LiaisonConfig
     optional string upper_right_logo_link = 20
         [(goby.field).description = "Hyperlink for upper right image"];
 
+    
+    optional bool add_home_tab = 21 [default = true];
+    optional bool add_scope_tab = 22 [default = true];
+    optional bool add_commander_tab = 23 [default = true];
+    
     optional ProtobufCommanderConfig pb_commander_config = 900;
     optional ProtobufScopeConfig pb_scope_config = 901;
 
     // MOOS - 1000 to 1099
     // DRC -  1100
     // WIP -  1200 to 1299
+    // Jaiabot - 1300
+    // private: 10000-11000
     extensions 1000 to max;
 }
 
@@ -203,22 +210,25 @@ message ProtobufScopeConfig
     optional Column sort_by_column = 3 [default = COLUMN_GROUP];
     optional bool sort_ascending = 4 [default = true];
     optional int32 scope_height = 5 [default = 500];
-    optional int32 history_height = 9 [default = 300];
+    optional int32 history_height = 6 [default = 300];
 
-    optional Column regex_filter_column = 6 [default = COLUMN_GROUP];
-    optional string regex_filter_expression = 7 [default = ".*"];
-
+    optional string group_regex_filter_expression = 7 [default = ".*"];
+    optional string type_regex_filter_expression = 8 [default = ".*"];
+    
     message HistoryConfig
     {
         required string group = 1;
-        optional bool show_plot = 2 [default = false];
+        // optional bool show_plot = 2 [default = false];
         //    optional int32 plot_width = 3 [default = 800];
         //    optional int32 plot_height = 4 [default = 300];
     }
 
-    repeated HistoryConfig history = 8;
+    repeated HistoryConfig history = 9;
 
     optional int32 max_history_items = 10 [default = 100];
+    
+    optional int32 max_message_size_bytes = 20 [default = 2048];
+
 }
 
 message NetworkAckSet

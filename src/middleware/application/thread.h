@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -62,13 +62,21 @@ template <typename Config, typename TransporterType> class Thread
     TransporterType* transporter_{nullptr};
 
     boost::units::quantity<boost::units::si::frequency> loop_frequency_;
-    std::chrono::system_clock::time_point loop_time_;
+    std::chrono::steady_clock::time_point loop_time_;
     unsigned long long loop_count_{0};
     const Config cfg_;
     int index_;
     std::atomic<bool>* alive_{nullptr};
     std::type_index type_i_{std::type_index(typeid(void))};
-    std::string thread_id_;
+
+    // Linux TID, from gettid()
+    int thread_id_;
+    // demangled class name / index
+    std::string thread_name_;
+
+    // unique id value used by MultiThreadApplication
+    int uid_;
+
     bool finalize_run_{false};
 
   public:
@@ -134,6 +142,12 @@ template <typename Config, typename TransporterType> class Thread
     std::type_index type_index() { return type_i_; }
     void set_type_index(std::type_index type_i) { type_i_ = type_i; }
 
+    std::string name() { return thread_name_; }
+    void set_name(const std::string& name) { thread_name_ = name; }
+
+    int uid() { return uid_; }
+    void set_uid(int uid) { uid_ = uid; }
+
     static constexpr goby::middleware::Group shutdown_group_{"goby::middleware::Thread::shutdown"};
     static constexpr goby::middleware::Group joinable_group_{"goby::middleware::Thread::joinable"};
 
@@ -141,10 +155,12 @@ template <typename Config, typename TransporterType> class Thread
     Thread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
            int index = -1)
         : loop_frequency_(loop_freq),
-          loop_time_(std::chrono::system_clock::now()),
+          loop_time_(std::chrono::steady_clock::now()),
           cfg_(cfg),
           index_(index),
-          thread_id_(thread_id())
+          thread_id_(goby::middleware::gettid()),
+          thread_name_(std::to_string(thread_id_)),
+          uid_(-1)
     {
         if (loop_frequency_hertz() > 0 &&
             loop_frequency_hertz() != std::numeric_limits<double>::infinity())
@@ -157,7 +173,7 @@ template <typename Config, typename TransporterType> class Thread
                     .count() /
                 microsec_interval;
 
-            loop_time_ = std::chrono::system_clock::time_point(
+            loop_time_ = std::chrono::steady_clock::time_point(
                 std::chrono::microseconds((ticks_since_epoch + 1) * microsec_interval));
         }
     }
@@ -187,8 +203,10 @@ template <typename Config, typename TransporterType> class Thread
 
     void thread_health(goby::middleware::protobuf::ThreadHealth& health)
     {
+        health.set_name(thread_name_);
         health.set_thread_id(thread_id_);
-        health.set_name(health.thread_id());
+        if (uid_ >= 0)
+            health.set_uid(uid_);
         this->health(health);
     }
 

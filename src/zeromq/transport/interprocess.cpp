@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2022:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -29,6 +29,10 @@
 #include <utility>     // for pair, move
 
 #include "interprocess.h"
+
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -214,7 +218,7 @@ void goby::zeromq::InterProcessPortalMainThread::reader_shutdown()
 void goby::zeromq::InterProcessPortalMainThread::send_control_msg(
     const protobuf::InprocControl& control)
 {
-    zmq::message_t zmq_control_msg(control.ByteSize());
+    zmq::message_t zmq_control_msg(control.ByteSizeLong());
     control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());
 
     control_socket_.send(zmq_control_msg, zmq_send_flags_none);
@@ -313,8 +317,8 @@ void goby::zeromq::InterProcessPortalReadThread::run()
 void goby::zeromq::InterProcessPortalReadThread::send_manager_request(
     const protobuf::ManagerRequest& req)
 {
-    zmq::message_t msg(req.ByteSize());
-    req.SerializeToArray(static_cast<char*>(msg.data()), req.ByteSize());
+    zmq::message_t msg(req.ByteSizeLong());
+    req.SerializeToArray(static_cast<char*>(msg.data()), req.ByteSizeLong());
     manager_socket_.send(msg, zmq_send_flags_none);
     manager_waiting_for_reply_ = true;
 }
@@ -440,7 +444,7 @@ void goby::zeromq::InterProcessPortalReadThread::manager_data(const zmq::message
 void goby::zeromq::InterProcessPortalReadThread::send_control_msg(
     const protobuf::InprocControl& control)
 {
-    zmq::message_t zmq_control_msg(control.ByteSize());
+    zmq::message_t zmq_control_msg(control.ByteSizeLong());
     control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());
     control_socket_.send(zmq_control_msg, zmq_send_flags_none);
     poller_cv_->notify_all();
@@ -583,7 +587,7 @@ void goby::zeromq::Manager::run()
 
                             auto pb_response = handle_request(pb_request);
 
-                            zmq::message_t reply(pb_response.ByteSize());
+                            zmq::message_t reply(pb_response.ByteSizeLong());
                             pb_response.SerializeToArray((char*)reply.data(), reply.size());
                             manager_socket_->send(reply, zmq_send_flags_none);
                             break;
@@ -603,7 +607,7 @@ void goby::zeromq::Manager::run()
                             glog.is_debug3() && glog << "Manager:: Sending response: "
                                                      << pb_response.DebugString() << std::endl;
 
-                            auto size = pb_response.ByteSize();
+                            auto size = pb_response.ByteSizeLong();
                             zmq::message_t reply(zmq_filter_rep_.size() + size);
                             memcpy(reply.data(), zmq_filter_rep_.data(), zmq_filter_rep_.size());
                             pb_response.SerializeToArray(

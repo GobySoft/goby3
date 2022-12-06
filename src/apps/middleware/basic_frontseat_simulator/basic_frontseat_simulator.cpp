@@ -107,7 +107,6 @@ int main(int argc, char* argv[])
 
     while (!server.active()) sleep(1);
 
-    int i = 0;
     while (server.active())
     {
         goby::util::protobuf::Datagram in;
@@ -125,7 +124,6 @@ int main(int argc, char* argv[])
                     try
                     {
                         update_desired(parsed);
-                        i = 0;
                         server.write("CMD,RESULT:OK\r\n");
                     }
                     catch (std::exception& e)

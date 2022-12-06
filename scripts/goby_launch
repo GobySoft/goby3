@@ -212,11 +212,12 @@ if [ -e "$preseed" ]; then
 fi
 
 launchfile="/tmp/goby_$$.launch"
-cat ${origlaunchfile} > ${launchfile}
+# echo adds a newline at the end which is required in case one doesn't exist
+echo | cat ${origlaunchfile} - > ${launchfile}
 
 
 # search for gobyd so we can use the same interprocess { } configuration for goby_terminate
-gobyd_line=$(cat "$launchfile" | egrep "^ *[/a-zA-Z0-9_]*gobyd")
+gobyd_line=$(cat "$launchfile" | egrep "^ *(\[.*\])? *[/a-zA-Z0-9_]*gobyd")
 num_gobyd=$(echo "$gobyd_line" | wc -l)
 
 use_goby_terminate=true
@@ -227,7 +228,28 @@ elif [[ "$gobyd_line"  == "" ]]; then
     echo "Note: no line found for launching 'gobyd' - will use SIGTERM instead of goby_terminate to kill processes (unless otherwise marked with [kill=...])"
     use_goby_terminate=false
 else
-    gobyd_escline=$(echo "$gobyd_line" | sed 's/"/\\"/g')
+    directive_str=
+    echo "$gobyd_line" | egrep -q '\[.*\]'  &&
+        directive_str=$(echo "$gobyd_line" | sed 's/^ *\[\(.*\)\].*$/\1/')    
+    if [ ! -z "$directive_str" ]; then
+
+        IFS=';, ' read -r -a directives <<< "$directive_str" 
+        for ((i=0; i<${#directives[@]}; i++))
+        do
+            directive=${directives[$i]}
+            key=$(echo "$directive" | cut -d "=" -f 1)
+            value=$(echo "$directive" | cut -d "=" -f 2-)
+            case $key in
+                env)
+                    eval "export $value"
+                    ;;
+                *)
+                    ;;
+            esac
+        done               
+    fi
+    gobyd_line=$(echo "$gobyd_line"  | sed 's/^ *\[.*\]//' )
+    gobyd_escline=$(echo "$gobyd_line" |  sed 's/"/\\"/g')
     gobyd_interprocess=$(bash -c "$gobyd_line --app 'debug_cfg: true'" | sed -n "/^ *interprocess/,/}/p;")    
     gobyd_platform=$(echo "$gobyd_interprocess" | grep platform | sed 's/.*platform: \"\(.*\)\".*/\1/')
     if [ ! -z "$gobyd_platform" ]; then

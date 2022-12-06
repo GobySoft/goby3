@@ -1,4 +1,4 @@
-// Copyright 2011-2021:
+// Copyright 2011-2022:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -305,11 +305,11 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     // allows direct reading of newest publish to a given MOOS variable
     goby::moos::DynamicMOOSVars dynamic_vars_;
 
-    std::map<std::string, std::shared_ptr<boost::signals2::signal<void(const CMOOSMsg& msg)> > >
+    std::map<std::string, std::shared_ptr<boost::signals2::signal<void(const CMOOSMsg& msg)>>>
         mail_handlers_;
 
     std::map<std::pair<std::string, std::string>,
-             std::shared_ptr<boost::signals2::signal<void(const CMOOSMsg& msg)> > >
+             std::shared_ptr<boost::signals2::signal<void(const CMOOSMsg& msg)>>>
         wildcard_mail_handlers_;
 
     // CMOOSApp::OnConnectToServer()
@@ -320,13 +320,12 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     std::deque<CMOOSMsg> msg_buffer_;
 
     // MOOS Variable name, blackout time
-    std::deque<std::pair<std::string, int> > pending_subscriptions_;
-    std::deque<std::pair<std::string, int> > existing_subscriptions_;
+    std::deque<std::pair<std::string, int>> pending_subscriptions_;
+    std::deque<std::pair<std::string, int>> existing_subscriptions_;
 
     // MOOS Variable pattern, MOOS App pattern, blackout time
-    std::deque<std::pair<std::pair<std::string, std::string>, int> >
-        wildcard_pending_subscriptions_;
-    std::deque<std::pair<std::pair<std::string, std::string>, int> >
+    std::deque<std::pair<std::pair<std::string, std::string>, int>> wildcard_pending_subscriptions_;
+    std::deque<std::pair<std::pair<std::string, std::string>, int>>
         wildcard_existing_subscriptions_;
 
     struct SynchronousLoop
@@ -626,7 +625,9 @@ int goby::moos::GobyMOOSAppSelector<MOOSAppType>::fetch_moos_globals(
     for (int i = 0, n = desc->field_count(); i < n; ++i)
     {
         const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
-        if (field_desc->is_repeated())
+
+        // we don't support repeated fields or oneof fields containing MOOS globals
+        if (field_desc->is_repeated() || field_desc->containing_oneof())
             continue;
 
         std::string moos_global = field_desc->options().GetExtension(goby::field).moos_global();
@@ -692,8 +693,26 @@ int goby::moos::GobyMOOSAppSelector<MOOSAppType>::fetch_moos_globals(
 
             case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
             {
-                bool result;
-                if (moos_file_reader.GetValue(moos_global, result))
+                enum Result
+                {
+                    RESULT_TRUE = 1,
+                    RESULT_FALSE = 0,
+                    RESULT_UNSPECIFIED = -1
+                };
+
+                Result result = RESULT_UNSPECIFIED;
+                // avoid parsing pLogger "LOG = some string" as "log = false"
+                std::string svalue;
+                if (moos_file_reader.GetValue(moos_global, svalue))
+                {
+                    if (MOOSStrCmp(svalue, "TRUE"))
+                        result = RESULT_TRUE;
+                    else if (MOOSStrCmp(svalue, "FALSE"))
+                        result = RESULT_FALSE;
+                    else if (MOOSIsNumeric(svalue))
+                        result = atof(svalue.c_str()) > 0 ? RESULT_TRUE : RESULT_FALSE;
+                }
+                if (result != RESULT_UNSPECIFIED)
                 {
                     refl->SetBool(msg, field_desc, result);
                     ++globals;
@@ -870,6 +889,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
             parser.RecordErrorsTo(&error_collector);
             parser.AllowPartialMessage(true);
             parser.ParseFromString(protobuf_text, cfg);
+
             if (error_collector.has_errors() || error_collector.has_warnings())
             {
                 goby::glog.is(goby::util::logger::DIE) &&

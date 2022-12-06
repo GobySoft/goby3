@@ -1,4 +1,4 @@
-// Copyright 2012-2021:
+// Copyright 2012-2022:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -78,8 +78,9 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
                                 << "Resolving receiver: " << remote.ShortDebugString() << std::endl;
 
         boost::asio::ip::udp::resolver resolver(io_context_);
-        boost::asio::ip::udp::resolver::query query(boost::asio::ip::udp::v4(), remote.ip(),
-                                                    goby::util::as<std::string>(remote.port()));
+        boost::asio::ip::udp::resolver::query query(
+            boost::asio::ip::udp::v4(), remote.ip(), goby::util::as<std::string>(remote.port()),
+            boost::asio::ip::resolver_query_base::numeric_service);
         boost::asio::ip::udp::resolver::iterator endpoint_iterator = resolver.resolve(query);
         const boost::asio::ip::udp::endpoint& receiver = *endpoint_iterator;
         receivers_.insert(std::make_pair(remote.modem_id(), receiver));
