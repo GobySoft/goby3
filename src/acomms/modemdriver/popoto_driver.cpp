@@ -80,7 +80,16 @@ void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
     int payload_mode = popoto_driver_cfg().payload_mode();
     int start_timeout = popoto_driver_cfg().start_timeout();
 
-    if (popoto_driver_cfg().local().has_ip() && popoto_driver_cfg().local().has_port()){
+    if (driver_cfg_.connection_type() == goby::acomms::protobuf::DriverConfig::CONNECTION_SERIAL)
+    {
+        myConnection = SERIAL_CONNECTION;
+        // Set the default baud
+        if (!driver_cfg_.has_serial_baud())
+        driver_cfg_.set_serial_baud(DEFAULT_BAUD);
+    }
+    else if (driver_cfg_.connection_type() == goby::acomms::protobuf::DriverConfig::CONNECTION_TCP_AS_CLIENT)
+    {
+        if (popoto_driver_cfg().local().has_ip() && popoto_driver_cfg().local().has_port()){
         std::string ip = popoto_driver_cfg().local().ip();
         std::string port = popoto_driver_cfg().local().port();
 
@@ -89,16 +98,14 @@ void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
 
         myConnection = ETHERNET_CONNECTION;
         popoto0 =
-            new popoto_client(ip, stoi(port), Popoto0PCMHandler); //  Initialize with the IP, port and PCM callback routine.
+        new popoto_client(ip, stoi(port), Popoto0PCMHandler); //  Initialize with the IP, port and PCM callback routine.
+    }
     }
     else
     {
-        myConnection = SERIAL_CONNECTION;
-        // Set the default baud
-        if (!driver_cfg_.has_serial_baud())
-            driver_cfg_.set_serial_baud(DEFAULT_BAUD);
+        throw(ModemDriverException("Modem physical connection invalid.",
+                                       protobuf::ModemDriverStatus::STARTUP_FAILED));
     }
-
 
     glog.is(DEBUG1) && glog << group(glog_out_group()) << "PopotoDriver: Starting modem..."
                             << std::endl;
