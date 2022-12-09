@@ -1,6 +1,3 @@
-# Add popoto api to cmake
-set(POPOTO_DIR /opt/popoto_client)
-
 ## set up function for external libraries errors
 macro(goby_find_required_package package_name)
   find_package(${package_name} ${ARGN})
@@ -39,6 +36,9 @@ if(DCCL_INCLUDE_DIR)
   include_directories("${DCCL_INCLUDE_DIR}")
   protobuf_include_dirs("${DCCL_INCLUDE_DIR}")
 endif()
+
+# Add popoto api to cmake
+set(POPOTO_ROOT_DIR /opt/popoto_client CACHE PATH "Top level directory for Popoto API.")
 
 #proj
 goby_find_required_package(Proj)
@@ -215,7 +215,7 @@ add_library(goby
   ${MIDDLEWARE_SRC}
   )
 
-target_include_directories(goby PUBLIC ${POPOTO_DIR}/include)
+target_include_directories(goby PUBLIC ${POPOTO_ROOT_DIR}/include)
 
 target_link_libraries(goby
   dccl
@@ -223,7 +223,7 @@ target_link_libraries(goby
   ${Boost_LIBRARIES}
   ${PROTOBUF_LIBRARY}
   ${PROJ_LIBRARY}
-  ${POPOTO_DIR}/build/libpopoto_api.a
+  ${POPOTO_ROOT_DIR}/build/libpopoto_api.a
   )
 
 if(enable_gmp)
