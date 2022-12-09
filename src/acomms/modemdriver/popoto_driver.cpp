@@ -85,21 +85,24 @@ void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
         myConnection = SERIAL_CONNECTION;
         // Set the default baud
         if (!driver_cfg_.has_serial_baud())
-        driver_cfg_.set_serial_baud(DEFAULT_BAUD);
+        {
+            driver_cfg_.set_serial_baud(DEFAULT_BAUD);
+        }
     }
     else if (driver_cfg_.connection_type() == goby::acomms::protobuf::DriverConfig::CONNECTION_TCP_AS_CLIENT)
     {
-        if (popoto_driver_cfg().local().has_ip() && popoto_driver_cfg().local().has_port()){
-        std::string ip = popoto_driver_cfg().local().ip();
-        std::string port = popoto_driver_cfg().local().port();
+        if (popoto_driver_cfg().local().has_ip() && popoto_driver_cfg().local().has_port())
+        {
+            std::string ip = popoto_driver_cfg().local().ip();
+            std::string port = popoto_driver_cfg().local().port();
 
-        // Need to issue the disconnect command to stop pshell
-        signal_and_write("disconnect\n");
+            // Need to issue the disconnect command to stop pshell
+            signal_and_write("disconnect\n");
 
-        myConnection = ETHERNET_CONNECTION;
-        popoto0 =
-        new popoto_client(ip, stoi(port), Popoto0PCMHandler); //  Initialize with the IP, port and PCM callback routine.
-    }
+            myConnection = ETHERNET_CONNECTION;
+            //  Initialize with the IP, port and PCM callback routine.
+            popoto0 = new popoto_client(ip, stoi(port), Popoto0PCMHandler);
+        }
     }
     else
     {
@@ -242,7 +245,6 @@ void goby::acomms::PopotoDriver::send_wake(void)
 {
     std::stringstream message;
     message << "ping " << popoto_driver_cfg().modem_power() << std::endl;
-
     signal_and_write(message.str());
 }
 //--------------------------------------- popoto_sleep ---------------------------------------------------------
@@ -250,12 +252,13 @@ void goby::acomms::PopotoDriver::send_wake(void)
 void goby::acomms::PopotoDriver::popoto_sleep(void)
 {
     glog.is(DEBUG1) && glog << "Modem will now sleep: " << std::endl;
-    signal_and_write(
-        "powerdown\n"); //This will put the modem into deep sleep mode to wake up on next acoustic signal
+
+    //This will put the modem into deep sleep mode to wake up on next acoustic signal
+    signal_and_write("powerdown\n");
 }
 
 //--------------------------------------- play_file ------------------------------------------------------------
-// Play a file from the modems directory
+// Play a file from the modem's directory
 void goby::acomms::PopotoDriver::play_file(protobuf::ModemTransmission& msg)
 {
     glog.is(DEBUG1) && glog << msg.DebugString() << std::endl;
@@ -525,9 +528,7 @@ std::string goby::acomms::PopotoDriver::binary_to_json(const std::uint8_t* buf, 
 std::string goby::acomms::PopotoDriver::json_to_binary(const json& element)
 {
     std::string output;
-
     for (auto& subel : element) { output.append(1, (char)((uint8_t)subel)); }
-
     return output;
 }
 
