@@ -446,7 +446,7 @@ class SerializationInterModuleSubscription : public SerializationHandlerBase<>
 
     SerializationInterModuleSubscription(HandlerType handler,
                                          const intermodule::protobuf::Subscription sub)
-        : handler_(handler), sub_cfg_(sub), group_(sub_cfg_.key().group())
+        : handler_(handler), sub_cfg_(sub), group_(sub_cfg_.key().group()), subscriber_id_(sub.id())
     {
     }
 
@@ -483,6 +483,8 @@ class SerializationInterModuleSubscription : public SerializationHandlerBase<>
     const Group& subscribed_group() const override { return group_; }
     int scheme() const override { return sub_cfg_.key().marshalling_scheme(); }
 
+    std::string subscriber_id() const override { return subscriber_id_; }
+
   private:
     template <typename CharIterator>
     CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end) const
@@ -501,6 +503,8 @@ class SerializationInterModuleSubscription : public SerializationHandlerBase<>
     HandlerType handler_;
     intermodule::protobuf::Subscription sub_cfg_;
     DynamicGroup group_;
+    const std::thread::id thread_id_;
+    const std::string subscriber_id_;
 };
 
 } // namespace middleware
