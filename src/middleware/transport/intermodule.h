@@ -73,9 +73,7 @@ class InterModuleForwarder
     /// \brief Construct a forwarder for the intermodule layer
     ///
     /// \param inner A reference to the inner transporter used to forward messages to and from the portal
-    InterModuleForwarder(InnerTransporter& inner) : Base(inner)
-    {
-    }
+    InterModuleForwarder(InnerTransporter& inner) : Base(inner) {}
     virtual ~InterModuleForwarder() { this->unsubscribe_all(); }
 
     friend Base;
@@ -105,15 +103,14 @@ class InterModuleForwarder
                     const Subscriber<Data>& subscriber)
     {
         if (subscriptions_.empty())
-            this->inner().template subscribe_dynamic<protobuf::SerializerTransporterMessage>(
-                [this](const protobuf::SerializerTransporterMessage& msg) {
-                    auto range = subscriptions_.equal_range(msg.key());
-                    for (auto it = range.first; it != range.second; ++it)
-                    {
-                        it->second->post(msg.data().begin(), msg.data().end());
-                    }
-                },
-                from_portal_group_);
+            this->inner()
+                .template subscribe<Base::from_portal_group_,
+                                    protobuf::SerializerTransporterMessage>(
+                    [this](const protobuf::SerializerTransporterMessage& msg) {
+                        auto range = subscriptions_.equal_range(msg.key());
+                        for (auto it = range.first; it != range.second; ++it)
+                        { it->second->post(msg.data().begin(), msg.data().end()); }
+                    });
 
         auto local_subscription = std::make_shared<SerializationSubscription<Data, scheme>>(
             f, group,
@@ -122,7 +119,7 @@ class InterModuleForwarder
 
         using goby::middleware::intermodule::protobuf::Subscription;
         Subscription subscription;
-        subscription.set_id(full_process_id());
+        subscription.set_id(full_process_and_thread_id());
         subscription.mutable_key()->set_marshalling_scheme(scheme);
         subscription.mutable_key()->set_type(SerializerParserHelper<Data, scheme>::type_name());
         subscription.mutable_key()->set_group(std::string(group));
@@ -137,7 +134,7 @@ class InterModuleForwarder
     {
         using goby::middleware::intermodule::protobuf::Subscription;
         Subscription unsubscription;
-        unsubscription.set_id(full_process_id());
+        unsubscription.set_id(full_process_and_thread_id());
         unsubscription.mutable_key()->set_marshalling_scheme(scheme);
         unsubscription.mutable_key()->set_type(SerializerParserHelper<Data, scheme>::type_name());
         unsubscription.mutable_key()->set_group(std::string(group));
@@ -147,21 +144,23 @@ class InterModuleForwarder
         subscriptions_.erase(unsubscription.key());
 
         if (subscriptions_.empty())
-            this->inner().template unsubscribe_dynamic<protobuf::SerializerTransporterMessage>(
-                from_portal_group_);
+            this->inner()
+                .template unsubscribe<Base::from_portal_group_,
+                                      protobuf::SerializerTransporterMessage>();
     }
 
     void _unsubscribe_all()
     {
         using goby::middleware::intermodule::protobuf::Subscription;
         Subscription unsubscription;
-        unsubscription.set_id(full_process_id());
+        unsubscription.set_id(full_process_and_thread_id());
         unsubscription.set_action(Subscription::UNSUBSCRIBE_ALL);
         this->inner().template publish<Base::to_portal_group_>(unsubscription);
 
         subscriptions_.clear();
-        this->inner().template unsubscribe_dynamic<protobuf::SerializerTransporterMessage>(
-            from_portal_group_);
+        this->inner()
+            .template unsubscribe<Base::from_portal_group_,
+                                  protobuf::SerializerTransporterMessage>();
     }
 
     // not yet implemented
@@ -182,8 +181,6 @@ class InterModuleForwarder
     std::multimap<protobuf::SerializerTransporterKey,
                   std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         subscriptions_;
-
-    DynamicGroup from_portal_group_{Base::from_portal_group_prefix_ + full_process_id()};
 };
 
 template <typename Derived, typename InnerTransporter>
@@ -209,10 +206,8 @@ class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTr
 
         this->inner().template subscribe<Base::to_portal_group_, Subscription>(
             [this](const Subscription& s) {
-                std::string group_name(Base::from_portal_group_prefix_ + s.id());
-                auto on_subscribe = [this, group_name](const SerializerTransporterMessage& d) {
-                    DynamicGroup group(group_name);
-                    this->inner().publish_dynamic(d, group);
+                auto on_subscribe = [this](const SerializerTransporterMessage& d) {
+                    this->inner().template publish<Base::from_portal_group_>(d);
                 };
                 auto sub = std::make_shared<SerializationInterModuleSubscription>(on_subscribe, s);
 

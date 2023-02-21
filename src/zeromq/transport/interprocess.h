@@ -562,6 +562,10 @@ class InterProcessPortalImplementation
                                                   subscription->subscribed_group(),
                                                   IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
+        goby::glog.is_debug2() &&
+            goby::glog << "Received subscription forwarded for identifier [" << identifier
+                       << "] from subscriber id: " << subscription->subscriber_id() << std::endl;
+
         switch (subscription->action())
         {
             case middleware::SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE:

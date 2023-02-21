@@ -92,6 +92,11 @@ inline std::string full_process_id()
     return full_pid;
 }
 
+// full_process_id + thread_id
+inline std::string full_process_and_thread_id(std::thread::id i = std::this_thread::get_id())
+{
+    return full_process_id() + "-t" + thread_id(i);
+}
 } // namespace middleware
 } // namespace goby
 
