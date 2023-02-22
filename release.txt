@@ -1,6 +1,15 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.14
+
+### Bugs
+
+- Fix Liaison Commander crash with messages containing embeded messages that have "oneof" fields
+- Fix bug where intermodule subscriptions only go to the first subscriber.
+
+
+****************
 Version 3.0.13
 
 ### Bugs
