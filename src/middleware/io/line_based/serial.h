@@ -84,7 +84,7 @@ class SerialThreadLineBased
     {
     }
 
-    ~SerialThreadLineBased() {}
+    ~SerialThreadLineBased() override {}
 
   private:
     /// \brief Starts an asynchronous read on the serial port until the end-of-line string is reached. When the read completes, a lambda is called that publishes the received line.

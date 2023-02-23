@@ -302,6 +302,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
             }
 
             data_.erase(thread_id);
+            data_protection_.erase(thread_id);
         }
     }
 
