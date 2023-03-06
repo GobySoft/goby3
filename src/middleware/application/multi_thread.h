@@ -429,6 +429,10 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
 
     // copy configuration
     auto thread_lambda = [this, type_i, index, cfg, &thread_manager]() {
+#ifdef __APPLE__
+        // set thread name for debugging purposes
+        pthread_setname_np(thread_manager.name.c_str());
+#endif
         try
         {
             std::shared_ptr<ThreadType> goby_thread(
@@ -450,8 +454,10 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
 
     thread_manager.thread = std::unique_ptr<std::thread>(new std::thread(thread_lambda));
 
+#ifndef __APPLE__
     // set thread name for debugging purposes
     pthread_setname_np(thread_manager.thread->native_handle(), thread_manager.name.c_str());
+#endif
 
     ++running_thread_count_;
 }
