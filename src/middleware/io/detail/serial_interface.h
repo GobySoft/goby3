@@ -133,7 +133,7 @@ class SerialThread : public IOThread<line_in_group, line_out_group, publish_laye
         this->interthread().template publish<line_in_group>(ready);
     }
 
-    ~SerialThread() override
+    virtual ~SerialThread() override
     {
         this->template unsubscribe_out<goby::middleware::protobuf::SerialCommand>();
     }
