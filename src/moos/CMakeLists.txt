@@ -8,7 +8,6 @@ set(PROTOS
   protobuf/ufield_sim_driver.proto
   protobuf/node_status.proto
   protobuf/desired_course.proto
-  protobuf/moos_helm_frontseat_interface_config.proto
   )
 
 set(SRC
@@ -29,6 +28,7 @@ if(build_zeromq)
   set(PROTOS ${PROTOS} 
     protobuf/liaison_config.proto
     protobuf/moos_gateway_config.proto
+    protobuf/moos_helm_frontseat_interface_config.proto
     )
   set(SRC ${SRC}
     middleware/moos_plugin_translator.cpp
