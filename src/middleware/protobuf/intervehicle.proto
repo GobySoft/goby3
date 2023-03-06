@@ -206,3 +206,9 @@ message ModemRawWithLinkID
     required uint32 link_modem_id = 1;
     required goby.acomms.protobuf.ModemRaw data = 2;
 }
+
+message ModemReportWithLinkID
+{
+    required uint32 link_modem_id = 1;
+    required goby.acomms.protobuf.ModemReport data = 2;
+}

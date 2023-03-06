@@ -333,10 +333,10 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
 template <typename T, typename Clock = goby::time::SteadyClock> class DynamicBuffer
 {
   public:
-    DynamicBuffer()
+    DynamicBuffer() : DynamicBuffer(++count_) {}
+    DynamicBuffer(int id)
     {
-        int order(++count_);
-        glog_priority_group_ = "goby::acomms::buffer::priority::" + std::to_string(order);
+        glog_priority_group_ = "goby::acomms::buffer::priority::" + std::to_string(id);
         goby::glog.add_group(glog_priority_group_, util::Colors::yellow);
     }
     ~DynamicBuffer() {}

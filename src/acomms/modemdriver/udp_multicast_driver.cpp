@@ -54,6 +54,8 @@ void goby::acomms::UDPMulticastDriver::startup(const protobuf::DriverConfig& cfg
 {
     driver_cfg_ = cfg;
 
+    modem_start(driver_cfg_);
+
     rate_to_bytes_.clear();
 
     for (const auto& rate_bytes_pair : multicast_driver_cfg().rate_to_bytes())

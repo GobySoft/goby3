@@ -2,3 +2,9 @@ add_executable(gobyd gobyd.cpp)
 target_link_libraries(gobyd goby goby_zeromq)
 
 generate_middleware_interfaces(gobyd)
+
+
+add_executable(goby_intervehicle_portal intervehicle_portal.cpp)
+target_link_libraries(goby_intervehicle_portal goby goby_zeromq)
+
+generate_middleware_interfaces(goby_intervehicle_portal)

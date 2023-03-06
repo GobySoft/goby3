@@ -16,3 +16,13 @@ message GobyDaemonConfig
 
     optional goby.zeromq.protobuf.InterProcessManagerHold hold = 10;
 }
+
+// standalone intervehicle portal (if running separate apps: gobyd for
+// interprocess and goby_intervehicle_portal for intervehicle comms)
+message GobyIntervehiclePortalConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    required goby.middleware.intervehicle.protobuf.PortalConfig intervehicle =
+        3;
+}

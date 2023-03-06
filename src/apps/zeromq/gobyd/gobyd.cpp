@@ -52,6 +52,8 @@
 #include "goby/zeromq/protobuf/interprocess_config.pb.h" // for InterP...
 #include "goby/zeromq/transport/interprocess.h"          // for InterP...
 
+#include "common.h"
+
 using namespace goby::util::logger;
 using goby::glog;
 
@@ -104,16 +106,7 @@ class DaemonConfigurator : public goby::middleware::ProtobufConfigurator<protobu
         // add ourselves to the hold list so that clients don't publish until we're ready
         cfg.mutable_hold()->add_required_client(cfg.app().name());
 
-        if (cfg.has_intervehicle())
-        {
-            auto& intervehicle = *cfg.mutable_intervehicle();
-            if (intervehicle.has_persist_subscriptions())
-            {
-                auto& p = *intervehicle.mutable_persist_subscriptions();
-                if (!p.has_name())
-                    p.set_name(cfg.interprocess().platform());
-            }
-        }
+        process_intervehicle_config(cfg);
     }
 };
 

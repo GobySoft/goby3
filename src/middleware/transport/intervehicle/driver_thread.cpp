@@ -124,8 +124,10 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     : goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
                                InterProcessForwarder<InterThreadTransporter>>(
           config, 10 * boost::units::si::hertz),
-      glog_group_("goby::middleware::intervehicle::driver_thread::id" +
-                  std::to_string(cfg().driver().modem_id()))
+      buffer_(cfg().modem_id()),
+      mac_(cfg().modem_id()),
+      glog_group_("goby::middleware::intervehicle::driver_thread::" +
+                  goby::acomms::ModemDriverBase::driver_name(cfg().driver()))
 
 {
     goby::glog.add_group(glog_group_, util::Colors::blue);

@@ -66,6 +66,8 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 {
     driver_cfg_ = cfg;
 
+    modem_start(driver_cfg_);
+
     socket_ = std::make_unique<boost::asio::ip::udp::socket>(io_context_);
     const auto& local = driver_cfg_.GetExtension(udp::protobuf::config).local();
     socket_->open(boost::asio::ip::udp::v4());

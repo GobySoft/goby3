@@ -123,7 +123,13 @@ class ModemDriverBase
     /// Public Destructor
     virtual ~ModemDriverBase();
 
+    /// \brief Integer for the order in which this driver was started (first driver started is 1, second driver is 2, etc.)
     int driver_order() { return order_; }
+
+    /// \brief Unique driver name (e.g. UDP_MULTICAST::1 or my_driver_name::2)
+    ///
+    /// The name has two parts separated by "::". The first part is the driver_type enum without the "DRIVER_" prefix or the result of goby_driver_name() function (for plugin drivers). The second part is the modem id.
+    static std::string driver_name(const protobuf::DriverConfig& cfg);
 
   protected:
     /// \name Constructors/Destructor
