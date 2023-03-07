@@ -56,15 +56,22 @@ inline std::string thread_id(std::thread::id i = std::this_thread::get_id())
     return ss.str();
 }
 
-// Linux thread ID, useful because you can access it outside the system
+// Linux/Apple thread ID, useful because you can access it outside the system
+#if defined __APPLE__
+inline uint64_t gettid()
+{
+    uint64_t tid;
+    pthread_threadid_np(NULL, &tid);
+    return tid;
+}
+#elif defined SYS_gettid
 inline pid_t gettid()
 {
-#ifdef SYS_gettid
     return syscall(SYS_gettid);
-#else
-#error "SYS_gettid unavailable on this system"
-#endif
 }
+#else
+#error "SYS_gettid unavailable on this system, and this is not an Apple system."
+#endif
 
 inline std::string hostname()
 {

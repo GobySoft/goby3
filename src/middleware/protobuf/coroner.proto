@@ -23,7 +23,10 @@ enum Error
 message ThreadHealth
 {
     required string name = 1;
+    // Linux thread ID.
     optional int32 thread_id = 2;
+    // Apple thread ID.
+    optional uint64 thread_id_apple = 4;
     optional int32 uid = 3;
     required HealthState state = 10;
     repeated ThreadHealth child = 11;
