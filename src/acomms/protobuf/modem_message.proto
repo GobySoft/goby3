@@ -142,7 +142,7 @@ message ModemReport
 {
     option (dccl.msg).unit_system = "si";
 
-    required int32 modem_id = 1;
+    optional int32 modem_id = 1 [default = -1];
 
     enum LinkState
     {
@@ -150,12 +150,12 @@ message ModemReport
         LINK_AVAILABLE = 2;
     }
 
-    optional uint64 time = 2 [(dccl.field) = {
-        omit: true,
-        units { prefix: "micro" base_dimensions: "T" }
-    }];
+    optional uint64 time = 2
+        [(dccl.field) = { units { prefix: "micro" base_dimensions: "T" } }];
 
-    optional LinkState link_state = 3 [default = LINK_NOT_AVAILABLE];
+    // default is LINK_AVAILABLE so drivers that do not implement this report
+    // will not be considered to always be unavailable
+    optional LinkState link_state = 3 [default = LINK_AVAILABLE];
 
     enum LinkQuality
     {

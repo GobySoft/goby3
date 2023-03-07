@@ -35,7 +35,6 @@
 #include "driver_base.h"
 #include "driver_exception.h"                            // for ModemDri...
 #include "goby/acomms/connect.h"                         // for connect
-#include "goby/acomms/protobuf/driver_base.pb.h"         // for DriverCo...
 #include "goby/acomms/protobuf/modem_driver_status.pb.h" // for ModemDri...
 #include "goby/acomms/protobuf/modem_message.pb.h"       // for ModemRaw
 #include "goby/util/as.h"                                // for as
@@ -84,6 +83,8 @@ void goby::acomms::ModemDriverBase::modem_close() { modem_.reset(); }
 
 void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cfg)
 {
+    cfg_ = cfg;
+
     if (!cfg.has_modem_id())
         throw(ModemDriverException("missing modem_id in configuration",
                                    protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
@@ -217,4 +218,16 @@ std::string goby::acomms::ModemDriverBase::driver_name(const protobuf::DriverCon
                                   : goby::acomms::protobuf::DriverType_Name(cfg.driver_type())
                                         .substr(driver_prefix_len); // remove "DRIVER_"
     return driver_name + "::" + goby::util::as<std::string>(cfg.modem_id());
+}
+
+void goby::acomms::ModemDriverBase::report(protobuf::ModemReport* report)
+{
+    if (cfg_.has_modem_id())
+        report->set_modem_id(cfg_.modem_id());
+    report->set_time_with_units(goby::time::SystemClock::now<goby::time::MicroTime>());
+
+    // default assume if we have a open serial/tcp connection that the modem is available
+    // subclasses should override to provide better information
+    if (modem_ && modem_->active())
+        report->set_link_state(protobuf::ModemReport::LINK_AVAILABLE);
 }

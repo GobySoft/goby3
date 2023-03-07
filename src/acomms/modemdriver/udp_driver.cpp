@@ -231,3 +231,14 @@ void goby::acomms::UDPDriver::receive_complete(const boost::system::error_code& 
 
     start_receive();
 }
+
+void goby::acomms::UDPDriver::report(protobuf::ModemReport* report)
+{
+    ModemDriverBase::report(report);
+
+    report->set_link_state((socket_ && socket_->is_open())
+                               ? protobuf::ModemReport::LINK_AVAILABLE
+                               : protobuf::ModemReport::LINK_NOT_AVAILABLE);
+
+    report->set_link_quality(protobuf::ModemReport::QUALITY_UNKNOWN);
+}

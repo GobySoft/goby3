@@ -127,8 +127,10 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
       buffer_(cfg().modem_id()),
       mac_(cfg().modem_id()),
       glog_group_("goby::middleware::intervehicle::driver_thread::" +
-                  goby::acomms::ModemDriverBase::driver_name(cfg().driver()))
-
+                  goby::acomms::ModemDriverBase::driver_name(cfg().driver())),
+      next_modem_report_time_(goby::time::SteadyClock::now()),
+      modem_report_interval_(goby::time::convert_duration<goby::time::SteadyClock::duration>(
+          cfg().modem_report_interval_with_units()))
 {
     goby::glog.add_group(glog_group_, util::Colors::blue);
     interthread_ = std::make_unique<InterThreadTransporter>();
@@ -303,6 +305,16 @@ void goby::middleware::intervehicle::ModemDriverThread::loop()
 
     driver_->do_work();
     mac_.do_work();
+
+    auto now = goby::time::SteadyClock::now();
+    if (now > next_modem_report_time_ + modem_report_interval_)
+    {
+        protobuf::ModemReportWithLinkID report_with_id;
+        report_with_id.set_link_modem_id(cfg().modem_id());
+        driver_->report(report_with_id.mutable_data());
+        interprocess_->publish<groups::modem_report>(report_with_id);
+        next_modem_report_time_ += modem_report_interval_;
+    }
 }
 
 void goby::middleware::intervehicle::ModemDriverThread::_expire_value(

@@ -32,6 +32,8 @@
 #include <memory>                         // for shared_ptr, __shared_p...
 #include <string>                         // for string
 
+#include "goby/acomms/protobuf/driver_base.pb.h" // for DriverCo...
+
 namespace goby
 {
 namespace util
@@ -46,6 +48,7 @@ namespace protobuf
 class DriverConfig;
 class ModemRaw;
 class ModemTransmission;
+class ModemReport;
 } // namespace protobuf
 
 /// \class ModemDriverBase driver_base.h goby/acomms/modem_driver.h
@@ -123,6 +126,12 @@ class ModemDriverBase
     /// Public Destructor
     virtual ~ModemDriverBase();
 
+    /// \name Informational
+    //@{
+
+    /// \brief Returns report including modem availability and signal quality (if known)
+    virtual void report(protobuf::ModemReport* report);
+
     /// \brief Integer for the order in which this driver was started (first driver started is 1, second driver is 2, etc.)
     int driver_order() { return order_; }
 
@@ -130,6 +139,7 @@ class ModemDriverBase
     ///
     /// The name has two parts separated by "::". The first part is the driver_type enum without the "DRIVER_" prefix or the result of goby_driver_name() function (for plugin drivers). The second part is the modem id.
     static std::string driver_name(const protobuf::DriverConfig& cfg);
+    //@}
 
   protected:
     /// \name Constructors/Destructor
@@ -187,6 +197,8 @@ class ModemDriverBase
     std::shared_ptr<std::ofstream> raw_fs_;
     bool raw_fs_connections_made_{false};
     int order_;
+
+    protobuf::DriverConfig cfg_;
 };
 } // namespace acomms
 } // namespace goby
