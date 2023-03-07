@@ -61,8 +61,10 @@ class SerializationHandlerPostSelector<Metadata,
 
     virtual std::string::const_iterator post(std::string::const_iterator b,
                                              std::string::const_iterator e) const = 0;
+#ifndef _LIBCPP_VERSION
     virtual std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
                                                    std::vector<char>::const_iterator e) const = 0;
+#endif
     virtual const char* post(const char* b, const char* e) const = 0;
 };
 
@@ -78,9 +80,11 @@ class SerializationHandlerPostSelector<Metadata,
     virtual std::string::const_iterator post(std::string::const_iterator b,
                                              std::string::const_iterator e,
                                              const Metadata& metadata) const = 0;
+#ifndef _LIBCPP_VERSION
     virtual std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
                                                    std::vector<char>::const_iterator e,
                                                    const Metadata& metadata) const = 0;
+#endif
     virtual const char* post(const char* b, const char* e, const Metadata& metadata) const = 0;
 };
 
@@ -150,11 +154,13 @@ class SerializationSubscription : public SerializationHandlerBase<>
         return _post(b, e);
     }
 
+#ifndef _LIBCPP_VERSION
     std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
                                            std::vector<char>::const_iterator e) const override
     {
         return _post(b, e);
     }
+#endif
 
     const char* post(const char* b, const char* e) const override { return _post(b, e); }
 
@@ -217,12 +223,14 @@ class IntervehicleSerializationSubscription
         return _post(b, e, header);
     }
 
+#ifndef _LIBCPP_VERSION
     std::vector<char>::const_iterator
     post(std::vector<char>::const_iterator b, std::vector<char>::const_iterator e,
          const intervehicle::protobuf::Header& header) const override
     {
         return _post(b, e, header);
     }
+#endif
 
     const char* post(const char* b, const char* e,
                      const intervehicle::protobuf::Header& header) const override
@@ -290,12 +298,14 @@ class PublisherCallback : public SerializationHandlerBase<Metadata>
         return _post(b, e, md);
     }
 
+#ifndef _LIBCPP_VERSION
     std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
                                            std::vector<char>::const_iterator e,
                                            const Metadata& md) const override
     {
         return _post(b, e, md);
     }
+#endif
 
     const char* post(const char* b, const char* e, const Metadata& md) const override
     {
@@ -350,11 +360,13 @@ class SerializationUnSubscription : public SerializationHandlerBase<>
         throw(goby::Exception("Cannot call post on an UnSubscription"));
     }
 
+#ifndef _LIBCPP_VERSION
     std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
                                            std::vector<char>::const_iterator e) const override
     {
         throw(goby::Exception("Cannot call post on an UnSubscription"));
     }
+#endif
 
     const char* post(const char* b, const char* e) const override
     {
@@ -457,11 +469,13 @@ class SerializationInterModuleSubscription : public SerializationHandlerBase<>
         return _post(b, e);
     }
 
+#ifndef _LIBCPP_VERSION
     std::vector<char>::const_iterator post(std::vector<char>::const_iterator b,
                                            std::vector<char>::const_iterator e) const override
     {
         return _post(b, e);
     }
+#endif
 
     const char* post(const char* b, const char* e) const override { return _post(b, e); }
 
