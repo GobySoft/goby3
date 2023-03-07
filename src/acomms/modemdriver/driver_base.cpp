@@ -89,11 +89,16 @@ void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cf
         throw(ModemDriverException("missing modem_id in configuration",
                                    protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
 
-    glog_out_group_ = "goby::acomms::modemdriver::out::" + driver_name(cfg);
-    glog_in_group_ = "goby::acomms::modemdriver::in::" + driver_name(cfg);
+    // only set once - TODO add ability to remove groups from glog
+    if (!glog_groups_set_)
+    {
+        glog_out_group_ = "goby::acomms::modemdriver::out::" + driver_name(cfg);
+        glog_in_group_ = "goby::acomms::modemdriver::in::" + driver_name(cfg);
 
-    goby::glog.add_group(glog_out_group_, util::Colors::lt_magenta);
-    goby::glog.add_group(glog_in_group_, util::Colors::lt_blue);
+        goby::glog.add_group(glog_out_group_, util::Colors::lt_magenta);
+        goby::glog.add_group(glog_in_group_, util::Colors::lt_blue);
+        glog_groups_set_ = true;
+    }
 
     if (cfg.has_connection_type())
     {

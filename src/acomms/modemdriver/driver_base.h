@@ -193,6 +193,7 @@ class ModemDriverBase
 
     std::string glog_out_group_;
     std::string glog_in_group_;
+    bool glog_groups_set_{false};
 
     std::shared_ptr<std::ofstream> raw_fs_;
     bool raw_fs_connections_made_{false};
