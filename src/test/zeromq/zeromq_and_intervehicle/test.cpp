@@ -202,7 +202,7 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
 
     {
         auto start = std::chrono::system_clock::now();
-        auto timeout = std::chrono::seconds(2);
+        auto timeout = std::chrono::seconds(5);
         while (!intervehicle_subscriptions_ready)
         {
             intervehicle.poll(std::chrono::milliseconds(10));

@@ -54,6 +54,7 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     //@{
     /// \brief Default constructor.
     MACManager();
+    MACManager(int id);
     ~MACManager();
     //@}
 

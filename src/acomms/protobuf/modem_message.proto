@@ -28,7 +28,7 @@ message ModemTransmission
     optional uint64 time = 3 [
         (dccl.field) = {
             omit: true,
-            units {prefix: "micro" base_dimensions: "T"}
+            units { prefix: "micro" base_dimensions: "T" }
         },
         (goby.field).description =
             "timestamp (microseconds since UNIX (1970-01-01 00:00:00 UTC) of "
@@ -99,8 +99,12 @@ message ModemTransmission
 
     // for AMAC
     optional double slot_seconds = 30 [
-        (dccl.field) =
-            {min: 0 max: 3600 precision: 1 units {base_dimensions: "T"}},
+        (dccl.field) = {
+            min: 0
+            max: 3600
+            precision: 1
+            units { base_dimensions: "T" }
+        },
         default = 10
     ];  // length of slot (in seconds) if this transmission is part of a
     // TDMA cycle
@@ -122,12 +126,48 @@ message ModemTransmission
     // extensions 1401-1420 used by benthos_atm900.proto
     // extensions 1421-1440 used by mccs_driver.proto
     // extension 1441 used by popoto_driver.proto
-    // extensions 1500-1509 used by Jaiabot: https://github.com/jaiarobotics/jaiabot/
+    // extensions 1500-1509 used by Jaiabot:
+    // https://github.com/jaiarobotics/jaiabot/ extensions 1510-1519 used by
+    // Blue Ocean Seismic Services
     extensions 1000 to max;
 }
 
 message ModemRaw
 {
-    required bytes raw = 7;          // "$CARXD,..."
+    required bytes raw = 7;           // "$CARXD,..."
     optional string description = 8;  // "Incoming hexadecimal data"
+}
+
+message ModemReport
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional int32 modem_id = 1 [default = -1];
+
+    enum LinkState
+    {
+        LINK_NOT_AVAILABLE = 1;
+        LINK_AVAILABLE = 2;
+    }
+
+    optional uint64 time = 2
+        [(dccl.field) = { units { prefix: "micro" base_dimensions: "T" } }];
+
+    // default is LINK_AVAILABLE so drivers that do not implement this report
+    // will not be considered to always be unavailable
+    optional LinkState link_state = 3 [default = LINK_AVAILABLE];
+
+    enum LinkQuality
+    {
+        QUALITY_VERY_LOW = 1;
+        QUALITY_LOW = 2;
+        QUALITY_UNKNOWN = 3;  // treat unknown quality as just below medium
+        QUALITY_MEDIUM = 4;
+        QUALITY_HIGH = 5;
+        QUALITY_VERY_HIGH = 6;
+    }
+    optional LinkQuality link_quality = 4 [default = QUALITY_UNKNOWN];
+
+    // same assignment as ModemTransmission
+    extensions 1000 to max;
 }

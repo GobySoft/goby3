@@ -39,6 +39,12 @@ message PortalConfig
                 "Time to wait before resending the same data (ARQ wait).",
             (dccl.field) = { units { base_dimensions: "T" } }
         ];
+
+        optional double modem_report_interval = 21 [
+            default = 10.0,
+            (goby.field).description = "Time between modem reports",
+            (dccl.field) = { units { base_dimensions: "T" } }
+        ];
     }
 
     repeated LinkConfig link = 1;
@@ -205,4 +211,10 @@ message ModemRawWithLinkID
 {
     required uint32 link_modem_id = 1;
     required goby.acomms.protobuf.ModemRaw data = 2;
+}
+
+message ModemReportWithLinkID
+{
+    required uint32 link_modem_id = 1;
+    required goby.acomms.protobuf.ModemReport data = 2;
 }

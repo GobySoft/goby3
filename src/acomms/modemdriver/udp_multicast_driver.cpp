@@ -54,6 +54,8 @@ void goby::acomms::UDPMulticastDriver::startup(const protobuf::DriverConfig& cfg
 {
     driver_cfg_ = cfg;
 
+    modem_start(driver_cfg_);
+
     rate_to_bytes_.clear();
 
     for (const auto& rate_bytes_pair : multicast_driver_cfg().rate_to_bytes())
@@ -203,4 +205,16 @@ void goby::acomms::UDPMulticastDriver::receive_complete(const boost::system::err
     }
 
     start_receive();
+}
+
+void goby::acomms::UDPMulticastDriver::report(protobuf::ModemReport* report)
+{
+    ModemDriverBase::report(report);
+
+    report->set_link_state(socket_.is_open() ? protobuf::ModemReport::LINK_AVAILABLE
+                                             : protobuf::ModemReport::LINK_NOT_AVAILABLE);
+
+    // no way to know about physical link that this UDP socket is connected to.
+    // conceivably we could keep a running average of ack'd packets to provide some info
+    report->set_link_quality(protobuf::ModemReport::QUALITY_UNKNOWN);
 }

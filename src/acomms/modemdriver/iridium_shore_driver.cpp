@@ -85,6 +85,7 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
 
     glog.is(DEBUG1) && glog << group(glog_out_group())
                             << "Goby Shore Iridium RUDICS/SBD driver starting up." << std::endl;
+    modem_start(driver_cfg_);
 
     rudics_mac_msg_.set_src(driver_cfg_.modem_id());
     rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
