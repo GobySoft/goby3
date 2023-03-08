@@ -58,10 +58,14 @@ void goby::moos::convert_and_publish_node_status(
         moos_comms.Notify("NAV_DEPTH",
                           status.global_fix().depth_with_units<quantity<si::length>>().value());
 
-    if (status.pose().has_heading())
+    if (status.pose().has_heading()) {
         moos_comms.Notify(
             "NAV_HEADING",
             status.pose().heading_with_units<quantity<degree::plane_angle>>().value());
+        moos_comms.Notify(
+            "NAV_YAW",
+            -status.pose().heading_with_units<quantity<si::plane_angle>>().value());
+    }
 
     moos_comms.Notify("NAV_SPEED",
                       status.speed().over_ground_with_units<quantity<si::velocity>>().value());
