@@ -1,6 +1,36 @@
 Goby Release Notes (Major version 3)
 
 ****************
+Version 3.0.15
+
+### Acomms
+
+- New ModemDriverBase report(...) method to provide information about link availability, link quality (if known), and any other data the driver wants to provide.
+
+### Middleware
+
+- Call new ModemDriverBase::report(...) regularly from intervehicle driver threads and publish to goby::middleware::intervehicle::modem_report.
+- Improve names of glog groups for intervehicle acomms components.
+- Add new goby_intervehicle_portal application that acts just like the intervehicle part of gobyd (so that the intervehicle drivers can be run in a separate app from the interprocess manager, etc. that gobyd provides). Users can use gobyd just as before, if desired.
+
+### Bugs
+
+- Fix lack of subscriptions when removing and creating a second InterProcessTransporter on the same thread (used by ModemDrivers).
+
+### Build
+
+- Fix build with MOOS enabled and ZeroMQ disabled
+
+****************
+Version 3.0.14
+
+### Bugs
+
+- Fix Liaison Commander crash with messages containing embeded messages that have "oneof" fields
+- Fix bug where intermodule subscriptions only go to the first subscriber.
+
+
+****************
 Version 3.0.13
 
 ### Bugs

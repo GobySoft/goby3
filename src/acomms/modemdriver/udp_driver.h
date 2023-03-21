@@ -1,4 +1,4 @@
-// Copyright 2011-2021:
+// Copyright 2011-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -25,12 +25,12 @@
 #ifndef GOBY_ACOMMS_MODEMDRIVER_UDP_DRIVER_H
 #define GOBY_ACOMMS_MODEMDRIVER_UDP_DRIVER_H
 
-#include <array>    // for array
-#include <cstddef>  // for size_t
-#include <cstdint>  // for uint32_t
-#include <map>      // for multimap
-#include <memory>   // for unique_ptr
-#include <set>      // for set
+#include <array>   // for array
+#include <cstddef> // for size_t
+#include <cstdint> // for uint32_t
+#include <map>     // for multimap
+#include <memory>  // for unique_ptr
+#include <set>     // for set
 
 #include <boost/asio/ip/udp.hpp> // for udp, udp::endpoint
 
@@ -65,6 +65,8 @@ class UDPDriver : public ModemDriverBase
     void shutdown() override;
     void do_work() override;
     void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
+
+    void report(protobuf::ModemReport* report) override;
 
   private:
     void start_send(const protobuf::ModemTransmission& msg);

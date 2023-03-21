@@ -1,4 +1,4 @@
-// Copyright 2010-2021:
+// Copyright 2010-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -54,6 +54,7 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     //@{
     /// \brief Default constructor.
     MACManager();
+    MACManager(int id);
     ~MACManager();
     //@}
 

@@ -1,4 +1,4 @@
-// Copyright 2009-2021:
+// Copyright 2009-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -58,6 +58,9 @@ constexpr Group modem_receive{"goby::middleware::intervehicle::modem_receive"};
 constexpr Group modem_transmit_result{"goby::middleware::intervehicle::modem_transmit_result"};
 constexpr Group modem_raw_incoming{"goby::middleware::intervehicle::modem_raw_incoming"};
 constexpr Group modem_raw_outgoing{"goby::middleware::intervehicle::modem_raw_outgoing"};
+
+// from calling ModemDriverBase::report()
+constexpr Group modem_report{"goby::middleware::intervehicle::modem_report"};
 
 // direct connection to MACManager signals
 constexpr Group mac_initiate_transmission{

@@ -1,4 +1,4 @@
-// Copyright 2009-2022:
+// Copyright 2009-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -92,6 +92,11 @@ inline std::string full_process_id()
     return full_pid;
 }
 
+// full_process_id + thread_id
+inline std::string full_process_and_thread_id(std::thread::id i = std::this_thread::get_id())
+{
+    return full_process_id() + "-t" + thread_id(i);
+}
 } // namespace middleware
 } // namespace goby
 

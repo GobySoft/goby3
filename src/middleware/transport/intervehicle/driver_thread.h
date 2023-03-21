@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -217,6 +217,9 @@ class ModemDriverThread
     std::string glog_group_;
 
     static std::map<std::string, void*> driver_plugins_;
+
+    goby::time::SteadyClock::time_point next_modem_report_time_;
+    const goby::time::SteadyClock::duration modem_report_interval_;
 };
 
 } // namespace intervehicle

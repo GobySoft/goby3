@@ -20,6 +20,7 @@ enum DriverType
     DRIVER_POPOTO = 12;
 }
 
+
 message DriverConfig
 {
     oneof driver

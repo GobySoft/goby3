@@ -1,4 +1,4 @@
-// Copyright 2012-2022:
+// Copyright 2012-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -65,6 +65,8 @@ goby::acomms::UDPDriver::~UDPDriver() = default;
 void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 {
     driver_cfg_ = cfg;
+
+    modem_start(driver_cfg_);
 
     socket_ = std::make_unique<boost::asio::ip::udp::socket>(io_context_);
     const auto& local = driver_cfg_.GetExtension(udp::protobuf::config).local();
@@ -228,4 +230,15 @@ void goby::acomms::UDPDriver::receive_complete(const boost::system::error_code& 
     receive_message(msg);
 
     start_receive();
+}
+
+void goby::acomms::UDPDriver::report(protobuf::ModemReport* report)
+{
+    ModemDriverBase::report(report);
+
+    report->set_link_state((socket_ && socket_->is_open())
+                               ? protobuf::ModemReport::LINK_AVAILABLE
+                               : protobuf::ModemReport::LINK_NOT_AVAILABLE);
+
+    report->set_link_quality(protobuf::ModemReport::QUALITY_UNKNOWN);
 }

@@ -1,4 +1,4 @@
-// Copyright 2009-2022:
+// Copyright 2009-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -1298,7 +1298,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
                 modify_field = button;
                 if (field_desc->containing_oneof())
-                    oneof_fields_[field_desc->containing_oneof()].push_back(modify_field);
+                    oneof_fields_[message][field_desc->containing_oneof()].push_back(modify_field);
             }
         }
         else
@@ -1321,7 +1321,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     {
         node->setColumnWidget(1, value_field);
         if (field_desc->containing_oneof())
-            oneof_fields_[field_desc->containing_oneof()].push_back(value_field);
+            oneof_fields_[message][field_desc->containing_oneof()].push_back(value_field);
     }
 
     if (modify_field)
@@ -1679,7 +1679,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             default: break;
         }
     }
-    update_oneofs(field_desc, field);
+    update_oneofs(message, field_desc, field);
     check_initialized();
     check_dynamics();
 }
@@ -1718,7 +1718,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
     glog.is(DEBUG1) && glog << "The message is: " << message_->DebugString() << std::endl;
 
-    update_oneofs(field_desc, field);
+    update_oneofs(message, field_desc, field);
     check_initialized();
     check_dynamics();
 }
@@ -1864,11 +1864,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::update_oneofs(
-    const google::protobuf::FieldDescriptor* field_desc, Wt::WFormWidget* changed_field)
+    google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field_desc,
+    Wt::WFormWidget* changed_field)
 {
     if (field_desc->containing_oneof())
     {
-        for (auto* field : oneof_fields_[field_desc->containing_oneof()])
+        for (auto* field : oneof_fields_[message][field_desc->containing_oneof()])
         {
             // clear all other fields in the oneof
             if (field != changed_field)
@@ -2071,6 +2072,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     {
         parent->removeChildNode(parent->childNodes().back());
 
+        oneof_fields_.erase(&refl->GetRepeatedMessage(*message, field_desc,
+                                                      refl->FieldSize(*message, field_desc) - 1));
         refl->RemoveLast(message, field_desc);
     }
 
@@ -2091,13 +2094,17 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                       parent_hierarchy + "." + field_desc->name());
 
         button->setText(MESSAGE_REMOVE_TEXT);
-        update_oneofs(field_desc, button);
+        update_oneofs(message, field_desc, button);
     }
     else
     {
         const std::vector<WTreeNode*> children = parent->childNodes();
         if (message->GetReflection()->HasField(*message, field_desc))
+        {
+            oneof_fields_.erase(&message->GetReflection()->GetMessage(*message, field_desc));
             message->GetReflection()->ClearField(message, field_desc);
+        }
+
         for (auto i : children) parent->removeChildNode(i);
 
         button->setText(MESSAGE_INCLUDE_TEXT);

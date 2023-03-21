@@ -1,4 +1,4 @@
-// Copyright 2010-2021:
+// Copyright 2010-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -45,14 +45,14 @@ using namespace goby::util::tcolor;
 
 int goby::acomms::MACManager::count_;
 
-goby::acomms::MACManager::MACManager()
+goby::acomms::MACManager::MACManager(int id)
     : current_slot_(std::list<protobuf::ModemTransmission>::begin())
 {
-    ++count_;
-
-    glog_mac_group_ = "goby::acomms::amac::" + goby::util::as<std::string>(count_);
+    glog_mac_group_ = "goby::acomms::amac::" + goby::util::as<std::string>(id);
     goby::glog.add_group(glog_mac_group_, util::Colors::blue);
 }
+
+goby::acomms::MACManager::MACManager() : MACManager(++count_) {}
 
 goby::acomms::MACManager::~MACManager() = default;
 

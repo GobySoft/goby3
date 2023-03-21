@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -202,7 +202,7 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
 
     {
         auto start = std::chrono::system_clock::now();
-        auto timeout = std::chrono::seconds(2);
+        auto timeout = std::chrono::seconds(5);
         while (!intervehicle_subscriptions_ready)
         {
             intervehicle.poll(std::chrono::milliseconds(10));

@@ -1,4 +1,4 @@
-// Copyright 2016-2022:
+// Copyright 2016-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -792,12 +792,17 @@ class InterVehiclePortal
                     throw;
                 }
             }));
+
+            if (goby::glog.buf().is_gui())
+                // allows for visual grouping of each link in the NCurses gui
+                std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
 
         while (drivers_ready_ < modem_drivers_.size())
         {
             goby::glog.is_debug1() && goby::glog << "Waiting for drivers to be ready." << std::endl;
             this->poll();
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
         // write subscriptions after drivers ready to ensure they aren't missed

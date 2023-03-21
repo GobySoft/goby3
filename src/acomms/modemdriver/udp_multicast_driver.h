@@ -1,4 +1,4 @@
-// Copyright 2011-2021:
+// Copyright 2011-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -63,6 +63,8 @@ class UDPMulticastDriver : public ModemDriverBase
     void shutdown() override;
     void do_work() override;
     void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
+
+    void report(protobuf::ModemReport* report) override;
 
   private:
     void start_send(const protobuf::ModemTransmission& m);

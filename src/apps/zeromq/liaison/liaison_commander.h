@@ -1,4 +1,4 @@
-// Copyright 2011-2022:
+// Copyright 2011-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -320,7 +320,8 @@ class LiaisonCommander
 #endif
             }
 
-            void update_oneofs(const google::protobuf::FieldDescriptor* field_desc,
+            void update_oneofs(google::protobuf::Message* message,
+                               const google::protobuf::FieldDescriptor* field_desc,
                                Wt::WFormWidget* changed_field);
 
             enum DatabaseDialogResponse
@@ -398,7 +399,8 @@ class LiaisonCommander
 #endif
             bool skip_dynamic_conditions_update_{true};
 
-            std::map<const google::protobuf::OneofDescriptor*, std::vector<Wt::WFormWidget*>>
+            std::map<const google::protobuf::Message*, std::map<const google::protobuf::OneofDescriptor*,
+                                                          std::vector<Wt::WFormWidget*>>>
                 oneof_fields_;
         };
 

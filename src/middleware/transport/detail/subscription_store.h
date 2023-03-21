@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -302,6 +302,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
             }
 
             data_.erase(thread_id);
+            data_protection_.erase(thread_id);
         }
     }
 
