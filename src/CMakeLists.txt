@@ -221,6 +221,9 @@ target_link_libraries(goby
   dccl
   dccl_arithmetic
   ${Boost_LIBRARIES}
+  boost_filesystem
+  boost_program_options
+  boost_date_time
   ${PROTOBUF_LIBRARY}
   ${PROJ_LIBRARY}
   ${POPOTO_ROOT_DIR}/build/libpopoto_api.a
