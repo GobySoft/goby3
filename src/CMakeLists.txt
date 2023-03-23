@@ -38,7 +38,7 @@ if(DCCL_INCLUDE_DIR)
 endif()
 
 # Add popoto api to cmake
-set(POPOTO_ROOT_DIR /opt/popoto_client CACHE PATH "Top level directory for Popoto API.")
+set(POPOTO_ROOT_DIR /opt/PopotoAPI/CPP/popoto_client CACHE PATH "Top level directory for Popoto API.")
 
 #proj
 goby_find_required_package(Proj)
