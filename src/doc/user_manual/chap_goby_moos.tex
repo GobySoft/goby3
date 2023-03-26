@@ -597,7 +597,7 @@ The transitional MOOS variables \textbf{subscribed} to by iFrontSeat include:
 The transitional MOOS variables \textbf{published} by iFrontSeat include:
 
 \begin{itemize}
-\item If !publish_nav: true!, then !NAV_X! (meters), !NAV_Y! (meters), !NAV_LAT! (degrees), !NAV_LONG! (degrees), !NAV_Z! (meters, negative down), !NAV_DEPTH! (meters, positive down), !NAV_YAW! (degrees), !NAV_HEADING! (degrees), !NAV_SPEED! (meters/second), !NAV_PITCH! (radians), !NAV_ROLL! (radians), !NAV_ALTITUDE! (meters). All these double values are generated from the !FrontSeatInterfaceData! message when it contains !node_status! information.
+\item If !publish_nav: true!, then !NAV_X! (meters), !NAV_Y! (meters), !NAV_LAT! (degrees), !NAV_LONG! (degrees), !NAV_Z! (meters, negative down), !NAV_DEPTH! (meters, positive down), !NAV_YAW! (radians), !NAV_HEADING! (degrees), !NAV_SPEED! (meters/second), !NAV_PITCH! (radians), !NAV_ROLL! (radians), !NAV_ALTITUDE! (meters). All these double values are generated from the !FrontSeatInterfaceData! message when it contains !node_status! information.
 \item If !publish_fs_bs_ready: true!, then !BACKSEAT_READY!: Published as 1 (true) when the Helm State becomes !HELM_DRIVE!, otherwise 0 (false).
 \item If !publish_fs_bs_ready: true!, then !FRONTSEAT_READY!: Published as 1 (true) when the FrontSeat State becomes !FRONTSEAT_ACCEPTING_COMMANDS!, otherwise 0 (false).
 \item !GPS_UPDATE_RECEIVED!: Published as !Timestamp=double seconds since Unix! when a !BluefinExtraCommands::GPS_REQUEST! command responds successfully.
