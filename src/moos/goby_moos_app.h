@@ -185,35 +185,35 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     double start_time() const { return start_time_; }
 
     void subscribe(const std::string& var, const InboxFunc& handler = InboxFunc(),
-                   int blackout = 0);
+                   double blackout = 0);
 
     template <typename V, typename A1>
-    void subscribe(const std::string& var, void (V::*mem_func)(A1), V* obj, int blackout = 0)
+    void subscribe(const std::string& var, void (V::*mem_func)(A1), V* obj, double blackout = 0)
     {
         subscribe(var, boost::bind(mem_func, obj, _1), blackout);
     }
 
     // wildcard
     void subscribe(const std::string& var_pattern, const std::string& app_pattern,
-                   const InboxFunc& handler = InboxFunc(), int blackout = 0);
+                   const InboxFunc& handler = InboxFunc(), double blackout = 0);
 
     template <typename V, typename A1>
     void subscribe(const std::string& var_pattern, const std::string& app_pattern,
-                   void (V::*mem_func)(A1), V* obj, int blackout = 0)
+                   void (V::*mem_func)(A1), V* obj, double blackout = 0)
     {
         subscribe(var_pattern, app_pattern, boost::bind(mem_func, obj, _1), blackout);
     }
 
     template <typename V, typename ProtobufMessage>
     void subscribe_pb(const std::string& var, void (V::*mem_func)(const ProtobufMessage&), V* obj,
-                      int blackout = 0)
+                      double blackout = 0)
     {
         subscribe_pb<ProtobufMessage>(var, boost::bind(mem_func, obj, _1), blackout);
     }
 
     template <typename ProtobufMessage>
     void subscribe_pb(const std::string& var,
-                      boost::function<void(const ProtobufMessage& msg)> handler, int blackout = 0)
+                      boost::function<void(const ProtobufMessage& msg)> handler, double blackout = 0)
     {
         subscribe(var, boost::bind(&goby::moos::protobuf_inbox<ProtobufMessage>, _1, handler),
                   blackout);
@@ -320,12 +320,12 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     std::deque<CMOOSMsg> msg_buffer_;
 
     // MOOS Variable name, blackout time
-    std::deque<std::pair<std::string, int>> pending_subscriptions_;
-    std::deque<std::pair<std::string, int>> existing_subscriptions_;
+    std::deque<std::pair<std::string, double>> pending_subscriptions_;
+    std::deque<std::pair<std::string, double>> existing_subscriptions_;
 
     // MOOS Variable pattern, MOOS App pattern, blackout time
-    std::deque<std::pair<std::pair<std::string, std::string>, int>> wildcard_pending_subscriptions_;
-    std::deque<std::pair<std::pair<std::string, std::string>, int>>
+    std::deque<std::pair<std::pair<std::string, std::string>, double>> wildcard_pending_subscriptions_;
+    std::deque<std::pair<std::pair<std::string, std::string>, double>>
         wildcard_existing_subscriptions_;
 
     struct SynchronousLoop
@@ -522,7 +522,7 @@ template <class MOOSAppType> bool goby::moos::GobyMOOSAppSelector<MOOSAppType>::
 template <class MOOSAppType>
 void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var,
                                                              const InboxFunc& handler,
-                                                             int blackout /* = 0 */)
+                                                             double blackout /* = 0 */)
 {
     goby::glog.is(goby::util::logger::VERBOSE) &&
         goby::glog << "subscribing for MOOS variable: " << var << " @ " << blackout << std::endl;
@@ -541,7 +541,7 @@ template <class MOOSAppType>
 void goby::moos::GobyMOOSAppSelector<MOOSAppType>::subscribe(const std::string& var_pattern,
                                                              const std::string& app_pattern,
                                                              const InboxFunc& handler,
-                                                             int blackout /* = 0 */)
+                                                             double blackout /* = 0 */)
 {
     goby::glog.is(goby::util::logger::VERBOSE) &&
         goby::glog << "wildcard subscribing for MOOS variable pattern: " << var_pattern

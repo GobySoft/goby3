@@ -30,6 +30,7 @@
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/log_tool_config.pb.h"
 #include "goby/time/convert.h"
+#include "goby/util/dccl_compat.h"
 #include "log_plugin.h"
 
 #if GOOGLE_PROTOBUF_VERSION < 3001000
@@ -219,8 +220,14 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             insert_extensions(generated_extensions);
 
             std::vector<const google::protobuf::FieldDescriptor*> user_extensions;
+
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+            dccl::DynamicProtobufManager::user_descriptor_pool_call(
+                &google::protobuf::DescriptorPool::FindAllExtensions, desc, &user_extensions);
+#else
             dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(
                 desc, &user_extensions);
+#endif
 
             for (const auto* desc : user_extensions)
                 goby::glog.is_debug1() && goby::glog << "Found user extension [" << desc->number()
