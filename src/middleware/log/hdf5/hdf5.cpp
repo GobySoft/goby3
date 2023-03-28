@@ -29,9 +29,11 @@
 #include <boost/algorithm/string/predicate_facade.hpp> // for predicate_facade
 #include <boost/algorithm/string/split.hpp>            // for split
 #include <boost/algorithm/string/trim.hpp>             // for trim_copy_if
-#include <dccl/dynamic_protobuf_manager.h>             // for DynamicProtob...
+
+#include <dccl/dynamic_protobuf_manager.h> // for DynamicProtob...
 
 #include "goby/time/types.h" // for MicroTime
+#include "goby/util/dccl_compat.h"
 #include "goby/util/debug_logger.h"
 
 #include "hdf5.h"
@@ -144,7 +146,13 @@ void goby::middleware::hdf5::Writer::write_message_collection(
 
     std::vector<const google::protobuf::FieldDescriptor*> extensions;
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
+
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+    dccl::DynamicProtobufManager::user_descriptor_pool_call(
+        &google::protobuf::DescriptorPool::FindAllExtensions, desc, &extensions);
+#else
     dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(desc, &extensions);
+#endif
 
     for (auto field_desc : extensions) { write_field(field_desc); }
 }
@@ -208,8 +216,14 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
         std::vector<const google::protobuf::FieldDescriptor*> extensions;
         google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(sub_desc,
                                                                               &extensions);
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+        dccl::DynamicProtobufManager::user_descriptor_pool_call(
+            &google::protobuf::DescriptorPool::FindAllExtensions, sub_desc, &extensions);
+#else
         dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(sub_desc,
                                                                                &extensions);
+
+#endif
         for (auto sub_field_desc : extensions) { write_field(sub_field_desc); }
 
         hs.pop_back();
@@ -253,8 +267,13 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
         std::vector<const google::protobuf::FieldDescriptor*> extensions;
         google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(sub_desc,
                                                                               &extensions);
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+        dccl::DynamicProtobufManager::user_descriptor_pool_call(
+            &google::protobuf::DescriptorPool::FindAllExtensions, sub_desc, &extensions);
+#else
         dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(sub_desc,
                                                                                &extensions);
+#endif
         for (auto sub_field_desc : extensions) { write_field(sub_field_desc); }
     }
 }

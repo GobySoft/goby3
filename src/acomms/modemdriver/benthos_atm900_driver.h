@@ -36,16 +36,18 @@
 #include <dccl/exception.h>                          // for NullValueException
 #include <dccl/field_codec_fixed.h>                  // for TypedFixedField...
 #include <dccl/field_codec_manager.h>                // for FieldCodecManager
-#include <memory>                                    // for shared_ptr, __s...
-#include <string>                                    // for string, operator+
-#include <vector>                                    // for vector
+#include <dccl/version.h>
+#include <memory> // for shared_ptr, __s...
+#include <string> // for string, operator+
+#include <vector> // for vector
 
 #include "benthos_atm900_driver_fsm.h"              // for BenthosATM900FSM
 #include "driver_base.h"                            // for ModemDriverBase
 #include "goby/acomms/protobuf/benthos_atm900.pb.h" // for BenthosHeader
 #include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
 #include "goby/acomms/protobuf/modem_message.pb.h"  // for ModemTransmission
-#include "rudics_packet.h"                          // for parse_rudics_pa...
+#include "goby/util/dccl_compat.h"
+#include "rudics_packet.h" // for parse_rudics_pa...
 
 namespace goby
 {
@@ -94,8 +96,14 @@ extern std::shared_ptr<dccl::Codec> benthos_header_dccl_;
 
 inline void init_benthos_dccl()
 {
-    dccl::FieldCodecManager::add<NoOpIdentifierCodec>("benthos_header_id");
-    benthos_header_dccl_.reset(new dccl::Codec("benthos_header_id"));
+    auto benthos_id_name = "benthos_header_id";
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+    benthos_header_dccl_.reset(new dccl::Codec(benthos_id_name, NoOpIdentifierCodec()));
+#else
+    dccl::FieldCodecManager::add<NoOpIdentifierCodec>(benthos_id_name);
+    benthos_header_dccl_.reset(new dccl::Codec(benthos_id_name));
+#endif
+
     benthos_header_dccl_->load<benthos::protobuf::BenthosHeader>();
 }
 

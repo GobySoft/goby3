@@ -285,7 +285,12 @@ boost::any goby::acomms::Queue::find_queue_field(const std::string& field_name,
         if (field_desc->is_repeated())
             throw(QueueException("Cannot assign a Queue role to a repeated field"));
 
-        auto helper = goby::acomms::DCCLTypeHelper::find(field_desc);
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+        auto helper =
+            goby::acomms::DCCLCodec::get()->codec()->manager().type_helper().find(field_desc);
+#else
+        auto helper = dccl::internal::TypeHelper::find(field_desc);
+#endif
 
         // last field_name
         if (i == (n - 1))
@@ -496,9 +501,9 @@ void goby::acomms::Queue::stream_for_pop(const QueuedMessage& queued_msg)
                             << std::endl;
 }
 
-std::vector<std::shared_ptr<google::protobuf::Message> > goby::acomms::Queue::expire()
+std::vector<std::shared_ptr<google::protobuf::Message>> goby::acomms::Queue::expire()
 {
-    std::vector<std::shared_ptr<google::protobuf::Message> > expired_msgs;
+    std::vector<std::shared_ptr<google::protobuf::Message>> expired_msgs;
 
     while (!messages_.empty())
     {
@@ -603,7 +608,7 @@ void goby::acomms::Queue::process_cfg()
 
     // used to check that the FIELD_VALUE roles fields actually exist
     auto new_msg = dccl::DynamicProtobufManager::new_protobuf_message<
-        std::shared_ptr<google::protobuf::Message> >(desc_);
+        std::shared_ptr<google::protobuf::Message>>(desc_);
 
     for (int i = 0, n = cfg_.role_size(); i < n; ++i)
     {
