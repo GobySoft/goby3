@@ -34,7 +34,6 @@
 #include <boost/algorithm/string/trim.hpp>         // for trim_left_copy
 #include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_cast
 #include <curses.h>                                // for WINDOW, init_pair
-#include <ext/alloc_traits.h>                      // for __alloc_traits<>:...
 
 #include "goby/util/as.h" // for as
 
