@@ -30,6 +30,7 @@
 
 #include "goby/acomms/protobuf/iridium_driver.pb.h"
 #include "goby/time/system_clock.h"
+#include "goby/util/dccl_compat.h"
 
 namespace goby
 {
@@ -97,8 +98,13 @@ extern std::shared_ptr<dccl::Codec> iridium_header_dccl_;
 
 inline void init_iridium_dccl()
 {
-    dccl::FieldCodecManager::add<IridiumHeaderIdentifierCodec>("iridium_header_id");
-    iridium_header_dccl_.reset(new dccl::Codec("iridium_header_id"));
+    auto iridium_id_name = "iridium_header_id";
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+    iridium_header_dccl_.reset(new dccl::Codec(iridium_id_name, IridiumHeaderIdentifierCodec()));
+#else
+    dccl::FieldCodecManager::add<IridiumHeaderIdentifierCodec>(iridium_id_name);
+    iridium_header_dccl_.reset(new dccl::Codec(iridium_id_name));
+#endif
     iridium_header_dccl_->load<goby::acomms::iridium::protobuf::IridiumHeader>();
 }
 
