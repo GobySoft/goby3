@@ -358,8 +358,7 @@ void goby::middleware::frontseat::Iver::send_command_to_frontseat(
         using knots = boost::units::metric::knot_base_unit::unit_type;
         nmea.push_back(tenths_precision_str(
             command.desired_course().speed_with_units<quantity<knots>>().value())); // in knots
-        const int time_out = 5;                                                     // seconds
-        nmea.push_back(time_out);
+        nmea.push_back(iver_config_.oms_timeout());
 
         write(nmea.message());
     }
