@@ -1,6 +1,7 @@
 syntax = "proto2";
 import "goby/middleware/protobuf/frontseat_config.proto";
 import "goby/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
 
 package goby.middleware.frontseat.protobuf;
 
@@ -11,6 +12,9 @@ message IverConfig
     // write GPS feed to this serial port for NTP to use
     optional string ntp_serial_port = 3;
     optional int32 max_pitch_angle_degrees = 4 [default = 45];
+    // Timeout for $OMS, in seconds.
+    optional uint32 oms_timeout = 6
+        [default = 5, (dccl.field) = {min: 0 max: 120}];
 }
 
 extend Config
