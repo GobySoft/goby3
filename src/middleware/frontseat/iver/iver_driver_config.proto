@@ -24,7 +24,6 @@ message IverConfig
             "The maximum pitch that this driver will command (in degrees)"
     ];
     required int32 remote_helm_version_major = 5 [
-        default = 5,
         (goby.field).description =
             "Sets the Iver Remote Helm major version that this driver will connect to. Important: Iver Remote Helm changed OMS from feet to meters in major version 5"
     ];
