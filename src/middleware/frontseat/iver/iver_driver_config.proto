@@ -7,14 +7,31 @@ package goby.middleware.frontseat.protobuf;
 
 message IverConfig
 {
-    required string serial_port = 1;
-    optional uint32 serial_baud = 2 [default = 19200];
-    // write GPS feed to this serial port for NTP to use
-    optional string ntp_serial_port = 3;
-    optional int32 max_pitch_angle_degrees = 4 [default = 45];
-    // Timeout for $OMS, in seconds.
-    optional uint32 oms_timeout = 6
-        [default = 5, (dccl.field) = {min: 0 max: 120}];
+    required string serial_port = 1
+        [(goby.field).description =
+             "Serial port connected to Iver Remote Helm"];
+    optional uint32 serial_baud = 2 [
+        default = 19200,
+        (goby.field).description = "Serial baud rate for 'serial_port'"
+    ];
+    optional string ntp_serial_port = 3 [
+        (goby.field).description =
+            "If set, write the GPS feed from the Iver to this serial port for NTP to use"
+    ];
+    optional int32 max_pitch_angle_degrees = 4 [
+        default = 45,
+        (goby.field).description =
+            "The maximum pitch that this driver will command (in degrees)"
+    ];
+    required int32 remote_helm_version_major = 5 [
+        (goby.field).description =
+            "Sets the Iver Remote Helm major version that this driver will connect to. Important: Iver Remote Helm changed OMS from feet to meters in major version 5"
+    ];
+    optional uint32 oms_timeout = 6 [
+        default = 5,
+        (dccl.field) = { min: 0 max: 120 },
+        (goby.field).description = "Timeout for $OMS, in seconds."
+    ];
 }
 
 extend Config

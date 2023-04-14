@@ -195,7 +195,7 @@ void goby::middleware::frontseat::Iver::process_receive(const std::string& s)
                 REMAININGMISSIONTIME = 13,
                 TRUEHEADING = 14,
                 COR_DFS = 15,
-                SRP_ACTIVE = 16
+                // fields after this appear to change from Remote Helm version 4->5
             };
 
             status_.mutable_global_fix()->set_lat_with_units(nmea.as<double>(LATITUDE) *
@@ -352,8 +352,14 @@ void goby::middleware::frontseat::Iver::send_command_to_frontseat(
         nmea.push_back(tenths_precision_str(heading));
         using boost::units::quantity;
         typedef boost::units::imperial::foot_base_unit::unit_type feet;
-        nmea.push_back(tenths_precision_str(
-            command.desired_course().depth_with_units<quantity<feet>>().value()));    // in feet
+        typedef boost::units::si::meter_base_unit::unit_type meters;
+        double depth_value;
+        if (iver_config_.remote_helm_version_major() < 5) {
+            depth_value = command.desired_course().depth_with_units<quantity<feet>>().value(); // in feet
+        } else {
+            depth_value = command.desired_course().depth_with_units<quantity<meters>>().value(); // in meters
+        }
+        nmea.push_back(tenths_precision_str(depth_value));
         nmea.push_back(tenths_precision_str(iver_config_.max_pitch_angle_degrees())); // in degrees
         using knots = boost::units::metric::knot_base_unit::unit_type;
         nmea.push_back(tenths_precision_str(
