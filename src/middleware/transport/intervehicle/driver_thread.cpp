@@ -741,12 +741,22 @@ void goby::middleware::intervehicle::ModemDriverThread::_receive(
         {
             for (auto& frame : rx_msg.frame())
             {
-                intervehicle::protobuf::DCCLForwardedData packets(
-                    detail::DCCLSerializerParserHelperBase::unpack(frame));
-                packets.mutable_header()->set_src(full_src);
-                packets.mutable_header()->add_dest(full_dest);
-                *packets.mutable_header()->mutable_modem_msg() = rx_msg;
-                interprocess_->publish<groups::modem_data_in>(packets);
+                try
+                {
+                    intervehicle::protobuf::DCCLForwardedData packets(
+                        detail::DCCLSerializerParserHelperBase::unpack(frame));
+                    packets.mutable_header()->set_src(full_src);
+                    packets.mutable_header()->add_dest(full_dest);
+                    *packets.mutable_header()->mutable_modem_msg() = rx_msg;
+                    interprocess_->publish<groups::modem_data_in>(packets);
+                }
+                catch (const std::exception& e)
+                {
+                    goby::glog.is_warn() && goby::glog << group(glog_group_)
+                                                       << "Failed to unpack frame ["
+                                                       << goby::util::hex_encode(frame)
+                                                       << "]: " << e.what() << std::endl;
+                }
             }
         }
     }
