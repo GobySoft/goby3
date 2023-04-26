@@ -1305,10 +1305,16 @@ void goby::acomms::MMDriver::cadrq(const NMEASentence& nmea_in,
         nmea_out.push_back(m.dest());
         nmea_out.push_back(int(m.ack_requested()));
 
-        int max_bytes = nmea_in.as<int>(5);
-        nmea_out.push_back(
-            hex_encode(m.frame(frame) + std::string(max_bytes - m.frame(frame).size(), '\0')));
-        // nmea_out.push_back(hex_encode(m.frame(frame)));
+        if (mm_driver_cfg().pad_partial_frames())
+        {
+            int max_bytes = nmea_in.as<int>(5);
+            nmea_out.push_back(
+                hex_encode(m.frame(frame) + std::string(max_bytes - m.frame(frame).size(), '\0')));
+        }
+        else
+        {
+            nmea_out.push_back(hex_encode(m.frame(frame)));
+        }
 
         if (m.ack_requested())
         {
