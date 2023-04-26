@@ -114,6 +114,12 @@ message Config
     
     optional bool query_cfg_on_startup = 22 [default = true];
 
+    optional bool pad_partial_frames = 23 [
+        default = false,
+        (goby.field).description =
+            "Pad partial frames with trailing zeros to reach the full frame length. This was a workaround for a bug in early versions of the MM2 firmware."
+    ];
+
     message Revision
     {
 	required int32 mm_major = 1;
