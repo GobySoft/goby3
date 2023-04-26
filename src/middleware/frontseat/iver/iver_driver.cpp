@@ -224,24 +224,30 @@ void goby::middleware::frontseat::Iver::process_receive(const std::string& s)
 
             switch (reported_mission_mode_)
             {
-                case gpb::IverState::IVER_MODE_UNKNOWN:
-                case gpb::IverState::IVER_MODE_STOPPED:
-                    frontseat_state_ = gpb::FRONTSEAT_IDLE;
-                    break;
-
-                case gpb::IverState::IVER_MODE_PARKING:
-                    frontseat_state_ = gpb::FRONTSEAT_IN_CONTROL;
-                    break;
-
-                    // all these modes can take a backseat command
-                case gpb::IverState::IVER_MODE_NORMAL:
-                case gpb::IverState::IVER_MODE_MANUAL_OVERRIDE:
-                case gpb::IverState::IVER_MODE_MANUAL_PARKING:
-                case gpb::IverState::IVER_MODE_SERVO_MODE:
-                case gpb::IverState::IVER_MODE_MISSION_MODE:
-                    // no explicit handshake for frontseat command
-                    frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
-                    break;
+            case gpb::IverState::IVER_MODE_UNKNOWN:
+                frontseat_state_ = iver_config_.mode_assignments().unknown();
+                break;
+            case gpb::IverState::IVER_MODE_NORMAL:
+                frontseat_state_ = iver_config_.mode_assignments().normal();
+                break;
+            case gpb::IverState::IVER_MODE_STOPPED:
+                frontseat_state_ = iver_config_.mode_assignments().stopped();
+                break;
+            case gpb::IverState::IVER_MODE_PARKING:
+                frontseat_state_ = iver_config_.mode_assignments().parking();
+                break;
+            case gpb::IverState::IVER_MODE_MANUAL_OVERRIDE:
+                frontseat_state_ = iver_config_.mode_assignments().manual_override();
+                break;
+            case gpb::IverState::IVER_MODE_MANUAL_PARKING:
+                frontseat_state_ = iver_config_.mode_assignments().manual_parking();
+                break;
+            case gpb::IverState::IVER_MODE_SERVO_MODE:
+                frontseat_state_ = iver_config_.mode_assignments().servo_mode();
+                break;
+            case gpb::IverState::IVER_MODE_MISSION_MODE:
+                frontseat_state_ = iver_config_.mode_assignments().mission_mode();
+                break;
             }
 
             static const boost::units::imperial::foot_base_unit::unit_type feet;
