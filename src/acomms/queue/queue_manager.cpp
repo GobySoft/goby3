@@ -25,9 +25,9 @@
 
 #include <cassert> // for assert
 #include <cstdint> // for int32_t
-#include <memory>   // for shared...
-#include <ostream>  // for operat...
-#include <vector>   // for vector
+#include <memory>  // for shared...
+#include <ostream> // for operat...
+#include <vector>  // for vector
 
 #include <boost/date_time/posix_time/posix_time_duration.hpp> // for micros...
 #include <boost/date_time/posix_time/ptime.hpp>               // for ptime
@@ -267,6 +267,21 @@ void goby::acomms::QueueManager::handle_modem_data_request(protobuf::ModemTransm
                 // new user frame (e.g. 32B)
                 QueuedMessage next_user_frame = winning_queue->give_data(frame_number);
 
+                unsigned repeated_size_bytes = size_repeated(dccl_msgs);
+
+                // If new message would overflow this frame, bail out without adding this user frame to the batch of messages to be encoded
+                unsigned new_user_frame_size = codec_->size(*(next_user_frame.dccl_msg));
+                unsigned new_data_size = original_data_size + repeated_size_bytes + new_user_frame_size;
+                if (new_data_size > msg->max_frame_bytes()) {
+                    glog.is_warn() && glog << group(glog_out_group_) << "Frame is full" << std::endl;
+                    glog.is_warn() && glog << group(glog_out_group_) << "    original_data_size = " << original_data_size << std::endl;
+                    glog.is_warn() && glog << group(glog_out_group_) << "    repeated_size_bytes = " << repeated_size_bytes << std::endl;
+                    glog.is_warn() && glog << group(glog_out_group_) << "    new_user_frame_size = " << new_user_frame_size << std::endl;
+                    glog.is_warn() && glog << group(glog_out_group_) << "  new_data_size = " << new_data_size << std::endl;
+                    glog.is_warn() && glog << group(glog_out_group_) << "  max_frame_bytes = " << msg->max_frame_bytes() << std::endl;
+                    break;
+                }
+
                 if (next_user_frame.meta.has_encoded_message())
                 {
                     using_encrypted_body = true;
@@ -458,7 +473,7 @@ goby::acomms::QueueManager::decode_repeated(const std::string& orig_bytes)
             if (encrypt_rules_.size())
             {
                 std::shared_ptr<google::protobuf::Message> header =
-                    codec_->decode<std::shared_ptr<google::protobuf::Message> >(bytes, true);
+                    codec_->decode<std::shared_ptr<google::protobuf::Message>>(bytes, true);
 
                 msg.meta = meta_from_msg(*header);
 
@@ -474,7 +489,7 @@ goby::acomms::QueueManager::decode_repeated(const std::string& orig_bytes)
                 codec_->merge_cfg(cfg);
             }
 
-            msg.dccl_msg = codec_->decode<std::shared_ptr<google::protobuf::Message> >(bytes);
+            msg.dccl_msg = codec_->decode<std::shared_ptr<google::protobuf::Message>>(bytes);
 
             if (!encrypt_rules_.size())
                 msg.meta = meta_from_msg(*(msg.dccl_msg));
@@ -550,7 +565,7 @@ goby::acomms::QueueManager::find_next_sender(const protobuf::ModemTransmission& 
                               time::SystemClock::now<boost::posix_time::ptime>()))
         {
             auto new_msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                std::shared_ptr<google::protobuf::Message> >(q.descriptor());
+                std::shared_ptr<google::protobuf::Message>>(q.descriptor());
             signal_data_on_demand(request_msg, new_msg.get());
 
             if (new_msg->IsInitialized())
@@ -721,7 +736,7 @@ void goby::acomms::QueueManager::handle_modem_receive(
                 {
                     // decode only header
                     std::shared_ptr<google::protobuf::Message> decoded_message =
-                        codec_->decode<std::shared_ptr<google::protobuf::Message> >(
+                        codec_->decode<std::shared_ptr<google::protobuf::Message>>(
                             modem_message.frame(frame_number), true);
                     protobuf::QueuedMessageMeta meta_msg = meta_from_msg(*decoded_message);
                     // messages addressed to us on the link
@@ -773,7 +788,10 @@ void goby::acomms::QueueManager::process_cfg()
             add_queue(desc, cfg_.message_entry(i));
 
             for (int j = 0, m = cfg_.message_entry(i).manipulator_size(); j < m; ++j)
-            { manip_manager_.add(codec_->id(desc), cfg_.message_entry(i).manipulator(j)); } }
+            {
+                manip_manager_.add(codec_->id(desc), cfg_.message_entry(i).manipulator(j));
+            }
+        }
         else
         {
             glog.is(DEBUG1) &&
