@@ -50,8 +50,12 @@ namespace hdf5
 {
 struct MessageCollection
 {
-    MessageCollection(std::string n) : name(std::move(n)) {}
+    MessageCollection(std::string n, std::string parent_group)
+        : name(std::move(n)), group(parent_group + "/" + name)
+    {
+    }
     std::string name;
+    std::string group;
 
     // time -> ProtobufEntry
     std::multimap<std::uint64_t, HDF5ProtobufEntry> entries;
@@ -59,10 +63,12 @@ struct MessageCollection
 
 struct Channel
 {
-    Channel(std::string n) : name(std::move(n)) {}
+    Channel(std::string n) : name(std::move(n)), group("/" + name) {}
     std::string name;
+    std::string group;
 
-    void add_message(const goby::middleware::HDF5ProtobufEntry& entry);
+    // returns number of messages in the collection
+    size_t add_message(const goby::middleware::HDF5ProtobufEntry& entry);
 
     // message name -> hdf5::Message
     std::map<std::string, MessageCollection> entries;
@@ -101,17 +107,17 @@ class GroupFactory
 class Writer
 {
   public:
-    Writer(const std::string& output_file, bool write_zero_length_dim = true);
+    Writer(const std::string& output_file, bool write_zero_length_dim = true,
+           bool use_chunks = false, hsize_t chunk_length = 0);
 
     void add_entry(goby::middleware::HDF5ProtobufEntry entry);
 
     void write();
 
   private:
-    void write_channel(const std::string& group, const goby::middleware::hdf5::Channel& channel);
+    void write_channel(const goby::middleware::hdf5::Channel& channel);
     void
-    write_message_collection(const std::string& group,
-                             const goby::middleware::hdf5::MessageCollection& message_collection);
+    write_message_collection(const goby::middleware::hdf5::MessageCollection& message_collection);
     void write_time(const std::string& group,
                     const goby::middleware::hdf5::MessageCollection& message_collection);
     void write_scheme(const std::string& group,
@@ -144,12 +150,22 @@ class Writer
                       const std::vector<std::string>& data, const std::vector<hsize_t>& hs,
                       const std::string& default_value);
 
+    std::string dim_str(const std::vector<hsize_t>& hs)
+    {
+        std::string d;
+        for (const auto& h : hs) d += std::to_string(h) + ",";
+        d.pop_back();
+        return d;
+    }
+
   private:
     // channel name -> hdf5::Channel
     std::map<std::string, goby::middleware::hdf5::Channel> channels_;
     H5::H5File h5file_;
     goby::middleware::hdf5::GroupFactory group_factory_;
     bool write_zero_length_dim_;
+    bool use_chunks_;
+    hsize_t chunk_length_;
 };
 
 template <typename T>
@@ -222,20 +238,81 @@ void Writer::write_vector(const std::string& group, const std::string dataset_na
 {
     std::unique_ptr<H5::DataSpace> dataspace;
     H5::Group& grp = group_factory_.fetch_group(group);
+
+    auto maxhs = hs;
+    H5::DSetCreatPropList prop;
+    if (use_chunks_)
+    {
+        // last dimensions may change
+        maxhs.back() = H5S_UNLIMITED;
+        auto chunkhs = hs;
+        chunkhs.back() = chunk_length_;
+
+        // set all chunk dimensions to at least 1
+        for (auto& s : chunkhs)
+        {
+            if (s == 0)
+                s = 1;
+        }
+
+        glog.is_debug2() && glog << "Setting chunks to " << dim_str(chunkhs) << std::endl;
+        prop.setChunk(chunkhs.size(), chunkhs.data());
+    }
+
     if (data.size() || write_zero_length_dim_)
-        dataspace = std::make_unique<H5::DataSpace>(hs.size(), hs.data(), hs.data());
+        dataspace = std::make_unique<H5::DataSpace>(hs.size(), hs.data(), maxhs.data());
     else
         dataspace = std::make_unique<H5::DataSpace>(H5S_NULL);
 
-    H5::DataSet dataset = grp.createDataSet(dataset_name, predicate<T>(), *dataspace);
-    if (data.size())
-        dataset.write(&data[0], predicate<T>());
+    bool ds_exists = grp.exists(dataset_name);
+    H5::DataSet dataset = ds_exists
+                              ? grp.openDataSet(dataset_name)
+                              : grp.createDataSet(dataset_name, predicate<T>(), *dataspace, prop);
 
-    const int rank = 1;
-    hsize_t att_hs[] = {1};
-    H5::DataSpace att_space(rank, att_hs, att_hs);
-    H5::Attribute att = dataset.createAttribute("default_value", predicate<T>(), att_space);
-    att.write(predicate<T>(), &default_value);
+    if (data.size())
+    {
+        if (ds_exists)
+        {
+            H5::DataSpace existing_space(dataset.getSpace());
+            std::vector<hsize_t> existing_hs(existing_space.getSimpleExtentNdims());
+            existing_space.getSimpleExtentDims(&existing_hs[0]);
+            glog.is_debug2() && glog << "Existing dimensions are: " << dim_str(existing_hs)
+                                     << std::endl;
+
+            auto new_size = hs;
+            new_size.back() += existing_hs.back();
+
+            glog.is_debug2() && glog << "Extending dimensions to: " << dim_str(new_size)
+                                     << std::endl;
+            dataset.extend(new_size.data());
+
+            auto& memspace = dataspace;
+            H5::DataSpace filespace(dataset.getSpace());
+            std::vector<hsize_t> offset(hs.size(), 0);
+            offset.back() = existing_hs.back();
+
+            glog.is_debug2() && glog << "Selecting offset of: " << dim_str(offset)
+                                     << std::endl;
+            
+            filespace.selectHyperslab(H5S_SELECT_SET, hs.data(), offset.data());
+            dataset.write(&data[0], predicate<T>(), *memspace, filespace);
+        }
+        else
+        {
+            dataset.write(&data[0], predicate<T>());
+        }
+    }
+
+    const char* default_value_attr_name = "default_value";
+    if (!dataset.attrExists(default_value_attr_name))
+    {
+        const int rank = 1;
+        hsize_t att_hs[] = {1};
+        H5::DataSpace att_space(rank, att_hs, att_hs);
+        H5::Attribute att =
+            dataset.createAttribute(default_value_attr_name, predicate<T>(), att_space);
+        att.write(predicate<T>(), &default_value);
+    }
 }
 } // namespace hdf5
 } // namespace middleware

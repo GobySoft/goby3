@@ -133,7 +133,8 @@ goby::apps::middleware::LogTool::LogTool()
 #ifdef HAS_HDF5
         case protobuf::LogToolConfig::HDF5:
             h5_writer_ = std::make_unique<goby::middleware::hdf5::Writer>(
-                output_file_path_, app_cfg().write_hdf5_zero_length_dim());
+                output_file_path_, app_cfg().write_hdf5_zero_length_dim(),
+                app_cfg().has_hdf5_chunk_length(), app_cfg().hdf5_chunk_length());
             break;
 #endif
         default:
@@ -154,7 +155,8 @@ goby::apps::middleware::LogTool::LogTool()
     }
 
     plugins_[goby::middleware::MarshallingScheme::PROTOBUF] =
-        std::make_unique<goby::middleware::log::ProtobufPlugin>(true /* user pool first to ensure we pick up all extensions embedded in the .goby */ );
+        std::make_unique<goby::middleware::log::ProtobufPlugin>(
+            true /* user pool first to ensure we pick up all extensions embedded in the .goby */);
     plugins_[goby::middleware::MarshallingScheme::DCCL] =
         std::make_unique<goby::middleware::log::DCCLPlugin>(true);
     plugins_[goby::middleware::MarshallingScheme::JSON] =
