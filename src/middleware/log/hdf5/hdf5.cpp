@@ -32,6 +32,7 @@
 
 #include <dccl/dynamic_protobuf_manager.h> // for DynamicProtob...
 
+#include "goby/exception.h"
 #include "goby/time/types.h" // for MicroTime
 #include "goby/util/dccl_compat.h"
 #include "goby/util/debug_logger.h"
@@ -87,17 +88,24 @@ goby::middleware::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::
 }
 
 goby::middleware::hdf5::Writer::Writer(const std::string& output_file, bool write_zero_length_dim,
-                                       bool use_chunks, hsize_t chunk_length)
+                                       bool use_chunks, hsize_t chunk_length, bool use_compression,
+                                       int compression_level)
     : h5file_(output_file, H5F_ACC_TRUNC),
       group_factory_(h5file_),
       write_zero_length_dim_(write_zero_length_dim),
       use_chunks_(use_chunks),
-      chunk_length_(chunk_length)
+      chunk_length_(chunk_length),
+      use_compression_(use_compression),
+      compression_level_(compression_level),
+      final_write_(false)
 {
 }
 
 void goby::middleware::hdf5::Writer::add_entry(goby::middleware::HDF5ProtobufEntry entry)
 {
+    if (final_write_)
+        throw(goby::Exception("add_entry() called after final_write = true"));
+
     boost::trim_if(entry.channel, boost::algorithm::is_space() || boost::algorithm::is_any_of("/"));
 
     using It = std::map<std::string, goby::middleware::hdf5::Channel>::iterator;
@@ -110,15 +118,17 @@ void goby::middleware::hdf5::Writer::add_entry(goby::middleware::HDF5ProtobufEnt
     }
 
     auto channel_size = it->second.add_message(entry);
+
     if (use_chunks_ && channel_size >= chunk_length_)
-    {
-        write_channel(it->second);
-        it->second.entries.clear();
-    }
+        write_channel_chunk_and_clear(it->second);
 }
 
-void goby::middleware::hdf5::Writer::write()
+void goby::middleware::hdf5::Writer::write(bool final_write)
 {
+    if (final_write_)
+        throw(goby::Exception("write() called after final_write = true"));
+
+    final_write_ = final_write;
     for (const auto& channel : channels_) write_channel(channel.second);
 }
 
@@ -128,6 +138,21 @@ void goby::middleware::hdf5::Writer::write_channel(const goby::middleware::hdf5:
     glog.is_verbose() && glog << "Writing HDF5 group: " << group << std::endl;
 
     for (const auto& entry : channel.entries) write_message_collection(entry.second);
+}
+
+void goby::middleware::hdf5::Writer::write_channel_chunk_and_clear(
+    goby::middleware::hdf5::Channel& channel)
+{
+    const auto& group = channel.group;
+    glog.is_verbose() && glog << "Writing HDF5 group: " << group << std::endl;
+    for (auto& entry : channel.entries)
+    {
+        if (entry.second.entries.size() >= chunk_length_)
+        {
+            write_message_collection(entry.second);
+            entry.second.entries.clear();
+        }
+    }
 }
 
 void goby::middleware::hdf5::Writer::write_message_collection(
@@ -473,29 +498,36 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
     H5::DSetCreatPropList prop;
     H5::Group& grp = group_factory_.fetch_group(group);
     bool ds_exists = grp.exists(dataset_name);
-    if (!ds_exists && use_chunks_)
+    if (!ds_exists)
     {
-        // all dimensions may change
-        for (auto& m : maxhs) m = H5S_UNLIMITED;
-
-        auto chunkhs = hs;
-        // message dimension
-        chunkhs.front() = chunk_length_;
-
-        // string width dimension
-        constexpr hsize_t str_chunk_size = 256;
-        chunkhs.back() = str_chunk_size;
-
-        // set all chunk dimensions to at least 1
-        for (auto& s : chunkhs)
+        if (use_chunks_ && !final_write_)
         {
-            if (s == 0)
-                s = 1;
-        }
-        glog.is_debug2() && glog << "Setting chunks to " << dim_str(chunkhs) << std::endl;
+            // all dimensions may change
+            for (auto& m : maxhs) m = H5S_UNLIMITED;
 
-        prop.setChunk(chunkhs.size(), chunkhs.data());
-        prop.setFillValue(H5::PredType::NATIVE_CHAR, &fill_value);
+            auto chunkhs = hs;
+            // message dimension
+            chunkhs.front() = chunk_length_;
+
+            // string width dimension
+            constexpr hsize_t str_chunk_size = 256;
+            chunkhs.back() = str_chunk_size;
+
+            // set all chunk dimensions to at least 1
+            for (auto& s : chunkhs)
+            {
+                if (s == 0)
+                    s = 1;
+            }
+            glog.is_debug2() && glog << "Setting chunks to " << dim_str(chunkhs) << std::endl;
+
+            prop.setChunk(chunkhs.size(), chunkhs.data());
+            prop.setFillValue(H5::PredType::NATIVE_CHAR, &fill_value);
+
+            // can only compress with chunks
+            if (use_compression_)
+                prop.setDeflate(compression_level_);
+        }
     }
 
     std::unique_ptr<H5::DataSpace> dataspace;

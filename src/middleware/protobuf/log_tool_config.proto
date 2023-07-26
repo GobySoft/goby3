@@ -28,9 +28,14 @@ message LogToolConfig
 
     optional bool write_hdf5_zero_length_dim = 31 [default = true];
 
-    // if enabled, write a chunked file in pieces, flushing every hdf5_chunk_length messages to ensure we do not use as much RAM
+    // if enabled, write a chunked file in pieces, flushing every
+    // hdf5_chunk_length messages to ensure we do not use as much RAM
     optional int32 hdf5_chunk_length = 32;
-    
+
+    optional int32 hdf5_compression_level = 33
+        [(goby.field).description =
+             "Set to a value from 0 (no compression) to 9 (max compression)"];
+
     repeated string load_shared_library = 40
         [(goby.field).description =
              "Load a shared library (e.g. to load Protobuf files)"];

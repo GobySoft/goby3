@@ -108,14 +108,16 @@ class Writer
 {
   public:
     Writer(const std::string& output_file, bool write_zero_length_dim = true,
-           bool use_chunks = false, hsize_t chunk_length = 0);
+           bool use_chunks = false, hsize_t chunk_length = 0, bool use_compression = false,
+           int compression_level = 0);
 
     void add_entry(goby::middleware::HDF5ProtobufEntry entry);
 
-    void write();
+    void write(bool final_write = true);
 
   private:
     void write_channel(const goby::middleware::hdf5::Channel& channel);
+    void write_channel_chunk_and_clear(goby::middleware::hdf5::Channel& channel);
     void
     write_message_collection(const goby::middleware::hdf5::MessageCollection& message_collection);
     void write_time(const std::string& group,
@@ -166,6 +168,9 @@ class Writer
     bool write_zero_length_dim_;
     bool use_chunks_;
     hsize_t chunk_length_;
+    bool use_compression_;
+    int compression_level_;
+    bool final_write_;
 };
 
 template <typename T>
@@ -242,23 +247,29 @@ void Writer::write_vector(const std::string& group, const std::string dataset_na
     auto maxhs = hs;
     H5::DSetCreatPropList prop;
     bool ds_exists = grp.exists(dataset_name);
-    if (!ds_exists && use_chunks_)
+    if (!ds_exists)
     {
-        // all dimensions may change
-        for (auto& m : maxhs) m = H5S_UNLIMITED;
-        auto chunkhs = hs;
-        chunkhs.front() = chunk_length_;
-
-        // set all chunk dimensions to at least 1
-        for (auto& s : chunkhs)
+        if (use_chunks_ && !final_write_)
         {
-            if (s == 0)
-                s = 1;
-        }
+            // all dimensions may change
+            for (auto& m : maxhs) m = H5S_UNLIMITED;
+            auto chunkhs = hs;
+            chunkhs.front() = chunk_length_;
 
-        glog.is_debug2() && glog << "Setting chunks to " << dim_str(chunkhs) << std::endl;
-        prop.setChunk(chunkhs.size(), chunkhs.data());
-        prop.setFillValue(predicate<T>(), &empty_value);
+            // set all chunk dimensions to at least 1
+            for (auto& s : chunkhs)
+            {
+                if (s == 0)
+                    s = 1;
+            }
+
+            glog.is_debug2() && glog << "Setting chunks to " << dim_str(chunkhs) << std::endl;
+            prop.setChunk(chunkhs.size(), chunkhs.data());
+            prop.setFillValue(predicate<T>(), &empty_value);
+            if (use_compression_)
+                prop.setDeflate(compression_level_);
+        }
+        
     }
 
     if (data.size() || write_zero_length_dim_)
