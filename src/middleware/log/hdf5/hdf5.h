@@ -144,7 +144,7 @@ class Writer
     template <typename T>
     void write_vector(const std::string& group, const std::string dataset_name,
                       const std::vector<T>& data, const std::vector<hsize_t>& hs,
-                      const T& default_value);
+                      const T& default_value, T empty_value = retrieve_empty_value<T>());
 
     void write_vector(const std::string& group, const std::string& dataset_name,
                       const std::vector<std::string>& data, const std::vector<hsize_t>& hs,
@@ -234,19 +234,20 @@ void Writer::write_field(const std::string& group,
 template <typename T>
 void Writer::write_vector(const std::string& group, const std::string dataset_name,
                           const std::vector<T>& data, const std::vector<hsize_t>& hs,
-                          const T& default_value)
+                          const T& default_value, T empty_value)
 {
     std::unique_ptr<H5::DataSpace> dataspace;
     H5::Group& grp = group_factory_.fetch_group(group);
 
     auto maxhs = hs;
     H5::DSetCreatPropList prop;
-    if (use_chunks_)
+    bool ds_exists = grp.exists(dataset_name);
+    if (!ds_exists && use_chunks_)
     {
-        // last dimensions may change
-        maxhs.back() = H5S_UNLIMITED;
+        // all dimensions may change
+        for (auto& m : maxhs) m = H5S_UNLIMITED;
         auto chunkhs = hs;
-        chunkhs.back() = chunk_length_;
+        chunkhs.front() = chunk_length_;
 
         // set all chunk dimensions to at least 1
         for (auto& s : chunkhs)
@@ -257,6 +258,7 @@ void Writer::write_vector(const std::string& group, const std::string dataset_na
 
         glog.is_debug2() && glog << "Setting chunks to " << dim_str(chunkhs) << std::endl;
         prop.setChunk(chunkhs.size(), chunkhs.data());
+        prop.setFillValue(predicate<T>(), &empty_value);
     }
 
     if (data.size() || write_zero_length_dim_)
@@ -264,43 +266,42 @@ void Writer::write_vector(const std::string& group, const std::string dataset_na
     else
         dataspace = std::make_unique<H5::DataSpace>(H5S_NULL);
 
-    bool ds_exists = grp.exists(dataset_name);
     H5::DataSet dataset = ds_exists
                               ? grp.openDataSet(dataset_name)
                               : grp.createDataSet(dataset_name, predicate<T>(), *dataspace, prop);
 
-    if (data.size())
+    if (ds_exists)
     {
-        if (ds_exists)
-        {
-            H5::DataSpace existing_space(dataset.getSpace());
-            std::vector<hsize_t> existing_hs(existing_space.getSimpleExtentNdims());
-            existing_space.getSimpleExtentDims(&existing_hs[0]);
-            glog.is_debug2() && glog << "Existing dimensions are: " << dim_str(existing_hs)
-                                     << std::endl;
+        H5::DataSpace existing_space(dataset.getSpace());
+        std::vector<hsize_t> existing_hs(existing_space.getSimpleExtentNdims());
+        existing_space.getSimpleExtentDims(&existing_hs[0]);
+        glog.is_debug2() && glog << "Existing dimensions are: " << dim_str(existing_hs)
+                                 << std::endl;
 
-            auto new_size = hs;
-            new_size.back() += existing_hs.back();
+        // new size is larger of the existing or new vectors, except for the last dimension which is the sum
+        std::vector<hsize_t> new_size(hs.size(), 0);
+        for (int i = 0, n = new_size.size(); i < n; ++i)
+            new_size[i] = std::max(hs[i], existing_hs[i]);
+        new_size.front() = existing_hs.front() + hs.front();
 
-            glog.is_debug2() && glog << "Extending dimensions to: " << dim_str(new_size)
-                                     << std::endl;
-            dataset.extend(new_size.data());
+        glog.is_debug2() && glog << "Extending dimensions to: " << dim_str(new_size) << std::endl;
+        dataset.extend(new_size.data());
 
-            auto& memspace = dataspace;
-            H5::DataSpace filespace(dataset.getSpace());
-            std::vector<hsize_t> offset(hs.size(), 0);
-            offset.back() = existing_hs.back();
+        auto& memspace = dataspace;
+        H5::DataSpace filespace(dataset.getSpace());
+        std::vector<hsize_t> offset(hs.size(), 0);
+        offset.front() = existing_hs.front();
 
-            glog.is_debug2() && glog << "Selecting offset of: " << dim_str(offset)
-                                     << std::endl;
-            
-            filespace.selectHyperslab(H5S_SELECT_SET, hs.data(), offset.data());
+        glog.is_debug2() && glog << "Selecting offset of: " << dim_str(offset) << std::endl;
+
+        filespace.selectHyperslab(H5S_SELECT_SET, hs.data(), offset.data());
+        if (data.size())
             dataset.write(&data[0], predicate<T>(), *memspace, filespace);
-        }
-        else
-        {
+    }
+    else
+    {
+        if (data.size())
             dataset.write(&data[0], predicate<T>());
-        }
     }
 
     const char* default_value_attr_name = "default_value";

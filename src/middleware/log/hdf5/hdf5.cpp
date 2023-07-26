@@ -458,9 +458,10 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
             max_size = i.size();
     }
 
+    char fill_value = '\0';
     for (auto d : data)
     {
-        d.resize(max_size, '\0');
+        d.resize(max_size, fill_value);
         for (char c : d) data_char.push_back(c);
     }
     hs.push_back(max_size);
@@ -470,19 +471,20 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
 
     auto maxhs = hs;
     H5::DSetCreatPropList prop;
-    if (use_chunks_)
+    H5::Group& grp = group_factory_.fetch_group(group);
+    bool ds_exists = grp.exists(dataset_name);
+    if (!ds_exists && use_chunks_)
     {
-        // last two dimensions may change
-        auto chunkhs = hs;
+        // all dimensions may change
+        for (auto& m : maxhs) m = H5S_UNLIMITED;
 
+        auto chunkhs = hs;
         // message dimension
-        maxhs[maxhs.size() - 2] = H5S_UNLIMITED;
-        chunkhs[maxhs.size() - 2] = chunk_length_;
+        chunkhs.front() = chunk_length_;
 
         // string width dimension
-        maxhs[maxhs.size() - 1] = H5S_UNLIMITED;
         constexpr hsize_t str_chunk_size = 256;
-        chunkhs[maxhs.size() - 1] = str_chunk_size;
+        chunkhs.back() = str_chunk_size;
 
         // set all chunk dimensions to at least 1
         for (auto& s : chunkhs)
@@ -493,59 +495,58 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
         glog.is_debug2() && glog << "Setting chunks to " << dim_str(chunkhs) << std::endl;
 
         prop.setChunk(chunkhs.size(), chunkhs.data());
+        prop.setFillValue(H5::PredType::NATIVE_CHAR, &fill_value);
     }
 
     std::unique_ptr<H5::DataSpace> dataspace;
-    H5::Group& grp = group_factory_.fetch_group(group);
     if (data_char.size() || write_zero_length_dim_)
         dataspace = std::make_unique<H5::DataSpace>(hs.size(), hs.data(), maxhs.data());
     else
         dataspace = std::make_unique<H5::DataSpace>(H5S_NULL);
 
-    bool ds_exists = grp.exists(dataset_name);
     H5::DataSet dataset =
         ds_exists ? grp.openDataSet(dataset_name)
                   : grp.createDataSet(dataset_name, H5::PredType::NATIVE_CHAR, *dataspace, prop);
 
-    if (data_char.size())
+    if (ds_exists)
     {
-        if (ds_exists)
-        {
-            H5::DataSpace existing_space(dataset.getSpace());
-            std::vector<hsize_t> existing_hs(existing_space.getSimpleExtentNdims());
-            existing_space.getSimpleExtentDims(&existing_hs[0]);
-            glog.is_debug2() && glog << "Existing dimensions are: " << dim_str(existing_hs)
-                                     << std::endl;
+        H5::DataSpace existing_space(dataset.getSpace());
+        std::vector<hsize_t> existing_hs(existing_space.getSimpleExtentNdims());
+        existing_space.getSimpleExtentDims(&existing_hs[0]);
+        glog.is_debug2() && glog << "Existing dimensions are: " << dim_str(existing_hs)
+                                 << std::endl;
 
-            auto new_size = hs;
-            new_size[new_size.size() - 2] += existing_hs[existing_hs.size() - 2];
-            new_size[new_size.size() - 1] =
-                std::max(existing_hs[existing_hs.size() - 1], hs[hs.size() - 1]);
+        std::vector<hsize_t> new_size(hs.size(), 0);
+        for (int i = 0, n = new_size.size(); i < n; ++i)
+            new_size[i] = std::max(hs[i], existing_hs[i]);
 
-            glog.is_debug2() && glog << "Extending dimensions to: " << dim_str(new_size)
-                                     << std::endl;
-            dataset.extend(new_size.data());
+        new_size.front() = hs.front() + existing_hs.front();
 
-            auto& memspace = dataspace;
-            H5::DataSpace filespace(dataset.getSpace());
-            std::vector<hsize_t> offset(hs.size(), 0);
-            offset[existing_hs.size() - 2] += existing_hs[existing_hs.size() - 2];
+        glog.is_debug2() && glog << "Extending dimensions to: " << dim_str(new_size) << std::endl;
+        dataset.extend(new_size.data());
 
-            glog.is_debug2() && glog << "Selecting offset of: " << dim_str(offset) << std::endl;
+        auto& memspace = dataspace;
+        H5::DataSpace filespace(dataset.getSpace());
+        std::vector<hsize_t> offset(hs.size(), 0);
+        offset.front() += existing_hs.front();
 
-            filespace.selectHyperslab(H5S_SELECT_SET, hs.data(), offset.data());
+        glog.is_debug2() && glog << "Selecting offset of: " << dim_str(offset) << std::endl;
+
+        filespace.selectHyperslab(H5S_SELECT_SET, hs.data(), offset.data());
+        if (data_char.size())
             dataset.write(&data_char[0], H5::PredType::NATIVE_CHAR, *memspace, filespace);
-        }
-        else
-        {
+    }
+    else
+    {
+        if (data_char.size())
             dataset.write(&data_char[0], H5::PredType::NATIVE_CHAR);
-        }
     }
 
     glog.is_debug1() && glog << "Writing string size field \"" << dataset_name + "_size"
                              << "\" (size: " << dim_str(hs_outer) << ")" << std::endl;
 
-    write_vector(group, dataset_name + "_size", sizes, hs_outer, std::uint32_t(0));
+    write_vector(group, dataset_name + "_size", sizes, hs_outer, std::uint32_t(0),
+                 static_cast<std::uint32_t>(0) /* use empty value of 0 not uint32 max */);
 
     const char* default_value_attr_name = "default_value";
     if (!dataset.attrExists(default_value_attr_name))
