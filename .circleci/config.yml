@@ -30,10 +30,6 @@ environment-template-buster: &environment-template-buster
 environment-template-bullseye: &environment-template-bullseye
   DISTRO_RELEASE_CODENAME: "bullseye"
   DISTRO_RELEASE_VERSION: "debian11"
-  
-environment-template-bionic: &environment-template-bionic
-  DISTRO_RELEASE_CODENAME: "bionic"
-  DISTRO_RELEASE_VERSION: "ubuntu18.04"
 
 environment-template-focal: &environment-template-focal
   DISTRO_RELEASE_CODENAME: "focal"
@@ -58,13 +54,6 @@ docker-arm64-bullseye: &docker-arm64-bullseye
 docker-armhf-bullseye: &docker-armhf-bullseye
   - image: gobysoft/goby3-debian-build-armhf:11.1
 
-    
-docker-base-bionic: &docker-base-bionic
-  - image: gobysoft/goby3-ubuntu-build-base:18.04.1
-docker-arm64-bionic: &docker-arm64-bionic
-  - image: gobysoft/goby3-ubuntu-build-arm64:18.04.1
-docker-armhf-bionic: &docker-armhf-bionic
-  - image: gobysoft/goby3-ubuntu-build-armhf:18.04.1
 
 docker-base-focal: &docker-base-focal
   - image: gobysoft/goby3-ubuntu-build-base:20.04.1
@@ -194,10 +183,10 @@ job-template-sanitizers: &job-template-sanitizers
     TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6"    
   docker: *docker-base-focal
 
-# Base upload off Bionic build
+# Base upload off Jammy build
 job-template-upload: &job-template-upload
   <<: *job-template-amd64
-  docker: *docker-base-bionic
+  docker: *docker-base-jammy
   resource_class: small
 
 
@@ -233,12 +222,10 @@ workflows:
           <<: *filter-template-non-master
       - amd64-bullseye-build:        
           <<: *filter-template-non-master
-      - amd64-bionic-build:
-          <<: *filter-template-non-master
       - amd64-focal-build:
           <<: *filter-template-non-master
-#      - amd64-jammy-build:
-#          <<: *filter-template-non-master
+      - amd64-jammy-build:
+          <<: *filter-template-non-master
 
           
       - amd64-jammy-minimal-build:
@@ -273,20 +260,6 @@ workflows:
           requires:
             - get-orig-source
 
-            
-            
-      - amd64-bionic-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - get-orig-source
-      - arm64-bionic-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - get-orig-source
-      - armhf-bionic-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - get-orig-source
 
       - amd64-focal-deb-build:
           <<: *filter-template-master-only
@@ -323,9 +296,6 @@ workflows:
             - amd64-bullseye-deb-build
             - arm64-bullseye-deb-build
             - armhf-bullseye-deb-build
-            - amd64-bionic-deb-build
-            - arm64-bionic-deb-build
-            - armhf-bionic-deb-build
             - amd64-focal-deb-build
             - arm64-focal-deb-build
             - armhf-focal-deb-build
@@ -347,9 +317,6 @@ workflows:
             - amd64-bullseye-deb-build
             - arm64-bullseye-deb-build
             - armhf-bullseye-deb-build
-            - amd64-bionic-deb-build
-            - arm64-bionic-deb-build
-            - armhf-bionic-deb-build
             - amd64-focal-deb-build
             - arm64-focal-deb-build
             - armhf-focal-deb-build
@@ -370,10 +337,10 @@ jobs:
 
   get-orig-source:
     <<: *job-template-deb-amd64
-    docker: *docker-base-bionic
+    docker: *docker-base-jammy
     environment:
       <<: *environment-template-common
-      <<: *environment-template-bionic
+      <<: *environment-template-jammy
       <<: *environment-template-amd64
     steps:
       - checkout
@@ -416,13 +383,6 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-bullseye
       
-  amd64-bionic-build:
-    <<: *job-template-amd64
-    docker: *docker-base-bionic
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-bionic
-
   amd64-focal-build:
     <<: *job-template-amd64
     docker: *docker-base-focal
@@ -504,27 +464,6 @@ jobs:
     environment:
       <<: *environment-template-common
       <<: *environment-template-bullseye
-      <<: *environment-template-armhf
-  amd64-bionic-deb-build:
-    <<: *job-template-deb-amd64
-    docker: *docker-base-bionic
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-bionic
-      <<: *environment-template-amd64
-  arm64-bionic-deb-build: 
-    <<: *job-template-deb-cross
-    docker: *docker-arm64-bionic
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-bionic
-      <<: *environment-template-arm64
-  armhf-bionic-deb-build: 
-    <<: *job-template-deb-cross
-    docker: *docker-armhf-bionic
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-bionic
       <<: *environment-template-armhf
   amd64-focal-deb-build:
     <<: *job-template-deb-amd64
@@ -624,7 +563,7 @@ jobs:
     <<: *job-template-upload
     environment:
       <<: *environment-template-common
-      <<: *environment-template-bionic
+      <<: *environment-template-jammy
       <<: *environment-template-amd64
       UPLOAD_DESTINATION: "gobysoft-continuous"
     steps: &steps-upload
@@ -653,7 +592,7 @@ jobs:
     <<: *job-template-upload
     environment:
       <<: *environment-template-common
-      <<: *environment-template-bionic
+      <<: *environment-template-jammy
       <<: *environment-template-amd64
       UPLOAD_DESTINATION: "gobysoft-release"
     steps: *steps-upload

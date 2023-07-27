@@ -166,10 +166,10 @@ void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cf
         {
             if (!raw_fs_connections_made_)
             {
-                connect(&signal_raw_incoming,
-                        boost::bind(&ModemDriverBase::write_raw, this, _1, true));
-                connect(&signal_raw_outgoing,
-                        boost::bind(&ModemDriverBase::write_raw, this, _1, false));
+                connect(&signal_raw_incoming, boost::bind(&ModemDriverBase::write_raw, this,
+                                                          boost::placeholders::_1, true));
+                connect(&signal_raw_outgoing, boost::bind(&ModemDriverBase::write_raw, this,
+                                                          boost::placeholders::_1, false));
                 raw_fs_connections_made_ = true;
             }
         }

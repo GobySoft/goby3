@@ -26,7 +26,23 @@ message LogToolConfig
 
     optional OutputFormat format = 30 [default = DEBUG_TEXT];
 
-    optional bool write_hdf5_zero_length_dim = 31 [default = true];
+    optional bool write_hdf5_zero_length_dim = 31 [
+        default = true,
+        (goby.field).description =
+            "If false, do not write HDF5 entries with zero-length dimensions (use NULL). This would be set false to workaround older buggy Java implementations of HDF5. Leave default (true) otherwise."
+    ];
+
+    // if enabled, write a chunked file in pieces, flushing every
+    // hdf5_chunk_length messages to ensure we do not use as much RAM
+    optional int32 hdf5_chunk_length = 32 [
+        (goby.field).description =
+            "Set to the HDF chunk length to enable HDF5 chunking (in number of messages per file chunk). This will greatly reduce RAM usage on processing larger .goby files at the expense of somewhat larger .h5 output. The smaller the chunk length the less RAM used by goby_log_tool."
+    ];
+
+    optional int32 hdf5_compression_level = 33 [
+        (goby.field).description =
+            "Set to a value from 0 (no compression) to 9 (max compression). Requires --hdf5_chunk_length to be set as HDF5 requires chunking for compression."
+    ];
 
     repeated string load_shared_library = 40
         [(goby.field).description =

@@ -32,6 +32,7 @@
 
 #include <dccl/dynamic_protobuf_manager.h> // for DynamicProtob...
 
+#include "goby/exception.h"
 #include "goby/time/types.h" // for MicroTime
 #include "goby/util/dccl_compat.h"
 #include "goby/util/debug_logger.h"
@@ -39,7 +40,8 @@
 #include "hdf5.h"
 #include "hdf5_plugin.h" // for HDF5ProtobufE...
 
-void goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5ProtobufEntry& entry)
+size_t
+goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5ProtobufEntry& entry)
 {
     const std::string& msg_name = entry.msg->GetDescriptor()->full_name();
     typedef std::map<std::string, MessageCollection>::iterator It;
@@ -47,10 +49,11 @@ void goby::middleware::hdf5::Channel::add_message(const goby::middleware::HDF5Pr
     if (it == entries.end())
     {
         std::pair<It, bool> itpair =
-            entries.insert(std::make_pair(msg_name, MessageCollection(msg_name)));
+            entries.insert(std::make_pair(msg_name, MessageCollection(msg_name, this->group)));
         it = itpair.first;
     }
     it->second.entries.insert(std::make_pair(time::MicroTime(entry.time).value(), entry));
+    return it->second.entries.size();
 }
 
 H5::Group& goby::middleware::hdf5::GroupFactory::fetch_group(const std::string& group_path)
@@ -84,15 +87,25 @@ goby::middleware::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::
     }
 }
 
-goby::middleware::hdf5::Writer::Writer(const std::string& output_file, bool write_zero_length_dim)
+goby::middleware::hdf5::Writer::Writer(const std::string& output_file, bool write_zero_length_dim,
+                                       bool use_chunks, hsize_t chunk_length, bool use_compression,
+                                       int compression_level)
     : h5file_(output_file, H5F_ACC_TRUNC),
       group_factory_(h5file_),
-      write_zero_length_dim_(write_zero_length_dim)
+      write_zero_length_dim_(write_zero_length_dim),
+      use_chunks_(use_chunks),
+      chunk_length_(chunk_length),
+      use_compression_(use_compression),
+      compression_level_(compression_level),
+      final_write_(false)
 {
 }
 
 void goby::middleware::hdf5::Writer::add_entry(goby::middleware::HDF5ProtobufEntry entry)
 {
+    if (final_write_)
+        throw(goby::Exception("add_entry() called after final_write = true"));
+
     boost::trim_if(entry.channel, boost::algorithm::is_space() || boost::algorithm::is_any_of("/"));
 
     using It = std::map<std::string, goby::middleware::hdf5::Channel>::iterator;
@@ -104,26 +117,49 @@ void goby::middleware::hdf5::Writer::add_entry(goby::middleware::HDF5ProtobufEnt
         it = itpair.first;
     }
 
-    it->second.add_message(entry);
+    auto channel_size = it->second.add_message(entry);
+
+    if (use_chunks_ && channel_size >= chunk_length_)
+        write_channel_chunk_and_clear(it->second);
 }
 
-void goby::middleware::hdf5::Writer::write()
+void goby::middleware::hdf5::Writer::write(bool final_write)
 {
-    for (const auto& channel : channels_) write_channel("/" + channel.first, channel.second);
+    if (final_write_)
+        throw(goby::Exception("write() called after final_write = true"));
+
+    final_write_ = final_write;
+    for (const auto& channel : channels_) write_channel(channel.second);
 }
 
-void goby::middleware::hdf5::Writer::write_channel(const std::string& group,
-                                                   const goby::middleware::hdf5::Channel& channel)
+void goby::middleware::hdf5::Writer::write_channel(const goby::middleware::hdf5::Channel& channel)
 {
+    const auto& group = channel.group;
     glog.is_verbose() && glog << "Writing HDF5 group: " << group << std::endl;
 
-    for (const auto& entry : channel.entries)
-        write_message_collection(group + "/" + entry.first, entry.second);
+    for (const auto& entry : channel.entries) write_message_collection(entry.second);
+}
+
+void goby::middleware::hdf5::Writer::write_channel_chunk_and_clear(
+    goby::middleware::hdf5::Channel& channel)
+{
+    const auto& group = channel.group;
+    glog.is_verbose() && glog << "Writing HDF5 group: " << group << std::endl;
+    for (auto& entry : channel.entries)
+    {
+        if (entry.second.entries.size() >= chunk_length_)
+        {
+            write_message_collection(entry.second);
+            entry.second.entries.clear();
+        }
+    }
 }
 
 void goby::middleware::hdf5::Writer::write_message_collection(
-    const std::string& group, const goby::middleware::hdf5::MessageCollection& message_collection)
+    const goby::middleware::hdf5::MessageCollection& message_collection)
 {
+    const auto& group = message_collection.group;
+    glog.is_verbose() && glog << "Writing HDF5 group: " << group << std::endl;
     write_time(group, message_collection);
     write_scheme(group, message_collection);
 
@@ -282,6 +318,10 @@ void goby::middleware::hdf5::Writer::write_field_selector(
     const std::string& group, const google::protobuf::FieldDescriptor* field_desc,
     const std::vector<const google::protobuf::Message*>& messages, std::vector<hsize_t>& hs)
 {
+    glog.is_debug1() && glog << "Writing HDF5 group: " << group << std::endl;
+    glog.is_debug1() && glog << "Writing field \"" << field_desc->name()
+                             << "\" (size: " << dim_str(hs) << ")" << std::endl;
+
     switch (field_desc->cpp_type())
     {
         case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
@@ -341,6 +381,11 @@ void goby::middleware::hdf5::Writer::write_enum_attributes(
     H5::Group& grp = group_factory_.fetch_group(group);
     H5::DataSet ds = grp.openDataSet(field_desc->name());
 
+    const char* enum_names_attr_name = "enum_names";
+    const char* enum_values_attr_name = "enum_values";
+    if (ds.attrExists(enum_names_attr_name) && ds.attrExists(enum_values_attr_name))
+        return;
+
     const google::protobuf::EnumDescriptor* enum_desc = field_desc->enum_type();
 
     std::vector<const char*> names(enum_desc->value_count(), (const char*)nullptr);
@@ -352,6 +397,7 @@ void goby::middleware::hdf5::Writer::write_enum_attributes(
         values[i] = enum_desc->value(i)->number();
     }
 
+    if (!ds.attrExists(enum_names_attr_name))
     {
         const int rank = 1;
         hsize_t hs[] = {names.size()};
@@ -360,6 +406,8 @@ void goby::middleware::hdf5::Writer::write_enum_attributes(
         H5::Attribute att = ds.createAttribute("enum_names", att_type, att_space);
         att.write(att_type, &names[0]);
     }
+
+    if (!ds.attrExists(enum_values_attr_name))
     {
         const int rank = 1;
         hsize_t hs[] = {values.size()};
@@ -373,6 +421,9 @@ void goby::middleware::hdf5::Writer::write_enum_attributes(
 void goby::middleware::hdf5::Writer::write_time(
     const std::string& group, const goby::middleware::hdf5::MessageCollection& message_collection)
 {
+    glog.is_debug1() && glog << "Writing time (size: " << message_collection.entries.size() << ")"
+                             << std::endl;
+
     std::vector<std::uint64_t> utime(message_collection.entries.size(), 0);
     std::vector<double> datenum(message_collection.entries.size(), 0);
     int i = 0;
@@ -398,6 +449,9 @@ void goby::middleware::hdf5::Writer::write_time(
 void goby::middleware::hdf5::Writer::write_scheme(
     const std::string& group, const goby::middleware::hdf5::MessageCollection& message_collection)
 {
+    glog.is_debug1() && glog << "Writing scheme (size: " << message_collection.entries.size() << ")"
+                             << std::endl;
+
     std::vector<int> scheme(message_collection.entries.size(), 0);
     int i = 0;
     for (const auto& entry : message_collection.entries)
@@ -429,32 +483,113 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
             max_size = i.size();
     }
 
+    char fill_value = '\0';
     for (auto d : data)
     {
-        d.resize(max_size, '\0');
+        d.resize(max_size, fill_value);
         for (char c : d) data_char.push_back(c);
     }
     hs.push_back(max_size);
 
-    std::unique_ptr<H5::DataSpace> dataspace;
+    glog.is_debug1() && glog << "Writing string field \"" << dataset_name
+                             << "\" (size: " << dim_str(hs) << ")" << std::endl;
+
+    auto maxhs = hs;
+    H5::DSetCreatPropList prop;
     H5::Group& grp = group_factory_.fetch_group(group);
+    bool ds_exists = grp.exists(dataset_name);
+    if (!ds_exists)
+    {
+        if (use_chunks_ && !final_write_)
+        {
+            // all dimensions may change
+            for (auto& m : maxhs) m = H5S_UNLIMITED;
+
+            auto chunkhs = hs;
+            // message dimension
+            chunkhs.front() = chunk_length_;
+
+            // string width dimension
+            constexpr hsize_t str_chunk_size = 256;
+            chunkhs.back() = str_chunk_size;
+
+            // set all chunk dimensions to at least 1
+            for (auto& s : chunkhs)
+            {
+                if (s == 0)
+                    s = 1;
+            }
+            glog.is_debug2() && glog << "Setting chunks to " << dim_str(chunkhs) << std::endl;
+
+            prop.setChunk(chunkhs.size(), chunkhs.data());
+            prop.setFillValue(H5::PredType::NATIVE_CHAR, &fill_value);
+
+            // can only compress with chunks
+            if (use_compression_)
+                prop.setDeflate(compression_level_);
+        }
+    }
+
+    std::unique_ptr<H5::DataSpace> dataspace;
     if (data_char.size() || write_zero_length_dim_)
-        dataspace = std::make_unique<H5::DataSpace>(hs.size(), hs.data(), hs.data());
+        dataspace = std::make_unique<H5::DataSpace>(hs.size(), hs.data(), maxhs.data());
     else
         dataspace = std::make_unique<H5::DataSpace>(H5S_NULL);
 
-    H5::DataSet dataset = grp.createDataSet(dataset_name, H5::PredType::NATIVE_CHAR, *dataspace);
+    H5::DataSet dataset =
+        ds_exists ? grp.openDataSet(dataset_name)
+                  : grp.createDataSet(dataset_name, H5::PredType::NATIVE_CHAR, *dataspace, prop);
 
-    if (data_char.size())
-        dataset.write(&data_char[0], H5::PredType::NATIVE_CHAR);
+    if (ds_exists)
+    {
+        H5::DataSpace existing_space(dataset.getSpace());
+        std::vector<hsize_t> existing_hs(existing_space.getSimpleExtentNdims());
+        existing_space.getSimpleExtentDims(&existing_hs[0]);
+        glog.is_debug2() && glog << "Existing dimensions are: " << dim_str(existing_hs)
+                                 << std::endl;
 
-    write_vector(group, dataset_name + "_size", sizes, hs_outer, std::uint32_t(0));
+        std::vector<hsize_t> new_size(hs.size(), 0);
+        for (int i = 0, n = new_size.size(); i < n; ++i)
+            new_size[i] = std::max(hs[i], existing_hs[i]);
 
-    const int rank = 1;
-    hsize_t att_hs[] = {1};
-    H5::DataSpace att_space(rank, att_hs, att_hs);
-    H5::StrType att_datatype(H5::PredType::C_S1, default_value.size() + 1);
-    H5::Attribute att = dataset.createAttribute("default_value", att_datatype, att_space);
-    const H5std_string& strbuf(default_value);
-    att.write(att_datatype, strbuf);
+        new_size.front() = hs.front() + existing_hs.front();
+
+        glog.is_debug2() && glog << "Extending dimensions to: " << dim_str(new_size) << std::endl;
+        dataset.extend(new_size.data());
+
+        auto& memspace = dataspace;
+        H5::DataSpace filespace(dataset.getSpace());
+        std::vector<hsize_t> offset(hs.size(), 0);
+        offset.front() += existing_hs.front();
+
+        glog.is_debug2() && glog << "Selecting offset of: " << dim_str(offset) << std::endl;
+
+        filespace.selectHyperslab(H5S_SELECT_SET, hs.data(), offset.data());
+        if (data_char.size())
+            dataset.write(&data_char[0], H5::PredType::NATIVE_CHAR, *memspace, filespace);
+    }
+    else
+    {
+        if (data_char.size())
+            dataset.write(&data_char[0], H5::PredType::NATIVE_CHAR);
+    }
+
+    glog.is_debug1() && glog << "Writing string size field \"" << dataset_name + "_size"
+                             << "\" (size: " << dim_str(hs_outer) << ")" << std::endl;
+
+    write_vector(group, dataset_name + "_size", sizes, hs_outer, std::uint32_t(0),
+                 static_cast<std::uint32_t>(0) /* use empty value of 0 not uint32 max */);
+
+    const char* default_value_attr_name = "default_value";
+    if (!dataset.attrExists(default_value_attr_name))
+    {
+        const int rank = 1;
+        hsize_t att_hs[] = {1};
+        H5::DataSpace att_space(rank, att_hs, att_hs);
+        H5::StrType att_datatype(H5::PredType::C_S1, default_value.size() + 1);
+        H5::Attribute att =
+            dataset.createAttribute(default_value_attr_name, att_datatype, att_space);
+        const H5std_string& strbuf(default_value);
+        att.write(att_datatype, strbuf);
+    }
 }
