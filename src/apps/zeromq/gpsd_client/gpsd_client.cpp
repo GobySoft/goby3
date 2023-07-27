@@ -158,7 +158,6 @@ goby::apps::zeromq::GPSDClient::GPSDClient()
 
     // launch after subscribing
     launch_thread<TCPThread>(cfg().gpsd());
-
 }
 
 void goby::apps::zeromq::GPSDClient::handle_response(nlohmann::json& json_data)
@@ -295,6 +294,7 @@ void goby::apps::zeromq::GPSDClient::handle_sky(nlohmann::json& data)
         if (data.contains("uSat"))
             sky.set_usat((data["uSat"].get<int>()));
 
+        int usat = 0;
         if (data.contains("satellites"))
         {
             auto& satellites = data["satellites"];
@@ -332,9 +332,14 @@ void goby::apps::zeromq::GPSDClient::handle_sky(nlohmann::json& data)
 
                 if (sat.contains("health"))
                     sat_pb->set_health(sat["health"].get<int>());
+
+                if (sat_pb->used())
+                    ++usat;
             }
         }
-
+        sky.set_nsat(sky.satellite_size());
+        sky.set_usat(usat);
+        
         interprocess().publish<goby::middleware::groups::gpsd::sky>(sky);
         glog.is_debug1() && glog << "SKY: " << sky.ShortDebugString() << std::endl;
     }
