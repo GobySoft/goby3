@@ -199,14 +199,14 @@ filter-template-master-only: &filter-template-master-only
     branches:
       only:
         - "3.0"
-        - "3.0-fix-zmq-regression"
+        - "packages"
 
 filter-template-non-master: &filter-template-non-master
   filters:
     branches:
       ignore:
         - "3.0"
-        - "3.0-fix-zmq-regression"
+        - "packages"
         
 ## Begin actual config
 version: 2
@@ -228,80 +228,80 @@ workflows:
           <<: *filter-template-non-master
 
           
-      # - amd64-jammy-minimal-build:
-      #     <<: *filter-template-master-only
+      - amd64-jammy-minimal-build:
+          <<: *filter-template-master-only
       
       - get-orig-source:
           <<: *filter-template-master-only
 
-      # - amd64-buster-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
-      # - arm64-buster-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
-      # - armhf-buster-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
+      - amd64-buster-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - arm64-buster-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - armhf-buster-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
 
-      # - amd64-bullseye-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
-      # - arm64-bullseye-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
-      # - armhf-bullseye-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
+      - amd64-bullseye-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - arm64-bullseye-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - armhf-bullseye-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
 
 
-      # - amd64-focal-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
-      # - arm64-focal-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
-      # - armhf-focal-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
+      - amd64-focal-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - arm64-focal-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - armhf-focal-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
             
       - amd64-jammy-deb-build:
           <<: *filter-template-master-only
           requires:
             - get-orig-source
-      # - arm64-jammy-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
-      # - armhf-jammy-deb-build:
-      #     <<: *filter-template-master-only
-      #     requires:
-      #       - get-orig-source
+      - arm64-jammy-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - armhf-jammy-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
             
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
           requires:
-            # - amd64-buster-deb-build
-            # - arm64-buster-deb-build
-            # - armhf-buster-deb-build
-            # - amd64-bullseye-deb-build
-            # - arm64-bullseye-deb-build
-            # - armhf-bullseye-deb-build
-            # - amd64-focal-deb-build
-            # - arm64-focal-deb-build
-            # - armhf-focal-deb-build
+            - amd64-buster-deb-build
+            - arm64-buster-deb-build
+            - armhf-buster-deb-build
+            - amd64-bullseye-deb-build
+            - arm64-bullseye-deb-build
+            - armhf-bullseye-deb-build
+            - amd64-focal-deb-build
+            - arm64-focal-deb-build
+            - armhf-focal-deb-build
             - amd64-jammy-deb-build
-            # - arm64-jammy-deb-build
-            # - armhf-jammy-deb-build
+            - arm64-jammy-deb-build
+            - armhf-jammy-deb-build
 
       # only do the release upload on tagged builds
       - release-upload:
@@ -311,23 +311,23 @@ workflows:
             branches:
               ignore: /.*/
           requires:
-            # - amd64-buster-deb-build
-            # - arm64-buster-deb-build
-            # - armhf-buster-deb-build
-            # - amd64-bullseye-deb-build
-            # - arm64-bullseye-deb-build
-            # - armhf-bullseye-deb-build
-            # - amd64-focal-deb-build
-            # - arm64-focal-deb-build
-            # - armhf-focal-deb-build
+            - amd64-buster-deb-build
+            - arm64-buster-deb-build
+            - armhf-buster-deb-build
+            - amd64-bullseye-deb-build
+            - arm64-bullseye-deb-build
+            - armhf-bullseye-deb-build
+            - amd64-focal-deb-build
+            - arm64-focal-deb-build
+            - armhf-focal-deb-build
             - amd64-jammy-deb-build
-            # - arm64-jammy-deb-build
-            # - armhf-jammy-deb-build
+            - arm64-jammy-deb-build
+            - armhf-jammy-deb-build
             
-      # - amd64+scan-build:
-      #     <<: *filter-template-master-only
-      # - amd64+asan-build:
-      #     <<: *filter-template-master-only
+      - amd64+scan-build:
+          <<: *filter-template-master-only
+      - amd64+asan-build:
+          <<: *filter-template-master-only
 
 
 #      - amd64+ubsan-build:
