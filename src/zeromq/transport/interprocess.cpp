@@ -66,7 +66,7 @@ void goby::zeromq::setup_socket(zmq::socket_t& socket, const protobuf::Socket& c
     socket.setsockopt(ZMQ_RCVHWM, &receive_hwm, sizeof(receive_hwm));
 #else
     socket.set(zmq::sockopt::sndhwm, send_hwm);
-    socket.set(zmq::sockopt::sndhwm, receive_hwm);
+    socket.set(zmq::sockopt::rcvhwm, receive_hwm);
 #endif
 
     bool bind = (cfg.connect_or_bind() == protobuf::Socket::BIND);
