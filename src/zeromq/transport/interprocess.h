@@ -70,9 +70,9 @@
 #define USE_OLD_CPPZMQ_SETSOCKOPT
 #endif
 
-#if CPPZMQ_VERSION < ZMQ_MAKE_VERSION(4, 8, 0)
+//#if CPPZMQ_VERSION < ZMQ_MAKE_VERSION(4, 8, 0)
 #define USE_OLD_CPPZMQ_POLL
-#endif
+//#endif
 
 namespace goby
 {
