@@ -290,18 +290,18 @@ workflows:
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
           requires:
-            - amd64-buster-deb-build
-            - arm64-buster-deb-build
-            - armhf-buster-deb-build
-            - amd64-bullseye-deb-build
-            - arm64-bullseye-deb-build
-            - armhf-bullseye-deb-build
-            - amd64-focal-deb-build
-            - arm64-focal-deb-build
-            - armhf-focal-deb-build
+            # - amd64-buster-deb-build
+            # - arm64-buster-deb-build
+            # - armhf-buster-deb-build
+            # - amd64-bullseye-deb-build
+            # - arm64-bullseye-deb-build
+            # - armhf-bullseye-deb-build
+            # - amd64-focal-deb-build
+            # - arm64-focal-deb-build
+            # - armhf-focal-deb-build
             - amd64-jammy-deb-build
-            - arm64-jammy-deb-build
-            - armhf-jammy-deb-build
+            # - arm64-jammy-deb-build
+            # - armhf-jammy-deb-build
 
       # only do the release upload on tagged builds
       - release-upload:
@@ -311,18 +311,18 @@ workflows:
             branches:
               ignore: /.*/
           requires:
-            - amd64-buster-deb-build
-            - arm64-buster-deb-build
-            - armhf-buster-deb-build
-            - amd64-bullseye-deb-build
-            - arm64-bullseye-deb-build
-            - armhf-bullseye-deb-build
-            - amd64-focal-deb-build
-            - arm64-focal-deb-build
-            - armhf-focal-deb-build
+            # - amd64-buster-deb-build
+            # - arm64-buster-deb-build
+            # - armhf-buster-deb-build
+            # - amd64-bullseye-deb-build
+            # - arm64-bullseye-deb-build
+            # - armhf-bullseye-deb-build
+            # - amd64-focal-deb-build
+            # - arm64-focal-deb-build
+            # - armhf-focal-deb-build
             - amd64-jammy-deb-build
-            - arm64-jammy-deb-build
-            - armhf-jammy-deb-build
+            # - arm64-jammy-deb-build
+            # - armhf-jammy-deb-build
             
       # - amd64+scan-build:
       #     <<: *filter-template-master-only
