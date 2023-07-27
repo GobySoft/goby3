@@ -224,8 +224,8 @@ workflows:
           <<: *filter-template-non-master
       - amd64-focal-build:
           <<: *filter-template-non-master
-#      - amd64-jammy-build:
-#          <<: *filter-template-non-master
+      - amd64-jammy-build:
+          <<: *filter-template-non-master
 
           
       - amd64-jammy-minimal-build:
