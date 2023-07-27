@@ -147,6 +147,11 @@ void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cf
                 modem_.reset(new util::TCPServer(cfg.tcp_port(), cfg.line_delimiter()));
         }
     }
+    else {
+        goby::glog.is(DEBUG1) && goby::glog << group(glog_out_group_) << warn
+                                                    << "NO modem connection_type specified in your configuration file."
+                                                    << std::endl;
+    }
 
     if (cfg.has_raw_log())
     {
@@ -196,6 +201,12 @@ void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cf
                 throw(ModemDriverException("Modem physical connection failed to startup.",
                                            protobuf::ModemDriverStatus::STARTUP_FAILED));
         }
+    }
+    else
+    {
+        glog.is(DEBUG1) && glog << group(glog_out_group_) << warn 
+                                            << "No modem initialized"
+                                            << std::endl;
     }
 }
 

@@ -373,7 +373,7 @@ struct Configure : boost::statechart::state<Configure, Command>, StateNotify
         }
 
         // ensure serial output is the format we expect
-        context<Command>().push_clam_command("@Prompt=7");
+        context<Command>().push_clam_command("@P1Prompt=7");
         context<Command>().push_clam_command("@Verbose=3");
 
         // Goby will handle retries
