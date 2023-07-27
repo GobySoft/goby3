@@ -66,6 +66,14 @@
 #define USE_OLD_ZMQ_CPP_API
 #endif
 
+#if CPPZMQ_VERSION < ZMQ_MAKE_VERSION(4, 7, 0)
+#define USE_OLD_CPPZMQ_SETSOCKOPT
+#endif
+
+#if CPPZMQ_VERSION < ZMQ_MAKE_VERSION(4, 8, 0)
+#define USE_OLD_CPPZMQ_POLL
+#endif
+
 namespace goby
 {
 namespace middleware
@@ -164,8 +172,13 @@ class InterProcessPortalMainThread
     InterProcessPortalMainThread(zmq::context_t& context);
     ~InterProcessPortalMainThread()
     {
+#ifdef USE_OLD_CPPZMQ_SETSOCKOPT
         control_socket_.setsockopt(ZMQ_LINGER, 0);
         publish_socket_.setsockopt(ZMQ_LINGER, 0);
+#else
+        control_socket_.set(zmq::sockopt::linger, 0);
+        publish_socket_.set(zmq::sockopt::linger, 0);
+#endif
     }
 
     bool publish_ready() { return !hold_; }
@@ -211,9 +224,15 @@ class InterProcessPortalReadThread
     void run();
     ~InterProcessPortalReadThread()
     {
+#ifdef USE_OLD_CPPZMQ_SETSOCKOPT
         control_socket_.setsockopt(ZMQ_LINGER, 0);
         subscribe_socket_.setsockopt(ZMQ_LINGER, 0);
         manager_socket_.setsockopt(ZMQ_LINGER, 0);
+#else
+        control_socket_.set(zmq::sockopt::linger, 0);
+        subscribe_socket_.set(zmq::sockopt::linger, 0);
+        manager_socket_.set(zmq::sockopt::linger, 0);
+#endif
     }
 
   private:
