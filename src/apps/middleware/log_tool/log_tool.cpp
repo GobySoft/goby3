@@ -27,9 +27,10 @@
 #include <map>                             // for map
 #include <memory>                          // for unique...
 #include <ostream>                         // for operat...
-#include <string>                          // for operat...
-#include <utility>                         // for pair
-#include <vector>                          // for vector
+#include <regex>
+#include <string>  // for operat...
+#include <utility> // for pair
+#include <vector>  // for vector
 
 #include <boost/filesystem.hpp> // for path
 
@@ -97,6 +98,7 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
             return output_file;
         }
     }
+    bool check_regexes(const goby::middleware::log::LogEntry& log_entry);
 
     // never gets called
     void run() override {}
@@ -113,6 +115,11 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
 
     std::ofstream f_out_;
 
+    std::regex type_regex_;
+    std::regex group_regex_;
+    std::regex exclude_type_regex_;
+    std::regex exclude_group_regex_;
+
 #ifdef HAS_HDF5
     std::unique_ptr<goby::middleware::hdf5::Writer> h5_writer_;
 #endif
@@ -124,7 +131,12 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
 int main(int argc, char* argv[]) { return goby::run<goby::apps::middleware::LogTool>(argc, argv); }
 
 goby::apps::middleware::LogTool::LogTool()
-    : f_in_(app_cfg().input_file().c_str()), output_file_path_(create_output_filename())
+    : f_in_(app_cfg().input_file().c_str()),
+      output_file_path_(create_output_filename()),
+      type_regex_(app_cfg().type_regex()),
+      group_regex_(app_cfg().group_regex()),
+      exclude_type_regex_(app_cfg().exclude_type_regex()),
+      exclude_group_regex_(app_cfg().exclude_group_regex())
 {
     switch (app_cfg().format())
     {
@@ -171,6 +183,10 @@ goby::apps::middleware::LogTool::LogTool()
         {
             goby::middleware::log::LogEntry log_entry;
             log_entry.parse(&f_in_);
+
+            if (!check_regexes(log_entry))
+                continue;
+
             try
             {
                 auto plugin = plugins_.find(log_entry.scheme());
@@ -264,4 +280,42 @@ goby::apps::middleware::LogTool::LogTool()
     }
 
     quit();
+}
+
+bool goby::apps::middleware::LogTool::check_regexes(
+    const goby::middleware::log::LogEntry& log_entry)
+{
+    if (app_cfg().has_type_regex() && !std::regex_match(log_entry.type(), type_regex_))
+    {
+        glog.is_debug2() && glog << "Excluding type: " << log_entry.type()
+                                 << " as it does not match regex: \"" << app_cfg().type_regex()
+                                 << "\"" << std::endl;
+        return false;
+    }
+    if (app_cfg().has_group_regex() &&
+        !std::regex_match(static_cast<std::string>(log_entry.group()), group_regex_))
+    {
+        glog.is_debug2() && glog << "Excluding group: " << log_entry.group()
+                                 << " as it does not match regex: \"" << app_cfg().group_regex()
+                                 << "\"" << std::endl;
+        return false;
+    }
+    if (app_cfg().has_exclude_type_regex() &&
+        std::regex_match(log_entry.type(), exclude_type_regex_))
+    {
+        glog.is_debug2() && glog << "Excluding type: " << log_entry.type()
+                                 << " as it matches exclusion regex: \""
+                                 << app_cfg().exclude_type_regex() << "\"" << std::endl;
+        return false;
+    }
+    if (app_cfg().has_exclude_group_regex() &&
+        std::regex_match(static_cast<std::string>(log_entry.group()), exclude_group_regex_))
+    {
+        glog.is_debug2() && glog << "Excluding group: " << log_entry.group()
+                                 << " as it matches exclusion regex: \""
+                                 << app_cfg().exclude_group_regex() << "\"" << std::endl;
+        return false;
+    }
+
+    return true;
 }

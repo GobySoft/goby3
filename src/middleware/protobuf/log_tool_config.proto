@@ -11,6 +11,28 @@ message LogToolConfig
     required string input_file = 10
         [(goby.field).description = "Input goby_logger file to read (e.g. "
                                     "'vehicle_20200204T121314.goby')"];
+
+    optional string type_regex = 15 [
+        default = ".*",
+        (goby.field).description =
+            "Regex that must match type to process this message entry into the output file"
+    ];
+    optional string group_regex = 16 [
+        default = ".*",
+        (goby.field).description =
+            "Regex that must match group to process this message entry into the output file"
+    ];
+    optional string exclude_type_regex = 17 [
+        default = "",
+        (goby.field).description =
+            "Regex that if it matches the type excludes processing this message entry into the output file"
+    ];
+    optional string exclude_group_regex = 18 [
+        default = "",
+        (goby.field).description =
+            "Regex that if it matches the group excludes processing this message entry into the output file"
+    ];
+
     optional string output_file = 20
         [(goby.field).description =
              "Output file to write (default is determined by input_file name "
