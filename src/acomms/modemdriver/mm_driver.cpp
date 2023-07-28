@@ -1,4 +1,4 @@
-// Copyright 2009-2021:
+// Copyright 2009-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -6,6 +6,7 @@
 //   Toby Schneider <toby@gobysoft.org>
 //   Mike Godin <mikegodin@yahoo.com>
 //   Russ Webber <russ@rw.id.au>
+//   James D. Turner <james.turner@nrl.navy.mil>
 //   Jeff Walls <jeff@luigi>
 //   Zac Berkowitz <zberkowitz@whoi.edu>
 //   Chris Murphy <cmurphy@bluefinrobotics.com>
