@@ -4,6 +4,7 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   Brandon Zoss <brandon.zoss@str.us>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -147,6 +148,11 @@ void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cf
                 modem_.reset(new util::TCPServer(cfg.tcp_port(), cfg.line_delimiter()));
         }
     }
+    else {
+        goby::glog.is(DEBUG1) && goby::glog << group(glog_out_group_) << warn
+                                                    << "NO modem connection_type specified in your configuration file."
+                                                    << std::endl;
+    }
 
     if (cfg.has_raw_log())
     {
@@ -166,10 +172,10 @@ void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cf
         {
             if (!raw_fs_connections_made_)
             {
-                connect(&signal_raw_incoming,
-                        boost::bind(&ModemDriverBase::write_raw, this, _1, true));
-                connect(&signal_raw_outgoing,
-                        boost::bind(&ModemDriverBase::write_raw, this, _1, false));
+                connect(&signal_raw_incoming, boost::bind(&ModemDriverBase::write_raw, this,
+                                                          boost::placeholders::_1, true));
+                connect(&signal_raw_outgoing, boost::bind(&ModemDriverBase::write_raw, this,
+                                                          boost::placeholders::_1, false));
                 raw_fs_connections_made_ = true;
             }
         }
@@ -196,6 +202,12 @@ void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cf
                 throw(ModemDriverException("Modem physical connection failed to startup.",
                                            protobuf::ModemDriverStatus::STARTUP_FAILED));
         }
+    }
+    else
+    {
+        glog.is(DEBUG1) && glog << group(glog_out_group_) << warn 
+                                            << "No modem initialized"
+                                            << std::endl;
     }
 }
 

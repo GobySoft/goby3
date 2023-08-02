@@ -1,8 +1,9 @@
-// Copyright 2017-2022:
+// Copyright 2017-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   James D. Turner <james.turner@nrl.navy.mil>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -429,6 +430,10 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
 
     // copy configuration
     auto thread_lambda = [this, type_i, index, cfg, &thread_manager]() {
+#ifdef __APPLE__
+        // set thread name for debugging purposes
+        pthread_setname_np(thread_manager.name.c_str());
+#endif
         try
         {
             std::shared_ptr<ThreadType> goby_thread(
@@ -450,8 +455,10 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
 
     thread_manager.thread = std::unique_ptr<std::thread>(new std::thread(thread_lambda));
 
+#ifndef __APPLE__
     // set thread name for debugging purposes
     pthread_setname_np(thread_manager.thread->native_handle(), thread_manager.name.c_str());
+#endif
 
     ++running_thread_count_;
 }

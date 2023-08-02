@@ -1,4 +1,4 @@
-// Copyright 2017-2021:
+// Copyright 2017-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -28,9 +28,11 @@
 #include <dccl/exception.h>
 #include <dccl/field_codec_manager.h>
 #include <dccl/option_extensions.pb.h>
+#include <dccl/version.h>
 #include <google/protobuf/descriptor.h>
 
 #include "goby/middleware/frontseat/waveglider/waveglider_sv2_frontseat_driver.pb.h"
+#include "goby/util/dccl_compat.h"
 #include "waveglider_sv2_codecs.h"
 
 extern "C"
@@ -39,12 +41,22 @@ extern "C"
     {
         using namespace dccl;
 
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+        dccl->manager().add<goby::middleware::frontseat::SV2IdentifierCodec>("SV2.id");
+        dccl->manager()
+            .add<dccl::v3::DefaultMessageCodec, google::protobuf::FieldDescriptor::TYPE_MESSAGE>(
+                "SV2");
+        dccl->manager()
+            .add<dccl::v3::DefaultBytesCodec, google::protobuf::FieldDescriptor::TYPE_BYTES>("SV2");
+        dccl->manager().add<goby::middleware::frontseat::SV2NumericCodec<dccl::uint32>>("SV2");
+#else
         FieldCodecManager::add<goby::middleware::frontseat::SV2IdentifierCodec>("SV2.id");
         FieldCodecManager::add<dccl::v3::DefaultMessageCodec,
                                google::protobuf::FieldDescriptor::TYPE_MESSAGE>("SV2");
         FieldCodecManager::add<dccl::v3::DefaultBytesCodec,
                                google::protobuf::FieldDescriptor::TYPE_BYTES>("SV2");
         FieldCodecManager::add<goby::middleware::frontseat::SV2NumericCodec<dccl::uint32>>("SV2");
+#endif
 
         dccl->load<goby::middleware::frontseat::protobuf::SV2RequestEnumerate>();
         dccl->load<goby::middleware::frontseat::protobuf::SV2ReplyEnumerate>();
@@ -79,6 +91,16 @@ extern "C"
         dccl->unload<goby::middleware::frontseat::protobuf::SV2CommandFollowFixedHeading::
                          CommandFollowFixedHeadingBody>();
 
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+        dccl->manager().remove<goby::middleware::frontseat::SV2IdentifierCodec>("SV2.id");
+        dccl->manager()
+            .remove<dccl::v3::DefaultMessageCodec, google::protobuf::FieldDescriptor::TYPE_MESSAGE>(
+                "SV2");
+        dccl->manager()
+            .remove<dccl::v3::DefaultBytesCodec, google::protobuf::FieldDescriptor::TYPE_BYTES>(
+                "SV2");
+        dccl->manager().remove<goby::middleware::frontseat::SV2NumericCodec<dccl::uint32>>("SV2");
+#else
         FieldCodecManager::remove<goby::middleware::frontseat::SV2IdentifierCodec>("SV2.id");
         FieldCodecManager::remove<dccl::v3::DefaultMessageCodec,
                                   google::protobuf::FieldDescriptor::TYPE_MESSAGE>("SV2");
@@ -86,5 +108,6 @@ extern "C"
                                   google::protobuf::FieldDescriptor::TYPE_BYTES>("SV2");
         FieldCodecManager::remove<goby::middleware::frontseat::SV2NumericCodec<dccl::uint32>>(
             "SV2");
+#endif
     }
 }

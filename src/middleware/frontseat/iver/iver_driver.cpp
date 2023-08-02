@@ -1,4 +1,4 @@
-// Copyright 2017-2022:
+// Copyright 2017-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -195,7 +195,7 @@ void goby::middleware::frontseat::Iver::process_receive(const std::string& s)
                 REMAININGMISSIONTIME = 13,
                 TRUEHEADING = 14,
                 COR_DFS = 15,
-                SRP_ACTIVE = 16
+                // fields after this appear to change from Remote Helm version 4->5
             };
 
             status_.mutable_global_fix()->set_lat_with_units(nmea.as<double>(LATITUDE) *
@@ -224,24 +224,30 @@ void goby::middleware::frontseat::Iver::process_receive(const std::string& s)
 
             switch (reported_mission_mode_)
             {
-                case gpb::IverState::IVER_MODE_UNKNOWN:
-                case gpb::IverState::IVER_MODE_STOPPED:
-                    frontseat_state_ = gpb::FRONTSEAT_IDLE;
-                    break;
-
-                case gpb::IverState::IVER_MODE_PARKING:
-                    frontseat_state_ = gpb::FRONTSEAT_IN_CONTROL;
-                    break;
-
-                    // all these modes can take a backseat command
-                case gpb::IverState::IVER_MODE_NORMAL:
-                case gpb::IverState::IVER_MODE_MANUAL_OVERRIDE:
-                case gpb::IverState::IVER_MODE_MANUAL_PARKING:
-                case gpb::IverState::IVER_MODE_SERVO_MODE:
-                case gpb::IverState::IVER_MODE_MISSION_MODE:
-                    // no explicit handshake for frontseat command
-                    frontseat_state_ = gpb::FRONTSEAT_ACCEPTING_COMMANDS;
-                    break;
+            case gpb::IverState::IVER_MODE_UNKNOWN:
+                frontseat_state_ = iver_config_.mode_assignments().unknown();
+                break;
+            case gpb::IverState::IVER_MODE_NORMAL:
+                frontseat_state_ = iver_config_.mode_assignments().normal();
+                break;
+            case gpb::IverState::IVER_MODE_STOPPED:
+                frontseat_state_ = iver_config_.mode_assignments().stopped();
+                break;
+            case gpb::IverState::IVER_MODE_PARKING:
+                frontseat_state_ = iver_config_.mode_assignments().parking();
+                break;
+            case gpb::IverState::IVER_MODE_MANUAL_OVERRIDE:
+                frontseat_state_ = iver_config_.mode_assignments().manual_override();
+                break;
+            case gpb::IverState::IVER_MODE_MANUAL_PARKING:
+                frontseat_state_ = iver_config_.mode_assignments().manual_parking();
+                break;
+            case gpb::IverState::IVER_MODE_SERVO_MODE:
+                frontseat_state_ = iver_config_.mode_assignments().servo_mode();
+                break;
+            case gpb::IverState::IVER_MODE_MISSION_MODE:
+                frontseat_state_ = iver_config_.mode_assignments().mission_mode();
+                break;
             }
 
             static const boost::units::imperial::foot_base_unit::unit_type feet;
@@ -352,14 +358,19 @@ void goby::middleware::frontseat::Iver::send_command_to_frontseat(
         nmea.push_back(tenths_precision_str(heading));
         using boost::units::quantity;
         typedef boost::units::imperial::foot_base_unit::unit_type feet;
-        nmea.push_back(tenths_precision_str(
-            command.desired_course().depth_with_units<quantity<feet>>().value()));    // in feet
+        typedef boost::units::si::meter_base_unit::unit_type meters;
+        double depth_value;
+        if (iver_config_.remote_helm_version_major() < 5) {
+            depth_value = command.desired_course().depth_with_units<quantity<feet>>().value(); // in feet
+        } else {
+            depth_value = command.desired_course().depth_with_units<quantity<meters>>().value(); // in meters
+        }
+        nmea.push_back(tenths_precision_str(depth_value));
         nmea.push_back(tenths_precision_str(iver_config_.max_pitch_angle_degrees())); // in degrees
         using knots = boost::units::metric::knot_base_unit::unit_type;
         nmea.push_back(tenths_precision_str(
             command.desired_course().speed_with_units<quantity<knots>>().value())); // in knots
-        const int time_out = 5;                                                     // seconds
-        nmea.push_back(time_out);
+        nmea.push_back(iver_config_.oms_timeout());
 
         write(nmea.message());
     }

@@ -1,5 +1,19 @@
 Goby Release Notes (Major version 3)
 
+
+****************
+Version 3.0.16
+
+### Build
+
+Support for Mac OS X builds
+Support for DCCL 4.1 (forthcoming)
+
+### MOOS
+
+Blackout changed to double from int
+iFrontSeat publishes NAV_YAW
+
 ****************
 Version 3.0.15
 

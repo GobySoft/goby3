@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -27,6 +27,7 @@
 
 #include "goby/acomms/ip_codecs.h"
 #include "goby/util/binary.h"
+#include "goby/util/dccl_compat.h"
 #include "goby/util/debug_logger.h"
 
 using namespace goby::util::logger;
@@ -58,13 +59,21 @@ int main(int /*argc*/, char* argv[])
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
     goby::glog.set_name(argv[0]);
 
-    dccl::FieldCodecManager::add<goby::acomms::IPGatewayEmptyIdentifierCodec<0xF001> >(
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+    dccl::Codec dccl_1("ip_gateway_id_codec_1",
+                       goby::acomms::IPGatewayEmptyIdentifierCodec<0xF001>());
+    dccl_1.manager().add<goby::acomms::NetShortCodec>("net.short");
+    dccl_1.manager().add<goby::acomms::IPv4AddressCodec>("ip.v4.address");
+    dccl_1.manager().add<goby::acomms::IPv4FlagsFragOffsetCodec>("ip.v4.flagsfragoffset");
+#else
+    dccl::FieldCodecManager::add<goby::acomms::IPGatewayEmptyIdentifierCodec<0xF001>>(
         "ip_gateway_id_codec_1");
     dccl::FieldCodecManager::add<goby::acomms::NetShortCodec>("net.short");
     dccl::FieldCodecManager::add<goby::acomms::IPv4AddressCodec>("ip.v4.address");
     dccl::FieldCodecManager::add<goby::acomms::IPv4FlagsFragOffsetCodec>("ip.v4.flagsfragoffset");
 
     dccl::Codec dccl_1("ip_gateway_id_codec_1");
+#endif
     dccl_1.load<goby::acomms::protobuf::IPv4Header>();
 
     // ICMP Ping

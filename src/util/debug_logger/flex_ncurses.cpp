@@ -1,4 +1,4 @@
-// Copyright 2012-2021:
+// Copyright 2012-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -34,7 +34,6 @@
 #include <boost/algorithm/string/trim.hpp>         // for trim_left_copy
 #include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_lexical_cast
 #include <curses.h>                                // for WINDOW, init_pair
-#include <ext/alloc_traits.h>                      // for __alloc_traits<>:...
 
 #include "goby/util/as.h" // for as
 

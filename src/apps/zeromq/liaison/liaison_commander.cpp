@@ -96,6 +96,7 @@
 #include "goby/time/types.h"                        // for MicroTime
 #include "goby/util/as.h"                           // for as, FLOAT_FIXED
 #include "goby/util/binary.h"                       // for hex_encode
+#include "goby/util/dccl_compat.h"
 #include "goby/util/debug_logger/flex_ostreambuf.h" // for DEBUG1, WARN
 #include "liaison_commander.h"
 
@@ -1198,7 +1199,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         generate_tree_row(parent, message, desc->field(i), parent_hierarchy);
 
     std::vector<const google::protobuf::FieldDescriptor*> extensions;
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+    dccl::DynamicProtobufManager::user_descriptor_pool_call(
+        &google::protobuf::DescriptorPool::FindAllExtensions, desc, &extensions);
+#else
     dccl::DynamicProtobufManager::user_descriptor_pool().FindAllExtensions(desc, &extensions);
+#endif
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
     for (auto& extension : extensions)
         generate_tree_row(parent, message, extension, parent_hierarchy);

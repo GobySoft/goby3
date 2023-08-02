@@ -1,8 +1,9 @@
-// Copyright 2016-2022:
+// Copyright 2016-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
+//   James D. Turner <james.turner@nrl.navy.mil>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -69,8 +70,12 @@ template <typename Config, typename TransporterType> class Thread
     std::atomic<bool>* alive_{nullptr};
     std::type_index type_i_{std::type_index(typeid(void))};
 
-    // Linux TID, from gettid()
+    // Linux/Apple TID, from gettid()
+#ifdef __APPLE__
+    uint64_t thread_id_;
+#else
     int thread_id_;
+#endif
     // demangled class name / index
     std::string thread_name_;
 
@@ -204,7 +209,11 @@ template <typename Config, typename TransporterType> class Thread
     void thread_health(goby::middleware::protobuf::ThreadHealth& health)
     {
         health.set_name(thread_name_);
+#ifdef __APPLE__
+        health.set_thread_id_apple(thread_id_);
+#else
         health.set_thread_id(thread_id_);
+#endif
         if (uid_ >= 0)
             health.set_uid(uid_);
         this->health(health);

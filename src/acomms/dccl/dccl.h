@@ -1,4 +1,4 @@
-// Copyright 2009-2021:
+// Copyright 2009-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -39,7 +39,6 @@
 #include <dccl/field_codec_fixed.h>                   // for TypedFixedFi...
 #include <dccl/field_codec_manager.h>                 // for FieldCodecMa...
 #include <dccl/field_codec_typed.h>                   // for RepeatedType...
-#include <dccl/internal/field_codec_message_stack.h>
 #include <dccl/logger.h>                   // for DECODE, ENCODE
 #include <dccl/option_extensions.pb.h>     // for DCCLMessageO...
 #include <google/protobuf/descriptor.h>    // for Descriptor
@@ -53,6 +52,7 @@
 #include "goby/util/debug_logger/flex_ostream.h"        // for operator<<
 #include "goby/util/debug_logger/flex_ostreambuf.h"     // for WARN, DEBUG1
 #include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
+#include "goby/util/dccl_compat.h"
 
 namespace google
 {
@@ -79,16 +79,6 @@ using DCCLDefaultBoolCodec = dccl::v2::DefaultBoolCodec;
 using DCCLDefaultStringCodec = dccl::v2::DefaultStringCodec;
 using DCCLDefaultBytesCodec = dccl::v2::DefaultBytesCodec;
 using DCCLDefaultEnumCodec = dccl::v2::DefaultEnumCodec;
-
-class MessageHandler : public dccl::internal::MessageStack
-{
-  public:
-    MessageHandler(const google::protobuf::FieldDescriptor* field = nullptr) : MessageStack(field)
-    {
-    }
-    using MessagePart = dccl::MessagePart;
-    static const MessagePart HEAD = dccl::HEAD, BODY = dccl::BODY, UNKNOWN = dccl::UNKNOWN;
-};
 
 template <typename TimeType> class TimeCodec : public dccl::v2::TimeCodecBase<TimeType, 0>
 {
@@ -132,14 +122,8 @@ struct DCCLRepeatedTypedFieldCodec : public dccl::RepeatedTypedFieldCodec<WireTy
 };
 
 using DCCLFieldCodecManager = dccl::FieldCodecManager;
-//        typedef dccl::TypedFieldCodec DCCLTypedFieldCodec;
 using DCCLFieldCodecManager = dccl::FieldCodecManager;
-using FromProtoCppTypeBase = dccl::internal::FromProtoCppTypeBase;
-//       typedef dccl::FromProtoType FromProtoType;
-// typedef dccl::FromProtoCppType FromProtoCppType;
-//typedef dccl::ToProtoCppType ToProtoCppType;
 using Bitset = dccl::Bitset;
-using DCCLTypeHelper = dccl::internal::TypeHelper;
 
 class DCCLCodec
 {
@@ -293,7 +277,11 @@ class DCCLCodec
 
     template <typename DCCLTypedFieldCodecUint32> void add_id_codec(const std::string& identifier)
     {
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+        codec()->manager().add<DCCLTypedFieldCodecUint32>(identifier);
+#else
         dccl::FieldCodecManager::add<DCCLTypedFieldCodecUint32>(identifier);
+#endif
     }
 
     void set_id_codec(const std::string& identifier)

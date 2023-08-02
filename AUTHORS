@@ -43,6 +43,12 @@ Thomas McCabe <tom.mccabe@missionsystems.com.au> 2020-11-16
 
 If you prefer, you may email the signed CLA to toby@gobysoft.org
 
+== U.S. Government Authors ==
+
+Contributions developed by U.S. government employees as part of their official duties are not subject to copyright protection in the United States. (See https://dodcio.defense.gov/Open-Source-Software-FAQ/#q-can-government-employees-contribute-code-to-open-source-software-projects)
+
+James D. Turner <james.turner@nrl.navy.mil>
+
 == Third-party Dependencies ==
 
 Third-party contributions (works not authored by GobySoft or those who have signed GobySoft's CLA) must be publicly available with an open source license that is compatible with the GPL (see https://www.gnu.org/licenses/license-list.html#GPLCompatibleLicenses). For example, most projects available in Debian APT repositories fulfill this requirement. 

@@ -1,4 +1,4 @@
-// Copyright 2009-2021:
+// Copyright 2009-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -6,6 +6,7 @@
 //   Toby Schneider <toby@gobysoft.org>
 //   Mike Godin <mikegodin@yahoo.com>
 //   Russ Webber <russ@rw.id.au>
+//   James D. Turner <james.turner@nrl.navy.mil>
 //   Jeff Walls <jeff@luigi>
 //   Zac Berkowitz <zberkowitz@whoi.edu>
 //   Chris Murphy <cmurphy@bluefinrobotics.com>
@@ -1305,10 +1306,16 @@ void goby::acomms::MMDriver::cadrq(const NMEASentence& nmea_in,
         nmea_out.push_back(m.dest());
         nmea_out.push_back(int(m.ack_requested()));
 
-        int max_bytes = nmea_in.as<int>(5);
-        nmea_out.push_back(
-            hex_encode(m.frame(frame) + std::string(max_bytes - m.frame(frame).size(), '\0')));
-        // nmea_out.push_back(hex_encode(m.frame(frame)));
+        if (mm_driver_cfg().pad_partial_frames())
+        {
+            int max_bytes = nmea_in.as<int>(5);
+            nmea_out.push_back(
+                hex_encode(m.frame(frame) + std::string(max_bytes - m.frame(frame).size(), '\0')));
+        }
+        else
+        {
+            nmea_out.push_back(hex_encode(m.frame(frame)));
+        }
 
         if (m.ack_requested())
         {

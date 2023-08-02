@@ -1,4 +1,4 @@
-// Copyright 2011-2022:
+// Copyright 2011-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -68,6 +68,7 @@
 #else
 #include "goby/zeromq/application/multi_thread.h" // for MultiThreadApp...
 #endif
+#include "goby/util/dccl_compat.h"
 
 #include "liaison_wt_thread.h" // for Liaiso...
 
@@ -282,8 +283,14 @@ void goby::apps::zeromq::Liaison::load_proto_file(const std::string& path)
 
     glog.is(VERBOSE) && glog << "Loading protobuf file: " << bpath << std::endl;
 
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+    if (!dccl::DynamicProtobufManager::user_descriptor_pool_call(
+            &google::protobuf::DescriptorPool::FindFileByName, bpath.string()))
+        glog.is(DIE) && glog << "Failed to load file." << std::endl;
+#else
     if (!dccl::DynamicProtobufManager::user_descriptor_pool().FindFileByName(bpath.string()))
         glog.is(DIE) && glog << "Failed to load file." << std::endl;
+#endif
 }
 
 void goby::apps::zeromq::Liaison::loop()
