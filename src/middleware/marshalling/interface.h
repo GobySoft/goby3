@@ -56,7 +56,8 @@ struct MarshallingScheme
         //        MSGPACK = 4,
         CXX_OBJECT = 5,
         MAVLINK = 6,
-        JSON = 7
+        JSON = 7,
+        // BOOST_SERIALIZATION = 8 (currently in Netsim)
     };
 
     /// \brief Convert a known marshalling scheme to a human-readable string or an unknown scheme to the string representation of its numeric value

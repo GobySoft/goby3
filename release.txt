@@ -2,6 +2,34 @@ Goby Release Notes (Major version 3)
 
 
 ****************
+Version 3.0.17
+
+### MOOS
+
+- Support for Iver Remote Helm version 5 in Iver frontseat driver.
+- Config to assign Iver modes to Frontseat states in Iver frontseat driver.
+
+### goby_log_tool
+
+- Add ability for goby_log_tool HDF5 output to chunk the HDF5 file to bound (and greatly reduce) memory requirements on larger files and to optional compress the chunked files. Use `--hdf5_chunk_length` to enable chunking, and (optionally) also `--hdf_compression_level` to enable compression.
+- Added regexes to configuration to include or exclude groups and/or types from the output file.
+
+### goby_gps
+
+- Compute usat/nsat in goby_gps SkyView message (previously these were unpopulated fields).
+
+### ModemDriver
+
+- Add config for partial frame padding in mm_driver (and change default behavior to not pad frames)
+
+### Bugs
+
+- Catch exceptions in ModemDriverThread caused by bad DCCL messages
+- Update Benthos driver to use "@P1Prompt" instead of "@Prompt". This will likely preclude older versions of the Benthos modem, but will support newer ones (exact Benthos version for this change is unknown).
+- Fix computation of buffer size in DynamicBuffer when several unacked messages are in the buffer
+- Remove deprecation warnings for newer ZMQ and Boost (for Ubuntu 22.04 and newer).
+
+****************
 Version 3.0.16
 
 ### Build

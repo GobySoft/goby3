@@ -106,7 +106,7 @@ goby::apps::zeromq::IntervehiclePortal::IntervehiclePortal()
                 quit();
             }
         });
-
+        
     glog.is_verbose() && glog << "=== goby_intervehicle_portal is ready ===" << std::endl;
     interprocess_.ready();
 }
