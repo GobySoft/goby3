@@ -61,14 +61,14 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
 
         boost::asio::async_read(
             socket_, buffer_, boost::asio::transfer_exactly(1),
-            boost::bind(&SV2SerialConnection::handle_read, this, _1, _2, PART_MAGIC));
+            boost::bind(&SV2SerialConnection::handle_read, this, boost::placeholders::_1, boost::placeholders::_2, PART_MAGIC));
     }
 
     void write_start(std::string data)
     {
         add_escapes(&data);
         boost::asio::async_write(socket_, boost::asio::buffer(data),
-                                 boost::bind(&SV2SerialConnection::handle_write, this, _1, _2));
+                                 boost::bind(&SV2SerialConnection::handle_write, this, boost::placeholders::_1, boost::placeholders::_2));
     }
 
     ~SV2SerialConnection() = default;
@@ -158,7 +158,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
                         boost::asio::async_read(socket_, buffer_,
                                                 boost::asio::transfer_exactly(SV2_HEADER_SIZE),
                                                 boost::bind(&SV2SerialConnection::handle_read, this,
-                                                            _1, _2, PART_HEADER));
+                                                            boost::placeholders::_1, boost::placeholders::_2, PART_HEADER));
                     }
                     break;
                 }
@@ -185,7 +185,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
                     boost::asio::async_read(
                         socket_, buffer_,
                         boost::asio::transfer_exactly(message_size_ - SV2_HEADER_SIZE),
-                        boost::bind(&SV2SerialConnection::handle_read, this, _1, _2,
+                        boost::bind(&SV2SerialConnection::handle_read, this, boost::placeholders::_1, boost::placeholders::_2,
                                     PART_COMPLETE));
                     break;
                 }
@@ -240,7 +240,7 @@ class SV2SerialConnection : public std::enable_shared_from_this<SV2SerialConnect
         {
             boost::asio::async_read(
                 socket_, buffer_, boost::asio::transfer_exactly(escape - last_escape_),
-                boost::bind(&SV2SerialConnection::handle_read, this, _1, _2, part));
+                boost::bind(&SV2SerialConnection::handle_read, this, boost::placeholders::_1, boost::placeholders::_2, part));
             glog.is(DEBUG1) && glog << "Reading " << escape - last_escape_
                                     << " more bytes because of escape characters." << std::endl;
 

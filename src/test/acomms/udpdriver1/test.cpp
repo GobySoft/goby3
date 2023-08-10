@@ -59,10 +59,10 @@ int main(int argc, char* argv[])
     driver1.reset(new goby::acomms::UDPDriver);
     driver2.reset(new goby::acomms::UDPDriver);
 
-    goby::acomms::connect(&driver1->signal_raw_incoming, boost::bind(&handle_raw_incoming, 1, _1));
-    goby::acomms::connect(&driver2->signal_raw_incoming, boost::bind(&handle_raw_incoming, 2, _1));
-    goby::acomms::connect(&driver1->signal_raw_outgoing, boost::bind(&handle_raw_outgoing, 1, _1));
-    goby::acomms::connect(&driver2->signal_raw_outgoing, boost::bind(&handle_raw_outgoing, 2, _1));
+    goby::acomms::connect(&driver1->signal_raw_incoming, boost::bind(&handle_raw_incoming, 1, boost::placeholders::_1));
+    goby::acomms::connect(&driver2->signal_raw_incoming, boost::bind(&handle_raw_incoming, 2, boost::placeholders::_1));
+    goby::acomms::connect(&driver1->signal_raw_outgoing, boost::bind(&handle_raw_outgoing, 1, boost::placeholders::_1));
+    goby::acomms::connect(&driver2->signal_raw_outgoing, boost::bind(&handle_raw_outgoing, 2, boost::placeholders::_1));
 
     goby::acomms::protobuf::DriverConfig cfg1, cfg2;
     auto* udp_cfg1 = cfg1.MutableExtension(config);

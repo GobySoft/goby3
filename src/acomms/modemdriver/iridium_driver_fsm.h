@@ -35,7 +35,7 @@
 #include <boost/algorithm/string/classification.hpp> // for is_any_ofF
 #include <boost/algorithm/string/split.hpp>          // for split
 #include <boost/algorithm/string/trim.hpp>           // for trim
-#include <boost/bind.hpp>                            // for bind_t, arg
+#include <boost/bind/bind.hpp>                            // for bind_t, arg
 #include <boost/circular_buffer.hpp>                 // for circular_...
 #include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexic...
 #include <boost/mpl/list.hpp>                        // for list
@@ -665,7 +665,7 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
         boost::algorithm::split(sbdi_fields, e.sbdi_, boost::is_any_of(":,"));
 
         std::for_each(sbdi_fields.begin(), sbdi_fields.end(),
-                      boost::bind(&boost::trim<std::string>, _1, std::locale()));
+                      boost::bind(&boost::trim<std::string>, boost::placeholders::_1, std::locale()));
 
         if (sbdi_fields.size() != 7)
         {

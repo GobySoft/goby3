@@ -38,7 +38,7 @@
 #include <boost/asio/read.hpp>                       // for async...
 #include <boost/asio/write.hpp>                      // for write
 #include <boost/bimap.hpp>
-#include <boost/bind.hpp>                          // for bind_t
+#include <boost/bind/bind.hpp>                          // for bind_t
 #include <boost/function.hpp>                      // for function
 #include <boost/iterator/iterator_facade.hpp>      // for opera...
 #include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_l...
@@ -96,7 +96,7 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
     mo_sbd_server_.reset(new SBDServer(sbd_io_, iridium_shore_driver_cfg().mo_sbd_server_port()));
 
     rudics_server_->connect_signal.connect(
-        boost::bind(&IridiumShoreDriver::rudics_connect, this, _1));
+        boost::bind(&IridiumShoreDriver::rudics_connect, this, boost::placeholders::_1));
 
     for (int i = 0, n = iridium_shore_driver_cfg().modem_id_to_imei_size(); i < n; ++i)
         modem_id_to_imei_[iridium_shore_driver_cfg().modem_id_to_imei(i).modem_id()] =
@@ -269,9 +269,9 @@ void goby::acomms::IridiumShoreDriver::rudics_send(const std::string& data,
 void goby::acomms::IridiumShoreDriver::rudics_connect(
     const std::shared_ptr<RUDICSConnection>& connection)
 {
-    connection->line_signal.connect(boost::bind(&IridiumShoreDriver::rudics_line, this, _1, _2));
+    connection->line_signal.connect(boost::bind(&IridiumShoreDriver::rudics_line, this, boost::placeholders::_1, boost::placeholders::_2));
     connection->disconnect_signal.connect(
-        boost::bind(&IridiumShoreDriver::rudics_disconnect, this, _1));
+        boost::bind(&IridiumShoreDriver::rudics_disconnect, this, boost::placeholders::_1));
 }
 
 void goby::acomms::IridiumShoreDriver::rudics_disconnect(
@@ -455,7 +455,7 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt(const std::string& bytes,
         boost::asio::async_read(
             socket, boost::asio::buffer(message.data()),
             boost::asio::transfer_at_least(SBDMessageReader::PRE_HEADER_SIZE),
-            boost::bind(&SBDMessageReader::pre_header_handler, &message, _1, _2));
+            boost::bind(&SBDMessageReader::pre_header_handler, &message, boost::placeholders::_1, boost::placeholders::_2));
 
         double start_time = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
         const int timeout = 5;

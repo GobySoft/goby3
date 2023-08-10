@@ -36,7 +36,7 @@
 
 #include <MOOS/libMOOS/Comms/CommsTypes.h>         // for MOOSMS...
 #include <MOOS/libMOOS/Comms/MOOSMsg.h>            // for CMOOSMsg
-#include <boost/bind.hpp>                          // for bind_t
+#include <boost/bind/bind.hpp>                          // for bind_t
 #include <boost/program_options/variables_map.hpp> // for variab...
 #include <boost/signals2/expired_slot.hpp>         // for expire...
 #include <boost/smart_ptr/shared_ptr.hpp>          // for shared...
@@ -127,7 +127,7 @@ goby::apps::moos::CpTranslator::CpTranslator()
             // subscribe for trigger publish variables
             GobyMOOSApp::subscribe(
                 cfg_.translator_entry(i).trigger().moos_var(),
-                boost::bind(&CpTranslator::create_on_publish, this, _1, cfg_.translator_entry(i)));
+                boost::bind(&CpTranslator::create_on_publish, this, boost::placeholders::_1, cfg_.translator_entry(i)));
         }
         else if (cfg_.translator_entry(i).trigger().type() ==
                  goby::moos::protobuf::TranslatorEntry::Trigger::TRIGGER_TIME)
@@ -139,7 +139,7 @@ goby::apps::moos::CpTranslator::CpTranslator()
             new_timer.expires_from_now(
                 std::chrono::seconds(cfg_.translator_entry(i).trigger().period()));
             // Start an asynchronous wait.
-            new_timer.async_wait(boost::bind(&CpTranslator::create_on_timer, this, _1,
+            new_timer.async_wait(boost::bind(&CpTranslator::create_on_timer, this, boost::placeholders::_1,
                                              cfg_.translator_entry(i), &new_timer));
         }
 
@@ -261,7 +261,7 @@ void goby::apps::moos::CpTranslator::create_on_timer(
             timer->expires_at(timer->expires_at() + std::chrono::seconds(entry.trigger().period()));
         }
 
-        timer->async_wait(boost::bind(&CpTranslator::create_on_timer, this, _1, entry, timer));
+        timer->async_wait(boost::bind(&CpTranslator::create_on_timer, this, boost::placeholders::_1, entry, timer));
 
         glog.is(VERBOSE) && glog << "Received trigger for: " << entry.protobuf_name() << std::endl;
         glog.is(VERBOSE) && glog << "Next expiry: " << timer->expires_at() << std::endl;

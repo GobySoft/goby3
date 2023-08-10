@@ -31,7 +31,7 @@
 #include <string> // for string
 #include <thread> // for thread
 
-#include <boost/bind.hpp> // for bind_t, list_av_1<...
+#include <boost/bind/bind.hpp> // for bind_t, list_av_1<...
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/transport/interthread.h"

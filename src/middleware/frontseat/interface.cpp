@@ -29,7 +29,7 @@
 #include <stdexcept> // for out_of_range
 #include <utility>   // for move
 
-#include <boost/bind.hpp>                          // for bind_t, list...
+#include <boost/bind/bind.hpp>                          // for bind_t, list...
 #include <boost/function.hpp>                      // for function
 #include <boost/signals2/expired_slot.hpp>         // for expired_slot
 #include <boost/signals2/mutex.hpp>                // for mutex
@@ -73,9 +73,9 @@ goby::middleware::frontseat::InterfaceBase::InterfaceBase(protobuf::Config cfg)
     if (glog.is(DEBUG1))
     {
         signal_raw_from_frontseat.connect(
-            boost::bind(&InterfaceBase::glog_raw, this, _1, DIRECTION_FROM_FRONTSEAT));
+            boost::bind(&InterfaceBase::glog_raw, this, boost::placeholders::_1, DIRECTION_FROM_FRONTSEAT));
         signal_raw_to_frontseat.connect(
-            boost::bind(&InterfaceBase::glog_raw, this, _1, DIRECTION_TO_FRONTSEAT));
+            boost::bind(&InterfaceBase::glog_raw, this, boost::placeholders::_1, DIRECTION_TO_FRONTSEAT));
         // unlock
         glog << std::flush;
     }

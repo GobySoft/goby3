@@ -23,7 +23,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/bind.hpp>                                   // for bind_t, arg
+#include <boost/bind/bind.hpp>                                   // for bind_t, arg
 #include <boost/date_time/posix_time/posix_time_config.hpp> // for posix_time
 #include <boost/date_time/posix_time/posix_time_types.hpp>  // for second_c...
 #include <boost/date_time/posix_time/time_formatters.hpp>   // for to_iso_s...

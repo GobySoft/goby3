@@ -25,7 +25,7 @@
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_SBD_H
 
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
 #include "goby/acomms/protobuf/iridium_sbd_directip.pb.h"
@@ -75,7 +75,7 @@ class SBDMessageReader
         boost::asio::async_read(socket_, boost::asio::buffer(data_),
                                 boost::asio::transfer_at_least(pre_header_.overall_length() +
                                                                PRE_HEADER_SIZE - bytes_transferred),
-                                boost::bind(&SBDMessageReader::ie_handler, this, _1, _2));
+                                boost::bind(&SBDMessageReader::ie_handler, this, boost::placeholders::_1, boost::placeholders::_2));
     }
 
     std::vector<char>& data() { return data_; }
@@ -223,7 +223,7 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
         boost::asio::async_read(
             socket_, boost::asio::buffer(message_.data()),
             boost::asio::transfer_at_least(SBDMessageReader::PRE_HEADER_SIZE),
-            boost::bind(&SBDMessageReader::pre_header_handler, &message_, _1, _2));
+            boost::bind(&SBDMessageReader::pre_header_handler, &message_, boost::placeholders::_1, boost::placeholders::_2));
     }
 
     ~SBDConnection() {}

@@ -51,7 +51,7 @@
 #include <boost/algorithm/string/predicate.hpp>             // for iequals
 #include <boost/algorithm/string/replace.hpp>               // for replac...
 #include <boost/algorithm/string/trim.hpp>                  // for trim_copy
-#include <boost/bind.hpp>                                   // for bind, _1
+#include <boost/bind/bind.hpp>                                   // for bind, _1
 #include <boost/date_time/posix_time/posix_time_config.hpp> // for posix_...
 #include <boost/date_time/posix_time/posix_time_types.hpp>  // for second...
 #include <boost/date_time/posix_time/time_formatters.hpp>   // for to_iso...
@@ -191,7 +191,7 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     template <typename V, typename A1>
     void subscribe(const std::string& var, void (V::*mem_func)(A1), V* obj, double blackout = 0)
     {
-        subscribe(var, boost::bind(mem_func, obj, _1), blackout);
+        subscribe(var, boost::bind(mem_func, obj, boost::placeholders::_1), blackout);
     }
 
     // wildcard
@@ -202,21 +202,26 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     void subscribe(const std::string& var_pattern, const std::string& app_pattern,
                    void (V::*mem_func)(A1), V* obj, double blackout = 0)
     {
-        subscribe(var_pattern, app_pattern, boost::bind(mem_func, obj, _1), blackout);
+        subscribe(var_pattern, app_pattern, boost::bind(mem_func, obj, boost::placeholders::_1),
+                  blackout);
     }
 
     template <typename V, typename ProtobufMessage>
     void subscribe_pb(const std::string& var, void (V::*mem_func)(const ProtobufMessage&), V* obj,
                       double blackout = 0)
     {
-        subscribe_pb<ProtobufMessage>(var, boost::bind(mem_func, obj, _1), blackout);
+        subscribe_pb<ProtobufMessage>(var, boost::bind(mem_func, obj, boost::placeholders::_1),
+                                      blackout);
     }
 
     template <typename ProtobufMessage>
     void subscribe_pb(const std::string& var,
-                      boost::function<void(const ProtobufMessage& msg)> handler, double blackout = 0)
+                      boost::function<void(const ProtobufMessage& msg)> handler,
+                      double blackout = 0)
     {
-        subscribe(var, boost::bind(&goby::moos::protobuf_inbox<ProtobufMessage>, _1, handler),
+        subscribe(var,
+                  boost::bind(&goby::moos::protobuf_inbox<ProtobufMessage>, boost::placeholders::_1,
+                              handler),
                   blackout);
     }
 
@@ -325,7 +330,8 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     std::deque<std::pair<std::string, double>> existing_subscriptions_;
 
     // MOOS Variable pattern, MOOS App pattern, blackout time
-    std::deque<std::pair<std::pair<std::string, std::string>, double>> wildcard_pending_subscriptions_;
+    std::deque<std::pair<std::pair<std::string, std::string>, double>>
+        wildcard_pending_subscriptions_;
     std::deque<std::pair<std::pair<std::string, std::string>, double>>
         wildcard_existing_subscriptions_;
 

@@ -26,7 +26,7 @@
 #include <set>
 
 // third party
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 
 // local to goby
 #include "util/flexcout.h"
