@@ -35,7 +35,7 @@
 #include <MOOS/libMOOS/Comms/MOOSMsg.h>            // for CMOOSMsg
 #include <boost/algorithm/string/predicate.hpp>    // for iequals
 #include <boost/algorithm/string/trim.hpp>         // for trim
-#include <boost/bind.hpp>                          // for bind_t
+#include <boost/bind/bind.hpp>                          // for bind_t
 #include <boost/program_options/variables_map.hpp> // for variab...
 #include <boost/signals2/expired_slot.hpp>         // for expire...
 #include <boost/signals2/signal.hpp>               // for signal

@@ -41,7 +41,7 @@
 #include <boost/asio/buffer.hpp>                  // for buffer
 #include <boost/asio/posix/stream_descriptor.hpp> // for stream_descriptor
 #include <boost/asio/read.hpp>                    // for async_read
-#include <boost/bind.hpp>                         // for bind
+#include <boost/bind/bind.hpp>                         // for bind
 #include <boost/core/ref.hpp>                     // for ref
 
 #include "goby/exception.h"                         // for Exception

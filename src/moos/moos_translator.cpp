@@ -27,7 +27,7 @@
 #include <memory> // for allocato...
 
 #include <boost/algorithm/string/case_conv.hpp>             // for to_lower...
-#include <boost/bind.hpp>                                   // for bind_t, arg
+#include <boost/bind/bind.hpp>                                   // for bind_t, arg
 #include <boost/date_time/posix_time/posix_time_config.hpp> // for time_dur...
 #include <boost/date_time/posix_time/ptime.hpp>             // for ptime
 #include <boost/date_time/time.hpp>                         // for base_tim...
@@ -62,13 +62,17 @@ void goby::moos::MOOSTranslator::update_utm_datum(double lat_origin, double lon_
                 moos::transitional::DCCLAlgorithmPerformer::getInstance();
 
             ap->add_adv_algorithm("lat2utm_y",
-                                  boost::bind(&MOOSTranslator::alg_lat2utm_y, this, _1, _2));
+                                  boost::bind(&MOOSTranslator::alg_lat2utm_y, this,
+                                              boost::placeholders::_1, boost::placeholders::_2));
             ap->add_adv_algorithm("lon2utm_x",
-                                  boost::bind(&MOOSTranslator::alg_lon2utm_x, this, _1, _2));
+                                  boost::bind(&MOOSTranslator::alg_lon2utm_x, this,
+                                              boost::placeholders::_1, boost::placeholders::_2));
             ap->add_adv_algorithm("utm_x2lon",
-                                  boost::bind(&MOOSTranslator::alg_utm_x2lon, this, _1, _2));
+                                  boost::bind(&MOOSTranslator::alg_utm_x2lon, this,
+                                              boost::placeholders::_1, boost::placeholders::_2));
             ap->add_adv_algorithm("utm_y2lat",
-                                  boost::bind(&MOOSTranslator::alg_utm_y2lat, this, _1, _2));
+                                  boost::bind(&MOOSTranslator::alg_utm_y2lat, this,
+                                              boost::placeholders::_1, boost::placeholders::_2));
         }
     }
 }
@@ -105,12 +109,12 @@ void goby::moos::MOOSTranslator::initialize(double lat_origin, double lon_origin
         std::string id_lookup_output = modem_lookup_.read_lookup_file(modem_id_lookup_path);
         goby::glog.is(goby::util::logger::DEBUG1) && goby::glog << id_lookup_output << std::flush;
 
-        ap->add_algorithm("modem_id2name",
-                          boost::bind(&MOOSTranslator::alg_modem_id2name, this, _1));
-        ap->add_algorithm("modem_id2type",
-                          boost::bind(&MOOSTranslator::alg_modem_id2type, this, _1));
-        ap->add_algorithm("name2modem_id",
-                          boost::bind(&MOOSTranslator::alg_name2modem_id, this, _1));
+        ap->add_algorithm("modem_id2name", boost::bind(&MOOSTranslator::alg_modem_id2name, this,
+                                                       boost::placeholders::_1));
+        ap->add_algorithm("modem_id2type", boost::bind(&MOOSTranslator::alg_modem_id2type, this,
+                                                       boost::placeholders::_1));
+        ap->add_algorithm("name2modem_id", boost::bind(&MOOSTranslator::alg_name2modem_id, this,
+                                                       boost::placeholders::_1));
 
         // set up conversion for DCCLModemIdConverterCodec
         //for(std::map<int, std::string>::const_iterator it = modem_lookup_.names().begin(),

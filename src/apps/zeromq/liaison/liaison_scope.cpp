@@ -49,7 +49,7 @@
 #include <boost/algorithm/string/split.hpp>          // for split
 #include <boost/algorithm/string/trim.hpp>           // for trim
 #include <boost/any.hpp>                             // for any_cast
-#include <boost/bind.hpp>                            // for bind_t, list_av...
+#include <boost/bind/bind.hpp>                            // for bind_t, list_av...
 #include <boost/date_time/posix_time/ptime.hpp>      // for ptime
 #include <boost/smart_ptr/shared_ptr.hpp>            // for shared_ptr
 #include <google/protobuf/descriptor.h>              // for Descriptor
@@ -550,7 +550,7 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
         new_tree->sortByColumn(protobuf::ProtobufScopeConfig::COLUMN_TIME, DescendingOrder);
 
         new_tree->clicked().connect(
-            boost::bind(&HistoryContainer::view_clicked, this, _1, _2, mvc.model, mvc.proxy));
+            boost::bind(&HistoryContainer::view_clicked, this, boost::placeholders::_1, boost::placeholders::_2, mvc.model, mvc.proxy));
     }
 }
 
