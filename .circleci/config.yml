@@ -180,7 +180,9 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-jammy
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 4
-    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6"    
+    TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6"
+    CC: "/usr/bin/clang"
+    CXX: "/usr/bin/clang++"
   docker: *docker-base-jammy
 
 # Base upload off Jammy build
