@@ -55,6 +55,7 @@ class HealthMonitorThread : public SimpleThread<NullConfig>
     const goby::time::SteadyClock::duration health_request_timeout_{std::chrono::seconds(1)};
     bool waiting_for_responses_{false};
 };
+
 } // namespace middleware
 } // namespace goby
 

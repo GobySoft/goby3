@@ -28,7 +28,8 @@ goby::middleware::HealthMonitorThread::HealthMonitorThread()
 {
     // handle goby_coroner request
     this->interprocess().template subscribe<groups::health_request, protobuf::HealthRequest>(
-        [this](const protobuf::HealthRequest& request) {
+        [this](const protobuf::HealthRequest& request)
+        {
             this->interthread().template publish<groups::health_request>(protobuf::HealthRequest());
             waiting_for_responses_ = true;
             last_health_request_time_ = goby::time::SteadyClock::now();
@@ -40,15 +41,13 @@ goby::middleware::HealthMonitorThread::HealthMonitorThread()
 
     // handle response from main thread
     this->interthread().template subscribe<groups::health_response>(
-        [this](std::shared_ptr<const protobuf::ProcessHealth> response) {
-            health_response_ = *response;
-        });
+        [this](std::shared_ptr<const protobuf::ProcessHealth> response)
+        { health_response_ = *response; });
 
     // handle response from child threads
     this->interthread().template subscribe<groups::health_response>(
-        [this](std::shared_ptr<const protobuf::ThreadHealth> response) {
-            child_responses_[response->uid()] = response;
-        });
+        [this](std::shared_ptr<const protobuf::ThreadHealth> response)
+        { child_responses_[response->uid()] = response; });
 }
 
 void goby::middleware::HealthMonitorThread::loop()

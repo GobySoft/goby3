@@ -29,6 +29,7 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/coroner/functions.h"
 #include "goby/middleware/navigation/navigation.h"
 #include "goby/middleware/terminate/terminate.h"
 
@@ -64,6 +65,10 @@ class TimerThread
     using ThreadBase =
         Thread<boost::units::quantity<boost::units::si::frequency>, InterThreadTransporter>;
 
+    template <typename ThreadType>
+    friend void coroner::subscribe_thread_health_request(ThreadType* this_thread,
+                                                         InterThreadTransporter& interthread);
+
   public:
     static constexpr goby::middleware::Group expire_group{"goby::middleware::TimerThread::timer",
                                                           i};
@@ -71,6 +76,7 @@ class TimerThread
     TimerThread(const boost::units::quantity<boost::units::si::frequency>& freq)
         : ThreadBase(freq, &interthread_, freq)
     {
+        coroner::subscribe_thread_health_request(this, interthread_);
     }
 
   private:
@@ -180,9 +186,8 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
         interthread_.template subscribe<MainThreadBase::joinable_group_>(
-            [this](const ThreadIdentifier& joinable) {
-                _join_thread(joinable.type_i, joinable.index);
-            });
+            [this](const ThreadIdentifier& joinable)
+            { _join_thread(joinable.type_i, joinable.index); });
     }
 
     virtual ~MultiThreadApplicationBase() {}
@@ -256,7 +261,14 @@ class MultiThreadApplication
     using Base = MultiThreadApplicationBase<
         Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>;
 
-    protobuf::ProcessHealth health_response_;
+    template <typename AppType, typename Transporter>
+    friend void coroner::subscribe_process_health_request(
+        AppType* this_app, Transporter& transporter,
+        std::function<void(std::shared_ptr<protobuf::ProcessHealth>& ph)> preseed_hook);
+
+    template <typename AppType, typename InterProcessTransporter>
+    friend void terminate::subscribe_process_terminate_request(
+        AppType* this_app, InterProcessTransporter& interprocess, bool do_quit);
 
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)
@@ -276,47 +288,31 @@ class MultiThreadApplication
                                                  this->app_cfg().interprocess(), this->app_name())),
           intervehicle_(interprocess_)
     {
-        // handle goby_terminate request
-        this->interprocess().template subscribe<groups::terminate_request>(
-            [this](const protobuf::TerminateRequest& request) {
-                bool match = false;
-                protobuf::TerminateResponse resp;
-                std::tie(match, resp) =
-                    terminate::check_terminate(request, this->app_cfg().app().name());
-                if (match)
+        terminate::subscribe_process_terminate_request(this, interprocess_);
+
+        auto preseed_response = [this](std::shared_ptr<protobuf::ProcessHealth>& health_response)
+        {
+            // preseed all threads with error in case they don't respond
+            for (const auto& type_map_p : this->threads())
+            {
+                for (const auto& index_manager_p : type_map_p.second)
                 {
-                    this->interprocess().template publish<groups::terminate_response>(resp);
-                    this->quit();
+                    const auto& thread_manager = index_manager_p.second;
+                    auto& thread_health = *health_response->mutable_main()->add_child();
+                    thread_health.set_name(thread_manager.name);
+                    thread_health.set_uid(thread_manager.uid);
+                    thread_health.set_state(protobuf::HEALTH__FAILED);
+                    thread_health.set_error(protobuf::ERROR__THREAD_NOT_RESPONDING);
                 }
-            });
+            }
+        };
 
-        // handle request from HealthMonitor thread
-        health_response_.set_name(this->app_name());
-        health_response_.set_pid(getpid());
-
-        this->interthread().template subscribe<groups::health_request>(
-            [this](const protobuf::HealthRequest& request) {
-                auto health_response = std::make_shared<protobuf::ProcessHealth>(health_response_);
-                // preseed all threads with error in case they don't respond
-                for (const auto& type_map_p : this->threads())
-                {
-                    for (const auto& index_manager_p : type_map_p.second)
-                    {
-                        const auto& thread_manager = index_manager_p.second;
-                        auto& thread_health = *health_response->mutable_main()->add_child();
-                        thread_health.set_name(thread_manager.name);
-                        thread_health.set_uid(thread_manager.uid);
-                        thread_health.set_state(protobuf::HEALTH__FAILED);
-                        thread_health.set_error(protobuf::ERROR__THREAD_NOT_RESPONDING);
-                    }
-                }
-
-                this->thread_health(*health_response->mutable_main());
-                this->interthread().template publish<groups::health_response>(health_response);
-            });
+        // we subscribe interthread as the HealthMonitorThread subscribes interprocess and handles aggregating all the responses
+        coroner::subscribe_process_health_request(this, this->interthread(), preseed_response);
 
         this->interprocess().template subscribe<goby::middleware::groups::datum_update>(
-            [this](const protobuf::DatumUpdate& datum_update) {
+            [this](const protobuf::DatumUpdate& datum_update)
+            {
                 this->configure_geodesy(
                     {datum_update.datum().lat_with_units(), datum_update.datum().lon_with_units()});
             });
@@ -429,7 +425,8 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
     thread_manager.uid = thread_uid_++;
 
     // copy configuration
-    auto thread_lambda = [this, type_i, index, cfg, &thread_manager]() {
+    auto thread_lambda = [this, type_i, index, cfg, &thread_manager]()
+    {
 #ifdef __APPLE__
         // set thread name for debugging purposes
         pthread_setname_np(thread_manager.name.c_str());

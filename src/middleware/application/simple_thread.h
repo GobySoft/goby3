@@ -25,7 +25,7 @@
 #define GOBY_MIDDLEWARE_APPLICATION_SIMPLE_THREAD_H
 
 #include "goby/middleware/application/thread.h"
-#include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/coroner/functions.h"
 
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
@@ -45,6 +45,10 @@ class SimpleThread
 {
     using SimpleThreadBase =
         Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>;
+
+    template <typename ThreadType>
+    friend void coroner::subscribe_thread_health_request(ThreadType* this_thread,
+                                                         InterThreadTransporter& interthread);
 
   public:
     /// \brief Construct a thread with a given configuration, optionally a loop frequency and/or index
@@ -74,12 +78,7 @@ class SimpleThread
 
         this->set_transporter(intervehicle_.get());
 
-        this->interthread().template subscribe<groups::health_request>(
-            [this](const protobuf::HealthRequest& request) {
-                std::shared_ptr<protobuf::ThreadHealth> response(new protobuf::ThreadHealth);
-                this->thread_health(*response);
-                this->interthread().template publish<groups::health_response>(response);
-            });
+        coroner::subscribe_thread_health_request(this, this->interthread());
     }
 
     /// \brief Access the transporter on the intervehicle layer (which wraps interprocess and interthread)

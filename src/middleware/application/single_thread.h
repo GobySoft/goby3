@@ -27,6 +27,7 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/coroner/functions.h"
 #include "goby/middleware/navigation/navigation.h"
 #include "goby/middleware/terminate/terminate.h"
 
@@ -56,6 +57,15 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
     InterProcessPortal<> interprocess_;
     InterVehicleForwarder<InterProcessPortal<>> intervehicle_;
 
+    template <typename AppType, typename Transporter>
+    friend void coroner::subscribe_process_health_request(
+        AppType* this_app, Transporter& transporter,
+        std::function<void(std::shared_ptr<protobuf::ProcessHealth>& ph)> preseed_hook);
+
+    template <typename AppType, typename InterProcessTransporter>
+    friend void terminate::subscribe_process_terminate_request(
+        AppType* this_app, InterProcessTransporter& interprocess, bool do_quit);
+
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)
     ///
@@ -76,33 +86,12 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
     {
         this->set_transporter(&intervehicle_);
 
-        // handle goby_terminate request
-        this->interprocess()
-            .template subscribe<groups::terminate_request, protobuf::TerminateRequest>(
-                [this](const protobuf::TerminateRequest& request) {
-                    bool match = false;
-                    protobuf::TerminateResponse resp;
-                    std::tie(match, resp) =
-                        terminate::check_terminate(request, this->app_cfg().app().name());
-                    if (match)
-                    {
-                        this->interprocess().template publish<groups::terminate_response>(resp);
-                        this->quit();
-                    }
-                });
-
-        // handle goby_coroner request
-        this->interprocess().template subscribe<groups::health_request, protobuf::HealthRequest>(
-            [this](const protobuf::HealthRequest& request) {
-                protobuf::ProcessHealth resp;
-                resp.set_name(this->app_name());
-                resp.set_pid(getpid());
-                this->thread_health(*resp.mutable_main());
-                this->interprocess().template publish<groups::health_response>(resp);
-            });
+        terminate::subscribe_process_terminate_request(this, interprocess_);
+        coroner::subscribe_process_health_request(this, this->interprocess());
 
         this->interprocess().template subscribe<goby::middleware::groups::datum_update>(
-            [this](const protobuf::DatumUpdate& datum_update) {
+            [this](const protobuf::DatumUpdate& datum_update)
+            {
                 this->configure_geodesy(
                     {datum_update.datum().lat_with_units(), datum_update.datum().lon_with_units()});
             });
