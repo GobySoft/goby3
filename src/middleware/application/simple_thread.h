@@ -25,7 +25,7 @@
 #define GOBY_MIDDLEWARE_APPLICATION_SIMPLE_THREAD_H
 
 #include "goby/middleware/application/thread.h"
-#include "goby/middleware/coroner/functions.h"
+#include "goby/middleware/coroner/coroner.h"
 
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
@@ -41,14 +41,13 @@ namespace middleware
 /// Derive from this class to create standalone threads that can be launched and joined by MultiThreadApplication's launch_thread and join_thread methods.
 template <typename Config>
 class SimpleThread
-    : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
+    : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>,
+      public coroner::Thread<SimpleThread<Config>>
 {
     using SimpleThreadBase =
         Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>;
 
-    template <typename ThreadType>
-    friend void coroner::subscribe_thread_health_request(ThreadType* this_thread,
-                                                         InterThreadTransporter& interthread);
+    friend class coroner::Thread<SimpleThread<Config>>;
 
   public:
     /// \brief Construct a thread with a given configuration, optionally a loop frequency and/or index
@@ -78,7 +77,7 @@ class SimpleThread
 
         this->set_transporter(intervehicle_.get());
 
-        coroner::subscribe_thread_health_request(this, this->interthread());
+        this->subscribe_coroner();
     }
 
     /// \brief Access the transporter on the intervehicle layer (which wraps interprocess and interthread)

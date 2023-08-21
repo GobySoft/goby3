@@ -72,28 +72,33 @@ check_terminate(const protobuf::TerminateRequest& request, const std::string& ap
     return std::make_pair(match, resp);
 }
 
-template <typename AppType, typename InterProcessTransporter>
-void subscribe_process_terminate_request(AppType* this_app, InterProcessTransporter& interprocess,
-                                         bool do_quit = true)
+template <typename Derived> class Application
 {
-    // handle goby_terminate request
-    interprocess.template subscribe<goby::middleware::groups::terminate_request,
-                                    goby::middleware::protobuf::TerminateRequest>(
-        [this_app, &interprocess,
-         do_quit](const goby::middleware::protobuf::TerminateRequest& request)
-        {
-            bool match = false;
-            goby::middleware::protobuf::TerminateResponse resp;
-            std::tie(match, resp) = goby::middleware::terminate::check_terminate(
-                request, this_app->app_cfg().app().name());
-            if (match)
-            {
-                interprocess.template publish<goby::middleware::groups::terminate_response>(resp);
-                if (do_quit)
-                    this_app->quit();
-            }
-        });
-}
+  protected:
+    void subscribe_terminate(bool do_quit = true)
+    {
+        // handle goby_terminate request
+        static_cast<Derived*>(this)
+            ->interprocess()
+            .template subscribe<goby::middleware::groups::terminate_request,
+                                goby::middleware::protobuf::TerminateRequest>(
+                [this, do_quit](const goby::middleware::protobuf::TerminateRequest& request)
+                {
+                    bool match = false;
+                    goby::middleware::protobuf::TerminateResponse resp;
+                    std::tie(match, resp) = goby::middleware::terminate::check_terminate(
+                        request, static_cast<Derived*>(this)->app_cfg().app().name());
+                    if (match)
+                    {
+                        static_cast<Derived*>(this)
+                            ->interprocess()
+                            .template publish<goby::middleware::groups::terminate_response>(resp);
+                        if (do_quit)
+                            static_cast<Derived*>(this)->quit();
+                    }
+                });
+    }
+};
 
 } // namespace terminate
 } // namespace middleware

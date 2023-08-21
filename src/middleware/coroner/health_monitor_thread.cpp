@@ -21,7 +21,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/coroner/coroner.h"
+#include "goby/middleware/coroner/health_monitor_thread.h"
 
 goby::middleware::HealthMonitorThread::HealthMonitorThread()
     : SimpleThread<NullConfig>(NullConfig(), 1.0 * boost::units::si::hertz)

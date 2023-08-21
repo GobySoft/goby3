@@ -27,7 +27,6 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/middleware/coroner/coroner.h"
-#include "goby/middleware/coroner/functions.h"
 #include "goby/middleware/navigation/navigation.h"
 #include "goby/middleware/terminate/terminate.h"
 
@@ -48,8 +47,11 @@ namespace middleware
 /// \tparam Config Configuration type
 /// \tparam InterProcessPortal the interprocess portal type to use (e.g. zeromq::InterProcessPortal)
 template <class Config, template <class = NullTransporter> class InterProcessPortal>
-class SingleThreadApplication : public goby::middleware::Application<Config>,
-                                public Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>
+class SingleThreadApplication
+    : public goby::middleware::Application<Config>,
+      public Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>,
+      public coroner::Application<SingleThreadApplication<Config, InterProcessPortal>>,
+      public terminate::Application<SingleThreadApplication<Config, InterProcessPortal>>
 {
   private:
     using MainThread = Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>;
@@ -57,14 +59,8 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
     InterProcessPortal<> interprocess_;
     InterVehicleForwarder<InterProcessPortal<>> intervehicle_;
 
-    template <typename AppType, typename Transporter>
-    friend void coroner::subscribe_process_health_request(
-        AppType* this_app, Transporter& transporter,
-        std::function<void(std::shared_ptr<protobuf::ProcessHealth>& ph)> preseed_hook);
-
-    template <typename AppType, typename InterProcessTransporter>
-    friend void terminate::subscribe_process_terminate_request(
-        AppType* this_app, InterProcessTransporter& interprocess, bool do_quit);
+    friend class coroner::Application<SingleThreadApplication<Config, InterProcessPortal>>;
+    friend class terminate::Application<SingleThreadApplication<Config, InterProcessPortal>>;
 
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)
@@ -86,8 +82,8 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
     {
         this->set_transporter(&intervehicle_);
 
-        terminate::subscribe_process_terminate_request(this, interprocess_);
-        coroner::subscribe_process_health_request(this, this->interprocess());
+        this->subscribe_terminate();
+        this->subscribe_coroner();
 
         this->interprocess().template subscribe<goby::middleware::groups::datum_update>(
             [this](const protobuf::DatumUpdate& datum_update)

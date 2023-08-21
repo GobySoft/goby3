@@ -29,7 +29,7 @@
 #include <boost/units/systems/si.hpp>
 
 #include "goby/middleware/coroner/coroner.h"
-#include "goby/middleware/coroner/functions.h"
+#include "goby/middleware/coroner/health_monitor_thread.h"
 #include "goby/middleware/navigation/navigation.h"
 #include "goby/middleware/terminate/terminate.h"
 
@@ -60,14 +60,13 @@ namespace middleware
 /// ```
 template <int i>
 class TimerThread
-    : public Thread<boost::units::quantity<boost::units::si::frequency>, InterThreadTransporter>
+    : public Thread<boost::units::quantity<boost::units::si::frequency>, InterThreadTransporter>,
+      public coroner::Thread<TimerThread<i>>
 {
     using ThreadBase =
         Thread<boost::units::quantity<boost::units::si::frequency>, InterThreadTransporter>;
 
-    template <typename ThreadType>
-    friend void coroner::subscribe_thread_health_request(ThreadType* this_thread,
-                                                         InterThreadTransporter& interthread);
+    friend class coroner::Thread<TimerThread<i>>;
 
   public:
     static constexpr goby::middleware::Group expire_group{"goby::middleware::TimerThread::timer",
@@ -76,11 +75,13 @@ class TimerThread
     TimerThread(const boost::units::quantity<boost::units::si::frequency>& freq)
         : ThreadBase(freq, &interthread_, freq)
     {
-        coroner::subscribe_thread_health_request(this, interthread_);
+        this->subscribe_coroner();
     }
 
   private:
     void loop() override { interthread_.template publish_empty<expire_group>(); }
+
+    InterThreadTransporter& interthread() { return interthread_; }
 
   private:
     InterThreadTransporter interthread_;
@@ -253,7 +254,9 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
 template <class Config, template <class InnerTransporter> class InterProcessPortal>
 class MultiThreadApplication
     : public MultiThreadApplicationBase<
-          Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>
+          Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>,
+      public coroner::ApplicationInterThread<MultiThreadApplication<Config, InterProcessPortal>>,
+      public terminate::Application<MultiThreadApplication<Config, InterProcessPortal>>
 {
   private:
     InterProcessPortal<InterThreadTransporter> interprocess_;
@@ -261,14 +264,10 @@ class MultiThreadApplication
     using Base = MultiThreadApplicationBase<
         Config, InterVehicleForwarder<InterProcessPortal<InterThreadTransporter>>>;
 
-    template <typename AppType, typename Transporter>
-    friend void coroner::subscribe_process_health_request(
-        AppType* this_app, Transporter& transporter,
-        std::function<void(std::shared_ptr<protobuf::ProcessHealth>& ph)> preseed_hook);
+    friend class coroner::ApplicationInterThread<
+        MultiThreadApplication<Config, InterProcessPortal>>;
 
-    template <typename AppType, typename InterProcessTransporter>
-    friend void terminate::subscribe_process_terminate_request(
-        AppType* this_app, InterProcessTransporter& interprocess, bool do_quit);
+    friend class terminate::Application<MultiThreadApplication<Config, InterProcessPortal>>;
 
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)
@@ -288,27 +287,10 @@ class MultiThreadApplication
                                                  this->app_cfg().interprocess(), this->app_name())),
           intervehicle_(interprocess_)
     {
-        terminate::subscribe_process_terminate_request(this, interprocess_);
-
-        auto preseed_response = [this](std::shared_ptr<protobuf::ProcessHealth>& health_response)
-        {
-            // preseed all threads with error in case they don't respond
-            for (const auto& type_map_p : this->threads())
-            {
-                for (const auto& index_manager_p : type_map_p.second)
-                {
-                    const auto& thread_manager = index_manager_p.second;
-                    auto& thread_health = *health_response->mutable_main()->add_child();
-                    thread_health.set_name(thread_manager.name);
-                    thread_health.set_uid(thread_manager.uid);
-                    thread_health.set_state(protobuf::HEALTH__FAILED);
-                    thread_health.set_error(protobuf::ERROR__THREAD_NOT_RESPONDING);
-                }
-            }
-        };
+        this->subscribe_terminate();
 
         // we subscribe interthread as the HealthMonitorThread subscribes interprocess and handles aggregating all the responses
-        coroner::subscribe_process_health_request(this, this->interthread(), preseed_response);
+        this->subscribe_coroner();
 
         this->interprocess().template subscribe<goby::middleware::groups::datum_update>(
             [this](const protobuf::DatumUpdate& datum_update)
@@ -342,6 +324,24 @@ class MultiThreadApplication
 
     /// \brief Assume all required subscriptions are done in the Constructor or in initialize(). If this isn't the case, this method can be overridden
     virtual void post_initialize() override { interprocess().ready(); };
+
+  private:
+    void preseed_hook(std::shared_ptr<protobuf::ProcessHealth>& health_response) override
+    {
+        // preseed all threads with error in case they don't respond
+        for (const auto& type_map_p : this->threads())
+        {
+            for (const auto& index_manager_p : type_map_p.second)
+            {
+                const auto& thread_manager = index_manager_p.second;
+                auto& thread_health = *health_response->mutable_main()->add_child();
+                thread_health.set_name(thread_manager.name);
+                thread_health.set_uid(thread_manager.uid);
+                thread_health.set_state(protobuf::HEALTH__FAILED);
+                thread_health.set_error(protobuf::ERROR__THREAD_NOT_RESPONDING);
+            }
+        }
+    }
 };
 
 /// \brief Base class for building multithreaded Goby applications that do not have perform any interprocess (or outer) communications, but only communicate internally via the InterThreadTransporter

@@ -41,7 +41,7 @@
 #include "goby/middleware/application/configurator.h"         // for Protob...
 #include "goby/middleware/application/detail/interprocess_common.h"
 #include "goby/middleware/application/interface.h" // for run
-#include "goby/middleware/coroner/functions.h"
+#include "goby/middleware/coroner/coroner.h"
 #include "goby/middleware/protobuf/app_config.pb.h"   // for AppConfig
 #include "goby/middleware/protobuf/intervehicle.pb.h" // for Repeat...
 #include "goby/middleware/protobuf/terminate.pb.h"    // for Termin...
@@ -65,7 +65,9 @@ namespace apps
 {
 namespace zeromq
 {
-class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
+class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>,
+               public goby::middleware::coroner::Application<Daemon>,
+               public goby::middleware::terminate::Application<Daemon>
 {
   public:
     Daemon();
@@ -86,6 +88,11 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
                                      app_cfg().hold());
     }
 
+    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter>& interprocess()
+    {
+        return interprocess_;
+    }
+
   private:
     // for handling ZMQ Interprocess Communications
     std::unique_ptr<zmq::context_t> router_context_;
@@ -100,14 +107,8 @@ class Daemon : public goby::middleware::Application<protobuf::GobyDaemonConfig>
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> interprocess_;
     std::unique_ptr<goby::middleware::InterVehiclePortal<decltype(interprocess_)>> intervehicle_;
 
-    template <typename AppType, typename Transporter>
-    friend void middleware::coroner::subscribe_process_health_request(
-        AppType* this_app, Transporter& transporter,
-        std::function<void(std::shared_ptr<middleware::protobuf::ProcessHealth>& ph)> preseed_hook);
-
-    template <typename AppType, typename InterProcessTransporter>
-    friend void middleware::terminate::subscribe_process_terminate_request(
-        AppType* this_app, InterProcessTransporter& interprocess, bool do_quit);
+    friend class middleware::coroner::Application<Daemon>;
+    friend class middleware::terminate::Application<Daemon>;
 };
 
 class DaemonConfigurator : public goby::middleware::ProtobufConfigurator<protobuf::GobyDaemonConfig>
@@ -156,8 +157,8 @@ goby::apps::zeromq::Daemon::Daemon()
             std::make_unique<goby::middleware::InterVehiclePortal<decltype(interprocess_)>>(
                 interprocess_, app_cfg().intervehicle());
 
-    middleware::terminate::subscribe_process_terminate_request(this, interprocess_, false);
-    middleware::coroner::subscribe_process_health_request(this, interprocess_);
+    this->subscribe_terminate();
+    this->subscribe_coroner();
 
     // as gobyd mediates all interprocess() comms; wait until we get our result back from goby_terminate before shutting down
     interprocess_.subscribe<goby::middleware::groups::terminate_result>(
