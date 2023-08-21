@@ -68,15 +68,12 @@ template <typename Derived> class Application
                 health_response->set_name(static_cast<Derived*>(this)->app_name());
                 health_response->set_pid(getpid());
 
-                preseed_hook(health_response);
-
                 static_cast<Derived*>(this)->thread_health(*health_response->mutable_main());
                 static_cast<Derived*>(this)
                     ->interprocess()
                     .template publish<groups::health_response>(health_response);
             });
     }
-    virtual void preseed_hook(std::shared_ptr<protobuf::ProcessHealth>& ph) {}
 };
 
 template <typename Derived> class ApplicationInterThread
