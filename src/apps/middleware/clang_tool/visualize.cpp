@@ -50,7 +50,7 @@ std::map<std::string, std::shared_ptr<viz::Thread>> g_node_name_to_thread;
 bool is_node_included(const std::string& node)
 {
     static const std::regex omit_regex(g_params.omit_node_regex);
-    if ((!g_params.omit_node_regex.empty() && std::regex_match(node, omit_regex)))
+    if (!g_params.omit_node_regex.empty() && std::regex_match(node, omit_regex))
         return false;
     else
         return true;
