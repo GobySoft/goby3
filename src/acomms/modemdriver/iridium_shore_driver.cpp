@@ -38,7 +38,7 @@
 #include <boost/asio/read.hpp>                       // for async...
 #include <boost/asio/write.hpp>                      // for write
 #include <boost/bimap.hpp>
-#include <boost/bind/bind.hpp>                          // for bind_t
+#include <boost/bind/bind.hpp>                     // for bind_t
 #include <boost/function.hpp>                      // for function
 #include <boost/iterator/iterator_facade.hpp>      // for opera...
 #include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_l...
@@ -85,7 +85,6 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
 
     glog.is(DEBUG1) && glog << group(glog_out_group())
                             << "Goby Shore Iridium RUDICS/SBD driver starting up." << std::endl;
-    modem_start(driver_cfg_);
 
     rudics_mac_msg_.set_src(driver_cfg_.modem_id());
     rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
@@ -93,7 +92,31 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
 
     rudics_server_.reset(
         new RUDICSServer(rudics_io_, iridium_shore_driver_cfg().rudics_server_port()));
-    mo_sbd_server_.reset(new SBDServer(sbd_io_, iridium_shore_driver_cfg().mo_sbd_server_port()));
+
+    switch (iridium_shore_driver_cfg().sbd_type())
+    {
+        case goby::acomms::iridium::protobuf::ShoreConfig::SBD_DIRECTIP:
+            directip_mo_sbd_server_.reset(
+                new directip::SBDServer(sbd_io_, iridium_shore_driver_cfg().mo_sbd_server_port()));
+            break;
+
+        case goby::acomms::iridium::protobuf::ShoreConfig::SBD_ROCKBLOCK:
+            if (!iridium_shore_driver_cfg().has_rockblock())
+                glog.is(DIE) &&
+                    glog << group(glog_out_group())
+                         << "Must specify rockblock {} configuration when using SBD_ROCKBLOCK"
+                         << std::endl;
+
+            // use the build-in modem connection for receiving MO messages as HTTP is line-based
+            driver_cfg_.set_connection_type(
+                goby::acomms::protobuf::DriverConfig::CONNECTION_TCP_AS_SERVER);
+
+            if (iridium_shore_driver_cfg().has_mo_sbd_server_port() || !driver_cfg_.has_tcp_port())
+                driver_cfg_.set_tcp_port(iridium_shore_driver_cfg().mo_sbd_server_port());
+
+            driver_cfg_.set_line_delimiter("\n");
+            break;
+    }
 
     rudics_server_->connect_signal.connect(
         boost::bind(&IridiumShoreDriver::rudics_connect, this, boost::placeholders::_1));
@@ -101,6 +124,8 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
     for (int i = 0, n = iridium_shore_driver_cfg().modem_id_to_imei_size(); i < n; ++i)
         modem_id_to_imei_[iridium_shore_driver_cfg().modem_id_to_imei(i).modem_id()] =
             iridium_shore_driver_cfg().modem_id_to_imei(i).imei();
+
+    modem_start(driver_cfg_);
 }
 
 void goby::acomms::IridiumShoreDriver::shutdown() {}
@@ -269,7 +294,8 @@ void goby::acomms::IridiumShoreDriver::rudics_send(const std::string& data,
 void goby::acomms::IridiumShoreDriver::rudics_connect(
     const std::shared_ptr<RUDICSConnection>& connection)
 {
-    connection->line_signal.connect(boost::bind(&IridiumShoreDriver::rudics_line, this, boost::placeholders::_1, boost::placeholders::_2));
+    connection->line_signal.connect(boost::bind(&IridiumShoreDriver::rudics_line, this,
+                                                boost::placeholders::_1, boost::placeholders::_2));
     connection->disconnect_signal.connect(
         boost::bind(&IridiumShoreDriver::rudics_disconnect, this, boost::placeholders::_1));
 }
@@ -364,6 +390,20 @@ void goby::acomms::IridiumShoreDriver::rudics_line(
 
 void goby::acomms::IridiumShoreDriver::receive_sbd_mo()
 {
+    switch (iridium_shore_driver_cfg().sbd_type())
+    {
+        case goby::acomms::iridium::protobuf::ShoreConfig::SBD_DIRECTIP:
+            receive_sbd_mo_directip();
+            break;
+
+        case goby::acomms::iridium::protobuf::ShoreConfig::SBD_ROCKBLOCK:
+            receive_sbd_mo_rockblock();
+            break;
+    }
+}
+
+void goby::acomms::IridiumShoreDriver::receive_sbd_mo_directip()
+{
     try
     {
         sbd_io_.poll();
@@ -374,7 +414,8 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo()
                                 << std::endl;
     }
 
-    auto it = mo_sbd_server_->connections().begin(), end = mo_sbd_server_->connections().end();
+    auto it = directip_mo_sbd_server_->connections().begin(),
+         end = directip_mo_sbd_server_->connections().end();
     while (it != end)
     {
         const int timeout = 5;
@@ -405,7 +446,7 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo()
                 glog.is(DEBUG1) && glog << warn << "Could not decode SBD packet: " << e.what()
                                         << std::endl;
             }
-            mo_sbd_server_->connections().erase(it++);
+            directip_mo_sbd_server_->connections().erase(it++);
         }
         else if ((*it)->connect_time() > 0 &&
                  (time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1) >
@@ -413,12 +454,22 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo()
         {
             glog.is(DEBUG1) && glog << "Removing SBD connection that has timed out:"
                                     << (*it)->remote_endpoint_str() << std::endl;
-            mo_sbd_server_->connections().erase(it++);
+            directip_mo_sbd_server_->connections().erase(it++);
         }
         else
         {
             ++it;
         }
+    }
+}
+
+void goby::acomms::IridiumShoreDriver::receive_sbd_mo_rockblock()
+{
+    std::string line;
+    while (modem_read(&line))
+    {
+        // TODO implement
+        std::cout << line << std::endl;
     }
 }
 
@@ -451,11 +502,12 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt(const std::string& bytes,
 
         boost::asio::write(socket, boost::asio::buffer(create_sbd_mt_data_message(bytes, imei)));
 
-        SBDMTConfirmationMessageReader message(socket);
+        directip::SBDMTConfirmationMessageReader message(socket);
         boost::asio::async_read(
             socket, boost::asio::buffer(message.data()),
-            boost::asio::transfer_at_least(SBDMessageReader::PRE_HEADER_SIZE),
-            boost::bind(&SBDMessageReader::pre_header_handler, &message, boost::placeholders::_1, boost::placeholders::_2));
+            boost::asio::transfer_at_least(directip::SBDMessageReader::PRE_HEADER_SIZE),
+            boost::bind(&directip::SBDMessageReader::pre_header_handler, &message,
+                        boost::placeholders::_1, boost::placeholders::_2));
 
         double start_time = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
         const int timeout = 5;

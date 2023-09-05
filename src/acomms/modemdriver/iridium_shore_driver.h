@@ -46,7 +46,10 @@ namespace acomms
 class OnCallBase;
 class RUDICSConnection;
 class RUDICSServer;
+namespace directip
+{
 class SBDServer;
+} // namespace directip
 namespace iridium
 {
 namespace protobuf
@@ -83,6 +86,9 @@ class IridiumShoreDriver : public ModemDriverBase
                    iridium::protobuf::DirectIPMOPayload* body, const std::string& data);
     std::string create_sbd_mt_data_message(const std::string& payload, const std::string& imei);
     void receive_sbd_mo();
+    void receive_sbd_mo_directip();
+    void receive_sbd_mo_rockblock();
+    
     void send_sbd_mt(const std::string& bytes, const std::string& imei);
 
     void rudics_send(const std::string& data, ModemId id);
@@ -124,10 +130,10 @@ class IridiumShoreDriver : public ModemDriverBase
     boost::asio::io_service rudics_io_;
     std::shared_ptr<RUDICSServer> rudics_server_;
     boost::asio::io_service sbd_io_;
-    std::shared_ptr<SBDServer> mo_sbd_server_;
+    std::shared_ptr<directip::SBDServer> directip_mo_sbd_server_;
 
     // maps remote modem to connection
-    boost::bimap<ModemId, std::shared_ptr<RUDICSConnection> > clients_;
+    boost::bimap<ModemId, std::shared_ptr<RUDICSConnection>> clients_;
 
     using IMEI = std::string;
     std::map<ModemId, IMEI> modem_id_to_imei_;

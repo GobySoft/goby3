@@ -12,11 +12,27 @@ message ShoreConfig
         required string imei = 2;
     }
 
-    required uint32 rudics_server_port = 1421;
-    optional uint32 mo_sbd_server_port = 1422 [default = 40001];
-    required string mt_sbd_server_address = 1423;
-    required uint32 mt_sbd_server_port = 1424;
-    repeated ModemIDIMEIPair modem_id_to_imei = 1425;
+    required uint32 rudics_server_port = 1;
+
+    enum SBDType
+    {
+        SBD_DIRECTIP = 1;
+        SBD_ROCKBLOCK = 2;
+    }
+
+    optional SBDType sbd_type = 2 [default = SBD_DIRECTIP];
+    optional uint32 mo_sbd_server_port = 3 [default = 40001];
+    required string mt_sbd_server_address = 4;
+    required uint32 mt_sbd_server_port = 5;
+
+    repeated ModemIDIMEIPair modem_id_to_imei = 6;
+
+    message RockBlock
+    {
+        required string username = 1;
+        required string password = 2;
+    }
+    optional RockBlock rockblock = 10;
 }
 
 extend goby.acomms.protobuf.DriverConfig

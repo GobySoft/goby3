@@ -37,6 +37,9 @@ namespace goby
 {
 namespace acomms
 {
+namespace directip
+{
+
 class SBDMessageReader
 {
   public:
@@ -75,7 +78,8 @@ class SBDMessageReader
         boost::asio::async_read(socket_, boost::asio::buffer(data_),
                                 boost::asio::transfer_at_least(pre_header_.overall_length() +
                                                                PRE_HEADER_SIZE - bytes_transferred),
-                                boost::bind(&SBDMessageReader::ie_handler, this, boost::placeholders::_1, boost::placeholders::_2));
+                                boost::bind(&SBDMessageReader::ie_handler, this,
+                                            boost::placeholders::_1, boost::placeholders::_2));
     }
 
     std::vector<char>& data() { return data_; }
@@ -220,10 +224,10 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
         remote_endpoint_str_ = boost::lexical_cast<std::string>(socket_.remote_endpoint());
 
         connect_time_ = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
-        boost::asio::async_read(
-            socket_, boost::asio::buffer(message_.data()),
-            boost::asio::transfer_at_least(SBDMessageReader::PRE_HEADER_SIZE),
-            boost::bind(&SBDMessageReader::pre_header_handler, &message_, boost::placeholders::_1, boost::placeholders::_2));
+        boost::asio::async_read(socket_, boost::asio::buffer(message_.data()),
+                                boost::asio::transfer_at_least(SBDMessageReader::PRE_HEADER_SIZE),
+                                boost::bind(&SBDMessageReader::pre_header_handler, &message_,
+                                            boost::placeholders::_1, boost::placeholders::_2));
     }
 
     ~SBDConnection() {}
@@ -259,7 +263,7 @@ class SBDServer
         start_accept();
     }
 
-    std::set<std::shared_ptr<SBDConnection> >& connections() { return connections_; }
+    std::set<std::shared_ptr<SBDConnection>>& connections() { return connections_; }
 
   private:
     void start_accept()
@@ -294,10 +298,11 @@ class SBDServer
         start_accept();
     }
 
-    std::set<std::shared_ptr<SBDConnection> > connections_;
+    std::set<std::shared_ptr<SBDConnection>> connections_;
     boost::asio::ip::tcp::acceptor acceptor_;
 };
 
+} // namespace directip
 } // namespace acomms
 } // namespace goby
 
