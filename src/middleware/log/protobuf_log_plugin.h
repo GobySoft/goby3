@@ -108,26 +108,26 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
     {
         LogEntry::filter_hook[{static_cast<int>(scheme), static_cast<std::string>(file_desc_group),
                                google::protobuf::FileDescriptorProto::descriptor()->full_name()}] =
-            [&](const std::vector<unsigned char>& data) {
-                google::protobuf::FileDescriptorProto file_desc_proto;
-                file_desc_proto.ParseFromArray(&data[0], data.size());
+            [&](const std::vector<unsigned char>& data)
+        {
+            google::protobuf::FileDescriptorProto file_desc_proto;
+            file_desc_proto.ParseFromArray(&data[0], data.size());
 
-                if (!read_file_desc_names_.count(file_desc_proto.name()))
-                {
-                    goby::glog.is_debug1() && goby::glog << "Adding: " << file_desc_proto.name()
-                                                         << std::endl;
+            if (!read_file_desc_names_.count(file_desc_proto.name()))
+            {
+                goby::glog.is_debug1() && goby::glog << "Adding: " << file_desc_proto.name()
+                                                     << std::endl;
 
-                    dccl::DynamicProtobufManager::add_protobuf_file(file_desc_proto);
-                    read_file_desc_names_.insert(file_desc_proto.name());
-                }
-            };
+                dccl::DynamicProtobufManager::add_protobuf_file(file_desc_proto);
+                read_file_desc_names_.insert(file_desc_proto.name());
+            }
+        };
     }
 
     void register_write_hooks(std::ofstream& out_log_file) override
     {
-        LogEntry::new_type_hook[scheme] = [&](const std::string& type) {
-            add_new_protobuf_type(type, out_log_file);
-        };
+        LogEntry::new_type_hook[scheme] = [&](const std::string& type)
+        { add_new_protobuf_type(type, out_log_file); };
     }
 
     std::vector<std::shared_ptr<google::protobuf::Message>> parse_message(LogEntry& log_entry)
@@ -143,6 +143,8 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
             {
                 auto msg = SerializerParserHelper<google::protobuf::Message, scheme>::parse(
                     bytes_begin, bytes_end, actual_end, log_entry.type(), user_pool_first_);
+
+                find_unknown_fields(*msg);
                 msgs.push_back(msg);
             }
             catch (std::exception& e)
@@ -160,11 +162,11 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
     void insert_protobuf_file_desc(const google::protobuf::FileDescriptor* file_desc,
                                    std::ofstream& out_log_file)
     {
-        for (int i = 0, n = file_desc->dependency_count(); i < n; ++i)
-            insert_protobuf_file_desc(file_desc->dependency(i), out_log_file);
-
         if (written_file_desc_.count(file_desc) == 0)
         {
+            for (int i = 0, n = file_desc->dependency_count(); i < n; ++i)
+                insert_protobuf_file_desc(file_desc->dependency(i), out_log_file);
+
             goby::glog.is_debug1() &&
                 goby::glog << "Inserting file descriptor proto for: " << file_desc->name() << " : "
                            << file_desc << std::endl;
@@ -190,7 +192,8 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
 
     void add_new_protobuf_type(const std::string& protobuf_type, std::ofstream& out_log_file)
     {
-        auto desc = dccl::DynamicProtobufManager::find_descriptor(protobuf_type);
+        const google::protobuf::Descriptor* desc =
+            dccl::DynamicProtobufManager::find_descriptor(protobuf_type);
         if (!desc)
         {
             goby::glog.is_warn() && goby::glog << "Unknown protobuf type: " << protobuf_type
@@ -198,14 +201,29 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
         }
         else
         {
+            add_new_protobuf_type(desc, out_log_file);
+        }
+    }
+
+    void add_new_protobuf_type(const google::protobuf::Descriptor* desc,
+                               std::ofstream& out_log_file)
+    {
+        if (written_desc_.count(desc) == 0)
+        {
+            goby::glog.is_debug1() && goby::glog << "Add new protobuf type: " << desc->full_name()
+                                                 << std::endl;
+
             insert_protobuf_file_desc(desc->file(), out_log_file);
 
             auto insert_extensions =
                 [this, &out_log_file](
-                    const std::vector<const google::protobuf::FieldDescriptor*> extensions) {
-                    for (const auto* field_desc : extensions)
-                    { insert_protobuf_file_desc(field_desc->file(), out_log_file); }
-                };
+                    const std::vector<const google::protobuf::FieldDescriptor*> extensions)
+            {
+                for (const auto* field_desc : extensions)
+                {
+                    insert_protobuf_file_desc(field_desc->file(), out_log_file);
+                }
+            };
 
             std::vector<const google::protobuf::FieldDescriptor*> generated_extensions;
             google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(
@@ -235,11 +253,64 @@ template <int scheme> class ProtobufPluginBase : public LogPlugin
                                                      << " in file: " << desc->file()->name()
                                                      << std::endl;
             insert_extensions(user_extensions);
+
+            written_desc_.insert(desc);
+
+            // recursively add children
+            for (auto i = 0, n = desc->field_count(); i < n; ++i)
+            {
+                const auto* field_desc = desc->field(i);
+                if (field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE)
+                    add_new_protobuf_type(field_desc->message_type(), out_log_file);
+            }
+        }
+    }
+
+    void find_unknown_fields(const google::protobuf::Message& msg)
+    {
+        const auto* refl = msg.GetReflection();
+        const auto* desc = msg.GetDescriptor();
+
+        const google::protobuf::UnknownFieldSet& unknown_fields = refl->GetUnknownFields(msg);
+        if (!unknown_fields.empty())
+        {
+            std::string unknown_field_numbers;
+            for (int i = 0, n = unknown_fields.field_count(); i < n; ++i)
+            {
+                const auto& unknown_field = unknown_fields.field(i);
+                unknown_field_numbers += std::to_string(unknown_field.number()) + " ";
+            }
+
+            goby::glog.is_warn() &&
+                goby::glog << "Unknown fields found in " << desc->full_name() << ": "
+                           << unknown_field_numbers
+                           << ", ensure all extensions are loaded using load_shared_library"
+                           << std::endl;
+        }
+        for (auto i = 0, n = desc->field_count(); i < n; ++i)
+        {
+            const auto* field_desc = desc->field(i);
+
+            if (field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE)
+            {
+                if (field_desc->is_repeated())
+                {
+                    for (int i = 0, n = refl->FieldSize(msg, field_desc); i < n; ++i)
+                    {
+                        find_unknown_fields(refl->GetRepeatedMessage(msg, field_desc, i));
+                    }
+                }
+                else
+                {
+                    find_unknown_fields(refl->GetMessage(msg, field_desc));
+                }
+            }
         }
     }
 
   private:
     std::set<const google::protobuf::FileDescriptor*> written_file_desc_;
+    std::set<const google::protobuf::Descriptor*> written_desc_;
     std::set<std::string> read_file_desc_names_;
     bool user_pool_first_;
 };
