@@ -289,6 +289,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
 
         std::set<std::string> internal_groups{
             "goby::middleware::interprocess::to_portal",
+            "goby::middleware::interprocess::from_portal",
             "goby::middleware::interprocess::regex",
             "goby::middleware::SerializationUnSubscribeAll",
             "goby::middleware::Thread::joinable",

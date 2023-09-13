@@ -26,7 +26,8 @@
 #include "goby/middleware/application/configuration_reader.h" // for Config...
 #include "goby/middleware/application/configurator.h"         // for Protob...
 #include "goby/middleware/application/detail/interprocess_common.h"
-#include "goby/middleware/application/interface.h"    // for run
+#include "goby/middleware/application/interface.h" // for run
+#include "goby/middleware/coroner/coroner.h"
 #include "goby/middleware/protobuf/app_config.pb.h"   // for AppConfig
 #include "goby/middleware/protobuf/intervehicle.pb.h" // for Repeat...
 #include "goby/middleware/protobuf/terminate.pb.h"    // for Termin...
@@ -49,7 +50,10 @@ namespace apps
 namespace zeromq
 {
 class IntervehiclePortal
-    : public goby::middleware::Application<protobuf::GobyIntervehiclePortalConfig>
+    : public goby::middleware::Application<protobuf::GobyIntervehiclePortalConfig>,
+      public goby::middleware::coroner::Application<IntervehiclePortal>,
+      public goby::middleware::terminate::Application<IntervehiclePortal>
+
 {
   public:
     IntervehiclePortal();
@@ -58,11 +62,25 @@ class IntervehiclePortal
   private:
     void run() override;
 
+    void thread_health(goby::middleware::protobuf::ThreadHealth& health)
+    {
+        health.set_name("main");
+        health.set_state(goby::middleware::protobuf::HEALTH__OK);
+    }
+
+    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter>& interprocess()
+    {
+        return interprocess_;
+    }
+
   private:
     // For hosting an InterVehiclePortal
     goby::middleware::InterThreadTransporter interthread_;
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> interprocess_;
     goby::middleware::InterVehiclePortal<decltype(interprocess_)> intervehicle_;
+
+    friend class middleware::coroner::Application<IntervehiclePortal>;
+    friend class middleware::terminate::Application<IntervehiclePortal>;
 };
 
 class IntervehiclePortalConfigurator
@@ -92,21 +110,9 @@ goby::apps::zeromq::IntervehiclePortal::IntervehiclePortal()
           this->app_cfg().interprocess(), this->app_name())),
       intervehicle_(interprocess_, app_cfg().intervehicle())
 {
-    // handle goby_terminate request
-    interprocess_.subscribe<goby::middleware::groups::terminate_request,
-                            goby::middleware::protobuf::TerminateRequest>(
-        [this](const goby::middleware::protobuf::TerminateRequest& request) {
-            bool match = false;
-            goby::middleware::protobuf::TerminateResponse resp;
-            std::tie(match, resp) =
-                goby::middleware::terminate::check_terminate(request, app_cfg().app().name());
-            if (match)
-            {
-                interprocess_.publish<goby::middleware::groups::terminate_response>(resp);
-                quit();
-            }
-        });
-        
+    this->subscribe_terminate();
+    this->subscribe_coroner();
+
     glog.is_verbose() && glog << "=== goby_intervehicle_portal is ready ===" << std::endl;
     interprocess_.ready();
 }

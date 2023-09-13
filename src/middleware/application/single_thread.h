@@ -47,14 +47,20 @@ namespace middleware
 /// \tparam Config Configuration type
 /// \tparam InterProcessPortal the interprocess portal type to use (e.g. zeromq::InterProcessPortal)
 template <class Config, template <class = NullTransporter> class InterProcessPortal>
-class SingleThreadApplication : public goby::middleware::Application<Config>,
-                                public Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>
+class SingleThreadApplication
+    : public goby::middleware::Application<Config>,
+      public Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>,
+      public coroner::Application<SingleThreadApplication<Config, InterProcessPortal>>,
+      public terminate::Application<SingleThreadApplication<Config, InterProcessPortal>>
 {
   private:
     using MainThread = Thread<Config, InterVehicleForwarder<InterProcessPortal<>>>;
 
     InterProcessPortal<> interprocess_;
     InterVehicleForwarder<InterProcessPortal<>> intervehicle_;
+
+    friend class coroner::Application<SingleThreadApplication<Config, InterProcessPortal>>;
+    friend class terminate::Application<SingleThreadApplication<Config, InterProcessPortal>>;
 
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)
@@ -76,33 +82,12 @@ class SingleThreadApplication : public goby::middleware::Application<Config>,
     {
         this->set_transporter(&intervehicle_);
 
-        // handle goby_terminate request
-        this->interprocess()
-            .template subscribe<groups::terminate_request, protobuf::TerminateRequest>(
-                [this](const protobuf::TerminateRequest& request) {
-                    bool match = false;
-                    protobuf::TerminateResponse resp;
-                    std::tie(match, resp) =
-                        terminate::check_terminate(request, this->app_cfg().app().name());
-                    if (match)
-                    {
-                        this->interprocess().template publish<groups::terminate_response>(resp);
-                        this->quit();
-                    }
-                });
-
-        // handle goby_coroner request
-        this->interprocess().template subscribe<groups::health_request, protobuf::HealthRequest>(
-            [this](const protobuf::HealthRequest& request) {
-                protobuf::ProcessHealth resp;
-                resp.set_name(this->app_name());
-                resp.set_pid(getpid());
-                this->thread_health(*resp.mutable_main());
-                this->interprocess().template publish<groups::health_response>(resp);
-            });
+        this->subscribe_terminate();
+        this->subscribe_coroner();
 
         this->interprocess().template subscribe<goby::middleware::groups::datum_update>(
-            [this](const protobuf::DatumUpdate& datum_update) {
+            [this](const protobuf::DatumUpdate& datum_update)
+            {
                 this->configure_geodesy(
                     {datum_update.datum().lat_with_units(), datum_update.datum().lon_with_units()});
             });

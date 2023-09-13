@@ -220,7 +220,8 @@ struct Application
                                                 threads);
         }
 
-        auto add_threads = [&](const std::set<PubSubEntry>& pubsubs) {
+        auto add_threads = [&](const std::set<PubSubEntry>& pubsubs)
+        {
             for (const auto& e : pubsubs)
             {
                 if (!threads.count(e.thread))
@@ -378,7 +379,9 @@ struct Deployment
         : name(n)
     {
         for (const auto& platform_yaml_p : platform_params)
-        { platforms.emplace(platform_yaml_p.first, platform_yaml_p.second); }
+        {
+            platforms.emplace(platform_yaml_p.first, platform_yaml_p.second);
+        }
     }
 
     std::string name;
@@ -416,7 +419,7 @@ const auto regex_style = "dotted";
 
 void escape_for_dot(std::string& s)
 {
-    std::vector<char> reserved{{':', '&', '<', '>', ' ', ',', '-', '#'}};
+    std::vector<char> reserved{{':', '&', '<', '>', ' ', ',', '-', '#', ')', '(', '/', '.'}};
     for (char r : reserved)
     {
         std::string search(1, r);
@@ -767,8 +770,9 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
         std::string platform_name = platform["name"].as<std::string>();
         YAML::Node modules_node = platform["modules"];
 
-        auto build_module_params = [](std::vector<viz::ModuleParams>& module_params,
-                                      const YAML::Node& interfaces_node) {
+        auto build_module_params =
+            [](std::vector<viz::ModuleParams>& module_params, const YAML::Node& interfaces_node)
+        {
             for (auto interface_yaml : interfaces_node)
             {
                 if (interface_yaml.IsMap())

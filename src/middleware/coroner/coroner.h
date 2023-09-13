@@ -21,40 +21,86 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_MIDDLEWARE_CORONER_H
-#define GOBY_MIDDLEWARE_CORONER_H
+#ifndef GOBY_MIDDLEWARE_CORONER_CORONER_H
+#define GOBY_MIDDLEWARE_CORONER_CORONER_H
+
+#include "goby/middleware/marshalling/protobuf.h"
 
 #include "goby/middleware/coroner/groups.h"
-#include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/protobuf/coroner.pb.h"
-
-#include "goby/middleware/application/simple_thread.h"
+#include "goby/middleware/transport/interthread.h"
 
 namespace goby
 {
 namespace middleware
 {
-struct NullConfig
+
+namespace coroner
 {
+
+template <typename Derived> class Thread
+{
+  protected:
+    void subscribe_coroner()
+    {
+        static_cast<Derived*>(this)->interthread().template subscribe<groups::health_request>(
+            [this](const protobuf::HealthRequest& request)
+            {
+                std::shared_ptr<protobuf::ThreadHealth> response(new protobuf::ThreadHealth);
+                static_cast<Derived*>(this)->thread_health(*response);
+                static_cast<Derived*>(this)
+                    ->interthread()
+                    .template publish<groups::health_response>(response);
+            });
+    }
 };
 
-class HealthMonitorThread : public SimpleThread<NullConfig>
+template <typename Derived> class Application
 {
-  public:
-    HealthMonitorThread();
+  protected:
+    void subscribe_coroner()
+    {
+        static_cast<Derived*>(this)->interprocess().template subscribe<groups::health_request>(
+            [this](const protobuf::HealthRequest& request)
+            {
+                auto health_response = std::make_shared<protobuf::ProcessHealth>();
 
-  private:
-    void loop() override;
-    void initialize() override { this->set_name("health_monitor"); }
+                health_response->set_name(static_cast<Derived*>(this)->app_name());
+                health_response->set_pid(getpid());
 
-  private:
-    protobuf::ProcessHealth health_response_;
-    // uid to response
-    std::map<int, std::shared_ptr<const protobuf::ThreadHealth>> child_responses_;
-    goby::time::SteadyClock::time_point last_health_request_time_;
-    const goby::time::SteadyClock::duration health_request_timeout_{std::chrono::seconds(1)};
-    bool waiting_for_responses_{false};
+                static_cast<Derived*>(this)->thread_health(*health_response->mutable_main());
+                static_cast<Derived*>(this)
+                    ->interprocess()
+                    .template publish<groups::health_response>(health_response);
+            });
+    }
 };
+
+template <typename Derived> class ApplicationInterThread
+{
+  protected:
+    void subscribe_coroner()
+    {
+        static_cast<Derived*>(this)->interthread().template subscribe<groups::health_request>(
+            [this](const protobuf::HealthRequest& request)
+            {
+                auto health_response = std::make_shared<protobuf::ProcessHealth>();
+
+                health_response->set_name(static_cast<Derived*>(this)->app_name());
+                health_response->set_pid(getpid());
+
+                preseed_hook(health_response);
+
+                static_cast<Derived*>(this)->thread_health(*health_response->mutable_main());
+                static_cast<Derived*>(this)
+                    ->interthread()
+                    .template publish<groups::health_response>(health_response);
+            });
+    }
+    virtual void preseed_hook(std::shared_ptr<protobuf::ProcessHealth>& ph) {}
+};
+
+} // namespace coroner
 } // namespace middleware
 } // namespace goby
 
