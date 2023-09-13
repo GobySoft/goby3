@@ -115,6 +115,19 @@ void goby::util::FlexOStreamBuf::add_stream(logger::Verbosity verbosity, std::os
     }
 }
 
+void goby::util::FlexOStreamBuf::remove_stream(std::ostream* os)
+{
+    streams_.erase(std::remove_if(streams_.begin(), streams_.end(),
+                                  [&os](const StreamConfig& sc) { return sc.os() == os; }));
+
+    highest_verbosity_ = logger::QUIET;
+    for (auto stream : streams_)
+    {
+        if (stream.verbosity() > highest_verbosity_)
+            highest_verbosity_ = stream.verbosity();
+    }
+}
+
 void goby::util::FlexOStreamBuf::enable_gui()
 {
 #ifdef HAS_NCURSES
