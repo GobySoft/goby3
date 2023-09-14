@@ -35,13 +35,18 @@ int main(int argc, char* argv[])
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     std::ofstream fout;
 
-    if (argc == 2)
+    if (argc != 3)
     {
-        fout.open(argv[1]);
-        goby::glog.add_stream(goby::util::logger::DEBUG3, &fout);
+        std::cerr
+            << "Usage: goby_test_iridiumdriver_rockblock1 rockblock_username rockblock_password"
+            << std::endl;
+        exit(1);
     }
 
     goby::glog.set_name(argv[0]);
+
+    std::string username = argv[1];
+    std::string password = argv[2];
 
     mobile_driver.reset(new goby::acomms::IridiumDriver);
     shore_driver.reset(new goby::acomms::IridiumShoreDriver);
@@ -63,11 +68,11 @@ int main(int argc, char* argv[])
     mobile_id2imei->set_modem_id(mobile_cfg.modem_id());
     mobile_id2imei->set_imei("300434066863050");
     shore_iridium_cfg->set_sbd_type(goby::acomms::iridium::protobuf::ShoreConfig::SBD_ROCKBLOCK);
-    shore_iridium_cfg->set_mo_sbd_server_port(52000);
+    shore_iridium_cfg->set_mo_sbd_server_port(8080);
     shore_iridium_cfg->set_mt_sbd_server_address("https://rockblock.rock7.com/rockblock/MT");
     shore_iridium_cfg->set_mt_sbd_server_port(80);
-    shore_iridium_cfg->mutable_rockblock()->set_username("...");
-    shore_iridium_cfg->mutable_rockblock()->set_password("...");
+    shore_iridium_cfg->mutable_rockblock()->set_username(username);
+    shore_iridium_cfg->mutable_rockblock()->set_password(password);
 
     std::vector<int> tests_to_run;
     tests_to_run.push_back(4);
@@ -77,7 +82,13 @@ int main(int argc, char* argv[])
         [](goby::acomms::protobuf::ModemTransmission* msg)
         { msg->set_rate(goby::acomms::RATE_SBD); });
 
-    goby::test::acomms::DriverTester tester(mobile_driver, shore_driver, mobile_cfg, shore_cfg,
-                                            tests_to_run, goby::acomms::protobuf::DRIVER_IRIDIUM);
-    return tester.run();
+    //    goby::test::acomms::DriverTester tester(mobile_driver, shore_driver, mobile_cfg, shore_cfg,
+    //                                            tests_to_run, goby::acomms::protobuf::DRIVER_IRIDIUM);
+    //    return tester.run();
+    shore_driver->startup(shore_cfg);
+    while (1)
+    {
+        shore_driver->do_work();
+        usleep(10000);
+    }
 }

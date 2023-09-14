@@ -88,7 +88,8 @@ class IridiumShoreDriver : public ModemDriverBase
     void receive_sbd_mo();
     void receive_sbd_mo_directip();
     void receive_sbd_mo_rockblock();
-    
+    void receive_sbd_mo_data(const std::string& data);
+
     void send_sbd_mt(const std::string& bytes, const std::string& imei);
 
     void rudics_send(const std::string& data, ModemId id);
@@ -137,6 +138,21 @@ class IridiumShoreDriver : public ModemDriverBase
 
     using IMEI = std::string;
     std::map<ModemId, IMEI> modem_id_to_imei_;
+
+    struct RockblockHTTPMessage
+    {
+        enum class MessageState
+        {
+            HEADER,
+            BODY,
+            COMPLETE
+        };
+        MessageState state{MessageState::HEADER};
+        std::map<std::string, std::string> header;
+        std::string body;
+    };
+
+    std::unique_ptr<RockblockHTTPMessage> rb_msg_;
 };
 } // namespace acomms
 } // namespace goby
