@@ -84,10 +84,8 @@ class IridiumShoreDriver : public ModemDriverBase
     void decode_mo(iridium::protobuf::DirectIPMOPreHeader* pre_header,
                    iridium::protobuf::DirectIPMOHeader* header,
                    iridium::protobuf::DirectIPMOPayload* body, const std::string& data);
-    std::string create_sbd_mt_data_message(const std::string& payload, const std::string& imei);
+
     void receive_sbd_mo();
-    void receive_sbd_mo_directip();
-    void receive_sbd_mo_rockblock();
     void receive_sbd_mo_data(const std::string& data);
 
     void send_sbd_mt(const std::string& bytes, const std::string& imei);
@@ -106,6 +104,16 @@ class IridiumShoreDriver : public ModemDriverBase
     {
         return driver_cfg_.GetExtension(iridium::protobuf::shore_config);
     }
+
+    // in iridium_shore_driver_sbd_directip.cpp
+    void startup_sbd_directip(const protobuf::DriverConfig& cfg);
+    void receive_sbd_mo_directip();
+    void send_sbd_mt_directip(const std::string& bytes, const std::string& imei);
+
+    // in iridium_shore_driver_sbd_rockblock.cpp
+    void startup_sbd_rockblock(const protobuf::DriverConfig& cfg);
+    void receive_sbd_mo_rockblock();
+    void send_sbd_mt_rockblock(const std::string& bytes, const std::string& imei);
 
   private:
     protobuf::DriverConfig driver_cfg_;

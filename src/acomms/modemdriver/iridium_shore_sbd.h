@@ -32,6 +32,7 @@
 #include "goby/acomms/protobuf/rudics_shore.pb.h"
 #include "goby/time.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 namespace goby
 {

@@ -42,6 +42,7 @@ set(ACOMMS_SRC
   acomms/modemdriver/iridium_driver.cpp
   acomms/modemdriver/iridium_driver_fsm.cpp
   acomms/modemdriver/iridium_shore_driver.cpp
+  acomms/modemdriver/iridium_shore_driver_sbd_directip.cpp
   acomms/modemdriver/benthos_atm900_driver.cpp
   acomms/modemdriver/benthos_atm900_driver_fsm.cpp
   acomms/route/route.cpp
@@ -49,3 +50,9 @@ set(ACOMMS_SRC
   ${ACOMMS_PROTO_SRCS} ${ACOMMS_PROTO_HDRS}
   )
 
+if(enable_openssl)
+  set(ACOMMS_SRC
+    ${ACOMMS_SRC}
+    acomms/modemdriver/iridium_shore_driver_sbd_rockblock.cpp
+    )
+endif()
