@@ -21,6 +21,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <boost/units/systems/si/prefixes.hpp>
+
 #include "goby/exception.h"
 
 #include "goby/util/as.h"                               // for as
@@ -162,13 +164,19 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo_rockblock()
                                     rst->set_momsn(json_data[momsn].get<int>());
                                 const std::string lat("iridium_latitude");
                                 if (json_data.contains(lat) && json_data[lat].is_number())
-                                    rst->set_iridium_latitude(json_data[lat].get<double>());
+                                    rst->set_iridium_latitude_with_units(
+                                        json_data[lat].get<double>() *
+                                        boost::units::degree::degrees);
                                 const std::string lon("iridium_longitude");
                                 if (json_data.contains(lon) && json_data[lon].is_number())
-                                    rst->set_iridium_longitude(json_data[lon].get<double>());
+                                    rst->set_iridium_longitude_with_units(
+                                        json_data[lon].get<double>() *
+                                        boost::units::degree::degrees);
                                 const std::string cep("iridium_cep");
                                 if (json_data.contains(cep) && json_data[cep].is_number())
-                                    rst->set_iridium_cep(json_data[cep].get<double>());
+                                    rst->set_iridium_cep_radius_with_units(
+                                        json_data[cep].get<double>() * boost::units::si::kilo *
+                                        boost::units::si::meters);
                                 const std::string serial("serial");
                                 if (json_data.contains(serial) && json_data[serial].is_number())
                                     rst->set_serial(json_data[serial].get<int>());

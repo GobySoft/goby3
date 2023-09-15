@@ -34,10 +34,22 @@ extend goby.acomms.protobuf.DriverConfig
 
 message RockblockReceive
 {
+    option (dccl.msg).unit_system = "si";
+
     optional int32 momsn = 1;
-    optional double iridium_latitude = 2;
-    optional double iridium_longitude = 3;
-    optional double iridium_cep = 4;
+    optional double iridium_latitude = 2 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle" system: "angle::degree" }
+    }];
+    optional double iridium_longitude = 3 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle" system: "angle::degree" }
+    }];
+
+    // Short Burst Data Developers Guide:
+    // The CEP radius provides the radius (in Kilometers) around the center point within which the IMEI is located with a 80% probability of accuracy.
+    optional double iridium_cep_radius = 4 [
+        (dccl.field) = { units { prefix: "kilo" derived_dimensions: "length" } }
+    ];
+
     optional int32 serial = 5;
     optional string imei = 6;
     optional string device_type = 7;
