@@ -32,9 +32,68 @@ extend goby.acomms.protobuf.DriverConfig
     optional Config config = 1381;
 }
 
+message RockblockReceive
+{
+    optional int32 momsn = 1;
+    optional double iridium_latitude = 2;
+    optional double iridium_longitude = 3;
+    optional double iridium_cep = 4;
+    optional int32 serial = 5;
+    optional string imei = 6;
+    optional string device_type = 7;
+    optional string transmit_time = 8;
+    optional bool jwt_verified = 9 [default = false];
+}
+
+message RockblockTransmit
+{
+    required bool success =
+        1;  // true if HTTP result = 200, and body status == OK
+
+    optional int32 mt_id = 2;
+
+    enum Error
+    {
+        ERROR_SUCCESS = -1;
+        ERROR_PARSE_FAILURE = -2;
+
+        // == rockblock error code
+        // https://docs.rockblock.rock7.com/reference/testinput
+        ROCKBLOCK_ERROR_INVALID_LOGIN_CREDENTIALS = 10;
+        ROCKBLOCK_ERROR_IMEI_NOT_FOUND_ON_YOUR_ACCOUNT = 11;
+        ROCKBLOCK_ERROR_HAS_NO_LINE_RENTAL = 12;
+        ROCKBLOCK_ERROR_ACCOUNT_HAS_INSUFFICIENT_CREDIT = 13;
+        ROCKBLOCK_ERROR_COULD_NOT_DECODE_HEX_DATA = 14;
+        ROCKBLOCK_ERROR_DATA_TOO_LONG = 15;
+        ROCKBLOCK_ERROR_NO_DATA = 16;
+        ROCKBLOCK_ERROR_SYSTEM_ERROR = 99;
+        ROCKBLOCK_ERROR_UNKNOWN = 100;
+
+        // from cpp-httplib
+        HTTP_ERROR_UNKNOWN = 101;
+        HTTP_ERROR_CONNECTION = 102;
+        HTTP_ERROR_BINDIPADDRESS = 103;
+        HTTP_ERROR_READ = 104;
+        HTTP_ERROR_WRITE = 105;
+        HTTP_ERROR_EXCEEDREDIRECTCOUNT = 106;
+        HTTP_ERROR_CANCELED = 107;
+        HTTP_ERROR_SSLCONNECTION = 108;
+        HTTP_ERROR_SSLLOADINGCERTS = 109;
+        HTTP_ERROR_SSLSERVERVERIFICATION = 110;
+        HTTP_ERROR_UNSUPPORTEDMULTIPARTBOUNDARYCHARS = 111;
+        HTTP_ERROR_COMPRESSION = 112;
+        HTTP_ERROR_CONNECTIONTIMEOUT = 113;
+        HTTP_ERROR_PROXYCONNECTION = 114;
+    }
+    optional Error error = 10 [default = ERROR_SUCCESS];
+}
+
 message Transmission
 {
     optional bool if_no_data_do_mailbox_check = 1 [default = true];
+
+    optional RockblockReceive rockblock_rx = 10;
+    optional RockblockTransmit rockblock_tx = 11;
 }
 
 extend goby.acomms.protobuf.ModemTransmission

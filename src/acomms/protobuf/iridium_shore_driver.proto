@@ -22,8 +22,10 @@ message ShoreConfig
 
     optional SBDType sbd_type = 2 [default = SBD_DIRECTIP];
     optional uint32 mo_sbd_server_port = 3 [default = 40001];
-    required string mt_sbd_server_address = 4;
-    required uint32 mt_sbd_server_port = 5;
+
+    // DirectIP
+    optional string mt_sbd_server_address = 4;
+    optional uint32 mt_sbd_server_port = 5;
 
     repeated ModemIDIMEIPair modem_id_to_imei = 6;
 
@@ -31,6 +33,8 @@ message ShoreConfig
     {
         required string username = 1;
         required string password = 2;
+        optional string server = 3 [default = "https://rockblock.rock7.com"];
+        optional string mt_endpoint = 4 [default = "/rockblock/MT"];
     }
     optional RockBlock rockblock = 10;
 }

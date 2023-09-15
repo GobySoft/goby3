@@ -396,25 +396,26 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo()
     }
 }
 
-void goby::acomms::IridiumShoreDriver::receive_sbd_mo_data(const std::string& data)
+void goby::acomms::IridiumShoreDriver::receive_sbd_mo_data(const std::string& data,
+                                                           protobuf::ModemTransmission* modem_msg)
 {
     std::string bytes;
-    protobuf::ModemTransmission modem_msg;
     try
     {
         parse_rudics_packet(&bytes, data);
-        parse_iridium_modem_message(bytes, &modem_msg);
+        parse_iridium_modem_message(bytes, modem_msg);
 
         glog.is(DEBUG1) && glog << group(glog_in_group())
-                                << "Rx SBD ModemTransmission: " << modem_msg.ShortDebugString()
+                                << "Rx SBD ModemTransmission: " << modem_msg->ShortDebugString()
                                 << std::endl;
 
-        receive(modem_msg);
+        receive(*modem_msg);
     }
     catch (RudicsPacketException& e)
     {
-        glog.is(DEBUG1) && glog << warn << group(glog_in_group())
-                                << "Could not decode SBD packet: " << e.what() << std::endl;
+        glog.is(DEBUG1) &&
+            glog << warn << group(glog_in_group()) << "Could not decode SBD packet: " << e.what()
+                 << ", modem message: " << modem_msg->ShortDebugString() << std::endl;
     }
 }
 

@@ -69,8 +69,6 @@ int main(int argc, char* argv[])
     mobile_id2imei->set_imei("300434066863050");
     shore_iridium_cfg->set_sbd_type(goby::acomms::iridium::protobuf::ShoreConfig::SBD_ROCKBLOCK);
     shore_iridium_cfg->set_mo_sbd_server_port(8080);
-    shore_iridium_cfg->set_mt_sbd_server_address("https://rockblock.rock7.com/rockblock/MT");
-    shore_iridium_cfg->set_mt_sbd_server_port(80);
     shore_iridium_cfg->mutable_rockblock()->set_username(username);
     shore_iridium_cfg->mutable_rockblock()->set_password(password);
 
@@ -82,9 +80,10 @@ int main(int argc, char* argv[])
         [](goby::acomms::protobuf::ModemTransmission* msg)
         { msg->set_rate(goby::acomms::RATE_SBD); });
 
-    //    goby::test::acomms::DriverTester tester(mobile_driver, shore_driver, mobile_cfg, shore_cfg,
+    //    goby::test::acomms::DriverTester tester(shore_driver, mobile_driver, shore_cfg, mobile_cfg,
     //                                            tests_to_run, goby::acomms::protobuf::DRIVER_IRIDIUM);
     //    return tester.run();
+
     shore_driver->startup(shore_cfg);
     while (1)
     {

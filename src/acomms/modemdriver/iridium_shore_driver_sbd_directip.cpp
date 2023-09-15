@@ -22,11 +22,11 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "goby/acomms/modemdriver/iridium_shore_sbd_directip.h" // for SBDMO...
-#include "goby/acomms/protobuf/iridium_sbd_directip.pb.h" // for Direc...
-#include "goby/util/as.h"                                 // for as
-#include "goby/util/debug_logger/flex_ostream.h"          // for opera...
-#include "goby/util/debug_logger/flex_ostreambuf.h"       // for DEBUG1
-#include "goby/util/debug_logger/logger_manipulators.h"   // for opera...
+#include "goby/acomms/protobuf/iridium_sbd_directip.pb.h"       // for Direc...
+#include "goby/util/as.h"                                       // for as
+#include "goby/util/debug_logger/flex_ostream.h"                // for opera...
+#include "goby/util/debug_logger/flex_ostreambuf.h"             // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h"         // for opera...
 
 #include "goby/util/thirdparty/jwt-cpp/traits/nlohmann-json/defaults.h"
 
@@ -66,6 +66,8 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo_directip()
         const int timeout = 5;
         if ((*it)->message().data_ready())
         {
+            protobuf::ModemTransmission modem_msg;
+
             glog.is(DEBUG1) && glog << group(glog_in_group()) << "Rx SBD PreHeader: "
                                     << (*it)->message().pre_header().DebugString() << std::endl;
             glog.is(DEBUG1) && glog << group(glog_in_group())
@@ -75,7 +77,7 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo_directip()
                                     << "Rx SBD Payload: " << (*it)->message().body().DebugString()
                                     << std::endl;
 
-            receive_sbd_mo_data((*it)->message().body().payload());
+            receive_sbd_mo_data((*it)->message().body().payload(), &modem_msg);
             directip_mo_sbd_server_->connections().erase(it++);
         }
         else if ((*it)->connect_time() > 0 &&
