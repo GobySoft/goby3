@@ -136,10 +136,10 @@ class IridiumShoreDriver : public ModemDriverBase
 
     std::map<ModemId, RemoteNode> remote_;
 
-    boost::asio::io_service rudics_io_;
-    std::shared_ptr<RUDICSServer> rudics_server_;
-    boost::asio::io_service sbd_io_;
-    std::shared_ptr<directip::SBDServer> directip_mo_sbd_server_;
+    std::unique_ptr<boost::asio::io_service> rudics_io_;
+    std::unique_ptr<RUDICSServer> rudics_server_;
+    std::unique_ptr<boost::asio::io_service> sbd_io_;
+    std::unique_ptr<directip::SBDServer> directip_mo_sbd_server_;
 
     // maps remote modem to connection
     boost::bimap<ModemId, std::shared_ptr<RUDICSConnection>> clients_;

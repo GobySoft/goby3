@@ -43,15 +43,17 @@ std::string create_sbd_mt_data_message(const std::string& payload, const std::st
 
 void goby::acomms::IridiumShoreDriver::startup_sbd_directip(const protobuf::DriverConfig& cfg)
 {
+    sbd_io_.reset(new boost::asio::io_service);
+
     directip_mo_sbd_server_.reset(
-        new directip::SBDServer(sbd_io_, iridium_shore_driver_cfg().mo_sbd_server_port()));
+        new directip::SBDServer(*sbd_io_, iridium_shore_driver_cfg().mo_sbd_server_port()));
 }
 
 void goby::acomms::IridiumShoreDriver::receive_sbd_mo_directip()
 {
     try
     {
-        sbd_io_.poll();
+        sbd_io_->poll();
     }
     catch (std::exception& e)
     {

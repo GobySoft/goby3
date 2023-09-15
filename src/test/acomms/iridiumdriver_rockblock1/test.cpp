@@ -27,6 +27,7 @@
 #include "../../acomms/driver_tester/driver_tester.h"
 #include "goby/acomms/modemdriver/iridium_driver.h"
 #include "goby/acomms/modemdriver/iridium_shore_driver.h"
+#include "goby/time/steady_clock.h"
 
 std::shared_ptr<goby::acomms::ModemDriverBase> mobile_driver, shore_driver;
 
@@ -58,6 +59,11 @@ int main(int argc, char* argv[])
     mobile_cfg.set_connection_type(goby::acomms::protobuf::DriverConfig::CONNECTION_SERIAL);
     mobile_cfg.set_serial_port("/dev/ttyUSB0");
     mobile_cfg.set_serial_baud(19200);
+    goby::acomms::iridium::protobuf::Config* mobile_iridium_cfg =
+        mobile_cfg.MutableExtension(goby::acomms::iridium::protobuf::config);
+    mobile_iridium_cfg->add_config("+SBDMTA=1"); // SBDRING
+    mobile_iridium_cfg->add_config("+SBDAREG=1");
+    mobile_iridium_cfg->add_config("+CIER=1,1,1");
 
     shore_cfg.set_modem_id(1);
     shore_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE);
@@ -74,20 +80,26 @@ int main(int argc, char* argv[])
 
     std::vector<int> tests_to_run;
     tests_to_run.push_back(4);
-    tests_to_run.push_back(5);
+    //tests_to_run.push_back(5);
 
     mobile_driver->signal_modify_transmission.connect(
         [](goby::acomms::protobuf::ModemTransmission* msg)
         { msg->set_rate(goby::acomms::RATE_SBD); });
 
-    //    goby::test::acomms::DriverTester tester(shore_driver, mobile_driver, shore_cfg, mobile_cfg,
-    //                                            tests_to_run, goby::acomms::protobuf::DRIVER_IRIDIUM);
-    //    return tester.run();
-
+    // clear any messages out
+    shore_iridium_cfg->mutable_rockblock()->set_server("invalid");
     shore_driver->startup(shore_cfg);
-    while (1)
+    std::cout << "Clearing any pending MO message" << std::endl;
+    auto end = goby::time::SteadyClock::now() + std::chrono::seconds(60);
+    while (goby::time::SteadyClock::now() < end)
     {
         shore_driver->do_work();
         usleep(10000);
     }
+    shore_driver->shutdown();
+    shore_iridium_cfg->mutable_rockblock()->clear_server();
+
+    goby::test::acomms::DriverTester tester(shore_driver, mobile_driver, shore_cfg, mobile_cfg,
+                                            tests_to_run, goby::acomms::protobuf::DRIVER_IRIDIUM);
+    return tester.run();
 }

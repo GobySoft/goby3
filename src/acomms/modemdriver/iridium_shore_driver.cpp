@@ -67,6 +67,7 @@
 #include "goby/util/debug_logger/logger_manipulators.h"    // for opera...
 
 #include "iridium_shore_driver.h"
+#include "iridium_shore_sbd_directip.h"
 
 using namespace goby::util::logger;
 using goby::glog;
@@ -86,8 +87,9 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
     rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
     rudics_mac_msg_.set_rate(RATE_RUDICS);
 
+    rudics_io_.reset(new boost::asio::io_service);
     rudics_server_.reset(
-        new RUDICSServer(rudics_io_, iridium_shore_driver_cfg().rudics_server_port()));
+        new RUDICSServer(*rudics_io_, iridium_shore_driver_cfg().rudics_server_port()));
 
     switch (iridium_shore_driver_cfg().sbd_type())
     {
@@ -116,7 +118,12 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
     modem_start(driver_cfg_);
 }
 
-void goby::acomms::IridiumShoreDriver::shutdown() {}
+void goby::acomms::IridiumShoreDriver::shutdown()
+{
+    modem_close();
+    rudics_server_.reset();
+    directip_mo_sbd_server_.reset();
+}
 
 void goby::acomms::IridiumShoreDriver::handle_initiate_transmission(
     const protobuf::ModemTransmission& orig_msg)
@@ -201,7 +208,7 @@ void goby::acomms::IridiumShoreDriver::do_work()
         }
     }
 
-    rudics_io_.poll();
+    rudics_io_->poll();
     receive_sbd_mo();
 }
 
