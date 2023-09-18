@@ -25,6 +25,7 @@ protobuf_generate_cpp(ACOMMS_PROTO_SRCS ACOMMS_PROTO_HDRS
   acomms/protobuf/udp_multicast_driver.proto
   acomms/protobuf/buffer.proto
   acomms/protobuf/popoto_driver.proto
+  acomms/protobuf/rockblock_simulator_config.proto
   )
 
 set(ACOMMS_SRC

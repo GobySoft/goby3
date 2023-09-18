@@ -31,23 +31,30 @@
 
 std::shared_ptr<goby::acomms::ModemDriverBase> mobile_driver, shore_driver;
 
+const bool using_simulator{true};
+
 int main(int argc, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::clog);
     std::ofstream fout;
 
-    if (argc != 3)
+    std::string username = "dummyuser";
+    std::string password = "dummypassword";
+
+    if (!using_simulator)
     {
-        std::cerr
-            << "Usage: goby_test_iridiumdriver_rockblock1 rockblock_username rockblock_password"
-            << std::endl;
-        exit(1);
+        if (argc != 3)
+        {
+            std::cerr
+                << "Usage: goby_test_iridiumdriver_rockblock1 rockblock_username rockblock_password"
+                << std::endl;
+            exit(1);
+        }
+        username = argv[1];
+        password = argv[2];
     }
 
     goby::glog.set_name(argv[0]);
-
-    std::string username = argv[1];
-    std::string password = argv[2];
 
     mobile_driver.reset(new goby::acomms::IridiumDriver);
     shore_driver.reset(new goby::acomms::IridiumShoreDriver);
@@ -57,7 +64,12 @@ int main(int argc, char* argv[])
     mobile_cfg.set_modem_id(2);
     mobile_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_IRIDIUM);
     mobile_cfg.set_connection_type(goby::acomms::protobuf::DriverConfig::CONNECTION_SERIAL);
-    mobile_cfg.set_serial_port("/dev/ttyUSB0");
+
+    if (using_simulator)
+        mobile_cfg.set_serial_port("/tmp/ttyrockblock");
+    else
+        mobile_cfg.set_serial_port("/dev/ttyUSB0");
+
     mobile_cfg.set_serial_baud(19200);
     goby::acomms::iridium::protobuf::Config* mobile_iridium_cfg =
         mobile_cfg.MutableExtension(goby::acomms::iridium::protobuf::config);
@@ -75,29 +87,41 @@ int main(int argc, char* argv[])
     mobile_id2imei->set_imei("300434066863050");
     shore_iridium_cfg->set_sbd_type(goby::acomms::iridium::protobuf::ShoreConfig::SBD_ROCKBLOCK);
     shore_iridium_cfg->set_mo_sbd_server_port(8080);
+    if (using_simulator)
+    {
+        shore_iridium_cfg->mutable_rockblock()->set_server("http://127.0.0.1:8081");
+        shore_iridium_cfg->mutable_rockblock()->set_skip_jwt_verification(true);
+    }
+
     shore_iridium_cfg->mutable_rockblock()->set_username(username);
     shore_iridium_cfg->mutable_rockblock()->set_password(password);
 
     std::vector<int> tests_to_run;
     tests_to_run.push_back(4);
-    //tests_to_run.push_back(5);
+    tests_to_run.push_back(5);
 
     mobile_driver->signal_modify_transmission.connect(
         [](goby::acomms::protobuf::ModemTransmission* msg)
         { msg->set_rate(goby::acomms::RATE_SBD); });
+    shore_driver->signal_modify_transmission.connect(
+        [](goby::acomms::protobuf::ModemTransmission* msg)
+        { msg->set_rate(goby::acomms::RATE_SBD); });
 
-    // clear any messages out
-    shore_iridium_cfg->mutable_rockblock()->set_server("invalid");
-    shore_driver->startup(shore_cfg);
-    std::cout << "Clearing any pending MO message" << std::endl;
-    auto end = goby::time::SteadyClock::now() + std::chrono::seconds(60);
-    while (goby::time::SteadyClock::now() < end)
+    if (!using_simulator)
     {
-        shore_driver->do_work();
-        usleep(10000);
+        // clear any messages out
+        shore_iridium_cfg->mutable_rockblock()->set_server("invalid");
+        shore_driver->startup(shore_cfg);
+        std::cout << "Clearing any pending MO message" << std::endl;
+        auto end = goby::time::SteadyClock::now() + std::chrono::seconds(60);
+        while (goby::time::SteadyClock::now() < end)
+        {
+            shore_driver->do_work();
+            usleep(10000);
+        }
+        shore_driver->shutdown();
+        shore_iridium_cfg->mutable_rockblock()->clear_server();
     }
-    shore_driver->shutdown();
-    shore_iridium_cfg->mutable_rockblock()->clear_server();
 
     goby::test::acomms::DriverTester tester(shore_driver, mobile_driver, shore_cfg, mobile_cfg,
                                             tests_to_run, goby::acomms::protobuf::DRIVER_IRIDIUM);

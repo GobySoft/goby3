@@ -1,2 +1,2 @@
 add_subdirectory(abc_modem_simulator)
-
+add_subdirectory(rockblock_simulator)

@@ -149,59 +149,61 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo_rockblock()
                             glog.is_debug1() && glog << "Received valid JSON message: "
                                                      << json_data.dump(2) << std::endl;
 
-                            auto verify = jwt::verify()
-                                              .allow_algorithm(jwt::algorithm::rs256(
-                                                  rockblock_rsa_pubkey, "", "", ""))
-                                              .with_issuer("Rock 7");
-                            auto decoded = jwt::decode(json_data["JWT"].get<std::string>());
-                            try
+                            if (!iridium_shore_driver_cfg().rockblock().skip_jwt_verification())
                             {
-                                verify.verify(decoded); // throws exception if verification fails
-                                rst->set_jwt_verified(true);
-
-                                const std::string momsn("momsn");
-                                if (json_data.contains(momsn) && json_data[momsn].is_number())
-                                    rst->set_momsn(json_data[momsn].get<int>());
-                                const std::string lat("iridium_latitude");
-                                if (json_data.contains(lat) && json_data[lat].is_number())
-                                    rst->set_iridium_latitude_with_units(
-                                        json_data[lat].get<double>() *
-                                        boost::units::degree::degrees);
-                                const std::string lon("iridium_longitude");
-                                if (json_data.contains(lon) && json_data[lon].is_number())
-                                    rst->set_iridium_longitude_with_units(
-                                        json_data[lon].get<double>() *
-                                        boost::units::degree::degrees);
-                                const std::string cep("iridium_cep");
-                                if (json_data.contains(cep) && json_data[cep].is_number())
-                                    rst->set_iridium_cep_radius_with_units(
-                                        json_data[cep].get<double>() * boost::units::si::kilo *
-                                        boost::units::si::meters);
-                                const std::string serial("serial");
-                                if (json_data.contains(serial) && json_data[serial].is_number())
-                                    rst->set_serial(json_data[serial].get<int>());
-                                const std::string imei("imei");
-                                if (json_data.contains(imei) && json_data[imei].is_string())
-                                    rst->set_imei(json_data[imei].get<std::string>());
-                                const std::string device_type("device_type");
-                                if (json_data.contains(device_type) &&
-                                    json_data[device_type].is_string())
-                                    rst->set_device_type(json_data[device_type].get<std::string>());
-                                const std::string transmit_time("transmit_time");
-                                if (json_data.contains(transmit_time) &&
-                                    json_data[transmit_time].is_string())
-                                    rst->set_transmit_time(
-                                        json_data[transmit_time].get<std::string>());
-
-                                receive_sbd_mo_data(goby::util::hex_decode(json_data["data"]),
-                                                    &modem_msg);
+                                try
+                                {
+                                    auto verify = jwt::verify()
+                                                      .allow_algorithm(jwt::algorithm::rs256(
+                                                          rockblock_rsa_pubkey, "", "", ""))
+                                                      .with_issuer("Rock 7");
+                                    auto decoded = jwt::decode(json_data["JWT"].get<std::string>());
+                                    verify.verify(
+                                        decoded); // throws exception if verification fails
+                                    rst->set_jwt_verified(true);
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    glog.is_warn() && glog
+                                                          << "Discarding message: could not verify "
+                                                             "Rockblock JWT against public key: "
+                                                          << e.what() << std::endl;
+                                    continue;
+                                }
                             }
-                            catch (const std::exception& e)
-                            {
-                                glog.is_warn() && glog << "Discarding message: could not verify "
-                                                          "Rockblock JWT against public key: "
-                                                       << e.what() << std::endl;
-                            }
+                            const std::string momsn("momsn");
+                            if (json_data.contains(momsn) && json_data[momsn].is_number())
+                                rst->set_momsn(json_data[momsn].get<int>());
+                            const std::string lat("iridium_latitude");
+                            if (json_data.contains(lat) && json_data[lat].is_number())
+                                rst->set_iridium_latitude_with_units(json_data[lat].get<double>() *
+                                                                     boost::units::degree::degrees);
+                            const std::string lon("iridium_longitude");
+                            if (json_data.contains(lon) && json_data[lon].is_number())
+                                rst->set_iridium_longitude_with_units(
+                                    json_data[lon].get<double>() * boost::units::degree::degrees);
+                            const std::string cep("iridium_cep");
+                            if (json_data.contains(cep) && json_data[cep].is_number())
+                                rst->set_iridium_cep_radius_with_units(
+                                    json_data[cep].get<double>() * boost::units::si::kilo *
+                                    boost::units::si::meters);
+                            const std::string serial("serial");
+                            if (json_data.contains(serial) && json_data[serial].is_number())
+                                rst->set_serial(json_data[serial].get<int>());
+                            const std::string imei("imei");
+                            if (json_data.contains(imei) && json_data[imei].is_string())
+                                rst->set_imei(json_data[imei].get<std::string>());
+                            const std::string device_type("device_type");
+                            if (json_data.contains(device_type) &&
+                                json_data[device_type].is_string())
+                                rst->set_device_type(json_data[device_type].get<std::string>());
+                            const std::string transmit_time("transmit_time");
+                            if (json_data.contains(transmit_time) &&
+                                json_data[transmit_time].is_string())
+                                rst->set_transmit_time(json_data[transmit_time].get<std::string>());
+
+                            receive_sbd_mo_data(goby::util::hex_decode(json_data["data"]),
+                                                &modem_msg);
 
                             modem_write("HTTP/1.1 200 OK\r\n");
                             modem_write("Content-Length: 0\r\n");
@@ -253,7 +255,8 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt_rockblock(const std::string& 
                                  << "Received HTTP result: " << res->status << std::endl;
         if (res->status == 200)
         {
-            glog.is_debug1() && glog << "Received: " << res->body << std::endl;
+            glog.is_debug1() && glog << "Received: " << group(glog_out_group()) << res->body
+                                     << std::endl;
             try
             {
                 std::vector<std::string> parts;
@@ -284,7 +287,8 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt_rockblock(const std::string& 
                     if (parts.size() != FAILED_NUM_FIELDS)
                         throw(goby::Exception("Expecting " + std::to_string(FAILED_NUM_FIELDS) +
                                               " fields, received " + std::to_string(parts.size())));
-                    glog.is_warn() && glog << "Error from rockblock: " << parts[FAILED_ERROR_TEXT]
+                    glog.is_warn() && glog << group(glog_out_group())
+                                           << "Error from rockblock: " << parts[FAILED_ERROR_TEXT]
                                            << std::endl;
                     int error_code = goby::util::as<int>(parts[FAILED_ERROR_CODE]);
                     if (error_code >= iridium::protobuf::RockblockTransmit::
@@ -304,13 +308,15 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt_rockblock(const std::string& 
             }
             catch (const std::exception& e)
             {
-                glog.is_warn() && glog << "HTTP response parse failure: " << e.what() << std::endl;
+                glog.is_warn() && glog << group(glog_out_group())
+                                       << "HTTP response parse failure: " << e.what() << std::endl;
                 xst->set_error(iridium::protobuf::RockblockTransmit::ERROR_PARSE_FAILURE);
             }
         }
         else
         {
-            glog.is_warn() && glog << "HTTP result not 200, ignoring body." << std::endl;
+            glog.is_warn() && glog << group(glog_out_group())
+                                   << "HTTP result not 200, ignoring body." << std::endl;
         }
     }
     else
@@ -366,7 +372,8 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt_rockblock(const std::string& 
                 break;
         }
 
-        glog.is_warn() && glog << "HTTP error: " << httplib::to_string(err) << std::endl;
+        glog.is_warn() && glog << group(glog_out_group())
+                               << "HTTP error: " << httplib::to_string(err) << std::endl;
     }
 
     signal_transmit_result(msg);

@@ -1,0 +1,24 @@
+syntax = "proto2";
+
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/middleware/protobuf/pty_config.proto";
+
+package goby.apps.acomms.protobuf;
+
+message RockBLOCKSimulatorConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+
+    message IMEIToModemID
+    {
+        required string imei = 1;
+        required uint32 modem_id = 2;
+        required goby.middleware.protobuf.PTYConfig pty = 3;
+    }
+
+    repeated IMEIToModemID imei_to_id = 10;
+    required string mo_http_server = 11;
+    optional string mo_http_endpoint = 12 [default = "/"];
+
+    required uint32 mt_http_server_port = 13 [default = 8081];
+}

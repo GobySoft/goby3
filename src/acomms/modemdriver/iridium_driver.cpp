@@ -226,6 +226,8 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
     if (!msg.has_max_frame_bytes() || msg.max_frame_bytes() > iridium_driver_cfg().max_frame_size())
         msg.set_max_frame_bytes(iridium_driver_cfg().max_frame_size());
 
+    msg.set_max_num_frames(1);
+
     signal_data_request(&msg);
 
     next_frame_ += msg.frame_size();

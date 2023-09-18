@@ -35,6 +35,7 @@ message ShoreConfig
         required string password = 2;
         optional string server = 3 [default = "https://rockblock.rock7.com"];
         optional string mt_endpoint = 4 [default = "/rockblock/MT"];
+        optional bool skip_jwt_verification = 5 [default = false];
     }
     optional RockBlock rockblock = 10;
 }
