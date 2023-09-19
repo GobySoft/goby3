@@ -31,7 +31,8 @@
 #include "goby/acomms/acomms_constants.h" // for BITS_IN_BYTE
 #include "goby/time/system_clock.h"       // for SystemClock, SystemCloc...
 #include "iridium_driver_fsm.h"
-#include "rudics_packet.h" // for parse_rudics_packet
+#include "iridium_rudics_packet.h" // for parse_rudics_packet
+#include "iridium_sbd_packet.h"    // for parse_sbd_packet
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -208,7 +209,7 @@ void goby::acomms::iridium::fsm::Command::handle_sbd_rx(const std::string& in)
         {
             std::string sbd_rx_data = sbd_rx_buffer_.substr(SBD_FIELD_SIZE_BYTES, sbd_rx_size);
             std::string bytes;
-            parse_rudics_packet(&bytes, sbd_rx_data);
+            parse_sbd_packet(&bytes, sbd_rx_data);
             goby::acomms::protobuf::ModemTransmission msg;
             parse_iridium_modem_message(bytes, &msg);
             context<IridiumDriverFSM>().received().push_back(msg);

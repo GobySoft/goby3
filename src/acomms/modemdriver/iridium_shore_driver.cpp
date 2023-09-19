@@ -54,17 +54,18 @@
 
 #include "goby/acomms/acomms_constants.h"                  // for BITS_...
 #include "goby/acomms/modemdriver/iridium_driver_common.h" // for OnCal...
-#include "goby/acomms/modemdriver/iridium_shore_rudics.h"  // for RUDIC...
-#include "goby/acomms/modemdriver/rudics_packet.h"         // for Rudic...
-#include "goby/time/convert.h"                             // for Syste...
-#include "goby/time/system_clock.h"                        // for Syste...
-#include "goby/time/types.h"                               // for SITime
-#include "goby/util/as.h"                                  // for as
-#include "goby/util/asio_compat.h"                         // for io_context
-#include "goby/util/binary.h"                              // for hex_e...
-#include "goby/util/debug_logger/flex_ostream.h"           // for opera...
-#include "goby/util/debug_logger/flex_ostreambuf.h"        // for DEBUG1
-#include "goby/util/debug_logger/logger_manipulators.h"    // for opera...
+#include "goby/acomms/modemdriver/iridium_rudics_packet.h" // for Rudic...
+#include "goby/acomms/modemdriver/iridium_sbd_packet.h"
+#include "goby/acomms/modemdriver/iridium_shore_rudics.h" // for RUDIC...
+#include "goby/time/convert.h"                            // for Syste...
+#include "goby/time/system_clock.h"                       // for Syste...
+#include "goby/time/types.h"                              // for SITime
+#include "goby/util/as.h"                                 // for as
+#include "goby/util/asio_compat.h"                        // for io_context
+#include "goby/util/binary.h"                             // for hex_e...
+#include "goby/util/debug_logger/flex_ostream.h"          // for opera...
+#include "goby/util/debug_logger/flex_ostreambuf.h"       // for DEBUG1
+#include "goby/util/debug_logger/logger_manipulators.h"   // for opera...
 
 #include "iridium_shore_driver.h"
 #include "iridium_shore_sbd_directip.h"
@@ -80,16 +81,8 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
 {
     driver_cfg_ = cfg;
     bool modem_connection_expected = false;
-    glog.is(DEBUG1) && glog << group(glog_out_group())
-                            << "Goby Shore Iridium RUDICS/SBD driver starting up." << std::endl;
-
-    rudics_mac_msg_.set_src(driver_cfg_.modem_id());
-    rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
-    rudics_mac_msg_.set_rate(RATE_RUDICS);
-
-    rudics_io_.reset(new boost::asio::io_service);
-    rudics_server_.reset(
-        new RUDICSServer(*rudics_io_, iridium_shore_driver_cfg().rudics_server_port()));
+    glog.is(VERBOSE) && glog << group(glog_out_group())
+                             << "Goby Shore Iridium RUDICS/SBD driver starting up." << std::endl;
 
     switch (iridium_shore_driver_cfg().sbd_type())
     {
@@ -109,8 +102,27 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
             break;
     }
 
-    rudics_server_->connect_signal.connect(
-        boost::bind(&IridiumShoreDriver::rudics_connect, this, boost::placeholders::_1));
+    if (iridium_shore_driver_cfg().device() == iridium::protobuf::DEVICE_VOICE_ENABLED_ISU &&
+        iridium_shore_driver_cfg().has_rudics_server_port())
+    {
+        rudics_mac_msg_.set_src(driver_cfg_.modem_id());
+        rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
+        rudics_mac_msg_.set_rate(RATE_RUDICS);
+
+        rudics_io_.reset(new boost::asio::io_service);
+        rudics_server_.reset(
+            new RUDICSServer(*rudics_io_, iridium_shore_driver_cfg().rudics_server_port()));
+        rudics_server_->connect_signal.connect(
+            boost::bind(&IridiumShoreDriver::rudics_connect, this, boost::placeholders::_1));
+    }
+    else
+    {
+        glog.is(VERBOSE) &&
+            glog << group(glog_out_group())
+                 << "Not starting RUDICS server as device type is not set to "
+                    "DEVICE_VOICE_ENABLED_ISU and/or rudics_server_port is not configured"
+                 << std::endl;
+    }
 
     for (int i = 0, n = iridium_shore_driver_cfg().modem_id_to_imei_size(); i < n; ++i)
         modem_id_to_imei_[iridium_shore_driver_cfg().modem_id_to_imei(i).modem_id()] =
@@ -139,9 +151,13 @@ void goby::acomms::IridiumShoreDriver::process_transmission(protobuf::ModemTrans
     if (!msg.has_frame_start())
         msg.set_frame_start(next_frame_);
 
-    // set the frame size, if not set or if it exceeds the max configured
-    if (!msg.has_max_frame_bytes() || msg.max_frame_bytes() > iridium_driver_cfg().max_frame_size())
-        msg.set_max_frame_bytes(iridium_driver_cfg().max_frame_size());
+    unsigned max_frame_bytes = iridium_rate_to_bytes(
+        msg.rate(), iridium_shore_driver_cfg().device(), DIRECTION_MOBILE_TERMINATED);
+    if (msg.has_max_frame_bytes())
+        max_frame_bytes = std::min(msg.max_frame_bytes(), max_frame_bytes);
+    if (iridium_driver_cfg().has_max_frame_size())
+        max_frame_bytes = std::min(iridium_driver_cfg().max_frame_size(), max_frame_bytes);
+    msg.set_max_frame_bytes(max_frame_bytes);
 
     msg.set_max_num_frames(1);
 
@@ -213,7 +229,8 @@ void goby::acomms::IridiumShoreDriver::do_work()
         }
     }
 
-    rudics_io_->poll();
+    if (rudics_io_)
+        rudics_io_->poll();
     receive_sbd_mo();
 }
 
@@ -264,7 +281,7 @@ void goby::acomms::IridiumShoreDriver::send(const protobuf::ModemTransmission& m
         serialize_iridium_modem_message(&bytes, msg);
 
         std::string sbd_packet;
-        serialize_rudics_packet(bytes, &sbd_packet);
+        serialize_sbd_packet(bytes, &sbd_packet);
 
         if (modem_id_to_imei_.count(msg.dest()))
             send_sbd_mt(sbd_packet, modem_id_to_imei_[msg.dest()]);
@@ -431,7 +448,7 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo_data(const std::string& da
     std::string bytes;
     try
     {
-        parse_rudics_packet(&bytes, data);
+        parse_sbd_packet(&bytes, data);
         parse_iridium_modem_message(bytes, modem_msg);
 
         glog.is(DEBUG1) && glog << group(glog_in_group())

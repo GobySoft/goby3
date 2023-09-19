@@ -56,6 +56,10 @@ void goby::acomms::IridiumShoreDriver::startup_sbd_rockblock(const protobuf::Dri
     // use the build-in modem connection for receiving MO messages as HTTP is line-based
     driver_cfg_.set_connection_type(goby::acomms::protobuf::DriverConfig::CONNECTION_TCP_AS_SERVER);
 
+    // RockBLOCK is a 9602/9603 modem
+    driver_cfg_.MutableExtension(goby::acomms::iridium::protobuf::shore_config)
+        ->set_device(goby::acomms::iridium::protobuf::DEVICE_IRIDIUM_9602_9603);
+
     if (iridium_shore_driver_cfg().has_mo_sbd_server_port() || !driver_cfg_.has_tcp_port())
         driver_cfg_.set_tcp_port(iridium_shore_driver_cfg().mo_sbd_server_port());
 

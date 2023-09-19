@@ -47,7 +47,7 @@
 #include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
 #include "goby/acomms/protobuf/modem_message.pb.h"  // for ModemTransmission
 #include "goby/util/dccl_compat.h"
-#include "rudics_packet.h" // for parse_rudics_pa...
+#include "iridium_rudics_packet.h" // for parse_rudics_pa...
 
 namespace goby
 {

@@ -1,6 +1,7 @@
 syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
+import "goby/acomms/protobuf/iridium_driver.proto";
 
 package goby.acomms.iridium.protobuf;
 
@@ -12,7 +13,7 @@ message ShoreConfig
         required string imei = 2;
     }
 
-    required uint32 rudics_server_port = 1;
+    optional uint32 rudics_server_port = 1;
 
     enum SBDType
     {
@@ -38,6 +39,8 @@ message ShoreConfig
         optional bool skip_jwt_verification = 5 [default = false];
     }
     optional RockBlock rockblock = 10;
+
+    optional DeviceType device = 11 [default = DEVICE_VOICE_ENABLED_ISU];
 }
 
 extend goby.acomms.protobuf.DriverConfig

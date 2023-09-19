@@ -49,7 +49,7 @@
 #include "goby/acomms/acomms_constants.h"                  // for BITS_IN_BYTE
 #include "goby/acomms/modemdriver/driver_exception.h"      // for ModemDriv...
 #include "goby/acomms/modemdriver/iridium_driver_common.h" // for RATE_RUDICS
-#include "goby/acomms/modemdriver/rudics_packet.h"         // for serialize...
+#include "goby/acomms/modemdriver/iridium_rudics_packet.h" // for serialize...
 #include "goby/acomms/protobuf/modem_driver_status.pb.h"   // for ModemDriv...
 #include "goby/time/system_clock.h"                        // for SystemClock
 #include "goby/util/binary.h"                              // for hex_encode
@@ -118,7 +118,8 @@ void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
 
     // required for SBDRING
     mutable_iridium_driver_cfg->add_config("+SBDMTA=1");
-    mutable_iridium_driver_cfg->add_config("+SBDAREG=1");
+    if (iridium_driver_cfg().enable_sbdring_automatic_registration())
+        mutable_iridium_driver_cfg->add_config("+SBDAREG=1");
 
     // required for ModemReport
     mutable_iridium_driver_cfg->add_config("+CIER=1,1,1");
@@ -249,9 +250,14 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
     if (!msg.has_frame_start())
         msg.set_frame_start(next_frame_ % frame_max);
 
-    // set the frame size, if not set or if it exceeds the max configured
-    if (!msg.has_max_frame_bytes() || msg.max_frame_bytes() > iridium_driver_cfg().max_frame_size())
-        msg.set_max_frame_bytes(iridium_driver_cfg().max_frame_size());
+    // use smallest of the options
+    unsigned max_frame_bytes = iridium_rate_to_bytes(msg.rate(), iridium_driver_cfg().device(),
+                                                     DIRECTION_MOBILE_ORIGINATED);
+    if (msg.has_max_frame_bytes())
+        max_frame_bytes = std::min(msg.max_frame_bytes(), max_frame_bytes);
+    if (iridium_driver_cfg().has_max_frame_size())
+        max_frame_bytes = std::min(iridium_driver_cfg().max_frame_size(), max_frame_bytes);
+    msg.set_max_frame_bytes(max_frame_bytes);
 
     msg.set_max_num_frames(1);
 
@@ -390,9 +396,9 @@ void goby::acomms::IridiumDriver::send(const protobuf::ModemTransmission& msg)
             std::string iridium_packet;
             serialize_iridium_modem_message(&iridium_packet, msg);
 
-            std::string rudics_packet;
-            serialize_rudics_packet(iridium_packet, &rudics_packet);
-            fsm_.process_event(iridium::fsm::EvSBDBeginData(rudics_packet));
+            std::string sbd_packet;
+            serialize_sbd_packet(iridium_packet, &sbd_packet);
+            fsm_.process_event(iridium::fsm::EvSBDBeginData(sbd_packet));
         }
     }
 }

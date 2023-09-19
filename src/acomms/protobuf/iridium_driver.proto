@@ -6,6 +6,12 @@ import "dccl/option_extensions.proto";
 
 package goby.acomms.iridium.protobuf;
 
+enum DeviceType
+{
+    DEVICE_VOICE_ENABLED_ISU =
+        1;  // e.g. 9523, etc.: device capable of making calls
+    DEVICE_IRIDIUM_9602_9603 = 2;  // RockBLOCK, etc.
+}
 message Config
 {
     message Remote
@@ -25,6 +31,10 @@ message Config
     optional int32 start_timeout = 9 [default = 20];
     optional bool use_dtr = 10 [default = false];
     optional int32 handshake_hangup_seconds = 12 [default = 5];
+
+    optional bool enable_sbdring_automatic_registration = 13 [default = true];
+
+    optional DeviceType device = 14 [default = DEVICE_VOICE_ENABLED_ISU];
 }
 
 extend goby.acomms.protobuf.DriverConfig
@@ -45,7 +55,9 @@ message RockblockReceive
     }];
 
     // Short Burst Data Developers Guide:
-    // The CEP radius provides the radius (in Kilometers) around the center point within which the IMEI is located with a 80% probability of accuracy.
+    // The CEP radius provides the radius (in Kilometers) around the center
+    // point within which the IMEI is located with a 80% probability of
+    // accuracy.
     optional double iridium_cep_radius = 4 [
         (dccl.field) = { units { prefix: "kilo" derived_dimensions: "length" } }
     ];
@@ -113,7 +125,6 @@ extend goby.acomms.protobuf.ModemTransmission
     optional Transmission transmission = 1381;
 }
 
-
 message Report
 {
     enum RSSI
@@ -123,8 +134,8 @@ message Report
         RSSI_2_BARS = 2;
         RSSI_3_BARS = 3;
         RSSI_4_BARS = 4;
-        RSSI_5_BARS = 5;        
-    };    
+        RSSI_5_BARS = 5;
+    };
     optional RSSI rssi = 1;
 }
 
@@ -132,7 +143,6 @@ extend goby.acomms.protobuf.ModemReport
 {
     optional Report report = 1381;
 }
-
 
 // subset of goby.acomms.protobuf.ModemTransmission
 message IridiumHeader

@@ -39,7 +39,8 @@ set(ACOMMS_SRC
   acomms/modemdriver/mm_driver.cpp
   acomms/modemdriver/udp_driver.cpp
   acomms/modemdriver/udp_multicast_driver.cpp
-  acomms/modemdriver/rudics_packet.cpp
+  acomms/modemdriver/iridium_rudics_packet.cpp
+  acomms/modemdriver/iridium_sbd_packet.cpp
   acomms/modemdriver/iridium_driver.cpp
   acomms/modemdriver/iridium_driver_fsm.cpp
   acomms/modemdriver/iridium_shore_driver.cpp

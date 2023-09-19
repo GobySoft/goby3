@@ -64,6 +64,9 @@ int main(int argc, char* argv[])
     mobile_cfg.set_modem_id(2);
     mobile_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_IRIDIUM);
     mobile_cfg.set_connection_type(goby::acomms::protobuf::DriverConfig::CONNECTION_SERIAL);
+    goby::acomms::iridium::protobuf::Config* mobile_iridium_cfg =
+        mobile_cfg.MutableExtension(goby::acomms::iridium::protobuf::config);
+    mobile_iridium_cfg->set_device(goby::acomms::iridium::protobuf::DEVICE_IRIDIUM_9602_9603);
 
     if (using_simulator)
         mobile_cfg.set_serial_port("/tmp/ttyrockblock1");
