@@ -41,6 +41,14 @@ std::ostream& goby::util::tcolor::add_escape_code(std::ostream& os, const std::s
     }
 }
 
+std::shared_ptr<goby::util::TermColor> goby::util::TermColor::inst_;
+goby::util::TermColor* goby::util::TermColor::get_instance()
+{
+    if (!inst_)
+        inst_.reset(new TermColor, goby::util::TermColorDeleter());
+    return inst_.get();
+}
+
 goby::util::TermColor::TermColor()
 {
     colors_map_ = {{"nocolor", Colors::nocolor},       {"red", Colors::red},

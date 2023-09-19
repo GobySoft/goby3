@@ -83,6 +83,13 @@ goby::acomms::IridiumDriver::~IridiumDriver() = default;
 
 void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
 {
+    if (running_)
+    {
+        glog.is(DEBUG1) && glog << group(glog_out_group())
+                                << "Already started, running shutdown() first." << std::endl;
+        shutdown();
+    }
+
     driver_cfg_ = cfg;
 
     glog.is(DEBUG1) && glog << group(glog_out_group())
@@ -114,6 +121,8 @@ void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
     rudics_mac_msg_.set_rate(RATE_RUDICS);
 
     modem_init();
+
+    running_ = true;
 }
 
 void goby::acomms::IridiumDriver::modem_init()
@@ -189,9 +198,18 @@ void goby::acomms::IridiumDriver::hangup()
 
 void goby::acomms::IridiumDriver::shutdown()
 {
+    if (!running_)
+    {
+        glog.is(DEBUG1) && glog << group(glog_out_group()) << "Not started, ignoring shutdown"
+                                << std::endl;
+
+        return;
+    }
+
     hangup();
 
-    while (fsm_.state_cast<const iridium::fsm::OnCall*>() != 0)
+    while (fsm_.state_cast<const iridium::fsm::OnCall*>() != 0 &&
+           fsm_.state_cast<const iridium::fsm::SBDReady*>() != 0)
     {
         do_work();
         usleep(10000);
@@ -201,6 +219,8 @@ void goby::acomms::IridiumDriver::shutdown()
         set_dtr(false);
 
     modem_close();
+
+    running_ = false;
 }
 
 void goby::acomms::IridiumDriver::handle_initiate_transmission(

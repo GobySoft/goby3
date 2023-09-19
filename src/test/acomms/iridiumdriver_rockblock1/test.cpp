@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
     mobile_cfg.set_connection_type(goby::acomms::protobuf::DriverConfig::CONNECTION_SERIAL);
 
     if (using_simulator)
-        mobile_cfg.set_serial_port("/tmp/ttyrockblock");
+        mobile_cfg.set_serial_port("/tmp/ttyrockblock1");
     else
         mobile_cfg.set_serial_port("/dev/ttyUSB0");
 
@@ -123,7 +123,39 @@ int main(int argc, char* argv[])
         shore_iridium_cfg->mutable_rockblock()->clear_server();
     }
 
-    goby::test::acomms::DriverTester tester(shore_driver, mobile_driver, shore_cfg, mobile_cfg,
-                                            tests_to_run, goby::acomms::protobuf::DRIVER_IRIDIUM);
-    return tester.run();
+    {
+        std::cout << "================ SHORE -> MOBILE =======================" << std::endl;
+        goby::test::acomms::DriverTester tester(shore_driver, mobile_driver, shore_cfg, mobile_cfg,
+                                                tests_to_run,
+                                                goby::acomms::protobuf::DRIVER_IRIDIUM);
+        tester.run();
+    }
+
+    mobile_driver.reset(new goby::acomms::IridiumDriver);
+    shore_driver.reset(new goby::acomms::IridiumShoreDriver);
+
+    mobile_driver->signal_modify_transmission.connect(
+        [](goby::acomms::protobuf::ModemTransmission* msg)
+        { msg->set_rate(goby::acomms::RATE_SBD); });
+    shore_driver->signal_modify_transmission.connect(
+        [](goby::acomms::protobuf::ModemTransmission* msg)
+        { msg->set_rate(goby::acomms::RATE_SBD); });
+
+    // swap ids
+    shore_cfg.set_modem_id(2);
+    mobile_cfg.set_modem_id(1);
+    mobile_id2imei->set_modem_id(mobile_cfg.modem_id());
+    if (using_simulator)
+    {
+        mobile_cfg.set_serial_port("/tmp/ttyrockblock2");
+        mobile_id2imei->set_imei("300434066863051");
+    }
+
+    {
+        std::cout << "================ MOBILE -> SHORE =======================" << std::endl;
+        goby::test::acomms::DriverTester tester(mobile_driver, shore_driver, mobile_cfg, shore_cfg,
+                                                tests_to_run,
+                                                goby::acomms::protobuf::DRIVER_IRIDIUM);
+        tester.run();
+    }
 }

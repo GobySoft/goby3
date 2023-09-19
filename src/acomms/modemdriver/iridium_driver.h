@@ -26,8 +26,8 @@
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_H
 
 #include <cstdint> // for uint32_t
-#include <iosfwd>   // for ostream
-#include <memory>   // for shared_ptr
+#include <iosfwd>  // for ostream
+#include <memory>  // for shared_ptr
 
 #include "goby/acomms/modemdriver/driver_base.h"    // for ModemDriverBase
 #include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
@@ -90,6 +90,8 @@ class IridiumDriver : public ModemDriverBase
     protobuf::ModemTransmission rudics_mac_msg_;
 
     std::uint32_t next_frame_{0};
+
+    bool running_{false};
 };
 } // namespace acomms
 } // namespace goby

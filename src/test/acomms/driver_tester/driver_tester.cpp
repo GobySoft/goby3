@@ -134,6 +134,8 @@ int goby::test::acomms::DriverTester::run()
                 test_number_ = -1;
 
             check_count_ = 0;
+            data_request1_entered_ = false;
+            data_request2_entered_ = false;
 
             // allow drivers to continue while waiting for next test
             int i = 0;
@@ -164,28 +166,26 @@ void goby::test::acomms::DriverTester::handle_data_request1(protobuf::ModemTrans
         case 4:
         {
             msg->add_frame(test_str0_);
-            static bool entered = false;
-            if (!entered)
+            if (!data_request1_entered_)
             {
                 ++check_count_;
-                entered = true;
+                data_request1_entered_ = true;
             }
         }
         break;
 
         case 5:
         {
-            static bool entered = false;
             msg->add_frame(test_str1_);
             if (!msg->has_max_num_frames() || msg->max_num_frames() >= 2)
                 msg->add_frame(test_str2_);
             if (!msg->has_max_num_frames() || msg->max_num_frames() >= 3)
                 msg->add_frame(test_str3_);
 
-            if (!entered)
+            if (!data_request1_entered_)
             {
                 ++check_count_;
-                entered = true;
+                data_request1_entered_ = true;
             }
         }
         break;
@@ -345,11 +345,10 @@ void goby::test::acomms::DriverTester::handle_data_request2(protobuf::ModemTrans
 
         case 3:
         {
-            static bool entered = false;
-            if (!entered)
+            if (!data_request2_entered_)
             {
                 ++check_count_;
-                entered = true;
+                data_request2_entered_ = true;
             }
 
             msg->add_frame(goby::util::hex_decode("0123"));
@@ -360,11 +359,10 @@ void goby::test::acomms::DriverTester::handle_data_request2(protobuf::ModemTrans
 
         case 6:
         {
-            static bool entered = false;
-            if (!entered)
+            if (!data_request2_entered_)
             {
                 ++check_count_;
-                entered = true;
+                data_request2_entered_ = true;
             }
 
             msg->add_frame(goby::util::hex_decode("00112233445566778899001122334455667788990011"));
@@ -597,6 +595,8 @@ void goby::test::acomms::DriverTester::test4()
 
         usleep(100000);
         ++i;
+
+        std::cout << check_count_ << std::endl;
     }
     assert(check_count_ == 3);
 }

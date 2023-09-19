@@ -78,6 +78,9 @@ class DriverTester
 
     std::string test_str0_, test_str1_, test_str2_, test_str3_;
     goby::acomms::protobuf::DriverType driver_type_;
+
+    bool data_request1_entered_{false};
+    bool data_request2_entered_{false};
 };
 } // namespace acomms
 } // namespace test
