@@ -71,11 +71,6 @@ int main(int argc, char* argv[])
         mobile_cfg.set_serial_port("/dev/ttyUSB0");
 
     mobile_cfg.set_serial_baud(19200);
-    goby::acomms::iridium::protobuf::Config* mobile_iridium_cfg =
-        mobile_cfg.MutableExtension(goby::acomms::iridium::protobuf::config);
-    mobile_iridium_cfg->add_config("+SBDMTA=1"); // SBDRING
-    mobile_iridium_cfg->add_config("+SBDAREG=1");
-    mobile_iridium_cfg->add_config("+CIER=1,1,1");
 
     shore_cfg.set_modem_id(1);
     shore_cfg.set_driver_type(goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE);

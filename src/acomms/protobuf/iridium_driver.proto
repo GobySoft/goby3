@@ -113,6 +113,27 @@ extend goby.acomms.protobuf.ModemTransmission
     optional Transmission transmission = 1381;
 }
 
+
+message Report
+{
+    enum RSSI
+    {
+        RSSI_0_BARS = 0;
+        RSSI_1_BARS = 1;
+        RSSI_2_BARS = 2;
+        RSSI_3_BARS = 3;
+        RSSI_4_BARS = 4;
+        RSSI_5_BARS = 5;        
+    };    
+    optional RSSI rssi = 1;
+}
+
+extend goby.acomms.protobuf.ModemReport
+{
+    optional Report report = 1381;
+}
+
+
 // subset of goby.acomms.protobuf.ModemTransmission
 message IridiumHeader
 {

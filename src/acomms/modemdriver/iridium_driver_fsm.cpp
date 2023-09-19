@@ -44,6 +44,57 @@ void goby::acomms::iridium::fsm::IridiumDriverFSM::buffer_data_out(
     data_out_.push_back(msg);
 }
 
+void goby::acomms::iridium::fsm::IridiumDriverFSM::parse_ciev(const std::string& ciev)
+{
+    // expecting +CIEV,0,N (signal quality, N = 0-5)
+    // or +CIEV,1,M (service availability, M = 0 or 1)
+
+    enum
+    {
+        MODE_SIGNAL_QUALITY = 0,
+        MODE_SERVICE_AVAILABILITY = 1
+    };
+
+    auto colon_pos = ciev.find(':');
+    auto comma_pos = ciev.find(',');
+
+    // Check if both characters were found and the prefix is correct
+    if (colon_pos != std::string::npos && comma_pos != std::string::npos &&
+        ciev.substr(0, colon_pos) == "+CIEV")
+    {
+        try
+        {
+            // Extract the substrings for the mode and value
+            std::string mode_str = ciev.substr(colon_pos + 1, comma_pos - colon_pos - 1);
+            std::string value_str = ciev.substr(comma_pos + 1);
+
+            // Convert the substrings to integers
+            int mode = std::stoi(mode_str);
+            int value = std::stoi(value_str);
+
+            if (mode == MODE_SIGNAL_QUALITY)
+            {
+                ciev_data_.rssi = value;
+            }
+            else if (mode == MODE_SERVICE_AVAILABILITY)
+            {
+                ciev_data_.service_available = (value == 1);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            glog.is(DEBUG1) && glog << group("iridiumdriver") << warn
+                                    << "Invalid +CIEV: could not convert integers: " << ciev
+                                    << std::endl;
+        }
+    }
+    else
+    {
+        glog.is(DEBUG1) && glog << group("iridiumdriver") << warn << "Invalid +CIEV: " << ciev
+                                << std::endl;
+    }
+}
+
 void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
 {
     std::string in = e.line;
@@ -69,6 +120,7 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
 
     static const std::string connect = "CONNECT";
     static const std::string sbdi = "+SBDI";
+    static const std::string ciev = "+CIEV";
 
     if (in == "OK")
     {
@@ -117,6 +169,10 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
     else if (in == "SBDRING")
     {
         post_event(EvSBDBeginData("", true));
+    }
+    else if (in.compare(0, ciev.size(), ciev) == 0)
+    {
+        context<IridiumDriverFSM>().parse_ciev(in);
     }
 }
 

@@ -116,6 +116,13 @@ void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
     if (iridium_driver_cfg().use_dtr())
         mutable_iridium_driver_cfg->add_config("&D2");
 
+    // required for SBDRING
+    mutable_iridium_driver_cfg->add_config("+SBDMTA=1");
+    mutable_iridium_driver_cfg->add_config("+SBDAREG=1");
+
+    // required for ModemReport
+    mutable_iridium_driver_cfg->add_config("+CIER=1,1,1");
+
     rudics_mac_msg_.set_src(driver_cfg_.modem_id());
     rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
     rudics_mac_msg_.set_rate(RATE_RUDICS);
@@ -455,4 +462,18 @@ void goby::acomms::IridiumDriver::display_state_cfg(std::ostream* os)
     }
 
     *os << std::endl;
+}
+
+void goby::acomms::IridiumDriver::report(goby::acomms::protobuf::ModemReport* report)
+{
+    auto rssi = fsm_.ciev_data().rssi;
+
+    goby::acomms::ModemDriverBase::report(report);
+    if (goby::acomms::iridium::protobuf::Report::RSSI_IsValid(rssi))
+        report->MutableExtension(goby::acomms::iridium::protobuf::report)
+            ->set_rssi(static_cast<goby::acomms::iridium::protobuf::Report::RSSI>(rssi));
+
+    report->set_link_state(fsm_.ciev_data().service_available
+                               ? goby::acomms::protobuf::ModemReport::LINK_AVAILABLE
+                               : goby::acomms::protobuf::ModemReport::LINK_NOT_AVAILABLE);
 }

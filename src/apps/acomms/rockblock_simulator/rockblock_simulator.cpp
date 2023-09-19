@@ -89,6 +89,13 @@ class RockBLOCKSimulator
 
     // maps Goby Modem ID to pty index
     boost::bimap<int, int> id_to_pty_index_;
+
+    struct CIEVState
+    {
+        bool rssi{false};
+        bool svcind{false};
+    };
+    CIEVState ciev_state_;
 };
 
 class RockBLOCKMTHTTPEndpointThread
@@ -143,7 +150,7 @@ int main(int argc, char* argv[])
 
 goby::apps::acomms::RockBLOCKSimulator::RockBLOCKSimulator()
     : middleware::MultiThreadStandaloneApplication<protobuf::RockBLOCKSimulatorConfig>(
-          10 * boost::units::si::hertz)
+          0.2 * boost::units::si::hertz)
 {
     glog.add_group("http", goby::util::Colors::yellow);
 
@@ -255,6 +262,7 @@ void goby::apps::acomms::RockBLOCKSimulator::process_command_data(
     const std::string clear_buffer = "AT+SBDD2";
     const std::string write_buffer = "AT+SBDWB";
     const std::string read_buffer = "AT+SBDRB";
+    const std::string cier = "AT+CIER";
     if (command.substr(0, sbdi.size()) == sbdi) // mailbox check / send message
     {
         modem_data.mt_message = modem_data.mt_message_pending;
@@ -317,11 +325,81 @@ void goby::apps::acomms::RockBLOCKSimulator::process_command_data(
             response += "\r\n\r\nOK";
         }
     }
+    else if (command.substr(0, cier.size()) == cier) // RSSI / link available reporting
+    {
+        size_t equal_pos = command.find('=');
+        if (equal_pos != std::string::npos)
+        {
+            try
+            {
+                std::string params_str = command.substr(equal_pos + 1);
+                size_t pos = 0;
+                std::vector<bool> params;
+
+                while (true)
+                {
+                    size_t comma_pos = params_str.find(',', pos);
+                    if (comma_pos == std::string::npos)
+                    {
+                        // Get last parameter
+                        params.push_back(params_str.substr(pos) == "1");
+                        break;
+                    }
+                    else
+                    {
+                        params.push_back(params_str.substr(pos, comma_pos - pos) == "1");
+                        pos = comma_pos + 1;
+                    }
+                }
+
+                enum
+                {
+                    ENABLE_CIEV = 0,
+                    ENABLE_RSSI = 1,
+                    ENABLE_SVCIND = 2
+                };
+
+                if (params.at(ENABLE_CIEV))
+                {
+                    if (params.size() > ENABLE_RSSI)
+                        ciev_state_.rssi = params[ENABLE_RSSI];
+                    if (params.size() > ENABLE_SVCIND)
+                        ciev_state_.svcind = params[ENABLE_SVCIND];
+                }
+                else
+                {
+                    ciev_state_ = CIEVState();
+                }
+            }
+            catch (const std::exception& e)
+            {
+                response = "ERROR";
+            }
+        }
+        else
+        {
+            response = "ERROR";
+        }
+    }
 
     send_response(io.index(), command, response);
 }
 
-void goby::apps::acomms::RockBLOCKSimulator::loop() {}
+void goby::apps::acomms::RockBLOCKSimulator::loop()
+{
+    for (const auto& p : modem_data_)
+    {
+        auto index = p.first;
+        if (ciev_state_.rssi)
+        {
+            send_response(index, "", "+CIEV:0,5");
+        }
+        if (ciev_state_.svcind)
+        {
+            send_response(index, "", "+CIEV:1,1");
+        }
+    }
+}
 
 void goby::apps::acomms::RockBLOCKSimulator::send_response(int index, const std::string& command,
                                                            const std::string& response)

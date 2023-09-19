@@ -57,9 +57,11 @@ class IridiumDriver : public ModemDriverBase
     void do_work() override;
 
     void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
-    void process_transmission(protobuf::ModemTransmission msg, bool dial);
+    void report(goby::acomms::protobuf::ModemReport* report) override;
 
   private:
+    void process_transmission(protobuf::ModemTransmission msg, bool dial);
+
     void receive(const protobuf::ModemTransmission& msg);
     void send(const protobuf::ModemTransmission& msg);
 

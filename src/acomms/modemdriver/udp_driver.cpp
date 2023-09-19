@@ -37,7 +37,7 @@
 #include <boost/asio/ip/basic_resolver.hpp>          // for basic_resolv...
 #include <boost/asio/ip/basic_resolver_entry.hpp>    // for basic_resolv...
 #include <boost/asio/ip/basic_resolver_iterator.hpp> // for basic_resolv...
-#include <boost/bind/bind.hpp>                            // for bind_t, arg
+#include <boost/bind/bind.hpp>                       // for bind_t, arg
 #include <boost/function.hpp>                        // for function
 #include <boost/signals2/signal.hpp>                 // for signal
 #include <boost/system/error_code.hpp>               // for error_code
@@ -66,7 +66,7 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 {
     driver_cfg_ = cfg;
 
-    modem_start(driver_cfg_);
+    modem_start(driver_cfg_, false);
 
     socket_ = std::make_unique<boost::asio::ip::udp::socket>(io_context_);
     const auto& local = driver_cfg_.GetExtension(udp::protobuf::config).local();
@@ -167,9 +167,11 @@ void goby::acomms::UDPDriver::start_send(const protobuf::ModemTransmission& msg)
     raw_msg.set_raw(bytes);
     signal_raw_outgoing(raw_msg);
 
-    auto send = [&](const boost::asio::ip::udp::endpoint& receiver) {
+    auto send = [&](const boost::asio::ip::udp::endpoint& receiver)
+    {
         socket_->async_send_to(boost::asio::buffer(bytes), receiver,
-                               boost::bind(&UDPDriver::send_complete, this, boost::placeholders::_1, boost::placeholders::_2));
+                               boost::bind(&UDPDriver::send_complete, this, boost::placeholders::_1,
+                                           boost::placeholders::_2));
     };
 
     auto broadcast_receivers = receivers_.equal_range(goby::acomms::BROADCAST_ID);
@@ -203,7 +205,8 @@ void goby::acomms::UDPDriver::send_complete(const boost::system::error_code& err
 void goby::acomms::UDPDriver::start_receive()
 {
     socket_->async_receive_from(boost::asio::buffer(receive_buffer_), sender_,
-                                boost::bind(&UDPDriver::receive_complete, this, boost::placeholders::_1, boost::placeholders::_2));
+                                boost::bind(&UDPDriver::receive_complete, this,
+                                            boost::placeholders::_1, boost::placeholders::_2));
 }
 
 void goby::acomms::UDPDriver::receive_complete(const boost::system::error_code& error,

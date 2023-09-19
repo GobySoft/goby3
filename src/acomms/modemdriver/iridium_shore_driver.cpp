@@ -79,7 +79,7 @@ goby::acomms::IridiumShoreDriver::~IridiumShoreDriver() = default;
 void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg)
 {
     driver_cfg_ = cfg;
-
+    bool modem_connection_expected = false;
     glog.is(DEBUG1) && glog << group(glog_out_group())
                             << "Goby Shore Iridium RUDICS/SBD driver starting up." << std::endl;
 
@@ -100,6 +100,7 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
         case goby::acomms::iridium::protobuf::ShoreConfig::SBD_ROCKBLOCK:
 #ifdef HAS_OPENSSL
             startup_sbd_rockblock(cfg);
+            modem_connection_expected = true;
 #else
             glog.is_die() &&
                 glog << "Rockblock functionality requires OpenSSL. Recompile with -Denable_openssl"
@@ -115,7 +116,7 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
         modem_id_to_imei_[iridium_shore_driver_cfg().modem_id_to_imei(i).modem_id()] =
             iridium_shore_driver_cfg().modem_id_to_imei(i).imei();
 
-    modem_start(driver_cfg_);
+    modem_start(driver_cfg_, modem_connection_expected);
 }
 
 void goby::acomms::IridiumShoreDriver::shutdown()
