@@ -25,7 +25,7 @@
 #include "goby/util/base_convert.h"
 #include "goby/util/binary.h"
 
-#include "goby/acomms/modemdriver/rudics_packet.h"
+#include "goby/acomms/modemdriver/iridium_rudics_packet.h"
 
 #include <cassert>
 #include <cstdlib>
