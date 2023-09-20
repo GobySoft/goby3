@@ -28,10 +28,6 @@
 #include "goby/util/debug_logger/flex_ostreambuf.h"             // for DEBUG1
 #include "goby/util/debug_logger/logger_manipulators.h"         // for opera...
 
-#include "goby/util/thirdparty/jwt-cpp/traits/nlohmann-json/defaults.h"
-
-#include "goby/util/thirdparty/jwt-cpp/jwt.h"
-
 #include "iridium_shore_driver.h"
 
 using namespace goby::util::logger;
