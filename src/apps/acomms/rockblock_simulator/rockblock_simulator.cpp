@@ -26,8 +26,8 @@
 
 #include "goby/middleware/marshalling/protobuf.h"
 // this space intentionally left blank
+#include "goby/middleware/application/multi_thread.h"
 #include "goby/middleware/io/line_based/pty.h"
-#include "goby/zeromq/application/multi_thread.h"
 
 #include "goby/acomms/modemdriver/iridium_driver_fsm.h"
 #include "goby/acomms/protobuf/iridium_driver.pb.h"
