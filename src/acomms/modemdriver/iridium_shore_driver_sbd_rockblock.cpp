@@ -206,12 +206,9 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo_rockblock()
                                 json_data[transmit_time].is_string())
                                 rst->set_transmit_time(json_data[transmit_time].get<std::string>());
 
-                            receive_sbd_mo_data(goby::util::hex_decode(json_data["data"]),
-                                                &modem_msg);
-
-                            modem_write("HTTP/1.1 200 OK\r\n");
-                            modem_write("Content-Length: 0\r\n");
-                            modem_write("Connection: close\r\n\r\n");
+                            const auto& data = json_data["data"].get<std::string>();
+                            if (!data.empty()) // empty data is not an error as we have mailbox check messages
+                                receive_sbd_mo_data(goby::util::hex_decode(data), &modem_msg);
                         }
                         catch (std::exception& e)
                         {
@@ -219,6 +216,9 @@ void goby::acomms::IridiumShoreDriver::receive_sbd_mo_rockblock()
                                                    << "Failed to parse JSON: " << e.what()
                                                    << ", data: " << rb_msg_->body << std::endl;
                         }
+                        modem_write("HTTP/1.1 200 OK\r\n");
+                        modem_write("Content-Length: 0\r\n");
+                        modem_write("Connection: close\r\n\r\n");
                     }
                 }
                 else

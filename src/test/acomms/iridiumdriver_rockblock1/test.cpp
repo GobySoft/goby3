@@ -31,7 +31,7 @@
 
 std::shared_ptr<goby::acomms::ModemDriverBase> mobile_driver, shore_driver;
 
-const bool using_simulator{true};
+const bool using_simulator{false};
 
 int main(int argc, char* argv[])
 {
@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
         shore_iridium_cfg->mutable_rockblock()->set_server("invalid");
         shore_driver->startup(shore_cfg);
         std::cout << "Clearing any pending MO message" << std::endl;
-        auto end = goby::time::SteadyClock::now() + std::chrono::seconds(60);
+        auto end = goby::time::SteadyClock::now() + std::chrono::seconds(10);
         while (goby::time::SteadyClock::now() < end)
         {
             shore_driver->do_work();

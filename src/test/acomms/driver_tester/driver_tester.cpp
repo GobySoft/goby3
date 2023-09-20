@@ -595,8 +595,6 @@ void goby::test::acomms::DriverTester::test4()
 
         usleep(100000);
         ++i;
-
-        std::cout << check_count_ << std::endl;
     }
     assert(check_count_ == 3);
 }
