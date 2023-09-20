@@ -134,7 +134,19 @@ int goby::test::acomms::DriverTester::run()
                 test_number_ = -1;
 
             check_count_ = 0;
-            sleep(1);
+            data_request1_entered_ = false;
+            data_request2_entered_ = false;
+
+            // allow drivers to continue while waiting for next test
+            int i = 0;
+            while (((i / 10) < 2))
+            {
+                driver1_->do_work();
+                driver2_->do_work();
+
+                usleep(100000);
+                ++i;
+            }
         }
     }
     catch (std::exception& e)
@@ -154,28 +166,26 @@ void goby::test::acomms::DriverTester::handle_data_request1(protobuf::ModemTrans
         case 4:
         {
             msg->add_frame(test_str0_);
-            static bool entered = false;
-            if (!entered)
+            if (!data_request1_entered_)
             {
                 ++check_count_;
-                entered = true;
+                data_request1_entered_ = true;
             }
         }
         break;
 
         case 5:
         {
-            static bool entered = false;
             msg->add_frame(test_str1_);
             if (!msg->has_max_num_frames() || msg->max_num_frames() >= 2)
                 msg->add_frame(test_str2_);
             if (!msg->has_max_num_frames() || msg->max_num_frames() >= 3)
                 msg->add_frame(test_str3_);
 
-            if (!entered)
+            if (!data_request1_entered_)
             {
                 ++check_count_;
-                entered = true;
+                data_request1_entered_ = true;
             }
         }
         break;
@@ -292,6 +302,8 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
                            msg.acked_frame(2) == msg.acked_frame(0) + 2);
                     break;
                     // single frame only
+                case goby::acomms::protobuf::DRIVER_IRIDIUM:
+                case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
                 case goby::acomms::protobuf::DRIVER_POPOTO:
                     assert(msg.acked_frame_size() == 1);
                     break;
@@ -333,11 +345,10 @@ void goby::test::acomms::DriverTester::handle_data_request2(protobuf::ModemTrans
 
         case 3:
         {
-            static bool entered = false;
-            if (!entered)
+            if (!data_request2_entered_)
             {
                 ++check_count_;
-                entered = true;
+                data_request2_entered_ = true;
             }
 
             msg->add_frame(goby::util::hex_decode("0123"));
@@ -348,11 +359,10 @@ void goby::test::acomms::DriverTester::handle_data_request2(protobuf::ModemTrans
 
         case 6:
         {
-            static bool entered = false;
-            if (!entered)
+            if (!data_request2_entered_)
             {
                 ++check_count_;
-                entered = true;
+                data_request2_entered_ = true;
             }
 
             msg->add_frame(goby::util::hex_decode("00112233445566778899001122334455667788990011"));
@@ -421,6 +431,8 @@ void goby::test::acomms::DriverTester::handle_data_receive2(const protobuf::Mode
                         break;
 
                         // single frame only
+                    case goby::acomms::protobuf::DRIVER_IRIDIUM:
+                    case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
                     case goby::acomms::protobuf::DRIVER_POPOTO:
                         assert(msg.frame_size() == 1);
                         assert(msg.frame(0) == test_str1_);

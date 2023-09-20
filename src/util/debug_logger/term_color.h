@@ -166,12 +166,10 @@ class TermColor
     TermColor(const TermColor&) = delete;
     TermColor& operator=(const TermColor&) = delete;
 
-    static TermColor* get_instance()
-    {
-        static TermColor t;
-        return &t;
-    }
+    friend class TermColorDeleter;
+    static std::shared_ptr<TermColor> inst_;
 
+    static TermColor* get_instance();
     Colors::Color priv_from_str(const std::string& s) { return colors_map_[s]; }
 
     // red -> "red"
@@ -209,6 +207,13 @@ class TermColor
     std::map<std::string, Colors::Color> colors_map_;
     std::map<std::string, Colors::Color> esc_code_map_;
 };
+
+class TermColorDeleter
+{
+  public:
+    void operator()(TermColor* c) { delete c; }
+};
+
 } // namespace util
 } // namespace goby
 

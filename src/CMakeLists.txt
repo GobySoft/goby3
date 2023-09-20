@@ -106,6 +106,21 @@ if(enable_hdf5)
   add_definitions(-DHAS_HDF5)
 endif()
 
+# OpenSSL
+find_package(OpenSSL QUIET)
+set(OPENSSL_DOC_STRING "Enable OpenSSL components")
+if(OPENSSL_FOUND)
+  option(enable_openssl ${OPENSSL_DOC_STRING} ON)
+else()
+  option(enable_openssl ${OPENSSL_DOC_STRING} OFF)
+  message(">> setting enable_openssl to OFF ... if you need this functionality: 1) install libopenssl-dev; 2) run cmake -Denable_openssl=ON")
+endif()
+
+if(enable_openssl)
+  goby_find_required_package(OpenSSL)
+  add_definitions(-DHAS_OPENSSL)
+endif()
+
 ## Wt
 find_package(WtGoby QUIET)
 set(WT_DOC_STRING "Enable Wt web browser GUI components (requires libwt-dev, libwtdbo-dev, libwtdbosqlite-dev, and libwthttp-dev: http://www.webtoolkit.eu/wt)")
@@ -222,6 +237,10 @@ target_link_libraries(goby
 
 if(enable_gmp)
   target_link_libraries(goby ${GMP_LIBRARIES})
+endif()
+
+if(enable_openssl)
+  target_link_libraries(goby ${OPENSSL_LIBRARIES})
 endif()
 
 if(enable_ncurses)

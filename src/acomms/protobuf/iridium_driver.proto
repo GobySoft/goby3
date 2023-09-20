@@ -6,6 +6,12 @@ import "dccl/option_extensions.proto";
 
 package goby.acomms.iridium.protobuf;
 
+enum DeviceType
+{
+    DEVICE_VOICE_ENABLED_ISU =
+        1;  // e.g. 9523, etc.: device capable of making calls
+    DEVICE_IRIDIUM_9602_9603 = 2;  // RockBLOCK, etc.
+}
 message Config
 {
     message Remote
@@ -25,6 +31,10 @@ message Config
     optional int32 start_timeout = 9 [default = 20];
     optional bool use_dtr = 10 [default = false];
     optional int32 handshake_hangup_seconds = 12 [default = 5];
+
+    optional bool enable_sbdring_automatic_registration = 13 [default = true];
+
+    optional DeviceType device = 14 [default = DEVICE_VOICE_ENABLED_ISU];
 }
 
 extend goby.acomms.protobuf.DriverConfig
@@ -32,14 +42,106 @@ extend goby.acomms.protobuf.DriverConfig
     optional Config config = 1381;
 }
 
+message RockblockReceive
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional int32 momsn = 1;
+    optional double iridium_latitude = 2 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle" system: "angle::degree" }
+    }];
+    optional double iridium_longitude = 3 [(dccl.field) = {
+        units { derived_dimensions: "plane_angle" system: "angle::degree" }
+    }];
+
+    // Short Burst Data Developers Guide:
+    // The CEP radius provides the radius (in Kilometers) around the center
+    // point within which the IMEI is located with a 80% probability of
+    // accuracy.
+    optional double iridium_cep_radius = 4 [
+        (dccl.field) = { units { prefix: "kilo" derived_dimensions: "length" } }
+    ];
+
+    optional int32 serial = 5;
+    optional string imei = 6;
+    optional string device_type = 7;
+    optional string transmit_time = 8;
+    optional bool jwt_verified = 9 [default = false];
+}
+
+message RockblockTransmit
+{
+    required bool success =
+        1;  // true if HTTP result = 200, and body status == OK
+
+    optional int32 mt_id = 2;
+
+    enum Error
+    {
+        ERROR_SUCCESS = -1;
+        ERROR_PARSE_FAILURE = -2;
+
+        // == rockblock error code
+        // https://docs.rockblock.rock7.com/reference/testinput
+        ROCKBLOCK_ERROR_INVALID_LOGIN_CREDENTIALS = 10;
+        ROCKBLOCK_ERROR_IMEI_NOT_FOUND_ON_YOUR_ACCOUNT = 11;
+        ROCKBLOCK_ERROR_HAS_NO_LINE_RENTAL = 12;
+        ROCKBLOCK_ERROR_ACCOUNT_HAS_INSUFFICIENT_CREDIT = 13;
+        ROCKBLOCK_ERROR_COULD_NOT_DECODE_HEX_DATA = 14;
+        ROCKBLOCK_ERROR_DATA_TOO_LONG = 15;
+        ROCKBLOCK_ERROR_NO_DATA = 16;
+        ROCKBLOCK_ERROR_SYSTEM_ERROR = 99;
+        ROCKBLOCK_ERROR_UNKNOWN = 100;
+
+        // from cpp-httplib
+        HTTP_ERROR_UNKNOWN = 101;
+        HTTP_ERROR_CONNECTION = 102;
+        HTTP_ERROR_BINDIPADDRESS = 103;
+        HTTP_ERROR_READ = 104;
+        HTTP_ERROR_WRITE = 105;
+        HTTP_ERROR_EXCEEDREDIRECTCOUNT = 106;
+        HTTP_ERROR_CANCELED = 107;
+        HTTP_ERROR_SSLCONNECTION = 108;
+        HTTP_ERROR_SSLLOADINGCERTS = 109;
+        HTTP_ERROR_SSLSERVERVERIFICATION = 110;
+        HTTP_ERROR_UNSUPPORTEDMULTIPARTBOUNDARYCHARS = 111;
+        HTTP_ERROR_COMPRESSION = 112;
+        HTTP_ERROR_CONNECTIONTIMEOUT = 113;
+        HTTP_ERROR_PROXYCONNECTION = 114;
+    }
+    optional Error error = 10 [default = ERROR_SUCCESS];
+}
+
 message Transmission
 {
     optional bool if_no_data_do_mailbox_check = 1 [default = true];
+
+    optional RockblockReceive rockblock_rx = 10;
+    optional RockblockTransmit rockblock_tx = 11;
 }
 
 extend goby.acomms.protobuf.ModemTransmission
 {
     optional Transmission transmission = 1381;
+}
+
+message Report
+{
+    enum RSSI
+    {
+        RSSI_0_BARS = 0;
+        RSSI_1_BARS = 1;
+        RSSI_2_BARS = 2;
+        RSSI_3_BARS = 3;
+        RSSI_4_BARS = 4;
+        RSSI_5_BARS = 5;
+    };
+    optional RSSI rssi = 1;
+}
+
+extend goby.acomms.protobuf.ModemReport
+{
+    optional Report report = 1381;
 }
 
 // subset of goby.acomms.protobuf.ModemTransmission

@@ -25,6 +25,7 @@ protobuf_generate_cpp(ACOMMS_PROTO_SRCS ACOMMS_PROTO_HDRS
   acomms/protobuf/udp_multicast_driver.proto
   acomms/protobuf/buffer.proto
   acomms/protobuf/popoto_driver.proto
+  acomms/protobuf/rockblock_simulator_config.proto
   )
 
 set(ACOMMS_SRC
@@ -38,10 +39,12 @@ set(ACOMMS_SRC
   acomms/modemdriver/mm_driver.cpp
   acomms/modemdriver/udp_driver.cpp
   acomms/modemdriver/udp_multicast_driver.cpp
-  acomms/modemdriver/rudics_packet.cpp
+  acomms/modemdriver/iridium_rudics_packet.cpp
+  acomms/modemdriver/iridium_sbd_packet.cpp
   acomms/modemdriver/iridium_driver.cpp
   acomms/modemdriver/iridium_driver_fsm.cpp
   acomms/modemdriver/iridium_shore_driver.cpp
+  acomms/modemdriver/iridium_shore_driver_sbd_directip.cpp
   acomms/modemdriver/benthos_atm900_driver.cpp
   acomms/modemdriver/benthos_atm900_driver_fsm.cpp
   acomms/route/route.cpp
@@ -49,3 +52,9 @@ set(ACOMMS_SRC
   ${ACOMMS_PROTO_SRCS} ${ACOMMS_PROTO_HDRS}
   )
 
+if(enable_openssl)
+  set(ACOMMS_SRC
+    ${ACOMMS_SRC}
+    acomms/modemdriver/iridium_shore_driver_sbd_rockblock.cpp
+    )
+endif()

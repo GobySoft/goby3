@@ -35,7 +35,7 @@
 #include <boost/algorithm/string/classification.hpp> // for is_any_ofF
 #include <boost/algorithm/string/split.hpp>          // for split
 #include <boost/algorithm/string/trim.hpp>           // for trim
-#include <boost/bind/bind.hpp>                            // for bind_t, arg
+#include <boost/bind/bind.hpp>                       // for bind_t, arg
 #include <boost/circular_buffer.hpp>                 // for circular_...
 #include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexic...
 #include <boost/mpl/list.hpp>                        // for list
@@ -200,6 +200,13 @@ struct SBDReceive;
 // state machine
 struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Active>
 {
+  private:
+    struct CIEVData
+    {
+        int rssi{-1};
+        bool service_available{false};
+    };
+
   public:
     IridiumDriverFSM(const goby::acomms::protobuf::DriverConfig& driver_cfg)
         : serial_tx_buffer_(SERIAL_BUFFER_CAPACITY),
@@ -236,6 +243,10 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
 
     const std::string& glog_ir_group() const { return glog_ir_group_; }
 
+    const CIEVData& ciev_data() const { return ciev_data_; }
+
+    void parse_ciev(const std::string& ciev);
+
   private:
     enum
     {
@@ -259,17 +270,19 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     std::string glog_ir_group_;
 
     static int count_;
+
+    CIEVData ciev_data_;
 };
 
 struct Active : boost::statechart::simple_state<Active, IridiumDriverFSM,
-                                                boost::mpl::list<Command, NotOnCall> >
+                                                boost::mpl::list<Command, NotOnCall>>
 {
-    typedef boost::mpl::list<boost::statechart::transition<EvReset, Active> > reactions;
+    typedef boost::mpl::list<boost::statechart::transition<EvReset, Active>> reactions;
 };
 
 // Command
 struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
-                                                 boost::mpl::list<Configure, SBD> >,
+                                                 boost::mpl::list<Configure, SBD>>,
                  StateNotify
 {
   public:
@@ -298,7 +311,7 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
         at_out_.push_back(std::make_pair(ATSentenceMeta(), cmd));
     }
 
-    boost::circular_buffer<std::pair<ATSentenceMeta, std::string> >& at_out() { return at_out_; }
+    boost::circular_buffer<std::pair<ATSentenceMeta, std::string>>& at_out() { return at_out_; }
 
     void clear_sbd_rx_buffer() { sbd_rx_buffer_.clear(); }
 
@@ -309,7 +322,7 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
     {
         AT_BUFFER_CAPACITY = 100
     };
-    boost::circular_buffer<std::pair<ATSentenceMeta, std::string> > at_out_;
+    boost::circular_buffer<std::pair<ATSentenceMeta, std::string>> at_out_;
     enum
     {
         COMMAND_TIMEOUT_SECONDS = 2,
@@ -327,7 +340,7 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
     std::string sbd_rx_buffer_;
 };
 
-struct Configure : boost::statechart::state<Configure, Command::orthogonal<0> >, StateNotify
+struct Configure : boost::statechart::state<Configure, Command::orthogonal<0>>, StateNotify
 {
     using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, Ready>>;
 
@@ -336,12 +349,15 @@ struct Configure : boost::statechart::state<Configure, Command::orthogonal<0> >,
         context<Command>().push_at_command("");
         const auto& iridium_driver_config = context<IridiumDriverFSM>().iridium_driver_cfg();
         for (int i = 0, n = iridium_driver_config.config_size(); i < n; ++i)
-        { context<Command>().push_at_command(iridium_driver_config.config(i)); } }
+        {
+            context<Command>().push_at_command(iridium_driver_config.config(i));
+        }
+    }
 
     ~Configure() override { post_event(EvConfigured()); }
 };
 
-struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0> >, StateNotify
+struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0>>, StateNotify
 {
   public:
     Ready() : StateNotify("Ready") {}
@@ -368,7 +384,7 @@ struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0> >, 
   private:
 };
 
-struct HangingUp : boost::statechart::state<HangingUp, Command::orthogonal<0> >, StateNotify
+struct HangingUp : boost::statechart::state<HangingUp, Command::orthogonal<0>>, StateNotify
 {
   public:
     HangingUp(my_context ctx) : my_base(std::move(ctx)), StateNotify("HangingUp")
@@ -383,7 +399,7 @@ struct HangingUp : boost::statechart::state<HangingUp, Command::orthogonal<0> >,
   private:
 };
 
-struct PostDisconnected : boost::statechart::state<PostDisconnected, Command::orthogonal<0> >,
+struct PostDisconnected : boost::statechart::state<PostDisconnected, Command::orthogonal<0>>,
                           StateNotify
 {
   public:
@@ -400,7 +416,7 @@ struct PostDisconnected : boost::statechart::state<PostDisconnected, Command::or
   private:
 };
 
-struct Dial : boost::statechart::state<Dial, Command::orthogonal<0> >, StateNotify
+struct Dial : boost::statechart::state<Dial, Command::orthogonal<0>>, StateNotify
 {
     using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvNoCarrier>>;
 
@@ -417,7 +433,7 @@ struct Dial : boost::statechart::state<Dial, Command::orthogonal<0> >, StateNoti
     int dial_attempts_;
 };
 
-struct Answer : boost::statechart::state<Answer, Command::orthogonal<0> >, StateNotify
+struct Answer : boost::statechart::state<Answer, Command::orthogonal<0>>, StateNotify
 {
     using reactions = boost::mpl::list<boost::statechart::transition<EvNoCarrier, Ready>>;
 
@@ -429,7 +445,7 @@ struct Answer : boost::statechart::state<Answer, Command::orthogonal<0> >, State
 };
 
 // Online
-struct Online : boost::statechart::simple_state<Online, Active::orthogonal<0> >, StateNotify
+struct Online : boost::statechart::simple_state<Online, Active::orthogonal<0>>, StateNotify
 {
     Online() : StateNotify("Online") {}
     ~Online() override = default;
@@ -445,7 +461,7 @@ struct Online : boost::statechart::simple_state<Online, Active::orthogonal<0> >,
 };
 
 // Orthogonal on-call / not-on-call
-struct NotOnCall : boost::statechart::simple_state<NotOnCall, Active::orthogonal<1> >, StateNotify
+struct NotOnCall : boost::statechart::simple_state<NotOnCall, Active::orthogonal<1>>, StateNotify
 {
     using reactions = boost::mpl::list<boost::statechart::transition<EvConnect, OnCall>>;
 
@@ -453,7 +469,7 @@ struct NotOnCall : boost::statechart::simple_state<NotOnCall, Active::orthogonal
     ~NotOnCall() override = default;
 };
 
-struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1> >, StateNotify, OnCallBase
+struct OnCall : boost::statechart::state<OnCall, Active::orthogonal<1>>, StateNotify, OnCallBase
 {
   public:
     OnCall(my_context ctx) : my_base(std::move(ctx)), StateNotify("OnCall")
@@ -664,8 +680,9 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
         std::vector<std::string> sbdi_fields;
         boost::algorithm::split(sbdi_fields, e.sbdi_, boost::is_any_of(":,"));
 
-        std::for_each(sbdi_fields.begin(), sbdi_fields.end(),
-                      boost::bind(&boost::trim<std::string>, boost::placeholders::_1, std::locale()));
+        std::for_each(
+            sbdi_fields.begin(), sbdi_fields.end(),
+            boost::bind(&boost::trim<std::string>, boost::placeholders::_1, std::locale()));
 
         if (sbdi_fields.size() != 7)
         {

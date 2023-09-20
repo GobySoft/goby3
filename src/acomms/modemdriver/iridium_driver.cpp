@@ -49,7 +49,7 @@
 #include "goby/acomms/acomms_constants.h"                  // for BITS_IN_BYTE
 #include "goby/acomms/modemdriver/driver_exception.h"      // for ModemDriv...
 #include "goby/acomms/modemdriver/iridium_driver_common.h" // for RATE_RUDICS
-#include "goby/acomms/modemdriver/rudics_packet.h"         // for serialize...
+#include "goby/acomms/modemdriver/iridium_rudics_packet.h" // for serialize...
 #include "goby/acomms/protobuf/modem_driver_status.pb.h"   // for ModemDriv...
 #include "goby/time/system_clock.h"                        // for SystemClock
 #include "goby/util/binary.h"                              // for hex_encode
@@ -83,6 +83,13 @@ goby::acomms::IridiumDriver::~IridiumDriver() = default;
 
 void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
 {
+    if (running_)
+    {
+        glog.is(DEBUG1) && glog << group(glog_out_group())
+                                << "Already started, running shutdown() first." << std::endl;
+        shutdown();
+    }
+
     driver_cfg_ = cfg;
 
     glog.is(DEBUG1) && glog << group(glog_out_group())
@@ -109,11 +116,21 @@ void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
     if (iridium_driver_cfg().use_dtr())
         mutable_iridium_driver_cfg->add_config("&D2");
 
+    // required for SBDRING
+    mutable_iridium_driver_cfg->add_config("+SBDMTA=1");
+    if (iridium_driver_cfg().enable_sbdring_automatic_registration())
+        mutable_iridium_driver_cfg->add_config("+SBDAREG=1");
+
+    // required for ModemReport
+    mutable_iridium_driver_cfg->add_config("+CIER=1,1,1");
+
     rudics_mac_msg_.set_src(driver_cfg_.modem_id());
     rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
     rudics_mac_msg_.set_rate(RATE_RUDICS);
 
     modem_init();
+
+    running_ = true;
 }
 
 void goby::acomms::IridiumDriver::modem_init()
@@ -189,9 +206,18 @@ void goby::acomms::IridiumDriver::hangup()
 
 void goby::acomms::IridiumDriver::shutdown()
 {
+    if (!running_)
+    {
+        glog.is(DEBUG1) && glog << group(glog_out_group()) << "Not started, ignoring shutdown"
+                                << std::endl;
+
+        return;
+    }
+
     hangup();
 
-    while (fsm_.state_cast<const iridium::fsm::OnCall*>() != 0)
+    while (fsm_.state_cast<const iridium::fsm::OnCall*>() != 0 &&
+           fsm_.state_cast<const iridium::fsm::SBDReady*>() != 0)
     {
         do_work();
         usleep(10000);
@@ -201,6 +227,8 @@ void goby::acomms::IridiumDriver::shutdown()
         set_dtr(false);
 
     modem_close();
+
+    running_ = false;
 }
 
 void goby::acomms::IridiumDriver::handle_initiate_transmission(
@@ -222,9 +250,16 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
     if (!msg.has_frame_start())
         msg.set_frame_start(next_frame_ % frame_max);
 
-    // set the frame size, if not set or if it exceeds the max configured
-    if (!msg.has_max_frame_bytes() || msg.max_frame_bytes() > iridium_driver_cfg().max_frame_size())
-        msg.set_max_frame_bytes(iridium_driver_cfg().max_frame_size());
+    // use smallest of the options
+    unsigned max_frame_bytes = iridium_rate_to_bytes(msg.rate(), iridium_driver_cfg().device(),
+                                                     DIRECTION_MOBILE_ORIGINATED);
+    if (msg.has_max_frame_bytes())
+        max_frame_bytes = std::min(msg.max_frame_bytes(), max_frame_bytes);
+    if (iridium_driver_cfg().has_max_frame_size())
+        max_frame_bytes = std::min(iridium_driver_cfg().max_frame_size(), max_frame_bytes);
+    msg.set_max_frame_bytes(max_frame_bytes);
+
+    msg.set_max_num_frames(1);
 
     signal_data_request(&msg);
 
@@ -361,9 +396,9 @@ void goby::acomms::IridiumDriver::send(const protobuf::ModemTransmission& msg)
             std::string iridium_packet;
             serialize_iridium_modem_message(&iridium_packet, msg);
 
-            std::string rudics_packet;
-            serialize_rudics_packet(iridium_packet, &rudics_packet);
-            fsm_.process_event(iridium::fsm::EvSBDBeginData(rudics_packet));
+            std::string sbd_packet;
+            serialize_sbd_packet(iridium_packet, &sbd_packet);
+            fsm_.process_event(iridium::fsm::EvSBDBeginData(sbd_packet));
         }
     }
 }
@@ -433,4 +468,18 @@ void goby::acomms::IridiumDriver::display_state_cfg(std::ostream* os)
     }
 
     *os << std::endl;
+}
+
+void goby::acomms::IridiumDriver::report(goby::acomms::protobuf::ModemReport* report)
+{
+    auto rssi = fsm_.ciev_data().rssi;
+
+    goby::acomms::ModemDriverBase::report(report);
+    if (goby::acomms::iridium::protobuf::Report::RSSI_IsValid(rssi))
+        report->MutableExtension(goby::acomms::iridium::protobuf::report)
+            ->set_rssi(static_cast<goby::acomms::iridium::protobuf::Report::RSSI>(rssi));
+
+    report->set_link_state(fsm_.ciev_data().service_available
+                               ? goby::acomms::protobuf::ModemReport::LINK_AVAILABLE
+                               : goby::acomms::protobuf::ModemReport::LINK_NOT_AVAILABLE);
 }

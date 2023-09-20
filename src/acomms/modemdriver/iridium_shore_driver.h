@@ -46,7 +46,10 @@ namespace acomms
 class OnCallBase;
 class RUDICSConnection;
 class RUDICSServer;
+namespace directip
+{
 class SBDServer;
+} // namespace directip
 namespace iridium
 {
 namespace protobuf
@@ -81,8 +84,10 @@ class IridiumShoreDriver : public ModemDriverBase
     void decode_mo(iridium::protobuf::DirectIPMOPreHeader* pre_header,
                    iridium::protobuf::DirectIPMOHeader* header,
                    iridium::protobuf::DirectIPMOPayload* body, const std::string& data);
-    std::string create_sbd_mt_data_message(const std::string& payload, const std::string& imei);
+
     void receive_sbd_mo();
+    void receive_sbd_mo_data(const std::string& data, protobuf::ModemTransmission* modem_msg);
+
     void send_sbd_mt(const std::string& bytes, const std::string& imei);
 
     void rudics_send(const std::string& data, ModemId id);
@@ -99,6 +104,16 @@ class IridiumShoreDriver : public ModemDriverBase
     {
         return driver_cfg_.GetExtension(iridium::protobuf::shore_config);
     }
+
+    // in iridium_shore_driver_sbd_directip.cpp
+    void startup_sbd_directip(const protobuf::DriverConfig& cfg);
+    void receive_sbd_mo_directip();
+    void send_sbd_mt_directip(const std::string& bytes, const std::string& imei);
+
+    // in iridium_shore_driver_sbd_rockblock.cpp
+    void startup_sbd_rockblock(const protobuf::DriverConfig& cfg);
+    void receive_sbd_mo_rockblock();
+    void send_sbd_mt_rockblock(const std::string& bytes, const std::string& imei);
 
   private:
     protobuf::DriverConfig driver_cfg_;
@@ -121,16 +136,31 @@ class IridiumShoreDriver : public ModemDriverBase
 
     std::map<ModemId, RemoteNode> remote_;
 
-    boost::asio::io_service rudics_io_;
-    std::shared_ptr<RUDICSServer> rudics_server_;
-    boost::asio::io_service sbd_io_;
-    std::shared_ptr<SBDServer> mo_sbd_server_;
+    std::unique_ptr<boost::asio::io_service> rudics_io_;
+    std::unique_ptr<RUDICSServer> rudics_server_;
+    std::unique_ptr<boost::asio::io_service> sbd_io_;
+    std::unique_ptr<directip::SBDServer> directip_mo_sbd_server_;
 
     // maps remote modem to connection
-    boost::bimap<ModemId, std::shared_ptr<RUDICSConnection> > clients_;
+    boost::bimap<ModemId, std::shared_ptr<RUDICSConnection>> clients_;
 
     using IMEI = std::string;
     std::map<ModemId, IMEI> modem_id_to_imei_;
+
+    struct RockblockHTTPMessage
+    {
+        enum class MessageState
+        {
+            HEADER,
+            BODY,
+            COMPLETE
+        };
+        MessageState state{MessageState::HEADER};
+        std::map<std::string, std::string> header;
+        std::string body;
+    };
+
+    std::unique_ptr<RockblockHTTPMessage> rb_msg_;
 };
 } // namespace acomms
 } // namespace goby
