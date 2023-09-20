@@ -100,6 +100,12 @@ class FlexOstream : public std::ostream
         sb_.add_stream(static_cast<logger::Verbosity>(verbosity), os);
     }
 
+    void remove_stream(std::ostream* os = nullptr)
+    {
+        std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
+        sb_.remove_stream(os);
+    }
+
     const FlexOStreamBuf& buf() { return sb_; }
 
     //@}

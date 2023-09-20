@@ -139,6 +139,8 @@ template <typename Config> class Application
     int __run();
 
     void configure_logger();
+    void configure_glog_file();
+    void check_rotate_glog_file();
 
   private:
     // sets configuration (before Application construction)
@@ -150,6 +152,8 @@ template <typename Config> class Application
 
     // static here allows fout_ to live until program exit to log glog output
     static std::unique_ptr<std::ofstream> fout_;
+
+    goby::time::SteadyClock::time_point next_log_rotate_time_;
 
     std::unique_ptr<goby::util::UTMGeodesy> geodesy_;
 };
@@ -197,58 +201,75 @@ template <typename Config> void goby::middleware::Application<Config>::configure
         glog.enable_gui();
 
     if (app3_base_configuration_->glog_config().has_file_log())
-    {
-        const auto& file_log = app3_base_configuration_->glog_config().file_log();
-        std::string file_format_str;
-
-        if (file_log.has_file_dir() && !file_log.file_dir().empty())
-        {
-            auto file_dir = file_log.file_dir();
-            if (file_dir.back() != '/')
-                file_dir += "/";
-            file_format_str = file_dir + file_log.file_name();
-        }
-        else
-        {
-            file_format_str = file_log.file_name();
-        }
-
-        boost::format file_format(file_format_str);
-
-        if (file_format_str.find("%1") == std::string::npos)
-            glog.is_die() &&
-                glog << "file_name string must contain \"%1%\" which is expanded to the current "
-                        "application start time (e.g. 20190201T184925). Erroneous file_name is: "
-                     << file_format_str << std::endl;
-
-        file_format.exceptions(boost::io::all_error_bits ^
-                               (boost::io::too_many_args_bit | boost::io::too_few_args_bit));
-
-        std::string file_name =
-            (file_format % goby::time::file_str() % app3_base_configuration_->name()).str();
-        std::string file_symlink =
-            (file_format % "latest" % app3_base_configuration_->name()).str();
-
-        glog.is_verbose() && glog << "logging output to file: " << file_name << std::endl;
-
-        fout_.reset(new std::ofstream(file_name.c_str()));
-
-        if (!fout_->is_open())
-            glog.is_die() && glog << "cannot write glog output to requested file: " << file_name
-                                  << std::endl;
-
-        remove(file_symlink.c_str());
-        int result = symlink(realpath(file_name.c_str(), NULL), file_symlink.c_str());
-        if (result != 0)
-            glog.is_warn() &&
-                glog << "Cannot create symlink to latest file. Continuing onwards anyway"
-                     << std::endl;
-
-        glog.add_stream(file_log.verbosity(), fout_.get());
-    }
+        configure_glog_file();
 
     if (app3_base_configuration_->glog_config().show_dccl_log())
         goby::middleware::detail::DCCLSerializerParserHelperBase::setup_dlog();
+}
+
+template <typename Config> void goby::middleware::Application<Config>::check_rotate_glog_file()
+{
+    using goby::glog;
+    if (app3_base_configuration_->glog_config().has_file_log() &&
+        app3_base_configuration_->glog_config().file_log().has_log_rotate_sec() &&
+        goby::time::SteadyClock::now() > next_log_rotate_time_)
+    {
+        glog.remove_stream(fout_.get());
+        configure_glog_file();
+    }
+}
+
+template <typename Config> void goby::middleware::Application<Config>::configure_glog_file()
+{
+    const auto& file_log = app3_base_configuration_->glog_config().file_log();
+    std::string file_format_str;
+
+    if (file_log.has_file_dir() && !file_log.file_dir().empty())
+    {
+        auto file_dir = file_log.file_dir();
+        if (file_dir.back() != '/')
+            file_dir += "/";
+        file_format_str = file_dir + file_log.file_name();
+    }
+    else
+    {
+        file_format_str = file_log.file_name();
+    }
+
+    boost::format file_format(file_format_str);
+
+    if (file_format_str.find("%1") == std::string::npos)
+        glog.is_die() &&
+            glog << "file_name string must contain \"%1%\" which is expanded to the current "
+                    "application start time (e.g. 20190201T184925). Erroneous file_name is: "
+                 << file_format_str << std::endl;
+
+    file_format.exceptions(boost::io::all_error_bits ^
+                           (boost::io::too_many_args_bit | boost::io::too_few_args_bit));
+
+    std::string file_name =
+        (file_format % goby::time::file_str() % app3_base_configuration_->name()).str();
+    std::string file_symlink = (file_format % "latest" % app3_base_configuration_->name()).str();
+
+    glog.is_verbose() && glog << "logging output to file: " << file_name << std::endl;
+
+    fout_.reset(new std::ofstream(file_name.c_str()));
+
+    if (!fout_->is_open())
+        glog.is_die() && glog << "cannot write glog output to requested file: " << file_name
+                              << std::endl;
+
+    remove(file_symlink.c_str());
+    int result = symlink(realpath(file_name.c_str(), NULL), file_symlink.c_str());
+    if (result != 0)
+        glog.is_warn() && glog << "Cannot create symlink to latest file. Continuing onwards anyway"
+                               << std::endl;
+
+    glog.add_stream(file_log.verbosity(), fout_.get());
+
+    if (file_log.has_log_rotate_sec())
+        next_log_rotate_time_ =
+            goby::time::SteadyClock::now() + std::chrono::seconds(file_log.log_rotate_sec());
 }
 
 template <typename Config>
@@ -270,7 +291,11 @@ template <typename Config> int goby::middleware::Application<Config>::__run()
     this->initialize();
     this->post_initialize();
     // continue to run while we are alive (quit() has not been called)
-    while (alive_) { this->run(); }
+    while (alive_)
+    {
+        this->run();
+        this->check_rotate_glog_file();
+    }
     this->pre_finalize();
     this->finalize();
     this->post_finalize();

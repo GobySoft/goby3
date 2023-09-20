@@ -1,10 +1,12 @@
 syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
 
 package goby.util.protobuf;
 
 message GLogConfig
 {
+    option (dccl.msg).unit_system = "si";
     enum Verbosity
     {
         QUIET = 1;
@@ -45,10 +47,15 @@ message GLogConfig
             default = VERBOSE,
             (goby.field).description = "Verbosity for this file log"
         ];
+
+        optional uint32 log_rotate_sec = 4 [
+            (goby.field).description =
+                "How often to rotate the glog file, in seconds.",
+            (dccl.field).units.base_dimensions = "T"
+        ];
     }
     optional FileLog file_log = 3
-        [(goby.field).description =
-             "Open a file for (debug) logging."];
-    
+        [(goby.field).description = "Open a file for (debug) logging."];
+
     optional bool show_dccl_log = 4 [default = false];
 }
