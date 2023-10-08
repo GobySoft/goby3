@@ -94,8 +94,8 @@ message Subscription
     }
     required Action action = 3;
 
-    required uint32 dccl_id = 5 [(dccl.field) = { min: 1 max: 32767 }];
-    required uint32 group = 6 [(dccl.field) = { min: 0 max: 255 }];
+    required uint32 dccl_id = 5 [(dccl.field) = { codec: "dccl.default.id" }]; // 2-byte varint
+    required uint32 group = 6 [(dccl.field) = { codec: "dccl.native_protobuf" }]; // 4-byte varint
     optional TransporterConfig intervehicle = 10;
     optional goby.middleware.protobuf.SerializerProtobufMetadata metadata = 20;
 }
