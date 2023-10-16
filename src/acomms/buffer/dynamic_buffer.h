@@ -503,9 +503,11 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicBuf
     {
         using goby::glog;
 
-        glog.is_debug1() && glog << group(glog_priority_group_)
-                                 << "Starting priority contest (dest: " << dest_id
-                                 << ", max_bytes: " << max_bytes << "):" << std::endl;
+        glog.is_debug1() &&
+            glog << group(glog_priority_group_) << "Starting priority contest (dest: "
+                 << (dest_id == goby::acomms::QUERY_DESTINATION_ID ? std::string("?")
+                                                                   : std::to_string(dest_id))
+                 << ", max_bytes: " << max_bytes << "):" << std::endl;
 
         typename std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T, Clock>>::iterator
             winning_sub;

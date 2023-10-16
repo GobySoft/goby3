@@ -230,7 +230,6 @@ add_library(goby
 target_link_libraries(goby
   dccl
   dccl_arithmetic
-  dccl_native_protobuf
   ${Boost_LIBRARIES}
   ${PROTOBUF_LIBRARY}
   ${PROJ_LIBRARY}

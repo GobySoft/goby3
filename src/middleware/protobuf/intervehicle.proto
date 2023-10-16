@@ -72,17 +72,30 @@ message Status
     required int32 tx_queue_size = 1;
 }
 
+enum SubscriptionDCCLID
+{
+    SUBSCRIPTION_DCCL_ID__GOBY_3_0 = 2;
+    SUBSCRIPTION_DCCL_ID__GOBY_3_1 = 3;
+}
+
+// when this changes, update GOBY_INTERVEHICLE_API_VERSION in goby3/CMakeLists.txt
 message Subscription
 {
     option (dccl.msg) = {
         codec_version: 3
-        id: 2
+        id: 3 // SUBSCRIPTION_DCCL_ID__GOBY_3_1
         max_bytes: 32
         unit_system: "si"
     };
 
-    required Header header = 1;
-    optional uint64 time = 2 [(dccl.field) = {
+    // put dccl_id and group first so we can detect any other future changes to Subscription
+    // using the group (that is, GOBY_INTERVEHICLE_API_VERSION)
+    required uint32 dccl_id = 1 [(dccl.field) = { codec: "dccl.default.id" }]; // 2-byte varint
+    required uint32 group = 2 [(dccl.field) = { min: 0 max: 4294967295 }];  // 4-byte
+    // now followed by rest of the fields
+    
+    required Header header = 3;
+    optional uint64 time = 4 [(dccl.field) = {
         omit: true
         units { prefix: "micro" base_dimensions: "T" }
     }];
@@ -92,12 +105,9 @@ message Subscription
         SUBSCRIBE = 1;
         UNSUBSCRIBE = 2;
     }
-    required Action action = 3;
-
-    required uint32 dccl_id = 5 [(dccl.field) = { codec: "dccl.default.id" }]; // 2-byte varint
-    required uint32 group = 6 [(dccl.field) = { codec: "dccl.native_protobuf" }]; // 4-byte varint
+    required Action action = 5;
     optional TransporterConfig intervehicle = 10;
-    optional goby.middleware.protobuf.SerializerProtobufMetadata metadata = 20;
+    optional goby.middleware.protobuf.SerializerProtobufMetadata metadata = 20 [(dccl.field).omit = true];
 }
 
 message Header
