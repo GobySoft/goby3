@@ -451,6 +451,7 @@ class InterVehicleTransporterBase
         for (auto id : subscriber.cfg().intervehicle().publisher_id())
             dccl_subscription->mutable_header()->add_dest(id);
 
+        dccl_subscription->set_api_version(GOBY_INTERVEHICLE_API_VERSION);
         dccl_subscription->set_dccl_id(dccl_id);
         dccl_subscription->set_group(group.numeric());
         dccl_subscription->set_time_with_units(

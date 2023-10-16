@@ -92,9 +92,11 @@ void check_subscription_version(unsigned dccl_id, const google::protobuf::Messag
     {
         goby::middleware::intervehicle::protobuf::Subscription subscription;
         subscription.CopyFrom(msg);
-        if (subscription.dccl_id() ==
-                goby::middleware::intervehicle::protobuf::Subscription::DCCL_ID &&
-            subscription.group() != GOBY_INTERVEHICLE_API_VERSION)
+
+        glog.is_warn() && glog << "Checking subscription: " << subscription.ShortDebugString()
+                               << std::endl;
+
+        if (subscription.api_version() != GOBY_INTERVEHICLE_API_VERSION)
         {
             glog.is_warn() &&
                 glog << "Received subscription forwarding subscription with incompatible "
@@ -103,7 +105,7 @@ void check_subscription_version(unsigned dccl_id, const google::protobuf::Messag
                      << subscription.header().src() << ": " << subscription.group() << ")"
                      << std::endl;
 
-            if (subscription.group() > GOBY_INTERVEHICLE_API_VERSION)
+            if (subscription.api_version() > GOBY_INTERVEHICLE_API_VERSION)
             {
                 glog.is_warn() &&
                     glog << "Please update the version of Goby on this system in order "

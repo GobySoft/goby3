@@ -477,6 +477,9 @@ void goby::middleware::intervehicle::ModemDriverThread::_accept_subscription(
     if (!_dest_is_in_subnet(dest))
         return;
 
+    if (subscription.api_version() != GOBY_INTERVEHICLE_API_VERSION)
+        return;
+
     switch (subscription.action())
     {
         case protobuf::Subscription::SUBSCRIBE:
