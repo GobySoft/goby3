@@ -26,6 +26,7 @@
 #define GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_GROUPS_H
 
 #include "goby/middleware/group.h"
+#include "goby/version.h"
 
 namespace goby
 {
@@ -35,8 +36,9 @@ namespace intervehicle
 {
 namespace groups
 {
-constexpr Group subscription_forward{"goby::middleware::intervehicle::subscription_forward",
-                                     Group::broadcast_group};
+constexpr Group subscription_forward{
+    "goby::middleware::intervehicle::subscription_forward",
+    GOBY_INTERVEHICLE_API_VERSION}; // increment the subscription forward numeric group whenever we change the Subscription DCCL message
 
 constexpr Group modem_data_out{"goby::middleware::intervehicle::modem_data_out"};
 constexpr Group modem_data_in{"goby::middleware::intervehicle::modem_data_in"};

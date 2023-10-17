@@ -60,6 +60,7 @@ set(GOBY_VERSION_MAJOR "3")
 set(GOBY_VERSION_MINOR "0")
 set(GOBY_VERSION_PATCH "17")
 
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    message(STATUS "Compiling in Git source tree.")
    include(today)
@@ -94,6 +95,9 @@ set(GOBY_VERSION "${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PAT
 
 # give Goby 1 series a few more soversions
 set(GOBY_SOVERSION "30")
+
+# Increment on changes to internal DCCL messages
+set(GOBY_INTERVEHICLE_API_VERSION "1")
 
 # create variables for various directories
 get_filename_component(goby_SRC_DIR src ABSOLUTE)

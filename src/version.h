@@ -28,9 +28,12 @@
 #include <sstream>
 #include <string>
 
+// clang-format off
 #define GOBY_VERSION_MAJOR @GOBY_VERSION_MAJOR@
 #define GOBY_VERSION_MINOR @GOBY_VERSION_MINOR@
 #define GOBY_VERSION_PATCH @GOBY_VERSION_PATCH@
+#define GOBY_INTERVEHICLE_API_VERSION @GOBY_INTERVEHICLE_API_VERSION@
+// clang-format on
 
 namespace goby
 {

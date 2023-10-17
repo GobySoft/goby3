@@ -92,7 +92,8 @@ class InterVehicleTransporterBase
         this->inner()
             .template subscribe<intervehicle::groups::metadata_request,
                                 protobuf::SerializerMetadataRequest>(
-                [this](const protobuf::SerializerMetadataRequest& request) {
+                [this](const protobuf::SerializerMetadataRequest& request)
+                {
                     glog.is_debug3() && glog << "Received DCCL metadata request: "
                                              << request.ShortDebugString() << std::endl;
 
@@ -450,6 +451,7 @@ class InterVehicleTransporterBase
         for (auto id : subscriber.cfg().intervehicle().publisher_id())
             dccl_subscription->mutable_header()->add_dest(id);
 
+        dccl_subscription->set_api_version(GOBY_INTERVEHICLE_API_VERSION);
         dccl_subscription->set_dccl_id(dccl_id);
         dccl_subscription->set_group(group.numeric());
         dccl_subscription->set_time_with_units(
@@ -586,21 +588,18 @@ class InterVehicleForwarder
         this->inner()
             .template subscribe<intervehicle::groups::modem_data_in,
                                 intervehicle::protobuf::DCCLForwardedData>(
-                [this](const intervehicle::protobuf::DCCLForwardedData& msg) {
-                    this->_receive(msg);
-                });
+                [this](const intervehicle::protobuf::DCCLForwardedData& msg)
+                { this->_receive(msg); });
 
         using ack_pair_type = intervehicle::protobuf::AckMessagePair;
         this->inner().template subscribe<intervehicle::groups::modem_ack_in, ack_pair_type>(
-            [this](const ack_pair_type& ack_pair) {
-                this->template _handle_ack_or_expire<0>(ack_pair);
-            });
+            [this](const ack_pair_type& ack_pair)
+            { this->template _handle_ack_or_expire<0>(ack_pair); });
 
         using expire_pair_type = intervehicle::protobuf::ExpireMessagePair;
         this->inner().template subscribe<intervehicle::groups::modem_expire_in, expire_pair_type>(
-            [this](const expire_pair_type& expire_pair) {
-                this->template _handle_ack_or_expire<1>(expire_pair);
-            });
+            [this](const expire_pair_type& expire_pair)
+            { this->template _handle_ack_or_expire<1>(expire_pair); });
     }
 
     virtual ~InterVehicleForwarder() = default;
@@ -722,7 +721,8 @@ class InterVehiclePortal
         // then re-publish to driver threads
         {
             using intervehicle::protobuf::Subscription;
-            auto subscribe_lambda = [=](std::shared_ptr<const Subscription> d) {
+            auto subscribe_lambda = [=](std::shared_ptr<const Subscription> d)
+            {
                 this->innermost()
                     .template publish<intervehicle::groups::modem_subscription_forward_rx,
                                       intervehicle::protobuf::Subscription,
@@ -738,28 +738,26 @@ class InterVehiclePortal
         }
 
         this->innermost().template subscribe<intervehicle::groups::modem_data_in>(
-            [this](const intervehicle::protobuf::DCCLForwardedData& msg) {
-                received_.push_back(msg);
-            });
+            [this](const intervehicle::protobuf::DCCLForwardedData& msg)
+            { received_.push_back(msg); });
 
         // a message requiring ack can be disposed by either [1] ack, [2] expire (TTL exceeded), [3] having no subscribers, [4] queue size exceeded.
         // post the correct callback (ack for [1] and expire for [2-4])
         // and remove the pending ack message
         using ack_pair_type = intervehicle::protobuf::AckMessagePair;
         this->innermost().template subscribe<intervehicle::groups::modem_ack_in, ack_pair_type>(
-            [this](const ack_pair_type& ack_pair) {
-                this->template _handle_ack_or_expire<0>(ack_pair);
-            });
+            [this](const ack_pair_type& ack_pair)
+            { this->template _handle_ack_or_expire<0>(ack_pair); });
 
         using expire_pair_type = intervehicle::protobuf::ExpireMessagePair;
         this->innermost()
             .template subscribe<intervehicle::groups::modem_expire_in, expire_pair_type>(
-                [this](const expire_pair_type& expire_pair) {
-                    this->template _handle_ack_or_expire<1>(expire_pair);
-                });
+                [this](const expire_pair_type& expire_pair)
+                { this->template _handle_ack_or_expire<1>(expire_pair); });
 
         this->innermost().template subscribe<intervehicle::groups::modem_driver_ready, bool>(
-            [this](const bool& ready) {
+            [this](const bool& ready)
+            {
                 goby::glog.is_debug1() && goby::glog << "Received driver ready" << std::endl;
                 ++drivers_ready_;
             });
@@ -778,20 +776,22 @@ class InterVehiclePortal
             modem_drivers_.emplace_back(new ModemDriverData);
             ModemDriverData& data = *modem_drivers_.back();
 
-            data.underlying_thread.reset(new std::thread([&data, link]() {
-                try
+            data.underlying_thread.reset(new std::thread(
+                [&data, link]()
                 {
-                    data.modem_driver_thread.reset(new intervehicle::ModemDriverThread(*link));
-                    data.modem_driver_thread->run(data.driver_thread_alive);
-                }
-                catch (std::exception& e)
-                {
-                    goby::glog.is_warn() &&
-                        goby::glog << "Modem driver thread had uncaught exception: " << e.what()
-                                   << std::endl;
-                    throw;
-                }
-            }));
+                    try
+                    {
+                        data.modem_driver_thread.reset(new intervehicle::ModemDriverThread(*link));
+                        data.modem_driver_thread->run(data.driver_thread_alive);
+                    }
+                    catch (std::exception& e)
+                    {
+                        goby::glog.is_warn() &&
+                            goby::glog << "Modem driver thread had uncaught exception: " << e.what()
+                                       << std::endl;
+                        throw;
+                    }
+                }));
 
             if (goby::glog.buf().is_gui())
                 // allows for visual grouping of each link in the NCurses gui
@@ -868,7 +868,8 @@ class InterVehiclePortal
         remove(persist_sub_file_name_.c_str());
 
         this->innermost().template subscribe<intervehicle::groups::subscription_report>(
-            [this](const intervehicle::protobuf::SubscriptionReport& report) {
+            [this](const intervehicle::protobuf::SubscriptionReport& report)
+            {
                 goby::glog.is_debug1() && goby::glog << "Received subscription report: "
                                                      << report.ShortDebugString() << std::endl;
                 sub_reports_[report.link_modem_id()] = report;
