@@ -89,9 +89,10 @@ message Subscription
         unit_system: "si"
     };
 
-    // must be first to allow us to decode this field regardless of other message changes
-    // so we can warn when its incompatible
-    required uint32 api_version = 1 [(dccl.field) = { min: 1 max: 16 }];
+    // must be first to allow us to decode this field regardless of other
+    // message changes so we can warn when its incompatible
+    required uint32 api_version = 1
+        [(dccl.field) = { min: 1 max: 16 in_head: true }];
 
     required Header header = 2;
     optional uint64 time = 3 [(dccl.field) = {
