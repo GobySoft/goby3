@@ -100,9 +100,10 @@ void check_subscription_version(unsigned dccl_id, const google::protobuf::Messag
         {
             glog.is_warn() &&
                 glog << "Received subscription forwarding subscription with incompatible "
-                        "GOBY_INTERVEHICLE_API_VERSION (this system: "
+                        "GOBY_INTERVEHICLE_API_VERSION (this system: GOBY_INTERVEHICLE_API_VERSION="
                      << GOBY_INTERVEHICLE_API_VERSION << ", remote system (modem id) "
-                     << subscription.header().src() << ": " << subscription.api_version() << ")"
+                     << subscription.header().src()
+                     << ": GOBY_INTERVEHICLE_API_VERSION=" << subscription.api_version() << ")"
                      << std::endl;
 
             if (subscription.api_version() > GOBY_INTERVEHICLE_API_VERSION)
