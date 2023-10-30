@@ -1,10 +1,9 @@
-// Copyright 2011-2021:
+// Copyright 2011-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Russ Webber <russ@rw.id.au>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries

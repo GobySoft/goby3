@@ -1,5 +1,25 @@
 Goby Release Notes (Major version 3)
 
+Version 3.1.0
+
+### Middleware
+
+-  Update Subscription DCCL message to fill full uint32 (with varint) now that Group using uint32 group sizes. Also switch dccl_id to default id codec. Add intervehicle API version for future changes to Subscription message. Reworked Subscription message to use new DCCL ID 3 to distinguish from old Subscription message (DCCL ID 2) and moved dccl_id and group fields to front of message to detect future changes **Important: this necessary change makes Goby 3.0 and Goby 3.1 NOT wire compatible** for intervehicle publish/subscribe.
+
+### Acomms
+
+- Support for Iridium 9503 (RockBlock) and Rockblock SBD HTTP shore-side API in Iridium drivers. New `goby_rockblock_simulator` to simulate a system with N Rockblock modems and a shore-side server.
+
+### General
+
+- Add optional log rotation on a fixed time to glog files
+
+
+### Bugs
+
+- Remove warnings about boost::placeholder deprecation in boost::bind
+- Create common functions for responding to goby_terminate and goby_coroner and add these to gobyd/goby_intervehicle_portal and TimerThread to get full responses for goby_coroner
+- Improve Protobuf log plugin: recursively add field extensions to ensure we pick them all up at log writing time. 
 
 ****************
 Version 3.0.17

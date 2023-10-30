@@ -1,6 +1,5 @@
-// Copyright 2013-2021:
+// Copyright 2023:
 //   GobySoft, LLC (2013-)
-//   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
