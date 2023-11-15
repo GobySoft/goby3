@@ -113,4 +113,5 @@ message DriverConfig
     // extension 1441 used by benthos_atm900.proto
     // extension 1442 used by popoto.proto
     // extension 1443 used by Jaiabot XBee
+    // extensions 1510-1519 used by Blue Ocean Seismic Services
 }

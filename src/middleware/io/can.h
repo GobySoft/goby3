@@ -41,7 +41,7 @@
 #include <boost/asio/buffer.hpp>                  // for buffer
 #include <boost/asio/posix/stream_descriptor.hpp> // for stream_descriptor
 #include <boost/asio/read.hpp>                    // for async_read
-#include <boost/bind/bind.hpp>                         // for bind
+#include <boost/bind/bind.hpp>                    // for bind
 #include <boost/core/ref.hpp>                     // for ref
 
 #include "goby/exception.h"                         // for Exception
@@ -88,14 +88,17 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          template <class> class ThreadType = goby::middleware::SimpleThread>
-class CanThread : public detail::IOThread<line_in_group, line_out_group, publish_layer,
-                                          subscribe_layer, goby::middleware::protobuf::CanConfig,
-                                          boost::asio::posix::stream_descriptor, ThreadType>
+          template <class> class ThreadType = goby::middleware::SimpleThread,
+          bool use_indexed_groups = false>
+class CanThread
+    : public detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                              goby::middleware::protobuf::CanConfig,
+                              boost::asio::posix::stream_descriptor, ThreadType, use_indexed_groups>
 {
-    using Base = detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                  goby::middleware::protobuf::CanConfig,
-                                  boost::asio::posix::stream_descriptor, ThreadType>;
+    using Base =
+        detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
+                         goby::middleware::protobuf::CanConfig,
+                         boost::asio::posix::stream_descriptor, ThreadType, use_indexed_groups>;
 
   public:
     /// \brief Constructs the thread.
@@ -131,9 +134,10 @@ class CanThread : public detail::IOThread<line_in_group, line_out_group, publish
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType,
+          bool use_indexed_groups>
 void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                     ThreadType>::open_socket()
+                                     ThreadType, use_indexed_groups>::open_socket()
 {
     int can_socket;
 
@@ -180,23 +184,28 @@ void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_laye
     this->mutable_socket().assign(can_socket);
 
     this->interthread().template subscribe<line_out_group, can_frame>(
-        [this](const can_frame& frame) {
+        [this](const can_frame& frame)
+        {
             auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();
             std::string& bytes = *io_msg->mutable_data();
 
             const int frame_size = sizeof(can_frame);
 
             for (int i = 0; i < frame_size; ++i)
-            { bytes += *(reinterpret_cast<const char*>(&frame) + i); } this->write(io_msg);
+            {
+                bytes += *(reinterpret_cast<const char*>(&frame) + i);
+            }
+            this->write(io_msg);
         });
 }
 
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType,
+          bool use_indexed_groups>
 void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                     ThreadType>::async_read()
+                                     ThreadType, use_indexed_groups>::async_read()
 {
     boost::asio::async_read(this->mutable_socket(),
                             boost::asio::buffer(&receive_frame_, sizeof(receive_frame_)),
@@ -207,11 +216,12 @@ void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_laye
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
-void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                     ThreadType>::data_rec(struct can_frame& receive_frame_,
-                                                           boost::asio::posix::stream_descriptor&
-                                                               stream)
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType,
+          bool use_indexed_groups>
+void goby::middleware::io::CanThread<
+    line_in_group, line_out_group, publish_layer, subscribe_layer, ThreadType,
+    use_indexed_groups>::data_rec(struct can_frame& receive_frame_,
+                                  boost::asio::posix::stream_descriptor& stream)
 {
     //  Within a process raw can frames are probably what we are looking for.
     this->interthread().template publish<line_in_group>(receive_frame_);
@@ -220,7 +230,9 @@ void goby::middleware::io::CanThread<line_in_group, line_out_group, publish_laye
     const int frame_size = sizeof(can_frame);
 
     for (int i = 0; i < frame_size; ++i)
-    { bytes += *(reinterpret_cast<char*>(&receive_frame_) + i); }
+    {
+        bytes += *(reinterpret_cast<char*>(&receive_frame_) + i);
+    }
 
     this->handle_read_success(bytes.size(), bytes);
 

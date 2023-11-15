@@ -60,19 +60,21 @@ template <const goby::middleware::Group& line_in_group,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
           typename Config = goby::middleware::protobuf::UDPOneToManyConfig,
-          template <class> class ThreadType = goby::middleware::SimpleThread>
+          template <class> class ThreadType = goby::middleware::SimpleThread,
+          bool use_indexed_groups = false>
 class UDPOneToManyThread
     : public detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-                              boost::asio::ip::udp::socket, ThreadType>
+                              boost::asio::ip::udp::socket, ThreadType, use_indexed_groups>
 {
-    using Base = detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                  Config, boost::asio::ip::udp::socket, ThreadType>;
+    using Base =
+        detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
+                         boost::asio::ip::udp::socket, ThreadType, use_indexed_groups>;
 
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    UDPOneToManyThread(const Config& config, bool is_final = true)
-        : Base(config, -1, std::string("udp: ") + std::to_string(config.bind_port()))
+    UDPOneToManyThread(const Config& config, int index = -1, bool is_final = true)
+        : Base(config, index, std::string("udp: ") + std::to_string(config.bind_port()))
     {
         if (is_final)
         {
@@ -109,9 +111,10 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
-          template <class> class ThreadType>
+          template <class> class ThreadType, bool use_indexed_groups>
 void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, publish_layer,
-                                              subscribe_layer, Config, ThreadType>::open_socket()
+                                              subscribe_layer, Config, ThreadType,
+                                              use_indexed_groups>::open_socket()
 {
     this->mutable_socket().open(boost::asio::ip::udp::v4());
 
@@ -137,13 +140,15 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
-          template <class> class ThreadType>
+          template <class> class ThreadType, bool use_indexed_groups>
 void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, publish_layer,
-                                              subscribe_layer, Config, ThreadType>::async_read()
+                                              subscribe_layer, Config, ThreadType,
+                                              use_indexed_groups>::async_read()
 {
     this->mutable_socket().async_receive_from(
         boost::asio::buffer(rx_message_), sender_endpoint_,
-        [this](const boost::system::error_code& ec, size_t bytes_transferred) {
+        [this](const boost::system::error_code& ec, size_t bytes_transferred)
+        {
             if (!ec && bytes_transferred > 0)
             {
                 auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();
@@ -169,10 +174,11 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
           goby::middleware::io::PubSubLayer subscribe_layer, typename Config,
-          template <class> class ThreadType>
+          template <class> class ThreadType, bool use_indexed_groups>
 void goby::middleware::io::UDPOneToManyThread<
-    line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
-    ThreadType>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
+    line_in_group, line_out_group, publish_layer, subscribe_layer, Config, ThreadType,
+    use_indexed_groups>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData>
+                                         io_msg)
 {
     if (!io_msg->has_udp_dest())
         throw(goby::Exception("UDPOneToManyThread requires 'udp_dest' field to be set in IOData"));
@@ -185,7 +191,8 @@ void goby::middleware::io::UDPOneToManyThread<
 
     this->mutable_socket().async_send_to(
         boost::asio::buffer(io_msg->data()), remote_endpoint,
-        [this, io_msg](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+        [this, io_msg](const boost::system::error_code& ec, std::size_t bytes_transferred)
+        {
             if (!ec && bytes_transferred > 0)
             {
                 this->handle_write_success(bytes_transferred);

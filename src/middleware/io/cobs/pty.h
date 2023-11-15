@@ -66,12 +66,13 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          template <class> class ThreadType = goby::middleware::SimpleThread>
+          template <class> class ThreadType = goby::middleware::SimpleThread,
+          bool use_indexed_groups = false>
 class PTYThreadCOBS : public detail::PTYThread<line_in_group, line_out_group, publish_layer,
-                                               subscribe_layer, ThreadType>
+                                               subscribe_layer, ThreadType, use_indexed_groups>
 {
     using Base = detail::PTYThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                   ThreadType>;
+                                   ThreadType, use_indexed_groups>;
 
   public:
     /// \brief Constructs the thread.
