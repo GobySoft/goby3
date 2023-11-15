@@ -1,5 +1,17 @@
 Goby Release Notes (Major version 3)
 
+Version 3.1.1
+
+### Bugs
+
+- Added missing "inline" on intermodule function
+- Added missing index on UDP threads, and use_indexed_groups on UDP/PTY threads.
+
+### External Dependencies
+
+Updated nlohmann JSON to 3.11.2
+
+****************
 Version 3.1.0
 
 ### Middleware
