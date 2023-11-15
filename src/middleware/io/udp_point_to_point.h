@@ -67,19 +67,23 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          template <class> class ThreadType = goby::middleware::SimpleThread>
+          template <class> class ThreadType = goby::middleware::SimpleThread,
+          bool use_indexed_groups = false>
 class UDPPointToPointThread
     : public UDPOneToManyThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                goby::middleware::protobuf::UDPPointToPointConfig, ThreadType>
+                                goby::middleware::protobuf::UDPPointToPointConfig, ThreadType,
+                                use_indexed_groups>
 {
     using Base = UDPOneToManyThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                    goby::middleware::protobuf::UDPPointToPointConfig, ThreadType>;
+                                    goby::middleware::protobuf::UDPPointToPointConfig, ThreadType,
+                                    use_indexed_groups>;
 
   public:
     /// \brief Constructs the thread.
     /// \param config A reference to the Protocol Buffers config read by the main application at launch
-    UDPPointToPointThread(const goby::middleware::protobuf::UDPPointToPointConfig& config)
-        : Base(config, false)
+    UDPPointToPointThread(const goby::middleware::protobuf::UDPPointToPointConfig& config,
+                          int index = -1)
+        : Base(config, index, false)
     {
         boost::asio::ip::udp::resolver resolver(this->mutable_io());
         remote_endpoint_ =
@@ -107,14 +111,16 @@ class UDPPointToPointThread
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
-void goby::middleware::io::UDPPointToPointThread<
-    line_in_group, line_out_group, publish_layer, subscribe_layer,
-    ThreadType>::async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType,
+          bool use_indexed_groups>
+void goby::middleware::io::UDPPointToPointThread<line_in_group, line_out_group, publish_layer,
+                                                 subscribe_layer, ThreadType, use_indexed_groups>::
+    async_write(std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
 {
     this->mutable_socket().async_send_to(
         boost::asio::buffer(io_msg->data()), remote_endpoint_,
-        [this, io_msg](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+        [this, io_msg](const boost::system::error_code& ec, std::size_t bytes_transferred)
+        {
             if (!ec && bytes_transferred > 0)
             {
                 this->handle_write_success(bytes_transferred);
