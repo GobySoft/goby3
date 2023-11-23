@@ -37,6 +37,9 @@ message PlaybackConfig
     optional double playback_start_delay = 12
         [default = 1, (dccl.field).units.base_dimensions = "T"];
 
+    optional double start_from_offset = 13
+        [default = 0, (dccl.field).units.base_dimensions = "T"];
+    
     optional string group_regex = 20 [default = ".*"];
     message TypeFilter
     {
