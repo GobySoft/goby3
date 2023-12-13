@@ -76,7 +76,7 @@ void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
     driver_cfg_ = cfg;
 
     // Popoto specific start up strings
-    int modem_p = popoto_driver_cfg().modem_power();
+    modem_p = popoto_driver_cfg().modem_power();
     int payload_mode = popoto_driver_cfg().payload_mode();
     int start_timeout = popoto_driver_cfg().start_timeout();
 
@@ -167,7 +167,7 @@ void goby::acomms::PopotoDriver::handle_initiate_transmission(
     raw << "setvaluei LocalID " << driver_cfg_.modem_id() << "\n";
     signal_and_write(raw.str());
     raw.str("");
-    raw << "setvaluef TxPowerWatts " + std::to_string(popoto_driver_cfg().modem_power()) << "\n";
+    raw << "setvaluef TxPowerWatts " + std::to_string(modem_p) << "\n";
     signal_and_write(raw.str());
 
     switch (msg.type())
@@ -246,7 +246,7 @@ void goby::acomms::PopotoDriver::handle_initiate_transmission(
 void goby::acomms::PopotoDriver::send_wake(void)
 {
     std::stringstream message;
-    message << "ping " << popoto_driver_cfg().modem_power() << std::endl;
+    message << "ping " << modem_p << std::endl;
     signal_and_write(message.str());
 }
 //--------------------------------------- popoto_sleep ---------------------------------------------------------
@@ -265,6 +265,9 @@ void goby::acomms::PopotoDriver::popoto_update_power(protobuf::ModemTransmission
 
     std::stringstream message;
     message << "setvaluef TxPowerWatts " << msg.GetExtension(popoto::protobuf::transmission).transmit_power() << "\n";
+
+    // Also update in the popoto driver config so we don't overwrite it
+    modem_p = msg.GetExtension(popoto::protobuf::transmission).transmit_power();
 
     // send over the wire
     signal_and_write(message.str());
