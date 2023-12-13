@@ -63,6 +63,7 @@ class PopotoDriver : public ModemDriverBase
     void send(protobuf::ModemTransmission& msg);
     void play_file(protobuf::ModemTransmission& msg);
     void send_ping(protobuf::ModemTransmission& msg);
+    void popoto_update_power(protobuf::ModemTransmission& msg);
     void send_wake(void);
     void send_range_request(int dest);
     void popoto_sleep(void);

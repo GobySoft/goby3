@@ -55,6 +55,7 @@ enum TransmissionType
     POPOTO_TWO_WAY_RANGE = 3;
     POPOTO_DEEP_SLEEP = 4;
     POPOTO_WAKE = 5;
+    POPOTO_SET_TX = 6;
 }
 message RangingReply
 {

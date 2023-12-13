@@ -218,6 +218,8 @@ void goby::acomms::PopotoDriver::handle_initiate_transmission(
 
                 case popoto::protobuf::POPOTO_DEEP_SLEEP: popoto_sleep(); break;
 
+                case popoto::protobuf::POPOTO_SET_TX: popoto_update_power(msg); break;
+
                 case popoto::protobuf::POPOTO_WAKE:
                     send_wake(); // the wake will just be a ping for the moment
                     break;
@@ -255,6 +257,17 @@ void goby::acomms::PopotoDriver::popoto_sleep(void)
 
     //This will put the modem into deep sleep mode to wake up on next acoustic signal
     signal_and_write("powerdown\n");
+}
+
+void goby::acomms::PopotoDriver::popoto_update_power(protobuf::ModemTransmission& msg)
+{
+    glog.is(DEBUG1) && glog << msg.DebugString() << std::endl;
+
+    std::stringstream message;
+    message << "setvaluef TxPowerWatts " << msg.GetExtension(popoto::protobuf::transmission).transmit_power() << "\n";
+
+    // send over the wire
+    signal_and_write(message.str());
 }
 
 //--------------------------------------- play_file ------------------------------------------------------------
