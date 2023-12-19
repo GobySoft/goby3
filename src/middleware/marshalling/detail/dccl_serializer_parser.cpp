@@ -93,8 +93,8 @@ void check_subscription_version(unsigned dccl_id, const google::protobuf::Messag
         goby::middleware::intervehicle::protobuf::Subscription subscription;
         subscription.CopyFrom(msg);
 
-        glog.is_warn() && glog << "Checking subscription: " << subscription.ShortDebugString()
-                               << std::endl;
+        glog.is_debug2() && glog << "Checking subscription: " << subscription.ShortDebugString()
+                                 << std::endl;
 
         if (subscription.api_version() != GOBY_INTERVEHICLE_API_VERSION)
         {

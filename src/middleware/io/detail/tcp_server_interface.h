@@ -249,7 +249,8 @@ void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group
                                                    use_indexed_groups>::open_acceptor()
 {
     auto& acceptor = this->mutable_socket();
-    acceptor.open(boost::asio::ip::tcp::v4());
+    auto protocol = this->cfg().ipv6() ? boost::asio::ip::tcp::v6() : boost::asio::ip::tcp::v4();
+    acceptor.open(protocol);
 
     if (this->cfg().set_reuseaddr())
     {
@@ -258,8 +259,7 @@ void goby::middleware::io::detail::TCPServerThread<line_in_group, line_out_group
         acceptor.set_option(option);
     }
 
-    acceptor.bind(
-        boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), this->cfg().bind_port()));
+    acceptor.bind(boost::asio::ip::tcp::endpoint(protocol, this->cfg().bind_port()));
     acceptor.listen();
 
     goby::glog.is_debug2() &&
