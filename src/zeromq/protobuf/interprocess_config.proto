@@ -30,11 +30,20 @@ message InterProcessPortalConfig
              "For transport == IPC, the path to the socket file to use for "
              "comms with the Manager (gobyd). If omitted, defaults to "
              "\"/tmp/goby_{platform}.manager"];
-    optional string ipv4_address = 4 [
-        default = "127.0.0.1",
-        (goby.field).description =
-            "For transport == TCP, IP address for the Manager (gobyd)"
-    ];
+
+    oneof ip
+    {
+        string ipv4_address = 4 [
+            default = "127.0.0.1",
+            (goby.field).description =
+                "For transport == TCP, IPv4 address for the Manager (gobyd)"
+        ];
+        string ip_address = 11 [
+            (goby.field).description =
+                "For transport == TCP, IPv4 or IPv6 address for the Manager (gobyd)"
+        ];
+    }
+
     optional uint32 tcp_port = 5 [
         default = 11144,
         (goby.field).description =

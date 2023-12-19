@@ -70,10 +70,9 @@ class TCPClientThread
                    std::to_string(config.remote_port()))
     {
         boost::asio::ip::tcp::resolver resolver(this->mutable_io());
-        remote_endpoint_ =
-            *resolver.resolve({boost::asio::ip::tcp::v4(), this->cfg().remote_address(),
-                               std::to_string(this->cfg().remote_port()),
-                               boost::asio::ip::resolver_query_base::numeric_service});
+        remote_endpoint_ = *resolver.resolve(
+            {this->cfg().remote_address(), std::to_string(this->cfg().remote_port()),
+             boost::asio::ip::resolver_query_base::numeric_service});
 
         auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
         this->interthread().template publish<line_in_group>(ready);

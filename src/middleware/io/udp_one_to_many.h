@@ -116,7 +116,8 @@ void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, pub
                                               subscribe_layer, Config, ThreadType,
                                               use_indexed_groups>::open_socket()
 {
-    this->mutable_socket().open(boost::asio::ip::udp::v4());
+    auto protocol = this->cfg().ipv6() ? boost::asio::ip::udp::v6() : boost::asio::ip::udp::v4();
+    this->mutable_socket().open(protocol);
 
     if (this->cfg().set_reuseaddr())
     {
@@ -131,8 +132,7 @@ void goby::middleware::io::UDPOneToManyThread<line_in_group, line_out_group, pub
         this->mutable_socket().set_option(boost::asio::socket_base::broadcast(true));
     }
 
-    this->mutable_socket().bind(
-        boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), this->cfg().bind_port()));
+    this->mutable_socket().bind(boost::asio::ip::udp::endpoint(protocol, this->cfg().bind_port()));
     local_endpoint_ = this->mutable_socket().local_endpoint();
 }
 
@@ -185,8 +185,7 @@ void goby::middleware::io::UDPOneToManyThread<
 
     boost::asio::ip::udp::resolver resolver(this->mutable_io());
     boost::asio::ip::udp::endpoint remote_endpoint =
-        *resolver.resolve({boost::asio::ip::udp::v4(), io_msg->udp_dest().addr(),
-                           std::to_string(io_msg->udp_dest().port()),
+        *resolver.resolve({io_msg->udp_dest().addr(), std::to_string(io_msg->udp_dest().port()),
                            boost::asio::ip::resolver_query_base::numeric_service});
 
     this->mutable_socket().async_send_to(

@@ -70,8 +70,11 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 
     socket_ = std::make_unique<boost::asio::ip::udp::socket>(io_context_);
     const auto& local = driver_cfg_.GetExtension(udp::protobuf::config).local();
-    socket_->open(boost::asio::ip::udp::v4());
-    socket_->bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), local.port()));
+    auto protocol = driver_cfg_.GetExtension(udp::protobuf::config).ipv6()
+                        ? boost::asio::ip::udp::v6()
+                        : boost::asio::ip::udp::v4();
+    socket_->open(protocol);
+    socket_->bind(boost::asio::ip::udp::endpoint(protocol, local.port()));
 
     receivers_.clear();
     for (const auto& remote : driver_cfg_.GetExtension(udp::protobuf::config).remote())
@@ -81,7 +84,7 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
 
         boost::asio::ip::udp::resolver resolver(io_context_);
         boost::asio::ip::udp::resolver::query query(
-            boost::asio::ip::udp::v4(), remote.ip(), goby::util::as<std::string>(remote.port()),
+            protocol, remote.ip(), goby::util::as<std::string>(remote.port()),
             boost::asio::ip::resolver_query_base::numeric_service);
         boost::asio::ip::udp::resolver::iterator endpoint_iterator = resolver.resolve(query);
         const boost::asio::ip::udp::endpoint& receiver = *endpoint_iterator;
