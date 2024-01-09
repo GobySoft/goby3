@@ -347,11 +347,11 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
     std::stringstream raw;
     if (myConnection == ETHERNET_CONNECTION)
     {
-        raw << "TransmitJSON {\"Payload\":{\"Data\":[" << jsonStr << "]}}";
+        raw << "TransmitJSON { \"ClassUserID\": 16, \"ApplicationType\": 1, \"StationID\": "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}";
     }
     else if (myConnection == SERIAL_CONNECTION)
     {
-        raw << "transmitJSON {\"Payload\":{\"Data\":[" << jsonStr << "]}}"
+        raw << "transmitJSON { \"ClassUserID\": 16, \"ApplicationType\": 1, \"StationID\":  "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}"
             << "\n";
     }
     // Send the raw string to terminal for debugging
