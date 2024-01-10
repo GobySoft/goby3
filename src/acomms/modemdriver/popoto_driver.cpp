@@ -345,15 +345,11 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
 
     // To send a bin msg it needs to be in 8 bit CSV values
     std::stringstream raw;
-    if (myConnection == ETHERNET_CONNECTION)
-    {
-        raw << "TransmitJSON { \"ClassUserID\": 16, \"ApplicationType\": 1, \"StationID\": "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}";
-    }
-    else if (myConnection == SERIAL_CONNECTION)
-    {
-        raw << "transmitJSON { \"ClassUserID\": 16, \"ApplicationType\": 1, \"StationID\":  "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}"
-            << "\n";
-    }
+    raw << "transmitJSON { \"ClassUserID\": 16, \"ApplicationType\": 1, \"AckRequest\": " << (msg.ack_requested() ? 1 : 0) << ", \"StationID\": "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}";
+
+    if (myConnection == SERIAL_CONNECTION)
+        raw  << "\n"; // Need to append new line char for Serial Only
+
     // Send the raw string to terminal for debugging
     glog.is(DEBUG1) && glog << raw.str() << std::endl;
 
