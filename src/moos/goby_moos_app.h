@@ -51,7 +51,7 @@
 #include <boost/algorithm/string/predicate.hpp>             // for iequals
 #include <boost/algorithm/string/replace.hpp>               // for replac...
 #include <boost/algorithm/string/trim.hpp>                  // for trim_copy
-#include <boost/bind/bind.hpp>                                   // for bind, _1
+#include <boost/bind/bind.hpp>                              // for bind, _1
 #include <boost/date_time/posix_time/posix_time_config.hpp> // for posix_...
 #include <boost/date_time/posix_time/posix_time_types.hpp>  // for second...
 #include <boost/date_time/posix_time/time_formatters.hpp>   // for to_iso...
@@ -790,10 +790,11 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
     boost::filesystem::path launch_path(argv_[0]);
 
 #if BOOST_FILESYSTEM_VERSION == 3
-    application_name_ = launch_path.filename().string();
+    std::string binary_name = launch_path.filename().string();
 #else
-    application_name_ = launch_path.filename();
+    std::string binary_name = launch_path.filename();
 #endif
+    application_name_ = binary_name;
 
     //
     // READ CONFIGURATION
@@ -803,7 +804,8 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
     boost::program_options::variables_map var_map;
     try
     {
-        boost::program_options::options_description od_cli_only("Given on command line only");
+        boost::program_options::options_description od_cli_only(
+            "Options given on command line only");
         od_cli_only.add_options()("help,h", "writes this help message")(
             "moos_file,c", boost::program_options::value<std::string>(&mission_file_),
             "path to .moos file")("moos_name,a",
@@ -812,16 +814,45 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
             "example_config,e", "writes an example .moos ProcessConfig block")(
             "version,V", "writes the current version");
 
-        boost::program_options::options_description od_both(
-            "Typically given in the .moos file, but may be specified on the command line");
+        std::map<goby::GobyFieldOptions::ConfigurationOptions::ConfigAction,
+                 boost::program_options::options_description>
+            od_map;
 
-        goby::middleware::ConfigReader::get_protobuf_program_options(od_both, cfg->GetDescriptor());
-        od_all.add(od_both);
+        std::string od_pb_always_desc =
+            "Options typically given in the .moos file, but may be specified on the command line";
+        std::string od_pb_never_desc = "Hidden options";
+        std::string od_pb_advanced_desc = "Advanced options";
+        std::string od_pb_developer_desc = "Developer options";
+        od_map.insert(
+            std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::ALWAYS,
+                           boost::program_options::options_description(od_pb_always_desc.c_str())));
+        od_map.insert(std::make_pair(
+            goby::GobyFieldOptions::ConfigurationOptions::ADVANCED,
+            boost::program_options::options_description(od_pb_advanced_desc.c_str())));
+        od_map.insert(std::make_pair(
+            goby::GobyFieldOptions::ConfigurationOptions::DEVELOPER,
+            boost::program_options::options_description(od_pb_developer_desc.c_str())));
+        od_map.insert(
+            std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::NEVER,
+                           boost::program_options::options_description(od_pb_never_desc.c_str())));
+
+        goby::middleware::ConfigReader::get_protobuf_program_options(od_map, cfg->GetDescriptor());
+        std::map<int, std::string> positional_options;
+        goby::middleware::ConfigReader::get_positional_options(cfg->GetDescriptor(),
+                                                               positional_options);
+
+        for (const auto& od_p : od_map) od_all.add(od_p.second);
         od_all.add(od_cli_only);
 
         boost::program_options::positional_options_description p;
         p.add("moos_file", 1);
         p.add("moos_name", 2);
+        for (const auto& po_pair : positional_options)
+        {
+            // don't allow overriding of moos_file / moos_name convention used by pAntler
+            if (po_pair.first != 1 && po_pair.first != 2)
+                p.add(po_pair.second.c_str(), po_pair.first);
+        }
 
         boost::program_options::store(boost::program_options::command_line_parser(argc_, argv_)
                                           .options(od_all)
@@ -833,7 +864,11 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
 
         if (var_map.count("help"))
         {
-            std::cerr << od_all << "\n";
+            std::cerr << "Usage: " << binary_name << " [options] moos_file [moos_name]"
+                      << std::endl;
+
+            std::cerr << od_map[goby::GobyFieldOptions::ConfigurationOptions::ALWAYS] << "\n";
+            std::cerr << od_cli_only << "\n";
             exit(EXIT_SUCCESS);
         }
         else if (var_map.count("example_config"))

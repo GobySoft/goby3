@@ -1,0 +1,25 @@
+syntax = "proto2";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/protobuf/option_extensions.proto";
+
+package goby.apps.middleware.protobuf;
+
+message GobyToolConfig
+{
+    option (goby.msg).cfg.tool_mode = true;
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    enum Action
+    {
+        help = 0;
+        publish = 1;
+        subscribe = 2;
+        log = 3;
+    }
+    required Action action = 2 [(goby.field) = {
+        description: "The action this tool should take [can omit --action if 1st parameter]",
+        cfg { position: 1, cli_short: "A" }
+    }];
+}

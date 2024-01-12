@@ -88,7 +88,7 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
   protected:
     virtual void validate() const override
     {
-        middleware::ConfigReader::check_required_cfg(this->cfg());
+        middleware::ConfigReader::check_required_cfg(this->cfg(), this->cfg().app().binary());
     }
 
   private:
@@ -121,14 +121,16 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
     try
     {
         std::string application_name;
+        std::string binary_name;
 
         // we will check it later in validate()
         bool check_required_cfg = false;
-        boost::program_options::options_description od{"Allowed options"};
-        middleware::ConfigReader::read_cfg(argc, argv, &cfg, &application_name, &od, &var_map,
-                                           check_required_cfg);
+        boost::program_options::options_description od{"All options"};
+        middleware::ConfigReader::read_cfg(argc, argv, &cfg, &application_name, &binary_name, &od,
+                                           &var_map, check_required_cfg);
 
         cfg.mutable_app()->set_name(application_name);
+        cfg.mutable_app()->set_binary(binary_name);
         // incorporate some parts of the AppBaseConfig that are middleware
         // with gobyd (e.g. Verbosity)
         merge_app_base_cfg(cfg.mutable_app(), var_map);

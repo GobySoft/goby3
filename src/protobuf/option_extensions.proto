@@ -35,16 +35,27 @@ message GobyFieldOptions
         enum ConfigAction
         {
             ALWAYS = 1;
-            NEVER = 2;
-            ADVANCED = 3;
+            ADVANCED = 2;
+            DEVELOPER = 3;
+            HIDDEN = 4;
+            NEVER = 5;
         }
         optional ConfigAction action = 2 [default = ALWAYS];
+        optional int32 position = 3;
     }
     optional ConfigurationOptions cfg = 200;
-
 }
 
 message GobyMessageOptions
 {
-    optional string convertible_from = 100; // tags this message as convertible from another existing message type based on field names
+    optional string convertible_from =
+        100;  // tags this message as convertible from another existing message
+              // type based on field names
+
+    message ConfigurationOptions
+    {
+        optional bool tool_mode = 1
+            [default = false];  // if true, reads only parameters up to the first positional parameter (assumed to be an action)
+    }
+    optional ConfigurationOptions cfg = 200;
 }
