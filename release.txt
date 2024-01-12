@@ -1,5 +1,14 @@
 Goby Release Notes (Major version 3)
 
+Version 3.1.2
+
+### Bugs
+
+- Added IPv6 support to most components
+
+
+****************
+
 Version 3.1.1
 
 ### Bugs
