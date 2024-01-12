@@ -126,8 +126,12 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
         // we will check it later in validate()
         bool check_required_cfg = false;
         boost::program_options::options_description od{"All options"};
-        middleware::ConfigReader::read_cfg(argc, argv, &cfg, &application_name, &binary_name, &od,
-                                           &var_map, check_required_cfg);
+        int read_argc = middleware::ConfigReader::read_cfg(
+            argc, argv, &cfg, &application_name, &binary_name, &od, &var_map, check_required_cfg);
+
+        // extra command line parameters for tool mode
+        for (int a = read_argc; a < argc; ++a)
+            cfg.mutable_app()->mutable_tool_cfg()->add_extra_cli_param(argv[a]);
 
         cfg.mutable_app()->set_name(application_name);
         cfg.mutable_app()->set_binary(binary_name);

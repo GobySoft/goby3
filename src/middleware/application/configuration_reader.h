@@ -75,11 +75,12 @@ class ConfigReader
     /// \param od_all Pointer to boost::program::options_description that will be populated with all the available command-line options
     /// \param var_map Pointer to boost::program_options::variables_map that will be populated with the variables read from the command line
     /// \param check_required_configuration If true, check_required_cfg will be called after populating the message
-    static void read_cfg(int argc, char* argv[], google::protobuf::Message* message,
-                         std::string* application_name, std::string* binary_name,
-                         boost::program_options::options_description* od_all,
-                         boost::program_options::variables_map* var_map,
-                         bool check_required_configuration = true);
+    /// \return maximum argc value read (if using tool_mode this may be less than argc)
+    static int read_cfg(int argc, char* argv[], google::protobuf::Message* message,
+                        std::string* application_name, std::string* binary_name,
+                        boost::program_options::options_description* od_all,
+                        boost::program_options::variables_map* var_map,
+                        bool check_required_configuration = true);
 
     /// \brief Checks that all \c required fields are set (either via the command line or the configuration file) in the Protobuf message.
     ///

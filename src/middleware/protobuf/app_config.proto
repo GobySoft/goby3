@@ -12,13 +12,13 @@ message AppConfig
     optional string name = 1 [
         (goby.field).example = "myapp_g",
         (goby.field).description =
-        "default is 'binary': change this to run multiple instances",
+            "default is 'binary': change this to run multiple instances",
         (goby.field).cfg = { action: ADVANCED }
-        ];
+    ];
 
     optional string binary = 2 [(goby.field) = {
         description: "compiled binary name; set by configurator."
-        cfg { action: HIDDEN }
+        cfg { action: NEVER }
     }];
 
     optional goby.util.protobuf.GLogConfig glog_config = 10
@@ -81,6 +81,12 @@ message AppConfig
         optional bool run_health_monitor_thread = 1 [default = true];
     }
     optional Health health_cfg = 40 [(goby.field).cfg = { action: ADVANCED }];
+
+    message Tool
+    {
+        repeated string extra_cli_param = 1;
+    }
+    optional Tool tool_cfg = 50 [(goby.field).cfg = { action: NEVER }];
 
     optional bool debug_cfg = 100 [
         default = false,

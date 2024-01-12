@@ -50,13 +50,17 @@
 // brings std::ostream& red, etc. into scope
 using namespace goby::util::tcolor;
 
-void goby::middleware::ConfigReader::read_cfg(
+int goby::middleware::ConfigReader::read_cfg(
     int argc, char* argv[], google::protobuf::Message* message, std::string* application_name,
     std::string* binary_name, boost::program_options::options_description* od_all,
     boost::program_options::variables_map* var_map, bool check_required_configuration /*= true*/)
 {
     if (!argv)
-        return;
+        return 0;
+
+    bool tool_mode = false;
+    if (message && message->GetDescriptor()->options().GetExtension(goby::msg).cfg().tool_mode())
+        tool_mode = true;
 
     boost::filesystem::path launch_path(argv[0]);
 
@@ -97,7 +101,12 @@ void goby::middleware::ConfigReader::read_cfg(
         std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::HIDDEN,
                        boost::program_options::options_description(od_pb_never_desc.c_str())));
 
-    od_map.at(goby::GobyFieldOptions::ConfigurationOptions::ALWAYS)
+    goby::GobyFieldOptions::ConfigurationOptions::ConfigAction shortcut_base_action_level =
+        goby::GobyFieldOptions::ConfigurationOptions::ALWAYS;
+    if (tool_mode) // bump some config values up a level
+        shortcut_base_action_level = goby::GobyFieldOptions::ConfigurationOptions::ADVANCED;
+
+    od_map.at(shortcut_base_action_level)
         .add_options()("cfg_path,c", boost::program_options::value<std::string>(&cfg_path),
                        cfg_path_desc.c_str())(
             "app_name,a", boost::program_options::value<std::string>(), app_name_desc.c_str())(
@@ -143,8 +152,7 @@ void goby::middleware::ConfigReader::read_cfg(
         get_positional_options(message->GetDescriptor(), positional_options);
         for (const auto& od_p : od_map) od_all->add(od_p.second);
 
-        // check for tool mode
-        if (message->GetDescriptor()->options().GetExtension(goby::msg).cfg().tool_mode())
+        if (tool_mode)
         {
             // search for first non '-' or '--' parameter
             for (int i = 1; i < argc; ++i)
@@ -153,7 +161,6 @@ void goby::middleware::ConfigReader::read_cfg(
                 {
                     // only let program options parse up to this point
                     argc = i + 1;
-                    std::cout << "Setting argc to " << argc << std::endl;
                     break;
                 }
             }
@@ -331,6 +338,8 @@ void goby::middleware::ConfigReader::read_cfg(
         if (check_required_configuration)
             check_required_cfg(*message, *binary_name);
     }
+
+    return argc;
 }
 
 void goby::middleware::ConfigReader::set_protobuf_program_option(
