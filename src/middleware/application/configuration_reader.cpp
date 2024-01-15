@@ -105,6 +105,28 @@ int goby::middleware::ConfigReader::read_cfg(
         std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::HIDDEN,
                        boost::program_options::options_description(od_pb_never_desc.c_str())));
 
+    std::map<int, std::pair<bool, std::string>> positional_options;
+
+    if (message)
+    {
+        get_protobuf_program_options(od_map, message->GetDescriptor());
+        get_positional_options(message->GetDescriptor(), positional_options);
+
+        if (tool_mode)
+        {
+            // search for first non '-' or '--' parameter
+            for (int i = 1; i < argc; ++i)
+            {
+                if (argv[i][0] != '-')
+                {
+                    // only let program options parse up to this point
+                    argc = i + 1;
+                    break;
+                }
+            }
+        }
+    }
+
     od_map.at(goby::GobyFieldOptions::ConfigurationOptions::ALWAYS)
         .add_options()("cfg_path,c", boost::program_options::value<std::string>(&cfg_path),
                        cfg_path_desc.c_str())(
@@ -153,27 +175,7 @@ int goby::middleware::ConfigReader::read_cfg(
             "and "
             "-hhhh for all options");
 
-    std::map<int, std::pair<bool, std::string>> positional_options;
-    if (message)
-    {
-        get_protobuf_program_options(od_map, message->GetDescriptor());
-        get_positional_options(message->GetDescriptor(), positional_options);
-        for (const auto& od_p : od_map) od_all->add(od_p.second);
-
-        if (tool_mode)
-        {
-            // search for first non '-' or '--' parameter
-            for (int i = 1; i < argc; ++i)
-            {
-                if (argv[i][0] != '-')
-                {
-                    // only let program options parse up to this point
-                    argc = i + 1;
-                    break;
-                }
-            }
-        }
-    }
+    for (const auto& od_p : od_map) od_all->add(od_p.second);
 
     boost::program_options::positional_options_description p;
 
@@ -573,7 +575,8 @@ void goby::middleware::ConfigReader::get_protobuf_program_options(
         {
             case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
             {
-                build_description(field_desc->message_type(), human_desc_ss, "");
+                build_description(field_desc->message_type(), human_desc_ss, "",
+                                  goby::GobyFieldOptions::ConfigurationOptions::ALWAYS);
 
                 set_single_option(po_desc, field_desc, std::string(), cli_name,
                                   human_desc_ss.str());

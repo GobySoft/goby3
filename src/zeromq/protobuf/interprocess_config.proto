@@ -53,30 +53,36 @@ message InterProcessPortalConfig
     optional uint32 send_queue_size = 6 [
         default = 1000,
         (goby.field).description =
-            "Queue size for outbound messages, i.e. ZMQ_SNDHWM"
+            "Queue size for outbound messages, i.e. ZMQ_SNDHWM",
+        (goby.field).cfg = { action: ADVANCED }
     ];
     optional uint32 receive_queue_size = 7 [
         default = 1000,
         (goby.field).description =
-            "Queue size for inbound messages, i.e. ZMQ_RCVHWM"
+            "Queue size for inbound messages, i.e. ZMQ_RCVHWM",
+        (goby.field).cfg = { action: ADVANCED }
     ];
     optional uint32 zeromq_number_io_threads = 8 [
         default = 4,
         (goby.field).description =
             "Number of threads for zmq::context_t (first constructor "
-            "argument)"
+            "argument)",
+        (goby.field).cfg = { action: DEVELOPER }
     ];
 
     optional uint32 manager_timeout_seconds = 10 [
         default = 5,
         (goby.field).description =
             "How long to wait for a ManagerResponse before assuming the "
-            "Manager (gobyd) is unresponsive"
+            "Manager (gobyd) is unresponsive",
+        (goby.field).cfg = { action: ADVANCED }
     ];
 
-    optional string client_name = 20
-        [(goby.field).description =
-             "Unique name for InterProcessPortal. Defaults to app.name"];
+    optional string client_name = 20 [
+        (goby.field).description =
+            "Unique name for InterProcessPortal. Defaults to app.name",
+        (goby.field).cfg = { action: ADVANCED }
+    ];
 }
 
 message InterProcessManagerHold

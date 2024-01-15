@@ -31,10 +31,6 @@ int main(int argc, char* argv[]) { return goby::run<goby::apps::middleware::Goby
 
 goby::apps::middleware::GobyTool::GobyTool()
 {
-    std::cout << "***************************" << std::endl;
-    std::cout << app_cfg().DebugString() << std::endl;
-    std::cout << "***************************" << std::endl;
-
     goby::middleware::ToolHelper tool_helper(app_cfg().app().binary(), app_cfg().app().tool_cfg());
 
     tool_helper.perform_action(
