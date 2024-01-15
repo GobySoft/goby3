@@ -6,20 +6,53 @@ package goby.apps.middleware.protobuf;
 
 message GobyToolConfig
 {
-    option (goby.msg).cfg.tool_mode = true;
+    option (goby.msg).cfg = {
+        tool_mode: true
+        show_auto_help: true
+        show_auto_help_usage: false
+        exit_after_auto_help: false
+    };
 
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
 
     enum Action
     {
-        help = 0;
-        publish = 1;
-        subscribe = 2;
-        log = 3;
+        help = 0 [(goby.ev).cfg = {
+            short_help_msg: "Print usage information",
+            full_help_msg: "Usage: \"goby help [action]\"\n"
+                           "Provides detailed usage information on the provided action.\n"
+                           "Example: \"goby help log\" provides help in the 'log' action\n"
+                           "\n"
+                           "You can also override the help command line flag used by running, for example, \"goby help -hh log\" to pass \"-hh\" to \"goby log\" in order to show advanced command line options"
+
+        }];
+        // publish = 1 [(goby.ev).cfg = {
+        //     short_help_msg: "Publish a message using Goby",
+        //     external_command: "goby_publish"
+        // }];
+        // subscribe = 2 [(goby.ev).cfg = {
+        //     short_help_msg: "Subscribe to message(s)",
+        //     external_command: "goby_subscribe"
+        // }];
+        log = 3 [(goby.ev).cfg = {
+            short_help_msg: "Manage goby log files",
+            external_command: "goby_log_tool"
+        }];
+        launch = 4 [(goby.ev).cfg = {
+            short_help_msg: "Launch goby *.launch files",
+            external_command: "goby_launch"
+        }];
+        terminate = 5 [(goby.ev).cfg = {
+            short_help_msg: "Cleanly stop goby applications",
+            external_command: "goby_terminate"
+        }];
     }
-    required Action action = 2 [(goby.field) = {
-        description: "The action this tool should take [can omit --action if 1st parameter]",
-        cfg { position: 1, cli_short: "A" }
-    }];
+    optional Action action = 2 [
+        default = help,
+        (goby.field) = {
+            description: "The action this tool should take [can omit --action if 1st parameter]",
+            cfg { position: 1, cli_short: "A", action: HIDDEN }
+        }
+    ];
 }

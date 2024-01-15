@@ -32,6 +32,7 @@ set(MIDDLEWARE_SRC
   middleware/transport/interthread.cpp
   middleware/transport/intervehicle/driver_thread.cpp
   middleware/application/configuration_reader.cpp
+  middleware/application/tool.cpp
   middleware/log/log_entry.cpp
   middleware/frontseat/interface.cpp
   middleware/coroner/health_monitor_thread.cpp

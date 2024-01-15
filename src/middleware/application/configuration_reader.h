@@ -94,8 +94,10 @@ class ConfigReader
                  boost::program_options::options_description>& od_map,
         const google::protobuf::Descriptor* desc);
 
-    static void get_positional_options(const google::protobuf::Descriptor* desc,
-                                       std::map<int, std::string>& positional_options);
+    static void
+    get_positional_options(const google::protobuf::Descriptor* desc,
+                           // position -> required -> name
+                           std::map<int, std::pair<bool, std::string>>& positional_options);
 
     static void set_protobuf_program_option(const boost::program_options::variables_map& vm,
                                             google::protobuf::Message& message,
@@ -191,6 +193,24 @@ class ConfigReader
         {
             set_single_option<bool>(po_desc, field_desc, default_value, name, description);
         }
+    }
+
+    static void write_usage(const std::string& binary,
+                            const std::map<int, std::pair<bool, std::string>>& positional_options,
+                            std::ostream* out)
+    {
+        (*out) << "Usage: " << binary << " ";
+        for (const auto& po_pair : positional_options)
+        {
+            bool is_required = po_pair.second.first;
+            if (!is_required)
+                (*out) << "[";
+            (*out) << "<" << po_pair.second.second << ">";
+            if (!is_required)
+                (*out) << "]";
+            (*out) << " ";
+        }
+        (*out) << "[options]\n\n";
     }
 };
 } // namespace middleware

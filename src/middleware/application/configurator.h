@@ -96,8 +96,18 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
 
     void handle_config_error(middleware::ConfigException& e) const override
     {
-        std::cerr << "Invalid configuration: use --help and/or --example_config for more help: "
-                  << e.what() << std::endl;
+        if (is_tool_mode())
+        {
+            // allow default action to take place (usually "help")
+            std::cerr << "Invalid command: " << e.what() << std::endl;
+            return;
+        }
+        else
+        {
+            std::cerr << "Invalid configuration: use --help and/or --example_config for more help: "
+                      << e.what() << std::endl;
+            throw;
+        }
     }
 
     protobuf::AppConfig& mutable_app_configuration() override
@@ -107,6 +117,11 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
 
     void merge_app_base_cfg(protobuf::AppConfig* base_cfg,
                             const boost::program_options::variables_map& var_map);
+
+    bool is_tool_mode() const
+    {
+        return Config::descriptor()->options().GetExtension(goby::msg).cfg().tool_mode();
+    }
 };
 
 template <typename Config>
@@ -142,7 +157,6 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
     catch (middleware::ConfigException& e)
     {
         handle_config_error(e);
-        throw;
     }
 
     // TODO: convert to C++ struct app3 configuration format
