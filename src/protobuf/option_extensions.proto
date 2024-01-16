@@ -63,14 +63,8 @@ message GobyMessageOptions
             [default =
                  false];  // if true, reads only parameters up to the first
                           // positional parameter (assumed to be an action)
-        optional bool show_auto_help = 2
-            [default = true];  // if true, output the default --help
-                               // values from configuration reader
-        optional bool show_auto_help_usage = 3
-            [default =
-                 true];  // if true, output "Usage" with the default --help
-        optional bool exit_after_auto_help = 4
-            [default = true];  // if true, exit after auto help
+        optional bool has_help_action = 2
+            [default = false];  // if true, do not output "Usage"  with the default --help, and do not exit after auto help
     }
     optional ConfigurationOptions cfg = 200;
 }

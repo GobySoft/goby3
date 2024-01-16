@@ -13,17 +13,6 @@ message LogToolConfig
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
 
-    enum Action
-    {
-        help = 0;
-        convert = 1;
-    }
-    optional Action action = 2 [
-        default = convert,  // for history reasons
-        (goby.field) = { cfg { cli_short: "A" } }
-
-    ];
-
     required string input_file = 10 [(goby.field) = {
         description: "Input goby_logger file to read (e.g. 'vehicle_20200204T121314.goby')  [can omit --input_file if 1st parameter]"
         cfg { position: 1, cli_short: "i" }

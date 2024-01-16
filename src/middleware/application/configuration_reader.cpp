@@ -207,9 +207,9 @@ int goby::middleware::ConfigReader::read_cfg(
         *binary_name = (*var_map)["binary"].as<std::string>();
     }
 
-    if (var_map->count("help") && tool_cfg.show_auto_help())
+    if (var_map->count("help"))
     {
-        if (tool_cfg.show_auto_help_usage())
+        if (!tool_cfg.has_help_action())
             write_usage(*binary_name, positional_options, &std::cerr);
 
         switch ((*var_map)["help"].as<std::string>().size())
@@ -227,7 +227,7 @@ int goby::middleware::ConfigReader::read_cfg(
                 std::cerr << od_map[goby::GobyFieldOptions::ConfigurationOptions::ALWAYS] << "\n";
         }
 
-        if (tool_cfg.exit_after_auto_help())
+        if (!tool_cfg.has_help_action())
             exit(EXIT_SUCCESS);
     }
     else if (var_map->count("example_config"))

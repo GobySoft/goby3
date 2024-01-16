@@ -3,6 +3,8 @@
 #include "goby/middleware/application/tool.h"
 #include "goby/middleware/protobuf/goby_tool_config.pb.h"
 
+#include "unified_log_tool.h"
+
 using goby::glog;
 
 namespace goby
@@ -48,12 +50,21 @@ goby::apps::middleware::GobyTool::GobyTool()
                 {
                     switch (action_for_help)
                     {
+                        case goby::apps::middleware::protobuf::GobyToolConfig::log:
+                            tool_helper.help<goby::apps::middleware::UnifiedLogTool>(
+                                action_for_help);
+                            break;
+
                         default:
                             throw(goby::Exception(
                                 "Help was expected to be handled by external tool"));
                             break;
                     }
                 }
+                break;
+
+            case goby::apps::middleware::protobuf::GobyToolConfig::log:
+                tool_helper.run_subtool<goby::apps::middleware::UnifiedLogTool>();
                 break;
 
             default:
