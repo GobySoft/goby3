@@ -13,6 +13,19 @@ namespace apps
 {
 namespace middleware
 {
+class GobyToolConfigurator : public goby::middleware::ProtobufConfigurator<protobuf::GobyToolConfig>
+{
+  public:
+    GobyToolConfigurator(int argc, char* argv[])
+        : goby::middleware::ProtobufConfigurator<protobuf::GobyToolConfig>(argc, argv)
+    {
+        auto& cfg = mutable_cfg();
+        if (!cfg.app().glog_config().has_tty_verbosity())
+            cfg.mutable_app()->mutable_glog_config()->set_tty_verbosity(
+                goby::util::protobuf::GLogConfig::WARN);
+    }
+};
+
 class GobyTool : public goby::middleware::Application<protobuf::GobyToolConfig>
 {
   public:
@@ -30,7 +43,11 @@ class GobyTool : public goby::middleware::Application<protobuf::GobyToolConfig>
 } // namespace apps
 } // namespace goby
 
-int main(int argc, char* argv[]) { return goby::run<goby::apps::middleware::GobyTool>(argc, argv); }
+int main(int argc, char* argv[])
+{
+    return goby::run<goby::apps::middleware::GobyTool>(
+        goby::apps::middleware::GobyToolConfigurator(argc, argv));
+}
 
 goby::apps::middleware::GobyTool::GobyTool()
 {

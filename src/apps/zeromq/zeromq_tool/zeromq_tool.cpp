@@ -12,6 +12,20 @@ namespace apps
 {
 namespace zeromq
 {
+class ZeroMQToolConfigurator
+    : public goby::middleware::ProtobufConfigurator<protobuf::ZeroMQToolConfig>
+{
+  public:
+    ZeroMQToolConfigurator(int argc, char* argv[])
+        : goby::middleware::ProtobufConfigurator<protobuf::ZeroMQToolConfig>(argc, argv)
+    {
+        auto& cfg = mutable_cfg();
+        if (!cfg.app().glog_config().has_tty_verbosity())
+            cfg.mutable_app()->mutable_glog_config()->set_tty_verbosity(
+                goby::util::protobuf::GLogConfig::WARN);
+    }
+};
+
 class ZeroMQTool : public goby::middleware::Application<protobuf::ZeroMQToolConfig>
 {
   public:
@@ -53,7 +67,11 @@ class SubscribeTool : public goby::zeromq::SingleThreadApplication<protobuf::Sub
 } // namespace apps
 } // namespace goby
 
-int main(int argc, char* argv[]) { return goby::run<goby::apps::zeromq::ZeroMQTool>(argc, argv); }
+int main(int argc, char* argv[])
+{
+    return goby::run<goby::apps::zeromq::ZeroMQTool>(
+        goby::apps::zeromq::ZeroMQToolConfigurator(argc, argv));
+}
 
 goby::apps::zeromq::ZeroMQTool::ZeroMQTool()
 {

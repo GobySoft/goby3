@@ -6,10 +6,14 @@
 
 bool goby::middleware::ToolHelper::help(int* action_for_help)
 {
+    std::string action_for_help_name =
+        tool_cfg_.extra_cli_param_size() > 0
+            ? tool_cfg_.extra_cli_param(tool_cfg_.extra_cli_param_size() - 1)
+            : "";
+
     const google::protobuf::EnumValueDescriptor* help_action_value_desc =
         tool_cfg_.extra_cli_param_size() > 0
-            ? action_enum_desc_->FindValueByName(
-                  tool_cfg_.extra_cli_param(tool_cfg_.extra_cli_param_size() - 1))
+            ? action_enum_desc_->FindValueByName(action_for_help_name)
             : nullptr;
     if (help_action_value_desc != nullptr)
     {
@@ -55,6 +59,9 @@ bool goby::middleware::ToolHelper::help(int* action_for_help)
     }
     else
     {
+        if (!action_for_help_name.empty())
+            std::cerr << "Action \"" << action_for_help_name << "\" does not exist.\n" << std::endl;
+
         std::cerr << "Usage: " << name_ << " [" << name_
                   << " options (use -h[hhh])] action [action options]\n"
                   << std::endl;
