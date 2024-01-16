@@ -6,10 +6,6 @@ package goby.apps.middleware.protobuf;
 
 message LogToolConfig
 {
-    option (goby.msg).cfg = {
-        tool_mode: true
-    };
-
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
 
