@@ -1,0 +1,87 @@
+syntax = "proto2";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/protobuf/option_extensions.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+
+package goby.apps.zeromq.protobuf;
+
+message ZeroMQToolConfig
+{
+    option (goby.msg).cfg = {
+        tool_mode: true
+        show_auto_help: true
+        show_auto_help_usage: false
+        exit_after_auto_help: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    enum Action
+    {
+        help = 0 [(goby.ev).cfg = {
+            short_help_msg: "Print usage information",
+            full_help_msg: "Usage: \"goby zmq help [action]\"\n"
+        }];
+        terminate = 2 [(goby.ev).cfg = {
+            short_help_msg: "Terminate Goby applications",
+            external_command: "goby_terminate"
+        }];
+        publish = 3 [(goby.ev).cfg = {
+            short_help_msg: "Publish message",
+        }];
+        subscribe = 4 [(goby.ev).cfg = {
+            short_help_msg: "Subscribe to messages",
+        }];
+    }
+    optional Action action = 2 [
+        default = help,
+        (goby.field) = {
+            description: "The action this tool should take [can omit --action if 1st parameter]",
+            cfg { position: 1, cli_short: "A", action: HIDDEN }
+        }
+    ];
+}
+
+message PublishToolConfig
+{
+    option (goby.msg).cfg = {
+        tool_mode: true
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+
+    required int32 scheme = 10
+        [(goby.field) = { cfg { position: 1, cli_short: "s" } }];
+
+    required string type = 11
+        [(goby.field) = { cfg { position: 2, cli_short: "t" } }];
+
+    required string group = 12
+        [(goby.field) = { cfg { position: 3, cli_short: "g" } }];
+
+    required string value = 13 [(goby.field) = { cfg { position: 4 } }];
+}
+
+message SubscribeToolConfig
+{
+    option (goby.msg).cfg = {
+        tool_mode: true
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+
+    required int32 scheme = 10
+        [(goby.field) = { cfg { position: 1, cli_short: "s" } }];
+
+    required string type_regex = 11
+        [(goby.field) = { cfg { position: 2, cli_short: "t" } }];
+
+    required string group_regex = 12
+        [(goby.field) = { cfg { position: 3, cli_short: "g" } }];
+}
+

@@ -27,25 +27,17 @@ message GobyToolConfig
                            "You can also override the help command line flag used by running, for example, \"goby help -hh log\" to pass \"-hh\" to \"goby log\" in order to show advanced command line options"
 
         }];
-        // publish = 1 [(goby.ev).cfg = {
-        //     short_help_msg: "Publish a message using Goby",
-        //     external_command: "goby_publish"
-        // }];
-        // subscribe = 2 [(goby.ev).cfg = {
-        //     short_help_msg: "Subscribe to message(s)",
-        //     external_command: "goby_subscribe"
-        // }];
-        log = 3 [(goby.ev).cfg = {
+        zeromq = 1 [(goby.ev).cfg = {
+            short_help_msg: "Interact with ZeroMQ Goby pub/sub",
+            external_command: "goby_zeromq_tool"
+        }];
+        log = 2 [(goby.ev).cfg = {
             short_help_msg: "Manage goby log files",
             external_command: "goby_log_tool"
         }];
-        launch = 4 [(goby.ev).cfg = {
+        launch = 3 [(goby.ev).cfg = {
             short_help_msg: "Launch goby *.launch files",
             external_command: "goby_launch"
-        }];
-        terminate = 5 [(goby.ev).cfg = {
-            short_help_msg: "Cleanly stop goby applications",
-            external_command: "goby_terminate"
         }];
     }
     optional Action action = 2 [
