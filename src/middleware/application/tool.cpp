@@ -47,7 +47,7 @@ bool goby::middleware::ToolHelper::help(int* action_for_help)
                 args.push_back(ev_options.cfg().external_help_param());
             }
 
-            exec_external(external_command, args);
+            exec_external(external_command, args, ev_options);
 
             // should not reach here if exec_external worked
             return false;
@@ -72,17 +72,19 @@ bool goby::middleware::ToolHelper::help(int* action_for_help)
             const google::protobuf::EnumValueDescriptor* value_desc = action_enum_desc_->value(i);
             const goby::GobyEnumValueOptions& ev_options =
                 value_desc->options().GetExtension(goby::ev);
-            std::cerr << "\t" << value_desc->name() << ": " << ev_options.cfg().short_help_msg()
+            std::cerr << "  " << value_desc->name() << ": " << ev_options.cfg().short_help_msg()
                       << std::endl;
         }
         return true;
     }
 }
 
-void goby::middleware::ToolHelper::exec_external(std::string app, std::vector<std::string> args)
+void goby::middleware::ToolHelper::exec_external(std::string app, std::vector<std::string> args,
+                                                 const goby::GobyEnumValueOptions& ev_options)
 {
     std::vector<std::string> bin_args;
-    bin_args.push_back("--binary=" + name_ + " " + action_);
+    if (ev_options.cfg().include_binary_flag())
+        bin_args.push_back("--binary=" + name_ + " " + action_);
 
     std::vector<char*> c_args;
     c_args.push_back(const_cast<char*>(app.c_str()));

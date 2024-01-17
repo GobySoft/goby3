@@ -59,11 +59,15 @@ int goby::middleware::ConfigReader::read_cfg(
         return 0;
 
     bool tool_mode = false;
+    bool tool_suppress_shortcuts = false;
     goby::GobyMessageOptions::ConfigurationOptions tool_cfg;
     if (message && message->GetDescriptor()->options().GetExtension(goby::msg).has_cfg())
     {
         tool_cfg = message->GetDescriptor()->options().GetExtension(goby::msg).cfg();
         tool_mode = tool_cfg.tool_mode();
+
+        if (tool_mode || tool_cfg.suppress_shortcuts())
+            tool_suppress_shortcuts = true;
     }
 
     boost::filesystem::path launch_path(argv[0]);
@@ -77,8 +81,8 @@ int goby::middleware::ConfigReader::read_cfg(
 
     std::string cfg_path, exec_cfg_path;
 
-    std::string cfg_path_desc = "path to " + *application_name + " configuration file (typically " +
-                                *application_name + ".pb.cfg).";
+    std::string cfg_path_desc =
+        "path to configuration file (e.g., " + *application_name + ".pb.cfg).";
 
     std::string app_name_desc =
         "name to use while communicating in goby (default: " + std::string(argv[0]) + ")";
@@ -138,40 +142,47 @@ int goby::middleware::ConfigReader::read_cfg(
 
     goby::GobyFieldOptions::ConfigurationOptions::ConfigAction shortcut_base_action_level =
         goby::GobyFieldOptions::ConfigurationOptions::ALWAYS;
-    if (tool_mode)
+    if (tool_suppress_shortcuts)
         shortcut_base_action_level = goby::GobyFieldOptions::ConfigurationOptions::ADVANCED;
 
     od_map.at(shortcut_base_action_level)
-        .add_options()("app_name,a", boost::program_options::value<std::string>(),
-                       app_name_desc.c_str())(
+        .add_options()(
             "verbose,v",
             boost::program_options::value<std::string>()->implicit_value("")->multitoken(),
             "output useful information to std::cout. -v is tty_verbosity: VERBOSE, -vv is "
-            "tty_verbosity: DEBUG1, -vvv is tty_verbosity: DEBUG2, -vvvv is tty_verbosity: DEBUG3")(
-            "version,V", "writes the current version");
+            "tty_verbosity: DEBUG1, -vvv is tty_verbosity: DEBUG2, -vvvv is tty_verbosity: DEBUG3");
 
-    od_map.at(goby::GobyFieldOptions::ConfigurationOptions::ADVANCED)
-        .add_options()(
-            "exec_cfg_path,C", boost::program_options::value<std::string>(&exec_cfg_path),
-            "File (script) to execute to create the configuration for this app. Output of "
-            "application "
-            "must be a TextFormat Protobuf message for this application's configuration.")(
-            "glog_file_verbose,z",
-            boost::program_options::value<std::string>()->implicit_value("")->multitoken(),
-            "output useful information to a file (either in current directory or directory given "
-            "by "
-            "-d). -z is verbosity: VERBOSE, -zz is verbosity: DEBUG1, -vvv is verbosity: "
-            "DEBUG2, -zzzz is verbosity: DEBUG3")("glog_file_dir,d",
-                                                  boost::program_options::value<std::string>(),
-                                                  "Directory for debug log (defaults to \".\"")(
-            "ncurses,n", "output useful information to an NCurses GUI instead of stdout.");
+    if (!tool_suppress_shortcuts)
+    {
+        od_map.at(goby::GobyFieldOptions::ConfigurationOptions::ALWAYS)
+            .add_options()("app_name,a", boost::program_options::value<std::string>(),
+                           app_name_desc.c_str())("version,V", "writes the current version");
+
+        od_map.at(goby::GobyFieldOptions::ConfigurationOptions::ADVANCED)
+            .add_options()(
+                "exec_cfg_path,C", boost::program_options::value<std::string>(&exec_cfg_path),
+                "File (script) to execute to create the configuration for this app. Output of "
+                "application "
+                "must be a TextFormat Protobuf message for this application's configuration.")(
+                "glog_file_verbose,z",
+                boost::program_options::value<std::string>()->implicit_value("")->multitoken(),
+                "output useful information to a file (either in current directory or directory "
+                "given "
+                "by "
+                "-d). -z is verbosity: VERBOSE, -zz is verbosity: DEBUG1, -vvv is verbosity: "
+                "DEBUG2, -zzzz is verbosity: DEBUG3")("glog_file_dir,d",
+                                                      boost::program_options::value<std::string>(),
+                                                      "Directory for debug log (defaults to \".\"")(
+                "ncurses,n", "output useful information to an NCurses GUI instead of stdout.");
+    }
 
     od_map.at(goby::GobyFieldOptions::ConfigurationOptions::HIDDEN)
         .add_options()("binary", boost::program_options::value<std::string>(),
                        "override binary name for help display")(
             "help,h",
             boost::program_options::value<std::string>()->implicit_value("")->multitoken(),
-            "writes this help message. Use -hh for advanced options, -hhh for developer options "
+            "writes this help message. Use -hh for advanced options, -hhh for developer "
+            "options "
             "and "
             "-hhhh for all options");
 

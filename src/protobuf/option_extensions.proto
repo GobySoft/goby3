@@ -64,7 +64,14 @@ message GobyMessageOptions
                  false];  // if true, reads only parameters up to the first
                           // positional parameter (assumed to be an action)
         optional bool has_help_action = 2
-            [default = false];  // if true, do not output "Usage"  with the default --help, and do not exit after auto help
+            [default =
+                 false];  // if true, do not output "Usage"  with the default
+                          // --help, and do not exit after auto help
+
+        optional bool suppress_shortcuts = 3
+            [default =
+                 false];  // if true, do not include some command line shortcuts more relevant to goby pub/sub apps. tool_mode == true implies suppress_shortcuts
+
     }
     optional ConfigurationOptions cfg = 200;
 }
@@ -77,6 +84,7 @@ message GobyEnumValueOptions
         optional string external_help_param = 2 [default = "-h"];
         optional string short_help_msg = 3;
         optional string full_help_msg = 4;
+        optional bool include_binary_flag = 5 [default = true];
     }
     optional ConfigurationOptions cfg = 200;
 }

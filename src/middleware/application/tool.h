@@ -36,7 +36,8 @@ class ToolHelper
     void help(int action_for_help);
 
   private:
-    void exec_external(std::string app, std::vector<std::string> args);
+    void exec_external(std::string app, std::vector<std::string> args,
+                       const goby::GobyEnumValueOptions& ev_options);
     template <typename App, typename Configurator>
     void exec_internal(std::string app, std::vector<std::string> args);
 
@@ -63,7 +64,7 @@ template <typename Action> bool goby::middleware::ToolHelper::perform_action(Act
         const std::string& external_command = ev_options.cfg().external_command();
         std::vector<std::string> args;
         for (const auto& cli_extra : tool_cfg_.extra_cli_param()) args.push_back(cli_extra);
-        exec_external(external_command, args);
+        exec_external(external_command, args, ev_options);
     }
     return false;
 }
