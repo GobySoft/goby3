@@ -36,6 +36,7 @@ message GobyToolConfig
         launch = 3 [(goby.ev).cfg = {
             short_help_msg: "Launch goby *.launch files",
             external_command: "goby_launch"
+            include_binary_flag: false
         }];
     }
     optional Action action = 2 [

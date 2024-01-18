@@ -28,9 +28,10 @@ message PlaybackConfig
     optional goby.middleware.protobuf.AppConfig app = 1;
     optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
 
-    required string input_file = 10
-        [(goby.field).description = "Input goby_logger file to read (e.g. "
-                                    "'vehicle_20200204T121314.goby')"];
+    required string input_file = 10 [(goby.field) = {
+        description: "Input goby_logger file to read (e.g. 'vehicle_20200204T121314.goby')"
+        cfg { position: { enable: true }, cli_short: "i" }
+    }];
 
     optional double rate = 11 [default = 1];
 
@@ -39,7 +40,7 @@ message PlaybackConfig
 
     optional double start_from_offset = 13
         [default = 0, (dccl.field).units.base_dimensions = "T"];
-    
+
     optional string group_regex = 20 [default = ".*"];
     message TypeFilter
     {

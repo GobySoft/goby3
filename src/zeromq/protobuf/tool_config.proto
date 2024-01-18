@@ -32,6 +32,10 @@ message ZeroMQToolConfig
         subscribe = 4 [(goby.ev).cfg = {
             short_help_msg: "Subscribe to messages (on interprocess)",
         }];
+        playback = 5 [(goby.ev).cfg = {
+            short_help_msg: "Playback .goby log files",
+            external_command: "goby_playback"
+        }];
     }
     optional Action action = 2 [
         default = help,
