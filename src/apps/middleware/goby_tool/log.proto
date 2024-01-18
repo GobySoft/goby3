@@ -1,0 +1,36 @@
+syntax = "proto2";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/protobuf/option_extensions.proto";
+
+package goby.apps.middleware.protobuf;
+
+message UnifiedLogToolConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: true
+        has_help_action: true
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    enum Action
+    {
+        help = 0 [(goby.ev).cfg = {
+            short_help_msg: "Print usage information",
+            full_help_msg: "Usage: \"goby log help [action]\""
+        }];
+        convert = 1 [(goby.ev).cfg = {
+            short_help_msg: "Convert .goby log files to other formats",
+            external_command: "goby_log_tool"
+        }];
+    }
+    optional Action action = 2 [
+        default = help,
+        (goby.field) = {
+            description: "The action this tool should take [can omit --action if 1st parameter]",
+            cfg { position: { enable: true }, cli_short: "A", action: HIDDEN }
+        }
+    ];
+}

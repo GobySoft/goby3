@@ -23,7 +23,6 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/pty_config.proto
   middleware/protobuf/navigation.proto
   middleware/protobuf/logger.proto
-  middleware/protobuf/goby_tool_config.proto
   )
 
 set(MIDDLEWARE_SRC

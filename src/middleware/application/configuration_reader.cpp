@@ -867,8 +867,6 @@ std::string goby::middleware::ConfigReader::word_wrap(std::string s, unsigned wi
             s = s.substr(width);
         }
         out += "\n";
-
-        // std::cout << "width: " << width << " " << out << std::endl;
     }
     out += s;
 

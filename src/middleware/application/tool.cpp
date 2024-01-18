@@ -62,8 +62,9 @@ bool goby::middleware::ToolHelper::help(int* action_for_help)
         if (!action_for_help_name.empty())
             std::cerr << "Action \"" << action_for_help_name << "\" does not exist.\n" << std::endl;
 
-        std::cerr << "Usage: " << name_ << " [" << name_
-                  << " options (use -h[hhh])] action [action options]\n"
+        std::cerr << "Usage: " << name_ << " [" << name_ << " options (use -h[hhh])] "
+                  << goby::util::esc_lt_white << "action" << goby::util::esc_nocolor
+                  << " [action options]\n"
                   << std::endl;
 
         std::cerr << "Available actions: " << std::endl;
@@ -72,8 +73,13 @@ bool goby::middleware::ToolHelper::help(int* action_for_help)
             const google::protobuf::EnumValueDescriptor* value_desc = action_enum_desc_->value(i);
             const goby::GobyEnumValueOptions& ev_options =
                 value_desc->options().GetExtension(goby::ev);
-            std::cerr << "  " << value_desc->name() << ": " << ev_options.cfg().short_help_msg()
-                      << std::endl;
+            std::cerr << "  " << goby::util::esc_lt_white << value_desc->name()
+                      << goby::util::esc_nocolor << ": " << ev_options.cfg().short_help_msg();
+
+            if (ev_options.cfg().has_external_command())
+                std::cerr << " (" << ev_options.cfg().external_command() << ")";
+
+            std::cerr << std::endl;
         }
         return true;
     }
