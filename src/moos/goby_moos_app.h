@@ -837,7 +837,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
                            boost::program_options::options_description(od_pb_never_desc.c_str())));
 
         goby::middleware::ConfigReader::get_protobuf_program_options(od_map, cfg->GetDescriptor());
-        std::map<int, std::pair<bool, std::string>> positional_options;
+        std::vector<goby::middleware::ConfigReader::PositionalOption> positional_options;
         goby::middleware::ConfigReader::get_positional_options(cfg->GetDescriptor(),
                                                                positional_options);
 
@@ -846,13 +846,8 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
 
         boost::program_options::positional_options_description p;
         p.add("moos_file", 1);
-        p.add("moos_name", 2);
-        for (const auto& po_pair : positional_options)
-        {
-            // don't allow overriding of moos_file / moos_name convention used by pAntler
-            if (po_pair.first != 1 && po_pair.first != 2)
-                p.add(po_pair.second.second.c_str(), po_pair.first);
-        }
+        p.add("moos_name", 1);
+        for (const auto& po : positional_options) { p.add(po.name.c_str(), po.position_max_count); }
 
         boost::program_options::store(boost::program_options::command_line_parser(argc_, argv_)
                                           .options(od_all)

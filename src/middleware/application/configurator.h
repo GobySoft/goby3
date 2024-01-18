@@ -96,7 +96,7 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
 
     void handle_config_error(middleware::ConfigException& e) const override
     {
-        if (is_tool_mode())
+        if (tool_has_help_action())
         {
             // allow default action to take place (usually "help")
             std::cerr << "Invalid command: " << e.what() << std::endl;
@@ -118,9 +118,14 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
     void merge_app_base_cfg(protobuf::AppConfig* base_cfg,
                             const boost::program_options::variables_map& var_map);
 
-    bool is_tool_mode() const
+    bool tool_has_help_action() const
     {
-        return Config::descriptor()->options().GetExtension(goby::msg).cfg().tool_mode();
+        return Config::descriptor()
+            ->options()
+            .GetExtension(goby::msg)
+            .cfg()
+            .tool()
+            .has_help_action();
     }
 };
 
@@ -175,22 +180,23 @@ void ProtobufConfigurator<Config>::merge_app_base_cfg(
 
     if (var_map.count("verbose"))
     {
-        switch (var_map["verbose"].as<std::string>().size())
+        switch (var_map["verbose"].as<std::size_t>())
         {
-            default:
-            case 0:
+            case 0: break;
+            case 1:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
                     util::protobuf::GLogConfig::VERBOSE);
                 break;
-            case 1:
+            case 2:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
                     util::protobuf::GLogConfig::DEBUG1);
                 break;
-            case 2:
+            case 3:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
                     util::protobuf::GLogConfig::DEBUG2);
                 break;
-            case 3:
+            default:
+            case 4:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
                     util::protobuf::GLogConfig::DEBUG3);
                 break;
@@ -199,22 +205,24 @@ void ProtobufConfigurator<Config>::merge_app_base_cfg(
 
     if (var_map.count("glog_file_verbose"))
     {
-        switch (var_map["glog_file_verbose"].as<std::string>().size())
+        switch (var_map["glog_file_verbose"].as<std::size_t>())
         {
-            default:
-            case 0:
+            case 0: break;
+
+            case 1:
                 base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
                     util::protobuf::GLogConfig::VERBOSE);
                 break;
-            case 1:
+            case 2:
                 base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
                     util::protobuf::GLogConfig::DEBUG1);
                 break;
-            case 2:
+            case 3:
                 base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
                     util::protobuf::GLogConfig::DEBUG2);
                 break;
-            case 3:
+            default:
+            case 4:
                 base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
                     util::protobuf::GLogConfig::DEBUG3);
                 break;

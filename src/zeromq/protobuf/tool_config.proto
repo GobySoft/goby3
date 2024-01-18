@@ -7,8 +7,9 @@ package goby.apps.zeromq.protobuf;
 
 message ZeroMQToolConfig
 {
-    option (goby.msg).cfg = {
-        tool_mode: true
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: true
         has_help_action: true
     };
 
@@ -26,60 +27,96 @@ message ZeroMQToolConfig
             external_command: "goby_terminate"
         }];
         publish = 3 [(goby.ev).cfg = {
-            short_help_msg: "Publish message",
+            short_help_msg: "Publish message (on interprocess)",
         }];
         subscribe = 4 [(goby.ev).cfg = {
-            short_help_msg: "Subscribe to messages",
+            short_help_msg: "Subscribe to messages (on interprocess)",
         }];
     }
     optional Action action = 2 [
         default = help,
         (goby.field) = {
             description: "The action this tool should take [can omit --action if 1st parameter]",
-            cfg { position: 1, cli_short: "A", action: HIDDEN }
+            cfg { position: { enable: true }, cli_short: "A", action: HIDDEN }
         }
     ];
 }
 
 message PublishToolConfig
 {
-    option (goby.msg).cfg = {
-        tool_mode: true
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
     };
 
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
     optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
 
-    required int32 scheme = 10
-        [(goby.field) = { cfg { position: 1, cli_short: "s" } }];
+    required string scheme = 10 [(goby.field) = {
+        description: "Marshalling scheme as string or integer [PROTOBUF|1, DCCL|2, JSON|7].",
+        cfg { position: { enable: true }, cli_short: "s" }
+    }];
 
-    required string type = 11
-        [(goby.field) = { cfg { position: 2, cli_short: "t" } }];
+    optional string type = 11 [(goby.field) = {
+        description: "Type within scheme as string",
+        cfg { position: { enable: true }, cli_short: "t" }
+    }];
 
-    required string group = 12
-        [(goby.field) = { cfg { position: 3, cli_short: "g" } }];
+    required string group = 12 [(goby.field) = {
+        description: "Group as string",
+        cfg { position: { enable: true }, cli_short: "g" }
+    }];
 
-    required string value = 13 [(goby.field) = { cfg { position: 4 } }];
+    required string value = 13 [(goby.field) = {
+        description: "Value as string",
+        cfg { position: { enable: true } }
+    }];
+
+    repeated string load_shared_library = 20 [(goby.field) = {
+        description: "Load this shared library containing compiled Protobuf/DCCL messages.",
+        cfg { cli_short: "l" }
+    }];
 }
 
 message SubscribeToolConfig
 {
-    option (goby.msg).cfg = {
-        tool_mode: true
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
     };
 
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
     optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
 
-    required int32 scheme = 10
-        [(goby.field) = { cfg { position: 1, cli_short: "s" } }];
+    optional string scheme = 10 [(goby.field) = {
+        description: "Marshalling scheme as string or integer [PROTOBUF|1, DCCL|2, JSON|7]. If omitted, all supported schemes are used.",
+        cfg { position: { enable: true }, cli_short: "s" }
+    }];
 
-    required string type_regex = 11
-        [(goby.field) = { cfg { position: 2, cli_short: "t" } }];
+    optional string type_regex = 11 [
+        default = ".*",
+        (goby.field) = {
+            description: "Type within scheme as string or regex",
+            cfg { position: { enable: true }, cli_short: "t" }
+        }
+    ];
 
-    required string group_regex = 12
-        [(goby.field) = { cfg { position: 3, cli_short: "g" } }];
+    optional string group_regex = 12 [
+        default = ".*",
+        (goby.field) = {
+            description: "Group as string or regex",
+            cfg { position: { enable: true }, cli_short: "g" }
+        }
+    ];
+
+    repeated string load_shared_library = 20 [(goby.field) = {
+        description: "Load this shared library containing compiled Protobuf/DCCL messages.",
+        cfg { cli_short: "l" }
+    }];
+
+    optional bool include_internal_groups = 30 [default = false];
 }
-

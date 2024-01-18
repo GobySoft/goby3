@@ -94,10 +94,16 @@ class ConfigReader
                  boost::program_options::options_description>& od_map,
         const google::protobuf::Descriptor* desc);
 
-    static void
-    get_positional_options(const google::protobuf::Descriptor* desc,
-                           // position -> required -> name
-                           std::map<int, std::pair<bool, std::string>>& positional_options);
+    struct PositionalOption
+    {
+        std::string name;
+        bool required;
+        int position_max_count; // -1 is infinity
+    };
+
+    static void get_positional_options(const google::protobuf::Descriptor* desc,
+                                       // position -> required -> name
+                                       std::vector<PositionalOption>& positional_options);
 
     static void set_protobuf_program_option(const boost::program_options::variables_map& vm,
                                             google::protobuf::Message& message,
@@ -196,17 +202,21 @@ class ConfigReader
     }
 
     static void write_usage(const std::string& binary,
-                            const std::map<int, std::pair<bool, std::string>>& positional_options,
+                            const std::vector<PositionalOption>& positional_options,
                             std::ostream* out)
     {
         (*out) << "Usage: " << binary << " ";
-        for (const auto& po_pair : positional_options)
+        for (const auto& po : positional_options)
         {
-            bool is_required = po_pair.second.first;
-            if (!is_required)
+            if (!po.required)
                 (*out) << "[";
-            (*out) << "<" << po_pair.second.second << ">";
-            if (!is_required)
+            (*out) << "<" << po.name;
+            if (po.position_max_count > 1)
+                (*out) << "(" << po.position_max_count << ")";
+            else if (po.position_max_count == -1)
+                (*out) << "(...)";
+            (*out) << ">";
+            if (!po.required)
                 (*out) << "]";
             (*out) << " ";
         }

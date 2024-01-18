@@ -46,7 +46,12 @@ message GobyFieldOptions
             NEVER = 5;
         }
         optional ConfigAction action = 2 [default = ALWAYS];
-        optional int32 position = 3;
+        message Position
+        {
+            optional bool enable = 1 [default = false];
+            optional int32 max_count = 2 [default = 1];
+        }
+        optional Position position = 3;
     }
     optional ConfigurationOptions cfg = 200;
 }
@@ -59,19 +64,22 @@ message GobyMessageOptions
 
     message ConfigurationOptions
     {
-        optional bool tool_mode = 1
-            [default =
-                 false];  // if true, reads only parameters up to the first
-                          // positional parameter (assumed to be an action)
-        optional bool has_help_action = 2
-            [default =
-                 false];  // if true, do not output "Usage"  with the default
-                          // --help, and do not exit after auto help
-
-        optional bool suppress_shortcuts = 3
-            [default =
-                 false];  // if true, do not include some command line shortcuts more relevant to goby pub/sub apps. tool_mode == true implies suppress_shortcuts
-
+        message Tool
+        {
+            optional bool is_tool = 1 [
+                default = false
+            ];  // set configuration reader parameters to be more suitable for a
+                // tool rather than a publish/subscribe app
+            optional bool has_subtools = 2
+                [default =
+                     false];  // if true, reads only parameters up to the first
+                              // positional parameter (assumed to be an action)
+            optional bool has_help_action = 3 [
+                default = false
+            ];  // if true, do not output "Usage"  with the default
+                // --help, and do not exit after auto help
+        }
+        optional Tool tool = 1;
     }
     optional ConfigurationOptions cfg = 200;
 }
