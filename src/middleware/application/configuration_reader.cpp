@@ -908,8 +908,6 @@ void goby::middleware::ConfigReader::check_required_cfg(const google::protobuf::
         get_positional_options(message.GetDescriptor(), positional_options);
 
         write_usage(binary, positional_options, &err_msg);
-
-        //        err_msg << "Make sure you specified a proper `cfg_path` to the configuration file.";
         throw(ConfigException(err_msg.str()));
     }
 }

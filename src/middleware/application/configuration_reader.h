@@ -220,7 +220,7 @@ class ConfigReader
                 (*out) << "]";
             (*out) << " ";
         }
-        (*out) << "[options]\n\n";
+        (*out) << "[options]\n";
     }
 };
 } // namespace middleware

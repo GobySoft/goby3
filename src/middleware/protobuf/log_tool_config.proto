@@ -11,7 +11,7 @@ message LogToolConfig
 
     required string input_file = 10 [(goby.field) = {
         description: "Input goby_logger file to read (e.g. 'vehicle_20200204T121314.goby')  [can omit --input_file if 1st parameter]"
-        cfg { position: 1, cli_short: "i" }
+        cfg { position: { enable: true }, cli_short: "i" }
     }];
 
     optional string type_regex = 15 [
@@ -51,7 +51,7 @@ message LogToolConfig
         description: "Output file to write (default is determined by input_file name "
                      "and output format, e.g. vehicle_20200204T121314.txt for "
                      "DEBUG_TEXT, vehicle_20200204T121314.h5 for HDF5) [can omit --output_file if 2nd parameter]"
-        cfg { position: 2, cli_short: "o" }
+        cfg { position: { enable: true }, cli_short: "o" }
     }];
 
     enum OutputFormat

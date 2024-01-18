@@ -98,15 +98,12 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
     {
         if (tool_has_help_action())
         {
-            // allow default action to take place (usually "help")
             std::cerr << "Invalid command: " << e.what() << std::endl;
-            return;
         }
         else
         {
             std::cerr << "Invalid configuration: use --help and/or --example_config for more help: "
                       << e.what() << std::endl;
-            throw;
         }
     }
 
@@ -162,6 +159,10 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
     catch (middleware::ConfigException& e)
     {
         handle_config_error(e);
+
+        // allow default action to take place (usually "help")
+        if (!tool_has_help_action())
+            throw;
     }
 
     // TODO: convert to C++ struct app3 configuration format

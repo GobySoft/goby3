@@ -148,22 +148,40 @@ goby::apps::zeromq::PublishTool::PublishTool()
         dl_handles_.push_back(lib_handle);
     }
 
-    int scheme = goby::middleware::MarshallingScheme::from_string(cfg().scheme());
-    std::string scheme_str = goby::middleware::MarshallingScheme::to_string(scheme);
+    std::string type_scheme_str = cfg().type();
+    std::string type;
+    int scheme{0};
+
+    std::string::size_type slash_pos = type_scheme_str.find('/');
+    if (slash_pos == std::string::npos)
+    {
+        // special cases
+        if (type_scheme_str == "JSON")
+        {
+            scheme = goby::middleware::MarshallingScheme::JSON;
+        }
+        else if (type_scheme_str.find("protobuf.") != std::string::npos)
+        {
+            scheme = goby::middleware::MarshallingScheme::PROTOBUF;
+            type = type_scheme_str;
+        }
+    }
+    else
+    {
+        scheme =
+            goby::middleware::MarshallingScheme::from_string(type_scheme_str.substr(0, slash_pos));
+        type = type_scheme_str.substr(slash_pos + 1);
+    }
+
     goby::middleware::DynamicGroup group(cfg().group());
     switch (scheme)
     {
         case goby::middleware::MarshallingScheme::DCCL:
         case goby::middleware::MarshallingScheme::PROTOBUF:
         {
-            if (!cfg().has_type())
-                glog.is_die() && glog << "You must specify a type for scheme: PROTOBUF. See --help "
-                                         "for more information"
-                                      << std::endl;
-
             // use TextFormat
             auto pb_msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                std::shared_ptr<google::protobuf::Message>>(cfg().type());
+                std::shared_ptr<google::protobuf::Message>>(type);
             google::protobuf::TextFormat::Parser parser;
             goby::util::FlexOStreamErrorCollector error_collector(cfg().value());
             parser.RecordErrorsTo(&error_collector);
@@ -183,13 +201,26 @@ goby::apps::zeromq::PublishTool::PublishTool()
 
         case goby::middleware::MarshallingScheme::JSON:
         {
-            nlohmann::json j(cfg().value());
-            interprocess().publish_dynamic<nlohmann::json>(j, group);
+            auto j = nlohmann::json::parse(cfg().value());
+            if (type.empty() || type == "nlohmann::json")
+            {
+                interprocess().publish_dynamic<nlohmann::json>(j, group);
+            }
+            else
+            {
+                // allow for specialized types, e.g. goby_json_type = "NavigationReport";
+                std::vector<char> bytes = goby::middleware::SerializerParserHelper<
+                    nlohmann::json, goby::middleware::MarshallingScheme::JSON>::serialize(j);
+
+                interprocess().publish_serialized(type, goby::middleware::MarshallingScheme::JSON,
+                                                  bytes, group);
+            }
+
             break;
         }
 
         default:
-            glog.is_die() && glog << "Scheme " << scheme_str
+            glog.is_die() && glog << "Scheme " << scheme
                                   << " is not implemented for 'goby zeromq publish'" << std::endl;
     }
 }
