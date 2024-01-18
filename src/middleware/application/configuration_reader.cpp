@@ -41,7 +41,6 @@
 #include <google/protobuf/text_format.h>                // for TextFormat::...
 
 #include "configuration_reader.h"
-#include "goby/protobuf/option_extensions.pb.h"     // for GobyFieldOpt...
 #include "goby/util/debug_logger/flex_ostream.h"    // for FlexOstream
 #include "goby/util/debug_logger/flex_ostreambuf.h" // for DIE
 #include "goby/util/debug_logger/term_color.h"      // for esc_nocolor
@@ -51,68 +50,169 @@
 // brings std::ostream& red, etc. into scope
 using namespace goby::util::tcolor;
 
-void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
-                                              google::protobuf::Message* message,
-                                              std::string* application_name,
-                                              boost::program_options::options_description* od_all,
-                                              boost::program_options::variables_map* var_map,
-                                              bool check_required_configuration /*= true*/)
+// Thanks to https://stackoverflow.com/questions/59761124/use-boostprogram-options-to-specify-multiple-flags
+class CountValue : public boost::program_options::typed_value<std::size_t>
+{
+  public:
+    CountValue() : CountValue(nullptr) {}
+
+    CountValue(std::size_t* store) : boost::program_options::typed_value<std::size_t>(store)
+    {
+        // Ensure that no tokens may be passed as a value.
+        default_value(0);
+        zero_tokens();
+    }
+
+    virtual ~CountValue() {}
+
+    virtual void xparse(boost::any& store, const std::vector<std::string>& /*tokens*/) const
+    {
+        // Replace the stored value with the access count.
+        store = boost::any(++count_);
+    }
+
+  private:
+    mutable std::size_t count_{0};
+};
+
+int goby::middleware::ConfigReader::read_cfg(
+    int argc, char* argv[], google::protobuf::Message* message, std::string* application_name,
+    std::string* binary_name, boost::program_options::options_description* od_all,
+    boost::program_options::variables_map* var_map, bool check_required_configuration /*= true*/)
 {
     if (!argv)
-        return;
+        return 0;
+
+    goby::GobyMessageOptions::ConfigurationOptions::Tool tool_cfg;
+    if (message && message->GetDescriptor()->options().GetExtension(goby::msg).has_cfg())
+    {
+        tool_cfg = message->GetDescriptor()->options().GetExtension(goby::msg).cfg().tool();
+    }
 
     boost::filesystem::path launch_path(argv[0]);
 
 #if BOOST_FILESYSTEM_VERSION == 3
-    *application_name = launch_path.filename().string();
+    *binary_name = launch_path.filename().string();
 #else
-    *application_name = launch_path.filename();
+    *binary_name = launch_path.filename();
 #endif
+    *application_name = *binary_name;
 
     std::string cfg_path, exec_cfg_path;
 
-    boost::program_options::options_description od_cli_only("Given on command line only");
-
-    std::string cfg_path_desc = "path to " + *application_name + " configuration file (typically " +
-                                *application_name + ".pb.cfg).";
+    std::string cfg_path_desc =
+        "path to configuration file (e.g., " + *application_name + ".pb.cfg).";
 
     std::string app_name_desc =
         "name to use while communicating in goby (default: " + std::string(argv[0]) + ")";
-    od_cli_only.add_options()("cfg_path,c", boost::program_options::value<std::string>(&cfg_path),
-                              cfg_path_desc.c_str())(
-        "exec_cfg_path,C", boost::program_options::value<std::string>(&exec_cfg_path),
-        "File (script) to execute to create the configuration for this app. Output of application "
-        "must be a TextFormat Protobuf message for this application's configuration.")(
-        "help,h", "writes this help message")(
-        "app_name,a", boost::program_options::value<std::string>(),
-        app_name_desc.c_str())("example_config,e", "writes an example .pb.cfg file")(
-        "verbose,v", boost::program_options::value<std::string>()->implicit_value("")->multitoken(),
-        "output useful information to std::cout. -v is tty_verbosity: VERBOSE, -vv is "
-        "tty_verbosity: DEBUG1, -vvv is tty_verbosity: DEBUG2, -vvvv is tty_verbosity: DEBUG3")(
-        "glog_file_verbose,z",
-        boost::program_options::value<std::string>()->implicit_value("")->multitoken(),
-        "output useful information to a file (either in current directory or directory given by "
-        "-d). -z is verbosity: VERBOSE, -zz is verbosity: DEBUG1, -vvv is verbosity: "
-        "DEBUG2, -zzzz is verbosity: DEBUG3")("glog_file_dir,d",
-                                              boost::program_options::value<std::string>(),
-                                              "Directory for debug log (defaults to \".\"")(
-        "ncurses,n", "output useful information to an NCurses GUI instead of stdout.")(
-        "version,V", "writes the current version");
 
-    std::string od_both_desc = "Typically given in " + *application_name +
-                               " configuration file, but may be specified on the command line";
-    boost::program_options::options_description od_both(od_both_desc.c_str());
+    std::map<goby::GobyFieldOptions::ConfigurationOptions::ConfigAction,
+             boost::program_options::options_description>
+        od_map;
+
+    std::string od_pb_always_desc =
+        "Standard options (use -hh, -hhh, or -hhh to show more options)";
+    std::string od_pb_never_desc = "Hidden options";
+    std::string od_pb_advanced_desc = "Advanced options";
+    std::string od_pb_developer_desc = "Developer options";
+    od_map.insert(
+        std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::ALWAYS,
+                       boost::program_options::options_description(od_pb_always_desc.c_str())));
+    od_map.insert(
+        std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::ADVANCED,
+                       boost::program_options::options_description(od_pb_advanced_desc.c_str())));
+    od_map.insert(
+        std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::DEVELOPER,
+                       boost::program_options::options_description(od_pb_developer_desc.c_str())));
+    od_map.insert(
+        std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::HIDDEN,
+                       boost::program_options::options_description(od_pb_never_desc.c_str())));
+
+    std::vector<PositionalOption> positional_options;
 
     if (message)
     {
-        get_protobuf_program_options(od_both, message->GetDescriptor());
-        od_all->add(od_both);
+        get_protobuf_program_options(od_map, message->GetDescriptor());
+        get_positional_options(message->GetDescriptor(), positional_options);
+
+        if (tool_cfg.has_subtools())
+        {
+            // search for first non '-' or '--' parameter
+            for (int i = 1; i < argc; ++i)
+            {
+                if (argv[i][0] != '-')
+                {
+                    // only let program options parse up to this point
+                    argc = i + 1;
+                    break;
+                }
+            }
+        }
     }
-    od_all->add(od_cli_only);
+
+    od_map.at(goby::GobyFieldOptions::ConfigurationOptions::ALWAYS)
+        .add_options()("cfg_path,c", boost::program_options::value<std::string>(&cfg_path),
+                       cfg_path_desc.c_str())(
+            "example_config,e", new CountValue,
+            "writes an example .pb.cfg file. Use -ee to also show advanced options, -eee for "
+            "developer "
+            "options, and -eeee for all options");
+
+    goby::GobyFieldOptions::ConfigurationOptions::ConfigAction shortcut_base_action_level =
+        goby::GobyFieldOptions::ConfigurationOptions::ALWAYS;
+    if (tool_cfg.is_tool())
+        shortcut_base_action_level = goby::GobyFieldOptions::ConfigurationOptions::ADVANCED;
+
+    od_map.at(shortcut_base_action_level)
+        .add_options()(
+            "verbose,v", new CountValue,
+            "output useful information to std::cout. -v is tty_verbosity: VERBOSE, -vv is "
+            "tty_verbosity: DEBUG1, -vvv is tty_verbosity: DEBUG2, -vvvv is tty_verbosity: DEBUG3");
+
+    if (!tool_cfg.is_tool())
+    {
+        od_map.at(goby::GobyFieldOptions::ConfigurationOptions::ALWAYS)
+            .add_options()("app_name,a", boost::program_options::value<std::string>(),
+                           app_name_desc.c_str())("version,V", "writes the current version");
+
+        od_map.at(goby::GobyFieldOptions::ConfigurationOptions::ADVANCED)
+            .add_options()(
+                "exec_cfg_path,C", boost::program_options::value<std::string>(&exec_cfg_path),
+                "File (script) to execute to create the configuration for this app. Output of "
+                "application "
+                "must be a TextFormat Protobuf message for this application's configuration.")(
+                "glog_file_verbose,z", new CountValue,
+                "output useful information to a file (either in current directory or directory "
+                "given "
+                "by "
+                "-d). -z is verbosity: VERBOSE, -zz is verbosity: DEBUG1, -vvv is verbosity: "
+                "DEBUG2, -zzzz is verbosity: DEBUG3")("glog_file_dir,d",
+                                                      boost::program_options::value<std::string>(),
+                                                      "Directory for debug log (defaults to \".\"")(
+                "ncurses,n", "output useful information to an NCurses GUI instead of stdout.");
+    }
+
+    od_map.at(goby::GobyFieldOptions::ConfigurationOptions::HIDDEN)
+        .add_options()("binary", boost::program_options::value<std::string>(),
+                       "override binary name for help display")(
+            "help,h", new CountValue,
+            "writes this help message. Use -hh for advanced options, -hhh for developer "
+            "options "
+            "and "
+            "-hhhh for all options");
+
+    for (const auto& od_p : od_map) od_all->add(od_p.second);
 
     boost::program_options::positional_options_description p;
-    p.add("cfg_path", 1);
-    p.add("app_name", 2);
+
+    // if any positional options are specified, don't use the defaults
+    if (positional_options.empty())
+    {
+        positional_options.push_back({"cfg_path", false, 1});
+        positional_options.push_back({"app_name", false, 1});
+    }
+
+    for (const auto& po : positional_options) { p.add(po.name.c_str(), po.position_max_count); }
 
     try
     {
@@ -127,16 +227,59 @@ void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
         throw(ConfigException(e.what()));
     }
 
-    if (var_map->count("help"))
+    if (var_map->count("binary"))
     {
-        std::cerr << *od_all << "\n";
-        exit(EXIT_SUCCESS);
+        *binary_name = (*var_map)["binary"].as<std::string>();
     }
-    else if (var_map->count("example_config"))
+
+    if (var_map->count("help") && (*var_map)["help"].as<std::size_t>() > 0)
+    {
+        if (!tool_cfg.has_help_action())
+            write_usage(*binary_name, positional_options, &std::cerr);
+
+        switch ((*var_map)["help"].as<std::size_t>())
+        {
+            default:
+            case 4:
+                std::cerr << od_map[goby::GobyFieldOptions::ConfigurationOptions::HIDDEN] << "\n";
+                // all flow throughs intentional
+            case 3:
+                std::cerr << od_map[goby::GobyFieldOptions::ConfigurationOptions::DEVELOPER]
+                          << "\n";
+            case 2:
+                std::cerr << od_map[goby::GobyFieldOptions::ConfigurationOptions::ADVANCED] << "\n";
+            case 1:
+                std::cerr << od_map[goby::GobyFieldOptions::ConfigurationOptions::ALWAYS] << "\n";
+        }
+
+        if (!tool_cfg.has_help_action())
+            exit(EXIT_SUCCESS);
+    }
+    else if (var_map->count("example_config") && (*var_map)["example_config"].as<std::size_t>() > 0)
     {
         if (message)
         {
-            get_example_cfg_file(message, &std::cout);
+            switch ((*var_map)["example_config"].as<std::size_t>())
+            {
+                case 1:
+                    get_example_cfg_file(message, &std::cout, "",
+                                         goby::GobyFieldOptions::ConfigurationOptions::ALWAYS);
+                    break;
+                case 2:
+                    get_example_cfg_file(message, &std::cout, "",
+                                         goby::GobyFieldOptions::ConfigurationOptions::ADVANCED);
+                    break;
+                case 3:
+                    get_example_cfg_file(message, &std::cout, "",
+                                         goby::GobyFieldOptions::ConfigurationOptions::DEVELOPER);
+                    break;
+                default:
+                case 4:
+                    get_example_cfg_file(message, &std::cout, "",
+                                         goby::GobyFieldOptions::ConfigurationOptions::HIDDEN);
+                    break;
+            }
+
             exit(EXIT_SUCCESS);
         }
         else
@@ -234,8 +377,10 @@ void goby::middleware::ConfigReader::read_cfg(int argc, char* argv[],
 
         // now the proto message must have all required fields
         if (check_required_configuration)
-            check_required_cfg(*message);
+            check_required_cfg(*message, *binary_name);
     }
+
+    return argc;
 }
 
 void goby::middleware::ConfigReader::set_protobuf_program_option(
@@ -376,23 +521,56 @@ void goby::middleware::ConfigReader::set_protobuf_program_option(
     }
 }
 
-void goby::middleware::ConfigReader::get_example_cfg_file(google::protobuf::Message* message,
-                                                          std::ostream* stream,
-                                                          const std::string& indent /*= ""*/)
+void goby::middleware::ConfigReader::get_example_cfg_file(
+    google::protobuf::Message* message, std::ostream* stream, const std::string& indent,
+    goby::GobyFieldOptions::ConfigurationOptions::ConfigAction action)
 {
-    build_description(message->GetDescriptor(), *stream, indent, false);
+    build_description(message->GetDescriptor(), *stream, indent, false, action);
     *stream << std::endl;
 }
 
-void goby::middleware::ConfigReader::get_protobuf_program_options(
-    boost::program_options::options_description& po_desc, const google::protobuf::Descriptor* desc)
+void goby::middleware::ConfigReader::get_positional_options(
+    const google::protobuf::Descriptor* desc, std::vector<PositionalOption>& positional_options)
 {
     for (int i = 0, n = desc->field_count(); i < n; ++i)
     {
         const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
         const std::string& field_name = field_desc->name();
-
         const std::string& cli_name = field_name;
+
+        const goby::GobyFieldOptions::ConfigurationOptions& cfg_opts =
+            field_desc->options().GetExtension(goby::field).cfg();
+
+        if (cfg_opts.has_position() && cfg_opts.position().enable())
+        {
+            int default_max_count = 1;
+            positional_options.push_back({cli_name, field_desc->is_required(),
+                                          cfg_opts.position().has_max_count()
+                                              ? cfg_opts.position().max_count()
+                                              : default_max_count});
+        }
+    }
+}
+
+void goby::middleware::ConfigReader::get_protobuf_program_options(
+    std::map<goby::GobyFieldOptions::ConfigurationOptions::ConfigAction,
+             boost::program_options::options_description>& od_map,
+    const google::protobuf::Descriptor* desc)
+{
+    for (int i = 0, n = desc->field_count(); i < n; ++i)
+    {
+        const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
+        const std::string& field_name = field_desc->name();
+        std::string cli_name = field_name;
+
+        const goby::GobyFieldOptions::ConfigurationOptions& cfg_opts =
+            field_desc->options().GetExtension(goby::field).cfg();
+
+        if (cfg_opts.has_cli_short())
+            cli_name += "," + cfg_opts.cli_short();
+
+        boost::program_options::options_description& po_desc = od_map.at(cfg_opts.action());
+
         std::stringstream human_desc_ss;
         human_desc_ss << util::esc_lt_blue
                       << field_desc->options().GetExtension(goby::field).description();
@@ -417,7 +595,8 @@ void goby::middleware::ConfigReader::get_protobuf_program_options(
         {
             case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
             {
-                build_description(field_desc->message_type(), human_desc_ss, "");
+                build_description(field_desc->message_type(), human_desc_ss, "",
+                                  goby::GobyFieldOptions::ConfigurationOptions::ALWAYS);
 
                 set_single_option(po_desc, field_desc, std::string(), cli_name,
                                   human_desc_ss.str());
@@ -490,37 +669,37 @@ void goby::middleware::ConfigReader::get_protobuf_program_options(
     }
 }
 
-void goby::middleware::ConfigReader::build_description(const google::protobuf::Descriptor* desc,
-                                                       std::ostream& stream,
-                                                       const std::string& indent /*= ""*/,
-                                                       bool use_color /* = true */)
+void goby::middleware::ConfigReader::build_description(
+    const google::protobuf::Descriptor* desc, std::ostream& stream,
+    const std::string& indent /*= ""*/, bool use_color /* = true */,
+    goby::GobyFieldOptions::ConfigurationOptions::ConfigAction action /*=
+                                                                        goby::GobyFieldOptions::ConfigurationOptions::ALWAYS*/ )
 {
     for (int i = 0, n = desc->field_count(); i < n; ++i)
     {
         const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
 
-        if (field_desc->options().GetExtension(goby::field).cfg().action() ==
-            goby::GobyFieldOptions::ConfigurationOptions::NEVER)
+        if (field_desc->options().GetExtension(goby::field).cfg().action() > action)
             continue;
 
-        build_description_field(field_desc, stream, indent, use_color);
+        build_description_field(field_desc, stream, indent, use_color, action);
     }
 
     std::vector<const google::protobuf::FieldDescriptor*> extensions;
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
     for (auto field_desc : extensions)
     {
-        if (field_desc->options().GetExtension(goby::field).cfg().action() ==
-            goby::GobyFieldOptions::ConfigurationOptions::NEVER)
+        if (field_desc->options().GetExtension(goby::field).cfg().action() > action)
             continue;
 
-        build_description_field(field_desc, stream, indent, use_color);
+        build_description_field(field_desc, stream, indent, use_color, action);
     }
 }
 
 void goby::middleware::ConfigReader::build_description_field(
     const google::protobuf::FieldDescriptor* field_desc, std::ostream& stream,
-    const std::string& indent, bool use_color)
+    const std::string& indent, bool use_color,
+    goby::GobyFieldOptions::ConfigurationOptions::ConfigAction action)
 {
     google::protobuf::DynamicMessageFactory factory;
     const google::protobuf::Message* default_msg =
@@ -566,7 +745,7 @@ void goby::middleware::ConfigReader::build_description_field(
 
         stream << description;
 
-        build_description(field_desc->message_type(), stream, indent + "  ", use_color);
+        build_description(field_desc->message_type(), stream, indent + "  ", use_color, action);
         stream << "\n" << indent << "}";
     }
     else
@@ -712,7 +891,8 @@ void goby::middleware::ConfigReader::wrap_description(std::string* description, 
     boost::replace_all(*description, "\n", "\n" + spaces);
 }
 
-void goby::middleware::ConfigReader::check_required_cfg(const google::protobuf::Message& message)
+void goby::middleware::ConfigReader::check_required_cfg(const google::protobuf::Message& message,
+                                                        const std::string& binary)
 {
     if (!message.IsInitialized())
     {
@@ -724,7 +904,10 @@ void goby::middleware::ConfigReader::check_required_cfg(const google::protobuf::
         for (const std::string& s : errors)
             err_msg << util::esc_red << s << "\n" << util::esc_nocolor;
 
-        err_msg << "Make sure you specified a proper `cfg_path` to the configuration file.";
+        std::vector<PositionalOption> positional_options;
+        get_positional_options(message.GetDescriptor(), positional_options);
+
+        write_usage(binary, positional_options, &err_msg);
         throw(ConfigException(err_msg.str()));
     }
 }

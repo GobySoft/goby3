@@ -35,7 +35,8 @@ message GLogConfig
                 "absolute path. The string '%1%' must be present, which will "
                 "be replaced by the current UTC date and time. Optionally, "
                 "'%2%' will be replaced by the application name.",
-            default = "%2%_%1%.txt"
+            default = "%2%_%1%.txt",
+            (goby.field).cfg = { action: ADVANCED }
         ];
         optional string file_dir = 2 [
             (goby.field).description =
@@ -51,11 +52,13 @@ message GLogConfig
         optional uint32 log_rotate_sec = 4 [
             (goby.field).description =
                 "How often to rotate the glog file, in seconds.",
-            (dccl.field).units.base_dimensions = "T"
+            (dccl.field).units.base_dimensions = "T",
+            (goby.field).cfg = { action: ADVANCED }
         ];
     }
     optional FileLog file_log = 3
         [(goby.field).description = "Open a file for (debug) logging."];
 
-    optional bool show_dccl_log = 4 [default = false];
+    optional bool show_dccl_log = 4
+        [default = false, (goby.field).cfg = { action: ADVANCED }];
 }

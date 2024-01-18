@@ -11,6 +11,7 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/frontseat_interface_config.proto
   protobuf/opencpn_config.proto
   protobuf/geov_config.proto
+  protobuf/tool_config.proto
   )
 
 set(SRC
