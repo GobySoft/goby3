@@ -109,7 +109,8 @@ class ConfigReader
     static void set_protobuf_program_option(const boost::program_options::variables_map& vm,
                                             google::protobuf::Message& message,
                                             const std::string& full_name,
-                                            const boost::program_options::variable_value& value);
+                                            const boost::program_options::variable_value& value,
+                                            bool overwrite_if_exists);
 
     static void
     get_example_cfg_file(google::protobuf::Message* message, std::ostream* human_desc_ss,

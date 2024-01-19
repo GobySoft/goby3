@@ -215,6 +215,7 @@ int goby::middleware::ConfigReader::read_cfg(
 
     for (const auto& po : positional_options) { p.add(po.name.c_str(), po.position_max_count); }
 
+    boost::program_options::variables_map po_env_var_map;
     try
     {
         boost::program_options::store(boost::program_options::command_line_parser(argc, argv)
@@ -233,7 +234,7 @@ int goby::middleware::ConfigReader::read_cfg(
                                    ? environmental_var_map.at(i_env_var)
                                    : "";
                     }),
-                *var_map);
+                po_env_var_map);
         }
     }
     catch (std::exception& e)
@@ -314,6 +315,7 @@ int goby::middleware::ConfigReader::read_cfg(
     }
 
     boost::program_options::notify(*var_map);
+    boost::program_options::notify(po_env_var_map);
 
     if (message)
     {
@@ -381,12 +383,19 @@ int goby::middleware::ConfigReader::read_cfg(
             }
         }
 
-        // add / overwrite any options that are specified in the cfg file with those given on the command line
-        for (const auto& p : *var_map)
+        // add any environmental variable options that don't exist in the cfg file
+        for (const auto& p : po_env_var_map)
         {
             // let protobuf deal with the defaults
             if (!p.second.defaulted())
-                set_protobuf_program_option(*var_map, *message, p.first, p.second);
+                set_protobuf_program_option(po_env_var_map, *message, p.first, p.second, false);
+        }
+
+        // add / overwrite any options that are specified in the cfg file with those given on the command line
+        for (const auto& p : *var_map)
+        {
+            if (!p.second.defaulted())
+                set_protobuf_program_option(*var_map, *message, p.first, p.second, true);
         }
 
         // now the proto message must have all required fields
@@ -399,7 +408,8 @@ int goby::middleware::ConfigReader::read_cfg(
 
 void goby::middleware::ConfigReader::set_protobuf_program_option(
     const boost::program_options::variables_map& /*var_map*/, google::protobuf::Message& message,
-    const std::string& full_name, const boost::program_options::variable_value& value)
+    const std::string& full_name, const boost::program_options::variable_value& value,
+    bool overwrite_if_exists)
 {
     const google::protobuf::Descriptor* desc = message.GetDescriptor();
     const google::protobuf::Reflection* refl = message.GetReflection();
@@ -478,6 +488,9 @@ void goby::middleware::ConfigReader::set_protobuf_program_option(
     }
     else
     {
+        if (refl->HasField(message, field_desc) && !overwrite_if_exists)
+            return;
+
         switch (field_desc->cpp_type())
         {
             case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:

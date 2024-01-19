@@ -68,7 +68,7 @@ goby::apps::middleware::ProtobufShowTool::ProtobufShowTool()
         }
 
         std::cout << "============== " << goby::util::esc_lt_white << name
-                  << goby::util::esc_nocolor << "============== " << std::endl;
+                  << goby::util::esc_nocolor << " ==============" << std::endl;
         std::cout << desc->DebugString() << std::endl;
     }
 

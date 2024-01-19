@@ -801,7 +801,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
     //
 
     boost::program_options::options_description od_all;
-    boost::program_options::variables_map var_map;
+    boost::program_options::variables_map var_map, po_env_var_map;
     try
     {
         boost::program_options::options_description od_cli_only(
@@ -867,10 +867,11 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
                                    ? environmental_var_map.at(i_env_var)
                                    : "";
                     }),
-                var_map);
+                po_env_var_map);
         }
 
         boost::program_options::notify(var_map);
+        boost::program_options::notify(po_env_var_map);
 
         if (var_map.count("help"))
         {
@@ -960,13 +961,21 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
         moos_file_reader.SetFile(mission_file_);
         fetch_moos_globals(cfg, moos_file_reader);
 
-        // add / overwrite any options that are specified in the cfg file with those given on the command line
-        for (const auto& p : var_map)
+        // add any environmental variable options that don't exist in the cfg file
+        for (const auto& p : po_env_var_map)
         {
             // let protobuf deal with the defaults
             if (!p.second.defaulted())
                 goby::middleware::ConfigReader::set_protobuf_program_option(var_map, *cfg, p.first,
-                                                                            p.second);
+                                                                            p.second, false);
+        }
+
+        // add / overwrite any options that are specified in the cfg file with those given on the command line
+        for (const auto& p : var_map)
+        {
+            if (!p.second.defaulted())
+                goby::middleware::ConfigReader::set_protobuf_program_option(var_map, *cfg, p.first,
+                                                                            p.second, true);
         }
 
         // now the proto message must have all required fields
