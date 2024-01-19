@@ -1,6 +1,41 @@
-Goby Release Notes (Major version 3)
+# Goby Release Notes (Major version 3)
 
-Version 3.1.2
+## Version 3.1.3
+
+### General
+
+- Updates to configuration reader (called by ProtobufConfigurator) to better support creation of command line tools (of the style 'tool <action> <subaction> [--options]'). New `goby::middleware::ToolHelper` class for tools to use.
+	+ Support for environmental variables
+	+ Support for custom positional parameters to replace default `<cfg_file> <app_name>`
+	+ Support for custom short (e.g., '-l' for '--library') command line options.
+- New `goby` command line tool that unifies existing tools and apps into a single point of entry and adds new tools (most notable are `goby zeromq publish` and `goby zeromq subscribe`, allowing command line publish/subscribe to `gobyd`):
+  - `goby log`: Manage goby log files
+	  + `convert`: Convert .goby log files to other formats [goby_log_tool]
+  - `goby launch`: Launch goby *.launch files [goby_launch]
+  - `goby zeromq`: Interact with ZeroMQ Goby pub/sub [goby_zeromq_tool]
+	  - `terminate`: Terminate Goby applications [goby_terminate]
+ 	  - `publish`: Publish a message (on interprocess)
+      - `subscribe`: Subscribe to messages (on interprocess)
+      - `playback`: Playback .goby log files [goby_playback]
+      - `daemon`: Publish/subscribe broker for interprocess and, optionally, intervehicle portal [gobyd]
+      - `logger`: Binary logger of interprocess messages [goby_logger]
+      - `coroner`: Monitoring of process health [goby_coroner]
+      - `intervehicle_portal`: Standalone intervehicle portal [goby_intervehicle_portal]
+      - `gps`: GPSD client that publishes data into Goby pub/sub [goby_gps]
+      - `frontseat_interface`: Interface to vehicle Frontseat system (control system) [goby_frontseat_interface]
+      - `geov`: Interface to Google Earth via GEOV (https://gobysoft.org/geov/) [goby_geov_interface]
+      - `liaison`: Web-based UI for control/monitoring of Goby pub/sub [goby_liaison]
+      - `opencpn`: Interface to the OpenCPN GUI [goby_opencpn_interface]
+      - `moos_gateway`: Gateway to the MOOS middleware [goby_moos_gateway]
+  - `goby protobuf`: Tools for the Google Protocol Buffers (protobuf) marshalling scheme
+	  + `show`: Display definition for message
+
+
+
+
+****************
+
+## Version 3.1.2
 
 ### Bugs
 
@@ -9,7 +44,7 @@ Version 3.1.2
 
 ****************
 
-Version 3.1.1
+## Version 3.1.1
 
 ### Bugs
 
