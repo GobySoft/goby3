@@ -105,9 +105,7 @@ void goby::middleware::ToolHelper::exec_internal(std::string app, std::vector<st
     goby::run<App>(Configurator(c_args.size(), c_args.data()));
 }
 
-template <typename App,
-          typename Configurator = goby::middleware::ProtobufConfigurator<typename App::ConfigType>>
-void goby::middleware::ToolHelper::run_subtool()
+template <typename App, typename Configurator> void goby::middleware::ToolHelper::run_subtool()
 
 {
     std::vector<std::string> args;
@@ -115,8 +113,7 @@ void goby::middleware::ToolHelper::run_subtool()
     exec_internal<App, Configurator>(name_, args);
 }
 
-template <typename App,
-          typename Configurator = goby::middleware::ProtobufConfigurator<typename App::ConfigType>>
+template <typename App, typename Configurator>
 void goby::middleware::ToolHelper::help(int action_for_help)
 
 {
