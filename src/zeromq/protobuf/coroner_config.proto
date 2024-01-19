@@ -10,7 +10,8 @@ message CoronerConfig
 {
     option (dccl.msg).unit_system = "si";
     optional goby.middleware.protobuf.AppConfig app = 1;
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2        [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
 
     repeated string expected_name = 10;
 

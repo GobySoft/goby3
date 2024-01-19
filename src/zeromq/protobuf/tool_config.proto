@@ -105,7 +105,9 @@ message PublishToolConfig
 
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
+            [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
 
     required string group = 10 [(goby.field) = {
         description: "Group as string",
@@ -138,7 +140,9 @@ message SubscribeToolConfig
 
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
+            [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
 
     optional string group_regex = 10 [
         default = ".*",

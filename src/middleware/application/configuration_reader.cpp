@@ -582,7 +582,14 @@ void goby::middleware::ConfigReader::get_protobuf_program_options(
             field_desc->options().GetExtension(goby::field).cfg();
 
         if (cfg_opts.has_env())
+        {
+            if (environmental_var_map.count(cfg_opts.env()))
+                throw(ConfigException(std::string("Environmental variable " + cfg_opts.env() +
+                                                  " is already in use by " +
+                                                  environmental_var_map[cfg_opts.env()] +
+                                                  " when trying to add it for " + cli_name)));
             environmental_var_map[cfg_opts.env()] = cli_name;
+        }
 
         if (cfg_opts.has_cli_short())
             cli_name += "," + cfg_opts.cli_short();
