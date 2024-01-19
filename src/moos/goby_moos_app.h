@@ -836,7 +836,9 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
             std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::NEVER,
                            boost::program_options::options_description(od_pb_never_desc.c_str())));
 
-        goby::middleware::ConfigReader::get_protobuf_program_options(od_map, cfg->GetDescriptor());
+        std::map<std::string, std::string> environmental_var_map;
+        goby::middleware::ConfigReader::get_protobuf_program_options(od_map, cfg->GetDescriptor(),
+                                                                     environmental_var_map);
         std::vector<goby::middleware::ConfigReader::PositionalOption> positional_options;
         goby::middleware::ConfigReader::get_positional_options(cfg->GetDescriptor(),
                                                                positional_options);
@@ -854,6 +856,19 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
                                           .positional(p)
                                           .run(),
                                       var_map);
+
+        if (!environmental_var_map.empty())
+        {
+            boost::program_options::store(
+                boost::program_options::parse_environment(
+                    od_all,
+                    [&environmental_var_map](const std::string& i_env_var) -> std::string {
+                        return environmental_var_map.count(i_env_var)
+                                   ? environmental_var_map.at(i_env_var)
+                                   : "";
+                    }),
+                var_map);
+        }
 
         boost::program_options::notify(var_map);
 

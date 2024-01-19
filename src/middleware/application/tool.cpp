@@ -109,3 +109,23 @@ void goby::middleware::ToolHelper::exec_external(std::string app, std::vector<st
     std::cerr << std::endl;
     std::cerr << "Ensure that " << args[0] << " is on your path and is executable." << std::endl;
 }
+
+void goby::middleware::ToolSharedLibraryLoader::load_lib(const std::string& lib)
+{
+    std::vector<std::string> libs;
+    // allow the environmental variable entry to contain multiple libraries separated by a common delimiter
+    boost::split(libs, lib, boost::is_any_of(";:,"));
+    for (const auto& l : libs)
+    {
+        glog.is_debug2() && glog << "Loading library: " << l << std::endl;
+        void* lib_handle = dlopen(l.c_str(), RTLD_LAZY);
+        if (!lib_handle)
+            glog.is_die() && glog << "Failed to open library: " << lib << std::endl;
+        dl_handles_.push_back(lib_handle);
+    }
+}
+
+goby::middleware::ToolSharedLibraryLoader::~ToolSharedLibraryLoader()
+{
+    for (void* handle : dl_handles_) dlclose(handle);
+}

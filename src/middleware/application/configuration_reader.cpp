@@ -130,9 +130,10 @@ int goby::middleware::ConfigReader::read_cfg(
 
     std::vector<PositionalOption> positional_options;
 
+    std::map<std::string, std::string> environmental_var_map;
     if (message)
     {
-        get_protobuf_program_options(od_map, message->GetDescriptor());
+        get_protobuf_program_options(od_map, message->GetDescriptor(), environmental_var_map);
         get_positional_options(message->GetDescriptor(), positional_options);
 
         if (tool_cfg.has_subtools())
@@ -221,6 +222,19 @@ int goby::middleware::ConfigReader::read_cfg(
                                           .positional(p)
                                           .run(),
                                       *var_map);
+
+        if (!environmental_var_map.empty())
+        {
+            boost::program_options::store(
+                boost::program_options::parse_environment(
+                    *od_all,
+                    [&environmental_var_map](const std::string& i_env_var) -> std::string {
+                        return environmental_var_map.count(i_env_var)
+                                   ? environmental_var_map.at(i_env_var)
+                                   : "";
+                    }),
+                *var_map);
+        }
     }
     catch (std::exception& e)
     {
@@ -555,7 +569,8 @@ void goby::middleware::ConfigReader::get_positional_options(
 void goby::middleware::ConfigReader::get_protobuf_program_options(
     std::map<goby::GobyFieldOptions::ConfigurationOptions::ConfigAction,
              boost::program_options::options_description>& od_map,
-    const google::protobuf::Descriptor* desc)
+    const google::protobuf::Descriptor* desc,
+    std::map<std::string, std::string>& environmental_var_map)
 {
     for (int i = 0, n = desc->field_count(); i < n; ++i)
     {
@@ -565,6 +580,9 @@ void goby::middleware::ConfigReader::get_protobuf_program_options(
 
         const goby::GobyFieldOptions::ConfigurationOptions& cfg_opts =
             field_desc->options().GetExtension(goby::field).cfg();
+
+        if (cfg_opts.has_env())
+            environmental_var_map[cfg_opts.env()] = cli_name;
 
         if (cfg_opts.has_cli_short())
             cli_name += "," + cfg_opts.cli_short();
@@ -587,6 +605,9 @@ void goby::middleware::ConfigReader::get_protobuf_program_options(
 
             human_desc_ss << ")";
         }
+
+        if (cfg_opts.has_env())
+            human_desc_ss << " [env " << cfg_opts.env() << "]";
 
         human_desc_ss << label(field_desc);
         human_desc_ss << " " << util::esc_nocolor;

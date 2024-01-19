@@ -47,32 +47,26 @@ class ZeroMQTool : public goby::middleware::Application<protobuf::ZeroMQToolConf
   private:
 };
 
-class PublishTool : public goby::zeromq::SingleThreadApplication<protobuf::PublishToolConfig>
+class PublishTool : public goby::zeromq::SingleThreadApplication<protobuf::PublishToolConfig>,
+                    public goby::middleware::ToolSharedLibraryLoader
 {
   public:
     PublishTool();
-    ~PublishTool() override
-    {
-        for (void* handle : dl_handles_) dlclose(handle);
-    }
+    ~PublishTool() override {}
     void loop() override;
 
   private:
-    std::vector<void*> dl_handles_;
 };
 
-class SubscribeTool : public goby::zeromq::SingleThreadApplication<protobuf::SubscribeToolConfig>
+class SubscribeTool : public goby::zeromq::SingleThreadApplication<protobuf::SubscribeToolConfig>,
+                      public goby::middleware::ToolSharedLibraryLoader
 {
   public:
     SubscribeTool();
-    ~SubscribeTool() override
-    {
-        for (void* handle : dl_handles_) dlclose(handle);
-    }
+    ~SubscribeTool() override {}
 
   private:
     std::map<int, std::unique_ptr<goby::middleware::log::LogPlugin>> plugins_;
-    std::vector<void*> dl_handles_;
 };
 
 } // namespace zeromq
@@ -138,16 +132,10 @@ goby::apps::zeromq::ZeroMQTool::ZeroMQTool()
 
 goby::apps::zeromq::PublishTool::PublishTool()
     : goby::zeromq::SingleThreadApplication<protobuf::PublishToolConfig>(1.0 *
-                                                                         boost::units::si::hertz)
-{
-    for (const auto& lib : cfg().load_shared_library())
-    {
-        void* lib_handle = dlopen(lib.c_str(), RTLD_LAZY);
-        if (!lib_handle)
-            glog.is_die() && glog << "Failed to open library: " << lib << std::endl;
-        dl_handles_.push_back(lib_handle);
-    }
+                                                                         boost::units::si::hertz),
+      goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
 
+{
     std::string type_scheme_str = cfg().type();
     std::string type;
     int scheme{0};
@@ -234,16 +222,10 @@ void goby::apps::zeromq::PublishTool::loop()
 }
 
 goby::apps::zeromq::SubscribeTool::SubscribeTool()
+    : goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
+
 {
     std::set<int> schemes{goby::middleware::MarshallingScheme::ALL_SCHEMES};
-
-    for (const auto& lib : cfg().load_shared_library())
-    {
-        void* lib_handle = dlopen(lib.c_str(), RTLD_LAZY);
-        if (!lib_handle)
-            glog.is_die() && glog << "Failed to open library: " << lib << std::endl;
-        dl_handles_.push_back(lib_handle);
-    }
 
     if (cfg().has_scheme())
     {

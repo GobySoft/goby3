@@ -45,13 +45,18 @@ message ProtobufShowToolConfig
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
 
-    required string name = 2 [(goby.field) = {
+    repeated string name = 2 [(goby.field) = {
         description: "Protobuf name for message to show.",
-        cfg { position: { enable: true }, cli_short: "n" }
+        cfg { position: { enable: true max_count: -1 }, cli_short: "n" }
+    }];
+
+    optional string package_name = 3 [(goby.field) = {
+        description: "Common protobuf package (namespace) to prepend to 'name'",
+        cfg { cli_short: "p" }
     }];
 
     repeated string load_shared_library = 10 [(goby.field) = {
         description: "Load this shared library containing compiled Protobuf/DCCL messages.",
-        cfg { cli_short: "l" }
+        cfg { cli_short: "l" env: "GOBY_TOOL_LOAD_SHARED_LIBRARY" }
     }];
 }

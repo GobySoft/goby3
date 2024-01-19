@@ -52,6 +52,7 @@ message GobyFieldOptions
             optional int32 max_count = 2 [default = 1];
         }
         optional Position position = 3;
+        optional string env = 4;
     }
     optional ConfigurationOptions cfg = 200;
 }

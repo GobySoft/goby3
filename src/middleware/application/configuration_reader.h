@@ -92,7 +92,8 @@ class ConfigReader
     static void get_protobuf_program_options(
         std::map<goby::GobyFieldOptions::ConfigurationOptions::ConfigAction,
                  boost::program_options::options_description>& od_map,
-        const google::protobuf::Descriptor* desc);
+        const google::protobuf::Descriptor* desc,
+        std::map<std::string, std::string>& environmental_var_map);
 
     struct PositionalOption
     {
@@ -169,14 +170,16 @@ class ConfigReader
             {
                 po_desc.add_options()(
                     name.c_str(),
-                    boost::program_options::value<std::vector<T>>()->default_value(
-                        std::vector<T>(1, default_value),
-                        goby::util::as<std::string>(default_value)),
+                    boost::program_options::value<std::vector<T>>()
+                        ->default_value(std::vector<T>(1, default_value),
+                                        goby::util::as<std::string>(default_value))
+                        ->composing(),
                     description.c_str());
             }
             else
             {
-                po_desc.add_options()(name.c_str(), boost::program_options::value<std::vector<T>>(),
+                po_desc.add_options()(name.c_str(),
+                                      boost::program_options::value<std::vector<T>>()->composing(),
                                       description.c_str());
             }
         }

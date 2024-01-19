@@ -49,27 +49,28 @@ goby::apps::middleware::ProtobufTool::ProtobufTool()
 }
 
 goby::apps::middleware::ProtobufShowTool::ProtobufShowTool()
+    : goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
 {
-    for (const auto& lib : app_cfg().load_shared_library())
+    for (auto name : app_cfg().name())
     {
-        void* lib_handle = dlopen(lib.c_str(), RTLD_LAZY);
-        if (!lib_handle)
-            glog.is_die() && glog << "Failed to open library: " << lib << std::endl;
-        dl_handles_.push_back(lib_handle);
+        if (app_cfg().has_package_name())
+            name = app_cfg().package_name() + "." + name;
+        const google::protobuf::Descriptor* desc =
+            dccl::DynamicProtobufManager::find_descriptor(name);
+
+        if (!desc)
+        {
+            goby::glog.is_die() &&
+                goby::glog << "Failed to find message " << name
+                           << ". Ensure you have specified all required --load_shared_library "
+                              "libraries and set --package_name (if any)"
+                           << std::endl;
+        }
+
+        std::cout << "============== " << goby::util::esc_lt_white << name
+                  << goby::util::esc_nocolor << "============== " << std::endl;
+        std::cout << desc->DebugString() << std::endl;
     }
-
-    const google::protobuf::Descriptor* desc =
-        dccl::DynamicProtobufManager::find_descriptor(app_cfg().name());
-
-    if (!desc)
-    {
-        goby::glog.is_die() &&
-            goby::glog << "Failed to find message " << app_cfg().name()
-                       << ". Ensure you have specified all required --load_shared_library libraries"
-                       << std::endl;
-    }
-
-    std::cout << desc->DebugString() << std::endl;
 
     quit(0);
 }

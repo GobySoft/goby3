@@ -124,7 +124,7 @@ message PublishToolConfig
 
     repeated string load_shared_library = 20 [(goby.field) = {
         description: "Load this shared library containing compiled Protobuf/DCCL messages.",
-        cfg { cli_short: "l" }
+        cfg { cli_short: "l" env: "GOBY_TOOL_LOAD_SHARED_LIBRARY" }
     }];
 }
 
@@ -163,7 +163,7 @@ message SubscribeToolConfig
 
     repeated string load_shared_library = 20 [(goby.field) = {
         description: "Load this shared library containing compiled Protobuf/DCCL messages.",
-        cfg { cli_short: "l" }
+        cfg { cli_short: "l" env: "GOBY_TOOL_LOAD_SHARED_LIBRARY" }
     }];
 
     optional bool include_internal_groups = 30 [default = false];

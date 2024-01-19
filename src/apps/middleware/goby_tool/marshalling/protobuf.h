@@ -49,20 +49,15 @@ class ProtobufShowToolConfigurator
     }
 };
 
-class ProtobufShowTool : public goby::middleware::Application<protobuf::ProtobufShowToolConfig>
+class ProtobufShowTool : public goby::middleware::Application<protobuf::ProtobufShowToolConfig>,
+                         public goby::middleware::ToolSharedLibraryLoader
 {
   public:
     ProtobufShowTool();
-    ~ProtobufShowTool() override
-    {
-        for (void* handle : dl_handles_) dlclose(handle);
-    }
+    ~ProtobufShowTool() override {}
 
   private:
     void run() override { assert(false); }
-
-  private:
-    std::vector<void*> dl_handles_;
 };
 
 } // namespace middleware

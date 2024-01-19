@@ -48,6 +48,29 @@ class ToolHelper
     const google::protobuf::EnumDescriptor* action_enum_desc_;
 };
 
+class ToolSharedLibraryLoader
+{
+  public:
+    ToolSharedLibraryLoader(const std::vector<std::string>& load_libs)
+    {
+        for (const auto& lib : load_libs) load_lib(lib);
+    }
+
+    ToolSharedLibraryLoader(const google::protobuf::RepeatedPtrField<std::string>& load_libs)
+    {
+        for (const auto& lib : load_libs) load_lib(lib);
+    }
+
+    ToolSharedLibraryLoader(const std::string& lib) { load_lib(lib); }
+    ~ToolSharedLibraryLoader();
+
+  private:
+    void load_lib(const std::string& lib);
+
+  private:
+    std::vector<void*> dl_handles_;
+};
+
 } // namespace middleware
 } // namespace goby
 
