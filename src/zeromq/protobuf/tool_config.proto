@@ -18,6 +18,7 @@ message ZeroMQToolConfig
 
     enum Action
     {
+        // tools
         help = 0 [(goby.ev).cfg = {
             short_help_msg: "Print usage information",
             full_help_msg: "Usage: \"goby zmq help [action]\"\n"
@@ -27,7 +28,7 @@ message ZeroMQToolConfig
             external_command: "goby_terminate"
         }];
         publish = 3 [(goby.ev).cfg = {
-            short_help_msg: "Publish message (on interprocess)",
+            short_help_msg: "Publish a message (on interprocess)",
         }];
         subscribe = 4 [(goby.ev).cfg = {
             short_help_msg: "Subscribe to messages (on interprocess)",
@@ -35,6 +36,54 @@ message ZeroMQToolConfig
         playback = 5 [(goby.ev).cfg = {
             short_help_msg: "Playback .goby log files",
             external_command: "goby_playback"
+        }];
+
+        // core apps pub/sub
+        daemon = 10 [(goby.ev).cfg = {
+            short_help_msg: "Publish/subscribe broker for interprocess and, optionally, intervehicle portal",
+            external_command: "gobyd"
+        }];
+        logger = 11 [(goby.ev).cfg = {
+            short_help_msg: "Binary logger of interprocess messages",
+            external_command: "goby_logger"
+        }];
+        coroner = 12 [(goby.ev).cfg = {
+            short_help_msg: "Monitoring of process health",
+            external_command: "goby_coroner"
+        }];
+        intervehicle_portal = 13 [(goby.ev).cfg = {
+            short_help_msg: "Standalone intervehicle portal",
+            external_command: "goby_intervehicle_portal"
+        }];
+
+        // sensors
+        gps = 20 [(goby.ev).cfg = {
+            short_help_msg: "GPSD client that publishes data into Goby pub/sub",
+            external_command: "goby_gps"
+        }];
+        frontseat_interface = 21 [(goby.ev).cfg = {
+            short_help_msg: "Interface to vehicle Frontseat system (control system)",
+            external_command: "goby_frontseat_interface"
+        }];
+
+        // ui
+        geov = 30 [(goby.ev).cfg = {
+            short_help_msg: "Interface to Google Earth via GEOV (https://gobysoft.org/geov/)",
+            external_command: "goby_geov_interface"
+        }];
+        liaison = 31 [(goby.ev).cfg = {
+            short_help_msg: "Web-based UI for control/monitoring of Goby pub/sub",
+            external_command: "goby_liaison"
+        }];
+        opencpn = 32 [(goby.ev).cfg = {
+            short_help_msg: "Interface to the OpenCPN GUI",
+            external_command: "goby_opencpn_interface"
+        }];
+
+        // external
+        moos_gateway = 40 [(goby.ev).cfg = {
+            short_help_msg: "Gateway to the MOOS middleware",
+            external_command: "goby_moos_gateway"
         }];
     }
     optional Action action = 2 [
@@ -56,7 +105,9 @@ message PublishToolConfig
 
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
+            [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
 
     required string group = 10 [(goby.field) = {
         description: "Group as string",
@@ -75,7 +126,7 @@ message PublishToolConfig
 
     repeated string load_shared_library = 20 [(goby.field) = {
         description: "Load this shared library containing compiled Protobuf/DCCL messages.",
-        cfg { cli_short: "l" }
+        cfg { cli_short: "l" env: "GOBY_TOOL_LOAD_SHARED_LIBRARY" }
     }];
 }
 
@@ -89,7 +140,9 @@ message SubscribeToolConfig
 
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
+            [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
 
     optional string group_regex = 10 [
         default = ".*",
@@ -114,7 +167,7 @@ message SubscribeToolConfig
 
     repeated string load_shared_library = 20 [(goby.field) = {
         description: "Load this shared library containing compiled Protobuf/DCCL messages.",
-        cfg { cli_short: "l" }
+        cfg { cli_short: "l" env: "GOBY_TOOL_LOAD_SHARED_LIBRARY" }
     }];
 
     optional bool include_internal_groups = 30 [default = false];

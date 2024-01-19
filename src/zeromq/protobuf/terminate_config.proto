@@ -10,7 +10,8 @@ message TerminateConfig
 {
     option (dccl.msg).unit_system = "si";
     optional goby.middleware.protobuf.AppConfig app = 1;
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2         [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
     repeated string target_name = 3;
     repeated uint32 target_pid = 4;
 

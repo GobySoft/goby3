@@ -92,7 +92,8 @@ class ConfigReader
     static void get_protobuf_program_options(
         std::map<goby::GobyFieldOptions::ConfigurationOptions::ConfigAction,
                  boost::program_options::options_description>& od_map,
-        const google::protobuf::Descriptor* desc);
+        const google::protobuf::Descriptor* desc,
+        std::map<std::string, std::string>& environmental_var_map);
 
     struct PositionalOption
     {
@@ -108,7 +109,8 @@ class ConfigReader
     static void set_protobuf_program_option(const boost::program_options::variables_map& vm,
                                             google::protobuf::Message& message,
                                             const std::string& full_name,
-                                            const boost::program_options::variable_value& value);
+                                            const boost::program_options::variable_value& value,
+                                            bool overwrite_if_exists);
 
     static void
     get_example_cfg_file(google::protobuf::Message* message, std::ostream* human_desc_ss,
@@ -169,14 +171,16 @@ class ConfigReader
             {
                 po_desc.add_options()(
                     name.c_str(),
-                    boost::program_options::value<std::vector<T>>()->default_value(
-                        std::vector<T>(1, default_value),
-                        goby::util::as<std::string>(default_value)),
+                    boost::program_options::value<std::vector<T>>()
+                        ->default_value(std::vector<T>(1, default_value),
+                                        goby::util::as<std::string>(default_value))
+                        ->composing(),
                     description.c_str());
             }
             else
             {
-                po_desc.add_options()(name.c_str(), boost::program_options::value<std::vector<T>>(),
+                po_desc.add_options()(name.c_str(),
+                                      boost::program_options::value<std::vector<T>>()->composing(),
                                       description.c_str());
             }
         }

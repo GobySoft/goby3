@@ -7,9 +7,10 @@ message InterProcessPortalConfig
 {
     optional string platform = 1 [
         default = "default_goby_platform",
-        (goby.field).description =
-            "Name for this platform (vehicle name, mooring name, topside name, "
-            "etc.)"
+        (goby.field) = {
+            description: "Name for this platform (vehicle name, mooring name, topside name, "
+                         "etc.)"
+        }
     ];
 
     enum Transport

@@ -801,7 +801,7 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
     //
 
     boost::program_options::options_description od_all;
-    boost::program_options::variables_map var_map;
+    boost::program_options::variables_map var_map, po_env_var_map;
     try
     {
         boost::program_options::options_description od_cli_only(
@@ -836,7 +836,9 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
             std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::NEVER,
                            boost::program_options::options_description(od_pb_never_desc.c_str())));
 
-        goby::middleware::ConfigReader::get_protobuf_program_options(od_map, cfg->GetDescriptor());
+        std::map<std::string, std::string> environmental_var_map;
+        goby::middleware::ConfigReader::get_protobuf_program_options(od_map, cfg->GetDescriptor(),
+                                                                     environmental_var_map);
         std::vector<goby::middleware::ConfigReader::PositionalOption> positional_options;
         goby::middleware::ConfigReader::get_positional_options(cfg->GetDescriptor(),
                                                                positional_options);
@@ -855,7 +857,21 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
                                           .run(),
                                       var_map);
 
+        if (!environmental_var_map.empty())
+        {
+            boost::program_options::store(
+                boost::program_options::parse_environment(
+                    od_all,
+                    [&environmental_var_map](const std::string& i_env_var) -> std::string {
+                        return environmental_var_map.count(i_env_var)
+                                   ? environmental_var_map.at(i_env_var)
+                                   : "";
+                    }),
+                po_env_var_map);
+        }
+
         boost::program_options::notify(var_map);
+        boost::program_options::notify(po_env_var_map);
 
         if (var_map.count("help"))
         {
@@ -945,13 +961,21 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
         moos_file_reader.SetFile(mission_file_);
         fetch_moos_globals(cfg, moos_file_reader);
 
-        // add / overwrite any options that are specified in the cfg file with those given on the command line
-        for (const auto& p : var_map)
+        // add any environmental variable options that don't exist in the cfg file
+        for (const auto& p : po_env_var_map)
         {
             // let protobuf deal with the defaults
             if (!p.second.defaulted())
                 goby::middleware::ConfigReader::set_protobuf_program_option(var_map, *cfg, p.first,
-                                                                            p.second);
+                                                                            p.second, false);
+        }
+
+        // add / overwrite any options that are specified in the cfg file with those given on the command line
+        for (const auto& p : var_map)
+        {
+            if (!p.second.defaulted())
+                goby::middleware::ConfigReader::set_protobuf_program_option(var_map, *cfg, p.first,
+                                                                            p.second, true);
         }
 
         // now the proto message must have all required fields

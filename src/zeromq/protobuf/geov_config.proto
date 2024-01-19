@@ -14,7 +14,8 @@ message GEOVInterfaceConfig
     };
 
     optional goby.middleware.protobuf.AppConfig app = 1;
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2        [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
 
     optional bool simulation = 3 [
         (goby.field).description =

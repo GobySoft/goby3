@@ -1,8 +1,10 @@
 #include "goby/middleware/application/configuration_reader.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/tool.h"
-#include "goby/middleware/protobuf/goby_tool_config.pb.h"
 
+#include "goby/apps/middleware/goby_tool/log.pb.h"
+#include "goby/apps/middleware/goby_tool/tool.pb.h"
+#include "marshalling/protobuf.h"
 #include "unified_log_tool.h"
 
 using goby::glog;
@@ -51,8 +53,6 @@ int main(int argc, char* argv[])
 
 goby::apps::middleware::GobyTool::GobyTool()
 {
-    //    std::cout << app_cfg().DebugString() << std::endl;
-
     goby::middleware::ToolHelper tool_helper(
         app_cfg().app().binary(), app_cfg().app().tool_cfg(),
         goby::apps::middleware::protobuf::GobyToolConfig::Action_descriptor());
@@ -71,7 +71,9 @@ goby::apps::middleware::GobyTool::GobyTool()
                             tool_helper.help<goby::apps::middleware::UnifiedLogTool>(
                                 action_for_help);
                             break;
-
+                        case goby::apps::middleware::protobuf::GobyToolConfig::protobuf:
+                            tool_helper.help<goby::apps::middleware::ProtobufTool>(action_for_help);
+                            break;
                         default:
                             throw(goby::Exception(
                                 "Help was expected to be handled by external tool"));
@@ -82,6 +84,10 @@ goby::apps::middleware::GobyTool::GobyTool()
 
             case goby::apps::middleware::protobuf::GobyToolConfig::log:
                 tool_helper.run_subtool<goby::apps::middleware::UnifiedLogTool>();
+                break;
+
+            case goby::apps::middleware::protobuf::GobyToolConfig::protobuf:
+                tool_helper.run_subtool<goby::apps::middleware::ProtobufTool>();
                 break;
 
             default:

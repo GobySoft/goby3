@@ -9,7 +9,8 @@ package goby.apps.zeromq.protobuf;
 message LoggerConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2        [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
 
     required string log_dir = 3;
 
@@ -26,7 +27,8 @@ message PlaybackConfig
     option (dccl.msg).unit_system = "si";
 
     optional goby.middleware.protobuf.AppConfig app = 1;
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2         [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
 
     required string input_file = 10 [(goby.field) = {
         description: "Input goby_logger file to read (e.g. 'vehicle_20200204T121314.goby')"
