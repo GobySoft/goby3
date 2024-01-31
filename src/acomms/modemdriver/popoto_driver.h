@@ -92,7 +92,7 @@ class PopotoDriver : public ModemDriverBase
   private:
     protobuf::DriverConfig driver_cfg_;
     int sender_id_{0};
-    int modem_p;
+    float modem_p;
     std::uint32_t next_frame_{0};
     protobuf::ModemTransmission modem_msg_;
 

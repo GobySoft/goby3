@@ -29,10 +29,11 @@ message Config
             "The modulation rate of the payload portion of the waveform, 0-5"
     ];
 
-    optional int32 modem_power = 3 [
+    optional double modem_power = 3 [
         default = 1,
-        (dccl.field).min = 1,
+        (dccl.field).min = 0.1,
         (dccl.field).max = 100,
+        (dccl.field).precision = 2,
         (goby.field).description = "Modem Tx strength 1-100W"
     ];
 
