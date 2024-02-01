@@ -25,6 +25,7 @@ protobuf_generate_cpp(ACOMMS_PROTO_SRCS ACOMMS_PROTO_HDRS
   acomms/protobuf/udp_multicast_driver.proto
   acomms/protobuf/buffer.proto
   acomms/protobuf/popoto_driver.proto
+  acomms/protobuf/janus_driver.proto
   )
 
 set(ACOMMS_SRC
@@ -46,5 +47,6 @@ set(ACOMMS_SRC
   acomms/modemdriver/benthos_atm900_driver_fsm.cpp
   acomms/route/route.cpp
   acomms/modemdriver/popoto_driver.cpp
+  acomms/modemdriver/janus_driver.cpp
   ${ACOMMS_PROTO_SRCS} ${ACOMMS_PROTO_HDRS}
   )

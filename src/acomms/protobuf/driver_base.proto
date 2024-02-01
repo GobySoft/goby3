@@ -18,6 +18,7 @@ enum DriverType
     DRIVER_BENTHOS_ATM900 = 10;
     DRIVER_UDP_MULTICAST = 11;
     DRIVER_POPOTO = 12;
+    DRIVER_JANUS = 13;
 }
 
 
@@ -113,4 +114,5 @@ message DriverConfig
     // extension 1441 used by benthos_atm900.proto
     // extension 1442 used by popoto.proto
     // extension 1443 used by Jaiabot XBee
+    // extension 1444 used by janus.janus
 }

@@ -1,0 +1,49 @@
+/* Copyright (c) 2020 mission systems pty ltd */
+
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
+import "goby/acomms/protobuf/driver_base.proto"; // load up message DriverBaseConfig
+import "goby/acomms/protobuf/modem_message.proto";
+
+package goby.acomms.janus.protobuf;
+message Config
+{
+    optional int32 verbosity = 1 [
+        default = 0,
+        (goby.field).description =
+            "Verbosity for Janus commands"
+    ];
+
+    optional int32 class_id = 2 [
+        default = 16,
+        (dccl.field).min = 0,
+        (dccl.field).max = 255,
+        (goby.field).description =
+            "Class ID for Janus Plugin"
+    ];
+
+    optional int32 application_type = 3 [
+        default = 0,
+        (dccl.field).min = 0,
+        (dccl.field).max = 255,
+        (goby.field).description = 
+            "Application ID for Janus Plugin"
+    ];
+
+    optional string pset_file = 4 [(dccl.field).max_length = 50];
+
+    optional int32 pset_id = 5 [
+        default = 1,
+        (dccl.field).min = 1,
+        (dccl.field).max = 255,
+        (goby.field).description = 
+            "Parameter Set ID"
+    ];
+  
+}
+// added 1444 in modem driver
+extend goby.acomms.protobuf.DriverConfig
+{
+    optional Config config = 1444;
+}

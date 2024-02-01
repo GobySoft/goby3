@@ -64,6 +64,7 @@
 #include "goby/acomms/modemdriver/iridium_shore_driver.h"     // for Iridiu...
 #include "goby/acomms/modemdriver/mm_driver.h"                // for MMDriver
 #include "goby/acomms/modemdriver/popoto_driver.h"            // for Popoto...
+#include "goby/acomms/modemdriver/janus_driver.h"             // for Janus...
 #include "goby/acomms/modemdriver/udp_driver.h"               // for UDPDriver
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"     // for UDPMul...
 #include "goby/acomms/protobuf/amac.pb.h"                     // for MACUpdate
@@ -672,6 +673,9 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
                 break;
             case goby::acomms::protobuf::DRIVER_POPOTO:
                 driver.reset(new goby::acomms::PopotoDriver);
+                break;
+            case goby::acomms::protobuf::DRIVER_JANUS:
+                driver.reset(new goby::acomms::JanusDriver);
                 break;
             case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
                 driver.reset(new goby::acomms::UDPMulticastDriver);

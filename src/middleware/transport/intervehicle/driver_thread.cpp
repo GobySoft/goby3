@@ -44,6 +44,7 @@
 #include "goby/acomms/modemdriver/iridium_shore_driver.h"   // for IridiumS...
 #include "goby/acomms/modemdriver/mm_driver.h"              // for MMDriver
 #include "goby/acomms/modemdriver/popoto_driver.h"          // for PopotoDr...
+#include "goby/acomms/modemdriver/janus_driver.h"          // for PopotoDr...
 #include "goby/acomms/modemdriver/udp_driver.h"             // for UDPDriver
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"   // for UDPMulti...
 #include "goby/acomms/protobuf/buffer.pb.h"                 // for DynamicB...
@@ -212,6 +213,10 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
 
             case goby::acomms::protobuf::DRIVER_POPOTO:
                 driver_ = std::make_unique<goby::acomms::PopotoDriver>();
+                break;
+
+            case goby::acomms::protobuf::DRIVER_JANUS:
+                driver_ = std::make_unique<goby::acomms::JanusDriver>();
                 break;
 
             case goby::acomms::protobuf::DRIVER_NONE:

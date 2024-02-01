@@ -50,7 +50,7 @@
 #include "goby/util/binary.h"                            // for hex_encode
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h" // for operator<<
-
+#include "driver_helpers.h"
 #include "driver_exception.h" // for ModemDriver...
 
 #include "popoto_client.hpp" // For popoto api (Ethernet driver)
@@ -520,30 +520,6 @@ std::string goby::acomms::PopotoDriver::change_to_popoto_json(std::string input,
     return message;
 }
 
-// Converts the dccl binary to the required comma seperated bytes
-std::string goby::acomms::PopotoDriver::binary_to_json(const std::uint8_t* buf, size_t num_bytes)
-{
-    std::string output;
-
-    for (int i = 0, n = num_bytes; i < n; i++)
-    {
-        output.append(std::to_string((uint8_t)buf[i]));
-        if (i < n - 1)
-        {
-            output.append(",");
-        }
-    }
-    return output;
-}
-
-// Convert csv values back to dccl binary for the dccl codec to decode
-std::string goby::acomms::PopotoDriver::json_to_binary(const json& element)
-{
-    std::string output;
-    for (auto& subel : element) { output.append(1, (char)((uint8_t)subel)); }
-    return output;
-}
-
 // Decode Popoto header
 void goby::acomms::PopotoDriver::DecodeHeader(std::vector<uint8_t> data,
                                               protobuf::ModemTransmission& modem_msg)
@@ -653,52 +629,7 @@ void goby::acomms::PopotoDriver::ProcessJSON(const std::string& message,
         glog.is(DEBUG1) && glog << label << ": " << j[label] << std::endl;
     }
 }
-// Remove popoto trash from the incoming serial string
-std::string goby::acomms::PopotoDriver::StripString(std::string in, std::string p)
-{
-    std::string out = std::move(in);
-    std::string::size_type n = p.length();
-    for (std::string::size_type i = out.find(p); i != std::string::npos; i = out.find(p))
-        out.erase(i, n);
 
-    return out;
-}
-
-// one byte header for information we need to send that isn't contained in the Popoto header
-std::uint16_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemTransmission& m)
-{
-    std::uint16_t header{0};
-    if (m.type() == protobuf::ModemTransmission::DATA)
-    {
-        header |= 0 << GOBY_HEADER_TYPE;
-        header |= (m.ack_requested() ? 1 : 0) << GOBY_HEADER_ACK_REQUEST;
-        header = header * 256;
-        header |= m.frame_start();
-    }
-    else if (m.type() == protobuf::ModemTransmission::ACK)
-    {
-        header |= 1 << GOBY_HEADER_TYPE;
-        header = header * 256;
-        header |= m.frame_start();
-    }
-    else
-    {
-        throw(goby::Exception(std::string("Unsupported type provided to CreateGobyHeader: ") +
-                              protobuf::ModemTransmission::TransmissionType_Name(m.type())));
-    }
-    return header;
-}
-
-void goby::acomms::PopotoDriver::DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num,
-                                                  protobuf::ModemTransmission& m)
-{
-    m.set_type(( header & (1 << GOBY_HEADER_TYPE)) ? protobuf::ModemTransmission::ACK
-                                                  : protobuf::ModemTransmission::DATA);
-    if (m.type() == protobuf::ModemTransmission::DATA){
-        m.set_ack_requested( header & (1 << GOBY_HEADER_ACK_REQUEST));
-        m.set_frame_start( ack_num );
-    }
-}
 
 // This is a placeholder for the moment.
 // TODO - Add this functionality when over ethernet
