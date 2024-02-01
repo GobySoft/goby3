@@ -320,17 +320,18 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
     signal_and_write(raw1.str());
 
     auto goby_header = CreateGobyHeader(msg);
-    std::uint8_t bytes1[2] = {goby_header >> 8, goby_header & 0xff};
+    std::uint8_t header[2] =  {static_cast<std::uint8_t>(goby_header >> 8), 
+                               static_cast<std::uint8_t>(goby_header & 0xff)};
 
-    glog.is(DEBUG1) && glog << "header bytes " << (int) bytes1[0] << " "
-                            << (int) bytes1[1] << std::endl;
+    glog.is(DEBUG1) && glog << "header bytes " << (int) header[0] << " "
+                            << (int) header[1] << std::endl;
 
-    std::string jsonStr = binary_to_json(&bytes1[0], 2);
+    std::string jsonStr = binary_to_json(&header[0], 2);
     if (msg.type() == protobuf::ModemTransmission::DATA)
     {
         signal_transmit_result(msg);
-        std::vector<std::uint8_t> bytes(msg.frame(0).begin(), msg.frame(0).end());
-        jsonStr += "," + binary_to_json(&bytes[0], bytes.size());
+        std::vector<std::uint8_t> payload(msg.frame(0).begin(), msg.frame(0).end());
+        jsonStr += "," + binary_to_json(&payload[0], payload.size());
     }
     else if (msg.type() == protobuf::ModemTransmission::ACK)
     {

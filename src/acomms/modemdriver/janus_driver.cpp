@@ -104,22 +104,26 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
                                 << goby::util::hex_encode(msg.frame(0)) << std::endl;
 
         auto goby_header = CreateGobyHeader(msg);
-        std::uint8_t bytes1[2] = {goby_header >> 8, goby_header & 0xff};
-        glog.is(DEBUG1) && glog << "header bytes " << (int) bytes1[0] << " "
-                                << (int) bytes1[1] << std::endl;
-        std::string jsonStr = binary_to_json(&bytes1[0], 2);
+        std::uint8_t header[2] =  {static_cast<std::uint8_t>(goby_header >> 8), 
+                                   static_cast<std::uint8_t>(goby_header & 0xff)};
+                                   
+        glog.is(DEBUG1) && glog << "header bytes " << (int) header[0] << " " << (int) header[1] << std::endl;
         
-        std::vector<std::uint8_t> bytes(msg.frame(0).begin(), msg.frame(0).end());
-        jsonStr += "," + binary_to_json(&bytes[0], bytes.size());
-        
-        std::stringstream raw;
-        raw << "janus-tx --pset-file " << pset_file << " --pset-id " << pset_id << " --stream-driver alsa --stream-driver-args default --packet-class-id " 
-            << class_id << " --packet-app-type " << application_type << " --packet-app-data-fields 'StationIdentifier=" << msg.src() 
-            << "' --packet-cargo " << jsonStr << "\r\n";
+        std::vector<std::uint8_t> payload(msg.frame(0).begin(), msg.frame(0).end());
+        std::vector<std::uint8_t> message;
+        message.insert(message.end(), header[0], header[1]);
+        message.insert(message.end(), payload.begin(), payload.end());
 
-        int result = system(raw.str().c_str()); 
+        // Binary vector to string 
+        std::string binary_str(reinterpret_cast<const char*>(message.data()), message.size());
+        std::string janus_tx_command = "janus-tx --pset-file " + pset_file + " --pset-id " + std::to_string(pset_id) + " --stream-driver alsa --stream-driver-args default --packet-class-id " 
+            + std::to_string(class_id) + " --packet-app-type " + std::to_string(application_type) + " --packet-app-fields 'StationIdentifier=" + std::to_string(msg.src()) 
+            + ",DestinationIdentifier=" + std::to_string(msg.dest()) + "' --packet-cargo " + binary_str;
+        
+        int result = system(janus_tx_command.c_str()); 
         if(result != 0 ){ 
-            std::__throw_runtime_error("Missing janus-tx command! Please install janus library and try again!");    
+            std::cerr << "INVALID: " + janus_tx_command << std::endl; 
+            std::__throw_runtime_error("janus-tx command may be missing! Please install janus library and try again!");    
         }
     
     }
