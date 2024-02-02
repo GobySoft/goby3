@@ -113,6 +113,13 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
         std::vector<std::uint8_t> message;
         message.insert(message.end(), header[0], header[1]);
         message.insert(message.end(), payload.begin(), payload.end());
+        
+        // calculate crc for class_id 16 and application_type 1
+        if(class_id == 16 && application_type == 1){
+            std::uint16_t crc = calculate_crc_16(payload.data(),payload.size(),0);
+            std::vector<std::uint8_t> crc_bytes= {static_cast<std::uint8_t>(crc >> 8), static_cast<std::uint8_t>(crc & 0xff)};
+            message.insert(message.end(), crc_bytes.begin(), crc_bytes.end());
+        }
 
         // Binary vector to string 
         std::string binary_str(reinterpret_cast<const char*>(message.data()), message.size());
@@ -129,6 +136,16 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
     }
 } // handle_initiate_transmission
 
+std::uint16_t goby::acomms::JanusDriver::calculate_crc_16(std::uint8_t* data,unsigned data_len, std::uint16_t crc)
+{
+    while (data_len-- > 0){
+        printf("data input: %d\n",*data);
+        crc = (crc >> 8) ^ c_crc16_ibm_table[(crc ^ *data++) & 0xff];
+    }
+    return crc;
+}
+
+ // calculate_crc_16
 // Recieving messages with janus modem not currently supported: Coming Soon!
 void goby::acomms::JanusDriver::do_work()
 {
