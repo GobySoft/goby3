@@ -67,6 +67,9 @@ void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
     class_id         = janus_driver_cfg().class_id();
     application_type = janus_driver_cfg().application_type();
     ack_request      = janus_driver_cfg().ack_request();
+    
+    // send empty transmission to get the modem to start properly
+    handle_initiate_transmission(protobuf::ModemTransmission());    
 } // startup
 
 void goby::acomms::JanusDriver::shutdown()
