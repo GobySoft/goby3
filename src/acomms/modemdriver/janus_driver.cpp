@@ -66,6 +66,7 @@ void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
     pset_id          = janus_driver_cfg().pset_id();
     class_id         = janus_driver_cfg().class_id();
     application_type = janus_driver_cfg().application_type();
+    ack_request      = janus_driver_cfg().ack_request();
 } // startup
 
 void goby::acomms::JanusDriver::shutdown()
@@ -116,7 +117,7 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
         
         // calculate crc for class_id 16 and application_type 1
         if(class_id == 16 && application_type == 1){
-            std::uint16_t crc = calculate_crc_16(payload.data(),payload.size(),0);
+            std::uint16_t crc = calculate_crc_16(message.data(),message.size(),0);
             std::vector<std::uint8_t> crc_bytes= {static_cast<std::uint8_t>(crc >> 8), static_cast<std::uint8_t>(crc & 0xff)};
             message.insert(message.end(), crc_bytes.begin(), crc_bytes.end());
         }
@@ -125,7 +126,7 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
         std::string binary_str(reinterpret_cast<const char*>(message.data()), message.size());
         std::string janus_tx_command = "janus-tx --pset-file " + pset_file + " --pset-id " + std::to_string(pset_id) + " --stream-driver alsa --stream-driver-args default --packet-class-id " 
             + std::to_string(class_id) + " --packet-app-type " + std::to_string(application_type) + " --packet-app-fields 'StationIdentifier=" + std::to_string(msg.src()) 
-            + ",DestinationIdentifier=" + std::to_string(msg.dest()) + "' --packet-cargo " + binary_str;
+            + ",AckRequest=" + std::to_string(ack_request) + ",DestinationIdentifier=" + std::to_string(msg.dest()) + "' --packet-cargo " + binary_str;
         
         int result = system(janus_tx_command.c_str()); 
         if(result != 0 ){ 
@@ -139,7 +140,6 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
 std::uint16_t goby::acomms::JanusDriver::calculate_crc_16(std::uint8_t* data,unsigned data_len, std::uint16_t crc)
 {
     while (data_len-- > 0){
-        printf("data input: %d\n",*data);
         crc = (crc >> 8) ^ c_crc16_ibm_table[(crc ^ *data++) & 0xff];
     }
     return crc;

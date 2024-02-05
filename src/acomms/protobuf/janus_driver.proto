@@ -40,6 +40,14 @@ message Config
         (goby.field).description = 
             "Parameter Set ID"
     ];
+
+    optional int32 ack_request = 6 [
+        default = 0,
+        (dccl.field).min = 0,
+        (dccl.field).max = 1,
+        (goby.field).description = 
+            "Request acknowledge for message"
+    ];
   
 }
 // added 1444 in modem driver

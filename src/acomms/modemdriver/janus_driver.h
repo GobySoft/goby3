@@ -60,6 +60,7 @@ class JanusDriver : public ModemDriverBase
     int verbosity;
     std::string pset_file;
     int pset_id;
+    int ack_request;
     int class_id;
     int application_type;
     std::uint32_t next_frame_{0};
