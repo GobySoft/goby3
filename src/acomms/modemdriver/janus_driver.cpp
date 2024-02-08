@@ -136,13 +136,15 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
         message.insert(message.end(), header[0], header[1]);
         message.insert(message.end(), payload.begin(), payload.end());
         
-        // calculate crc for class_id 16 and application_type 1
+        // calculate crc for 16-1. Note it must be the last 2 bytes so we pre pad and then append. This prevents
+        // pAcommsHandler padding after the crc hsa been appended
         if(class_id == 16 && application_type == 1){
-            std::cerr << "calculating janus crc16" << std::endl;
+            pad(message);
             std::uint16_t crc = janus_crc_16(message.data(),message.size(),0);
-            std::vector<std::uint8_t> crc_bytes= {static_cast<std::uint8_t>(crc >> 8), static_cast<std::uint8_t>(crc & 0xff)};
-            message.insert(message.end(), crc_bytes.begin(), crc_bytes.end());
+            message.push_back(static_cast<std::uint8_t>(crc >> 8));
+            message.push_back(static_cast<std::uint8_t>(crc & 0xff));
         }
+        std::cerr << "message size: " << message.size() << std::endl;   
         int desired_cargo_size = message.size();
         janus_packet_t packet = janus_packet_new(verbosity);
         janus_packet_set_class_id(packet, class_id);
@@ -178,6 +180,15 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
         janus_packet_free(packet);
     }
 } // handle_initiate_transmission
+
+// pads vector to multiple of 8 
+void goby::acomms::JanusDriver::pad(std::vector<uint8_t> &vec) {
+    if (vec.size() % 8 != 0) {
+        int num_to_pad = 8 - (vec.size() % 8) - 2; // leave space for crc?
+        if(vec.size() < 8 ){num_to_pad += 8;} // min padding size is  16
+        vec.resize(vec.size() + num_to_pad, 0);
+    }
+}
 
 // Recieving messages with janus modem not currently supported: Coming Soon!
 void goby::acomms::JanusDriver::do_work()

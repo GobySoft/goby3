@@ -64,6 +64,7 @@ class JanusDriver : public ModemDriverBase
     void shutdown() override;
     void do_work() override;
     void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
+    void pad(std::vector<uint8_t> &vec);
     int verbosity;
     std::string pset_file;
     int pset_id;
