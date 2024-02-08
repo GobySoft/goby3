@@ -133,9 +133,10 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
         
         std::vector<std::uint8_t> payload(msg.frame(0).begin(), msg.frame(0).end());
         std::vector<std::uint8_t> message;
-        message.insert(message.end(), header[0], header[1]);
+        message.push_back(header[0]);   
+        message.push_back(header[1]);
         message.insert(message.end(), payload.begin(), payload.end());
-        
+
         // calculate crc for 16-1. Note it must be the last 2 bytes so we pre pad and then append. This prevents
         // pAcommsHandler padding after the crc hsa been appended
         if(class_id == 16 && application_type == 1){
