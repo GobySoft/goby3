@@ -59,6 +59,8 @@ else()
   message(">> setting enable_ncurses to OFF ... if you need this functionality: 1) install libncurses-dev; 2) run cmake -Denable_ncurses=ON")
 endif()
 
+option(enable_janus_acomms "Enable Janus Acomms Driver" OFF)
+
 if(enable_ncurses)
   goby_find_required_package(Curses)  
   add_definitions(-DHAS_NCURSES)
@@ -228,6 +230,16 @@ target_link_libraries(goby
   ${PROJ_LIBRARY}
   ${POPOTO_ROOT_DIR}/build/libpopoto_api.a
   )
+
+if(enable_janus_acomms)
+  target_link_libraries(goby
+    janus 
+    asound
+    pulse-simple
+    /usr/local/share/janus/plugins/libplugin_016_00.so
+    /usr/local/share/janus/plugins/libplugin_016_01.so
+  )
+endif()
 
 if(enable_gmp)
   target_link_libraries(goby ${GMP_LIBRARIES})

@@ -36,6 +36,13 @@
 #include "goby/acomms/protobuf/janus_driver.pb.h" // for Config, MessageTy...
 #include "goby/util/thirdparty/nlohmann/json.hpp"  // for json
 
+extern "C" {
+#include <janus/janus.h>
+#include <janus/defaults.h>
+#include <janus/simple_tx.h>
+#include <janus/parameters.h>
+#include <janus/utils/go_cfar.h>
+}
 namespace goby
 {
 namespace acomms
@@ -52,11 +59,11 @@ class JanusDriver : public ModemDriverBase
 {
   public:
     JanusDriver();
+    ~JanusDriver() override;
     void startup(const protobuf::DriverConfig& cfg) override;
     void shutdown() override;
     void do_work() override;
     void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
-    std::uint16_t calculate_crc_16(std::uint8_t* data,unsigned int data_len, std::uint16_t crc);
     int verbosity;
     std::string pset_file;
     int pset_id;
@@ -65,7 +72,8 @@ class JanusDriver : public ModemDriverBase
     int application_type;
     std::uint32_t next_frame_{0};
     static constexpr int DEFAULT_MTU_BYTES{1024};
-
+    janus_parameters_t params = janus_parameters_new();
+    janus_simple_tx_t tx;
 
     const std::uint16_t c_crc16_ibm_table[256] =
     {

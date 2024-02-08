@@ -48,6 +48,22 @@ message Config
         (goby.field).description = 
             "Request acknowledge for message"
     ];
+    
+    optional int32 channel_count = 7 [
+        default = 2,
+        (dccl.field).min = 0,
+        (dccl.field).max = 4,
+        (goby.field).description = 
+            "ALSA output device channel_count"
+    ];
+
+    optional int32 sample_rate = 8 [
+        default = 48000,
+        (dccl.field).min = 0,
+        (dccl.field).max = 100000,
+        (goby.field).description = 
+            "ALSA output device sample rate"
+    ];
   
 }
 // added 1444 in modem driver

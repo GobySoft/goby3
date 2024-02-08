@@ -22,7 +22,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "janus_driver.h"
 #include "driver_helpers.h"
 
 #include <cstdint>   // for int32_t
@@ -44,8 +43,9 @@
 #include "goby/util/debug_logger.h"                // for glog
 #include "goby/util/protobuf/io.h"                 // for operator<<
 #include "goby/exception.h"                        // for Exception
-
 #include "goby/time/convert.h"
+#include "janus_driver.h"
+
 using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
@@ -54,6 +54,12 @@ using namespace goby::util::logger;
 goby::acomms::JanusDriver::JanusDriver()
 {
     // other initialization you can do before you have your goby::acomms::DriverConfig configuration object
+}
+
+goby::acomms::JanusDriver::~JanusDriver()
+{
+    janus_parameters_free(params);
+    janus_simple_tx_free(tx);
 }
 
 void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
@@ -67,9 +73,21 @@ void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
     class_id         = janus_driver_cfg().class_id();
     application_type = janus_driver_cfg().application_type();
     ack_request      = janus_driver_cfg().ack_request();
+
+    params->pset_id = pset_id;
+    params->pset_file = pset_file.c_str();
+    params->verbose = verbosity;
+    params->stream_driver = "alsa";
+    params->stream_driver_args = "default";
+    params->stream_channel_count = janus_driver_cfg().channel_count();
+    params->stream_fs = janus_driver_cfg().sample_rate(); 
+    params->pad = 1; 
+    tx = janus_simple_tx_new(params);
     
-    // send empty transmission to get the modem to start properly
-    handle_initiate_transmission(protobuf::ModemTransmission());    
+    if (!tx){
+      std::cerr << "ERROR: failed to initialize transmitter" << std::endl;;
+      janus_parameters_free(params);
+    }
 } // startup
 
 void goby::acomms::JanusDriver::shutdown()
@@ -120,35 +138,47 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
         
         // calculate crc for class_id 16 and application_type 1
         if(class_id == 16 && application_type == 1){
-            std::uint16_t crc = calculate_crc_16(message.data(),message.size(),0);
+            std::cerr << "calculating janus crc16" << std::endl;
+            std::uint16_t crc = janus_crc_16(message.data(),message.size(),0);
             std::vector<std::uint8_t> crc_bytes= {static_cast<std::uint8_t>(crc >> 8), static_cast<std::uint8_t>(crc & 0xff)};
             message.insert(message.end(), crc_bytes.begin(), crc_bytes.end());
         }
-
-        // Binary vector to string 
-        std::string binary_str(reinterpret_cast<const char*>(message.data()), message.size());
-        std::string janus_tx_command = "janus-tx --pset-file " + pset_file + " --pset-id " + std::to_string(pset_id) + " --stream-driver alsa --stream-driver-args default --packet-class-id " 
-            + std::to_string(class_id) + " --packet-app-type " + std::to_string(application_type) + " --packet-app-fields 'StationIdentifier=" + std::to_string(msg.src()) 
-            + ",AckRequest=" + std::to_string(ack_request) + ",DestinationIdentifier=" + std::to_string(msg.dest()) + "' --packet-cargo " + binary_str;
+        int desired_cargo_size = message.size();
+        janus_packet_t packet = janus_packet_new(verbosity);
+        janus_packet_set_class_id(packet, class_id);
+        janus_packet_set_app_type(packet, application_type);
+        janus_packet_set_tx_rx(packet, 1);
+        janus_packet_set_cargo(packet, message.data(),desired_cargo_size);
         
-        int result = system(janus_tx_command.c_str()); 
-        if(result != 0 ){ 
-            std::cerr << "INVALID: " + janus_tx_command << std::endl; 
-            std::__throw_runtime_error("janus-tx command may be missing! Please install janus library and try again!");    
+        janus_app_fields_t app_fields = janus_app_fields_new();
+        janus_app_fields_add_field(app_fields, "StationIdentifier", std::to_string(msg.src()).c_str());
+        janus_app_fields_add_field(app_fields, "DestinationIdentifier", std::to_string(msg.dest()).c_str());
+        janus_app_fields_add_field(app_fields, "AckRequest", std::to_string(ack_request).c_str());
+        janus_packet_set_application_data_fields(packet,app_fields);
+        
+        int cargo_error;
+        cargo_error = janus_packet_set_cargo(packet, (janus_uint8_t*) message.data(), desired_cargo_size);
+        if (cargo_error == JANUS_ERROR_CARGO_SIZE){
+            fprintf(stderr, "ERROR: cargo size : %d exceeding maximum value\n", desired_cargo_size);
         }
-    
+
+        if (janus_packet_get_desired_cargo_size(packet)){
+            janus_packet_encode_application_data(packet);
+            janus_packet_set_validity(packet, 2);
+        }
+
+        janus_app_fields_free(app_fields);
+        janus_tx_state_t state = janus_tx_state_new((params->verbose > 1));
+        int rv = janus_simple_tx_execute(tx,packet,state);
+        if (verbosity > 0){
+            janus_tx_state_dump(state);
+            janus_packet_dump(packet);
+        }
+        janus_tx_state_free(state);
+        janus_packet_free(packet);
     }
 } // handle_initiate_transmission
 
-std::uint16_t goby::acomms::JanusDriver::calculate_crc_16(std::uint8_t* data,unsigned data_len, std::uint16_t crc)
-{
-    while (data_len-- > 0){
-        crc = (crc >> 8) ^ c_crc16_ibm_table[(crc ^ *data++) & 0xff];
-    }
-    return crc;
-}
-
- // calculate_crc_16
 // Recieving messages with janus modem not currently supported: Coming Soon!
 void goby::acomms::JanusDriver::do_work()
 {
