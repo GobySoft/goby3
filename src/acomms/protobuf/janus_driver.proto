@@ -31,7 +31,10 @@ message Config
             "Application ID for Janus Plugin"
     ];
 
-    optional string pset_file = 4 [(dccl.field).max_length = 50];
+    optional string pset_file = 4 [
+        default = "/usr/local/share/janus/etc/parameter_sets.csv",
+        (dccl.field).max_length = 50
+    ];
 
     optional int32 pset_id = 5 [
         default = 1,
