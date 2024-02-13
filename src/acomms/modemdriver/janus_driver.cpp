@@ -51,6 +51,13 @@ using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
 
+#define PAYLOAD_LABEL "Payload"
+#define PAYLOAD_SIZE_LABEL "PayloadSize"
+#define ACK_REQUEST_LABEL "AckRequest"
+#define STATION_ID_LABEL "StationIdentifier"
+#define DESTINATION_ID_LABEL "DestinationIdentifier"
+
+
 goby::acomms::JanusDriver::JanusDriver()
 {
     // other initialization you can do before you have your goby::acomms::DriverConfig configuration object
@@ -58,8 +65,101 @@ goby::acomms::JanusDriver::JanusDriver()
 
 goby::acomms::JanusDriver::~JanusDriver()
 {
-    janus_parameters_free(params);
-    janus_simple_tx_free(tx);
+    janus_parameters_free(params_tx);
+    janus_parameters_free(params_rx);
+    janus_simple_tx_free(simple_tx);
+    janus_simple_rx_free(simple_rx);
+}
+
+janus_simple_tx_t goby::acomms::JanusDriver::init_janus_tx(){
+    verbosity        = janus_driver_cfg().verbosity();
+    pset_file        = janus_driver_cfg().pset_file();
+    pset_id          = janus_driver_cfg().pset_id();
+    class_id         = janus_driver_cfg().class_id();
+    application_type = janus_driver_cfg().application_type();
+    ack_request      = janus_driver_cfg().ack_request();
+    params_tx->pset_id = pset_id;
+    params_tx->pset_file = pset_file.c_str();
+    params_tx->verbose = verbosity;
+    params_tx->stream_driver = "alsa";
+    params_tx->stream_driver_args = "default";// add config for this
+    params_tx->stream_channel_count = janus_driver_cfg().channel_count();
+    params_tx->stream_fs = janus_driver_cfg().sample_rate(); 
+    params_tx->pad = 1; 
+    simple_tx = janus_simple_tx_new(params_tx);
+
+    if (!simple_tx){
+      std::cerr << "ERROR: failed to initialize transmitter" << std::endl;;
+      janus_parameters_free(params_tx);
+    }   
+
+    return simple_tx;
+}
+
+janus_parameters_t goby::acomms::JanusDriver::get_rx_params(){
+    std::string deviceName = "dsnooped";
+    int samplingFreq = 48000;
+    int inputChannels = 1;
+    const char* pset_file = "/usr/local/share/mig-moos-apps/iJanus/parameter_sets.csv";
+    int pset_id = 1;
+    if(verbosity){
+        std::cerr << "Making new janus_parameters\n";
+        std::cerr << "---------------------------\n"; 
+        std::cerr << "device: " << deviceName << std::endl;
+        std::cerr << "samplingFreq: " << samplingFreq << std::endl;
+        std::cerr << "verbosity: " << verbosity << std::endl;
+        std::cerr << "inputChannels: " << inputChannels << std::endl;
+    }
+
+    janus_parameters_t params = janus_parameters_new();
+    params->verbose = verbosity;
+    params->pset_id = pset_id;
+    params->pset_file = pset_file;
+    params->pset_center_freq = 0;
+    params->pset_bandwidth = 0;
+    params->chip_len_exp = 0;
+    params->sequence_32_chips = JANUS_32_CHIP_SEQUENCE;
+
+    // Stream parameters.
+    params->stream_driver = "alsa";
+    params->stream_driver_args = deviceName.c_str();
+    params->stream_fs = samplingFreq;
+    params->stream_format = "S16";
+    params->stream_passband = 1;
+    params->stream_amp = JANUS_REAL_CONST(0.95);
+    params->stream_mul = 1;
+    params->stream_channel_count = inputChannels;
+    params->stream_channel = 0;
+
+    // Tx parameters.
+    params->pad = 1;
+    params->wut = 0;
+
+    // Rx parameters.
+    params->doppler_correction = 1;
+    params->doppler_max_speed = JANUS_REAL_CONST(5.0);
+    params->compute_channel_spectrogram = 1;
+    params->detection_threshold = JANUS_REAL_CONST(2.5);
+    params->colored_bit_prob = 0;
+    params->cbp_high2medium  = JANUS_REAL_CONST(0.2);
+    params->cbp_medium2low   = JANUS_REAL_CONST(0.35);
+    return params;
+}
+
+janus_simple_rx_t goby::acomms::JanusDriver::init_janus_rx(){
+    params_rx = get_rx_params();
+    simple_rx = janus_simple_rx_new(params_rx);
+    if (!simple_rx){
+      std::cerr << "ERROR: failed to initialize receiver" << std::endl;
+      exit(1);
+      janus_parameters_free(params_tx);
+    }      
+    
+    carrier_sensing = janus_carrier_sensing_new(janus_simple_rx_get_rx(simple_rx));
+    packet_rx= janus_packet_new(params_rx->verbose);
+    state_rx = janus_rx_state_new(params_rx);
+    std::cerr << "===== SIMPLE RX IS GOOD =======" << std::endl;
+    return simple_rx;
 }
 
 void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
@@ -67,27 +167,8 @@ void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
     driver_cfg_ = cfg;
     glog.is(DEBUG1) && glog << group(glog_out_group()) << "JanusDriver configuration good" << std::endl;
     ModemDriverBase::modem_start(driver_cfg_);
-    verbosity        = janus_driver_cfg().verbosity();
-    pset_file        = janus_driver_cfg().pset_file();
-    pset_id          = janus_driver_cfg().pset_id();
-    class_id         = janus_driver_cfg().class_id();
-    application_type = janus_driver_cfg().application_type();
-    ack_request      = janus_driver_cfg().ack_request();
-
-    params->pset_id = pset_id;
-    params->pset_file = pset_file.c_str();
-    params->verbose = verbosity;
-    params->stream_driver = "alsa";
-    params->stream_driver_args = "default";
-    params->stream_channel_count = janus_driver_cfg().channel_count();
-    params->stream_fs = janus_driver_cfg().sample_rate(); 
-    params->pad = 1; 
-    tx = janus_simple_tx_new(params);
-    
-    if (!tx){
-      std::cerr << "ERROR: failed to initialize transmitter" << std::endl;;
-      janus_parameters_free(params);
-    }
+    simple_tx  = init_janus_tx();
+    simple_rx = init_janus_rx();
 } // startup
 
 void goby::acomms::JanusDriver::shutdown()
@@ -170,8 +251,8 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(
         }
 
         janus_app_fields_free(app_fields);
-        janus_tx_state_t state = janus_tx_state_new((params->verbose > 1));
-        int rv = janus_simple_tx_execute(tx,packet,state);
+        janus_tx_state_t state = janus_tx_state_new((params_tx->verbose > 1));
+        int rv = janus_simple_tx_execute(simple_tx,packet,state);
         if (verbosity > 0){
             janus_tx_state_dump(state);
             janus_packet_dump(packet);
@@ -190,9 +271,122 @@ void goby::acomms::JanusDriver::pad_message(std::vector<uint8_t> &vec) {
     }
 }
 
+// todo: convert to janus decode function
+janus_rx_msg_pkt goby::acomms::JanusDriver::janus_packet_dump_cpp(const janus_packet_t pkt, bool verbosity){
+    unsigned i;
+    unsigned int cargo_size;
+
+    struct janus_rx_msg_pkt packet_parsed; 
+    janus_app_fields_t app_fields = janus_app_fields_new();
+    janus_packet_get_application_data_fields(pkt, app_fields);
+    cargo_size = janus_packet_get_cargo_size(pkt);
+    const janus_uint8_t* cargo = janus_packet_get_cargo(pkt);
+    packet_parsed.cargo_size = cargo_size;
+    bool dest_set = false;
+    if (app_fields->field_count > 0) {
+        if(verbosity){
+            JANUS_DUMP("[iJanus] Packet", "Application Data Fields", "%s", "");
+            JANUS_DUMP("[iJanus] Packet", "Cargo Size"  , "%u", cargo_size);   
+            JANUS_DUMP("[iJanus] Packet", "CRC (8 bits)", "%u", janus_packet_get_crc(pkt));
+            JANUS_DUMP("[iJanus] Packet", "CRC Validity", "%u", (janus_packet_get_validity(pkt) > 0));
+        }
+
+        char string_cargo[JANUS_MAX_PKT_CARGO_SIZE * 3 + 1];
+        string_cargo[0] = '\0';
+        for (i = 0; i < app_fields->field_count; ++i)
+        {
+            char name[64];
+            sprintf(name, "  %s", app_fields->fields[i].name);
+            if(verbosity) { JANUS_DUMP("[iJanus] Packet", name, "%s", app_fields->fields[i].value); }
+            if (strcmp(PAYLOAD_LABEL, app_fields->fields[i].name) == 0) {
+                packet_parsed.cargo = app_fields->fields[i].value;
+            }
+            else if (strcmp(PAYLOAD_SIZE_LABEL, app_fields->fields[i].name) == 0){
+                packet_parsed.cargo_size = atoi(app_fields->fields[i].value);
+            }
+            else if (strcmp(STATION_ID_LABEL, app_fields->fields[i].name) == 0){
+                packet_parsed.station_id = atoi(app_fields->fields[i].value);
+            }
+            else if (strcmp(DESTINATION_ID_LABEL, app_fields->fields[i].name) == 0){
+                dest_set = true;
+                packet_parsed.destination_id = atoi(app_fields->fields[i].value);
+            }
+            else if (strcmp(ACK_REQUEST_LABEL, app_fields->fields[i].name) == 0){
+                packet_parsed.ack_request = *app_fields->fields[i].value != '0';
+            }
+        }
+
+        for (i = 0; i <  packet_parsed.cargo_size; ++i){
+            APPEND_FORMATTED(string_cargo, "%02X ", cargo[i]);
+        }
+        if(!dest_set){ packet_parsed.destination_id = -1; }
+        if(verbosity) {JANUS_DUMP("[iJanus] Packet", "Cargo (hex)", "%s", string_cargo);}
+        packet_parsed.cargo_hex = string_cargo;
+        // return packet_parsed; -> just return at the end
+    }
+            
+    // if(verbosity){
+    std::cerr << "------ Got new message! ---------" << std::endl;
+    std::cerr << "The SNR is: " +      std::to_string(state_rx->snr) << std::endl;
+    std::cerr << "cargo_msg_size: "  + std::to_string(packet_parsed.cargo_size) << std::endl;
+    std::cerr << "cargo_msg_hex: "   + packet_parsed.cargo_hex << std::endl;
+    std::cerr << "cargo_msg cargo: " + packet_parsed.cargo << std::endl;
+    std::cerr << "cargo_msg_src: "   + std::to_string(packet_parsed.station_id) << std::endl;
+    std::cerr << "cargo_msg_dest: "  + std::to_string(packet_parsed.destination_id) << std::endl;
+    // }
+
+    return packet_parsed;
+}
+
+void goby::acomms::JanusDriver::to_modem_transmission(janus_rx_msg_pkt packet,protobuf::ModemTransmission& msg){
+    // todo:  detect if this is an ack or a data message for now hard setting data
+    msg.set_type(protobuf::ModemTransmission::DATA);
+    msg.set_ack_requested(packet.ack_request);
+    msg.set_src(packet.station_id);
+    msg.set_dest(packet.destination_id);
+    // msg.set_rate() -> todo: how to get this?
+    // msg.set_frame_start( ack_num ); todo: how to get this?
+    msg.add_frame(packet.cargo_hex);
+    ModemDriverBase::signal_receive(modem_msg);
+    modem_msg.Clear();
+}
+
 // Recieving messages with janus modem not currently supported: Coming Soon!
 void goby::acomms::JanusDriver::do_work()
 {
+    janus_rx_msg_pkt packet_parsed;
+    std::string binary_msg;
 
+    int retval = janus_rx_execute( janus_simple_rx_get_rx(simple_rx), packet_rx, state_rx);
+    std::cerr << "=== retval : " << retval << std::endl;
+    if (retval < 0){
+        if (retval == JANUS_ERROR_OVERRUN){ std::cerr<< "Error: buffer-overrun" << std::endl; }
+    } else if (retval > 0) {
+        if (janus_packet_get_validity(packet_rx) && janus_packet_get_cargo_error(packet_rx) == 0){
+            packet_parsed = janus_packet_dump_cpp(packet_rx,verbosity);
+
+            // if (acomms_id == packet_parsed.destination_id || packet_parsed.destination_id == -1){
+            //     to_modem_transmission(packet_parsed,modem_msg);
+            // } else {
+            //     std::cerr << "[iJanus] Ignoring msg because it is not meant for us." << std::endl;
+            // }     
+            janus_packet_reset(packet_rx);
+
+        } else if (janus_packet_get_cargo_error(packet_rx) != 0){
+            std::cerr <<  "[iJanus] Got a CRCError" << std::endl;
+            // if (packet_parsed.ack_request){
+                // std::cerr << "Unsuccfessfully decoded DCCL message. Playing nack.wav file to transmit a NACK" << std::endl;
+                // if(nack_fpath != "none") { Notify(PLAY_WAV_MOOS_VAR, nack_fpath); } -> need to replace this functionality
+            // }
+            janus_packet_reset(packet_rx);
+        }
+        queried_detection_time = 0;
+        janus_carrier_sensing_reset(carrier_sensing);
+    } else {
+        if (janus_simple_rx_has_detected(simple_rx) && !queried_detection_time ) {
+            std::cerr << "Triggering detection (" + std::to_string(janus_simple_rx_get_first_detection_time(simple_rx)) + ")" << std::endl;
+            queried_detection_time = 1;
+        }
+    }
+    // send the packet over mooos to iJanus
 } // do_work
-

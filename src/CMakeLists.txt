@@ -234,6 +234,7 @@ target_link_libraries(goby
 if(enable_janus_acomms)
   target_link_libraries(goby
     janus 
+    fftw3
     asound
     pulse-simple
     /usr/local/share/janus/plugins/libplugin_016_00.so
