@@ -86,8 +86,7 @@ class JanusDriver : public ModemDriverBase
     janus_rx_msg_pkt janus_packet_dump_cpp(const janus_packet_t pkt, bool verbosity);
     void to_modem_transmission(janus_rx_msg_pkt packet,protobuf::ModemTransmission& msg);
     janus_parameters_t get_rx_params();
-
-
+    unsigned int get_frame_num(std::string cargo);
     janus_simple_tx_t init_janus_tx();
     janus_simple_rx_t init_janus_rx();
     int verbosity;

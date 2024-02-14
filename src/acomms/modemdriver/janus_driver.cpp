@@ -324,6 +324,13 @@ janus_rx_msg_pkt goby::acomms::JanusDriver::janus_packet_dump_cpp(const janus_pa
     return packet_parsed;
 }
 
+unsigned int goby::acomms::JanusDriver::get_frame_num(std::string cargo){
+    std::string frame_num_str = cargo.substr(3,2);
+    uint8_t frame_hex = std::stoi(frame_num_str, nullptr, 16);
+    int frame_number = frame_hex;
+    return frame_number;
+}
+
 void goby::acomms::JanusDriver::to_modem_transmission(janus_rx_msg_pkt packet,protobuf::ModemTransmission& msg){
     // todo:  detect if this is an ack or a data message for now hard setting data
     msg.set_type(protobuf::ModemTransmission::DATA);
@@ -331,19 +338,18 @@ void goby::acomms::JanusDriver::to_modem_transmission(janus_rx_msg_pkt packet,pr
     msg.set_src(packet.station_id);
     msg.set_dest(packet.destination_id);
     // msg.set_rate(); //-> todo: how to get this?
-    msg.set_frame_start( 0 ); //todo: how to get this?
+    msg.set_frame_start( get_frame_num(packet.cargo_hex)); //todo: how to get this?
+    
     std::string cargo_no_header = packet.cargo_hex.substr(6);
     std::string converted_cargo;
     for(int i = 0; i < cargo_no_header.size(); i+=3){
         std::string entry = cargo_no_header.substr(i,2);
         uint8_t value = std::stoi(entry, nullptr, 16);
-        // Convert to char
         char character = static_cast<char>(value);
         converted_cargo += character;
     }
     msg.add_frame(converted_cargo); // test if converted form to chars (-2) works!
-    ModemDriverBase::signal_receive(modem_msg);
-    modem_msg.Clear();
+
 }
 
 void goby::acomms::JanusDriver::do_work()
@@ -359,11 +365,13 @@ void goby::acomms::JanusDriver::do_work()
             packet_parsed = janus_packet_dump_cpp(packet_rx,verbosity);
 
             // todo: fix src/dest check
-            // if (acomms_id == packet_parsed.destination_id || packet_parsed.destination_id == -1){
-            to_modem_transmission(packet_parsed,modem_msg);
-            // } else {
-                // std::cerr << "[iJanus] Ignoring msg because it is not meant for us." << std::endl;
-            // }     
+            if (driver_cfg_.modem_id() == packet_parsed.destination_id || packet_parsed.destination_id == -1){
+                to_modem_transmission(packet_parsed,modem_msg);
+                ModemDriverBase::signal_receive(modem_msg);
+                modem_msg.Clear();
+            } else {
+                std::cerr << "[iJanus] Ignoring msg because it is not meant for us." << std::endl;
+            }     
             janus_packet_reset(packet_rx);
 
         } else if (janus_packet_get_cargo_error(packet_rx) != 0){
