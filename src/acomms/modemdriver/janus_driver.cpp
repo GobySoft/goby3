@@ -97,24 +97,10 @@ janus_simple_tx_t goby::acomms::JanusDriver::init_janus_tx(){
 }
 
 janus_parameters_t goby::acomms::JanusDriver::get_rx_params(){
-    std::string deviceName = "dsnooped";
-    int samplingFreq = 48000;
-    int inputChannels = 1;
-    const char* pset_file = "/usr/local/share/mig-moos-apps/iJanus/parameter_sets.csv";
-    int pset_id = 1;
-    if(verbosity){
-        std::cerr << "Making new janus_parameters\n";
-        std::cerr << "---------------------------\n"; 
-        std::cerr << "device: " << deviceName << std::endl;
-        std::cerr << "samplingFreq: " << samplingFreq << std::endl;
-        std::cerr << "verbosity: " << verbosity << std::endl;
-        std::cerr << "inputChannels: " << inputChannels << std::endl;
-    }
-
     janus_parameters_t params = janus_parameters_new();
-    params->verbose = verbosity;
-    params->pset_id = pset_id;
-    params->pset_file = pset_file;
+    params->verbose = 10; //verbosity;
+    params->pset_id = 1;
+    params->pset_file = "/usr/local/share/mig-moos-apps/iJanus/parameter_sets.csv";
     params->pset_center_freq = 0;
     params->pset_bandwidth = 0;
     params->chip_len_exp = 0;
@@ -122,13 +108,13 @@ janus_parameters_t goby::acomms::JanusDriver::get_rx_params(){
 
     // Stream parameters.
     params->stream_driver = "alsa";
-    params->stream_driver_args = deviceName.c_str();
-    params->stream_fs = samplingFreq;
+    params->stream_driver_args = "dsnooped";
+    params->stream_fs = 48000;
     params->stream_format = "S16";
     params->stream_passband = 1;
     params->stream_amp = JANUS_REAL_CONST(0.95);
     params->stream_mul = 1;
-    params->stream_channel_count = inputChannels;
+    params->stream_channel_count = 1;
     params->stream_channel = 0;
 
     // Tx parameters.
@@ -143,6 +129,7 @@ janus_parameters_t goby::acomms::JanusDriver::get_rx_params(){
     params->colored_bit_prob = 0;
     params->cbp_high2medium  = JANUS_REAL_CONST(0.2);
     params->cbp_medium2low   = JANUS_REAL_CONST(0.35);
+    
     return params;
 }
 
@@ -158,7 +145,6 @@ janus_simple_rx_t goby::acomms::JanusDriver::init_janus_rx(){
     carrier_sensing = janus_carrier_sensing_new(janus_simple_rx_get_rx(simple_rx));
     packet_rx= janus_packet_new(params_rx->verbose);
     state_rx = janus_rx_state_new(params_rx);
-    std::cerr << "===== SIMPLE RX IS GOOD =======" << std::endl;
     return simple_rx;
 }
 
@@ -351,14 +337,12 @@ void goby::acomms::JanusDriver::to_modem_transmission(janus_rx_msg_pkt packet,pr
     modem_msg.Clear();
 }
 
-// Recieving messages with janus modem not currently supported: Coming Soon!
 void goby::acomms::JanusDriver::do_work()
 {
     janus_rx_msg_pkt packet_parsed;
     std::string binary_msg;
 
-    int retval = janus_rx_execute( janus_simple_rx_get_rx(simple_rx), packet_rx, state_rx);
-    std::cerr << "=== retval : " << retval << std::endl;
+    int retval = janus_rx_execute(janus_simple_rx_get_rx(simple_rx), packet_rx, state_rx);
     if (retval < 0){
         if (retval == JANUS_ERROR_OVERRUN){ std::cerr<< "Error: buffer-overrun" << std::endl; }
     } else if (retval > 0) {
