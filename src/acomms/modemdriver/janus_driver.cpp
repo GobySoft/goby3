@@ -114,7 +114,7 @@ janus_parameters_t goby::acomms::JanusDriver::get_rx_params(){
     params->stream_passband = 1;
     params->stream_amp = JANUS_REAL_CONST(0.95);
     params->stream_mul = 1;
-    params->stream_channel_count = 1;
+    params->stream_channel_count = 2;
     params->stream_channel = 0;
 
     // Tx parameters.
@@ -330,9 +330,18 @@ void goby::acomms::JanusDriver::to_modem_transmission(janus_rx_msg_pkt packet,pr
     msg.set_ack_requested(packet.ack_request);
     msg.set_src(packet.station_id);
     msg.set_dest(packet.destination_id);
-    // msg.set_rate() -> todo: how to get this?
-    // msg.set_frame_start( ack_num ); todo: how to get this?
-    msg.add_frame(packet.cargo_hex);
+    // msg.set_rate(); //-> todo: how to get this?
+    msg.set_frame_start( 0 ); //todo: how to get this?
+    std::string cargo_no_header = packet.cargo_hex.substr(6);
+    std::string converted_cargo;
+    for(int i = 0; i < cargo_no_header.size(); i+=3){
+        std::string entry = cargo_no_header.substr(i,2);
+        uint8_t value = std::stoi(entry, nullptr, 16);
+        // Convert to char
+        char character = static_cast<char>(value);
+        converted_cargo += character;
+    }
+    msg.add_frame(converted_cargo); // test if converted form to chars (-2) works!
     ModemDriverBase::signal_receive(modem_msg);
     modem_msg.Clear();
 }
@@ -349,10 +358,11 @@ void goby::acomms::JanusDriver::do_work()
         if (janus_packet_get_validity(packet_rx) && janus_packet_get_cargo_error(packet_rx) == 0){
             packet_parsed = janus_packet_dump_cpp(packet_rx,verbosity);
 
+            // todo: fix src/dest check
             // if (acomms_id == packet_parsed.destination_id || packet_parsed.destination_id == -1){
-            //     to_modem_transmission(packet_parsed,modem_msg);
+            to_modem_transmission(packet_parsed,modem_msg);
             // } else {
-            //     std::cerr << "[iJanus] Ignoring msg because it is not meant for us." << std::endl;
+                // std::cerr << "[iJanus] Ignoring msg because it is not meant for us." << std::endl;
             // }     
             janus_packet_reset(packet_rx);
 

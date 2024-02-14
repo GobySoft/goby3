@@ -700,6 +700,8 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
 
 void goby::apps::moos::CpAcommsHandler::handle_queue_receive(const google::protobuf::Message& msg)
 {
+    std::cerr << "[pAcommsHandler] inside handle queue receive " << std::endl; 
+
     try
     {
         std::multimap<std::string, CMOOSMsg> out;
@@ -708,6 +710,7 @@ void goby::apps::moos::CpAcommsHandler::handle_queue_receive(const google::proto
 
         for (auto& it : out)
         {
+            std::cerr << "[pAcommsHandler] MOOS Msg: " << it.second << std::endl; 
             glog.is(DEBUG2) && glog << group("pAcommsHandler") << "Publishing: " << it.second
                                     << std::endl;
             publish(it.second);

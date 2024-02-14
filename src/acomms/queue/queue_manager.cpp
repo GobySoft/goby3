@@ -449,6 +449,7 @@ goby::acomms::QueueManager::decode_repeated(const std::string& orig_bytes)
 {
     std::string bytes = orig_bytes;
     std::list<QueuedMessage> out;
+    std::cerr << "[queue manager] passing orig_bytes: "  << orig_bytes << std::endl;
     while (!bytes.empty())
     {
         try
@@ -474,6 +475,7 @@ goby::acomms::QueueManager::decode_repeated(const std::string& orig_bytes)
                 codec_->merge_cfg(cfg);
             }
 
+            std::cerr << "[queue manager] going to codec decode" << std::endl;
             msg.dccl_msg = codec_->decode<std::shared_ptr<google::protobuf::Message> >(bytes);
 
             if (!encrypt_rules_.size())
@@ -650,6 +652,7 @@ void goby::acomms::QueueManager::process_modem_ack(const protobuf::ModemTransmis
 void goby::acomms::QueueManager::handle_modem_receive(
     const protobuf::ModemTransmission& modem_message)
 {
+    std::cerr << "[queue manager] Handling modem receive" << std::endl;
     glog.is(DEBUG2) && glog << group(glog_in_group_) << "Received message"
                             << ": " << modem_message << std::endl;
 
@@ -659,6 +662,7 @@ void goby::acomms::QueueManager::handle_modem_receive(
     }
     else
     {
+        std::cerr << "[queue manager] modem message frame size = " << modem_message.frame_size() << std::endl;
         for (int frame_number = 0, total_frames = modem_message.frame_size();
              frame_number < total_frames; ++frame_number)
         {
@@ -671,11 +675,14 @@ void goby::acomms::QueueManager::handle_modem_receive(
 
                 if (!cfg_.skip_decoding())
                 {
+                    std::cerr << "[queue manager] Decode Repeated" << std::endl;
                     dccl_msgs = decode_repeated(modem_message.frame(frame_number));
                 }
 
                 for (const QueuedMessage& decoded_message : dccl_msgs)
                 {
+                    std::cerr << "[queue manager] Processing decoded message " << std::endl;
+
                     const protobuf::QueuedMessageMeta& meta_msg = decoded_message.meta;
 
                     std::int32_t dest = meta_msg.dest();
@@ -705,6 +712,7 @@ void goby::acomms::QueueManager::handle_modem_receive(
                     }
                     else
                     {
+                        std::cerr << "Received message: " << *(decoded_message.dccl_msg) << std::endl;
                         signal_receive(*(decoded_message.dccl_msg));
                     }
                 }
