@@ -89,7 +89,7 @@ janus_simple_tx_t goby::acomms::JanusDriver::init_janus_tx(){
     simple_tx = janus_simple_tx_new(params_tx);
 
     if (!simple_tx){
-      std::cerr << "ERROR: failed to initialize transmitter" << std::endl;;
+      glog.is(DEBUG1) && glog << "ERROR: failed to initialize transmitter" << std::endl;;
       janus_parameters_free(params_tx);
     }   
 
@@ -98,7 +98,7 @@ janus_simple_tx_t goby::acomms::JanusDriver::init_janus_tx(){
 
 janus_parameters_t goby::acomms::JanusDriver::get_rx_params(){
     janus_parameters_t params = janus_parameters_new();
-    params->verbose = 10; //verbosity;
+    params->verbose = verbosity;
     params->pset_id = 1;
     params->pset_file = "/usr/local/share/mig-moos-apps/iJanus/parameter_sets.csv";
     params->pset_center_freq = 0;
@@ -137,7 +137,7 @@ janus_simple_rx_t goby::acomms::JanusDriver::init_janus_rx(){
     params_rx = get_rx_params();
     simple_rx = janus_simple_rx_new(params_rx);
     if (!simple_rx){
-      std::cerr << "ERROR: failed to initialize receiver" << std::endl;
+      glog.is(DEBUG1) && glog << "ERROR: failed to initialize receiver" << std::endl;
       exit(1);
       janus_parameters_free(params_tx);
     }      
@@ -271,10 +271,10 @@ janus_rx_msg_pkt goby::acomms::JanusDriver::janus_packet_dump_cpp(const janus_pa
     bool dest_set = false;
     if (app_fields->field_count > 0) {
         if(verbosity){
-            JANUS_DUMP("[iJanus] Packet", "Application Data Fields", "%s", "");
-            JANUS_DUMP("[iJanus] Packet", "Cargo Size"  , "%u", cargo_size);   
-            JANUS_DUMP("[iJanus] Packet", "CRC (8 bits)", "%u", janus_packet_get_crc(pkt));
-            JANUS_DUMP("[iJanus] Packet", "CRC Validity", "%u", (janus_packet_get_validity(pkt) > 0));
+            JANUS_DUMP("Packet", "Application Data Fields", "%s", "");
+            JANUS_DUMP("Packet", "Cargo Size"  , "%u", cargo_size);   
+            JANUS_DUMP("Packet", "CRC (8 bits)", "%u", janus_packet_get_crc(pkt));
+            JANUS_DUMP("Packet", "CRC Validity", "%u", (janus_packet_get_validity(pkt) > 0));
         }
 
         char string_cargo[JANUS_MAX_PKT_CARGO_SIZE * 3 + 1];
@@ -283,7 +283,7 @@ janus_rx_msg_pkt goby::acomms::JanusDriver::janus_packet_dump_cpp(const janus_pa
         {
             char name[64];
             sprintf(name, "  %s", app_fields->fields[i].name);
-            if(verbosity) { JANUS_DUMP("[iJanus] Packet", name, "%s", app_fields->fields[i].value); }
+            if(verbosity) { JANUS_DUMP("Packet", name, "%s", app_fields->fields[i].value); }
             if (strcmp(PAYLOAD_LABEL, app_fields->fields[i].name) == 0) {
                 packet_parsed.cargo = app_fields->fields[i].value;
             }
@@ -306,20 +306,19 @@ janus_rx_msg_pkt goby::acomms::JanusDriver::janus_packet_dump_cpp(const janus_pa
             APPEND_FORMATTED(string_cargo, "%02X ", cargo[i]);
         }
         if(!dest_set){ packet_parsed.destination_id = -1; }
-        if(verbosity) {JANUS_DUMP("[iJanus] Packet", "Cargo (hex)", "%s", string_cargo);}
+        if(verbosity) {JANUS_DUMP("Packet", "Cargo (hex)", "%s", string_cargo);}
         packet_parsed.cargo_hex = string_cargo;
-        // return packet_parsed; -> just return at the end
     }
             
-    // if(verbosity){
-    std::cerr << "------ Got new message! ---------" << std::endl;
-    std::cerr << "The SNR is: " +      std::to_string(state_rx->snr) << std::endl;
-    std::cerr << "cargo_msg_size: "  + std::to_string(packet_parsed.cargo_size) << std::endl;
-    std::cerr << "cargo_msg_hex: "   + packet_parsed.cargo_hex << std::endl;
-    std::cerr << "cargo_msg cargo: " + packet_parsed.cargo << std::endl;
-    std::cerr << "cargo_msg_src: "   + std::to_string(packet_parsed.station_id) << std::endl;
-    std::cerr << "cargo_msg_dest: "  + std::to_string(packet_parsed.destination_id) << std::endl;
-    // }
+    if(verbosity){
+        glog.is(DEBUG1) && glog << "------ Got new message! ---------" << std::endl;
+        glog.is(DEBUG1) && glog << "The SNR is: " +      std::to_string(state_rx->snr) << std::endl;
+        glog.is(DEBUG1) && glog << "cargo_msg_size: "  + std::to_string(packet_parsed.cargo_size) << std::endl;
+        glog.is(DEBUG1) && glog << "cargo_msg_hex: "   + packet_parsed.cargo_hex << std::endl;
+        glog.is(DEBUG1) && glog << "cargo_msg cargo: " + packet_parsed.cargo << std::endl;
+        glog.is(DEBUG1) && glog << "cargo_msg_src: "   + std::to_string(packet_parsed.station_id) << std::endl;
+        glog.is(DEBUG1) && glog << "cargo_msg_dest: "  + std::to_string(packet_parsed.destination_id) << std::endl;
+    }
 
     return packet_parsed;
 }
@@ -337,8 +336,8 @@ void goby::acomms::JanusDriver::to_modem_transmission(janus_rx_msg_pkt packet,pr
     msg.set_ack_requested(packet.ack_request);
     msg.set_src(packet.station_id);
     msg.set_dest(packet.destination_id);
-    // msg.set_rate(); //-> todo: how to get this?
-    msg.set_frame_start( get_frame_num(packet.cargo_hex)); //todo: how to get this?
+    // msg.set_rate(); // do we care about this
+    msg.set_frame_start( get_frame_num(packet.cargo_hex)); 
     
     std::string cargo_no_header = packet.cargo_hex.substr(6);
     std::string converted_cargo;
@@ -348,8 +347,7 @@ void goby::acomms::JanusDriver::to_modem_transmission(janus_rx_msg_pkt packet,pr
         char character = static_cast<char>(value);
         converted_cargo += character;
     }
-    msg.add_frame(converted_cargo); // test if converted form to chars (-2) works!
-
+    msg.add_frame(converted_cargo); 
 }
 
 void goby::acomms::JanusDriver::do_work()
@@ -359,34 +357,30 @@ void goby::acomms::JanusDriver::do_work()
 
     int retval = janus_rx_execute(janus_simple_rx_get_rx(simple_rx), packet_rx, state_rx);
     if (retval < 0){
-        if (retval == JANUS_ERROR_OVERRUN){ std::cerr<< "Error: buffer-overrun" << std::endl; }
+        if (retval == JANUS_ERROR_OVERRUN){ glog.is(DEBUG1) && glog<< "Error: buffer-overrun" << std::endl; }
     } else if (retval > 0) {
         if (janus_packet_get_validity(packet_rx) && janus_packet_get_cargo_error(packet_rx) == 0){
             packet_parsed = janus_packet_dump_cpp(packet_rx,verbosity);
 
-            // todo: fix src/dest check
             if (driver_cfg_.modem_id() == packet_parsed.destination_id || packet_parsed.destination_id == -1){
                 to_modem_transmission(packet_parsed,modem_msg);
                 ModemDriverBase::signal_receive(modem_msg);
                 modem_msg.Clear();
             } else {
-                std::cerr << "[iJanus] Ignoring msg because it is not meant for us." << std::endl;
+                glog.is(DEBUG1) && glog << "Ignoring msg because it is not meant for us." << std::endl;
             }     
             janus_packet_reset(packet_rx);
 
         } else if (janus_packet_get_cargo_error(packet_rx) != 0){
-            std::cerr <<  "[iJanus] Got a CRCError" << std::endl;
-            // if (packet_parsed.ack_request){
-                // std::cerr << "Unsuccfessfully decoded DCCL message. Playing nack.wav file to transmit a NACK" << std::endl;
-                // if(nack_fpath != "none") { Notify(PLAY_WAV_MOOS_VAR, nack_fpath); } -> need to replace this functionality
-            // }
+            glog.is(DEBUG1) && glog <<  "Got a CRCError" << std::endl;
+            // send nack?
             janus_packet_reset(packet_rx);
         }
         queried_detection_time = 0;
         janus_carrier_sensing_reset(carrier_sensing);
     } else {
         if (janus_simple_rx_has_detected(simple_rx) && !queried_detection_time ) {
-            std::cerr << "Triggering detection (" + std::to_string(janus_simple_rx_get_first_detection_time(simple_rx)) + ")" << std::endl;
+            glog.is(DEBUG1) && glog << "Triggering detection (" + std::to_string(janus_simple_rx_get_first_detection_time(simple_rx)) + ")" << std::endl;
             queried_detection_time = 1;
         }
     }

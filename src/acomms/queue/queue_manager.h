@@ -179,9 +179,7 @@ class QueueManager
 
     protobuf::QueuedMessageMeta meta_from_msg(const google::protobuf::Message& msg)
     {
-        std::cerr << "[queue manager] getting meta from msg!" << std::endl;
         unsigned dccl_id = codec_->id(msg.GetDescriptor());
-        std::cerr << "[queue manager] Got dccl_id!" << std::endl;
         if (!queues_.count(dccl_id))
             throw(QueueException("No such queue [[" + msg.GetDescriptor()->full_name() +
                                  "]] loaded"));
