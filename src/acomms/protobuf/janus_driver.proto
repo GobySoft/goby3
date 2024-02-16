@@ -52,7 +52,7 @@ message Config
             "Request acknowledge for message"
     ];
     
-    optional int32 channel_count = 7 [
+    optional int32 tx_channels = 7 [
         default = 2,
         (dccl.field).min = 0,
         (dccl.field).max = 4,
@@ -60,14 +60,31 @@ message Config
             "ALSA output device channel_count"
     ];
 
-    optional int32 sample_rate = 8 [
+    optional int32 rx_channels = 8 [
+        default = 1,
+        (dccl.field).min = 0,
+        (dccl.field).max = 4,
+        (goby.field).description = 
+            "ALSA input device channel_count"
+    ];
+
+    optional int32 sample_rate = 9 [
         default = 48000,
         (dccl.field).min = 0,
         (dccl.field).max = 100000,
         (goby.field).description = 
             "ALSA output device sample rate"
     ];
-  
+    
+    optional string tx_device = 10 [
+        default = "default",
+        (dccl.field).max_length = 50
+    ];
+
+    optional string rx_device = 11 [
+        default = "dsnooped",
+        (dccl.field).max_length = 50
+    ];
 }
 // added 1444 in modem driver
 extend goby.acomms.protobuf.DriverConfig
