@@ -360,7 +360,14 @@ unsigned int goby::acomms::JanusDriver::get_frame_num(std::string cargo){
 }
 
 void goby::acomms::JanusDriver::to_modem_transmission(janus_rx_msg_pkt packet,protobuf::ModemTransmission& msg){
-    if(packet.cargo_hex.size() > 0){
+    // todo: this is not the best way to detect acks but it works for now
+    if(packet.cargo_size == 3 || packet.cargo_size == 5){
+        msg.set_type(protobuf::ModemTransmission::ACK);
+        msg.set_src(packet.station_id);
+        msg.set_dest(packet.destination_id);
+        msg.set_rate(0);
+        msg.add_acked_frame(std::stoi(packet.cargo_hex.substr(6,2)));
+    } else if(packet.cargo_hex.size() > 0){
         msg.set_type(protobuf::ModemTransmission::DATA);
         msg.set_ack_requested(packet.ack_request);
         msg.set_src(packet.station_id);
@@ -399,7 +406,7 @@ void goby::acomms::JanusDriver::do_work()
                     glog.is(DEBUG1) && glog << "Ignoring msg because it is not meant for us." << std::endl;
                 } 
                 if(packet_parsed.ack_request)
-                    send_ack(packet_parsed.destination_id, packet_parsed.station_id, get_frame_num(packet_parsed.cargo_hex));
+                    send_ack(packet_parsed.station_id, packet_parsed.destination_id, get_frame_num(packet_parsed.cargo_hex));
             } else{
                 glog.is(DEBUG1) && glog << "Recieved message with no cargo" << std::endl;
                 // recieve ack correctly?
@@ -417,7 +424,6 @@ void goby::acomms::JanusDriver::do_work()
             queried_detection_time = 1;
         }
     }
-    // send the packet over mooos to iJanus
 } // do_work
 
 void goby::acomms::JanusDriver::send_ack(unsigned int src, unsigned int dest, unsigned int frame_number){
