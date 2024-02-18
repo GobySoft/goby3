@@ -3,7 +3,7 @@
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
-//   Toby Schneider <toby@gobysoft.org>
+//   Jared Silbermann <jared.silbermann@missionsystems.com.au>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -84,8 +84,10 @@ class JanusDriver : public ModemDriverBase
     void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
     void handle_ack_transmission(const protobuf::ModemTransmission& m);
     void pad_message(std::vector<uint8_t> &vec);
-    void send_janus_packet(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack);
-    janus_rx_msg_pkt janus_packet_dump_cpp(const janus_packet_t pkt, bool verbosity);
+    void send_janus_packet(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack = false);
+    void append_crc16(std::vector<std::uint8_t> &vec);
+    std::vector<std::uint8_t> get_goby_header(const protobuf::ModemTransmission& msg);
+    janus_rx_msg_pkt parse_janus_packet(const janus_packet_t pkt, bool verbosity);
     void to_modem_transmission(janus_rx_msg_pkt packet,protobuf::ModemTransmission& msg);
     janus_parameters_t get_rx_params();
     unsigned int get_frame_num(std::string cargo);
