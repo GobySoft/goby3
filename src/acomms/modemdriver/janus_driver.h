@@ -59,7 +59,6 @@ struct janus_rx_msg_pkt {
       int payload_size;
 
 };
-
 namespace goby
 {
 namespace acomms
@@ -86,9 +85,11 @@ class JanusDriver : public ModemDriverBase
     void pad_message(std::vector<uint8_t> &vec);
     void send_janus_packet(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack = false);
     void append_crc16(std::vector<std::uint8_t> &vec);
-    std::vector<std::uint8_t> get_goby_header(const protobuf::ModemTransmission& msg);
     janus_rx_msg_pkt parse_janus_packet(const janus_packet_t pkt, bool verbosity);
     void to_modem_transmission(janus_rx_msg_pkt packet,protobuf::ModemTransmission& msg);
+    std::uint8_t get_goby_header(const protobuf::ModemTransmission& msg);
+    std::uint8_t CreateGobyHeader(const protobuf::ModemTransmission& m);
+    void DecodeGobyHeader(std::uint8_t header, protobuf::ModemTransmission& m);
     janus_parameters_t get_rx_params();
     unsigned int get_frame_num(std::string cargo);
     janus_simple_tx_t init_janus_tx();

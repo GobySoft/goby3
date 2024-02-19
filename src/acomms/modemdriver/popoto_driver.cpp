@@ -660,3 +660,35 @@ void Popoto0PCMHandler(void *Pcm, int Len)
 
     pegCount++;
 }
+
+std::uint16_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemTransmission& m){
+    std::uint16_t header{0};
+    if (m.type() == protobuf::ModemTransmission::DATA)
+    {
+        header |= 0 << GOBY_HEADER_TYPE;
+        header |= (m.ack_requested() ? 1 : 0) << GOBY_HEADER_ACK_REQUEST;
+        header = header * 256;
+        header |= m.frame_start();
+    }
+    else if (m.type() == protobuf::ModemTransmission::ACK)
+    {
+        header |= 1 << GOBY_HEADER_TYPE;
+        header = header * 256;
+        header |= m.frame_start();
+    }
+    else
+    {
+        throw(goby::Exception(std::string("Unsupported type provided to CreateGobyHeader: ") +
+                              protobuf::ModemTransmission::TransmissionType_Name(m.type())));
+    }
+    return header;
+}
+
+void goby::acomms::PopotoDriver::DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num,protobuf::ModemTransmission& m){
+    m.set_type(( header & (1 << GOBY_HEADER_TYPE)) ? protobuf::ModemTransmission::ACK
+                                                  : protobuf::ModemTransmission::DATA);
+    if (m.type() == protobuf::ModemTransmission::DATA){
+        m.set_ack_requested( header & (1 << GOBY_HEADER_ACK_REQUEST));
+        m.set_frame_start( ack_num );
+    }
+}

@@ -15,6 +15,8 @@ namespace acomms
 
 enum GobyHeaderBits
 {
+    GOBY_DATA_TYPE = 1,
+    GOBY_ACK_TYPE = 2,
     GOBY_HEADER_TYPE = 0,       // 0 == Data, 1 == Ack
     GOBY_HEADER_ACK_REQUEST = 1 // 0 == no ack requested, 1 == ack requested
 };
@@ -40,41 +42,6 @@ static std::string json_to_binary(const json& element)
     std::string output;
     for (auto& subel : element) { output.append(1, (char)((uint8_t)subel)); }
     return output;
-}
-
-static std::uint16_t  CreateGobyHeader(const protobuf::ModemTransmission& m)
-{
-    std::uint16_t header{0};
-    if (m.type() == protobuf::ModemTransmission::DATA)
-    {
-        header |= 0 << GOBY_HEADER_TYPE;
-        header |= (m.ack_requested() ? 1 : 0) << GOBY_HEADER_ACK_REQUEST;
-        header = header * 256;
-        header |= m.frame_start();
-    }
-    else if (m.type() == protobuf::ModemTransmission::ACK)
-    {
-        header |= 1 << GOBY_HEADER_TYPE;
-        header = header * 256;
-        header |= m.frame_start();
-    }
-    else
-    {
-        throw(goby::Exception(std::string("Unsupported type provided to CreateGobyHeader: ") +
-                              protobuf::ModemTransmission::TransmissionType_Name(m.type())));
-    }
-    return header;
-}
-
-static void DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num,
-                                                  protobuf::ModemTransmission& m)
-{
-    m.set_type(( header & (1 << GOBY_HEADER_TYPE)) ? protobuf::ModemTransmission::ACK
-                                                  : protobuf::ModemTransmission::DATA);
-    if (m.type() == protobuf::ModemTransmission::DATA){
-        m.set_ack_requested( header & (1 << GOBY_HEADER_ACK_REQUEST));
-        m.set_frame_start( ack_num );
-    }
 }
 
 // Remove popoto trash from the incoming serial string
