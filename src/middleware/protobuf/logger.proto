@@ -13,4 +13,6 @@ message LoggerRequest
         ROTATE_LOG = 3;
     }
     required State requested_state = 1;
+    optional bool close_log = 2
+        [default = false];  // if true, close log when using STOP_LOGGING
 }

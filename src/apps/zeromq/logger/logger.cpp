@@ -95,7 +95,8 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         }
 
         interprocess().subscribe<goby::middleware::groups::logger_request>(
-            [this](const goby::middleware::protobuf::LoggerRequest& request) {
+            [this](const goby::middleware::protobuf::LoggerRequest& request)
+            {
                 switch (request.requested_state())
                 {
                     case goby::middleware::protobuf::LoggerRequest::START_LOGGING:
@@ -105,6 +106,9 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
                                      << std::endl;
                         else
                             glog.is_verbose() && glog << "Logging started" << std::endl;
+
+                        if (!log_is_open())
+                            open_log();
 
                         logging_ = true;
                         break;
@@ -118,12 +122,17 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
                             glog.is_verbose() && glog << "Logging stopped" << std::endl;
 
                         logging_ = false;
+                        if (request.close_log() && log_is_open())
+                            close_log();
+
                         break;
 
                     case goby::middleware::protobuf::LoggerRequest::ROTATE_LOG:
                         glog.is_verbose() && glog << "Log rotated" << std::endl;
-                        close_log();
-                        open_log();
+                        if (log_is_open())
+                            close_log();
+                        if (!log_is_open())
+                            open_log();
                         break;
                 }
             });
@@ -171,7 +180,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         log_->close();
         log_.reset();
         goby::middleware::log::LogEntry::reset();
-        
+
         pb_plugin_.reset();
         dccl_plugin_.reset();
 
@@ -186,6 +195,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         if (do_quit)
             quit();
     }
+    bool log_is_open() { return log_.get() != nullptr; }
 
   private:
     std::string log_file_base_;
@@ -220,7 +230,9 @@ int main(int argc, char* argv[])
     sigemptyset(&empty_mask);
     pthread_sigmask(SIG_SETMASK, &empty_mask, nullptr);
 
-    struct sigaction action;
+    struct sigaction action
+    {
+    };
     action.sa_handler = &signal_handler;
 
     // register the usual quitting signals
@@ -239,7 +251,7 @@ void signal_handler(int /*sig*/) { goby::apps::zeromq::Logger::do_quit = true; }
 void goby::apps::zeromq::Logger::log(const std::vector<unsigned char>& data, int scheme,
                                      const std::string& type, const goby::middleware::Group& group)
 {
-    if (!logging_)
+    if (!logging_ || !log_is_open())
         return;
 
     glog.is_debug1() && glog << "Received " << data.size()
