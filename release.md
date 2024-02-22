@@ -1,5 +1,15 @@
 # Goby Release Notes (Major version 3)
 
+
+## Version 3.1.4
+
+### Middleware
+
+- Add ability to close log file with STOP_LOGGING request to goby_logger.
+
+
+****************
+
 ## Version 3.1.3
 
 ### General
