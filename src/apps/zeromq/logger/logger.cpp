@@ -122,15 +122,17 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
                             glog.is_verbose() && glog << "Logging stopped" << std::endl;
 
                         logging_ = false;
-                        if (request.close_log())
+                        if (request.close_log() && log_is_open())
                             close_log();
 
                         break;
 
                     case goby::middleware::protobuf::LoggerRequest::ROTATE_LOG:
                         glog.is_verbose() && glog << "Log rotated" << std::endl;
-                        close_log();
-                        open_log();
+                        if (log_is_open())
+                            close_log();
+                        if (!log_is_open())
+                            open_log();
                         break;
                 }
             });
@@ -228,7 +230,9 @@ int main(int argc, char* argv[])
     sigemptyset(&empty_mask);
     pthread_sigmask(SIG_SETMASK, &empty_mask, nullptr);
 
-    struct sigaction action;
+    struct sigaction action
+    {
+    };
     action.sa_handler = &signal_handler;
 
     // register the usual quitting signals
