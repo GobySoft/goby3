@@ -36,7 +36,7 @@ message Config
         (dccl.field).max_length = 50
     ];
 
-    optional int32 pset_id = 5 [
+    optional int32 tx_pset_id = 5 [
         default = 1,
         (dccl.field).min = 1,
         (dccl.field).max = 255,
@@ -44,7 +44,15 @@ message Config
             "Parameter Set ID"
     ];
 
-    optional int32 ack_request = 6 [
+    optional int32 rx_pset_id = 6 [
+        default = 1,
+        (dccl.field).min = 1,
+        (dccl.field).max = 255,
+        (goby.field).description = 
+            "Parameter Set ID"
+    ];
+
+    optional int32 ack_request = 7 [
         default = 0,
         (dccl.field).min = 0,
         (dccl.field).max = 1,
@@ -52,7 +60,7 @@ message Config
             "Request acknowledge for message"
     ];
     
-    optional int32 tx_channels = 7 [
+    optional int32 tx_channels = 8 [
         default = 2,
         (dccl.field).min = 0,
         (dccl.field).max = 4,
@@ -60,7 +68,7 @@ message Config
             "ALSA output device channel_count"
     ];
 
-    optional int32 rx_channels = 8 [
+    optional int32 rx_channels = 9 [
         default = 1,
         (dccl.field).min = 0,
         (dccl.field).max = 4,
@@ -68,7 +76,7 @@ message Config
             "ALSA input device channel_count"
     ];
 
-    optional int32 sample_rate = 9 [
+    optional int32 sample_rate = 10 [
         default = 48000,
         (dccl.field).min = 0,
         (dccl.field).max = 100000,
@@ -76,12 +84,12 @@ message Config
             "ALSA output device sample rate"
     ];
     
-    optional string tx_device = 10 [
+    optional string tx_device = 11 [
         default = "default",
         (dccl.field).max_length = 50
     ];
 
-    optional string rx_device = 11 [
+    optional string rx_device = 12 [
         default = "dsnooped",
         (dccl.field).max_length = 50
     ];

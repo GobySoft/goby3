@@ -70,7 +70,7 @@ goby::acomms::JanusDriver::~JanusDriver(){
 }
 
 janus_simple_tx_t goby::acomms::JanusDriver::init_janus_tx(){
-    params_tx->pset_id = pset_id;
+    params_tx->pset_id = tx_pset_id;
     params_tx->pset_file = pset_file.c_str();
     params_tx->verbose = verbosity;
     params_tx->stream_driver = "alsa";
@@ -91,7 +91,7 @@ janus_simple_tx_t goby::acomms::JanusDriver::init_janus_tx(){
 janus_parameters_t goby::acomms::JanusDriver::get_rx_params(){
     janus_parameters_t params = janus_parameters_new();
     params->verbose = verbosity;
-    params->pset_id = 1;
+    params->pset_id = rx_pset_id;
     params->pset_file = pset_file.c_str();
     params->pset_center_freq = 0;
     params->pset_bandwidth = 0;
@@ -147,7 +147,8 @@ void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
     ModemDriverBase::modem_start(driver_cfg_);
     verbosity        = janus_driver_cfg().verbosity();
     pset_file        = janus_driver_cfg().pset_file();
-    pset_id          = janus_driver_cfg().pset_id();
+    tx_pset_id       = janus_driver_cfg().tx_pset_id();
+    rx_pset_id       = janus_driver_cfg().rx_pset_id();
     class_id         = janus_driver_cfg().class_id();
     application_type = janus_driver_cfg().application_type();
     ack_request      = janus_driver_cfg().ack_request();
