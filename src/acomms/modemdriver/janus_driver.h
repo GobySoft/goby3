@@ -101,7 +101,6 @@ class JanusDriver : public ModemDriverBase
     std::string rx_device;
     int tx_pset_id;
     int rx_pset_id;
-    int ack_request;
     int class_id;
     int application_type;
     int tx_channels;
