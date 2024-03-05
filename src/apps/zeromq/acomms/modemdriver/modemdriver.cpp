@@ -103,7 +103,9 @@ class ModemDriver : public goby::zeromq::SingleThreadApplication<protobuf::Modem
 int main(int argc, char* argv[]) { goby::run<goby::apps::zeromq::acomms::ModemDriver>(argc, argv); }
 
 goby::apps::zeromq::acomms::ModemDriver::ModemDriver()
-    : data_response_received_(false),
+    : goby::zeromq::SingleThreadApplication<protobuf::ModemDriverConfig>(10 *
+                                                                         boost::units::si::hertz),
+      data_response_received_(false),
       initiate_transmit_pending_(false),
       driver_started_(false),
       last_status_time_(0),
