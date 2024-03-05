@@ -33,10 +33,10 @@
 #include "goby/acomms/connect.h"
 #include "goby/acomms/ip_codecs.h"
 #include "goby/acomms/protobuf/modem_message.pb.h"
-#include "goby/pb/application.h"
+#include "goby/middleware/acomms/groups.h"
 #include "goby/util/binary.h"
-
-#include "ip_gateway_config.pb.h"
+#include "goby/zeromq/application/single_thread.h"
+#include "goby/zeromq/protobuf/ip_gateway_config.pb.h"
 
 enum
 {
@@ -52,16 +52,18 @@ enum
 int tun_alloc(char* dev);
 int tun_config(const char* dev, const char* host, unsigned cidr_prefix, unsigned mtu);
 
-using namespace goby::common::logger;
+using goby::glog;
+using namespace goby::util::logger;
 
 namespace goby
 {
 namespace acomms
 {
-class IPGateway : public goby::pb::Application
+class IPGateway : public goby::zeromq::SingleThreadApplication<protobuf::IPGatewayConfig>
+
 {
   public:
-    IPGateway(goby::acomms::protobuf::IPGatewayConfig* cfg);
+    IPGateway();
     ~IPGateway();
 
   private:
@@ -97,7 +99,6 @@ class IPGateway : public goby::pb::Application
     int ac_freq(int srcdest);
 
   private:
-    goby::acomms::protobuf::IPGatewayConfig& cfg_;
     dccl::Codec dccl_goby_nh_, dccl_ip_, dccl_udp_, dccl_icmp_;
     int tun_fd_;
     int total_addresses_;
@@ -120,20 +121,20 @@ class IPGateway : public goby::pb::Application
 } // namespace acomms
 } // namespace goby
 
-goby::acomms::IPGateway::IPGateway(goby::acomms::protobuf::IPGatewayConfig* cfg)
-    : Application(cfg),
-      cfg_(*cfg),
+goby::acomms::IPGateway::IPGateway()
+    : goby::zeromq::SingleThreadApplication<protobuf::MoshRelayConfig>(10 *
+                                                                       boost::units::si::hertz),
       dccl_goby_nh_("ip_gateway_id_codec_0"),
       dccl_ip_("ip_gateway_id_codec_1"),
       dccl_udp_("ip_gateway_id_codec_2"),
       dccl_icmp_("ip_gateway_id_codec_3"),
       tun_fd_(-1),
-      total_addresses_((1 << (IPV4_ADDRESS_BITS - cfg_.cidr_netmask_prefix())) -
+      total_addresses_((1 << (IPV4_ADDRESS_BITS - cfg().cidr_netmask_prefix())) -
                        1), // minus one since we don't need to use .255 as broadcast
       local_address_(0),
       local_modem_id_(0),
       netmask_(0),
-      dynamic_port_index_(cfg_.static_udp_port_size())
+      dynamic_port_index_(cfg().static_udp_port_size())
 {
     for (int d = 0; d < total_addresses_; ++d)
     {
@@ -164,17 +165,17 @@ goby::acomms::IPGateway::IPGateway(goby::acomms::protobuf::IPGatewayConfig* cfg)
 
     goby::acomms::connect(&mac_.signal_initiate_transmission, this,
                           &IPGateway::handle_initiate_transmission);
-    cfg_.mutable_mac_cfg()->set_modem_id(local_modem_id_);
-    mac_.startup(cfg_.mac_cfg());
+    cfg().mutable_mac_cfg()->set_modem_id(local_modem_id_);
+    mac_.startup(cfg().mac_cfg());
 }
 void goby::acomms::IPGateway::init_dccl()
 {
-    if (cfg_.model_type() == protobuf::IPGatewayConfig::AUTONOMY_COLLABORATION)
+    if (cfg().model_type() == protobuf::IPGatewayConfig::AUTONOMY_COLLABORATION)
     {
-        if (cfg_.gamma_autonomy() > 1 || cfg_.gamma_autonomy() < 0)
+        if (cfg().gamma_autonomy() > 1 || cfg().gamma_autonomy() < 0)
             glog.is(DIE) && glog << "gamma_autonomy must be [0, 1]" << std::endl;
 
-        if (cfg_.gamma_collaboration() > cfg_.gamma_autonomy() || cfg_.gamma_collaboration() < 0)
+        if (cfg().gamma_collaboration() > cfg().gamma_autonomy() || cfg().gamma_collaboration() < 0)
             glog.is(DIE) && glog << "gamma_collaboration must be [0, gamma_autonomy]" << std::endl;
     }
 
@@ -190,7 +191,7 @@ void goby::acomms::IPGateway::init_dccl()
         if (i != n)
         {
             int freq = 10;
-            switch (cfg_.model_type())
+            switch (cfg().model_type())
             {
                 case protobuf::IPGatewayConfig::UNIFORM:
                     // already set to uniform value
@@ -213,22 +214,22 @@ void goby::acomms::IPGateway::init_dccl()
 
     dccl::arith::ModelManager::set_model(addr_model);
 
-    if (cfg_.total_ports() < cfg_.static_udp_port_size())
+    if (cfg().total_ports() < cfg().static_udp_port_size())
         glog.is(DIE) &&
             glog << "total_ports must be at least as many as the static_udp_ports defined"
                  << std::endl;
 
-    for (int i = 0, n = cfg_.total_ports(); i < n; ++i)
+    for (int i = 0, n = cfg().total_ports(); i < n; ++i)
     {
-        if (i < cfg_.static_udp_port_size())
-            port_map_.insert(boost::bimap<int, int>::value_type(i, cfg_.static_udp_port(i)));
+        if (i < cfg().static_udp_port_size())
+            port_map_.insert(boost::bimap<int, int>::value_type(i, cfg().static_udp_port(i)));
         else
             port_map_.insert(boost::bimap<int, int>::value_type(i, -i));
     }
 
     dccl::arith::protobuf::ArithmeticModel port_model;
     port_model.set_name("goby.acomms.NetworkHeader.PortModel");
-    for (int i = 0, n = cfg_.total_ports(); i <= n; ++i)
+    for (int i = 0, n = cfg().total_ports(); i <= n; ++i)
     {
         if (i != n)
         {
@@ -258,8 +259,8 @@ void goby::acomms::IPGateway::init_tun()
     char tun_name[IFNAMSIZ];
 
     std::string desired_tun_name = "tun";
-    if (cfg_.has_tun_number())
-        desired_tun_name += goby::util::as<std::string>(cfg_.tun_number());
+    if (cfg().has_tun_number())
+        desired_tun_name += goby::util::as<std::string>(cfg().tun_number());
     else
         desired_tun_name += "%d";
 
@@ -268,21 +269,21 @@ void goby::acomms::IPGateway::init_tun()
     if (tun_fd_ < 0)
         glog.is(DIE) && glog << "Could not allocate tun interface. Check permissions?" << std::endl;
 
-    ip_mtu_ = cfg_.mtu() - dccl_goby_nh_.max_size<goby::acomms::protobuf::NetworkHeader>() +
+    ip_mtu_ = cfg().mtu() - dccl_goby_nh_.max_size<goby::acomms::protobuf::NetworkHeader>() +
               MIN_IPV4_HEADER_LENGTH * 4;
 
-    int ret = tun_config(tun_name, cfg_.local_ipv4_address().c_str(), cfg_.cidr_netmask_prefix(),
+    int ret = tun_config(tun_name, cfg().local_ipv4_address().c_str(), cfg().cidr_netmask_prefix(),
                          ip_mtu_);
     if (ret < 0)
         glog.is(DIE) && glog << "Could not configure tun interface. Check IP address: "
-                             << cfg_.local_ipv4_address()
-                             << " and netmask prefix: " << cfg_.cidr_netmask_prefix() << std::endl;
+                             << cfg().local_ipv4_address()
+                             << " and netmask prefix: " << cfg().cidr_netmask_prefix() << std::endl;
 
     in_addr local_addr;
-    inet_aton(cfg_.local_ipv4_address().c_str(), &local_addr);
+    inet_aton(cfg().local_ipv4_address().c_str(), &local_addr);
     local_address_ = ntohl(local_addr.s_addr);
-    netmask_ = 0xFFFFFFFF - ((1 << (IPV4_ADDRESS_BITS - cfg_.cidr_netmask_prefix())) - 1);
-    local_modem_id_ = ipv4_to_goby_address(cfg_.local_ipv4_address());
+    netmask_ = 0xFFFFFFFF - ((1 << (IPV4_ADDRESS_BITS - cfg().cidr_netmask_prefix())) - 1);
+    local_modem_id_ = ipv4_to_goby_address(cfg().local_ipv4_address());
 }
 
 goby::acomms::IPGateway::~IPGateway() { dccl_arithmetic_unload(&dccl_goby_nh_); }
@@ -333,7 +334,7 @@ void goby::acomms::IPGateway::handle_udp_packet(const goby::acomms::protobuf::IP
     else
     {
         // on transmit, try to map the source port to a dynamic port
-        if (cfg_.total_ports() == cfg_.static_udp_port_size())
+        if (cfg().total_ports() == cfg().static_udp_port_size())
         {
             glog.is(WARN) && glog << "No mapping for source UDP port: " << udp_hdr.source_port()
                                   << " and we have no dynamic ports allocated (static_udp_port "
@@ -348,8 +349,8 @@ void goby::acomms::IPGateway::handle_udp_packet(const goby::acomms::protobuf::IP
             port_map_.left.replace_data(dyn_port_it, udp_hdr.source_port());
             net_header.mutable_udp()->add_srcdest_port(dynamic_port_index_);
             ++dynamic_port_index_;
-            if (dynamic_port_index_ >= cfg_.total_ports())
-                dynamic_port_index_ = cfg_.static_udp_port_size();
+            if (dynamic_port_index_ >= cfg().total_ports())
+                dynamic_port_index_ = cfg().static_udp_port_size();
         }
     }
 
@@ -366,7 +367,7 @@ void goby::acomms::IPGateway::handle_udp_packet(const goby::acomms::protobuf::IP
     {
         std::pair<std::map<int, boost::circular_buffer<std::string>>::iterator, bool> itboolpair =
             outgoing_.insert(
-                std::make_pair(dest, boost::circular_buffer<std::string>(cfg_.queue_size())));
+                std::make_pair(dest, boost::circular_buffer<std::string>(cfg().queue_size())));
         it = itboolpair.first;
     }
 
@@ -461,7 +462,7 @@ void goby::acomms::IPGateway::receive_packets()
 
 void goby::acomms::IPGateway::handle_data_request(const protobuf::ModemTransmission& orig_msg)
 {
-    if (cfg_.has_only_rate() && cfg_.only_rate() != orig_msg.rate())
+    if (cfg().has_only_rate() && cfg().only_rate() != orig_msg.rate())
         return;
 
     protobuf::ModemTransmission msg = orig_msg;
@@ -523,7 +524,7 @@ void goby::acomms::IPGateway::handle_data_request(const protobuf::ModemTransmiss
 void goby::acomms::IPGateway::handle_modem_receive(
     const goby::acomms::protobuf::ModemTransmission& modem_msg)
 {
-    if (cfg_.has_only_rate() && cfg_.only_rate() != modem_msg.rate())
+    if (cfg().has_only_rate() && cfg().only_rate() != modem_msg.rate())
         return;
 
     for (int i = 0, n = modem_msg.frame_size(); i < n; ++i)
@@ -667,7 +668,7 @@ void goby::acomms::IPGateway::icmp_report_queue()
 {
     protobuf::IPGatewayICMPControl control_msg;
     control_msg.set_type(protobuf::IPGatewayICMPControl::QUEUE_REPORT);
-    control_msg.set_address(cfg_.local_ipv4_address());
+    control_msg.set_address(cfg().local_ipv4_address());
 
     int total_messages = 0;
 
@@ -688,19 +689,19 @@ void goby::acomms::IPGateway::icmp_report_queue()
     write_icmp_control_message(control_msg);
 
     // skip the MACManager and directly initiate the transmission
-    if (total_messages > 0 && cfg_.bypass_mac())
+    if (total_messages > 0 && cfg().bypass_mac())
     {
-        if (cfg_.has_bypass_mac_slot())
+        if (cfg().has_bypass_mac_slot())
         {
-            handle_initiate_transmission(cfg_.bypass_mac_slot());
+            handle_initiate_transmission(cfg().bypass_mac_slot());
         }
         else
         {
             protobuf::ModemTransmission m;
             m.set_src(local_modem_id_);
             m.set_type(protobuf::ModemTransmission::DATA);
-            if (cfg_.has_only_rate())
-                m.set_rate(cfg_.only_rate());
+            if (cfg().has_only_rate())
+                m.set_rate(cfg().only_rate());
             handle_initiate_transmission(m);
         }
     }
@@ -727,8 +728,8 @@ void goby::acomms::IPGateway::write_icmp_control_message(
     ip_hdr.mutable_flags_frag_offset()->set_fragment_offset(0);
     ip_hdr.set_ttl(63);
     ip_hdr.set_protocol(IPPROTO_ICMP);
-    ip_hdr.set_source_ip_address(cfg_.local_ipv4_address());
-    ip_hdr.set_dest_ip_address(cfg_.local_ipv4_address());
+    ip_hdr.set_source_ip_address(cfg().local_ipv4_address());
+    ip_hdr.set_dest_ip_address(cfg().local_ipv4_address());
 
     goby::acomms::protobuf::ICMPHeader icmp_hdr;
     icmp_hdr.set_type(ICMP_TYPE);
@@ -850,12 +851,12 @@ int goby::acomms::IPGateway::ac_freq(int srcdest)
 
     if (s == d || s == goby::acomms::BROADCAST_ID)
         return 0;
-    else if (s == cfg_.gateway_id())
-        return scale_factor * p0 * (1 - cfg_.gamma_autonomy());
-    else if (d == cfg_.gateway_id())
-        return scale_factor * p1 * (cfg_.gamma_autonomy() - cfg_.gamma_collaboration());
+    else if (s == cfg().gateway_id())
+        return scale_factor * p0 * (1 - cfg().gamma_autonomy());
+    else if (d == cfg().gateway_id())
+        return scale_factor * p1 * (cfg().gamma_autonomy() - cfg().gamma_collaboration());
     else
-        return scale_factor * p2 * (cfg_.gamma_collaboration());
+        return scale_factor * p2 * (cfg().gamma_collaboration());
 }
 
 int main(int argc, char* argv[])
@@ -872,8 +873,7 @@ int main(int argc, char* argv[])
     dccl::FieldCodecManager::add<goby::acomms::IPv4AddressCodec>("ip.v4.address");
     dccl::FieldCodecManager::add<goby::acomms::IPv4FlagsFragOffsetCodec>("ip.v4.flagsfragoffset");
 
-    goby::acomms::protobuf::IPGatewayConfig cfg;
-    goby::run<goby::acomms::IPGateway>(argc, argv, &cfg);
+    goby::run<goby::acomms::IPGateway>(argc, argv);
 }
 
 // https://www.kernel.org/doc/Documentation/networking/tuntap.txt

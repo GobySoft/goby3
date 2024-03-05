@@ -23,26 +23,27 @@
 
 #include <boost/filesystem.hpp>
 
+#include "goby/middleware/marshalling/protobuf.h"
+
 #include "goby/acomms/acomms_constants.h"
 #include "goby/acomms/protobuf/store_server.pb.h"
-#include "goby/common/time.h"
-#include "goby/common/zeromq_application_base.h"
-#include "goby/pb/protobuf_node.h"
+#include "goby/middleware/acomms/groups.h"
 #include "goby/util/binary.h"
-#include "goby_store_server_config.pb.h"
+#include "goby/zeromq/application/single_thread.h"
+#include "goby/zeromq/protobuf/goby_store_server_config.pb.h"
 
-using namespace goby::common::logger;
-using goby::common::goby_time;
+using goby::glog;
+using namespace goby::util::logger;
 
 namespace goby
 {
 namespace acomms
 {
-class GobyStoreServer : public goby::common::ZeroMQApplicationBase,
-                        public goby::pb::StaticProtobufNode
+class GobyStoreServer
+    : public goby::zeromq::SingleThreadApplication<protobuf::GobyStoreServerConfig>
 {
   public:
-    GobyStoreServer(protobuf::GobyStoreServerConfig* cfg);
+    GobyStoreServer();
     ~GobyStoreServer()
     {
         if (db_)
@@ -51,13 +52,11 @@ class GobyStoreServer : public goby::common::ZeroMQApplicationBase,
 
   private:
     void handle_request(const protobuf::StoreServerRequest& request);
-    void loop();
 
     void check(int rc, const std::string& error_prefix);
 
   private:
     static goby::common::ZeroMQService zeromq_service_;
-    protobuf::GobyStoreServerConfig& cfg_;
     sqlite3* db_;
 
     // maps modem_id to time (microsecs since UNIX)
@@ -68,25 +67,17 @@ class GobyStoreServer : public goby::common::ZeroMQApplicationBase,
 
 goby::common::ZeroMQService goby::acomms::GobyStoreServer::zeromq_service_;
 
-int main(int argc, char* argv[])
-{
-    goby::acomms::protobuf::GobyStoreServerConfig cfg;
-    goby::run<goby::acomms::GobyStoreServer>(argc, argv, &cfg);
-}
+int main(int argc, char* argv[]) { goby::run<goby::acomms::GobyStoreServer>(argc, argv); }
 
-goby::acomms::GobyStoreServer::GobyStoreServer(protobuf::GobyStoreServerConfig* cfg)
-    : ZeroMQApplicationBase(&zeromq_service_, cfg),
-      StaticProtobufNode(&zeromq_service_),
-      cfg_(*cfg),
-      db_(0)
+goby::acomms::GobyStoreServer::GobyStoreServer() : db_(0)
 {
     // create database
-    if (!boost::filesystem::exists(cfg_.db_file_dir()))
-        throw(goby::Exception("db_file_dir does not exist: " + cfg_.db_file_dir()));
+    if (!boost::filesystem::exists(cfg().db_file_dir()))
+        throw(goby::Exception("db_file_dir does not exist: " + cfg().db_file_dir()));
 
-    std::string full_db_name = cfg_.db_file_dir() + "/";
-    if (cfg_.has_db_file_name())
-        full_db_name += cfg_.db_file_name();
+    std::string full_db_name = cfg().db_file_dir() + "/";
+    if (cfg().has_db_file_name())
+        full_db_name += cfg().db_file_name();
     else
         full_db_name += "goby_store_server_" + goby::common::goby_file_timestamp() + ".db";
 
@@ -111,16 +102,14 @@ goby::acomms::GobyStoreServer::GobyStoreServer(protobuf::GobyStoreServerConfig* 
     }
 
     // set up receiving requests
-    on_receipt<protobuf::StoreServerRequest>(cfg_.reply_socket().socket_id(),
+    on_receipt<protobuf::StoreServerRequest>(cfg().reply_socket().socket_id(),
                                              &GobyStoreServer::handle_request, this);
 
     // start zeromqservice
     common::protobuf::ZeroMQServiceConfig service_cfg;
-    service_cfg.add_socket()->CopyFrom(cfg_.reply_socket());
+    service_cfg.add_socket()->CopyFrom(cfg().reply_socket());
     zeromq_service_.set_cfg(service_cfg);
 }
-
-void goby::acomms::GobyStoreServer::loop() {}
 
 void goby::acomms::GobyStoreServer::handle_request(const protobuf::StoreServerRequest& request)
 {
@@ -216,7 +205,7 @@ void goby::acomms::GobyStoreServer::handle_request(const protobuf::StoreServerRe
 
     last_request_time_[request.modem_id()] = request_time;
 
-    send(response, cfg_.reply_socket().socket_id());
+    send(response, cfg().reply_socket().socket_id());
 }
 
 void goby::acomms::GobyStoreServer::check(int rc, const std::string& error_prefix)
