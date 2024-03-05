@@ -45,6 +45,16 @@ message PortalConfig
             (goby.field).description = "Time between modem reports",
             (dccl.field) = { units { base_dimensions: "T" } }
         ];
+
+        optional bool required = 22 [
+            default = true,
+            (goby.field).description = "Specify if the modem is necessary for an application's communications archictecture."
+        ];
+    
+        optional uint32 connection_attempts = 23 [
+            default = 1,
+            (goby.field).description = "The number of times to re-attempt initialising the link. Set to 0 for infinite attempts."
+        ];
     }
 
     repeated LinkConfig link = 1;
