@@ -19,9 +19,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <linux/if.h>
 #include <linux/if_tun.h>
-#include <net/if.h>
+#include <netinet/ip.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <boost/bimap.hpp>
 #include <boost/circular_buffer.hpp>
@@ -35,6 +41,7 @@
 #include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/middleware/acomms/groups.h"
 #include "goby/util/binary.h"
+#include "goby/util/dccl_compat.h"
 #include "goby/zeromq/application/single_thread.h"
 #include "goby/zeromq/protobuf/ip_gateway_config.pb.h"
 
@@ -57,6 +64,10 @@ using namespace goby::util::logger;
 
 namespace goby
 {
+namespace apps
+{
+namespace zeromq
+{
 namespace acomms
 {
 class IPGateway : public goby::zeromq::SingleThreadApplication<protobuf::IPGatewayConfig>
@@ -78,7 +89,8 @@ class IPGateway : public goby::zeromq::SingleThreadApplication<protobuf::IPGatew
                            const std::string& payload);
     void write_udp_packet(goby::acomms::protobuf::IPv4Header& ip_hdr,
                           goby::acomms::protobuf::UDPHeader& udp_hdr, const std::string& payload);
-    void write_icmp_control_message(const protobuf::IPGatewayICMPControl& control_msg);
+    void
+    write_icmp_control_message(const goby::acomms::protobuf::IPGatewayICMPControl& control_msg);
 
     void write_icmp_packet(goby::acomms::protobuf::IPv4Header& ip_hdr,
                            goby::acomms::protobuf::ICMPHeader& icmp_hdr,
@@ -92,8 +104,8 @@ class IPGateway : public goby::zeromq::SingleThreadApplication<protobuf::IPGatew
     int ipv4_to_goby_address(const std::string& ipv4_address);
     std::string goby_address_to_ipv4(int modem_id);
 
-    void handle_data_request(const protobuf::ModemTransmission& m);
-    void handle_initiate_transmission(const protobuf::ModemTransmission& m);
+    void handle_data_request(const goby::acomms::protobuf::ModemTransmission& m);
+    void handle_initiate_transmission(const goby::acomms::protobuf::ModemTransmission& m);
     void handle_modem_receive(const goby::acomms::protobuf::ModemTransmission& m);
 
     int ac_freq(int srcdest);
@@ -102,9 +114,9 @@ class IPGateway : public goby::zeromq::SingleThreadApplication<protobuf::IPGatew
     dccl::Codec dccl_goby_nh_, dccl_ip_, dccl_udp_, dccl_icmp_;
     int tun_fd_;
     int total_addresses_;
-    goby::uint32 local_address_; // in host byte order
+    std::uint32_t local_address_; // in host byte order
     int local_modem_id_;
-    goby::uint32 netmask_; // in host byte order
+    std::uint32_t netmask_; // in host byte order
 
     goby::acomms::MACManager mac_;
 
@@ -117,17 +129,31 @@ class IPGateway : public goby::zeromq::SingleThreadApplication<protobuf::IPGatew
 
     // maps destination goby address to message buffer
     std::map<int, boost::circular_buffer<std::string>> outgoing_;
+
+    std::unique_ptr<goby::middleware::DynamicGroup> rx_group_;
+    std::unique_ptr<goby::middleware::DynamicGroup> data_request_group_;
+    std::unique_ptr<goby::middleware::DynamicGroup> tx_group_;
+    std::unique_ptr<goby::middleware::DynamicGroup> data_response_group_;
 };
 } // namespace acomms
+} // namespace zeromq
+} // namespace apps
 } // namespace goby
 
-goby::acomms::IPGateway::IPGateway()
-    : goby::zeromq::SingleThreadApplication<protobuf::MoshRelayConfig>(10 *
+goby::apps::zeromq::acomms::IPGateway::IPGateway()
+    : goby::zeromq::SingleThreadApplication<protobuf::IPGatewayConfig>(10 *
                                                                        boost::units::si::hertz),
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+      dccl_goby_nh_("ip_gateway_id_codec_0", goby::acomms::IPGatewayEmptyIdentifierCodec<0xF000>()),
+      dccl_ip_("ip_gateway_id_codec_1", goby::acomms::IPGatewayEmptyIdentifierCodec<0xF001>()),
+      dccl_udp_("ip_gateway_id_codec_2", goby::acomms::IPGatewayEmptyIdentifierCodec<0xF002>()),
+      dccl_icmp_("ip_gateway_id_codec_3", goby::acomms::IPGatewayEmptyIdentifierCodec<0xF003>()),
+#else
       dccl_goby_nh_("ip_gateway_id_codec_0"),
       dccl_ip_("ip_gateway_id_codec_1"),
       dccl_udp_("ip_gateway_id_codec_2"),
       dccl_icmp_("ip_gateway_id_codec_3"),
+#endif
       tun_fd_(-1),
       total_addresses_((1 << (IPV4_ADDRESS_BITS - cfg().cidr_netmask_prefix())) -
                        1), // minus one since we don't need to use .255 as broadcast
@@ -156,20 +182,44 @@ goby::acomms::IPGateway::IPGateway()
     }
 
     init_dccl();
-    init_tun();
+    init_tun(); // sets local_modem_id_
 
-    Application::subscribe(&IPGateway::handle_data_request, this,
-                           "DataRequest" + goby::util::as<std::string>(local_modem_id_));
-    Application::subscribe(&IPGateway::handle_modem_receive, this,
-                           "Rx" + goby::util::as<std::string>(local_modem_id_));
+    tx_group_ = std::make_unique<goby::middleware::DynamicGroup>(
+        goby::middleware::acomms::groups::tx, local_modem_id_);
+    rx_group_ = std::make_unique<goby::middleware::DynamicGroup>(
+        goby::middleware::acomms::groups::rx, local_modem_id_);
+    data_request_group_ = std::make_unique<goby::middleware::DynamicGroup>(
+        goby::middleware::acomms::groups::data_request, local_modem_id_);
+    data_response_group_ = std::make_unique<goby::middleware::DynamicGroup>(
+        goby::middleware::acomms::groups::data_response, local_modem_id_);
+
+    interprocess().subscribe_dynamic<goby::acomms::protobuf::ModemTransmission>(
+        std::bind(&IPGateway::handle_data_request, this, std::placeholders::_1),
+        *data_request_group_);
+
+    interprocess().subscribe_dynamic<goby::acomms::protobuf::ModemTransmission>(
+        std::bind(&IPGateway::handle_modem_receive, this, std::placeholders::_1), *rx_group_);
 
     goby::acomms::connect(&mac_.signal_initiate_transmission, this,
                           &IPGateway::handle_initiate_transmission);
-    cfg().mutable_mac_cfg()->set_modem_id(local_modem_id_);
-    mac_.startup(cfg().mac_cfg());
+    auto mac_cfg = cfg().mac_cfg();
+    mac_cfg.set_modem_id(local_modem_id_);
+    mac_.startup(mac_cfg);
 }
-void goby::acomms::IPGateway::init_dccl()
+void goby::apps::zeromq::acomms::IPGateway::init_dccl()
 {
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+    auto codec_adder = [](dccl::Codec& dccl)
+    {
+        dccl.manager().add<goby::acomms::NetShortCodec>("net.short");
+        dccl.manager().add<goby::acomms::IPv4AddressCodec>("ip.v4.address");
+        dccl.manager().add<goby::acomms::IPv4FlagsFragOffsetCodec>("ip.v4.flagsfragoffset");
+    };
+    codec_adder(dccl_ip_);
+    codec_adder(dccl_udp_);
+    codec_adder(dccl_icmp_);
+#endif
+
     if (cfg().model_type() == protobuf::IPGatewayConfig::AUTONOMY_COLLABORATION)
     {
         if (cfg().gamma_autonomy() > 1 || cfg().gamma_autonomy() < 0)
@@ -212,7 +262,7 @@ void goby::acomms::IPGateway::init_dccl()
     addr_model.set_out_of_range_frequency(0);
     glog.is(DEBUG1) && glog << addr_model.DebugString() << std::endl;
 
-    dccl::arith::ModelManager::set_model(addr_model);
+    dccl::arith::ModelManager::set_model(dccl_goby_nh_, addr_model);
 
     if (cfg().total_ports() < cfg().static_udp_port_size())
         glog.is(DIE) &&
@@ -244,7 +294,7 @@ void goby::acomms::IPGateway::init_dccl()
     }
     port_model.set_eof_frequency(0);
     port_model.set_out_of_range_frequency(0);
-    dccl::arith::ModelManager::set_model(port_model);
+    dccl::arith::ModelManager::set_model(dccl_goby_nh_, port_model);
 
     dccl_goby_nh_.load<goby::acomms::protobuf::NetworkHeader>();
     dccl_ip_.load<goby::acomms::protobuf::IPv4Header>();
@@ -254,7 +304,7 @@ void goby::acomms::IPGateway::init_dccl()
     dccl_goby_nh_.info_all(&std::cout);
 }
 
-void goby::acomms::IPGateway::init_tun()
+void goby::apps::zeromq::acomms::IPGateway::init_tun()
 {
     char tun_name[IFNAMSIZ];
 
@@ -286,21 +336,22 @@ void goby::acomms::IPGateway::init_tun()
     local_modem_id_ = ipv4_to_goby_address(cfg().local_ipv4_address());
 }
 
-goby::acomms::IPGateway::~IPGateway() { dccl_arithmetic_unload(&dccl_goby_nh_); }
+goby::apps::zeromq::acomms::IPGateway::~IPGateway() { dccl_arithmetic_unload(&dccl_goby_nh_); }
 
-void goby::acomms::IPGateway::loop()
+void goby::apps::zeromq::acomms::IPGateway::loop()
 {
     mac_.do_work();
     receive_packets();
 }
 
-void goby::acomms::IPGateway::handle_udp_packet(const goby::acomms::protobuf::IPv4Header& ip_hdr,
-                                                const goby::acomms::protobuf::UDPHeader& udp_hdr,
-                                                const std::string& payload)
+void goby::apps::zeromq::acomms::IPGateway::handle_udp_packet(
+    const goby::acomms::protobuf::IPv4Header& ip_hdr,
+    const goby::acomms::protobuf::UDPHeader& udp_hdr, const std::string& payload)
 {
     glog.is(VERBOSE) && glog << "Received UDP Packet. IPv4 Header: " << ip_hdr.DebugString()
-                             << "UDP Header: " << udp_hdr << "Payload (" << payload.size()
-                             << " bytes): " << goby::util::hex_encode(payload) << std::endl;
+                             << "UDP Header: " << udp_hdr.ShortDebugString() << "Payload ("
+                             << payload.size() << " bytes): " << goby::util::hex_encode(payload)
+                             << std::endl;
 
     int src = ipv4_to_goby_address(ip_hdr.source_ip_address());
     int dest = ipv4_to_goby_address(ip_hdr.dest_ip_address());
@@ -375,12 +426,13 @@ void goby::acomms::IPGateway::handle_udp_packet(const goby::acomms::protobuf::IP
     icmp_report_queue();
 }
 
-void goby::acomms::IPGateway::handle_initiate_transmission(const protobuf::ModemTransmission& m)
+void goby::apps::zeromq::acomms::IPGateway::handle_initiate_transmission(
+    const goby::acomms::protobuf::ModemTransmission& m)
 {
-    publish(m, "Tx" + goby::util::as<std::string>(local_modem_id_));
+    interprocess().publish_dynamic(m, *tx_group_);
 }
 
-void goby::acomms::IPGateway::receive_packets()
+void goby::apps::zeromq::acomms::IPGateway::receive_packets()
 {
     while (true)
     {
@@ -460,12 +512,13 @@ void goby::acomms::IPGateway::receive_packets()
     }
 }
 
-void goby::acomms::IPGateway::handle_data_request(const protobuf::ModemTransmission& orig_msg)
+void goby::apps::zeromq::acomms::IPGateway::handle_data_request(
+    const goby::acomms::protobuf::ModemTransmission& orig_msg)
 {
     if (cfg().has_only_rate() && cfg().only_rate() != orig_msg.rate())
         return;
 
-    protobuf::ModemTransmission msg = orig_msg;
+    goby::acomms::protobuf::ModemTransmission msg = orig_msg;
 
     bool had_data = false;
     while ((unsigned)msg.frame_size() < msg.max_num_frames())
@@ -516,12 +569,12 @@ void goby::acomms::IPGateway::handle_data_request(const protobuf::ModemTransmiss
         }
     }
 
-    publish(msg, "DataResponse" + goby::util::as<std::string>(local_modem_id_));
+    interprocess().publish_dynamic(msg, *data_response_group_);
     if (had_data)
         icmp_report_queue();
 }
 
-void goby::acomms::IPGateway::handle_modem_receive(
+void goby::apps::zeromq::acomms::IPGateway::handle_modem_receive(
     const goby::acomms::protobuf::ModemTransmission& modem_msg)
 {
     if (cfg().has_only_rate() && cfg().only_rate() != modem_msg.rate())
@@ -614,9 +667,9 @@ void goby::acomms::IPGateway::handle_modem_receive(
     }
 }
 
-void goby::acomms::IPGateway::write_udp_packet(goby::acomms::protobuf::IPv4Header& ip_hdr,
-                                               goby::acomms::protobuf::UDPHeader& udp_hdr,
-                                               const std::string& payload)
+void goby::apps::zeromq::acomms::IPGateway::write_udp_packet(
+    goby::acomms::protobuf::IPv4Header& ip_hdr, goby::acomms::protobuf::UDPHeader& udp_hdr,
+    const std::string& payload)
 {
     // set checksum 0 for calculation
     ip_hdr.set_header_checksum(0);
@@ -649,8 +702,8 @@ void goby::acomms::IPGateway::write_udp_packet(goby::acomms::protobuf::IPv4Heade
                                     udp_hdr_data.substr(UDP_LENGTH_OFFSET, NET_SHORT_BYTES);
     assert(udp_pseudo_header.size() == 12);
 
-    uint16_t ip_checksum = net_checksum(ip_hdr_data);
-    uint16_t udp_checksum = net_checksum(udp_pseudo_header + udp_hdr_data + payload);
+    uint16_t ip_checksum = goby::acomms::net_checksum(ip_hdr_data);
+    uint16_t udp_checksum = goby::acomms::net_checksum(udp_pseudo_header + udp_hdr_data + payload);
 
     ip_hdr_data[IPV4_CS_OFFSET] = (ip_checksum >> 8) & 0xFF;
     ip_hdr_data[IPV4_CS_OFFSET + 1] = ip_checksum & 0xFF;
@@ -664,10 +717,10 @@ void goby::acomms::IPGateway::write_udp_packet(goby::acomms::protobuf::IPv4Heade
         glog.is(WARN) && glog << "Failed to write all " << packet.size() << " bytes." << std::endl;
 }
 
-void goby::acomms::IPGateway::icmp_report_queue()
+void goby::apps::zeromq::acomms::IPGateway::icmp_report_queue()
 {
-    protobuf::IPGatewayICMPControl control_msg;
-    control_msg.set_type(protobuf::IPGatewayICMPControl::QUEUE_REPORT);
+    goby::acomms::protobuf::IPGatewayICMPControl control_msg;
+    control_msg.set_type(goby::acomms::protobuf::IPGatewayICMPControl::QUEUE_REPORT);
     control_msg.set_address(cfg().local_ipv4_address());
 
     int total_messages = 0;
@@ -679,7 +732,7 @@ void goby::acomms::IPGateway::icmp_report_queue()
         int size = it->second.size();
         if (size)
         {
-            protobuf::IPGatewayICMPControl::QueueReport::SubQueue* q =
+            goby::acomms::protobuf::IPGatewayICMPControl::QueueReport::SubQueue* q =
                 control_msg.mutable_queue_report()->add_queue();
             q->set_dest(it->first);
             q->set_size(size);
@@ -697,9 +750,9 @@ void goby::acomms::IPGateway::icmp_report_queue()
         }
         else
         {
-            protobuf::ModemTransmission m;
+            goby::acomms::protobuf::ModemTransmission m;
             m.set_src(local_modem_id_);
-            m.set_type(protobuf::ModemTransmission::DATA);
+            m.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
             if (cfg().has_only_rate())
                 m.set_rate(cfg().only_rate());
             handle_initiate_transmission(m);
@@ -707,8 +760,8 @@ void goby::acomms::IPGateway::icmp_report_queue()
     }
 }
 
-void goby::acomms::IPGateway::write_icmp_control_message(
-    const protobuf::IPGatewayICMPControl& control_msg)
+void goby::apps::zeromq::acomms::IPGateway::write_icmp_control_message(
+    const goby::acomms::protobuf::IPGatewayICMPControl& control_msg)
 {
     std::string control_data;
     control_msg.SerializeToString(&control_data);
@@ -738,9 +791,9 @@ void goby::acomms::IPGateway::write_icmp_control_message(
     write_icmp_packet(ip_hdr, icmp_hdr, control_data);
 }
 
-void goby::acomms::IPGateway::write_icmp_packet(goby::acomms::protobuf::IPv4Header& ip_hdr,
-                                                goby::acomms::protobuf::ICMPHeader& icmp_hdr,
-                                                const std::string& payload)
+void goby::apps::zeromq::acomms::IPGateway::write_icmp_packet(
+    goby::acomms::protobuf::IPv4Header& ip_hdr, goby::acomms::protobuf::ICMPHeader& icmp_hdr,
+    const std::string& payload)
 {
     // set checksum 0 for calculation
     ip_hdr.set_header_checksum(0);
@@ -768,8 +821,8 @@ void goby::acomms::IPGateway::write_icmp_packet(goby::acomms::protobuf::IPv4Head
         ICMP_CS_OFFSET = 2
     };
 
-    uint16_t ip_checksum = net_checksum(ip_hdr_data);
-    uint16_t icmp_checksum = net_checksum(icmp_hdr_data + payload);
+    uint16_t ip_checksum = goby::acomms::net_checksum(ip_hdr_data);
+    uint16_t icmp_checksum = goby::acomms::net_checksum(icmp_hdr_data + payload);
 
     ip_hdr_data[IPV4_CS_OFFSET] = (ip_checksum >> 8) & 0xFF;
     ip_hdr_data[IPV4_CS_OFFSET + 1] = ip_checksum & 0xFF;
@@ -790,7 +843,7 @@ void goby::acomms::IPGateway::write_icmp_packet(goby::acomms::protobuf::IPv4Head
 // e 1 | x  x  3  4
 // s 2 | x  5  x  6
 // t 3 | x  7  8  x
-std::pair<int, int> goby::acomms::IPGateway::to_src_dest_pair(int srcdest)
+std::pair<int, int> goby::apps::zeromq::acomms::IPGateway::to_src_dest_pair(int srcdest)
 {
     int src = (srcdest - 1) % (total_addresses_ - 2) + 1;
     int dest = (srcdest - 1) / (total_addresses_ - 2);
@@ -800,7 +853,7 @@ std::pair<int, int> goby::acomms::IPGateway::to_src_dest_pair(int srcdest)
     return std::make_pair(src, dest);
 }
 
-int goby::acomms::IPGateway::from_src_dest_pair(std::pair<int, int> src_dest)
+int goby::apps::zeromq::acomms::IPGateway::from_src_dest_pair(std::pair<int, int> src_dest)
 {
     int src = src_dest.first;
     int dest = src_dest.second;
@@ -811,11 +864,11 @@ int goby::acomms::IPGateway::from_src_dest_pair(std::pair<int, int> src_dest)
     return dest * (total_addresses_ - 2) + src - (src > dest ? 1 : 0);
 }
 
-int goby::acomms::IPGateway::ipv4_to_goby_address(const std::string& ipv4_address)
+int goby::apps::zeromq::acomms::IPGateway::ipv4_to_goby_address(const std::string& ipv4_address)
 {
     in_addr remote_addr;
     inet_aton(ipv4_address.c_str(), &remote_addr);
-    goby::uint32 remote_address = ntohl(remote_addr.s_addr);
+    std::uint32_t remote_address = ntohl(remote_addr.s_addr);
     int modem_id = remote_address & ~netmask_;
 
     // broadcast conventions differ
@@ -824,9 +877,9 @@ int goby::acomms::IPGateway::ipv4_to_goby_address(const std::string& ipv4_addres
     return modem_id;
 }
 
-std::string goby::acomms::IPGateway::goby_address_to_ipv4(int modem_id)
+std::string goby::apps::zeromq::acomms::IPGateway::goby_address_to_ipv4(int modem_id)
 {
-    goby::uint32 address = 0;
+    std::uint32_t address = 0;
     if (modem_id == goby::acomms::BROADCAST_ID)
         address = (local_address_ & netmask_) + ~netmask_;
     else
@@ -837,7 +890,7 @@ std::string goby::acomms::IPGateway::goby_address_to_ipv4(int modem_id)
     return std::string(inet_ntoa(ret_addr));
 }
 
-int goby::acomms::IPGateway::ac_freq(int srcdest)
+int goby::apps::zeromq::acomms::IPGateway::ac_freq(int srcdest)
 {
     std::pair<int, int> sd = to_src_dest_pair(srcdest);
     int s = sd.first;
@@ -861,6 +914,9 @@ int goby::acomms::IPGateway::ac_freq(int srcdest)
 
 int main(int argc, char* argv[])
 {
+#ifdef DCCL_VERSION_4_1_OR_NEWER
+    // each field codec is added later when dccl::Codec is created or after
+#else
     dccl::FieldCodecManager::add<goby::acomms::IPGatewayEmptyIdentifierCodec<0xF000>>(
         "ip_gateway_id_codec_0");
     dccl::FieldCodecManager::add<goby::acomms::IPGatewayEmptyIdentifierCodec<0xF001>>(
@@ -872,8 +928,9 @@ int main(int argc, char* argv[])
     dccl::FieldCodecManager::add<goby::acomms::NetShortCodec>("net.short");
     dccl::FieldCodecManager::add<goby::acomms::IPv4AddressCodec>("ip.v4.address");
     dccl::FieldCodecManager::add<goby::acomms::IPv4FlagsFragOffsetCodec>("ip.v4.flagsfragoffset");
+#endif
 
-    goby::run<goby::acomms::IPGateway>(argc, argv);
+    goby::run<goby::apps::zeromq::acomms::IPGateway>(argc, argv);
 }
 
 // https://www.kernel.org/doc/Documentation/networking/tuntap.txt
