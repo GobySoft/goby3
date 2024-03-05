@@ -1,0 +1,34 @@
+syntax = "proto2";
+
+import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+import "dccl/option_extensions.proto";
+
+package goby.apps.zeromq.acomms.protobuf;
+
+message FileTransferConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
+        [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
+    optional bool daemon = 3 [default = false];
+
+    required int32 local_id = 4;
+
+    optional int32 remote_id = 5;
+    optional string local_file = 6;
+    optional string remote_file = 7;
+
+    enum Action
+    {
+        WAIT = 0;
+        PUSH = 1;
+        PULL = 2;
+    }
+
+    optional Action action = 10 [default = WAIT];
+
+    optional double request_timeout = 11 [default = 600];
+}

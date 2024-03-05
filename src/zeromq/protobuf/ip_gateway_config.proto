@@ -1,17 +1,23 @@
-import "goby/common/protobuf/option_extensions.proto";
-import "goby/common/protobuf/app_base_config.proto";
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+import "dccl/option_extensions.proto";
+
 import "goby/acomms/protobuf/amac_config.proto";
 import "goby/acomms/protobuf/modem_message.proto";
 
-package goby.acomms.protobuf;
+package goby.apps.zeromq.acomms.protobuf;
 
 message IPGatewayConfig
 {
-    optional AppBaseConfig app = 1;
+   optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
+        [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
 
-    required string local_ipv4_address = 2;
-    required uint32 cidr_netmask_prefix = 3;
-    optional int32 tun_number = 4;
+    required string local_ipv4_address = 3;
+    required uint32 cidr_netmask_prefix = 4;
+    optional int32 tun_number = 5;
 
     optional bool enable_broadcast_address = 10 [
         default = true
@@ -36,10 +42,10 @@ message IPGatewayConfig
     optional int32 total_ports = 20 [default = 1];
     repeated uint32 static_udp_port = 21;
 
-    optional MACConfig mac_cfg = 30;
+    optional goby.acomms.protobuf.MACConfig mac_cfg = 30;
     required uint32 mtu = 31;
     optional bool bypass_mac = 32 [default = false];
-    optional ModemTransmission bypass_mac_slot = 33;
+    optional goby.acomms.protobuf.ModemTransmission bypass_mac_slot = 33;
 
     optional int32 queue_size = 40 [default = 100];
 

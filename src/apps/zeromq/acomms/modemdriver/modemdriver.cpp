@@ -19,115 +19,136 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/common/logger.h"
-#include "goby/common/logger/term_color.h"
-#include "goby/common/zeromq_service.h"
+#include <thread>
+
+#include "goby/middleware/marshalling/protobuf.h"
 
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modem_driver.h"
+#include "goby/acomms/modemdriver/benthos_atm900_driver.h"
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/modemdriver/iridium_driver.h"
 #include "goby/acomms/modemdriver/iridium_shore_driver.h"
+#include "goby/acomms/modemdriver/mm_driver.h"
+#include "goby/acomms/modemdriver/popoto_driver.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
-
-#include "goby/pb/application.h"
-#include "goby/pb/pb_modem_driver.h"
-
+#include "goby/acomms/modemdriver/udp_multicast_driver.h"
 #include "goby/acomms/protobuf/modem_driver_status.pb.h"
-#include "modemdriver_config.pb.h"
+#include "goby/middleware/acomms/groups.h"
+#include "goby/zeromq/application/single_thread.h"
+#include "goby/zeromq/protobuf/modemdriver_config.pb.h"
 
-using namespace goby::common::logger;
+using goby::glog;
+using namespace goby::util::logger;
+using goby::acomms::ModemDriverException;
+using goby::acomms::protobuf::ModemTransmission;
 
 namespace goby
 {
+namespace apps
+{
+namespace zeromq
+{
 namespace acomms
 {
-class ModemDriver : public goby::pb::Application
+class ModemDriver : public goby::zeromq::SingleThreadApplication<protobuf::ModemDriverConfig>
 {
   public:
-    ModemDriver(protobuf::ModemDriverConfig* cfg);
+    ModemDriver();
     ~ModemDriver();
 
   private:
     void loop();
 
-    void handle_modem_data_request(protobuf::ModemTransmission* msg);
-    void handle_modem_receive(const protobuf::ModemTransmission& message);
+    void handle_modem_data_request(ModemTransmission* msg);
+    void handle_modem_receive(const ModemTransmission& message);
 
-    void handle_data_response(const protobuf::ModemTransmission& message);
-    void handle_initiate_transmission(const protobuf::ModemTransmission& message);
+    void handle_data_response(const ModemTransmission& message);
+    void handle_initiate_transmission(const ModemTransmission& message);
 
     void reset(const ModemDriverException& e);
 
-    std::string modem_id_str() { return goby::util::as<std::string>(cfg_.driver_cfg().modem_id()); }
+    std::string modem_id_str() { return std::to_string(cfg().driver_cfg().modem_id()); }
 
   private:
-    protobuf::ModemDriverConfig& cfg_;
+    //    // for PBDriver
+    //    std::unique_ptr<goby::common::ZeroMQService> zeromq_service_;
 
-    // for PBDriver
-    boost::shared_ptr<goby::common::ZeroMQService> zeromq_service_;
-
-    // for UDPDriver
-    boost::shared_ptr<boost::asio::io_service> asio_service_;
-
-    boost::shared_ptr<goby::acomms::ModemDriverBase> driver_;
+    std::unique_ptr<goby::acomms::ModemDriverBase> driver_;
 
     bool data_response_received_;
-    protobuf::ModemTransmission data_response_;
+    ModemTransmission data_response_;
 
     bool initiate_transmit_pending_;
-    protobuf::ModemTransmission initiate_transmission_;
+    ModemTransmission initiate_transmission_;
 
     bool driver_started_;
 
     double last_status_time_;
     goby::acomms::protobuf::ModemDriverStatus status_;
+
+    goby::middleware::DynamicGroup tx_group_;
+    goby::middleware::DynamicGroup rx_group_;
+
+    goby::middleware::DynamicGroup data_request_group_;
+    goby::middleware::DynamicGroup data_response_group_;
+
+    goby::middleware::DynamicGroup status_group_;
 };
 } // namespace acomms
+} // namespace zeromq
+} // namespace apps
 } // namespace goby
 
-int main(int argc, char* argv[])
-{
-    goby::acomms::protobuf::ModemDriverConfig cfg;
-    goby::run<goby::acomms::ModemDriver>(argc, argv, &cfg);
-}
+int main(int argc, char* argv[]) { goby::run<goby::apps::zeromq::acomms::ModemDriver>(argc, argv); }
 
-using goby::glog;
-
-goby::acomms::ModemDriver::ModemDriver(protobuf::ModemDriverConfig* cfg)
-    : goby::pb::Application(cfg),
-      cfg_(*cfg),
-      data_response_received_(false),
+goby::apps::zeromq::acomms::ModemDriver::ModemDriver()
+    : data_response_received_(false),
       initiate_transmit_pending_(false),
       driver_started_(false),
-      last_status_time_(0)
+      last_status_time_(0),
+      tx_group_(goby::middleware::acomms::groups::tx, cfg().driver_cfg().modem_id()),
+      rx_group_(goby::middleware::acomms::groups::rx, cfg().driver_cfg().modem_id()),
+      data_request_group_(goby::middleware::acomms::groups::data_request,
+                          cfg().driver_cfg().modem_id()),
+      data_response_group_(goby::middleware::acomms::groups::data_response,
+                           cfg().driver_cfg().modem_id()),
+      status_group_(goby::middleware::acomms::groups::status, cfg().driver_cfg().modem_id())
 {
-    glog.is(DEBUG1) && glog << cfg_.DebugString() << std::endl;
-
-    switch (cfg_.driver_type())
+    switch (cfg().driver_type())
     {
         case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
-            driver_.reset(new goby::acomms::MMDriver);
-            break;
-
-        case goby::acomms::protobuf::DRIVER_PB_STORE_SERVER:
-            zeromq_service_.reset(new goby::common::ZeroMQService);
-            driver_.reset(new goby::pb::PBDriver(zeromq_service_.get()));
-            break;
-
-        case goby::acomms::protobuf::DRIVER_UDP:
-            asio_service_.reset(new boost::asio::io_service);
-            driver_.reset(new goby::acomms::UDPDriver(asio_service_.get()));
+            driver_ = std::make_unique<goby::acomms::MMDriver>();
             break;
 
         case goby::acomms::protobuf::DRIVER_IRIDIUM:
-            driver_.reset(new goby::acomms::IridiumDriver);
+            driver_ = std::make_unique<goby::acomms::IridiumDriver>();
+            break;
 
+        case goby::acomms::protobuf::DRIVER_UDP:
+            driver_ = std::make_unique<goby::acomms::UDPDriver>();
+            break;
+
+        case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
+            driver_ = std::make_unique<goby::acomms::UDPMulticastDriver>();
             break;
 
         case goby::acomms::protobuf::DRIVER_IRIDIUM_SHORE:
-            driver_.reset(new goby::acomms::IridiumShoreDriver);
+            driver_ = std::make_unique<goby::acomms::IridiumShoreDriver>();
             break;
+
+        case goby::acomms::protobuf::DRIVER_BENTHOS_ATM900:
+            driver_ = std::make_unique<goby::acomms::BenthosATM900Driver>();
+            break;
+
+        case goby::acomms::protobuf::DRIVER_POPOTO:
+            driver_ = std::make_unique<goby::acomms::PopotoDriver>();
+            break;
+
+            //        case goby::acomms::protobuf::DRIVER_PB_STORE_SERVER:
+            //            zeromq_service_.reset(new goby::common::ZeroMQService);
+            //            driver_.reset(new goby::pb::PBDriver(zeromq_service_.get()));
+            //            break;
 
         default:
         case goby::acomms::protobuf::DRIVER_NONE:
@@ -135,27 +156,29 @@ goby::acomms::ModemDriver::ModemDriver(protobuf::ModemDriverConfig* cfg)
             break;
     }
 
-    subscribe(&ModemDriver::handle_initiate_transmission, this,
-              "Tx" + goby::util::as<std::string>(cfg_.driver_cfg().modem_id()));
+    interprocess().subscribe_dynamic<ModemTransmission>(
+        std::bind(&ModemDriver::handle_initiate_transmission, this, std::placeholders::_1),
+        tx_group_);
+    interprocess().subscribe_dynamic<ModemTransmission>(
+        std::bind(&ModemDriver::handle_data_response, this, std::placeholders::_1),
+        data_response_group_);
 
-    subscribe(&ModemDriver::handle_data_response, this,
-              "DataResponse" + goby::util::as<std::string>(cfg_.driver_cfg().modem_id()));
+    goby::acomms::connect(&driver_->signal_receive, this, &ModemDriver::handle_modem_receive);
 
-    connect(&driver_->signal_receive, this, &ModemDriver::handle_modem_receive);
+    goby::acomms::connect(&driver_->signal_data_request, this,
+                          &ModemDriver::handle_modem_data_request);
 
-    connect(&driver_->signal_data_request, this, &ModemDriver::handle_modem_data_request);
-
-    status_.set_src(cfg_.driver_cfg().modem_id());
+    status_.set_src(cfg().driver_cfg().modem_id());
     status_.set_status(goby::acomms::protobuf::ModemDriverStatus::NOMINAL);
 }
 
-goby::acomms::ModemDriver::~ModemDriver()
+goby::apps::zeromq::acomms::ModemDriver::~ModemDriver()
 {
     if (driver_)
         driver_->shutdown();
 }
 
-void goby::acomms::ModemDriver::loop()
+void goby::apps::zeromq::acomms::ModemDriver::loop()
 {
     if (driver_)
     {
@@ -163,7 +186,7 @@ void goby::acomms::ModemDriver::loop()
         {
             if (!driver_started_)
             {
-                driver_->startup(cfg_.driver_cfg());
+                driver_->startup(cfg().driver_cfg());
                 driver_started_ = true;
                 status_.set_status(goby::acomms::protobuf::ModemDriverStatus::NOMINAL);
             }
@@ -175,11 +198,11 @@ void goby::acomms::ModemDriver::loop()
         }
     }
 
-    double now = goby::common::goby_time<double>();
-    if (last_status_time_ + cfg_.status_period_s() <= now)
+    double now = goby::time::SystemClock::now<goby::time::SITime>().value();
+    if (last_status_time_ + cfg().status_period_s() <= now)
     {
         status_.set_time(now);
-        publish(status_, "Status" + modem_id_str());
+        interprocess().publish_dynamic(status_, status_group_);
         last_status_time_ = now;
     }
 
@@ -190,15 +213,16 @@ void goby::acomms::ModemDriver::loop()
     }
 }
 
-void goby::acomms::ModemDriver::handle_modem_data_request(protobuf::ModemTransmission* msg)
+void goby::apps::zeromq::acomms::ModemDriver::handle_modem_data_request(ModemTransmission* msg)
 {
-    publish(*msg, "DataRequest" + modem_id_str());
+    interprocess().publish_dynamic(*msg, data_request_group_);
     data_response_received_ = false;
 
-    double start_time = goby::common::goby_time<double>();
-    while (goby::common::goby_time<double>() < start_time + cfg_.data_request_timeout())
+    double start_time = goby::time::SystemClock::now<goby::time::SITime>().value();
+    while (goby::time::SystemClock::now<goby::time::SITime>().value() <
+           start_time + cfg().data_request_timeout())
     {
-        zeromq_service().poll(10000);
+        interprocess().poll(std::chrono::milliseconds(10));
         if (data_response_received_)
         {
             *msg = data_response_;
@@ -209,26 +233,26 @@ void goby::acomms::ModemDriver::handle_modem_data_request(protobuf::ModemTransmi
         glog.is(WARN) && glog << "Timeout waiting for response to data request" << std::endl;
 }
 
-void goby::acomms::ModemDriver::handle_modem_receive(const protobuf::ModemTransmission& message)
+void goby::apps::zeromq::acomms::ModemDriver::handle_modem_receive(const ModemTransmission& message)
 {
-    publish(message, "Rx" + modem_id_str());
+    interprocess().publish_dynamic(message, rx_group_);
 }
 
-void goby::acomms::ModemDriver::handle_data_response(const protobuf::ModemTransmission& message)
+void goby::apps::zeromq::acomms::ModemDriver::handle_data_response(const ModemTransmission& message)
 {
     data_response_received_ = true;
     data_response_ = message;
 }
 
-void goby::acomms::ModemDriver::handle_initiate_transmission(
-    const protobuf::ModemTransmission& message)
+void goby::apps::zeromq::acomms::ModemDriver::handle_initiate_transmission(
+    const ModemTransmission& message)
 {
     // wait until we enter next loop to initiate the transmission to avoid calling poll() from within poll()
     initiate_transmit_pending_ = true;
     initiate_transmission_ = message;
 }
 
-void goby::acomms::ModemDriver::reset(const ModemDriverException& e)
+void goby::apps::zeromq::acomms::ModemDriver::reset(const ModemDriverException& e)
 {
     status_.set_status(e.status());
     status_.set_n_resets(status_.n_resets() + 1);
@@ -238,6 +262,6 @@ void goby::acomms::ModemDriver::reset(const ModemDriverException& e)
     driver_->shutdown();
     glog.is(WARN) && glog << "Attempting to restart driver in " << restart_sec << " seconds."
                           << std::endl;
-    sleep(restart_sec);
+    std::this_thread::sleep_for(std::chrono::seconds(restart_sec));
     driver_started_ = false;
 }
