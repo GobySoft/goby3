@@ -1,0 +1,14 @@
+import "goby/common/protobuf/option_extensions.proto";
+import "goby/common/protobuf/app_base_config.proto";
+import "goby/common/protobuf/zero_mq_node_config.proto";
+
+package goby.acomms.protobuf;
+
+message GobyStoreServerConfig
+{
+    optional AppBaseConfig base = 1;
+    required goby.common.protobuf.ZeroMQServiceConfig.Socket reply_socket = 2;
+    optional string db_file_dir = 3 [default = "."];
+
+    optional string db_file_name = 4;  // reopens file if it already exists
+}
