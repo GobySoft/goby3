@@ -1,0 +1,16 @@
+import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/app_config.proto";
+import "dccl/option_extensions.proto";
+import "goby/middleware/protobuf/tcp_config.proto";
+
+package goby.apps.acomms.protobuf;
+
+message StoreServerConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+
+    optional goby.middleware.protobuf.TCPServerConfig tcp_server = 2;
+
+    optional string db_file_dir = 3 [default = "."];
+    optional string db_file_name = 4;  // reopens file if it already exists
+}

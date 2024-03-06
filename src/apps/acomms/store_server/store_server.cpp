@@ -26,50 +26,83 @@
 #include "goby/middleware/marshalling/protobuf.h"
 
 #include "goby/acomms/acomms_constants.h"
+#include "goby/acomms/modemdriver/store_server_driver.h"
 #include "goby/acomms/protobuf/store_server.pb.h"
+#include "goby/acomms/protobuf/store_server_config.pb.h"
 #include "goby/middleware/acomms/groups.h"
+#include "goby/middleware/application/multi_thread.h"
+#include "goby/middleware/io/line_based/tcp_server.h"
+#include "goby/time/convert.h"
+#include "goby/time/system_clock.h"
 #include "goby/util/binary.h"
-#include "goby/zeromq/application/single_thread.h"
-#include "goby/zeromq/protobuf/goby_store_server_config.pb.h"
+
+#if GOOGLE_PROTOBUF_VERSION < 3001000
+#define ByteSizeLong ByteSize
+#endif
 
 using goby::glog;
 using namespace goby::util::logger;
 
+constexpr goby::middleware::Group tcp_server_in{"tcp_server_in"};
+constexpr goby::middleware::Group tcp_server_out{"tcp_server_out"};
+
 namespace goby
+{
+namespace apps
 {
 namespace acomms
 {
-class GobyStoreServer
-    : public goby::zeromq::SingleThreadApplication<protobuf::GobyStoreServerConfig>
+
+class StoreServerConfigurator
+    : public goby::middleware::ProtobufConfigurator<protobuf::StoreServerConfig>
 {
   public:
-    GobyStoreServer();
-    ~GobyStoreServer()
+    StoreServerConfigurator(int argc, char* argv[])
+        : goby::middleware::ProtobufConfigurator<protobuf::StoreServerConfig>(argc, argv)
+    {
+        protobuf::StoreServerConfig& cfg = mutable_cfg();
+        cfg.mutable_tcp_server()->set_end_of_line(goby::acomms::StoreServerDriver::eol);
+        if (!cfg.tcp_server().has_bind_port())
+        {
+            cfg.mutable_tcp_server()->set_bind_port(goby::acomms::StoreServerDriver::default_port);
+        }
+    }
+};
+
+class StoreServer : public goby::middleware::MultiThreadStandaloneApplication<
+                        goby::apps::acomms::protobuf::StoreServerConfig>
+{
+  public:
+    StoreServer();
+    ~StoreServer()
     {
         if (db_)
             sqlite3_close(db_);
     }
 
   private:
-    void handle_request(const protobuf::StoreServerRequest& request);
+    void handle_request(const goby::middleware::protobuf::TCPEndPoint& tcp_src,
+                        const goby::acomms::protobuf::StoreServerRequest& request);
 
     void check(int rc, const std::string& error_prefix);
 
   private:
-    static goby::common::ZeroMQService zeromq_service_;
     sqlite3* db_;
 
     // maps modem_id to time (microsecs since UNIX)
-    std::map<int, uint64> last_request_time_;
+    std::map<int, std::uint64_t> last_request_time_;
 };
 } // namespace acomms
+} // namespace apps
 } // namespace goby
 
-goby::common::ZeroMQService goby::acomms::GobyStoreServer::zeromq_service_;
+int main(int argc, char* argv[])
+{
+    goby::run<goby::apps::acomms::StoreServer>(
+        goby::apps::acomms::StoreServerConfigurator(argc, argv));
+}
 
-int main(int argc, char* argv[]) { goby::run<goby::acomms::GobyStoreServer>(argc, argv); }
-
-goby::acomms::GobyStoreServer::GobyStoreServer() : db_(0)
+goby::apps::acomms::StoreServer::StoreServer() : db_(0)
 {
     // create database
     if (!boost::filesystem::exists(cfg().db_file_dir()))
@@ -79,7 +112,7 @@ goby::acomms::GobyStoreServer::GobyStoreServer() : db_(0)
     if (cfg().has_db_file_name())
         full_db_name += cfg().db_file_name();
     else
-        full_db_name += "goby_store_server_" + goby::common::goby_file_timestamp() + ".db";
+        full_db_name += "goby_store_server_" + goby::time::file_str() + ".db";
 
     int rc;
     rc = sqlite3_open(full_db_name.c_str(), &db_);
@@ -101,29 +134,51 @@ goby::acomms::GobyStoreServer::GobyStoreServer() : db_(0)
         throw(goby::Exception("SQL error: " + error));
     }
 
-    // set up receiving requests
-    on_receipt<protobuf::StoreServerRequest>(cfg().reply_socket().socket_id(),
-                                             &GobyStoreServer::handle_request, this);
+    // subscribe to events from server thread
+    interthread().subscribe<tcp_server_in>(
+        [this](const goby::middleware::protobuf::TCPServerEvent& event) {
+            glog.is_verbose() && glog << "Got TCP event: " << event.ShortDebugString() << std::endl;
+        });
 
-    // start zeromqservice
-    common::protobuf::ZeroMQServiceConfig service_cfg;
-    service_cfg.add_socket()->CopyFrom(cfg().reply_socket());
-    zeromq_service_.set_cfg(service_cfg);
+    // subscribe to incoming data from server thread
+    interthread().subscribe<tcp_server_in>(
+        [this](const goby::middleware::protobuf::IOData& tcp_data_in)
+        {
+            try
+            {
+                goby::acomms::protobuf::StoreServerRequest request;
+                goby::acomms::StoreServerDriver::parse_store_server_message(tcp_data_in.data(),
+                                                                            &request);
+                handle_request(tcp_data_in.tcp_src(), request);
+            }
+            catch (const std::exception& e)
+            {
+                glog.is_warn() && glog << "Failed to parse/handle incoming request: " << e.what()
+                                       << std::endl;
+            }
+        });
+
+    using TCPServerThread =
+        goby::middleware::io::TCPServerThreadLineBased<tcp_server_in, tcp_server_out>;
+
+    launch_thread<TCPServerThread>(cfg().tcp_server());
 }
 
-void goby::acomms::GobyStoreServer::handle_request(const protobuf::StoreServerRequest& request)
+void goby::apps::acomms::StoreServer::handle_request(
+    const goby::middleware::protobuf::TCPEndPoint& tcp_src,
+    const goby::acomms::protobuf::StoreServerRequest& request)
 {
     glog.is(DEBUG1) && glog << "Got request: " << request.DebugString() << std::endl;
 
-    uint64 request_time = goby_time<uint64>();
+    std::uint64_t request_time = goby::time::SystemClock::now<goby::time::MicroTime>().value();
 
-    protobuf::StoreServerResponse response;
+    goby::acomms::protobuf::StoreServerResponse response;
     response.set_modem_id(request.modem_id());
 
     // insert any rows into the table
     for (int i = 0, n = request.outbox_size(); i < n; ++i)
     {
-        glog.is(DEBUG1) && glog << "Trying to insert (size: " << request.outbox(i).ByteSize()
+        glog.is(DEBUG1) && glog << "Trying to insert (size: " << request.outbox(i).ByteSizeLong()
                                 << "): " << request.outbox(i).DebugString() << std::endl;
 
         sqlite3_stmt* insert;
@@ -137,7 +192,8 @@ void goby::acomms::GobyStoreServer::handle_request(const protobuf::StoreServerRe
         check(sqlite3_bind_int(insert, 1, request.outbox(i).src()), "Insert `src` binding failed");
         check(sqlite3_bind_int(insert, 2, request.outbox(i).dest()),
               "Insert `dest` binding failed");
-        check(sqlite3_bind_int64(insert, 3, goby_time<uint64>()),
+        check(sqlite3_bind_int64(insert, 3,
+                                 goby::time::SystemClock::now<goby::time::MicroTime>().value()),
               "Insert `microtime` binding failed");
 
         std::string bytes;
@@ -205,10 +261,23 @@ void goby::acomms::GobyStoreServer::handle_request(const protobuf::StoreServerRe
 
     last_request_time_[request.modem_id()] = request_time;
 
-    send(response, cfg().reply_socket().socket_id());
+    goby::middleware::protobuf::IOData tcp_data_out;
+    *tcp_data_out.mutable_tcp_dest() = tcp_src;
+
+    try
+    {
+        goby::acomms::StoreServerDriver::serialize_store_server_message(
+            response, tcp_data_out.mutable_data());
+        interthread().publish<tcp_server_out>(tcp_data_out);
+    }
+    catch (const std::exception& e)
+    {
+        glog.is_warn() && glog << "Failed to serialize outgoing response: " << e.what()
+                               << std::endl;
+    }
 }
 
-void goby::acomms::GobyStoreServer::check(int rc, const std::string& error_prefix)
+void goby::apps::acomms::StoreServer::check(int rc, const std::string& error_prefix)
 {
     if (rc != SQLITE_OK && rc != SQLITE_DONE)
         throw(goby::Exception(error_prefix + ": " + std::string(sqlite3_errmsg(db_))));

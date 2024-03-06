@@ -17,7 +17,6 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/file_transfer_config.proto
   protobuf/ip_gateway_config.proto
   protobuf/mosh_relay_config.proto
-#  protobuf/goby_store_server_config.proto
   )
 
 set(SRC
