@@ -42,7 +42,6 @@ goby::acomms::StoreServerDriver::StoreServerDriver()
       waiting_for_reply_(false),
       next_frame_(0)
 {
-    //    on_receipt<protobuf::StoreServerResponse>(0, &StoreServerDriver::handle_response, this);
 }
 
 void goby::acomms::StoreServerDriver::startup(const protobuf::DriverConfig& cfg)
