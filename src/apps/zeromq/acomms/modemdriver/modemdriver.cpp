@@ -31,6 +31,7 @@
 #include "goby/acomms/modemdriver/iridium_shore_driver.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
 #include "goby/acomms/modemdriver/popoto_driver.h"
+#include "goby/acomms/modemdriver/store_server_driver.h"
 #include "goby/acomms/modemdriver/udp_driver.h"
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"
 #include "goby/acomms/protobuf/modem_driver_status.pb.h"
@@ -117,7 +118,7 @@ goby::apps::zeromq::acomms::ModemDriver::ModemDriver()
                            cfg().driver_cfg().modem_id()),
       status_group_(goby::middleware::acomms::groups::status, cfg().driver_cfg().modem_id())
 {
-    switch (cfg().driver_type())
+    switch (cfg().driver_cfg().driver_type())
     {
         case goby::acomms::protobuf::DRIVER_WHOI_MICROMODEM:
             driver_ = std::make_unique<goby::acomms::MMDriver>();
@@ -147,10 +148,9 @@ goby::apps::zeromq::acomms::ModemDriver::ModemDriver()
             driver_ = std::make_unique<goby::acomms::PopotoDriver>();
             break;
 
-            //        case goby::acomms::protobuf::DRIVER_PB_STORE_SERVER:
-            //            zeromq_service_.reset(new goby::common::ZeroMQService);
-            //            driver_.reset(new goby::pb::PBDriver(zeromq_service_.get()));
-            //            break;
+        case goby::acomms::protobuf::DRIVER_STORE_SERVER:
+            driver_ = std::make_unique<goby::acomms::StoreServerDriver>();
+            break;
 
         default:
         case goby::acomms::protobuf::DRIVER_NONE:

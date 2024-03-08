@@ -13,8 +13,7 @@ message ModemDriverConfig
     optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
         [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
 
-    required goby.acomms.protobuf.DriverType driver_type = 3;
-    required goby.acomms.protobuf.DriverConfig driver_cfg = 4;
+    required goby.acomms.protobuf.DriverConfig driver_cfg = 3;
 
     optional float data_request_timeout = 5 [
         default = 1.0,

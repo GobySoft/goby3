@@ -52,6 +52,9 @@ void goby::acomms::StoreServerDriver::startup(const protobuf::DriverConfig& cfg)
     if (!driver_cfg_.has_tcp_port())
         driver_cfg_.set_tcp_port(default_port);
 
+    if (!driver_cfg_.has_line_delimiter())
+        driver_cfg_.set_line_delimiter(eol);
+
     request_.set_modem_id(driver_cfg_.modem_id());
 
     query_interval_seconds_ = store_server_driver_cfg_.query_interval_seconds();
