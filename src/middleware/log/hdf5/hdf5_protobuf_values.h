@@ -59,12 +59,18 @@ template <typename T> T retrieve_empty_value()
     return t;
 }
 
-template <typename T> void retrieve_single_value(T* val, PBMeta m)
+template <typename T> void retrieve_single_value(T* val, std::uint8_t* is_set, PBMeta m)
 {
-    if (m.field_desc->is_optional() && !m.refl->HasField(m.msg, m.field_desc))
+    if (!m.refl->HasField(m.msg, m.field_desc))
+    {
+        *is_set = 0;
         retrieve_empty_value(val);
+    }
     else
+    {
+        *is_set = 1;
         retrieve_single_present_value(val, m);
+    }
 }
 
 template <typename T> void retrieve_single_present_value(T* val, PBMeta meta);
@@ -232,8 +238,13 @@ void retrieve_default_value(std::string* val, const google::protobuf::FieldDescr
     *val = field_desc->default_value_string();
 }
 template <> void retrieve_empty_value(std::string* val) { val->clear(); }
-template <> void retrieve_single_value(std::string* val, PBMeta m)
+template <> void retrieve_single_value(std::string* val, std::uint8_t* is_set, PBMeta m)
 {
+    if (m.field_desc->is_optional() && !m.refl->HasField(m.msg, m.field_desc))
+        *is_set = 0;
+    else
+        *is_set = 1;
+
     *val = m.refl->GetString(m.msg, m.field_desc);
 }
 template <> void retrieve_repeated_value(std::string* val, int index, PBMeta m)
@@ -242,7 +253,7 @@ template <> void retrieve_repeated_value(std::string* val, int index, PBMeta m)
 }
 
 } // namespace hdf5
-} // namespace common
+} // namespace middleware
 } // namespace goby
 
 #endif

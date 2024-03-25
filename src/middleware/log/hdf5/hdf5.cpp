@@ -88,7 +88,7 @@ goby::middleware::hdf5::GroupFactory::GroupWrapper::fetch_group(std::deque<std::
 
 goby::middleware::hdf5::Writer::Writer(const std::string& output_file, bool write_zero_length_dim,
                                        bool use_chunks, hsize_t chunk_length, bool use_compression,
-                                       int compression_level)
+                                       int compression_level, bool write_presence)
     : h5file_(output_file, H5F_ACC_TRUNC),
       group_factory_(h5file_),
       write_zero_length_dim_(write_zero_length_dim),
@@ -96,6 +96,7 @@ goby::middleware::hdf5::Writer::Writer(const std::string& output_file, bool writ
       chunk_length_(chunk_length),
       use_compression_(use_compression),
       compression_level_(compression_level),
+      write_presence_(write_presence),
       final_write_(false)
 {
 }
@@ -162,10 +163,13 @@ void goby::middleware::hdf5::Writer::write_message_collection(
     write_time(group, message_collection);
     write_scheme(group, message_collection);
 
-    auto write_field = [&, this](const google::protobuf::FieldDescriptor* field_desc) {
+    auto write_field = [&, this](const google::protobuf::FieldDescriptor* field_desc)
+    {
         std::vector<const google::protobuf::Message*> messages;
         for (const auto& entry : message_collection.entries)
-        { messages.push_back(entry.second.msg.get()); }
+        {
+            messages.push_back(entry.second.msg.get());
+        }
         std::vector<hsize_t> hs;
         hs.push_back(messages.size());
         write_field_selector(group, field_desc, messages, hs);
@@ -213,7 +217,26 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
 
         hs.push_back(max_field_size);
 
-        auto write_field = [&, this](const google::protobuf::FieldDescriptor* sub_field_desc) {
+        if (write_presence_)
+        {
+            std::vector<std::uint8_t> is_set(messages.size() * max_field_size, 0 /*false*/);
+            for (unsigned i = 0, n = messages.size(); i < n; ++i)
+            {
+                if (messages[i])
+                {
+                    const google::protobuf::Reflection* refl = messages[i]->GetReflection();
+                    int field_size = refl->FieldSize(*messages[i], field_desc);
+
+                    for (int j = 0; j < field_size; ++j) is_set[i * max_field_size + j] = 1;
+                }
+            }
+
+            write_vector(group, field_desc->name() + "_is_set", is_set, hs, false,
+                         static_cast<std::uint8_t>(0), static_cast<std::uint8_t>(0));
+        }
+
+        auto write_field = [&, this](const google::protobuf::FieldDescriptor* sub_field_desc)
+        {
             std::vector<const google::protobuf::Message*> sub_messages(
                 messages.size() * max_field_size, (const google::protobuf::Message*)nullptr);
 
@@ -265,7 +288,28 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
     }
     else
     {
-        auto write_field = [&, this](const google::protobuf::FieldDescriptor* sub_field_desc) {
+        if (write_presence_)
+        {
+            std::vector<std::uint8_t> is_set;
+            for (auto message : messages)
+            {
+                if (message)
+                {
+                    const google::protobuf::Reflection* refl = message->GetReflection();
+                    is_set.push_back(refl->HasField(*message, field_desc) ? 1 : 0);
+                }
+                else
+                {
+                    is_set.push_back(0);
+                }
+            }
+
+            write_vector(group, field_desc->name() + "_is_set", is_set, hs, false,
+                         static_cast<std::uint8_t>(0), static_cast<std::uint8_t>(0));
+        }
+
+        auto write_field = [&, this](const google::protobuf::FieldDescriptor* sub_field_desc)
+        {
             std::vector<const google::protobuf::Message*> sub_messages;
 
             bool has_submessages = false;
@@ -286,11 +330,12 @@ void goby::middleware::hdf5::Writer::write_embedded_message(
                 }
             }
 
+            std::string sub_group =
+                group + "/" +
+                (field_desc->is_extension() ? field_desc->full_name() : field_desc->name());
+
             if (has_submessages)
-                write_field_selector(
-                    group + "/" +
-                        (field_desc->is_extension() ? field_desc->full_name() : field_desc->name()),
-                    sub_field_desc, sub_messages, hs);
+                write_field_selector(sub_group, sub_field_desc, sub_messages, hs);
         };
 
         for (int i = 0, n = sub_desc->field_count(); i < n; ++i)
@@ -441,8 +486,8 @@ void goby::middleware::hdf5::Writer::write_time(
 
     std::vector<hsize_t> hs;
     hs.push_back(message_collection.entries.size());
-    write_vector(group, "_utime_", utime, hs, (std::uint64_t)0);
-    write_vector(group, "_datenum_", datenum, hs, (double)0);
+    write_vector(group, "_utime_", utime, hs, false, (std::uint64_t)0);
+    write_vector(group, "_datenum_", datenum, hs, false, (double)0);
 }
 
 void goby::middleware::hdf5::Writer::write_scheme(
@@ -461,14 +506,12 @@ void goby::middleware::hdf5::Writer::write_scheme(
 
     std::vector<hsize_t> hs;
     hs.push_back(message_collection.entries.size());
-    write_vector(group, "_scheme_", scheme, hs, (int)0);
+    write_vector(group, "_scheme_", scheme, hs, false, (int)0);
 }
 
-void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
-                                                  const std::string& dataset_name,
-                                                  const std::vector<std::string>& data,
-                                                  const std::vector<hsize_t>& hs_outer,
-                                                  const std::string& default_value)
+void goby::middleware::hdf5::Writer::write_vector(
+    const std::string& group, const std::string& dataset_name, const std::vector<std::string>& data,
+    const std::vector<hsize_t>& hs_outer, bool has_default_value, const std::string& default_value)
 {
     std::vector<char> data_char;
     std::vector<hsize_t> hs = hs_outer;
@@ -576,19 +619,22 @@ void goby::middleware::hdf5::Writer::write_vector(const std::string& group,
     glog.is_debug1() && glog << "Writing string size field \"" << dataset_name + "_size"
                              << "\" (size: " << dim_str(hs_outer) << ")" << std::endl;
 
-    write_vector(group, dataset_name + "_size", sizes, hs_outer, std::uint32_t(0),
+    write_vector(group, dataset_name + "_size", sizes, hs_outer, false, std::uint32_t(0),
                  static_cast<std::uint32_t>(0) /* use empty value of 0 not uint32 max */);
 
-    const char* default_value_attr_name = "default_value";
-    if (!dataset.attrExists(default_value_attr_name))
+    if (has_default_value)
     {
-        const int rank = 1;
-        hsize_t att_hs[] = {1};
-        H5::DataSpace att_space(rank, att_hs, att_hs);
-        H5::StrType att_datatype(H5::PredType::C_S1, default_value.size() + 1);
-        H5::Attribute att =
-            dataset.createAttribute(default_value_attr_name, att_datatype, att_space);
-        const H5std_string& strbuf(default_value);
-        att.write(att_datatype, strbuf);
+        const char* default_value_attr_name = "default_value";
+        if (!dataset.attrExists(default_value_attr_name))
+        {
+            const int rank = 1;
+            hsize_t att_hs[] = {1};
+            H5::DataSpace att_space(rank, att_hs, att_hs);
+            H5::StrType att_datatype(H5::PredType::C_S1, default_value.size() + 1);
+            H5::Attribute att =
+                dataset.createAttribute(default_value_attr_name, att_datatype, att_space);
+            const H5std_string& strbuf(default_value);
+            att.write(att_datatype, strbuf);
+        }
     }
 }

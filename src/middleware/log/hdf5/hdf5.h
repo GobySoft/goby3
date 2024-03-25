@@ -109,7 +109,7 @@ class Writer
   public:
     Writer(const std::string& output_file, bool write_zero_length_dim = true,
            bool use_chunks = false, hsize_t chunk_length = 0, bool use_compression = false,
-           int compression_level = 0);
+           int compression_level = 0, bool write_presence = false);
 
     void add_entry(goby::middleware::HDF5ProtobufEntry entry);
 
@@ -146,11 +146,12 @@ class Writer
     template <typename T>
     void write_vector(const std::string& group, const std::string dataset_name,
                       const std::vector<T>& data, const std::vector<hsize_t>& hs,
-                      const T& default_value, T empty_value = retrieve_empty_value<T>());
+                      bool has_default_value, const T& default_value,
+                      T empty_value = retrieve_empty_value<T>());
 
     void write_vector(const std::string& group, const std::string& dataset_name,
                       const std::vector<std::string>& data, const std::vector<hsize_t>& hs,
-                      const std::string& default_value);
+                      bool has_default_value, const std::string& default_value);
 
     std::string dim_str(const std::vector<hsize_t>& hs)
     {
@@ -170,6 +171,7 @@ class Writer
     hsize_t chunk_length_;
     bool use_compression_;
     int compression_level_;
+    bool write_presence_;
     bool final_write_;
 };
 
@@ -197,6 +199,7 @@ void Writer::write_field(const std::string& group,
         hs.push_back(max_field_size);
 
         std::vector<T> values(messages.size() * max_field_size, retrieve_empty_value<T>());
+        std::vector<std::uint8_t> is_set(values.size(), 0 /*false*/);
 
         for (unsigned i = 0, n = messages.size(); i < n; ++i)
         {
@@ -205,41 +208,54 @@ void Writer::write_field(const std::string& group,
                 const google::protobuf::Reflection* refl = messages[i]->GetReflection();
                 int field_size = refl->FieldSize(*messages[i], field_desc);
                 for (int j = 0; j < field_size; ++j)
+                {
                     retrieve_repeated_value<T>(&values[i * max_field_size + j], j,
                                                PBMeta(refl, field_desc, (*messages[i])));
+                    is_set[i * max_field_size + j] = 1;
+                }
             }
         }
 
         T default_value;
         retrieve_default_value(&default_value, field_desc);
 
-        write_vector(group, field_desc->name(), values, hs, default_value);
+        write_vector(group, field_desc->name(), values, hs, false, default_value);
+        if (write_presence_)
+            write_vector(group, field_desc->name() + "_is_set", is_set, hs, false, std::uint8_t(0),
+                         static_cast<std::uint8_t>(0));
 
         hs.pop_back();
     }
     else
     {
         std::vector<T> values(messages.size(), retrieve_empty_value<T>());
+        std::vector<std::uint8_t> is_set(values.size(), 0 /*false*/);
+
         for (unsigned i = 0, n = messages.size(); i < n; ++i)
         {
             if (messages[i])
             {
                 const google::protobuf::Reflection* refl = messages[i]->GetReflection();
-                retrieve_single_value<T>(&values[i], PBMeta(refl, field_desc, (*messages[i])));
+                retrieve_single_value<T>(&values[i], &is_set[i],
+                                         PBMeta(refl, field_desc, (*messages[i])));
             }
         }
 
         T default_value;
         retrieve_default_value(&default_value, field_desc);
 
-        write_vector(group, field_desc->name(), values, hs, default_value);
+        write_vector(group, field_desc->name(), values, hs, field_desc->is_optional(),
+                     default_value);
+        if (write_presence_)
+            write_vector(group, field_desc->name() + "_is_set", is_set, hs, false, std::uint8_t(0),
+                         static_cast<std::uint8_t>(0));
     }
 }
 
 template <typename T>
 void Writer::write_vector(const std::string& group, const std::string dataset_name,
                           const std::vector<T>& data, const std::vector<hsize_t>& hs,
-                          const T& default_value, T empty_value)
+                          bool has_default_value, const T& default_value, T empty_value)
 {
     std::unique_ptr<H5::DataSpace> dataspace;
     H5::Group& grp = group_factory_.fetch_group(group);
@@ -269,7 +285,6 @@ void Writer::write_vector(const std::string& group, const std::string dataset_na
             if (use_compression_)
                 prop.setDeflate(compression_level_);
         }
-        
     }
 
     if (data.size() || write_zero_length_dim_)
@@ -315,15 +330,18 @@ void Writer::write_vector(const std::string& group, const std::string dataset_na
             dataset.write(&data[0], predicate<T>());
     }
 
-    const char* default_value_attr_name = "default_value";
-    if (!dataset.attrExists(default_value_attr_name))
+    if (has_default_value)
     {
-        const int rank = 1;
-        hsize_t att_hs[] = {1};
-        H5::DataSpace att_space(rank, att_hs, att_hs);
-        H5::Attribute att =
-            dataset.createAttribute(default_value_attr_name, predicate<T>(), att_space);
-        att.write(predicate<T>(), &default_value);
+        const char* default_value_attr_name = "default_value";
+        if (!dataset.attrExists(default_value_attr_name))
+        {
+            const int rank = 1;
+            hsize_t att_hs[] = {1};
+            H5::DataSpace att_space(rank, att_hs, att_hs);
+            H5::Attribute att =
+                dataset.createAttribute(default_value_attr_name, predicate<T>(), att_space);
+            att.write(predicate<T>(), &default_value);
+        }
     }
 }
 } // namespace hdf5

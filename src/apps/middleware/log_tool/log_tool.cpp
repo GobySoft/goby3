@@ -173,7 +173,8 @@ goby::apps::middleware::LogTool::LogTool()
             h5_writer_ = std::make_unique<goby::middleware::hdf5::Writer>(
                 output_file_path_, app_cfg().write_hdf5_zero_length_dim(),
                 app_cfg().has_hdf5_chunk_length(), app_cfg().hdf5_chunk_length(),
-                app_cfg().has_hdf5_compression_level(), app_cfg().hdf5_compression_level());
+                app_cfg().has_hdf5_compression_level(), app_cfg().hdf5_compression_level(),
+                app_cfg().hdf5_write_presence());
             break;
 #endif
         default:

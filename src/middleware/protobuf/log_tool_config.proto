@@ -87,6 +87,13 @@ message LogToolConfig
         cfg { action: ADVANCED }
     }];
 
+    optional bool hdf5_write_presence = 34 [
+        default = false,
+        (goby.field) = {
+            description: "If true, writes 'has_foo' fields to HDF5 file for field 'foo' that provides the boolean presence of the field in the original Protobuf message."
+        }
+    ];
+
     repeated string load_shared_library = 40
         [(goby.field).description =
              "Load a shared library (e.g., to load Protobuf files)"];
