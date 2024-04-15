@@ -175,6 +175,9 @@ void goby::apps::zeromq::acomms::FileTransfer::push_file()
     request.set_push_or_pull(goby::acomms::protobuf::TransferRequest::PUSH);
     request.set_file(cfg().remote_file());
 
+    glog.is(DEBUG1) && glog << "Request (" << queue_push_group_
+                            << "):" << request.ShortDebugString() << std::endl;
+
     interprocess().publish_dynamic(request, queue_push_group_);
 
     double start_time = goby::time::SystemClock::now<goby::time::SITime>().value();
@@ -198,6 +201,9 @@ void goby::apps::zeromq::acomms::FileTransfer::pull_file()
     request.set_dest(cfg().remote_id());
     request.set_push_or_pull(goby::acomms::protobuf::TransferRequest::PULL);
     request.set_file(cfg().remote_file());
+
+    glog.is(DEBUG1) && glog << "Request (" << queue_push_group_
+                            << "):" << request.ShortDebugString() << std::endl;
 
     interprocess().publish_dynamic(request, queue_push_group_);
 
