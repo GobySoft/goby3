@@ -303,10 +303,14 @@ void goby::apps::zeromq::acomms::Bridge::handle_link_ack(
     const goby::acomms::protobuf::ModemTransmission& ack_msg,
     const google::protobuf::Message& orig_msg, goby::acomms::QueueManager* from_queue)
 {
-    // publish link ack
-    interprocess().publish_dynamic(
-        orig_msg, goby::middleware::DynamicGroup(goby::middleware::acomms::groups::queue_ack_orig,
-                                                 from_queue->modem_id()));
+    if (orig_msg.IsInitialized())
+    {
+        // publish link ack
+        interprocess().publish_dynamic(
+            orig_msg,
+            goby::middleware::DynamicGroup(goby::middleware::acomms::groups::queue_ack_orig,
+                                           from_queue->modem_id()));
+    }
 }
 
 void goby::apps::zeromq::acomms::Bridge::handle_modem_receive(
