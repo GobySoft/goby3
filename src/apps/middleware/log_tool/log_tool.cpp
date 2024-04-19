@@ -302,6 +302,8 @@ goby::apps::middleware::LogTool::LogTool()
         {
             if (!f_in_.eof())
                 glog.is_warn() && glog << "Error processing input log: " << e.what() << std::endl;
+            else
+                glog.is_verbose() && glog << "EOF reached" << std::endl;
 
             break;
         }
