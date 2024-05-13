@@ -36,7 +36,7 @@ message Config
         (dccl.field).max_length = 50
     ];
 
-    optional int32 pset_id = 5 [
+    optional int32 tx_pset_id = 5 [
         default = 1,
         (dccl.field).min = 1,
         (dccl.field).max = 255,
@@ -44,14 +44,14 @@ message Config
             "Parameter Set ID"
     ];
 
-    optional int32 ack_request = 6 [
-        default = 0,
-        (dccl.field).min = 0,
-        (dccl.field).max = 1,
+    optional int32 rx_pset_id = 6 [
+        default = 1,
+        (dccl.field).min = 1,
+        (dccl.field).max = 255,
         (goby.field).description = 
-            "Request acknowledge for message"
+            "Parameter Set ID"
     ];
-    
+
     optional int32 tx_channels = 7 [
         default = 2,
         (dccl.field).min = 0,

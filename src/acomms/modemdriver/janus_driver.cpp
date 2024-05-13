@@ -70,7 +70,7 @@ goby::acomms::JanusDriver::~JanusDriver(){
 }
 
 janus_simple_tx_t goby::acomms::JanusDriver::init_janus_tx(){
-    params_tx->pset_id = pset_id;
+    params_tx->pset_id = tx_pset_id;
     params_tx->pset_file = pset_file.c_str();
     params_tx->verbose = verbosity;
     params_tx->stream_driver = "alsa";
@@ -91,7 +91,7 @@ janus_simple_tx_t goby::acomms::JanusDriver::init_janus_tx(){
 janus_parameters_t goby::acomms::JanusDriver::get_rx_params(){
     janus_parameters_t params = janus_parameters_new();
     params->verbose = verbosity;
-    params->pset_id = 1;
+    params->pset_id = rx_pset_id;
     params->pset_file = pset_file.c_str();
     params->pset_center_freq = 0;
     params->pset_bandwidth = 0;
@@ -147,10 +147,10 @@ void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
     ModemDriverBase::modem_start(driver_cfg_);
     verbosity        = janus_driver_cfg().verbosity();
     pset_file        = janus_driver_cfg().pset_file();
-    pset_id          = janus_driver_cfg().pset_id();
+    tx_pset_id       = janus_driver_cfg().tx_pset_id();
+    rx_pset_id       = janus_driver_cfg().rx_pset_id();
     class_id         = janus_driver_cfg().class_id();
     application_type = janus_driver_cfg().application_type();
-    ack_request      = janus_driver_cfg().ack_request();
     tx_device        = janus_driver_cfg().tx_device();
     rx_device        = janus_driver_cfg().rx_device();
     tx_channels      = janus_driver_cfg().tx_channels();
@@ -174,7 +174,8 @@ void goby::acomms::JanusDriver::append_crc16(std::vector<std::uint8_t> &vec){
 void goby::acomms::JanusDriver::send_janus_packet(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack){
     if(class_id == 16 && application_type == 1) { append_crc16(payload); } 
     int desired_cargo_size = payload.size();
-
+    int ack_request = ack == true ? 1 : 0;
+    
     janus_packet_t packet = janus_packet_new(verbosity);
     janus_packet_set_class_id(packet, class_id);
     janus_packet_set_app_type(packet, application_type);
@@ -183,7 +184,7 @@ void goby::acomms::JanusDriver::send_janus_packet(const protobuf::ModemTransmiss
     janus_app_fields_t app_fields = janus_app_fields_new();
     janus_app_fields_add_field(app_fields, "StationIdentifier", std::to_string(msg.src()).c_str());
     janus_app_fields_add_field(app_fields, "DestinationIdentifier", std::to_string(msg.dest()).c_str());
-    if(!ack) { janus_app_fields_add_field(app_fields, "AckRequest", std::to_string(ack_request).c_str()); } // todo: make sure default is zero
+    janus_app_fields_add_field(app_fields, "AckRequest", std::to_string(ack_request).c_str());  
     janus_packet_set_application_data_fields(packet,app_fields);
     
     int cargo_error;
@@ -237,7 +238,9 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(const protobuf::Mod
         std::vector<std::uint8_t> message = { get_goby_header(msg)}; 
         std::vector<std::uint8_t> payload(msg.frame(0).begin(), msg.frame(0).end());
         message.insert(message.end(), payload.begin(), payload.end());
-        send_janus_packet(msg,message,false);
+
+        // check if ack requested in modem transmission
+        send_janus_packet(msg,message,msg.ack_requested());
     }
 } // handle_initiate_transmission
 
@@ -252,7 +255,7 @@ void goby::acomms::JanusDriver::handle_ack_transmission(const protobuf::ModemTra
                             << "We were asked to transmit ack from " << msg.src() << " to "
                             << msg.dest() << " for frame " << msg.acked_frame(0) << std::endl;
     std::vector<uint8_t> message = { get_goby_header(msg)}; 
-    send_janus_packet(msg,message, true);
+    send_janus_packet(msg,message, false);
 } // handle_ack_transmission
 
 void goby::acomms::JanusDriver::send_ack(unsigned int src, unsigned int dest, unsigned int frame_number){
