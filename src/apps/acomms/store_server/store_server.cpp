@@ -136,7 +136,7 @@ goby::apps::acomms::StoreServer::StoreServer() : db_(0)
 
     // subscribe to events from server thread
     interthread().subscribe<tcp_server_in>(
-        [this](const goby::middleware::protobuf::TCPServerEvent& event) {
+        [](const goby::middleware::protobuf::TCPServerEvent& event) {
             glog.is_verbose() && glog << "Got TCP event: " << event.ShortDebugString() << std::endl;
         });
 
