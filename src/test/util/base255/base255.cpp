@@ -102,6 +102,7 @@ int main()
     test(randstring(255));
     test(randstring(1500), 252);
     test(randstring(15000), false);
+    test(randstring(4092), false);
 
     test(goby::util::hex_decode("01020000"));
 
