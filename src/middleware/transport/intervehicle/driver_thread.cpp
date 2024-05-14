@@ -440,8 +440,9 @@ void goby::middleware::intervehicle::ModemDriverThread::_data_request(
                     pending_ack_[frame_number].push_back(buffer_value);
                 }
             }
-            catch (goby::acomms::DynamicBufferNoDataException&)
+            catch (goby::acomms::DynamicBufferNoDataException& e)
             {
+                glog.is_debug1() && glog << group(glog_group_) << e.what() << std::endl;
                 break;
             }
         }
