@@ -223,15 +223,18 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
               size_type max_bytes = std::numeric_limits<size_type>::max(),
               typename Clock::duration ack_timeout = std::chrono::microseconds(0)) const
     {
-        if (empty())
+        // this order matters - some checks depend on previous checks
+        if (empty()) // no messages at all
             return std::make_pair(-std::numeric_limits<double>::infinity(), ValueResult::EMPTY);
-        else if (in_blackout(reference))
+        else if (in_blackout(reference)) // in blackout
             return std::make_pair(-std::numeric_limits<double>::infinity(),
                                   ValueResult::IN_BLACKOUT);
-        else if (all_waiting_for_ack(reference, ack_timeout))
+        else if (all_waiting_for_ack(reference, ack_timeout)) // all messages waiting for ack
             return std::make_pair(-std::numeric_limits<double>::infinity(),
                                   ValueResult::ALL_MESSAGES_WAITING_FOR_ACK);
-        else if (top_size(reference, ack_timeout) > max_bytes)
+        else if (
+            top_size(reference, ack_timeout) >
+            max_bytes) // check if the top message size is greater than max_bytes - assumes !ALL_MESSAGES_WAITING_FOR_ACK so must go after that check
             return std::make_pair(-std::numeric_limits<double>::infinity(),
                                   ValueResult::NEXT_MESSAGE_TOO_LARGE);
 
