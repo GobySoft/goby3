@@ -491,25 +491,37 @@ BOOST_FIXTURE_TEST_CASE(check_blackout_time, DynamicBufferFixture)
     cfg1.set_value_base(100);
     cfg1.set_blackout_time_with_units(10.0 * milli * seconds);
     cfg1.set_max_queue(2);
-    cfg1.set_newest_first(true);
+    cfg1.set_newest_first(false);
     buffer.replace(goby::acomms::BROADCAST_ID, "A", cfg1);
 
     buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"});
     buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "2"});
 
+    // A
+    {
+        TestClock::increment(std::chrono::microseconds(1));
+        auto vp = buffer.top();
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "1");
+        BOOST_CHECK(buffer.erase(vp));
+    }
     // would be A but it is in blackout
     {
         TestClock::increment(std::chrono::microseconds(1));
         auto vp = buffer.top();
         BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
         BOOST_CHECK_EQUAL(vp.data, "1");
+        BOOST_CHECK(buffer.erase(vp));
     }
     TestClock::increment(std::chrono::milliseconds(10));
     // now it's A since we're not in blackout any more
     {
         auto vp = buffer.top();
         BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
-        BOOST_CHECK_EQUAL(vp.data, "1");
+        BOOST_CHECK_EQUAL(vp.data, "2");
+        BOOST_CHECK(buffer.erase(vp));
     }
 }
 

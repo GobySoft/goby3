@@ -142,6 +142,10 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
             cfg_.set_ttl(ttl_sum / ttl_divisor);
         if (value_base_divisor > 0)
             cfg_.set_value_base(value_base_sum / value_base_divisor);
+
+        // avoid first access being in blackout
+        last_access_ -=
+            goby::time::convert_duration<typename Clock::duration>(cfg_.blackout_time_with_units());
     }
 
     /// \brief Return the aggregate configuration
