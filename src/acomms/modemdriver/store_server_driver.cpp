@@ -24,6 +24,7 @@
 
 #include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
+#include "goby/time/convert.h"
 #include "goby/time/system_clock.h"
 #include "goby/time/types.h"
 #include "goby/util/binary.h"

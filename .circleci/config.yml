@@ -401,6 +401,7 @@ jobs:
   amd64-jammy-minimal-build:
     docker:
       - image: ubuntu:jammy
+    resource_class: large
     working_directory: /root/goby3
     environment:
       DEBIAN_FRONTEND: "noninteractive"
