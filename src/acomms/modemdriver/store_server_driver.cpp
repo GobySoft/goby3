@@ -37,7 +37,6 @@ using namespace goby::util::logger;
 
 goby::acomms::StoreServerDriver::StoreServerDriver()
     : last_send_time_(goby::time::SystemClock::now<goby::time::MicroTime>().value()),
-      request_socket_id_(0),
       query_interval_seconds_(1),
       reset_interval_seconds_(120),
       waiting_for_reply_(false),

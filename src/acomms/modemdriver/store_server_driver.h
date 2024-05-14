@@ -70,7 +70,6 @@ class StoreServerDriver : public ModemDriverBase
     store_server::protobuf::Config store_server_driver_cfg_;
     protobuf::StoreServerRequest request_;
     std::uint64_t last_send_time_;
-    int request_socket_id_;
     double query_interval_seconds_;
     double reset_interval_seconds_;
     bool waiting_for_reply_;
