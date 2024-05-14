@@ -21,4 +21,6 @@ message CoronerConfig
         [default = 5, (dccl.field).units.base_dimensions = "T"];
 
     optional bool auto_add_new_apps = 22 [default = false];
+
+    optional string report_file = 23;
 }

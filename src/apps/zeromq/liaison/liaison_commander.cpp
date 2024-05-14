@@ -1982,7 +1982,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         }
     }
 
-    if (options.codec() == "_time" || options.codec() == "dccl.time2")
+    if (options.codec() == "_time" || options.codec() == "dccl.time2" ||
+        options.codec() == "dccl.time")
     {
         value_field->setDisabled(true);
         set_time_field(value_field, field_desc);

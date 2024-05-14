@@ -37,9 +37,8 @@ using namespace boost::posix_time;
 goby::test::acomms::DriverTester::DriverTester(
     std::shared_ptr<goby::acomms::ModemDriverBase> driver1,
     std::shared_ptr<goby::acomms::ModemDriverBase> driver2,
-    const goby::acomms::protobuf::DriverConfig& cfg1,
-    const goby::acomms::protobuf::DriverConfig& cfg2, std::vector<int> tests_to_run,
-    goby::acomms::protobuf::DriverType driver_type)
+    goby::acomms::protobuf::DriverConfig cfg1, goby::acomms::protobuf::DriverConfig cfg2,
+    std::vector<int> tests_to_run, goby::acomms::protobuf::DriverType driver_type)
     : driver1_(std::move(driver1)),
       driver2_(std::move(driver2)),
       check_count_(0),
@@ -66,6 +65,16 @@ goby::test::acomms::DriverTester::DriverTester(
                           &DriverTester::handle_modify_transmission2);
     goby::acomms::connect(&driver2_->signal_data_request, this,
                           &DriverTester::handle_data_request2);
+
+    if (!cfg1.has_driver_type())
+        cfg1.set_driver_type(driver_type);
+    if (!cfg2.has_driver_type())
+        cfg2.set_driver_type(driver_type);
+
+    if (cfg1.has_serial_port() && !cfg1.has_connection_type())
+        cfg1.set_connection_type(goby::acomms::protobuf::DriverConfig::CONNECTION_SERIAL);
+    if (cfg2.has_serial_port() && !cfg2.has_connection_type())
+        cfg2.set_connection_type(goby::acomms::protobuf::DriverConfig::CONNECTION_SERIAL);
 
     glog.is_verbose() && glog << cfg1.DebugString() << std::endl;
     glog.is_verbose() && glog << cfg2.DebugString() << std::endl;

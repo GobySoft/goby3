@@ -256,7 +256,14 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
     if (msg.has_max_frame_bytes())
         max_frame_bytes = std::min(msg.max_frame_bytes(), max_frame_bytes);
     if (iridium_driver_cfg().has_max_frame_size())
-        max_frame_bytes = std::min(iridium_driver_cfg().max_frame_size(), max_frame_bytes);
+    {
+        if (msg.rate() ==
+            RATE_RUDICS) // for rudics, use the specified size as this is a stream prootocol
+            max_frame_bytes = iridium_driver_cfg().max_frame_size();
+        else // for SBD use minimum as this is a hardware limitation
+            max_frame_bytes = std::min(iridium_driver_cfg().max_frame_size(), max_frame_bytes);
+    }
+
     msg.set_max_frame_bytes(max_frame_bytes);
 
     msg.set_max_num_frames(1);

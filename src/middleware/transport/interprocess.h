@@ -68,6 +68,19 @@ class InterProcessTransporterBase
 
     virtual ~InterProcessTransporterBase() {}
 
+    /// \brief returns the marshalling scheme id for a given data type on this layer
+    ///
+    /// \tparam Data data type
+    /// \return marshalling scheme id
+    template <typename Data> static constexpr int scheme()
+    {
+        int scheme = goby::middleware::scheme<Data>();
+        // if default returns DCCL, use PROTOBUF instead
+        if (scheme == MarshallingScheme::DCCL)
+            scheme = MarshallingScheme::PROTOBUF;
+        return scheme;
+    }
+
     /// \brief Publish a message using a run-time defined DynamicGroup (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
     ///
     /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
@@ -75,7 +88,7 @@ class InterProcessTransporterBase
     /// \param data Message to publish
     /// \param group group to publish this message to (typically a DynamicGroup)
     /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>()>
     void publish_dynamic(const Data& data, const Group& group,
                          const Publisher<Data>& publisher = Publisher<Data>())
     {
@@ -91,7 +104,7 @@ class InterProcessTransporterBase
     /// \param data Message to publish
     /// \param group group to publish this message to (typically a DynamicGroup)
     /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>()>
     void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
                          const Publisher<Data>& publisher = Publisher<Data>())
     {
@@ -110,7 +123,7 @@ class InterProcessTransporterBase
     /// \param data Message to publish
     /// \param group group to publish this message to (typically a DynamicGroup)
     /// \param publisher Optional metadata that controls the publication or sets callbacks to monitor the result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>()>
     void publish_dynamic(std::shared_ptr<Data> data, const Group& group,
                          const Publisher<Data>& publisher = Publisher<Data>())
     {
@@ -132,7 +145,7 @@ class InterProcessTransporterBase
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
     /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>()>
     void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
@@ -148,7 +161,7 @@ class InterProcessTransporterBase
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
     /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>()>
     void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
@@ -161,7 +174,7 @@ class InterProcessTransporterBase
     /// \tparam Data data type to unsubscribe from.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
     /// \param group group to unsubscribe from (typically a DynamicGroup)
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>()>
     void unsubscribe_dynamic(const Group& group,
                              const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
@@ -198,7 +211,7 @@ class InterProcessTransporterBase
     /// \param f Callback function or lambda that is called upon receipt of any messages matching the given group and type regex
     /// \param type_regex C++ regex to match type names (within the given scheme)
     /// \return Shared pointer to SerializationSubscriptionRegex for later modification of regex parameters
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>()>
     std::shared_ptr<SerializationSubscriptionRegex> subscribe_type_regex(
         std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
         const Group& group, const std::string& type_regex = ".*")
@@ -227,25 +240,13 @@ class InterProcessTransporterBase
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
     /// \param f Callback function or lambda that is called upon receipt of any messages matching the given group and type regex
     /// \param type_regex C++ regex to match type names (within the given scheme)
-    template <const Group& group, typename Data, int scheme = scheme<Data>()>
+    template <const Group& group, typename Data,
+              int scheme = InterProcessTransporterBase::scheme<Data>()>
     void subscribe_type_regex(
         std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
         const std::string& type_regex = ".*")
     {
         subscribe_type_regex(f, group, type_regex);
-    }
-
-    /// \brief returns the marshalling scheme id for a given data type on this layer
-    ///
-    /// \tparam Data data type
-    /// \return marshalling scheme id
-    template <typename Data> static constexpr int scheme()
-    {
-        int scheme = goby::middleware::scheme<Data>();
-        // if default returns DCCL, use PROTOBUF instead
-        if (scheme == MarshallingScheme::DCCL)
-            scheme = MarshallingScheme::PROTOBUF;
-        return scheme;
     }
 
     /// \brief Check validity of the Group for interthread use (at compile time)

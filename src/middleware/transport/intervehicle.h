@@ -531,7 +531,7 @@ class InterVehicleTransporterBase
                                       ->options()
                                       .GetExtension(dccl::field)
                                       .max() *
-                                  acomms::protobuf::DynamicBufferConfig::ttl_unit());
+                                  goby::acomms::protobuf::DynamicBufferConfig::ttl_unit());
 
             decltype(now) serialize_time(it->first.key().serialize_time_with_units());
             decltype(now) expire_time(serialize_time + max_ttl);

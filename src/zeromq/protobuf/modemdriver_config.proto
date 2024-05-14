@@ -1,0 +1,30 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+import "dccl/option_extensions.proto";
+import "goby/acomms/protobuf/driver_base.proto";
+
+package goby.apps.zeromq.acomms.protobuf;
+
+message ModemDriverConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
+        [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
+    required goby.acomms.protobuf.DriverConfig driver_cfg = 3;
+
+    optional float data_request_timeout = 5 [
+        default = 1.0,
+        (goby.field).description =
+            "Time (in seconds) to wait for a response to a data request"
+    ];
+
+    optional int32 status_period_s = 6 [
+        default = 300,
+        (goby.field).description =
+            "Seconds between publish of goby.acomms.protobuf.ModemDriverStatus "
+            "message"
+    ];
+}

@@ -23,3 +23,4 @@ if(enable_mysql)
   add_subdirectory(geov)
 endif()
 
+add_subdirectory(acomms)

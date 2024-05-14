@@ -26,6 +26,8 @@ protobuf_generate_cpp(ACOMMS_PROTO_SRCS ACOMMS_PROTO_HDRS
   acomms/protobuf/buffer.proto
   acomms/protobuf/popoto_driver.proto
   acomms/protobuf/rockblock_simulator_config.proto
+  acomms/protobuf/store_server_config.proto
+  acomms/protobuf/store_server_driver.proto
   )
 
 set(ACOMMS_SRC
@@ -47,6 +49,7 @@ set(ACOMMS_SRC
   acomms/modemdriver/iridium_shore_driver_sbd_directip.cpp
   acomms/modemdriver/benthos_atm900_driver.cpp
   acomms/modemdriver/benthos_atm900_driver_fsm.cpp
+  acomms/modemdriver/store_server_driver.cpp
   acomms/route/route.cpp
   acomms/modemdriver/popoto_driver.cpp
   ${ACOMMS_PROTO_SRCS} ${ACOMMS_PROTO_HDRS}

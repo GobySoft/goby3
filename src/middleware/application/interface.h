@@ -223,33 +223,40 @@ template <typename Config> void goby::middleware::Application<Config>::configure
     const auto& file_log = app3_base_configuration_->glog_config().file_log();
     std::string file_format_str;
 
+    std::string file_name_format = file_log.file_name();
+
+    if (!file_log.has_file_name() && file_log.omit().file_timestamp())
+        file_name_format = "%2%.txt";
+
     if (file_log.has_file_dir() && !file_log.file_dir().empty())
     {
         auto file_dir = file_log.file_dir();
         if (file_dir.back() != '/')
             file_dir += "/";
-        file_format_str = file_dir + file_log.file_name();
+        file_format_str = file_dir + file_name_format;
     }
     else
     {
-        file_format_str = file_log.file_name();
+        file_format_str = file_name_format;
     }
 
     boost::format file_format(file_format_str);
 
-    if (file_format_str.find("%1") == std::string::npos)
-        glog.is_die() &&
-            glog << "file_name string must contain \"%1%\" which is expanded to the current "
-                    "application start time (e.g. 20190201T184925). Erroneous file_name is: "
-                 << file_format_str << std::endl;
+    if (!file_log.omit().file_timestamp())
+    {
+        if (file_format_str.find("%1") == std::string::npos)
+            glog.is_die() &&
+                glog << "file_name string must contain \"%1%\" which is expanded to the current "
+                        "application start time (e.g. 20190201T184925), unless omit.file_timestamp "
+                        "== true. Erroneous file_name is: "
+                     << file_format_str << std::endl;
+    }
 
     file_format.exceptions(boost::io::all_error_bits ^
                            (boost::io::too_many_args_bit | boost::io::too_few_args_bit));
 
     std::string file_name =
         (file_format % goby::time::file_str() % app3_base_configuration_->name()).str();
-    std::string file_symlink = (file_format % "latest" % app3_base_configuration_->name()).str();
-
     glog.is_verbose() && glog << "logging output to file: " << file_name << std::endl;
 
     fout_.reset(new std::ofstream(file_name.c_str()));
@@ -258,11 +265,17 @@ template <typename Config> void goby::middleware::Application<Config>::configure
         glog.is_die() && glog << "cannot write glog output to requested file: " << file_name
                               << std::endl;
 
-    remove(file_symlink.c_str());
-    int result = symlink(realpath(file_name.c_str(), NULL), file_symlink.c_str());
-    if (result != 0)
-        glog.is_warn() && glog << "Cannot create symlink to latest file. Continuing onwards anyway"
-                               << std::endl;
+    if (!file_log.omit().latest_symlink())
+    {
+        std::string file_symlink =
+            (file_format % "latest" % app3_base_configuration_->name()).str();
+        remove(file_symlink.c_str());
+        int result = symlink(realpath(file_name.c_str(), NULL), file_symlink.c_str());
+        if (result != 0)
+            glog.is_warn() &&
+                glog << "Cannot create symlink to latest file. Continuing onwards anyway"
+                     << std::endl;
+    }
 
     glog.add_stream(file_log.verbosity(), fout_.get());
 

@@ -1032,19 +1032,25 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::process_configuration()
                                          "_" + common_cfg_.community();
 
             std::string file_name =
-                file_name_base + "_" + to_iso_string(second_clock::universal_time()) + ".txt";
-
-            std::string file_symlink = file_name_base + "_latest.txt";
+                file_name_base +
+                (common_cfg_.log_omit_file_timestamp()
+                     ? ""
+                     : std::string("_") + to_iso_string(second_clock::universal_time())) +
+                ".txt";
 
             goby::glog.is(goby::util::logger::VERBOSE) &&
                 goby::glog << "logging output to file: " << file_name << std::endl;
 
             fout_.open(std::string(common_cfg_.log_path() + "/" + file_name).c_str());
 
-            // symlink to "latest.txt"
-            remove(std::string(common_cfg_.log_path() + "/" + file_symlink).c_str());
-            symlink(file_name.c_str(),
-                    std::string(common_cfg_.log_path() + "/" + file_symlink).c_str());
+            if (!common_cfg_.log_omit_latest_symlink())
+            {
+                std::string file_symlink = file_name_base + "_latest.txt";
+                // symlink to "latest.txt"
+                remove(std::string(common_cfg_.log_path() + "/" + file_symlink).c_str());
+                symlink(file_name.c_str(),
+                        std::string(common_cfg_.log_path() + "/" + file_symlink).c_str());
+            }
 
             // if fails, try logging to this directory
             if (!fout_.is_open())

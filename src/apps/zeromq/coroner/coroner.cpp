@@ -74,7 +74,8 @@ class Coroner : public goby::zeromq::SingleThreadApplication<protobuf::CoronerCo
         interprocess()
             .subscribe<middleware::groups::health_response,
                        goby::middleware::protobuf::ProcessHealth>(
-                [this](const goby::middleware::protobuf::ProcessHealth& response) {
+                [this](const goby::middleware::protobuf::ProcessHealth& response)
+                {
                     glog.is_debug1() && glog << "Received response: " << response.ShortDebugString()
                                              << std::endl;
                     responses_[response.name()] = response;
@@ -85,6 +86,12 @@ class Coroner : public goby::zeromq::SingleThreadApplication<protobuf::CoronerCo
                         tracked_names_.insert(response.name());
                     }
                 });
+
+        if (cfg().has_report_file())
+        {
+            report_file_.open(cfg().report_file().c_str(), std::ofstream::out | std::ofstream::app);
+            glog.is_verbose() && glog << "Opening: " << cfg().report_file() << std::endl;
+        }
     }
 
     ~Coroner() override = default;
@@ -149,6 +156,27 @@ class Coroner : public goby::zeromq::SingleThreadApplication<protobuf::CoronerCo
             }
 
             interprocess().publish<goby::middleware::groups::health_report>(report);
+
+            if (report_file_.is_open())
+            {
+                report_file_ << std::setw(30) << std::left
+                             << (cfg().app().name() + "/" + cfg().interprocess().platform()) << "["
+                             << goby::time::SystemClock::now<boost::posix_time::ptime>() << "]: ";
+                report_file_ << goby::middleware::protobuf::HealthState_Name(report.state());
+
+                if (report.state() != goby::middleware::protobuf::HEALTH__OK)
+                {
+                    for (const auto& process_health : report.process())
+                    {
+                        if (process_health.main().state() != goby::middleware::protobuf::HEALTH__OK)
+                        {
+                            report_file_ << "; " << process_health.main().name() << ": \""
+                                         << process_health.main().error_message() << "\"";
+                        }
+                    }
+                }
+                report_file_ << std::endl;
+            }
         }
     }
 
@@ -161,6 +189,8 @@ class Coroner : public goby::zeromq::SingleThreadApplication<protobuf::CoronerCo
     std::map<std::string, goby::middleware::protobuf::ProcessHealth> responses_;
 
     std::set<std::string> tracked_names_;
+
+    std::ofstream report_file_;
 };
 } // namespace zeromq
 } // namespace apps
