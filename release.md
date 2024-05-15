@@ -1,6 +1,33 @@
 # Goby Release Notes (Major version 3)
 
 
+## Version 3.1.5
+
+### ZeroMQ
+
+- Ported set of acomms applications from Goby2 to Goby3 ZeroMQ as an alternative to the intervehicle layer in Goby3:
+  - goby_modemdriver
+  - goby_bridge
+  - goby_file_transfer
+  - goby_mosh_relay
+  - goby_ip_gateway
+- Added ability for goby_coroner to append health summary to a text file.
+- Added option to turn off symlink generation and/or timestamps for glog logs and goby_logger logs for easier integration with the logrotate tool.
+
+
+### Acomms
+
+- Added goby_store_server (from Goby2) and accompanying store_server driver, which uses an SQLite store and forward database over TCP.
+- Updated Benthos driver to set packet max (~4000B).
+
+
+### Bug fixes
+
+- Fixed bug in DynamicBuffer where messages in ack-wait were causing the priority contest to end prematurely (throwing a DynamicBufferNoDataException even when valid data existed to return)
+- Fix bug where InterProcessTransporterBase was not always picking the correct scheme overload when using the publish_dynamic/subscribe_dynamic functions.
+
+****************
+
 ## Version 3.1.4
 
 ### Middleware
