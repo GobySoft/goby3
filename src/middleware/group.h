@@ -25,6 +25,7 @@
 #ifndef GOBY_MIDDLEWARE_GROUP_H
 #define GOBY_MIDDLEWARE_GROUP_H
 
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <string>

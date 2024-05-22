@@ -79,8 +79,8 @@ class BenthosATM900Driver : public ModemDriverBase
     };
     static const std::string SERIAL_DELIMITER;
 
-    benthos::fsm::BenthosATM900FSM fsm_;
     protobuf::DriverConfig driver_cfg_; // configuration given to you at launch
+    benthos::fsm::BenthosATM900FSM fsm_;
 };
 
 // placeholder id codec that uses no bits, since we're always sending just this message on the wire

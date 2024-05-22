@@ -208,7 +208,7 @@ goby::apps::moos::CpAcommsHandler::~CpAcommsHandler() = default;
 void goby::apps::moos::CpAcommsHandler::handle_lat_origin(const CMOOSMsg& msg)
 {
     double new_lat = msg.GetDouble();
-    if (!isnan(new_lat))
+    if (!std::isnan(new_lat))
     {
         lat_origin_ = new_lat;
         new_origin_ = true;
@@ -218,7 +218,7 @@ void goby::apps::moos::CpAcommsHandler::handle_lat_origin(const CMOOSMsg& msg)
 void goby::apps::moos::CpAcommsHandler::handle_lon_origin(const CMOOSMsg& msg)
 {
     double new_lon = msg.GetDouble();
-    if (!isnan(new_lon))
+    if (!std::isnan(new_lon))
     {
         lon_origin_ = new_lon;
         new_origin_ = true;
@@ -227,7 +227,7 @@ void goby::apps::moos::CpAcommsHandler::handle_lon_origin(const CMOOSMsg& msg)
 
 void goby::apps::moos::CpAcommsHandler::loop()
 {
-    if (new_origin_ && !isnan(lat_origin_) && !isnan(lon_origin_))
+    if (new_origin_ && !std::isnan(lat_origin_) && !std::isnan(lon_origin_))
     {
         translator_.update_utm_datum(lat_origin_, lon_origin_);
         new_origin_ = false;
