@@ -182,16 +182,16 @@ job-template-deb-amd64: &job-template-deb-amd64
 job-template-deb-cross: &job-template-deb-cross
   <<: *job-template-deb-amd64
 
-# base sanitizer off Noble build
+# base sanitizer off Jammy build
 job-template-sanitizers: &job-template-sanitizers
   <<: *job-template-amd64
   environment:
     <<: *environment-template-common
-    <<: *environment-template-noble
+    <<: *environment-template-jammy
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 4
     TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6"
-  docker: *docker-base-noble
+  docker: *docker-base-jammy
 
 # Base upload off Noble build
 job-template-upload: &job-template-upload
