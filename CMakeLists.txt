@@ -125,7 +125,7 @@ add_custom_command(OUTPUT ShareLink COMMAND ${CMAKE_COMMAND} -E create_symlink $
 add_custom_target(share_link ALL DEPENDS ShareLink)
 
 
-set(GOBY_DEBUG_OPTIONS -Wall -Werror -Wno-sign-compare -Wno-unknown-warning-option)
+set(GOBY_DEBUG_OPTIONS -Wall -Werror -Wno-sign-compare -Wno-unknown-warning-option -Wno-vla-cxx-extension)
 add_compile_options("$<$<CONFIG:DEBUG>:${GOBY_DEBUG_OPTIONS}>")
 add_compile_options("$<$<CXX_COMPILER_ID:Clang>:-Wdocumentation>")
 
