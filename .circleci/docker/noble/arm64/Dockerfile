@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # libcurl4-openssl-dev breaks libhdf5-dev
 
-RUN apt-get -y remove libcurl4-openssl-dev libdccl4-dev libdccl4 libzmq3-dev  goby3-build-deps libproj-dev libhdf5-dev
+RUN apt-get -y remove libcurl4-openssl-dev libdccl4-dev libdccl4  goby3-build-deps libproj-dev libhdf5-dev 
 
 RUN apt-get update && \
     mk-build-deps --build-dep -a arm64 --host-arch arm64 --build-arch amd64 -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "debian/control" && \

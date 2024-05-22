@@ -6,35 +6,29 @@ if(enable_llvm)
 
   execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --ldflags OUTPUT_VARIABLE LLVM_LD_FLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
 
+  set(clang_libs_common
+    clangTooling
+    clangFrontend
+    clangDriver
+    clangSerialization
+    clangParse
+    clangSema
+    clangAnalysis
+    clangEdit
+    clangAST
+    clangASTMatchers
+    clangLex)
+  
   # llvm-18 requires C++17
-  if(${LLVM_CONFIG_VERSION} VERSION_GREATER_EQUAL 14.0.0)
+  if(${LLVM_CONFIG_VERSION} VERSION_GREATER_EQUAL 18.0.0)
     set(clang_libs
-      clangTooling
-      clangFrontend
-      clangDriver
-      clangSerialization
-      clangParse
-      clangSema
-      clangAnalysis
-      clangEdit
-      clangAST
-      clangASTMatchers
-      clangLex
+      ${clang_libs_common}
       clangAPINotes
+      clangSupport
       clangBasic)
   else()
     set(clang_libs
-      clangTooling
-      clangFrontend
-      clangDriver
-      clangSerialization
-      clangParse
-      clangSema
-      clangAnalysis
-      clangEdit
-      clangAST
-      clangASTMatchers
-      clangLex
+      ${clang_libs_common}
       clangBasic)    
   endif()
 
