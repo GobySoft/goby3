@@ -24,11 +24,11 @@
 
 #include "liaison_home.h"
 
-#include <Wt/WBreak>           // for WBreak
-#include <Wt/WContainerWidget> // for WContainerWidget
-#include <Wt/WLength>          // for Wt
-#include <Wt/WText>            // for WText
-#include <Wt/WVBoxLayout>      // for WVBoxLayout
+#include <Wt/WBreak.h>           // for WBreak
+#include <Wt/WContainerWidget.h> // for WContainerWidget
+#include <Wt/WLength.h>          // for Wt
+#include <Wt/WText.h>            // for WText
+#include <Wt/WVBoxLayout.h>      // for WVBoxLayout
 
 using namespace Wt;
 

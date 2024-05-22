@@ -27,10 +27,10 @@
 
 #include <queue>
 
-#include <Wt/WColor>
-#include <Wt/WContainerWidget>
-#include <Wt/WText>
-#include <Wt/WTimer>
+#include <Wt/WColor.h>
+#include <Wt/WContainerWidget.h>
+#include <Wt/WText.h>
+#include <Wt/WTimer.h>
 
 #include "goby/middleware/marshalling/protobuf.h"
 
