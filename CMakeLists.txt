@@ -6,7 +6,7 @@
 # this project is intended to be built out of source by using 
 # > ./build.sh
 
-cmake_minimum_required(VERSION 3.5.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
 project(goby C CXX)
 
 set(CMAKE_CXX_STANDARD 14)
