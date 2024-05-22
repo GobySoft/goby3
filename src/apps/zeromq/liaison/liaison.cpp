@@ -276,10 +276,11 @@ void goby::apps::zeromq::Liaison::load_proto_file(const std::string& path)
 {
 #if BOOST_FILESYSTEM_VERSION == 3
     boost::filesystem::path bpath = boost::filesystem::absolute(path);
+    bpath.lexically_normal();
 #else
     boost::filesystem::path bpath = boost::filesystem::complete(path);
-#endif
     bpath.normalize();
+#endif
 
     glog.is(VERBOSE) && glog << "Loading protobuf file: " << bpath << std::endl;
 
