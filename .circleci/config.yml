@@ -449,7 +449,7 @@ jobs:
       - run:
           name: Install packages server
           command: |
-            apt-get update && apt-get -y install dirmngr ca-certificates && \
+            apt-get update && apt-get -y install dirmngr ca-certificates gnupg && \
             echo "deb http://packages.gobysoft.org/ubuntu/release/ noble/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
             apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE    
       - run: 
