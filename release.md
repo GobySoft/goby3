@@ -1,5 +1,8 @@
 # Goby Release Notes (Major version 3)
 
+## Version 3.1.5a
+
+- Minor changes to support building for Debian Bookworm (12) and Ubuntu Noble (24.04).
 
 ## Version 3.1.5
 

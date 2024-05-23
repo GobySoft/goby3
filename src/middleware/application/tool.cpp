@@ -3,7 +3,6 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Not Committed Yet
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
