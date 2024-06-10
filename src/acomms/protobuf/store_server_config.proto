@@ -7,10 +7,17 @@ package goby.apps.acomms.protobuf;
 
 message StoreServerConfig
 {
+    option (dccl.msg).unit_system = "si";
+
     optional goby.middleware.protobuf.AppConfig app = 1;
 
     optional goby.middleware.protobuf.TCPServerConfig tcp_server = 2;
 
     optional string db_file_dir = 3 [default = "."];
     optional string db_file_name = 4;  // reopens file if it already exists
+
+    // if set, messages are only retrieve from at most this number of seconds in the past, regardless of the last request time.
+    optional double max_time_between_requests = 5
+        [(dccl.field).units.base_dimensions = "T"];
+
 }
