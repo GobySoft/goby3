@@ -319,14 +319,20 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
     raw1 << "setvaluei RemoteID " << dest << "\n";
     signal_and_write(raw1.str());
 
-    auto goby_header = CreateGobyHeader(msg);
-    std::uint8_t header[2] =  {static_cast<std::uint8_t>(goby_header >> 8), 
-                               static_cast<std::uint8_t>(goby_header & 0xff)};
+    uint8_t header = CreateGobyHeader(msg);
+    
+    // NOTE: This is the process of creating the old 2 byte header which has now been replaced with one byte headers. Will make this
+    // a more formal / proper change in the future after later discussion on how many bytes the popoto header should be
+    // auto goby_header = CreateGobyHeader(msg);
+    // std::uint8_t header[2] =  {static_cast<std::uint8_t>(goby_header >> 8), 
+    //                            static_cast<std::uint8_t>(goby_header & 0xff)};
+    // std::uint8_t header[1] =  {static_cast<std::uint8_t>(goby_header >> 8), 
+                            //    static_cast<std::uint8_t>(goby_header & 0xff)};
+    // glog.is(DEBUG1) && glog << "header bytes " << (int) header[0] << " "
+                            // << (int) header[1] << std::endl;
+    // std::string jsonStr = binary_to_json(&header[0], 2);
 
-    glog.is(DEBUG1) && glog << "header bytes " << (int) header[0] << " "
-                            << (int) header[1] << std::endl;
-
-    std::string jsonStr = binary_to_json(&header[0], 2);
+    std::string jsonStr = binary_to_json(&header, 1);
     if (msg.type() == protobuf::ModemTransmission::DATA)
     {
         signal_transmit_result(msg);
@@ -346,7 +352,7 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
 
     // To send a bin msg it needs to be in 8 bit CSV values
     std::stringstream raw;
-    raw << "transmitJSON { \"ClassUserID\": 16, \"ApplicationType\": 1, \"AckRequest\": " << (msg.ack_requested() ? 1 : 0) << ", \"StationID\": "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}";
+    raw << "transmitJSON { \"ClassUserID\": 16, \"ApplicationType\": 0, \"AckRequest\": " << (msg.ack_requested() ? 1 : 0) << ", \"StationID\": "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}";
 
     if (myConnection == SERIAL_CONNECTION)
         raw  << "\n"; // Need to append new line char for Serial Only
@@ -661,27 +667,42 @@ void Popoto0PCMHandler(void *Pcm, int Len)
     pegCount++;
 }
 
-std::uint16_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemTransmission& m){
-    std::uint16_t header{0};
-    if (m.type() == protobuf::ModemTransmission::DATA)
-    {
-        header |= 0 << GOBY_HEADER_TYPE;
-        header |= (m.ack_requested() ? 1 : 0) << GOBY_HEADER_ACK_REQUEST;
-        header = header * 256;
-        header |= m.frame_start();
-    }
-    else if (m.type() == protobuf::ModemTransmission::ACK)
-    {
-        header |= 1 << GOBY_HEADER_TYPE;
-        header = header * 256;
-        header |= m.frame_start();
-    }
-    else
-    {
+// std::uint16_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemTransmission& m){
+std::uint8_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemTransmission& m){
+    std::uint8_t header{0};
+    if (m.type() == protobuf::ModemTransmission::DATA){
+        header |= ( GOBY_DATA_TYPE & 0b11 ) << 6;
+        header |= ( m.frame_start() & 0b00111111 );
+    } else if (m.type() == protobuf::ModemTransmission::ACK){
+        header |= ( GOBY_ACK_TYPE & 0b11 ) << 6;
+        header |= ( m.frame_start() & 0b00111111 );
+    } else {
         throw(goby::Exception(std::string("Unsupported type provided to CreateGobyHeader: ") +
                               protobuf::ModemTransmission::TransmissionType_Name(m.type())));
     }
     return header;
+
+    // 2 bytes header code - see comment above
+    // std::uint16_t header{0};
+    // if (m.type() == protobuf::ModemTransmission::DATA)
+    // {
+    //     header |= 0 << GOBY_HEADER_TYPE;
+    //     header |= (m.ack_requested() ? 1 : 0) << GOBY_HEADER_ACK_REQUEST;
+    //     header = header * 256;
+    //     header |= m.frame_start();
+    // }
+    // else if (m.type() == protobuf::ModemTransmission::ACK)
+    // {
+    //     header |= 1 << GOBY_HEADER_TYPE;
+    //     header = header * 256;
+    //     header |= m.frame_start();
+    // }
+    // else
+    // {
+    //     throw(goby::Exception(std::string("Unsupported type provided to CreateGobyHeader: ") +
+    //                           protobuf::ModemTransmission::TransmissionType_Name(m.type())));
+    // }
+    // return header;
 }
 
 void goby::acomms::PopotoDriver::DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num,protobuf::ModemTransmission& m){
