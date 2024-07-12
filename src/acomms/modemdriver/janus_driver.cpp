@@ -76,7 +76,8 @@ janus_simple_tx_t goby::acomms::JanusDriver::init_janus_tx(){
     params_tx->stream_driver = "alsa";
     params_tx->stream_driver_args = tx_device.c_str();
     params_tx->stream_channel_count = tx_channels;
-    params_tx->stream_fs = sample_rate; 
+    params_tx->stream_fs = sample_rate;
+    params_tx->stream_amp = JANUS_REAL_CONST(tx_power);
     params_tx->pad = 1; 
     simple_tx = janus_simple_tx_new(params_tx);
 
@@ -104,7 +105,6 @@ janus_parameters_t goby::acomms::JanusDriver::get_rx_params(){
     params->stream_fs = sample_rate;
     params->stream_format = "S16";
     params->stream_passband = 1;
-    params->stream_amp = JANUS_REAL_CONST(0.95);
     params->stream_mul = 1;
     params->stream_channel_count = rx_channels;
     params->stream_channel = 0;
@@ -155,6 +155,7 @@ void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
     rx_device        = janus_driver_cfg().rx_device();
     tx_channels      = janus_driver_cfg().tx_channels();
     rx_channels      = janus_driver_cfg().rx_channels();
+    tx_power         = janus_driver_cfg().tx_power();
     sample_rate      = janus_driver_cfg().sample_rate();
     simple_tx        = init_janus_tx();
     simple_rx        = init_janus_rx();

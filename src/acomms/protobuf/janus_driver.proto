@@ -85,6 +85,14 @@ message Config
         default = "dsnooped",
         (dccl.field).max_length = 50
     ];
+
+    optional double tx_power = 12 [
+        default = 0.95,
+        (dccl.field).min = 0.0,
+        (dccl.field).max = 1.0,
+        (goby.field).description = 
+            "Stream Amplitude Power"
+    ];
 }
 // added 1444 in modem driver
 extend goby.acomms.protobuf.DriverConfig

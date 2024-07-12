@@ -104,6 +104,7 @@ class JanusDriver : public ModemDriverBase
     int class_id;
     int application_type;
     int tx_channels;
+    double tx_power;
     int rx_channels;
     int sample_rate;
     unsigned int acomms_id;
