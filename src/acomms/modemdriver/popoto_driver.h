@@ -92,6 +92,7 @@ class PopotoDriver : public ModemDriverBase
     float modem_p;
     std::uint32_t next_frame_{0};
     protobuf::ModemTransmission modem_msg_;
+    int application_type;
 
     static constexpr int DEFAULT_BAUD{115200};
     static constexpr int DEFAULT_MTU_BYTES{1024};

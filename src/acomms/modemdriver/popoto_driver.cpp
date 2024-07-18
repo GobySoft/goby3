@@ -79,6 +79,7 @@ void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
     modem_p = popoto_driver_cfg().modem_power();
     int payload_mode = popoto_driver_cfg().payload_mode();
     int start_timeout = popoto_driver_cfg().start_timeout();
+    application_type = popoto_driver_cfg().application_type();
 
     if (driver_cfg_.connection_type() == goby::acomms::protobuf::DriverConfig::CONNECTION_SERIAL)
     {
@@ -352,7 +353,7 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
 
     // To send a bin msg it needs to be in 8 bit CSV values
     std::stringstream raw;
-    raw << "transmitJSON { \"ClassUserID\": 16, \"ApplicationType\": 0, \"AckRequest\": " << (msg.ack_requested() ? 1 : 0) << ", \"StationID\": "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}";
+    raw << "transmitJSON { \"ClassUserID\": 16, \"ApplicationType\": " << application_type << ", \"AckRequest\": " << (msg.ack_requested() ? 1 : 0) << ", \"StationID\": "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}";
 
     if (myConnection == SERIAL_CONNECTION)
         raw  << "\n"; // Need to append new line char for Serial Only

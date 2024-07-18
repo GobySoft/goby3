@@ -40,6 +40,14 @@ message Config
     optional ModemAddress local = 4 [(goby.field).description =
                                      "The IP and port of the local modem "
                                      "(default port is 17000)"];
+
+    optional int32 application_type = 5 [
+        default = 0,
+        (dccl.field).min = 0,
+        (dccl.field).max = 5,
+        (goby.field).description =
+            "Application type for JANUS message"
+    ];
 }
 // added 1442 in modem driver
 extend goby.acomms.protobuf.DriverConfig
