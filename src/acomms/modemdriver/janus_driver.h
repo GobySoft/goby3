@@ -94,6 +94,8 @@ class JanusDriver : public ModemDriverBase
     unsigned int get_frame_num(std::string cargo);
     janus_simple_tx_t init_janus_tx();
     janus_simple_rx_t init_janus_rx();
+    void send_janus_packet_thread(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack);
+
     void send_ack(unsigned int src, unsigned int dest,unsigned int frame_number);
     int verbosity;
     std::string pset_file;

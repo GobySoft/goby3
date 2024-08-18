@@ -45,7 +45,6 @@
 #include "goby/exception.h"                        // for Exception
 #include "goby/time/convert.h"
 #include "janus_driver.h"
-
 using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
@@ -209,6 +208,11 @@ void goby::acomms::JanusDriver::send_janus_packet(const protobuf::ModemTransmiss
     janus_packet_free(packet);
 } // send_janus_packet 
 
+void goby::acomms::JanusDriver::send_janus_packet_thread(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack){
+    std::thread t(&goby::acomms::JanusDriver::send_janus_packet, this, msg, payload, ack);
+    t.detach();
+}
+
 void goby::acomms::JanusDriver::handle_initiate_transmission(const protobuf::ModemTransmission& orig_msg){
     // copy so we can modify
     protobuf::ModemTransmission msg = orig_msg;
@@ -241,7 +245,7 @@ void goby::acomms::JanusDriver::handle_initiate_transmission(const protobuf::Mod
         message.insert(message.end(), payload.begin(), payload.end());
 
         // check if ack requested in modem transmission
-        send_janus_packet(msg,message,msg.ack_requested());
+        send_janus_packet_thread(msg,message,msg.ack_requested());
     }
 } // handle_initiate_transmission
 
@@ -365,7 +369,6 @@ void goby::acomms::JanusDriver::to_modem_transmission(janus_rx_msg_pkt packet,pr
 void goby::acomms::JanusDriver::do_work(){
     janus_rx_msg_pkt packet_parsed;
     std::string binary_msg;
-
     int retval = janus_rx_execute(janus_simple_rx_get_rx(simple_rx), packet_rx, state_rx);
     if (retval < 0){
         if (retval == JANUS_ERROR_OVERRUN){ glog.is(DEBUG1) && glog<< "Error: buffer-overrun" << std::endl; }
