@@ -1,4 +1,4 @@
-// Copyright 2012-2021:
+// Copyright 2012-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -39,6 +39,14 @@ std::ostream& goby::util::tcolor::add_escape_code(std::ostream& os, const std::s
     {
         return (os);
     }
+}
+
+std::shared_ptr<goby::util::TermColor> goby::util::TermColor::inst_;
+goby::util::TermColor* goby::util::TermColor::get_instance()
+{
+    if (!inst_)
+        inst_.reset(new TermColor, goby::util::TermColorDeleter());
+    return inst_.get();
 }
 
 goby::util::TermColor::TermColor()

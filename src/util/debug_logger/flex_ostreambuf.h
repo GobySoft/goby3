@@ -1,4 +1,4 @@
-// Copyright 2012-2021:
+// Copyright 2012-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -101,6 +101,9 @@ class FlexOStreamBuf : public std::streambuf
 
     /// add a stream to the logger
     void add_stream(logger::Verbosity verbosity, std::ostream* os);
+
+    /// remove a stream from the logger
+    void remove_stream(std::ostream* os);
 
     /// do all attached streams have Verbosity == quiet?
     bool is_quiet() const { return highest_verbosity_ == logger::QUIET; }

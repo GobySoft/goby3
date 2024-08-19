@@ -6,7 +6,7 @@
 # this project is intended to be built out of source by using 
 # > ./build.sh
 
-cmake_minimum_required(VERSION 3.5.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
 project(goby C CXX)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -57,8 +57,9 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 endif()
 
 set(GOBY_VERSION_MAJOR "3")
-set(GOBY_VERSION_MINOR "0")
-set(GOBY_VERSION_PATCH "17")
+set(GOBY_VERSION_MINOR "1")
+set(GOBY_VERSION_PATCH "5a")
+
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    message(STATUS "Compiling in Git source tree.")
@@ -87,13 +88,16 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    
 else()
    message(STATUS "Compiling from release tarball (${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}).")
-   set(GOBY_VERSION_DATE "2023.07.28")
+   set(GOBY_VERSION_DATE "2024.05.23")
 endif()
 
 set(GOBY_VERSION "${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}")
 
 # give Goby 1 series a few more soversions
 set(GOBY_SOVERSION "30")
+
+# Increment on changes to internal DCCL messages
+set(GOBY_INTERVEHICLE_API_VERSION "1")
 
 # create variables for various directories
 get_filename_component(goby_SRC_DIR src ABSOLUTE)
@@ -121,7 +125,7 @@ add_custom_command(OUTPUT ShareLink COMMAND ${CMAKE_COMMAND} -E create_symlink $
 add_custom_target(share_link ALL DEPENDS ShareLink)
 
 
-set(GOBY_DEBUG_OPTIONS -Wall -Werror -Wno-sign-compare -Wno-unknown-warning-option)
+set(GOBY_DEBUG_OPTIONS -Wall -Werror -Wno-sign-compare -Wno-unknown-warning-option -Wno-vla-cxx-extension)
 add_compile_options("$<$<CONFIG:DEBUG>:${GOBY_DEBUG_OPTIONS}>")
 add_compile_options("$<$<CXX_COMPILER_ID:Clang>:-Wdocumentation>")
 

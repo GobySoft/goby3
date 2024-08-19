@@ -1,4 +1,4 @@
-// Copyright 2020-2022:
+// Copyright 2020-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -289,6 +289,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
 
         std::set<std::string> internal_groups{
             "goby::middleware::interprocess::to_portal",
+            "goby::middleware::interprocess::from_portal",
             "goby::middleware::interprocess::regex",
             "goby::middleware::SerializationUnSubscribeAll",
             "goby::middleware::Thread::joinable",

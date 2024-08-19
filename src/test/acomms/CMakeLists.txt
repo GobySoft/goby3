@@ -22,6 +22,7 @@ add_subdirectory(udpdriver2)
 add_subdirectory(udpdriver3)
 
 add_subdirectory(iridiumdriver1)
+add_subdirectory(iridiumdriver_rockblock1)
 
 add_subdirectory(benthos_atm900_driver1)
 
@@ -33,3 +34,5 @@ add_subdirectory(dynamic_buffer1)
 
 add_subdirectory(popoto_driver1)
 add_subdirectory(janus_driver)
+
+add_subdirectory(store_server_driver1)

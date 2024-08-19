@@ -1,4 +1,4 @@
-// Copyright 2019-2023:
+// Copyright 2019-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -60,6 +60,19 @@ namespace apps
 {
 namespace middleware
 {
+class LogToolConfigurator : public goby::middleware::ProtobufConfigurator<protobuf::LogToolConfig>
+{
+  public:
+    LogToolConfigurator(int argc, char* argv[])
+        : goby::middleware::ProtobufConfigurator<protobuf::LogToolConfig>(argc, argv)
+    {
+        auto& cfg = mutable_cfg();
+        if (!cfg.app().glog_config().has_tty_verbosity())
+            cfg.mutable_app()->mutable_glog_config()->set_tty_verbosity(
+                goby::util::protobuf::GLogConfig::WARN);
+    }
+};
+
 class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
 {
   public:
@@ -128,7 +141,11 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
 } // namespace apps
 } // namespace goby
 
-int main(int argc, char* argv[]) { return goby::run<goby::apps::middleware::LogTool>(argc, argv); }
+int main(int argc, char* argv[])
+{
+    return goby::run<goby::apps::middleware::LogTool>(
+        goby::apps::middleware::LogToolConfigurator(argc, argv));
+}
 
 goby::apps::middleware::LogTool::LogTool()
     : f_in_(app_cfg().input_file().c_str()),
@@ -138,6 +155,15 @@ goby::apps::middleware::LogTool::LogTool()
       exclude_type_regex_(app_cfg().exclude_type_regex()),
       exclude_group_regex_(app_cfg().exclude_group_regex())
 {
+    if (app_cfg().app().binary() == "goby_log_tool")
+        glog.is_warn() &&
+            glog << "'goby_log_tool' is DEPRECATED: consider using 'goby log convert' instead"
+                 << std::endl;
+
+    if (!f_in_.is_open())
+        glog.is_die() && glog << "Could not open input_file: " << app_cfg().input_file()
+                              << std::endl;
+
     switch (app_cfg().format())
     {
         case protobuf::LogToolConfig::DEBUG_TEXT: f_out_.open(output_file_path_.c_str()); break;
@@ -177,12 +203,14 @@ goby::apps::middleware::LogTool::LogTool()
 
     for (auto& p : plugins_) p.second->register_read_hooks(f_in_);
 
+    bool file_has_entries = false;
     while (true)
     {
         try
         {
             goby::middleware::log::LogEntry log_entry;
             log_entry.parse(&f_in_);
+            file_has_entries = true;
 
             if (!check_regexes(log_entry))
                 continue;
@@ -274,10 +302,26 @@ goby::apps::middleware::LogTool::LogTool()
         {
             if (!f_in_.eof())
                 glog.is_warn() && glog << "Error processing input log: " << e.what() << std::endl;
+            else
+                glog.is_verbose() && glog << "EOF reached" << std::endl;
 
             break;
         }
     }
+
+    if (!file_has_entries)
+        glog.is_warn() &&
+            glog
+                << "input_file: " << app_cfg().input_file()
+                << " has no message entries. Make sure you have the right file format? (Goby 3.1.3 "
+                   "changed command line parameters - use \""
+                << app_cfg().app().binary()
+                << " [-c log_tool.pb.cfg] <input_file> [<output_file>]\" rather than \""
+                << app_cfg().app().binary()
+                << " [log_tool.pb.cfg] --input_file <input_file> [--output_file <output_file>]. "
+                   "See "
+                   "--help for more details)"
+                << std::endl;
 
     quit();
 }

@@ -1,4 +1,4 @@
-// Copyright 2013-2021:
+// Copyright 2013-2024:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -42,8 +42,8 @@ class DriverTester
   public:
     DriverTester(std::shared_ptr<goby::acomms::ModemDriverBase> driver1,
                  std::shared_ptr<goby::acomms::ModemDriverBase> driver2,
-                 const goby::acomms::protobuf::DriverConfig& cfg1,
-                 const goby::acomms::protobuf::DriverConfig& cfg2, std::vector<int> tests_to_run,
+                 goby::acomms::protobuf::DriverConfig cfg1,
+                 goby::acomms::protobuf::DriverConfig cfg2, std::vector<int> tests_to_run,
                  goby::acomms::protobuf::DriverType driver_type);
 
     int run();
@@ -78,6 +78,9 @@ class DriverTester
 
     std::string test_str0_, test_str1_, test_str2_, test_str3_;
     goby::acomms::protobuf::DriverType driver_type_;
+
+    bool data_request1_entered_{false};
+    bool data_request2_entered_{false};
 };
 } // namespace acomms
 } // namespace test

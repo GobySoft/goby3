@@ -1,0 +1,3 @@
+add_executable(goby_mosh_relay mosh_relay.cpp)
+target_link_libraries(goby_mosh_relay goby_zeromq)
+

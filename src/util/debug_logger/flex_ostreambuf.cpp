@@ -1,4 +1,4 @@
-// Copyright 2012-2021:
+// Copyright 2012-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -106,6 +106,19 @@ void goby::util::FlexOStreamBuf::add_stream(logger::Verbosity verbosity, std::os
 
     if (!stream_exists)
         streams_.emplace_back(os, verbosity);
+
+    highest_verbosity_ = logger::QUIET;
+    for (auto stream : streams_)
+    {
+        if (stream.verbosity() > highest_verbosity_)
+            highest_verbosity_ = stream.verbosity();
+    }
+}
+
+void goby::util::FlexOStreamBuf::remove_stream(std::ostream* os)
+{
+    streams_.erase(std::remove_if(streams_.begin(), streams_.end(),
+                                  [&os](const StreamConfig& sc) { return sc.os() == os; }));
 
     highest_verbosity_ = logger::QUIET;
     for (auto stream : streams_)

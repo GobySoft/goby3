@@ -1,4 +1,4 @@
-// Copyright 2019-2023:
+// Copyright 2019-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -49,10 +49,13 @@ inline bool operator==(const DynamicBufferConfig& a, const DynamicBufferConfig& 
 
 } // namespace protobuf
 
-class DynamicBufferNoDataException : goby::Exception
+class DynamicBufferNoDataException : public goby::Exception
 {
   public:
-    DynamicBufferNoDataException() : goby::Exception("No queues have data available") {}
+    DynamicBufferNoDataException(const std::string& reason)
+        : goby::Exception("No queues have data available: " + reason)
+    {
+    }
     ~DynamicBufferNoDataException() {}
 };
 
@@ -142,6 +145,10 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
             cfg_.set_ttl(ttl_sum / ttl_divisor);
         if (value_base_divisor > 0)
             cfg_.set_value_base(value_base_sum / value_base_divisor);
+
+        // avoid first access being in blackout
+        last_access_ -=
+            goby::time::convert_duration<typename Clock::duration>(cfg_.blackout_time_with_units());
     }
 
     /// \brief Return the aggregate configuration
@@ -166,7 +173,7 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
                 return datum_pair.second;
             }
         }
-        throw(DynamicBufferNoDataException());
+        throw(DynamicBufferNoDataException("DynamicSubBuffer::top() found no data"));
     }
 
     /// \brief Returns the size (in bytes) of the top of the queue that hasn't been sent within ack_timeout
@@ -179,7 +186,7 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
             if (datum_last_access == zero_point_ || datum_last_access + ack_timeout < reference)
                 return data_size(datum_pair.second.data);
         }
-        throw(DynamicBufferNoDataException());
+        throw(DynamicBufferNoDataException("DynamicSubBuffer::top_size() found no data"));
     }
 
     /// \brief returns true if all messages have been sent within ack_timeout of the reference provided and thus none are available for resending yet
@@ -216,17 +223,20 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
               size_type max_bytes = std::numeric_limits<size_type>::max(),
               typename Clock::duration ack_timeout = std::chrono::microseconds(0)) const
     {
-        if (empty())
+        // this order matters - some checks depend on previous checks
+        if (empty()) // no messages at all
             return std::make_pair(-std::numeric_limits<double>::infinity(), ValueResult::EMPTY);
-        else if (in_blackout(reference))
+        else if (in_blackout(reference)) // in blackout
             return std::make_pair(-std::numeric_limits<double>::infinity(),
                                   ValueResult::IN_BLACKOUT);
-        else if (top_size(reference, ack_timeout) > max_bytes)
-            return std::make_pair(-std::numeric_limits<double>::infinity(),
-                                  ValueResult::NEXT_MESSAGE_TOO_LARGE);
-        else if (all_waiting_for_ack(reference, ack_timeout))
+        else if (all_waiting_for_ack(reference, ack_timeout)) // all messages waiting for ack
             return std::make_pair(-std::numeric_limits<double>::infinity(),
                                   ValueResult::ALL_MESSAGES_WAITING_FOR_ACK);
+        else if (
+            top_size(reference, ack_timeout) >
+            max_bytes) // check if the top message size is greater than max_bytes - assumes !ALL_MESSAGES_WAITING_FOR_ACK so must go after that check
+            return std::make_pair(-std::numeric_limits<double>::infinity(),
+                                  ValueResult::NEXT_MESSAGE_TOO_LARGE);
 
         using Duration = std::chrono::microseconds;
 
@@ -503,9 +513,11 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicBuf
     {
         using goby::glog;
 
-        glog.is_debug1() && glog << group(glog_priority_group_)
-                                 << "Starting priority contest (dest: " << dest_id
-                                 << ", max_bytes: " << max_bytes << "):" << std::endl;
+        glog.is_debug1() &&
+            glog << group(glog_priority_group_) << "Starting priority contest (dest: "
+                 << (dest_id == goby::acomms::QUERY_DESTINATION_ID ? std::string("?")
+                                                                   : std::to_string(dest_id))
+                 << ", max_bytes: " << max_bytes << "):" << std::endl;
 
         typename std::unordered_map<subbuffer_id_type, DynamicSubBuffer<T, Clock>>::iterator
             winning_sub;
@@ -514,7 +526,8 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicBuf
         auto now = Clock::now();
 
         if (dest_id != goby::acomms::QUERY_DESTINATION_ID && !sub_.count(dest_id))
-            throw(DynamicBufferNoDataException());
+            throw(DynamicBufferNoDataException(
+                "DynamicBuffer::top() has no queues with this destination"));
 
         // if QUERY_DESTINATION_ID, search all subbuffers, otherwise just search the ones that were specified by dest_id
         for (auto sub_id_it = (dest_id == goby::acomms::QUERY_DESTINATION_ID) ? sub_.begin()
@@ -570,7 +583,8 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicBuf
         }
 
         if (winning_value == -std::numeric_limits<double>::infinity())
-            throw(DynamicBufferNoDataException());
+            throw(DynamicBufferNoDataException(
+                "DynamicBuffer::top() has no queue with a winning value"));
 
         const auto& top_p = winning_sub->second.top(now, ack_timeout);
         glog.is_debug1() && glog << group(glog_priority_group_) << "Winner: " << winning_sub->first

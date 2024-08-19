@@ -172,7 +172,7 @@ class ModemDriverBase
     /// \param cfg Configuration including the parameters for the physical connection. (protobuf::DriverConfig is defined in acomms_driver_base.proto).
     /// \throw ModemDriverException Problem opening the physical connection.
     ///
-    void modem_start(const protobuf::DriverConfig& cfg);
+    void modem_start(const protobuf::DriverConfig& cfg, bool modem_connection_expected = true);
 
     /// \brief closes the serial port. Use modem_start to reopen the port.
     void modem_close();

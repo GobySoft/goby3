@@ -1,4 +1,4 @@
-// Copyright 2011-2021:
+// Copyright 2011-2024:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -26,8 +26,8 @@
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_H
 
 #include <cstdint> // for uint32_t
-#include <iosfwd>   // for ostream
-#include <memory>   // for shared_ptr
+#include <iosfwd>  // for ostream
+#include <memory>  // for shared_ptr
 
 #include "goby/acomms/modemdriver/driver_base.h"    // for ModemDriverBase
 #include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
@@ -57,9 +57,11 @@ class IridiumDriver : public ModemDriverBase
     void do_work() override;
 
     void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
-    void process_transmission(protobuf::ModemTransmission msg, bool dial);
+    void report(goby::acomms::protobuf::ModemReport* report) override;
 
   private:
+    void process_transmission(protobuf::ModemTransmission msg, bool dial);
+
     void receive(const protobuf::ModemTransmission& msg);
     void send(const protobuf::ModemTransmission& msg);
 
@@ -76,8 +78,8 @@ class IridiumDriver : public ModemDriverBase
     };
 
   private:
-    iridium::fsm::IridiumDriverFSM fsm_;
     protobuf::DriverConfig driver_cfg_;
+    iridium::fsm::IridiumDriverFSM fsm_;
 
     std::shared_ptr<goby::util::TCPClient> debug_client_;
 
@@ -90,6 +92,8 @@ class IridiumDriver : public ModemDriverBase
     protobuf::ModemTransmission rudics_mac_msg_;
 
     std::uint32_t next_frame_{0};
+
+    bool running_{false};
 };
 } // namespace acomms
 } // namespace goby

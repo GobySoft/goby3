@@ -1,4 +1,4 @@
-// Copyright 2015-2022:
+// Copyright 2015-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,22 +21,27 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_SBD_H
-#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_SBD_H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_SBD_DIRECTIP_H
+#define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_SHORE_SBD_DIRECTIP_H
 
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
 #include "goby/acomms/protobuf/iridium_sbd_directip.pb.h"
 #include "goby/acomms/protobuf/rudics_shore.pb.h"
 #include "goby/time.h"
+#include "goby/util/asio_compat.h"
 #include "goby/util/binary.h"
+#include "goby/util/debug_logger.h"
 
 namespace goby
 {
 namespace acomms
 {
+namespace directip
+{
+
 class SBDMessageReader
 {
   public:
@@ -75,7 +80,8 @@ class SBDMessageReader
         boost::asio::async_read(socket_, boost::asio::buffer(data_),
                                 boost::asio::transfer_at_least(pre_header_.overall_length() +
                                                                PRE_HEADER_SIZE - bytes_transferred),
-                                boost::bind(&SBDMessageReader::ie_handler, this, _1, _2));
+                                boost::bind(&SBDMessageReader::ie_handler, this,
+                                            boost::placeholders::_1, boost::placeholders::_2));
     }
 
     std::vector<char>& data() { return data_; }
@@ -220,10 +226,10 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
         remote_endpoint_str_ = boost::lexical_cast<std::string>(socket_.remote_endpoint());
 
         connect_time_ = time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1);
-        boost::asio::async_read(
-            socket_, boost::asio::buffer(message_.data()),
-            boost::asio::transfer_at_least(SBDMessageReader::PRE_HEADER_SIZE),
-            boost::bind(&SBDMessageReader::pre_header_handler, &message_, _1, _2));
+        boost::asio::async_read(socket_, boost::asio::buffer(message_.data()),
+                                boost::asio::transfer_at_least(SBDMessageReader::PRE_HEADER_SIZE),
+                                boost::bind(&SBDMessageReader::pre_header_handler, &message_,
+                                            boost::placeholders::_1, boost::placeholders::_2));
     }
 
     ~SBDConnection() {}
@@ -259,7 +265,7 @@ class SBDServer
         start_accept();
     }
 
-    std::set<std::shared_ptr<SBDConnection> >& connections() { return connections_; }
+    std::set<std::shared_ptr<SBDConnection>>& connections() { return connections_; }
 
   private:
     void start_accept()
@@ -294,10 +300,11 @@ class SBDServer
         start_accept();
     }
 
-    std::set<std::shared_ptr<SBDConnection> > connections_;
+    std::set<std::shared_ptr<SBDConnection>> connections_;
     boost::asio::ip::tcp::acceptor acceptor_;
 };
 
+} // namespace directip
 } // namespace acomms
 } // namespace goby
 

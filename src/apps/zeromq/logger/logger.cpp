@@ -1,4 +1,4 @@
-// Copyright 2017-2022:
+// Copyright 2017-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -74,7 +74,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
     Logger()
         : goby::zeromq::SingleThreadApplication<protobuf::LoggerConfig>(1 *
                                                                         boost::units::si::hertz),
-          log_file_base_(std::string(cfg().log_dir() + "/" + cfg().interprocess().platform() + "_"))
+          log_file_base_(std::string(cfg().log_dir() + "/" + cfg().interprocess().platform()))
     {
         open_log();
 
@@ -95,7 +95,8 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         }
 
         interprocess().subscribe<goby::middleware::groups::logger_request>(
-            [this](const goby::middleware::protobuf::LoggerRequest& request) {
+            [this](const goby::middleware::protobuf::LoggerRequest& request)
+            {
                 switch (request.requested_state())
                 {
                     case goby::middleware::protobuf::LoggerRequest::START_LOGGING:
@@ -105,6 +106,9 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
                                      << std::endl;
                         else
                             glog.is_verbose() && glog << "Logging started" << std::endl;
+
+                        if (!log_is_open())
+                            open_log();
 
                         logging_ = true;
                         break;
@@ -118,12 +122,17 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
                             glog.is_verbose() && glog << "Logging stopped" << std::endl;
 
                         logging_ = false;
+                        if (request.close_log() && log_is_open())
+                            close_log();
+
                         break;
 
                     case goby::middleware::protobuf::LoggerRequest::ROTATE_LOG:
                         glog.is_verbose() && glog << "Log rotated" << std::endl;
-                        close_log();
-                        open_log();
+                        if (log_is_open())
+                            close_log();
+                        if (!log_is_open())
+                            open_log();
                         break;
                 }
             });
@@ -144,7 +153,9 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         pb_plugin_.reset(new goby::middleware::log::ProtobufPlugin);
         dccl_plugin_.reset(new goby::middleware::log::DCCLPlugin);
 
-        log_file_path_ = log_file_base_ + goby::time::file_str() + ".goby";
+        std::string timestamp =
+            cfg().omit().file_timestamp() ? "" : std::string("_") + goby::time::file_str();
+        log_file_path_ = log_file_base_ + timestamp + ".goby";
         log_.reset(new std::ofstream(log_file_path_.c_str(), std::ofstream::binary));
 
         if (!log_->is_open())
@@ -156,13 +167,16 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         pb_plugin_->register_write_hooks(*log_);
         dccl_plugin_->register_write_hooks(*log_);
 
-        std::string file_symlink = log_file_base_ + "latest.goby";
-        remove(file_symlink.c_str());
-        int result = symlink(realpath(log_file_path_.c_str(), NULL), file_symlink.c_str());
-        if (result != 0)
-            glog.is_warn() &&
-                glog << "Cannot create symlink to latest file. Continuing onwards anyway"
-                     << std::endl;
+        if (!cfg().omit().latest_symlink())
+        {
+            std::string file_symlink = log_file_base_ + "_latest.goby";
+            remove(file_symlink.c_str());
+            int result = symlink(realpath(log_file_path_.c_str(), NULL), file_symlink.c_str());
+            if (result != 0)
+                glog.is_warn() &&
+                    glog << "Cannot create symlink to latest file. Continuing onwards anyway"
+                         << std::endl;
+        }
     }
 
     void close_log()
@@ -171,7 +185,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         log_->close();
         log_.reset();
         goby::middleware::log::LogEntry::reset();
-        
+
         pb_plugin_.reset();
         dccl_plugin_.reset();
 
@@ -186,6 +200,7 @@ class Logger : public goby::zeromq::SingleThreadApplication<protobuf::LoggerConf
         if (do_quit)
             quit();
     }
+    bool log_is_open() { return log_.get() != nullptr; }
 
   private:
     std::string log_file_base_;
@@ -220,7 +235,9 @@ int main(int argc, char* argv[])
     sigemptyset(&empty_mask);
     pthread_sigmask(SIG_SETMASK, &empty_mask, nullptr);
 
-    struct sigaction action;
+    struct sigaction action
+    {
+    };
     action.sa_handler = &signal_handler;
 
     // register the usual quitting signals
@@ -239,7 +256,7 @@ void signal_handler(int /*sig*/) { goby::apps::zeromq::Logger::do_quit = true; }
 void goby::apps::zeromq::Logger::log(const std::vector<unsigned char>& data, int scheme,
                                      const std::string& type, const goby::middleware::Group& group)
 {
-    if (!logging_)
+    if (!logging_ || !log_is_open())
         return;
 
     glog.is_debug1() && glog << "Received " << data.size()

@@ -1,4 +1,4 @@
-// Copyright 2009-2023:
+// Copyright 2009-2024:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -70,7 +70,7 @@
 #include <boost/algorithm/string/classification.hpp>    // for is_any_ofF
 #include <boost/algorithm/string/split.hpp>             // for split
 #include <boost/any.hpp>                                // for any
-#include <boost/bind.hpp>                               // for bind_t, list...
+#include <boost/bind/bind.hpp>                               // for bind_t, list...
 #include <boost/cstdint.hpp>                            // for uint32_t
 #include <boost/date_time/gregorian/gregorian.hpp>      // for date
 #include <boost/date_time/posix_time/posix_time_io.hpp> // for operator<<
@@ -944,7 +944,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
                 sent_model_->reload();
             }
         };
-    sent_clear_->clicked().connect(boost::bind(sent_clear_callback, _1));
+    sent_clear_->clicked().connect(boost::bind(sent_clear_callback, boost::placeholders::_1));
 
     set_external_data_model_params(external_data_model_);
 
@@ -975,7 +975,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
                 external_data_model_->reload();
             }
         };
-    external_data_clear_->clicked().connect(boost::bind(external_data_clear_callback, _1));
+    external_data_clear_->clicked().connect(boost::bind(external_data_clear_callback, boost::placeholders::_1));
 
     load_groups(message_->GetDescriptor());
     load_external_data(message_->GetDescriptor());
@@ -1251,7 +1251,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         spin_box->setSingleStep(1);
 
         spin_box->valueChanged().connect(boost::bind(&CommandContainer::handle_repeated_size_change,
-                                                     this, _1, message, field_desc, node,
+                                                     this, boost::placeholders::_1, message, field_desc, node,
                                                      parent_hierarchy));
 
         spin_box->setValue(refl->FieldSize(*message, field_desc));
@@ -1292,7 +1292,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                 auto* button = new WPushButton(MESSAGE_INCLUDE_TEXT);
 
                 button->clicked().connect(
-                    boost::bind(&CommandContainer::handle_toggle_single_message, this, _1, message,
+                    boost::bind(&CommandContainer::handle_toggle_single_message, this, boost::placeholders::_1, message,
                                 field_desc, button, node, parent_hierarchy));
 
                 if (refl->HasField(*message, field_desc))
@@ -1318,7 +1318,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         auto* button = new WPushButton(EXTERNAL_DATA_LOAD_TEXT);
 
         button->clicked().connect(boost::bind(&CommandContainer::handle_load_external_data, this,
-                                              _1, message, field_desc, button, node,
+                                              boost::placeholders::_1, message, field_desc, button, node,
                                               parent_hierarchy));
         external_data_field = button;
     }
@@ -1982,7 +1982,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         }
     }
 
-    if (options.codec() == "_time" || options.codec() == "dccl.time2")
+    if (options.codec() == "_time" || options.codec() == "dccl.time2" ||
+        options.codec() == "dccl.time")
     {
         value_field->setDisabled(true);
         set_time_field(value_field, field_desc);
@@ -2191,7 +2192,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             ok.setDisabled(false);
         };
 
-    external_data_table->clicked().connect(boost::bind(select_data_callback, _1, _2));
+    external_data_table->clicked().connect(boost::bind(select_data_callback, boost::placeholders::_1, boost::placeholders::_2));
 
     message_div->setMaximumSize(pb_commander_config_.modal_dimensions().width(),
                                 pb_commander_config_.modal_dimensions().height());

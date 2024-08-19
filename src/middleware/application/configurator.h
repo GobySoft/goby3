@@ -1,4 +1,4 @@
-// Copyright 2018-2021:
+// Copyright 2018-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -88,7 +88,7 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
   protected:
     virtual void validate() const override
     {
-        middleware::ConfigReader::check_required_cfg(this->cfg());
+        middleware::ConfigReader::check_required_cfg(this->cfg(), this->cfg().app().binary());
     }
 
   private:
@@ -96,8 +96,15 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
 
     void handle_config_error(middleware::ConfigException& e) const override
     {
-        std::cerr << "Invalid configuration: use --help and/or --example_config for more help: "
-                  << e.what() << std::endl;
+        if (tool_has_help_action())
+        {
+            std::cerr << "Invalid command: " << e.what() << std::endl;
+        }
+        else
+        {
+            std::cerr << "Invalid configuration: use --help and/or --example_config for more help: "
+                      << e.what() << std::endl;
+        }
     }
 
     protobuf::AppConfig& mutable_app_configuration() override
@@ -107,6 +114,16 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
 
     void merge_app_base_cfg(protobuf::AppConfig* base_cfg,
                             const boost::program_options::variables_map& var_map);
+
+    bool tool_has_help_action() const
+    {
+        return Config::descriptor()
+            ->options()
+            .GetExtension(goby::msg)
+            .cfg()
+            .tool()
+            .has_help_action();
+    }
 };
 
 template <typename Config>
@@ -121,14 +138,20 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
     try
     {
         std::string application_name;
+        std::string binary_name;
 
         // we will check it later in validate()
         bool check_required_cfg = false;
-        boost::program_options::options_description od{"Allowed options"};
-        middleware::ConfigReader::read_cfg(argc, argv, &cfg, &application_name, &od, &var_map,
-                                           check_required_cfg);
+        boost::program_options::options_description od{"All options"};
+        int read_argc = middleware::ConfigReader::read_cfg(
+            argc, argv, &cfg, &application_name, &binary_name, &od, &var_map, check_required_cfg);
+
+        // extra command line parameters for tool mode
+        for (int a = read_argc; a < argc; ++a)
+            cfg.mutable_app()->mutable_tool_cfg()->add_extra_cli_param(argv[a]);
 
         cfg.mutable_app()->set_name(application_name);
+        cfg.mutable_app()->set_binary(binary_name);
         // incorporate some parts of the AppBaseConfig that are middleware
         // with gobyd (e.g. Verbosity)
         merge_app_base_cfg(cfg.mutable_app(), var_map);
@@ -136,7 +159,10 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
     catch (middleware::ConfigException& e)
     {
         handle_config_error(e);
-        throw;
+
+        // allow default action to take place (usually "help")
+        if (!tool_has_help_action())
+            throw;
     }
 
     // TODO: convert to C++ struct app3 configuration format
@@ -155,22 +181,23 @@ void ProtobufConfigurator<Config>::merge_app_base_cfg(
 
     if (var_map.count("verbose"))
     {
-        switch (var_map["verbose"].as<std::string>().size())
+        switch (var_map["verbose"].as<std::size_t>())
         {
-            default:
-            case 0:
+            case 0: break;
+            case 1:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
                     util::protobuf::GLogConfig::VERBOSE);
                 break;
-            case 1:
+            case 2:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
                     util::protobuf::GLogConfig::DEBUG1);
                 break;
-            case 2:
+            case 3:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
                     util::protobuf::GLogConfig::DEBUG2);
                 break;
-            case 3:
+            default:
+            case 4:
                 base_cfg->mutable_glog_config()->set_tty_verbosity(
                     util::protobuf::GLogConfig::DEBUG3);
                 break;
@@ -179,22 +206,24 @@ void ProtobufConfigurator<Config>::merge_app_base_cfg(
 
     if (var_map.count("glog_file_verbose"))
     {
-        switch (var_map["glog_file_verbose"].as<std::string>().size())
+        switch (var_map["glog_file_verbose"].as<std::size_t>())
         {
-            default:
-            case 0:
+            case 0: break;
+
+            case 1:
                 base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
                     util::protobuf::GLogConfig::VERBOSE);
                 break;
-            case 1:
+            case 2:
                 base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
                     util::protobuf::GLogConfig::DEBUG1);
                 break;
-            case 2:
+            case 3:
                 base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
                     util::protobuf::GLogConfig::DEBUG2);
                 break;
-            case 3:
+            default:
+            case 4:
                 base_cfg->mutable_glog_config()->mutable_file_log()->set_verbosity(
                     util::protobuf::GLogConfig::DEBUG3);
                 break;

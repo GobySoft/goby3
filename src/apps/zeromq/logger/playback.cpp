@@ -1,4 +1,4 @@
-// Copyright 2021:
+// Copyright 2021-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -70,7 +70,12 @@ class Playback : public goby::zeromq::SingleThreadApplication<protobuf::Playback
         for (auto& p : plugins_) p.second->register_read_hooks(f_in_);
 
         read_next_entry();
-        log_start_ = next_log_entry_.timestamp();
+        log_start_ = next_log_entry_.timestamp() +
+                     goby::time::convert_duration<goby::time::SystemClock::duration>(
+                         cfg().start_from_offset_with_units());
+
+        // skip to desired start
+        while (next_log_entry_.timestamp() < log_start_) read_next_entry();
     }
 
     ~Playback() override

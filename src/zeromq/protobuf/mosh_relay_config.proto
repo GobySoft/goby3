@@ -1,0 +1,21 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+import "dccl/option_extensions.proto";
+
+package goby.apps.zeromq.acomms.protobuf;
+
+message MoshRelayConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
+        [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
+    optional string ip_address = 3 [default = "127.0.0.1"];
+    optional uint32 udp_port = 4;
+    optional bool bind = 5;
+
+    required uint32 src_modem_id = 6;
+    required uint32 dest_modem_id = 7;
+}

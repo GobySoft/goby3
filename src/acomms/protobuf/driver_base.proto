@@ -10,7 +10,7 @@ enum DriverType
     DRIVER_WHOI_MICROMODEM = 2;
     DRIVER_ABC_EXAMPLE_MODEM = 3;
     DRIVER_UFIELD_SIM_DRIVER = 4;
-    // removed: DRIVER_PB_STORE_SERVER = 5;
+    DRIVER_STORE_SERVER = 5;
     DRIVER_UDP = 6;
     DRIVER_BLUEFIN_MOOS = 7;
     DRIVER_IRIDIUM = 8;
@@ -103,7 +103,7 @@ message DriverConfig
     // extension 1000 used by acomms_mm_driver.proto
     // extension 1201 used by acomms_abc_driver.proto (example driver)
     // extension 1300 used by ufield_sim_driver.proto
-    // (removed) extensions 1321-1340 used by pb_modem_driver.proto
+    // extension 1321 used by store_server_driver.proto
     // extension 1341 used by udp_driver.proto
     // extension 1342 used by udp_multicast_driver.proto
     // extension 1343 used by pluggable udp_multicast_driver (in goby3-examples)
@@ -114,5 +114,5 @@ message DriverConfig
     // extension 1441 used by benthos_atm900.proto
     // extension 1442 used by popoto.proto
     // extension 1443 used by Jaiabot XBee
-    // extension 1444 used by janus.janus
+    // extensions 1510-1519 used by Blue Ocean Seismic Services
 }

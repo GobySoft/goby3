@@ -1,4 +1,4 @@
-// Copyright 2015-2022:
+// Copyright 2015-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -27,7 +27,7 @@
 #include "goby/util/asio_compat.h"
 #include <boost/asio.hpp>
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/signals2.hpp>
 
 #include "goby/time.h"
@@ -68,13 +68,13 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
     void read_start()
     {
         boost::asio::async_read_until(socket_, buffer_, '\r',
-                                      boost::bind(&RUDICSConnection::handle_read, this, _1, _2));
+                                      boost::bind(&RUDICSConnection::handle_read, this, boost::placeholders::_1, boost::placeholders::_2));
     }
 
     void write_start(const std::string& data)
     {
         boost::asio::async_write(socket_, boost::asio::buffer(data),
-                                 boost::bind(&RUDICSConnection::handle_write, this, _1, _2));
+                                 boost::bind(&RUDICSConnection::handle_write, this, boost::placeholders::_1, boost::placeholders::_2));
     }
 
     ~RUDICSConnection()
@@ -206,7 +206,7 @@ class RUDICSServer
             connections_.insert(new_connection);
 
             new_connection->disconnect_signal.connect(
-                boost::bind(&RUDICSServer::handle_disconnect, this, _1));
+                boost::bind(&RUDICSServer::handle_disconnect, this, boost::placeholders::_1));
             connect_signal(new_connection);
             new_connection->start();
             glog.is(DEBUG1) && glog << "Received connection from: "

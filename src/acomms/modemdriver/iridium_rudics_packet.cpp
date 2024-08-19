@@ -1,4 +1,4 @@
-// Copyright 2013-2021:
+// Copyright 2013-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -30,7 +30,7 @@
 #include <netinet/in.h>                              // for htonl, ntohl
 
 #include "goby/util/base_convert.h" // for base_convert
-#include "rudics_packet.h"
+#include "iridium_rudics_packet.h"
 
 void goby::acomms::serialize_rudics_packet(std::string bytes, std::string* rudics_pkt,
                                            const std::string& reserved, bool include_crc)

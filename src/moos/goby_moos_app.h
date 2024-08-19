@@ -1,4 +1,4 @@
-// Copyright 2011-2023:
+// Copyright 2011-2024:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -51,7 +51,7 @@
 #include <boost/algorithm/string/predicate.hpp>             // for iequals
 #include <boost/algorithm/string/replace.hpp>               // for replac...
 #include <boost/algorithm/string/trim.hpp>                  // for trim_copy
-#include <boost/bind.hpp>                                   // for bind, _1
+#include <boost/bind/bind.hpp>                              // for bind, _1
 #include <boost/date_time/posix_time/posix_time_config.hpp> // for posix_...
 #include <boost/date_time/posix_time/posix_time_types.hpp>  // for second...
 #include <boost/date_time/posix_time/time_formatters.hpp>   // for to_iso...
@@ -191,7 +191,7 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     template <typename V, typename A1>
     void subscribe(const std::string& var, void (V::*mem_func)(A1), V* obj, double blackout = 0)
     {
-        subscribe(var, boost::bind(mem_func, obj, _1), blackout);
+        subscribe(var, boost::bind(mem_func, obj, boost::placeholders::_1), blackout);
     }
 
     // wildcard
@@ -202,21 +202,26 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     void subscribe(const std::string& var_pattern, const std::string& app_pattern,
                    void (V::*mem_func)(A1), V* obj, double blackout = 0)
     {
-        subscribe(var_pattern, app_pattern, boost::bind(mem_func, obj, _1), blackout);
+        subscribe(var_pattern, app_pattern, boost::bind(mem_func, obj, boost::placeholders::_1),
+                  blackout);
     }
 
     template <typename V, typename ProtobufMessage>
     void subscribe_pb(const std::string& var, void (V::*mem_func)(const ProtobufMessage&), V* obj,
                       double blackout = 0)
     {
-        subscribe_pb<ProtobufMessage>(var, boost::bind(mem_func, obj, _1), blackout);
+        subscribe_pb<ProtobufMessage>(var, boost::bind(mem_func, obj, boost::placeholders::_1),
+                                      blackout);
     }
 
     template <typename ProtobufMessage>
     void subscribe_pb(const std::string& var,
-                      boost::function<void(const ProtobufMessage& msg)> handler, double blackout = 0)
+                      boost::function<void(const ProtobufMessage& msg)> handler,
+                      double blackout = 0)
     {
-        subscribe(var, boost::bind(&goby::moos::protobuf_inbox<ProtobufMessage>, _1, handler),
+        subscribe(var,
+                  boost::bind(&goby::moos::protobuf_inbox<ProtobufMessage>, boost::placeholders::_1,
+                              handler),
                   blackout);
     }
 
@@ -325,7 +330,8 @@ template <class MOOSAppType = MOOSAppShell> class GobyMOOSAppSelector : public M
     std::deque<std::pair<std::string, double>> existing_subscriptions_;
 
     // MOOS Variable pattern, MOOS App pattern, blackout time
-    std::deque<std::pair<std::pair<std::string, std::string>, double>> wildcard_pending_subscriptions_;
+    std::deque<std::pair<std::pair<std::string, std::string>, double>>
+        wildcard_pending_subscriptions_;
     std::deque<std::pair<std::pair<std::string, std::string>, double>>
         wildcard_existing_subscriptions_;
 
@@ -784,20 +790,22 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
     boost::filesystem::path launch_path(argv_[0]);
 
 #if BOOST_FILESYSTEM_VERSION == 3
-    application_name_ = launch_path.filename().string();
+    std::string binary_name = launch_path.filename().string();
 #else
-    application_name_ = launch_path.filename();
+    std::string binary_name = launch_path.filename();
 #endif
+    application_name_ = binary_name;
 
     //
     // READ CONFIGURATION
     //
 
     boost::program_options::options_description od_all;
-    boost::program_options::variables_map var_map;
+    boost::program_options::variables_map var_map, po_env_var_map;
     try
     {
-        boost::program_options::options_description od_cli_only("Given on command line only");
+        boost::program_options::options_description od_cli_only(
+            "Options given on command line only");
         od_cli_only.add_options()("help,h", "writes this help message")(
             "moos_file,c", boost::program_options::value<std::string>(&mission_file_),
             "path to .moos file")("moos_name,a",
@@ -806,16 +814,42 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
             "example_config,e", "writes an example .moos ProcessConfig block")(
             "version,V", "writes the current version");
 
-        boost::program_options::options_description od_both(
-            "Typically given in the .moos file, but may be specified on the command line");
+        std::map<goby::GobyFieldOptions::ConfigurationOptions::ConfigAction,
+                 boost::program_options::options_description>
+            od_map;
 
-        goby::middleware::ConfigReader::get_protobuf_program_options(od_both, cfg->GetDescriptor());
-        od_all.add(od_both);
+        std::string od_pb_always_desc =
+            "Options typically given in the .moos file, but may be specified on the command line";
+        std::string od_pb_never_desc = "Hidden options";
+        std::string od_pb_advanced_desc = "Advanced options";
+        std::string od_pb_developer_desc = "Developer options";
+        od_map.insert(
+            std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::ALWAYS,
+                           boost::program_options::options_description(od_pb_always_desc.c_str())));
+        od_map.insert(std::make_pair(
+            goby::GobyFieldOptions::ConfigurationOptions::ADVANCED,
+            boost::program_options::options_description(od_pb_advanced_desc.c_str())));
+        od_map.insert(std::make_pair(
+            goby::GobyFieldOptions::ConfigurationOptions::DEVELOPER,
+            boost::program_options::options_description(od_pb_developer_desc.c_str())));
+        od_map.insert(
+            std::make_pair(goby::GobyFieldOptions::ConfigurationOptions::NEVER,
+                           boost::program_options::options_description(od_pb_never_desc.c_str())));
+
+        std::map<std::string, std::string> environmental_var_map;
+        goby::middleware::ConfigReader::get_protobuf_program_options(od_map, cfg->GetDescriptor(),
+                                                                     environmental_var_map);
+        std::vector<goby::middleware::ConfigReader::PositionalOption> positional_options;
+        goby::middleware::ConfigReader::get_positional_options(cfg->GetDescriptor(),
+                                                               positional_options);
+
+        for (const auto& od_p : od_map) od_all.add(od_p.second);
         od_all.add(od_cli_only);
 
         boost::program_options::positional_options_description p;
         p.add("moos_file", 1);
-        p.add("moos_name", 2);
+        p.add("moos_name", 1);
+        for (const auto& po : positional_options) { p.add(po.name.c_str(), po.position_max_count); }
 
         boost::program_options::store(boost::program_options::command_line_parser(argc_, argv_)
                                           .options(od_all)
@@ -823,11 +857,29 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
                                           .run(),
                                       var_map);
 
+        if (!environmental_var_map.empty())
+        {
+            boost::program_options::store(
+                boost::program_options::parse_environment(
+                    od_all,
+                    [&environmental_var_map](const std::string& i_env_var) -> std::string {
+                        return environmental_var_map.count(i_env_var)
+                                   ? environmental_var_map.at(i_env_var)
+                                   : "";
+                    }),
+                po_env_var_map);
+        }
+
         boost::program_options::notify(var_map);
+        boost::program_options::notify(po_env_var_map);
 
         if (var_map.count("help"))
         {
-            std::cerr << od_all << "\n";
+            std::cerr << "Usage: " << binary_name << " [options] moos_file [moos_name]"
+                      << std::endl;
+
+            std::cerr << od_map[goby::GobyFieldOptions::ConfigurationOptions::ALWAYS] << "\n";
+            std::cerr << od_cli_only << "\n";
             exit(EXIT_SUCCESS);
         }
         else if (var_map.count("example_config"))
@@ -909,13 +961,21 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
         moos_file_reader.SetFile(mission_file_);
         fetch_moos_globals(cfg, moos_file_reader);
 
-        // add / overwrite any options that are specified in the cfg file with those given on the command line
-        for (const auto& p : var_map)
+        // add any environmental variable options that don't exist in the cfg file
+        for (const auto& p : po_env_var_map)
         {
             // let protobuf deal with the defaults
             if (!p.second.defaulted())
                 goby::middleware::ConfigReader::set_protobuf_program_option(var_map, *cfg, p.first,
-                                                                            p.second);
+                                                                            p.second, false);
+        }
+
+        // add / overwrite any options that are specified in the cfg file with those given on the command line
+        for (const auto& p : var_map)
+        {
+            if (!p.second.defaulted())
+                goby::middleware::ConfigReader::set_protobuf_program_option(var_map, *cfg, p.first,
+                                                                            p.second, true);
         }
 
         // now the proto message must have all required fields
@@ -972,19 +1032,25 @@ void goby::moos::GobyMOOSAppSelector<MOOSAppType>::process_configuration()
                                          "_" + common_cfg_.community();
 
             std::string file_name =
-                file_name_base + "_" + to_iso_string(second_clock::universal_time()) + ".txt";
-
-            std::string file_symlink = file_name_base + "_latest.txt";
+                file_name_base +
+                (common_cfg_.log_omit_file_timestamp()
+                     ? ""
+                     : std::string("_") + to_iso_string(second_clock::universal_time())) +
+                ".txt";
 
             goby::glog.is(goby::util::logger::VERBOSE) &&
                 goby::glog << "logging output to file: " << file_name << std::endl;
 
             fout_.open(std::string(common_cfg_.log_path() + "/" + file_name).c_str());
 
-            // symlink to "latest.txt"
-            remove(std::string(common_cfg_.log_path() + "/" + file_symlink).c_str());
-            symlink(file_name.c_str(),
-                    std::string(common_cfg_.log_path() + "/" + file_symlink).c_str());
+            if (!common_cfg_.log_omit_latest_symlink())
+            {
+                std::string file_symlink = file_name_base + "_latest.txt";
+                // symlink to "latest.txt"
+                remove(std::string(common_cfg_.log_path() + "/" + file_symlink).c_str());
+                symlink(file_name.c_str(),
+                        std::string(common_cfg_.log_path() + "/" + file_symlink).c_str());
+            }
 
             // if fails, try logging to this directory
             if (!fout_.is_open())

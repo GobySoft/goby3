@@ -23,7 +23,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/bind.hpp>                                   // for bind_t, arg
+#include <boost/bind/bind.hpp>                                   // for bind_t, arg
 #include <boost/date_time/posix_time/posix_time_config.hpp> // for posix_time
 #include <boost/date_time/posix_time/posix_time_types.hpp>  // for second_c...
 #include <boost/date_time/posix_time/time_formatters.hpp>   // for to_iso_s...
@@ -82,7 +82,8 @@ bool goby::acomms::ModemDriverBase::modem_read(std::string* in)
 
 void goby::acomms::ModemDriverBase::modem_close() { modem_.reset(); }
 
-void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cfg)
+void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cfg,
+                                                bool modem_connection_expected)
 {
     cfg_ = cfg;
 
@@ -149,9 +150,11 @@ void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cf
         }
     }
     else {
-        goby::glog.is(DEBUG1) && goby::glog << group(glog_out_group_) << warn
-                                                    << "NO modem connection_type specified in your configuration file."
-                                                    << std::endl;
+        if (modem_connection_expected)
+            goby::glog.is(DEBUG1) &&
+                goby::glog << group(glog_out_group_) << warn
+                           << "NO modem connection_type specified in your configuration file."
+                           << std::endl;
     }
 
     if (cfg.has_raw_log())
@@ -205,9 +208,9 @@ void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cf
     }
     else
     {
-        glog.is(DEBUG1) && glog << group(glog_out_group_) << warn 
-                                            << "No modem initialized"
-                                            << std::endl;
+        if (modem_connection_expected)
+            glog.is(DEBUG1) && glog << group(glog_out_group_) << warn << "No modem initialized"
+                                    << std::endl;
     }
 }
 

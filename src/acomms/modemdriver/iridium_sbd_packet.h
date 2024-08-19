@@ -1,4 +1,4 @@
-// Copyright 2009-2021:
+// Copyright 2009-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -22,8 +22,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_ACOMMS_MODEMDRIVER_RUDICS_PACKET_H
-#define GOBY_ACOMMS_MODEMDRIVER_RUDICS_PACKET_H
+#ifndef GOBY_ACOMMS_MODEMDRIVER_SBD_PACKET_H
+#define GOBY_ACOMMS_MODEMDRIVER_SBD_PACKET_H
 
 #include <cstdint>
 #include <stdexcept>
@@ -33,22 +33,16 @@ namespace goby
 {
 namespace acomms
 {
-class RudicsPacketException : public std::runtime_error
+class SBDPacketException : public std::runtime_error
 {
   public:
-    RudicsPacketException(const std::string& what) : std::runtime_error(what) {}
+    SBDPacketException(const std::string& what) : std::runtime_error(what) {}
 };
 
-void serialize_rudics_packet(std::string bytes, std::string* rudics_pkt,
-                             const std::string& reserved = std::string("\0\r\n", 3) +
-                                                           std::string(1, 0xff),
-                             bool include_crc = true);
-void parse_rudics_packet(std::string* bytes, std::string rudics_pkt,
-                         const std::string& reserved = std::string("\0\r\n", 3) +
-                                                       std::string(1, 0xff),
-                         bool include_crc = true);
-std::string uint32_to_byte_string(uint32_t i);
-uint32_t byte_string_to_uint32(const std::string& s);
+void serialize_sbd_packet(std::string bytes, std::string* sbd_pkt, bool include_crc = true);
+void parse_sbd_packet(std::string* bytes, std::string sbd_pkt, bool include_crc = true);
+
+constexpr int IRIDIUM_SBD_CRC_BYTE_SIZE = 4;
 } // namespace acomms
 } // namespace goby
 

@@ -19,8 +19,10 @@ message Config
     repeated EndPoint remote = 2
         [(goby.field).description = "An endpoint of the receiving machine."];
     optional int32 max_frame_size = 3 [default = 1400];
+    optional bool ipv6 = 4 [default = false];
 
     repeated uint32 additional_application_ack_modem_id = 21;
+    
 }
 
 extend goby.acomms.protobuf.DriverConfig

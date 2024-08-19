@@ -1,4 +1,4 @@
-// Copyright 2017-2022:
+// Copyright 2017-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -29,7 +29,7 @@
 #include <ostream>
 #include <type_traits>
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/function.hpp>
 #include <boost/signals2/mutex.hpp>
 #include <boost/signals2/signal.hpp>
@@ -102,7 +102,7 @@ goby::middleware::frontseat::WavegliderSV2::WavegliderSV2(const gpb::Config& cfg
       queued_messages_(1),
       dccl_("SV2.id", driver_lib_name())
 {
-    serial_->message_signal.connect(boost::bind(&WavegliderSV2::handle_sv2_message, this, _1));
+    serial_->message_signal.connect(boost::bind(&WavegliderSV2::handle_sv2_message, this, boost::placeholders::_1));
     serial_->start();
 
     glog.is(VERBOSE) && glog << "Connected to WavegliderSV2 serial port." << std::endl;
