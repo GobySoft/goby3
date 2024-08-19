@@ -682,9 +682,11 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
             case goby::acomms::protobuf::DRIVER_POPOTO:
                 driver.reset(new goby::acomms::PopotoDriver);
                 break;
+            #ifdef ENABLE_JANUS_ACOMMS
             case goby::acomms::protobuf::DRIVER_JANUS:
                 driver.reset(new goby::acomms::JanusDriver);
                 break;
+            #endif
             case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
                 driver.reset(new goby::acomms::UDPMulticastDriver);
                 break;
