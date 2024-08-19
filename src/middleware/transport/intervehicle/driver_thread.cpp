@@ -209,9 +209,11 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
                 driver_ = std::make_unique<goby::acomms::BenthosATM900Driver>();
                 break;
 
+            #ifdef ENABLE_POPOTO_ACOMMS
             case goby::acomms::protobuf::DRIVER_POPOTO:
                 driver_ = std::make_unique<goby::acomms::PopotoDriver>();
                 break;
+            #endif
 
             #ifdef ENABLE_JANUS_ACOMMS
             case goby::acomms::protobuf::DRIVER_JANUS:

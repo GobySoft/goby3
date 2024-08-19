@@ -61,6 +61,8 @@ endif()
 
 option(enable_janus_acomms "Enable Janus Acomms Driver" OFF)
 
+option(enable_popoto_acomms "Enable Popoto Acomms Driver" OFF)
+
 if(enable_ncurses)
   goby_find_required_package(Curses)  
   add_definitions(-DHAS_NCURSES)
@@ -228,6 +230,10 @@ if(NOT enable_janus_acomms)
   list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*janus*.")
 endif()
 
+if(NOT enable_popoto_acomms)
+  list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*popoto*.")
+endif()
+
 add_library(goby
   ${BASE_PROTO_SRCS} ${BASE_PROTO_HDRS}
   ${ACOMMS_SRC}
@@ -236,7 +242,6 @@ add_library(goby
   ${MIDDLEWARE_SRC}
   )
 
-target_include_directories(goby PUBLIC ${POPOTO_ROOT_DIR}/include)
 
 target_link_libraries(goby
   dccl
@@ -247,8 +252,16 @@ target_link_libraries(goby
   boost_date_time
   ${PROTOBUF_LIBRARY}
   ${PROJ_LIBRARY}
-  ${POPOTO_ROOT_DIR}/build/libpopoto_api.a
   )
+
+if (enable_popoto_acomms)
+  target_include_directories(goby PUBLIC ${POPOTO_ROOT_DIR}/include)
+
+  add_definitions(-DENABLE_POPOTO_ACOMMS)
+  target_link_libraries(goby
+    ${POPOTO_ROOT_DIR}/build/libpopoto_api.a
+  )
+endif()
 
 if(enable_janus_acomms)
   add_definitions(-DENABLE_JANUS_ACOMMS)

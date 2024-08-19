@@ -146,9 +146,11 @@ goby::apps::zeromq::acomms::ModemDriver::ModemDriver()
             driver_ = std::make_unique<goby::acomms::BenthosATM900Driver>();
             break;
 
+        #ifdef ENABLE_POPOTO_ACOMMS
         case goby::acomms::protobuf::DRIVER_POPOTO:
             driver_ = std::make_unique<goby::acomms::PopotoDriver>();
             break;
+        #endif
 
         case goby::acomms::protobuf::DRIVER_STORE_SERVER:
             driver_ = std::make_unique<goby::acomms::StoreServerDriver>();
