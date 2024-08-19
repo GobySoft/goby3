@@ -215,10 +215,11 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
                 driver_ = std::make_unique<goby::acomms::PopotoDriver>();
                 break;
 
+            #ifdef ENABLE_JANUS_ACOMMS
             case goby::acomms::protobuf::DRIVER_JANUS:
                 driver_ = std::make_unique<goby::acomms::JanusDriver>();
                 break;
-
+            #endif
             case goby::acomms::protobuf::DRIVER_NONE:
             case goby::acomms::protobuf::DRIVER_ABC_EXAMPLE_MODEM:
             case goby::acomms::protobuf::DRIVER_UFIELD_SIM_DRIVER:

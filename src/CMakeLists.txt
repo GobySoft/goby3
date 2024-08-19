@@ -209,6 +209,10 @@ include(util/src.cmake)
 include(time/src.cmake)
 include(middleware/src.cmake)
 
+if(NOT enable_janus_acomms)
+  list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*janus*.")
+endif()
+
 add_library(goby
   ${BASE_PROTO_SRCS} ${BASE_PROTO_HDRS}
   ${ACOMMS_SRC}
@@ -232,6 +236,7 @@ target_link_libraries(goby
   )
 
 if(enable_janus_acomms)
+  add_definitions(-DENABLE_JANUS_ACOMMS)
   target_link_libraries(goby
     janus 
     fftw3
