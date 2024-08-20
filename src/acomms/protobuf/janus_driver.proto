@@ -31,71 +31,174 @@ message Config
             "Application ID for Janus Plugin"
     ];
 
-    optional string pset_file = 4 [
+    optional uint32 pset_id = 4 [
+        default = 1,
+        (dccl.field).min = 1,
+        (dccl.field).max = 255,
+        (goby.field).description = 
+            "Parameter Set ID"
+    ];
+
+    optional string pset_file = 5 [
         default = "/usr/local/share/janus/etc/parameter_sets.csv",
-        (dccl.field).max_length = 50
+        (dccl.field).max_length = 50,
+        (goby.field).description =
+            "Parameter file to read center freq and bandwidth from. Will be ignored if pset_center_freq and pset_bandwidth are not zero"  
     ];
 
-    optional int32 tx_pset_id = 5 [
-        default = 1,
-        (dccl.field).min = 1,
-        (dccl.field).max = 255,
-        (goby.field).description = 
-            "Parameter Set ID"
-    ];
-
-    optional int32 rx_pset_id = 6 [
-        default = 1,
-        (dccl.field).min = 1,
-        (dccl.field).max = 255,
-        (goby.field).description = 
-            "Parameter Set ID"
-    ];
-
-    optional int32 tx_channels = 7 [
-        default = 2,
+    optional uint32 pset_center_freq = 6 [
+        default = 0,
         (dccl.field).min = 0,
-        (dccl.field).max = 4,
         (goby.field).description = 
-            "ALSA output device channel_count"
+            "Center Frequency for Acomms Transmission"
     ];
 
-    optional int32 rx_channels = 8 [
-        default = 1,
+    optional uint32 pset_bandwidth = 7 [
+        default = 0,
         (dccl.field).min = 0,
-        (dccl.field).max = 4,
         (goby.field).description = 
-            "ALSA input device channel_count"
+            "Bandwidth for Acomms Transmission"
     ];
 
-    optional int32 sample_rate = 9 [
+    optional uint32 chip_len_exp = 8 [
+        default = 0,
+        (dccl.field).min = 0,
+        (goby.field).description = 
+            "Chip length dyadic exponent"
+    ];
+
+    optional uint32 sequence_32_chips = 9 [
+        default = 2933675936,
+        (dccl.field).min = 0,
+        (goby.field).description = 
+            "Initial fixed sequence of 32 chips. Default value is equivalent to JANUS_32_CHIP_SEQUENCE"
+    ];
+
+    optional string stream_driver = 10 [
+        default = "alsa",
+        (dccl.field).max_length = 5,
+        (goby.field).description = 
+            "Driver Type (null, raw, wav, fifo, alsa, pulse, wmm)"
+    ];
+
+    optional string stream_driver_args = 11 [
+        (goby.field).description = 
+            "Driver Arguments. (device name)"
+    ];
+    
+    
+    optional uint32 stream_fs = 12 [
         default = 48000,
         (dccl.field).min = 0,
         (dccl.field).max = 100000,
         (goby.field).description = 
-            "ALSA output device sample rate"
-    ];
-    
-    optional string tx_device = 10 [
-        default = "default",
-        (dccl.field).max_length = 50
+            "Sampling Frequency (Hz)"
     ];
 
-    optional string rx_device = 11 [
-        default = "dsnooped",
-        (dccl.field).max_length = 50
+    optional string stream_format = 13 [
+        default = "S16",
+        (dccl.field).max_length = 6,
+        (goby.field).description = 
+            "Format (S8, S10, S12, S14, S16, S24, S24_32, S32, FLOAT, DOUBLE)"
     ];
 
-    optional double tx_power = 12 [
+    optional uint32 stream_channel_count = 14 [
+        default = 1,
+        (dccl.field).min = 1,
+        (goby.field).description = 
+            "Number of stream channels"
+    ];
+
+    optional uint32 stream_channel = 15 [
+        default = 0,
+        (dccl.field).min = 0,
+        (goby.field).description = 
+            "Signal Channel"
+    ];
+
+    optional bool stream_passband = 16 [
+        default = true,
+        (goby.field).description = 
+            "Passband or Baseband Signal"
+    ];
+
+    optional double stream_amp = 17 [
         default = 0.95,
         (dccl.field).min = 0.0,
         (dccl.field).max = 1.0,
         (goby.field).description = 
-            "Stream Amplitude Power"
+            "Stream amplitude factor"
+    ];
+
+    optional uint32 stream_mul = 18 [
+        default = 1,
+        (dccl.field).min = 1,
+        (goby.field).description = 
+            "Force number of output samples to be a multiple of a given number."
+    ];
+
+    // tx parameters
+    optional bool pad = 19 [
+        default = true,
+        (goby.field).description = 
+            "Padding: enabled/disabled."
+    ];
+    
+    optional bool wut = 20 [
+        default = false,
+        (goby.field).description = 
+            "Wake Up Tones: enabled/disabled."
+    ];
+
+    // rx parameters
+    optional bool doppler_correction = 21 [
+        default = true,
+        (goby.field).description = 
+            "Doppler Correction: enabled/disabled."
+    ];
+
+    optional double doppler_max_speed = 22 [
+        default = 5.0,
+        (goby.field).description = 
+            "Doppler correction: maximum speed [m/s]."
+    ];
+
+    optional bool compute_channel_spectrogram = 23 [
+        default = false,
+        (goby.field).description = 
+            "Channel Spectrogram Computation: enabled/disabled."
+    ];
+    
+    optional double detection_threshold = 24 [
+        default = 2.5,
+        (goby.field).description = 
+            "Detection threshold.."
+    ];
+
+    optional bool colored_bit_prob = 25 [
+        default = false,
+        (dccl.field).min = 0,
+        (dccl.field).max = 1,
+        (goby.field).description = 
+            "Colored Bit Probabilities: enable/disable"
+    ];
+
+    optional double cbp_high2medium = 26 [
+        default = 0.2,
+        (goby.field).description = 
+            "Colored Bit Probabilities: High to Medium Probability Threshold"
+    ];
+
+    optional double cbp_medium2low = 27 [
+        default = 0.35,
+        (goby.field).description = 
+            "Colored Bit Probabilities: Medium to Low Probability Threshold"
     ];
 }
+
 // added 1444 in modem driver
 extend goby.acomms.protobuf.DriverConfig
 {
-    optional Config config = 1444;
+    optional Config rx_config = 1444;
+    optional Config tx_config = 1445;
 }

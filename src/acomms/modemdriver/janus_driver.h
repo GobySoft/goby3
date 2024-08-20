@@ -85,35 +85,27 @@ class JanusDriver : public ModemDriverBase
     void pad_message(std::vector<uint8_t> &vec);
     void send_janus_packet(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack = false);
     void append_crc16(std::vector<std::uint8_t> &vec);
-    janus_rx_msg_pkt parse_janus_packet(const janus_packet_t pkt, bool verbosity);
     void to_modem_transmission(janus_rx_msg_pkt packet,protobuf::ModemTransmission& msg);
+    void send_janus_packet_thread(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack);
+    void send_ack(unsigned int src, unsigned int dest,unsigned int frame_number);
+    void DecodeGobyHeader(std::uint8_t header, protobuf::ModemTransmission& m);
     std::uint8_t get_goby_header(const protobuf::ModemTransmission& msg);
     std::uint8_t CreateGobyHeader(const protobuf::ModemTransmission& m);
-    void DecodeGobyHeader(std::uint8_t header, protobuf::ModemTransmission& m);
-    janus_parameters_t get_rx_params();
+    janus_rx_msg_pkt parse_janus_packet(const janus_packet_t pkt, bool verbosity);
     unsigned int get_frame_num(std::string cargo);
     janus_simple_tx_t init_janus_tx();
     janus_simple_rx_t init_janus_rx();
-    void send_janus_packet_thread(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack);
-
-    void send_ack(unsigned int src, unsigned int dest,unsigned int frame_number);
-    int verbosity;
-    std::string pset_file;
-    std::string tx_device;
-    std::string rx_device;
-    int tx_pset_id;
-    int rx_pset_id;
-    int class_id;
-    int application_type;
-    int tx_channels;
-    double tx_power;
-    int rx_channels;
-    int sample_rate;
+    janus_parameters_t get_janus_params(const janus::protobuf::Config& config);
+    
+    janus_parameters_t params_tx;
+    janus_parameters_t params_rx;
     unsigned int acomms_id;
+    unsigned int tx_application_type;
+    unsigned int rx_application_type;
+    unsigned int tx_class_id;
+    unsigned int rx_class_id;
     std::uint32_t next_frame_{0};
     static constexpr int DEFAULT_MTU_BYTES{1024};
-    janus_parameters_t params_tx = janus_parameters_new();
-    janus_parameters_t params_rx;
     janus_simple_tx_t  simple_tx;
     janus_simple_rx_t  simple_rx;
     janus_packet_t packet_rx = 0;
@@ -123,10 +115,16 @@ class JanusDriver : public ModemDriverBase
     protobuf::ModemTransmission modem_msg;
 
   private:
-    const janus::protobuf::Config& janus_driver_cfg() const
+    const janus::protobuf::Config& janus_driver_rx_cfg() const
     {
-        return driver_cfg_.GetExtension(janus::protobuf::config);
+        return driver_cfg_.GetExtension(janus::protobuf::rx_config);
     }
+
+    const janus::protobuf::Config& janus_driver_tx_cfg() const
+    {
+        return driver_cfg_.GetExtension(janus::protobuf::tx_config);
+    }
+
 
   private:
     enum

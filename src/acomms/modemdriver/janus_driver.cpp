@@ -68,64 +68,47 @@ goby::acomms::JanusDriver::~JanusDriver(){
     janus_simple_rx_free(simple_rx);
 }
 
+janus_parameters_t goby::acomms::JanusDriver::get_janus_params(const janus::protobuf::Config& config){
+    janus_parameters_t params = janus_parameters_new();
+    params->verbose = config.verbosity();
+    params->pset_id = config.pset_id();
+    params->pset_file = config.pset_file().c_str();
+    params->pset_center_freq = config.pset_center_freq();
+    params->pset_bandwidth = config.pset_bandwidth();
+    params->chip_len_exp = config.chip_len_exp();
+    params->sequence_32_chips = config.sequence_32_chips();
+    params->stream_driver = config.stream_driver().c_str();
+    params->stream_driver_args = config.stream_driver_args().c_str();
+    params->stream_fs = config.stream_fs();
+    params->stream_format = config.stream_format().c_str();
+    params->stream_channel_count = config.stream_channel_count();
+    params->stream_channel = config.stream_channel();
+    params->stream_passband = config.stream_passband();
+    params->stream_amp = config.stream_amp();
+    params->stream_mul = config.stream_mul();
+    params->pad = config.pad();
+    params->wut = config.wut();
+    params->doppler_correction = config.doppler_correction();
+    params->doppler_max_speed = config.doppler_max_speed();
+    params->compute_channel_spectrogram = config.compute_channel_spectrogram();
+    params->detection_threshold = config.detection_threshold();
+    params->colored_bit_prob = config.colored_bit_prob();
+    params->cbp_high2medium = config.cbp_high2medium();
+    params->cbp_medium2low = config.cbp_medium2low();
+    return params;
+}
+
 janus_simple_tx_t goby::acomms::JanusDriver::init_janus_tx(){
-    params_tx->pset_id = tx_pset_id;
-    params_tx->pset_file = pset_file.c_str();
-    params_tx->verbose = verbosity;
-    params_tx->stream_driver = "alsa";
-    params_tx->stream_driver_args = tx_device.c_str();
-    params_tx->stream_channel_count = tx_channels;
-    params_tx->stream_fs = sample_rate;
-    params_tx->stream_amp = JANUS_REAL_CONST(tx_power);
-    params_tx->pad = 1; 
     simple_tx = janus_simple_tx_new(params_tx);
 
     if (!simple_tx){
       glog.is(DEBUG1) && glog << "ERROR: failed to initialize transmitter" << std::endl;;
       janus_parameters_free(params_tx);
     }   
-
     return simple_tx;
 } // init janus tx
 
-janus_parameters_t goby::acomms::JanusDriver::get_rx_params(){
-    janus_parameters_t params = janus_parameters_new();
-    params->verbose = verbosity;
-    params->pset_id = rx_pset_id;
-    params->pset_file = pset_file.c_str();
-    params->pset_center_freq = 0;
-    params->pset_bandwidth = 0;
-    params->chip_len_exp = 0;
-    params->sequence_32_chips = JANUS_32_CHIP_SEQUENCE;
-
-    // Stream parameters.
-    params->stream_driver = "alsa";
-    params->stream_driver_args = rx_device.c_str();
-    params->stream_fs = sample_rate;
-    params->stream_format = "S16";
-    params->stream_passband = 1;
-    params->stream_mul = 1;
-    params->stream_channel_count = rx_channels;
-    params->stream_channel = 0;
-
-    // Tx parameters.
-    params->pad = 1;
-    params->wut = 0;
-
-    // Rx parameters.
-    params->doppler_correction = 1;
-    params->doppler_max_speed = JANUS_REAL_CONST(5.0);
-    params->compute_channel_spectrogram = 1;
-    params->detection_threshold = JANUS_REAL_CONST(2.5);
-    params->colored_bit_prob = 0;
-    params->cbp_high2medium  = JANUS_REAL_CONST(0.2);
-    params->cbp_medium2low   = JANUS_REAL_CONST(0.35);
-    
-    return params;
-} // get rx params
-
 janus_simple_rx_t goby::acomms::JanusDriver::init_janus_rx(){
-    params_rx = get_rx_params();
     simple_rx = janus_simple_rx_new(params_rx);
     if (!simple_rx){
       glog.is(DEBUG1) && glog << "ERROR: failed to initialize receiver" << std::endl;
@@ -134,8 +117,8 @@ janus_simple_rx_t goby::acomms::JanusDriver::init_janus_rx(){
     }      
     
     carrier_sensing = janus_carrier_sensing_new(janus_simple_rx_get_rx(simple_rx));
-    packet_rx= janus_packet_new(params_rx->verbose);
-    state_rx = janus_rx_state_new(params_rx);
+    packet_rx = janus_packet_new(params_rx->verbose);
+    state_rx  = janus_rx_state_new(params_rx);
     return simple_rx;
 } // init janus rx
 
@@ -144,20 +127,14 @@ void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
     driver_cfg_ = cfg;
     glog.is(DEBUG1) && glog << group(glog_out_group()) << "JanusDriver configuration good" << std::endl;
     ModemDriverBase::modem_start(driver_cfg_);
-    verbosity        = janus_driver_cfg().verbosity();
-    pset_file        = janus_driver_cfg().pset_file();
-    tx_pset_id       = janus_driver_cfg().tx_pset_id();
-    rx_pset_id       = janus_driver_cfg().rx_pset_id();
-    class_id         = janus_driver_cfg().class_id();
-    application_type = janus_driver_cfg().application_type();
-    tx_device        = janus_driver_cfg().tx_device();
-    rx_device        = janus_driver_cfg().rx_device();
-    tx_channels      = janus_driver_cfg().tx_channels();
-    rx_channels      = janus_driver_cfg().rx_channels();
-    tx_power         = janus_driver_cfg().tx_power();
-    sample_rate      = janus_driver_cfg().sample_rate();
-    simple_tx        = init_janus_tx();
-    simple_rx        = init_janus_rx();
+    params_tx           = get_janus_params(janus_driver_tx_cfg());
+    params_rx           = get_janus_params(janus_driver_rx_cfg());
+    tx_class_id         = janus_driver_tx_cfg().class_id();
+    rx_class_id         = janus_driver_rx_cfg().class_id();
+    tx_application_type = janus_driver_tx_cfg().application_type();
+    rx_class_id         = janus_driver_rx_cfg().application_type();
+    simple_tx           = init_janus_tx();
+    simple_rx           = init_janus_rx();
 } // startup
 
 void goby::acomms::JanusDriver::shutdown()
@@ -172,13 +149,13 @@ void goby::acomms::JanusDriver::append_crc16(std::vector<std::uint8_t> &vec){
 } // append crc16
 
 void goby::acomms::JanusDriver::send_janus_packet(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack){
-    if(class_id == 16 && application_type == 1) { append_crc16(payload); } 
+    if(tx_class_id == 16 && tx_application_type == 1) { append_crc16(payload); } 
     int desired_cargo_size = payload.size();
     int ack_request = ack == true ? 1 : 0;
     
-    janus_packet_t packet = janus_packet_new(verbosity);
-    janus_packet_set_class_id(packet, class_id);
-    janus_packet_set_app_type(packet, application_type);
+    janus_packet_t packet = janus_packet_new(params_tx->verbose);
+    janus_packet_set_class_id(packet, tx_class_id);
+    janus_packet_set_app_type(packet, tx_application_type);
     janus_packet_set_tx_rx(packet, 1);
     
     janus_app_fields_t app_fields = janus_app_fields_new();
@@ -200,7 +177,7 @@ void goby::acomms::JanusDriver::send_janus_packet(const protobuf::ModemTransmiss
     janus_app_fields_free(app_fields);
     janus_tx_state_t state = janus_tx_state_new((params_tx->verbose > 1));
     int rv = janus_simple_tx_execute(simple_tx,packet,state);
-    if (verbosity > 0){
+    if (params_tx->verbose > 0){
         janus_tx_state_dump(state);
         janus_packet_dump(packet);
     }
@@ -374,7 +351,7 @@ void goby::acomms::JanusDriver::do_work(){
         if (retval == JANUS_ERROR_OVERRUN){ glog.is(DEBUG1) && glog<< "Error: buffer-overrun" << std::endl; }
     } else if (retval > 0) {
         if (janus_packet_get_validity(packet_rx) && janus_packet_get_cargo_error(packet_rx) == 0){
-            packet_parsed = parse_janus_packet(packet_rx,verbosity);
+            packet_parsed = parse_janus_packet(packet_rx,params_rx->verbose);
             int frame_number;
             if (packet_parsed.cargo_size > 0){
                 if (driver_cfg_.modem_id() == packet_parsed.destination_id || packet_parsed.destination_id == -1){
@@ -383,7 +360,8 @@ void goby::acomms::JanusDriver::do_work(){
                 } else {
                     glog.is(DEBUG1) && glog << "Ignoring msg because it is not meant for us." << std::endl;
                 } 
-                if(packet_parsed.ack_request && (class_id == 16 && application_type == 1) ) // acks only supported for 16-1 since we require a destination id
+                // acks only supported for 16-1 since we require a destination id
+                if(packet_parsed.ack_request && (rx_class_id == 16 && rx_application_type == 1) )
                     send_ack(packet_parsed.station_id, packet_parsed.destination_id, modem_msg.frame_start());
             } else{
                 glog.is(DEBUG1) && glog << "Recieved message with no cargo" << std::endl;
