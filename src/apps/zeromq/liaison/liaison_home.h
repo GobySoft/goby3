@@ -42,22 +42,10 @@ class LiaisonHome : public goby::zeromq::LiaisonContainer
 {
   public:
     LiaisonHome();
-
-  private:
-    std::unique_ptr<Wt::WVBoxLayout> main_layout_;
-};
-
-class LiaisonTest : public goby::zeromq::LiaisonContainer
-{
-  public:
-    LiaisonTest();
-
-  private:
-    std::unique_ptr<Wt::WVBoxLayout> main_layout_;
 };
 
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
 
 #endif

@@ -53,8 +53,8 @@
 
 #include "liaison.h" // for Liaison
 //#include "liaison_commander.h" // for LiaisonComm...
-#include "liaison_home.h" // for LiaisonHome
-//#include "liaison_scope.h"     // for LiaisonScope
+#include "liaison_home.h"  // for LiaisonHome
+#include "liaison_scope.h" // for LiaisonScope
 #include "liaison_wt_thread.h"
 
 namespace Wt
@@ -131,13 +131,14 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     {
         auto home = std::make_unique<LiaisonHome>();
         add_to_menu(std::move(home));
-
-        auto test = std::make_unique<LiaisonTest>();
-        add_to_menu(std::move(test));
     }
 
-    // if (app_cfg_.add_scope_tab())
-    //     add_to_menu(new LiaisonScope(app_cfg_));
+    if (app_cfg_.add_scope_tab())
+    {
+        auto scope = std::make_unique<LiaisonScope>(app_cfg_);
+        add_to_menu(std::move(scope));
+    }
+
     // if (app_cfg_.add_commander_tab())
     //     add_to_menu(new LiaisonCommander(app_cfg_));
 
@@ -195,16 +196,23 @@ void goby::apps::zeromq::LiaisonWtThread::add_to_menu(std::unique_ptr<LiaisonCon
 
 void goby::apps::zeromq::LiaisonWtThread::handle_menu_selection(Wt::WMenuItem* item)
 {
-    LiaisonContainer* contents = dynamic_cast<LiaisonContainer*>(item->contents());
-    if (contents)
+    if (item)
     {
-        glog.is(DEBUG1) && glog << "Liaison: Focused : " << contents->name() << std::endl;
+        LiaisonContainer* contents = dynamic_cast<LiaisonContainer*>(item->contents());
+        if (contents)
+        {
+            glog.is(DEBUG1) && glog << "Liaison: Focused : " << contents->name() << std::endl;
 
-        contents->focus();
+            contents->focus();
+        }
+        else
+        {
+            glog.is(WARN) && glog << "Liaison: Menu item not a LiaisonContainer!" << std::endl;
+        }
     }
     else
     {
-        glog.is(WARN) && glog << "Liaison: Invalid menu item!" << std::endl;
+        glog.is(WARN) && glog << "Liaison: Null menu item!" << std::endl;
     }
 
     // unfocus all others

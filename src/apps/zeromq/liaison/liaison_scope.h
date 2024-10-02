@@ -35,11 +35,11 @@
 #include <utility>       // for pair
 #include <vector>        // for vector
 
-#include <Wt/WContainerWidget>             // for WContainerWidget
-#include <Wt/WEvent>                       // for WKeyEvent
-#include <Wt/WStandardItemModel>           // for WStandardItemModel
-#include <Wt/WTimer>                       // for WTimer
-#include <Wt/WTreeView>                    // for WTreeView
+#include <Wt/WContainerWidget.h>           // for WContainerWidget
+#include <Wt/WEvent.h>                     // for WKeyEvent
+#include <Wt/WStandardItemModel.h>         // for WStandardItemModel
+#include <Wt/WTimer.h>                     // for WTimer
+#include <Wt/WTreeView.h>                  // for WTreeView
 #include <boost/circular_buffer.hpp>       // for circular_buffer
 #include <boost/units/quantity.hpp>        // for operator/
 #include <dccl/dynamic_protobuf_manager.h> // for DynamicProtobufM...
@@ -86,11 +86,20 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     void handle_message(const std::string& group, const google::protobuf::Message& msg,
                         bool fresh_message);
 
-    std::vector<Wt::WStandardItem*> create_row(const std::string& group,
-                                               const google::protobuf::Message& msg,
-                                               bool do_attach_pb_rows = true);
+    std::vector<std::unique_ptr<Wt::WStandardItem>> create_row(const std::string& group,
+                                                               const google::protobuf::Message& msg,
+                                                               bool do_attach_pb_rows = true);
     void attach_pb_rows(const std::vector<Wt::WStandardItem*>& items,
                         const std::string& debug_string);
+
+    void update_row(const std::string& group, const google::protobuf::Message& msg,
+                    const std::vector<std::unique_ptr<Wt::WStandardItem>>& items,
+                    bool do_attach_pb_rows = true)
+    {
+        std::vector<Wt::WStandardItem*> items_raw;
+        for (const auto& item : items) items_raw.push_back(item.get());
+        update_row(group, msg, items_raw, do_attach_pb_rows);
+    }
 
     void update_row(const std::string& group, const google::protobuf::Message& msg,
                     const std::vector<Wt::WStandardItem*>& items, bool do_attach_pb_rows = true);
@@ -140,11 +149,9 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
   private:
     const protobuf::ProtobufScopeConfig& pb_scope_config_;
 
-    Wt::WStringListModel* history_model_;
-    Wt::WStandardItemModel* model_;
-    Wt::WSortFilterProxyModel* proxy_;
-
-    Wt::WVBoxLayout* main_layout_;
+    std::shared_ptr<Wt::WStringListModel> history_model_;
+    std::shared_ptr<Wt::WStandardItemModel> model_;
+    std::shared_ptr<Wt::WSortFilterProxyModel> proxy_;
 
     Wt::WTimer scope_timer_;
     enum ScopeState
@@ -157,20 +164,20 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
 
     struct SubscriptionsContainer : Wt::WContainerWidget
     {
-        SubscriptionsContainer(Wt::WStandardItemModel* model, Wt::WStringListModel* history_model,
-                               std::map<std::string, int>& msg_map,
-                               Wt::WContainerWidget* parent = nullptr);
+        SubscriptionsContainer(std::shared_ptr<Wt::WStandardItemModel> model,
+                               std::shared_ptr<Wt::WStringListModel> history_model,
+                               std::map<std::string, int>& msg_map);
 
-        Wt::WStandardItemModel* model_;
-        Wt::WStringListModel* history_model_;
+        std::shared_ptr<Wt::WStandardItemModel> model_;
+        std::shared_ptr<Wt::WStringListModel> history_model_;
         std::map<std::string, int>& msg_map_;
     };
 
     struct HistoryContainer : Wt::WContainerWidget
     {
-        HistoryContainer(Wt::WVBoxLayout* main_layout, Wt::WAbstractItemModel* model,
-                         const protobuf::ProtobufScopeConfig& pb_scope_config, LiaisonScope* scope,
-                         Wt::WContainerWidget* parent);
+        HistoryContainer(Wt::WVBoxLayout* main_layout,
+                         std::shared_ptr<Wt::WAbstractItemModel> model,
+                         const protobuf::ProtobufScopeConfig& pb_scope_config, LiaisonScope* scope);
 
         void handle_add_history();
         void handle_remove_history(const std::string& type);
@@ -180,15 +187,16 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         void flush_buffer();
 
         void view_clicked(const Wt::WModelIndex& proxy_index, const Wt::WMouseEvent& event,
-                          Wt::WStandardItemModel* model, Wt::WSortFilterProxyModel* proxy);
+                          std::shared_ptr<Wt::WStandardItemModel> model,
+                          std::shared_ptr<Wt::WSortFilterProxyModel> proxy);
 
         struct MVC
         {
             std::string key;
             Wt::WContainerWidget* container;
-            Wt::WStandardItemModel* model;
+            std::shared_ptr<Wt::WStandardItemModel> model;
             Wt::WTreeView* tree;
-            Wt::WSortFilterProxyModel* proxy;
+            std::shared_ptr<Wt::WSortFilterProxyModel> proxy;
         };
 
         Wt::WVBoxLayout* main_layout_;
@@ -209,8 +217,7 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
     struct ControlsContainer : Wt::WContainerWidget
     {
         ControlsContainer(Wt::WTimer* timer, bool start_paused, LiaisonScope* scope,
-                          SubscriptionsContainer* subscriptions_div, double freq,
-                          Wt::WContainerWidget* parent = nullptr);
+                          SubscriptionsContainer* subscriptions_div, double freq);
         ~ControlsContainer() override;
 
         void handle_play_pause(bool toggle_state);
@@ -245,15 +252,14 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
 
     struct RegexFilterContainer : Wt::WContainerWidget
     {
-        RegexFilterContainer(LiaisonScope* scope, Wt::WSortFilterProxyModel* proxy,
-                             const protobuf::ProtobufScopeConfig& pb_scope_config,
-                             Wt::WContainerWidget* parent = nullptr);
+        RegexFilterContainer(LiaisonScope* scope, std::shared_ptr<Wt::WSortFilterProxyModel> proxy,
+                             const protobuf::ProtobufScopeConfig& pb_scope_config);
 
         void handle_set_regex_filter();
         void handle_clear_regex_filter(protobuf::ProtobufScopeConfig::Column column);
 
         LiaisonScope* scope_;
-        Wt::WSortFilterProxyModel* proxy_;
+        std::shared_ptr<Wt::WSortFilterProxyModel> proxy_;
         Wt::WText* hr_;
         Wt::WText* set_text_;
 
@@ -268,13 +274,11 @@ class LiaisonScope : public goby::zeromq::LiaisonContainerWithComms<LiaisonScope
         std::map<protobuf::ProtobufScopeConfig::Column, RegexWidgets> widgets_;
     };
 
-    Wt::WGroupBox* main_box_;
     SubscriptionsContainer* subscriptions_div_;
     ControlsContainer* controls_div_;
     HistoryContainer* history_header_div_;
     RegexFilterContainer* regex_filter_div_;
     Wt::WTreeView* scope_tree_view_;
-    WContainerWidget* bottom_fill_;
 
     // maps group into row
     std::map<std::string, int> msg_map_;
@@ -286,7 +290,7 @@ class LiaisonScopeProtobufTreeView : public Wt::WTreeView
 {
   public:
     LiaisonScopeProtobufTreeView(const protobuf::ProtobufScopeConfig& pb_scope_config,
-                                 int scope_height, Wt::WContainerWidget* parent = nullptr);
+                                 int scope_height);
 
   private:
     //           void handle_double_click(const Wt::WModelIndex& index, const Wt::WMouseEvent& event);
@@ -295,8 +299,7 @@ class LiaisonScopeProtobufTreeView : public Wt::WTreeView
 class LiaisonScopeProtobufModel : public Wt::WStandardItemModel
 {
   public:
-    LiaisonScopeProtobufModel(const protobuf::ProtobufScopeConfig& pb_scope_config,
-                              Wt::WContainerWidget* parent = nullptr);
+    LiaisonScopeProtobufModel(const protobuf::ProtobufScopeConfig& pb_scope_config);
 };
 
 class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
@@ -307,7 +310,8 @@ class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
     {
         auto subscription_handler = [this](const std::vector<unsigned char>& data, int /*scheme*/,
                                            const std::string& type,
-                                           const goby::middleware::Group& group) {
+                                           const goby::middleware::Group& group)
+        {
             std::string gr = group;
             try
             {

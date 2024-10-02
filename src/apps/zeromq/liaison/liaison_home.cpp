@@ -32,7 +32,7 @@
 
 goby::apps::zeromq::LiaisonHome::LiaisonHome()
 {
-    main_layout_ = std::make_unique<Wt::WVBoxLayout>();
+    auto main_layout = std::make_unique<Wt::WVBoxLayout>();
 
     auto top_text = std::make_unique<Wt::WContainerWidget>();
     top_text->addNew<Wt::WText>("Welcome to Goby Liaison: an extensible tool for commanding and "
@@ -41,20 +41,8 @@ goby::apps::zeromq::LiaisonHome::LiaisonHome()
 
     top_text->addNew<Wt::WText>("<i>liaison (n): one that establishes and maintains "
                                 "communication for mutual understanding and cooperation</i>");
-    main_layout_->addWidget(std::move(top_text));
+    main_layout->addWidget(std::move(top_text));
 
-    this->setLayout(std::move(main_layout_));
+    this->setLayout(std::move(main_layout));
     set_name("Home");
-}
-
-goby::apps::zeromq::LiaisonTest::LiaisonTest()
-{
-    main_layout_ = std::make_unique<Wt::WVBoxLayout>();
-
-    auto top_text = std::make_unique<Wt::WContainerWidget>();
-    top_text->addNew<Wt::WText>("TestText");
-    main_layout_->addWidget(std::move(top_text));
-
-    this->setLayout(std::move(main_layout_));
-    set_name("Test");
 }

@@ -92,7 +92,8 @@ class LiaisonContainerWithComms : public LiaisonContainer
         index_ = index++;
 
         // copy configuration
-        auto thread_lambda = [this, cfg]() {
+        auto thread_lambda = [this, cfg]()
+        {
             {
                 std::lock_guard<std::mutex> l(goby_thread_mutex);
                 goby_thread_ =
@@ -119,9 +120,10 @@ class LiaisonContainerWithComms : public LiaisonContainer
         // wait for thread to be created
         while (goby_thread() == nullptr) usleep(1000);
 
-        comms_timer_.setInterval(std::chrono::milliseconds(1 / cfg.update_freq() * 1.0e3));
-        comms_timer_.timeout().connect(
-            [this](const Wt::WMouseEvent&) { this->process_from_comms(); });
+        comms_timer_.setInterval(
+            std::chrono::milliseconds(static_cast<long>(1 / cfg.update_freq() * 1.0e3)));
+        comms_timer_.timeout().connect([this](const Wt::WMouseEvent&)
+                                       { this->process_from_comms(); });
         comms_timer_.start();
     }
 
@@ -183,7 +185,7 @@ class LiaisonContainerWithComms : public LiaisonContainer
     void update_comms_freq(double hertz)
     {
         comms_timer_.stop();
-        comms_timer_.setInterval(std::chrono::milliseconds(1 / hertz * 1.0e3));
+        comms_timer_.setInterval(std::chrono::milliseconds(static_cast<long>(1 / hertz * 1.0e3)));
         comms_timer_.start();
     }
 
