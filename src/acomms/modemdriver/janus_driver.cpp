@@ -21,6 +21,10 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
+//
+// For more information and to download Janus which is required please see 
+// for this driver https://www.januswiki.com/tiki-index.php 
+// Driver has been tested for for 016-00 and 016-01 in the NATO JANUS reference Implementation
 
 #include "driver_helpers.h"
 
@@ -122,8 +126,7 @@ janus_simple_rx_t goby::acomms::JanusDriver::init_janus_rx(){
     return simple_rx;
 } // init janus rx
 
-void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
-{
+void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg){
     driver_cfg_ = cfg;
     glog.is(DEBUG1) && glog << group(glog_out_group()) << "JanusDriver configuration good" << std::endl;
     ModemDriverBase::modem_start(driver_cfg_);
@@ -137,8 +140,7 @@ void goby::acomms::JanusDriver::startup(const protobuf::DriverConfig& cfg)
     simple_rx           = init_janus_rx();
 } // startup
 
-void goby::acomms::JanusDriver::shutdown()
-{
+void goby::acomms::JanusDriver::shutdown(){
     ModemDriverBase::modem_close();
 } // shutdown
 
@@ -149,7 +151,7 @@ void goby::acomms::JanusDriver::append_crc16(std::vector<std::uint8_t> &vec){
 } // append crc16
 
 void goby::acomms::JanusDriver::send_janus_packet(const protobuf::ModemTransmission& msg, std::vector<std::uint8_t> payload, bool ack){
-    if(tx_class_id == 16 && tx_application_type == 1) { append_crc16(payload); } 
+    if(tx_class_id == 16 && tx_application_type == 1) { append_crc16(payload); }
     int desired_cargo_size = payload.size();
     int ack_request = ack == true ? 1 : 0;
     
