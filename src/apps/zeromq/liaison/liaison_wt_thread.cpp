@@ -51,10 +51,10 @@
 #include "goby/zeromq/liaison/liaison_container.h"       // for LiaisonCont...
 #include "goby/zeromq/protobuf/interprocess_config.pb.h" // for InterProces...
 
-#include "liaison.h" // for Liaison
-//#include "liaison_commander.h" // for LiaisonComm...
-#include "liaison_home.h"  // for LiaisonHome
-#include "liaison_scope.h" // for LiaisonScope
+#include "liaison.h"           // for Liaison
+#include "liaison_commander.h" // for LiaisonComm...
+#include "liaison_home.h"      // for LiaisonHome
+#include "liaison_scope.h"     // for LiaisonScope
 #include "liaison_wt_thread.h"
 
 namespace Wt
@@ -139,8 +139,11 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
         add_to_menu(std::move(scope));
     }
 
-    // if (app_cfg_.add_commander_tab())
-    //     add_to_menu(new LiaisonCommander(app_cfg_));
+    if (app_cfg_.add_commander_tab())
+    {
+        auto commander = std::make_unique<LiaisonCommander>(app_cfg_);
+        add_to_menu(std::move(commander));
+    }
 
     using liaison_load_func = std::vector<std::unique_ptr<goby::zeromq::LiaisonContainer>> (*)(
         const protobuf::LiaisonConfig& cfg);
