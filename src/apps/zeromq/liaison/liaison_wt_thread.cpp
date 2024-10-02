@@ -30,17 +30,18 @@
 #include <utility>     // for pair, make_...
 #include <vector>      // for vector
 
-#include <Wt/WAnchor>                     // for WAnchor
-#include <Wt/WContainerWidget>            // for WContainerW...
-#include <Wt/WFlags>                      // for Wt
-#include <Wt/WGlobal>                     // for TargetNewWi...
-#include <Wt/WImage>                      // for WImage
-#include <Wt/WLink>                       // for WLink
-#include <Wt/WMenu>                       // for WMenu
-#include <Wt/WSignal>                     // for Signal
-#include <Wt/WStackedWidget>              // for WStackedWidget
-#include <Wt/WString>                     // for operator<<
-#include <Wt/WText>                       // for WText
+#include <Wt/WAnchor.h>          // for WAnchor
+#include <Wt/WContainerWidget.h> // for WContainerW...
+#include <Wt/WFlags.h>           // for Wt
+#include <Wt/WGlobal.h>          // for TargetNewWi...
+#include <Wt/WImage.h>           // for WImage
+#include <Wt/WLink.h>            // for WLink
+#include <Wt/WMenu.h>            // for WMenu
+#include <Wt/WSignal.h>          // for Signal
+#include <Wt/WStackedWidget.h>   // for WStackedWidget
+#include <Wt/WString.h>          // for operator<<
+#include <Wt/WText.h>            // for WText
+#include <Wt/WVBoxLayout.h>
 #include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
 #include <dlfcn.h>                        // for dlsym
 
@@ -50,10 +51,10 @@
 #include "goby/zeromq/liaison/liaison_container.h"       // for LiaisonCont...
 #include "goby/zeromq/protobuf/interprocess_config.pb.h" // for InterProces...
 
-#include "liaison.h"           // for Liaison
-#include "liaison_commander.h" // for LiaisonComm...
-#include "liaison_home.h"      // for LiaisonHome
-#include "liaison_scope.h"     // for LiaisonScope
+#include "liaison.h" // for Liaison
+//#include "liaison_commander.h" // for LiaisonComm...
+#include "liaison_home.h" // for LiaisonHome
+//#include "liaison_scope.h"     // for LiaisonScope
 #include "liaison_wt_thread.h"
 
 namespace Wt
@@ -84,57 +85,63 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     /*
      * Set up the title
      */
-    auto* header_div = new WContainerWidget(root());
+    auto header_div = root()->addNew<WContainerWidget>();
     header_div->setId("header");
 
-    auto* header = new WText(title_text, header_div);
+    auto header = header_div->addNew<WText>(title_text);
     header->setId("header");
 
-    auto* goby_logo = new WImage("images/gobysoft_logo_dot_org_small.png");
-    auto* goby_logo_a = new WAnchor("http://gobysoft.org/#/software/goby", goby_logo, header_div);
+    auto goby_logo = std::make_unique<WImage>("images/gobysoft_logo_dot_org_small.png");
+
+    Wt::WLink goby_link("http://gobysoft.org/#/software/goby");
+    goby_link.setTarget(Wt::LinkTarget::NewWindow);
+    auto goby_logo_a = header_div->addNew<WAnchor>(goby_link, std::move(goby_logo));
     goby_logo_a->setId("goby_logo");
     goby_logo_a->setStyleClass("no_ul");
-    goby_logo_a->setTarget(TargetNewWindow);
 
     if (app_cfg_.has_upper_right_logo())
     {
-        auto* goby_lp_image = new WImage(app_cfg_.upper_right_logo());
-        auto* goby_lp_image_a = new WAnchor(
-            app_cfg_.has_upper_right_logo_link() ? app_cfg_.upper_right_logo_link() : "",
-            goby_lp_image, header_div);
+        auto goby_lp_image = std::make_unique<WImage>(app_cfg_.upper_right_logo());
+        Wt::WLink goby_lp_link(
+            app_cfg_.has_upper_right_logo_link() ? app_cfg_.upper_right_logo_link() : "");
+        goby_lp_link.setTarget(Wt::LinkTarget::NewWindow);
+
+        auto* goby_lp_image_a = header_div->addNew<WAnchor>(goby_lp_link, std::move(goby_lp_image));
         goby_lp_image_a->setId("lp_logo");
         goby_lp_image_a->setStyleClass("no_ul");
-        goby_lp_image_a->setTarget(TargetNewWindow);
     }
 
-    new WText("<hr/>", root());
+    root()->addNew<Wt::WText>("<hr/>");
 
-    auto* menu_div = new WContainerWidget(root());
+    auto menu_div = root()->addNew<WContainerWidget>();
     menu_div->setStyleClass("menu");
 
-    auto* contents_div = new WContainerWidget(root());
+    auto contents_div = root()->addNew<WContainerWidget>();
     contents_div->setId("contents");
-    contents_stack_ = new WStackedWidget(contents_div);
-    contents_stack_->setStyleClass("fill");
+    auto contents_stack = contents_div->addNew<WStackedWidget>();
+    contents_stack->setStyleClass("fill");
 
     /*
      * Setup the menu
      */
-    menu_ = new WMenu(contents_stack_, Vertical, menu_div);
-    menu_->setRenderAsList(true);
+    menu_ = menu_div->addNew<WMenu>(contents_stack);
     menu_->setStyleClass("menu");
     menu_->setInternalPathEnabled();
     menu_->setInternalBasePath("/");
 
     if (app_cfg_.add_home_tab())
-        add_to_menu(menu_, new LiaisonHome);
-    if (app_cfg_.add_scope_tab())
-        add_to_menu(menu_, new LiaisonScope(app_cfg_));
-    if (app_cfg_.add_commander_tab())
-        add_to_menu(menu_, new LiaisonCommander(app_cfg_));
+    {
+        auto home = std::make_unique<LiaisonHome>();
+        add_to_menu(std::move(home));
+    }
 
-    using liaison_load_func =
-        std::vector<goby::zeromq::LiaisonContainer*> (*)(const protobuf::LiaisonConfig& cfg);
+    // if (app_cfg_.add_scope_tab())
+    //     add_to_menu(new LiaisonScope(app_cfg_));
+    // if (app_cfg_.add_commander_tab())
+    //     add_to_menu(new LiaisonCommander(app_cfg_));
+
+    using liaison_load_func = std::vector<std::unique_ptr<goby::zeromq::LiaisonContainer>> (*)(
+        const protobuf::LiaisonConfig& cfg);
 
     for (auto& plugin_handle : plugin_handles_)
     {
@@ -142,8 +149,9 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
 
         if (liaison_load_ptr)
         {
-            std::vector<goby::zeromq::LiaisonContainer*> containers = (*liaison_load_ptr)(app_cfg_);
-            for (auto& container : containers) add_to_menu(menu_, container);
+            std::vector<std::unique_ptr<goby::zeromq::LiaisonContainer>> containers =
+                (*liaison_load_ptr)(app_cfg_);
+            for (auto& container : containers) add_to_menu(std::move(container));
         }
         else
         {
@@ -164,7 +172,7 @@ goby::apps::zeromq::LiaisonWtThread::~LiaisonWtThread()
     const std::vector<WMenuItem*>& items = menu_->items();
     for (auto item : items)
     {
-        LiaisonContainer* contents = menu_contents_[item];
+        LiaisonContainer* contents = dynamic_cast<LiaisonContainer*>(item->contents());
         if (contents)
         {
             glog.is(DEBUG1) && glog << "Liaison: Cleanup : " << contents->name() << std::endl;
@@ -173,15 +181,15 @@ goby::apps::zeromq::LiaisonWtThread::~LiaisonWtThread()
     }
 }
 
-void goby::apps::zeromq::LiaisonWtThread::add_to_menu(WMenu* menu, LiaisonContainer* container)
+void goby::apps::zeromq::LiaisonWtThread::add_to_menu(std::unique_ptr<LiaisonContainer> container)
 {
-    Wt::WMenuItem* new_item = menu->addItem(container->name(), container);
-    menu_contents_.insert(std::make_pair(new_item, container));
+    Wt::WString name(container->name());
+    menu_->addItem(name, std::move(container));
 }
 
 void goby::apps::zeromq::LiaisonWtThread::handle_menu_selection(Wt::WMenuItem* item)
 {
-    LiaisonContainer* contents = menu_contents_[item];
+    LiaisonContainer* contents = dynamic_cast<LiaisonContainer*>(item->contents());
     if (contents)
     {
         glog.is(DEBUG1) && glog << "Liaison: Focused : " << contents->name() << std::endl;
@@ -199,7 +207,7 @@ void goby::apps::zeromq::LiaisonWtThread::handle_menu_selection(Wt::WMenuItem* i
     {
         if (i != item)
         {
-            LiaisonContainer* other_contents = menu_contents_[i];
+            LiaisonContainer* other_contents = dynamic_cast<LiaisonContainer*>(i->contents());
             if (other_contents)
             {
                 glog.is(DEBUG1) && glog << "Liaison: Unfocused : " << other_contents->name()

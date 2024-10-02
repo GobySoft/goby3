@@ -39,10 +39,10 @@
 #include <unordered_map> // for operat...
 #include <vector>        // for vector
 
-#include <Wt/WFlags>                                 // for Wt
-#include <Wt/WGlobal>                                // for Applic...
-#include <Wt/WIOService>                             // for WIOSer...
-#include <Wt/WServer>                                // for WServer
+#include <Wt/WFlags.h>                               // for Wt
+#include <Wt/WGlobal.h>                              // for Applic...
+#include <Wt/WIOService.h>                           // for WIOSer...
+#include <Wt/WServer.h>                              // for WServer
 #include <boost/algorithm/string/classification.hpp> // for is_any...
 #include <boost/algorithm/string/split.hpp>          // for split
 #include <boost/filesystem.hpp>                      // for direct...
@@ -230,10 +230,10 @@ goby::apps::zeromq::Liaison::Liaison()
         // delete our fake argv
         for (int i = 0, n = wt_argv_vec.size(); i < n; ++i) delete[] wt_argv[i];
 
-        wt_server_.addEntryPoint(Wt::Application,
-                                 [this](const Wt::WEnvironment& env) -> Wt::WApplication* {
-                                     return new LiaisonWtThread(env, this->cfg());
-                                 });
+        wt_server_.addEntryPoint(
+            Wt::EntryPointType::Application,
+            [this](const Wt::WEnvironment& env) -> std::unique_ptr<Wt::WApplication>
+            { return std::make_unique<LiaisonWtThread>(env, this->cfg()); });
 
         if (!wt_server_.start())
         {
@@ -248,7 +248,8 @@ goby::apps::zeromq::Liaison::Liaison()
 
     // clean up sessions if there are none
     // see https://redmine.webtoolkit.eu/boards/2/topics/5614?r=5615#message-5615
-    expire_sessions_ = [=]() {
+    expire_sessions_ = [=]()
+    {
         int seconds = 10;
         auto start = goby::time::SteadyClock::now();
         while (!terminating_ &&

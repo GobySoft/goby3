@@ -44,7 +44,7 @@ class LiaisonHome : public goby::zeromq::LiaisonContainer
     LiaisonHome();
 
   private:
-    Wt::WVBoxLayout* main_layout_;
+    std::unique_ptr<Wt::WVBoxLayout> main_layout_;
 };
 } // namespace zeromq
 } // namespace goby
