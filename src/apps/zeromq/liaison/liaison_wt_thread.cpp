@@ -126,13 +126,14 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
      */
     menu_ = menu_div->addNew<WMenu>(contents_stack);
     menu_->setStyleClass("menu");
-    menu_->setInternalPathEnabled();
-    menu_->setInternalBasePath("/");
 
     if (app_cfg_.add_home_tab())
     {
         auto home = std::make_unique<LiaisonHome>();
         add_to_menu(std::move(home));
+
+        auto test = std::make_unique<LiaisonTest>();
+        add_to_menu(std::move(test));
     }
 
     // if (app_cfg_.add_scope_tab())
@@ -161,6 +162,9 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
         }
     }
 
+    menu_->setInternalPathEnabled();
+    menu_->setInternalBasePath("/");
+
     menu_->itemSelected().connect(this, &LiaisonWtThread::handle_menu_selection);
 
     handle_menu_selection(menu_->currentItem());
@@ -184,7 +188,9 @@ goby::apps::zeromq::LiaisonWtThread::~LiaisonWtThread()
 void goby::apps::zeromq::LiaisonWtThread::add_to_menu(std::unique_ptr<LiaisonContainer> container)
 {
     Wt::WString name(container->name());
-    menu_->addItem(name, std::move(container));
+    auto item = menu_->addItem(name, std::move(container));
+    glog.is(DEBUG1) && glog << "Added entry to menu: " << item->text()
+                            << ", path: " << item->pathComponent() << std::endl;
 }
 
 void goby::apps::zeromq::LiaisonWtThread::handle_menu_selection(Wt::WMenuItem* item)

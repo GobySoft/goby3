@@ -46,3 +46,15 @@ goby::apps::zeromq::LiaisonHome::LiaisonHome()
     this->setLayout(std::move(main_layout_));
     set_name("Home");
 }
+
+goby::apps::zeromq::LiaisonTest::LiaisonTest()
+{
+    main_layout_ = std::make_unique<Wt::WVBoxLayout>();
+
+    auto top_text = std::make_unique<Wt::WContainerWidget>();
+    top_text->addNew<Wt::WText>("TestText");
+    main_layout_->addWidget(std::move(top_text));
+
+    this->setLayout(std::move(main_layout_));
+    set_name("Test");
+}
