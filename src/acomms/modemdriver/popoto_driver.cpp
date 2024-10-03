@@ -140,7 +140,7 @@ void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
     std::string in;
     int startup_elapsed_ms = 0;
 
-   while (!modem_read(&in) && !(popoto0 && popoto0->getReply(&in)))
+    while (!modem_read(&in) && !(popoto0 && popoto0->getReply(&in)))
     {
         usleep(100000); // 100 ms
         startup_elapsed_ms += 100;
