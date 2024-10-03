@@ -64,9 +64,7 @@ popoto_client *popoto0 = NULL;
 volatile float Eng;
 volatile int pegCount = 0;
 volatile FILE *fpOut0 = NULL;
-volatile FILE *fpOut1 = NULL;
 volatile uint32_t EngCount;
-float Gain = 1;
 
 goby::acomms::PopotoDriver::PopotoDriver() = default;
 goby::acomms::PopotoDriver::~PopotoDriver() = default;
@@ -712,5 +710,9 @@ void goby::acomms::PopotoDriver::DecodeGobyHeader(std::uint8_t header, std::uint
     if (m.type() == protobuf::ModemTransmission::DATA){
         m.set_ack_requested( header & (1 << GOBY_HEADER_ACK_REQUEST));
         m.set_frame_start( ack_num );
+    }
+    else if (m.type() == protobuf::ModemTransmission::ACK){
+        m.set_frame_start(ack_num);
+        m.add_acked_frame( ack_num );
     }
 }
