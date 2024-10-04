@@ -44,7 +44,6 @@
 #include "goby/acomms/modemdriver/iridium_shore_driver.h"   // for IridiumS...
 #include "goby/acomms/modemdriver/mm_driver.h"              // for MMDriver
 #include "goby/acomms/modemdriver/popoto_driver.h"          // for PopotoDr...
-#include "goby/acomms/modemdriver/janus_driver.h"          // for PopotoDr...
 #include "goby/acomms/modemdriver/store_server_driver.h"
 #include "goby/acomms/modemdriver/udp_driver.h"             // for UDPDriver
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"   // for UDPMulti...
@@ -58,7 +57,9 @@
 #include "goby/util/debug_logger/flex_ostreambuf.h"         // for DEBUG1
 #include "goby/util/debug_logger/logger_manipulators.h"     // for operator<<
 #include "goby/util/debug_logger/term_color.h"              // for Colors
-
+#ifdef ENABLE_JANUS_ACOMMS
+#include "goby/acomms/modemdriver/janus_driver.h"          // for JanusDriver...
+#endif
 #include "driver_thread.h"
 
 using goby::glog;
