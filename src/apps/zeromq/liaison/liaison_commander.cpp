@@ -421,18 +421,6 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
         else
         {
             command_selection_->addItem(protobuf_name);
-
-            if (!commands_.count(protobuf_name))
-            {
-                auto new_command = std::make_unique<CommandContainer>(
-                    pb_commander_config_, pb_commander_config.load_protobuf(i), protobuf_name,
-                    &session_, commander_, send_button_);
-
-                //master_field_info_stack_);
-                commands_div_->addWidget(std::move(new_command));
-                // index of the newly added widget
-                commands_[protobuf_name] = commands_div_->count() - 1;
-            }
         }
     }
 
@@ -600,6 +588,38 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 }
 
+void checkDisabledWidgets(Wt::WWidget* widget, int level = 0)
+{
+    if (widget->isDisabled() && widget->isEnabled())
+    {
+        std::cout << std::string(level, '.') << widget->id() << " is enabled and disabled"
+                  << ".\n";
+    }
+    else if (!widget->isDisabled() && widget->isEnabled())
+    {
+        std::cout << std::string(level, '.') << widget->id() << " is enabled and not disabled"
+                  << ".\n";
+    }
+    else if (!widget->isDisabled() && !widget->isEnabled())
+    {
+        std::cout << std::string(level, '.') << widget->id() << " is not enabled and not disabled"
+                  << ".\n";
+    }
+    else if (widget->isDisabled() && !widget->isEnabled())
+    {
+        std::cout << std::string(level, '.') << widget->id() << " is not enabled and disabled"
+                  << ".\n";
+    }
+
+    for (auto* child : widget->children())
+    {
+        if (auto* childWidget = dynamic_cast<Wt::WWidget*>(child))
+        {
+            checkDisabledWidgets(childWidget, level + 1);
+        }
+    }
+}
+
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::switch_command(int selection_index)
 {
     if (selection_index == 0)
@@ -611,13 +631,38 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::switch_command(int
         return;
     }
 
+    std::string protobuf_name = command_selection_->itemText(selection_index).narrow();
+
+    if (!commands_.count(protobuf_name))
+    {
+        int idx = 0;
+        for (int i = 0, n = pb_commander_config_.load_protobuf_size(); i < n; ++i)
+        {
+            if (protobuf_name == pb_commander_config_.load_protobuf(i).name())
+            {
+                idx = i;
+                break;
+            }
+        }
+
+        auto new_command = std::make_unique<CommandContainer>(
+            pb_commander_config_, pb_commander_config_.load_protobuf(idx), protobuf_name, &session_,
+            commander_, send_button_);
+
+        commands_div_->addWidget(std::move(new_command));
+
+        // index of the newly added widget
+        commands_[protobuf_name] = commands_div_->count() - 1;
+    }
+
     commands_div_->show();
     send_button_->setDisabled(false);
     clear_button_->setDisabled(false);
     comment_line_->setDisabled(false);
 
-    std::string protobuf_name = command_selection_->itemText(selection_index).narrow();
     commands_div_->setCurrentIndex(commands_[protobuf_name]);
+
+    std::cout << "commands_div_ ID: " << commands_div_->id() << std::endl;
     //    master_field_info_stack_->setCurrentIndex(commands_[protobuf_name]);
 }
 
@@ -1486,6 +1531,10 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                 current_str = goby::util::hex_encode(current_str);
                 default_str = goby::util::hex_encode(default_str);
             }
+            else
+            {
+                validator.reset(new WValidator);
+            }
 
             value_field = generate_single_line_edit_field(message, field_desc, current_str,
                                                           default_str, validator, index);
@@ -1974,7 +2023,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         if (dccl_dycon_.has_min())
             min = std::max(min, dccl_dycon_.min());
 
-        if (dccl_dycon_.has_required_if())
+        if (dccl_dycon_.has_required_if() && validator)
             validator->setMandatory(field_desc->is_required() || dccl_dycon_.required());
 #endif
 
