@@ -1270,10 +1270,10 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         spin_box->setRange(0, std::numeric_limits<int>::max());
         spin_box->setSingleStep(1);
 
+        auto node_raw = node.get();
         spin_box->valueChanged().connect(
-            [this, message, field_desc, &node, parent_hierarchy](int size) {
-                handle_repeated_size_change(size, message, field_desc, node.get(),
-                                            parent_hierarchy);
+            [this, message, field_desc, node_raw, parent_hierarchy](int size) {
+                handle_repeated_size_change(size, message, field_desc, node_raw, parent_hierarchy);
             });
 
         spin_box->setValue(refl->FieldSize(*message, field_desc));
@@ -1314,12 +1314,14 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             {
                 auto button = std::make_unique<WPushButton>(MESSAGE_INCLUDE_TEXT);
 
+                auto node_raw = node.get();
+                auto button_raw = button.get();
                 button->clicked().connect(
-                    [this, message, field_desc, &button, &node,
+                    [this, message, field_desc, button_raw, node_raw,
                      parent_hierarchy](const Wt::WMouseEvent& mouse)
                     {
-                        handle_toggle_single_message(mouse, message, field_desc, button.get(),
-                                                     node.get(), parent_hierarchy);
+                        handle_toggle_single_message(mouse, message, field_desc, button_raw,
+                                                     node_raw, parent_hierarchy);
                     });
 
                 if (refl->HasField(*message, field_desc))
@@ -1345,11 +1347,12 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     {
         auto button = std::make_unique<WPushButton>(EXTERNAL_DATA_LOAD_TEXT);
 
+        auto node_raw = node.get();
+        auto button_raw = button.get();
         button->clicked().connect(
-            [this, message, field_desc, &button, &node,
-             parent_hierarchy](const Wt::WMouseEvent& mouse)
-            {
-                handle_load_external_data(mouse, message, field_desc, button.get(), node.get(),
+            [this, message, field_desc, button_raw, node_raw,
+             parent_hierarchy](const Wt::WMouseEvent& mouse) {
+                handle_load_external_data(mouse, message, field_desc, button_raw, node_raw,
                                           parent_hierarchy);
             });
 
@@ -1783,11 +1786,12 @@ std::unique_ptr<WLineEdit> goby::apps::zeromq::LiaisonCommander::ControlsContain
         line_edit->setValidator(std::move(validator));
     }
 
+    auto line_edit_raw = line_edit.get();
     line_edit->changed().connect(
-        [this, message, field_desc, &line_edit, index]()
-        { handle_line_field_changed(message, field_desc, line_edit.get(), index); });
+        [this, message, field_desc, line_edit_raw, index]()
+        { handle_line_field_changed(message, field_desc, line_edit_raw, index); });
 
-    line_edit->focussed().connect([this, &line_edit]() { handle_focus_changed(line_edit.get()); });
+    line_edit->focussed().connect([this, line_edit_raw]() { handle_focus_changed(line_edit_raw); });
 
     return line_edit;
 }
@@ -1820,9 +1824,10 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::gener
         (field_desc->is_repeated() && index < refl->FieldSize(*message, field_desc)))
         combo_box->setCurrentIndex(current_value + 1);
 
+    auto combo_box_raw = combo_box.get();
     combo_box->changed().connect(
-        [this, message, field_desc, &combo_box, index]()
-        { handle_combo_field_changed(message, field_desc, combo_box.get(), index); });
+        [this, message, field_desc, combo_box_raw, index]()
+        { handle_combo_field_changed(message, field_desc, combo_box_raw, index); });
 
     return combo_box;
 }
