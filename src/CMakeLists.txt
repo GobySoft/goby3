@@ -227,11 +227,11 @@ include(time/src.cmake)
 include(middleware/src.cmake)
 
 if(NOT enable_janus_acomms)
-  list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*janus*.")
+  list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*janus_driver.cpp")
 endif()
 
 if(NOT enable_popoto_acomms)
-  list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*popoto*.")
+  list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*popoto_driver.cpp")
 endif()
 
 add_library(goby
