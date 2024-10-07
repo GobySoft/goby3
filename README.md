@@ -24,5 +24,5 @@ please read the AUTHORS file found in this directory for instructions on how to 
 
 ## reporting bugs and other issues
 
-please use the Github issue tracking system to report bugs or inconsistencies in the software or documentation. If you have a fix, this is greatly appreciated as well.
+please use the Github issue tracking system to report bugs or inconsistencies in the software or documentation. If you have a fix, this is greatly appreciated as well. 
 
