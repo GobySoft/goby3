@@ -712,6 +712,12 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
                 break;
 
             case goby::acomms::protobuf::DRIVER_NONE: break;
+
+            default:
+                throw(goby::Exception(
+                    "Please specify a supported driver type not: " +
+                    goby::acomms::protobuf::DriverType_Name(driver_cfg->driver_type())));
+                break;
         }
     }
 }
