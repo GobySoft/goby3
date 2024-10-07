@@ -779,18 +779,47 @@ class InterVehiclePortal
             data.underlying_thread.reset(new std::thread(
                 [&data, link]()
                 {
-                    try
-                    {
-                        data.modem_driver_thread.reset(new intervehicle::ModemDriverThread(*link));
-                        data.modem_driver_thread->run(data.driver_thread_alive);
-                    }
-                    catch (std::exception& e)
-                    {
-                        goby::glog.is_warn() &&
-                            goby::glog << "Modem driver thread had uncaught exception: " << e.what()
-                                       << std::endl;
-                        throw;
-                    }
+                    uint32_t attempts = 0;
+                    do {
+                        attempts++;
+                        try
+                        {
+                            data.modem_driver_thread.reset(
+                                new intervehicle::ModemDriverThread(*link));
+                            data.modem_driver_thread->run(data.driver_thread_alive);
+                        }
+                        catch (std::exception& e)
+                        {
+                            if (link->connection_attempts() == 0 ||
+                                attempts < link->connection_attempts())
+                            {
+                                goby::glog.is_warn() &&
+                                    goby::glog << "Modem driver thread had uncaught exception: "
+                                               << e.what() << " Attempting reconnection."
+                                               << std::endl;
+                            }
+                            else
+                            {
+                                if (link->required())
+                                {
+                                    goby::glog.is_warn() &&
+                                        goby::glog << "Modem driver thread had uncaught exception: "
+                                                   << e.what() << std::endl;
+                                    throw;
+                                }
+                                else
+                                {
+                                    goby::glog.is_warn() &&
+                                        goby::glog << "Modem driver thread had uncaught exception: "
+                                                   << e.what()
+                                                   << " However, the communication link is not "
+                                                      "required. Ignoring uncaught exception."
+                                                   << std::endl;
+                                }
+                            }
+                        }
+                    } while (link->connection_attempts() == 0 ||
+                             attempts < link->connection_attempts());
                 }));
 
             if (goby::glog.buf().is_gui())
@@ -798,9 +827,10 @@ class InterVehiclePortal
                 std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
 
-        while (drivers_ready_ < modem_drivers_.size())
+        while (drivers_ready_ > 1) // < modem_drivers_.size())
         {
-            goby::glog.is_debug1() && goby::glog << "Waiting for drivers to be ready." << std::endl;
+            goby::glog.is_debug1() &&
+                goby::glog << "Waiting for at least one modem driver to be ready." << std::endl;
             this->poll();
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
