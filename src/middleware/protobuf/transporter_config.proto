@@ -1,6 +1,5 @@
 syntax = "proto2";
 
-import "dccl/option_extensions.proto";
 import "goby/middleware/protobuf/intervehicle_transporter_config.proto";
 
 package goby.middleware.protobuf;
