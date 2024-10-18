@@ -7,6 +7,11 @@ import "goby/acomms/protobuf/driver_base.proto"; // load up message DriverBaseCo
 import "goby/acomms/protobuf/modem_message.proto";
 
 package goby.acomms.popoto.protobuf;
+message ModemAddress
+    {
+        required string ip = 2 [default = "127.0.0.1"];
+        required string port = 3 [default = "17000"];
+    }
 
 message Config
 {
@@ -24,11 +29,24 @@ message Config
             "The modulation rate of the payload portion of the waveform, 0-5"
     ];
 
-    optional int32 modem_power = 3 [
+    optional double modem_power = 3 [
         default = 1,
-        (dccl.field).min = 1,
+        (dccl.field).min = 0.1,
         (dccl.field).max = 100,
+        (dccl.field).precision = 2,
         (goby.field).description = "Modem Tx strength 1-100W"
+    ];
+
+    optional ModemAddress local = 4 [(goby.field).description =
+                                     "The IP and port of the local modem "
+                                     "(default port is 17000)"];
+
+    optional int32 application_type = 5 [
+        default = 0,
+        (dccl.field).min = 0,
+        (dccl.field).max = 5,
+        (goby.field).description =
+            "Application type for JANUS message"
     ];
 }
 // added 1442 in modem driver
@@ -46,6 +64,7 @@ enum TransmissionType
     POPOTO_TWO_WAY_RANGE = 3;
     POPOTO_DEEP_SLEEP = 4;
     POPOTO_WAKE = 5;
+    POPOTO_SET_TX = 6;
 }
 message RangingReply
 {

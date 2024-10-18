@@ -32,6 +32,10 @@ add_subdirectory(udp_multicast_driver1)
 
 add_subdirectory(dynamic_buffer1)
 
-add_subdirectory(popoto_driver1)
-
+if(enable_janus_acomms)
+    add_subdirectory(janus_acomms)
+endif()
+if(enable_popoto_acomms)
+    add_subdirectory(popoto_driver1)
+endif()
 add_subdirectory(store_server_driver1)

@@ -37,13 +37,12 @@
 
 #include "goby/middleware/marshalling/protobuf.h"
 
-#include "goby/acomms/acomms_constants.h"                  // for BROADCAS...
-#include "goby/acomms/bind.h"                              // for bind
-#include "goby/acomms/modemdriver/benthos_atm900_driver.h" // for BenthosA...
-#include "goby/acomms/modemdriver/iridium_driver.h"        // for IridiumD...
-#include "goby/acomms/modemdriver/iridium_shore_driver.h"  // for IridiumS...
-#include "goby/acomms/modemdriver/mm_driver.h"             // for MMDriver
-#include "goby/acomms/modemdriver/popoto_driver.h"         // for PopotoDr...
+#include "goby/acomms/acomms_constants.h"                   // for BROADCAS...
+#include "goby/acomms/bind.h"                               // for bind
+#include "goby/acomms/modemdriver/benthos_atm900_driver.h"  // for BenthosA...
+#include "goby/acomms/modemdriver/iridium_driver.h"         // for IridiumD...
+#include "goby/acomms/modemdriver/iridium_shore_driver.h"   // for IridiumS...
+#include "goby/acomms/modemdriver/mm_driver.h"              // for MMDriver
 #include "goby/acomms/modemdriver/store_server_driver.h"
 #include "goby/acomms/modemdriver/udp_driver.h"             // for UDPDriver
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"   // for UDPMulti...
@@ -57,7 +56,12 @@
 #include "goby/util/debug_logger/flex_ostreambuf.h"         // for DEBUG1
 #include "goby/util/debug_logger/logger_manipulators.h"     // for operator<<
 #include "goby/util/debug_logger/term_color.h"              // for Colors
-
+#ifdef ENABLE_JANUS_ACOMMS
+#include "goby/acomms/modemdriver/janus_driver.h"          // for JanusDriver...
+#endif
+#ifdef ENABLE_POPOTO_ACOMMS
+#include "goby/acomms/modemdriver/popoto_driver.h"          // for PopotoDr...
+#endif
 #include "driver_thread.h"
 
 using goby::glog;
@@ -208,20 +212,32 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
                 driver_ = std::make_unique<goby::acomms::BenthosATM900Driver>();
                 break;
 
-            case goby::acomms::protobuf::DRIVER_POPOTO:
-                driver_ = std::make_unique<goby::acomms::PopotoDriver>();
-                break;
-
             case goby::acomms::protobuf::DRIVER_STORE_SERVER:
                 driver_ = std::make_unique<goby::acomms::StoreServerDriver>();
                 break;
 
+            #ifdef ENABLE_POPOTO_ACOMMS
+            case goby::acomms::protobuf::DRIVER_POPOTO:
+                driver_ = std::make_unique<goby::acomms::PopotoDriver>();
+                break;
+            #endif
+
+            #ifdef ENABLE_JANUS_ACOMMS
+            case goby::acomms::protobuf::DRIVER_JANUS:
+                driver_ = std::make_unique<goby::acomms::JanusDriver>();
+                break;
+            #endif
             case goby::acomms::protobuf::DRIVER_NONE:
             case goby::acomms::protobuf::DRIVER_ABC_EXAMPLE_MODEM:
             case goby::acomms::protobuf::DRIVER_UFIELD_SIM_DRIVER:
             case goby::acomms::protobuf::DRIVER_BLUEFIN_MOOS:
                 throw(goby::Exception(
                     "Unsupported driver type: " +
+                    goby::acomms::protobuf::DriverType_Name(cfg().driver().driver_type())));
+                break;
+            default:
+                throw(goby::Exception(
+                    "Please specify a supported driver type: " +
                     goby::acomms::protobuf::DriverType_Name(cfg().driver().driver_type())));
                 break;
         }
