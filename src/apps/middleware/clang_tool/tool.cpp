@@ -1,4 +1,4 @@
-// Copyright 2020-2022:
+// Copyright 2020-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -24,9 +24,6 @@
 #include <iostream> // for operator<<, endl, bas...
 #include <stdlib.h> // for exit, EXIT_FAILURE
 #include <string>   // for string
-
-#include <llvm/ADT/ArrayRef.h>  // for ArrayRef
-#include <llvm/ADT/StringRef.h> // for StringRef
 
 #include "actions.h"                           // for generate, visualize
 #include "clang/Tooling/CommonOptionsParser.h" // for CommonOptionsParser

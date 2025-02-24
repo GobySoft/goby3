@@ -3,7 +3,6 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Not Committed Yet
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -132,7 +131,7 @@ void goby::middleware::ToolHelper::exec_external(std::string app, std::vector<st
             std::cerr << "\"" << arg << "\" ";
     }
     std::cerr << std::endl;
-    std::cerr << "Ensure that " << args[0] << " is on your path and is executable." << std::endl;
+    std::cerr << "Ensure that " << app << " is on your path and is executable." << std::endl;
 }
 
 void goby::middleware::ToolSharedLibraryLoader::load_lib(const std::string& lib)

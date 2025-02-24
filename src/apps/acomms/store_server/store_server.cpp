@@ -218,6 +218,22 @@ void goby::apps::acomms::StoreServer::handle_request(
     if (!last_request_time_.count(request.modem_id()))
         last_request_time_.insert(std::make_pair(request.modem_id(), 0));
 
+    std::uint64_t last_request_time = last_request_time_[request.modem_id()];
+    if (cfg().has_max_time_between_requests())
+    {
+        std::uint64_t max_microseconds_between_requests =
+            cfg().max_time_between_requests_with_units<goby::time::MicroTime>().value();
+        std::uint64_t min_last_request_time = request_time - max_microseconds_between_requests;
+        if (min_last_request_time > last_request_time)
+        {
+            glog.is(WARN) &&
+                glog << "Only requesting messages from last " << max_microseconds_between_requests
+                     << " microseconds (time point: " << min_last_request_time
+                     << "). Previous request was at time point: " << last_request_time << std::endl;
+            last_request_time = min_last_request_time;
+        }
+    }
+
     sqlite3_stmt* select;
     check(sqlite3_prepare(db_,
                           "SELECT bytes FROM ModemTransmission WHERE src != ?1 AND (microtime > ?2 "
@@ -227,7 +243,7 @@ void goby::apps::acomms::StoreServer::handle_request(
 
     check(sqlite3_bind_int(select, 1, request.modem_id()),
           "Select request modem_id binding failed");
-    check(sqlite3_bind_int64(select, 2, last_request_time_[request.modem_id()]),
+    check(sqlite3_bind_int64(select, 2, last_request_time),
           "Select `microtime` last time binding failed");
     check(sqlite3_bind_int64(select, 3, request_time),
           "Select `microtime` this time binding failed");
