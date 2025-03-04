@@ -178,7 +178,7 @@ void goby::acomms::JanusDriver::send_janus_packet(const protobuf::ModemTransmiss
 
     janus_app_fields_free(app_fields);
     janus_tx_state_t state = janus_tx_state_new((params_tx->verbose > 1));
-    int rv = janus_simple_tx_execute(simple_tx,packet,state);
+    janus_simple_tx_execute(simple_tx, packet, state);
     if (params_tx->verbose > 0){
         janus_tx_state_dump(state);
         janus_packet_dump(packet);
@@ -353,8 +353,7 @@ void goby::acomms::JanusDriver::do_work(){
         if (retval == JANUS_ERROR_OVERRUN){ glog.is(DEBUG1) && glog<< "Error: buffer-overrun" << std::endl; }
     } else if (retval > 0) {
         if (janus_packet_get_validity(packet_rx) && janus_packet_get_cargo_error(packet_rx) == 0){
-            packet_parsed = parse_janus_packet(packet_rx,params_rx->verbose);
-            int frame_number;
+            packet_parsed = parse_janus_packet(packet_rx, params_rx->verbose);
             if (packet_parsed.cargo_size > 0){
                 if (driver_cfg_.modem_id() == packet_parsed.destination_id || packet_parsed.destination_id == -1){
                     to_modem_transmission(packet_parsed,modem_msg);

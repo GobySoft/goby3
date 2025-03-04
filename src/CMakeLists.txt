@@ -37,9 +37,6 @@ if(DCCL_INCLUDE_DIR)
   protobuf_include_dirs("${DCCL_INCLUDE_DIR}")
 endif()
 
-# Add popoto api to cmake
-set(POPOTO_ROOT_DIR /opt/PopotoAPI/CPP/popoto_client CACHE PATH "Top level directory for Popoto API.")
-
 #proj
 goby_find_required_package(Proj)
 
@@ -256,7 +253,11 @@ target_link_libraries(goby
   )
 
 if (enable_popoto_acomms)
-  target_include_directories(goby PUBLIC ${POPOTO_ROOT_DIR}/include)
+  if(NOT POPOTO_ROOT_DIR)
+    message(FATAL_ERROR "You must set POPOTO_ROOT_DIR to the Top level directory for Popoto API (cmake -DPOPOTO_ROOT_DIR=/path/to/PopotoAPI/CPP/popoto_client)")
+  endif()
+  
+  target_include_directories(goby SYSTEM PUBLIC ${POPOTO_ROOT_DIR}/include)
 
   add_definitions(-DENABLE_POPOTO_ACOMMS)
   target_link_libraries(goby
@@ -265,14 +266,19 @@ if (enable_popoto_acomms)
 endif()
 
 if(enable_janus_acomms)
+  if(NOT JANUS_ROOT_DIR)
+    message(FATAL_ERROR "You must set JANUS_ROOT_DIR to the Top level directory for JANUS library (cmake -DJANUS_ROOT_DIR=/path/to/janus-c)")
+  endif()
+
+  target_include_directories(goby SYSTEM PUBLIC ${JANUS_ROOT_DIR}/src/c ${JANUS_ROOT_DIR}/build/cmake_generated)
   add_definitions(-DENABLE_JANUS_ACOMMS)
   target_link_libraries(goby
     janus 
     fftw3
     asound
     pulse-simple
-    /usr/local/share/janus/plugins/libplugin_016_00.so
-    /usr/local/share/janus/plugins/libplugin_016_01.so
+    ${JANUS_ROOT_DIR}/build/libplugin_016_00.so
+    ${JANUS_ROOT_DIR}/build/libplugin_016_01.so
   )
 endif()
 

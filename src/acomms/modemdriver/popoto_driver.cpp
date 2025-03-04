@@ -455,24 +455,24 @@ void goby::acomms::PopotoDriver::signal_and_write(const std::string& raw)
     else if (myConnection == ETHERNET_CONNECTION)
     {
         size_t pos = 0;
-        if (pos = raw.find("setRate") < strlen(raw.c_str()))
+        if ((pos = raw.find("setRate") < strlen(raw.c_str())))
         {
             raw_cp = setrate_to_payload_mode(raw);
         }
 
-        if (pos = raw_cp.find(setvali) < strlen(raw_cp.c_str()))
+        if ((pos = raw_cp.find(setvali) < strlen(raw_cp.c_str())))
         {
             message = change_to_popoto_json(raw_cp, pos, setvali, "int ");
         }
-        else if (pos = raw_cp.find(setvalf) < strlen(raw_cp.c_str()))
+        else if ((pos = raw_cp.find(setvalf) < strlen(raw_cp.c_str())))
         {
             message = change_to_popoto_json(raw_cp, pos, setvalf, "float ");
         }
-        else if (pos = raw_cp.find(getvali) < strlen(raw_cp.c_str()))
+        else if ((pos = raw_cp.find(getvali) < strlen(raw_cp.c_str())))
         {
             message = change_to_popoto_json(raw_cp, pos, getvali, " int ");
         }
-        else if (pos = raw_cp.find(getvalf) < strlen(raw_cp.c_str()))
+        else if ((pos = raw_cp.find(getvalf) < strlen(raw_cp.c_str())))
         {
             message = change_to_popoto_json(raw_cp, pos, getvalf, " float ");
         }
@@ -489,7 +489,7 @@ std::string goby::acomms::PopotoDriver::setrate_to_payload_mode(std::string setR
     std::stringstream payload_mode; // clear the string stream
     for (size_t i = 0; i < rate_to_speed.size(); ++i)
     {
-        if (pos = setRate.find(rate_to_speed[i]) < strlen(setRate.c_str()))
+        if ((pos = setRate.find(rate_to_speed[i]) < strlen(setRate.c_str())))
         {
             payload_mode << "setvaluei PayloadMode " << i << "\n";
             break;
