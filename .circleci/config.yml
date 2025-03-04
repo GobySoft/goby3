@@ -94,7 +94,7 @@ job-template-amd64: &job-template-amd64
           true
     - run: &run-update-apt
         name: Update apt packages
-        # TODO: Remove libdccl4-dev from this command once all Docker containers are updated to include it
+        # TODO: Remove libdccl4-dev and libwt4 from this command once all Docker containers are updated to include it
         command: |
           apt-get update && apt-get dist-upgrade -y &&
           (apt-get install default-libmysqlclient-dev:${TARGET_ARCH} -y ||
@@ -102,6 +102,7 @@ job-template-amd64: &job-template-amd64
           apt-get install libmariadb-dev:${TARGET_ARCH} libmariadb-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y ||
           apt-get install libmariadbclient-dev:${TARGET_ARCH} libmariadbclient-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y)
           apt-get install libdccl4-dev:${TARGET_ARCH} libdccl4:${TARGET_ARCH} dccl4-compiler -y || true
+          apt-get install libwt4-dev:${TARGET_ARCH} -y || true
     - run: &run-build
         name: Build
         command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_doc=ON -Dbuild_doc_pdf=OFF -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -- -j4
