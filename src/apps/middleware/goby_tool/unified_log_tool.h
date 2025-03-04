@@ -28,7 +28,7 @@
 
 #include "goby/apps/middleware/goby_tool/log.pb.h"
 #include "goby/middleware/application/interface.h"
-#include "goby/middleware/protobuf/log_tool_config.pb.h"
+#include "goby/middleware/protobuf/log_convert_tool_config.pb.h"
 
 namespace goby
 {

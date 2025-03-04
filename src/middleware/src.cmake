@@ -5,7 +5,7 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/transporter_config.proto
   middleware/protobuf/intervehicle.proto
   middleware/protobuf/intervehicle_transporter_config.proto
-  middleware/protobuf/log_tool_config.proto
+  middleware/protobuf/log_convert_tool_config.proto
   middleware/protobuf/terminate.proto
   middleware/protobuf/io.proto
   middleware/protobuf/gpsd.proto
