@@ -85,6 +85,59 @@ class LogConvertToolConfigurator
                 cfg.mutable_input_file()->RemoveLast();
             }
         }
+
+        std::vector<std::string> input_files_or_dirs;
+        for (const auto& input_path_str : cfg.input_file())
+            input_files_or_dirs.push_back(input_path_str);
+        cfg.clear_input_file();
+
+        bool single_input_file = (input_files_or_dirs.size() == 1);
+
+        auto add_file = [&cfg, &single_input_file](boost::filesystem::path input_path)
+        {
+            // ignore symlinks except for unitary case
+            if (boost::filesystem::is_symlink(input_path))
+            {
+                if (single_input_file)
+                    cfg.add_input_file(input_path.native());
+                else
+                    std::cerr << "Ignoring symlink in batch mode: " << input_path << std::endl;
+            }
+            else if (boost::filesystem::is_regular_file(input_path))
+            {
+                cfg.add_input_file(input_path.native());
+            }
+            else
+            {
+                std::cerr << "Ignoring non-regular file: " << input_path << std::endl;
+            }
+        };
+
+        // check validity and convert directories into files
+        for (const auto& input_path_str : input_files_or_dirs)
+        {
+            boost::filesystem::path input_path(input_path_str);
+            if (!boost::filesystem::exists(input_path))
+            {
+                std::cerr << "Input file or directory does not exist: " << input_path_str
+                          << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            if (boost::filesystem::is_directory(input_path))
+            {
+                single_input_file = false;
+                for (auto const& entry : boost::filesystem::directory_iterator(input_path))
+                {
+                    if (entry.path().extension() == ".goby")
+                        add_file(entry.path());
+                }
+            }
+            else
+            {
+                add_file(input_path);
+            }
+        }
     }
 };
 

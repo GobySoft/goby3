@@ -10,7 +10,7 @@ message LogConvertToolConfig
         [(goby.field) = { cfg { action: DEVELOPER } }];
 
     repeated string input_file = 10 [(goby.field) = {
-        description: "Input goby_logger file to read (e.g. 'vehicle_20200204T121314.goby')  [can omit --input_file if 1st parameter]"
+        description: "Input goby_logger file to read (e.g. 'vehicle_20200204T121314.goby') or directory to goby_logger files. Can specify multiple files when not specifying --output_file."
         cfg { position: { max_count: 10000 enable: true }, cli_short: "i" }
     }];
 
@@ -90,4 +90,12 @@ message LogConvertToolConfig
     repeated string load_shared_library = 40
         [(goby.field).description =
              "Load a shared library (e.g., to load Protobuf files)"];
+
+    optional int32 jobs = 41 [
+        default = 1,
+        (goby.field) = {
+            description: "Number of parallel jobs",
+            cfg { cli_short: "j" }
+        }
+    ];
 }
