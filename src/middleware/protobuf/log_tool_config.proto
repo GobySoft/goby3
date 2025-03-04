@@ -4,14 +4,14 @@ import "goby/protobuf/option_extensions.proto";
 
 package goby.apps.middleware.protobuf;
 
-message LogToolConfig
+message LogConvertToolConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1
         [(goby.field) = { cfg { action: DEVELOPER } }];
 
-    required string input_file = 10 [(goby.field) = {
+    repeated string input_file = 10 [(goby.field) = {
         description: "Input goby_logger file to read (e.g. 'vehicle_20200204T121314.goby')  [can omit --input_file if 1st parameter]"
-        cfg { position: { enable: true }, cli_short: "i" }
+        cfg { position: { max_count: 10000 enable: true }, cli_short: "i" }
     }];
 
     optional string type_regex = 15 [

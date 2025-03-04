@@ -21,6 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <boost/process.hpp>
+
 #include "goby/middleware/application/tool.h"
 
 #include "unified_log_tool.h"
@@ -41,6 +43,12 @@ goby::apps::middleware::UnifiedLogTool::UnifiedLogTool()
                 {
                     switch (action_for_help)
                     {
+                        case goby::apps::middleware::protobuf::UnifiedLogToolConfig::convert:
+                            tool_helper.help<goby::apps::middleware::LogConvertTool,
+                                             goby::apps::middleware::LogConvertToolConfigurator>(
+                                action_for_help);
+                            break;
+
                         default:
                             throw(goby::Exception(
                                 "Help was expected to be handled by external tool"));
@@ -49,11 +57,43 @@ goby::apps::middleware::UnifiedLogTool::UnifiedLogTool()
                 }
                 break;
 
+            case goby::apps::middleware::protobuf::UnifiedLogToolConfig::convert:
+                tool_helper.run_subtool<goby::apps::middleware::LogConvertTool,
+                                        goby::apps::middleware::LogConvertToolConfigurator>();
+                break;
+
             default:
                 throw(goby::Exception("Action was expected to be handled by external tool"));
                 break;
         }
     }
+
+    quit(0);
+}
+
+goby::apps::middleware::LogConvertTool::LogConvertTool()
+    : goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
+{
+    namespace bp = boost::process;
+
+    bp::group g;
+
+    for (int i = 0, n = app_cfg().input_file_size(); i < n; ++i)
+    {
+        boost::process::opstream in;
+        std::string in_str;
+        auto child_cfg = app_cfg();
+        child_cfg.clear_input_file();
+        child_cfg.add_input_file(app_cfg().input_file(i));
+        google::protobuf::TextFormat::PrintToString(child_cfg, &in_str);
+        std::string name = app_cfg().input_file(i);
+        bp::spawn("goby_log_tool --app_name=" + name + " --binary=\"goby log convert\" -c -",
+                  boost::process::std_in < in, g);
+        in << in_str;
+    }
+
+    if (g.valid())
+        g.wait();
 
     quit(0);
 }
