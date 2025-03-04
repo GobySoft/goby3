@@ -1,13 +1,18 @@
-FROM gobysoft/goby3-ubuntu-build-base:24.04.1
+FROM gobysoft/ubuntu-build-base:24.04.1
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# https://bugs.launchpad.net/ubuntu/+source/freerdp2/+bug/2017998
-# affects libzmq3-dev
+RUN apt-get update && apt-get -y install dirmngr && \
+    echo "deb http://packages.gobysoft.org/ubuntu/release/ noble/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
+    apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE
 
-# libcurl4-openssl-dev breaks libhdf5-dev
+# Clone the Debian packaging project and install the dependencies it declares
+RUN git clone \
+    https://github.com/GobySoft/goby-debian -b 3.0 debian
 
-RUN apt-get -y remove libcurl4-openssl-dev libdccl4-dev libdccl4  goby3-build-deps libproj-dev libhdf5-dev 
+# This is necessary to avoid a broken package issue - not sure why - try removing in non-noble distros
+RUN apt-get update && \
+    apt-get -y install libwt4-dev:arm64
 
 RUN apt-get update && \
     mk-build-deps --build-dep -a arm64 --host-arch arm64 --build-arch amd64 -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "debian/control" && \

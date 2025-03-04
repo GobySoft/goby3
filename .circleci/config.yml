@@ -52,11 +52,11 @@ docker-armhf-jammy: &docker-armhf-jammy
   - image: gobysoft/goby3-ubuntu-build-armhf:22.04.1
 
 docker-base-noble: &docker-base-noble
-  - image: gobysoft/goby3-ubuntu-build-base:24.04.1
+  - image: gobysoft/goby3-ubuntu-build-base:24.04.2
 docker-arm64-noble: &docker-arm64-noble
-  - image: gobysoft/goby3-ubuntu-build-arm64:24.04.1
+  - image: gobysoft/goby3-ubuntu-build-arm64:24.04.2
 docker-armhf-noble: &docker-armhf-noble
-  - image: gobysoft/goby3-ubuntu-build-armhf:24.04.1
+  - image: gobysoft/goby3-ubuntu-build-armhf:24.04.2
 
     
 ## Pre-declare job templates
