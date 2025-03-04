@@ -122,7 +122,7 @@ if(enable_openssl)
 endif()
 
 ## Wt
-find_package(Wt REQUIRED)
+find_package(Wt QUIET)
 set(WT_DOC_STRING "Enable Wt web browser GUI components (requires libwt-dev, libwtdbo-dev, libwtdbosqlite-dev, and libwthttp-dev: http://www.webtoolkit.eu/wt)")
 #find resources directory
 find_path(Wt_RESOURCES_DIR_BASE share/Wt/resources/plus.gif /usr /usr/local)
