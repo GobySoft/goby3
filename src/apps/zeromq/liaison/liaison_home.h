@@ -42,12 +42,10 @@ class LiaisonHome : public goby::zeromq::LiaisonContainer
 {
   public:
     LiaisonHome();
-
-  private:
-    Wt::WVBoxLayout* main_layout_;
 };
+
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
 
 #endif

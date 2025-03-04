@@ -27,8 +27,8 @@
 
 #include <map> // for map
 
-#include <Wt/WApplication> // for WApplication
-#include <Wt/WEnvironment> // for WEnvironment
+#include <Wt/WApplication.h> // for WApplication
+#include <Wt/WEnvironment.h> // for WEnvironment
 
 #include "goby/zeromq/protobuf/liaison_config.pb.h" // for LiaisonConfig
 
@@ -59,19 +59,17 @@ class LiaisonWtThread : public Wt::WApplication
     LiaisonWtThread(const LiaisonWtThread&) = delete;
     LiaisonWtThread& operator=(const LiaisonWtThread&) = delete;
 
-    void add_to_menu(Wt::WMenu* menu, goby::zeromq::LiaisonContainer* container);
+    void add_to_menu(std::unique_ptr<goby::zeromq::LiaisonContainer> container);
     void handle_menu_selection(Wt::WMenuItem* item);
 
     static std::vector<void*> plugin_handles_;
 
   private:
     Wt::WMenu* menu_;
-    Wt::WStackedWidget* contents_stack_;
-    std::map<Wt::WMenuItem*, goby::zeromq::LiaisonContainer*> menu_contents_;
     protobuf::LiaisonConfig app_cfg_;
 };
 } // namespace zeromq
+} // namespace apps
 } // namespace goby
-}
 
 #endif

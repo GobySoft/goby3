@@ -24,32 +24,32 @@
 
 #include <list> // for operator!=, ope...
 
-#include <Wt/WApplication> // for WApplication, wApp
-#include <Wt/WBreak>       // for WBreak
-#include <Wt/WComboBox>    // for WComboBox
-#include <Wt/WDateTime>    // for WDateTime
-#include <Wt/WDoubleSpinBox>
-#include <Wt/WGlobal>                                // for Horizontal, Key_P
-#include <Wt/WGroupBox>                              // for WGroupBox
-#include <Wt/WLength>                                // for WLength, WLengt...
-#include <Wt/WLineEdit>                              // for WLineEdit
-#include <Wt/WModelIndex>                            // for DescendingOrder
-#include <Wt/WPushButton>                            // for WPushButton
-#include <Wt/WSignal>                                // for EventSignal
-#include <Wt/WSortFilterProxyModel>                  // for WSortFilterProx...
-#include <Wt/WStackedWidget>                         // for WStackedWidget
-#include <Wt/WStandardItem>                          // for WStandardItem
-#include <Wt/WString>                                // for WString
-#include <Wt/WStringListModel>                       // for WStringListModel
-#include <Wt/WText>                                  // for WText
-#include <Wt/WTimer>                                 // for WTimer
-#include <Wt/WVBoxLayout>                            // for WVBoxLayout
-#include <Wt/WWidget>                                // for WWidget
+#include <Wt/WApplication.h> // for WApplication, wApp
+#include <Wt/WBreak.h>       // for WBreak
+#include <Wt/WComboBox.h>    // for WComboBox
+#include <Wt/WDateTime.h>    // for WDateTime
+#include <Wt/WDoubleSpinBox.h>
+#include <Wt/WGlobal.h>                              // for Horizontal, Key_P
+#include <Wt/WGroupBox.h>                            // for WGroupBox
+#include <Wt/WLength.h>                              // for WLength, WLengt...
+#include <Wt/WLineEdit.h>                            // for WLineEdit
+#include <Wt/WModelIndex.h>                          // for DescendingOrder
+#include <Wt/WPushButton.h>                          // for WPushButton
+#include <Wt/WSignal.h>                              // for EventSignal
+#include <Wt/WSortFilterProxyModel.h>                // for WSortFilterProx...
+#include <Wt/WStackedWidget.h>                       // for WStackedWidget
+#include <Wt/WStandardItem.h>                        // for WStandardItem
+#include <Wt/WString.h>                              // for WString
+#include <Wt/WStringListModel.h>                     // for WStringListModel
+#include <Wt/WText.h>                                // for WText
+#include <Wt/WTimer.h>                               // for WTimer
+#include <Wt/WVBoxLayout.h>                          // for WVBoxLayout
+#include <Wt/WWidget.h>                              // for WWidget
 #include <boost/algorithm/string/classification.hpp> // for is_any_ofF, is_...
 #include <boost/algorithm/string/split.hpp>          // for split
 #include <boost/algorithm/string/trim.hpp>           // for trim
 #include <boost/any.hpp>                             // for any_cast
-#include <boost/bind/bind.hpp>                            // for bind_t, list_av...
+#include <boost/bind/bind.hpp>                       // for bind_t, list_av...
 #include <boost/date_time/posix_time/ptime.hpp>      // for ptime
 #include <boost/smart_ptr/shared_ptr.hpp>            // for shared_ptr
 #include <google/protobuf/descriptor.h>              // for Descriptor
@@ -76,22 +76,24 @@ using namespace goby::util::logger;
 goby::apps::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cfg)
     : LiaisonContainerWithComms<LiaisonScope, ScopeCommsThread>(cfg),
       pb_scope_config_(cfg.pb_scope_config()),
-      history_model_(new Wt::WStringListModel(this)),
-      model_(new LiaisonScopeProtobufModel(pb_scope_config_, this)),
-      proxy_(new Wt::WSortFilterProxyModel(this)),
-      main_layout_(new Wt::WVBoxLayout(this)),
-      last_scope_state_(UNKNOWN),
-      main_box_(new WGroupBox("Interprocess Messages")),
-      subscriptions_div_(new SubscriptionsContainer(model_, history_model_, msg_map_, main_box_)),
-      controls_div_(new ControlsContainer(&scope_timer_, cfg.start_paused(), this,
-                                          subscriptions_div_, cfg.update_freq(), main_box_)),
-      history_header_div_(
-          new HistoryContainer(main_layout_, history_model_, pb_scope_config_, this, main_box_)),
-      regex_filter_div_(new RegexFilterContainer(this, proxy_, pb_scope_config_, main_box_)),
-      scope_tree_view_(new LiaisonScopeProtobufTreeView(
-          pb_scope_config_, pb_scope_config_.scope_height(), main_box_)),
-      bottom_fill_(new WContainerWidget)
+      history_model_(std::make_shared<Wt::WStringListModel>()),
+      model_(std::make_shared<LiaisonScopeProtobufModel>(pb_scope_config_)),
+      proxy_(std::make_shared<Wt::WSortFilterProxyModel>()),
+      last_scope_state_(UNKNOWN)
 {
+    auto main_layout = std::make_unique<Wt::WVBoxLayout>();
+    auto main_box = std::make_unique<Wt::WGroupBox>("Interprocess Messages");
+
+    subscriptions_div_ = main_box->addNew<SubscriptionsContainer>(model_, history_model_, msg_map_);
+    controls_div_ = main_box->addNew<ControlsContainer>(&scope_timer_, cfg.start_paused(), this,
+                                                        subscriptions_div_, cfg.update_freq());
+    history_header_div_ = main_box->addNew<HistoryContainer>(main_layout.get(), history_model_,
+                                                             pb_scope_config_, this);
+
+    regex_filter_div_ = main_box->addNew<RegexFilterContainer>(this, proxy_, pb_scope_config_);
+    scope_tree_view_ = main_box->addNew<LiaisonScopeProtobufTreeView>(
+        pb_scope_config_, pb_scope_config_.scope_height());
+
     //    this->resize(WLength::Auto, WLength(100, WLength::Percentage));
 
     setStyleClass("scope");
@@ -99,23 +101,22 @@ goby::apps::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cf
     proxy_->setSourceModel(model_);
     scope_tree_view_->setModel(proxy_);
     scope_tree_view_->sortByColumn(pb_scope_config_.sort_by_column(),
-                                   pb_scope_config_.sort_ascending() ? AscendingOrder
-                                                                     : DescendingOrder);
+                                   pb_scope_config_.sort_ascending() ? Wt::SortOrder::Ascending
+                                                                     : Wt::SortOrder::Descending);
 
-    scope_tree_view_->clicked().connect(this, &LiaisonScope::view_clicked);
+    scope_tree_view_->clicked().connect(
+        [this](const Wt::WModelIndex& index, const Wt::WMouseEvent& event)
+        { view_clicked(index, event); });
 
-    main_layout_->addWidget(main_box_);
-    //    main_layout_->setResizable(main_layout_->count()-1);
-    //    main_layout_->addWidget(bottom_fill_, -1, AlignTop);
-    //    main_layout_->addStretch(1);
-    //    bottom_fill_->resize(WLength::Auto, 100);
+    main_layout->addWidget(std::move(main_box));
 
     for (int i = 0, n = pb_scope_config_.history_size(); i < n; ++i)
         history_header_div_->add_history(pb_scope_config_.history(i));
 
     update_freq(cfg.update_freq());
-    scope_timer_.timeout().connect(this, &LiaisonScope::loop);
+    scope_timer_.timeout().connect([this]() { loop(); });
 
+    this->setLayout(std::move(main_layout));
     set_name("Scope");
 }
 
@@ -126,7 +127,11 @@ void goby::apps::zeromq::LiaisonScope::view_clicked(const Wt::WModelIndex& proxy
     Wt::WStandardItem* item = model_->itemFromIndex(model_index);
     try
     {
-        display_notify(boost::any_cast<std::string>(item->data(UserRole)));
+        display_notify(Wt::cpp17::any_cast<std::string>(item->data(Wt::ItemDataRole::User)));
+    }
+    catch (std::exception& e)
+    {
+        glog.is_debug1() && glog << "Failed to handle view click: " << e.what() << std::endl;
     }
     catch (...)
     {
@@ -139,7 +144,7 @@ void goby::apps::zeromq::LiaisonScope::update_freq(double hertz)
     this->update_comms_freq(hertz);
 
     scope_timer_.stop();
-    scope_timer_.setInterval(1 / hertz * 1.0e3);
+    scope_timer_.setInterval(std::chrono::milliseconds(static_cast<long>(1 / hertz * 1.0e3)));
     scope_timer_.start();
 }
 
@@ -164,7 +169,7 @@ void goby::apps::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WSta
         for (int j = 0; j <= protobuf::ProtobufScopeConfig::COLUMN_MAX; ++j)
         {
             if (!key_item->child(i, j))
-                key_item->setChild(i, j, new Wt::WStandardItem);
+                key_item->setChild(i, j, std::make_unique<Wt::WStandardItem>());
 
             if (j == protobuf::ProtobufScopeConfig::COLUMN_VALUE)
             {
@@ -183,12 +188,12 @@ void goby::apps::zeromq::LiaisonScope::attach_pb_rows(const std::vector<Wt::WSta
     }
 }
 
-std::vector<Wt::WStandardItem*> goby::apps::zeromq::LiaisonScope::create_row(
+std::vector<std::unique_ptr<Wt::WStandardItem>> goby::apps::zeromq::LiaisonScope::create_row(
     const std::string& group, const google::protobuf::Message& msg, bool do_attach_pb_rows)
 {
-    std::vector<Wt::WStandardItem*> items;
+    std::vector<std::unique_ptr<Wt::WStandardItem>> items;
     for (int i = 0; i <= protobuf::ProtobufScopeConfig::COLUMN_MAX; ++i)
-        items.push_back(new WStandardItem);
+        items.push_back(std::make_unique<WStandardItem>());
     update_row(group, msg, items, do_attach_pb_rows);
 
     return items;
@@ -206,13 +211,16 @@ void goby::apps::zeromq::LiaisonScope::update_row(const std::string& group,
     items[protobuf::ProtobufScopeConfig::COLUMN_TYPE]->setText(msg.GetDescriptor()->full_name());
 
     items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(msg.ShortDebugString(),
-                                                                DisplayRole);
-    items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(debug_string, ToolTipRole);
-    items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(debug_string, UserRole);
+                                                                Wt::ItemDataRole::Display);
+    items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(debug_string,
+                                                                Wt::ItemDataRole::ToolTip);
+    items[protobuf::ProtobufScopeConfig::COLUMN_VALUE]->setData(debug_string,
+                                                                Wt::ItemDataRole::User);
 
     items[protobuf::ProtobufScopeConfig::COLUMN_TIME]->setData(
-        WDateTime::fromPosixTime(goby::time::SystemClock::now<boost::posix_time::ptime>()),
-        DisplayRole);
+        WDateTime::fromTimePoint(std::chrono::system_clock::time_point(
+            goby::time::SystemClock::now().time_since_epoch())),
+        Wt::ItemDataRole::Display);
 
     if (do_attach_pb_rows)
         attach_pb_rows(items, debug_string);
@@ -284,9 +292,9 @@ void goby::apps::zeromq::LiaisonScope::handle_message(const std::string& group,
     }
     else
     {
-        std::vector<WStandardItem*> items = create_row(group, msg);
+        std::vector<std::unique_ptr<WStandardItem>> items = create_row(group, msg);
         msg_map_.insert(make_pair(group, model_->rowCount()));
-        model_->appendRow(items);
+        model_->appendRow(std::move(items));
         history_model_->addString(group);
         history_model_->sort(0);
         regex_filter_div_->handle_set_regex_filter();
@@ -299,9 +307,7 @@ void goby::apps::zeromq::LiaisonScope::handle_message(const std::string& group,
 }
 
 goby::apps::zeromq::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(
-    const protobuf::ProtobufScopeConfig& pb_scope_config, int scope_height,
-    Wt::WContainerWidget* parent /*= 0*/)
-    : WTreeView(parent)
+    const protobuf::ProtobufScopeConfig& pb_scope_config, int scope_height)
 {
     this->setAlternatingRowColors(true);
 
@@ -329,8 +335,8 @@ goby::apps::zeromq::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(
 // void goby::apps::zeromq::LiaisonScopeProtobufTreeView::handle_double_click(const Wt::WModelIndex& proxy_index, const Wt::WMouseEvent& event)
 // {
 
-//     const Wt::WAbstractProxyModel* proxy = dynamic_cast<const Wt::WAbstractProxyModel*>(this->model());
-//     const Wt::WStandardItemModel* model = dynamic_cast<Wt::WStandardItemModel*>(proxy->sourceModel());
+//     const std::shared_ptr<Wt::WAbstractProxyModel> proxy = dynamic_cast<const std::shared_ptr<Wt::WAbstractProxyModel>>(this->model());
+//     const std::shared_ptr<Wt::WStandardItemModel> model = dynamic_cast<std::shared_ptr<Wt::WStandardItemModel>>(proxy->sourceModel());
 //     WModelIndex model_index = proxy->mapToSource(proxy_index);
 
 //     glog.is(DEBUG1) && glog << "clicked: " << model_index.row() << "," << model_index.column() << std::endl;
@@ -342,35 +348,34 @@ goby::apps::zeromq::LiaisonScopeProtobufTreeView::LiaisonScopeProtobufTreeView(
 // }
 
 goby::apps::zeromq::LiaisonScopeProtobufModel::LiaisonScopeProtobufModel(
-    const protobuf::ProtobufScopeConfig& /*pb_scope_config*/, Wt::WContainerWidget* parent /*= 0*/)
-    : WStandardItemModel(0, protobuf::ProtobufScopeConfig::COLUMN_MAX + 1, parent)
+    const protobuf::ProtobufScopeConfig& /*pb_scope_config*/)
+    : WStandardItemModel(0, protobuf::ProtobufScopeConfig::COLUMN_MAX + 1)
 {
-    this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_GROUP, Horizontal,
+    this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_GROUP, Wt::Orientation::Horizontal,
                         std::string("Group"));
-    this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_TYPE, Horizontal,
+    this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_TYPE, Wt::Orientation::Horizontal,
                         std::string("Protobuf Type"));
-    this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_VALUE, Horizontal,
+    this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_VALUE, Wt::Orientation::Horizontal,
                         std::string("Value (Click/Hover to visualize)"));
-    this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_TIME, Horizontal,
+    this->setHeaderData(protobuf::ProtobufScopeConfig::COLUMN_TIME, Wt::Orientation::Horizontal,
                         std::string("Time"));
 }
 
 goby::apps::zeromq::LiaisonScope::ControlsContainer::ControlsContainer(
     Wt::WTimer* timer, bool start_paused, LiaisonScope* scope,
-    SubscriptionsContainer* subscriptions_div, double freq, Wt::WContainerWidget* parent)
-    : Wt::WContainerWidget(parent),
-      timer_(timer),
-      play_state_(new Wt::WText(this)),
-      break1_(new Wt::WBreak(this)),
-      play_pause_button_(new WPushButton("Play", this)),
-      refresh_button_(new WPushButton("Refresh", this)),
-      break2_(new Wt::WBreak(this)),
-      freq_text_(new Wt::WText(this)),
-      freq_spin_(new Wt::WDoubleSpinBox(this)),
+    SubscriptionsContainer* subscriptions_div, double freq)
+    : timer_(timer),
+      play_state_(this->addNew<Wt::WText>()),
+      break1_(this->addNew<Wt::WBreak>()),
+      play_pause_button_(this->addNew<Wt::WPushButton>("Play")),
+      refresh_button_(this->addNew<Wt::WPushButton>("Refresh")),
+      break2_(this->addNew<Wt::WBreak>()),
+      freq_text_(this->addNew<Wt::WText>()),
+      freq_spin_(this->addNew<Wt::WDoubleSpinBox>()),
       is_paused_(start_paused),
       scope_(scope),
       subscriptions_div_(subscriptions_div),
-      clicked_message_stack_(new Wt::WStackedWidget(this))
+      clicked_message_stack_(this->addNew<Wt::WStackedWidget>())
 {
     freq_text_->setText("Update freq (Hz): ");
     freq_spin_->setMinimum(0.1);
@@ -378,11 +383,10 @@ goby::apps::zeromq::LiaisonScope::ControlsContainer::ControlsContainer(
     freq_spin_->setSingleStep(1);
     freq_spin_->setTextSize(5);
     freq_spin_->setValue(freq);
-    freq_spin_->valueChanged().connect(scope_, &LiaisonScope::update_freq);
+    freq_spin_->valueChanged().connect([this](double hertz) { scope_->update_freq(hertz); });
 
-    play_pause_button_->clicked().connect(
-        boost::bind(&ControlsContainer::handle_play_pause, this, true));
-    refresh_button_->clicked().connect(boost::bind(&ControlsContainer::handle_refresh, this));
+    play_pause_button_->clicked().connect([this]() { this->handle_play_pause(true); });
+    refresh_button_->clicked().connect([this]() { handle_refresh(); });
 
     handle_play_pause(false);
     clicked_message_stack_->addStyleClass("fixed-left");
@@ -403,7 +407,9 @@ void goby::apps::zeromq::LiaisonScope::ControlsContainer::handle_play_pause(bool
 
     if (is_paused_)
     {
+        refresh_button_->enable();
         refresh_button_->show();
+
         freq_spin_->disable();
     }
     else
@@ -440,28 +446,26 @@ void goby::apps::zeromq::LiaisonScope::ControlsContainer::resume()
 }
 
 goby::apps::zeromq::LiaisonScope::SubscriptionsContainer::SubscriptionsContainer(
-    Wt::WStandardItemModel* model, Wt::WStringListModel* history_model,
-    std::map<std::string, int>& msg_map, Wt::WContainerWidget* parent /*= 0*/)
-    : WContainerWidget(parent), model_(model), history_model_(history_model), msg_map_(msg_map)
+    std::shared_ptr<Wt::WStandardItemModel> model,
+    std::shared_ptr<Wt::WStringListModel> history_model, std::map<std::string, int>& msg_map)
+    : model_(model), history_model_(history_model), msg_map_(msg_map)
 {
 }
 
 goby::apps::zeromq::LiaisonScope::HistoryContainer::HistoryContainer(
-    Wt::WVBoxLayout* main_layout, Wt::WAbstractItemModel* model,
-    const protobuf::ProtobufScopeConfig& pb_scope_config, LiaisonScope* scope,
-    WContainerWidget* parent)
-    : WContainerWidget(parent),
-      main_layout_(main_layout),
+    Wt::WVBoxLayout* main_layout, std::shared_ptr<Wt::WAbstractItemModel> model,
+    const protobuf::ProtobufScopeConfig& pb_scope_config, LiaisonScope* scope)
+    : main_layout_(main_layout),
       pb_scope_config_(pb_scope_config),
-      hr_(new WText("<hr />", this)),
-      add_text_(new WText(("Add history for group: "), this)),
-      history_box_(new WComboBox(this)),
-      history_button_(new WPushButton("Add", this)),
+      hr_(this->addNew<Wt::WText>("<hr />")),
+      add_text_(this->addNew<Wt::WText>(("Add history for group: "))),
+      history_box_(this->addNew<WComboBox>()),
+      history_button_(this->addNew<Wt::WPushButton>("Add")),
       buffer_(pb_scope_config.max_history_items()),
       scope_(scope)
 {
     history_box_->setModel(model);
-    history_button_->clicked().connect(this, &HistoryContainer::handle_add_history);
+    history_button_->clicked().connect([this]() { handle_add_history(); });
 }
 
 void goby::apps::zeromq::LiaisonScope::HistoryContainer::handle_add_history()
@@ -479,24 +483,22 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
 
     if (!history_models_.count(selected_key))
     {
-        auto* new_container = new WGroupBox("History");
+        auto new_container = std::make_unique<Wt::WGroupBox>("History");
 
-        auto* text_container = new WContainerWidget(new_container);
-        auto* remove_history_button = new WPushButton(selected_key, text_container);
+        auto text_container = new_container->addNew<WContainerWidget>();
+        auto remove_history_button = text_container->addNew<Wt::WPushButton>(selected_key);
 
-        remove_history_button->clicked().connect(
-            boost::bind(&HistoryContainer::handle_remove_history, this, selected_key));
+        remove_history_button->clicked().connect([selected_key, this]()
+                                                 { handle_remove_history(selected_key); });
 
-        new WText(" (click to remove)", text_container);
-        new WBreak(text_container);
-        // WPushButton* toggle_plot_button = new WPushButton("Plot", text_container);
+        text_container->addNew<Wt::WText>(" (click to remove)");
+        text_container->addNew<WBreak>();
+        // WPushButton* toggle_plot_button = std::make_unique<Wt::WPushButton>("Plot", text_container);
 
         //        text_container->resize(Wt::WLength::Auto, WLength(4, WLength::FontEm));
 
-        Wt::WStandardItemModel* new_model =
-            new LiaisonScopeProtobufModel(pb_scope_config_, new_container);
-
-        auto* new_proxy = new Wt::WSortFilterProxyModel(new_container);
+        auto new_model = std::make_shared<LiaisonScopeProtobufModel>(pb_scope_config_);
+        auto new_proxy = std::make_shared<Wt::WSortFilterProxyModel>();
         new_proxy->setSourceModel(new_model);
 
         // Chart::WCartesianChart* chart = new Chart::WCartesianChart(new_container);
@@ -513,7 +515,7 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
         // chart->axis(Chart::YAxis).setTitle(selected_key);
 
         // WFont font;
-        // font.setFamily(WFont::Serif, "Gentium");
+        // font.setFamil(WFont::Serif, "Gentium");
         // chart->axis(Chart::XAxis).setTitleFont(font);
         // chart->axis(Chart::YAxis).setTitleFont(font);
 
@@ -527,10 +529,19 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
         // if(!config.show_plot())
         //     chart->hide();
 
-        Wt::WTreeView* new_tree = new LiaisonScopeProtobufTreeView(
-            pb_scope_config_, pb_scope_config_.history_height(), new_container);
+        Wt::WTreeView* new_tree = new_container->addNew<LiaisonScopeProtobufTreeView>(
+            pb_scope_config_, pb_scope_config_.history_height());
         auto new_index = main_layout_->count();
-        main_layout_->insertWidget(new_index, new_container);
+
+        new_tree->setModel(new_proxy);
+        MVC& mvc = history_models_[selected_key];
+        mvc.key = selected_key;
+        mvc.container = new_container.get();
+        mvc.model = new_model;
+        mvc.tree = new_tree;
+        mvc.proxy = new_proxy;
+
+        main_layout_->insertWidget(new_index, std::move(new_container));
         //        main_layout_->setResizable(new_index);
         // set the widget *before* the one we just inserted to be resizable
 
@@ -538,19 +549,13 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::add_history(
         // set the widget *before* the one we just inserted to be resizable
         //main_layout_->setResizable(main_layout_->count()-3);
 
-        new_tree->setModel(new_proxy);
-        MVC& mvc = history_models_[selected_key];
-        mvc.key = selected_key;
-        mvc.container = new_container;
-        mvc.model = new_model;
-        mvc.tree = new_tree;
-        mvc.proxy = new_proxy;
-
-        new_proxy->setFilterRegExp(".*");
-        new_tree->sortByColumn(protobuf::ProtobufScopeConfig::COLUMN_TIME, DescendingOrder);
+        new_proxy->setFilterRegExp(std::make_unique<std::regex>(".*"));
+        new_tree->sortByColumn(protobuf::ProtobufScopeConfig::COLUMN_TIME,
+                               Wt::SortOrder::Descending);
 
         new_tree->clicked().connect(
-            boost::bind(&HistoryContainer::view_clicked, this, boost::placeholders::_1, boost::placeholders::_2, mvc.model, mvc.proxy));
+            [&mvc, this](const Wt::WModelIndex& index, const Wt::WMouseEvent& event)
+            { view_clicked(index, event, mvc.model, mvc.proxy); });
     }
 }
 
@@ -561,8 +566,6 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::handle_remove_history(
 
     main_layout_->removeWidget(history_models_[key].container);
     // main_layout_->removeWidget(history_models_[key].tree);
-
-    delete history_models_[key].container;
 
     history_models_.erase(key);
 }
@@ -576,18 +579,19 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::toggle_history_plot(Wt:
 }
 
 void goby::apps::zeromq::LiaisonScope::HistoryContainer::view_clicked(
-    const Wt::WModelIndex& proxy_index, const Wt::WMouseEvent& event, Wt::WStandardItemModel* model,
-    Wt::WSortFilterProxyModel* proxy)
+    const Wt::WModelIndex& proxy_index, const Wt::WMouseEvent& event,
+    std::shared_ptr<Wt::WStandardItemModel> model, std::shared_ptr<Wt::WSortFilterProxyModel> proxy)
 {
     Wt::WModelIndex model_index = proxy->mapToSource(proxy_index);
     Wt::WStandardItem* item = model->itemFromIndex(model_index);
     try
     {
-        scope_->display_notify(boost::any_cast<std::string>(item->data(UserRole)));
+        scope_->display_notify(
+            Wt::cpp17::any_cast<std::string>(item->data(Wt::ItemDataRole::User)));
     }
     catch (...)
     {
-        // no data in the UserRole
+        // no data in the Wt::ItemDataRole::User
     }
 }
 
@@ -605,7 +609,7 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::display_message(
             hist_it->second.model->removeRow(row_to_remove);
         }
 
-        hist_it->second.proxy->setFilterRegExp(".*");
+        hist_it->second.proxy->setFilterRegExp(std::make_unique<std::regex>(".*"));
     }
 }
 
@@ -616,34 +620,36 @@ void goby::apps::zeromq::LiaisonScope::HistoryContainer::flush_buffer()
 }
 
 goby::apps::zeromq::LiaisonScope::RegexFilterContainer::RegexFilterContainer(
-    LiaisonScope* scope, Wt::WSortFilterProxyModel* proxy,
-    const protobuf::ProtobufScopeConfig& pb_scope_config, Wt::WContainerWidget* parent /* = 0 */)
-    : Wt::WContainerWidget(parent),
-      scope_(scope),
+    LiaisonScope* scope, std::shared_ptr<Wt::WSortFilterProxyModel> proxy,
+    const protobuf::ProtobufScopeConfig& pb_scope_config)
+    : scope_(scope),
       proxy_(proxy),
-      hr_(new WText("<hr />", this)),
-      set_text_(new WText(("Set regex filter: "), this))
+      hr_(this->addNew<Wt::WText>("<hr />")),
+      set_text_(this->addNew<Wt::WText>(("Set regex filter: ")))
 {
     widgets_.emplace(std::make_pair(
         protobuf::ProtobufScopeConfig::COLUMN_GROUP,
-        RegexWidgets{new WText((" Group Expression: "), this),
-                     new WLineEdit(pb_scope_config.group_regex_filter_expression(), this),
-                     new WPushButton("Set", this), new WPushButton("Clear", this)}));
+        RegexWidgets{this->addNew<Wt::WText>((" Group Expression: ")),
+                     this->addNew<WLineEdit>(pb_scope_config.group_regex_filter_expression()),
+                     this->addNew<Wt::WPushButton>("Set"),
+                     this->addNew<Wt::WPushButton>("Clear")}));
     widgets_.emplace(std::make_pair(
         protobuf::ProtobufScopeConfig::COLUMN_TYPE,
-        RegexWidgets{new WText((" Type Expression: "), this),
-                     new WLineEdit(pb_scope_config.type_regex_filter_expression(), this),
-                     new WPushButton("Set", this), new WPushButton("Clear", this)}));
+        RegexWidgets{this->addNew<Wt::WText>((" Type Expression: ")),
+                     this->addNew<WLineEdit>(pb_scope_config.type_regex_filter_expression()),
+                     this->addNew<Wt::WPushButton>("Set"),
+                     this->addNew<Wt::WPushButton>("Clear")}));
 
     for (auto c :
          {protobuf::ProtobufScopeConfig::COLUMN_GROUP, protobuf::ProtobufScopeConfig::COLUMN_TYPE})
     {
-        widgets_[c].regex_filter_button_->clicked().connect(
-            this, &RegexFilterContainer::handle_set_regex_filter);
-        widgets_[c].regex_filter_clear_->clicked().connect(
-            boost::bind(&RegexFilterContainer::handle_clear_regex_filter, this, c));
-        widgets_[c].regex_filter_text_->enterPressed().connect(
-            this, &RegexFilterContainer::handle_set_regex_filter);
+        widgets_[c].regex_filter_button_->clicked().connect([this]()
+                                                            { handle_set_regex_filter(); });
+        widgets_[c].regex_filter_clear_->clicked().connect([c, this]()
+                                                           { handle_clear_regex_filter(c); });
+
+        widgets_[c].regex_filter_text_->enterPressed().connect([this]()
+                                                               { handle_set_regex_filter(); });
     }
 
     handle_set_regex_filter();
@@ -656,12 +662,12 @@ void goby::apps::zeromq::LiaisonScope::RegexFilterContainer::handle_set_regex_fi
     std::string type_regex =
         widgets_[protobuf::ProtobufScopeConfig::COLUMN_TYPE].regex_filter_text_->text().narrow();
 
-    scope_->post_to_comms(
-        [=]() { scope_->goby_thread()->update_subscription(group_regex, type_regex); });
+    scope_->post_to_comms([=]()
+                          { scope_->goby_thread()->update_subscription(group_regex, type_regex); });
 
     proxy_->setFilterKeyColumn(protobuf::ProtobufScopeConfig::COLUMN_GROUP);
-    proxy_->setFilterRegExp(
-        widgets_[protobuf::ProtobufScopeConfig::COLUMN_GROUP].regex_filter_text_->text());
+    proxy_->setFilterRegExp(std::make_unique<std::regex>(
+        widgets_[protobuf::ProtobufScopeConfig::COLUMN_GROUP].regex_filter_text_->text().narrow()));
     //    proxy_->setFilterRegExp(".*");
 }
 
@@ -674,26 +680,26 @@ void goby::apps::zeromq::LiaisonScope::RegexFilterContainer::handle_clear_regex_
 
 void goby::apps::zeromq::LiaisonScope::display_notify(const std::string& value)
 {
-    auto* new_div = new WContainerWidget(controls_div_->clicked_message_stack_);
+    auto new_div = controls_div_->clicked_message_stack_->addNew<WContainerWidget>();
 
-    new_div->setOverflow(OverflowAuto);
+    new_div->setOverflow(Wt::Overflow::Auto);
     new_div->setMaximumSize(400, 600);
 
-    new WText("Message: " + goby::util::as<std::string>(
-                                controls_div_->clicked_message_stack_->children().size()),
-              new_div);
+    new_div->addNew<Wt::WText>(
+        "Message: " +
+        goby::util::as<std::string>(controls_div_->clicked_message_stack_->children().size()));
 
-    new Wt::WBreak(new_div);
+    new_div->addNew<Wt::WBreak>();
 
-    auto* minus = new WPushButton("-", new_div);
-    auto* plus = new WPushButton("+", new_div);
-    auto* remove = new WPushButton("x", new_div);
-    auto* remove_all = new WPushButton("X", new_div);
-    remove_all->setFloatSide(Wt::Right);
+    auto minus = new_div->addNew<Wt::WPushButton>("-");
+    auto plus = new_div->addNew<Wt::WPushButton>("+");
+    auto remove = new_div->addNew<Wt::WPushButton>("x");
+    auto remove_all = new_div->addNew<Wt::WPushButton>("X");
+    remove_all->setFloatSide(Wt::Side::Right);
 
-    auto* box = new WGroupBox("Clicked Message", new_div);
+    auto box = new_div->addNew<Wt::WGroupBox>("Clicked Message");
 
-    new WText("<pre>" + value + "</pre>", box);
+    box->addNew<Wt::WText>("<pre>" + value + "</pre>");
 
     plus->clicked().connect(controls_div_, &ControlsContainer::increment_clicked_messages);
     minus->clicked().connect(controls_div_, &ControlsContainer::decrement_clicked_messages);

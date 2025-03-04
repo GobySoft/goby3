@@ -132,19 +132,17 @@ ToTimeType convert(FromTimeType from_time)
 {
     std::int64_t time_in_value = convert<MicroTime, FromTimeType>(from_time) / MicroTimeUnit();
 
-    using namespace boost::posix_time;
-    using namespace boost::gregorian;
-
     if (time_in_value == -1)
-        return boost::posix_time::ptime(not_a_date_time);
+        return boost::posix_time::ptime(boost::posix_time::not_a_date_time);
     else
     {
         const int MICROSEC_IN_SEC = 1000000;
-        ptime time_t_epoch(date(1970, 1, 1));
+        boost::posix_time::ptime time_t_epoch(boost::gregorian::date(1970, 1, 1));
         std::int64_t m = time_in_value / MICROSEC_IN_SEC / 60;
         std::int64_t s = (time_in_value / MICROSEC_IN_SEC) - m * 60;
         std::int64_t micro_s = (time_in_value - (s + m * 60) * MICROSEC_IN_SEC);
-        return time_t_epoch + minutes(m) + seconds(s) + microseconds(micro_s);
+        return time_t_epoch + boost::posix_time::minutes(m) + boost::posix_time::seconds(s) +
+               boost::posix_time::microseconds(micro_s);
     }
 }
 
@@ -160,10 +158,7 @@ template <typename ToTimeType, typename FromTimeType,
                                   int>::type = 0>
 ToTimeType convert(FromTimeType from_time)
 {
-    using namespace boost::posix_time;
-    using namespace boost::gregorian;
-
-    if (from_time == not_a_date_time)
+    if (from_time == boost::posix_time::not_a_date_time)
     {
         return convert<ToTimeType, MicroTime>(MicroTime::from_value(-1));
     }
@@ -171,14 +166,15 @@ ToTimeType convert(FromTimeType from_time)
     {
         const int MICROSEC_IN_SEC = 1000000;
 
-        date_duration date_diff = from_time.date() - date(1970, 1, 1);
-        time_duration time_diff = from_time.time_of_day();
+        boost::gregorian::date_duration date_diff =
+            from_time.date() - boost::gregorian::date(1970, 1, 1);
+        boost::posix_time::time_duration time_diff = from_time.time_of_day();
 
         return convert<ToTimeType, MicroTime>(MicroTime::from_value(
             static_cast<std::int64_t>(date_diff.days()) * 24 * 3600 * MICROSEC_IN_SEC +
             static_cast<std::int64_t>(time_diff.total_seconds()) * MICROSEC_IN_SEC +
             static_cast<std::int64_t>(time_diff.fractional_seconds()) /
-                (time_duration::ticks_per_second() / MICROSEC_IN_SEC)));
+                (boost::posix_time::time_duration::ticks_per_second() / MICROSEC_IN_SEC)));
     }
 }
 
