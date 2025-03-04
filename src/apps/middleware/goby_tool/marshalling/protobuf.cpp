@@ -46,7 +46,8 @@ goby::apps::middleware::ProtobufTool::ProtobufTool()
                     switch (action_for_help)
                     {
                         case goby::apps::middleware::protobuf::ProtobufToolConfig::show:
-                            tool_helper.help<goby::apps::middleware::ProtobufShowTool>(
+                            tool_helper.help<goby::apps::middleware::ProtobufShowTool,
+                                             goby::apps::middleware::ProtobufShowToolConfigurator>(
                                 action_for_help);
                             break;
 
@@ -59,7 +60,8 @@ goby::apps::middleware::ProtobufTool::ProtobufTool()
                 break;
 
             case goby::apps::middleware::protobuf::ProtobufToolConfig::show:
-                tool_helper.run_subtool<goby::apps::middleware::ProtobufShowTool>();
+                tool_helper.run_subtool<goby::apps::middleware::ProtobufShowTool,
+                                        goby::apps::middleware::ProtobufShowToolConfigurator>();
                 break;
 
             default:

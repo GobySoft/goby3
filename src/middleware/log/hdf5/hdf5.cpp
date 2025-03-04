@@ -325,8 +325,8 @@ void goby::middleware::hdf5::Writer::write_field_selector(
     {
         case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
             if (field_desc->message_type()->full_name() == "google.protobuf.FileDescriptorProto")
-                glog.is_warn() && glog << "Omitting google.protobuf.FileDescriptorProto"
-                                       << std::endl;
+                glog.is_debug1() && glog << "Omitting google.protobuf.FileDescriptorProto"
+                                         << std::endl;
             else
                 write_embedded_message(group, field_desc, messages, hs);
             break;

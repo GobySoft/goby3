@@ -27,7 +27,7 @@
 #include "goby/middleware/log/log_entry.h"
 #include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/marshalling/json.h"
-#include "goby/middleware/protobuf/log_tool_config.pb.h"
+#include "goby/middleware/protobuf/log_convert_tool_config.pb.h"
 
 #include "goby/middleware/log/hdf5/hdf5_plugin.h"
 

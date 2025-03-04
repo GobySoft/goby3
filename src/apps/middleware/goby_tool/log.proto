@@ -23,7 +23,6 @@ message UnifiedLogToolConfig
         }];
         convert = 1 [(goby.ev).cfg = {
             short_help_msg: "Convert .goby log files to other formats",
-            external_command: "goby_log_tool"
         }];
     }
     optional Action action = 2 [

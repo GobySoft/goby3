@@ -42,7 +42,7 @@
 #include "goby/middleware/log/log_entry.h"               // for LogEntry
 #include "goby/middleware/log/log_plugin.h"              // for LogPlugin
 #include "goby/middleware/marshalling/interface.h"       // for Marsha...
-#include "goby/middleware/protobuf/log_tool_config.pb.h" // for LogToo...
+#include "goby/middleware/protobuf/log_convert_tool_config.pb.h" // for LogToo...
 #include "goby/util/debug_logger/flex_ostream.h"         // for operat...
 
 #ifdef HAS_HDF5
@@ -60,27 +60,34 @@ namespace apps
 {
 namespace middleware
 {
-class LogToolConfigurator : public goby::middleware::ProtobufConfigurator<protobuf::LogToolConfig>
+class LogToolConfigurator
+    : public goby::middleware::ProtobufConfigurator<protobuf::LogConvertToolConfig>
 {
   public:
     LogToolConfigurator(int argc, char* argv[])
-        : goby::middleware::ProtobufConfigurator<protobuf::LogToolConfig>(argc, argv)
+        : goby::middleware::ProtobufConfigurator<protobuf::LogConvertToolConfig>(argc, argv)
     {
         auto& cfg = mutable_cfg();
         if (!cfg.app().glog_config().has_tty_verbosity())
             cfg.mutable_app()->mutable_glog_config()->set_tty_verbosity(
                 goby::util::protobuf::GLogConfig::WARN);
+
+        if (cfg.input_file_size() == 0)
+        {
+            std::cerr << "No input file specified: use --help for command syntax" << std::endl;
+            exit(EXIT_FAILURE);
+        }
     }
 };
 
-class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
+class LogTool : public goby::middleware::Application<protobuf::LogConvertToolConfig>
 {
   public:
     LogTool();
     ~LogTool() override
     {
 #ifdef HAS_HDF5
-        if (app_cfg().format() == protobuf::LogToolConfig::HDF5)
+        if (app_cfg().format() == protobuf::LogConvertToolConfig::HDF5)
             h5_writer_->write();
 
         // need to clear these objects before protobuf shutdown or else we get an invalid pointer error
@@ -100,13 +107,13 @@ class LogTool : public goby::middleware::Application<protobuf::LogToolConfig>
         }
         else
         {
-            boost::filesystem::path input_path(app_cfg().input_file());
+            boost::filesystem::path input_path(app_cfg().input_file(0));
             std::string output_file = input_path.stem().native();
             switch (app_cfg().format())
             {
-                case protobuf::LogToolConfig::DEBUG_TEXT: output_file += ".txt"; break;
-                case protobuf::LogToolConfig::HDF5: output_file += ".h5"; break;
-                case protobuf::LogToolConfig::JSON: output_file += ".json"; break;
+                case protobuf::LogConvertToolConfig::DEBUG_TEXT: output_file += ".txt"; break;
+                case protobuf::LogConvertToolConfig::HDF5: output_file += ".h5"; break;
+                case protobuf::LogConvertToolConfig::JSON: output_file += ".json"; break;
             }
             return output_file;
         }
@@ -148,7 +155,7 @@ int main(int argc, char* argv[])
 }
 
 goby::apps::middleware::LogTool::LogTool()
-    : f_in_(app_cfg().input_file().c_str()),
+    : f_in_(app_cfg().input_file(0).c_str()),
       output_file_path_(create_output_filename()),
       type_regex_(app_cfg().type_regex()),
       group_regex_(app_cfg().group_regex()),
@@ -161,15 +168,20 @@ goby::apps::middleware::LogTool::LogTool()
                  << std::endl;
 
     if (!f_in_.is_open())
-        glog.is_die() && glog << "Could not open input_file: " << app_cfg().input_file()
+        glog.is_die() && glog << "Could not open input_file: " << app_cfg().input_file(0)
                               << std::endl;
+
+    glog.is_verbose() && glog << "Started conversion of " << app_cfg().input_file(0) << " to "
+                              << output_file_path_ << std::endl;
 
     switch (app_cfg().format())
     {
-        case protobuf::LogToolConfig::DEBUG_TEXT: f_out_.open(output_file_path_.c_str()); break;
-        case protobuf::LogToolConfig::JSON: f_out_.open(output_file_path_.c_str()); break;
+        case protobuf::LogConvertToolConfig::DEBUG_TEXT:
+            f_out_.open(output_file_path_.c_str());
+            break;
+        case protobuf::LogConvertToolConfig::JSON: f_out_.open(output_file_path_.c_str()); break;
 #ifdef HAS_HDF5
-        case protobuf::LogToolConfig::HDF5:
+        case protobuf::LogConvertToolConfig::HDF5:
             h5_writer_ = std::make_unique<goby::middleware::hdf5::Writer>(
                 output_file_path_, app_cfg().write_hdf5_zero_length_dim(),
                 app_cfg().has_hdf5_chunk_length(), app_cfg().hdf5_chunk_length(),
@@ -178,7 +190,8 @@ goby::apps::middleware::LogTool::LogTool()
 #endif
         default:
             glog.is_die() &&
-                glog << "Format: " << protobuf::LogToolConfig::OutputFormat_Name(app_cfg().format())
+                glog << "Format: "
+                     << protobuf::LogConvertToolConfig::OutputFormat_Name(app_cfg().format())
                      << " is not supported. Make sure you have compiled Goby with the correct "
                         "supporting library"
                      << std::endl;
@@ -224,7 +237,7 @@ goby::apps::middleware::LogTool::LogTool()
 
                 switch (app_cfg().format())
                 {
-                    case protobuf::LogToolConfig::DEBUG_TEXT:
+                    case protobuf::LogConvertToolConfig::DEBUG_TEXT:
                     {
                         auto debug_text_msg = plugin->second->debug_text_message(log_entry);
                         f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
@@ -234,7 +247,7 @@ goby::apps::middleware::LogTool::LogTool()
                                << " | " << debug_text_msg << std::endl;
                         break;
                     }
-                    case protobuf::LogToolConfig::HDF5:
+                    case protobuf::LogConvertToolConfig::HDF5:
                     {
 #ifdef HAS_HDF5
                         auto h5_entries = plugin->second->hdf5_entry(log_entry);
@@ -242,7 +255,7 @@ goby::apps::middleware::LogTool::LogTool()
 #endif
                         break;
                     }
-                    case protobuf::LogToolConfig::JSON:
+                    case protobuf::LogConvertToolConfig::JSON:
                     {
                         std::shared_ptr<nlohmann::json> j = plugin->second->json_message(log_entry);
                         (*j)["_scheme_"] = log_entry.scheme();
@@ -266,7 +279,7 @@ goby::apps::middleware::LogTool::LogTool()
 
                 switch (app_cfg().format())
                 {
-                    case protobuf::LogToolConfig::DEBUG_TEXT:
+                    case protobuf::LogConvertToolConfig::DEBUG_TEXT:
                         f_out_ << log_entry.scheme() << " | " << log_entry.group() << " | "
                                << log_entry.type() << " | "
                                << goby::time::convert<boost::posix_time::ptime>(
@@ -275,11 +288,11 @@ goby::apps::middleware::LogTool::LogTool()
                                << "Unable to parse message of " << log_entry.data().size()
                                << " bytes. Reason: " << e.what() << std::endl;
                         break;
-                    case protobuf::LogToolConfig::HDF5:
+                    case protobuf::LogConvertToolConfig::HDF5:
                         // nothing useful to write to the HDF5 file
                         break;
 
-                    case protobuf::LogToolConfig::JSON:
+                    case protobuf::LogConvertToolConfig::JSON:
                         auto j = std::make_shared<nlohmann::json>();
                         (*j)["_scheme_"] = log_entry.scheme();
                         (*j)["_utime_"] =
@@ -303,7 +316,7 @@ goby::apps::middleware::LogTool::LogTool()
             if (!f_in_.eof())
                 glog.is_warn() && glog << "Error processing input log: " << e.what() << std::endl;
             else
-                glog.is_verbose() && glog << "EOF reached" << std::endl;
+                glog.is_verbose() && glog << "Conversion complete." << std::endl;
 
             break;
         }
@@ -312,7 +325,7 @@ goby::apps::middleware::LogTool::LogTool()
     if (!file_has_entries)
         glog.is_warn() &&
             glog
-                << "input_file: " << app_cfg().input_file()
+                << "input_file: " << app_cfg().input_file(0)
                 << " has no message entries. Make sure you have the right file format? (Goby 3.1.3 "
                    "changed command line parameters - use \""
                 << app_cfg().app().binary()
