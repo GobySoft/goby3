@@ -13,6 +13,7 @@ namespace goby
 namespace acomms
 {
 
+// Used by Mission Systems Popoto and Janus drivers
 enum GobyHeaderBits
 {
     GOBY_DATA_TYPE = 1,

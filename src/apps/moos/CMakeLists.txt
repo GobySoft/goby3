@@ -5,6 +5,7 @@ option(build_pAcommsHandler "Build pAcommsHandler" ON)
 option(build_pTranslator "Build pTranslator" ON)
 option(build_iFrontSeat "Build iFrontSeat" ON)
 
+
 if(build_pAcommsHandler)
   add_subdirectory(pAcommsHandler) # boost, xercesc, asio
 endif()
