@@ -23,17 +23,9 @@ environment-template-armhf: &environment-template-armhf
   TARGET_ARCH: "armhf"
   DEB_BUILD_OPTIONS: "parallel=3 nocheck"
 
-environment-template-bullseye: &environment-template-bullseye
-  DISTRO_RELEASE_CODENAME: "bullseye"
-  DISTRO_RELEASE_VERSION: "debian11"
-
 environment-template-bookworm: &environment-template-bookworm
   DISTRO_RELEASE_CODENAME: "bookworm"
   DISTRO_RELEASE_VERSION: "debian12"
-
-environment-template-focal: &environment-template-focal
-  DISTRO_RELEASE_CODENAME: "focal"
-  DISTRO_RELEASE_VERSION: "ubuntu20.04"
 
 environment-template-jammy: &environment-template-jammy
   DISTRO_RELEASE_CODENAME: "jammy"
@@ -44,12 +36,6 @@ environment-template-noble: &environment-template-noble
   DISTRO_RELEASE_VERSION: "ubuntu24.04"
   
 ## Pre-declare Docker containers
-docker-base-bullseye: &docker-base-bullseye
-  - image: gobysoft/goby3-debian-build-base:11.1
-docker-arm64-bullseye: &docker-arm64-bullseye
-  - image: gobysoft/goby3-debian-build-arm64:11.1
-docker-armhf-bullseye: &docker-armhf-bullseye
-  - image: gobysoft/goby3-debian-build-armhf:11.1
 
 docker-base-bookworm: &docker-base-bookworm
   - image: gobysoft/goby3-debian-build-base:12.1
@@ -58,13 +44,6 @@ docker-arm64-bookworm: &docker-arm64-bookworm
 docker-armhf-bookworm: &docker-armhf-bookworm
   - image: gobysoft/goby3-debian-build-armhf:12.1
     
-docker-base-focal: &docker-base-focal
-  - image: gobysoft/goby3-ubuntu-build-base:20.04.1
-docker-arm64-focal: &docker-arm64-focal
-  - image: gobysoft/goby3-ubuntu-build-arm64:20.04.1
-docker-armhf-focal: &docker-armhf-focal
-  - image: gobysoft/goby3-ubuntu-build-armhf:20.04.1
-
 docker-base-jammy: &docker-base-jammy
   - image: gobysoft/goby3-ubuntu-build-base:22.04.1
 docker-arm64-jammy: &docker-arm64-jammy
@@ -73,11 +52,11 @@ docker-armhf-jammy: &docker-armhf-jammy
   - image: gobysoft/goby3-ubuntu-build-armhf:22.04.1
 
 docker-base-noble: &docker-base-noble
-  - image: gobysoft/goby3-ubuntu-build-base:24.04.1
+  - image: gobysoft/goby3-ubuntu-build-base:24.04.2
 docker-arm64-noble: &docker-arm64-noble
-  - image: gobysoft/goby3-ubuntu-build-arm64:24.04.1
+  - image: gobysoft/goby3-ubuntu-build-arm64:24.04.2
 docker-armhf-noble: &docker-armhf-noble
-  - image: gobysoft/goby3-ubuntu-build-armhf:24.04.1
+  - image: gobysoft/goby3-ubuntu-build-armhf:24.04.2
 
     
 ## Pre-declare job templates
@@ -94,7 +73,7 @@ job-template-amd64: &job-template-amd64
           true
     - run: &run-update-apt
         name: Update apt packages
-        # TODO: Remove libdccl4-dev from this command once all Docker containers are updated to include it
+        # TODO: Remove libdccl4-dev and libwt4 from this command once all Docker containers are updated to include it
         command: |
           apt-get update && apt-get dist-upgrade -y &&
           (apt-get install default-libmysqlclient-dev:${TARGET_ARCH} -y ||
@@ -102,6 +81,7 @@ job-template-amd64: &job-template-amd64
           apt-get install libmariadb-dev:${TARGET_ARCH} libmariadb-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y ||
           apt-get install libmariadbclient-dev:${TARGET_ARCH} libmariadbclient-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y)
           apt-get install libdccl4-dev:${TARGET_ARCH} libdccl4:${TARGET_ARCH} dccl4-compiler -y || true
+          apt-get install libwt4-dev:${TARGET_ARCH} -y || true
     - run: &run-build
         name: Build
         command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_doc=ON -Dbuild_doc_pdf=OFF -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -- -j4
@@ -228,11 +208,7 @@ workflows:
 
       - amd64+tsan-build:
           <<: *filter-template-non-master
-      - amd64-bullseye-build:        
-          <<: *filter-template-non-master
       - amd64-bookworm-build:        
-          <<: *filter-template-non-master
-      - amd64-focal-build:
           <<: *filter-template-non-master
       - amd64-jammy-build:
           <<: *filter-template-non-master
@@ -245,19 +221,6 @@ workflows:
       
       - get-orig-source:
           <<: *filter-template-master-only
-
-      - amd64-bullseye-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - get-orig-source
-      - arm64-bullseye-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - get-orig-source
-      - armhf-bullseye-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - get-orig-source
 
       - amd64-bookworm-deb-build:
           <<: *filter-template-master-only
@@ -272,20 +235,6 @@ workflows:
           requires:
             - get-orig-source
 
-
-      - amd64-focal-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - get-orig-source
-      - arm64-focal-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - get-orig-source
-      - armhf-focal-deb-build:
-          <<: *filter-template-master-only
-          requires:
-            - get-orig-source
-            
       - amd64-jammy-deb-build:
           <<: *filter-template-master-only
           requires:
@@ -315,15 +264,9 @@ workflows:
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
           requires:
-            - amd64-bullseye-deb-build
-            - arm64-bullseye-deb-build
-            - armhf-bullseye-deb-build
             - amd64-bookworm-deb-build
             - arm64-bookworm-deb-build
             - armhf-bookworm-deb-build
-            - amd64-focal-deb-build
-            - arm64-focal-deb-build
-            - armhf-focal-deb-build
             - amd64-jammy-deb-build
             - arm64-jammy-deb-build
             - armhf-jammy-deb-build
@@ -339,15 +282,9 @@ workflows:
             branches:
               ignore: /.*/
           requires:
-            - amd64-bullseye-deb-build
-            - arm64-bullseye-deb-build
-            - armhf-bullseye-deb-build
             - amd64-bookworm-deb-build
             - arm64-bookworm-deb-build
             - armhf-bookworm-deb-build
-            - amd64-focal-deb-build
-            - arm64-focal-deb-build
-            - armhf-focal-deb-build
             - amd64-jammy-deb-build
             - arm64-jammy-deb-build
             - armhf-jammy-deb-build
@@ -401,12 +338,6 @@ jobs:
             - 'changelog'
 
 
-  amd64-bullseye-build:
-    <<: *job-template-amd64
-    docker: *docker-base-bullseye
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-bullseye
 
   amd64-bookworm-build:
     <<: *job-template-amd64
@@ -415,12 +346,6 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-bookworm
       
-  amd64-focal-build:
-    <<: *job-template-amd64
-    docker: *docker-base-focal
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-focal
 
   amd64-jammy-build:
     <<: *job-template-amd64
@@ -463,27 +388,6 @@ jobs:
           command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
       - run: *run-tests
 
-  amd64-bullseye-deb-build:
-    <<: *job-template-deb-amd64
-    docker: *docker-base-bullseye
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-bullseye
-      <<: *environment-template-amd64      
-  arm64-bullseye-deb-build: 
-    <<: *job-template-deb-cross
-    docker: *docker-arm64-bullseye
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-bullseye
-      <<: *environment-template-arm64
-  armhf-bullseye-deb-build: 
-    <<: *job-template-deb-cross
-    docker: *docker-armhf-bullseye
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-bullseye
-      <<: *environment-template-armhf
   amd64-bookworm-deb-build:
     <<: *job-template-deb-amd64
     docker: *docker-base-bookworm
@@ -504,27 +408,6 @@ jobs:
     environment:
       <<: *environment-template-common
       <<: *environment-template-bookworm
-      <<: *environment-template-armhf
-  amd64-focal-deb-build:
-    <<: *job-template-deb-amd64
-    docker: *docker-base-focal
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-focal
-      <<: *environment-template-amd64
-  arm64-focal-deb-build: 
-    <<: *job-template-deb-cross
-    docker: *docker-arm64-focal
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-focal
-      <<: *environment-template-arm64
-  armhf-focal-deb-build: 
-    <<: *job-template-deb-cross
-    docker: *docker-armhf-focal
-    environment:
-      <<: *environment-template-common
-      <<: *environment-template-focal
       <<: *environment-template-armhf
   amd64-jammy-deb-build:
     <<: *job-template-deb-amd64

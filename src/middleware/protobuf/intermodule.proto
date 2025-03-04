@@ -1,6 +1,5 @@
 syntax = "proto2";
-import "dccl/option_extensions.proto";
-import "goby/protobuf/option_extensions.proto";
+
 import "goby/middleware/protobuf/serializer_transporter.proto";
 
 package goby.middleware.intermodule.protobuf;
