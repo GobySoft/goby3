@@ -67,7 +67,7 @@ class LogConvertToolConfigurator
             exit(EXIT_FAILURE);
         }
 
-        if (cfg.has_output_file() && !cfg.input_file_size() == 1)
+        if (cfg.has_output_file() && cfg.input_file_size() != 1)
         {
             std::cerr << "Only one input_file is allowed when explicitly setting output_file: use "
                          "--help for command syntax"

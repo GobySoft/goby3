@@ -50,7 +50,7 @@ message LogConvertToolConfig
     optional string output_file = 20 [(goby.field) = {
         description: "Output file to write (default is determined by input_file name "
                      "and output format, e.g. vehicle_20200204T121314.txt for "
-                     "DEBUG_TEXT, vehicle_20200204T121314.h5 for HDF5) [can omit --output_file if 2nd parameter]"
+                     "DEBUG_TEXT, vehicle_20200204T121314.h5 for HDF5) [can omit --output_file if 2nd parameter]. Can only specify when single --input_file."
         cfg { position: { enable: true }, cli_short: "o" }
     }];
 
