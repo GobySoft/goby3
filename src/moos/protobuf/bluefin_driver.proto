@@ -1,6 +1,5 @@
 syntax = "proto2";
 import "goby/acomms/protobuf/driver_base.proto";
-import "dccl/option_extensions.proto";
 
 package goby.moos.bluefin.protobuf;
 

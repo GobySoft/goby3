@@ -1,3 +1,5 @@
+syntax = "proto2";
+
 import "goby/acomms/protobuf/driver_base.proto"; 
 import "goby/acomms/protobuf/modem_message.proto";
 

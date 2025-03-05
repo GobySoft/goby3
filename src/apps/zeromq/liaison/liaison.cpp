@@ -210,28 +210,19 @@ goby::apps::zeromq::Liaison::Liaison()
 
         std::string static_resources = "/css,/fonts,/images,/resources";
 
-        // create a set of fake argc / argv for Wt::WServer
         std::vector<std::string> wt_argv_vec;
-        std::string str = cfg().app().name() + " --docroot " + doc_root + ";" + static_resources +
-                          " --http-port " + goby::util::as<std::string>(cfg().http_port()) +
-                          " --http-address " + cfg().http_address() + " " +
-                          cfg().additional_wt_http_params();
+        std::string str = " --docroot " + doc_root + ";" + static_resources + " --http-port " +
+                          goby::util::as<std::string>(cfg().http_port()) + " --http-address " +
+                          cfg().http_address() + " " + cfg().additional_wt_http_params();
         boost::split(wt_argv_vec, str, boost::is_any_of(" "));
-
-        char* wt_argv[wt_argv_vec.size()];
 
         glog.is(DEBUG1) && glog << "setting Wt cfg to: " << std::flush;
         for (int i = 0, n = wt_argv_vec.size(); i < n; ++i)
         {
-            wt_argv[i] = new char[wt_argv_vec[i].size() + 1];
-            strcpy(wt_argv[i], wt_argv_vec[i].c_str());
-            glog.is(DEBUG1) && glog << "\t" << wt_argv[i] << std::endl;
+            glog.is(DEBUG1) && glog << "\t" << wt_argv_vec[i] << std::endl;
         }
 
-        wt_server_.setServerConfiguration(wt_argv_vec.size(), wt_argv);
-
-        // delete our fake argv
-        for (int i = 0, n = wt_argv_vec.size(); i < n; ++i) delete[] wt_argv[i];
+        wt_server_.setServerConfiguration(cfg().app().name(), wt_argv_vec);
 
         wt_server_.addEntryPoint(
             Wt::EntryPointType::Application,

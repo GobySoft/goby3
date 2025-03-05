@@ -4,7 +4,6 @@ syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
 import "dccl/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto"; // load up message DriverBaseConfig
-import "goby/acomms/protobuf/modem_message.proto";
 
 package goby.acomms.janus.protobuf;
 message Config

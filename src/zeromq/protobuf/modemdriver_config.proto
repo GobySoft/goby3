@@ -2,7 +2,6 @@ syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
 import "goby/middleware/protobuf/app_config.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
-import "dccl/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 
 package goby.apps.zeromq.acomms.protobuf;
