@@ -53,17 +53,17 @@
 #include <google/protobuf/descriptor.h>            // for Descri...
 #include <google/protobuf/message.h>               // for Message
 
-#include "goby/acomms/acomms_constants.h"                     // for BROADC...
-#include "goby/acomms/bind.h"                                 // for bind
-#include "goby/acomms/connect.h"                              // for connect
-#include "goby/acomms/dccl/dccl.h"                            // for DCCLCodec
-#include "goby/acomms/modemdriver/abc_driver.h"               // for ABCDriver
-#include "goby/acomms/modemdriver/benthos_atm900_driver.h"    // for Bentho...
-#include "goby/acomms/modemdriver/driver_exception.h"         // for ModemD...
-#include "goby/acomms/modemdriver/iridium_driver.h"           // for Iridiu...
-#include "goby/acomms/modemdriver/iridium_shore_driver.h"     // for Iridiu...
-#include "goby/acomms/modemdriver/mm_driver.h"                // for MMDriver
-#include "goby/acomms/modemdriver/popoto_driver.h"            // for Popoto...
+#include "goby/acomms/acomms_constants.h"                  // for BROADC...
+#include "goby/acomms/bind.h"                              // for bind
+#include "goby/acomms/connect.h"                           // for connect
+#include "goby/acomms/dccl/dccl.h"                         // for DCCLCodec
+#include "goby/acomms/modemdriver/abc_driver.h"            // for ABCDriver
+#include "goby/acomms/modemdriver/benthos_atm900_driver.h" // for Bentho...
+#include "goby/acomms/modemdriver/driver_exception.h"      // for ModemD...
+#include "goby/acomms/modemdriver/iridium_driver.h"        // for Iridiu...
+#include "goby/acomms/modemdriver/iridium_shore_driver.h"  // for Iridiu...
+#include "goby/acomms/modemdriver/mm_driver.h"             // for MMDriver
+#include "goby/acomms/modemdriver/popoto_driver.h"         // for Popoto...
 #include "goby/acomms/modemdriver/store_server_driver.h"
 #include "goby/acomms/modemdriver/udp_driver.h"               // for UDPDriver
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"     // for UDPMul...
@@ -92,7 +92,7 @@
 #include "goby/util/debug_logger.h"                           // for operat...
 #include "goby/util/protobuf/io.h"                            // for operat...
 #ifdef ENABLE_JANUS_ACOMMS
-#include "goby/acomms/modemdriver/janus_driver.h"             // for Janus...
+#include "goby/acomms/modemdriver/janus_driver.h" // for Janus...
 #endif
 
 #include "pAcommsHandler.h"
@@ -383,8 +383,12 @@ void goby::apps::moos::CpAcommsHandler::handle_flush_queue(const CMOOSMsg& msg)
 
 void goby::apps::moos::CpAcommsHandler::handle_config_file_request(const CMOOSMsg&)
 {
+#if DCCL_HAS_B64
     publish(cfg_.moos_var().prefix() + cfg_.moos_var().config_file(),
             dccl::b64_encode(cfg_.SerializeAsString()));
+#else
+#error DCCL must be compiled with Base64 support to compile pAcommsHandler.
+#endif
 }
 
 void goby::apps::moos::CpAcommsHandler::handle_driver_reset(const CMOOSMsg& /*msg*/)
@@ -681,16 +685,16 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
             case goby::acomms::protobuf::DRIVER_UDP:
                 driver.reset(new goby::acomms::UDPDriver);
                 break;
-            #ifdef ENABLE_POPOTO_ACOMMS
+#ifdef ENABLE_POPOTO_ACOMMS
             case goby::acomms::protobuf::DRIVER_POPOTO:
                 driver.reset(new goby::acomms::PopotoDriver);
                 break;
-            #endif
-            #ifdef ENABLE_JANUS_ACOMMS
+#endif
+#ifdef ENABLE_JANUS_ACOMMS
             case goby::acomms::protobuf::DRIVER_JANUS:
                 driver.reset(new goby::acomms::JanusDriver);
                 break;
-            #endif
+#endif
             case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
                 driver.reset(new goby::acomms::UDPMulticastDriver);
                 break;
