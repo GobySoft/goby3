@@ -195,14 +195,14 @@ inline bool hex_string2char_array(unsigned char* c, const std::string& s, const 
 /// \brief return a string represented the binary value of `l` for `bits` number of bits which reads MSB -> LSB
 inline std::string long2binary_string(unsigned long l, unsigned short bits)
 {
-    char s[bits + 1];
+    std::string s(bits + 1, '\0');
     for (unsigned int i = 0; i < bits; i++)
     {
         s[bits - i - 1] = (l & 1) ? '1' : '0';
         l >>= 1;
     }
     s[bits] = '\0';
-    return (std::string)s;
+    return s;
 }
 
 /// \brief converts a binary string ("1000101010101010") into a hex string ("8AAA")
@@ -210,7 +210,7 @@ inline std::string binary_string2hex_string(const std::string& bs)
 {
     std::string hs;
     auto bytes = (unsigned int)(std::ceil(bs.length() / 8.0));
-    unsigned char c[bytes];
+    std::vector<unsigned char> c(bytes, 0);
 
     for (size_t i = 0; i < bytes; ++i)
     {
@@ -218,7 +218,7 @@ inline std::string binary_string2hex_string(const std::string& bs)
         c[i] = (char)b.to_ulong();
     }
 
-    char_array2hex_string(c, hs, bytes);
+    char_array2hex_string(c.data(), hs, bytes);
 
     return hs;
 }
@@ -229,9 +229,9 @@ inline std::string binary_string2hex_string(const std::string& bs)
 inline std::string hex_string2binary_string(const std::string& bs)
 {
     int bytes = bs.length() / 2;
-    unsigned char c[bytes];
+    std::vector<unsigned char> c(bytes, 0);
 
-    hex_string2char_array(c, bs, bytes);
+    hex_string2char_array(c.data(), bs, bytes);
 
     std::string hs;
 

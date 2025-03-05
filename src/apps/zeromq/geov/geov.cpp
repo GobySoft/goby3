@@ -391,9 +391,9 @@ std::string goby::apps::zeromq::GEOVInterface::escape(const std::string& s)
 {
     unsigned long l = s.length();
 
-    char c[l * 2 + 1];
-    mysql_real_escape_string(core_connection_, c, s.c_str(), l);
-    return c;
+    std::vector<char> c(l*2+1, 0);
+    mysql_real_escape_string(core_connection_, c.data(), s.c_str(), l);
+    return std::string(c.begin(), c.end());
 }
 
 void goby::apps::zeromq::GEOVInterface::print_error(MYSQL* conn, const char* message)
