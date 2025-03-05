@@ -277,6 +277,7 @@ if(enable_janus_acomms)
     fftw3
     asound
     pulse-simple
+    pulse
     ${JANUS_ROOT_DIR}/build/libplugin_016_00.so
     ${JANUS_ROOT_DIR}/build/libplugin_016_01.so
   )
