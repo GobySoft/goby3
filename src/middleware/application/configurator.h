@@ -150,7 +150,10 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
         for (int a = read_argc; a < argc; ++a)
             cfg.mutable_app()->mutable_tool_cfg()->add_extra_cli_param(argv[a]);
 
-        cfg.mutable_app()->set_name(application_name);
+        // overwrite the app.name setting if it isn't set or if -a is set to change the application name. Otherwise, use it
+        if (!cfg.app().has_name() || application_name != binary_name)
+            cfg.mutable_app()->set_name(application_name);
+
         cfg.mutable_app()->set_binary(binary_name);
         // incorporate some parts of the AppBaseConfig that are middleware
         // with gobyd (e.g. Verbosity)
