@@ -1,4 +1,4 @@
-// Copyright 2017-2022:
+// Copyright 2017-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -83,7 +83,7 @@ void LogEntry::parse_version(std::istream* s)
         version_ = current_version_;
     }
 
-    glog.is_verbose() && glog << "File version is " << version_ << std::endl;
+    glog.is_debug1() && glog << "File version is " << version_ << std::endl;
 }
 
 void LogEntry::parse(std::istream* s)
@@ -102,8 +102,7 @@ void LogEntry::parse(std::istream* s)
     uint<scheme_bytes_>::type scheme(0);
 
     bool filter_matched = false;
-    do
-    {
+    do {
         char next_char = s->peek();
         if (next_char != magic_[0])
         {
@@ -126,6 +125,8 @@ void LogEntry::parse(std::istream* s)
             else
             {
                 ++discarded;
+                glog.is_debug2() && glog << "Discarded bytes: " << discarded << std::endl;
+
                 // rewind to read the next byte
                 s->seekg(s->tellg() - std::streamoff(magic_.size() - 1));
             }
@@ -190,8 +191,9 @@ void LogEntry::parse(std::istream* s)
             s->clear();
             // return to where data reading starting in case size was corrupted
             s->seekg(data_start_pos);
-            throw(log::LogException("Failed to read " + std::to_string(size) +
-                                    " bytes of data; seeking back to start of data read in hopes "
+            throw(log::LogException("Failed to read " + std::to_string(size) + " bytes of data (" +
+                                    e.what() +
+                                    "); seeking back to start of data read in hopes "
                                     "of finding valid next message."));
         }
 

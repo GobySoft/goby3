@@ -1,4 +1,4 @@
-// Copyright 2012-2021:
+// Copyright 2012-2024:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -35,8 +35,9 @@
 #include <boost/program_options/variables_map.hpp>       // for variable_va...
 #include <google/protobuf/descriptor.h>                  // for FieldDescri...
 
-#include "goby/exception.h" // for Exception
-#include "goby/util/as.h"   // for as
+#include "goby/exception.h"                     // for Exception
+#include "goby/protobuf/option_extensions.pb.h" // for GobyFieldOpt...
+#include "goby/util/as.h"                       // for as
 
 namespace google
 {
@@ -74,28 +75,48 @@ class ConfigReader
     /// \param od_all Pointer to boost::program::options_description that will be populated with all the available command-line options
     /// \param var_map Pointer to boost::program_options::variables_map that will be populated with the variables read from the command line
     /// \param check_required_configuration If true, check_required_cfg will be called after populating the message
-    static void read_cfg(int argc, char* argv[], google::protobuf::Message* message,
-                         std::string* application_name,
-                         boost::program_options::options_description* od_all,
-                         boost::program_options::variables_map* var_map,
-                         bool check_required_configuration = true);
+    /// \return maximum argc value read (if using tool_mode this may be less than argc)
+    static int read_cfg(int argc, char* argv[], google::protobuf::Message* message,
+                        std::string* application_name, std::string* binary_name,
+                        boost::program_options::options_description* od_all,
+                        boost::program_options::variables_map* var_map,
+                        bool check_required_configuration = true);
 
     /// \brief Checks that all \c required fields are set (either via the command line or the configuration file) in the Protobuf message.
     ///
     /// \param message Message to check
     /// \throw ConfigException if any \c required fields are unset
-    static void check_required_cfg(const google::protobuf::Message& message);
+    static void check_required_cfg(const google::protobuf::Message& message,
+                                   const std::string& binary);
 
-    static void get_protobuf_program_options(boost::program_options::options_description& po_desc,
-                                             const google::protobuf::Descriptor* desc);
+    static void get_protobuf_program_options(
+        std::map<goby::GobyFieldOptions::ConfigurationOptions::ConfigAction,
+                 boost::program_options::options_description>& od_map,
+        const google::protobuf::Descriptor* desc,
+        std::map<std::string, std::string>& environmental_var_map);
+
+    struct PositionalOption
+    {
+        std::string name;
+        bool required;
+        int position_max_count; // -1 is infinity
+    };
+
+    static void get_positional_options(const google::protobuf::Descriptor* desc,
+                                       // position -> required -> name
+                                       std::vector<PositionalOption>& positional_options);
 
     static void set_protobuf_program_option(const boost::program_options::variables_map& vm,
                                             google::protobuf::Message& message,
                                             const std::string& full_name,
-                                            const boost::program_options::variable_value& value);
+                                            const boost::program_options::variable_value& value,
+                                            bool overwrite_if_exists);
 
-    static void get_example_cfg_file(google::protobuf::Message* message,
-                                     std::ostream* human_desc_ss, const std::string& indent = "");
+    static void
+    get_example_cfg_file(google::protobuf::Message* message, std::ostream* human_desc_ss,
+                         const std::string& indent = "",
+                         goby::GobyFieldOptions::ConfigurationOptions::ConfigAction action =
+                             goby::GobyFieldOptions::ConfigurationOptions::ALWAYS);
 
   private:
     enum
@@ -107,13 +128,16 @@ class ConfigReader
         MIN_CHAR = 20
     };
 
-    static void build_description(const google::protobuf::Descriptor* desc,
-                                  std::ostream& human_desc, const std::string& indent = "",
-                                  bool use_color = true);
+    static void
+    build_description(const google::protobuf::Descriptor* desc, std::ostream& human_desc,
+                      const std::string& indent = "", bool use_color = true,
+                      goby::GobyFieldOptions::ConfigurationOptions::ConfigAction action =
+                          goby::GobyFieldOptions::ConfigurationOptions::ALWAYS);
 
-    static void build_description_field(const google::protobuf::FieldDescriptor* desc,
-                                        std::ostream& human_desc, const std::string& indent,
-                                        bool use_color);
+    static void
+    build_description_field(const google::protobuf::FieldDescriptor* desc, std::ostream& human_desc,
+                            const std::string& indent, bool use_color,
+                            goby::GobyFieldOptions::ConfigurationOptions::ConfigAction action);
 
     static void wrap_description(std::string* description, int num_blanks);
 
@@ -147,15 +171,16 @@ class ConfigReader
             {
                 po_desc.add_options()(
                     name.c_str(),
-                    boost::program_options::value<std::vector<T> >()->default_value(
-                        std::vector<T>(1, default_value),
-                        goby::util::as<std::string>(default_value)),
+                    boost::program_options::value<std::vector<T>>()
+                        ->default_value(std::vector<T>(1, default_value),
+                                        goby::util::as<std::string>(default_value))
+                        ->composing(),
                     description.c_str());
             }
             else
             {
                 po_desc.add_options()(name.c_str(),
-                                      boost::program_options::value<std::vector<T> >(),
+                                      boost::program_options::value<std::vector<T>>()->composing(),
                                       description.c_str());
             }
         }
@@ -178,6 +203,28 @@ class ConfigReader
         {
             set_single_option<bool>(po_desc, field_desc, default_value, name, description);
         }
+    }
+
+    static void write_usage(const std::string& binary,
+                            const std::vector<PositionalOption>& positional_options,
+                            std::ostream* out)
+    {
+        (*out) << "Usage: " << binary << " ";
+        for (const auto& po : positional_options)
+        {
+            if (!po.required)
+                (*out) << "[";
+            (*out) << "<" << po.name;
+            if (po.position_max_count > 1)
+                (*out) << "(" << po.position_max_count << ")";
+            else if (po.position_max_count == -1)
+                (*out) << "(...)";
+            (*out) << ">";
+            if (!po.required)
+                (*out) << "]";
+            (*out) << " ";
+        }
+        (*out) << "[options]\n";
     }
 };
 } // namespace middleware

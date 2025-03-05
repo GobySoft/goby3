@@ -527,3 +527,75 @@ serial_port: "/dev/ttyS0"
         config: "@TxPower=8"
 }
 ```
+
+## Mission Systems Drivers
+
+These drivers were contributed by Mission Systems Pty Ltd (https://github.com/mission-systems-pty-ltd). For questions about these drivers please contact Mission Systems via their Github page.
+
+Both currently require that Goby be built from source with additional dependencies.
+
+### Popoto Driver
+
+For the Popoto Acoustic modem (https://www.popotomodem.com)
+
+Requires `libpopoto_api.a` which can be built following instructions from https://github.com/Delresearch/PopotoAPI.
+
+Compile in Goby using
+
+```
+cd goby3/build
+cmake .. -Denable_popoto_acomms=ON -DPOPOTO_ROOT_DIR=/path/to/PopotoAPI/CPP/popoto_client
+```
+
+### Janus Driver
+
+This driver will enable any ALSA-compatible devices to function as acoustic communication transmitters and receivers under the Janus (NATO) standard.
+
+Requires libplugin libraries which can be built following instructions from https://github.com/mission-systems-pty-ltd/janus-c
+
+Compile in Goby using
+
+```
+cd goby3/build
+cmake .. -Denable_janus_acomms=ON -DJANUS_ROOT_DIR=/path/to/janus-c
+```
+
+Sample driver config:
+
+```
+driver_cfg {
+  driver_type: DRIVER_JANUS
+  [goby.acomms.janus.protobuf.rx_config] {
+    verbosity: 0
+    pset_id: 3
+    pset_file: "/usr/local/share/janus/etc/parameter_sets.csv"
+    class_id: 16
+    application_type: 1
+    stream_driver: "alsa"
+    stream_driver_args: "default"
+    stream_fs: 44100
+    stream_format: "S16"
+    stream_channel_count: 1
+    stream_channel: 0
+    doppler_correction: true
+    doppler_max_speed: 5.0
+    detection_threshold: 2.5
+  }
+  [goby.acomms.janus.protobuf.tx_config] {
+    verbosity: 0
+    pset_id: 3
+    pset_file: "/usr/local/share/janus/etc/parameter_sets.csv"
+    class_id: 16
+    application_type: 1
+    stream_driver: "alsa"
+    stream_driver_args: "default"
+    stream_fs: 44100
+    stream_format: "S16"
+    stream_channel_count: 1
+    stream_channel: 0
+    stream_amp: 0.05
+    pad: true
+    wut: false
+  }
+}
+```

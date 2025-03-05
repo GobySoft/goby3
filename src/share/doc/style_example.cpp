@@ -1,4 +1,4 @@
-// Copyright 2009-2020:
+// Copyright 2009-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -26,7 +26,7 @@
 #include <set>
 
 // third party
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 
 // local to goby
 #include "util/flexcout.h"

@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -66,12 +66,13 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          template <class> class ThreadType = goby::middleware::SimpleThread>
+          template <class> class ThreadType = goby::middleware::SimpleThread,
+          bool use_indexed_groups = false>
 class PTYThreadLineBased : public detail::PTYThread<line_in_group, line_out_group, publish_layer,
-                                                    subscribe_layer, ThreadType>
+                                                    subscribe_layer, ThreadType, use_indexed_groups>
 {
     using Base = detail::PTYThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                                   ThreadType>;
+                                   ThreadType, use_indexed_groups>;
 
   public:
     /// \brief Constructs the thread.
@@ -99,13 +100,16 @@ class PTYThreadLineBased : public detail::PTYThread<line_in_group, line_out_grou
 template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           goby::middleware::io::PubSubLayer publish_layer,
-          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType>
+          goby::middleware::io::PubSubLayer subscribe_layer, template <class> class ThreadType,
+          bool use_indexed_groups>
 void goby::middleware::io::PTYThreadLineBased<line_in_group, line_out_group, publish_layer,
-                                              subscribe_layer, ThreadType>::async_read()
+                                              subscribe_layer, ThreadType,
+                                              use_indexed_groups>::async_read()
 {
     boost::asio::async_read_until(
         this->mutable_socket(), buffer_, eol_matcher_,
-        [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+        [this](const boost::system::error_code& ec, std::size_t bytes_transferred)
+        {
             if (!ec && bytes_transferred > 0)
             {
                 std::string bytes(bytes_transferred, 0);

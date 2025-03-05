@@ -1,4 +1,4 @@
-// Copyright 2011-2021:
+// Copyright 2011-2024:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -38,7 +38,7 @@
 #include <MOOS/libMOOS/App/MOOSApp.h>              // for CMOOSApp
 #include <MOOS/libMOOS/Comms/CommsTypes.h>         // for MOOSMS...
 #include <MOOS/libMOOS/Comms/MOOSMsg.h>            // for CMOOSMsg
-#include <boost/bind.hpp>                          // for bind_t
+#include <boost/bind/bind.hpp>                     // for bind_t
 #include <boost/function.hpp>                      // for operat...
 #include <boost/lexical_cast/bad_lexical_cast.hpp> // for bad_le...
 #include <boost/program_options/variables_map.hpp> // for variab...
@@ -53,17 +53,18 @@
 #include <google/protobuf/descriptor.h>            // for Descri...
 #include <google/protobuf/message.h>               // for Message
 
-#include "goby/acomms/acomms_constants.h"                     // for BROADC...
-#include "goby/acomms/bind.h"                                 // for bind
-#include "goby/acomms/connect.h"                              // for connect
-#include "goby/acomms/dccl/dccl.h"                            // for DCCLCodec
-#include "goby/acomms/modemdriver/abc_driver.h"               // for ABCDriver
-#include "goby/acomms/modemdriver/benthos_atm900_driver.h"    // for Bentho...
-#include "goby/acomms/modemdriver/driver_exception.h"         // for ModemD...
-#include "goby/acomms/modemdriver/iridium_driver.h"           // for Iridiu...
-#include "goby/acomms/modemdriver/iridium_shore_driver.h"     // for Iridiu...
-#include "goby/acomms/modemdriver/mm_driver.h"                // for MMDriver
-#include "goby/acomms/modemdriver/popoto_driver.h"            // for Popoto...
+#include "goby/acomms/acomms_constants.h"                  // for BROADC...
+#include "goby/acomms/bind.h"                              // for bind
+#include "goby/acomms/connect.h"                           // for connect
+#include "goby/acomms/dccl/dccl.h"                         // for DCCLCodec
+#include "goby/acomms/modemdriver/abc_driver.h"            // for ABCDriver
+#include "goby/acomms/modemdriver/benthos_atm900_driver.h" // for Bentho...
+#include "goby/acomms/modemdriver/driver_exception.h"      // for ModemD...
+#include "goby/acomms/modemdriver/iridium_driver.h"        // for Iridiu...
+#include "goby/acomms/modemdriver/iridium_shore_driver.h"  // for Iridiu...
+#include "goby/acomms/modemdriver/mm_driver.h"             // for MMDriver
+#include "goby/acomms/modemdriver/popoto_driver.h"         // for Popoto...
+#include "goby/acomms/modemdriver/store_server_driver.h"
 #include "goby/acomms/modemdriver/udp_driver.h"               // for UDPDriver
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"     // for UDPMul...
 #include "goby/acomms/protobuf/amac.pb.h"                     // for MACUpdate
@@ -90,6 +91,9 @@
 #include "goby/time/types.h"                                  // for SITime
 #include "goby/util/debug_logger.h"                           // for operat...
 #include "goby/util/protobuf/io.h"                            // for operat...
+#ifdef ENABLE_JANUS_ACOMMS
+#include "goby/acomms/modemdriver/janus_driver.h" // for Janus...
+#endif
 
 #include "pAcommsHandler.h"
 
@@ -132,28 +136,34 @@ goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
                           &CpAcommsHandler::handle_queue_receive);
 
     // informational 'queue' signals
-    goby::acomms::connect(&queue_manager_.signal_ack,
-                          boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                      cfg_.moos_var().queue_ack_transmission(), _2,
-                                      cfg_.moos_var().queue_ack_original_msg()));
+    goby::acomms::connect(
+        &queue_manager_.signal_ack,
+        boost::bind(&CpAcommsHandler::handle_goby_signal, this, boost::placeholders::_1,
+                    cfg_.moos_var().queue_ack_transmission(), boost::placeholders::_2,
+                    cfg_.moos_var().queue_ack_original_msg()));
     goby::acomms::connect(&queue_manager_.signal_receive,
-                          boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                      cfg_.moos_var().queue_receive(), _1, ""));
+                          boost::bind(&CpAcommsHandler::handle_goby_signal, this,
+                                      boost::placeholders::_1, cfg_.moos_var().queue_receive(),
+                                      boost::placeholders::_1, ""));
     goby::acomms::connect(&queue_manager_.signal_expire,
-                          boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                      cfg_.moos_var().queue_expire(), _1, ""));
+                          boost::bind(&CpAcommsHandler::handle_goby_signal, this,
+                                      boost::placeholders::_1, cfg_.moos_var().queue_expire(),
+                                      boost::placeholders::_1, ""));
     goby::acomms::connect(&queue_manager_.signal_queue_size_change,
-                          boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                      cfg_.moos_var().queue_size(), _1, ""));
+                          boost::bind(&CpAcommsHandler::handle_goby_signal, this,
+                                      boost::placeholders::_1, cfg_.moos_var().queue_size(),
+                                      boost::placeholders::_1, ""));
 
     // informational 'mac' signals
-    goby::acomms::connect(&mac_.signal_initiate_transmission,
-                          boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                      cfg_.moos_var().mac_initiate_transmission(), _1, ""));
+    goby::acomms::connect(
+        &mac_.signal_initiate_transmission,
+        boost::bind(&CpAcommsHandler::handle_goby_signal, this, boost::placeholders::_1,
+                    cfg_.moos_var().mac_initiate_transmission(), boost::placeholders::_1, ""));
 
     goby::acomms::connect(&mac_.signal_slot_start,
-                          boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                      cfg_.moos_var().mac_slot_start(), _1, ""));
+                          boost::bind(&CpAcommsHandler::handle_goby_signal, this,
+                                      boost::placeholders::_1, cfg_.moos_var().mac_slot_start(),
+                                      boost::placeholders::_1, ""));
 
     goby::acomms::connect(&queue_manager_.signal_data_on_demand, this,
                           &CpAcommsHandler::handle_encode_on_demand);
@@ -201,7 +211,7 @@ goby::apps::moos::CpAcommsHandler::~CpAcommsHandler() = default;
 void goby::apps::moos::CpAcommsHandler::handle_lat_origin(const CMOOSMsg& msg)
 {
     double new_lat = msg.GetDouble();
-    if (!isnan(new_lat))
+    if (!std::isnan(new_lat))
     {
         lat_origin_ = new_lat;
         new_origin_ = true;
@@ -211,7 +221,7 @@ void goby::apps::moos::CpAcommsHandler::handle_lat_origin(const CMOOSMsg& msg)
 void goby::apps::moos::CpAcommsHandler::handle_lon_origin(const CMOOSMsg& msg)
 {
     double new_lon = msg.GetDouble();
-    if (!isnan(new_lon))
+    if (!std::isnan(new_lon))
     {
         lon_origin_ = new_lon;
         new_origin_ = true;
@@ -220,7 +230,7 @@ void goby::apps::moos::CpAcommsHandler::handle_lon_origin(const CMOOSMsg& msg)
 
 void goby::apps::moos::CpAcommsHandler::loop()
 {
-    if (new_origin_ && !isnan(lat_origin_) && !isnan(lon_origin_))
+    if (new_origin_ && !std::isnan(lat_origin_) && !std::isnan(lon_origin_))
     {
         translator_.update_utm_datum(lat_origin_, lon_origin_);
         new_origin_ = false;
@@ -373,8 +383,12 @@ void goby::apps::moos::CpAcommsHandler::handle_flush_queue(const CMOOSMsg& msg)
 
 void goby::apps::moos::CpAcommsHandler::handle_config_file_request(const CMOOSMsg&)
 {
+#if DCCL_HAS_B64
     publish(cfg_.moos_var().prefix() + cfg_.moos_var().config_file(),
             dccl::b64_encode(cfg_.SerializeAsString()));
+#else
+#error DCCL must be compiled with Base64 support to compile pAcommsHandler.
+#endif
 }
 
 void goby::apps::moos::CpAcommsHandler::handle_driver_reset(const CMOOSMsg& /*msg*/)
@@ -563,8 +577,8 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
         {
             // subscribe for trigger publish variables
             GobyMOOSApp::subscribe(cfg_.translator_entry(i).trigger().moos_var(),
-                                   boost::bind(&CpAcommsHandler::create_on_publish, this, _1,
-                                               cfg_.translator_entry(i)));
+                                   boost::bind(&CpAcommsHandler::create_on_publish, this,
+                                               boost::placeholders::_1, cfg_.translator_entry(i)));
         }
         else if (cfg_.translator_entry(i).trigger().type() ==
                  goby::moos::protobuf::TranslatorEntry::Trigger::TRIGGER_TIME)
@@ -576,8 +590,9 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
             new_timer.expires_from_now(
                 std::chrono::seconds(cfg_.translator_entry(i).trigger().period()));
             // Start an asynchronous wait.
-            new_timer.async_wait(boost::bind(&CpAcommsHandler::create_on_timer, this, _1,
-                                             cfg_.translator_entry(i), &new_timer));
+            new_timer.async_wait(boost::bind(&CpAcommsHandler::create_on_timer, this,
+                                             boost::placeholders::_1, cfg_.translator_entry(i),
+                                             &new_timer));
         }
 
         for (int j = 0, m = cfg_.translator_entry(i).create_size(); j < m; ++j)
@@ -670,9 +685,16 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
             case goby::acomms::protobuf::DRIVER_UDP:
                 driver.reset(new goby::acomms::UDPDriver);
                 break;
+#ifdef ENABLE_POPOTO_ACOMMS
             case goby::acomms::protobuf::DRIVER_POPOTO:
                 driver.reset(new goby::acomms::PopotoDriver);
                 break;
+#endif
+#ifdef ENABLE_JANUS_ACOMMS
+            case goby::acomms::protobuf::DRIVER_JANUS:
+                driver.reset(new goby::acomms::JanusDriver);
+                break;
+#endif
             case goby::acomms::protobuf::DRIVER_UDP_MULTICAST:
                 driver.reset(new goby::acomms::UDPMulticastDriver);
                 break;
@@ -689,7 +711,17 @@ void goby::apps::moos::CpAcommsHandler::create_driver(
                 driver.reset(new goby::acomms::IridiumShoreDriver);
                 break;
 
+            case goby::acomms::protobuf::DRIVER_STORE_SERVER:
+                driver.reset(new goby::acomms::StoreServerDriver);
+                break;
+
             case goby::acomms::protobuf::DRIVER_NONE: break;
+
+            default:
+                throw(goby::Exception(
+                    "Please specify a supported driver type not: " +
+                    goby::acomms::protobuf::DriverType_Name(driver_cfg->driver_type())));
+                break;
         }
     }
 }
@@ -823,7 +855,8 @@ void goby::apps::moos::CpAcommsHandler::create_on_timer(
             timer->expires_at(timer->expires_at() + std::chrono::seconds(entry.trigger().period()));
         }
 
-        timer->async_wait(boost::bind(&CpAcommsHandler::create_on_timer, this, _1, entry, timer));
+        timer->async_wait(boost::bind(&CpAcommsHandler::create_on_timer, this,
+                                      boost::placeholders::_1, entry, timer));
 
         glog.is(DEBUG2) && glog << group("pAcommsHandler")
                                 << "Received trigger for: " << entry.protobuf_name() << std::endl;
@@ -982,27 +1015,33 @@ void goby::apps::moos::CpAcommsHandler::driver_bind()
 
         // informational 'driver' signals
         goby::acomms::connect(&driver_->signal_receive,
-                              boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                          cfg_.moos_var().driver_receive(), _1, ""));
+                              boost::bind(&CpAcommsHandler::handle_goby_signal, this,
+                                          boost::placeholders::_1, cfg_.moos_var().driver_receive(),
+                                          boost::placeholders::_1, ""));
 
-        goby::acomms::connect(&driver_->signal_transmit_result,
-                              boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                          cfg_.moos_var().driver_transmit(), _1, ""));
-
-        goby::acomms::connect(&driver_->signal_raw_incoming,
-                              boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                          cfg_.moos_var().driver_raw_msg_in(), _1, ""));
-        goby::acomms::connect(&driver_->signal_raw_outgoing,
-                              boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                          cfg_.moos_var().driver_raw_msg_out(), _1, ""));
+        goby::acomms::connect(
+            &driver_->signal_transmit_result,
+            boost::bind(&CpAcommsHandler::handle_goby_signal, this, boost::placeholders::_1,
+                        cfg_.moos_var().driver_transmit(), boost::placeholders::_1, ""));
 
         goby::acomms::connect(
             &driver_->signal_raw_incoming,
-            boost::bind(&CpAcommsHandler::handle_raw, this, _1, cfg_.moos_var().driver_raw_in()));
-
+            boost::bind(&CpAcommsHandler::handle_goby_signal, this, boost::placeholders::_1,
+                        cfg_.moos_var().driver_raw_msg_in(), boost::placeholders::_1, ""));
         goby::acomms::connect(
             &driver_->signal_raw_outgoing,
-            boost::bind(&CpAcommsHandler::handle_raw, this, _1, cfg_.moos_var().driver_raw_out()));
+            boost::bind(&CpAcommsHandler::handle_goby_signal, this, boost::placeholders::_1,
+                        cfg_.moos_var().driver_raw_msg_out(), boost::placeholders::_1, ""));
+
+        goby::acomms::connect(&driver_->signal_raw_incoming,
+                              boost::bind(&CpAcommsHandler::handle_raw, this,
+                                          boost::placeholders::_1,
+                                          cfg_.moos_var().driver_raw_in()));
+
+        goby::acomms::connect(&driver_->signal_raw_outgoing,
+                              boost::bind(&CpAcommsHandler::handle_raw, this,
+                                          boost::placeholders::_1,
+                                          cfg_.moos_var().driver_raw_out()));
     }
 }
 
@@ -1014,27 +1053,33 @@ void goby::apps::moos::CpAcommsHandler::driver_unbind()
         goby::acomms::unbind(mac_, *driver_);
 
         // informational 'driver' signals
-        goby::acomms::disconnect(&driver_->signal_receive,
-                                 boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                             cfg_.moos_var().driver_receive(), _1, ""));
+        goby::acomms::disconnect(
+            &driver_->signal_receive,
+            boost::bind(&CpAcommsHandler::handle_goby_signal, this, boost::placeholders::_1,
+                        cfg_.moos_var().driver_receive(), boost::placeholders::_1, ""));
 
-        goby::acomms::disconnect(&driver_->signal_transmit_result,
-                                 boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                             cfg_.moos_var().driver_transmit(), _1, ""));
-
-        goby::acomms::disconnect(&driver_->signal_raw_incoming,
-                                 boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                             cfg_.moos_var().driver_raw_msg_in(), _1, ""));
-        goby::acomms::disconnect(&driver_->signal_raw_outgoing,
-                                 boost::bind(&CpAcommsHandler::handle_goby_signal, this, _1,
-                                             cfg_.moos_var().driver_raw_msg_out(), _1, ""));
+        goby::acomms::disconnect(
+            &driver_->signal_transmit_result,
+            boost::bind(&CpAcommsHandler::handle_goby_signal, this, boost::placeholders::_1,
+                        cfg_.moos_var().driver_transmit(), boost::placeholders::_1, ""));
 
         goby::acomms::disconnect(
             &driver_->signal_raw_incoming,
-            boost::bind(&CpAcommsHandler::handle_raw, this, _1, cfg_.moos_var().driver_raw_in()));
-
+            boost::bind(&CpAcommsHandler::handle_goby_signal, this, boost::placeholders::_1,
+                        cfg_.moos_var().driver_raw_msg_in(), boost::placeholders::_1, ""));
         goby::acomms::disconnect(
             &driver_->signal_raw_outgoing,
-            boost::bind(&CpAcommsHandler::handle_raw, this, _1, cfg_.moos_var().driver_raw_out()));
+            boost::bind(&CpAcommsHandler::handle_goby_signal, this, boost::placeholders::_1,
+                        cfg_.moos_var().driver_raw_msg_out(), boost::placeholders::_1, ""));
+
+        goby::acomms::disconnect(&driver_->signal_raw_incoming,
+                                 boost::bind(&CpAcommsHandler::handle_raw, this,
+                                             boost::placeholders::_1,
+                                             cfg_.moos_var().driver_raw_in()));
+
+        goby::acomms::disconnect(&driver_->signal_raw_outgoing,
+                                 boost::bind(&CpAcommsHandler::handle_raw, this,
+                                             boost::placeholders::_1,
+                                             cfg_.moos_var().driver_raw_out()));
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -33,8 +33,11 @@
 #include "goby/util/debug_logger/flex_ostreambuf.h"             // for DEBUG3
 #include "goby/util/debug_logger/logger_manipulators.h"         // for oper...
 #include "goby/util/debug_logger/term_color.h"                  // for Colors
+#include "goby/version.h"
 
 #include "dccl_serializer_parser.h"
+
+using goby::glog;
 
 namespace google
 {
@@ -77,9 +80,47 @@ void goby::middleware::detail::DCCLSerializerParserHelperBase::load_metadata(
         if (auto* desc = dccl::DynamicProtobufManager::find_descriptor(meta.protobuf_name()))
             check_load(desc);
         else
-            goby::glog.is(goby::util::logger::DEBUG3) &&
-                goby::glog << "Failed to load DCCL message via metadata: " << meta.protobuf_name()
-                           << std::endl;
+            glog.is(goby::util::logger::DEBUG3) &&
+                glog << "Failed to load DCCL message via metadata: " << meta.protobuf_name()
+                     << std::endl;
+    }
+}
+
+void check_subscription_version(unsigned dccl_id, const google::protobuf::Message& msg)
+{
+    if (dccl_id == goby::middleware::intervehicle::protobuf::SUBSCRIPTION_DCCL_ID__GOBY_3_1)
+    {
+        goby::middleware::intervehicle::protobuf::Subscription subscription;
+        subscription.CopyFrom(msg);
+
+        glog.is_debug2() && glog << "Checking subscription: " << subscription.ShortDebugString()
+                                 << std::endl;
+
+        if (subscription.api_version() != GOBY_INTERVEHICLE_API_VERSION)
+        {
+            glog.is_warn() &&
+                glog << "Received subscription forwarding subscription with incompatible "
+                        "GOBY_INTERVEHICLE_API_VERSION (this system: GOBY_INTERVEHICLE_API_VERSION="
+                     << GOBY_INTERVEHICLE_API_VERSION << ", remote system (modem id) "
+                     << subscription.header().src()
+                     << ": GOBY_INTERVEHICLE_API_VERSION=" << subscription.api_version() << ")"
+                     << std::endl;
+
+            if (subscription.api_version() > GOBY_INTERVEHICLE_API_VERSION)
+            {
+                glog.is_warn() &&
+                    glog << "Please update the version of Goby on this system in order "
+                            "to communication over intervehicle() with the remote system"
+                         << std::endl;
+            }
+            else
+            {
+                glog.is_warn() &&
+                    glog << "Please update the version of Goby on the remote system in "
+                            "order to communication over intervehicle() with this system"
+                         << std::endl;
+            }
+        }
     }
 }
 
@@ -100,11 +141,21 @@ goby::middleware::detail::DCCLSerializerParserHelperBase::unpack(const std::stri
 
         std::string::const_iterator next_frame_it;
 
-        if (codec().loaded().count(dccl_id) == INVALID_DCCL_ID)
+        // check for old Subscription message and give warning
+        if (dccl_id == goby::middleware::intervehicle::protobuf::SUBSCRIPTION_DCCL_ID__GOBY_3_0)
         {
-            goby::glog.is_debug1() &&
-                goby::glog << "DCCL ID " << dccl_id
-                           << " is not loaded. Discarding remainder of the message." << std::endl;
+            glog.is_warn() &&
+                glog << "Received Subscription from old Goby version 3.0 which is not "
+                        "compatible with this newer version of Goby. Update the sender to "
+                        "Goby 3.1 or newer to use intervehicle comms with this system."
+                     << std::endl;
+        }
+
+        if (codec().loaded().count(dccl_id) == 0)
+        {
+            glog.is_debug1() && glog << "DCCL ID " << dccl_id
+                                     << " is not loaded. Discarding remainder of the message."
+                                     << std::endl;
             packets.mutable_frame()->RemoveLast();
             return packets;
         }
@@ -113,9 +164,25 @@ goby::middleware::detail::DCCLSerializerParserHelperBase::unpack(const std::stri
         auto msg = dccl::DynamicProtobufManager::new_protobuf_message<
             std::unique_ptr<google::protobuf::Message>>(desc);
 
-        next_frame_it = codec().decode(frame_it, frame_end, msg.get());
-        packet.set_data(std::string(frame_it, next_frame_it));
+        try
+        {
+            next_frame_it = codec().decode(frame_it, frame_end, msg.get());
+            check_subscription_version(dccl_id, *msg);
+        }
+        catch (const std::exception& e)
+        {
+            glog.is_debug1() &&
+                glog << "Failed to decode message (DCCL ID " << dccl_id
+                     << "). Discarding remainder of the message. Reason: " << e.what() << std::endl;
 
+            // check partial decode of Subscription message for incompatible version
+            check_subscription_version(dccl_id, *msg);
+
+            packets.mutable_frame()->RemoveLast();
+            return packets;
+        }
+
+        packet.set_data(std::string(frame_it, next_frame_it));
         frame_it = next_frame_it;
     }
 
@@ -132,39 +199,35 @@ void goby::middleware::detail::DCCLSerializerParserHelperBase::setup_dlog()
 
         glog.add_group(glog_dccl_group, util::Colors::lt_magenta);
 
-        auto dlog_lambda = [=](const std::string& msg, dccl::logger::Verbosity vrb,
-                               dccl::logger::Group /*grp*/) {
+        auto dlog_lambda =
+            [=](const std::string& msg, dccl::logger::Verbosity vrb, dccl::logger::Group /*grp*/)
+        {
             switch (vrb)
             {
                 case dccl::logger::WARN:
-                    goby::glog.is_warn() && goby::glog << group(glog_dccl_group) << msg
-                                                       << std::endl;
+                    glog.is_warn() && glog << group(glog_dccl_group) << msg << std::endl;
                     break;
 
                 case dccl::logger::INFO:
-                    goby::glog.is_verbose() && goby::glog << group(glog_dccl_group) << msg
-                                                          << std::endl;
+                    glog.is_verbose() && glog << group(glog_dccl_group) << msg << std::endl;
                     break;
 
                 default:
                 case dccl::logger::DEBUG1:
-                    goby::glog.is_debug1() && goby::glog << group(glog_dccl_group) << msg
-                                                         << std::endl;
+                    glog.is_debug1() && glog << group(glog_dccl_group) << msg << std::endl;
                     break;
 
                 case dccl::logger::DEBUG2:
-                    goby::glog.is_debug2() && goby::glog << group(glog_dccl_group) << msg
-                                                         << std::endl;
+                    glog.is_debug2() && glog << group(glog_dccl_group) << msg << std::endl;
                     break;
 
                 case dccl::logger::DEBUG3:
-                    goby::glog.is_debug3() && goby::glog << group(glog_dccl_group) << msg
-                                                         << std::endl;
+                    glog.is_debug3() && glog << group(glog_dccl_group) << msg << std::endl;
                     break;
             }
         };
 
-        switch (goby::glog.buf().highest_verbosity())
+        switch (glog.buf().highest_verbosity())
         {
             default:
             case goby::util::logger::QUIET: break;

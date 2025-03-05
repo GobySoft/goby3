@@ -1,0 +1,2 @@
+add_executable(goby_file_transfer file_transfer.cpp)
+target_link_libraries(goby_file_transfer goby goby_zeromq)

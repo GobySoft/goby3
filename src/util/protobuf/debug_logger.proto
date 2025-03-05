@@ -1,10 +1,12 @@
 syntax = "proto2";
 import "goby/protobuf/option_extensions.proto";
+import "dccl/option_extensions.proto";
 
 package goby.util.protobuf;
 
 message GLogConfig
 {
+    option (dccl.msg).unit_system = "si";
     enum Verbosity
     {
         QUIET = 1;
@@ -30,10 +32,11 @@ message GLogConfig
             (goby.field).description =
                 "Path to the debug file to write. If 'file_dir' is set, this "
                 "field is the path relative to 'file_dir', otherwise it is an "
-                "absolute path. The string '%1%' must be present, which will "
-                "be replaced by the current UTC date and time. Optionally, "
-                "'%2%' will be replaced by the application name.",
-            default = "%2%_%1%.txt"
+                "absolute path. The string '%1%' must be present (unless omit.file_timestamp = true), which will "
+                "be replaced by the current UTC date and time. Additionally, "
+                "'%2%' will be replaced by the application name if present.",
+            default = "%2%_%1%.txt",
+            (goby.field).cfg = { action: ADVANCED }
         ];
         optional string file_dir = 2 [
             (goby.field).description =
@@ -45,10 +48,24 @@ message GLogConfig
             default = VERBOSE,
             (goby.field).description = "Verbosity for this file log"
         ];
+
+        optional uint32 log_rotate_sec = 4 [
+            (goby.field).description =
+                "How often to rotate the glog file, in seconds.",
+            (dccl.field).units.base_dimensions = "T",
+            (goby.field).cfg = { action: ADVANCED }
+        ];
+
+        message Omit
+        {
+            optional bool file_timestamp = 1 [default = false];
+            optional bool latest_symlink = 2 [default = false];
+        }
+        optional Omit omit = 5;
     }
     optional FileLog file_log = 3
-        [(goby.field).description =
-             "Open a file for (debug) logging."];
-    
-    optional bool show_dccl_log = 4 [default = false];
+        [(goby.field).description = "Open a file for (debug) logging."];
+
+    optional bool show_dccl_log = 4
+        [default = false, (goby.field).cfg = { action: ADVANCED }];
 }

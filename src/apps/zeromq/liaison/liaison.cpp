@@ -1,4 +1,4 @@
-// Copyright 2011-2023:
+// Copyright 2011-2024:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -39,10 +39,10 @@
 #include <unordered_map> // for operat...
 #include <vector>        // for vector
 
-#include <Wt/WFlags>                                 // for Wt
-#include <Wt/WGlobal>                                // for Applic...
-#include <Wt/WIOService>                             // for WIOSer...
-#include <Wt/WServer>                                // for WServer
+#include <Wt/WFlags.h>                               // for Wt
+#include <Wt/WGlobal.h>                              // for Applic...
+#include <Wt/WIOService.h>                           // for WIOSer...
+#include <Wt/WServer.h>                              // for WServer
 #include <boost/algorithm/string/classification.hpp> // for is_any...
 #include <boost/algorithm/string/split.hpp>          // for split
 #include <boost/filesystem.hpp>                      // for direct...
@@ -208,32 +208,26 @@ goby::apps::zeromq::Liaison::Liaison()
             throw(std::runtime_error("No valid docroot found for Goby Liaison. Set docroot to the "
                                      "valid path to what is normally /usr/share/goby/liaison"));
 
-        // create a set of fake argc / argv for Wt::WServer
+        std::string static_resources = "/css,/fonts,/images,/resources";
+
         std::vector<std::string> wt_argv_vec;
-        std::string str = cfg().app().name() + " --docroot " + doc_root + " --http-port " +
+        std::string str = " --docroot " + doc_root + ";" + static_resources + " --http-port " +
                           goby::util::as<std::string>(cfg().http_port()) + " --http-address " +
                           cfg().http_address() + " " + cfg().additional_wt_http_params();
         boost::split(wt_argv_vec, str, boost::is_any_of(" "));
 
-        char* wt_argv[wt_argv_vec.size()];
-
         glog.is(DEBUG1) && glog << "setting Wt cfg to: " << std::flush;
         for (int i = 0, n = wt_argv_vec.size(); i < n; ++i)
         {
-            wt_argv[i] = new char[wt_argv_vec[i].size() + 1];
-            strcpy(wt_argv[i], wt_argv_vec[i].c_str());
-            glog.is(DEBUG1) && glog << "\t" << wt_argv[i] << std::endl;
+            glog.is(DEBUG1) && glog << "\t" << wt_argv_vec[i] << std::endl;
         }
 
-        wt_server_.setServerConfiguration(wt_argv_vec.size(), wt_argv);
+        wt_server_.setServerConfiguration(cfg().app().name(), wt_argv_vec);
 
-        // delete our fake argv
-        for (int i = 0, n = wt_argv_vec.size(); i < n; ++i) delete[] wt_argv[i];
-
-        wt_server_.addEntryPoint(Wt::Application,
-                                 [this](const Wt::WEnvironment& env) -> Wt::WApplication* {
-                                     return new LiaisonWtThread(env, this->cfg());
-                                 });
+        wt_server_.addEntryPoint(
+            Wt::EntryPointType::Application,
+            [this](const Wt::WEnvironment& env) -> std::unique_ptr<Wt::WApplication>
+            { return std::make_unique<LiaisonWtThread>(env, this->cfg()); });
 
         if (!wt_server_.start())
         {
@@ -248,7 +242,8 @@ goby::apps::zeromq::Liaison::Liaison()
 
     // clean up sessions if there are none
     // see https://redmine.webtoolkit.eu/boards/2/topics/5614?r=5615#message-5615
-    expire_sessions_ = [=]() {
+    expire_sessions_ = [=]()
+    {
         int seconds = 10;
         auto start = goby::time::SteadyClock::now();
         while (!terminating_ &&
@@ -276,10 +271,11 @@ void goby::apps::zeromq::Liaison::load_proto_file(const std::string& path)
 {
 #if BOOST_FILESYSTEM_VERSION == 3
     boost::filesystem::path bpath = boost::filesystem::absolute(path);
+    bpath.lexically_normal();
 #else
     boost::filesystem::path bpath = boost::filesystem::complete(path);
-#endif
     bpath.normalize();
+#endif
 
     glog.is(VERBOSE) && glog << "Loading protobuf file: " << bpath << std::endl;
 

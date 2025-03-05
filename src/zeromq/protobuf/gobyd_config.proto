@@ -10,7 +10,9 @@ message GobyDaemonConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
     optional int32 router_threads = 2 [default = 10];
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 3;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 3
+        [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
     optional goby.middleware.intervehicle.protobuf.PortalConfig intervehicle =
         4;
 
@@ -22,7 +24,9 @@ message GobyDaemonConfig
 message GobyIntervehiclePortalConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
+            [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
     required goby.middleware.intervehicle.protobuf.PortalConfig intervehicle =
         3;
 }

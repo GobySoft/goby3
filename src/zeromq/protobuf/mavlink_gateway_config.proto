@@ -3,13 +3,15 @@ import "goby/middleware/protobuf/app_config.proto";
 import "goby/middleware/protobuf/serial_config.proto";
 import "goby/middleware/protobuf/udp_config.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
+import "goby/protobuf/option_extensions.proto";
 
 package goby.apps.zeromq.protobuf;
 
 message MAVLinkGatewayConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2        [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
 
     enum ConnectionType 
     {

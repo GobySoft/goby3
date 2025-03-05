@@ -1,4 +1,4 @@
-// Copyright 2011-2023:
+// Copyright 2011-2024:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -47,7 +47,7 @@
 #include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
 #include "goby/acomms/protobuf/modem_message.pb.h"  // for ModemTransmission
 #include "goby/util/dccl_compat.h"
-#include "rudics_packet.h" // for parse_rudics_pa...
+#include "iridium_rudics_packet.h" // for parse_rudics_pa...
 
 namespace goby
 {
@@ -79,8 +79,8 @@ class BenthosATM900Driver : public ModemDriverBase
     };
     static const std::string SERIAL_DELIMITER;
 
-    benthos::fsm::BenthosATM900FSM fsm_;
     protobuf::DriverConfig driver_cfg_; // configuration given to you at launch
+    benthos::fsm::BenthosATM900FSM fsm_;
 };
 
 // placeholder id codec that uses no bits, since we're always sending just this message on the wire

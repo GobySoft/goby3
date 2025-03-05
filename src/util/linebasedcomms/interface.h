@@ -1,4 +1,4 @@
-// Copyright 2010-2021:
+// Copyright 2010-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -31,7 +31,7 @@
 #include <string> // for string
 #include <thread> // for thread
 
-#include <boost/bind.hpp> // for bind_t, list_av_1<...
+#include <boost/bind/bind.hpp> // for bind_t, list_av_1<...
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/transport/interthread.h"

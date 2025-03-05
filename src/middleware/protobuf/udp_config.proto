@@ -10,11 +10,13 @@ message UDPOneToManyConfig
         unit_system: "si"
     };
 
-    required uint32 bind_port = 2
-        [(goby.field) = {description: "UDP Port to bind on" example: "50000"}];
+    required uint32 bind_port = 2 [
+        (goby.field) = { description: "UDP Port to bind on" example: "50000" }
+    ];
 
     optional bool set_reuseaddr = 10 [default = false];
     optional bool set_broadcast = 11 [default = false];
+    optional bool ipv6 = 12 [default = false];
 }
 
 message UDPPointToPointConfig
@@ -25,8 +27,7 @@ message UDPPointToPointConfig
 
     optional uint32 bind_port = 2 [
         (goby.field) = {
-            description:
-                "UDP Port to bind on. Defaults to dynamically allocated (0)"
+            description: "UDP Port to bind on. Defaults to dynamically allocated (0)"
             example: "50000"
         },
         default = 0
@@ -43,4 +44,5 @@ message UDPPointToPointConfig
 
     optional bool set_reuseaddr = 10 [default = false];
     optional bool set_broadcast = 11 [default = false];
+    optional bool ipv6 = 12 [default = false];
 }

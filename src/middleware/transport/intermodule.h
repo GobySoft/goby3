@@ -45,7 +45,7 @@ namespace middleware
 {
 namespace protobuf
 {
-bool operator<(const SerializerTransporterKey& k1, const SerializerTransporterKey& k2)
+inline bool operator<(const SerializerTransporterKey& k1, const SerializerTransporterKey& k2)
 {
     return k1.marshalling_scheme() != k2.marshalling_scheme()
                ? (k1.marshalling_scheme() < k2.marshalling_scheme())

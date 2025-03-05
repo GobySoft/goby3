@@ -127,8 +127,8 @@ message ModemTransmission
     // extensions 1421-1440 used by mccs_driver.proto
     // extension 1441 used by popoto_driver.proto
     // extensions 1500-1509 used by Jaiabot:
-    // https://github.com/jaiarobotics/jaiabot/ extensions 1510-1519 used by
-    // Blue Ocean Seismic Services
+    // https://github.com/jaiarobotics/jaiabot/
+    // extensions 1510-1519 used by Blue Ocean Seismic Services
     extensions 1000 to max;
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2022:
+// Copyright 2022-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -41,10 +41,13 @@ namespace middleware
 /// Derive from this class to create standalone threads that can be launched and joined by MultiThreadApplication's launch_thread and join_thread methods.
 template <typename Config>
 class SimpleThread
-    : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
+    : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>,
+      public coroner::Thread<SimpleThread<Config>>
 {
     using SimpleThreadBase =
         Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>;
+
+    friend class coroner::Thread<SimpleThread<Config>>;
 
   public:
     /// \brief Construct a thread with a given configuration, optionally a loop frequency and/or index
@@ -74,12 +77,7 @@ class SimpleThread
 
         this->set_transporter(intervehicle_.get());
 
-        this->interthread().template subscribe<groups::health_request>(
-            [this](const protobuf::HealthRequest& request) {
-                std::shared_ptr<protobuf::ThreadHealth> response(new protobuf::ThreadHealth);
-                this->thread_health(*response);
-                this->interthread().template publish<groups::health_response>(response);
-            });
+        this->subscribe_coroner();
     }
 
     /// \brief Access the transporter on the intervehicle layer (which wraps interprocess and interthread)

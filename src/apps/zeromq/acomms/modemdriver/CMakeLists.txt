@@ -1,0 +1,2 @@
+add_executable(goby_modemdriver modemdriver.cpp)
+target_link_libraries(goby_modemdriver goby goby_zeromq)

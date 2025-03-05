@@ -1,4 +1,4 @@
-// Copyright 2013-2020:
+// Copyright 2013-2024:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -25,7 +25,7 @@
 #include "goby/util/base_convert.h"
 #include "goby/util/binary.h"
 
-#include "goby/acomms/modemdriver/rudics_packet.h"
+#include "goby/acomms/modemdriver/iridium_rudics_packet.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -102,6 +102,7 @@ int main()
     test(randstring(255));
     test(randstring(1500), 252);
     test(randstring(15000), false);
+    test(randstring(4092), false);
 
     test(goby::util::hex_decode("01020000"));
 

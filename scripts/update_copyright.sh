@@ -61,7 +61,7 @@ EOF
 
 pushd ../src
 header_strip
-for i in `find -regex ".*\.h$\|.*\.cpp$"`;
+for i in `find -regex ".*\.h$\|.*\.cpp$" -not -path "./util/thirdparty/*"`;
 do
     gen_authors $i
     cat /tmp/goby_authors.tmp $here/../src/share/doc/header_lib.txt $i > $i.tmp; mv $i.tmp $i;

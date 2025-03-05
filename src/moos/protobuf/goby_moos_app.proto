@@ -22,6 +22,18 @@ message GobyMOOSAppConfig
             "log=true)"
     ];
 
+    optional bool log_omit_file_timestamp = 111 [
+        default = false,
+        (goby.field).moos_global = "log_omit_file_timestamp",
+        (goby.field).description =
+            "If true, omit timestamp from debug log file string"
+    ];
+    optional bool log_omit_latest_symlink = 112 [
+        default = false,
+        (goby.field).moos_global = "log_omit_latest_symlink",
+        (goby.field).description = "If true, omit symlink to latest file"
+    ];
+
     optional goby.util.protobuf.GLogConfig.Verbosity log_verbosity = 105 [
         default = DEBUG2,
         (goby.field).description = "Verbosity of the log file"

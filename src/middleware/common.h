@@ -105,6 +105,7 @@ inline std::string full_process_and_thread_id(std::thread::id i = std::this_thre
 {
     return full_process_id() + "-t" + thread_id(i);
 }
+
 } // namespace middleware
 } // namespace goby
 

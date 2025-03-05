@@ -1,4 +1,4 @@
-// Copyright 2013-2021:
+// Copyright 2013-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -32,7 +32,7 @@
 #include <MOOS/libMOOS/Comms/MOOSAsyncCommClient.h>        // for MOOSAsync...
 #include <MOOS/libMOOS/Comms/MOOSMsg.h>                    // for CMOOSMsg
 #include <boost/algorithm/string/trim.hpp>                 // for trim_copy
-#include <boost/bind.hpp>                                  // for bind_t, arg
+#include <boost/bind/bind.hpp>                                  // for bind_t, arg
 #include <boost/numeric/conversion/converter_policies.hpp> // for bad_numer...
 #include <boost/signals2/signal.hpp>                       // for signal
 
@@ -90,10 +90,10 @@ goby::apps::moos::FrontSeatLegacyTranslator::FrontSeatLegacyTranslator(iFrontSea
     {
         ifs_->subscribe(
             "ACOMMS_RAW_INCOMING",
-            boost::bind(&FrontSeatLegacyTranslator::handle_mail_modem_raw, this, _1, INCOMING));
+            boost::bind(&FrontSeatLegacyTranslator::handle_mail_modem_raw, this, boost::placeholders::_1, INCOMING));
         ifs_->subscribe(
             "ACOMMS_RAW_OUTGOING",
-            boost::bind(&FrontSeatLegacyTranslator::handle_mail_modem_raw, this, _1, OUTGOING));
+            boost::bind(&FrontSeatLegacyTranslator::handle_mail_modem_raw, this, boost::placeholders::_1, OUTGOING));
     }
 
     if (ifs_->cfg_.legacy_cfg().pub_sub_bf_commands())

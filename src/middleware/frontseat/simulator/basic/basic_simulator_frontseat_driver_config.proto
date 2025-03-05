@@ -1,6 +1,5 @@
 syntax = "proto2";
 import "goby/middleware/protobuf/frontseat_config.proto";
-import "goby/protobuf/option_extensions.proto";
 
 package goby.middleware.frontseat.protobuf;
 

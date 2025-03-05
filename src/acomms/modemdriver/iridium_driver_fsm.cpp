@@ -1,4 +1,4 @@
-// Copyright 2013-2021:
+// Copyright 2013-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -31,7 +31,8 @@
 #include "goby/acomms/acomms_constants.h" // for BITS_IN_BYTE
 #include "goby/time/system_clock.h"       // for SystemClock, SystemCloc...
 #include "iridium_driver_fsm.h"
-#include "rudics_packet.h" // for parse_rudics_packet
+#include "iridium_rudics_packet.h" // for parse_rudics_packet
+#include "iridium_sbd_packet.h"    // for parse_sbd_packet
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -42,6 +43,57 @@ void goby::acomms::iridium::fsm::IridiumDriverFSM::buffer_data_out(
     const goby::acomms::protobuf::ModemTransmission& msg)
 {
     data_out_.push_back(msg);
+}
+
+void goby::acomms::iridium::fsm::IridiumDriverFSM::parse_ciev(const std::string& ciev)
+{
+    // expecting +CIEV,0,N (signal quality, N = 0-5)
+    // or +CIEV,1,M (service availability, M = 0 or 1)
+
+    enum
+    {
+        MODE_SIGNAL_QUALITY = 0,
+        MODE_SERVICE_AVAILABILITY = 1
+    };
+
+    auto colon_pos = ciev.find(':');
+    auto comma_pos = ciev.find(',');
+
+    // Check if both characters were found and the prefix is correct
+    if (colon_pos != std::string::npos && comma_pos != std::string::npos &&
+        ciev.substr(0, colon_pos) == "+CIEV")
+    {
+        try
+        {
+            // Extract the substrings for the mode and value
+            std::string mode_str = ciev.substr(colon_pos + 1, comma_pos - colon_pos - 1);
+            std::string value_str = ciev.substr(comma_pos + 1);
+
+            // Convert the substrings to integers
+            int mode = std::stoi(mode_str);
+            int value = std::stoi(value_str);
+
+            if (mode == MODE_SIGNAL_QUALITY)
+            {
+                ciev_data_.rssi = value;
+            }
+            else if (mode == MODE_SERVICE_AVAILABILITY)
+            {
+                ciev_data_.service_available = (value == 1);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            glog.is(DEBUG1) && glog << group("iridiumdriver") << warn
+                                    << "Invalid +CIEV: could not convert integers: " << ciev
+                                    << std::endl;
+        }
+    }
+    else
+    {
+        glog.is(DEBUG1) && glog << group("iridiumdriver") << warn << "Invalid +CIEV: " << ciev
+                                << std::endl;
+    }
 }
 
 void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
@@ -69,6 +121,7 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
 
     static const std::string connect = "CONNECT";
     static const std::string sbdi = "+SBDI";
+    static const std::string ciev = "+CIEV";
 
     if (in == "OK")
     {
@@ -118,6 +171,10 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
     {
         post_event(EvSBDBeginData("", true));
     }
+    else if (in.compare(0, ciev.size(), ciev) == 0)
+    {
+        context<IridiumDriverFSM>().parse_ciev(in);
+    }
 }
 
 void goby::acomms::iridium::fsm::Command::handle_sbd_rx(const std::string& in)
@@ -152,7 +209,7 @@ void goby::acomms::iridium::fsm::Command::handle_sbd_rx(const std::string& in)
         {
             std::string sbd_rx_data = sbd_rx_buffer_.substr(SBD_FIELD_SIZE_BYTES, sbd_rx_size);
             std::string bytes;
-            parse_rudics_packet(&bytes, sbd_rx_data);
+            parse_sbd_packet(&bytes, sbd_rx_data);
             goby::acomms::protobuf::ModemTransmission msg;
             parse_iridium_modem_message(bytes, &msg);
             context<IridiumDriverFSM>().received().push_back(msg);

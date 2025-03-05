@@ -1,5 +1,149 @@
-Goby Release Notes (Major version 3)
+# Goby Release Notes (Major version 3)
 
+## Version 3.1.5a
+
+- Minor changes to support building for Debian Bookworm (12) and Ubuntu Noble (24.04).
+
+## Version 3.1.5
+
+### ZeroMQ
+
+- Ported set of acomms applications from Goby2 to Goby3 ZeroMQ as an alternative to the intervehicle layer in Goby3:
+  - goby_modemdriver
+  - goby_bridge
+  - goby_file_transfer
+  - goby_mosh_relay
+  - goby_ip_gateway
+- Added ability for goby_coroner to append health summary to a text file.
+- Added option to turn off symlink generation and/or timestamps for glog logs and goby_logger logs for easier integration with the logrotate tool.
+
+
+### Acomms
+
+- Added goby_store_server (from Goby2) and accompanying store_server driver, which uses an SQLite store and forward database over TCP.
+- Updated Benthos driver to set packet max (~4000B).
+
+
+### Bug fixes
+
+- Fixed bug in DynamicBuffer where messages in ack-wait were causing the priority contest to end prematurely (throwing a DynamicBufferNoDataException even when valid data existed to return)
+- Fix bug where InterProcessTransporterBase was not always picking the correct scheme overload when using the publish_dynamic/subscribe_dynamic functions.
+
+****************
+
+## Version 3.1.4
+
+### Middleware
+
+- Add ability to close log file with STOP_LOGGING request to goby_logger.
+
+
+****************
+
+## Version 3.1.3
+
+### General
+
+- Updates to configuration reader (called by ProtobufConfigurator) to better support creation of command line tools (of the style 'tool <action> <subaction> [--options]'). New `goby::middleware::ToolHelper` class for tools to use.
+	+ Support for environmental variables
+	+ Support for custom positional parameters to replace default `<cfg_file> <app_name>`
+	+ Support for custom short (e.g., '-l' for '--library') command line options.
+- New `goby` command line tool that unifies existing tools and apps into a single point of entry and adds new tools (most notable are `goby zeromq publish` and `goby zeromq subscribe`, allowing command line publish/subscribe to `gobyd`):
+  - `goby log`: Manage goby log files
+	  + `convert`: Convert .goby log files to other formats [goby_log_tool]
+  - `goby launch`: Launch goby *.launch files [goby_launch]
+  - `goby zeromq`: Interact with ZeroMQ Goby pub/sub [goby_zeromq_tool]
+	  - `terminate`: Terminate Goby applications [goby_terminate]
+ 	  - `publish`: Publish a message (on interprocess)
+      - `subscribe`: Subscribe to messages (on interprocess)
+      - `playback`: Playback .goby log files [goby_playback]
+      - `daemon`: Publish/subscribe broker for interprocess and, optionally, intervehicle portal [gobyd]
+      - `logger`: Binary logger of interprocess messages [goby_logger]
+      - `coroner`: Monitoring of process health [goby_coroner]
+      - `intervehicle_portal`: Standalone intervehicle portal [goby_intervehicle_portal]
+      - `gps`: GPSD client that publishes data into Goby pub/sub [goby_gps]
+      - `frontseat_interface`: Interface to vehicle Frontseat system (control system) [goby_frontseat_interface]
+      - `geov`: Interface to Google Earth via GEOV (https://gobysoft.org/geov/) [goby_geov_interface]
+      - `liaison`: Web-based UI for control/monitoring of Goby pub/sub [goby_liaison]
+      - `opencpn`: Interface to the OpenCPN GUI [goby_opencpn_interface]
+      - `moos_gateway`: Gateway to the MOOS middleware [goby_moos_gateway]
+  - `goby protobuf`: Tools for the Google Protocol Buffers (protobuf) marshalling scheme
+	  + `show`: Display definition for message
+
+
+
+
+****************
+
+## Version 3.1.2
+
+### Bugs
+
+- Added IPv6 support to most components
+
+
+****************
+
+## Version 3.1.1
+
+### Bugs
+
+- Added missing "inline" on intermodule function
+- Added missing index on UDP threads, and use_indexed_groups on UDP/PTY threads.
+
+### External Dependencies
+
+Updated nlohmann JSON to 3.11.2
+
+****************
+Version 3.1.0
+
+### Middleware
+
+-  Update Subscription DCCL message to fill full uint32 (with varint) now that Group using uint32 group sizes. Also switch dccl_id to default id codec. Add intervehicle API version for future changes to Subscription message. Reworked Subscription message to use new DCCL ID 3 to distinguish from old Subscription message (DCCL ID 2) and moved dccl_id and group fields to front of message to detect future changes **Important: this necessary change makes Goby 3.0 and Goby 3.1 NOT wire compatible** for intervehicle publish/subscribe.
+
+### Acomms
+
+- Support for Iridium 9503 (RockBlock) and Rockblock SBD HTTP shore-side API in Iridium drivers. New `goby_rockblock_simulator` to simulate a system with N Rockblock modems and a shore-side server.
+
+### General
+
+- Add optional log rotation on a fixed time to glog files
+
+
+### Bugs
+
+- Remove warnings about boost::placeholder deprecation in boost::bind
+- Create common functions for responding to goby_terminate and goby_coroner and add these to gobyd/goby_intervehicle_portal and TimerThread to get full responses for goby_coroner
+- Improve Protobuf log plugin: recursively add field extensions to ensure we pick them all up at log writing time. 
+
+****************
+Version 3.0.17
+
+### MOOS
+
+- Support for Iver Remote Helm version 5 in Iver frontseat driver.
+- Config to assign Iver modes to Frontseat states in Iver frontseat driver.
+
+### goby_log_tool
+
+- Add ability for goby_log_tool HDF5 output to chunk the HDF5 file to bound (and greatly reduce) memory requirements on larger files and to optional compress the chunked files. Use `--hdf5_chunk_length` to enable chunking, and (optionally) also `--hdf_compression_level` to enable compression.
+- Added regexes to configuration to include or exclude groups and/or types from the output file.
+
+### goby_gps
+
+- Compute usat/nsat in goby_gps SkyView message (previously these were unpopulated fields).
+
+### ModemDriver
+
+- Add config for partial frame padding in mm_driver (and change default behavior to not pad frames)
+
+### Bugs
+
+- Catch exceptions in ModemDriverThread caused by bad DCCL messages
+- Update Benthos driver to use "@P1Prompt" instead of "@Prompt". This will likely preclude older versions of the Benthos modem, but will support newer ones (exact Benthos version for this change is unknown).
+- Fix computation of buffer size in DynamicBuffer when several unacked messages are in the buffer
+- Remove deprecation warnings for newer ZMQ and Boost (for Ubuntu 22.04 and newer).
 
 ****************
 Version 3.0.16

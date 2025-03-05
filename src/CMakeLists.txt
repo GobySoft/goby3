@@ -56,6 +56,10 @@ else()
   message(">> setting enable_ncurses to OFF ... if you need this functionality: 1) install libncurses-dev; 2) run cmake -Denable_ncurses=ON")
 endif()
 
+option(enable_janus_acomms "Enable Janus Acomms Driver" OFF)
+
+option(enable_popoto_acomms "Enable Popoto Acomms Driver" OFF)
+
 if(enable_ncurses)
   goby_find_required_package(Curses)  
   add_definitions(-DHAS_NCURSES)
@@ -106,12 +110,27 @@ if(enable_hdf5)
   add_definitions(-DHAS_HDF5)
 endif()
 
+# OpenSSL
+find_package(OpenSSL QUIET)
+set(OPENSSL_DOC_STRING "Enable OpenSSL components")
+if(OPENSSL_FOUND)
+  option(enable_openssl ${OPENSSL_DOC_STRING} ON)
+else()
+  option(enable_openssl ${OPENSSL_DOC_STRING} OFF)
+  message(">> setting enable_openssl to OFF ... if you need this functionality: 1) install libopenssl-dev; 2) run cmake -Denable_openssl=ON")
+endif()
+
+if(enable_openssl)
+  goby_find_required_package(OpenSSL)
+  add_definitions(-DHAS_OPENSSL)
+endif()
+
 ## Wt
-find_package(WtGoby QUIET)
+find_package(Wt QUIET)
 set(WT_DOC_STRING "Enable Wt web browser GUI components (requires libwt-dev, libwtdbo-dev, libwtdbosqlite-dev, and libwthttp-dev: http://www.webtoolkit.eu/wt)")
 #find resources directory
 find_path(Wt_RESOURCES_DIR_BASE share/Wt/resources/plus.gif /usr /usr/local)
-if(WTGOBY_FOUND AND Wt_RESOURCES_DIR_BASE)
+if(Wt_FOUND AND Wt_RESOURCES_DIR_BASE)
   option(enable_wt ${WT_DOC_STRING} ON)
 else()
   option(enable_wt ${WT_DOC_STRING} OFF)
@@ -119,8 +138,9 @@ else()
 endif()
 
 if(enable_wt)
-  goby_find_required_package(WtGoby)    
-  include_directories(${Wt_INCLUDE_DIR})
+  goby_find_required_package(Wt)
+  get_target_property(Wt_INCLUDE_DIR Wt::Wt INTERFACE_INCLUDE_DIRECTORIES)
+  include_directories(SYSTEM ${Wt_INCLUDE_DIR})
   set(Wt_RESOURCES_DIR "${Wt_RESOURCES_DIR_BASE}/share/Wt/resources")
   add_custom_command(OUTPUT WtResourcesLink COMMAND ${CMAKE_COMMAND} -E create_symlink ${Wt_RESOURCES_DIR} ${goby_SHARE_DIR}/goby/liaison/resources)
   add_custom_target(wt_link ALL DEPENDS WtResourcesLink)
@@ -204,6 +224,14 @@ include(util/src.cmake)
 include(time/src.cmake)
 include(middleware/src.cmake)
 
+if(NOT enable_janus_acomms)
+  list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*janus_driver.cpp")
+endif()
+
+if(NOT enable_popoto_acomms)
+  list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*popoto_driver.cpp")
+endif()
+
 add_library(goby
   ${BASE_PROTO_SRCS} ${BASE_PROTO_HDRS}
   ${ACOMMS_SRC}
@@ -212,16 +240,55 @@ add_library(goby
   ${MIDDLEWARE_SRC}
   )
 
+
 target_link_libraries(goby
   dccl
   dccl_arithmetic
   ${Boost_LIBRARIES}
+  boost_filesystem
+  boost_program_options
+  boost_date_time
   ${PROTOBUF_LIBRARY}
   ${PROJ_LIBRARY}
   )
 
+if (enable_popoto_acomms)
+  if(NOT POPOTO_ROOT_DIR)
+    message(FATAL_ERROR "You must set POPOTO_ROOT_DIR to the Top level directory for Popoto API (cmake -DPOPOTO_ROOT_DIR=/path/to/PopotoAPI/CPP/popoto_client)")
+  endif()
+  
+  target_include_directories(goby SYSTEM PUBLIC ${POPOTO_ROOT_DIR}/include)
+
+  add_definitions(-DENABLE_POPOTO_ACOMMS)
+  target_link_libraries(goby
+    ${POPOTO_ROOT_DIR}/build/libpopoto_api.a
+  )
+endif()
+
+if(enable_janus_acomms)
+  if(NOT JANUS_ROOT_DIR)
+    message(FATAL_ERROR "You must set JANUS_ROOT_DIR to the Top level directory for JANUS library (cmake -DJANUS_ROOT_DIR=/path/to/janus-c)")
+  endif()
+
+  target_include_directories(goby SYSTEM PUBLIC ${JANUS_ROOT_DIR}/src/c ${JANUS_ROOT_DIR}/build/cmake_generated)
+  add_definitions(-DENABLE_JANUS_ACOMMS)
+  target_link_libraries(goby
+    janus 
+    fftw3
+    asound
+    pulse-simple
+    pulse
+    ${JANUS_ROOT_DIR}/build/libplugin_016_00.so
+    ${JANUS_ROOT_DIR}/build/libplugin_016_01.so
+  )
+endif()
+
 if(enable_gmp)
   target_link_libraries(goby ${GMP_LIBRARIES})
+endif()
+
+if(enable_openssl)
+  target_link_libraries(goby ${OPENSSL_LIBRARIES})
 endif()
 
 if(enable_ncurses)

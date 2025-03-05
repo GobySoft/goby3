@@ -54,6 +54,7 @@ message InterfaceStatus
     optional HelmState helm_state = 3;
     optional HelmError helm_error = 4;
     optional FrontSeatError frontseat_error = 5;
+    optional bool frontseat_providing_data = 6;
 }
 
 message CommandRequest
@@ -105,4 +106,3 @@ message Raw
 
     extensions 1000 to max;
 }
-

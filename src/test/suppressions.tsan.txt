@@ -11,3 +11,16 @@ race:zmq::socket_t
 race:/usr/include/google/protobuf/
 race:GetMetadata
 called_from_lib:libprotobuf.so
+
+# Ubuntu Jammy is giving "unlock of an unlocked mutex" in Protobuf generated code
+mutex:google::protobuf::*
+called_from_lib:libprotoc.so
+called_from_lib:libdccl.so*
+called_from_lib:libdccl_arithmetic.so*
+
+# TODO: see if these could be real problems
+deadlock:goby::middleware::PollerInterface::_poll_all*
+
+# bug in GCC 11 https://gcc.gnu.org/bugzilla//show_bug.cgi?id=101978
+mutex:goby::zeromq::InterProcessPortalReadThread::send_control_msg*
+mutex:goby::middleware::detail::SubscriptionStore*::publish*

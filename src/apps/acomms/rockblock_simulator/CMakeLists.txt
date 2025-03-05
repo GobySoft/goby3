@@ -1,0 +1,2 @@
+add_executable(goby_rockblock_simulator rockblock_simulator.cpp)
+target_link_libraries(goby_rockblock_simulator goby)

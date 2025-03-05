@@ -1,4 +1,4 @@
-// Copyright 2020-2021:
+// Copyright 2020-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -236,19 +236,19 @@ int main(int /*argc*/, char* argv[])
     goby::zeromq::protobuf::InterProcessPortalConfig interprocess_cfg1;
     interprocess_cfg1.set_platform("test_interprocess1");
     interprocess_cfg1.set_transport(goby::zeromq::protobuf::InterProcessPortalConfig::TCP);
-    interprocess_cfg1.set_ipv4_address("127.0.0.1");
+    interprocess_cfg1.set_ip_address("127.0.0.1");
     interprocess_cfg1.set_tcp_port(54326);
 
     goby::zeromq::protobuf::InterProcessPortalConfig interprocess_cfg2;
     interprocess_cfg2.set_platform("test_interprocess2");
     interprocess_cfg2.set_transport(goby::zeromq::protobuf::InterProcessPortalConfig::TCP);
-    interprocess_cfg2.set_ipv4_address("127.0.0.1");
+    interprocess_cfg2.set_ip_address("127.0.0.1");
     interprocess_cfg2.set_tcp_port(54327);
 
     goby::zeromq::protobuf::InterProcessPortalConfig intermodule_cfg;
     intermodule_cfg.set_platform("test_intermodule");
     intermodule_cfg.set_transport(goby::zeromq::protobuf::InterProcessPortalConfig::TCP);
-    intermodule_cfg.set_ipv4_address("127.0.0.1");
+    intermodule_cfg.set_ip_address("127.0.0.1");
     intermodule_cfg.set_tcp_port(54328);
 
     enum Roles

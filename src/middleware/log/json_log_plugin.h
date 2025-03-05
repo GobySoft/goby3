@@ -26,7 +26,7 @@
 
 #include "goby/middleware/log.h"
 #include "goby/middleware/marshalling/json.h"
-#include "goby/middleware/protobuf/log_tool_config.pb.h"
+#include "goby/middleware/protobuf/log_convert_tool_config.pb.h"
 #include "goby/time/convert.h"
 #include "log_plugin.h"
 

@@ -86,6 +86,7 @@ class InterfaceBase
             s.set_helm_error(last_helm_error_);
         if (last_frontseat_error_ != protobuf::ERROR_FRONTSEAT_NONE)
             s.set_frontseat_error(last_frontseat_error_);
+        s.set_frontseat_providing_data(frontseat_providing_data());
         return s;
     }
 

@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -26,6 +26,7 @@
 #include <boost/test/included/unit_test.hpp>
 
 #include "goby/acomms/buffer/dynamic_buffer.h"
+#include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTra...
 #include "goby/time/io.h"
 
 struct TestClock
@@ -490,25 +491,37 @@ BOOST_FIXTURE_TEST_CASE(check_blackout_time, DynamicBufferFixture)
     cfg1.set_value_base(100);
     cfg1.set_blackout_time_with_units(10.0 * milli * seconds);
     cfg1.set_max_queue(2);
-    cfg1.set_newest_first(true);
+    cfg1.set_newest_first(false);
     buffer.replace(goby::acomms::BROADCAST_ID, "A", cfg1);
 
     buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"});
     buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "2"});
 
+    // A
+    {
+        TestClock::increment(std::chrono::microseconds(1));
+        auto vp = buffer.top();
+        BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
+        BOOST_CHECK_EQUAL(vp.data, "1");
+        BOOST_CHECK(buffer.erase(vp));
+    }
     // would be A but it is in blackout
     {
         TestClock::increment(std::chrono::microseconds(1));
         auto vp = buffer.top();
         BOOST_CHECK_EQUAL(vp.subbuffer_id, "B");
         BOOST_CHECK_EQUAL(vp.data, "1");
+        BOOST_CHECK(buffer.erase(vp));
     }
     TestClock::increment(std::chrono::milliseconds(10));
     // now it's A since we're not in blackout any more
     {
         auto vp = buffer.top();
         BOOST_CHECK_EQUAL(vp.subbuffer_id, "A");
-        BOOST_CHECK_EQUAL(vp.data, "1");
+        BOOST_CHECK_EQUAL(vp.data, "2");
+        BOOST_CHECK(buffer.erase(vp));
     }
 }
 
@@ -645,4 +658,55 @@ BOOST_FIXTURE_TEST_CASE(two_destination_contest, goby::test::MultiIDDynamicBuffe
         BOOST_CHECK(buffer.erase(vp));
         BOOST_CHECK_EQUAL(buffer.size(), 1);
     }
+}
+
+BOOST_FIXTURE_TEST_CASE(check_multiframe_size, DynamicBufferFixture)
+{
+    auto now = TestClock::now();
+
+    goby::acomms::protobuf::DynamicBufferConfig cfg =
+        buffer.sub(goby::acomms::BROADCAST_ID, "A").cfg();
+    cfg.set_value_base(1000);
+    cfg.set_blackout_time(0);
+    cfg.set_max_queue(3);
+    cfg.set_ack_required(true);
+    cfg.set_newest_first(true);
+
+    buffer.replace(goby::acomms::BROADCAST_ID, "A", cfg);
+
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, std::string(133, 'A')});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, std::string(138, 'B')});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, std::string(29, 'C')});
+
+    goby::acomms::protobuf::ModemTransmission msg;
+    msg.set_max_num_frames(1);
+    msg.set_max_frame_bytes(250);
+    msg.set_ack_requested(true);
+
+    for (auto frame_number = msg.frame_start(),
+              total_frames = msg.max_num_frames() + msg.frame_start();
+         frame_number < total_frames; ++frame_number)
+    {
+        std::string* frame = msg.add_frame();
+
+        while (frame->size() < msg.max_frame_bytes())
+        {
+            TestClock::increment(std::chrono::milliseconds(1));
+
+            try
+            {
+                auto buffer_value =
+                    buffer.top(goby::acomms::BROADCAST_ID, msg.max_frame_bytes() - frame->size(),
+                               std::chrono::milliseconds(1000));
+                *frame += buffer_value.data.data();
+            }
+            catch (goby::acomms::DynamicBufferNoDataException&)
+            {
+                break;
+            }
+        }
+    }
+    BOOST_CHECK_EQUAL(msg.frame_size(), 1);
+    BOOST_CHECK_EQUAL(msg.frame(0).size(), 29 + 138);
+    BOOST_CHECK_EQUAL(msg.frame(0), std::string(29, 'C') + std::string(138, 'B'));
 }

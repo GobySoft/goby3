@@ -38,23 +38,23 @@
 #include <utility>       // for pair
 #include <vector>        // for vector
 
-#include <Wt/Dbo/FixedSqlConnectionPool>
-#include <Wt/Dbo/Impl>
-#include <Wt/Dbo/QueryModel>
-#include <Wt/Dbo/Session>
-#include <Wt/Dbo/SqlTraits>
-#include <Wt/Dbo/WtSqlTraits>
-#include <Wt/Dbo/backend/Sqlite3>
-#include <Wt/WComboBox>
-#include <Wt/WContainerWidget>                            // for WContainer...
-#include <Wt/WDateTime>                                   // for WDateTime
-#include <Wt/WEvent>                                      // for WMouseEvent
-#include <Wt/WGroupBox>                                   // for WGroupBox
-#include <Wt/WLength>                                     // for WLength
-#include <Wt/WPushButton>                                 // for WPushButton
-#include <Wt/WString>                                     // for WString
-#include <Wt/WTimer>                                      // for WTimer
-#include <Wt/WTreeTableNode>                              // for WTreeTable...
+#include <Wt/Dbo/FixedSqlConnectionPool.h>
+#include <Wt/Dbo/Impl.h>
+#include <Wt/Dbo/QueryModel.h>
+#include <Wt/Dbo/Session.h>
+#include <Wt/Dbo/SqlTraits.h>
+#include <Wt/Dbo/WtSqlTraits.h>
+#include <Wt/Dbo/backend/Sqlite3.h>
+#include <Wt/WComboBox.h>
+#include <Wt/WContainerWidget.h>                          // for WContainer...
+#include <Wt/WDateTime.h>                                 // for WDateTime
+#include <Wt/WEvent.h>                                    // for WMouseEvent
+#include <Wt/WGroupBox.h>                                 // for WGroupBox
+#include <Wt/WLength.h>                                   // for WLength
+#include <Wt/WPushButton.h>                               // for WPushButton
+#include <Wt/WString.h>                                   // for WString
+#include <Wt/WTimer.h>                                    // for WTimer
+#include <Wt/WTreeTableNode.h>                            // for WTreeTable...
 #include <boost/date_time/posix_time/ptime.hpp>           // for ptime
 #include <boost/date_time/posix_time/time_formatters.hpp> // for to_simple_...
 #include <boost/units/quantity.hpp>                       // for operator/
@@ -105,11 +105,11 @@ namespace zeromq
 class LiaisonTreeTableNode : public Wt::WTreeTableNode
 {
   public:
-    LiaisonTreeTableNode(const Wt::WString& labelText, Wt::WIconPair* labelIcon = nullptr,
-                         Wt::WTreeTableNode* parentNode = nullptr)
-        : Wt::WTreeTableNode(labelText, labelIcon, parentNode)
+    LiaisonTreeTableNode(const Wt::WString& labelText,
+                         std::unique_ptr<Wt::WIconPair> labelIcon = nullptr)
+        : Wt::WTreeTableNode(labelText, std::move(labelIcon))
     {
-        this->labelArea()->setHeight(Wt::WLength(2.5, Wt::WLength::FontEm));
+        this->labelArea()->setHeight(Wt::WLength(2.5, Wt::LengthUnit::FontEm));
     }
 };
 
@@ -221,29 +221,29 @@ class LiaisonCommander
                                    const google::protobuf::FieldDescriptor* field_desc,
                                    const std::string& parent_hierarchy = "");
 
-            void generate_tree_field(Wt::WFormWidget*& value_field,
+            void generate_tree_field(std::unique_ptr<Wt::WFormWidget>& value_field,
                                      google::protobuf::Message* message,
                                      const google::protobuf::FieldDescriptor* field_desc,
                                      int index = -1);
 
-            Wt::WLineEdit*
-            generate_single_line_edit_field(google::protobuf::Message* message,
-                                            const google::protobuf::FieldDescriptor* field_desc,
-                                            const std::string& current_value,
-                                            const std::string& default_value,
-                                            Wt::WValidator* validator, int index = -1);
+            std::unique_ptr<Wt::WLineEdit> generate_single_line_edit_field(
+                google::protobuf::Message* message,
+                const google::protobuf::FieldDescriptor* field_desc,
+                const std::string& current_value, const std::string& default_value,
+                std::shared_ptr<Wt::WValidator> validator, int index = -1);
 
-            Wt::WComboBox*
+            std::unique_ptr<Wt::WComboBox>
             generate_combo_box_field(google::protobuf::Message* message,
                                      const google::protobuf::FieldDescriptor* field_desc,
                                      const std::vector<Wt::WString>& strings, int current_value,
                                      const std::string& default_value, int index = -1);
 
-            void generate_field_info_box(Wt::WFormWidget*& value_field,
+            void generate_field_info_box(std::unique_ptr<Wt::WFormWidget>& value_field,
                                          const google::protobuf::FieldDescriptor* field_desc);
 
             void set_external_data_model_params(
-                Wt::Dbo::QueryModel<Wt::Dbo::ptr<ExternalData>>* external_data_model);
+                std::shared_ptr<Wt::Dbo::QueryModel<Wt::Dbo::ptr<ExternalData>>>
+                    external_data_model);
             void set_external_data_table_params(Wt::WTreeView* external_data_table);
             void load_groups(const google::protobuf::Descriptor* desc);
             void load_external_data(const google::protobuf::Descriptor* desc);
@@ -255,10 +255,10 @@ class LiaisonCommander
             /*     Wt::WFormWidget*& value_field, */
             /*     const google::protobuf::FieldDescriptor* field_desc); */
 
-            void dccl_default_value_field(Wt::WFormWidget*& value_field,
+            void dccl_default_value_field(std::unique_ptr<Wt::WFormWidget>& value_field,
                                           const google::protobuf::FieldDescriptor* field_desc);
 
-            void dccl_default_modify_field(Wt::WFormWidget*& modify_field,
+            void dccl_default_modify_field(std::unique_ptr<Wt::WFormWidget>& modify_field,
                                            const google::protobuf::FieldDescriptor* field_desc);
 
             std::string
@@ -373,12 +373,12 @@ class LiaisonCommander
             //                    std::map<const google::protobuf::FieldDescriptor*, int> field_info_map_;
 
             Wt::Dbo::Session* session_;
-            Wt::Dbo::QueryModel<Wt::Dbo::ptr<CommandEntry>>* sent_model_;
+            std::shared_ptr<Wt::Dbo::QueryModel<Wt::Dbo::ptr<CommandEntry>>> sent_model_;
             Wt::WGroupBox* sent_box_;
             Wt::WPushButton* sent_clear_;
             Wt::WTreeView* sent_table_;
 
-            Wt::Dbo::QueryModel<Wt::Dbo::ptr<ExternalData>>* external_data_model_;
+            std::shared_ptr<Wt::Dbo::QueryModel<Wt::Dbo::ptr<ExternalData>>> external_data_model_;
             Wt::WGroupBox* external_data_box_;
             Wt::WPushButton* external_data_clear_;
             Wt::WTreeView* external_data_table_;
@@ -399,8 +399,9 @@ class LiaisonCommander
 #endif
             bool skip_dynamic_conditions_update_{true};
 
-            std::map<const google::protobuf::Message*, std::map<const google::protobuf::OneofDescriptor*,
-                                                          std::vector<Wt::WFormWidget*>>>
+            std::map<
+                const google::protobuf::Message*,
+                std::map<const google::protobuf::OneofDescriptor*, std::vector<Wt::WFormWidget*>>>
                 oneof_fields_;
         };
 
@@ -428,7 +429,6 @@ class LiaisonCommander
         LiaisonCommander* commander_;
     };
 
-    Wt::WStackedWidget* commands_div_;
     ControlsContainer* controls_div_;
 
     Wt::WTimer commander_timer_;
@@ -436,7 +436,7 @@ class LiaisonCommander
     // static database objects
     static boost::posix_time::ptime last_db_update_time_;
     static std::mutex dbo_mutex_;
-    static Wt::Dbo::backend::Sqlite3* sqlite3_;
+    static bool sqlite3_initialized_;
     static std::unique_ptr<Wt::Dbo::FixedSqlConnectionPool> connection_pool_;
 };
 
@@ -461,20 +461,23 @@ class CommanderCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonComm
         {
             interprocess().subscribe_regex(
                 [this, notify](const std::vector<unsigned char>& data, int scheme,
-                               const std::string& type, const goby::middleware::Group& group) {
+                               const std::string& type, const goby::middleware::Group& group)
+                {
                     std::string gr = group;
-                    commander_->post_to_wt([=]() {
-                        auto background_color = notify.background_color();
-                        if (!notify.has_background_color())
+                    commander_->post_to_wt(
+                        [=]()
                         {
-                            background_color.set_r(255);
-                            background_color.set_g(255);
-                            background_color.set_b(255);
-                        }
+                            auto background_color = notify.background_color();
+                            if (!notify.has_background_color())
+                            {
+                                background_color.set_r(255);
+                                background_color.set_g(255);
+                                background_color.set_b(255);
+                            }
 
-                        commander_->display_notify_subscription(data, scheme, type, gr,
-                                                                background_color);
-                    });
+                            commander_->display_notify_subscription(data, scheme, type, gr,
+                                                                    background_color);
+                        });
                 },
                 {goby::middleware::MarshallingScheme::PROTOBUF}, notify.type_regex(),
                 notify.group_regex());

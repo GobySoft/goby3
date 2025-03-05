@@ -5,6 +5,7 @@ import "goby/middleware/protobuf/pty_config.proto";
 import "goby/middleware/protobuf/tcp_config.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
 import "dccl/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
 
 package goby.apps.zeromq.protobuf;
 
@@ -15,7 +16,8 @@ message OpenCPNInterfaceConfig
     };
 
     optional goby.middleware.protobuf.AppConfig app = 1;
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;
+    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2
+        [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
 
     oneof io
     {

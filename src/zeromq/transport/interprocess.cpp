@@ -1,4 +1,4 @@
-// Copyright 2016-2022:
+// Copyright 2016-2023:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -60,8 +60,16 @@ void goby::zeromq::setup_socket(zmq::socket_t& socket, const protobuf::Socket& c
 {
     int send_hwm = cfg.send_queue_size();
     int receive_hwm = cfg.receive_queue_size();
+
+#ifdef USE_OLD_CPPZMQ_SETSOCKOPT
     socket.setsockopt(ZMQ_SNDHWM, &send_hwm, sizeof(send_hwm));
     socket.setsockopt(ZMQ_RCVHWM, &receive_hwm, sizeof(receive_hwm));
+    socket.setsockopt(ZMQ_IPV6, 1);
+#else
+    socket.set(zmq::sockopt::sndhwm, send_hwm);
+    socket.set(zmq::sockopt::rcvhwm, receive_hwm);
+    socket.set(zmq::sockopt::ipv6, 1);
+#endif
 
     bool bind = (cfg.connect_or_bind() == protobuf::Socket::BIND);
 
@@ -70,9 +78,21 @@ void goby::zeromq::setup_socket(zmq::socket_t& socket, const protobuf::Socket& c
     {
         case protobuf::Socket::IPC: endpoint = "ipc://" + cfg.socket_name(); break;
         case protobuf::Socket::TCP:
-            endpoint = "tcp://" + (bind ? std::string("*") : cfg.ethernet_address()) + ":" +
+        {
+            // add brackets around IPv6
+            std::string formatted_address = cfg.ethernet_address();
+            if (formatted_address.find(':') != std::string::npos &&
+                formatted_address.find('[') == std::string::npos)
+                formatted_address = "[" + formatted_address + "]";
+
+            endpoint = "tcp://" + (bind ? std::string("*") : formatted_address) + ":" +
                        std::to_string(cfg.ethernet_port());
+
+            std::cout << cfg.ShortDebugString() << ": " << endpoint << std::endl;
+
             break;
+        }
+
         default:
             throw(std::runtime_error("Unsupported transport type: " +
                                      protobuf::Socket::Transport_Name(cfg.transport())));
@@ -258,7 +278,8 @@ goby::zeromq::InterProcessPortalReadThread::InterProcessPortalReadThread(
             break;
         case protobuf::InterProcessPortalConfig::TCP:
             query_socket.set_transport(protobuf::Socket::TCP);
-            query_socket.set_ethernet_address(cfg_.ipv4_address());
+            query_socket.set_ethernet_address(cfg_.has_ip_address() ? cfg_.ip_address()
+                                                                    : cfg_.ipv4_address());
             query_socket.set_ethernet_port(cfg_.tcp_port());
             break;
     }
@@ -325,7 +346,11 @@ void goby::zeromq::InterProcessPortalReadThread::send_manager_request(
 
 void goby::zeromq::InterProcessPortalReadThread::poll(long timeout_ms)
 {
+#ifdef USE_OLD_CPPZMQ_POLL
     zmq::poll(&poll_items_[0], poll_items_.size(), timeout_ms);
+#else
+    zmq::poll(&poll_items_[0], poll_items_.size(), std::chrono::milliseconds(timeout_ms));
+#endif
 
     for (int i = 0, n = poll_items_.size(); i < n; ++i)
     {
@@ -362,7 +387,11 @@ void goby::zeromq::InterProcessPortalReadThread::control_data(const zmq::message
         case protobuf::InprocControl::SUBSCRIBE:
         {
             auto& zmq_filter = control_msg.subscription_identifier();
+#ifdef USE_OLD_CPPZMQ_SETSOCKOPT
             subscribe_socket_.setsockopt(ZMQ_SUBSCRIBE, zmq_filter.c_str(), zmq_filter.size());
+#else
+            subscribe_socket_.set(zmq::sockopt::subscribe, zmq_filter);
+#endif
 
             glog.is(DEBUG2) && glog << "subscribed with identifier: [" << zmq_filter << "]"
                                     << std::endl;
@@ -379,7 +408,11 @@ void goby::zeromq::InterProcessPortalReadThread::control_data(const zmq::message
             glog.is(DEBUG2) && glog << "unsubscribing with identifier: [" << zmq_filter << "]"
                                     << std::endl;
 
+#ifdef USE_OLD_CPPZMQ_SETSOCKOPT
             subscribe_socket_.setsockopt(ZMQ_UNSUBSCRIBE, zmq_filter.c_str(), zmq_filter.size());
+#else
+            subscribe_socket_.set(zmq::sockopt::unsubscribe, zmq_filter);
+#endif
 
             protobuf::InprocControl control_ack;
             control_ack.set_type(protobuf::InprocControl::UNSUBSCRIBE_ACK);
@@ -423,9 +456,11 @@ void goby::zeromq::InterProcessPortalReadThread::manager_data(const zmq::message
     if (response.request() == protobuf::PROVIDE_PUB_SUB_SOCKETS)
     {
         if (response.subscribe_socket().transport() == protobuf::Socket::TCP)
-            response.mutable_subscribe_socket()->set_ethernet_address(cfg_.ipv4_address());
+            response.mutable_subscribe_socket()->set_ethernet_address(
+                cfg_.has_ip_address() ? cfg_.ip_address() : cfg_.ipv4_address());
         if (response.publish_socket().transport() == protobuf::Socket::TCP)
-            response.mutable_publish_socket()->set_ethernet_address(cfg_.ipv4_address());
+            response.mutable_publish_socket()->set_ethernet_address(
+                cfg_.has_ip_address() ? cfg_.ip_address() : cfg_.ipv4_address());
 
         setup_socket(subscribe_socket_, response.subscribe_socket());
 
@@ -475,10 +510,22 @@ void goby::zeromq::Router::run()
 
     int send_hwm = cfg_.send_queue_size();
     int receive_hwm = cfg_.receive_queue_size();
+
+#ifdef USE_OLD_CPPZMQ_SETSOCKOPT
     frontend.setsockopt(ZMQ_SNDHWM, &send_hwm, sizeof(send_hwm));
     backend.setsockopt(ZMQ_SNDHWM, &send_hwm, sizeof(send_hwm));
     frontend.setsockopt(ZMQ_RCVHWM, &receive_hwm, sizeof(receive_hwm));
     backend.setsockopt(ZMQ_RCVHWM, &receive_hwm, sizeof(receive_hwm));
+    frontend.setsockopt(ZMQ_IPV6, 1);
+    backend.setsockopt(ZMQ_IPV6, 1);
+#else
+    frontend.set(zmq::sockopt::sndhwm, send_hwm);
+    backend.set(zmq::sockopt::sndhwm, send_hwm);
+    frontend.set(zmq::sockopt::rcvhwm, receive_hwm);
+    backend.set(zmq::sockopt::rcvhwm, receive_hwm);
+    frontend.set(zmq::sockopt::ipv6, 1);
+    backend.set(zmq::sockopt::ipv6, 1);
+#endif
 
     switch (cfg_.transport())
     {
@@ -542,7 +589,13 @@ goby::zeromq::Manager::Manager(zmq::context_t& context,
     poll_items_[SOCKET_MANAGER] = {(void*)*manager_socket_, 0, ZMQ_POLLIN, 0};
     poll_items_[SOCKET_SUBSCRIBE] = {(void*)*subscribe_socket_, 0, ZMQ_POLLIN, 0};
 
+#ifdef USE_OLD_CPPZMQ_SETSOCKOPT
     subscribe_socket_->setsockopt(ZMQ_SUBSCRIBE, zmq_filter_req_.c_str(), zmq_filter_req_.size());
+    manager_socket_->setsockopt(ZMQ_IPV6, 1);
+#else
+    subscribe_socket_->set(zmq::sockopt::subscribe, zmq_filter_req_);
+    manager_socket_->set(zmq::sockopt::ipv6, 1);
+#endif
 
     switch (cfg_.transport())
     {
@@ -570,7 +623,12 @@ void goby::zeromq::Manager::run()
     {
         while (true)
         {
+#ifdef USE_OLD_CPPZMQ_POLL
             zmq::poll(&poll_items_[0], poll_items_.size(), -1);
+#else
+            zmq::poll(&poll_items_[0], poll_items_.size(), std::chrono::milliseconds(-1));
+#endif
+
             for (int i = 0, n = poll_items_.size(); i < n; ++i)
             {
                 if (poll_items_[i].revents & ZMQ_POLLIN)

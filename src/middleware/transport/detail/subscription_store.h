@@ -222,7 +222,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
                 // between _poll_all() and wait(), where the condition variable
                 // signal would be lost
 
-                std::lock_guard<std::timed_mutex>(*data_protection.poller_mutex);
+                std::lock_guard<std::timed_mutex> l(*data_protection.poller_mutex);
             }
             data_protection.poller_cv->notify_all();
         }

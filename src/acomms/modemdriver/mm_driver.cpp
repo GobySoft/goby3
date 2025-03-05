@@ -1,4 +1,4 @@
-// Copyright 2009-2021:
+// Copyright 2009-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -6,6 +6,7 @@
 //   Toby Schneider <toby@gobysoft.org>
 //   Mike Godin <mikegodin@yahoo.com>
 //   Russ Webber <russ@rw.id.au>
+//   James D. Turner <james.turner@nrl.navy.mil>
 //   Jeff Walls <jeff@luigi>
 //   Zac Berkowitz <zberkowitz@whoi.edu>
 //   Chris Murphy <cmurphy@bluefinrobotics.com>
@@ -1463,7 +1464,14 @@ void goby::acomms::MMDriver::cardp(const NMEASentence& nmea, protobuf::ModemTran
         {
             if (mm_driver_cfg().use_base64_fdp())
             {
+#if DCCL_HAS_B64
                 frame += dccl::b64_decode(frames[f * num_fields + DATA]);
+#else
+                glog.is_die() &&
+                    glog << "DCCL compiled without Base64 support. Either set use_base64_fdp = "
+                            "false, or you can recompile DCCL and then Goby with Base64 support"
+                         << std::endl;
+#endif
             }
             else
             {

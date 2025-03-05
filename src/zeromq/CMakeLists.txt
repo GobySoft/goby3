@@ -11,6 +11,12 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
   protobuf/frontseat_interface_config.proto
   protobuf/opencpn_config.proto
   protobuf/geov_config.proto
+  protobuf/tool_config.proto
+  protobuf/modemdriver_config.proto
+  protobuf/bridge_config.proto
+  protobuf/file_transfer_config.proto
+  protobuf/ip_gateway_config.proto
+  protobuf/mosh_relay_config.proto
   )
 
 set(SRC

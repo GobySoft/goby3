@@ -5,7 +5,7 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/transporter_config.proto
   middleware/protobuf/intervehicle.proto
   middleware/protobuf/intervehicle_transporter_config.proto
-  middleware/protobuf/log_tool_config.proto
+  middleware/protobuf/log_convert_tool_config.proto
   middleware/protobuf/terminate.proto
   middleware/protobuf/io.proto
   middleware/protobuf/gpsd.proto
@@ -22,7 +22,7 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/intermodule.proto
   middleware/protobuf/pty_config.proto
   middleware/protobuf/navigation.proto
-  middleware/protobuf/logger.proto 
+  middleware/protobuf/logger.proto
   )
 
 set(MIDDLEWARE_SRC
@@ -31,9 +31,10 @@ set(MIDDLEWARE_SRC
   middleware/transport/interthread.cpp
   middleware/transport/intervehicle/driver_thread.cpp
   middleware/application/configuration_reader.cpp
+  middleware/application/tool.cpp
   middleware/log/log_entry.cpp
   middleware/frontseat/interface.cpp
-  middleware/coroner/coroner.cpp
+  middleware/coroner/health_monitor_thread.cpp
   ${MIDDLEWARE_PROTO_SRCS} ${MIDDLEWARE_PROTO_HDRS} 
   )
 

@@ -1,4 +1,4 @@
-// Copyright 2009-2021:
+// Copyright 2009-2024:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -50,6 +50,9 @@ using namespace goby::util::logger;
 const std::string goby::acomms::BenthosATM900Driver::SERIAL_DELIMITER = "\r\n";
 
 std::shared_ptr<dccl::Codec> goby::acomms::benthos_header_dccl_;
+
+// 4096 bytes - 1B header - 3B for rudics base convert - 1B for \r delimiter
+constexpr unsigned benthos_absolute_max_frame_size = 4091;
 
 goby::acomms::BenthosATM900Driver::BenthosATM900Driver() : fsm_(driver_cfg_)
 {
@@ -119,10 +122,12 @@ void goby::acomms::BenthosATM900Driver::handle_initiate_transmission(
     {
         case protobuf::ModemTransmission::DATA:
         {
+            const unsigned max_frame_size =
+                std::min(benthos_absolute_max_frame_size, benthos_driver_cfg().max_frame_size());
+
             // set the frame size, if not set or if it exceeds the max configured
-            if (!msg.has_max_frame_bytes() ||
-                msg.max_frame_bytes() > benthos_driver_cfg().max_frame_size())
-                msg.set_max_frame_bytes(benthos_driver_cfg().max_frame_size());
+            if (!msg.has_max_frame_bytes() || msg.max_frame_bytes() > max_frame_size)
+                msg.set_max_frame_bytes(max_frame_size);
 
             signal_data_request(&msg);
 

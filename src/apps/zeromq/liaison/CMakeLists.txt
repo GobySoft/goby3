@@ -11,7 +11,10 @@ add_library(goby_liaison_core SHARED
 target_link_libraries(goby_liaison_core
   goby
   goby_zeromq
-  ${Wt_LIBRARIES}
+  Wt::Wt
+  Wt::Dbo
+  Wt::DboSqlite3
+  Wt::HTTP
   )
 
 set_target_properties(goby_liaison_core PROPERTIES VERSION "${GOBY_VERSION}" SOVERSION "${GOBY_SOVERSION}")

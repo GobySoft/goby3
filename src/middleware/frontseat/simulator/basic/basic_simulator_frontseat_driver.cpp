@@ -1,4 +1,4 @@
-// Copyright 2020-2021:
+// Copyright 2020-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -33,7 +33,6 @@
 #include <boost/algorithm/string/classification.hpp> // for is_any_ofF
 #include <boost/algorithm/string/split.hpp>          // for split
 #include <boost/algorithm/string/trim.hpp>           // for trim
-#include <boost/detail/basic_pointerbuf.hpp>         // for basic_poin...
 #include <boost/function.hpp>                        // for function
 #include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_lexica...
 #include <boost/signals2/expired_slot.hpp>           // for expired_slot

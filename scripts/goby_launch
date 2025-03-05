@@ -15,11 +15,13 @@ usage()
     echo -e "goby_logger --log_dir /media/data/logs"   
     echo -e "----------------"
     echo -e "" 
-    echo -e "Optionally, the <launchfile> can contain directives (separated by commas) before each launch line that modify the behavior of that line. The current directives are [kill=SIGNAL] and [env=ENVIRONMENTAL_VARIABLE=value], for example:"
+    echo -e "Optionally, the <launchfile> can contain directives (separated by commas) before each launch line that modify the behavior of that line. The current directives are [kill=SIGNAL], [name=foo], and [env=ENVIRONMENTAL_VARIABLE=value], for example:"
     echo -e "----------------"
     echo -e "[kill=SIGTERM] MOOSDB /tmp/auv.moos"
     echo -e "[env=LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:/home/toby/goby3/build/lib] goby_liaison liaison.pb.cfg"
     echo -e "[env=FOO=bar, kill=SIGINT] some_app"
+    echo -e "[name=some_app1] some_app 1.cfg"
+    echo -e "[name=some_app2] some_app 2.cfg"
     echo -e "----------------"
     echo -e ""
     echo -e "If a file called preseed.goby exists in the working directory, goby_launch will 'source' it before continuing with the rest of the launch"
@@ -275,6 +277,8 @@ do
         kill_signal="SIGTERM"
     fi   
 
+    bin=$(echo $cmd | cut -d " " -f 1)
+
     if [ ! -z "$directive_str" ]; then
 
         IFS=';, ' read -r -a directives <<< "$directive_str" 
@@ -295,6 +299,9 @@ do
 #                    echo "Exporting $value"
                     eval "export $value"
                     ;;
+                name)
+                    bin="$value"
+                    ;;
                 *)
                     echo "Invalid [$key=$value]: directive key: " $key
                     exit 1
@@ -306,7 +313,6 @@ do
 
     
     esccmd=$(echo $cmd | sed 's/"/\\"/g')
-    bin=$(echo $cmd | cut -d " " -f 1)
     name=$platform.${bin##*/}    
     extra=
     if [ ! -z "$directive_str" ]; then

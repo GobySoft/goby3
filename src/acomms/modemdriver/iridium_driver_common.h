@@ -28,7 +28,9 @@
 #include <dccl/field_codec_fixed.h>
 #include <dccl/field_codec_manager.h>
 
+#include "goby/acomms/modemdriver/iridium_sbd_packet.h"
 #include "goby/acomms/protobuf/iridium_driver.pb.h"
+#include "goby/exception.h"
 #include "goby/time/system_clock.h"
 #include "goby/util/dccl_compat.h"
 
@@ -40,6 +42,12 @@ enum
 {
     RATE_RUDICS = 1,
     RATE_SBD = 0
+};
+
+enum Direction
+{
+    DIRECTION_MOBILE_ORIGINATED,
+    DIRECTION_MOBILE_TERMINATED
 };
 
 class OnCallBase
@@ -149,6 +157,61 @@ inline void parse_iridium_modem_message(std::string in,
 
     if (in.size())
         out->add_frame(in);
+}
+
+inline unsigned iridium_rate_to_bytes(int rate, iridium::protobuf::DeviceType device,
+                                      Direction direction)
+{
+    if (rate == RATE_RUDICS)
+    {
+        if (device != iridium::protobuf::DEVICE_VOICE_ENABLED_ISU)
+            throw(
+                goby::Exception("Must use device = DEVICE_VOICE_ENABLED_ISU for RUDICS support."));
+
+        return 1500; // somewhat arbitrary choice as we're dealing with a stream protocol
+    }
+    else if (rate == RATE_SBD)
+    {
+        const auto head_bytes{goby::acomms::iridium::protobuf::IridiumHeader::descriptor()
+                                  ->options()
+                                  .GetExtension(dccl::msg)
+                                  .max_bytes()};
+
+        const auto crc_bytes{goby::acomms::IRIDIUM_SBD_CRC_BYTE_SIZE};
+
+        const auto overhead_bytes = head_bytes + crc_bytes;
+
+        switch (direction)
+        {
+            case DIRECTION_MOBILE_ORIGINATED:
+                // From ISU AT Command Reference
+                // The maximum mobile originated SBD message length is 1960 bytes for voice-enabled ISUs,
+                // 340 bytes for the 9602, 9602-SB, and 9603, and 205 bytes for the 9601. The minimum
+                // mobile originated SBD message length is 1 byte.
+                switch (device)
+                {
+                    case iridium::protobuf::DEVICE_VOICE_ENABLED_ISU: return 1960 - overhead_bytes;
+                    case iridium::protobuf::DEVICE_IRIDIUM_9602_9603: return 340 - overhead_bytes;
+                }
+            case DIRECTION_MOBILE_TERMINATED:
+                // For voice-enabled ISUs: The maximum mobile terminated SBD message length is 1890 bytes.
+                // For the 9602, 9602-SB, and 9603: The maximum mobile terminated SBD message length
+                // is limited by configuration in the Iridium network, normally to either 135 or 270 bytes
+                // (i.e. one or two segments). However the modem can receive SBD messages up to 1960 bytes.
+                switch (device)
+                {
+                    case iridium::protobuf::DEVICE_VOICE_ENABLED_ISU: return 1890 - overhead_bytes;
+                    case iridium::protobuf::DEVICE_IRIDIUM_9602_9603:
+                        return 270 -
+                               overhead_bytes; // the user can limit this further if using a 1-segment configuration. RockBLOCK is 270B.
+                }
+            default: throw(goby::Exception("Invalid direction for the Iridium driver"));
+        }
+    }
+    else
+    {
+        throw(goby::Exception("Invalid rate " + std::to_string(rate) + " for the Iridium driver"));
+    }
 }
 
 } // namespace acomms

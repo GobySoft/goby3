@@ -1,4 +1,4 @@
-// Copyright 2011-2021:
+// Copyright 2011-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -27,7 +27,7 @@
 #ifndef GOBY_ACOMMS_CONNECT_H
 #define GOBY_ACOMMS_CONNECT_H
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/signals2.hpp>
 
 namespace goby
@@ -44,21 +44,21 @@ template <typename Signal, typename Slot> void connect(Signal* signal, Slot slot
 template <typename Signal, typename Obj, typename A1>
 void connect(Signal* signal, Obj* obj, void (Obj::*mem_func)(A1))
 {
-    connect(signal, boost::bind(mem_func, obj, _1));
+    connect(signal, boost::bind(mem_func, obj, boost::placeholders::_1));
 }
 
 /// connect a signal to a member function with two arguments
 template <typename Signal, typename Obj, typename A1, typename A2>
 void connect(Signal* signal, Obj* obj, void (Obj::*mem_func)(A1, A2))
 {
-    connect(signal, boost::bind(mem_func, obj, _1, _2));
+    connect(signal, boost::bind(mem_func, obj, boost::placeholders::_1, boost::placeholders::_2));
 }
 
 /// connect a signal to a member function with three arguments
 template <typename Signal, typename Obj, typename A1, typename A2, typename A3>
 void connect(Signal* signal, Obj* obj, void (Obj::*mem_func)(A1, A2, A3))
 {
-    connect(signal, boost::bind(mem_func, obj, _1, _2, _3));
+    connect(signal, boost::bind(mem_func, obj, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3));
 }
 
 /// disconnect a signal to a slot (e.g. function pointer)
@@ -71,21 +71,21 @@ template <typename Signal, typename Slot> void disconnect(Signal* signal, Slot s
 template <typename Signal, typename Obj, typename A1>
 void disconnect(Signal* signal, Obj* obj, void (Obj::*mem_func)(A1))
 {
-    disconnect(signal, boost::bind(mem_func, obj, _1));
+    disconnect(signal, boost::bind(mem_func, obj, boost::placeholders::_1));
 }
 
 /// disconnect a signal to a member function with two arguments
 template <typename Signal, typename Obj, typename A1, typename A2>
 void disconnect(Signal* signal, Obj* obj, void (Obj::*mem_func)(A1, A2))
 {
-    disconnect(signal, boost::bind(mem_func, obj, _1, _2));
+    disconnect(signal, boost::bind(mem_func, obj, boost::placeholders::_1, boost::placeholders::_2));
 }
 
 /// disconnect a signal to a member function with three arguments
 template <typename Signal, typename Obj, typename A1, typename A2, typename A3>
 void disconnect(Signal* signal, Obj* obj, void (Obj::*mem_func)(A1, A2, A3))
 {
-    disconnect(signal, boost::bind(mem_func, obj, _1, _2, _3));
+    disconnect(signal, boost::bind(mem_func, obj, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3));
 }
 
 } // namespace acomms

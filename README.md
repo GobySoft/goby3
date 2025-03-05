@@ -2,22 +2,17 @@
 
 The Goby Underwater Autonomy Project aims to create a unified framework for multiple scientific autonomous marine vehicle collaboration, seamlessly incorporating acoustic, ethernet, wifi, and serial communications. Goby provides a publish/subscribe middleware that operates on the concept of unified Nested Communications, with differing layers for interthread, interprocess, and intervehicle communications.
 
-For Release 2.1.1 and newer, Goby uses the standalone DCCL project: https://github.com/GobySoft/dccl
-
 - Contact Toby (https://github.com/tsaubergine) for information on becoming involved with goby.
-- Documentation: http://gobysoft.org/doc/3.0/)
+- Documentation: https://goby.software/3.0/
 - Wiki: https://github.com/GobySoft/goby3/wiki (also see older wiki: https://github.com/GobySoft/goby/wiki)
-- Mailing list: goby@mit.edu; join: http://mailman.mit.edu/mailman/listinfo/goby.
-- Release Ubuntu packages: https://launchpad.net/~goby-dev/+archive/ppa)
-- Nightly testing Ubuntu packages: https://code.launchpad.net/~tes/+archive/goby-daily)
 
-## goby3 middleware
+## goby3 examples
 
-Documentation is still a work in progress. As components get finalized, the goby3-examples repository (https://github.com/GobySoft/goby3-examples) is the best place to see working examples. You may fork this project as a starting point for your own projects using Goby3 so you don't need to configure your own build environment from hand.
+The goby3-examples repository (https://github.com/GobySoft/goby3-examples) is the best place to see working examples. You may fork this project as a starting point for your own projects using Goby3 so you don't need to configure your own build environment from hand.
 
 ## compiling goby
 
-please read the INSTALL.txt file in this directory
+See the [Download and Install Goby](https://goby.software/3.0/index.html#autotoc_md110) page.
 
 ## goby licensing
 

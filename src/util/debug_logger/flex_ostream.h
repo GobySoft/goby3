@@ -1,4 +1,4 @@
-// Copyright 2012-2021:
+// Copyright 2012-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -98,6 +98,12 @@ class FlexOstream : public std::ostream
     {
         std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
         sb_.add_stream(static_cast<logger::Verbosity>(verbosity), os);
+    }
+
+    void remove_stream(std::ostream* os = nullptr)
+    {
+        std::lock_guard<std::recursive_mutex> l(goby::util::logger::mutex);
+        sb_.remove_stream(os);
     }
 
     const FlexOStreamBuf& buf() { return sb_; }

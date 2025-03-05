@@ -54,7 +54,7 @@ void goby::acomms::UDPMulticastDriver::startup(const protobuf::DriverConfig& cfg
 {
     driver_cfg_ = cfg;
 
-    modem_start(driver_cfg_);
+    modem_start(driver_cfg_, false);
 
     rate_to_bytes_.clear();
 
@@ -148,9 +148,9 @@ void goby::acomms::UDPMulticastDriver::start_send(const protobuf::ModemTransmiss
     raw_msg.set_raw(bytes);
     signal_raw_outgoing(raw_msg);
 
-    socket_.async_send_to(
-        boost::asio::buffer(bytes), receiver_,
-        [this](boost::system::error_code ec, std::size_t length) { send_complete(ec, length); });
+    socket_.async_send_to(boost::asio::buffer(bytes), receiver_,
+                          [this](boost::system::error_code ec, std::size_t length)
+                          { send_complete(ec, length); });
 
     signal_transmit_result(msg);
 }
@@ -171,9 +171,9 @@ void goby::acomms::UDPMulticastDriver::send_complete(const boost::system::error_
 
 void goby::acomms::UDPMulticastDriver::start_receive()
 {
-    socket_.async_receive_from(
-        boost::asio::buffer(receive_buffer_), sender_,
-        [this](boost::system::error_code ec, std::size_t length) { receive_complete(ec, length); });
+    socket_.async_receive_from(boost::asio::buffer(receive_buffer_), sender_,
+                               [this](boost::system::error_code ec, std::size_t length)
+                               { receive_complete(ec, length); });
 }
 
 void goby::acomms::UDPMulticastDriver::receive_complete(const boost::system::error_code& error,

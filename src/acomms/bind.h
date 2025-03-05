@@ -1,4 +1,4 @@
-// Copyright 2010-2021:
+// Copyright 2010-2023:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -27,7 +27,7 @@
 #ifndef GOBY_ACOMMS_BIND_H
 #define GOBY_ACOMMS_BIND_H
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 
 #include "goby/acomms/amac.h"
 #include "goby/acomms/connect.h"
