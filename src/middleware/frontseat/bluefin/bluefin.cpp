@@ -386,10 +386,18 @@ void goby::middleware::frontseat::Bluefin::send_data_to_frontseat(const gpb::Int
 
     if (data.has_dccl_message())
     {
+#if DCCL_HAS_B64
         NMEASentence nmea("$BPDCL", NMEASentence::IGNORE);
         nmea.push_back(unix_time2nmea_time(gtime::SystemClock::now()));
         nmea.push_back(boost::trim_copy(dccl::b64_encode(data.dccl_message())));
         append_to_write_queue(nmea);
+#else
+        glog.is_die() &&
+            glog << "DCCL compiled without Base64 support, which is required for the $BPDCL "
+                    "message. To use the the $BPDCL message recompile DCCL and then Goby with "
+                    "Base64 support"
+                 << std::endl;
+#endif
     }
 
     if (data.HasExtension(gpb::bluefin_data))
