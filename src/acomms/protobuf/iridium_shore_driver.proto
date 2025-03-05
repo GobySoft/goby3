@@ -1,5 +1,4 @@
 syntax = "proto2";
-import "goby/protobuf/option_extensions.proto";
 import "goby/acomms/protobuf/driver_base.proto";
 import "goby/acomms/protobuf/iridium_driver.proto";
 
