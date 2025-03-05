@@ -8,7 +8,7 @@ The Goby Underwater Autonomy Project aims to create a unified framework for mult
 
 ## goby3 examples
 
-The goby3-examples repository (https://github.com/GobySoft/goby3-examples) is the best place to see working examples. You may fork this project as a starting point for your own projects using Goby3 so you don't need to configure your own build environment from hand.
+The goby3-examples repository (https://github.com/GobySoft/goby3-examples) is the best place to see working examples. You may fork this project as a starting point for your own projects using Goby3 so you don't need to configure your own build environment by hand.
 
 ## compiling goby
 
