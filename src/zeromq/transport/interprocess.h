@@ -89,6 +89,11 @@ constexpr goby::middleware::Group manager_request{"goby::zeromq::_internal_manag
 constexpr goby::middleware::Group manager_response{"goby::zeromq::_internal_manager_response"};
 } // namespace groups
 
+constexpr char delimiter{'/'};
+constexpr const char* delimiter_str{"/"};
+// use old ASCII substitute char for '/' in group or type
+constexpr char delimiter_substitute{0x1a};
+
 void setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg);
 
 enum class IdentifierWildcard
@@ -116,7 +121,7 @@ const std::string& id_component(const Key& k, std::unordered_map<Key, std::strin
     if (it != map.end())
         return it->second;
 
-    std::string v = identifier_part_to_string(k) + "/";
+    std::string v = identifier_part_to_string(k) + delimiter_str;
     auto it_pair = map.insert(std::make_pair(k, v));
     return it_pair.first->second;
 }
@@ -127,32 +132,42 @@ make_identifier(const std::string& type_name, int scheme, const std::string& gro
                 std::unordered_map<int, std::string>* schemes_buffer = nullptr,
                 std::unordered_map<std::thread::id, std::string>* threads_buffer = nullptr)
 {
+    // swap out delimiter with substitute
+    std::string sanitized_type_name = type_name;
+    std::replace(sanitized_type_name.begin(), sanitized_type_name.end(), delimiter,
+                 delimiter_substitute);
+    std::string sanitized_group_name = group;
+    std::replace(sanitized_group_name.begin(), sanitized_group_name.end(), delimiter,
+                 delimiter_substitute);
     switch (wildcard)
     {
         default:
         case IdentifierWildcard::NO_WILDCARDS:
         {
             auto thread = std::this_thread::get_id();
-            return ("/" + group + "/" +
-                    (schemes_buffer ? id_component(scheme, *schemes_buffer)
-                                    : std::string(identifier_part_to_string(scheme) + "/")) +
-                    type_name + "/" + process + "/" +
-                    (threads_buffer ? id_component(thread, *threads_buffer)
-                                    : std::string(identifier_part_to_string(thread) + "/")));
+            return (
+                delimiter_str + sanitized_group_name + delimiter_str +
+                (schemes_buffer ? id_component(scheme, *schemes_buffer)
+                                : std::string(identifier_part_to_string(scheme) + delimiter_str)) +
+                sanitized_type_name + delimiter_str + process + delimiter_str +
+                (threads_buffer ? id_component(thread, *threads_buffer)
+                                : std::string(identifier_part_to_string(thread) + delimiter_str)));
         }
         case IdentifierWildcard::THREAD_WILDCARD:
         {
-            return ("/" + group + "/" +
-                    (schemes_buffer ? id_component(scheme, *schemes_buffer)
-                                    : std::string(identifier_part_to_string(scheme) + "/")) +
-                    type_name + "/" + process + "/");
+            return (delimiter_str + sanitized_group_name + delimiter_str +
+                    (schemes_buffer
+                         ? id_component(scheme, *schemes_buffer)
+                         : std::string(identifier_part_to_string(scheme) + delimiter_str)) +
+                    sanitized_type_name + delimiter_str + process + delimiter_str);
         }
         case IdentifierWildcard::PROCESS_THREAD_WILDCARD:
         {
-            return ("/" + group + "/" +
-                    (schemes_buffer ? id_component(scheme, *schemes_buffer)
-                                    : std::string(identifier_part_to_string(scheme) + "/")) +
-                    type_name + "/");
+            return (delimiter_str + sanitized_group_name + delimiter_str +
+                    (schemes_buffer
+                         ? id_component(scheme, *schemes_buffer)
+                         : std::string(identifier_part_to_string(scheme) + delimiter_str)) +
+                    sanitized_type_name + delimiter_str);
         }
     }
 }
@@ -347,7 +362,8 @@ class InterProcessPortalImplementation
         // publishing and subscribe is completely functional before releasing the hold
         //
         _subscribe<protobuf::ManagerResponse, middleware::MarshallingScheme::PROTOBUF>(
-            [this](std::shared_ptr<const protobuf::ManagerResponse> response) {
+            [this](std::shared_ptr<const protobuf::ManagerResponse> response)
+            {
                 goby::glog.is_debug3() && goby::glog << "Received ManagerResponse: "
                                                      << response->ShortDebugString() << std::endl;
                 if (response->request() == protobuf::PROVIDE_HOLD_STATE &&
@@ -458,7 +474,7 @@ class InterProcessPortalImplementation
         {
             regex_subscriptions_.erase(subscriber_id);
             if (regex_subscriptions_.empty())
-                zmq_main_.unsubscribe("/");
+                zmq_main_.unsubscribe(delimiter_str);
         }
     }
 
@@ -659,7 +675,7 @@ class InterProcessPortalImplementation
         const std::shared_ptr<const middleware::SerializationSubscriptionRegex>& new_sub)
     {
         if (regex_subscriptions_.empty())
-            zmq_main_.subscribe("/");
+            zmq_main_.subscribe(delimiter_str);
 
         regex_subscriptions_.insert(std::make_pair(new_sub->subscriber_id(), new_sub));
     }
@@ -696,17 +712,35 @@ class InterProcessPortalImplementation
     std::tuple<std::string, int, std::string, int, std::size_t>
     parse_identifier(const std::string& identifier)
     {
-        const int number_elements = 5;
-        std::string::size_type previous_slash = 0;
+        enum
+        {
+            POS_GROUP = 0,
+            POS_SCHEME = 1,
+            POS_TYPE = 2,
+            POS_PROCESS = 3,
+            POS_THREAD = 4,
+            POS_MAX = POS_THREAD
+        };
+
+        const int number_elements = POS_MAX + 1;
+        std::string::size_type previous_delimiter = 0;
         std::vector<std::string> elem;
         for (auto i = 0; i < number_elements; ++i)
         {
-            auto slash_pos = identifier.find('/', previous_slash + 1);
-            elem.push_back(identifier.substr(previous_slash + 1, slash_pos - (previous_slash + 1)));
-            previous_slash = slash_pos;
+            auto delimiter_pos = identifier.find(delimiter, previous_delimiter + 1);
+            elem.push_back(identifier.substr(previous_delimiter + 1,
+                                             delimiter_pos - (previous_delimiter + 1)));
+            previous_delimiter = delimiter_pos;
         }
-        return std::make_tuple(elem[0], middleware::MarshallingScheme::from_string(elem[1]),
-                               elem[2], std::stoi(elem[3]), std::stoull(elem[4], nullptr, 16));
+
+        auto& group = elem[POS_GROUP];
+        auto& type = elem[POS_TYPE];
+        std::replace(type.begin(), type.end(), delimiter_substitute, delimiter);
+        std::replace(group.begin(), group.end(), delimiter_substitute, delimiter);
+        return std::make_tuple(elem[POS_GROUP],
+                               middleware::MarshallingScheme::from_string(elem[POS_SCHEME]),
+                               elem[POS_TYPE], std::stoi(elem[POS_PROCESS]),
+                               std::stoull(elem[POS_THREAD], nullptr, 16));
     }
 
   private:
@@ -726,8 +760,8 @@ class InterProcessPortalImplementation
     std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         forwarder_subscriptions_;
     std::unordered_map<
-        std::string, std::unordered_map<std::string, typename decltype(
-                                                         forwarder_subscriptions_)::const_iterator>>
+        std::string, std::unordered_map<
+                         std::string, typename decltype(forwarder_subscriptions_)::const_iterator>>
         forwarder_subscription_identifiers_;
 
     std::unordered_multimap<std::string,
