@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
 {
     if (argc < 2)
     {
-        std::cout << "usage: basic_frontseat_modem_simulator [tcp listen port]" << std::endl;
+        std::cout << "usage: " << argv[0] << " [tcp listen port]" << std::endl;
         exit(1);
     }
 

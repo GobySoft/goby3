@@ -4,6 +4,7 @@ Goby comes with a number of useful applications for use with the ZeroMQ implemen
 
 This written documentation is only a high level overview and reference. For a more comprehensive introduction, it is recommended that you watch and participate in the Goby3 Course materials: https://gobysoft.org/training/goby3-free-course.
 
+For additional applications that may be useful for those running goby-zeromq, but are not ZeroMQ-specific, please see the [Middleware Appplications](doc201_middleware_applications.md) page.
 
 ## Common configuration
 
@@ -70,6 +71,15 @@ gobyd provides two functions:
 
 This application provides identical functionality to `gobyd`'s intervehicle portal. This is provided as a separate app for users who wish to keep the intervehicle comms (and associated drivers) separate from the ZeroMQ broker responsibilities for `gobyd`. This is especially helpful if the various drivers are less stable than the rest of the codebase, since if `gobyd` crashes (e.g., due to a faulty driver) it stops all interprocess comms.
 
+## goby_terminate
+
+`goby_terminate` is a tool used to cleanly shut down Goby applications via a publication. It is used by `goby_launch` by  default and can manually be called using 
+
+```
+goby_terminate --interprocess "..." --target_name "app_name"
+```
+where the `--interprocess` settings match that of the desired `gobyd` and "app_name" is the application name. Alternatively, `--target_pid` can be used to terminate the desired process ID (PID) rather than specifying a name.
+
 ## goby_gps
 
 `goby_gps` is a client for [gpsd](https://gpsd.gitlab.io/gpsd/index.html) that publishes the GPS data from gpsd on several ZeroMQ interprocess groups (thus allowing Goby subscribers to access GPS data readily). `goby_gps` does not directly connect to the NMEA-0183 stream from the GPS device, as by using `gpsd` you open up the use of other useful clients, especially time-keeping (e.g., NTP).
@@ -105,21 +115,27 @@ See the [goby_liaison](doc505_goby_liaison.md) page for more details.
 
 ## goby_frontseat_interface
 
-TODO: Document
+The `goby_frontseat_interface` is an extensible interface between Goby (which can be thought of as a "backseat driver") to a frontseat or vehicle computer (often a proprietary low level control computer). This is the Goby version of the [MOOS `iFrontSeat`](doc600_moos.md). The iFrontSeat document explains how to write a new driver, which is identical for writing a driver for `goby_frontseat_interface` (they can share the same drivers).
+
+See the [goby_frontseat_interface](doc506_goby_frontseat_interface.md) page for more details.
 
 ## goby_geov_interface
 
-TODO: Document
+The `goby_geov_interface` provides an interface between Goby3 and the [Google Earth interface for Ocean Vehicles](https://gobysoft.org/geov/) (GEOV, pronounced "jove"). This allows you to visualize vehicles from Goby3 using the 3D rendering of [Google Earth for Desktop](https://www.google.com/earth/about/versions/#download-pro).
+
+See the [Goby Visualization Interfaces](doc507_goby_viz.md) page for more details.
 
 ## goby_opencpn_interface
 
-TODO: Document
+[OpenCPN](https://www.opencpn.org/) is an open source Chart Plotter Navigation software that can be used to display (2D) positions of marine vehicles. The `goby_opencpn_interface` provides a way to feed OpenCPN positions of autonomous vehicles by mimicing an AIS receiver.
 
-## goby_terminate
+See the [Goby Visualization Interfaces](doc507_goby_viz.md) page for more details.
 
-TODO: Document
+## goby_mavlink_gateway
 
-## goby_store_server
+A gateway application between MAVLink (initially developed for use by unmanned aerial vehicles) and Goby3.
+
+You can connect to MAVLink by either serial or UDP.
 
 ## Alternative (a)comms applications
 
@@ -127,16 +143,44 @@ The following are alternatives to using the goby `intervehicle` layer that will 
 
 ### goby_modemdriver
 
-TODO: Document
+Connects to a modem using the Goby-Modemdriver infrastructure. Data are passed to and from the modem using *interprocess* messages:
+
+
 
 ### goby_bridge
 
-TODO: Document
+Runs the rest of the Goby-Acomms stack besides the ModemDriver: AMAC, Queue, and Route. This has two ends, each connecting to a different `goby_modemdriver`. This is, as the name suggests, intended to bridge messages between two different media (e.g., acoustic modem to satcomms, satcomms to store-and-forward, etc.)
 
 ### goby_mosh_relay 
 
-TODO: Document
+Interfaces with a [forked version of Mosh](https://github.com/tsaubergine/mosh/tree/mosh-goby) to provide slow but usable remote shell connections using `goby_modemdriver`.
 
 ### goby_file_transfer
 
-TODO: Document
+Splits files into components to be sent using `goby_modemdriver`, sends them, and reconstructs the file on the receiving end. 
+
+Groups are defined in 
+
+```
+#include "goby/middleware/acomms/groups.h"
+```
+
+#### Subscriptions
+
+- Dynamic Group: String **goby::middleware::acomms::groups::tx**, Numeric **modem_id** (as defined in configuration). Message *goby::acomms::protobuf::ModemTransmission*. Messages to transmit via modem.
+- Dynamic Group: String **goby::middleware::acomms::groups::data_response**, Numeric **modem_id** (as defined in configuration). Response to **data_request**.
+
+
+#### Publications
+
+- Dynamic Group: String **goby::middleware::acomms::groups::rx**, Numeric **modem_id** (as defined in configuration). Message *goby::acomms::protobuf::ModemTransmission*. Messages received from modem.
+- Dynamic Group: String **goby::middleware::acomms::groups::data_request**, Numeric **modem_id** (as defined in configuration). Messages requesting data (from the application communicating with `goby_modemdriver`).
+
+
+### goby_ip_gateway
+
+Interfaces Goby with a UDP/IP tunnel using a minimal rewritten IP header. See https://ieeexplore.ieee.org/abstract/document/7778678:
+
+```
+T. Schneider, "Transmitting Internet Protocol packets efficiently on underwater networks using entropy-encoder header translation," 2016 IEEE/OES Autonomous Underwater Vehicles (AUV), Tokyo, Japan, 2016, pp. 241-245, doi: 10.1109/AUV.2016.7778678.
+```

@@ -68,8 +68,15 @@ The `pb_commander_config` block informs `goby_liaison` of the messages to load a
 			* group: The Goby group to publish to (string name)
 			* group_numeric: The numeric group (if any) to publish to (for the `intervehicle` layer). `0` is the "broadcast" group
 			* layer: Enumeration for the layer to publish to (LAYER_INTERVEHICLE or LAYER_INTERPROCESS).
+		+ external_data: Groups to subscribe to and parse for the "external data" tab
+			* name: Protobuf name
+			* group: Goby group to subscribe to
+			* translate: Map fields from this message to the message in Commander:
+				- from: external_data field (fully qualified using '.' separator)
+				- to: Commander message field (fully qualified using '.' separator)
 
 When using the LAYER_INTERPROCESS version of `goby_liaison`'s Commander, this is equivalent to a GUI version of the command line tool `goby zeromq publish`.
+
 
 ## Scope 
 
