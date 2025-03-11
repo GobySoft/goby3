@@ -4,7 +4,9 @@
 
 ## iFrontSeat
 
-iFrontSeat is a MOOS application used to interface a Goby/MOOS community (the "backseat") running pHelmIvP with a given manufacturer's vehicle (the "frontseat"). The usage of iFrontSeat and the existing driver suite is explained in the Goby user manual (see \ref main_resources). 
+iFrontSeat is a MOOS application used to interface a Goby/MOOS community (the "backseat") running pHelmIvP with a given manufacturer's vehicle (the "frontseat").
+
+The existing drivers are mentioned in the [goby_frontseat_interface](doc506_goby_frontseat_interface.md) page.
 
 ### Writing a new driver for iFrontSeat
 
@@ -155,7 +157,7 @@ The transport for the ABC frontseat is TCP: the simulator (frontseat) listens on
   </tr>
 </table>
 
-Your driver will be (at a minimum) a C linkage function "frontseat_driver_load" and a subclass of goby::moos::FrontSeatInterfaceBase. It should be compiled into a shared library (.so on Linux).
+At a minimum, your driver will include a C linkage function `frontseat_driver_load` and a subclass of `goby::moos::FrontSeatInterfaceBase`. It should be compiled into a shared library (.so on Linux).
 
 The C function is used by iFrontSeat to load your driver:
 

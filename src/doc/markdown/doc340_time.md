@@ -4,9 +4,9 @@
 
 The goby-time part of the goby library is designed for two main goals:
 
-- Allow for faster than realtime simulations
+- Enable faster-than-realtime simulations
 - Allow conversions between various time and date representations that are useful in different contexts:
-	+ `std::chrono`: The C++11 (and newer) time library. Until C++20, std::chrono does not provide date or calendar functions. 
+	+ `std::chrono`: The C++11 (and newer) time library. Until C++20, `std::chrono` did not provide date or calendar functions. 
 	+ `boost::posix_time::ptime`: Part of the [Boost Date-Time library](https://www.boost.org/doc/libs/release/doc/html/date_time/posix_time.html), a widely used date-time library prior to C++20's date functions in std::chrono.
 	+ `boost::units::quantity<`*time_dimension*`>`: Durations and timestamps (typically UNIX) using the [Boost::Units library](https://www.boost.org/doc/libs/release/doc/html/boost_units.html). The meshes with [DCCL's](https://libdccl.org/4.0/index.html) unit safety feature.
 	

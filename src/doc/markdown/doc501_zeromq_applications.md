@@ -4,7 +4,7 @@ Goby comes with a number of useful applications for use with the ZeroMQ implemen
 
 This written documentation is only a high level overview and reference. For a more comprehensive introduction, it is recommended that you watch and participate in the Goby3 Course materials: https://gobysoft.org/training/goby3-free-course.
 
-For additional applications that may be useful for those running goby-zeromq, but are not ZeroMQ-specific, please see the [Middleware Appplications](doc201_middleware_applications.md) page.
+For additional applications that may be useful for those running `goby-zeromq` but are not ZeroMQ-specific, please see the [Middleware Appplications](doc201_middleware_applications.md) page.
 
 ## Common configuration
 
@@ -73,7 +73,7 @@ This application provides identical functionality to `gobyd`'s intervehicle port
 
 ## goby_terminate
 
-`goby_terminate` is a tool used to cleanly shut down Goby applications via a publication. It is used by `goby_launch` by  default and can manually be called using 
+`goby_terminate` is a tool used to gracefully shut down Goby applications via a publication. It is used by `goby_launch` by  default and can manually be called using 
 
 ```
 goby_terminate --interprocess "..." --target_name "app_name"

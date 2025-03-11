@@ -1,6 +1,6 @@
 # goby-zeromq: goby_gps
 
-The `goby_gps` application publishes data from the widely used GPS server, `gpsd`.  It does not directly read data from the NMEA-0183 serial stream of the GPS. While this slightly increase the complication of setup, the benefits of serving GPS data using `gpsd` usually outweighs the drawback of this additional application. For example, NTP and Chronyd can directly receive GPS data from `gpsd` and correct the system time based on the GPS time.
+The `goby_gps` application publishes data from the widely used GPS server, `gpsd`.  It does not directly read data from the NMEA-0183 serial stream of the GPS. While this slightly increases the complexity of setup, the benefits of serving GPS data using `gpsd` usually outweighs the drawback of this additional application. For example, NTP and Chronyd can directly receive GPS data from `gpsd` and correct the system time based on the GPS time.
 
 ## gpsd
 
@@ -31,7 +31,7 @@ sudo apt install  gpsd-tools
 cgps
 ```
 
-If you see valid time, latitude, longitude, etc. data then gpsd is set up correctly. If not, check your serial port and perhaps directly examine the NMEA traffic using `minicom` or similar.
+If you see valid time, latitude, longitude, etc., then `gpsd` is set up correctly. If not, check your serial port and consider directly examining the NMEA traffic using `minicom` or a similar tool.
 
 ## goby_gps
 
@@ -39,7 +39,7 @@ If you see valid time, latitude, longitude, etc. data then gpsd is set up correc
 
 Upon startup `goby_gps` connects to `gpsd` using a TCP client and then sends a `WATCH` command to `gpsd` to enable streaming of GPS data. 
 
-`goby_gps` handles three types of `gpsd` data: TPV (time-position-velocity), SKY (sky view of the GPS satellites), and ATT (vehicle attitude). These are converted from JSON to equivalent Protocol Buffers messages and published on the ZeroMQ interprocess layer.
+`goby_gps` handles three types of `gpsd` data: TPV (time-position-velocity), SKY (sky view of the GPS satellites), and ATT (vehicle attitude). These are converted from JSON into equivalent Protocol Buffers messages and published on the ZeroMQ interprocess layer.
 
 | GPSD Message | Protobuf Message | Goby Group |
 |------------------------|-----------------------------|-----------------------|

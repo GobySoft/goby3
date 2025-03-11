@@ -1,8 +1,8 @@
 # goby-zeromq: goby_coroner
 
-It it often important to know if all the processes that are expected to be running on the robotic system are actually running and are responsive.
+It is often important to know if all the processes that are expected to be running on the robotic system are actually running and are responsive.
 
-`goby_coroner` regularly publishes a **request** (heartbeat) that is subscribed to by all the applications that subclass from goby::middleware::SingleThreadApplication or goby::middleware::MultiThreadApplication. These applications each send a **response** which is aggregated into a **report** that can be monitored by some custom process to notify someone or perform some action (e.g., restart the dead process).
+`goby_coroner` regularly publishes a **request** (heartbeat) that is subscribed to by all the applications that subclass from goby::middleware::SingleThreadApplication or goby::middleware::MultiThreadApplication. These applications each send a **response** which is aggregated into a **report** that can be monitored by a custom process to notify someone or perform an action (e.g., restart the unresponsive process).
 
 ## goby_coroner
 
@@ -44,7 +44,7 @@ You'll see three publications:
 1 | goby::health::report | goby.middleware.protobuf.VehicleHealth | 2025-Mar-05 21:31:19.209131 | time: 1741210279208246 platform: "default_goby_platform" state: HEALTH__OK process { name: "goby_gps" pid: 272383 main { name: "goby_gps" thread_id: 272383 state: HEALTH__OK child { name: "health_monitor" thread_id: 272392 uid: 0 state: HEALTH__OK } child { name: "tcp: 127.0.0.1:2947" thread_id: 272393 uid: 1 state: HEALTH__OK } } } process { name: "goby_logger" pid: 272410 main { name: "goby_logger" thread_id: 272412 state: HEALTH__OK } }
 ```
 
-Most of the time you would want to subscribe to the `goby::health::report` by some custom application specific goby app and do something with it. For example, see `jaiabot_health` app from the Jaiabot project: https://docs.jaia.tech/md_page75_health.html#autotoc_md370
+Most of the time, you would want to subscribe to the `goby::health::report` using a custom application-specific Goby app and do something with it. For example, see `jaiabot_health` app from the Jaiabot project: https://docs.jaia.tech/md_page75_health.html#autotoc_md370
 
 The groups are defined in:
 
@@ -101,7 +101,7 @@ process { name: "goby_logger" pid: 272410
 }
 ```
 
-If `goby_gps` dies or stops responding, the report would look like this:
+If `goby_gps` crashes or stops responding, the report will look like this:
 
 ```
 platform: "default_goby_platform"

@@ -5,7 +5,7 @@
 The built-in tabs include:
 
 1. Commander: A form for allowing users to publish any Protobuf message on the *intervehicle* or *interprocess* layer. This is typically used for sending commands from an operator to one or more vehicles over the *intervehicle* layer.
-2. Scope: A live table showing the latest of all groups containing Protobuf messages  published in the *interprocess* layer, and the ability to show a streaming history of any group. This is a helpful debugging tool, and can be though of as the GUI equivalent of `goby zeromq subscribe`.
+2. Scope: A live table showing the latest of all groups containing Protobuf messages  published in the *interprocess* layer, and the ability to show a streaming history of any group. This is a helpful debugging tool, and can be thought of as the GUI equivalent of `goby zeromq subscribe`.
 
 ## Common Configuration
 
@@ -23,7 +23,7 @@ To access `goby_liaison` from the client side, open a web browser to `http://<ht
 
 ## Commander
 
-The following image shows Liaison Commander using the USVCommand protobuf message shown in the [Goby3 Course](https://gobysoft.org/training/goby3-free-course), prior to filling in the message:
+The following image shows the Liaison Commander using the USVCommand protobuf message from the [Goby3 Course](https://gobysoft.org/training/goby3-free-course), before filling in the message:
 
 ![Commander UI](images/liaison_commander.png)
 
@@ -31,7 +31,7 @@ After filling in your message and sending it, your window will look something li
 
 ![Commander UI 2](images/liaison_commander2.png)
 
-The relevant configuration to create the Commander UI shown above is:
+The relevant configuration for creating the Commander UI shown above is:
 
 ```
 http_address: "0.0.0.0" # bind on all IPv4 sockets
@@ -130,7 +130,7 @@ extern "C"
 }
 ```
 
-The usual parsed configuration file / command line parameters are available in `cfg`. You can extend the `goby::apps::zeromq::protobuf::LiaisonConfig` message (goby/zeromq/protobuf/liaison_config.proto) to allow your application to have specialized configuration. If you wish to use a public extension, create an Issue on Github and we will assign one. For private projects, simply pick any extension values in the range 10000-11000. 
+The usual parsed configuration file / command line parameters are available in `cfg`. You can extend the `goby::apps::zeromq::protobuf::LiaisonConfig` message (goby/zeromq/protobuf/liaison_config.proto) to allow your application to have specialized configuration. If you wish to use a public extension, create an Issue on Github and we will assign one. For private projects, simply choose any extension values in the range 10000-11000. 
 
 Finally to load your plugin, you need to define the environmental variable `GOBY_LIAISON_PLUGINS` with a comma, semicolon or colon delimited set of path(s) to shared libraries for `goby_liaison` to load. These shared libraries must be fully qualified paths or on the `ld` load path (e.g., using `LD_LIBRARY_PATH`).
 

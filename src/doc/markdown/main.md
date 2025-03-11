@@ -2,7 +2,7 @@
 
 ![](images/gobysoft_logo_image_only_medium.png)
 
-The Goby Underwater Autonomy Project aims to create a unified framework for autonomous marine vehicle collaboration, seamlessly incorporating efficient intervehicle (acoustic, satellite, etc.), flexible interprocess (ethernet, local sockets, etc.), and intuitive interthread (shared pointer) communications. In addition, Goby provides a variety of useful tools for interacting with other marine-related middlewares, as well as marine engineering and oceanographic data. The Goby libraries are licensed under the [GNU Lesser General Public License](http://www.gnu.org/licenses/lgpl.html) and the applications (binaries) are licensed under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).
+The Goby Underwater Autonomy Project aims to create a unified framework for autonomous marine vehicle collaboration, seamlessly incorporating efficient intervehicle (acoustic, satellite, etc.), flexible interprocess (ethernet, local sockets, etc.), and intuitive interthread (shared pointer) communications. In addition, Goby provides various useful tools for interacting with other marine-related middleware, as well as marine engineering and oceanographic data. The Goby libraries are licensed under the [GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl.html) and the applications (binaries) are licensed under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).
 
 ## Resources
 
@@ -118,4 +118,4 @@ Please visit <https://github.com/GobySoft/goby3-examples> to learn about the ava
 
 ## Authors
 
-Goby is developed by GobySoft and a number of external contributers (https://github.com/GobySoft/goby3/graphs/contributors). The lead developer is Toby Schneider (https://github.com/tsaubergine).
+Goby is developed by GobySoft and a number of external contributers (https://github.com/GobySoft/goby3/graphs/contributors). The lead developer is Toby Schneider ([GitHub](https://github.com/tsaubergine)).

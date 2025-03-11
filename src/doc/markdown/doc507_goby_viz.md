@@ -1,6 +1,6 @@
 # goby-zeromq: Goby Visualization Interfaces
 
-A key part of operating autonomous marine vehicles is the ability to visualize their locations. Goby provides some interfaces to existing visualization tools suitable for displaying marine vehicles. 
+A key part of operating autonomous marine vehicles is the ability to visualize their locations. Goby provides interfaces to existing visualization tools for displaying marine vehicles. 
 
 ## goby_geov_interface
 
@@ -8,7 +8,7 @@ The GEOV project: https://github.com/GobySoft/geov lets you run a local server t
 
 The `goby_geov_interface` provides a client to the GEOV server to input vehicle position data from Goby3.
 
-The key subscription is:
+The key subscription for `goby_geov_interface` is:
 
 ```
 - group: goby::middleware::frontseat::node_status
@@ -111,4 +111,4 @@ From the `node_status`, `goby_opencpn_interface` creates spoof AIS messages for 
 
 These are published if you create a Route or Waypoint, respectively, in OpenCPN and then right click on it, choose "Send to GPS" and send it to the same port as `goby_opencpn_interface` (in the example above that would be "TCP:127.0.0.1:54000").
 
-These publications can then be used to map onto data fields in `goby_liaison`, using the "External Data" functionality. This allows you to send positions and routes using the OpenCPN mapping software rather than manually entering latitude/longitude values into `goby_liaison` Commander.
+These publications can be mapped onto data fields in `goby_liaison` using the "External Data" functionality. This allows you to send positions and routes using the OpenCPN mapping software rather than manually entering latitude/longitude values into `goby_liaison` Commander.

@@ -3,7 +3,7 @@
 
 Logging is a critical part of robotic operations for many purposes, such as data collection for research, performance analysis, debugging, etc.
 
-The `goby_logger` application allows you to log all or part of the messages being sent on the `interprocess` layer between various Goby ZeroMQ applications. These messages are written to a binary .goby file, which can be used to playback messages or for direct post mission analysis by converting to HDF5, JSON, text or other formats.
+The `goby_logger` application allows you to log all or part of the messages being sent on the `interprocess` layer between various Goby ZeroMQ applications. These messages are written to a binary .goby file, which can be used to play back messages or for direct post mission analysis by converting to HDF5, JSON, text or other formats.
 
 ## goby_logger
 
@@ -24,7 +24,7 @@ This section covers some of the important `goby_logger` configuration settings:
 - `log_dir`: Path to the directory (must exist) to write logs to 
 - `type_regex`: C++ regex for which `types` to include in the log (e.g., for PROTOBUF this would be the message name). Defaults to `".*"` (all types).
 - `group_regex`: C++ regex for which Goby `groups` to include in the log. Defaults to `".*"` (all groups).
-- `load_shared_library`: Path to shared library that contains Protobuf messages. If all Protobuf messages are known to `goby_logger` at runtime then they are embedded in the log. This is highly recommended to do as this means that tools like `goby log convert` can run correctly even without the original .proto messages used at the time of logging, avoiding the situation where older logs can't easily be converted if the original messages are not known.
+- `load_shared_library`: Path to shared library that contains Protobuf messages. If all Protobuf messages are known to `goby_logger` at runtime then they are embedded in the log. This is highly recommended to do as this means that tools like `goby log convert` can run correctly even without the original .proto messages used at the time of logging, avoiding the situation where older logs cannot easily be converted if the original messages are not available.
 
 ### goby_logger subscriptions
 
@@ -138,7 +138,7 @@ And run playback
 goby_playback /var/log/goby/myfile.goby
 ```
 
-You can see the new publications from the log using:
+You can view the new publications from the log using:
 
 ```
 goby zeromq subscribe

@@ -12,8 +12,8 @@
 
 ### Time
 
-- Time has been re-implemented in light of std::chrono. Because std::chrono doesn't support dates in C++14, we still support converting to and from boost::posix_time::ptime for this purpose. In addition, Boost Units quantities of time are supported for compatibility with DCCL units (http://www.libdccl.org/idl.html). The old time functions are availabled (but deprecated) by `#include <goby/time/legacy.h>` (instead of `#include <goby/common/time.h>`)
-- Use goby::time::SystemClock which is a simulation warpable version of std::chrono::system_clock for world-reference time.
+- Time has been re-implemented in light of std::chrono. Because std::chrono doesn't support dates in C++14, we still support converting to and from boost::posix_time::ptime for this purpose. In addition, Boost Units quantities of time are supported for compatibility with DCCL units (http://www.libdccl.org/idl.html). The old time functions are available (but deprecated) by `#include <goby/time/legacy.h>` (instead of `#include <goby/common/time.h>`)
+- Use `goby::time::SystemClock`, a simulation-warpable version of std::chrono::system_clock for world-reference time.
 - Use goby::time::SteadyClock which is a simulation warpable version of std::chrono::steady_clock for steady time tasks (when you don't want to deal with potential changes in the time due to NTP, etc.).
 
 ### MOOS
@@ -29,5 +29,5 @@
 
  - Use UDPMulticastDriver instead of PBDriver for pure software simulations
  - `micromodem.protobuf` moved to `goby.acomms.micromodem.protobuf`, and similar for other drivers
- - extensions to goby::acomms::protobuf::DriverConfig are a single Config object for each driver, rather than multiple extensions per driver. For example, goby::acomms::micromodem::protobuf::Config contains all the fields that were previously their own extension (e.g. micromodem::protobuf::Config::reset_nvram).
+ - Extensions to `goby::acomms::protobuf::DriverConfig` are encapsulated in a single `Config` object for each driver, rather than multiple extensions per driver. For example, goby::acomms::micromodem::protobuf::Config contains all the fields that were previously their own extension (e.g. micromodem::protobuf::Config::reset_nvram).
  - extensions to goby::acomms::protobuf::ModemTransmission are also a single Transmission object for each driver. For example, goby::acomms::micromodem::protobuf::Transmission contains all the fields that were previously their own extension (e.g. micromodem::protobuf::type).

@@ -6,7 +6,7 @@ The goby-util part of the goby library is intended to provide functions and clas
 
 ## Seawater functions
 
-Since Goby is primarily a marine middleware, a variety of empirical formulas for converting various seawater properties are included:
+Since Goby is primarily marine middleware, a variety of empirical formulas for converting seawater properties are included:
 
 * goby::util::seawater::depth(): depth from pressure and latitude.
 * goby::util::seawater::pressure(): pressure from depth and latitude.
@@ -50,7 +50,7 @@ The Y value is computed identically from the UTM Northings (\f$n\f$):
 
 The AIS system is used by surface boats and ships to broadcast position and other data via radio. The AIS protocol is based around NMEA-0183 serial messages. The [GPSD page on AIS](https://gpsd.gitlab.io/gpsd/AIVDM.html) has lots of helpful information.
 
-Goby can decode and encode a subset of the AIS serial messages to and from the goby::util::ais::protobuf::Voyage and goby::util::ais::protobuf::Position protocol buffers messages.
+Goby can decode and encode a subset of the AIS serial messages into and from the `goby::util::ais::protobuf::Voyage` and goby::util::ais::protobuf::Position protocol buffers messages.
 
 Decode (uses [libais](https://github.com/schwehr/libais)) using goby::util::ais::Decoder:
 

@@ -1,10 +1,10 @@
 # goby-zeromq: goby_frontseat_interface
 
-The `goby_frontseat_interface` application provides a common application for handling plugins for different vehicle control computers (Bluefin, Iver, WaveGlider, etc.). The goal is reduce the duplication of effort required to support a new vehicle platform with an autonomy system written in Goby3.
+The `goby_frontseat_interface` application provides a common application for handling plugins for different vehicle control computers (Bluefin, Iver, WaveGlider, etc.). The goal is to reduce the duplication of effort required to support a new vehicle platform with an autonomy system written in Goby3.
 
-This is the Goby version of the [MOOS `iFrontSeat`](doc600_moos.md). The two applications sharethe same drivers and motivation, so it worth reading the iFrontSeat documentation as well.
+This is the Goby version of the [MOOS `iFrontSeat`](doc600_moos.md). The two applications share the same drivers and motivation, so it is worth reading the iFrontSeat documentation as well.
 
-`goby_frontseat_interface` is effectively a mediator between two interfaces: the Helm Interface (providing desired setpoints of heading, speed, depth, etc.) and the Vehicle Interface (carrying out the desired setpoints and providing low level data).
+`goby_frontseat_interface` is effectively a mediator between two interfaces: the Helm Interface (providing desired setpoints of heading, speed, depth, etc.) and the Vehicle Interface (carrying out the desired setpoints and providing low-level data).
 
 ## Publish/subscribe
 
@@ -109,7 +109,7 @@ The Vehicle Interface connects the vehicle API to Goby3. It is a subclass of `go
 
 See the [MOOS `iFrontSeat`](doc600_moos.md) document on writing this interface. 
 
-The Vehicle Interface must be compiled into a shared library that exposes a C function "frontseat_driver_load" which must have the signature:
+The Vehicle Interface must be compiled as a shared library that exposes a C function "frontseat_driver_load" which must have the signature:
 ```
 extern "C"
 {
