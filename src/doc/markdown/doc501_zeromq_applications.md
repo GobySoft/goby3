@@ -4,7 +4,7 @@ Goby comes with a number of useful applications for use with the ZeroMQ implemen
 
 This written documentation is only a high level overview and reference. For a more comprehensive introduction, it is recommended that you watch and participate in the Goby3 Course materials: https://gobysoft.org/training/goby3-free-course.
 
-For additional applications that may be useful for those running `goby-zeromq` but are not ZeroMQ-specific, please see the [Middleware Appplications](doc201_middleware_applications.md) page.
+For additional applications that may be useful for those running `goby-zeromq` but are not ZeroMQ-specific, please see the [Middleware Appplications](doc231_middleware_applications.md) page.
 
 ## Common configuration
 

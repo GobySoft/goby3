@@ -1,10 +1,19 @@
-# goby-middleware: Applications
+# goby-middleware: Application Parent Classes
 
 Goby provides some classes that make it easy to quickly build complete applications (binaries) without having to write them from scratch.
 
 These application-related classes are also a good reference for how to use the Transporters if you wish to build your own applications from scratch.
 
 All the Goby applications are run using goby::run().
+
+## Application Instantiations
+
+For a list of concrete applications included in the Goby project see 
+
+-  the [Middleware Applications](doc231_middleware_applications.md) page.
+-  the [ZeroMQ Applications](doc501_zeromq_applications.md) page.
+
+The rest of this page describes the parent classes used to create these applications and your own custom applications.
 
 ## Base class: Application
 
@@ -48,10 +57,3 @@ User applications can inherit from goby::middleware::SimpleThread to create addi
 All these threads use goby::middleware::Thread so they all have access to the goby::middleware::Thread::loop() method.
 
 Writing thread-safe applications is now as a simple as ensuring that the various SimpleThread subclasses only share data via the publish/subscribe interface. This is easily accomplished by having each SimpleThread only access data within the class (no global or static variables) or data that has arrived via subscription callbacks.
-
-## Application Instantiations
-
-For a list of concrete applications included in the Goby project see 
-
--  the [Middleware Applications](doc201_middleware_applications.md) page.
--  the [ZeroMQ Applications](doc501_zeromq_applications.md) page.

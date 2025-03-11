@@ -1,4 +1,4 @@
-# goby: Middleware Applications
+# goby-middleware: Standalone Applications
 
 These applications are written using the Goby Application framework, but are standalone from any *interprocess* layer communications.
 

@@ -86,9 +86,10 @@ To ensure compatibility with the faster than real time "warp" feature, you shoul
 
 ```
 #include <goby/time/io.h>
+using goby::time::operator<<;
 ```
 
-This header includes `operator<<` overloads for goby::time::SystemClock::time_point, goby::time::SteadyClock::time_point, and goby::time::SystemClock::duration for logging or debugging convenience.
+This header includes goby::time::operator<<() overloads for goby::time::SystemClock::time_point, goby::time::SteadyClock::time_point, and goby::time::SystemClock::duration for logging or debugging convenience.
 
 ## Conversions
 
@@ -102,12 +103,12 @@ This header includes a family of templated functions for converting wall times t
 	- two different boost::units::quantity of time types (for example: goby::time::MicroTime to/from goby::time::SITime).
 	- boost::units::quantity of time to/from std::chrono::system_clock::time_point or goby::time::SystemClock::time_point.
 	- any time type previously mentioned to/from boost::posix_time::ptime
-* `ToDurationType convert_duration(FromDurationType from_duration)`: duration conversion
+* `ToDurationType goby::time::convert_duration(FromDurationType from_duration)`: duration conversion
 	- two different boost::units::quantity of time types
 	- std::chrono::duration to/from boost::units::quantity of time
-* `ToTimeType convert_from_nmea`: For converting NMEA0183 timestamps.
+* `ToTimeType goby::time::convert_from_nmea`: For converting NMEA0183 timestamps.
 * `TimeType goby::time::SystemClock::now()`: Convenience function for calling goby::time::convert on the return of goby::time::SystemClock::now.
-* `std::string str(TimeType value)`: Human readable string version of the given time (for debugging, logging, etc.), e.g., "2025-Mar-11 18:22:49.880977"
-* `std::string file_str(TimeType value)`: Representation of time formatted for a file name without special characters, e.g., "20250311T182250"
+* `std::string goby::time::str(TimeType value)`: Human readable string version of the given time (for debugging, logging, etc.), e.g., "2025-Mar-11 18:22:49.880977"
+* `std::string goby::time::file_str(TimeType value)`: Representation of time formatted for a file name without special characters, e.g., "20250311T182250"
 
 When using boost::units::quantity of time, it's important to correctly choose between `convert` or `convert_duration` function as this representation is ambiguous as to whether it refers to a duration or a wall time (referenced to the UNIX Epoch).

@@ -8,10 +8,22 @@ The Goby Underwater Autonomy Project aims to create a unified framework for auto
 
   * Home page, code, bug tracking, and wiki: https://github.com/GobySoft/goby3.
   * Examples: <https://github.com/GobySoft/goby3-examples>
-  * Developers' Manual: [(html)](http://gobysoft.org/doc/3.0)
+  * Manual (released version of this document): [(html)](http://gobysoft.org/doc/3.0)
   * Documentation for a particular release as a Debian package:
 
     ```apt install goby3-doc```
+  * Command line tool: [goby](doc010_cli.md)
+
+## User manual
+
+If you are completely new to Goby3, I would recommend watching and participating in the [Goby3 course](https://gobysoft.org/training/goby3-free-course/).
+
+If you're looking for more detail on various Goby applications, see the following pages:
+
+  * [Standalone applications](doc231_middleware_applications.md)
+  * [ZeroMQ applications](doc501_zeromq_applications.md)
+  * (for MOOS users) [MOOS applications](doc600_moos.md)
+  * (for ROS users) [goby_ros_gateway](https://github.com/GobySoft/goby_ros_gateway) ROS package.
 
 ## Developer manual
 

@@ -27,7 +27,7 @@ float pi_flt = goby::util::pi<float>;
 
 // NaN
 double nan_dbl = goby::util::NaN<double>;
-double nan_flt = goby::util::NaN<float>;
+float nan_flt = goby::util::NaN<float>;
 ```
 
 ## Geodesy

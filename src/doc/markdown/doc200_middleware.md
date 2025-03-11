@@ -6,9 +6,6 @@ The Goby `middleware` provides a starting point for creating complete marine rob
 * Goby does not dictate a particular marshalling scheme unlike ROS (rosmsg) or MOOS (MOOSMsg) does. You can use any serializable type on the interprocess layer that you choose. Currently we like Google Protocol Buffers, but this is not a necessary choice.
 * Goby does not dictate a particular interprocess transport mechanism. We like ZeroMQ which is built on TCP/Unix sockets, but the design of Goby3 allows for additional interprocess implementations to be built as needed or desired.
 
-
-Please read the [User Manual](http://gobysoft.org/dl/goby3-user-manual.pdf) for more information on the design and motivation of the Goby3 middleware. This page is intended to provide technical detail for developers using and modifying it.
-
 ## Nested Transport Layers and Transporters
 
 ![](images/nested_ipc.png)
@@ -40,3 +37,4 @@ The image above gives an example of the data flow. The blue line shows an interv
 ### Subscribing
 
 Subscriptions to a particular layer only apply to that layer. For example, a subscription with an interprocess Transporter will never return data from a different vehicle (only data from processes within that vehicle). Similarly, an interprocess subscription will never return data published on the interthread layer in that process. This means that sometimes it may be necessary to make more than one subscription to the same data scheme, type, group on two or more different layers.
+
