@@ -8,9 +8,8 @@ The Goby Underwater Autonomy Project aims to create a unified framework for auto
 
   * Home page, code, bug tracking, and wiki: https://github.com/GobySoft/goby3.
   * Examples: <https://github.com/GobySoft/goby3-examples>
-  * User Manual: [(pdf)](http://gobysoft.org/dl/goby3-user-manual.pdf)
-  * Developers' Manual: [(html)](http://gobysoft.org/doc/3.0) [(pdf)](http://gobysoft.org/dl/goby3-dev.pdf)
-  * Both user and developer documentation for a particular release as a Debian package:
+  * Developers' Manual: [(html)](http://gobysoft.org/doc/3.0)
+  * Documentation for a particular release as a Debian package:
 
     ```apt install goby3-doc```
 
@@ -28,9 +27,10 @@ Along with each of those libraries, Goby provides a number of related applicatio
 
 The core `libgoby.so` is comprised of several conceptual components:
 
-  * [acomms](doc100_acomms.md) - tackle the extremely rate limited acoustic networking problem. This part of Goby was designed with modules that can operate independently for a developer looking to integrate a specific component (e.g. just encoding/decoding) without committing to the entire goby-acomms stack.
+  * [acomms](doc100_acomms.md) - tackles the extremely rate limited acoustic networking problem. This part of Goby was designed with modules that can operate independently for a developer looking to integrate a specific component (e.g. just encoding/decoding) without committing to the entire goby-acomms stack.
   * [middleware](doc200_middleware.md) - (*new for Goby 3*) nested publish/subscribe middleware based on interthread, interprocess, and intervehicle communications.
-  * [util](doc300_util.md) - provide utility functions for tasks such as logging, scientific calculations, string parsing, and serial device i/o. Goby also relies on the [Boost](http://www.boost.org) libraries for many utility tasks to fill in areas where the C++ Standard Library is insufficient or unelegant.
+  * [util](doc300_util.md) - provides utility functions for tasks such as logging, scientific calculations, string parsing, and serial device i/o. Goby also relies on the [Boost](http://www.boost.org) libraries for many utility tasks to fill in areas where the C++ Standard Library is insufficient or inelegant.
+  * [time](doc340_time.md) - provides classes and functions for handling faster-than-realtime simulations as well as other utilities based around the std::chrono and boost::posix_time::ptime functions.
 
 ### ZeroMQ support library
 

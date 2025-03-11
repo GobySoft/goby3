@@ -2,7 +2,7 @@
 
 ## Overview
 
-The goby-util libraries are intended to provide functions and classes for handling relevant "utility" tasks, such as logging, string manipulation, scientific calculations, etc. Wherever possible, a high quality open source peer reviewed solution is used (such as the C++ STL, Boost).
+The goby-util part of the goby library is intended to provide functions and classes for handling relevant "utility" tasks, such as logging, string manipulation, scientific calculations, etc. Wherever possible, a high quality open source peer reviewed solution is used (such as the C++ STL, Boost).
 
 ## Seawater functions
 

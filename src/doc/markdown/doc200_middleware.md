@@ -1,6 +1,6 @@
 # goby-middleware: Nested middleware overview
 
-The Goby `middleware` is provides a starting point for creating complete marine robotic systems. Superficially, it is similar to MOOS and ROS, but with several key distinguishing differences:
+The Goby `middleware` provides a starting point for creating complete marine robotic systems. Superficially, it is similar to MOOS and ROS, but with several key distinguishing differences:
 
 * The Goby middleware is designed around a nested communications model that allows for scalable performance across the huge range of throughput values commonly seen in marine systems (tens of bits per second on an acoustic modem to tens of gigabits per second or more between threads).
 * Goby does not dictate a particular marshalling scheme unlike ROS (rosmsg) or MOOS (MOOSMsg) does. You can use any serializable type on the interprocess layer that you choose. Currently we like Google Protocol Buffers, but this is not a necessary choice.
@@ -20,7 +20,7 @@ Goby3 is designed around the idea of nested communication layers. Three layers a
 * interprocess: Process to process comms using some interprocess transport (e.g. [ZeroMQ](doc500_zeromq.md)).
 * intervehicle: Vehicle to vehicle comms using [Goby Acomms](doc100_acomms.md).
 
-A Transporter is used to move data around within a layer or between layers using a publish and subscribe model. In most cases, a Transporter comes in a specific flavor: a Portal (used to actually connect to the transport layer, e.g. modem or socket), and a Forwarder (an similar interface that allows indirect multiple access to a given Portal).
+A Transporter moves data within or between layers using a publish-and-subscribe model. In most cases, a Transporter comes in a specific flavor: a Portal (used to actually connect to the transport layer, e.g. modem or socket), and a Forwarder (an similar interface that allows indirect multiple access to a given Portal).
 
 See the [Transporter](doc210_transporter.md) page for more details.
 

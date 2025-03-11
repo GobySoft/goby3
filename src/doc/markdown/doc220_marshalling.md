@@ -6,7 +6,7 @@ Thus, this discussion is most relevant for the interprocess layer, where any num
 
 Throughout the documentation and code, "marshalling scheme" is shortened to just *scheme*. The schemes supported directly in Goby are enumerated in goby::middleware::MarshallingScheme::MarshallingSchemeEnum, however the actual value passed around is an integer, allowing the user to define their own schemes without modifying the Goby source code. In this case, scheme identifiers must be chosen that do not conflict with any of the goby::middleware::MarshallingScheme::MarshallingSchemeEnum values or any other third-party schemes in use.
 
-In practice, a real system should seek to minimize the number of schemes in use. However, it is often very helpful for interoperability to avoid premature data translation which may requires several different schemes depending on the complexity of the system, and how much of the code involves interacting with pre-existing modules (that may be fully committed to one particular scheme).
+In practice, a real system should seek to minimize the number of schemes in use. However, it is often very helpful for interoperability to avoid premature data translation which may require several different schemes depending on the complexity of the system, and how much of the code involves interacting with pre-existing modules (that may be fully committed to one particular scheme).
 
 ## Types within a scheme
 
@@ -22,6 +22,6 @@ To implement your new scheme, you need to
 
 * Add a new enumeration to goby::middleware::MarshallingScheme::MarshallingSchemeEnum (if modifying Goby directly, otherwise allocate a new integer in your project's internal scheme registry).
 * Implement (specialize) goby::middleware::SerializerParserHelper. The goby::middleware::SerializerParserHelper::parse_dynamic() and goby::middleware::SerializerParserHelper::type_name(const DataType& d) methods are optional, but may be helpful if your scheme has a concept of runtime introspection, which allows use of the goby::middleware::InterProcessTransporterBase::subscribe_regex and goby::middleware::InterProcessTransporterBase::subscribe_type_regex methods.
-* (optional but higly recommended) Implement (specialize) goby::middleware::scheme(). This will allow publish and subscribe calls to infer the marshalling scheme from the data type, rather than having to be explicitly passed with every call.
+* (optional but highly recommended) Implement (specialize) goby::middleware::scheme(). This will allow publish and subscribe calls to infer the marshalling scheme from the data type, rather than having to be explicitly passed with every call.
 
 The C-string implementation in `goby/middleware/marshalling/cstr.h` provides a good minimal example (but does not implement the optional dynamic introspection methods - for these see the Protobuf or MAVLink implementations).

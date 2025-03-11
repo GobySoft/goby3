@@ -53,5 +53,5 @@ Writing thread-safe applications is now as a simple as ensuring that the various
 
 For a list of concrete applications included in the Goby project see 
 
--  the [Middleware Appplications](doc201_middleware_applications.md) page.
+-  the [Middleware Applications](doc201_middleware_applications.md) page.
 -  the [ZeroMQ Applications](doc501_zeromq_applications.md) page.

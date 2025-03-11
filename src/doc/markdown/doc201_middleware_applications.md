@@ -1,13 +1,13 @@
 # goby: Middleware Applications
 
-These applications are written using the Goby Application frameware, but are standalone from any *interprocess* layer communications.
+These applications are written using the Goby Application framework, but are standalone from any *interprocess* layer communications.
 
 For useful applications that use the *interprocess* layer publish/subscribe infrastructure, see the 
 - [ZeroMQ Applications](doc501_zeromq_applications.md) page
 
 ## goby_store_server
 
-`goby_store_server` is a SQLite-based store-and-forward database for the `driver_type: DRIVER_STORE_SERVER` driver (run in `gobyd`, `goby_intervehicle_portal`, `goby_modemdriver` or `pAcommsHandler`). It opens a TCP socket, creates an SQLite database. It then handles connections for outbound messages that are written to the database, for later retrieval by the destination client.
+`goby_store_server` is a SQLite-based store-and-forward database for the `driver_type: DRIVER_STORE_SERVER` driver (run in `gobyd`, `goby_intervehicle_portal`, `goby_modemdriver` or `pAcommsHandler`). It opens a TCP socket and creates an SQLite database. It then handles connections for outbound messages that are written to the database, for later retrieval by the destination client.
 
 It has simple configuration:
 
@@ -28,7 +28,7 @@ Configuration:
 
 ## goby_basic_frontseat_simulator
 
-A primitive dynamics model backs a simple text based command protocol to create `goby_basic_frontseat_simulator`. The point of this simulator is to demonstrate the `goby_frontseat_interface` plugin infrastructure and provide a low-fidelity vehicle simulator for testing missions where accurate kinematics is unnecessary.
+A primitive dynamics model backs a simple text-based command protocol to create `goby_basic_frontseat_simulator`. The point of this simulator is to demonstrate the `goby_frontseat_interface` plugin infrastructure and provide a low-fidelity vehicle simulator for testing missions where accurate kinematics is unnecessary.
 
 To run:
 ```
