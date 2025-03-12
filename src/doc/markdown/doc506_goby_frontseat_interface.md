@@ -8,6 +8,7 @@ This is the Goby version of the [MOOS `iFrontSeat`](doc600_moos.md). The two app
 
 ## Publish/subscribe
 
+
 The groups are defined in
 ```
 #include <goby/middleware/frontseat/groups.h>
@@ -19,59 +20,10 @@ and the Protobuf messages are in [`goby/src/middleware/protobuf/frontseat.proto`
 #include <goby/middleware/protobuf/frontseat.pb.h>
 ```
 
-`goby_frontseat_interface` publishes:
+### API Diagram
 
-```
-- group: goby::middleware::frontseat::command_response
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::CommandResponse
-  notes: "Response to command_request from the frontseat"
-- group: goby::middleware::frontseat::data_from_frontseat
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::InterfaceData
-  notes: "Data from the frontseat computer"
-- group: goby::middleware::frontseat::node_status
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::NodeStatus
-  notes: "Processed node status: vehicle position, pose, etc."
-- group: goby::middleware::frontseat::raw_in
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::Raw
-  notes: "Raw incoming data from the frontseat"
-- group: goby::middleware::frontseat::raw_out
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::Raw
-  notes: "Raw outgoing data to the frontseat"
-- group: goby::middleware::frontseat::status
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::InterfaceStatus
-  notes: "Summary of states and status from the goby_frontseat_interface"
-```
+![goby_clang_tool generated API figure](images/goby_frontseat_interface_stub_deployment.png)
 
-and subscribes to:
-
-```
-- group: goby::middleware::frontseat::command_request
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::CommandRequest
-  notes: "Request to the frontseat - typically DesiredCourse"
-- group: goby::middleware::frontseat::data_to_frontseat
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::InterfaceData
-  notes: "Data from the frontseat"
-- group: goby::middleware::frontseat::desired_course
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::DesiredCourse
-  notes: "Request desired course to the frontseat - useful common shortcut to publishing command_request"
-- group: goby::middleware::frontseat::helm_state
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::HelmStateReport
-  notes: "Report from the Helm regarding its state: Drive or Park"
-- group: goby::middleware::frontseat::raw_send_request
-  scheme: PROTOBUF
-  type: goby::middleware::frontseat::protobuf::Raw
-  notes: "Backdoor to send raw outgoing data to the frontseat"
-```
 
 ## Helm Interface
 
@@ -203,3 +155,4 @@ Key additional configuration variables:
 	    - pm_serial_baud: Baud for serial port
 	    - board_id: 3
 	    - task_id: 1
+

@@ -6,6 +6,20 @@ This written documentation is only a high level overview and reference. For a mo
 
 For additional applications that may be useful for those running `goby-zeromq` but are not ZeroMQ-specific, please see the [Middleware Appplications](doc231_middleware_applications.md) page.
 
+## Publish/subscribe API
+
+This document (and the various linked pages) touch on the various messages and goby::middleware::Groups that each of these applications publishes or subscribes to. 
+
+However, for a full publish/subscribe API you should consult the *interface YAML files* for each application, which are available in the Debian package `goby3-interfaces` which you can install using:
+
+```
+apt install goby3-interfaces
+```
+
+This package installs the YAML files to `/usr/share/goby/interfaces`. Each interface YAML file is named for the application it discusses. For example, `/usr/share/goby/interfaces/goby_gps_interface.yml` is the interface for `goby_gps`.
+
+
+
 ## Common configuration
 
 All goby-zeromq applications can take parameters from either the command line or a configuration file or both (where command line takes precedence if set in both places).

@@ -73,3 +73,7 @@ interprocess().subscribe<goby::middleware::groups::gpsd::tpv>(
         std::cout << "Longitude: " << tpv.location().lon() << std::endl; 
  });
 ```
+
+## Publish/Subscribe API Diagram
+
+![goby_clang_tool generated API figure](images/goby_gps_stub_deployment.png)

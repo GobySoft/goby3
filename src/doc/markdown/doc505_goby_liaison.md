@@ -141,3 +141,9 @@ A shell script can easily be defined to do all this for you (e.g., name the scri
 
 LD_LIBRARY_PATH=/path/to/myproject/build/lib:${LD_LIBRARY_PATH} GOBY_LIAISON_PLUGINS=libmyproject_liaison.so exec goby_liaison "$*"
 ```
+
+## Publish/Subscribe API Diagram
+
+(This figure excludes dynamic subscriptions / publications, which is the majority of what `goby_liaison` uses)
+
+![goby_clang_tool generated API figure](images/goby_liaison_stub_deployment.png)

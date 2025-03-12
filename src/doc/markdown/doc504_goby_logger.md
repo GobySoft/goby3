@@ -69,6 +69,10 @@ and the Protobuf messages are in [`goby/src/middleware/protobuf/logger.proto`](h
 #include <goby/middleware/protobuf/logger.pb.h>
 ```
 
+## Publish/Subscribe API Diagram
+
+![goby_clang_tool generated API figure](images/goby_logger_stub_deployment.png)
+
 ## goby log convert
 
 The `goby log convert` function of the `goby` tool can be used to convert .goby files written by `goby_logger` into more usable formats.

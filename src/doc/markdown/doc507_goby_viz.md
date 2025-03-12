@@ -27,6 +27,10 @@ Configuration variables are:
 - mysql_port: Port for GEOV MYSQL server
 - position_report_interval: Seconds between position reports to enter into GEOV for a given vehicle (default: 1)
 
+## Publish/Subscribe API Diagram
+
+![goby_clang_tool generated API figure](images/goby_geov_interface_stub_deployment.png)
+
 
 ## goby_opencpn_interface
 
@@ -112,3 +116,7 @@ From the `node_status`, `goby_opencpn_interface` creates spoof AIS messages for 
 These are published if you create a Route or Waypoint, respectively, in OpenCPN and then right click on it, choose "Send to GPS" and send it to the same port as `goby_opencpn_interface` (in the example above that would be "TCP:127.0.0.1:54000").
 
 These publications can be mapped onto data fields in `goby_liaison` using the "External Data" functionality. This allows you to send positions and routes using the OpenCPN mapping software rather than manually entering latitude/longitude values into `goby_liaison` Commander.
+
+## Publish/Subscribe API Diagram
+
+![goby_clang_tool generated API figure](images/goby_opencpn_interface_stub_deployment.png)

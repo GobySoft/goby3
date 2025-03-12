@@ -129,3 +129,8 @@ The same method can be overriden for each Thread within `goby::middleware::Multi
 Finally, you can extend the ThreadHealth message using Protobuf extensions to include any custom data you want to pass out in the goby_coroner **report**. For example, see the JaiaBot project, which extends ThreadHealth to add project specific warning and error enumerations: https://docs.jaia.tech/health_8proto_source.html
 
 If you are using the extensions for a private project, simply choose any value over 1000. For projects that are public or should interoperate you can post an issue to https://github.com/GobySoft/goby3/issues requested an extension assignment.
+
+
+## Publish/Subscribe API Diagram
+
+![goby_clang_tool generated API figure](images/goby_coroner_stub_deployment.png)

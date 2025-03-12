@@ -757,6 +757,37 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
         std::cout << "Failed to parse deployment file: " << params.deployment << ": " << e.what()
                   << std::endl;
     }
+
+    if (!deploy_yaml["deployment"])
+    {
+        // check if this is singular interfaces file instead
+        if (deploy_yaml["application"])
+        {
+            std::string application_name = deploy_yaml["application"].as<std::string>();
+            std::string yaml_filename = yamls.at(0);
+            // it is, make a mini degenerate deploy_yaml
+            YAML::Node degenerate_deploy_yaml;
+            degenerate_deploy_yaml["deployment"] = application_name + "_stub_deployment";
+            YAML::Node platform;
+            platform["name"] = "goby_platform";
+            YAML::Node interfaces;
+            interfaces.push_back(yaml_filename);
+            platform["interfaces"] = interfaces;
+            YAML::Node platforms;
+            platforms.push_back(platform);
+            degenerate_deploy_yaml["platforms"] = platforms;
+            deploy_yaml = degenerate_deploy_yaml;
+        }
+        else
+        {
+            // nope
+            std::cerr << "Must specify 'deployment: name' in deployment YAML file or provide a "
+                         "single interfaces YAML as the deployment YAML"
+                      << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
     deployment_name = deploy_yaml["deployment"].as<std::string>();
     YAML::Node platforms_node = deploy_yaml["platforms"];
     if (!platforms_node || !platforms_node.IsSequence())
