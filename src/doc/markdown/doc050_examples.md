@@ -4,7 +4,7 @@ The Goby3 examples reside in a separate repository:
 
 https://github.com/GobySoft/goby3-examples
 
-The examples are kept separate so that you can examine them without have to build Goby3 itself from source. The CMakeLists.txt and other build code here may also be helpful for you when building your own project repositories.
+The examples are kept separate so that you can examine them without having to build Goby3 itself from source. The CMakeLists.txt and other build code here may also be helpful for you when building your own project repositories.
 
 The structure of the repository is:
 

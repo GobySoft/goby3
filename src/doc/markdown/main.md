@@ -2,17 +2,28 @@
 
 ![](images/gobysoft_logo_image_only_medium.png)
 
-The Goby Underwater Autonomy Project aims to create a unified framework for autonomous marine vehicle collaboration, seamlessly incorporating efficient intervehicle (acoustic, satellite, etc.), flexible interprocess (ethernet, local sockets, etc.), and intuitive interthread (shared pointer) communications. In addition, Goby provides a variety of useful tools for interacting with other marine-related middlewares, as well as marine engineering and oceanographic data. The Goby libraries are licensed under the [GNU Lesser General Public License](http://www.gnu.org/licenses/lgpl.html) and the applications (binaries) are licensed under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).
+The Goby Underwater Autonomy Project aims to create a unified framework for autonomous marine vehicle collaboration, seamlessly incorporating efficient intervehicle (acoustic, satellite, etc.), flexible interprocess (ethernet, local sockets, etc.), and intuitive interthread (shared pointer) communications. In addition, Goby provides various useful tools for interacting with other marine-related middleware, as well as marine engineering and oceanographic data. The Goby libraries are licensed under the [GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl.html) and the applications (binaries) are licensed under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).
 
 ## Resources
 
   * Home page, code, bug tracking, and wiki: https://github.com/GobySoft/goby3.
   * Examples: <https://github.com/GobySoft/goby3-examples>
-  * User Manual: [(pdf)](http://gobysoft.org/dl/goby3-user-manual.pdf)
-  * Developers' Manual: [(html)](http://gobysoft.org/doc/3.0) [(pdf)](http://gobysoft.org/dl/goby3-dev.pdf)
-  * Both user and developer documentation for a particular release as a Debian package:
+  * Manual (released version of this document): [(html)](http://gobysoft.org/doc/3.0)
+  * Documentation for a particular release as a Debian package:
 
     ```apt install goby3-doc```
+  * Command line tool: [goby](doc010_cli.md)
+
+## User manual
+
+If you are completely new to Goby3, I would recommend watching and participating in the [Goby3 course](https://gobysoft.org/training/goby3-free-course/).
+
+If you're looking for more detail on various Goby applications, see the following pages:
+
+  * [Standalone applications](doc231_middleware_applications.md)
+  * [ZeroMQ applications](doc501_zeromq_applications.md)
+  * (for MOOS users) [MOOS applications](doc600_moos.md)
+  * (for ROS users) [goby_ros_gateway](https://github.com/GobySoft/goby_ros_gateway) ROS package.
 
 ## Developer manual
 
@@ -28,9 +39,10 @@ Along with each of those libraries, Goby provides a number of related applicatio
 
 The core `libgoby.so` is comprised of several conceptual components:
 
-  * [acomms](doc100_acomms.md) - tackle the extremely rate limited acoustic networking problem. This part of Goby was designed with modules that can operate independently for a developer looking to integrate a specific component (e.g. just encoding/decoding) without committing to the entire goby-acomms stack.
+  * [acomms](doc100_acomms.md) - tackles the extremely rate limited acoustic networking problem. This part of Goby was designed with modules that can operate independently for a developer looking to integrate a specific component (e.g. just encoding/decoding) without committing to the entire goby-acomms stack.
   * [middleware](doc200_middleware.md) - (*new for Goby 3*) nested publish/subscribe middleware based on interthread, interprocess, and intervehicle communications.
-  * [util](doc300_util.md) - provide utility functions for tasks such as logging, scientific calculations, string parsing, and serial device i/o. Goby also relies on the [Boost](http://www.boost.org) libraries for many utility tasks to fill in areas where the C++ Standard Library is insufficient or unelegant.
+  * [util](doc300_util.md) - provides utility functions for tasks such as logging, scientific calculations, string parsing, and serial device i/o. Goby also relies on the [Boost](http://www.boost.org) libraries for many utility tasks to fill in areas where the C++ Standard Library is insufficient or inelegant.
+  * [time](doc340_time.md) - provides classes and functions for handling faster-than-realtime simulations as well as other utilities based around the std::chrono and boost::posix_time::ptime functions.
 
 ### ZeroMQ support library
 
@@ -118,4 +130,4 @@ Please visit <https://github.com/GobySoft/goby3-examples> to learn about the ava
 
 ## Authors
 
-Goby is developed by GobySoft and a number of external contributers (https://github.com/GobySoft/goby3/graphs/contributors). The lead developer is Toby Schneider (https://github.com/tsaubergine).
+Goby is developed by GobySoft and a number of external contributers (https://github.com/GobySoft/goby3/graphs/contributors). The lead developer is Toby Schneider ([GitHub](https://github.com/tsaubergine)).

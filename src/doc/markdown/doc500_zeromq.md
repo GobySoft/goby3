@@ -6,7 +6,7 @@ Given its ease of use and portability, it was chosen for the first (reference) i
 
 ## Interprocess Portal
 
-The goby::zeromq::InterProcessPortal implements the [Portal concept](doc210_transporter.md) using a broker (typically `gobyd`) containing a zmq::proxy connecting a XPUB frontend and an XSUB backend. The actual zmq::proxy resides in the goby::zeromq::Router class which is run in its own thread. This use of XSUB/XPUB allows multiple publishers of the same data type.
+The `goby::zeromq::InterProcessPortal` implements the [Portal concept](doc210_transporter.md) using a broker (typically `gobyd`) containing a zmq::proxy connecting a XPUB frontend and an XSUB backend. The actual zmq::proxy resides in the goby::zeromq::Router class which is run in its own thread. The use of XSUB/XPUB enables multiple publishers of the same data type.
 
 To avoid having to configure two sockets for each client (XPUB and XSUB), these are dynamically allocated by the goby::zeromq::Manager.
 

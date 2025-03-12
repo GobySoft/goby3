@@ -26,5 +26,5 @@ if(NOT (GENTIUM_AI_FONT AND GENTIUM_AR_FONT AND GENTIUM_I_FONT AND GENTIUM_R_FON
 endif()
 
 add_subdirectory(dev_manual)
-add_subdirectory(user_manual)
+#add_subdirectory(user_manual)
 #add_subdirectory(whitepaper)

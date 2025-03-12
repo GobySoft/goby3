@@ -2,11 +2,11 @@
 
 ## Overview
 
-The goby-util libraries are intended to provide functions and classes for handling relevant "utility" tasks, such as logging, string manipulation, scientific calculations, etc. Wherever possible, a high quality open source peer reviewed solution is used (such as the C++ STL, Boost).
+The goby-util part of the goby library is intended to provide functions and classes for handling relevant "utility" tasks, such as logging, string manipulation, scientific calculations, etc. Wherever possible, a high quality open source peer reviewed solution is used (such as the C++ STL, Boost).
 
 ## Seawater functions
 
-Since Goby is primarily a marine middleware, a variety of empirical formulas for converting various seawater properties are included:
+Since Goby is primarily marine middleware, a variety of empirical formulas for converting seawater properties are included:
 
 * goby::util::seawater::depth(): depth from pressure and latitude.
 * goby::util::seawater::pressure(): pressure from depth and latitude.
@@ -27,7 +27,7 @@ float pi_flt = goby::util::pi<float>;
 
 // NaN
 double nan_dbl = goby::util::NaN<double>;
-double nan_flt = goby::util::NaN<float>;
+float nan_flt = goby::util::NaN<float>;
 ```
 
 ## Geodesy
@@ -50,7 +50,7 @@ The Y value is computed identically from the UTM Northings (\f$n\f$):
 
 The AIS system is used by surface boats and ships to broadcast position and other data via radio. The AIS protocol is based around NMEA-0183 serial messages. The [GPSD page on AIS](https://gpsd.gitlab.io/gpsd/AIVDM.html) has lots of helpful information.
 
-Goby can decode and encode a subset of the AIS serial messages to and from the goby::util::ais::protobuf::Voyage and goby::util::ais::protobuf::Position protocol buffers messages.
+Goby can decode and encode a subset of the AIS serial messages into and from the `goby::util::ais::protobuf::Voyage` and goby::util::ais::protobuf::Position protocol buffers messages.
 
 Decode (uses [libais](https://github.com/schwehr/libais)) using goby::util::ais::Decoder:
 
@@ -135,12 +135,9 @@ When using goby::glog in this mode, it is essential that every call to goby::uti
 
 ## TCP and Serial port communications - linebasedcomms
 
-*Note:* linebasedcomms will be deprecated at some point in favor of the more full-featured [I/O in goby-middleware](doc240_middleware-io.md) (subclasses of goby::middleware::io::IOThread, e.g. goby::middleware::io::SerialThreadLineBased). Linebasedcomms will be included in Goby until all the existing modem drivers have been converted.
+*Note:* linebasedcomms (from Goby2) is now implemented using the [I/O in goby-middleware](doc240_middleware-io.md) (subclasses of goby::middleware::io::detail::IOThread: goby::middleware::io::SerialThreadLineBased, goby::middleware::io::TCPClientThreadLineBased, and goby::middleware::io::TCPServerThreadLineBased). For most new applications you should directly use the new goby::middleware::io classes rather than these goby::util classes.
 
-Linebasedcomms provides a common interface (goby::util::LineBasedInterface) for line-based (defined as blocks of text offset by a common delimiter such as "\\r\\n" or "\\n") text communications over a TCP or serial connection. Linebasedcomms uses the boost::asio library to perform the actual communications.
-
-You should create the proper subclass for your needs:
-
+Available linebasedcomms classes:
 * Serial communications: goby::util::SerialClient
 * TCP Client: goby::util::TCPClient
 * TCP Server: goby::util::TCPServer - all incoming messages (as read by goby::util::LineBasedInterface::readline) are interleaved in the order they are received from all connected clients. Outgoing messages are sent to all connected clients unless using goby::util::LineBasedInterface::write (const protobuf::Datagram &msg) and msg.dest() is set to a specific endpoint (ip:port, e.g. "192.168.1.101:5123").

@@ -6,7 +6,7 @@ The Medium Access Control schemes provided by `amac` are based on Time Division 
 
 The two variations on this scheme provided by `amac` are:
 
-* Decentralized: Each vehicle initiates its own transmission at the start of its slot. (\link amac.proto goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED\endlink): Slots are set at launch and can be updated using the [std::list](http://www.cplusplus.com/reference/stl/list/) insert, push, pop, erase, etc. Each vehicle can have more than one slot in the cycle. The cycles must agree across all platforms; the network designer is responsible for this. Most of the time you will want to use this mode.
+* Decentralized: Each vehicle initiates its own transmission at the start of its slot (\link amac.proto goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED\endlink): Slots are set at launch and can be updated using the [std::list](http://www.cplusplus.com/reference/stl/list/) insert, push, pop, erase, etc. Each vehicle can have more than one slot in the cycle. The cycles must agree across all platforms; the network designer is responsible for this. Most of the time you will want to use this mode.
 * Centralized Polling (goby::acomms::protobuf::MAC_POLLED on the master, goby::acomms::protobuf::MAC_NONE on all other nodes): The TDMA cycle is set up and operated by a centralized master modem ("poller"), which is usually the modem connected to the vehicle operator's topside. The poller initiates each transmission and thus the vehicles are not required to maintain synchronous clocks. This mode requires third-party initiation of transmissions to function.
 
 ## Interacting with the goby::acomms::MACManager

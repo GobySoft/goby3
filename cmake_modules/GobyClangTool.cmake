@@ -3,10 +3,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Enable/Disable output of compil
 
 # usage: goby_export_interface(target_name ${OUTPUT_DIR} YML)
 # sets YML to path to yml file
-function(GOBY_EXPORT_INTERFACE TARGET YML_OUT_DIR YML)
+function(GOBY_EXPORT_INTERFACE TARGET YML_OUT_DIR STUB_OUT_DIR YML)
   get_target_property(TARGET_SOURCES ${TARGET} SOURCES)
 
-  file(MAKE_DIRECTORY ${YML_OUT_DIR})
+  file(MAKE_DIRECTORY ${YML_OUT_DIR})  
   
   set(ABS_TARGET_SOURCES)
   foreach(SOURCE ${TARGET_SOURCES})
@@ -24,12 +24,45 @@ function(GOBY_EXPORT_INTERFACE TARGET YML_OUT_DIR YML)
     OUTPUT "${YML_OUT_DIR}/${TARGET}_interface.yml"
     COMMAND goby_clang_tool
     ARGS -gen -target ${TARGET} -outdir ${YML_OUT_DIR} -p ${CMAKE_BINARY_DIR} ${ABS_TARGET_SOURCES}
-    COMMENT "Running goby_clang_tool on ${TARGET}"
+    COMMENT "Running goby_clang_tool (gen) on ${TARGET}"
     DEPENDS ${ABS_TARGET_SOURCES} ${TARGET}
     VERBATIM)
-
+  
   set_source_files_properties(${${YML}} PROPERTIES GENERATED TRUE)
   set(${YML} ${${YML}} PARENT_SCOPE)
+
+  if(NOT "${STUB_OUT_DIR}" STREQUAL "")
+    file(MAKE_DIRECTORY ${STUB_OUT_DIR})
+
+
+    # create stub image
+    set(STUB_DOT_OUT "${TARGET}_stub_deployment.dot")
+    add_custom_command(
+      OUTPUT ${STUB_OUT_DIR}/${STUB_DOT_OUT}
+      COMMAND goby_clang_tool
+      ARGS -viz -include-all -outdir ${STUB_OUT_DIR} -o ${STUB_DOT_OUT} ${${YML}}
+      COMMENT "Running goby_clang_tool (viz) on ${TARGET}"
+      DEPENDS ${${YML}}
+      VERBATIM)
+    
+    set_source_files_properties(${STUB_OUT_DIR}/${STUB_DOT_OUT} PROPERTIES GENERATED TRUE)
+    
+    
+    set(STUB_PNG_OUT "${TARGET}_stub_deployment.png")
+    add_custom_command(
+      OUTPUT ${STUB_OUT_DIR}/${STUB_PNG_OUT}
+      COMMAND dot
+      ARGS -Tpng -o ${STUB_OUT_DIR}/${STUB_PNG_OUT} ${STUB_OUT_DIR}/${STUB_DOT_OUT}
+      DEPENDS ${STUB_OUT_DIR}/${STUB_DOT_OUT}
+      )
+    
+    set_source_files_properties(${STUB_OUT_DIR}/${STUB_PNG_OUT} PROPERTIES GENERATED TRUE)
+    
+    add_custom_target(${TARGET}_stub_interface_viz ALL DEPENDS ${STUB_OUT_DIR}/${STUB_PNG_OUT})
+  else()
+    add_custom_target(${TARGET}_interface ALL DEPENDS ${${YML}})    
+  endif()
+    
 endfunction()
 
 # usage: goby_visualize_interfaces(YML_DIR DEPLOYMENT_YAML IMAGE_OUT PARAMETERS DEPENDENCY1 DEPENDENCY2 ... )

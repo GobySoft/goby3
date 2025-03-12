@@ -175,8 +175,7 @@ include(FindLLVMForGoby)
 
 macro(generate_middleware_interfaces target) 
   if(enable_llvm)
-    goby_export_interface(${target} ${goby_INTERFACES_DIR} ${target}_YML_OUT)
-    add_custom_target(${target}_interface ALL DEPENDS ${${target}_YML_OUT})
+    goby_export_interface(${target} ${goby_INTERFACES_DIR} "${CMAKE_BINARY_DIR}/share/goby/doc/html/images" ${target}_YML_OUT)
   endif()
 endmacro()
 
