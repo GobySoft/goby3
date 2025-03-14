@@ -260,7 +260,6 @@ bool is_thread_included(const Application& application, const viz::Thread& threa
             {
                 if (entry.thread == thread.most_derived_name())
                 {
-                    std::cout << "Entry: " << entry << "\n thread: " << thread << std::endl;
                     return true;
                 }
             }
