@@ -54,6 +54,7 @@ struct VisualizeParameters
     std::string dot_splines;
     std::string omit_group_regex;
     std::string omit_node_regex;
+    bool omit_interthread;
 };
 
 int visualize(const std::vector<std::string>& ymls, const VisualizeParameters& params);
