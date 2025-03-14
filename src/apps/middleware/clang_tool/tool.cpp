@@ -76,6 +76,10 @@ static cl::opt<bool> OmitDisconnected(
              "or subscribers without publishers"),
     cl::cat(Goby3ToolCategory));
 
+static cl::opt<bool> OmitInterThread("omit-interthread",
+                                     cl::desc("For '-viz', do not display interthread connections"),
+                                     cl::cat(Goby3ToolCategory));
+
 static cl::opt<std::string> OmitGroupRegex("omit-group-regex",
                                            cl::desc("Regex of groups to omit for '-viz' action"),
                                            cl::value_desc("foo.*"), cl::cat(Goby3ToolCategory));
@@ -104,7 +108,8 @@ static cl::opt<bool>
 int main(int argc, const char** argv)
 {
     llvm::Expected<clang::tooling::CommonOptionsParser> SharedOptionsParser =
-        clang::tooling::CommonOptionsParser::create(argc, argv, Goby3ToolCategory, llvm::cl::OneOrMore);
+        clang::tooling::CommonOptionsParser::create(argc, argv, Goby3ToolCategory,
+                                                    llvm::cl::OneOrMore);
 
     if (Generate)
     {
@@ -128,7 +133,8 @@ int main(int argc, const char** argv)
                                                 IncludeAll,
                                                 DotSplines,
                                                 OmitGroupRegex,
-                                                OmitNodeRegex};
+                                                OmitNodeRegex,
+                                                OmitInterThread};
 
         return goby::clang::visualize(SharedOptionsParser->getSourcePathList(), params);
     }

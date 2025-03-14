@@ -249,6 +249,43 @@ struct Application
     std::set<PubSubEntry> intervehicle_subscribes;
 };
 
+bool is_thread_included(const Application& application, const viz::Thread& thread)
+{
+    if (g_params.omit_interthread)
+    {
+        auto check_for_non_interthread_pubsub =
+            [&thread](const std::set<PubSubEntry>& pubsubs) -> bool
+        {
+            for (const auto& entry : pubsubs)
+            {
+                if (entry.thread == thread.most_derived_name())
+                {
+                    std::cout << "Entry: " << entry << "\n thread: " << thread << std::endl;
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        if (check_for_non_interthread_pubsub(application.interprocess_publishes))
+            return true;
+        if (check_for_non_interthread_pubsub(application.interprocess_subscribes))
+            return true;
+        if (check_for_non_interthread_pubsub(application.intermodule_publishes))
+            return true;
+        if (check_for_non_interthread_pubsub(application.intermodule_subscribes))
+            return true;
+        if (check_for_non_interthread_pubsub(application.intervehicle_publishes))
+            return true;
+        if (check_for_non_interthread_pubsub(application.intervehicle_subscribes))
+            return true;
+
+        return false;
+    }
+
+    return true;
+}
+
 inline bool operator<(const Application& a, const Application& b) { return a.name < b.name; }
 
 inline std::ostream& operator<<(std::ostream& os, const Application& a)
@@ -557,6 +594,9 @@ void write_thread_connections(std::ofstream& ofs, const viz::Platform& platform,
                               const viz::Module& module, const viz::Application& application,
                               const viz::Thread& thread, std::set<PubSubEntry>& disconnected_subs)
 {
+    if (g_params.omit_interthread)
+        return;
+
     std::set<PubSubEntry> disconnected_pubs;
     for (const auto& pub : thread.interthread_publishes)
     {
@@ -1001,6 +1041,9 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
                     const auto& thread = thread_p.second;
 
                     if (!is_node_included(thread->most_derived_name()))
+                        continue;
+
+                    if (!is_thread_included(application.second, *thread))
                         continue;
 
                     write_thread_connections(ofs, platform, module, application.second, *thread,

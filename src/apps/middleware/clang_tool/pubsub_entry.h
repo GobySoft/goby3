@@ -291,7 +291,7 @@ struct Thread
                                            most_derived_name());
     }
 
-    std::string most_derived_name()
+    std::string most_derived_name() const
     {
         if (parent)
             return parent->most_derived_name();
