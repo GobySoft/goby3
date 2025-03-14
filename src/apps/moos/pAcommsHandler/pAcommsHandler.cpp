@@ -1,4 +1,4 @@
-// Copyright 2011-2024:
+// Copyright 2011-2025:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -6,6 +6,7 @@
 //   Toby Schneider <toby@gobysoft.org>
 //   Henrik Schmidt <henrik@mit.edu>
 //   Thomas McCabe <tom.mccabe@missionsystems.com.au>
+//   Jared Silbermann <jared.silbermann@missionsystems.com.au>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Binaries

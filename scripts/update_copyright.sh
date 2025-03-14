@@ -20,8 +20,8 @@ gen_authors()
 {
     i=$1
     echo $i;
-    mapfile -t authors < <(git blame --line-porcelain $i | grep "^author " | sort | uniq -c | sort -nr | sed 's/^ *//' | cut -d " " -f 3-)
-    #    echo ${authors[@]}
+    mapfile -t author_emails < <(git blame --line-porcelain $i | grep "^author-mail " | sort | uniq -c | sort -nr | sed 's/^ *//' | cut -d " " -f 3-)
+    #    echo ${author_emails[@]}
     start_year=$(git log --follow --date=format:%Y --format=format:%ad $i | tail -n 1)
     end_year=$(git log --follow -n 1 --date=format:%Y --format=format:%ad $i)
     #    echo ${start_year}-${end_year}    
@@ -48,7 +48,7 @@ EOF
 // File authors:
 EOF
     
-    for author in "${authors[@]}"
+    for author in "${author_emails[@]}"
     do
         # use latest email for author name here
         email=$(git log --use-mailmap --author "$author" -n 1 --format=format:%aE)

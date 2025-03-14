@@ -1,4 +1,4 @@
-// Copyright 2020-2023:
+// Copyright 2020-2025:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:

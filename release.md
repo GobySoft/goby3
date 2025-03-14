@@ -1,5 +1,80 @@
 # Goby Release Notes (Major version 3)
 
+
+## Version 3.2.0
+
+### Liaison
+
+Updated Goby Liaison to use Wt4 (from Wt3). Any downstream Liaison tabs will need to update to Wt4 as well. 
+
+The signature for the loading external liaison tabs has changed to (unique_ptr instead of raw pointer):
+```
+extern "C"
+{
+    std::vector<std::unique_ptr<goby::zeromq::LiaisonContainer>>
+    goby3_liaison_load(const goby::apps::zeromq::protobuf::LiaisonConfig& cfg);
+}
+```
+
+See the [Wt release notes](https://webtoolkit.eu/wt/doc/reference/html/Releasenotes.html) for Wt Release 4.0.0 for more details on what needs to change from Wt3 to Wt4.
+
+### Documentation
+
+Substantially improved available Doxygen documentation (`apt install goby3-doc` or https://goby.software).
+- Documented all existing goby-zeromq applications.
+- Documented all standalone (non pub/sub) goby-middleware applications
+- Documented `goby` command line tool.
+- Documentation goby-time functions.
+- Improved missing documentation for goby-util, goby-middleware I/O.
+- Removed deprecated "user manual" and moved relevant MOOS content to Doxygen document.
+
+### New Acomms ModemDrivers
+
+One new and one updated ModemDriver thanks to [Mission Systems](https://github.com/mission-systems-pty-ltd). Both must be compiled from source as they have external dependencies that are not yet packaged for Debian/Ubuntu. 
+
+#### JANUS driver
+
+New driver for using ALSA plus the JANUS protocol. 
+
+Requires libplugin libraries which can be built following instructions from https://github.com/mission-systems-pty-ltd/janus-c.
+
+#### Popoto driver
+
+Updated to use Popoto API and other fixes.
+
+Requires libpopoto_api.a which can be built following instructions from https://github.com/Delresearch/PopotoAPI.
+
+### goby_clang_tool
+
+New features in goby_clang_tool:
+
+- You can create a standalone "stub" visualization of a single application's pub/sub API by passing its interface YAML (i.e., the output of `goby_clang_tool --gen`) to `goby_clang_tool --viz` instead of a deployment file.
+- You can omit interthread pub/sub lines and all interthread-only threads from the figure using `goby_clang_tool --viz --omit-interthread`
+
+### iFrontSeat/goby_frontseat_interface
+
+Added frontseat_providing_data boolean to status message.
+
+### Goby-ZeroMQ
+
+Escape '/' characters in group and type names to allow groups and/or types containing a '/' to be used on the Goby-ZeroMQ *interprocess* layer.
+
+### goby log convert
+
+Updated `goby log convert` to support converting multiple files and/or directories of `*.goby` files, optionally using multiple CPUs, e.g., 
+
+```
+goby_log_convert /var/log/goby -j16
+```
+
+### End of Life
+
+Dropped support for Ubuntu Focal (EOL April 2025) and Debian Bullseye (oldstable).
+
+
+
+****************
+
 ## Version 3.1.5a
 
 - Minor changes to support building for Debian Bookworm (12) and Ubuntu Noble (24.04).

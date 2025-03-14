@@ -1,9 +1,9 @@
-// Copyright 2011-2021:
+// Copyright 2024-2025:
 //   GobySoft, LLC (2013-)
-//   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Jared Silbermann <jared.silbermann@missionsystems.com.au>
+//   Toby Schneider <toby@gobysoft.org>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -21,6 +21,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
+
 //
 // For more information and to download Janus which is required please see 
 // for this driver https://www.januswiki.com/tiki-index.php 
