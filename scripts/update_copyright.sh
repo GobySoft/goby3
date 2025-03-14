@@ -53,10 +53,13 @@ EOF
         # use latest email for author name here
         author=$(git log --use-mailmap --author "$email" -n 1 --format=format:%aN)
         proper_email=$(git log --use-mailmap --author "$author" -n 1 --format=format:%aE)
+        proper_author=$(git log --use-mailmap --author "$proper_email" -n 1 --format=format:%aN)
         if [ ! -z "$proper_email" ]; then
             proper_email=" <${proper_email}>"
         fi
-        echo "//   $author$proper_email"  >> /tmp/goby_authors.tmp
+        if ! grep -q $proper_email /tmp/goby_authors.tmp; then
+            echo "//   $proper_author$proper_email"  >> /tmp/goby_authors.tmp
+        fi
     done
 }
 

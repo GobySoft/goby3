@@ -3,10 +3,8 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Thomas McCabe <tom.mccabe@missionsystems.com.au>
-//   Jared <jared.silbermann@missionsystems.com.au>
-//   Toby Schneider <toby@gobysoft.org>
 //   Jared Silbermann <jared.silbermann@missionsystems.com.au>
-//   tom <tom.mccabe@missionsystems.com.au>
+//   Toby Schneider <toby@gobysoft.org>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries

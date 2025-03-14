@@ -7,7 +7,7 @@
 //   Mike Godin <mikegodin@yahoo.com>
 //   Russ Webber <russ@rw.id.au>
 //   James D. Turner <james.turner@nrl.navy.mil>
-//   Jeff Walls <jeff@luigi>
+//   Jeff Walls <jeff@umich.edu>
 //   Zac Berkowitz <zberkowitz@whoi.edu>
 //   Chris Murphy <cmurphy@bluefinrobotics.com>
 //
