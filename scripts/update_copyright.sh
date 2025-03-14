@@ -48,14 +48,15 @@ EOF
 // File authors:
 EOF
     
-    for author in "${author_emails[@]}"
+    for email in "${author_emails[@]}"
     do
         # use latest email for author name here
-        email=$(git log --use-mailmap --author "$author" -n 1 --format=format:%aE)
-        if [ ! -z "$email" ]; then
-            email=" <${email}>"
+        author=$(git log --use-mailmap --author "$email" -n 1 --format=format:%aN)
+        proper_email=$(git log --use-mailmap --author "$author" -n 1 --format=format:%aE)
+        if [ ! -z "$proper_email" ]; then
+            proper_email=" <${proper_email}>"
         fi
-        echo "//   $author$email"  >> /tmp/goby_authors.tmp
+        echo "//   $author$proper_email"  >> /tmp/goby_authors.tmp
     done
 }
 
