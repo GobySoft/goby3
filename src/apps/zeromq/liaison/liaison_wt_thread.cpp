@@ -170,6 +170,7 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     menu_->setInternalBasePath("/");
     menu_->itemSelected().connect(this, &LiaisonWtThread::handle_menu_selection);
     menu_->select(0);
+    handle_menu_selection(menu_->currentItem());
 }
 
 goby::apps::zeromq::LiaisonWtThread::~LiaisonWtThread()
