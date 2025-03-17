@@ -1,5 +1,11 @@
 # Goby Release Notes (Major version 3)
 
+## Version 3.2.1
+
+### Bugs
+
+- Removed testing std::cout line in goby_clang_tool
+- Fixed bug causing goby_liaison not to run `focus()` virtual function on tab after refresh.
 
 ## Version 3.2.0
 
