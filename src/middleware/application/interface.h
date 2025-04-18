@@ -133,6 +133,17 @@ template <typename Config> class Application
 
     std::string app_name() { return app3_base_configuration_->name(); }
 
+    bool app_alive() { return alive_; }
+
+    boost::units::quantity<boost::units::si::frequency>
+    choose_loop_freq(boost::units::quantity<boost::units::si::frequency> compiled_loop_freq)
+    {
+        if (app3_base_configuration_->has_loop_frequency())
+            return app3_base_configuration_->loop_frequency_with_units();
+        else
+            return compiled_loop_freq;
+    }
+
   protected:
     void configure_geodesy(goby::util::UTMGeodesy::LatLonPoint datum);
 

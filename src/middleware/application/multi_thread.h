@@ -182,7 +182,7 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
     MultiThreadApplicationBase(boost::units::quantity<boost::units::si::frequency> loop_freq,
                                Transporter* transporter)
         : goby::middleware::Application<Config>(),
-          MainThreadBase(this->app_cfg(), transporter, loop_freq)
+          MainThreadBase(this->app_cfg(), transporter, this->choose_loop_freq(loop_freq))
     {
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
 
@@ -268,6 +268,7 @@ class MultiThreadApplication
         MultiThreadApplication<Config, InterProcessPortal>>;
 
     friend class terminate::Application<MultiThreadApplication<Config, InterProcessPortal>>;
+    template <typename App> friend class goby::middleware::julia::ApplicationWrapper;
 
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)

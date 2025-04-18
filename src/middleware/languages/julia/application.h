@@ -11,10 +11,18 @@ namespace middleware
 namespace julia
 {
 
+enum class PubSubLayer
+{
+    INTERTHREAD,
+    INTERPROCESS,
+    INTERMODULE
+};
+
 template <typename App> class ApplicationWrapper
 {
   public:
-    ApplicationWrapper(std::string config)
+    ApplicationWrapper(std::string config) : ApplicationWrapper(config, std::string()) {}
+    ApplicationWrapper(std::string config, std::string loop_function_name)
     {
         typename App::ConfigType cfg;
         google::protobuf::TextFormat::Parser parser;
@@ -39,19 +47,28 @@ template <typename App> class ApplicationWrapper
         }
 
         app_ptr_.reset(new App);
+        app_ptr_->set_loop_function_name(loop_function_name);
     }
 
-    void run_one()
+    void run() { app_ptr_->__run(); }
+
+    ApplicationWrapper& interprocess() { return *this; }
+
+    void publish(PubSubLayer layer, std::string type_name, int scheme, std::string group,
+                 const std::vector<char>& bytes)
     {
-        app_ptr_->run_one();
-        app_ptr_->check_rotate_glog_file();
+        app_ptr_->publish(std::make_tuple(layer, type_name, scheme, group), bytes);
     }
 
-    void publish(goby::middleware::protobuf::LatLonPoint pb) { app_ptr_->publish(pb); }
-    void subscribe(std::string function_name) { app_ptr_->subscribe(function_name); }
+    void subscribe(PubSubLayer layer, std::string type_name, int scheme, std::string group,
+                   std::string func, std::string module)
+    {
+        app_ptr_->subscribe(std::make_tuple(layer, type_name, scheme, group), func, module);
+    }
 
   private:
     std::unique_ptr<App> app_ptr_;
+    std::map<std::string, goby::middleware::DynamicGroup> subscription_groups_;
 };
 
 } // namespace julia
