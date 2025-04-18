@@ -2,6 +2,8 @@
 #include <jlcxx/jlcxx.hpp>
 
 #include "goby/middleware/application/interface.h"
+#include "goby/middleware/group.h"
+#include "goby/middleware/marshalling/interface.h"
 #include "goby/time.h"
 
 namespace goby
