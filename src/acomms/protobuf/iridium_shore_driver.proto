@@ -40,6 +40,8 @@ message ShoreConfig
     optional RockBlock rockblock = 10;
 
     optional DeviceType device = 11 [default = DEVICE_VOICE_ENABLED_ISU];
+
+    optional bool ipv6 = 12 [default = false];
 }
 
 extend goby.acomms.protobuf.DriverConfig

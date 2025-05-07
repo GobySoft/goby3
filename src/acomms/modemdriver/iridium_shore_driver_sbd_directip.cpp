@@ -42,7 +42,8 @@ void goby::acomms::IridiumShoreDriver::startup_sbd_directip(const protobuf::Driv
     sbd_io_.reset(new boost::asio::io_service);
 
     directip_mo_sbd_server_.reset(
-        new directip::SBDServer(*sbd_io_, iridium_shore_driver_cfg().mo_sbd_server_port()));
+        new directip::SBDServer(*sbd_io_, iridium_shore_driver_cfg().mo_sbd_server_port(),
+                                iridium_shore_driver_cfg().ipv6()));
 }
 
 void goby::acomms::IridiumShoreDriver::receive_sbd_mo_directip()
@@ -248,7 +249,7 @@ std::string create_sbd_mt_data_message(const std::string& bytes, const std::stri
     std::string pre_header_bytes(PRE_HEADER_SIZE, '\0');
     pre_header_bytes[0] = 1;
     pre_header_bytes[1] = (overall_length >> BITS_PER_BYTE) & 0xff;
-    pre_header_bytes[2] = (overall_length)&0xff;
+    pre_header_bytes[2] = (overall_length) & 0xff;
 
     glog.is(DEBUG1) && glog << "Tx SBD PreHeader: " << goby::util::hex_encode(pre_header_bytes)
                             << std::endl;
