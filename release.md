@@ -1,5 +1,11 @@
 # Goby Release Notes (Major version 3)
 
+## Version 3.2.2
+
+### Acomms
+
+- Added IPv6 support to Iridium shore driver
+
 ## Version 3.2.1
 
 ### Bugs
