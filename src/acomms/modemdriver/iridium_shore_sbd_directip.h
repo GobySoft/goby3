@@ -259,8 +259,10 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
 class SBDServer
 {
   public:
-    SBDServer(boost::asio::io_context& io_context, int port)
-        : acceptor_(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
+    SBDServer(boost::asio::io_context& io_context, int port, bool ipv6)
+        : acceptor_(io_context,
+                    boost::asio::ip::tcp::endpoint(
+                        ipv6 ? boost::asio::ip::tcp::v6() : boost::asio::ip::tcp::v4(), port))
     {
         start_accept();
     }

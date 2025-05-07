@@ -68,13 +68,16 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
     void read_start()
     {
         boost::asio::async_read_until(socket_, buffer_, '\r',
-                                      boost::bind(&RUDICSConnection::handle_read, this, boost::placeholders::_1, boost::placeholders::_2));
+                                      boost::bind(&RUDICSConnection::handle_read, this,
+                                                  boost::placeholders::_1,
+                                                  boost::placeholders::_2));
     }
 
     void write_start(const std::string& data)
     {
         boost::asio::async_write(socket_, boost::asio::buffer(data),
-                                 boost::bind(&RUDICSConnection::handle_write, this, boost::placeholders::_1, boost::placeholders::_2));
+                                 boost::bind(&RUDICSConnection::handle_write, this,
+                                             boost::placeholders::_1, boost::placeholders::_2));
     }
 
     ~RUDICSConnection()
@@ -169,13 +172,15 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
 class RUDICSServer
 {
   public:
-    RUDICSServer(boost::asio::io_context& io_context, int port)
-        : acceptor_(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
+    RUDICSServer(boost::asio::io_context& io_context, int port, bool ipv6)
+        : acceptor_(io_context,
+                    boost::asio::ip::tcp::endpoint(
+                        ipv6 ? boost::asio::ip::tcp::v6() : boost::asio::ip::tcp::v4(), port))
     {
         start_accept();
     }
 
-    std::set<std::shared_ptr<RUDICSConnection> >& connections() { return connections_; }
+    std::set<std::shared_ptr<RUDICSConnection>>& connections() { return connections_; }
 
     boost::signals2::signal<void(std::shared_ptr<RUDICSConnection> connection)> connect_signal;
 
@@ -228,7 +233,7 @@ class RUDICSServer
                  << ". Remaining connection count: " << connections_.size() << std::endl;
     }
 
-    std::set<std::shared_ptr<RUDICSConnection> > connections_;
+    std::set<std::shared_ptr<RUDICSConnection>> connections_;
     boost::asio::ip::tcp::acceptor acceptor_;
 };
 
