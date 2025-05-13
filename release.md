@@ -1,5 +1,12 @@
 # Goby Release Notes (Major version 3)
 
+## Version 3.2.3
+
+### Acomms
+
+- Add timeout check to SBDWrite in Iridium driver to avoid rare state machine lockup due to Iridium modem malfunction.
+
+
 ## Version 3.2.2
 
 ### Acomms
