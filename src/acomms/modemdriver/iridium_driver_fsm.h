@@ -53,10 +53,11 @@
 #include "goby/acomms/protobuf/driver_base.pb.h"           // for DriverConfig
 #include "goby/acomms/protobuf/iridium_driver.pb.h"        // for Config
 #include "goby/acomms/protobuf/modem_message.pb.h"         // for ModemTran...
-#include "goby/util/as.h"                                  // for as
-#include "goby/util/debug_logger/flex_ostream.h"           // for FlexOstream
-#include "goby/util/debug_logger/flex_ostreambuf.h"        // for DEBUG1, WARN
-#include "goby/util/debug_logger/logger_manipulators.h"    // for operator<<
+#include "goby/time/steady_clock.h"
+#include "goby/util/as.h"                               // for as
+#include "goby/util/debug_logger/flex_ostream.h"        // for FlexOstream
+#include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1, WARN
+#include "goby/util/debug_logger/logger_manipulators.h" // for operator<<
 
 namespace goby
 {
@@ -177,6 +178,10 @@ struct EvSBDTransmitComplete : boost::statechart::event<EvSBDTransmitComplete>
     std::string sbdi_;
 };
 struct EvSBDReceiveComplete : boost::statechart::event<EvSBDReceiveComplete>
+{
+};
+
+struct EvSBDCheckWriteTimeout : boost::statechart::event<EvSBDCheckWriteTimeout>
 {
 };
 
@@ -595,6 +600,7 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
             context<Command>().push_at_command(
                 "+SBDWB=" + goby::util::as<std::string>(context<SBD>().data().size() - csum_bytes));
         }
+        entry_time_ = goby::time::SteadyClock::now();
     }
 
     void in_state_react(const EvSBDWriteReady&)
@@ -602,11 +608,18 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
         context<IridiumDriverFSM>().serial_tx_buffer().push_back(context<SBD>().data());
     }
 
+    void in_state_react(const EvSBDCheckWriteTimeout&);
+
     ~SBDWrite() override = default;
 
     using reactions = boost::mpl::list<
         boost::statechart::in_state_reaction<EvSBDWriteReady, SBDWrite, &SBDWrite::in_state_react>,
+        boost::statechart::in_state_reaction<EvSBDCheckWriteTimeout, SBDWrite,
+                                             &SBDWrite::in_state_react>,
         boost::statechart::transition<EvSBDWriteComplete, SBDTransmit>>;
+
+  private:
+    goby::time::SteadyClock::time_point entry_time_;
 };
 
 struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify

@@ -323,6 +323,10 @@ void goby::acomms::IridiumDriver::do_work()
         }
     }
 
+    // we have to check this timeout separately due to the nature of the SBDWrite transaction
+    if (fsm_.state_cast<const iridium::fsm::SBDWrite*>())
+        fsm_.process_event(iridium::fsm::EvSBDCheckWriteTimeout());
+
     try_serial_tx();
 
     std::string in;
