@@ -175,8 +175,8 @@ class TestAppTx : public AppBase
 
     void loop() override
     {
-        static int i = 0;
-        ++i;
+        //        static int i = 0;
+        //       ++i;
 
         if (!interprocess().hold_state())
         {

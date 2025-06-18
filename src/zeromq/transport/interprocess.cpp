@@ -491,9 +491,10 @@ void goby::zeromq::InterProcessPortalReadThread::send_control_msg(
 
 unsigned goby::zeromq::Router::last_port(zmq::socket_t& socket)
 {
-    size_t last_endpoint_size = 100;
+    constexpr size_t last_endpoint_size = 100;
+    size_t zmq_last_endpoint_size = last_endpoint_size;
     char last_endpoint[last_endpoint_size];
-    int rc = zmq_getsockopt((void*)socket, ZMQ_LAST_ENDPOINT, &last_endpoint, &last_endpoint_size);
+    int rc = zmq_getsockopt((void*)socket, ZMQ_LAST_ENDPOINT, &last_endpoint, &zmq_last_endpoint_size);
 
     if (rc != 0)
         throw(std::runtime_error("Could not retrieve ZMQ_LAST_ENDPOINT"));

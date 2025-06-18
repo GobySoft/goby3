@@ -44,8 +44,8 @@ class StoreServerDriver : public ModemDriverBase
     void do_work();
     void handle_initiate_transmission(const protobuf::ModemTransmission& m);
 
-    constexpr static const char* eol{"\r"};
-    constexpr static int default_port{11244};
+    static const char* eol;
+    static const int default_port;
 
     template <typename StoreServerMessage>
     static void parse_store_server_message(const std::string& bytes, StoreServerMessage* msg)
