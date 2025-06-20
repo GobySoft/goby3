@@ -63,7 +63,7 @@ function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCH
 
     println("Subscribing to $(inferred_type_name) (Scheme: $(inferred_scheme)) on group $(group)")
     
-    Goby.cxx_subscribe(app, Goby.INTERPROCESS, inferred_type_name, inferred_scheme, group, "receive", "Goby")
+    Goby.cxx_subscribe(app, layer, inferred_type_name, inferred_scheme, group, "receive", "Goby")
 end
 
 function receive(cxx_layer, cxx_type_name, cxx_scheme, cxx_group, vec::CxxRef{StdVector{CxxChar}})

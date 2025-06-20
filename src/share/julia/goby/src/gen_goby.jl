@@ -9,6 +9,10 @@ function to_cpp_scoping(s::String)
     occursin("::", s) ? s : replace(s, "." => "::")
 end
 
+#function remove_namespaces(s::String)
+#    last(split(s, "::"))
+#end
+
 function check_required_keys(required_keys, prefix::String, yaml)
     for key in required_keys
         if !haskey(yaml, key)
@@ -35,6 +39,7 @@ function collect_layer(layer::String, layer_yaml)
         for p in layer_yaml["publishes"]
             check_required_keys(required_keys, "$(layer).publishes", p)
             check_scheme(p["scheme"])
+            # Julia ::Method sig does not include scoping, so we need to remove it here
             t = to_cpp_scoping(p["type"])
             push!(publish, "GOBY_JULIA_IF_PUBLICATION($(p["scheme"]), $(layer_enum), $(layer_function), $(p["group"]), $(t))")
         end
@@ -144,6 +149,3 @@ function goby_gen_cpp(in_yaml::String, out_cpp::String, includes)
     end
     gen_class(io_out, interface_yaml["application"]["name"], publish, subscribe)
 end
-
-
-#gen_cpp("/home/toby/test/julia/goby-julia-test/src/interface.yml", "/home/toby/test/julia/goby-julia-test/src/c++/goby_jl.cpp", ["iris/middleware/application.h", "test.pb.h", "groups.h", "config.pb.h"])
