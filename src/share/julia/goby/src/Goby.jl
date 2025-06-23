@@ -1,6 +1,10 @@
+module Goby
+
 # Load the module and generate the functions
 using CxxWrap
 using ProtoBuf
+
+export publish, subscribe
 
 # Protobuf publish
 # TODO: add more schemes as additional publish functions
@@ -83,3 +87,5 @@ function receive(cxx_layer, cxx_type_name, cxx_scheme, cxx_group, vec::CxxRef{St
         callback(msg)
     end
 end
+
+end # module Goby

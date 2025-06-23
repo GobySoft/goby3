@@ -60,6 +60,8 @@ set(GOBY_VERSION_MAJOR "3")
 set(GOBY_VERSION_MINOR "2")
 set(GOBY_VERSION_PATCH "1")
 
+# julia can't handle our git version strings
+set(GOBY_VERSION_PATCH_JULIA "${GOBY_VERSION_PATCH}")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    message(STATUS "Compiling in Git source tree.")
@@ -233,6 +235,8 @@ foreach(I ${SHARE_FILES})
   file(COPY ${goby_SRC_DIR}/${I} DESTINATION ${goby_SHARE_DIR}/goby)
 endforeach()
 
+# configure Project.toml for Julia version
+configure_file(${goby_SRC_DIR}/share/julia/goby/Project.toml ${goby_SHARE_DIR}/goby/julia/goby/Project.toml @ONLY)
 
 # configuration export - installed version
 include(CMakePackageConfigHelpers)
