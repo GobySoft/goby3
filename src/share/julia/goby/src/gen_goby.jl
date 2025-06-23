@@ -88,7 +88,7 @@ function gen_class(io_out::IOStream, application_name::String,
 class APPLICATION_NAME : public goby::middleware::julia::Application<APPLICATION_TYPE>
 {
   public:
-    void publish(goby::middleware::julia::Identifier id, const std::vector<char>& bytes)
+    void publish(goby::middleware::julia::Identifier id, const std::vector<std::uint8_t>& bytes)
     {
 """)
 

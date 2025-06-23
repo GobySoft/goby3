@@ -90,7 +90,7 @@ template <typename App> class ApplicationWrapper
     ApplicationWrapper& interprocess() { return *this; }
 
     void publish(PubSubLayer layer, std::string type_name, int scheme, std::string group,
-                 const std::vector<char>& bytes)
+                 const std::vector<std::uint8_t>& bytes)
     {
         app_ptr_->publish(Identifier(layer, type_name, scheme, group), bytes);
     }
@@ -126,6 +126,14 @@ inline void define_julia_module(jlcxx::Module& types, const std::string& app_nam
         .method("run", &ApplicationWrapper<App>::run)
         .method("cxx_publish", &ApplicationWrapper<App>::publish)
         .method("cxx_subscribe", &ApplicationWrapper<App>::subscribe);
+}
+
+template <typename DataType, int scheme>
+std::vector<std::uint8_t> serialize_uint8(const DataType& msg)
+{
+    std::vector<char> out =
+        goby::middleware::SerializerParserHelper<DataType, scheme>::serialize(msg);
+    return std::vector<std::uint8_t>(out.begin(), out.end());
 }
 
 } // namespace julia
@@ -170,8 +178,8 @@ std::ostream& operator<<(std::ostream& os, const goby::middleware::julia::Identi
         LAYER_FUNCTION().subscribe<GROUP>(                                                      \
             [=](const TYPE& pb)                                                                 \
             {                                                                                   \
-                std::vector<char> bytes = goby::middleware::SerializerParserHelper<             \
-                    TYPE, goby::middleware::MarshallingScheme::SCHEME>::serialize(pb);          \
+                std::vector<std::uint8_t> bytes = goby::middleware::julia::serialize_uint8<     \
+                    TYPE, goby::middleware::MarshallingScheme::SCHEME>(pb);                     \
                 jlcxx::JuliaFunction cb(func, module);                                          \
                 cb(id.layer, id.type_name, id.scheme, id.group, bytes);                         \
             });                                                                                 \

@@ -10,7 +10,7 @@ function publish(app, layer, group, msg::AbstractProtoBufMessage)
     e = ProtoEncoder(io);
     encode(e, msg)
     bytes = take!(io)
-    vec = StdVector{CxxChar}(bytes)    
+    vec = StdVector{UInt8}(bytes)
     type_name = string(nameof(typeof(msg)))
     Goby.cxx_publish(app, layer, type_name, scheme, group, vec)
 end
@@ -66,7 +66,7 @@ function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCH
     Goby.cxx_subscribe(app, layer, inferred_type_name, inferred_scheme, group, "receive", "Goby")
 end
 
-function receive(cxx_layer, cxx_type_name, cxx_scheme, cxx_group, vec::CxxRef{StdVector{CxxChar}})
+function receive(cxx_layer, cxx_type_name, cxx_scheme, cxx_group, vec::CxxRef{StdVector{UInt8}})
     layer::Int = CxxWrap.dereference_argument(cxx_layer)
     scheme::Int = CxxWrap.dereference_argument(cxx_scheme)
     type_name::String = CxxWrap.dereference_argument(cxx_type_name)
@@ -74,7 +74,7 @@ function receive(cxx_layer, cxx_type_name, cxx_scheme, cxx_group, vec::CxxRef{St
     
     println("Received message $(type_name) (Scheme: $(scheme)) on group $(group)")
     if scheme == Goby.PROTOBUF
-        dvec::StdVector{CxxChar} = CxxWrap.dereference_argument(vec)
+        dvec::StdVector{UInt8} = CxxWrap.dereference_argument(vec)
         bytes::Vector{UInt8} = reinterpret(UInt8, collect(dvec))
         callback = callbacks[layer][scheme][type_name][group]
         io = IOBuffer(bytes)
