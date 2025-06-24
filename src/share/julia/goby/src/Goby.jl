@@ -88,4 +88,19 @@ function receive(cxx_layer, cxx_type_name, cxx_scheme, cxx_group, vec::CxxRef{St
     end
 end
 
+function read_cli_cfg()
+    if length(ARGS) != 1
+        println("Usage: $PROGRAM_FILE config.pb.cfg")
+        exit(1)
+    end
+
+    filename = ARGS[1]
+    if !ispath(filename)
+        println("Error: Configuration file not found - $filename")
+        exit(1)
+    end
+
+    return read(filename, String)
+end
+
 end # module Goby
