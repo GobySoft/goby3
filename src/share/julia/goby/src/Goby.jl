@@ -9,6 +9,7 @@ export publish, subscribe
 # Protobuf publish
 # TODO: add more schemes as additional publish functions
 function publish(app, layer, group, msg::AbstractProtoBufMessage)
+    layer_int::Int32 = Int32(layer)
     scheme = Goby.PROTOBUF
     io = IOBuffer()
     e = ProtoEncoder(io);
@@ -16,7 +17,7 @@ function publish(app, layer, group, msg::AbstractProtoBufMessage)
     bytes = take!(io)
     vec = StdVector{UInt8}(bytes)
     type_name = string(nameof(typeof(msg)))
-    Goby.cxx_publish(app, layer, type_name, scheme, group, vec)
+    Goby.cxx_publish(app, layer_int, type_name, scheme, group, vec)
 end
 
 callbacks=Dict{Int, Dict{Int, Dict{String, Dict{String, Function}}}}()
@@ -32,6 +33,7 @@ end
 function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCHEME, type_name::String = "")
     inferred_scheme = scheme
     inferred_type_name::String = type_name
+    layer_int::Int32 = Int32(layer)
     
     for m in methods(callback)
         sig = Base.unwrap_unionall(m.sig)     # remove type wrappers like UnionAll
@@ -54,7 +56,7 @@ function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCH
     end   
 
     # build up nested dictionary, adding subdictionaries as needed as we go
-    lvl1 = get!(callbacks, layer) do
+    lvl1 = get!(callbacks, layer_int) do
         Dict{Int, Dict{String, Dict{String, Function}}}()
     end
     lvl2 = get!(lvl1, inferred_scheme) do
@@ -67,7 +69,7 @@ function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCH
 
     println("Subscribing to $(inferred_type_name) (Scheme: $(inferred_scheme)) on group $(group)")
     
-    Goby.cxx_subscribe(app, layer, inferred_type_name, inferred_scheme, group, "receive", "Goby")
+    Goby.cxx_subscribe(app, layer_int, inferred_type_name, inferred_scheme, group, "receive", "Goby")
 end
 
 function receive(cxx_layer, cxx_type_name, cxx_scheme, cxx_group, vec::CxxRef{StdVector{UInt8}})
