@@ -72,6 +72,7 @@ class PopotoDriver : public ModemDriverBase
   private:
     void parse_in(const std::string& in, std::map<std::string, std::string>* out);
     void signal_and_write(const std::string& raw);
+    void signal_and_write_raw(std::string raw);
 
     // 2 byte header code
     // std::uint16_t CreateGobyHeader(const protobuf::ModemTransmission& m);

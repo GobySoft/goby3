@@ -353,19 +353,36 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
         throw(goby::Exception(std::string("Unsupported type provided to send: ") +
                               protobuf::ModemTransmission::TransmissionType_Name(msg.type())));
     }
-
-    // To send a bin msg it needs to be in 8 bit CSV values
-    std::stringstream raw;
-    raw << "transmitJSON { \"ClassUserID\": 16, \"ApplicationType\": " << application_type << ", \"AckRequest\": " << (msg.ack_requested() ? 1 : 0) << ", \"StationID\": "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}";
-
+    
     if (myConnection == SERIAL_CONNECTION)
-        raw  << "\n"; // Need to append new line char for Serial Only
-
-    // Send the raw string to terminal for debugging
-    glog.is(DEBUG1) && glog << raw.str() << std::endl;
-
-    // Send over the wire
-    signal_and_write(raw.str());
+    {
+      // To send a bin msg it needs to be in 8 bit CSV values
+      std::stringstream raw;
+      raw << "transmitJSON { \"ClassUserID\": 16, \"ApplicationType\": " << application_type << ", \"AckRequest\": " << (msg.ack_requested() ? 1 : 0) << ", \"StationID\": "<< driver_cfg_.modem_id() << ", \"DestinationID\": " << dest << ", \"Payload\":{\"Data\":[" << jsonStr << "]}}";
+      
+      if (myConnection == SERIAL_CONNECTION)
+          raw  << "\n"; // Need to append new line char for Serial Only
+      
+      // Send the raw string to terminal for debugging
+      glog.is(DEBUG1) && glog << raw.str() << std::endl;
+      
+      // Send over the wire
+      signal_and_write(raw.str());
+    }
+    else if (myConnection == ETHERNET_CONNECTION)
+    {  
+      std::string app_type_str_   = std::to_string(application_type);
+      std::string ack_str_        = std::to_string((msg.ack_requested() ? 1 : 0));
+      std::string station_id_str_ = std::to_string(driver_cfg_.modem_id());
+      std::string dest_str_       = std::to_string(dest);
+      std::string command = "{ \"Command\": \"TransmitJSON\", \"Arguments\": { \"ClassUserID\": 16, \"ApplicationType\": " + app_type_str_
+          + ", \"AckRequest\": " + ack_str_
+          + ", \"StationID\": " + station_id_str_
+          + ", \"DestinationID\": " + dest_str_
+          + ", \"Payload\": { \"Data\": [" + jsonStr + "] } } }\n";
+      
+      signal_and_write_raw(command);
+    }
 }
 
 // ---------------------------- Ranging ----------------------------------------------------
@@ -487,6 +504,20 @@ void goby::acomms::PopotoDriver::signal_and_write(const std::string& raw)
         }
         popoto0->SendCommand(message);
     }
+}
+
+// --------------------------- Write over the wire in raw json format ------------------------------
+// Popoto API has a problem here: https://github.com/Delresearch/PopotoAPI/blob/2b511ff2109b6cde85b2261aec414882a332e8eb/CPP/popoto_client/include/TCPCmdClient.hpp#L54
+// Due to the way they string handle, you cannot send TransmitJSON type commands that has multiple
+// arguments; e.g. "Arguments": { "ClassUserID": 16, "ApplicationType": 0, ...
+// So I'm using their raw send_data() function rather than SendCommand() function to by pass this.
+// I'm sure the issue persists in both serial and Ethernet modes, But I have only tested in Ethernet
+// mode, so I'm leaving the serial mode as is. -Supun-
+void goby::acomms::PopotoDriver::signal_and_write_raw(std::string raw)
+{
+  if (popoto0->cmd->isConnected()) {
+    popoto0->cmd->send_data((char*)raw.c_str(), (int)raw.length());
+  }
 }
 
 // Change from setRateXXXX to PayloadMode XXXX
