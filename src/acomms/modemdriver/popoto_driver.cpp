@@ -343,6 +343,10 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
     {
         // use empty data packet to indicate ACK
         // TODO - get Popoto to provide ACK packet type in header
+        
+        // I think goby needs to know which frame is this ack associated with (acked_frame).
+        // Right now, you set 'frame_start' of the ack packet to 'acked_frame'. I don't think
+        // this works. -Supun-
     }
     else
     {
@@ -422,7 +426,11 @@ void goby::acomms::PopotoDriver::do_work()
                         ack.set_type(goby::acomms::protobuf::ModemTransmission::ACK);
                         for (int i = modem_msg_.frame_start(), n = modem_msg_.frame_size() + modem_msg_.frame_start(); i < n; ++i){
                             ack.set_frame_start(i);
-                        }
+                        } 
+                        // I'm not sure what's happening in the above for loop.. 
+                        // Isn't this as same as: 
+                        // ack.set_frame_start(modem_msg_.frame_size() + modem_msg_.frame_start()-1)
+                        // Or am I missing something here? -Supun-
 
                         send(ack); // reply with the ack msg
                     }
