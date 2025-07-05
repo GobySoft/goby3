@@ -610,7 +610,7 @@ void goby::acomms::PopotoDriver::ProcessJSON(const std::string& message,
         std::string data = json_to_binary(j["Data"]);
         DecodeGobyHeader(data[0],data[1], modem_msg);
         if (modem_msg.type() == protobuf::ModemTransmission::DATA)
-            *modem_msg.add_frame() = data.substr(2);
+            *modem_msg.add_frame() = data.substr(1); // Header is 1 byte, correct? So this should be substr(1) not substr(2). -Supun-
         else if (modem_msg.type() == protobuf::ModemTransmission::ACK){
             modem_msg.add_acked_frame(data[1]);
         }
