@@ -151,6 +151,16 @@ class PopotoDriver : public ModemDriverBase
     const std::string setvalf = "setvaluef";
     const std::string getvali = "getvaluei";
     const std::string getvalf = "getvaluef";
+    
+    enum TransmissionTypeInternal
+    {
+        UNKNOWN                       = 0, // used
+        DATA                          = 1, // just placeholder
+        ACK                           = 2, // just placeholder
+        POPOTO_TWO_WAY_RANGE_REQUEST  = 3, // used
+        POPOTO_TWO_WAY_RANGE_RESPONSE = 4  // used
+    };
+    TransmissionTypeInternal transmissions_type_internal;
 };
 } // namespace acomms
 } // namespace goby

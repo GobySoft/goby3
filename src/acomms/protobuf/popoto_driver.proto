@@ -61,15 +61,20 @@ enum TransmissionType
     POPOTO_TWO_WAY_PING = 1;  // modem 1 interrogates modem 2; modem 2 replies
                               // and modem 1 computes one way travel time
     POPOTO_PLAY_FILE = 2;
-    POPOTO_TWO_WAY_RANGE = 3;
-    POPOTO_DEEP_SLEEP = 4;
-    POPOTO_WAKE = 5;
-    POPOTO_SET_TX = 6;
+    POPOTO_TWO_WAY_RANGE_REQUEST  = 3; // Ranging request
+    POPOTO_TWO_WAY_RANGE_RESPONSE = 4; // Response that you receive to a ranging request
+    POPOTO_DEEP_SLEEP = 5;
+    POPOTO_WAKE = 6;
+    POPOTO_SET_TX = 7;
 }
 message RangingReply
 {
     required double one_way_travel_time = 1
+        [(dccl.field).units.unit = "si::second"]; // Popoto doesn't give this. This will be calculated by the driver using TWTT
+    optional double two_way_travel_time = 2
         [(dccl.field).units.unit = "si::second"];
+    optional double modem_range         = 3;      // meters
+    optional double modem_sound_speed   = 4;      // m/s
 }
 message Transmission
 {
