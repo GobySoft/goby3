@@ -97,7 +97,7 @@ void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
             std::string port = popoto_driver_cfg().local().port();
 
             // Need to issue the disconnect command to stop pshell
-            signal_and_write("disconnect\n");
+            // signal_and_write("disconnect\n");
 
             myConnection = ETHERNET_CONNECTION;
             //  Initialize with the IP, port and PCM callback routine.
