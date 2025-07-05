@@ -91,17 +91,17 @@ void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
     }
     else if (driver_cfg_.connection_type() == goby::acomms::protobuf::DriverConfig::CONNECTION_TCP_AS_CLIENT)
     {
-        if (popoto_driver_cfg().local().has_ip() && popoto_driver_cfg().local().has_port())
+        if (cfg.has_tcp_server() && cfg.has_tcp_port())
         {
-            std::string ip = popoto_driver_cfg().local().ip();
-            std::string port = popoto_driver_cfg().local().port();
-
+            std::string ip = cfg.tcp_server();
+            // std::string port = popoto_driver_cfg().local().port();
+            
             // Need to issue the disconnect command to stop pshell
             // signal_and_write("disconnect\n");
 
             myConnection = ETHERNET_CONNECTION;
             //  Initialize with the IP, port and PCM callback routine.
-            popoto0 = new popoto_client(ip, stoi(port), Popoto0PCMHandler);
+            popoto0 = new popoto_client(ip, cfg.tcp_port(), Popoto0PCMHandler);
         }
     }
     else
