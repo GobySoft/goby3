@@ -673,9 +673,18 @@ std::uint8_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemT
     if (m.type() == protobuf::ModemTransmission::DATA){
         header |= ( GOBY_DATA_TYPE & 0b11 ) << 6;
         header |= ( m.frame_start() & 0b00111111 );
+        
+        // See if ack is requested, and encode it to the header.
+        // This part was missing; thus, DecodeGobyHeader() was misbehaving..  -Supun-
+        header &= ~(1 << GOBY_HEADER_ACK_REQUEST); // Clear bit 1 to set header to no-ack-request  
+        if (m.ack_requested()){
+          header |= (1 << GOBY_HEADER_ACK_REQUEST); // Set bit 1 is ack is requested
+        }
+        
     } else if (m.type() == protobuf::ModemTransmission::ACK){
         header |= ( GOBY_ACK_TYPE & 0b11 ) << 6;
         header |= ( m.frame_start() & 0b00111111 );
+        header &= ~(1 << GOBY_HEADER_ACK_REQUEST); // Clear bit 1 to set header to no-ack-request  
     } else {
         throw(goby::Exception(std::string("Unsupported type provided to CreateGobyHeader: ") +
                               protobuf::ModemTransmission::TransmissionType_Name(m.type())));
@@ -706,14 +715,34 @@ std::uint8_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemT
 }
 
 void goby::acomms::PopotoDriver::DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num,protobuf::ModemTransmission& m){
-    m.set_type(( header & (1 << GOBY_HEADER_TYPE)) ? protobuf::ModemTransmission::ACK
-                                                  : protobuf::ModemTransmission::DATA);
-    if (m.type() == protobuf::ModemTransmission::DATA){
-        m.set_ack_requested( header & (1 << GOBY_HEADER_ACK_REQUEST));
-        m.set_frame_start( ack_num );
+    // m.set_type(( header & (1 << GOBY_HEADER_TYPE)) ? protobuf::ModemTransmission::ACK
+    //                                               : protobuf::ModemTransmission::DATA);
+    // if (m.type() == protobuf::ModemTransmission::DATA){
+    //     m.set_ack_requested( header & (1 << GOBY_HEADER_ACK_REQUEST));
+    //     m.set_frame_start( ack_num );
+    // }
+    // else if (m.type() == protobuf::ModemTransmission::ACK){
+    //     m.set_frame_start(ack_num);
+    //     m.add_acked_frame( ack_num );
+    // }
+    
+    // -----
+    // The above block of code doesn't seem to work. I simplified it below, 
+    //  and hopefully it serves the same purpose. -Supun-
+    
+    uint8_t goby_header_type = (header >> 6) & 0b11;
+    switch (goby_header_type)
+    {
+        case GOBY_DATA_TYPE:
+            m.set_type(protobuf::ModemTransmission::DATA);
+            m.set_ack_requested( header & (1 << GOBY_HEADER_ACK_REQUEST));
+            m.set_frame_start( ack_num );
+            break;
+        case GOBY_ACK_TYPE:
+            m.set_type(protobuf::ModemTransmission::ACK);
+            m.set_frame_start(ack_num);
+            m.add_acked_frame( ack_num );
+            break;
     }
-    else if (m.type() == protobuf::ModemTransmission::ACK){
-        m.set_frame_start(ack_num);
-        m.add_acked_frame( ack_num );
-    }
+    // -----
 }
