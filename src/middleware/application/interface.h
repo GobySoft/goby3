@@ -67,6 +67,12 @@ int run(int argc, char* argv[])
 
 namespace middleware
 {
+
+namespace julia
+{
+template <typename App> class ApplicationWrapper;
+}
+
 /// \brief Base class for Goby applications. Generally you will want to use SingleThreadApplication or MultiThreadApplication rather than instantiating this class directly.
 template <typename Config> class Application
 {
@@ -89,7 +95,7 @@ template <typename Config> class Application
     /// \brief Called just after initialize
     virtual void post_initialize(){};
 
-    /// \brief Runs continuously until quit() is called
+    /// \brief Runs once
     virtual void run() = 0;
 
     /// \brief Called just before finalize
@@ -127,6 +133,17 @@ template <typename Config> class Application
 
     std::string app_name() { return app3_base_configuration_->name(); }
 
+    bool app_alive() { return alive_; }
+
+    boost::units::quantity<boost::units::si::frequency>
+    choose_loop_freq(boost::units::quantity<boost::units::si::frequency> compiled_loop_freq)
+    {
+        if (app3_base_configuration_->has_loop_frequency())
+            return app3_base_configuration_->loop_frequency_with_units();
+        else
+            return compiled_loop_freq;
+    }
+
   protected:
     void configure_geodesy(goby::util::UTMGeodesy::LatLonPoint datum);
 
@@ -134,8 +151,13 @@ template <typename Config> class Application
     template <typename App>
     friend int ::goby::run(
         const goby::middleware::ConfiguratorInterface<typename App::ConfigType>&);
+
+    template <typename App> friend class goby::middleware::julia::ApplicationWrapper;
+
     // main loop that exits on quit(); returns the desired return value
     int __run();
+
+    void run_one() { run(); }
 
     void configure_logger();
     void configure_glog_file();
@@ -305,7 +327,7 @@ template <typename Config> int goby::middleware::Application<Config>::__run()
     // continue to run while we are alive (quit() has not been called)
     while (alive_)
     {
-        this->run();
+        this->run_one();
         this->check_rotate_glog_file();
     }
     this->pre_finalize();

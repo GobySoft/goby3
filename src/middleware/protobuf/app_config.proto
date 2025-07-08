@@ -21,6 +21,13 @@ message AppConfig
         cfg { action: NEVER }
     }];
 
+    optional double loop_frequency = 3 [
+        (goby.field) = {
+            description: "Frequency to call loop() at. If not set, uses compile-time loop frequency. Zero or negative means loop() is never called."
+        },
+        (dccl.field).units = { base_dimensions: "T^-1" }
+    ];
+
     optional goby.util.protobuf.GLogConfig glog_config = 10
         [(goby.field).description =
              "configure the Goby Logger (TTY terminal and file debugging "

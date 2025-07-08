@@ -452,8 +452,8 @@ void goby::apps::zeromq::acomms::IPGateway::receive_packets()
         }
         else if (ret > 0)
         {
-            char buffer[ip_mtu_ + 1];
-            int len = read(tun_fd_, buffer, ip_mtu_);
+            std::vector<char> buffer(ip_mtu_ + 1);
+            int len = read(tun_fd_, buffer.data(), ip_mtu_);
 
             if (len < 0)
             {
@@ -470,7 +470,7 @@ void goby::apps::zeromq::acomms::IPGateway::receive_packets()
                 unsigned short version = ((buffer[0] >> 4) & 0xF);
                 if (version == 4)
                 {
-                    std::string header_data(buffer, ip_header_size);
+                    std::string header_data(buffer.data(), ip_header_size);
                     dccl_ip_.decode(header_data, &ip_hdr);
                     glog.is(DEBUG2) && glog << "Received " << len << " bytes. " << std::endl;
                     switch (ip_hdr.protocol())

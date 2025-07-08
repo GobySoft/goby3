@@ -36,6 +36,9 @@ using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
 
+const char* goby::acomms::StoreServerDriver::eol{"\r"};
+const int goby::acomms::StoreServerDriver::default_port{11244};
+
 goby::acomms::StoreServerDriver::StoreServerDriver()
     : last_send_time_(goby::time::SystemClock::now<goby::time::MicroTime>().value()),
       query_interval_seconds_(1),
