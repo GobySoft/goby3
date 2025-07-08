@@ -236,7 +236,7 @@ foreach(I ${SHARE_FILES})
 endforeach()
 
 # configure Project.toml for Julia version
-configure_file(${goby_SRC_DIR}/share/julia/goby/Project.toml ${goby_SHARE_DIR}/goby/julia/goby/Project.toml @ONLY)
+configure_file(${goby_SRC_DIR}/share/Goby.jl/Project.toml ${goby_SHARE_DIR}/goby/Goby.jl/Project.toml @ONLY)
 
 # configuration export - installed version
 include(CMakePackageConfigHelpers)
