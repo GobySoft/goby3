@@ -60,9 +60,6 @@ set(GOBY_VERSION_MAJOR "3")
 set(GOBY_VERSION_MINOR "2")
 set(GOBY_VERSION_PATCH "3")
 
-# julia can't handle our git version strings
-set(GOBY_VERSION_PATCH_JULIA "${GOBY_VERSION_PATCH}")
-
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    message(STATUS "Compiling in Git source tree.")
    include(today)
@@ -94,6 +91,12 @@ else()
 endif()
 
 set(GOBY_VERSION "${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}")
+
+# julia can't handle our git version strings - mutate them to conform
+## remove the second '+' (combine revision and hash)
+string(REGEX REPLACE "\\+(g[0-9a-f]+)" "\\1" GOBY_VERSION_PATCH_JULIA_TMP "${GOBY_VERSION_PATCH}")
+## remove remaining '-' (e.g., '-dirty' -> 'dirty')
+string(REPLACE "-" "" GOBY_VERSION_PATCH_JULIA "${GOBY_VERSION_PATCH_JULIA_TMP}")
 
 # give Goby 1 series a few more soversions
 set(GOBY_SOVERSION "30")
