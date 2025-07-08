@@ -23,7 +23,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/bind/bind.hpp>                                   // for bind_t, arg
+#include <boost/bind/bind.hpp>                              // for bind_t, arg
 #include <boost/date_time/posix_time/posix_time_config.hpp> // for posix_time
 #include <boost/date_time/posix_time/posix_time_types.hpp>  // for second_c...
 #include <boost/date_time/posix_time/time_formatters.hpp>   // for to_iso_s...
@@ -146,10 +146,11 @@ void goby::acomms::ModemDriverBase::modem_start(const protobuf::DriverConfig& cf
                     throw(ModemDriverException("missing tcp port in configuration",
                                                protobuf::ModemDriverStatus::INVALID_CONFIGURATION));
 
-                modem_.reset(new util::TCPServer(cfg.tcp_port(), cfg.line_delimiter()));
+                modem_.reset(new util::TCPServer(cfg.tcp_port(), cfg.line_delimiter(), cfg.ipv6()));
         }
     }
-    else {
+    else
+    {
         if (modem_connection_expected)
             goby::glog.is(DEBUG1) &&
                 goby::glog << group(glog_out_group_) << warn

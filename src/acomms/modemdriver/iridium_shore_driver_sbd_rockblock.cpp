@@ -63,6 +63,9 @@ void goby::acomms::IridiumShoreDriver::startup_sbd_rockblock(const protobuf::Dri
     if (iridium_shore_driver_cfg().has_mo_sbd_server_port() || !driver_cfg_.has_tcp_port())
         driver_cfg_.set_tcp_port(iridium_shore_driver_cfg().mo_sbd_server_port());
 
+    if (iridium_shore_driver_cfg().has_ipv6())
+        driver_cfg_.set_ipv6(iridium_shore_driver_cfg().ipv6());
+
     // new line for HTTP; JSON message has no newline so use }
     driver_cfg_.set_line_delimiter("\n|}");
 }
