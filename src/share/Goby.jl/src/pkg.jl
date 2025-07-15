@@ -4,4 +4,5 @@ function install_pkgs()
     Pkg.add("Pkg")
     Pkg.add("ProtoBuf")
     Pkg.add("CxxWrap")
+    Pkg.add("YAML")
 end
