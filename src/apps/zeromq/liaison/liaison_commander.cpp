@@ -1425,7 +1425,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
         node->setColumnWidget(3, std::move(external_data_field));
     }
 
-    parent->insertChildNode(0, std::move(node));
+    parent->addChildNode(std::move(node));
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree_field(
