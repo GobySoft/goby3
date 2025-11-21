@@ -146,7 +146,7 @@ inline void define_julia_module(jlcxx::Module& types, const std::string& app_nam
     types.template add_type<ApplicationWrapper<App>>(app_name)
         .template constructor<std::string>()
         .template constructor<std::string, std::string>()
-        .method("run", &ApplicationWrapper<App>::run)
+        .method("cxx_run", &ApplicationWrapper<App>::run)
         .method("cxx_publish", &ApplicationWrapper<App>::publish)
         .method("cxx_subscribe", &ApplicationWrapper<App>::subscribe);
 }
