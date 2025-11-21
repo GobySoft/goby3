@@ -191,12 +191,14 @@ function read_cli_cfg()
     return read(filename, String)
 end
 
+function run(goby_app)
+    Goby.cxx_run(goby_app)
+end
+
 ########################
 # Interthread          #
 # Using Tasks/Channels #
 ########################
-
-
 
 # map of module to task_id
 task_module_to_id=Dict{Module, TaskID}()
@@ -250,58 +252,48 @@ function subscribe_interthread(task_id::TaskID, group, callback::Function)
             
     println("Subscribed $task_id to $group")
 end
-
-function run(goby_app, main_module, task_modules = [])
+    
+function run(goby_app, main_module, task_modules)
     tasks = Vector{Task}()
+    Goby.is_multithreaded = true
 
-    if length(task_modules) != 0
-        Goby.is_multithreaded = true
+    # 1. create channels
+    for task_module in task_modules
+        task_id = TaskID(Goby.next_task_id.id)
+        task_module_to_id[task_module] = task_id
+        task_interthread_channels[task_id] = Channel(Goby.channel_size)
+        Goby.next_task_id = TaskID(Goby.next_task_id.id + 1)
     end
-
-
-    if Goby.is_multithreaded
-        # 1. create channels
-        for task_module in task_modules
-            task_id = TaskID(Goby.next_task_id.id)
-            task_module_to_id[task_module] = task_id
-            task_interthread_channels[task_id] = Channel(Goby.channel_size)
-            Goby.next_task_id = TaskID(Goby.next_task_id.id + 1)
+    
+    task_module_to_id[main_module] = main_task_id
+    Goby.cxx_task_id = TaskID(Goby.next_task_id.id)        
+    task_interthread_channels[Goby.cxx_task_id] = Channel(Goby.channel_size)
+    
+    
+    # 2. spawn tasks
+    for task_module in task_modules
+        push!(tasks, Goby.task_spawn(task_module))
+        
+        if haskey(task_module.cfg, :loop_function)
+            push!(tasks, Goby.loop_timer(task_module))
         end
-        
-        task_module_to_id[main_module] = main_task_id
-        Goby.cxx_task_id = TaskID(Goby.next_task_id.id)        
-        task_interthread_channels[Goby.cxx_task_id] = Channel(Goby.channel_size)
-        
-        
-        # 2. spawn tasks
-        for task_module in task_modules
-            push!(tasks, Goby.task_spawn(task_module))
-            
-            if haskey(task_module.cfg, :loop_function)
-                push!(tasks, Goby.loop_timer(task_module))
+    end
+    
+    push!(tasks, ThreadPools.@tspawnat cxx_task_id.id Goby.cxx_run(goby_app))
+    println("Spawning main run() as task ID $cxx_task_id")
+    
+    if haskey(main_module.cfg, :loop_function)
+        push!(tasks, Goby.loop_timer(main_module))
+    end
+    
+    
+    while true
+        Goby.task_channel_check(main_task_id)
+        for task in tasks
+            if istaskdone(task)
+                fetch(task)
             end
         end
-        
-        push!(tasks, ThreadPools.@tspawnat cxx_task_id.id Goby.cxx_run(goby_app))
-        println("Spawning main run() as task ID $cxx_task_id")
-
-        if haskey(main_module.cfg, :loop_function)
-            push!(tasks, Goby.loop_timer(main_module))
-        end
-
-        
-        while true
-            Goby.task_channel_check(main_task_id)
-            for task in tasks
-                if istaskdone(task)
-                    fetch(task)
-                end
-            end
-        end
-    else
-        # single threaded:
-        # just call run on the main (only) thread
-        Goby.cxx_run(goby_app)
     end
 end
 
