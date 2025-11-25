@@ -87,25 +87,25 @@ template <typename Config> class Application
 
   protected:
     /// \brief Called just before initialize
-    virtual void pre_initialize(){};
+    virtual void pre_initialize() {};
 
     /// \brief Perform any initialize tasks that couldn't be done in the constructor
-    virtual void initialize(){};
+    virtual void initialize() {};
 
     /// \brief Called just after initialize
-    virtual void post_initialize(){};
+    virtual void post_initialize() {};
 
     /// \brief Runs once
     virtual void run() = 0;
 
     /// \brief Called just before finalize
-    virtual void pre_finalize(){};
+    virtual void pre_finalize() {};
 
     /// \brief Perform any final cleanup actions just before the destructor is called
-    virtual void finalize(){};
+    virtual void finalize() {};
 
     /// \brief Called just after finalize
-    virtual void post_finalize(){};
+    virtual void post_finalize() {};
 
     /// \brief Requests a clean exit.
     ///
@@ -161,6 +161,7 @@ template <typename Config> class Application
 
     void configure_logger();
     void configure_glog_file();
+    void configure_intervehicle();
     void check_rotate_glog_file();
 
   private:
@@ -200,6 +201,9 @@ template <typename Config> goby::middleware::Application<Config>::Application() 
         configure_geodesy({app3_base_configuration_->geodesy().lat_origin_with_units(),
                            app3_base_configuration_->geodesy().lon_origin_with_units()});
 
+    if (app3_base_configuration_->has_intervehicle_cfg())
+        configure_intervehicle();
+
     if (!app3_base_configuration_->IsInitialized())
         throw(middleware::ConfigException("Invalid base configuration"));
 
@@ -226,6 +230,18 @@ template <typename Config> void goby::middleware::Application<Config>::configure
 
     if (app3_base_configuration_->glog_config().show_dccl_log())
         goby::middleware::detail::DCCLSerializerParserHelperBase::setup_dlog();
+}
+
+template <typename Config> void goby::middleware::Application<Config>::configure_intervehicle()
+{
+    const goby::middleware::protobuf::AppConfig::Intervehicle& intervehicle_cfg =
+        app3_base_configuration_->intervehicle_cfg();
+
+    if (intervehicle_cfg.has_dccl_passphrase())
+    {
+        goby::middleware::detail::DCCLSerializerParserHelperBase::set_crypto_passphrase(
+            intervehicle_cfg.dccl_passphrase());
+    }
 }
 
 template <typename Config> void goby::middleware::Application<Config>::check_rotate_glog_file()
