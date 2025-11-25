@@ -102,4 +102,14 @@ message AppConfig
             "parsed configuration to stdout and exit",
         (goby.field).cfg = { action: ADVANCED }
     ];
+
+    message Intervehicle
+    {
+        optional string dccl_passphrase = 1 [
+            (goby.field).description =
+                "If set, encrypt and decrypt all DCCL intervehicle messages with this passphrase using AES encryption. This passphrase must match all intervehicle publishers and subscribers using any DCCL messages within this system, include gobyd/goby_intervehicle_portal."
+        ];
+    }
+    optional Intervehicle intervehicle_cfg = 150
+        [(goby.field).cfg = { action: ADVANCED }];
 }
