@@ -12,7 +12,13 @@ include("GobyMultiThread.jl")
 
 # main task Protobuf publish
 # TODO: add more schemes as additional publish functions
-function publish(app, layer, group, msg::AbstractProtoBufMessage)
+"""
+    publish(app, layer, group, msg)
+
+Publish a message `msg` using this `app` (CxxWrap Goby App) to this `layer` (e.g., Goby.INTERPROCESS), using this `group` (string). Current `msg` must be an AbstractProtoBufMessage generated using the ProtoBuf.jl library, unless `layer` is Goby.INTERTHREAD (in which case `msg` can be any Julia type).
+"""
+
+function publish(app, layer, group::String, msg::AbstractProtoBufMessage)
     if Goby.is_multithreaded && MultiThread.check_and_publish(app, layer, group, msg)
         return
     end
@@ -39,7 +45,7 @@ function publish(app, layer, group, msg)
     end
     
     msg_type = typeof(msg)
-    throw(MethodError("publish not support for layer $layer with message type $msg_type"))
+    throw(AssertionError("publish not support for layer $layer with message type $msg_type"))
 end
 
 interprocess_callbacks=Dict{Int, Dict{Int, Dict{String, Dict{String, Function}}}}()
@@ -72,7 +78,7 @@ function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCH
         # Protobuf Subscribe (based on function argument being AbstractProtoBufMessage)
         arg = argtypes[2]
         if arg <: AbstractProtoBufMessage
-            inferred_scheme = Goby.PROTOBUF             
+            inferred_scheme = Goby.PROTOBUF
             inferred_type_name = pb_name_from_callback(callback)
         end
         # TODO: add more schemes
@@ -142,12 +148,6 @@ function read_cli_cfg()
     return read(filename, String)
 end
 
-function run(goby_app)
-    if isdefined(Main, :goby_cfg) && haskey(Main.goby_cfg, :loop_frequency)
-        Goby.cxx_set_loop_frequency_hertz(goby_app, Main.goby_cfg[:loop_frequency])
-    end
-    Goby.cxx_run(goby_app)
-end
 
 function cxx_loop()
     if Goby.is_multithreaded
@@ -158,31 +158,20 @@ function cxx_loop()
     end
 end
 
-#######################################
-# MultiThread only function overloads #
-######################################
-# child publish
-function publish(task_id::MultiThread.TaskID, layer, group, msg)
-    if Goby.is_multithreaded && MultiThread.child_publish(task_id, layer, group, msg)
-        return
+function run(goby_app, main_module = Main, task_modules = [])
+    if length(task_modules) == 0
+        # single threaded
+        if isdefined(main_module, :goby_cfg) && haskey(main_module.goby_cfg, :loop_frequency)
+            Goby.cxx_set_loop_frequency_hertz(goby_app, main_module.goby_cfg[:loop_frequency])
+        end
+        if isdefined(main_module, :start)
+            main_module.start()
+        end
+        Goby.cxx_run(goby_app)
+    else
+        # multi threaded
+        MultiThread.run(goby_app, main_module, task_modules)
     end
-    
-    msg_type = typeof(msg)
-    throw(MethodError("publish not support for layer $layer with message type $msg_type"))
-end
-    
-# child subscribe
-function subscribe(task_id::MultiThread.TaskID, layer, group, callback::Function)
-    if MultiThread.child_subscribe(task_id, layer, group, callback)
-        return
-    end
-    
-    throw(MethodError("subscribe not support for layer $layer with task_id"))
-end
-
-# MultiThread run
-function run(goby_app, main_module, task_modules)
-    MultiThread.run(goby_app, main_module, task_modules)
 end
 
 end # module Goby

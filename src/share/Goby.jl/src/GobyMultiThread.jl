@@ -12,10 +12,11 @@ struct TaskID
     id::Int64
 end
 
-# Multi-threaded: run timers for loop, etc. on thread 1
+# run Main module functions on thread 1
 main_task_id = TaskID(1)
+# run timers for loop, etc. on thread 2
 timer_task_id = TaskID(2)
-# Multi-threaded: start first non-main task on thread 2
+# Multi-threaded: start first non-main child task on thread 3
 next_task_id = TaskID(3)
 
 # Single-threaded, using thread 1 for CxxWrap'd class
@@ -40,14 +41,18 @@ group_interthread_channels_lock = Threads.ReentrantLock()
 function check_and_publish(app, layer, group, msg)
     layer_int::Int32 = Int32(layer)
     if layer_int == Int32(Goby.INTERTHREAD)
-        publish_interthread(MultiThread.main_task_id, group, msg)
+        task_id = MultiThread.TaskID(Threads.threadid())
+        publish_interthread(task_id, group, msg)
         return true
-    end
-    
-    if Threads.threadid() != MultiThread.cxx_task_id.id
+    elseif Threads.threadid() == MultiThread.cxx_task_id.id
+        # Pass back to normal publish
+        return false
+    elseif Threads.threadid() != MultiThread.main_task_id.id
+        throw(AssertionError("publish for layer $layer is not yet supported on non-Main threads (from $task_id)"))
+    else
         publish_forward_interprocess(app, layer, group, msg)
         return true
-    end
+    end    
 
     # Pass back to normal publish
     return false
@@ -56,34 +61,20 @@ end
 function check_and_subscribe(layer, group, callback::Function)
     layer_int::Int32 = Int32(layer)
     if layer_int == Int32(Goby.INTERTHREAD)        
-        MultiThread.subscribe_interthread(MultiThread.main_task_id, group, callback)
+        task_id = MultiThread.TaskID(Threads.threadid())
+        MultiThread.subscribe_interthread(task_id, group, callback)
         return true
+    elseif Threads.threadid() != MultiThread.main_task_id.id
+        throw(AssertionError("subscribe for layer $layer is not yet supported on non-Main threads"))     
     end
+
+    # Pass back to normal subscribe
     return false
 end
 
 function check_and_receive(layer, type_name, scheme, group, bytes)
-    if Threads.threadid() != MultiThread.main_task_id.id
+    if Threads.threadid() == MultiThread.cxx_task_id.id
         receive_forward_interprocess(layer, type_name, scheme, group, bytes)
-        return true
-    end
-    return false
-end
-
-
-function child_publish(task_id::TaskID, layer, group, msg)
-    layer_int::Int32 = Int32(layer)
-    if layer_int == Int32(Goby.INTERTHREAD)
-        MultiThread.publish_interthread(task_id, group, msg)
-        return true
-    end
-    return false
-end
-
-function child_subscribe(task_id::TaskID, layer, group, callback::Function)
-   layer_int::Int32 = Int32(layer)
-    if layer_int == Int32(Goby.INTERTHREAD)        
-        MultiThread.subscribe_interthread(task_id, group, callback)
         return true
     end
     return false
@@ -104,6 +95,7 @@ function publish_forward_interprocess(app, layer, group, msg)
 end
         
 function receive_forward_interprocess(layer, type_name, scheme, group, bytes)
+    # TODO - support non-main thread subscribe for non-interthread messages
     put!(task_interthread_channels[MultiThread.main_task_id], (:cxx_receive, layer, type_name, scheme, group, bytes))
 end
 
@@ -154,9 +146,17 @@ function run(goby_app, main_module, task_modules)
     task_module_to_id[main_module] = MultiThread.main_task_id
     MultiThread.cxx_task_id = TaskID(MultiThread.next_task_id.id)        
     task_interthread_channels[MultiThread.cxx_task_id] = Channel(channel_size)
-    
+
+    min_nthreads = MultiThread.cxx_task_id.id
+    if Threads.nthreads() < min_nthreads
+        throw(AssertionError("Must run julia with at least $min_nthreads threads (use 'julia -t $min_nthreads')"))
+    end
     
     # 3. spawn tasks
+    if isdefined(main_module, :start)
+        main_module.start()
+    end
+    
     for task_module in task_modules
         push!(tasks, task_spawn(task_module))
         
@@ -189,7 +189,9 @@ function task_spawn(task_module::Module)
     println("Spawning $run as task ID $task_id")
 
     runner = (id, mod::Module) -> begin
-        mod.run(id)
+        if isdefined(mod, :start)
+            mod.start()
+        end
         while true
             task_channel_check(id)
         end
@@ -234,12 +236,12 @@ function task_channel_check(task_id::TaskID)
         if haskey(task_callbacks, group)
             callbacks = task_callbacks[group]
             for callback in callbacks
-                callback(task_id, msg)
+                callback(msg)
             end
         end
     elseif type == :loop
         loop_func = packet[2]
-        loop_func(task_id)
+        loop_func()
     elseif type == :cxx_publish
         app = packet[2]
         layer = packet[3]
