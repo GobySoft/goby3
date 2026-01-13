@@ -8,18 +8,88 @@ using ThreadPools
 # Using Tasks/Channels #
 ########################
 
+struct TaskID
+    id::Int64
+end
+
+# Multi-threaded: run timers for loop, etc. on thread 1
+main_task_id = TaskID(1)
+timer_task_id = TaskID(2)
+# Multi-threaded: start first non-main task on thread 2
+next_task_id = TaskID(3)
+
+# Single-threaded, using thread 1 for CxxWrap'd class
+# Multi-threaded: use separate thread (cxx_task_id is updated below after
+# spawning child tasks)
+cxx_task_id = nothing
+
+
 # map of module to task_id
-task_module_to_id=Dict{Module, Goby.TaskID}()
+task_module_to_id=Dict{Module, TaskID}()
 # map of task_id to vector of channels (used for 'check')
-task_interthread_channels=Dict{Goby.TaskID, Channel}()
+task_interthread_channels=Dict{TaskID, Channel}()
 channel_size = 50
-task_interthread_channels[Goby.main_task_id] = Channel(channel_size)
+task_interthread_channels[MultiThread.main_task_id] = Channel(channel_size)
 
 # map of group to vector of channels (used for 'publish')
 group_interthread_channels=Dict{String, Vector{Channel}}()
 group_interthread_channels_lock = Threads.ReentrantLock()
 
-function publish_interthread(task_id::Goby.TaskID, group, msg)
+# Check for and intercept interthread publications
+# Return true if we did, false if this isn't our publication
+function check_and_publish(app, layer, group, msg)
+    layer_int::Int32 = Int32(layer)
+    if layer_int == Int32(Goby.INTERTHREAD)
+        publish_interthread(MultiThread.main_task_id, group, msg)
+        return true
+    end
+    
+    if Threads.threadid() != MultiThread.cxx_task_id.id
+        publish_forward_interprocess(app, layer, group, msg)
+        return true
+    end
+
+    # Pass back to normal publish
+    return false
+end
+
+function check_and_subscribe(layer, group, callback::Function)
+    layer_int::Int32 = Int32(layer)
+    if layer_int == Int32(Goby.INTERTHREAD)        
+        MultiThread.subscribe_interthread(MultiThread.main_task_id, group, callback)
+        return true
+    end
+    return false
+end
+
+function check_and_receive(layer, type_name, scheme, group, bytes)
+    if Threads.threadid() != MultiThread.main_task_id.id
+        receive_forward_interprocess(layer, type_name, scheme, group, bytes)
+        return true
+    end
+    return false
+end
+
+
+function child_publish(task_id::TaskID, layer, group, msg)
+    layer_int::Int32 = Int32(layer)
+    if layer_int == Int32(Goby.INTERTHREAD)
+        MultiThread.publish_interthread(task_id, group, msg)
+        return true
+    end
+    return false
+end
+
+function child_subscribe(task_id::TaskID, layer, group, callback::Function)
+   layer_int::Int32 = Int32(layer)
+    if layer_int == Int32(Goby.INTERTHREAD)        
+        MultiThread.subscribe_interthread(task_id, group, callback)
+        return true
+    end
+    return false
+end
+
+function publish_interthread(task_id::TaskID, group, msg)
     Threads.lock(group_interthread_channels_lock) do
         if haskey(group_interthread_channels, group)
             for channel in group_interthread_channels[group]
@@ -30,15 +100,15 @@ function publish_interthread(task_id::Goby.TaskID, group, msg)
 end
 
 function publish_forward_interprocess(app, layer, group, msg)
-    put!(task_interthread_channels[Goby.cxx_task_id], (:cxx_publish, app, layer, group, msg))
+    put!(task_interthread_channels[MultiThread.cxx_task_id], (:cxx_publish, app, layer, group, msg))
 end
         
 function receive_forward_interprocess(layer, type_name, scheme, group, bytes)
-    put!(task_interthread_channels[Goby.main_task_id], (:cxx_receive, layer, type_name, scheme, group, bytes))
+    put!(task_interthread_channels[MultiThread.main_task_id], (:cxx_receive, layer, type_name, scheme, group, bytes))
 end
 
 
-function subscribe_interthread(task_id::Goby.TaskID, group, callback::Function)
+function subscribe_interthread(task_id::TaskID, group, callback::Function)
     Threads.lock(group_interthread_channels_lock) do
         if !haskey(Threads.task_local_storage(), :callbacks)
             task_local_storage(:callbacks, Dict{String, Vector{Function}}())
@@ -75,15 +145,15 @@ function run(goby_app, main_module, task_modules)
     
     # 2. create channels
     for task_module in task_modules
-        task_id = Goby.TaskID(Goby.next_task_id.id)
+        task_id = TaskID(MultiThread.next_task_id.id)
         task_module_to_id[task_module] = task_id
         task_interthread_channels[task_id] = Channel(channel_size)
-        Goby.next_task_id = Goby.TaskID(Goby.next_task_id.id + 1)
+        MultiThread.next_task_id = TaskID(MultiThread.next_task_id.id + 1)
     end
     
-    task_module_to_id[main_module] = Goby.main_task_id
-    Goby.cxx_task_id = Goby.TaskID(Goby.next_task_id.id)        
-    task_interthread_channels[Goby.cxx_task_id] = Channel(channel_size)
+    task_module_to_id[main_module] = MultiThread.main_task_id
+    MultiThread.cxx_task_id = TaskID(MultiThread.next_task_id.id)        
+    task_interthread_channels[MultiThread.cxx_task_id] = Channel(channel_size)
     
     
     # 3. spawn tasks
@@ -95,8 +165,8 @@ function run(goby_app, main_module, task_modules)
         end
     end
     
-    push!(tasks, ThreadPools.@tspawnat Goby.cxx_task_id.id Goby.cxx_run(goby_app))
-    println("Spawning main run() as task ID $Goby.cxx_task_id")
+    push!(tasks, ThreadPools.@tspawnat MultiThread.cxx_task_id.id Goby.cxx_run(goby_app))
+    println("Spawning main run() as task ID $MultiThread.cxx_task_id")
    
     if isdefined(main_module, :goby_cfg) && haskey(main_module.goby_cfg, :loop_function)
         push!(tasks, loop_timer(main_module))
@@ -104,7 +174,7 @@ function run(goby_app, main_module, task_modules)
     
     # 4. Loop over all tasks checking messages
     while true
-        task_channel_check(Goby.main_task_id)
+        task_channel_check(MultiThread.main_task_id)
         for task in tasks
             if istaskdone(task)
                 fetch(task)
@@ -133,8 +203,8 @@ end
 function cxx_loop()
     # Julia loop is called from timer trigger
     # but we use C++ loop() to let cxx_task check its channel
-    while isready(task_interthread_channels[Goby.cxx_task_id])
-        task_channel_check(Goby.cxx_task_id)
+    while isready(task_interthread_channels[MultiThread.cxx_task_id])
+        task_channel_check(MultiThread.cxx_task_id)
     end
 end
 
@@ -146,18 +216,16 @@ function loop_timer(task_module::Module)
         while true
             put!(task_interthread_channels[id], (:loop, mod.goby_cfg[:loop_function]))
             sleep(1/mod.goby_cfg[:loop_frequency])
-#            println("Loop timer: $task_id")
         end
     end
 
-    t = ThreadPools.@tspawnat Goby.timer_task_id.id timer(task_id, task_module)
+    t = ThreadPools.@tspawnat MultiThread.timer_task_id.id timer(task_id, task_module)
     return t
 end    
 
-function task_channel_check(task_id::Goby.TaskID)
+function task_channel_check(task_id::TaskID)
     packet = take!(task_interthread_channels[task_id])
 
-#    println("Task $task_id received packet $packet")
     type = packet[1]
     if type == :interthread_receive
         task_callbacks = task_local_storage(:callbacks)
@@ -177,14 +245,14 @@ function task_channel_check(task_id::Goby.TaskID)
         layer = packet[3]
         group = packet[4]
         msg = packet[5]
-        publish(app, layer, group, msg)
+        Goby.publish(app, layer, group, msg)
     elseif type == :cxx_receive
         layer = packet[2]
         type_name = packet[3]
         scheme = packet[4]
         group = packet[5]
         bytes = packet[6]
-        receive_dereferenced(layer, type_name, scheme, group, bytes)
+        Goby.receive_dereferenced(layer, type_name, scheme, group, bytes)
     end    
 end
 

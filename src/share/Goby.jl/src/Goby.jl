@@ -6,21 +6,6 @@ using ProtoBuf
 
 export publish, subscribe
 
-struct TaskID
-    id::Int64
-end
-
-# Multi-threaded: run timers for loop, etc. on thread 1
-main_task_id = TaskID(1)
-timer_task_id = TaskID(2)
-# Multi-threaded: start first non-main task on thread 2
-next_task_id = TaskID(3)
-
-# Single-threaded, using thread 1
-# Multi-threaded: use separate thread (cxx_task_id is updated below after
-# spawning child tasks)
-cxx_task_id = TaskID(1)
-
 is_multithreaded = false
 
 include("GobyMultiThread.jl")
@@ -28,15 +13,7 @@ include("GobyMultiThread.jl")
 # main task Protobuf publish
 # TODO: add more schemes as additional publish functions
 function publish(app, layer, group, msg::AbstractProtoBufMessage)
-    layer_int::Int32 = Int32(layer)
-    
-    if layer_int == Int32(Goby.INTERTHREAD)
-        MultiThread.publish_interthread(main_task_id, group, msg)
-        return
-    end
-    
-    if Goby.is_multithreaded && Threads.threadid() != Goby.cxx_task_id.id
-        MultiThread.publish_forward_interprocess(app, layer, group, msg)
+    if Goby.is_multithreaded && MultiThread.check_and_publish(app, layer, group, msg)
         return
     end
     
@@ -50,36 +27,21 @@ function publish(app, layer, group, msg::AbstractProtoBufMessage)
 
     
     threadid=Threads.threadid()
-    println("Cxx publish: $threadid")
-    
+
+    layer_int::Int32 = Int32(layer)
     Goby.cxx_publish(app, layer_int, type_name, scheme, group, vec)
 end
 
 # main task (interthread)
 function publish(app, layer, group, msg)
-    layer_int::Int32 = Int32(layer)
-    if layer_int == Int32(Goby.INTERTHREAD)
-        # this would be the main task as all child tasks would use task_id::TaskID method
-        MultiThread.publish_interthread(main_task_id, group, msg)
+    if Goby.is_multithreaded && MultiThread.check_and_publish(app, layer, group, msg)
         return
     end
-
-    msg_type = typeof(msg)
-    throw(MethodError("publish not support for layer $layer with message type $msg_type"))
-end
-
-# child tasks (interthread)
-function publish(task_id::TaskID, layer, group, msg)
-    layer_int::Int32 = Int32(layer)
-    if layer_int == Int32(Goby.INTERTHREAD)
-        MultiThread.publish_interthread(task_id, group, msg)
-        return
-    end
-
-    msg_type = typeof(msg)
-    throw(MethodError("publish not support for layer $layer with message type $msg_type"))
-end
     
+    msg_type = typeof(msg)
+    throw(MethodError("publish not support for layer $layer with message type $msg_type"))
+end
+
 interprocess_callbacks=Dict{Int, Dict{Int, Dict{String, Dict{String, Function}}}}()
 
 function pb_name_from_callback(callback::Function)
@@ -89,23 +51,11 @@ end
 function pb_type_from_callback(callback::Function)
     return methods(callback)[1].sig.parameters[2]
 end
-
-function subscribe(task_id::TaskID, layer, group, callback::Function)
-    layer_int::Int32 = Int32(layer)
-    if layer_int == Int32(Goby.INTERTHREAD)        
-        MultiThread.subscribe_interthread(task_id, group, callback)
-        return
-    end
-
-    throw(MethodError("subscribe not support for layer $layer with task_id"))
-end
                   
-
 function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCHEME, type_name::String = "")
     layer_int::Int32 = Int32(layer)
 
-    if layer_int == Int32(Goby.INTERTHREAD)        
-        MultiThread.subscribe_interthread(main_task_id, group, callback)
+    if MultiThread.check_and_subscribe(layer, group, callback)
         return
     end
 
@@ -116,13 +66,13 @@ function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCH
         sig = Base.unwrap_unionall(m.sig)     # remove type wrappers like UnionAll
         argtypes = sig.parameters
         if length(argtypes) != 2 # parameters includes type of function and arguments
-            throw(ArgumentError("Function must have exactly one argument"))
+            throw(ArgumentError("Function must have exactly one argument: $callback"))
         end
 
         # Protobuf Subscribe (based on function argument being AbstractProtoBufMessage)
         arg = argtypes[2]
         if arg <: AbstractProtoBufMessage
-            inferred_scheme = Goby.PROTOBUF
+            inferred_scheme = Goby.PROTOBUF             
             inferred_type_name = pb_name_from_callback(callback)
         end
         # TODO: add more schemes
@@ -158,9 +108,7 @@ function receive(cxx_layer, cxx_type_name, cxx_scheme, cxx_group, vec::CxxRef{St
     dvec::StdVector{UInt8} = CxxWrap.dereference_argument(vec)
     bytes::Vector{UInt8} = reinterpret(UInt8, collect(dvec))
 
-
-    if Goby.is_multithreaded && Threads.threadid() != Goby.main_task_id.id
-        MultiThread.receive_forward_interprocess(layer, type_name, scheme, group, bytes)
+    if Goby.is_multithreaded && MultiThread.check_and_receive(layer, type_name, scheme, group, bytes)
         return
     end
 
@@ -210,5 +158,31 @@ function cxx_loop()
     end
 end
 
+#######################################
+# MultiThread only function overloads #
+######################################
+# child publish
+function publish(task_id::MultiThread.TaskID, layer, group, msg)
+    if Goby.is_multithreaded && MultiThread.child_publish(task_id, layer, group, msg)
+        return
+    end
+    
+    msg_type = typeof(msg)
+    throw(MethodError("publish not support for layer $layer with message type $msg_type"))
+end
+    
+# child subscribe
+function subscribe(task_id::MultiThread.TaskID, layer, group, callback::Function)
+    if MultiThread.child_subscribe(task_id, layer, group, callback)
+        return
+    end
+    
+    throw(MethodError("subscribe not support for layer $layer with task_id"))
+end
+
+# MultiThread run
+function run(goby_app, main_module, task_modules)
+    MultiThread.run(goby_app, main_module, task_modules)
+end
 
 end # module Goby
