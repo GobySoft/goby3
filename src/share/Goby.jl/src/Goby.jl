@@ -18,7 +18,8 @@ timer_task_id = TaskID(2)
 next_task_id = TaskID(3)
 
 # Single-threaded, using thread 1
-# Multi-threaded: use separate thread (updated below)
+# Multi-threaded: use separate thread (cxx_task_id is updated below after
+# spawning child tasks)
 cxx_task_id = TaskID(1)
 
 is_multithreaded = false
@@ -192,7 +193,23 @@ function read_cli_cfg()
 end
 
 function run(goby_app)
+    if isdefined(Main, :cfg) && haskey(Main.cfg, :loop_frequency)
+        Goby.cxx_set_loop_frequency_hertz(goby_app, Main.cfg[:loop_frequency])
+    end
     Goby.cxx_run(goby_app)
+end
+
+function cxx_loop()
+    if Goby.is_multithreaded
+        # Julia loop is called from timer trigger
+        # but we use C++ loop() to let cxx_task check its channel
+        while isready(Goby.task_interthread_channels[Goby.cxx_task_id])
+            Goby.task_channel_check(Goby.cxx_task_id)
+        end
+    else
+        # Julia loop is directly called from C++ loop()
+        Main.cfg[:loop_function]()
+    end
 end
 
 ########################
@@ -257,7 +274,15 @@ function run(goby_app, main_module, task_modules)
     tasks = Vector{Task}()
     Goby.is_multithreaded = true
 
-    # 1. create channels
+    # 1. set cxx loop frequency, defaulting to 10 Hz (used for checking channel messages)
+    cxx_channel_check_frequency = 10
+    if isdefined(Main, :cfg) && haskey(Main.cfg, :cxx_channel_check_frequency)
+        cxx_channel_check_frequency = Main.cfg[:cxx_channel_check_frequency]
+    end
+    println("Setting cxx channel check frequency to $cxx_channel_check_frequency")
+    Goby.cxx_set_loop_frequency_hertz(goby_app, cxx_channel_check_frequency)
+    
+    # 2. create channels
     for task_module in task_modules
         task_id = TaskID(Goby.next_task_id.id)
         task_module_to_id[task_module] = task_id
@@ -270,7 +295,7 @@ function run(goby_app, main_module, task_modules)
     task_interthread_channels[Goby.cxx_task_id] = Channel(Goby.channel_size)
     
     
-    # 2. spawn tasks
+    # 3. spawn tasks
     for task_module in task_modules
         push!(tasks, Goby.task_spawn(task_module))
         
@@ -281,12 +306,12 @@ function run(goby_app, main_module, task_modules)
     
     push!(tasks, ThreadPools.@tspawnat cxx_task_id.id Goby.cxx_run(goby_app))
     println("Spawning main run() as task ID $cxx_task_id")
-    
+   
     if haskey(main_module.cfg, :loop_function)
         push!(tasks, Goby.loop_timer(main_module))
     end
     
-    
+    # 4. Loop over all tasks checking messages
     while true
         Goby.task_channel_check(main_task_id)
         for task in tasks
