@@ -46,17 +46,8 @@ enum class PubSubLayer
 template <typename AppBase> class Application : public AppBase
 {
   public:
-    void loop() override
-    {
-        if (loop_)
-            (*loop_)();
-    }
-
-    void set_loop_function_name(std::string loop_function)
-    {
-        if (!loop_function.empty())
-            loop_ = std::make_unique<jlcxx::JuliaFunction>(loop_function);
-    }
+    Application() { loop_ = std::make_unique<jlcxx::JuliaFunction>("cxx_loop", "Goby"); }
+    void loop() override { (*loop_)(); }
 
   private:
     std::unique_ptr<jlcxx::JuliaFunction> loop_;
@@ -79,8 +70,7 @@ bool operator==(const Identifier& i1, const Identifier& i2)
 template <typename App> class ApplicationWrapper
 {
   public:
-    ApplicationWrapper(std::string config) : ApplicationWrapper(config, std::string()) {}
-    ApplicationWrapper(std::string config, std::string loop_function_name)
+    ApplicationWrapper(std::string config)
     {
         typename App::ConfigType cfg;
         google::protobuf::TextFormat::Parser parser;
@@ -105,7 +95,6 @@ template <typename App> class ApplicationWrapper
         }
 
         app_ptr_.reset(new App);
-        app_ptr_->set_loop_function_name(loop_function_name);
     }
 
     void run() { app_ptr_->__run(); }
@@ -123,6 +112,8 @@ template <typename App> class ApplicationWrapper
     {
         app_ptr_->subscribe(Identifier(layer, type_name, scheme, group), func, module);
     }
+
+    void set_loop_frequency_hertz(double freq) { app_ptr_->set_loop_frequency_hertz(freq); }
 
   private:
     std::unique_ptr<App> app_ptr_;
@@ -145,10 +136,10 @@ inline void define_julia_module(jlcxx::Module& types, const std::string& app_nam
 
     types.template add_type<ApplicationWrapper<App>>(app_name)
         .template constructor<std::string>()
-        .template constructor<std::string, std::string>()
-        .method("run", &ApplicationWrapper<App>::run)
+        .method("cxx_run", &ApplicationWrapper<App>::run)
         .method("cxx_publish", &ApplicationWrapper<App>::publish)
-        .method("cxx_subscribe", &ApplicationWrapper<App>::subscribe);
+        .method("cxx_subscribe", &ApplicationWrapper<App>::subscribe)
+        .method("cxx_set_loop_frequency_hertz", &ApplicationWrapper<App>::set_loop_frequency_hertz);
 }
 
 template <typename DataType, int scheme>

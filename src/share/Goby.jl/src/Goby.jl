@@ -6,10 +6,23 @@ using ProtoBuf
 
 export publish, subscribe
 
-# Protobuf publish
+is_multithreaded = false
+
+include("GobyMultiThread.jl")
+
+# main task Protobuf publish
 # TODO: add more schemes as additional publish functions
-function publish(app, layer, group, msg::AbstractProtoBufMessage)
-    layer_int::Int32 = Int32(layer)
+"""
+    publish(app, layer, group, msg)
+
+Publish a message `msg` using this `app` (CxxWrap Goby App) to this `layer` (e.g., Goby.INTERPROCESS), using this `group` (string). Current `msg` must be an AbstractProtoBufMessage generated using the ProtoBuf.jl library, unless `layer` is Goby.INTERTHREAD (in which case `msg` can be any Julia type).
+"""
+
+function publish(app, layer, group::String, msg::AbstractProtoBufMessage)
+    if Goby.is_multithreaded && MultiThread.check_and_publish(app, layer, group, msg)
+        return
+    end
+    
     scheme = Goby.PROTOBUF
     io = IOBuffer()
     e = ProtoEncoder(io);
@@ -17,10 +30,25 @@ function publish(app, layer, group, msg::AbstractProtoBufMessage)
     bytes = take!(io)
     vec = StdVector{UInt8}(bytes)
     type_name = string(nameof(typeof(msg)))
+
+    
+    threadid=Threads.threadid()
+
+    layer_int::Int32 = Int32(layer)
     Goby.cxx_publish(app, layer_int, type_name, scheme, group, vec)
 end
 
-callbacks=Dict{Int, Dict{Int, Dict{String, Dict{String, Function}}}}()
+# main task (interthread)
+function publish(app, layer, group, msg)
+    if Goby.is_multithreaded && MultiThread.check_and_publish(app, layer, group, msg)
+        return
+    end
+    
+    msg_type = typeof(msg)
+    throw(AssertionError("publish not support for layer $layer with message type $msg_type"))
+end
+
+interprocess_callbacks=Dict{Int, Dict{Int, Dict{String, Dict{String, Function}}}}()
 
 function pb_name_from_callback(callback::Function)
     return string(nameof(pb_type_from_callback(callback)))
@@ -29,17 +57,22 @@ end
 function pb_type_from_callback(callback::Function)
     return methods(callback)[1].sig.parameters[2]
 end
-
+                  
 function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCHEME, type_name::String = "")
+    layer_int::Int32 = Int32(layer)
+
+    if MultiThread.check_and_subscribe(layer, group, callback)
+        return
+    end
+
     inferred_scheme = scheme
     inferred_type_name::String = type_name
-    layer_int::Int32 = Int32(layer)
     
     for m in methods(callback)
         sig = Base.unwrap_unionall(m.sig)     # remove type wrappers like UnionAll
         argtypes = sig.parameters
         if length(argtypes) != 2 # parameters includes type of function and arguments
-            throw(ArgumentError("Function must have exactly one argument"))
+            throw(ArgumentError("Function must have exactly one argument: $callback"))
         end
 
         # Protobuf Subscribe (based on function argument being AbstractProtoBufMessage)
@@ -56,7 +89,7 @@ function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCH
     end   
 
     # build up nested dictionary, adding subdictionaries as needed as we go
-    lvl1 = get!(callbacks, layer_int) do
+    lvl1 = get!(interprocess_callbacks, layer_int) do
         Dict{Int, Dict{String, Dict{String, Function}}}()
     end
     lvl2 = get!(lvl1, inferred_scheme) do
@@ -73,16 +106,26 @@ function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCH
 end
 
 function receive(cxx_layer, cxx_type_name, cxx_scheme, cxx_group, vec::CxxRef{StdVector{UInt8}})
+
     layer::Int = CxxWrap.dereference_argument(cxx_layer)
     scheme::Int = CxxWrap.dereference_argument(cxx_scheme)
     type_name::String = CxxWrap.dereference_argument(cxx_type_name)
     group::String = CxxWrap.dereference_argument(cxx_group)
-    
+    dvec::StdVector{UInt8} = CxxWrap.dereference_argument(vec)
+    bytes::Vector{UInt8} = reinterpret(UInt8, collect(dvec))
+
+    if Goby.is_multithreaded && MultiThread.check_and_receive(layer, type_name, scheme, group, bytes)
+        return
+    end
+
+    receive_dereferenced(layer, type_name, scheme, group, bytes)
+end
+
+
+function receive_dereferenced(layer, type_name, scheme, group, bytes)
     println("Received message $(type_name) (Scheme: $(scheme)) on group $(group)")
     if scheme == Goby.PROTOBUF
-        dvec::StdVector{UInt8} = CxxWrap.dereference_argument(vec)
-        bytes::Vector{UInt8} = reinterpret(UInt8, collect(dvec))
-        callback = callbacks[layer][scheme][type_name][group]
+        callback = interprocess_callbacks[layer][scheme][type_name][group]
         io = IOBuffer(bytes)
         d::ProtoDecoder = ProtoDecoder(io)        
         msg = decode(d, pb_type_from_callback(callback))
@@ -103,6 +146,32 @@ function read_cli_cfg()
     end
 
     return read(filename, String)
+end
+
+
+function cxx_loop()
+    if Goby.is_multithreaded
+        MultiThread.cxx_loop()
+    else
+        # Julia loop is directly called from C++ loop()
+        Main.goby_cfg[:loop_function]()
+    end
+end
+
+function run(goby_app, main_module = Main, task_modules = [])
+    if length(task_modules) == 0
+        # single threaded
+        if isdefined(main_module, :goby_cfg) && haskey(main_module.goby_cfg, :loop_frequency)
+            Goby.cxx_set_loop_frequency_hertz(goby_app, main_module.goby_cfg[:loop_frequency])
+        end
+        if isdefined(main_module, :start)
+            main_module.start()
+        end
+        Goby.cxx_run(goby_app)
+    else
+        # multi threaded
+        MultiThread.run(goby_app, main_module, task_modules)
+    end
 end
 
 end # module Goby
