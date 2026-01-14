@@ -15,9 +15,8 @@ include("GobyMultiThread.jl")
 """
     publish(app, layer, group, msg)
 
-Publish a message `msg` using this `app` (CxxWrap Goby App) to this `layer` (e.g., Goby.INTERPROCESS), using this `group` (string). Current `msg` must be an AbstractProtoBufMessage generated using the ProtoBuf.jl library, unless `layer` is Goby.INTERTHREAD (in which case `msg` can be any Julia type).
+Publish a message `msg` using this `app` (CxxWrap'd Goby App) to this `layer` (e.g., Goby.INTERPROCESS), using this `group` (string). Current `msg` must be an AbstractProtoBufMessage generated using the ProtoBuf.jl library, unless `layer` is Goby.INTERTHREAD (in which case `msg` can be any Julia type).
 """
-
 function publish(app, layer, group::String, msg::AbstractProtoBufMessage)
     if Goby.is_multithreaded && MultiThread.check_and_publish(app, layer, group, msg)
         return
@@ -57,7 +56,12 @@ end
 function pb_type_from_callback(callback::Function)
     return methods(callback)[1].sig.parameters[2]
 end
-                  
+
+"""
+    subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCHEME, type_name::String = "")
+
+Subscribe to messages using this `app` (CxxWrap'd Goby App) on this `layer` (e.g., Goby.INTERPROCESS), using this `group` (string). When a message is received, call the `callback` function. If `scheme` and `type_name` are not defined, they will be inferred from the type of the first argument of `callback` (currently only supports AbstractProtoBufMessage, unless `layer` is Goby.INTERTHREAD which supports all Julia types).
+"""
 function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCHEME, type_name::String = "")
     layer_int::Int32 = Int32(layer)
 
@@ -133,6 +137,11 @@ function receive_dereferenced(layer, type_name, scheme, group, bytes)
     end
 end
 
+"""
+    read_cli_cfg()
+
+Reads the contents of the TextFormat file given as the first positional argument on the commandline (e.g., config.pb.cfg) and returns it as a String. This is intended to be passed as the first argument to the CxxWrap'd Goby App (e.g., `goby_app = Goby.JuliaDemo(Goby.read_cli_cfg())`)
+"""
 function read_cli_cfg()
     if length(ARGS) != 1
         println("Usage: $PROGRAM_FILE config.pb.cfg")
@@ -158,6 +167,13 @@ function cxx_loop()
     end
 end
 
+"""
+    run(goby_app, main_module = Main, task_modules = [])
+
+Run the `goby_app` (CxxWrap'd Goby App) using the functions and data in main_module (function `start`, if defined and Dict `goby_cfg`, if defined). If tasks_modules is defined, these are run as child tasks (threads).
+
+The application is run in one thread if tasks_modules is empty, otherwise it uses length(task_modules) + 3 threads.
+"""
 function run(goby_app, main_module = Main, task_modules = [])
     if length(task_modules) == 0
         # single threaded
