@@ -206,7 +206,6 @@ class InterProcessPortalImplementation
                     break;
                 }
             }
-
             // if no Forwarder subscriptions left
             if (no_forwarder_subscribers)
             {
@@ -226,18 +225,21 @@ class InterProcessPortalImplementation
   private:
     const protobuf::InterProcessPortalConfig cfg_;
 
-    // maps identifier to subscription
+    // portal_subscriptions_ and forwarder_subscriptions_: maps identifier to subscription
     std::unordered_multimap<std::string,
                             std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         portal_subscriptions_;
     // only one subscription for each forwarded identifier
     std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         forwarder_subscriptions_;
+
+    // maps subscriber_id [thread id as string] to map of identifier to forwarder subscription
     std::unordered_map<
         std::string, std::unordered_map<
                          std::string, typename decltype(forwarder_subscriptions_)::const_iterator>>
         forwarder_subscription_identifiers_;
 
+    // subscriber id to subscription
     std::unordered_multimap<std::string,
                             std::shared_ptr<const middleware::SerializationSubscriptionRegex>>
         regex_subscriptions_;
