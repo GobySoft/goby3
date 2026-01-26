@@ -71,35 +71,6 @@ template <char delimiter, char delimiter_substitute> class IdentifierManager
         }
     }
 
-  protected:
-    template <typename Data, int scheme>
-    std::string _make_identifier(const goby::middleware::Group& group, IdentifierWildcard wildcard)
-    {
-        return _make_identifier(middleware::SerializerParserHelper<Data, scheme>::type_name(),
-                                scheme, group, wildcard);
-    }
-
-    std::string _make_fully_qualified_identifier(const std::string& type_name, int scheme,
-                                                 const std::string& group)
-    {
-        return _make_identifier(type_name, scheme, group, IdentifierWildcard::THREAD_WILDCARD) +
-               id_component(std::this_thread::get_id(), threads_);
-    }
-
-    template <typename Data, int scheme>
-    std::string _make_identifier(const Data& d, const goby::middleware::Group& group,
-                                 IdentifierWildcard wildcard)
-    {
-        return _make_identifier(middleware::SerializerParserHelper<Data, scheme>::type_name(d),
-                                scheme, group, wildcard);
-    }
-
-    std::string _make_identifier(const std::string& type_name, int scheme, const std::string& group,
-                                 IdentifierWildcard wildcard)
-    {
-        return make_identifier(type_name, scheme, group, wildcard, process_, &schemes_, &threads_);
-    }
-
     // group, scheme, type, process, thread
     std::tuple<std::string, int, std::string, int, std::size_t> static parse_identifier(
         const std::string& identifier)
@@ -133,6 +104,28 @@ template <char delimiter, char delimiter_substitute> class IdentifierManager
                                middleware::MarshallingScheme::from_string(elem[POS_SCHEME]),
                                elem[POS_TYPE], std::stoi(elem[POS_PROCESS]),
                                std::stoull(elem[POS_THREAD], nullptr, 16));
+    }
+
+  protected:
+    template <typename Data, int scheme>
+    std::string _make_identifier(const goby::middleware::Group& group, IdentifierWildcard wildcard)
+    {
+        return _make_identifier(middleware::SerializerParserHelper<Data, scheme>::type_name(),
+                                scheme, group, wildcard);
+    }
+
+    template <typename Data, int scheme>
+    std::string _make_identifier(const Data& d, const goby::middleware::Group& group,
+                                 IdentifierWildcard wildcard)
+    {
+        return _make_identifier(middleware::SerializerParserHelper<Data, scheme>::type_name(d),
+                                scheme, group, wildcard);
+    }
+
+    std::string _make_identifier(const std::string& type_name, int scheme, const std::string& group,
+                                 IdentifierWildcard wildcard)
+    {
+        return make_identifier(type_name, scheme, group, wildcard, process_, &schemes_, &threads_);
     }
 
     // scheme

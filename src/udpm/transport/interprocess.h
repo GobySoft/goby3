@@ -92,7 +92,8 @@ class InterProcessPortalImplementation
     void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
                              const goby::middleware::Group& group, bool ignore_buffer = false)
     {
-        std::string identifier = _make_fully_qualified_identifier(type_name, scheme, group) + '\0';
+        std::string identifier =
+            _make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) + '\0';
         //zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer);
     }
 

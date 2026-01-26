@@ -324,7 +324,9 @@ class InterProcessPortalImplementation
     void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
                              const goby::middleware::Group& group, bool ignore_buffer = false)
     {
-        std::string identifier = _make_fully_qualified_identifier(type_name, scheme, group) + '\0';
+        std::string identifier =
+            _make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) +
+            identifier_end_delimiter;
         zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer);
     }
 
@@ -462,7 +464,8 @@ class InterProcessPortalImplementation
 
                     if (!regex_subscriptions_.empty())
                     {
-                        auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
+                        auto null_delim_it =
+                            std::find(std::begin(data), std::end(data), identifier_end_delimiter);
 
                         bool forwarder_subscription_posted = false;
                         for (auto& sub : regex_subscriptions_)
@@ -513,7 +516,7 @@ class InterProcessPortalImplementation
         std::string identifier =
             _make_identifier(msg.key().type(), msg.key().marshalling_scheme(), msg.key().group(),
                              IdentifierWildcard::NO_WILDCARDS) +
-            '\0';
+            identifier_end_delimiter;
         auto& bytes = msg.data();
         zmq_main_.publish(identifier, &bytes[0], bytes.size());
     }
@@ -718,7 +721,7 @@ class Manager
                 middleware::scheme<protobuf::ManagerResponse>()>::type_name(),
             middleware::scheme<protobuf::ManagerResponse>(), groups::manager_response,
             middleware::IdentifierWildcard::NO_WILDCARDS, std::to_string(getpid())) +
-        std::string(1, '\0')};
+        std::string(1, identifier_end_delimiter)};
 }; // namespace zeromq
 
 template <typename InnerTransporter = middleware::NullTransporter>
