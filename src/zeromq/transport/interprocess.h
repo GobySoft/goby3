@@ -38,7 +38,6 @@
 #include <string>             // for string
 #include <thread>             // for get_id
 #include <tuple>              // for make...
-#include <unistd.h>           // for getpid
 #include <unordered_map>      // for unor...
 #include <utility>            // for make...
 #include <vector>             // for vector
@@ -51,16 +50,17 @@
 #include "goby/middleware/marshalling/interface.h"              // for Seri...
 #include "goby/middleware/protobuf/serializer_transporter.pb.h" // for Seri...
 #include "goby/middleware/protobuf/transporter_config.pb.h"     // for Tran...
-#include "goby/middleware/transport/interface.h"                // for Poll...
-#include "goby/middleware/transport/interprocess.h"             // for Inte...
-#include "goby/middleware/transport/null.h"                     // for Null...
-#include "goby/middleware/transport/serialization_handlers.h"   // for Seri...
-#include "goby/middleware/transport/subscriber.h"               // for Subs...
-#include "goby/time/system_clock.h"                             // for Syst...
-#include "goby/util/debug_logger/flex_ostream.h"                // for Flex...
-#include "goby/util/debug_logger/flex_ostreambuf.h"             // for lock
-#include "goby/zeromq/protobuf/interprocess_config.pb.h"        // for Inte...
-#include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"        // for Inpr...
+#include "goby/middleware/transport/identifier.h"
+#include "goby/middleware/transport/interface.h"              // for Poll...
+#include "goby/middleware/transport/interprocess.h"           // for Inte...
+#include "goby/middleware/transport/null.h"                   // for Null...
+#include "goby/middleware/transport/serialization_handlers.h" // for Seri...
+#include "goby/middleware/transport/subscriber.h"             // for Subs...
+#include "goby/time/system_clock.h"                           // for Syst...
+#include "goby/util/debug_logger/flex_ostream.h"              // for Flex...
+#include "goby/util/debug_logger/flex_ostreambuf.h"           // for lock
+#include "goby/zeromq/protobuf/interprocess_config.pb.h"      // for Inte...
+#include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"      // for Inpr...
 
 #if ZMQ_VERSION <= ZMQ_MAKE_VERSION(4, 3, 1)
 #define USE_OLD_ZMQ_CPP_API
@@ -93,84 +93,9 @@ constexpr char delimiter{'/'};
 constexpr const char* delimiter_str{"/"};
 // use old ASCII substitute char for '/' in group or type
 constexpr char delimiter_substitute{0x1a};
+constexpr char identifier_end_delimiter{'\0'};
 
 void setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg);
-
-enum class IdentifierWildcard
-{
-    NO_WILDCARDS,
-    THREAD_WILDCARD,
-    PROCESS_THREAD_WILDCARD
-};
-
-// scheme
-inline std::string identifier_part_to_string(int i)
-{
-    return middleware::MarshallingScheme::to_string(i);
-}
-inline std::string identifier_part_to_string(std::thread::id i)
-{
-    return goby::middleware::thread_id(i);
-}
-
-/// Given key, find the string in the map, or create it (to_string) and store it, and return the string.
-template <typename Key>
-const std::string& id_component(const Key& k, std::unordered_map<Key, std::string>& map)
-{
-    auto it = map.find(k);
-    if (it != map.end())
-        return it->second;
-
-    std::string v = identifier_part_to_string(k) + delimiter_str;
-    auto it_pair = map.insert(std::make_pair(k, v));
-    return it_pair.first->second;
-}
-
-inline std::string
-make_identifier(const std::string& type_name, int scheme, const std::string& group,
-                IdentifierWildcard wildcard, const std::string& process,
-                std::unordered_map<int, std::string>* schemes_buffer = nullptr,
-                std::unordered_map<std::thread::id, std::string>* threads_buffer = nullptr)
-{
-    // swap out delimiter with substitute
-    std::string sanitized_type_name = type_name;
-    std::replace(sanitized_type_name.begin(), sanitized_type_name.end(), delimiter,
-                 delimiter_substitute);
-    std::string sanitized_group_name = group;
-    std::replace(sanitized_group_name.begin(), sanitized_group_name.end(), delimiter,
-                 delimiter_substitute);
-    switch (wildcard)
-    {
-        default:
-        case IdentifierWildcard::NO_WILDCARDS:
-        {
-            auto thread = std::this_thread::get_id();
-            return (
-                delimiter_str + sanitized_group_name + delimiter_str +
-                (schemes_buffer ? id_component(scheme, *schemes_buffer)
-                                : std::string(identifier_part_to_string(scheme) + delimiter_str)) +
-                sanitized_type_name + delimiter_str + process + delimiter_str +
-                (threads_buffer ? id_component(thread, *threads_buffer)
-                                : std::string(identifier_part_to_string(thread) + delimiter_str)));
-        }
-        case IdentifierWildcard::THREAD_WILDCARD:
-        {
-            return (delimiter_str + sanitized_group_name + delimiter_str +
-                    (schemes_buffer
-                         ? id_component(scheme, *schemes_buffer)
-                         : std::string(identifier_part_to_string(scheme) + delimiter_str)) +
-                    sanitized_type_name + delimiter_str + process + delimiter_str);
-        }
-        case IdentifierWildcard::PROCESS_THREAD_WILDCARD:
-        {
-            return (delimiter_str + sanitized_group_name + delimiter_str +
-                    (schemes_buffer
-                         ? id_component(scheme, *schemes_buffer)
-                         : std::string(identifier_part_to_string(scheme) + delimiter_str)) +
-                    sanitized_type_name + delimiter_str);
-        }
-    }
-}
 
 #ifdef USE_OLD_ZMQ_CPP_API
 using zmq_recv_flags_type = int;
@@ -290,11 +215,13 @@ template <typename InnerTransporter,
           template <typename Derived, typename InnerTransporterType> class PortalBase>
 class InterProcessPortalImplementation
     : public PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase>,
-                        InnerTransporter>
+                        InnerTransporter>,
+      middleware::IdentifierManager<delimiter, delimiter_substitute>
 {
   public:
     using Base = PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase>,
                             InnerTransporter>;
+    using IdentifierWildcard = middleware::IdentifierWildcard;
 
     InterProcessPortalImplementation(const protobuf::InterProcessPortalConfig& cfg)
         : cfg_(cfg),
@@ -524,7 +451,8 @@ class InterProcessPortalImplementation
                     // actually post the data
                     {
                         const auto& data = control_msg.received_data();
-                        auto null_delim_it = std::find(std::begin(data), std::end(data), '\0');
+                        auto null_delim_it =
+                            std::find(std::begin(data), std::end(data), identifier_end_delimiter);
                         for (auto& sub : subs_to_post)
                         {
                             if (auto sub_sp = sub.lock())
@@ -680,69 +608,6 @@ class InterProcessPortalImplementation
         regex_subscriptions_.insert(std::make_pair(new_sub->subscriber_id(), new_sub));
     }
 
-    template <typename Data, int scheme>
-    std::string _make_identifier(const goby::middleware::Group& group, IdentifierWildcard wildcard)
-    {
-        return _make_identifier(middleware::SerializerParserHelper<Data, scheme>::type_name(),
-                                scheme, group, wildcard);
-    }
-
-    std::string _make_fully_qualified_identifier(const std::string& type_name, int scheme,
-                                                 const std::string& group)
-    {
-        return _make_identifier(type_name, scheme, group, IdentifierWildcard::THREAD_WILDCARD) +
-               id_component(std::this_thread::get_id(), threads_);
-    }
-
-    template <typename Data, int scheme>
-    std::string _make_identifier(const Data& d, const goby::middleware::Group& group,
-                                 IdentifierWildcard wildcard)
-    {
-        return _make_identifier(middleware::SerializerParserHelper<Data, scheme>::type_name(d),
-                                scheme, group, wildcard);
-    }
-
-    std::string _make_identifier(const std::string& type_name, int scheme, const std::string& group,
-                                 IdentifierWildcard wildcard)
-    {
-        return make_identifier(type_name, scheme, group, wildcard, process_, &schemes_, &threads_);
-    }
-
-    // group, scheme, type, process, thread
-    std::tuple<std::string, int, std::string, int, std::size_t>
-    parse_identifier(const std::string& identifier)
-    {
-        enum
-        {
-            POS_GROUP = 0,
-            POS_SCHEME = 1,
-            POS_TYPE = 2,
-            POS_PROCESS = 3,
-            POS_THREAD = 4,
-            POS_MAX = POS_THREAD
-        };
-
-        const int number_elements = POS_MAX + 1;
-        std::string::size_type previous_delimiter = 0;
-        std::vector<std::string> elem;
-        for (auto i = 0; i < number_elements; ++i)
-        {
-            auto delimiter_pos = identifier.find(delimiter, previous_delimiter + 1);
-            elem.push_back(identifier.substr(previous_delimiter + 1,
-                                             delimiter_pos - (previous_delimiter + 1)));
-            previous_delimiter = delimiter_pos;
-        }
-
-        auto& group = elem[POS_GROUP];
-        auto& type = elem[POS_TYPE];
-        std::replace(type.begin(), type.end(), delimiter_substitute, delimiter);
-        std::replace(group.begin(), group.end(), delimiter_substitute, delimiter);
-        return std::make_tuple(elem[POS_GROUP],
-                               middleware::MarshallingScheme::from_string(elem[POS_SCHEME]),
-                               elem[POS_TYPE], std::stoi(elem[POS_PROCESS]),
-                               std::stoull(elem[POS_THREAD], nullptr, 16));
-    }
-
   private:
     const protobuf::InterProcessPortalConfig cfg_;
 
@@ -767,9 +632,6 @@ class InterProcessPortalImplementation
     std::unordered_multimap<std::string,
                             std::shared_ptr<const middleware::SerializationSubscriptionRegex>>
         regex_subscriptions_;
-    std::string process_{std::to_string(getpid())};
-    std::unordered_map<int, std::string> schemes_;
-    std::unordered_map<std::thread::id, std::string> threads_;
 
     bool ready_{false};
 };
@@ -841,18 +703,21 @@ class Manager
     std::unique_ptr<zmq::socket_t> subscribe_socket_;
     std::unique_ptr<zmq::socket_t> publish_socket_;
 
-    std::string zmq_filter_req_{make_identifier(
-        middleware::SerializerParserHelper<
-            protobuf::ManagerRequest, middleware::scheme<protobuf::ManagerRequest>()>::type_name(),
-        middleware::scheme<protobuf::ManagerRequest>(), groups::manager_request,
-        IdentifierWildcard::PROCESS_THREAD_WILDCARD, std::to_string(getpid()))};
+    std::string zmq_filter_req_{
+        middleware::IdentifierManager<delimiter, delimiter_substitute>::make_identifier(
+            middleware::SerializerParserHelper<
+                protobuf::ManagerRequest,
+                middleware::scheme<protobuf::ManagerRequest>()>::type_name(),
+            middleware::scheme<protobuf::ManagerRequest>(), groups::manager_request,
+            middleware::IdentifierWildcard::PROCESS_THREAD_WILDCARD, std::to_string(getpid()))};
 
     std::string zmq_filter_rep_{
-        make_identifier(middleware::SerializerParserHelper<
-                            protobuf::ManagerResponse,
-                            middleware::scheme<protobuf::ManagerResponse>()>::type_name(),
-                        middleware::scheme<protobuf::ManagerResponse>(), groups::manager_response,
-                        IdentifierWildcard::NO_WILDCARDS, std::to_string(getpid())) +
+        middleware::IdentifierManager<delimiter, delimiter_substitute>::make_identifier(
+            middleware::SerializerParserHelper<
+                protobuf::ManagerResponse,
+                middleware::scheme<protobuf::ManagerResponse>()>::type_name(),
+            middleware::scheme<protobuf::ManagerResponse>(), groups::manager_response,
+            middleware::IdentifierWildcard::NO_WILDCARDS, std::to_string(getpid())) +
         std::string(1, '\0')};
 }; // namespace zeromq
 
