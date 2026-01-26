@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package goby.test.zeromq.protobuf;
+package goby.test.middleware.protobuf;
 
 message Sample
 {

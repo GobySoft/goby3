@@ -212,6 +212,7 @@ file(GLOB_RECURSE INCLUDE_FILES RELATIVE ${goby_SRC_DIR}
   src/time/*.h
   src/protobuf/*.h
   src/zeromq/*.h
+  src/udpm/*.h
   )
 
 file(GLOB_RECURSE PROTOBUF_FILES RELATIVE ${goby_SRC_DIR}
