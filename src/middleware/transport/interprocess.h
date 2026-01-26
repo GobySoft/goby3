@@ -483,6 +483,15 @@ class InterProcessPortalBase : public InterProcessTransporterBase<Derived, Inner
             { static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id()); });
     }
 
+    template <typename Data, int scheme>
+    void _publish(const Data& d, const goby::middleware::Group& group,
+                  const middleware::Publisher<Data>& /*publisher*/)
+    {
+        std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
+        std::string type_name = middleware::SerializerParserHelper<Data, scheme>::type_name(d);
+        static_cast<Derived*>(this)->_publish_serialized(type_name, scheme, bytes, group);
+    }
+
     std::shared_ptr<middleware::SerializationSubscriptionRegex> _subscribe_regex(
         std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type,
                            const goby::middleware::Group& group)>

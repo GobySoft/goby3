@@ -312,14 +312,14 @@ class InterProcessPortalImplementation
             groups::manager_response, middleware::Subscriber<protobuf::ManagerResponse>());
     }
 
-    template <typename Data, int scheme>
-    void _publish(const Data& d, const goby::middleware::Group& group,
-                  const middleware::Publisher<Data>& /*publisher*/, bool ignore_buffer = false)
-    {
-        std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
-        std::string type_name = middleware::SerializerParserHelper<Data, scheme>::type_name(d);
-        _publish_serialized(type_name, scheme, bytes, group, ignore_buffer);
-    }
+    // template <typename Data, int scheme>
+    // void _publish(const Data& d, const goby::middleware::Group& group,
+    //               const middleware::Publisher<Data>& /*publisher*/, bool ignore_buffer = false)
+    // {
+    //     std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
+    //     std::string type_name = middleware::SerializerParserHelper<Data, scheme>::type_name(d);
+    //     _publish_serialized(type_name, scheme, bytes, group, ignore_buffer);
+    // }
 
     void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
                              const goby::middleware::Group& group, bool ignore_buffer = false)
@@ -485,9 +485,15 @@ class InterProcessPortalImplementation
                     goby::glog.is_debug3() && goby::glog << "Published ManagerRequest: "
                                                          << req.ShortDebugString() << std::endl;
 
-                    _publish<protobuf::ManagerRequest, middleware::MarshallingScheme::PROTOBUF>(
-                        req, groups::manager_request,
-                        middleware::Publisher<protobuf::ManagerRequest>(), true);
+                    _publish_serialized(
+                        middleware::SerializerParserHelper<
+                            protobuf::ManagerRequest,
+                            middleware::MarshallingScheme::PROTOBUF>::type_name(req),
+                        middleware::MarshallingScheme::PROTOBUF,
+                        middleware::SerializerParserHelper<
+                            protobuf::ManagerRequest,
+                            middleware::MarshallingScheme::PROTOBUF>::serialize(req),
+                        groups::manager_request, true);
                 }
                 break;
 
@@ -591,7 +597,7 @@ class InterProcessPortalImplementation
     InterProcessPortalMainThread zmq_main_;
     InterProcessPortalReadThread zmq_read_thread_;
 
-    // maps identifier to subscription
+    // portal_subscriptions_ and forwarder_subscriptions_: maps identifier to subscription
     std::unordered_multimap<std::string,
                             std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         portal_subscriptions_;
@@ -599,12 +605,13 @@ class InterProcessPortalImplementation
     std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         forwarder_subscriptions_;
 
-    // maps thread id (as string) to map of identifier to forwarder subscription
+    // maps subscriber_id [thread id as string] to map of identifier to forwarder subscription
     std::unordered_map<
         std::string, std::unordered_map<
                          std::string, typename decltype(forwarder_subscriptions_)::const_iterator>>
         forwarder_subscription_identifiers_;
 
+    // subscriber id -> SerializationSubscriptionRegex
     std::unordered_multimap<std::string,
                             std::shared_ptr<const middleware::SerializationSubscriptionRegex>>
         regex_subscriptions_;

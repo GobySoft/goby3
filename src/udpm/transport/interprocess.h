@@ -65,9 +65,8 @@ class InterProcessPortalImplementation
 
     InterProcessPortalImplementation(InnerTransporter& inner,
                                      const protobuf::InterProcessPortalConfig& cfg)
-        : Base(inner), cfg_(cfg)
+        : InterProcessPortalImplementation(cfg)
     {
-        _init();
     }
 
     ~InterProcessPortalImplementation() {}
@@ -81,15 +80,6 @@ class InterProcessPortalImplementation
 
   private:
     void _init() { goby::glog.set_lock_action(goby::util::logger_lock::lock); }
-
-    template <typename Data, int scheme>
-    void _publish(const Data& d, const goby::middleware::Group& group,
-                  const middleware::Publisher<Data>& /*publisher*/, bool ignore_buffer = false)
-    {
-        std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
-        std::string type_name = middleware::SerializerParserHelper<Data, scheme>::type_name(d);
-        _publish_serialized(type_name, scheme, bytes, group, ignore_buffer);
-    }
 
     void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
                              const goby::middleware::Group& group, bool ignore_buffer = false)
