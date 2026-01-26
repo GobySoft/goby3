@@ -349,18 +349,6 @@ class InterProcessPortalImplementation
         portal_subscriptions_.insert(std::make_pair(identifier, subscription));
     }
 
-    std::shared_ptr<middleware::SerializationSubscriptionRegex> _subscribe_regex(
-        std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type,
-                           const goby::middleware::Group& group)>
-            f,
-        const std::set<int>& schemes, const std::string& type_regex, const std::string& group_regex)
-    {
-        auto new_sub = std::make_shared<middleware::SerializationSubscriptionRegex>(
-            f, schemes, type_regex, group_regex);
-        _subscribe_regex(new_sub);
-        return new_sub;
-    }
-
     template <typename Data, int scheme>
     void _unsubscribe(
         const goby::middleware::Group& group,
@@ -510,17 +498,6 @@ class InterProcessPortalImplementation
         return items;
     }
 
-    void _receive_publication_forwarded(
-        const goby::middleware::protobuf::SerializerTransporterMessage& msg)
-    {
-        std::string identifier =
-            _make_identifier(msg.key().type(), msg.key().marshalling_scheme(), msg.key().group(),
-                             IdentifierWildcard::NO_WILDCARDS) +
-            identifier_end_delimiter;
-        auto& bytes = msg.data();
-        zmq_main_.publish(identifier, &bytes[0], bytes.size());
-    }
-
     void _receive_subscription_forwarded(
         const std::shared_ptr<const middleware::SerializationHandlerBase<>>& subscription)
     {
@@ -596,13 +573,7 @@ class InterProcessPortalImplementation
         }
     }
 
-    void _receive_regex_subscription_forwarded(
-        std::shared_ptr<const middleware::SerializationSubscriptionRegex> subscription)
-    {
-        _subscribe_regex(subscription);
-    }
-
-    void _subscribe_regex(
+    void _subscribe_regex_serialized(
         const std::shared_ptr<const middleware::SerializationSubscriptionRegex>& new_sub)
     {
         if (regex_subscriptions_.empty())
@@ -627,6 +598,8 @@ class InterProcessPortalImplementation
     // only one subscription for each forwarded identifier
     std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         forwarder_subscriptions_;
+
+    // maps thread id (as string) to map of identifier to forwarder subscription
     std::unordered_map<
         std::string, std::unordered_map<
                          std::string, typename decltype(forwarder_subscriptions_)::const_iterator>>

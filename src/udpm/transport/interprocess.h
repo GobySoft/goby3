@@ -43,6 +43,7 @@ namespace udpm
 constexpr char delimiter{'/'};
 // use old ASCII substitute char for '/' in group or type
 constexpr char delimiter_substitute{0x1a};
+constexpr char identifier_end_delimiter{'\0'};
 
 template <typename InnerTransporter,
           template <typename Derived, typename InnerTransporterType> class PortalBase>
@@ -73,6 +74,7 @@ class InterProcessPortalImplementation
 
     // no-op - no hold implemented in UDPm
     void ready() {}
+    bool hold_state() { return false; }
 
     friend Base;
     friend typename Base::Base;
@@ -93,7 +95,8 @@ class InterProcessPortalImplementation
                              const goby::middleware::Group& group, bool ignore_buffer = false)
     {
         std::string identifier =
-            _make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) + '\0';
+            _make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) +
+            identifier_end_delimiter;
         //zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer);
     }
 
@@ -111,18 +114,6 @@ class InterProcessPortalImplementation
                                          [=](const Data& /*d*/) { return group; }));
 
         portal_subscriptions_.insert(std::make_pair(identifier, subscription));
-    }
-
-    std::shared_ptr<middleware::SerializationSubscriptionRegex> _subscribe_regex(
-        std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type,
-                           const goby::middleware::Group& group)>
-            f,
-        const std::set<int>& schemes, const std::string& type_regex, const std::string& group_regex)
-    {
-        auto new_sub = std::make_shared<middleware::SerializationSubscriptionRegex>(
-            f, schemes, type_regex, group_regex);
-        _subscribe_regex(new_sub);
-        return new_sub;
     }
 
     template <typename Data, int scheme>
@@ -168,18 +159,6 @@ class InterProcessPortalImplementation
         //              lock.reset();
 
         return items;
-    }
-
-    void _receive_publication_forwarded(
-        const goby::middleware::protobuf::SerializerTransporterMessage& msg)
-    {
-        std::string identifier =
-            _make_identifier(msg.key().type(), msg.key().marshalling_scheme(), msg.key().group(),
-                             IdentifierWildcard::NO_WILDCARDS) +
-            '\0';
-        // auto& bytes = msg.data();
-
-        //zmq_main_.publish(identifier, &bytes[0], bytes.size());
     }
 
     void _receive_subscription_forwarded(
@@ -248,13 +227,7 @@ class InterProcessPortalImplementation
         }
     }
 
-    void _receive_regex_subscription_forwarded(
-        std::shared_ptr<const middleware::SerializationSubscriptionRegex> subscription)
-    {
-        _subscribe_regex(subscription);
-    }
-
-    void _subscribe_regex(
+    void _subscribe_regex_serialized(
         const std::shared_ptr<const middleware::SerializationSubscriptionRegex>& new_sub)
     {
         regex_subscriptions_.insert(std::make_pair(new_sub->subscriber_id(), new_sub));

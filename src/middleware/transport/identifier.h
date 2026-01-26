@@ -16,9 +16,9 @@ namespace middleware
 
 enum class IdentifierWildcard
 {
-    NO_WILDCARDS,
-    THREAD_WILDCARD,
-    PROCESS_THREAD_WILDCARD
+    NO_WILDCARDS,           // fully qualified
+    THREAD_WILDCARD,        // omit thread
+    PROCESS_THREAD_WILDCARD // omit process and thread
 };
 
 template <char delimiter, char delimiter_substitute> class IdentifierManager

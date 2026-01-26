@@ -221,7 +221,8 @@ class InterProcessTransporterBase
             std::regex_replace(std::string(group), special_chars, R"(\$&)");
 
         auto regex_lambda = [=](const std::vector<unsigned char>& data, int schm,
-                                const std::string& type, const Group& grp) {
+                                const std::string& type, const Group& grp)
+        {
             auto data_begin = data.begin(), data_end = data.end(), actual_end = data.end();
             auto msg =
                 SerializerParserHelper<Data, scheme>::parse(data_begin, data_end, actual_end, type);
@@ -364,9 +365,8 @@ class InterProcessForwarder
         this->inner().template subscribe_dynamic<Data, scheme>(f, group);
 
         // forward subscription to edge
-        auto inner_publication_lambda = [=](std::shared_ptr<const Data> d) {
-            this->inner().template publish_dynamic<Data, scheme>(d, group);
-        };
+        auto inner_publication_lambda = [=](std::shared_ptr<const Data> d)
+        { this->inner().template publish_dynamic<Data, scheme>(d, group); };
 
         auto subscription = std::make_shared<SerializationSubscription<Data, scheme>>(
             inner_publication_lambda, group,
@@ -404,7 +404,8 @@ class InterProcessForwarder
                      const std::string& group_regex = ".*")
     {
         auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme,
-                                            const std::string& type, const Group& group) {
+                                            const std::string& type, const Group& group)
+        {
             std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
                 forwarded_data(new goby::middleware::protobuf::SerializerTransporterMessage);
             forwarded_data->mutable_key()->set_marshalling_scheme(scheme);
@@ -454,29 +455,44 @@ class InterProcessPortalBase : public InterProcessTransporterBase<Derived, Inner
 
     virtual ~InterProcessPortalBase() {}
 
+    friend Base;
+
   private:
     void _init()
     {
         using goby::middleware::protobuf::SerializerTransporterMessage;
         this->inner().template subscribe<Base::to_portal_group_, SerializerTransporterMessage>(
-            [this](std::shared_ptr<const SerializerTransporterMessage> d) {
-                static_cast<Derived*>(this)->_receive_publication_forwarded(*d);
+            [this](std::shared_ptr<const SerializerTransporterMessage> d)
+            {
+                std::vector<char> data(d->data().begin(), d->data().end());
+                static_cast<Derived*>(this)->_publish_serialized(
+                    d->key().type(), d->key().marshalling_scheme(), data,
+                    goby::middleware::DynamicGroup(d->key().group()));
             });
 
         this->inner().template subscribe<Base::to_portal_group_, SerializationHandlerBase<>>(
-            [this](std::shared_ptr<const middleware::SerializationHandlerBase<>> s) {
-                static_cast<Derived*>(this)->_receive_subscription_forwarded(s);
-            });
+            [this](std::shared_ptr<const middleware::SerializationHandlerBase<>> s)
+            { static_cast<Derived*>(this)->_receive_subscription_forwarded(s); });
 
         this->inner().template subscribe<Base::to_portal_group_, SerializationSubscriptionRegex>(
-            [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s) {
-                static_cast<Derived*>(this)->_receive_regex_subscription_forwarded(s);
-            });
+            [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s)
+            { static_cast<Derived*>(this)->_subscribe_regex_serialized(s); });
 
         this->inner().template subscribe<Base::to_portal_group_, SerializationUnSubscribeAll>(
-            [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s) {
-                static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id());
-            });
+            [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s)
+            { static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id()); });
+    }
+
+    std::shared_ptr<middleware::SerializationSubscriptionRegex> _subscribe_regex(
+        std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type,
+                           const goby::middleware::Group& group)>
+            f,
+        const std::set<int>& schemes, const std::string& type_regex, const std::string& group_regex)
+    {
+        auto new_sub = std::make_shared<middleware::SerializationSubscriptionRegex>(
+            f, schemes, type_regex, group_regex);
+        static_cast<Derived*>(this)->_subscribe_regex_serialized(new_sub);
+        return new_sub;
     }
 };
 
