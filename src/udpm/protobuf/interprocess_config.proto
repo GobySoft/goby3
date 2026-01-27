@@ -15,12 +15,12 @@ message InterProcessPortalConfig
 
     optional string listen_address = 2 [
         (goby.field).description = "IPv4 or IPv6 address to listen on",
-        default = "0::0"
+        default = "0.0.0.0"
     ];
     optional string multicast_address = 3 [
         (goby.field).description =
             "IPv4 or IPv6 address for the multicast network (224.0.0.0/24 or ffx2:/16 for local machine)",
-        default = "ff02::1"
+        default = "239.142.0.2"
     ];
 
     optional uint32 multicast_port = 4
