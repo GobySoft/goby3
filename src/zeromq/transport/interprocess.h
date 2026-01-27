@@ -307,13 +307,9 @@ class InterProcessPortalImplementation
             groups::manager_response, middleware::Subscriber<protobuf::ManagerResponse>());
     }
 
-    void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
-                             const goby::middleware::Group& group, bool ignore_buffer = false)
+    void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
     {
-        std::string identifier =
-            this->_make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) +
-            middleware::InterProcessIdentifierManager::end_delimiter;
-        zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer);
+        zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer_);
     }
 
     void _do_portal_subscribe(const std::string& identifier) { zmq_main_.subscribe(identifier); }
@@ -363,15 +359,9 @@ class InterProcessPortalImplementation
                     goby::glog.is_debug3() && goby::glog << "Published ManagerRequest: "
                                                          << req.ShortDebugString() << std::endl;
 
-                    _publish_serialized(
-                        middleware::SerializerParserHelper<
-                            protobuf::ManagerRequest,
-                            middleware::MarshallingScheme::PROTOBUF>::type_name(req),
-                        middleware::MarshallingScheme::PROTOBUF,
-                        middleware::SerializerParserHelper<
-                            protobuf::ManagerRequest,
-                            middleware::MarshallingScheme::PROTOBUF>::serialize(req),
-                        groups::manager_request, true);
+                    ignore_buffer_ = true;
+                    this->template publish<groups::manager_request>(req);
+                    ignore_buffer_ = false;
                 }
                 break;
 
@@ -392,6 +382,7 @@ class InterProcessPortalImplementation
     InterProcessPortalReadThread zmq_read_thread_;
 
     bool ready_{false};
+    bool ignore_buffer_{false};        
 };
 
 class Router

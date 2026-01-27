@@ -466,7 +466,7 @@ class InterProcessPortalBase : public InterProcessTransporterBase<Derived, Inner
     {
         std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
         std::string type_name = middleware::SerializerParserHelper<Data, scheme>::type_name(d);
-        static_cast<Derived*>(this)->_publish_serialized(type_name, scheme, bytes, group);
+        _publish_serialized(type_name, scheme, bytes, group);
     }
 
     std::shared_ptr<middleware::SerializationSubscriptionRegex> _subscribe_regex(
@@ -577,9 +577,8 @@ class InterProcessPortalBase : public InterProcessTransporterBase<Derived, Inner
             [this](std::shared_ptr<const SerializerTransporterMessage> d)
             {
                 std::vector<char> data(d->data().begin(), d->data().end());
-                static_cast<Derived*>(this)->_publish_serialized(
-                    d->key().type(), d->key().marshalling_scheme(), data,
-                    goby::middleware::DynamicGroup(d->key().group()));
+                _publish_serialized(d->key().type(), d->key().marshalling_scheme(), data,
+                                    goby::middleware::DynamicGroup(d->key().group()));
             });
 
         this->inner().template subscribe<Base::to_portal_group_, SerializationHandlerBase<>>(
@@ -708,6 +707,15 @@ class InterProcessPortalBase : public InterProcessTransporterBase<Derived, Inner
             static_cast<Derived*>(this)->_do_portal_wildcard_subscribe();
 
         regex_subscriptions_.insert(std::make_pair(new_sub->subscriber_id(), new_sub));
+    }
+
+    void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
+                             const goby::middleware::Group& group)
+    {
+        std::string identifier =
+            this->_make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) +
+            InterProcessIdentifierManager::end_delimiter;
+        static_cast<Derived*>(this)->_do_publish(identifier, bytes);
     }
 
   private:

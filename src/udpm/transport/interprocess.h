@@ -40,8 +40,6 @@ template <typename Data> class Publisher;
 namespace udpm
 {
 
-constexpr char identifier_end_delimiter{'\0'};
-
 template <typename InnerTransporter,
           template <typename Derived, typename InnerTransporterType> class PortalBase>
 class InterProcessPortalImplementation
@@ -77,13 +75,9 @@ class InterProcessPortalImplementation
   private:
     void _init() { goby::glog.set_lock_action(goby::util::logger_lock::lock); }
 
-    void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
-                             const goby::middleware::Group& group, bool ignore_buffer = false)
+    void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
     {
-        std::string identifier =
-            this->_make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) +
-            identifier_end_delimiter;
-        //zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer);
+        //
     }
 
     void _do_portal_subscribe(const std::string& identifier)
