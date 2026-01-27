@@ -40,17 +40,13 @@ template <typename Data> class Publisher;
 namespace udpm
 {
 
-constexpr char delimiter{'/'};
-// use old ASCII substitute char for '/' in group or type
-constexpr char delimiter_substitute{0x1a};
 constexpr char identifier_end_delimiter{'\0'};
 
 template <typename InnerTransporter,
           template <typename Derived, typename InnerTransporterType> class PortalBase>
 class InterProcessPortalImplementation
     : public PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase>,
-                        InnerTransporter>,
-      middleware::IdentifierManager<delimiter, delimiter_substitute>
+                        InnerTransporter>
 {
   public:
     using Base = PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase>,
@@ -85,7 +81,7 @@ class InterProcessPortalImplementation
                              const goby::middleware::Group& group, bool ignore_buffer = false)
     {
         std::string identifier =
-            _make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) +
+            this->_make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) +
             identifier_end_delimiter;
         //zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer);
     }
@@ -95,8 +91,8 @@ class InterProcessPortalImplementation
                     const goby::middleware::Group& group,
                     const middleware::Subscriber<Data>& /*subscriber*/)
     {
-        std::string identifier =
-            _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+        std::string identifier = this->template _make_identifier<Data, scheme>(
+            group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
         auto subscription = std::make_shared<middleware::SerializationSubscription<Data, scheme>>(
             f, group,
@@ -111,17 +107,17 @@ class InterProcessPortalImplementation
         const goby::middleware::Group& group,
         const middleware::Subscriber<Data>& /*subscriber*/ = middleware::Subscriber<Data>())
     {
-        std::string identifier =
-            _make_identifier<Data, scheme>(group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+        std::string identifier = this->template _make_identifier<Data, scheme>(
+            group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
         portal_subscriptions_.erase(identifier);
     }
 
-    void _unsubscribe_all(
-        const std::string& subscriber_id = identifier_part_to_string(std::this_thread::get_id()))
+    void _unsubscribe_all(const std::string& subscriber_id =
+                              middleware::identifier_part_to_string(std::this_thread::get_id()))
     {
         // portal unsubscribe
-        if (subscriber_id == identifier_part_to_string(std::this_thread::get_id()))
+        if (subscriber_id == middleware::identifier_part_to_string(std::this_thread::get_id()))
         {
             portal_subscriptions_.clear();
         }
@@ -154,9 +150,9 @@ class InterProcessPortalImplementation
     void _receive_subscription_forwarded(
         const std::shared_ptr<const middleware::SerializationHandlerBase<>>& subscription)
     {
-        std::string identifier = _make_identifier(subscription->type_name(), subscription->scheme(),
-                                                  subscription->subscribed_group(),
-                                                  IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+        std::string identifier = this->_make_identifier(
+            subscription->type_name(), subscription->scheme(), subscription->subscribed_group(),
+            IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
         goby::glog.is_debug2() &&
             goby::glog << "Received subscription forwarded for identifier [" << identifier

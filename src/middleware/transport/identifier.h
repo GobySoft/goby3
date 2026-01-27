@@ -1,3 +1,7 @@
+
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_IDENTIFIER_H
+#define GOBY_MIDDLEWARE_TRANSPORT_IDENTIFIER_H
+
 #include <algorithm>
 #include <string>
 #include <thread>
@@ -21,90 +25,40 @@ enum class IdentifierWildcard
     PROCESS_THREAD_WILDCARD // omit process and thread
 };
 
-template <char delimiter, char delimiter_substitute> class IdentifierManager
+struct InterProcessIdentity
+{
+    std::string group;
+    int scheme;
+    std::string type_name;
+    int process_id;
+    std::size_t thread_id;
+};
+
+// scheme
+inline std::string identifier_part_to_string(int i)
+{
+    return middleware::MarshallingScheme::to_string(i);
+}
+inline std::string identifier_part_to_string(std::thread::id i)
+{
+    return goby::middleware::thread_id(i);
+}
+
+class InterProcessIdentifierManager
 {
   public:
+    const static char delimiter;
+    const static char delimiter_substitute;
+
     static std::string
     make_identifier(const std::string& type_name, int scheme, const std::string& group,
                     IdentifierWildcard wildcard, const std::string& process,
                     std::unordered_map<int, std::string>* schemes_buffer = nullptr,
-                    std::unordered_map<std::thread::id, std::string>* threads_buffer = nullptr)
-    {
-        // swap out delimiter with substitute
-        std::string sanitized_type_name = type_name;
-        std::replace(sanitized_type_name.begin(), sanitized_type_name.end(), delimiter,
-                     delimiter_substitute);
-        std::string sanitized_group_name = group;
-        std::replace(sanitized_group_name.begin(), sanitized_group_name.end(), delimiter,
-                     delimiter_substitute);
-        switch (wildcard)
-        {
-            default:
-            case IdentifierWildcard::NO_WILDCARDS:
-            {
-                auto thread = std::this_thread::get_id();
-                return (delimiter_str_ + sanitized_group_name + delimiter_str_ +
-                        (schemes_buffer
-                             ? id_component(scheme, *schemes_buffer)
-                             : std::string(identifier_part_to_string(scheme) + delimiter_str_)) +
-                        sanitized_type_name + delimiter_str_ + process + delimiter_str_ +
-                        (threads_buffer
-                             ? id_component(thread, *threads_buffer)
-                             : std::string(identifier_part_to_string(thread) + delimiter_str_)));
-            }
-            case IdentifierWildcard::THREAD_WILDCARD:
-            {
-                return (delimiter_str_ + sanitized_group_name + delimiter_str_ +
-                        (schemes_buffer
-                             ? id_component(scheme, *schemes_buffer)
-                             : std::string(identifier_part_to_string(scheme) + delimiter_str_)) +
-                        sanitized_type_name + delimiter_str_ + process + delimiter_str_);
-            }
-            case IdentifierWildcard::PROCESS_THREAD_WILDCARD:
-            {
-                return (delimiter_str_ + sanitized_group_name + delimiter_str_ +
-                        (schemes_buffer
-                             ? id_component(scheme, *schemes_buffer)
-                             : std::string(identifier_part_to_string(scheme) + delimiter_str_)) +
-                        sanitized_type_name + delimiter_str_);
-            }
-        }
-    }
+                    std::unordered_map<std::thread::id, std::string>* threads_buffer = nullptr);
 
     // group, scheme, type, process, thread
     std::tuple<std::string, int, std::string, int, std::size_t> static parse_identifier(
-        const std::string& identifier)
-    {
-        enum
-        {
-            POS_GROUP = 0,
-            POS_SCHEME = 1,
-            POS_TYPE = 2,
-            POS_PROCESS = 3,
-            POS_THREAD = 4,
-            POS_MAX = POS_THREAD
-        };
-
-        const int number_elements = POS_MAX + 1;
-        std::string::size_type previous_delimiter = 0;
-        std::vector<std::string> elem;
-        for (auto i = 0; i < number_elements; ++i)
-        {
-            auto delimiter_pos = identifier.find(delimiter, previous_delimiter + 1);
-            elem.push_back(identifier.substr(previous_delimiter + 1,
-                                             delimiter_pos - (previous_delimiter + 1)));
-            previous_delimiter = delimiter_pos;
-        }
-
-        auto& group = elem[POS_GROUP];
-        auto& type = elem[POS_TYPE];
-        std::replace(type.begin(), type.end(), delimiter_substitute, delimiter);
-        std::replace(group.begin(), group.end(), delimiter_substitute, delimiter);
-        return std::make_tuple(elem[POS_GROUP],
-                               middleware::MarshallingScheme::from_string(elem[POS_SCHEME]),
-                               elem[POS_TYPE], std::stoi(elem[POS_PROCESS]),
-                               std::stoull(elem[POS_THREAD], nullptr, 16));
-    }
+        const std::string& identifier);
 
   protected:
     template <typename Data, int scheme>
@@ -128,16 +82,6 @@ template <char delimiter, char delimiter_substitute> class IdentifierManager
         return make_identifier(type_name, scheme, group, wildcard, process_, &schemes_, &threads_);
     }
 
-    // scheme
-    static std::string identifier_part_to_string(int i)
-    {
-        return middleware::MarshallingScheme::to_string(i);
-    }
-    static std::string identifier_part_to_string(std::thread::id i)
-    {
-        return goby::middleware::thread_id(i);
-    }
-
   private:
     /// Given key, find the string in the map, or create it (to_string) and store it, and return the string.
     template <typename Key>
@@ -159,8 +103,7 @@ template <char delimiter, char delimiter_substitute> class IdentifierManager
     std::unordered_map<std::thread::id, std::string> threads_;
 };
 
-template <char delimiter, char delimiter_substitute>
-const std::string IdentifierManager<delimiter, delimiter_substitute>::delimiter_str_{delimiter};
-
 } // namespace middleware
 } // namespace goby
+
+#endif

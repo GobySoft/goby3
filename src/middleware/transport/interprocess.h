@@ -35,6 +35,7 @@
 #include "goby/middleware/group.h"
 
 #include "goby/middleware/marshalling/interface.h"
+#include "goby/middleware/transport/identifier.h"
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
 #include "goby/middleware/transport/serialization_handlers.h"
@@ -445,7 +446,8 @@ class InterProcessForwarder
 };
 
 template <typename Derived, typename InnerTransporter>
-class InterProcessPortalBase : public InterProcessTransporterBase<Derived, InnerTransporter>
+class InterProcessPortalBase : public InterProcessTransporterBase<Derived, InnerTransporter>,
+                               public InterProcessIdentifierManager
 {
   public:
     using Base = InterProcessTransporterBase<Derived, InnerTransporter>;
