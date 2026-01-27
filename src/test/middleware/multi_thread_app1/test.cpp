@@ -110,7 +110,7 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
         ready = true;
     }
 
-    ~TestThreadRx() override = default;
+    ~TestThreadRx() { glog.is_verbose() && glog << "~TestThreadRx" << std::endl; }
 
     void post(const Widget& widget)
     {
@@ -153,7 +153,10 @@ class TestAppRx : public AppBase
         assert(widget.b() == rx_count_);
         ++rx_count_;
         if (rx_count_ == num_messages)
+        {
+            glog.is_verbose() && glog << "TestAppRx main thread done" << std::endl;
             quit();
+        }
     }
 
     void post2(const Widget& widget)
@@ -208,7 +211,10 @@ class TestAppTx : public AppBase
         interprocess().publish<widget1>(w);
 
         if (tx_count_ == (num_messages + 5))
+        {
+            glog.is_verbose() && glog << "TestAppTx main thread done" << std::endl;
             quit();
+        }
     }
 
     void noop(const Widget& widget) {}
@@ -272,6 +278,11 @@ int main(int argc, char* argv[])
         }
         else
         {
+#if defined(test_for_udpm)
+            // no hold feature implemented, so we have to wait for the Rx App to start first
+            sleep(1);
+#endif
+
             return goby::run<goby::test::middleware::TestAppTx>(
                 goby::test::middleware::TestTxConfigurator(argc, argv));
         }

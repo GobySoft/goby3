@@ -13,21 +13,24 @@ message InterProcessPortalConfig
         }
     ];
 
-    optional string ip_address = 2 [
+    optional string listen_address = 2 [
+        (goby.field).description = "IPv4 or IPv6 address to listen on",
+        default = "0::0"
+    ];
+    optional string multicast_address = 3 [
         (goby.field).description =
-            "IPv4 or IPv6 address for the multicast network (224.0.0.0/24 or ffx1::/16 for local machine)",
-        default = "ff01::1"
+            "IPv4 or IPv6 address for the multicast network (224.0.0.0/24 or ffx2:/16 for local machine)",
+        default = "ff02::1"
     ];
 
-    optional uint32 udp_port = 3
+    optional uint32 multicast_port = 4
         [default = 11144, (goby.field).description = "UDP Port"];
 
-    optional uint32 udp_payload_bytes = 4 [default = 1232];
+    optional uint32 udp_payload_bytes = 5 [default = 1232];
 
     optional string client_name = 20 [
         (goby.field).description =
-        "Unique name for InterProcessPortal. Defaults to app.name",
+            "Unique name for InterProcessPortal. Defaults to app.name",
         (goby.field).cfg = { action: ADVANCED }
-        ];
-    
+    ];
 }
