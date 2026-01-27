@@ -71,6 +71,7 @@ class InterProcessPortalImplementation
 
     friend Base;
     friend typename Base::Base;
+    friend typename Base::Common;
 
   private:
     void _init() { goby::glog.set_lock_action(goby::util::logger_lock::lock); }

@@ -254,6 +254,7 @@ class InterProcessPortalImplementation
 
     friend Base;
     friend typename Base::Base;
+    friend typename Base::Common;
 
   private:
     void _init()
@@ -382,7 +383,7 @@ class InterProcessPortalImplementation
     InterProcessPortalReadThread zmq_read_thread_;
 
     bool ready_{false};
-    bool ignore_buffer_{false};        
+    bool ignore_buffer_{false};
 };
 
 class Router
