@@ -89,7 +89,6 @@ constexpr goby::middleware::Group manager_response{"goby::zeromq::_internal_mana
 } // namespace groups
 
 constexpr const char* delimiter_str{"/"};
-constexpr char identifier_end_delimiter{'\0'};
 
 void setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg);
 
@@ -283,7 +282,8 @@ class InterProcessPortalImplementation
         // Handle hold state request/response using pub sub so that we ensure
         // publishing and subscribe is completely functional before releasing the hold
         //
-        _subscribe<protobuf::ManagerResponse, middleware::MarshallingScheme::PROTOBUF>(
+        this->template _subscribe<protobuf::ManagerResponse,
+                                  middleware::MarshallingScheme::PROTOBUF>(
             [this](std::shared_ptr<const protobuf::ManagerResponse> response)
             {
                 goby::glog.is_debug3() && goby::glog << "Received ManagerResponse: "
@@ -298,8 +298,8 @@ class InterProcessPortalImplementation
                 // we're good to go now, so let's unsubscribe to this group
                 if (zmq_main_.publish_ready())
                 {
-                    _unsubscribe<protobuf::ManagerResponse,
-                                 middleware::MarshallingScheme::PROTOBUF>(
+                    this->template _unsubscribe<protobuf::ManagerResponse,
+                                                middleware::MarshallingScheme::PROTOBUF>(
                         groups::manager_response,
                         middleware::Subscriber<protobuf::ManagerResponse>());
                 }
@@ -312,74 +312,18 @@ class InterProcessPortalImplementation
     {
         std::string identifier =
             this->_make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) +
-            identifier_end_delimiter;
+            middleware::InterProcessIdentifierManager::end_delimiter;
         zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer);
     }
 
-    template <typename Data, int scheme>
-    void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f,
-                    const goby::middleware::Group& group,
-                    const middleware::Subscriber<Data>& /*subscriber*/)
+    void _do_portal_subscribe(const std::string& identifier) { zmq_main_.subscribe(identifier); }
+    void _do_portal_unsubscribe(const std::string& identifier)
     {
-        std::string identifier = this->template _make_identifier<Data, scheme>(
-            group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
-
-        auto subscription = std::make_shared<middleware::SerializationSubscription<Data, scheme>>(
-            f, group,
-            middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
-                                         [=](const Data& /*d*/) { return group; }));
-
-        if (forwarder_subscriptions_.count(identifier) == 0 &&
-            portal_subscriptions_.count(identifier) == 0)
-            zmq_main_.subscribe(identifier);
-        portal_subscriptions_.insert(std::make_pair(identifier, subscription));
+        zmq_main_.unsubscribe(identifier);
     }
 
-    template <typename Data, int scheme>
-    void _unsubscribe(
-        const goby::middleware::Group& group,
-        const middleware::Subscriber<Data>& /*subscriber*/ = middleware::Subscriber<Data>())
-    {
-        std::string identifier = this->template _make_identifier<Data, scheme>(
-            group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
-
-        portal_subscriptions_.erase(identifier);
-
-        // If no forwarded subscriptions, do the actual unsubscribe
-        if (forwarder_subscriptions_.count(identifier) == 0)
-            zmq_main_.unsubscribe(identifier);
-    }
-
-    void _unsubscribe_all(const std::string& subscriber_id =
-                              middleware::identifier_part_to_string(std::this_thread::get_id()))
-    {
-        // portal unsubscribe
-        if (subscriber_id == middleware::identifier_part_to_string(std::this_thread::get_id()))
-        {
-            for (const auto& p : portal_subscriptions_)
-            {
-                const auto& identifier = p.first;
-                if (forwarder_subscriptions_.count(identifier) == 0)
-                    zmq_main_.unsubscribe(identifier);
-            }
-            portal_subscriptions_.clear();
-        }
-        else // forwarder unsubscribe
-        {
-            while (forwarder_subscription_identifiers_[subscriber_id].size() > 0)
-                _forwarder_unsubscribe(
-                    subscriber_id,
-                    forwarder_subscription_identifiers_[subscriber_id].begin()->first);
-        }
-
-        // regex
-        if (regex_subscriptions_.size() > 0)
-        {
-            regex_subscriptions_.erase(subscriber_id);
-            if (regex_subscriptions_.empty())
-                zmq_main_.unsubscribe(delimiter_str);
-        }
-    }
+    void _do_portal_wildcard_subscribe() { zmq_main_.subscribe(delimiter_str); }
+    void _do_portal_wildcard_unsubscribe() { zmq_main_.unsubscribe(delimiter_str); }
 
     int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
     {
@@ -403,61 +347,7 @@ class InterProcessPortalImplementation
                 case protobuf::InprocControl::RECEIVE:
                 {
                     ++items;
-                    if (lock)
-                        lock.reset();
-
-                    const auto& data = control_msg.received_data();
-
-                    std::string group, type;
-                    int scheme, process;
-                    std::size_t thread;
-                    std::tie(group, scheme, type, process, thread) = this->parse_identifier(data);
-                    std::string identifier = this->_make_identifier(
-                        type, scheme, group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
-
-                    // build a set so if any of the handlers unsubscribes, we still have a pointer to the middleware::SerializationHandlerBase<>
-                    std::vector<std::weak_ptr<const middleware::SerializationHandlerBase<>>>
-                        subs_to_post;
-                    auto portal_range = portal_subscriptions_.equal_range(identifier);
-                    for (auto it = portal_range.first; it != portal_range.second; ++it)
-                        subs_to_post.push_back(it->second);
-                    auto forwarder_it = forwarder_subscriptions_.find(identifier);
-                    if (forwarder_it != forwarder_subscriptions_.end())
-                        subs_to_post.push_back(forwarder_it->second);
-
-                    // actually post the data
-                    {
-                        const auto& data = control_msg.received_data();
-                        auto null_delim_it =
-                            std::find(std::begin(data), std::end(data), identifier_end_delimiter);
-                        for (auto& sub : subs_to_post)
-                        {
-                            if (auto sub_sp = sub.lock())
-                                sub_sp->post(null_delim_it + 1, data.end());
-                        }
-                    }
-
-                    if (!regex_subscriptions_.empty())
-                    {
-                        auto null_delim_it =
-                            std::find(std::begin(data), std::end(data), identifier_end_delimiter);
-
-                        bool forwarder_subscription_posted = false;
-                        for (auto& sub : regex_subscriptions_)
-                        {
-                            // only post at most once for forwarders as the threads will filter
-                            bool is_forwarded_sub =
-                                sub.first !=
-                                middleware::identifier_part_to_string(std::this_thread::get_id());
-                            if (is_forwarded_sub && forwarder_subscription_posted)
-                                continue;
-
-                            if (sub.second->post(null_delim_it + 1, data.end(), scheme, type,
-                                                 group) &&
-                                is_forwarded_sub)
-                                forwarder_subscription_posted = true;
-                        }
-                    }
+                    this->_handle_received_data(lock, control_msg.received_data());
                 }
                 break;
 
@@ -492,90 +382,6 @@ class InterProcessPortalImplementation
         return items;
     }
 
-    void _receive_subscription_forwarded(
-        const std::shared_ptr<const middleware::SerializationHandlerBase<>>& subscription)
-    {
-        std::string identifier = this->_make_identifier(
-            subscription->type_name(), subscription->scheme(), subscription->subscribed_group(),
-            IdentifierWildcard::PROCESS_THREAD_WILDCARD);
-
-        goby::glog.is_debug2() &&
-            goby::glog << "Received subscription forwarded for identifier [" << identifier
-                       << "] from subscriber id: " << subscription->subscriber_id() << std::endl;
-
-        switch (subscription->action())
-        {
-            case middleware::SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE:
-            {
-                // insert if this thread hasn't already subscribed
-                if (forwarder_subscription_identifiers_[subscription->subscriber_id()].count(
-                        identifier) == 0)
-                {
-                    // first to subscribe from a Forwarder
-                    if (forwarder_subscriptions_.count(identifier) == 0)
-                    {
-                        // first to subscribe (locally or forwarded)
-                        if (portal_subscriptions_.count(identifier) == 0)
-                            zmq_main_.subscribe(identifier);
-
-                        // create Forwarder subscription
-                        forwarder_subscriptions_.insert(std::make_pair(identifier, subscription));
-                    }
-                    forwarder_subscription_identifiers_[subscription->subscriber_id()].insert(
-                        std::make_pair(identifier, forwarder_subscriptions_.find(identifier)));
-                }
-            }
-            break;
-
-            case middleware::SerializationHandlerBase<>::SubscriptionAction::UNSUBSCRIBE:
-            {
-                _forwarder_unsubscribe(subscription->subscriber_id(), identifier);
-            }
-            break;
-
-            default: break;
-        }
-    }
-
-    void _forwarder_unsubscribe(const std::string& subscriber_id, const std::string& identifier)
-    {
-        auto it = forwarder_subscription_identifiers_[subscriber_id].find(identifier);
-        if (it != forwarder_subscription_identifiers_[subscriber_id].end())
-        {
-            bool no_forwarder_subscribers = true;
-            for (const auto& p : forwarder_subscription_identifiers_)
-            {
-                if (p.second.count(identifier) != 0)
-                {
-                    no_forwarder_subscribers = false;
-                    break;
-                }
-            }
-
-            // if no Forwarder subscriptions left
-            if (no_forwarder_subscribers)
-            {
-                // erase the Forwarder subscription
-                forwarder_subscriptions_.erase(it->second);
-
-                // do the actual unsubscribe if we aren't subscribe locally as well
-                if (portal_subscriptions_.count(identifier) == 0)
-                    zmq_main_.unsubscribe(identifier);
-            }
-
-            forwarder_subscription_identifiers_[subscriber_id].erase(it);
-        }
-    }
-
-    void _subscribe_regex_serialized(
-        const std::shared_ptr<const middleware::SerializationSubscriptionRegex>& new_sub)
-    {
-        if (regex_subscriptions_.empty())
-            zmq_main_.subscribe(delimiter_str);
-
-        regex_subscriptions_.insert(std::make_pair(new_sub->subscriber_id(), new_sub));
-    }
-
   private:
     const protobuf::InterProcessPortalConfig cfg_;
 
@@ -584,25 +390,6 @@ class InterProcessPortalImplementation
     zmq::context_t zmq_context_;
     InterProcessPortalMainThread zmq_main_;
     InterProcessPortalReadThread zmq_read_thread_;
-
-    // portal_subscriptions_ and forwarder_subscriptions_: maps identifier to subscription
-    std::unordered_multimap<std::string,
-                            std::shared_ptr<const middleware::SerializationHandlerBase<>>>
-        portal_subscriptions_;
-    // only one subscription for each forwarded identifier
-    std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<>>>
-        forwarder_subscriptions_;
-
-    // maps subscriber_id [thread id as string] to map of identifier to forwarder subscription
-    std::unordered_map<
-        std::string, std::unordered_map<
-                         std::string, typename decltype(forwarder_subscriptions_)::const_iterator>>
-        forwarder_subscription_identifiers_;
-
-    // subscriber id -> SerializationSubscriptionRegex
-    std::unordered_multimap<std::string,
-                            std::shared_ptr<const middleware::SerializationSubscriptionRegex>>
-        regex_subscriptions_;
 
     bool ready_{false};
 };
@@ -674,13 +461,11 @@ class Manager
     std::unique_ptr<zmq::socket_t> subscribe_socket_;
     std::unique_ptr<zmq::socket_t> publish_socket_;
 
-    std::string zmq_filter_req_{
-        middleware::InterProcessIdentifierManager::make_identifier(
-            middleware::SerializerParserHelper<
-                protobuf::ManagerRequest,
-                middleware::scheme<protobuf::ManagerRequest>()>::type_name(),
-            middleware::scheme<protobuf::ManagerRequest>(), groups::manager_request,
-            middleware::IdentifierWildcard::PROCESS_THREAD_WILDCARD, std::to_string(getpid()))};
+    std::string zmq_filter_req_{middleware::InterProcessIdentifierManager::make_identifier(
+        middleware::SerializerParserHelper<
+            protobuf::ManagerRequest, middleware::scheme<protobuf::ManagerRequest>()>::type_name(),
+        middleware::scheme<protobuf::ManagerRequest>(), groups::manager_request,
+        middleware::IdentifierWildcard::PROCESS_THREAD_WILDCARD, std::to_string(getpid()))};
 
     std::string zmq_filter_rep_{
         middleware::InterProcessIdentifierManager::make_identifier(
@@ -689,7 +474,7 @@ class Manager
                 middleware::scheme<protobuf::ManagerResponse>()>::type_name(),
             middleware::scheme<protobuf::ManagerResponse>(), groups::manager_response,
             middleware::IdentifierWildcard::NO_WILDCARDS, std::to_string(getpid())) +
-        std::string(1, identifier_end_delimiter)};
+        std::string(1, middleware::InterProcessIdentifierManager::end_delimiter)};
 }; // namespace zeromq
 
 template <typename InnerTransporter = middleware::NullTransporter>

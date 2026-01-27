@@ -49,7 +49,8 @@ class InterProcessIdentifierManager
   public:
     const static char delimiter;
     const static char delimiter_substitute;
-
+    const static char end_delimiter;
+    
     static std::string
     make_identifier(const std::string& type_name, int scheme, const std::string& group,
                     IdentifierWildcard wildcard, const std::string& process,

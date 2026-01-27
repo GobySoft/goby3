@@ -3,6 +3,8 @@
 const char goby::middleware::InterProcessIdentifierManager::delimiter{'/'};
 const char goby::middleware::InterProcessIdentifierManager::delimiter_substitute{
     0x1a}; // old ASCII substitute
+const char goby::middleware::InterProcessIdentifierManager::end_delimiter{'\0'};
+
 const std::string goby::middleware::InterProcessIdentifierManager::delimiter_str_{delimiter};
 
 std::string goby::middleware::InterProcessIdentifierManager::make_identifier(
