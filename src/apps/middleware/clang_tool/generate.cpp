@@ -163,6 +163,75 @@ std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
     }
 }
 
+// Matches publish_dynamic<Data, scheme>(data, DynamicGroup("...")) and
+// subscribe_dynamic<Data, scheme>(callback, DynamicGroup("...")) calls where the
+// group name can be statically extracted from the DynamicGroup constructor argument.
+::clang::ast_matchers::StatementMatcher pubsub_dynamic_matcher(std::string method)
+{
+    using namespace clang::ast_matchers;
+
+    // Same calling thread matcher as in pubsub_matcher
+    auto calling_thread_matcher = on(expr(
+        anyOf(
+            cxxMemberCallExpr(on(hasType(
+                pointsTo(hasUnqualifiedDesugaredType(recordType(hasDeclaration(cxxRecordDecl(
+                    cxxRecordDecl().bind("on_thread_decl"),
+                    isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread"))))))))))),
+            hasDescendant(cxxMemberCallExpr(on(hasType(pointsTo(cxxRecordDecl(
+                cxxRecordDecl().bind("on_indirect_thread_decl"),
+                isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::Thread"))))))))),
+            expr().bind("on_expr")),
+        hasType(hasUnqualifiedDesugaredType(recordType(hasDeclaration(cxxRecordDecl(
+            decl().bind("on_type_decl"),
+            isDerivedFrom(cxxRecordDecl(hasName("::goby::middleware::StaticTransporterInterface"))),
+            unless(hasName("::goby::middleware::NullTransporter")))))))));
+
+    auto containing_class_matcher =
+        anyOf(hasAncestor(cxxRecordDecl().bind("containing_class_decl")), expr());
+
+    // Match a DynamicGroup constructor that contains an extractable string literal.
+    // DynamicGroup takes const std::string&, so the string literal is nested inside a
+    // std::string constructor; use hasDescendant to find it.
+    auto dynamic_group_with_string = cxxConstructExpr(
+        hasDeclaration(cxxConstructorDecl(
+            ofClass(cxxRecordDecl(hasName("::goby::middleware::DynamicGroup"))))),
+        hasDescendant(stringLiteral().bind("group_string_arg")));
+
+    // Match a DynamicGroup(uint32_t) constructor with an integer literal argument.
+    auto dynamic_group_with_int = cxxConstructExpr(
+        hasDeclaration(cxxConstructorDecl(
+            ofClass(cxxRecordDecl(hasName("::goby::middleware::DynamicGroup"))))),
+        hasArgument(0,
+                    anyOf(integerLiteral().bind("group_int_arg"),
+                          declRefExpr(hasDeclaration(
+                              varDecl(hasDescendant(integerLiteral().bind("group_int_arg"))))))));
+
+    // The group is function argument 1 for both publish_dynamic and subscribe_dynamic.
+    // Match either an inline DynamicGroup construction or a variable holding one.
+    auto group_arg_matcher = hasArgument(
+        1,
+        anyOf(
+            // Inline DynamicGroup("str") or DynamicGroup("str", int) at call site
+            hasDescendant(dynamic_group_with_string),
+            // Inline DynamicGroup(int) at call site
+            hasDescendant(dynamic_group_with_int),
+            // Variable reference whose declaration is initialized via DynamicGroup("str")
+            declRefExpr(hasDeclaration(varDecl(hasDescendant(dynamic_group_with_string)))),
+            // Variable reference whose declaration is initialized via DynamicGroup(int)
+            declRefExpr(hasDeclaration(varDecl(hasDescendant(dynamic_group_with_int))))));
+
+    // publish_dynamic<Data, scheme> / subscribe_dynamic<Data, scheme>:
+    //   template arg 0 = Data type, template arg 1 = scheme (integral)
+    auto dynamic_method_matcher = callee(cxxMethodDecl(
+        hasName(method),
+        hasTemplateArgument(0, templateArgument().bind("type_arg")),
+        hasTemplateArgument(1, templateArgument(templateArgument().bind("scheme_arg"),
+                                                refersToIntegralType(qualType(asString("int")))))));
+
+    return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
+                             dynamic_method_matcher, group_arg_matcher, containing_class_matcher);
+}
+
 class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallback
 {
   public:
@@ -282,6 +351,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
 
         auto method = pubsub_call_expr->getMethodDecl()->getNameAsString();
         bool is_regex = (method.find("regex") != std::string::npos);
+        bool is_dynamic = (method == "publish_dynamic" || method == "subscribe_dynamic");
 
         auto direction = (method.find("publish") != std::string::npos)
                              ? goby::clang::PubSubEntry::Direction::PUBLISH
@@ -307,7 +377,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
             return;
 
         entries_.emplace(layer, direction, thread, group, scheme, type, thread_is_known, necessity,
-                         is_regex);
+                         is_regex, is_dynamic);
     }
 
     const std::set<PubSubEntry>& entries() const { return entries_; }
@@ -364,6 +434,8 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
     finder.addMatcher(pubsub_matcher("publish"), &publish_aggregator);
     finder.addMatcher(pubsub_matcher("subscribe"), &subscribe_aggregator);
     finder.addMatcher(pubsub_matcher("subscribe_type_regex"), &subscribe_aggregator);
+    finder.addMatcher(pubsub_dynamic_matcher("publish_dynamic"), &publish_aggregator);
+    finder.addMatcher(pubsub_dynamic_matcher("subscribe_dynamic"), &subscribe_aggregator);
 
     if (output_file.empty())
         output_file = target_name + "_interface.yml";

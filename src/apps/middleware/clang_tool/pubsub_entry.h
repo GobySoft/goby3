@@ -86,11 +86,15 @@ struct PubSubEntry
         if (is_regex_node && is_regex_node.as<bool>())
             is_regex = true;
 
+        auto is_dynamic_node = yaml["is_dynamic"];
+        if (is_dynamic_node && is_dynamic_node.as<bool>())
+            is_dynamic = true;
+
         init();
     }
 
     PubSubEntry(Layer l, Direction d, std::string th, std::string g, std::string s, std::string t,
-                bool tk, goby::middleware::Necessity n, bool r)
+                bool tk, goby::middleware::Necessity n, bool r, bool dynamic = false)
         : layer(l),
           direction(d),
           thread(th),
@@ -99,7 +103,8 @@ struct PubSubEntry
           type(t),
           thread_is_known(tk),
           necessity(n),
-          is_regex(r)
+          is_regex(r),
+          is_dynamic(dynamic)
     {
         init();
     }
@@ -137,6 +142,7 @@ struct PubSubEntry
     bool thread_is_known{true};
     goby::middleware::Necessity necessity{goby::middleware::Necessity::OPTIONAL};
     bool is_regex{false};
+    bool is_dynamic{false};
     bool is_inner_pub{false};
     int publish_index{-1};
 
@@ -179,6 +185,9 @@ struct PubSubEntry
 
         if (is_regex)
             entry_map.add("is_regex", "true");
+
+        if (is_dynamic)
+            entry_map.add("is_dynamic", "true");
     }
 
     std::string as_string(goby::middleware::Necessity n) const

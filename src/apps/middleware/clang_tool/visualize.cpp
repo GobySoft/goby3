@@ -452,6 +452,7 @@ const auto required_style = "bold";
 const auto recommended_style = "tapered";
 const auto optional_style = "solid";
 const auto regex_style = "dotted";
+const auto dynamic_style = "dashed";
 
 void escape_for_dot(std::string& s)
 {
@@ -476,7 +477,8 @@ std::string node_name(std::string p, std::string m, std::string a, std::string t
 
 std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_str,
                                         std::string sub_str, std::string color,
-                                        goby::middleware::Necessity necessity, bool is_regex)
+                                        goby::middleware::Necessity necessity, bool is_regex,
+                                        bool is_dynamic = false)
 {
     g_pubs_in_use[pub_str][pub.layer].insert(std::make_pair(pub.publish_index, pub));
 
@@ -503,6 +505,11 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
     if (is_regex)
         style = regex_style;
 
+    // Dynamic groups use dashed style; note that is_regex and is_dynamic are mutually
+    // exclusive in practice (there is no subscribe_type_regex_dynamic method).
+    if (is_dynamic)
+        style = dynamic_style;
+
     // return pub_str + "->" + sub_str + "[xlabel=<<b><font point-size=\"10\">" + group +
     //        "</font></b><br/><font point-size=\"6\">" + scheme +
     //        "</font><br/><font point-size=\"8\">" + type + "</font>>" + ",color=" + color +
@@ -510,6 +517,8 @@ std::string connection_with_label_final(const PubSubEntry& pub, std::string pub_
 
     auto label = pub.publish_index_str();
     auto tooltip = label + ": " + pub.group + " | " + pub.scheme + " | " + pub.type;
+    if (is_dynamic)
+        tooltip += " [dynamic]";
     auto ret = pub_str + "->" + sub_str + "[fontsize=7,headlabel=\"" + label + "\",taillabel=\"" +
                label + "\",xlabel=<" + label + "[" + group_without_namespace + "]>,color=\"" +
                color + "\",style=" + style + ",tooltip=\"" + tooltip + "\",labeltooltip=\"" +
@@ -529,7 +538,7 @@ std::string connection_with_label(std::string pub_platform, std::string pub_modu
     return connection_with_label_final(
         pub, node_name(pub_platform, pub_module, pub_application, pub.thread),
         node_name(sub_platform, sub_module, sub_application, sub.thread), color, necessity,
-        is_regex);
+        is_regex, pub.is_dynamic || sub.is_dynamic);
 }
 
 std::string disconnected_publication(std::string pub_platform, std::string pub_module,
@@ -552,7 +561,7 @@ std::string disconnected_publication(std::string pub_platform, std::string pub_m
                    pub, node_name(pub_platform, pub_module, pub_application, pub.thread),
                    node_name(pub_platform, pub_module, pub_application, pub.thread) +
                        "_no_subscribers_" + esccolor,
-                   color, goby::middleware::Necessity::OPTIONAL, false);
+                   color, goby::middleware::Necessity::OPTIONAL, false, pub.is_dynamic);
 }
 
 std::string disconnected_subscription(std::string sub_platform, std::string sub_module,
@@ -575,7 +584,8 @@ std::string disconnected_subscription(std::string sub_platform, std::string sub_
     g_node_name_to_thread[pub_node] = std::make_shared<viz::Thread>();
 
     PubSubEntry fake_pub(sub.layer, PubSubEntry::Direction::PUBLISH, sub.thread, sub.group,
-                         sub.scheme, sub.type, sub.thread_is_known, sub.necessity, sub.is_regex);
+                         sub.scheme, sub.type, sub.thread_is_known, sub.necessity, sub.is_regex,
+                         sub.is_dynamic);
 
     g_pubs_in_use[pub_node][sub.layer].insert(std::make_pair(fake_pub.publish_index, fake_pub));
 
@@ -586,7 +596,7 @@ std::string disconnected_subscription(std::string sub_platform, std::string sub_
                node_name(sub_platform, sub_module, sub_application, sub.thread) +
                    "_no_publishers_" + esccolor,
                node_name(sub_platform, sub_module, sub_application, sub.thread), color, necessity,
-               is_regex);
+               is_regex, sub.is_dynamic);
 }
 
 void write_thread_connections(std::ofstream& ofs, const viz::Platform& platform,
