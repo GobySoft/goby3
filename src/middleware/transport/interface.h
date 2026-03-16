@@ -157,17 +157,17 @@ class PollerInterface
     /// \brief access the mutex used for poll synchronization
     ///
     /// \return pointer to the mutex used for polling
-    std::shared_ptr<std::timed_mutex> poll_mutex() { return poll_mutex_; }
+    std::shared_ptr<std::mutex> poll_mutex() { return poll_mutex_; }
 
     /// \brief access the condition variable used for poll synchronization
     ///
     /// Notifications on this condition variable will cause the poll() loop to assume there is incoming data available (typically this is notified by the publishing thread in InterThreadTransporter, but can be used to synchronize the Goby poller infrastructure with other synchronous events, such as boost::asio, file descriptors, etc. For an example, see io::IOThread)
     /// \return pointer to the condition variable used for polling
-    std::shared_ptr<std::condition_variable_any> cv() { return cv_; }
+    std::shared_ptr<std::condition_variable> cv() { return cv_; }
 
   protected:
-    PollerInterface(std::shared_ptr<std::timed_mutex> poll_mutex,
-                    std::shared_ptr<std::condition_variable_any> cv)
+    PollerInterface(std::shared_ptr<std::mutex> poll_mutex,
+                    std::shared_ptr<std::condition_variable> cv)
         : poll_mutex_(poll_mutex), cv_(cv)
     {
     }
@@ -175,16 +175,16 @@ class PollerInterface
   private:
     template <typename Transporter> friend class Poller;
     // poll the transporter for data
-    virtual int _transporter_poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) = 0;
+    virtual int _transporter_poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock) = 0;
 
   private:
     // poll all the transporters for data, including a timeout (only called by the outside-most Poller)
     template <class Clock = std::chrono::system_clock, class Duration = typename Clock::duration>
     int _poll_all(const std::chrono::time_point<Clock, Duration>& timeout);
 
-    std::shared_ptr<std::timed_mutex> poll_mutex_;
+    std::shared_ptr<std::mutex> poll_mutex_;
     // signaled when there's no data for this thread to read during _poll()
-    std::shared_ptr<std::condition_variable_any> cv_;
+    std::shared_ptr<std::condition_variable> cv_;
 };
 
 /// \brief Used to tag subscriptions based on their necessity (e.g. required for correct functioning, or optional)
@@ -361,8 +361,8 @@ int goby::middleware::PollerInterface::_poll_all(
     const std::chrono::time_point<Clock, Duration>& timeout)
 {
     // hold this lock until either we find a polled item or we wait on the condition variable
-    std::unique_ptr<std::unique_lock<std::timed_mutex>> lock(
-        new std::unique_lock<std::timed_mutex>(*poll_mutex_));
+    std::unique_ptr<std::unique_lock<std::mutex>> lock(
+        new std::unique_lock<std::mutex>(*poll_mutex_));
     //    std::cout << std::this_thread::get_id() <<  " _poll_all locking: " << poll_mutex_.get() << std::endl;
 
     int poll_items = _transporter_poll(lock);

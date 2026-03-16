@@ -249,7 +249,7 @@ void goby::zeromq::InterProcessPortalMainThread::send_control_msg(
 //
 goby::zeromq::InterProcessPortalReadThread::InterProcessPortalReadThread(
     const protobuf::InterProcessPortalConfig& cfg, zmq::context_t& context,
-    std::atomic<bool>& alive, std::shared_ptr<std::condition_variable_any> poller_cv)
+    std::atomic<bool>& alive, std::shared_ptr<std::condition_variable> poller_cv)
     : cfg_(cfg),
       control_socket_(context, ZMQ_PAIR),
       subscribe_socket_(context, ZMQ_SUB),
