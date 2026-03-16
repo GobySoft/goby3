@@ -103,11 +103,11 @@ pAcommsHandler has a large number of configuration options, many of which you wi
 
 Many of the parameters are sufficiently explained in the above list of configuration parameters. What follows is a detailed explanation of the parameters that need further explanation.
 
-- `common`: Parameters that can be set for any of the Goby MOOS applications. See section .
-- `modem_id`: integer that specifies the `modem_id` of this current vehicle / community. For the WHOI Micro-Modem this is the Micro-Modem ``SRC'' configuration parameter (as set by `$CCCFG,SRC,#`). For the remainder of the document, `modem_id` refers to the value `$CCCFG,SRC,modem_id`. This configuration parameter will be set on startup. Setting this within the main block for pAcommsHandler sets it for all the modules (`driver_cfg`, `queue_cfg`, `mac_cfg`) 
+- `common`: Parameters that can be set for any of the Goby MOOS applications.
+- `modem_id`: integer that specifies the `modem_id` of this current vehicle / community. For the WHOI Micro-Modem this is the Micro-Modem "SRC" configuration parameter (as set by `$CCCFG,SRC,#`). For the remainder of the document, `modem_id` refers to the value `$CCCFG,SRC,modem_id`. This configuration parameter will be set on startup. Setting this within the main block for pAcommsHandler sets it for all the modules (`driver_cfg`, `queue_cfg`, `mac_cfg`) 
 - `driver_type`: 
 	- `DRIVER_WHOI_MICROMODEM` is a driver for the WHOI Micro-Modem. 
-	- `DRIVER_ABC_EXAMPLE_MODEM` is a simple test ``modem''. Do not use this for real work, but rather for learning how to write new drivers for Goby.
+	- `DRIVER_ABC_EXAMPLE_MODEM` is a simple test "modem". Do not use this for real work, but rather for learning how to write new drivers for Goby.
 	- `DRIVER_UFIELD_SIM_DRIVER` is a driver for the MOOS-IvP uField toolbox.
 	- `DRIVER_STORE_SERVER` is a driver for the `goby_store_server` database.
 	- `DRIVER_UDP` is a user datagram protocol (UDP) driver. This is probably the easiest driver to start with for learning pAcommsHandler.
