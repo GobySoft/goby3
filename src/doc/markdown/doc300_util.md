@@ -38,13 +38,13 @@ goby::util::UTMGeodesy is a thin wrapper around [Proj](https://proj.org/) functi
 
 It is often convenient to work in small X,Y values rather than use the full Northings and Eastings values (which can be quite large given the size of the WGS84 zones). To accomplish this, goby::util::UTMGeodesy takes an origin of convenience (a latitude and longitude) near where the vehicle will be operated. Using this datum, UTMGeodesy can convert between (latitude,longitude) points and (X,Y) points, where X and Y are defined as the distance in Eastings and Northings, respectively from the datum point.
 
-Given `e_datum` is the UTM eastings value for the datum, and `e_vehicle` is the UTM eastings value for the vehicle, the X position of the vehicle (`x_vehicle`) is defined as
+Given \f$e_{datum}\f$ is the UTM eastings value for the datum, and \f$e_{vehicle}\f$ is the UTM eastings value for the vehicle, the X position of the vehicle (\f$x_{vehicle}\f$) is defined as
 
-`x_vehicle = e_vehicle - e_datum`
+\f$x_{vehicle} = e_{vehicle} - e_{datum}\f$
 
-The Y value is computed identically from the UTM Northings (`n`):
+The Y value is computed identically from the UTM Northings (\f$n\f$):
 
-`y_vehicle = n_vehicle - n_datum`
+\f$y_{vehicle} = n_{vehicle} - n_{datum}\f$
 
 ## Automatic identification system (AIS)
 
