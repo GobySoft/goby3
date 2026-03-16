@@ -4,18 +4,17 @@
 
 Every message type is assigned its own sub-buffer (or queue). Several sub-buffers (or queues) are managed in aggregate by the DynamicBuffer or QueueManager class.
 
-Each sub-buffer has a base value (\f$V_{base}\f$) and a time-to-live (\f$ttl\f$) that create the priority (\f$P(t)\f$) at any given time (\f$t\f$):
+Each sub-buffer has a base value (`V_base`) and a time-to-live (`ttl`) that create the priority (`P(t)`) at any given time (`t`):
 
-\f$P(t) = V_{base} \frac{(t-t_{last})}{ttl}\f$
+`P(t) = V_base * (t - t_last) / ttl`
 
- where \f$t_{last}\f$ is the time of the last send from this queue.
+where `t_last` is the time of the last send from this queue.
 
-This means for every sub-buffer, the user has control over two variables (\f$V_{base}\f$ and \f$ttl\f$). \f$V_{base}\f$ is intended to capture how important the message type is in general. Higher base values mean the message is of higher importance. The \f$ttl\f$ governs the number of seconds the message lives from creation until it is destroyed by \c queue. The \f$ttl\f$ also factors into the priority calculation since all things being equal (same \f$V_{base}\f$), it is preferable to send more time sensitive messages first. So in these two parameters, the user can capture both overall value (i.e. \f$V_{base}\f$) and latency tolerance (\f$ttl\f$) of the message queue.
+This means for every sub-buffer, the user has control over two variables (`V_base` and `ttl`). `V_base` is intended to capture how important the message type is in general. Higher base values mean the message is of higher importance. The `ttl` governs the number of seconds the message lives from creation until it is destroyed by `queue`. The `ttl` also factors into the priority calculation since all things being equal (same `V_base`), it is preferable to send more time sensitive messages first. So in these two parameters, the user can capture both overall value (i.e. `V_base`) and latency tolerance (`ttl`) of the message queue.
 
-The following graph illustrates the priority growth over time of three sub-buffers with different \f$ttl\f$ and \f$V_{base}\f$. A message is sent every 100 seconds and the sub-buffer that is chosen is marked on the graph.
+The following graph illustrates the priority growth over time of three sub-buffers with different `ttl` and `V_base`. A message is sent every 100 seconds and the sub-buffer that is chosen is marked on the graph.
 
 ![](images/priority_graph.png)
-\image latex priority_graph.eps "Graph of the growth of queueing priorities for \c queue for three different queues. A message is sent every 100 seconds from the %queue with the highest priority (numbered on the graph)." width=0.9\textwidth
 
 ## goby::acomms::QueueManager or goby::acomms::DynamicBuffer
 
@@ -45,8 +44,8 @@ Queue message options:
 |blackout_time       |uint32  |0             |lowest value takes precedence    |Minimum number of seconds allowed between sending messages from this queue.|
 |max_queue           |uint32  |0             |larger value takes precedence    |Allowed size of the queue before overflow. If newest_first is true, the oldest elements are removed upon overflow, else the newest elements are (the queue blocks). 0 is a special value signifying infinity (no maximum).|
 |newest_first        |bool    |true          |true takes precedence over false |(true=FILO, false=FIFO) whether to send newest messages in the queue first (FILO) or not (FIFO).|
-|ttl                 |int32   |1800          |use average of values            |the time in seconds a message lives after its creation before being discarded. This time-to-live also factors into the growth in priority of a queue. see value_base for the main discussion on this. 0 is a special value indicating infinite life (i.e. ttl = 0 is effectively the same as ttl = \f$\infty\f$)|
-|value_base          |double  |1             |use average of values            |base priority value for this message queue. priorities are calculated on a request for data by the modem (to send a message). The queue with the highest priority (and isn't in blackout) is chosen. The actual priority (\f$P\f$) is calculated by \f$P(t) = V_{base} \frac{(t-t_{last})}{ttl}\f$ where \f$V_{base}\f$ is the value set here, \f$t\f$ is the current time (in seconds), \f$t_{last}\f$ is the time of the last send from this queue, and \f$ttl\f$ is the ttl option. Essentially, a message with low ttl will become effective quickly again after a sent message (the priority line grows faster). See above overview for further discussion.|
+|ttl                 |int32   |1800          |use average of values            |the time in seconds a message lives after its creation before being discarded. This time-to-live also factors into the growth in priority of a queue. see value_base for the main discussion on this. 0 is a special value indicating infinite life (i.e. ttl = 0 is effectively the same as ttl = infinity)|
+|value_base          |double  |1             |use average of values            |base priority value for this message queue. priorities are calculated on a request for data by the modem (to send a message). The queue with the highest priority (and isn't in blackout) is chosen. The actual priority (`P`) is calculated by `P(t) = V_base * (t - t_last) / ttl` where `V_base` is the value set here, `t` is the current time (in seconds), `t_last` is the time of the last send from this queue, and `ttl` is the ttl option. Essentially, a message with low ttl will become effective quickly again after a sent message (the priority line grows faster). See above overview for further discussion.|
 
 ### Using DynamicBuffer
 
@@ -95,7 +94,7 @@ In the former case (the default), you can tag a given field of a DCCL message to
 
 #### Instantiate and configure
 
-The goby::acomms::QueueManager is configured similarly to the goby::acomms::DCCLCodec. You need to set a unique identification number for this platform (the "modem ID") through the \link queue.proto goby::acomms::protobuf::QueueManagerConfig \endlink.
+The goby::acomms::QueueManager is configured similarly to the goby::acomms::DCCLCodec. You need to set a unique identification number for this platform (the "modem ID") through the `goby::acomms::protobuf::QueueManagerConfig` (defined in queue.proto).
 
 You can configure queues by added repeated fields to the QueueManagerConfig's message_entry field, or by calling goby::acomms::QueueManager::add_queue() directly.
 
@@ -129,13 +128,13 @@ q_manager.set_cfg(cfg);
 
 Then, you need to do a few more initialization chores:
 
-* Connect (using goby::acomms::connect()) QueueManager signals to your application layer slots (functions or member functions that match the signal's signature). You do not need to connect a slot to a given signal if you do not need its functionality. See \ref signal_slot for more on using signals and slots:
+* Connect (using goby::acomms::connect()) QueueManager signals to your application layer slots (functions or member functions that match the signal's signature). You do not need to connect a slot to a given signal if you do not need its functionality. See the [signals and slots documentation](https://www.boost.org/doc/libs/release/doc/html/signals2.html) for more on using signals and slots:
     * Received (and decoded) DCCL data: goby::acomms::QueueManager::signal_receive
     * Received acknowledgements: goby::acomms::QueueManager::signal_ack
     * Expired messages (ttl exceeded): goby::acomms::QueueManager::signal_expire
 * Additional advanced features
     * Connect a slot to learn every time a queue size changes due to a new message being pushed or a message being sent: goby::acomms::QueueManager::signal_queue_size_change
-    * Request that a queue be <i>on_demand</i>, that is, request data from the application layer every time the %modem layer requests data (DCCL messages only). This effectively bypasses the queue and forwards the modem's data request to the application layer. Use this for sending highly time sensitive data which needs to be encoded immediately prior to sending. Set the encode_on_demand option to true for that particular Protobuf message (and if desired change the on_demand_skew_seconds). You must also connect a slot that will be executed each time data is requested to the signal goby::acomms::QueueManager::signal_data_on_demand.
+    * Request that a queue be *on_demand*, that is, request data from the application layer every time the modem layer requests data (DCCL messages only). This effectively bypasses the queue and forwards the modem's data request to the application layer. Use this for sending highly time sensitive data which needs to be encoded immediately prior to sending. Set the encode_on_demand option to true for that particular Protobuf message (and if desired change the on_demand_skew_seconds). You must also connect a slot that will be executed each time data is requested to the signal goby::acomms::QueueManager::signal_data_on_demand.
 
 #### Operation
 

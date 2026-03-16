@@ -38,13 +38,13 @@ goby::util::UTMGeodesy is a thin wrapper around [Proj](https://proj.org/) functi
 
 It is often convenient to work in small X,Y values rather than use the full Northings and Eastings values (which can be quite large given the size of the WGS84 zones). To accomplish this, goby::util::UTMGeodesy takes an origin of convenience (a latitude and longitude) near where the vehicle will be operated. Using this datum, UTMGeodesy can convert between (latitude,longitude) points and (X,Y) points, where X and Y are defined as the distance in Eastings and Northings, respectively from the datum point.
 
-Given \f$e_{datum}\f$ is the UTM eastings value for the datum, and \f$e_{vehicle}\f$ is the UTM eastings value for the vehicle, the X position of the vehicle (\f$x_{vehicle}\f$) is defined as
+Given `e_datum` is the UTM eastings value for the datum, and `e_vehicle` is the UTM eastings value for the vehicle, the X position of the vehicle (`x_vehicle`) is defined as
 
-\f$x_{vehicle} = e_{vehicle} - e_{datum}\f$
+`x_vehicle = e_vehicle - e_datum`
 
-The Y value is computed identically from the UTM Northings (\f$n\f$):
+The Y value is computed identically from the UTM Northings (`n`):
 
-\f$y_{vehicle} = n_{vehicle} - n_{datum}\f$
+`y_vehicle = n_vehicle - n_datum`
 
 ## Automatic identification system (AIS)
 
@@ -97,12 +97,10 @@ The best way to get used to goby::glog is to compile and play with the flexostre
 A handful of examples:
 
 ![](images/glogger-example.png)
-\image latex images/glogger-example.png "Example of the goby::glog output at different verbosity settings to the terminal window"
 
 Graphical user interface logger mode:
 
 ![](images/glogger-gui.png)
-\image latex images/glogger-gui.png "Example of the goby::glog in NCurses GUI mode"
 
 Simultaneous terminal window and file logging:
 
