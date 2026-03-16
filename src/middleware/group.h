@@ -147,4 +147,25 @@ template <> struct hash<goby::middleware::Group>
 };
 } // namespace std
 
+/// \brief Macro to define a goby::middleware::Group variable in a given namespace.
+///
+/// This is a convenience macro for defining a \c constexpr goby::middleware::Group.
+/// The group's string value is automatically set to the fully-qualified name
+/// "<QNAME>::<NAME>", matching the C++ qualified name of the variable.
+/// Requires C++17 or later (uses nested namespace definitions).
+///
+/// Example usage:
+/// \code
+/// GOBY_DEFINE_GROUP(foo::groups, mygrp)
+/// // equivalent to:
+/// // namespace foo::groups {
+/// //   constexpr goby::middleware::Group mygrp{"foo::groups::mygrp"};
+/// // }
+/// \endcode
+#define GOBY_DEFINE_GROUP(QNAME, NAME)                         \
+    namespace QNAME                                            \
+    {                                                          \
+    constexpr goby::middleware::Group NAME{#QNAME "::" #NAME}; \
+    }
+
 #endif
