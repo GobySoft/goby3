@@ -486,15 +486,14 @@ jobs:
   amd64+tsan-build:
     # Use machine executor (not Docker) so we can set sysctl for ThreadSanitizer
     machine:
-      image: ubuntu-2204:current
+      image: ubuntu-2404:current
     resource_class: large
     working_directory: /home/circleci/goby3
     environment:
       <<: *environment-template-common
-      <<: *environment-template-jammy
+      <<: *environment-template-noble
       <<: *environment-template-amd64
       SANITIZER_NUM_JOBS: 4
-      TSAN_OPTIONS: "suppressions=/home/circleci/goby3/src/test/suppressions.tsan.txt history_size=6"
     steps:
       - checkout
       - run:
@@ -503,30 +502,36 @@ jobs:
           name: Set mmap_rnd_bits for ThreadSanitizer compatibility
           command: sudo sysctl vm.mmap_rnd_bits=28
       - run:
-          name: Add continuous build package sources.list (if not a tagged release)
+          name: Start build container
+          command: |
+            docker run -d --name tsan-build \
+              -v /home/circleci/goby3:/root/goby3 \
+              -e TSAN_OPTIONS="suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6" \
+              gobysoft/goby3-ubuntu-build-base:24.04.2 \
+              sleep infinity
+      - run:
+          name: Add continuous build package sources.list in container (if not a tagged release)
           command: |
             [ -z "${CIRCLE_TAG}" ] &&
-            echo "deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/" | sudo tee /etc/apt/sources.list.d/gobysoft_continuous.list ||
+            docker exec tsan-build bash -c "echo 'deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/' >> /etc/apt/sources.list.d/gobysoft_continuous.list" ||
             true
       - run:
-          name: Update apt packages and install build dependencies
+          name: Update apt packages in container
           command: |
-            sudo apt-get update && sudo apt-get -y install dirmngr devscripts equivs &&
-            echo "deb http://packages.gobysoft.org/ubuntu/release/ ${DISTRO_RELEASE_CODENAME}/" | sudo tee /etc/apt/sources.list.d/gobysoft_release.list &&
-            sudo apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE &&
-            git clone https://github.com/GobySoft/goby-debian -b 3.0 /tmp/goby-debian &&
-            sudo apt-get update &&
-            sudo mk-build-deps -t "apt-get -y --no-install-recommends" -i "/tmp/goby-debian/control" &&
-            (sudo apt-get install default-libmysqlclient-dev -y ||
-            sudo apt-get install libmysqlclient-dev -y ||
-            sudo apt-get install libmariadb-dev libmariadb-dev-compat default-libmysqlclient-dev -y ||
-            sudo apt-get install libmariadbclient-dev libmariadbclient-dev-compat default-libmysqlclient-dev -y) &&
-            (sudo apt-get install libdccl4-dev libdccl4 dccl4-compiler -y || true) &&
-            (sudo apt-get install libwt4-dev -y || true)
+            docker exec tsan-build bash -c "
+              apt-get update && apt-get dist-upgrade -y &&
+              (apt-get install default-libmysqlclient-dev:${TARGET_ARCH} -y ||
+              apt-get install libmysqlclient-dev:${TARGET_ARCH} -y ||
+              apt-get install libmariadb-dev:${TARGET_ARCH} libmariadb-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y ||
+              apt-get install libmariadbclient-dev:${TARGET_ARCH} libmariadbclient-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y)
+              apt-get install libdccl4-dev:${TARGET_ARCH} libdccl4:${TARGET_ARCH} dccl4-compiler -y || true
+              apt-get install libwt4-dev:${TARGET_ARCH} -y || true"
       - run:
           name: Build with ThreadSanitizer
-          command: mkdir -p build && cd build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON -Denable_llvm=OFF .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
-      - run: *run-tests-sanitizers
+          command: docker exec tsan-build bash -c "mkdir -p /root/goby3/build && cd /root/goby3/build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON -Denable_llvm=OFF .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}"
+      - run:
+          name: Run tests
+          command: docker exec tsan-build bash -c "cd /root/goby3/build && ctest --output-on-failure"
   amd64+ubsan-build:
     <<: *job-template-sanitizers
     steps:
