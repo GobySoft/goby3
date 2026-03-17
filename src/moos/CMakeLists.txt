@@ -35,7 +35,7 @@ if(build_zeromq)
     )
 endif()
 
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
+protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS
   ${PROTOS}
   )
 
