@@ -509,6 +509,8 @@ jobs:
               -e TSAN_OPTIONS="suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6" \
               gobysoft/goby3-ubuntu-build-base:24.04.2 \
               sleep infinity
+            # Fix git "dubious ownership" (host checkout owned by circleci, container runs as root)
+            docker exec tsan-build git config --global --add safe.directory /root/goby3
       - run:
           name: Add continuous build package sources.list in container (if not a tagged release)
           command: |
@@ -517,15 +519,7 @@ jobs:
             true
       - run:
           name: Update apt packages in container
-          command: |
-            docker exec tsan-build bash -c "
-              apt-get update && apt-get dist-upgrade -y &&
-              (apt-get install default-libmysqlclient-dev:${TARGET_ARCH} -y ||
-              apt-get install libmysqlclient-dev:${TARGET_ARCH} -y ||
-              apt-get install libmariadb-dev:${TARGET_ARCH} libmariadb-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y ||
-              apt-get install libmariadbclient-dev:${TARGET_ARCH} libmariadbclient-dev-compat:${TARGET_ARCH} default-libmysqlclient-dev:${TARGET_ARCH} -y)
-              apt-get install libdccl4-dev:${TARGET_ARCH} libdccl4:${TARGET_ARCH} dccl4-compiler -y || true
-              apt-get install libwt4-dev:${TARGET_ARCH} -y || true"
+          command: docker exec tsan-build bash -c "apt-get update && apt-get dist-upgrade -y"
       - run:
           name: Build with ThreadSanitizer
           command: docker exec tsan-build bash -c "mkdir -p /root/goby3/build && cd /root/goby3/build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON -Denable_llvm=OFF .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}"
