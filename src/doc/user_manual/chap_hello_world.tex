@@ -216,7 +216,7 @@ The full source listing for !hello_world2_g! can be found in section \ref{sec:he
 !CMake! \cite{cmake}, while still lacking in documentation, is probably the easiest way to build software these days, especially for cross platform support. I will briefly walk through building a Goby application using !CMake! within the larger Goby examples configuration (depending on how you installed Goby, !goby/share/examples! or !/usr/share/goby/examples!). If you look at the !CMakeLists.txt! file in \ref{sec:hello_world:CMakeLists.txt}, you can see the steps needed to add our new applications to the project:
 
 \begin{boxedverbatim}
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS hello_world.proto)
+protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS hello_world.proto)
 add_executable(hello_world1_g hello_world1.cpp ${PROTO_SRCS} ${PROTO_HDRS})
 target_link_libraries(hello_world1_g goby_pb)
 \end{boxedverbatim}

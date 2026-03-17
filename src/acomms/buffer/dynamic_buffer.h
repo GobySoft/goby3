@@ -106,9 +106,9 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
 
         // extract these types from the Protobuf message
         using ttl_type =
-            std::result_of<decltype (&DynamicBufferConfig::ttl)(DynamicBufferConfig)>::type;
+            std::invoke_result<decltype (&DynamicBufferConfig::ttl), DynamicBufferConfig>::type;
         using value_base_type =
-            std::result_of<decltype (&DynamicBufferConfig::value_base)(DynamicBufferConfig)>::type;
+            std::invoke_result<decltype (&DynamicBufferConfig::value_base), DynamicBufferConfig>::type;
 
         ttl_type ttl_sum = 0;
         ttl_type ttl_divisor = 0;
