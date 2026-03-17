@@ -1,5 +1,5 @@
 set(PROTOS bluefin.proto bluefin_config.proto)
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
+protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS ${PROTOS})
 
 set(SRC bluefin.cpp bluefin_incoming.cpp)
 

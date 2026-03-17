@@ -1,4 +1,4 @@
-protobuf_generate_cpp(UTIL_PROTO_SRCS UTIL_PROTO_HDRS 
+protobuf_generate_cpp_dccl(UTIL_PROTO_SRCS UTIL_PROTO_HDRS 
   util/protobuf/linebasedcomms.proto
   util/protobuf/debug_logger.proto
   util/protobuf/ais.proto
