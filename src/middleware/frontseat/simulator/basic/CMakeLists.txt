@@ -1,6 +1,6 @@
 set(PROTOS basic_simulator_frontseat_driver.proto
   basic_simulator_frontseat_driver_config.proto)
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
+protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS ${PROTOS})
 
 set(SRC basic_simulator_frontseat_driver.cpp)
 

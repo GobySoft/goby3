@@ -82,7 +82,7 @@ class Queue
 
     protobuf::QueuedMessageMeta meta_from_msg(const google::protobuf::Message& dccl_msg);
 
-    boost::any find_queue_field(const std::string& field_name,
+    dccl::any find_queue_field(const std::string& field_name,
                                 const google::protobuf::Message& msg);
 
     goby::acomms::QueuedMessage give_data(unsigned frame);
@@ -134,7 +134,7 @@ class Queue
     messages_it next_message_it();
 
     void set_latest_metadata(const google::protobuf::FieldDescriptor* field,
-                             const boost::any& field_value, const boost::any& wire_value);
+                             const dccl::any& field_value, const dccl::any& wire_value);
 
     double time_duration2double(const boost::posix_time::time_duration& time_of_day);
 

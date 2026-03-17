@@ -34,7 +34,7 @@ find_dependency(Boost 1.58.0 COMPONENTS system date_time program_options filesys
 find_dependency(DCCL)
 # Todo - install these Find scripts for use by downstream projects
 #find_dependency(Proj)
-#find_dependency(ProtobufGoby)
+find_dependency(Protobuf)
 endif()
 
 get_target_property(GOBY_INCLUDE_DIR goby INTERFACE_INCLUDE_DIRECTORIES)

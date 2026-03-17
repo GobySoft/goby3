@@ -1,4 +1,4 @@
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS test.proto)
+protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS test.proto)
 
 add_executable(goby_test_queue5 test.cpp ${PROTO_SRCS} ${PROTO_HDRS})
 target_link_libraries(goby_test_queue5 goby)

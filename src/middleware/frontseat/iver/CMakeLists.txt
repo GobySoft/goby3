@@ -1,5 +1,5 @@
 set(PROTOS iver_driver.proto iver_driver_config.proto)
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
+protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS ${PROTOS})
 
 set(SRC iver_driver.cpp)
 

@@ -484,15 +484,48 @@ jobs:
           name: Run tests
           command: cd build && ctest --output-on-failure
   amd64+tsan-build:
-    <<: *job-template-sanitizers
+    # Use machine executor (not Docker) so we can set sysctl for ThreadSanitizer
+    machine:
+      image: ubuntu-2404:current
+    resource_class: large
+    working_directory: /home/circleci/goby3
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-noble
+      <<: *environment-template-amd64
+      SANITIZER_NUM_JOBS: 4
     steps:
       - checkout
-      - run: *run-add-continuous-packages
-      - run: *run-update-apt
-      - run: 
+      - run:
+          # Required to avoid "FATAL: ThreadSanitizer: unexpected memory mapping"
+          # on Linux kernels >= 6.x. See https://stackoverflow.com/questions/77850769
+          name: Set mmap_rnd_bits for ThreadSanitizer compatibility
+          command: sudo sysctl vm.mmap_rnd_bits=28
+      - run:
+          name: Start build container
+          command: |
+            docker run -d --name tsan-build \
+              -v /home/circleci/goby3:/root/goby3 \
+              -e TSAN_OPTIONS="suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6" \
+              gobysoft/goby3-ubuntu-build-base:24.04.2 \
+              sleep infinity
+            # Fix git "dubious ownership" (host checkout owned by circleci, container runs as root)
+            docker exec tsan-build git config --global --add safe.directory /root/goby3
+      - run:
+          name: Add continuous build package sources.list in container (if not a tagged release)
+          command: |
+            [ -z "${CIRCLE_TAG}" ] &&
+            docker exec tsan-build bash -c "echo 'deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/' >> /etc/apt/sources.list.d/gobysoft_continuous.list" ||
+            true
+      - run:
+          name: Update apt packages in container
+          command: docker exec tsan-build bash -c "apt-get update && apt-get dist-upgrade -y"
+      - run:
           name: Build with ThreadSanitizer
-          command: mkdir -p build && cd build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON  -Denable_llvm=OFF .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}
-      - run: *run-tests-sanitizers
+          command: docker exec tsan-build bash -c "mkdir -p /root/goby3/build && cd /root/goby3/build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON -Denable_llvm=OFF .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}"
+      - run:
+          name: Run tests
+          command: docker exec tsan-build bash -c "cd /root/goby3/build && ctest --output-on-failure"
   amd64+ubsan-build:
     <<: *job-template-sanitizers
     steps:

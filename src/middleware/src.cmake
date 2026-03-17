@@ -1,4 +1,4 @@
-protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
+protobuf_generate_cpp_dccl(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/app_config.proto
   middleware/protobuf/hdf5.proto
   middleware/protobuf/serializer_transporter.proto
