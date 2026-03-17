@@ -109,10 +109,10 @@ void goby::middleware::frontseat::Bluefin::bfack(const goby::util::NMEASentence&
                                     << acked_sentence << " request." << std::endl;
             break;
         case REQUEST_UNSUCCESSFULLY_PROCESSED:
-            glog.is(DEBUG1) && glog << warn
-                                    << "Huxley reports that it unsuccessfully processed our "
-                                    << acked_sentence << " request: "
-                                    << "\"" << nmea.at(DESCRIPTION) << "\"" << std::endl;
+            glog.is(DEBUG1) && glog
+                                   << warn << "Huxley reports that it unsuccessfully processed our "
+                                   << acked_sentence << " request: " << "\"" << nmea.at(DESCRIPTION)
+                                   << "\"" << std::endl;
             break;
         case REQUEST_SUCCESSFULLY_PROCESSED: break;
         case REQUEST_PENDING:
@@ -217,8 +217,9 @@ void goby::middleware::frontseat::Bluefin::bfnvg(const goby::util::NMEASentence&
     {
         auto lat_deg = goby::util::as<double>(lat_string.substr(0, 2));
         auto lat_min = goby::util::as<double>(lat_string.substr(2, lat_string.size()));
-        double lat = lat_deg + lat_min / 60;
-        status_.mutable_global_fix()->set_lat((nmea.at(LAT_HEMISPHERE) == "S") ? -lat : lat);
+        auto lat = (lat_deg + lat_min / 60) * boost::units::degree::degrees;
+        status_.mutable_global_fix()->set_lat_with_units((nmea.at(LAT_HEMISPHERE) == "S") ? -lat
+                                                                                          : lat);
     }
     else
     {
@@ -230,8 +231,9 @@ void goby::middleware::frontseat::Bluefin::bfnvg(const goby::util::NMEASentence&
     {
         auto lon_deg = goby::util::as<double>(lon_string.substr(0, 3));
         auto lon_min = goby::util::as<double>(lon_string.substr(3, nmea.at(4).size()));
-        double lon = lon_deg + lon_min / 60;
-        status_.mutable_global_fix()->set_lon((nmea.at(LON_HEMISPHERE) == "W") ? -lon : lon);
+        auto lon = (lon_deg + lon_min / 60) * boost::units::degree::degrees;
+        status_.mutable_global_fix()->set_lon_with_units((nmea.at(LON_HEMISPHERE) == "W") ? -lon
+                                                                                          : lon);
     }
     else
     {
@@ -243,11 +245,16 @@ void goby::middleware::frontseat::Bluefin::bfnvg(const goby::util::NMEASentence&
         status_.mutable_source()->set_position(gpb::Source::GPS);
     }
 
-    status_.mutable_global_fix()->set_altitude(nmea.as<double>(ALTITUDE));
-    status_.mutable_global_fix()->set_depth(nmea.as<double>(DEPTH));
-    status_.mutable_pose()->set_heading(nmea.as<double>(HEADING));
-    status_.mutable_pose()->set_roll(nmea.as<double>(ROLL));
-    status_.mutable_pose()->set_pitch(nmea.as<double>(PITCH));
+    status_.mutable_global_fix()->set_altitude_with_units(nmea.as<double>(ALTITUDE) *
+                                                          boost::units::si::meters);
+    status_.mutable_global_fix()->set_depth_with_units(nmea.as<double>(DEPTH) *
+                                                       boost::units::si::meters);
+    status_.mutable_pose()->set_heading_with_units(nmea.as<double>(HEADING) *
+                                                   boost::units::degree::degrees);
+    status_.mutable_pose()->set_roll_with_units(nmea.as<double>(ROLL) *
+                                                boost::units::degree::degrees);
+    status_.mutable_pose()->set_pitch_with_units(nmea.as<double>(PITCH) *
+                                                 boost::units::degree::degrees);
 }
 
 void goby::middleware::frontseat::Bluefin::bfnvr(const goby::util::NMEASentence& nmea)
@@ -269,11 +276,15 @@ void goby::middleware::frontseat::Bluefin::bfnvr(const goby::util::NMEASentence&
     auto east_speed = nmea.as<double>(EAST_VELOCITY);
     auto north_speed = nmea.as<double>(NORTH_VELOCITY);
 
-    status_.mutable_pose()->set_pitch_rate(nmea.as<double>(PITCH_RATE));
-    status_.mutable_pose()->set_roll_rate(nmea.as<double>(ROLL_RATE));
-    status_.mutable_pose()->set_heading_rate(nmea.as<double>(YAW_RATE));
-    status_.mutable_speed()->set_over_ground(
-        std::sqrt(north_speed * north_speed + east_speed * east_speed));
+    status_.mutable_pose()->set_pitch_rate_with_units(
+        nmea.as<double>(PITCH_RATE) * boost::units::degree::degrees / boost::units::si::seconds);
+    status_.mutable_pose()->set_roll_rate_with_units(
+        nmea.as<double>(ROLL_RATE) * boost::units::degree::degrees / boost::units::si::seconds);
+    status_.mutable_pose()->set_heading_rate_with_units(
+        nmea.as<double>(YAW_RATE) * boost::units::degree::degrees / boost::units::si::seconds);
+    status_.mutable_speed()->set_over_ground_with_units(
+        std::sqrt(north_speed * north_speed + east_speed * east_speed) *
+        boost::units::si::meters_per_second);
 
     //    status_.mutable_pose()->set_roll_rate_time_lag_with_units(dt);
     //    status_.mutable_pose()->set_pitch_rate_time_lag_with_units(dt);
