@@ -1,5 +1,5 @@
 function(create_middleware_interprocess_forwarder_test interprocess_impl link_libraries)
-  protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/test.proto)
+  protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/test.proto)
   set(TEST goby_test_middleware_interprocess_forwarder_${interprocess_impl})
   
   add_executable(${TEST} ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/test.cpp  ${PROTO_SRCS} ${PROTO_HDRS})

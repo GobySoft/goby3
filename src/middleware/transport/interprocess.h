@@ -504,7 +504,7 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
         if (forwarder_subscriptions_.count(identifier) == 0)
             static_cast<Derived*>(this)->_do_portal_unsubscribe(identifier);
     }
-    void _handle_received_data(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock,
+    void _handle_received_data(std::unique_ptr<std::unique_lock<std::mutex>>& lock,
                                const std::string& data)
     {
         if (lock)

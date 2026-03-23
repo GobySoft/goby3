@@ -1,4 +1,4 @@
-protobuf_generate_cpp(UDPM_PROTO_SRCS UDPM_PROTO_HDRS
+protobuf_generate_cpp_dccl(UDPM_PROTO_SRCS UDPM_PROTO_HDRS
   udpm/protobuf/interprocess_config.proto
   )
 
