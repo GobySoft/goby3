@@ -103,11 +103,11 @@ pAcommsHandler has a large number of configuration options, many of which you wi
 
 Many of the parameters are sufficiently explained in the above list of configuration parameters. What follows is a detailed explanation of the parameters that need further explanation.
 
-- `common`: Parameters that can be set for any of the Goby MOOS applications. See section .
-- `modem_id`: integer that specifies the `modem_id` of this current vehicle / community. For the WHOI Micro-Modem this is the Micro-Modem ``SRC'' configuration parameter (as set by `$CCCFG,SRC,#`). For the remainder of the document, `modem_id` refers to the value `$CCCFG,SRC,modem_id`. This configuration parameter will be set on startup. Setting this within the main block for pAcommsHandler sets it for all the modules (`driver_cfg`, `queue_cfg`, `mac_cfg`) 
+- `common`: Parameters that can be set for any of the Goby MOOS applications.
+- `modem_id`: integer that specifies the `modem_id` of this current vehicle / community. For the WHOI Micro-Modem this is the Micro-Modem "SRC" configuration parameter (as set by `$CCCFG,SRC,#`). For the remainder of the document, `modem_id` refers to the value `$CCCFG,SRC,modem_id`. This configuration parameter will be set on startup. Setting this within the main block for pAcommsHandler sets it for all the modules (`driver_cfg`, `queue_cfg`, `mac_cfg`) 
 - `driver_type`: 
 	- `DRIVER_WHOI_MICROMODEM` is a driver for the WHOI Micro-Modem. 
-	- `DRIVER_ABC_EXAMPLE_MODEM` is a simple test ``modem''. Do not use this for real work, but rather for learning how to write new drivers for Goby.
+	- `DRIVER_ABC_EXAMPLE_MODEM` is a simple test "modem". Do not use this for real work, but rather for learning how to write new drivers for Goby.
 	- `DRIVER_UFIELD_SIM_DRIVER` is a driver for the MOOS-IvP uField toolbox.
 	- `DRIVER_STORE_SERVER` is a driver for the `goby_store_server` database.
 	- `DRIVER_UDP` is a user datagram protocol (UDP) driver. This is probably the easiest driver to start with for learning pAcommsHandler.
@@ -257,7 +257,6 @@ Additionally, the frontseat may provide or consume:
 The state of iFrontSeat (as shown in the following diagram) is determined by a combination of the state of the frontseat and the state of pHelmIvP. Only the state of the frontseat must be determined by each new driver, as the state of pHelmIvP is determined by code shared by all the drivers.
 
 ![](images/state-diagram.png)
-\image latex images/state-diagram.eps "State charts of the iFrontSeat interface and connected ends (pHelmIvP and frontseat)" width=0.9\textwidth
 
 The **state of the frontseat** consists of two parallel state charts (command and data):
 
@@ -272,63 +271,18 @@ The **state of the frontseat** consists of two parallel state charts (command an
 
 The state transitions for the iFrontSeat interface states are (using the names as defined in the enumerations in moos/protobuf/frontseat.proto)
 
-<table border=1>
-  <tr>
-    <th>From</th>
-    <th>To</th>
-    <th>Action</th>
-  </tr>
-  <tr>
-    <td>Start</td>
-    <td>INTERFACE_STANDBY</td>
-    <td>Configuration Read</td>
-  </tr>
-  <tr>
-    <td>INTERFACE_STANDBY</td>
-    <td>INTERFACE_LISTEN</td>
-    <td>frontseat_providing_data == true</td>
-  </tr>
-  <tr>
-    <td>INTERFACE_LISTEN</td>
-    <td>INTERFACE_COMMAND</td>
-    <td>FRONTSEAT_ACCEPTING_COMMANDS && HELM_DRIVE</td>
-  </tr>
-  <tr>
-    <td>INTERFACE_COMMAND</td>
-    <td>INTERFACE_LISTEN</td>
-    <td>(FRONTSEAT_IN_CONTROL || FRONTSEAT_IDLE) && HELM_DRIVE</td>
-  </tr>
-  <tr>
-    <td>INTERFACE_COMMAND</td>
-    <td>INTERFACE_HELM_ERROR</td>
-    <td>HELM_NOT_RUNNING || HELM_PARK</td>
-  </tr>
-  <tr>
-    <td>INTERFACE_LISTEN || INTERFACE_COMMAND</td>
-    <td>INTERFACE_HELM_ERROR</td>
-    <td>HELM_PARK || if (helm_enabled) HELM_NOT_RUNNING (after timeout)</td>
-  </tr>
-  <tr>
-    <td>INTERFACE_LISTEN || INTERFACE_COMMAND</td>
-    <td>INTERFACE_FS_ERROR</td>
-    <td>FRONTSEAT_NOT_CONNECTED || frontseat_providing_data == false</td>
-  </tr>
-  <tr>
-    <td>INTERFACE_STANDBY</td>
-    <td>INTERFACE_FS_ERROR</td>
-    <td>FRONTSEAT_NOT_CONNECTED (after timeout) </td>
-  </tr>
-  <tr>
-    <td>INTERFACE_HELM_ERROR</td>
-    <td>INTERFACE_STANDBY</td>
-    <td>HELM_DRIVE</td>
-  </tr>
-  <tr>
-    <td>INTERFACE_FRONTSEAT_ERROR</td>
-    <td>INTERFACE_STANDBY</td>
-    <td>(if(ERROR_FRONTSEAT_NOT_CONNECTED) !FRONTSEAT_NOT_CONNECTED) || (if(ERROR_FRONTSEAT_NOT_PROVIDING_DATA) frontseat_providing_data == true) </td>
-  </tr>
-</table>
+| From | To | Action |
+|------|----|--------|
+| Start | INTERFACE_STANDBY | Configuration Read |
+| INTERFACE_STANDBY | INTERFACE_LISTEN | frontseat_providing_data == true |
+| INTERFACE_LISTEN | INTERFACE_COMMAND | FRONTSEAT_ACCEPTING_COMMANDS && HELM_DRIVE |
+| INTERFACE_COMMAND | INTERFACE_LISTEN | (FRONTSEAT_IN_CONTROL \|\| FRONTSEAT_IDLE) && HELM_DRIVE |
+| INTERFACE_COMMAND | INTERFACE_HELM_ERROR | HELM_NOT_RUNNING \|\| HELM_PARK |
+| INTERFACE_LISTEN \|\| INTERFACE_COMMAND | INTERFACE_HELM_ERROR | HELM_PARK \|\| if (helm_enabled) HELM_NOT_RUNNING (after timeout) |
+| INTERFACE_LISTEN \|\| INTERFACE_COMMAND | INTERFACE_FS_ERROR | FRONTSEAT_NOT_CONNECTED \|\| frontseat_providing_data == false |
+| INTERFACE_STANDBY | INTERFACE_FS_ERROR | FRONTSEAT_NOT_CONNECTED (after timeout) |
+| INTERFACE_HELM_ERROR | INTERFACE_STANDBY | HELM_DRIVE |
+| INTERFACE_FRONTSEAT_ERROR | INTERFACE_STANDBY | (if(ERROR_FRONTSEAT_NOT_CONNECTED) !FRONTSEAT_NOT_CONNECTED) \|\| (if(ERROR_FRONTSEAT_NOT_PROVIDING_DATA) frontseat_providing_data == true) |
 
 #### Example "ABC" driver
 
@@ -342,50 +296,13 @@ A complete production driver is provided by BluefinFrontSeat for the Bluefin Rob
 
 The transport for the ABC frontseat is TCP: the simulator (frontseat) listens on a given port and the driver connects to that machine and port. The wire protocol is a simple ascii line-based protocol where lines are terminated by carriage-return and newline (`<CR><NL>` or "\r\n"). Each message has a name (key), followed by a number of comma-delimited, colon-separated fields:
 
-<table border=1>
-  <tr>
-    <th>Key</th>
-    <th>Description</th>
-    <th>Direction (relative to frontseat)</th>
-    <th>Format</th>
-    <th>Example</th>
-  </tr>
-  <tr>
-    <td>START</td>
-    <td>Simulator initialization message</td>
-    <td>Receive</td>
-    <td>START,LAT:{latitude decimal degrees},LON:{longitude decimal degrees},DURATION:{simulation duration seconds}</td>
-    <td>START,LAT:42.1234,LON:-72,DURATION:600</td>
-  </tr>
-  <tr>
-    <td>CTRL</td>
-    <td>Frontseat state message</td>
-    <td>Transmit</td>
-    <td>CTRL,STATE:{PAYLOAD (if backseat control) or IDLE}</td>
-    <td>CTRL,STATE:PAYLOAD</td>
-  </tr>
-  <tr>
-    <td>NAV</td>
-    <td>Navigation message generated from very primitive dynamics model (depth & heading changes are instantaneous)</td>
-    <td>Transmit</td>
-    <td>NAV,LAT:{latitude decimal degrees},LON:{longitude decimal degrees},DEPTH:{depth in meters},HEADING:{heading in degrees},SPEED:{speed in m/s}</td>
-    <td>NAV,LAT:42.1234,LON:-72.5435,DEPTH:200,HEADING:223,SPEED:1.4</td>
-  </tr>
-  <tr>
-    <td>CMD</td>
-    <td>Desired course command from backseat</td>
-    <td>Receive</td>
-    <td>CMD,HEADING:{desired heading in degrees},SPEED:{desired speed in m/s},DEPTH:{desired depth in m}</td>
-    <td>CMD,HEADING:260,SPEED:1.5,DEPTH:100</td>
-  </tr>
-  <tr>
-    <td>CMD</td>
-    <td>Reponse to last CMD</td>
-    <td>Transmit</td>
-    <td>CMD,RESULT:{OK or ERROR}</td>
-    <td>CMD,RESULT:OK</td>
-  </tr>
-</table>
+| Key | Description | Direction (relative to frontseat) | Format | Example |
+|-----|-------------|----------------------------------|--------|---------|
+| START | Simulator initialization message | Receive | `START,LAT:{latitude decimal degrees},LON:{longitude decimal degrees},DURATION:{simulation duration seconds}` | `START,LAT:42.1234,LON:-72,DURATION:600` |
+| CTRL | Frontseat state message | Transmit | `CTRL,STATE:{PAYLOAD (if backseat control) or IDLE}` | `CTRL,STATE:PAYLOAD` |
+| NAV | Navigation message generated from very primitive dynamics model (depth & heading changes are instantaneous) | Transmit | `NAV,LAT:{latitude decimal degrees},LON:{longitude decimal degrees},DEPTH:{depth in meters},HEADING:{heading in degrees},SPEED:{speed in m/s}` | `NAV,LAT:42.1234,LON:-72.5435,DEPTH:200,HEADING:223,SPEED:1.4` |
+| CMD | Desired course command from backseat | Receive | `CMD,HEADING:{desired heading in degrees},SPEED:{desired speed in m/s},DEPTH:{desired depth in m}` | `CMD,HEADING:260,SPEED:1.5,DEPTH:100` |
+| CMD | Response to last CMD | Transmit | `CMD,RESULT:{OK or ERROR}` | `CMD,RESULT:OK` |
 
 At a minimum, your driver will include a C linkage function `frontseat_driver_load` and a subclass of `goby::moos::FrontSeatInterfaceBase`. It should be compiled into a shared library (.so on Linux).
 
@@ -401,9 +318,7 @@ extern "C"
 }
 ```
 
-First you should decide what configuration your driver will accept. Your configuration object is an extension to the Google Protobuf message "iFrontSeatConfig". For the ABC frontseat driver, we use the abc_frontseat_driver_config.proto file to define the configuration:
-
-\include abc_frontseat_driver_config.proto
+First you should decide what configuration your driver will accept. Your configuration object is an extension to the Google Protobuf message "iFrontSeatConfig". For the ABC frontseat driver, we use the `abc_frontseat_driver_config.proto` file to define the configuration (see `src/moos/frontseat/abc/abc_frontseat_driver_config.proto`).
 
 In this case, we need to know what IP address and TCP port the abc_frontseat_simulator is listening on, and the starting position of the simulator.
 
@@ -432,7 +347,7 @@ In this case, we set the value of frontseat_status_ based on the received "CTRL"
     }
 ```
 
-* The method "frontseat_providing_data" reports the frontseat's data state (see \ref moos_ifs_new_driver_state). It must return true if the frontseat is providing data to the driver reasonably often (where reasonable is defined by the driver). Here we set the class member variable "frontseat_providing_data_" to true each time we get a "NAV" message, and then false if we have had no "NAV" messages in the last 10 seconds.
+* The method "frontseat_providing_data" reports the frontseat's data state (see the **State charts** section above). It must return true if the frontseat is providing data to the driver reasonably often (where reasonable is defined by the driver). Here we set the class member variable "frontseat_providing_data_" to true each time we get a "NAV" message, and then false if we have had no "NAV" messages in the last 10 seconds.
 
 ```
 bool AbcFrontSeat::frontseat_providing_data() const

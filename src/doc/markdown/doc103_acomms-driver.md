@@ -79,16 +79,29 @@ The steps to writing a new driver include:
 * Figure out what type of configuration the modem will need. For example, the WHOI Micro-Modem is configured using string values (e.g. "SNV,1"). Extend goby::acomms::protobuf::DriverConfig to accomodate these configuration options. You will need to claim a group of extension field numbers that do not overlap with any of the drivers. The WHOI Micro-Modem driver goby::acomms::MMDriver uses extension field numbers 1000-1100 (see mm_driver.proto). You can read more about extensions in the official Google Protobuf documentation here: <https://developers.google.com/protocol-buffers/docs/proto>.
 For example, if I was writing a new driver for the ABC Modem that needs to be configured using a few boolean flags, I might create a new message abc_driver.proto, make a note in driver_base.proto claiming extension number 1201.
 
-* Subclass goby::acomms::ModemDriverBase and overload the pure virtual methods. Your interface should look like this:
+* Subclass goby::acomms::ModemDriverBase and overload the pure virtual methods. Your interface should look like this (from `src/acomms/modemdriver/abc_driver.h`):
 
-\dontinclude abc_driver.h
-\skip namespace
-\until private
-\skipline driver_cfg_
-\until }
-\until }
-\until }
-en
+```cpp
+namespace goby
+{
+namespace acomms
+{
+class ABCDriver : public ModemDriverBase
+{
+  public:
+    ABCDriver();
+    void startup(const protobuf::DriverConfig& cfg) override;
+    void shutdown() override;
+    void do_work() override;
+    void handle_initiate_transmission(const protobuf::ModemTransmission& m) override;
+
+  private:
+    protobuf::DriverConfig driver_cfg_; // configuration given to you at launch
+};
+} // namespace acomms
+} // namespace goby
+```
+
 * Fill in the methods. You are responsible for emitting the goby::acomms::ModemDriverBase signals at the appropriate times. Read on and all should be clear.
 
 ```
@@ -100,22 +113,55 @@ goby::acomms::ABCDriver::ABCDriver()
 
 * At startup() you get your configuration from the application (e.g. pAcommsHandler)
 
-\dontinclude abc_driver.cpp
-\skipline startup
-\until startup
+```cpp
+void goby::acomms::ABCDriver::startup(const protobuf::DriverConfig& cfg)
+{
+    driver_cfg_ = cfg;
+    // check `driver_cfg_` to your satisfaction and then start the modem physical interface
+    if (!driver_cfg_.has_serial_baud())
+        driver_cfg_.set_serial_baud(DEFAULT_BAUD);
+    ModemDriverBase::modem_start(driver_cfg_);
+    // ... send configuration to modem
+} // startup
+```
 
 * At shutdown() you should make yourself ready to startup() again if necessary and stop the modem:
-\dontinclude abc_driver.cpp
-\skipline shutdown
-\until shutdown
+
+```cpp
+void goby::acomms::ABCDriver::shutdown()
+{
+    // put the modem in a low power state?
+    // ...
+    ModemDriverBase::modem_close();
+} // shutdown
+```
+
 * handle_initiate_transmission() is called when you are expected to initiate a transmission. It *may* contain data (in the ModemTransmission::frame field). If not, you are required to request data using the goby::acomms::ModemDriverBase::signal_data_request signal. Once you have data, you are responsible for sending it. I think a bit of code will make this clearer:
-\dontinclude abc_driver.cpp
-\skipline handle_initiate_transmission
-\until handle_initiate_transmission
+
+```cpp
+void goby::acomms::ABCDriver::handle_initiate_transmission(
+    const protobuf::ModemTransmission& orig_msg)
+{
+    protobuf::ModemTransmission msg = orig_msg;
+    msg.set_max_frame_bytes(500);
+    if (msg.frame_size() == 0)
+        ModemDriverBase::signal_data_request(&msg);
+    // ... encode and transmit msg
+} // handle_initiate_transmission
+```
+
 * Finally, you can use do_work() to do continuous work. You can count on it being called at 5 Hz or more (in pAcommsHandler, it is called on the MOOS AppTick). Here's where you want to read the modem incoming stream.
-\dontinclude abc_driver.cpp
-\skipline do_work
-\until do_work
+
+```cpp
+void goby::acomms::ABCDriver::do_work()
+{
+    std::string in;
+    while (modem_read(&in))
+    {
+        // parse `in` and call ModemDriverBase::signal_receive(msg) or signal_raw_incoming(raw)
+    }
+} // do_work
+```
 
 The full ABC Modem example driver exists in acomms/modemdriver/abc_driver.h and acomms/modemdriver/abc_driver.cpp. A simulator for the ABC Modem exists that uses TCP to mimic a very basic set of modem commands (send data and acknowledgment). To use the ABC Modem using the driver_simple example, run this set of commands (`socat` is available in most package managers or at <http://www.dest-unreach.org/socat/>):
 
@@ -158,292 +204,67 @@ The goby::acomms::MMDriver extends the goby::acomms::ModemDriverBase for the WHO
 Mapping between modem_message.proto and mm_driver.proto messages and NMEA fields (see the MicroModem users guide at https://acomms.whoi.edu/micro-modem/software-interface/ for NMEA fields of the WHOI Micro-Modem):
 
 Modem to Control Computer ($CA / $SN):
-<table border=1>
-<tr>
-<th>NMEA talker</th>
-<th>Mapping</th>
-</tr>
-<tr>
-<td>$CACYC</td>
-<td>
-If we did not send $CCCYC, buffer data for $CADRQ by augmenting the provided ModemTransmission and calling signal_data_request:<br>
-goby::acomms::protobuf::ModemTransmission.time() = goby::util::goby_time<uint64>() <br>
-goby::acomms::protobuf::ModemTransmission.src() = ADR1<br>
-goby::acomms::protobuf::ModemTransmission.dest() = ADR2<br>
-goby::acomms::protobuf::ModemTransmission.rate() = Packet Type<br>
-goby::acomms::protobuf::ModemTransmission.max_frame_bytes() = 32 for Packet Type == 0, 64 for Packet Type == 2, 256 for Packet Type == 3 or 5<br>
-goby::acomms::protobuf::ModemTransmission.max_num_frames() = 1 for Packet Type == 0, 3 for Packet Type == 2, 2 for Packet Type == 3 or 8 for Packet Type == 5<br>
-</td>
-</tr> 
-<tr>
-<td>$CARXD</td>
-<td>
-only for the first $CARXD for a given packet (should match with the rest though): <br>
-goby::acomms::protobuf::ModemTransmission.time() = goby::util::goby_time<uint64>() <br>
-goby::acomms::protobuf::ModemTransmission.type()  = goby::acomms::protobuf::ModemTransmission::DATA <br>
-goby::acomms::protobuf::ModemTransmission.src() = SRC<br>
-goby::acomms::protobuf::ModemTransmission.dest() = DEST<br>
-goby::acomms::protobuf::ModemTransmission.ack_requested() = ACK<br>
-for each $CARXD: <br>
-goby::acomms::protobuf::ModemTransmission.frame(F#-1) = goby::util::hex_decode(HH...HH) <br>
-</td>
-</tr>
-<tr>
-<td>$CAMSG</td>
-<td>
-Used only to detect BAD_CRC frames ($CAMSG,BAD_CRC...). 
-(in extension goby::acomms::micromodem::protobuf::Transmission::frame_with_bad_crc) <br>
-goby::acomms::micromodem::protobuf::frame_with_bad_crc(n) = Frame with BAD CRC (assumed next frame after last good frame). n is an integer 0,1,2,... indicating the nth reported BAD_CRC frame for this packet. (not the frame number)<br>
-</td>
-</tr>
-<tr>
-<td>$CAACK</td>
-<td>
-goby::acomms::protobuf::ModemTransmission.time() = goby::util::goby_time<uint64>() <br>
-goby::acomms::protobuf::ModemTransmission.src() = SRC<br>
-goby::acomms::protobuf::ModemTransmission.dest() = DEST<br>
-(first CAACK for a given packet) goby::acomms::protobuf::ModemTransmission.acked_frame(0) = Frame#-1 (Goby starts counting at frame 0, WHOI starts with frame 1)<br>
-(second CAACK for a given packet) goby::acomms::protobuf::ModemTransmission.acked_frame(1) = Frame#-1 <br>
-(third CAACK for a given packet) goby::acomms::protobuf::ModemTransmission.acked_frame(2) = Frame#-1 <br>
-...
-</td>
-</tr>
-<tr>
-<td>$CAMUA</td>
-<td>
-goby::acomms::protobuf::ModemTransmission.type() = goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC <br> 
- extension goby::acomms::micromodem::protobuf::Transmission::type = micromodem::protobuf::MICROMODEM_MINI_DATA <br>
-goby::acomms::protobuf::ModemTransmission.time() = goby::util::goby_time<uint64>() <br>
-goby::acomms::protobuf::ModemTransmission.src() = SRC<br>
-goby::acomms::protobuf::ModemTransmission.dest() = DEST<br>
-goby::acomms::protobuf::ModemTransmission.frame(0) = goby::util::hex_decode(HHHH) <br>
-</td>
-</tr>
-<tr>
-<td>$CAMPR</td>
-<td>
-goby::acomms::protobuf::ModemTransmission.time() = goby::util::goby_time<uint64>() <br>
-goby::acomms::protobuf::ModemTransmission.dest() = SRC (SRC and DEST flipped to be SRC and DEST of $CCMPC)<br>
-goby::acomms::protobuf::ModemTransmission.src() = DEST<br>
-goby::acomms::protobuf::ModemTransmission.type() = goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC <br> 
- extension goby::acomms::micromodem::protobuf::Transmission::type = goby::acomms::micromodem::protobuf::MICROMODEM_TWO_WAY_PING <br>
-(in extension goby::acomms::micromodem::Transmission::protobuf::ranging_reply) <br>
-goby::acomms::micromodem::protobuf::RangingReply::one_way_travel_time(0) = Travel Time<br>
-</td>
-</tr>
-<tr>
-<td>$CAMPA</td>
-<td>
-goby::acomms::protobuf::ModemTransmission.time() = goby::util::goby_time<uint64>() <br>
-goby::acomms::protobuf::ModemTransmission.src() = SRC<br>
-goby::acomms::protobuf::ModemTransmission.dest() = DEST<br>
-goby::acomms::protobuf::ModemTransmission.type() = goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC <br> 
- extension goby::acomms::micromodem::protobuf::Transmission::type = goby::acomms::micromodem::protobuf::MICROMODEM_TWO_WAY_PING <br>
-</td>
-</tr>
-<tr>
-<td>$SNTTA</td>
-<td>
-goby::acomms::protobuf::ModemTransmission.time() = hhmmsss.ss (converted to microseconds since 1970-01-01 00:00:00 UTC) <br>
-goby::acomms::protobuf::ModemTransmission.time_source() = goby::acomms::protobuf::MODEM_TIME <br>
-goby::acomms::protobuf::ModemTransmission.type() = goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC <br> 
- extension goby::acomms::micromodem::protobuf::Transmission::type =  micromodem::protobuf::MICROMODEM_REMUS_LBL_RANGING or micromodem::protobuf::MICROMODEM_NARROWBAND_LBL_RANGING (depending on which LBL type was last initiated)<br>
-goby::acomms::protobuf::ModemTransmission.src() = modem ID<br>
-(in extension goby::acomms::micromodem::protobuf::Transmission::ranging_reply) <br>
-goby::acomms::micromodem::protobuf::RangingReply.one_way_travel_time(0) = TA<br>
-goby::acomms::micromodem::protobuf::RangingReply.one_way_travel_time(1) = TB<br>
-goby::acomms::micromodem::protobuf::RangingReply.one_way_travel_time(2) = TC<br>
-goby::acomms::micromodem::protobuf::RangingReply.one_way_travel_time(3) = TD<br>
-</td>
-</tr>
-<tr>
-<td>$CAXST</td>
-<td>
-maps onto extension goby::acomms::micromodem::protobuf::Transmission::transmit_stat of type goby::acomms::micromodem::protobuf::TransmitStatistics. The two $CAXST messages (CYC and data) for a rate 0 FH-FSK transmission are grouped and reported at once.
-</td>
-</tr>
-<tr>
-<td>$CACST</td>
-<td>
-maps onto extension goby::acomms::micromodem::protobuf::Transmission::receive_stat of type micromodem::protobuf::ReceiveStatistics. The two $CACST messages for a rate 0 FH-FSK transmission are grouped and reported at once. Note that this message contains the one way time of flight for synchronous ranging (used instead of $CATOA). <br>
-Also sets (which will <i>overwrite</i> goby_time() set previously): <br>
-goby::acomms::protobuf::ModemTransmission.time() = TOA time (converted to microseconds since 1970-01-01 00:00:00 UTC) <br>
-goby::acomms::protobuf::ModemTransmission.time_source() = goby::acomms::protobuf::MODEM_TIME <br>
-</td>
-</tr>
-<tr>
-<td>$CAREV</td>
-<td>Not translated into any of the modem_message.proto messages. Monitored to detect excessive clock skew (between Micro-Modem clock and system clock) or reboot (INIT)</td>
-</tr>
-<tr>
-<td>$CAERR</td>
-<td>Not translated into any of the modem_message.proto messages. Reported to goby::glog.</td>
-</tr>
-<tr>
-<td>$CACFG</td>
-<td>
-NVRAM setting stored internally.
-</td>
-</tr>
-<tr>
-<td>$CACLK</td>
-<td>
-Checked against system clock and if skew is unacceptable another $CCCLK will be sent. 
-</td>
-</tr>
-<tr>
-<td>$CADRQ</td>
-<td>
-Data request is anticipated from the $CCCYC or $CACYC and buffered. Thus it is not translated into any of the Protobuf messages.
-</td>
-</tr>
-<tr>
-<td>$CARDP</td>
-<td>
-goby::acomms::protobuf::ModemTransmission.type() = goby::acomms::protobuf::ModemTransmission::DRIVER_SPECIFIC <br> 
- extension goby::acomms::micromodem::protobuf::Transmission::type = micromodem::protobuf::MICROMODEM_FLEXIBLE_DATA <br>
-goby::acomms::protobuf::ModemTransmission.src() = src<br>
-goby::acomms::protobuf::ModemTransmission.dest() = dest<br>
-goby::acomms::protobuf::ModemTransmission.rate() = rate<br>
-goby::acomms::protobuf::ModemTransmission::frame(0) = goby::util::hex_decode(df1+df2+df3...dfN) where "+" means concatenate, unless any frame fails the CRC check, in which case this field is set to the empty string. <br>
-micromodem::protobuf::frame_with_bad_crc(0) = 0 indicated that Goby frame 0 is bad, if any sub-frame in the FDP has a bad CRC<br>
-</td>
-</tr>
-</table>
+
+| NMEA talker | Mapping |
+|-------------|---------|
+| $CACYC | If we did not send $CCCYC, buffer data for $CADRQ by augmenting the provided ModemTransmission and calling signal_data_request:<br>`ModemTransmission.time()` = `goby_time<uint64>()`<br>`ModemTransmission.src()` = ADR1<br>`ModemTransmission.dest()` = ADR2<br>`ModemTransmission.rate()` = Packet Type<br>`ModemTransmission.max_frame_bytes()` = 32 for Packet Type == 0, 64 for Packet Type == 2, 256 for Packet Type == 3 or 5<br>`ModemTransmission.max_num_frames()` = 1 for Packet Type == 0, 3 for Packet Type == 2, 2 for Packet Type == 3 or 8 for Packet Type == 5 |
+| $CARXD | Only for the first $CARXD for a given packet (should match with the rest though):<br>`ModemTransmission.time()` = `goby_time<uint64>()`<br>`ModemTransmission.type()` = `ModemTransmission::DATA`<br>`ModemTransmission.src()` = SRC<br>`ModemTransmission.dest()` = DEST<br>`ModemTransmission.ack_requested()` = ACK<br>For each $CARXD:<br>`ModemTransmission.frame(F#-1)` = `hex_decode(HH...HH)` |
+| $CAMSG | Used only to detect BAD_CRC frames ($CAMSG,BAD_CRC...). In extension `micromodem::protobuf::Transmission::frame_with_bad_crc`:<br>`frame_with_bad_crc(n)` = Frame with BAD CRC (assumed next frame after last good frame). n is an integer 0,1,2,... indicating the nth reported BAD_CRC frame for this packet (not the frame number). |
+| $CAACK | `ModemTransmission.time()` = `goby_time<uint64>()`<br>`ModemTransmission.src()` = SRC<br>`ModemTransmission.dest()` = DEST<br>(first CAACK) `ModemTransmission.acked_frame(0)` = Frame#-1 (Goby starts at frame 0, WHOI starts at frame 1)<br>(second CAACK) `ModemTransmission.acked_frame(1)` = Frame#-1<br>(third CAACK) `ModemTransmission.acked_frame(2)` = Frame#-1<br>... |
+| $CAMUA | `ModemTransmission.type()` = `ModemTransmission::DRIVER_SPECIFIC`<br>extension `micromodem::protobuf::Transmission::type` = `MICROMODEM_MINI_DATA`<br>`ModemTransmission.time()` = `goby_time<uint64>()`<br>`ModemTransmission.src()` = SRC<br>`ModemTransmission.dest()` = DEST<br>`ModemTransmission.frame(0)` = `hex_decode(HHHH)` |
+| $CAMPR | `ModemTransmission.time()` = `goby_time<uint64>()`<br>`ModemTransmission.dest()` = SRC (SRC and DEST flipped to be SRC and DEST of $CCMPC)<br>`ModemTransmission.src()` = DEST<br>`ModemTransmission.type()` = `ModemTransmission::DRIVER_SPECIFIC`<br>extension `micromodem::protobuf::Transmission::type` = `MICROMODEM_TWO_WAY_PING`<br>In extension `micromodem::Transmission::protobuf::ranging_reply`:<br>`RangingReply::one_way_travel_time(0)` = Travel Time |
+| $CAMPA | `ModemTransmission.time()` = `goby_time<uint64>()`<br>`ModemTransmission.src()` = SRC<br>`ModemTransmission.dest()` = DEST<br>`ModemTransmission.type()` = `ModemTransmission::DRIVER_SPECIFIC`<br>extension `micromodem::protobuf::Transmission::type` = `MICROMODEM_TWO_WAY_PING` |
+| $SNTTA | `ModemTransmission.time()` = hhmmsss.ss (converted to microseconds since 1970-01-01 00:00:00 UTC)<br>`ModemTransmission.time_source()` = `MODEM_TIME`<br>`ModemTransmission.type()` = `ModemTransmission::DRIVER_SPECIFIC`<br>extension `micromodem::protobuf::Transmission::type` = `MICROMODEM_REMUS_LBL_RANGING` or `MICROMODEM_NARROWBAND_LBL_RANGING` (depending on which LBL type was last initiated)<br>`ModemTransmission.src()` = modem ID<br>In extension `micromodem::protobuf::Transmission::ranging_reply`:<br>`RangingReply.one_way_travel_time(0)` = TA<br>`RangingReply.one_way_travel_time(1)` = TB<br>`RangingReply.one_way_travel_time(2)` = TC<br>`RangingReply.one_way_travel_time(3)` = TD |
+| $CAXST | Maps onto extension `micromodem::protobuf::Transmission::transmit_stat` of type `micromodem::protobuf::TransmitStatistics`. The two $CAXST messages (CYC and data) for a rate 0 FH-FSK transmission are grouped and reported at once. |
+| $CACST | Maps onto extension `micromodem::protobuf::Transmission::receive_stat` of type `micromodem::protobuf::ReceiveStatistics`. The two $CACST messages for a rate 0 FH-FSK transmission are grouped and reported at once. Note that this message contains the one way time of flight for synchronous ranging (used instead of $CATOA).<br>Also sets (which will *overwrite* goby_time() set previously):<br>`ModemTransmission.time()` = TOA time (converted to microseconds since 1970-01-01 00:00:00 UTC)<br>`ModemTransmission.time_source()` = `MODEM_TIME` |
+| $CAREV | Not translated into any of the modem_message.proto messages. Monitored to detect excessive clock skew (between Micro-Modem clock and system clock) or reboot (INIT). |
+| $CAERR | Not translated into any of the modem_message.proto messages. Reported to goby::glog. |
+| $CACFG | NVRAM setting stored internally. |
+| $CACLK | Checked against system clock and if skew is unacceptable another $CCCLK will be sent. |
+| $CADRQ | Data request is anticipated from the $CCCYC or $CACYC and buffered. Thus it is not translated into any of the Protobuf messages. |
+| $CARDP | `ModemTransmission.type()` = `ModemTransmission::DRIVER_SPECIFIC`<br>extension `micromodem::protobuf::Transmission::type` = `MICROMODEM_FLEXIBLE_DATA`<br>`ModemTransmission.src()` = src<br>`ModemTransmission.dest()` = dest<br>`ModemTransmission.rate()` = rate<br>`ModemTransmission::frame(0)` = `hex_decode(df1+df2+df3...dfN)` where "+" means concatenate, unless any frame fails the CRC check, in which case this field is set to the empty string.<br>`micromodem::protobuf::frame_with_bad_crc(0)` = 0 indicates that Goby frame 0 is bad, if any sub-frame in the FDP has a bad CRC. |
 
 Control Computer to Modem ($CC):
-<table border=1>
-<tr>
-<td>$CCTXD</td>
-<td>
-SRC = goby::acomms::protobuf::ModemTransmission..src()<br>
-DEST = goby::acomms::protobuf::ModemTransmission.dest()<br>
-A = goby::acomms::protobuf::ModemTransmission.ack_requested()<br>
-HH...HH = goby::acomms::hex_encode(goby::acomms::protobuf::ModemTransmission::frame(n)), which n is an integer 0,1,2,... corresponding to the Goby frame that this $CCTXD belongs to.<br>
-</td>
-</tr>
-<tr>
-<td>$CCCYC</td>
-<td>
-Augment the ModemTransmission:<br>
-goby::acomms::protobuf::ModemTransmission.max_frame_bytes() = 32 for Packet Type == 0, 64 for Packet Type == 2, 256 for Packet Type == 3 or 5<br>
-goby::acomms::protobuf::ModemTransmission.max_num_frames() = 1 for Packet Type == 0, 3 for Packet Type == 2, 2 for Packet Type == 3 or 8 for Packet Type == 5<br>
-If ADR1 == modem ID and frame_size() < max_frame_size(), buffer data for later $CADRQ by passing the ModemTransmission to signal_data_request<br>
-CMD = 0 (deprecated field)<br>
-ADR1 = goby::acomms::protobuf::ModemTransmission.src()<br>
-ADR2 = goby::acomms::protobuf::ModemTransmission.dest()<br>
-Packet Type = goby::acomms::protobuf::ModemTransmission.rate()<br>
-ACK = if ADR1 == modem ID then goby::acomms::protobuf::ModemTransmission.ack_requested() else 1 <br> 
-Nframes = goby::acomms::protobuf::ModemTransmission.max_num_frames()<br><br>
-</td>
-</tr> 
-<tr>
-<td>$CCCLK</td>
-<td>Not translated from any of the modem_message.proto messages. (taken from the system time)</td>
-</tr>
-<tr>
-<td>$CCCFG</td>
-<td>Not translated from any of the modem_message.proto messages. (taken from values passed to the extension goby::acomms::micromodem::protobuf::Config::nvram_cfg of goby::acomms::protobuf::DriverConfig)</td>. If the extension goby::acomms::micromodem::protobuf::Config::reset_nvram is set to true, $CCCFG,ALL,0 will be sent before any other $CCCFG values.)
-</tr>
-<tr>
-<td>$CCCFQ</td>
-<td>Not translated from any of the modem_message.proto messages. $CCCFQ,ALL sent at startup.</td>
-</tr>
-<tr>
-<td>$CCMPC</td>
-<td>
-goby::acomms::micromodem::protobuf::MICROMODEM_TWO_WAY_PING == extension goby::acomms::micromodem::protobuf::Transmission::type<br>
-SRC = goby::acomms::protobuf::ModemTransmission.src()<br>
-DEST = goby::acomms::protobuf::ModemTransmission.dest()<br>
-</td>
-</tr>
-<tr>
-<td>$CCPDT</td>
-<td>
-goby::acomms::micromodem::protobuf::protobuf::MICROMODEM_REMUS_LBL_RANGING == extension goby::acomms::micromodem::protobuf::Transmission::type<br>
-micromodem::protobuf::REMUSLBLParams type used to determine the parameters of the LBL ping. The object provided with configuration (micromodem::protobuf::Config::remus_lbl) is merged with the object provided with the ModemTransmission (micromodem::protobuf::remus_lbl) with the latter taking priority on fields that a set in both objects: <br>
-GRP = 1<br>
-CHANNEL = modem ID % 4 + 1 (use four consecutive modem IDs if you need multiple vehicles pinging)<br>
-SF = 0<br>
-STO = 0<br>
-Timeout = goby::acomms::micromodem::protobuf::REMUSLBLParams::lbl_max_range() m *2/ 1500 m/s * 1000 ms/s + goby::acomms::micromodem::protobuf::REMUSLBLParams::turnaround_ms() <br>
-goby::acomms::micromodem::protobuf::REMUSLBLParams::enable_beacons() is a set of four bit flags where the least significant bit is AF enable, most significant bit is DF enable. Thus b1111 == 0x0F enables all beacons <br>
-AF = goby::acomms::micromodem::protobuf::REMUSLBLParams::enable_beacons() >> 0 & 1<br>
-BF = goby::acomms::micromodem::protobuf::REMUSLBLParams::enable_beacons() >> 1 & 1<br>
-CF = goby::acomms::micromodem::protobuf::REMUSLBLParams::enable_beacons() >> 2 & 1<br>
-DF = goby::acomms::micromodem::protobuf::REMUSLBLParams::enable_beacons() >> 3 & 1<br>
-</td>
-</tr>
-<tr>
-<td>$CCPNT</td>
-<td>
-goby::acomms::micromodem::protobuf::protobuf::MICROMODEM_NARROWBAND_LBL_RANGING == extension goby::acomms::micromodem::protobuf::Transmission::type<br>
-goby::acomms::micromodem::protobuf::NarrowBandLBLParams type used to determine the parameters of the LBL ping. The object provided with configuration (goby::acomms::micromodem::protobuf::Config::narrowband_lbl) is merged with the object provided with the ModemTransmission (goby::acomms::micromodem::protobuf::narrowband_lbl) with the latter taking priority on fields that a set in both objects: <br>
-<!--CCPNT, Ftx, Ttx, Trx, Timeout, FA, FB, FC, FD,Tflag-->
-Ftx = goby::acomms::micromodem::protobuf::NarrowBandLBLParams::transmit_freq() <br>
-Ttx = goby::acomms::micromodem::protobuf::NarrowBandLBLParams::transmit_ping_ms() <br>
-Trx = goby::acomms::micromodem::protobuf::NarrowBandLBLParams::receive_ping_ms() <br>
-Timeout = goby::acomms::micromodem::protobuf::NarrowBandLBLParams::lbl_max_range() m * 2/ 1500 m/s * 1000 ms/s + goby::acomms::micromodem::protobuf::NarrowBandLBLParams::turnaround_ms() <br>
-FA = goby::acomms::micromodem::protobuf::NarrowBandLBLParams::receive_freq(0) or 0 if receive_freq_size() < 1<br>
-FB = goby::acomms::micromodem::protobuf::NarrowBandLBLParams::receive_freq(1) or 0 if receive_freq_size() < 2<br>
-FC = goby::acomms::micromodem::protobuf::NarrowBandLBLParams::receive_freq(2) or 0 if receive_freq_size() < 3<br>
-FD = goby::acomms::micromodem::protobuf::NarrowBandLBLParams::receive_freq(3) or 0 if receive_freq_size() < 4<br>
-Tflag = micromodem::protobuf::NarrowBandLBLParams::transmit_flag() <br>
-</td>
-</tr>
-<tr>
-<td>$CCMUC</td>
-<td>
-SRC = goby::acomms::protobuf::ModemTransmission.src()<br>
-DEST = goby::acomms::protobuf::ModemTransmission.dest()<br>
-HHHH = goby::acomms::hex_encode(goby::acomms::protobuf::ModemTransmission::frame(0)) & 0x1F<br>
-</td>
-</tr>
-<tr>
-<td>$CCTDP</td>
-<td>
-dest = goby::acomms::protobuf::ModemTransmission.dest()<br>
-rate = goby::acomms::protobuf::ModemTransmission.rate()<br>
-ack = 0 (not yet supported by the Micro-Modem 2) <br>
-reserved = 0 <br>
-hexdata = goby::acomms::hex_encode(goby::acomms::protobuf::ModemTransmission::frame(0))<br>
-</td>
-</tr>
-</table>
+
+| NMEA talker | Mapping |
+|-------------|---------|
+| $CCTXD | SRC = `ModemTransmission.src()`<br>DEST = `ModemTransmission.dest()`<br>A = `ModemTransmission.ack_requested()`<br>HH...HH = `hex_encode(ModemTransmission::frame(n))`, where n is an integer 0,1,2,... corresponding to the Goby frame that this $CCTXD belongs to. |
+| $CCCYC | Augment the ModemTransmission:<br>`ModemTransmission.max_frame_bytes()` = 32 for Packet Type == 0, 64 for Packet Type == 2, 256 for Packet Type == 3 or 5<br>`ModemTransmission.max_num_frames()` = 1 for Packet Type == 0, 3 for Packet Type == 2, 2 for Packet Type == 3 or 8 for Packet Type == 5<br>If ADR1 == modem ID and frame_size() < max_frame_size(), buffer data for later $CADRQ by passing the ModemTransmission to signal_data_request<br>CMD = 0 (deprecated field)<br>ADR1 = `ModemTransmission.src()`<br>ADR2 = `ModemTransmission.dest()`<br>Packet Type = `ModemTransmission.rate()`<br>ACK = if ADR1 == modem ID then `ModemTransmission.ack_requested()` else 1<br>Nframes = `ModemTransmission.max_num_frames()` |
+| $CCCLK | Not translated from any of the modem_message.proto messages. (taken from the system time) |
+| $CCCFG | Not translated from any of the modem_message.proto messages. (taken from values passed to the extension `micromodem::protobuf::Config::nvram_cfg` of `goby::acomms::protobuf::DriverConfig`). If the extension `micromodem::protobuf::Config::reset_nvram` is set to true, $CCCFG,ALL,0 will be sent before any other $CCCFG values.) |
+| $CCCFQ | Not translated from any of the modem_message.proto messages. $CCCFQ,ALL sent at startup. |
+| $CCMPC | `micromodem::protobuf::MICROMODEM_TWO_WAY_PING` == extension `micromodem::protobuf::Transmission::type`<br>SRC = `ModemTransmission.src()`<br>DEST = `ModemTransmission.dest()` |
+| $CCPDT | `micromodem::protobuf::MICROMODEM_REMUS_LBL_RANGING` == extension `micromodem::protobuf::Transmission::type`<br>`micromodem::protobuf::REMUSLBLParams` type used to determine the parameters of the LBL ping. The object provided with configuration (`micromodem::protobuf::Config::remus_lbl`) is merged with the object provided with the ModemTransmission (`micromodem::protobuf::remus_lbl`) with the latter taking priority on fields set in both objects:<br>GRP = 1<br>CHANNEL = modem ID % 4 + 1 (use four consecutive modem IDs if you need multiple vehicles pinging)<br>SF = 0<br>STO = 0<br>Timeout = `REMUSLBLParams::lbl_max_range()` m * 2 / 1500 m/s * 1000 ms/s + `REMUSLBLParams::turnaround_ms()`<br>`REMUSLBLParams::enable_beacons()` is a set of four bit flags where the least significant bit is AF enable, most significant bit is DF enable. Thus b1111 == 0x0F enables all beacons<br>AF = `enable_beacons()` >> 0 & 1<br>BF = `enable_beacons()` >> 1 & 1<br>CF = `enable_beacons()` >> 2 & 1<br>DF = `enable_beacons()` >> 3 & 1 |
+| $CCPNT | `micromodem::protobuf::MICROMODEM_NARROWBAND_LBL_RANGING` == extension `micromodem::protobuf::Transmission::type`<br>`micromodem::protobuf::NarrowBandLBLParams` type used to determine the parameters of the LBL ping. The object provided with configuration (`micromodem::protobuf::Config::narrowband_lbl`) is merged with the object provided with the ModemTransmission (`micromodem::protobuf::narrowband_lbl`) with the latter taking priority on fields set in both objects:<br>Ftx = `NarrowBandLBLParams::transmit_freq()`<br>Ttx = `NarrowBandLBLParams::transmit_ping_ms()`<br>Trx = `NarrowBandLBLParams::receive_ping_ms()`<br>Timeout = `NarrowBandLBLParams::lbl_max_range()` m * 2 / 1500 m/s * 1000 ms/s + `NarrowBandLBLParams::turnaround_ms()`<br>FA = `NarrowBandLBLParams::receive_freq(0)` or 0 if receive_freq_size() < 1<br>FB = `NarrowBandLBLParams::receive_freq(1)` or 0 if receive_freq_size() < 2<br>FC = `NarrowBandLBLParams::receive_freq(2)` or 0 if receive_freq_size() < 3<br>FD = `NarrowBandLBLParams::receive_freq(3)` or 0 if receive_freq_size() < 4<br>Tflag = `NarrowBandLBLParams::transmit_flag()` |
+| $CCMUC | SRC = `ModemTransmission.src()`<br>DEST = `ModemTransmission.dest()`<br>HHHH = `hex_encode(ModemTransmission::frame(0))` & 0x1F |
+| $CCTDP | dest = `ModemTransmission.dest()`<br>rate = `ModemTransmission.rate()`<br>ack = 0 (not yet supported by the Micro-Modem 2)<br>reserved = 0<br>hexdata = `hex_encode(ModemTransmission::frame(0))` |
 
 ### Sequence diagrams for various Micro-Modem features using Goby
 
 FSK (rate 0) data transmission
 ![](images/goby-acomms-mmdriver-rate0.png)
-\image latex images/goby-acomms-mmdriver-rate0.eps "FSK (rate 0) data transmission"
 
 
 PSK (rate 2 shown, others are similar) data transmission
 ![](images/goby-acomms-mmdriver-rate2.png)
-\image latex images/goby-acomms-mmdriver-rate2.eps "PSK (rate 2 shown, others are similar) data transmission"
 
 
 Narrowband transponder LBL ping
 ![](images/goby-acomms-mmdriver-pnt.png)
-\image latex images/goby-acomms-mmdriver-pnt.eps "Narrowband transponder LBL ping"
 
 
 REMUS transponder LBL ping
 ![](images/goby-acomms-mmdriver-pdt.png)
-\image latex images/goby-acomms-mmdriver-pdt.eps "REMUS transponder LBL ping"
 
 User mini-packet 13 bit data transmission
 ![](images/goby-acomms-mmdriver-muc.png)
-\image latex images/goby-acomms-mmdriver-muc.eps "User mini-packet 13 bit data transmission"
 
 
 Two way ping
 ![](images/goby-acomms-mmdriver-mpc.png)
-\image latex images/goby-acomms-mmdriver-mpc.eps "Two way ping"
 
 Flexible Data Protocol (Micro-Modem 2)
 ![](images/goby-acomms-mmdriver-tdp.png)
-\image latex images/goby-acomms-mmdriver-tdp.eps "Flexible Data Protocol"
 
 
 
