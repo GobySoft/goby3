@@ -49,11 +49,12 @@ function(PROTOBUF_GENERATE_CPP_DCCL SRCS HDRS)
     list(APPEND ${SRCS} "${FIL_PATH}/${FIL_WE}.pb.cc")
     list(APPEND ${HDRS} "${FIL_PATH}/${FIL_WE}.pb.h")
 
+    find_path(PROTOBUF_INCLUDE_DIR google/protobuf/service.h)
     add_custom_command(
       OUTPUT "${FIL_PATH}/${FIL_WE}.pb.cc"
              "${FIL_PATH}/${FIL_WE}.pb.h"
       COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE}
-      ARGS --cpp_out ${goby_INC_DIR} --proto_path ${goby_INC_DIR} ${goby_INC_DIR}/goby/${REL_FIL} ${ALL_PROTOBUF_INCLUDE_DIRS} -I ${goby_INC_DIR} --dccl_out ${goby_INC_DIR}
+      ARGS --cpp_out ${goby_INC_DIR} --proto_path ${goby_INC_DIR} ${goby_INC_DIR}/goby/${REL_FIL} ${ALL_PROTOBUF_INCLUDE_DIRS} -I${goby_INC_DIR} -I${PROTOBUF_INCLUDE_DIR} --dccl_out ${goby_INC_DIR}
       # add guards for Clang static analyzer (scan-build)
       COMMAND /bin/bash
       ARGS -c "FILE=${FIL_PATH}/${FIL_WE}.pb.cc && TMPFILE=\${FILE}.\${RANDOM} && cat <(echo '#ifndef __clang_analyzer__') \${FILE} <(echo -e '\\n#endif // __clang_analyzer__') > \${TMPFILE} && mv \${TMPFILE} \${FILE}"
@@ -73,13 +74,12 @@ function(PROTOBUF_GENERATE_CPP_DCCL SRCS HDRS)
   set(${HDRS} ${${HDRS}} PARENT_SCOPE)
 endfunction()
 
-find_path(PROTOBUF_INCLUDE_DIR google/protobuf/service.h)
 
-# so that we can use Google's included descriptor.proto
-list(APPEND ALL_PROTOBUF_INCLUDE_DIRS "-I${PROTOBUF_INCLUDE_DIR}")
+# if no Protobuf found already (by imported library), prefer CMake included with Protobuf
+if(NOT Protobuf_FOUND)
+  find_package(protobuf QUIET CONFIG)
+endif()
 
-# prefer CMake included with Protobuf
-find_package(protobuf QUIET CONFIG)
 # if that fails, use the CMake shipped module
 if(NOT Protobuf_FOUND)
   find_package(Protobuf REQUIRED MODULE)
