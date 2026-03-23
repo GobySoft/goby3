@@ -488,7 +488,7 @@ class InterVehicleTransporterBase
 
   private:
     friend PollerType;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         _expire_pending_ack();
 
@@ -632,7 +632,7 @@ class InterVehicleForwarder
         }
     }
 
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) { return 0; }
+    int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock) { return 0; }
 };
 
 /// \brief Implements a portal for the intervehicle layer based on Goby Acomms.
@@ -700,7 +700,7 @@ class InterVehiclePortal
         }
     }
 
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         int items = 0;
         goby::acomms::protobuf::ModemTransmission msg;

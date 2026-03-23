@@ -155,7 +155,7 @@ class InterProcessPortalReadThread
   public:
     InterProcessPortalReadThread(const protobuf::InterProcessPortalConfig& cfg,
                                  zmq::context_t& context, std::atomic<bool>& alive,
-                                 std::shared_ptr<std::condition_variable_any> poller_cv);
+                                 std::shared_ptr<std::condition_variable> poller_cv);
     void run();
     ~InterProcessPortalReadThread()
     {
@@ -184,7 +184,7 @@ class InterProcessPortalReadThread
     zmq::socket_t subscribe_socket_;
     zmq::socket_t manager_socket_;
     std::atomic<bool>& alive_;
-    std::shared_ptr<std::condition_variable_any> poller_cv_;
+    std::shared_ptr<std::condition_variable> poller_cv_;
     std::vector<zmq::pollitem_t> poll_items_;
     enum
     {
@@ -322,7 +322,7 @@ class InterProcessPortalImplementation
     void _do_portal_wildcard_subscribe() { zmq_main_.subscribe(delimiter_str); }
     void _do_portal_wildcard_unsubscribe() { zmq_main_.unsubscribe(delimiter_str); }
 
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         int items = 0;
         protobuf::InprocControl new_control_msg;

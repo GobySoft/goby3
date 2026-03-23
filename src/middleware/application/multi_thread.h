@@ -161,6 +161,13 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
         auto type_i = std::type_index(typeid(ThreadType));
         ThreadIdentifier ti{type_i, index};
         interthread_.publish<MainThreadBase::shutdown_group_>(ti);
+
+        // block until the thread has actually joined
+        if (threads_.count(type_i) && threads_[type_i].count(index))
+        {
+            auto& thread_manager = threads_[type_i][index];
+            while (thread_manager.thread) { MainThreadBase::transporter().poll(); }
+        }
     }
 
     template <int i>

@@ -41,8 +41,8 @@ template <typename Transporter> class Poller : public PollerInterface
     Poller(PollerInterface* inner_poller = nullptr)
         : // we want the same mutex and cv all the way up
           PollerInterface(
-              inner_poller ? inner_poller->poll_mutex() : std::make_shared<std::timed_mutex>(),
-              inner_poller ? inner_poller->cv() : std::make_shared<std::condition_variable_any>()),
+              inner_poller ? inner_poller->poll_mutex() : std::make_shared<std::mutex>(),
+              inner_poller ? inner_poller->cv() : std::make_shared<std::condition_variable>()),
           inner_poller_(inner_poller)
     {
     }
@@ -51,7 +51,7 @@ template <typename Transporter> class Poller : public PollerInterface
     PollerInterface* inner_poller() { return inner_poller_; }
 
   private:
-    int _transporter_poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock) override
+    int _transporter_poll(std::unique_ptr<std::unique_lock<std::mutex> >& lock) override
     {
         // work from the inside out
         int inner_poll_items = 0;

@@ -144,13 +144,29 @@ message EulerAngles
     }];
 
     optional double roll_rate = 10 [(dccl.field) = {
-        units { derived_dimensions: "plane_angle/time" system: "angle::degree" }
+        units {
+            custom {
+                unit: "dccl::units::degrees_per_second_unit"
+                header: "dccl/units/degrees.h"
+            }
+        }
     }];
+
     optional double pitch_rate = 11 [(dccl.field) = {
-        units { derived_dimensions: "plane_angle/time" system: "angle::degree" }
+        units {
+            custom {
+                unit: "dccl::units::degrees_per_second_unit"
+                header: "dccl/units/degrees.h"
+            }
+        }
     }];
     optional double heading_rate = 12 [(dccl.field) = {
-        units { derived_dimensions: "plane_angle/time" system: "angle::degree" }
+        units {
+            custom {
+                unit: "dccl::units::degrees_per_second_unit"
+                header: "dccl/units/degrees.h"
+            }
+        }
     }];
 
     extensions 1000 to max;
@@ -185,8 +201,9 @@ message CTDSample
     required double pressure = 12
         [(dccl.field).units = { base_dimensions: "M L^-1 T^-2" }];
 
-    // required "secondary" or calculated quantities (can be calculated
-    // from "primary" measurements alone using empirical formulas).
+    // required "secondary" or calculated quantities (can be
+    // calculated from "primary" measurements alone using empirical
+    // formulas).
     required double salinity = 20
         [(dccl.field).units = { base_dimensions: "-" }];
     required double sound_speed = 21

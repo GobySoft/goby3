@@ -1,4 +1,4 @@
-protobuf_generate_cpp(ACOMMS_PROTO_SRCS ACOMMS_PROTO_HDRS
+protobuf_generate_cpp_dccl(ACOMMS_PROTO_SRCS ACOMMS_PROTO_HDRS
   acomms/protobuf/abc_driver.proto
   acomms/protobuf/amac_config.proto
   acomms/protobuf/amac.proto
