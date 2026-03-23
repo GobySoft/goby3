@@ -273,7 +273,7 @@ class InterProcessTransporterBase
 
   private:
     friend PollerType;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         return static_cast<Derived*>(this)->_poll(lock);
     }
@@ -434,7 +434,7 @@ class InterProcessForwarder
                       msg->key().type(), msg->key().group());
     }
 
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         return 0;
     } // A forwarder is a shell, only the inner Transporter has data

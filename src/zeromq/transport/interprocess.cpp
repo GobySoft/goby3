@@ -28,6 +28,30 @@
 #include <type_traits> // for __success_type<>::type
 #include <utility>     // for pair, move
 
+// TSan annotations for ZMQ inproc:// zero-copy false positive.
+// The control PAIR socket uses inproc:// which transfers the exact same
+// message buffer pointer from sender to receiver (zero-copy). TSan sees the
+// pre-send SerializeToArray write and the post-recv ParseFromArray read on the
+// same address without a visible synchronization edge, since the real
+// synchronization is inside libzmq (not TSan-annotated).
+// __tsan_release(p) / __tsan_acquire(p) establish the happens-before edge
+// that TSan needs: the sender "releases" the buffer before send(); the
+// receiver "acquires" it after recv() and before any read.
+#ifdef __SANITIZE_THREAD__
+#include <sanitizer/tsan_interface.h>
+#define GOBY_TSAN_RELEASE(p) __tsan_release(p)
+#define GOBY_TSAN_ACQUIRE(p) __tsan_acquire(p)
+#else
+#define GOBY_TSAN_RELEASE(p) \
+    do                       \
+    {                        \
+    } while (0)
+#define GOBY_TSAN_ACQUIRE(p) \
+    do                       \
+    {                        \
+    } while (0)
+#endif
+
 #include "interprocess.h"
 
 #if GOOGLE_PROTOBUF_VERSION < 3001000
@@ -122,6 +146,9 @@ bool goby::zeromq::InterProcessPortalMainThread::recv(protobuf::InprocControl* c
     bool message_received = false;
     if (zmq_socket_recv(control_socket_, zmq_msg, flags))
     {
+        // Acquire the inproc zero-copy buffer: happens-after the sender's GOBY_TSAN_RELEASE.
+        if (zmq_msg.data())
+            GOBY_TSAN_ACQUIRE(zmq_msg.data());
         control_msg->ParseFromArray((char*)zmq_msg.data(), zmq_msg.size());
         glog.is(DEBUG3) && glog << "Main thread received control msg: "
                                 << control_msg->ShortDebugString() << std::endl;
@@ -240,7 +267,9 @@ void goby::zeromq::InterProcessPortalMainThread::send_control_msg(
 {
     zmq::message_t zmq_control_msg(control.ByteSizeLong());
     control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());
-
+    // Release the inproc zero-copy buffer: the receiver's GOBY_TSAN_ACQUIRE happens-after this.
+    if (zmq_control_msg.data())
+        GOBY_TSAN_RELEASE(zmq_control_msg.data());
     control_socket_.send(zmq_control_msg, zmq_send_flags_none);
 }
 
@@ -249,7 +278,7 @@ void goby::zeromq::InterProcessPortalMainThread::send_control_msg(
 //
 goby::zeromq::InterProcessPortalReadThread::InterProcessPortalReadThread(
     const protobuf::InterProcessPortalConfig& cfg, zmq::context_t& context,
-    std::atomic<bool>& alive, std::shared_ptr<std::condition_variable_any> poller_cv)
+    std::atomic<bool>& alive, std::shared_ptr<std::condition_variable> poller_cv)
     : cfg_(cfg),
       control_socket_(context, ZMQ_PAIR),
       subscribe_socket_(context, ZMQ_SUB),
@@ -379,6 +408,9 @@ void goby::zeromq::InterProcessPortalReadThread::poll(long timeout_ms)
 void goby::zeromq::InterProcessPortalReadThread::control_data(const zmq::message_t& zmq_msg)
 {
     // command from the main thread
+    // Acquire the inproc zero-copy buffer: happens-after the sender's GOBY_TSAN_RELEASE.
+    if (zmq_msg.data())
+        GOBY_TSAN_ACQUIRE((void*)zmq_msg.data());
     protobuf::InprocControl control_msg;
     control_msg.ParseFromArray((char*)zmq_msg.data(), zmq_msg.size());
 
@@ -481,6 +513,9 @@ void goby::zeromq::InterProcessPortalReadThread::send_control_msg(
 {
     zmq::message_t zmq_control_msg(control.ByteSizeLong());
     control.SerializeToArray((char*)zmq_control_msg.data(), zmq_control_msg.size());
+    // Release the inproc zero-copy buffer: the receiver's GOBY_TSAN_ACQUIRE happens-after this.
+    if (zmq_control_msg.data())
+        GOBY_TSAN_RELEASE(zmq_control_msg.data());
     control_socket_.send(zmq_control_msg, zmq_send_flags_none);
     poller_cv_->notify_all();
 }

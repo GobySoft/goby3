@@ -29,8 +29,10 @@
 #include <stdexcept> // for out_of...
 #include <utility>   // for pair
 
-#include <boost/algorithm/string/classification.hpp>          // for is_any...
-#include <boost/algorithm/string/split.hpp>                   // for split
+#include <any>
+#include <boost/algorithm/string/classification.hpp> // for is_any...
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <boost/any.hpp>
 #include <boost/date_time/gregorian/greg_date.hpp>            // for date
 #include <boost/date_time/posix_time/posix_time_duration.hpp> // for seconds
 #include <boost/date_time/posix_time/posix_time_io.hpp>       // for operat...
@@ -43,6 +45,7 @@
 #include <cstdint>                                            // for uint64_t
 #include <dccl/field_codec.h>                                 // for FromPr...
 #include <google/protobuf/message.h>                          // for Message
+#include <type_traits>
 
 #include "dccl/dynamic_protobuf_manager.h"              // for Dynami...
 #include "goby/acomms/acomms_constants.h"               // for BROADC...
@@ -62,6 +65,24 @@
 
 using namespace goby::util::logger;
 using goby::util::as;
+
+template <typename T>
+// boost::any and std::any have different ways of checking for value
+bool any_has_value(T&& a)
+{
+    if constexpr (std::is_same_v<std::remove_reference_t<T>, std::any>)
+    {
+        return a.has_value();
+    }
+    else if constexpr (std::is_same_v<std::remove_reference_t<T>, boost::any>)
+    {
+        return !a.empty();
+    }
+    else
+    {
+        static_assert(std::is_same_v<T, void>, "Unsupported dccl::any type");
+    }
+}
 
 goby::acomms::Queue::Queue(const google::protobuf::Descriptor* desc, QueueManager* parent,
                            protobuf::QueuedMessageEntry cfg)
@@ -200,7 +221,7 @@ goby::acomms::Queue::meta_from_msg(const google::protobuf::Message& dccl_msg)
             dest = dccl::any_cast<std::uint32_t>(field_value);
         else if (field_value.type() == typeid(std::uint64_t))
             dest = dccl::any_cast<std::uint64_t>(field_value);
-        else if (field_value.has_value())
+        else if (any_has_value(field_value))
             throw(QueueException("Invalid type " + std::string(field_value.type().name()) +
                                  " given for (queue_field).is_dest. Expected integer type"));
 
@@ -224,7 +245,7 @@ goby::acomms::Queue::meta_from_msg(const google::protobuf::Message& dccl_msg)
             src = dccl::any_cast<std::uint32_t>(field_value);
         else if (field_value.type() == typeid(std::uint64_t))
             src = dccl::any_cast<std::uint64_t>(field_value);
-        else if (field_value.has_value())
+        else if (any_has_value(field_value))
             throw(QueueException("Invalid type " + std::string(field_value.type().name()) +
                                  " given for (queue_field).is_src. Expected integer type"));
 
@@ -247,7 +268,7 @@ goby::acomms::Queue::meta_from_msg(const google::protobuf::Message& dccl_msg)
             meta.set_time_with_units(
                 time::convert<time::MicroTime>(goby::util::as<boost::posix_time::ptime>(
                     dccl::any_cast<std::string>(field_value))));
-        else if (field_value.has_value())
+        else if (any_has_value(field_value))
             throw(QueueException(
                 "Invalid type " + std::string(field_value.type().name()) +
                 " given for (goby.field).queue.is_time. Expected std::uint64_t contained "
@@ -305,7 +326,7 @@ dccl::any goby::acomms::Queue::find_queue_field(const std::string& field_name,
         else
         {
             dccl::any value = helper->get_value(field_desc, *current_msg);
-            if (!value.has_value()) // no submessage in this message
+            if (!any_has_value(value)) // no submessage in this message
                 return dccl::any();
             else
             {

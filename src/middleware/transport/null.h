@@ -84,7 +84,7 @@ class NullTransporter : public StaticTransporterInterface<NullTransporter, NullT
 
   private:
     friend Poller<NullTransporter>;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex> >& lock) { return 0; }
+    int _poll(std::unique_ptr<std::unique_lock<std::mutex> >& lock) { return 0; }
 };
 } // namespace middleware
 } // namespace goby

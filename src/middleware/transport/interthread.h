@@ -202,7 +202,7 @@ class InterThreadTransporter
 
   private:
     friend Poller<InterThreadTransporter>;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         return detail::SubscriptionStoreBase::poll_all(std::this_thread::get_id(), lock);
     }
