@@ -29,6 +29,7 @@ set(MIDDLEWARE_SRC
   middleware/marshalling/interface.cpp
   middleware/marshalling/detail/dccl_serializer_parser.cpp 
   middleware/transport/interthread.cpp
+  middleware/transport/identifier.cpp
   middleware/transport/intervehicle/driver_thread.cpp
   middleware/application/configuration_reader.cpp
   middleware/application/tool.cpp

@@ -222,6 +222,7 @@ include(acomms/src.cmake)
 include(util/src.cmake)
 include(time/src.cmake)
 include(middleware/src.cmake)
+include(udpm/src.cmake)
 
 if(NOT enable_janus_acomms)
   list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*janus_driver.cpp")
@@ -237,6 +238,7 @@ add_library(goby
   ${UTIL_SRC}
   ${TIME_SRC}
   ${MIDDLEWARE_SRC}
+  ${UDPM_SRC}
   )
 
 

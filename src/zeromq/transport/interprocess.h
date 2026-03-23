@@ -665,7 +665,7 @@ class InterProcessPortalImplementation
         }
     }
 
-    void _receive_regex_subscription_forwarded(
+    void _subscribe_regex_serialized(
         std::shared_ptr<const middleware::SerializationSubscriptionRegex> subscription)
     {
         _subscribe_regex(subscription);

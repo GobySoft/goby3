@@ -1,0 +1,8 @@
+syntax = "proto2";
+
+package goby.test.middleware.protobuf;
+
+message Widget
+{
+    optional int32 b = 1;
+}

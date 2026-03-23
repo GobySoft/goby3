@@ -3,6 +3,8 @@ add_subdirectory(acomms)
 add_subdirectory(util)
 add_subdirectory(middleware)
 
+add_subdirectory(udpm)
+
 if(build_zeromq)
   add_subdirectory(zeromq)
 endif()

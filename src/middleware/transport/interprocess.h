@@ -34,7 +34,10 @@
 
 #include "goby/middleware/group.h"
 
+#include "goby/util/debug_logger.h"
+
 #include "goby/middleware/marshalling/interface.h"
+#include "goby/middleware/transport/identifier.h"
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
 #include "goby/middleware/transport/serialization_handlers.h"
@@ -444,39 +447,284 @@ class InterProcessForwarder
 };
 
 template <typename Derived, typename InnerTransporter>
-class InterProcessPortalBase : public InterProcessTransporterBase<Derived, InnerTransporter>
+class InterProcessPortalCommon : public InterProcessIdentifierManager
+{
+  protected:
+    template <typename Data, int scheme>
+    void _publish(const Data& d, const goby::middleware::Group& group,
+                  const middleware::Publisher<Data>& /*publisher*/)
+    {
+        std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
+        std::string type_name = middleware::SerializerParserHelper<Data, scheme>::type_name(d);
+        _publish_serialized(type_name, scheme, bytes, group);
+    }
+
+    std::shared_ptr<middleware::SerializationSubscriptionRegex> _subscribe_regex(
+        std::function<void(const std::vector<unsigned char>&, int scheme, const std::string& type,
+                           const goby::middleware::Group& group)>
+            f,
+        const std::set<int>& schemes, const std::string& type_regex, const std::string& group_regex)
+    {
+        auto new_sub = std::make_shared<middleware::SerializationSubscriptionRegex>(
+            f, schemes, type_regex, group_regex);
+        static_cast<Derived*>(this)->_subscribe_regex_serialized(new_sub);
+        return new_sub;
+    }
+
+    template <typename Data, int scheme>
+    void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f,
+                    const goby::middleware::Group& group,
+                    const middleware::Subscriber<Data>& /*subscriber*/)
+    {
+        std::string identifier = this->template _make_identifier<Data, scheme>(
+            group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+
+        auto subscription = std::make_shared<middleware::SerializationSubscription<Data, scheme>>(
+            f, group,
+            middleware::Subscriber<Data>(goby::middleware::protobuf::TransporterConfig(),
+                                         [=](const Data& /*d*/) { return group; }));
+
+        if (forwarder_subscriptions_.count(identifier) == 0 &&
+            portal_subscriptions_.count(identifier) == 0)
+            static_cast<Derived*>(this)->_do_portal_subscribe(identifier);
+
+        portal_subscriptions_.insert(std::make_pair(identifier, subscription));
+    }
+
+    template <typename Data, int scheme>
+    void _unsubscribe(
+        const goby::middleware::Group& group,
+        const middleware::Subscriber<Data>& /*subscriber*/ = middleware::Subscriber<Data>())
+    {
+        std::string identifier = this->template _make_identifier<Data, scheme>(
+            group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+
+        portal_subscriptions_.erase(identifier);
+
+        if (forwarder_subscriptions_.count(identifier) == 0)
+            static_cast<Derived*>(this)->_do_portal_unsubscribe(identifier);
+    }
+
+    void _handle_received_data(std::unique_ptr<std::unique_lock<std::mutex>>& lock,
+                               const std::string& data)
+    {
+        if (lock)
+            lock.reset();
+
+        std::string group, type;
+        int scheme, process;
+        std::size_t thread;
+        std::tie(group, scheme, type, process, thread) = this->parse_identifier(data);
+        std::string identifier = this->_make_identifier(
+            type, scheme, group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+
+        std::vector<std::weak_ptr<const middleware::SerializationHandlerBase<>>> subs_to_post;
+        auto portal_range = portal_subscriptions_.equal_range(identifier);
+        for (auto it = portal_range.first; it != portal_range.second; ++it)
+            subs_to_post.push_back(it->second);
+        auto forwarder_it = forwarder_subscriptions_.find(identifier);
+        if (forwarder_it != forwarder_subscriptions_.end())
+            subs_to_post.push_back(forwarder_it->second);
+
+        {
+            auto null_delim_it = std::find(std::begin(data), std::end(data),
+                                           InterProcessIdentifierManager::end_delimiter);
+            for (auto& sub : subs_to_post)
+            {
+                if (auto sub_sp = sub.lock())
+                    sub_sp->post(null_delim_it + 1, data.end());
+            }
+        }
+
+        if (!regex_subscriptions_.empty())
+        {
+            auto null_delim_it = std::find(std::begin(data), std::end(data),
+                                           InterProcessIdentifierManager::end_delimiter);
+
+            bool forwarder_subscription_posted = false;
+            for (auto& sub : regex_subscriptions_)
+            {
+                bool is_forwarded_sub =
+                    sub.first != middleware::identifier_part_to_string(std::this_thread::get_id());
+                if (is_forwarded_sub && forwarder_subscription_posted)
+                    continue;
+
+                if (sub.second->post(null_delim_it + 1, data.end(), scheme, type, group) &&
+                    is_forwarded_sub)
+                    forwarder_subscription_posted = true;
+            }
+        }
+    }
+
+    void _unsubscribe_all(const std::string& subscriber_id =
+                              middleware::identifier_part_to_string(std::this_thread::get_id()))
+    {
+        if (subscriber_id == middleware::identifier_part_to_string(std::this_thread::get_id()))
+        {
+            for (const auto& p : portal_subscriptions_)
+            {
+                const auto& identifier = p.first;
+                if (forwarder_subscriptions_.count(identifier) == 0)
+                    static_cast<Derived*>(this)->_do_portal_unsubscribe(identifier);
+            }
+            portal_subscriptions_.clear();
+        }
+        else
+        {
+            while (forwarder_subscription_identifiers_[subscriber_id].size() > 0)
+                _forwarder_unsubscribe(
+                    subscriber_id,
+                    forwarder_subscription_identifiers_[subscriber_id].begin()->first);
+        }
+
+        if (regex_subscriptions_.size() > 0)
+        {
+            regex_subscriptions_.erase(subscriber_id);
+            if (regex_subscriptions_.empty())
+                static_cast<Derived*>(this)->_do_portal_wildcard_unsubscribe();
+        }
+    }
+
+    void _receive_subscription_forwarded(
+        const std::shared_ptr<const middleware::SerializationHandlerBase<>>& subscription)
+    {
+        std::string identifier = this->_make_identifier(
+            subscription->type_name(), subscription->scheme(), subscription->subscribed_group(),
+            IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+
+        goby::glog.is_debug2() &&
+            goby::glog << "Received subscription forwarded for identifier [" << identifier
+                       << "] from subscriber id: " << subscription->subscriber_id() << std::endl;
+
+        switch (subscription->action())
+        {
+            case middleware::SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE:
+            {
+                if (forwarder_subscription_identifiers_[subscription->subscriber_id()].count(
+                        identifier) == 0)
+                {
+                    if (forwarder_subscriptions_.count(identifier) == 0)
+                    {
+                        if (portal_subscriptions_.count(identifier) == 0)
+                            static_cast<Derived*>(this)->_do_portal_subscribe(identifier);
+
+                        forwarder_subscriptions_.insert(std::make_pair(identifier, subscription));
+                    }
+                    forwarder_subscription_identifiers_[subscription->subscriber_id()].insert(
+                        std::make_pair(identifier, forwarder_subscriptions_.find(identifier)));
+                }
+            }
+            break;
+
+            case middleware::SerializationHandlerBase<>::SubscriptionAction::UNSUBSCRIBE:
+            {
+                _forwarder_unsubscribe(subscription->subscriber_id(), identifier);
+            }
+            break;
+
+            default: break;
+        }
+    }
+
+    void _forwarder_unsubscribe(const std::string& subscriber_id, const std::string& identifier)
+    {
+        auto it = forwarder_subscription_identifiers_[subscriber_id].find(identifier);
+        if (it != forwarder_subscription_identifiers_[subscriber_id].end())
+        {
+            bool no_forwarder_subscribers = true;
+            for (const auto& p : forwarder_subscription_identifiers_)
+            {
+                if (p.second.count(identifier) != 0)
+                {
+                    no_forwarder_subscribers = false;
+                    break;
+                }
+            }
+
+            if (no_forwarder_subscribers)
+            {
+                forwarder_subscriptions_.erase(it->second);
+
+                if (portal_subscriptions_.count(identifier) == 0)
+                    static_cast<Derived*>(this)->_do_portal_unsubscribe(identifier);
+            }
+
+            forwarder_subscription_identifiers_[subscriber_id].erase(it);
+        }
+    }
+
+    void _subscribe_regex_serialized(
+        const std::shared_ptr<const middleware::SerializationSubscriptionRegex>& new_sub)
+    {
+        if (regex_subscriptions_.empty())
+            static_cast<Derived*>(this)->_do_portal_wildcard_subscribe();
+
+        regex_subscriptions_.insert(std::make_pair(new_sub->subscriber_id(), new_sub));
+    }
+
+    void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
+                             const goby::middleware::Group& group)
+    {
+        std::string identifier =
+            this->_make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) +
+            InterProcessIdentifierManager::end_delimiter;
+        static_cast<Derived*>(this)->_do_publish(identifier, bytes);
+    }
+
+  private:
+    std::unordered_multimap<std::string,
+                            std::shared_ptr<const middleware::SerializationHandlerBase<>>>
+        portal_subscriptions_;
+    std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<>>>
+        forwarder_subscriptions_;
+    std::unordered_map<
+        std::string, std::unordered_map<
+                         std::string, typename decltype(forwarder_subscriptions_)::const_iterator>>
+        forwarder_subscription_identifiers_;
+    std::unordered_multimap<std::string,
+                            std::shared_ptr<const middleware::SerializationSubscriptionRegex>>
+        regex_subscriptions_;
+};
+
+template <typename Derived, typename InnerTransporter>
+class InterProcessPortalBase : public InterProcessTransporterBase<Derived, InnerTransporter>,
+                               public InterProcessPortalCommon<Derived, InnerTransporter>
 {
   public:
     using Base = InterProcessTransporterBase<Derived, InnerTransporter>;
+    using Common = InterProcessPortalCommon<Derived, InnerTransporter>;
 
     InterProcessPortalBase(InnerTransporter& inner) : Base(inner) { _init(); }
     InterProcessPortalBase() { _init(); }
 
     virtual ~InterProcessPortalBase() {}
 
+    friend Base;
+
   private:
     void _init()
     {
         using goby::middleware::protobuf::SerializerTransporterMessage;
         this->inner().template subscribe<Base::to_portal_group_, SerializerTransporterMessage>(
-            [this](std::shared_ptr<const SerializerTransporterMessage> d) {
-                static_cast<Derived*>(this)->_receive_publication_forwarded(*d);
+            [this](std::shared_ptr<const SerializerTransporterMessage> d)
+            {
+                std::vector<char> data(d->data().begin(), d->data().end());
+                static_cast<Derived*>(this)->_publish_serialized(
+                    d->key().type(), d->key().marshalling_scheme(), data,
+                    goby::middleware::DynamicGroup(d->key().group()));
             });
 
         this->inner().template subscribe<Base::to_portal_group_, SerializationHandlerBase<>>(
-            [this](std::shared_ptr<const middleware::SerializationHandlerBase<>> s) {
-                static_cast<Derived*>(this)->_receive_subscription_forwarded(s);
-            });
+            [this](std::shared_ptr<const middleware::SerializationHandlerBase<>> s)
+            { static_cast<Derived*>(this)->_receive_subscription_forwarded(s); });
 
         this->inner().template subscribe<Base::to_portal_group_, SerializationSubscriptionRegex>(
-            [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s) {
-                static_cast<Derived*>(this)->_receive_regex_subscription_forwarded(s);
-            });
+            [this](std::shared_ptr<const middleware::SerializationSubscriptionRegex> s)
+            { static_cast<Derived*>(this)->_subscribe_regex_serialized(s); });
 
         this->inner().template subscribe<Base::to_portal_group_, SerializationUnSubscribeAll>(
-            [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s) {
-                static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id());
-            });
+            [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s)
+            { static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id()); });
     }
 };
 

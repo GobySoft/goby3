@@ -184,10 +184,12 @@ class InterModuleForwarder
 };
 
 template <typename Derived, typename InnerTransporter>
-class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTransporter>
+class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTransporter>,
+                              public InterProcessPortalCommon<Derived, InnerTransporter>
 {
   public:
     using Base = InterModuleTransporterBase<Derived, InnerTransporter>;
+    using Common = InterProcessPortalCommon<Derived, InnerTransporter>;
 
     InterModulePortalBase(InnerTransporter& inner) : Base(inner) { _init(); }
     InterModulePortalBase() { _init(); }
@@ -200,15 +202,18 @@ class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTr
         using goby::middleware::intermodule::protobuf::Subscription;
         using goby::middleware::protobuf::SerializerTransporterMessage;
         this->inner().template subscribe<Base::to_portal_group_, SerializerTransporterMessage>(
-            [this](const SerializerTransporterMessage& d) {
-                static_cast<Derived*>(this)->_receive_publication_forwarded(d);
+            [this](const SerializerTransporterMessage& d)
+            {
+                std::vector<char> data(d.data().begin(), d.data().end());
+                static_cast<Derived*>(this)->_publish_serialized(
+                    d.key().type(), d.key().marshalling_scheme(), data,
+                    goby::middleware::DynamicGroup(d.key().group()));
             });
 
         this->inner().template subscribe<Base::to_portal_group_, Subscription>(
             [this](const Subscription& s) {
-                auto on_subscribe = [this](const SerializerTransporterMessage& d) {
-                    this->inner().template publish<Base::from_portal_group_>(d);
-                };
+                auto on_subscribe = [this](const SerializerTransporterMessage& d)
+                { this->inner().template publish<Base::from_portal_group_>(d); };
                 auto sub = std::make_shared<SerializationInterModuleSubscription>(on_subscribe, s);
 
                 switch (s.action())
