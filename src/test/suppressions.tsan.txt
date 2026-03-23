@@ -18,3 +18,11 @@ called_from_lib:libprotoc.so
 called_from_lib:libdccl.so*
 called_from_lib:libdccl_arithmetic.so*
 
+# ZMQ inproc:// (zero-copy) false positive: the control PAIR socket between the main thread
+# and the read thread uses inproc://control. ZMQ zero-copy transfers the same message buffer
+# from sender to receiver, so TSan sees the pre-send write (in SerializeToArray) and the
+# post-recv read (in ParseFromArray) on the same memory without a visible synchronization edge.
+# The synchronization is real but happens inside libzmq which is not annotated for TSan.
+race:goby::zeromq::InterProcessPortalMainThread::send_control_msg*
+race:goby::zeromq::InterProcessPortalReadThread::send_control_msg*
+
