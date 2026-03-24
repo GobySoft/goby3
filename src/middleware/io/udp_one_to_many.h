@@ -26,7 +26,6 @@
 
 #include <array>                 // for array
 #include <boost/asio/buffer.hpp> // for buffer
-#include <boost/asio/ip/udp.hpp>
 #include <boost/asio/ip/udp.hpp>       // for udp, udp::endpoint
 #include <boost/asio/socket_base.hpp>  // for socket_base
 #include <boost/system/error_code.hpp> // for error_code

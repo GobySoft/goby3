@@ -34,8 +34,6 @@
 
 #include "goby/middleware/group.h"
 
-#include "goby/util/debug_logger.h"
-
 #include "goby/middleware/marshalling/interface.h"
 #include "goby/middleware/transport/identifier.h"
 #include "goby/middleware/transport/null.h"
@@ -224,7 +222,8 @@ class InterProcessTransporterBase
             std::regex_replace(std::string(group), special_chars, R"(\$&)");
 
         auto regex_lambda = [=](const std::vector<unsigned char>& data, int schm,
-                                const std::string& type, const Group& grp) {
+                                const std::string& type, const Group& grp)
+        {
             auto data_begin = data.begin(), data_end = data.end(), actual_end = data.end();
             auto msg =
                 SerializerParserHelper<Data, scheme>::parse(data_begin, data_end, actual_end, type);
@@ -346,20 +345,6 @@ class InterProcessForwarder
         this->inner().template publish<Base::to_portal_group_>(msg);
     }
 
-    void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
-                             const goby::middleware::Group& group)
-    {
-        auto msg = std::make_shared<goby::middleware::protobuf::SerializerTransporterMessage>();
-        auto* key = msg->mutable_key();
-
-        key->set_marshalling_scheme(scheme);
-        key->set_type(type_name);
-        key->set_group(std::string(group));
-        msg->set_data(std::string(bytes.begin(), bytes.end()));
-
-        this->inner().template publish<Base::to_portal_group_>(msg);
-    }
-
     template <typename Data, int scheme>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> f, const Group& group,
                     const Subscriber<Data>& subscriber)
@@ -367,9 +352,8 @@ class InterProcessForwarder
         this->inner().template subscribe_dynamic<Data, scheme>(f, group);
 
         // forward subscription to edge
-        auto inner_publication_lambda = [=](std::shared_ptr<const Data> d) {
-            this->inner().template publish_dynamic<Data, scheme>(d, group);
-        };
+        auto inner_publication_lambda = [=](std::shared_ptr<const Data> d)
+        { this->inner().template publish_dynamic<Data, scheme>(d, group); };
 
         auto subscription = std::make_shared<SerializationSubscription<Data, scheme>>(
             inner_publication_lambda, group,
@@ -392,6 +376,20 @@ class InterProcessForwarder
             unsubscription);
     }
 
+    void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
+                             const goby::middleware::Group& group)
+    {
+        auto msg = std::make_shared<goby::middleware::protobuf::SerializerTransporterMessage>();
+        auto* key = msg->mutable_key();
+
+        key->set_marshalling_scheme(scheme);
+        key->set_type(type_name);
+        key->set_group(std::string(group));
+        msg->set_data(std::string(bytes.begin(), bytes.end()));
+
+        this->inner().template publish<Base::to_portal_group_>(msg);
+    }
+
     void _unsubscribe_all()
     {
         regex_subscriptions_.clear();
@@ -407,7 +405,8 @@ class InterProcessForwarder
                      const std::string& group_regex = ".*")
     {
         auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme,
-                                            const std::string& type, const Group& group) {
+                                            const std::string& type, const Group& group)
+        {
             std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
                 forwarded_data(new goby::middleware::protobuf::SerializerTransporterMessage);
             forwarded_data->mutable_key()->set_marshalling_scheme(scheme);
@@ -501,10 +500,10 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
 
         portal_subscriptions_.erase(identifier);
 
+        // If no forwarded subscriptions, do the actual unsubscribe
         if (forwarder_subscriptions_.count(identifier) == 0)
             static_cast<Derived*>(this)->_do_portal_unsubscribe(identifier);
     }
-
     void _handle_received_data(std::unique_ptr<std::unique_lock<std::mutex>>& lock,
                                const std::string& data)
     {
@@ -518,6 +517,7 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
         std::string identifier = this->_make_identifier(
             type, scheme, group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
 
+        // build a set so if any of the handlers unsubscribes, we still have a pointer to the middleware::SerializationHandlerBase<>
         std::vector<std::weak_ptr<const middleware::SerializationHandlerBase<>>> subs_to_post;
         auto portal_range = portal_subscriptions_.equal_range(identifier);
         for (auto it = portal_range.first; it != portal_range.second; ++it)
@@ -526,6 +526,7 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
         if (forwarder_it != forwarder_subscriptions_.end())
             subs_to_post.push_back(forwarder_it->second);
 
+        // actually post the data
         {
             auto null_delim_it = std::find(std::begin(data), std::end(data),
                                            InterProcessIdentifierManager::end_delimiter);
@@ -544,6 +545,7 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
             bool forwarder_subscription_posted = false;
             for (auto& sub : regex_subscriptions_)
             {
+                // only post at most once for forwarders as the threads will filter
                 bool is_forwarded_sub =
                     sub.first != middleware::identifier_part_to_string(std::this_thread::get_id());
                 if (is_forwarded_sub && forwarder_subscription_posted)
@@ -559,6 +561,7 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
     void _unsubscribe_all(const std::string& subscriber_id =
                               middleware::identifier_part_to_string(std::this_thread::get_id()))
     {
+        // portal unsubscribe
         if (subscriber_id == middleware::identifier_part_to_string(std::this_thread::get_id()))
         {
             for (const auto& p : portal_subscriptions_)
@@ -569,7 +572,7 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
             }
             portal_subscriptions_.clear();
         }
-        else
+        else // forwarder unsubscribe
         {
             while (forwarder_subscription_identifiers_[subscriber_id].size() > 0)
                 _forwarder_unsubscribe(
@@ -577,6 +580,7 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
                     forwarder_subscription_identifiers_[subscriber_id].begin()->first);
         }
 
+        // regex
         if (regex_subscriptions_.size() > 0)
         {
             regex_subscriptions_.erase(subscriber_id);
@@ -600,14 +604,18 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
         {
             case middleware::SerializationHandlerBase<>::SubscriptionAction::SUBSCRIBE:
             {
+                // insert if this thread hasn't already subscribed
                 if (forwarder_subscription_identifiers_[subscription->subscriber_id()].count(
                         identifier) == 0)
                 {
+                    // first to subscribe from a Forwarder
                     if (forwarder_subscriptions_.count(identifier) == 0)
                     {
+                        // first to subscribe (locally or forwarded)
                         if (portal_subscriptions_.count(identifier) == 0)
                             static_cast<Derived*>(this)->_do_portal_subscribe(identifier);
 
+                        // create Forwarder subscription
                         forwarder_subscriptions_.insert(std::make_pair(identifier, subscription));
                     }
                     forwarder_subscription_identifiers_[subscription->subscriber_id()].insert(
@@ -641,10 +649,13 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
                 }
             }
 
+            // if no Forwarder subscriptions left
             if (no_forwarder_subscribers)
             {
+                // erase the Forwarder subscription
                 forwarder_subscriptions_.erase(it->second);
 
+                // do the actual unsubscribe if we aren't subscribe locally as well
                 if (portal_subscriptions_.count(identifier) == 0)
                     static_cast<Derived*>(this)->_do_portal_unsubscribe(identifier);
             }
@@ -672,15 +683,21 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
     }
 
   private:
+    // portal_subscriptions_ and forwarder_subscriptions_: maps identifier to subscription
     std::unordered_multimap<std::string,
                             std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         portal_subscriptions_;
+    // only one subscription for each forwarded identifier
     std::unordered_map<std::string, std::shared_ptr<const middleware::SerializationHandlerBase<>>>
         forwarder_subscriptions_;
+
+    // maps subscriber_id [thread id as string] to map of identifier to forwarder subscription
     std::unordered_map<
         std::string, std::unordered_map<
                          std::string, typename decltype(forwarder_subscriptions_)::const_iterator>>
         forwarder_subscription_identifiers_;
+
+    // subscriber id to subscription
     std::unordered_multimap<std::string,
                             std::shared_ptr<const middleware::SerializationSubscriptionRegex>>
         regex_subscriptions_;

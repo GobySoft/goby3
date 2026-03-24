@@ -106,10 +106,13 @@ class InterModuleForwarder
             this->inner()
                 .template subscribe<Base::from_portal_group_,
                                     protobuf::SerializerTransporterMessage>(
-                    [this](const protobuf::SerializerTransporterMessage& msg) {
+                    [this](const protobuf::SerializerTransporterMessage& msg)
+                    {
                         auto range = subscriptions_.equal_range(msg.key());
                         for (auto it = range.first; it != range.second; ++it)
-                        { it->second->post(msg.data().begin(), msg.data().end()); }
+                        {
+                            it->second->post(msg.data().begin(), msg.data().end());
+                        }
                     });
 
         auto local_subscription = std::make_shared<SerializationSubscription<Data, scheme>>(
@@ -211,7 +214,8 @@ class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTr
             });
 
         this->inner().template subscribe<Base::to_portal_group_, Subscription>(
-            [this](const Subscription& s) {
+            [this](const Subscription& s)
+            {
                 auto on_subscribe = [this](const SerializerTransporterMessage& d)
                 { this->inner().template publish<Base::from_portal_group_>(d); };
                 auto sub = std::make_shared<SerializationInterModuleSubscription>(on_subscribe, s);
