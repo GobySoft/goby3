@@ -25,29 +25,36 @@
 #include "goby/time.h"
 #include "goby/time/io.h"
 
+#if defined(test_for_zeromq)
+#include "goby/zeromq/application/single_thread.h"
+#include "goby/test/middleware/single_thread_app1/zeromq.pb.h"
+#elif defined(test_for_udpm)
+#include "goby/udpm/application/single_thread.h"
+#include "goby/test/middleware/single_thread_app1/udpm.pb.h"
+#else
+#error "No test_for_<impl> defined"
+#endif
+
+#include "goby/test/middleware/single_thread_app1/test.pb.h"
+
 #include <boost/units/io.hpp>
 #include <memory>
 
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#ifdef test_for_zeromq
-#include "goby/zeromq/application/single_thread.h"
-#include "goby/test/middleware/single_thread_app1/zeromq.pb.h"
-using AppBase = goby::zeromq::SingleThreadApplication<goby::test::middleware::protobuf::TestConfig>;
-#elif defined(test_for_udpm)
-#include "goby/udpm/application/single_thread.h"
-#include "goby/test/middleware/single_thread_app1/udpm.pb.h"
-using AppBase =
-    goby::udpm::SingleThreadApplication<goby::test::middleware::protobuf::TestConfig>;
-#endif
-
-#include "goby/test/middleware/single_thread_app1/test.pb.h"
-
 using namespace goby::util::logger;
 using namespace goby::test::middleware::protobuf;
 
 extern constexpr goby::middleware::Group widget1{"Widget1"};
+
+#if defined(test_for_zeromq)
+using Base = goby::zeromq::SingleThreadApplication<TestZeroMQConfig>;
+using TestConfig = TestZeroMQConfig;
+#elif defined(test_for_udpm)
+using Base = goby::udpm::SingleThreadApplication<TestUDPMConfig>;
+using TestConfig = TestUDPMConfig;
+#endif
 
 const std::string platform_name{"single_thread_app1"};
 
@@ -65,20 +72,19 @@ class TestConfigurator : public goby::middleware::ProtobufConfigurator<TestConfi
     {
         TestConfig& cfg = mutable_cfg();
         cfg.mutable_app()->set_name("TestApp");
+#if defined(test_for_zeromq)
         cfg.mutable_interprocess()->set_platform(platform_name);
-#ifdef test_for_zeromq
         cfg.mutable_interprocess()->set_manager_timeout_seconds(5);
 #endif
     }
 };
 
-class TestApp : public AppBase
+class TestApp : public Base
 {
   public:
-    TestApp() : AppBase(10)
+    TestApp() : Base(10)
     {
         interprocess().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
-        interprocess().ready();
     }
 
     void loop() override
@@ -87,7 +93,11 @@ class TestApp : public AppBase
         {
             quit();
         }
-        else if (!interprocess().hold_state() && rx_count_ == tx_count_)
+        else if (
+#if defined(test_for_zeromq)
+            !interprocess().hold_state() &&
+#endif
+            rx_count_ == tx_count_)
         {
             std::cout << goby::time::SystemClock::now() << std::endl;
             Widget w;
@@ -115,9 +125,8 @@ class TestApp : public AppBase
 
 int main(int argc, char* argv[])
 {
+#if defined(test_for_zeromq)
     int child_pid = fork();
-
-#ifdef test_for_zeromq
     std::unique_ptr<std::thread> t2, t3;
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
@@ -125,10 +134,10 @@ int main(int argc, char* argv[])
     if (child_pid != 0)
     {
         goby::zeromq::protobuf::InterProcessPortalConfig cfg;
+
         cfg.set_platform(platform_name);
         goby::zeromq::protobuf::InterProcessManagerHold hold;
         hold.add_required_client("TestApp");
-
         manager_context = std::make_unique<zmq::context_t>(1);
         router_context = std::make_unique<zmq::context_t>(1);
         goby::zeromq::Router router(*router_context, cfg);
@@ -146,23 +155,12 @@ int main(int argc, char* argv[])
     }
     else
     {
+        // let manager and router start up
+        //      sleep(1);
+#endif
         return goby::run<goby::test::middleware::TestApp>(
             goby::test::middleware::TestConfigurator(argc, argv));
-    }
-#elif defined(test_for_udpm)
-    if (child_pid != 0)
-    {
-        // parent: wait for child
-        int wstatus;
-        wait(&wstatus);
-        if (wstatus != 0)
-            exit(EXIT_FAILURE);
-    }
-    else
-    {
-        return goby::run<goby::test::middleware::TestApp>(
-            goby::test::middleware::TestConfigurator(argc, argv));
+#if defined(test_for_zeromq)
     }
 #endif
-    std::cout << "All tests passed." << std::endl;
 }

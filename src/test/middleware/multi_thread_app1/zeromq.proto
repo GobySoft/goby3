@@ -4,7 +4,7 @@ import "goby/zeromq/protobuf/interprocess_config.proto";
 
 package goby.test.middleware.protobuf;
 
-message TestConfig
+message TestZeroMQConfig
 {
     optional goby.middleware.protobuf.AppConfig app = 1;
     optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2;

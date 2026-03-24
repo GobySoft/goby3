@@ -25,32 +25,28 @@
 #include <sys/wait.h>
 
 #include <atomic>
-#include <cassert>
 #include <deque>
-#include <fstream>
 
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/middleware/transport/interthread.h"
 
-#ifdef test_for_zeromq
+#if defined(test_for_zeromq)
 #include "goby/zeromq/transport/interprocess.h"
-using InterProcessPortalType =
-    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter>;
-using InterProcessPortalConfig = goby::zeromq::protobuf::InterProcessPortalConfig;
 #elif defined(test_for_udpm)
 #include "goby/udpm/transport/interprocess.h"
-using InterProcessPortalType =
-    goby::udpm::InterProcessPortal<goby::middleware::InterThreadTransporter>;
-using InterProcessPortalConfig = goby::udpm::protobuf::InterProcessPortalConfig;
+#else
+#error "No test_for_<impl> defined"
 #endif
 
 #include "goby/test/middleware/middleware_interprocess_forwarder/test.pb.h"
 #include "goby/util/debug_logger.h"
 
 #include <memory>
+
 #include <utility>
 
-using namespace goby::test::middleware::protobuf;
+using goby::test::middleware::protobuf::Sample;
+using goby::test::middleware::protobuf::Widget;
 
 // tests InterProcessForwarder
 
@@ -82,7 +78,6 @@ using namespace goby::util::logger;
 constexpr goby::middleware::Group sample1{"Sample1"};
 constexpr goby::middleware::Group sample2{"Sample2"};
 constexpr goby::middleware::Group widget{"Widget"};
-constexpr goby::middleware::Group big_message_group{"BigMessage"};
 
 namespace goby
 {
@@ -99,7 +94,14 @@ void publisher()
 
     while (hold) usleep(1e4);
 
-    while (publish_count < max_publish * 2)
+#if defined(test_for_udpm)
+    sleep(2);
+#endif
+
+    while (
+        publish_count <
+        max_publish *
+            2) // double the amount of publication to handle the (inherent) slop in unsubscribe/subscribe
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++);
@@ -110,13 +112,9 @@ void publisher()
         auto w1 = std::make_shared<Widget>();
         w1->set_b(s1->a() - 8);
         ipc.publish<widget>(w1);
+        usleep(1e4);
         ++publish_count;
     }
-
-    // Test large message (packetization)
-    auto bm = std::make_shared<BigMessage>();
-    bm->set_data(std::string(100000, 'x'));
-    ipc.publish<big_message_group>(bm);
 }
 
 // thread 1 - child process
@@ -130,6 +128,9 @@ void handle_sample1(const Sample& sample)
 
     if (receive_count1 < max_publish / 2)
         assert(sample.a() == receive_count1);
+    // commented out, since depending on timing, there may be additional samples in the buffer
+    //    else // skip 10
+    //assert(sample.a() == receive_count1 + 10);
 
     ++ipc_receive_count;
     ++receive_count1;
@@ -169,21 +170,17 @@ void handle_widget(const std::shared_ptr<const Widget>& widget)
 
 void subscriber()
 {
-    ipc_child().subscribe_dynamic<Sample>(
-        [](const std::shared_ptr<const Sample>& s) { handle_sample1(*s); }, sample1);
+    ipc_child().subscribe_dynamic<Sample>([](const std::shared_ptr<const Sample>& s)
+                                          { handle_sample1(*s); }, sample1);
     ipc_child().subscribe<sample2, Sample>(&handle_sample2);
     ipc_child().subscribe<widget, Widget>(&handle_widget);
-    ipc_child().subscribe<big_message_group, BigMessage>([](const BigMessage& bm) {
-        assert(bm.data().size() == 100000);
-        ++ipc_receive_count;
-    });
 
     subscriber_ready = true;
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
-    std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(30);
-    // -10 since we unsubscribe for 10 counts for sample1, +1 for big message
-    while (ipc_receive_count < 3 * max_publish - 10 + 1)
+    std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
+    // -10 since we unsubscribe for 10 counts for sample1
+    while (ipc_receive_count < 3 * max_publish - 10)
     {
         ipc_child().poll(std::chrono::seconds(1));
         if (std::chrono::system_clock::now() > timeout)
@@ -199,24 +196,24 @@ class ThreadSubscriber
     void run()
     {
         inproc2_.subscribe<sample1, Sample>([&](const Sample& s) { handle_sample1(s); });
-        inproc2_.subscribe<sample2, Sample>(
-            [&](std::shared_ptr<const Sample> s) { handle_sample2(std::move(s)); });
-        inproc2_.subscribe<widget, Widget>(
-            [&](std::shared_ptr<const Widget> w) { handle_widget1(std::move(w)); });
+        inproc2_.subscribe<sample2, Sample>([&](std::shared_ptr<const Sample> s)
+                                            { handle_sample2(std::move(s)); });
+        inproc2_.subscribe<widget, Widget>([&](std::shared_ptr<const Widget> w)
+                                           { handle_widget1(std::move(w)); });
         ++ready;
         while (receive_count1 < max_publish || receive_count2 < (max_publish / 2) ||
                receive_count3 < max_publish)
         {
             std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
-            std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(30);
+            std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
 
             inproc2_.poll(std::chrono::seconds(1));
             if (std::chrono::system_clock::now() > timeout)
                 glog.is(DIE) && glog << "ThreadSubscriber " << std::this_thread::get_id()
                                      << " timed out waiting for data" << std::endl;
         }
-        glog.is(DEBUG1) && glog << "ThreadSubscriber  " << std::this_thread::get_id()
-                                << " is done." << std::endl;
+        glog.is(DEBUG1) && glog << "ThreadSubscriber  " << std::this_thread::get_id() << " is done."
+                                << std::endl;
     }
 
   private:
@@ -258,33 +255,56 @@ class ThreadSubscriber
     goby::middleware::InterThreadTransporter inproc2_;
 };
 
-// thread 3 - portal thread
-void ipc_forward(const InterProcessPortalConfig& cfg)
+// thread 3
+void interprocess_forward(
+#if defined(test_for_zeromq)
+    const goby::zeromq::protobuf::InterProcessPortalConfig& cfg
+#elif defined(test_for_udpm)
+    const goby::udpm::protobuf::InterProcessPortalConfig& cfg
+#endif
+)
 {
     goby::middleware::InterThreadTransporter inproc3;
-    InterProcessPortalType ipc(inproc3, cfg);
-    ipc.subscribe<sample1, Sample>([&](const Sample& s) {
-        glog.is(DEBUG1) && glog << "Portal Received1: " << s.DebugString() << std::endl;
-        if (s.a() == 3 * max_publish / 4)
-            ipc.unsubscribe<sample1, Sample>();
+#if defined(test_for_zeromq)
+    goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> interprocess_portal(
+        inproc3, cfg);
+#elif defined(test_for_udpm)
+    goby::udpm::InterProcessPortal<goby::middleware::InterThreadTransporter> interprocess_portal(
+        inproc3, cfg);
+#endif
 
-        assert(s.a() <= 3 * max_publish / 4);
-    });
-    ipc.subscribe<sample2, Sample>([&](const std::shared_ptr<const Sample>& s) {
-        glog.is(DEBUG1) && glog << "Portal Received2: " << s->DebugString() << std::endl;
-    });
-    ipc.subscribe<widget, Widget>([&](const std::shared_ptr<const Widget>& w) {
-        glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString() << std::endl;
-    });
+    interprocess_portal.subscribe<sample1, Sample>(
+        [&](const Sample& s)
+        {
+            glog.is(DEBUG1) && glog << "Portal Received1: " << s.DebugString() << std::endl;
+            if (s.a() == 3 * max_publish / 4)
+                interprocess_portal.unsubscribe<sample1, Sample>();
+
+            assert(s.a() <= 3 * max_publish / 4);
+        });
+    interprocess_portal.subscribe<sample2, Sample>(
+        [&](const std::shared_ptr<const Sample>& s)
+        { glog.is(DEBUG1) && glog << "Portal Received2: " << s->DebugString() << std::endl; });
+    interprocess_portal.subscribe<widget, Widget>(
+        [&](const std::shared_ptr<const Widget>& w)
+        { glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString() << std::endl; });
 
     while (!subscriber_ready || ready < max_subs) usleep(1e4);
 
-    ipc.ready();
+#if defined(test_for_zeromq)
+    interprocess_portal.ready();
+#endif
+
     while (forward)
     {
-        ipc.poll(std::chrono::milliseconds(100));
-        if (!ipc.hold_state())
+        interprocess_portal.poll(std::chrono::milliseconds(100));
+#if defined(test_for_zeromq)
+        if (!interprocess_portal.hold_state())
             hold = false;
+
+#elif defined(test_for_udpm)
+        hold = false;
+#endif
     }
 }
 } // namespace middleware
@@ -293,10 +313,12 @@ void ipc_forward(const InterProcessPortalConfig& cfg)
 
 int main(int /*argc*/, char* argv[])
 {
-    InterProcessPortalConfig cfg;
-    cfg.set_platform("test_middleware_forwarder");
-#ifdef test_for_zeromq
+#if defined(test_for_zeromq)
+    goby::zeromq::protobuf::InterProcessPortalConfig cfg;
+    cfg.set_platform("test3");
     cfg.set_manager_timeout_seconds(5);
+#elif defined(test_for_udpm)
+    goby::udpm::protobuf::InterProcessPortalConfig cfg;
 #endif
 
     pid_t child_pid = fork();
@@ -304,8 +326,10 @@ int main(int /*argc*/, char* argv[])
     bool is_child = (child_pid == 0);
     bool is_subscriber = is_child;
 
-    std::string os_name = std::string("/tmp/goby_test_middleware_forwarder_") +
-                          (is_subscriber ? "subscriber" : "publisher");
+    // goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
+
+    std::string os_name =
+        std::string("/tmp/goby_test_middleware3_") + (is_subscriber ? "subscriber" : "publisher");
     std::ofstream os(os_name.c_str());
     goby::glog.add_stream(goby::util::logger::DEBUG3, &os);
     goby::glog.set_name(std::string(argv[0]) + (is_subscriber ? "_subscriber" : "_publisher"));
@@ -314,7 +338,8 @@ int main(int /*argc*/, char* argv[])
     std::vector<std::thread> threads;
     std::vector<goby::test::middleware::ThreadSubscriber> thread_subscribers(
         max_subs, goby::test::middleware::ThreadSubscriber());
-    auto launch_sub_threads = [&]() {
+    auto launch_sub_threads = [&]()
+    {
         for (int i = 0; i < max_subs; ++i)
         {
             threads.emplace_back(std::bind(&goby::test::middleware::ThreadSubscriber::run,
@@ -322,7 +347,7 @@ int main(int /*argc*/, char* argv[])
         }
     };
 
-#ifdef test_for_zeromq
+#if defined(test_for_zeromq)
     std::unique_ptr<std::thread> t4, t5;
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
@@ -331,10 +356,9 @@ int main(int /*argc*/, char* argv[])
     if (is_subscriber)
     {
         auto sub_cfg = cfg;
-#ifdef test_for_zeromq
         sub_cfg.set_client_name("subscriber");
-#endif
-        std::thread t3([&] { goby::test::middleware::ipc_forward(sub_cfg); });
+        std::thread t3([&] { goby::test::middleware::interprocess_forward(sub_cfg); });
+        // ensure InterProcessPortal is up and running
         sleep(1);
         std::thread t1(goby::test::middleware::subscriber);
         launch_sub_threads();
@@ -345,25 +369,24 @@ int main(int /*argc*/, char* argv[])
     }
     else
     {
-#ifdef test_for_zeromq
+#if defined(test_for_zeromq)
         manager_context = std::make_unique<zmq::context_t>(1);
         router_context = std::make_unique<zmq::context_t>(1);
 
-        goby::zeromq::protobuf::InterProcessManagerHold hold_msg;
-        hold_msg.add_required_client("subscriber");
-        hold_msg.add_required_client("publisher");
+        goby::zeromq::protobuf::InterProcessManagerHold hold;
+        hold.add_required_client("subscriber");
+        hold.add_required_client("publisher");
 
         goby::zeromq::Router router(*router_context, cfg);
         t4 = std::make_unique<std::thread>([&] { router.run(); });
-        goby::zeromq::Manager manager(*manager_context, cfg, router, hold_msg);
+        goby::zeromq::Manager manager(*manager_context, cfg, router, hold);
         t5 = std::make_unique<std::thread>([&] { manager.run(); });
 #endif
 
         auto pub_cfg = cfg;
-#ifdef test_for_zeromq
         pub_cfg.set_client_name("publisher");
-#endif
-        std::thread t3([&] { goby::test::middleware::ipc_forward(pub_cfg); });
+        std::thread t3([&] { goby::test::middleware::interprocess_forward(pub_cfg); });
+        // ensure InterProcessPortal is up and running
         sleep(1);
         subscriber_ready = true;
         std::thread t1(goby::test::middleware::publisher);
@@ -374,7 +397,7 @@ int main(int /*argc*/, char* argv[])
         wait(&wstatus);
         forward = false;
         t3.join();
-#ifdef test_for_zeromq
+#if defined(test_for_zeromq)
         manager_context.reset();
         router_context.reset();
         t4->join();

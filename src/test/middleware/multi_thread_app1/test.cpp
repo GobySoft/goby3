@@ -25,25 +25,24 @@
 #include "goby/time.h"
 #include "goby/time/io.h"
 
+#if defined(test_for_zeromq)
+#include "goby/test/middleware/multi_thread_app1/zeromq.pb.h"
+#include "goby/zeromq/application/multi_thread.h"
+#elif defined(test_for_udpm)
+#include "goby/test/middleware/multi_thread_app1/udpm.pb.h"
+#include "goby/udpm/application/multi_thread.h"
+#else
+#error "No test_for_<impl> defined"
+#endif
+
 #include <boost/units/io.hpp>
 #include <memory>
 
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#ifdef test_for_zeromq
-#include "goby/zeromq/application/multi_thread.h"
-#include "goby/test/middleware/multi_thread_app1/zeromq.pb.h"
-using AppBase =
-    goby::zeromq::MultiThreadApplication<goby::test::middleware::protobuf::TestConfig>;
-#elif defined(test_for_udpm)
-#include "goby/udpm/application/multi_thread.h"
-#include "goby/test/middleware/multi_thread_app1/udpm.pb.h"
-using AppBase =
-    goby::udpm::MultiThreadApplication<goby::test::middleware::protobuf::TestConfig>;
-#endif
-
 #include "goby/test/middleware/multi_thread_app1/test.pb.h"
+
 using goby::glog;
 
 using namespace goby::test::middleware::protobuf;
@@ -55,6 +54,14 @@ extern constexpr goby::middleware::Group ready{"ready"};
 const std::string platform_name{"multi_thread_app1"};
 
 constexpr int num_messages{10};
+
+#if defined(test_for_zeromq)
+using AppBase = goby::zeromq::MultiThreadApplication<TestZeroMQConfig>;
+using TestConfig = TestZeroMQConfig;
+#elif defined(test_for_udpm)
+using AppBase = goby::udpm::MultiThreadApplication<TestUDPMConfig>;
+using TestConfig = TestUDPMConfig;
+#endif
 
 namespace goby
 {
@@ -96,12 +103,14 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
         glog.is_verbose() && glog << "Rx Thread: pid: " << getpid()
                                   << ", thread: " << std::this_thread::get_id() << std::endl;
 
+        glog.is_verbose() && glog << std::this_thread::get_id() << std::endl;
+
         interprocess().subscribe<widget1, Widget>([this](const Widget& w) { post(w); });
         interprocess().subscribe<widget2, Widget>([this](const Widget& w) { post(w); });
         ready = true;
     }
 
-    ~TestThreadRx() override = default;
+    ~TestThreadRx() { glog.is_verbose() && glog << "~TestThreadRx" << std::endl; }
 
     void post(const Widget& widget)
     {
@@ -144,7 +153,10 @@ class TestAppRx : public AppBase
         assert(widget.b() == rx_count_);
         ++rx_count_;
         if (rx_count_ == num_messages)
+        {
+            glog.is_verbose() && glog << "TestAppRx main thread done" << std::endl;
             quit();
+        }
     }
 
     void post2(const Widget& widget)
@@ -164,10 +176,13 @@ class TestAppTx : public AppBase
         glog.is_verbose() && glog << "Tx App: pid: " << getpid()
                                   << ", thread: " << std::this_thread::get_id() << std::endl;
 
+        // test subscribe interface options
         interthread().subscribe<widget1, Widget>([this](const Widget& w) { noop(w); });
         interthread().subscribe<widget1>([this](const Widget& w) { noop(w); });
         interthread().subscribe<widget1, Widget>(
             std::bind(&TestAppTx::noop, this, std::placeholders::_1));
+        //        interthread().subscribe2<widget1>(
+        // std::bind(&TestAppTx::noop, this, std::placeholders::_1));
         std::function<void(const Widget& widget)> f(
             std::bind(&TestAppTx::noop, this, std::placeholders::_1));
         interthread().subscribe<widget1>(f);
@@ -179,16 +194,26 @@ class TestAppTx : public AppBase
 
     void loop() override
     {
-        if (!interprocess().hold_state())
-        {
-            glog.is_verbose() && glog << goby::time::SystemClock::now() << std::endl;
-            Widget w;
-            w.set_b(tx_count_++);
-            glog.is_verbose() && glog << "Tx: " << w.DebugString() << std::flush;
-            interprocess().publish<widget1>(w);
+        //        static int i = 0;
+        //       ++i;
 
-            if (tx_count_ == (num_messages + 5))
-                quit();
+#if defined(test_for_zeromq)
+        if (interprocess().hold_state())
+            return;
+#endif
+        glog.is_verbose() && glog << goby::time::SystemClock::now() << std::endl;
+        Widget w;
+        w.set_b(tx_count_++);
+        {
+            glog.is_verbose() && glog << "Tx: " << w.DebugString() << std::flush;
+        }
+
+        interprocess().publish<widget1>(w);
+
+        if (tx_count_ == (num_messages + 5))
+        {
+            glog.is_verbose() && glog << "TestAppTx main thread done" << std::endl;
+            quit();
         }
     }
 
@@ -203,12 +228,14 @@ class TestAppTx : public AppBase
 
 int main(int argc, char* argv[])
 {
+#if defined(test_for_zeromq)
     int child_pid = fork();
 
-#ifdef test_for_zeromq
     std::unique_ptr<std::thread> t2, t3;
     std::unique_ptr<zmq::context_t> manager_context;
     std::unique_ptr<zmq::context_t> router_context;
+
+    //    goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
 
     if (child_pid != 0)
     {
@@ -235,6 +262,9 @@ int main(int argc, char* argv[])
     }
     else
     {
+        // let manager and router start up
+        // sleep(1);
+#endif
         int child2_pid = fork();
         if (child2_pid != 0)
         {
@@ -248,36 +278,15 @@ int main(int argc, char* argv[])
         }
         else
         {
+#if defined(test_for_udpm)
+            // no hold feature implemented, so we have to wait for the Rx App to start first
+            sleep(1);
+#endif
+
             return goby::run<goby::test::middleware::TestAppTx>(
                 goby::test::middleware::TestTxConfigurator(argc, argv));
         }
-    }
-#elif defined(test_for_udpm)
-    if (child_pid != 0)
-    {
-        // parent runs Tx
-        int child2_pid = fork();
-        if (child2_pid != 0)
-        {
-            // wait for both children
-            int wstatus;
-            wait(&wstatus);
-            if (wstatus != 0)
-                exit(EXIT_FAILURE);
-            wait(&wstatus);
-            if (wstatus != 0)
-                exit(EXIT_FAILURE);
-        }
-        else
-        {
-            return goby::run<goby::test::middleware::TestAppTx>(
-                goby::test::middleware::TestTxConfigurator(argc, argv));
-        }
-    }
-    else
-    {
-        return goby::run<goby::test::middleware::TestAppRx>(
-            goby::test::middleware::TestRxConfigurator(argc, argv));
+#if defined(test_for_zeromq)
     }
 #endif
     std::cout << "All tests passed." << std::endl;

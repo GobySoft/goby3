@@ -2,12 +2,12 @@ syntax = "proto2";
 
 package goby.test.middleware.protobuf;
 
-message Widget
-{
-    optional int32 b = 1;
-}
-
 message Ready
 {
     optional bool b = 1;
+}
+
+message Widget
+{
+    optional int32 b = 1;
 }
