@@ -25,4 +25,3 @@
 
 using goby::glog;
 using namespace goby::util::logger;
-

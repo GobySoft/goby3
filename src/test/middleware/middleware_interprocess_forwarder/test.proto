@@ -15,3 +15,9 @@ message Widget
 {
     optional int32 b = 1;
 }
+
+message LargeMessage
+{
+    optional int32 index = 1;
+    optional bytes payload = 2;
+}

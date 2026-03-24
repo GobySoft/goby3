@@ -45,6 +45,7 @@
 
 #include <utility>
 
+using goby::test::middleware::protobuf::LargeMessage;
 using goby::test::middleware::protobuf::Sample;
 using goby::test::middleware::protobuf::Widget;
 
@@ -72,12 +73,21 @@ std::atomic<bool> hold(true);
 std::atomic<bool> forward(true);
 std::atomic<bool> subscriber_ready(false);
 
+#if defined(test_for_udpm)
+// 100 KB payload to test UDPM packetization
+constexpr int large_msg_payload_bytes = 100 * 1024;
+std::atomic<bool> large_msg_received(false);
+#endif
+
 using goby::glog;
 using namespace goby::util::logger;
 
 constexpr goby::middleware::Group sample1{"Sample1"};
 constexpr goby::middleware::Group sample2{"Sample2"};
 constexpr goby::middleware::Group widget{"Widget"};
+#if defined(test_for_udpm)
+constexpr goby::middleware::Group large_msg{"LargeMessage"};
+#endif
 
 namespace goby
 {
@@ -96,6 +106,16 @@ void publisher()
 
 #if defined(test_for_udpm)
     sleep(2);
+
+    // publish a large message (~100 KB) to test UDPM packetization
+    {
+        auto lm = std::make_shared<LargeMessage>();
+        lm->set_index(0);
+        lm->set_payload(std::string(large_msg_payload_bytes, 'X'));
+        glog.is(DEBUG1) && glog << "Publishing LargeMessage (" << lm->payload().size()
+                                << " bytes)" << std::endl;
+        ipc.publish<large_msg>(lm);
+    }
 #endif
 
     while (
@@ -175,12 +195,30 @@ void subscriber()
     ipc_child().subscribe<sample2, Sample>(&handle_sample2);
     ipc_child().subscribe<widget, Widget>(&handle_widget);
 
+#if defined(test_for_udpm)
+    ipc_child().subscribe<large_msg, LargeMessage>(
+        [](const LargeMessage& lm)
+        {
+            glog.is(DEBUG1) &&
+                glog << "Received LargeMessage index=" << lm.index()
+                     << ", payload size=" << lm.payload().size() << " bytes" << std::endl;
+            assert(lm.index() == 0);
+            assert(static_cast<int>(lm.payload().size()) == large_msg_payload_bytes);
+            assert(lm.payload() == std::string(large_msg_payload_bytes, 'X'));
+            large_msg_received = true;
+        });
+#endif
+
     subscriber_ready = true;
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
-    std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
+    std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(30);
     // -10 since we unsubscribe for 10 counts for sample1
-    while (ipc_receive_count < 3 * max_publish - 10)
+    while (ipc_receive_count < 3 * max_publish - 10
+#if defined(test_for_udpm)
+           || !large_msg_received
+#endif
+    )
     {
         ipc_child().poll(std::chrono::seconds(1));
         if (std::chrono::system_clock::now() > timeout)
@@ -288,6 +326,15 @@ void interprocess_forward(
     interprocess_portal.subscribe<widget, Widget>(
         [&](const std::shared_ptr<const Widget>& w)
         { glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString() << std::endl; });
+#if defined(test_for_udpm)
+    interprocess_portal.subscribe<large_msg, LargeMessage>(
+        [&](const LargeMessage& lm)
+        {
+            glog.is(DEBUG1) && glog << "Portal Received LargeMessage: index=" << lm.index()
+                                    << ", payload size=" << lm.payload().size() << " bytes"
+                                    << std::endl;
+        });
+#endif
 
     while (!subscriber_ready || ready < max_subs) usleep(1e4);
 

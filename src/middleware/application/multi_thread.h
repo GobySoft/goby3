@@ -44,6 +44,7 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 #include "goby/middleware/transport/intervehicle.h"
+#include "goby/time/steady_clock.h"
 
 namespace goby
 {

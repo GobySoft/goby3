@@ -8,8 +8,7 @@ message InterProcessPortalConfig
     optional string platform = 1 [
         default = "default_goby_platform",
         (goby.field) = {
-            description: "Name for this platform (vehicle name, mooring name, topside name, "
-                         "etc.)"
+            description: "Name for this platform (vehicle name, mooring name, topside name, etc.)"
         }
     ];
 
@@ -26,7 +25,12 @@ message InterProcessPortalConfig
     optional uint32 multicast_port = 4
         [default = 11144, (goby.field).description = "UDP Port"];
 
-    optional uint32 udp_payload_bytes = 5 [default = 1232];
+    optional uint32 udp_payload_bytes = 5 [
+        default = 1472,
+        (goby.field).description =
+            "Maximum UDP payload size in bytes (MTU - IP/UDP headers). Default 1472 = 1500 - 28.",
+        (goby.field).cfg = { action: ADVANCED }
+    ];
 
     optional string client_name = 20 [
         (goby.field).description =

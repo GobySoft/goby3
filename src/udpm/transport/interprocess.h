@@ -24,15 +24,23 @@
 #ifndef GOBY_UDPM_TRANSPORT_INTERPROCESS_H
 #define GOBY_UDPM_TRANSPORT_INTERPROCESS_H
 
+#include <arpa/inet.h>
 #include <array>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/ip/multicast.hpp>
 #include <boost/asio/ip/udp.hpp>
 #include <boost/asio/socket_base.hpp>
+#include <boost/circular_buffer.hpp>
+#include <cstring>
+#include <deque>
+#include <memory>
+#include <set>
+#include <unordered_map>
 
 #include "goby/middleware/transport/identifier.h"
 #include "goby/middleware/transport/interface.h"
 #include "goby/middleware/transport/interprocess.h"
+#include "goby/util/debug_logger.h"
 
 #include "goby/udpm/protobuf/interprocess_config.pb.h"
 
@@ -45,6 +53,54 @@ template <typename Data> class Publisher;
 
 namespace udpm
 {
+
+// Packet status codes
+enum class UDPMPacketStatus : uint8_t
+{
+    NORMAL = 0,
+};
+
+// Packet header (9 bytes, after the null-terminated identifier):
+//   message_index  : uint32 (network byte order)
+//   num_packets    : uint16 (network byte order)
+//   packet_count   : uint16 (network byte order)
+//   status         : uint8
+static constexpr std::size_t UDPM_PACKET_HEADER_SIZE =
+    sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint8_t);
+
+struct UDPMPacketHeader
+{
+    uint32_t message_index{0};
+    uint16_t num_packets{1};
+    uint16_t packet_count{0};
+    UDPMPacketStatus status{UDPMPacketStatus::NORMAL};
+};
+
+inline void encode_header(char* buf, const UDPMPacketHeader& h)
+{
+    uint32_t mi = htonl(h.message_index);
+    uint16_t np = htons(h.num_packets);
+    uint16_t pc = htons(h.packet_count);
+    std::memcpy(buf, &mi, 4);
+    std::memcpy(buf + 4, &np, 2);
+    std::memcpy(buf + 6, &pc, 2);
+    buf[8] = static_cast<uint8_t>(h.status);
+}
+
+inline UDPMPacketHeader decode_header(const char* buf)
+{
+    UDPMPacketHeader h;
+    uint32_t mi;
+    uint16_t np, pc;
+    std::memcpy(&mi, buf, 4);
+    std::memcpy(&np, buf + 4, 2);
+    std::memcpy(&pc, buf + 6, 2);
+    h.message_index = ntohl(mi);
+    h.num_packets = ntohs(np);
+    h.packet_count = ntohs(pc);
+    h.status = static_cast<UDPMPacketStatus>(static_cast<uint8_t>(buf[8]));
+    return h;
+}
 
 template <typename InnerTransporter,
           template <typename Derived, typename InnerTransporterType> class PortalBase>
@@ -65,13 +121,14 @@ class InterProcessPortalImplementation
 
     InterProcessPortalImplementation(InnerTransporter& inner,
                                      const protobuf::InterProcessPortalConfig& cfg)
-        : InterProcessPortalImplementation(cfg)
+        : Base(inner), cfg_(cfg)
     {
+        _init();
     }
 
-    ~InterProcessPortalImplementation() {}
+    ~InterProcessPortalImplementation() { socket_.close(); }
 
-    // no-op - no hold implemented in UDPm
+    // no-op - no hold implemented in UDPM
     void ready() {}
     bool hold_state() { return false; }
 
@@ -83,12 +140,12 @@ class InterProcessPortalImplementation
     void _init()
     {
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
+
         boost::asio::ip::address listen_address =
             boost::asio::ip::make_address(cfg_.listen_address());
         boost::asio::ip::address multicast_address =
             boost::asio::ip::make_address(cfg_.multicast_address());
-
-        short multicast_port = cfg_.multicast_port();
+        short multicast_port = static_cast<short>(cfg_.multicast_port());
 
         boost::asio::ip::udp::endpoint listen_endpoint(listen_address, multicast_port);
         transmit_endpoint_ = boost::asio::ip::udp::endpoint(multicast_address, multicast_port);
@@ -96,13 +153,12 @@ class InterProcessPortalImplementation
         socket_.open(listen_endpoint.protocol());
         socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
         socket_.bind(listen_endpoint);
-
         socket_.set_option(boost::asio::ip::multicast::join_group(multicast_address));
 
-        start_async_receive();
+        _start_async_receive();
     }
 
-    void start_async_receive()
+    void _start_async_receive()
     {
         socket_.async_receive_from(
             boost::asio::buffer(rx_buffer_), sender_endpoint_,
@@ -110,59 +166,199 @@ class InterProcessPortalImplementation
             {
                 if (!ec)
                 {
-                    auto null_it =
-                        std::find(rx_buffer_.begin(), rx_buffer_.end(),
-                                  middleware::InterProcessIdentifierManager::end_delimiter);
-
-                    goby::glog.is_debug3() &&
-                        goby::glog << "UDPM: Received " << length
-                                   << "B: " << std::string(rx_buffer_.begin(), null_it) << ": "
-                                   << goby::util::hex_encode(
-                                          std::string(null_it + 1, rx_buffer_.begin() + length))
-                                   << std::endl;
-
                     rx_.push_back(std::string(rx_buffer_.begin(), rx_buffer_.begin() + length));
-                    start_async_receive();
+                    _start_async_receive();
                 }
             });
     }
 
-    void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
+    std::shared_ptr<std::vector<char>> _build_packet(const std::string& identifier,
+                                                     const UDPMPacketHeader& hdr,
+                                                     const char* data_begin, std::size_t data_len)
     {
-        goby::glog.is_debug3() && goby::glog << "UDPM: Asked to publish for: " << identifier
-                                             << std::endl;
+        auto pkt = std::make_shared<std::vector<char>>();
+        pkt->reserve(identifier.size() + UDPM_PACKET_HEADER_SIZE + data_len);
+        pkt->insert(pkt->end(), identifier.begin(), identifier.end());
+        char hdr_buf[UDPM_PACKET_HEADER_SIZE];
+        encode_header(hdr_buf, hdr);
+        pkt->insert(pkt->end(), hdr_buf, hdr_buf + UDPM_PACKET_HEADER_SIZE);
+        if (data_len > 0)
+            pkt->insert(pkt->end(), data_begin, data_begin + data_len);
+        return pkt;
+    }
 
-        socket_.async_send_to(std::array<boost::asio::const_buffer, 2>(
-                                  {boost::asio::buffer(identifier), boost::asio::buffer(bytes)}),
-                              transmit_endpoint_,
-                              [](boost::system::error_code ec, std::size_t length)
+    void _async_send(std::shared_ptr<std::vector<char>> pkt)
+    {
+        socket_.async_send_to(boost::asio::buffer(*pkt), transmit_endpoint_,
+                              [pkt](boost::system::error_code ec, std::size_t length)
                               {
                                   if (!ec)
                                       goby::glog.is_debug3() &&
                                           goby::glog << "UDPM: Sent " << length << "B" << std::endl;
+                                  else
+                                      goby::glog.is_warn() &&
+                                          goby::glog << "UDPM: Send error: " << ec.message()
+                                                     << std::endl;
                               });
+    }
+
+    void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
+    {
+        goby::glog.is_debug3() &&
+            goby::glog << "UDPM: Publishing for: "
+                       << std::string(identifier.begin(),
+                                      std::find(identifier.begin(), identifier.end(), '\0'))
+                       << ", " << bytes.size() << "B" << std::endl;
+
+        const std::size_t header_overhead = identifier.size() + UDPM_PACKET_HEADER_SIZE;
+        const std::size_t payload_bytes = cfg_.udp_payload_bytes();
+
+        std::string id_key(identifier.begin(),
+                           std::find(identifier.begin(), identifier.end(), '\0'));
+
+        uint32_t msg_idx = tx_message_index_[id_key]++;
+
+        // single packet for message
+        if (header_overhead + bytes.size() <= payload_bytes)
+        {
+            goby::glog.is_debug3() && goby::glog << "UDPM: Sent in a single packet" << std::endl;
+
+            UDPMPacketHeader hdr;
+            hdr.message_index = msg_idx;
+            hdr.num_packets = 1;
+            hdr.packet_count = 0;
+            hdr.status = UDPMPacketStatus::NORMAL;
+
+            auto pkt = _build_packet(identifier, hdr, bytes.data(), bytes.size());
+
+            TxMessageEntry entry;
+            entry.message_index = msg_idx;
+            entry.packets.push_back(pkt);
+
+            _async_send(pkt);
+            return;
+        }
+
+        const std::size_t max_data_per_packet = payload_bytes - header_overhead;
+        const std::size_t num_packets_needed =
+            (bytes.size() + max_data_per_packet - 1) / max_data_per_packet;
+
+        if (num_packets_needed > std::numeric_limits<uint16_t>::max())
+        {
+            goby::glog.is_warn() &&
+                goby::glog << "UDPM: Message too large to packetize: " << bytes.size() << " bytes, "
+                           << num_packets_needed << " packets needed" << std::endl;
+        }
+
+        const uint16_t num_pkts = static_cast<uint16_t>(std::min(
+            num_packets_needed, static_cast<std::size_t>(std::numeric_limits<uint16_t>::max())));
+
+        TxMessageEntry entry;
+        entry.message_index = msg_idx;
+        entry.packets.reserve(num_pkts);
+
+        goby::glog.is_debug3() && goby::glog << "UDPM: Sending in " << num_pkts << " packets"
+                                             << std::endl;
+        for (uint16_t i = 0; i < num_pkts; ++i)
+        {
+            std::size_t offset = static_cast<std::size_t>(i) * max_data_per_packet;
+            std::size_t chunk = std::min(max_data_per_packet, bytes.size() - offset);
+
+            UDPMPacketHeader hdr;
+            hdr.message_index = msg_idx;
+            hdr.num_packets = num_pkts;
+            hdr.packet_count = i;
+            hdr.status = UDPMPacketStatus::NORMAL;
+
+            auto pkt = _build_packet(identifier, hdr, bytes.data() + offset, chunk);
+            entry.packets.push_back(pkt);
+            _async_send(pkt);
+        }
     }
 
     void _do_portal_subscribe(const std::string& identifier)
     {
-        goby::glog.is_debug3() && goby::glog << "UDPM: Asked to subscribe for: " << identifier
-                                             << ", nothing to do" << std::endl;
+        goby::glog.is_debug3() && goby::glog << "UDPM: Subscribe for: " << identifier << " (no-op)"
+                                             << std::endl;
     }
     void _do_portal_unsubscribe(const std::string& identifier)
     {
-        goby::glog.is_debug3() && goby::glog << "UDPM: Asked to unsubscribe for: " << identifier
-                                             << ", nothing to do" << std::endl;
+        goby::glog.is_debug3() && goby::glog << "UDPM: Unsubscribe for: " << identifier
+                                             << " (no-op)" << std::endl;
     }
-
     void _do_portal_wildcard_subscribe()
     {
-        goby::glog.is_debug3() && goby::glog << "UDPM: Asked to wildcard subscribe, nothing to do"
-                                             << std::endl;
+        goby::glog.is_debug3() && goby::glog << "UDPM: Wildcard subscribe (no-op)" << std::endl;
     }
     void _do_portal_wildcard_unsubscribe()
     {
-        goby::glog.is_debug3() && goby::glog << "UDPM: Asked to wildcard unsubscribe, nothing to do"
-                                             << std::endl;
+        goby::glog.is_debug3() && goby::glog << "UDPM: Wildcard unsubscribe (no-op)" << std::endl;
+    }
+
+    void _process_received_packet(std::unique_ptr<std::unique_lock<std::mutex>>& lock,
+                                  const std::string& raw)
+    {
+        auto null_it = std::find(raw.begin(), raw.end(),
+                                 middleware::InterProcessIdentifierManager::end_delimiter);
+        if (null_it == raw.end())
+        {
+            goby::glog.is_warn() && goby::glog
+                                        << "UDPM: Received packet with no null terminator, dropping"
+                                        << std::endl;
+            return;
+        }
+
+        std::string id_key(raw.begin(), null_it);
+
+        auto header_start = null_it + 1;
+        if (raw.end() - header_start < static_cast<std::ptrdiff_t>(UDPM_PACKET_HEADER_SIZE))
+        {
+            goby::glog.is_warn() &&
+                goby::glog << "UDPM: Received packet too short for header, dropping" << std::endl;
+            return;
+        }
+
+        UDPMPacketHeader hdr = decode_header(&*header_start);
+        auto data_begin = header_start + UDPM_PACKET_HEADER_SIZE;
+
+        goby::glog.is_debug3() &&
+            goby::glog << "UDPM: Received packet for " << id_key << " msg_idx=" << hdr.message_index
+                       << " num_pkts=" << hdr.num_packets << " pkt_cnt=" << hdr.packet_count
+                       << " status=" << static_cast<int>(hdr.status)
+                       << " data=" << (raw.end() - data_begin) << "B" << std::endl;
+
+        if (hdr.num_packets == 1)
+        {
+            std::string full_data(raw.begin(), null_it + 1);
+            full_data.append(data_begin, raw.end());
+            this->_handle_received_data(lock, full_data);
+            return;
+        }
+
+        auto& partial = rx_partial_[id_key];
+        if (partial.message_index != hdr.message_index)
+        {
+            goby::glog.is_warn() && goby::glog << "UDPM: Dropping partial packet for " << id_key
+                                               << " msg_idx=" << hdr.message_index << std::endl;
+            partial = RxPartialMessage();
+        }
+
+        if (partial.num_packets == 0)
+            partial.num_packets = hdr.num_packets;
+
+        partial.received_packets[hdr.packet_count] = std::vector<char>(data_begin, raw.end());
+
+        if (partial.received_packets.size() == hdr.num_packets)
+        {
+            std::string reassembled(raw.begin(), null_it + 1);
+            for (uint16_t i = 0; i < hdr.num_packets; ++i)
+            {
+                auto& pkt = partial.received_packets[i];
+                reassembled.append(pkt.begin(), pkt.end());
+            }
+            partial = RxPartialMessage();
+            this->_handle_received_data(lock, reassembled);
+        }
     }
 
     int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
@@ -173,7 +369,7 @@ class InterProcessPortalImplementation
         while (!rx_.empty())
         {
             ++items;
-            this->_handle_received_data(lock, rx_.front());
+            _process_received_packet(lock, rx_.front());
             rx_.pop_front();
         }
 
@@ -181,6 +377,19 @@ class InterProcessPortalImplementation
     }
 
   private:
+    struct RxPartialMessage
+    {
+        uint32_t message_index{0};
+        uint16_t num_packets{0};
+        std::unordered_map<uint16_t, std::vector<char>> received_packets;
+    };
+
+    struct TxMessageEntry
+    {
+        uint32_t message_index{0};
+        std::vector<std::shared_ptr<std::vector<char>>> packets;
+    };
+
     const protobuf::InterProcessPortalConfig cfg_;
 
     boost::asio::io_context io_;
@@ -191,6 +400,9 @@ class InterProcessPortalImplementation
     static constexpr int max_udp_size{65507};
     std::array<char, max_udp_size> rx_buffer_;
     std::deque<std::string> rx_;
+
+    std::unordered_map<std::string, uint32_t> tx_message_index_;
+    std::unordered_map<std::string, RxPartialMessage> rx_partial_;
 };
 
 template <typename InnerTransporter = middleware::NullTransporter>
