@@ -58,8 +58,6 @@ namespace udpm
 enum class UDPMPacketStatus : uint8_t
 {
     NORMAL = 0,
-    NACK = 1,
-    MESSAGE_UNAVAILABLE = 2
 };
 
 // Packet header (9 bytes, after the null-terminated identifier):
@@ -175,8 +173,8 @@ class InterProcessPortalImplementation
     }
 
     std::shared_ptr<std::vector<char>> _build_packet(const std::string& identifier,
-                                                      const UDPMPacketHeader& hdr,
-                                                      const char* data_begin, std::size_t data_len)
+                                                     const UDPMPacketHeader& hdr,
+                                                     const char* data_begin, std::size_t data_len)
     {
         auto pkt = std::make_shared<std::vector<char>>();
         pkt->reserve(identifier.size() + UDPM_PACKET_HEADER_SIZE + data_len);
@@ -191,26 +189,26 @@ class InterProcessPortalImplementation
 
     void _async_send(std::shared_ptr<std::vector<char>> pkt)
     {
-        socket_.async_send_to(
-            boost::asio::buffer(*pkt), transmit_endpoint_,
-            [pkt](boost::system::error_code ec, std::size_t length)
-            {
-                if (!ec)
-                    goby::glog.is_debug3() &&
-                        goby::glog << "UDPM: Sent " << length << "B" << std::endl;
-                else
-                    goby::glog.is_warn() &&
-                        goby::glog << "UDPM: Send error: " << ec.message() << std::endl;
-            });
+        socket_.async_send_to(boost::asio::buffer(*pkt), transmit_endpoint_,
+                              [pkt](boost::system::error_code ec, std::size_t length)
+                              {
+                                  if (!ec)
+                                      goby::glog.is_debug3() &&
+                                          goby::glog << "UDPM: Sent " << length << "B" << std::endl;
+                                  else
+                                      goby::glog.is_warn() &&
+                                          goby::glog << "UDPM: Send error: " << ec.message()
+                                                     << std::endl;
+                              });
     }
 
     void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
     {
-        goby::glog.is_debug3() && goby::glog << "UDPM: Publishing for: "
-                                             << std::string(identifier.begin(),
-                                                            std::find(identifier.begin(),
-                                                                      identifier.end(), '\0'))
-                                             << ", " << bytes.size() << "B" << std::endl;
+        goby::glog.is_debug3() &&
+            goby::glog << "UDPM: Publishing for: "
+                       << std::string(identifier.begin(),
+                                      std::find(identifier.begin(), identifier.end(), '\0'))
+                       << ", " << bytes.size() << "B" << std::endl;
 
         const std::size_t header_overhead = identifier.size() + UDPM_PACKET_HEADER_SIZE;
         const std::size_t payload_bytes = cfg_.udp_payload_bytes();
@@ -224,8 +222,11 @@ class InterProcessPortalImplementation
         if (tx_buf.capacity() == 0)
             tx_buf.set_capacity(cfg_.tx_buffer_size());
 
-        if (header_overhead >= payload_bytes || bytes.empty())
+        // single packet for message
+        if (header_overhead + bytes.size() <= payload_bytes)
         {
+            goby::glog.is_debug3() && goby::glog << "UDPM: Sent in a single packet" << std::endl;
+
             UDPMPacketHeader hdr;
             hdr.message_index = msg_idx;
             hdr.num_packets = 1;
@@ -249,10 +250,9 @@ class InterProcessPortalImplementation
 
         if (num_packets_needed > std::numeric_limits<uint16_t>::max())
         {
-            goby::glog.is_warn() && goby::glog << "UDPM: Message too large to packetize: "
-                                               << bytes.size() << " bytes, "
-                                               << num_packets_needed << " packets needed"
-                                               << std::endl;
+            goby::glog.is_warn() &&
+                goby::glog << "UDPM: Message too large to packetize: " << bytes.size() << " bytes, "
+                           << num_packets_needed << " packets needed" << std::endl;
         }
 
         const uint16_t num_pkts = static_cast<uint16_t>(std::min(
@@ -262,6 +262,8 @@ class InterProcessPortalImplementation
         entry.message_index = msg_idx;
         entry.packets.reserve(num_pkts);
 
+        goby::glog.is_debug3() && goby::glog << "UDPM: Sending in " << num_pkts << " packets"
+                                             << std::endl;
         for (uint16_t i = 0; i < num_pkts; ++i)
         {
             std::size_t offset = static_cast<std::size_t>(i) * max_data_per_packet;
@@ -283,8 +285,8 @@ class InterProcessPortalImplementation
 
     void _do_portal_subscribe(const std::string& identifier)
     {
-        goby::glog.is_debug3() && goby::glog << "UDPM: Subscribe for: " << identifier
-                                             << " (no-op)" << std::endl;
+        goby::glog.is_debug3() && goby::glog << "UDPM: Subscribe for: " << identifier << " (no-op)"
+                                             << std::endl;
     }
     void _do_portal_unsubscribe(const std::string& identifier)
     {
@@ -327,29 +329,10 @@ class InterProcessPortalImplementation
         auto data_begin = header_start + UDPM_PACKET_HEADER_SIZE;
 
         goby::glog.is_debug3() &&
-            goby::glog << "UDPM: Received packet for " << id_key
-                       << " msg_idx=" << hdr.message_index << " num_pkts=" << hdr.num_packets
-                       << " pkt_cnt=" << hdr.packet_count
+            goby::glog << "UDPM: Received packet for " << id_key << " msg_idx=" << hdr.message_index
+                       << " num_pkts=" << hdr.num_packets << " pkt_cnt=" << hdr.packet_count
                        << " status=" << static_cast<int>(hdr.status)
                        << " data=" << (raw.end() - data_begin) << "B" << std::endl;
-
-        if (hdr.status == UDPMPacketStatus::NACK)
-        {
-            _handle_nack(id_key, hdr);
-            return;
-        }
-
-        if (hdr.status == UDPMPacketStatus::MESSAGE_UNAVAILABLE)
-        {
-            goby::glog.is_warn() &&
-                goby::glog << "UDPM: MESSAGE_UNAVAILABLE for identifier: " << id_key
-                           << " message_index: " << hdr.message_index
-                           << " packet_count: " << hdr.packet_count << std::endl;
-            auto pit = rx_partial_.find(id_key);
-            if (pit != rx_partial_.end())
-                pit->second.erase(hdr.message_index);
-            return;
-        }
 
         if (hdr.num_packets == 1)
         {
@@ -359,13 +342,18 @@ class InterProcessPortalImplementation
             return;
         }
 
-        auto& partial_map = rx_partial_[id_key];
-        auto& partial = partial_map[hdr.message_index];
+        auto& partial = rx_partial_[id_key];
+        if (partial.message_index != hdr.message_index)
+        {
+            goby::glog.is_warn() && goby::glog << "UDPM: Dropping partial packet for " << id_key
+                                               << " msg_idx=" << hdr.message_index << std::endl;
+            partial = RxPartialMessage();
+        }
+
         if (partial.num_packets == 0)
             partial.num_packets = hdr.num_packets;
 
-        partial.received_packets[hdr.packet_count] =
-            std::vector<char>(data_begin, raw.end());
+        partial.received_packets[hdr.packet_count] = std::vector<char>(data_begin, raw.end());
 
         if (partial.received_packets.size() == hdr.num_packets)
         {
@@ -375,92 +363,8 @@ class InterProcessPortalImplementation
                 auto& pkt = partial.received_packets[i];
                 reassembled.append(pkt.begin(), pkt.end());
             }
-            partial_map.erase(hdr.message_index);
+            partial = RxPartialMessage();
             this->_handle_received_data(lock, reassembled);
-        }
-    }
-
-    void _handle_nack(const std::string& id_key, const UDPMPacketHeader& hdr)
-    {
-        goby::glog.is_debug2() && goby::glog << "UDPM: Received NACK for " << id_key
-                                             << " msg_idx=" << hdr.message_index
-                                             << " pkt_cnt=" << hdr.packet_count << std::endl;
-
-        auto it = tx_buffer_.find(id_key);
-        if (it == tx_buffer_.end())
-        {
-            _send_message_unavailable(id_key, hdr);
-            return;
-        }
-
-        for (const auto& entry : it->second)
-        {
-            if (entry.message_index == hdr.message_index)
-            {
-                if (hdr.packet_count < entry.packets.size())
-                {
-                    goby::glog.is_debug2() &&
-                        goby::glog << "UDPM: Serving NACK retransmission for " << id_key
-                                   << " msg_idx=" << hdr.message_index
-                                   << " pkt_cnt=" << hdr.packet_count << std::endl;
-                    _async_send(entry.packets[hdr.packet_count]);
-                    return;
-                }
-                _send_message_unavailable(id_key, hdr);
-                return;
-            }
-        }
-
-        _send_message_unavailable(id_key, hdr);
-    }
-
-    void _send_message_unavailable(const std::string& id_key, const UDPMPacketHeader& orig_hdr)
-    {
-        goby::glog.is_debug2() &&
-            goby::glog << "UDPM: Sending MESSAGE_UNAVAILABLE for " << id_key
-                       << " msg_idx=" << orig_hdr.message_index << std::endl;
-
-        UDPMPacketHeader hdr = orig_hdr;
-        hdr.status = UDPMPacketStatus::MESSAGE_UNAVAILABLE;
-
-        std::string identifier_with_null = id_key + '\0';
-        auto pkt = _build_packet(identifier_with_null, hdr, nullptr, 0);
-        _async_send(pkt);
-    }
-
-    void _send_nack(const std::string& id_key, uint32_t message_index, uint16_t num_packets,
-                    uint16_t packet_count)
-    {
-        UDPMPacketHeader hdr;
-        hdr.message_index = message_index;
-        hdr.num_packets = num_packets;
-        hdr.packet_count = packet_count;
-        hdr.status = UDPMPacketStatus::NACK;
-
-        std::string identifier_with_null = id_key + '\0';
-        auto pkt = _build_packet(identifier_with_null, hdr, nullptr, 0);
-        _async_send(pkt);
-    }
-
-    void _check_partial_messages()
-    {
-        for (auto& [id_key, msg_map] : rx_partial_)
-        {
-            for (auto& [msg_idx, partial] : msg_map)
-            {
-                for (uint16_t i = 0; i < partial.num_packets; ++i)
-                {
-                    if (partial.received_packets.find(i) == partial.received_packets.end())
-                    {
-                        auto& nacked = nack_sent_[id_key][msg_idx];
-                        if (nacked.find(i) == nacked.end())
-                        {
-                            _send_nack(id_key, msg_idx, partial.num_packets, i);
-                            nacked.insert(i);
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -476,15 +380,13 @@ class InterProcessPortalImplementation
             rx_.pop_front();
         }
 
-        if (!rx_partial_.empty())
-            _check_partial_messages();
-
         return items;
     }
 
   private:
     struct RxPartialMessage
     {
+        uint32_t message_index{0};
         uint16_t num_packets{0};
         std::unordered_map<uint16_t, std::vector<char>> received_packets;
     };
@@ -508,10 +410,7 @@ class InterProcessPortalImplementation
 
     std::unordered_map<std::string, boost::circular_buffer<TxMessageEntry>> tx_buffer_;
     std::unordered_map<std::string, uint32_t> tx_message_index_;
-
-    std::unordered_map<std::string, std::unordered_map<uint32_t, RxPartialMessage>> rx_partial_;
-
-    std::unordered_map<std::string, std::unordered_map<uint32_t, std::set<uint16_t>>> nack_sent_;
+    std::unordered_map<std::string, RxPartialMessage> rx_partial_;
 };
 
 template <typename InnerTransporter = middleware::NullTransporter>
