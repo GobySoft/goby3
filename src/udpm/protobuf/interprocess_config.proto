@@ -32,13 +32,6 @@ message InterProcessPortalConfig
         (goby.field).cfg = { action: ADVANCED }
     ];
 
-    optional uint32 tx_buffer_size = 6 [
-        default = 10,
-        (goby.field).description =
-            "Number of most recently transmitted messages to buffer per identifier for NACK serving",
-        (goby.field).cfg = { action: ADVANCED }
-    ];
-
     optional string client_name = 20 [
         (goby.field).description =
             "Unique name for InterProcessPortal. Defaults to app.name",
