@@ -117,11 +117,6 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
         std::string name;
         int uid;
         std::unique_ptr<std::thread> thread;
-        // Type-erased handle to the goby thread object (e.g. SimpleThread).
-        // Prevents the thread object (and its InterProcessForwarder) from being
-        // destroyed on the child thread before the main thread has processed the
-        // forwarder's unsubscribe, avoiding a use-after-free race.
-        std::shared_ptr<void> goby_thread_object;
     };
 
     static std::exception_ptr thread_exception_;
@@ -456,13 +451,6 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_launch_
             goby_thread->set_type_index(type_i);
             goby_thread->set_uid(thread_manager.uid);
             goby_thread->run(thread_manager.alive);
-
-            // Move the thread object into thread_manager so that it (and its
-            // InterProcessForwarder) stays alive until _join_thread() on the
-            // main thread.  This prevents the forwarder subscription callbacks
-            // from being invoked on a destroyed object during the main thread's
-            // poll cycle.
-            thread_manager.goby_thread_object = goby_thread;
         }
         catch (...)
         {
@@ -498,13 +486,6 @@ void goby::middleware::MultiThreadApplicationBase<Config, Transporter>::_join_th
         threads_[type_i][index].alive = false;
         threads_[type_i][index].thread->join();
         threads_[type_i][index].thread.reset();
-
-        // Destroy the thread object (and its InterProcessForwarder) now that
-        // the child thread has been joined.  The forwarder destructor will
-        // publish its unsubscribe message to the interthread layer, which will
-        // be processed on the next poll cycle before any interprocess data.
-        threads_[type_i][index].goby_thread_object.reset();
-
         --running_thread_count_;
 
         goby::glog.is(goby::util::logger::DEBUG1) &&
