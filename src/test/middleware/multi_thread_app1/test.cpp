@@ -92,6 +92,10 @@ class TestTxConfigurator : public goby::middleware::ProtobufConfigurator<TestCon
         TestConfig& cfg = mutable_cfg();
         cfg.mutable_app()->set_name("TestAppTx");
         cfg.mutable_interprocess()->set_platform(platform_name);
+
+#if defined(test_for_udpm)
+        cfg.mutable_interprocess()->set_max_send_rate_bytes_per_second(1000);
+#endif
     }
 };
 

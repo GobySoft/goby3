@@ -193,15 +193,26 @@ class InterProcessPortalImplementation
     {
         if (cfg_.max_send_rate_bytes_per_second() > 0)
         {
-            bool was_empty = tx_queue_.empty();
-            tx_queue_.push_back(std::move(pkt));
-            if (was_empty)
-                _process_tx_queue();
+            auto now = std::chrono::steady_clock::now();
+
+            std::this_thread::sleep_until(next_send_time_);
+
+            double delay_sec = static_cast<double>(pkt->size()) /
+                               static_cast<double>(cfg_.max_send_rate_bytes_per_second());
+
+            if (static_cast<long>(delay_sec * 1.0e9) < std::numeric_limits<long>::max())
+                next_send_time_ =
+                    now + std::chrono::nanoseconds(static_cast<long>(1e9 * delay_sec));
+            else if (static_cast<long>(delay_sec * 1.0e6) < std::numeric_limits<long>::max())
+
+                next_send_time_ =
+                    now + std::chrono::microseconds(static_cast<long>(1e6 * delay_sec));
+            else
+                next_send_time_ =
+                    now + std::chrono::milliseconds(static_cast<long>(1e3 * delay_sec));
         }
-        else
-        {
-            _do_socket_send(std::move(pkt));
-        }
+
+        _do_socket_send(std::move(pkt));
     }
 
     void _do_socket_send(std::shared_ptr<std::vector<char>> pkt)
@@ -217,38 +228,6 @@ class InterProcessPortalImplementation
                                           goby::glog << "UDPM: Send error: " << ec.message()
                                                      << std::endl;
                               });
-    }
-
-    void _process_tx_queue()
-    {
-        if (cfg_.max_send_rate_bytes_per_second() == 0)
-            return;
-
-        while (!tx_queue_.empty())
-        {
-            auto now = std::chrono::steady_clock::now();
-            if (now < next_send_time_)
-            {
-                tx_timer_.expires_at(next_send_time_);
-                tx_timer_.async_wait([this](boost::system::error_code ec)
-                                     {
-                                         if (!ec)
-                                             _process_tx_queue();
-                                     });
-                return;
-            }
-
-            auto pkt = std::move(tx_queue_.front());
-            tx_queue_.pop_front();
-
-            std::chrono::duration<double> delay(
-                static_cast<double>(pkt->size()) /
-                static_cast<double>(cfg_.max_send_rate_bytes_per_second()));
-            next_send_time_ =
-                now + std::chrono::duration_cast<std::chrono::nanoseconds>(delay);
-
-            _do_socket_send(std::move(pkt));
-        }
     }
 
     void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
@@ -454,9 +433,7 @@ class InterProcessPortalImplementation
     std::unordered_map<std::string, RxPartialMessage> rx_partial_;
 
     // Rate-limiting send queue
-    std::deque<std::shared_ptr<std::vector<char>>> tx_queue_;
     std::chrono::steady_clock::time_point next_send_time_{std::chrono::steady_clock::now()};
-    boost::asio::steady_timer tx_timer_{io_};
 };
 
 template <typename InnerTransporter = middleware::NullTransporter>
