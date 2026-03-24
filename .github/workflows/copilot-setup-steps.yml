@@ -31,4 +31,4 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo ./DEPENDENCIES -a
+          sudo ./DEPENDENCIES -a -c
