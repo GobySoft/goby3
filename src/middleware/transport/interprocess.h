@@ -306,7 +306,7 @@ class InterProcessForwarder
     /// \brief Construct a forwarder for the interprocess layer
     ///
     /// \param inner A reference to the inner transporter used to forward messages to and from the portal
-    InterProcessForwarder(InnerTransporter& inner) : Base(inner)
+    InterProcessForwarder(InnerTransporter& inner) : Base(inner), alive_(std::make_shared<std::atomic<bool>>(true))
     {
         this->inner()
             .template subscribe<Base::regex_group_,
@@ -317,6 +317,12 @@ class InterProcessForwarder
     }
     virtual ~InterProcessForwarder()
     {
+        // Mark as no longer alive so that forwarding lambdas (captured by the
+        // portal's subscription handlers) become no-ops. This avoids
+        // use-after-free when the portal invokes a stale callback after the
+        // forwarder has been destroyed.
+        *alive_ = false;
+
         this->unsubscribe_all();
 
         // TODO - remove by adding in an explicit handshake with the unsubscribe_all publication so that we don't delete ourself (and thus our inner()) before the Portal has deleted all the subscriptions
@@ -352,8 +358,14 @@ class InterProcessForwarder
         this->inner().template subscribe_dynamic<Data, scheme>(f, group);
 
         // forward subscription to edge
+        // Capture alive_ by value (shared_ptr copy) so the lambda can detect
+        // when the forwarder has been destroyed and avoid use-after-free.
+        auto alive = alive_;
         auto inner_publication_lambda = [=](std::shared_ptr<const Data> d)
-        { this->inner().template publish_dynamic<Data, scheme>(d, group); };
+        {
+            if (*alive)
+                this->inner().template publish_dynamic<Data, scheme>(d, group);
+        };
 
         auto subscription = std::make_shared<SerializationSubscription<Data, scheme>>(
             inner_publication_lambda, group,
@@ -404,9 +416,12 @@ class InterProcessForwarder
                      const std::set<int>& schemes, const std::string& type_regex = ".*",
                      const std::string& group_regex = ".*")
     {
+        auto alive = alive_;
         auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme,
                                             const std::string& type, const Group& group)
         {
+            if (!*alive)
+                return;
             std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
                 forwarded_data(new goby::middleware::protobuf::SerializerTransporterMessage);
             forwarded_data->mutable_key()->set_marshalling_scheme(scheme);
@@ -443,6 +458,9 @@ class InterProcessForwarder
 
   private:
     std::set<std::shared_ptr<const SerializationSubscriptionRegex>> regex_subscriptions_;
+    // Shared flag checked by forwarding lambdas to avoid accessing `this`
+    // after the forwarder has been destroyed (set to false in the destructor).
+    std::shared_ptr<std::atomic<bool>> alive_;
 };
 
 template <typename Derived, typename InnerTransporter>
