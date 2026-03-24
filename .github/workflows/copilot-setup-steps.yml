@@ -31,5 +31,4 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd goby3
           sudo ./DEPENDENCIES -a
