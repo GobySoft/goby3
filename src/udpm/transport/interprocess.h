@@ -30,7 +30,9 @@
 #include <boost/asio/ip/multicast.hpp>
 #include <boost/asio/ip/udp.hpp>
 #include <boost/asio/socket_base.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/circular_buffer.hpp>
+#include <chrono>
 #include <cstring>
 #include <deque>
 #include <memory>
@@ -188,6 +190,32 @@ class InterProcessPortalImplementation
     }
 
     void _async_send(std::shared_ptr<std::vector<char>> pkt)
+    {
+        if (cfg_.max_send_rate_bytes_per_second() > 0)
+        {
+            auto now = std::chrono::steady_clock::now();
+
+            std::this_thread::sleep_until(next_send_time_);
+
+            double delay_sec = static_cast<double>(pkt->size()) /
+                               static_cast<double>(cfg_.max_send_rate_bytes_per_second());
+
+            if (static_cast<long>(delay_sec * 1.0e9) < std::numeric_limits<long>::max())
+                next_send_time_ =
+                    now + std::chrono::nanoseconds(static_cast<long>(1e9 * delay_sec));
+            else if (static_cast<long>(delay_sec * 1.0e6) < std::numeric_limits<long>::max())
+
+                next_send_time_ =
+                    now + std::chrono::microseconds(static_cast<long>(1e6 * delay_sec));
+            else
+                next_send_time_ =
+                    now + std::chrono::milliseconds(static_cast<long>(1e3 * delay_sec));
+        }
+
+        _do_socket_send(std::move(pkt));
+    }
+
+    void _do_socket_send(std::shared_ptr<std::vector<char>> pkt)
     {
         socket_.async_send_to(boost::asio::buffer(*pkt), transmit_endpoint_,
                               [pkt](boost::system::error_code ec, std::size_t length)
@@ -403,6 +431,9 @@ class InterProcessPortalImplementation
 
     std::unordered_map<std::string, uint32_t> tx_message_index_;
     std::unordered_map<std::string, RxPartialMessage> rx_partial_;
+
+    // Rate-limiting send queue
+    std::chrono::steady_clock::time_point next_send_time_{std::chrono::steady_clock::now()};
 };
 
 template <typename InnerTransporter = middleware::NullTransporter>

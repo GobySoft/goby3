@@ -21,6 +21,7 @@ Key configuration fields:
 | `multicast_address` | `"239.142.0.2"` | IPv4 multicast group address |
 | `multicast_port` | `11144` | UDP port for all multicast traffic |
 | `udp_payload_bytes` | `1472` | Max UDP payload per packet (MTU 1500 − 28 bytes IP/UDP headers). Messages greater than this packet size will be automatically packetized as needed. |
+| `max_send_rate_bytes_per_second` | `0` (unlimited) | Maximum transmit rate in bytes per second. Set to `0` to disable rate limiting. For example, set to `12500000` to limit to 100 Mbps. |
 | `client_name` | (app name) | Unique name for this portal instance |
 
 ## Wire Protocol
@@ -78,6 +79,22 @@ num_packets = ceil(102400 / 1422) = 72 packets
 ```
 
 All 72 datagrams carry the same `message_index` and `num_packets = 72`, with `packet_count` ranging from 0 to 71.
+
+## Rate Limiting
+
+The `max_send_rate_bytes_per_second` configuration field allows limiting the transmit rate of the UDPM portal. When set to a non-zero value, packets are queued internally and sent no faster than the configured rate.
+
+Rate limiting uses an inter-packet gap approach: after each UDP datagram is sent, the next datagram in the queue is held until enough time has elapsed such that the average transmit rate does not exceed the configured limit.
+
+The rate limit applies to the raw UDP payload bytes (including the UDPM header and identifier). It does not account for IP/UDP framing overhead at the network layer.
+
+### Example: Limiting to 100 Mbps
+
+```
+max_send_rate_bytes_per_second: 12500000  # 100 Mbps = 100,000,000 bits/sec / 8 = 12,500,000 bytes/sec
+```
+
+When no rate limit is set (the default, `max_send_rate_bytes_per_second = 0`), packets are sent as fast as the UDP socket allows with no queuing overhead.
 
 ## No Hold State
 

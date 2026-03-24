@@ -32,6 +32,14 @@ message InterProcessPortalConfig
         (goby.field).cfg = { action: ADVANCED }
     ];
 
+    optional uint32 max_send_rate_bytes_per_second = 6 [
+        default = 0,
+        (goby.field).description =
+            "Maximum transmit rate in bytes per second (0 = unlimited). "
+            "For example, set to 12500000 for 100 Mbps.",
+        (goby.field).cfg = { action: ADVANCED }
+    ];
+
     optional string client_name = 20 [
         (goby.field).description =
             "Unique name for InterProcessPortal. Defaults to app.name",
