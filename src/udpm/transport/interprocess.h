@@ -218,10 +218,6 @@ class InterProcessPortalImplementation
 
         uint32_t msg_idx = tx_message_index_[id_key]++;
 
-        auto& tx_buf = tx_buffer_[id_key];
-        if (tx_buf.capacity() == 0)
-            tx_buf.set_capacity(cfg_.tx_buffer_size());
-
         // single packet for message
         if (header_overhead + bytes.size() <= payload_bytes)
         {
@@ -238,7 +234,6 @@ class InterProcessPortalImplementation
             TxMessageEntry entry;
             entry.message_index = msg_idx;
             entry.packets.push_back(pkt);
-            tx_buf.push_back(std::move(entry));
 
             _async_send(pkt);
             return;
@@ -279,8 +274,6 @@ class InterProcessPortalImplementation
             entry.packets.push_back(pkt);
             _async_send(pkt);
         }
-
-        tx_buf.push_back(std::move(entry));
     }
 
     void _do_portal_subscribe(const std::string& identifier)
@@ -408,7 +401,6 @@ class InterProcessPortalImplementation
     std::array<char, max_udp_size> rx_buffer_;
     std::deque<std::string> rx_;
 
-    std::unordered_map<std::string, boost::circular_buffer<TxMessageEntry>> tx_buffer_;
     std::unordered_map<std::string, uint32_t> tx_message_index_;
     std::unordered_map<std::string, RxPartialMessage> rx_partial_;
 };
