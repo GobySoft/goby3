@@ -44,6 +44,7 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 #include "goby/middleware/transport/intervehicle.h"
+#include "goby/time/steady_clock.h"
 
 namespace goby
 {
@@ -224,7 +225,8 @@ class MultiThreadApplicationBase : public goby::middleware::Application<Config>,
                                                                         << running_thread_count_
                                                                         << " threads." << std::endl;
 
-                MainThreadBase::transporter().poll();
+                MainThreadBase::transporter().template poll<goby::time::SteadyClock>(
+                    std::chrono::milliseconds(100));
             }
 
             goby::glog.is(goby::util::logger::DEBUG1) && goby::glog << "All threads cleanly joined."

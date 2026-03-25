@@ -1,2 +1,2 @@
 include(../../middleware/middleware_interprocess_forwarder/test.cmake)
-create_middleware_interprocess_forwarder_test(zeromq goby_zeromq)
+create_middleware_interprocess_forwarder_test(udpm "")

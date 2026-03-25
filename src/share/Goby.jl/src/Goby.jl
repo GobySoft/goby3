@@ -190,4 +190,19 @@ function run(goby_app, main_module = Main, task_modules = [])
     end
 end
 
+
+"""
+    cfg(goby_app)
+
+Reads the Protobuf configuration that the Goby application was initialized with and returns it as Dict
+"""
+function cfg(goby_app, pb_type)
+    dvec::StdVector{UInt8} = CxxWrap.dereference_argument(Goby.cxx_cfg_serialized(goby_app))
+    bytes::Vector{UInt8} = reinterpret(UInt8, collect(dvec))
+    io = IOBuffer(bytes)
+    d::ProtoDecoder = ProtoDecoder(io)
+    msg = decode(d, pb_type)
+    return msg
+end
+
 end # module Goby

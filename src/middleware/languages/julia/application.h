@@ -1,4 +1,4 @@
-// Copyright 2025:
+// Copyright 2025-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -115,6 +115,13 @@ template <typename App> class ApplicationWrapper
 
     void set_loop_frequency_hertz(double freq) { app_ptr_->set_loop_frequency_hertz(freq); }
 
+    std::vector<std::uint8_t> cfg_serialized()
+    {
+        std::vector<std::uint8_t> v(app_ptr_->app_cfg().ByteSizeLong());
+        app_ptr_->app_cfg().SerializeToArray(&v[0], v.size());
+        return v;
+    }
+
   private:
     std::unique_ptr<App> app_ptr_;
     std::map<std::string, goby::middleware::DynamicGroup> subscription_groups_;
@@ -139,7 +146,8 @@ inline void define_julia_module(jlcxx::Module& types, const std::string& app_nam
         .method("cxx_run", &ApplicationWrapper<App>::run)
         .method("cxx_publish", &ApplicationWrapper<App>::publish)
         .method("cxx_subscribe", &ApplicationWrapper<App>::subscribe)
-        .method("cxx_set_loop_frequency_hertz", &ApplicationWrapper<App>::set_loop_frequency_hertz);
+        .method("cxx_set_loop_frequency_hertz", &ApplicationWrapper<App>::set_loop_frequency_hertz)
+        .method("cxx_cfg_serialized", &ApplicationWrapper<App>::cfg_serialized);
 }
 
 template <typename DataType, int scheme>
