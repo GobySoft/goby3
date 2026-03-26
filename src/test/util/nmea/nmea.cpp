@@ -25,6 +25,9 @@
 #define BOOST_TEST_MODULE nmea_test
 #include <boost/test/included/unit_test.hpp>
 
+#include <cmath>
+#include <iostream>
+
 #include "goby/util/binary.h"
 #include "goby/util/linebasedcomms.h"
 

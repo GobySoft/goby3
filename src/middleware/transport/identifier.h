@@ -2,12 +2,10 @@
 #ifndef GOBY_MIDDLEWARE_TRANSPORT_IDENTIFIER_H
 #define GOBY_MIDDLEWARE_TRANSPORT_IDENTIFIER_H
 
-#include <algorithm>
 #include <string>
 #include <thread>
 #include <unistd.h> // for getpid
 #include <unordered_map>
-#include <vector>
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/marshalling/interface.h"            // for Seri...

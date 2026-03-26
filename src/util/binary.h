@@ -25,13 +25,9 @@
 #ifndef GOBY_UTIL_BINARY_H
 #define GOBY_UTIL_BINARY_H
 
-#include <cmath>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
-
-#include <bitset>
-#include <boost/dynamic_bitset.hpp>
+#include <string>
 
 namespace goby
 {

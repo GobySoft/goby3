@@ -1,3 +1,7 @@
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include "identifier.h"
 
 const char goby::middleware::InterProcessIdentifierManager::delimiter{'/'};

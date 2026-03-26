@@ -27,7 +27,6 @@
 
 #include <atomic>
 #include <functional>
-#include <sys/types.h>
 #include <thread>
 #include <tuple>
 #include <unistd.h>

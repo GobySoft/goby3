@@ -25,14 +25,14 @@
 #ifndef GOBY_MIDDLEWARE_TRANSPORT_SERIALIZATION_HANDLERS_H
 #define GOBY_MIDDLEWARE_TRANSPORT_SERIALIZATION_HANDLERS_H
 
-#include <chrono>
+#include <functional>
 #include <memory>
 #include <regex>
+#include <set>
 #include <thread>
-#include <unordered_map>
+#include <vector>
 
 #include "goby/exception.h"
-#include "goby/util/binary.h"
 
 #include "goby/middleware/common.h"
 #include "goby/middleware/protobuf/intermodule.pb.h"
