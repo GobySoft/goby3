@@ -43,6 +43,7 @@
 #include "goby/test/acomms/route1/test.pb.h"
 #include "goby/time.h"
 #include "goby/util/as.h"
+#include <iostream>
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include <cstdlib>

@@ -25,6 +25,7 @@
 #include "goby/middleware/log/hdf5/hdf5_plugin.h"
 
 #include "goby/time.h"
+#include <iostream>
 #include "goby/util/binary.h"
 
 #include "goby/test/acomms/dccl1/test.pb.h"

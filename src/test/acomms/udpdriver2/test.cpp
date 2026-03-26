@@ -29,6 +29,7 @@
 #include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/acomms/protobuf/udp_driver.pb.h"
 #include "goby/util/as.h"
+#include <iostream>
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"

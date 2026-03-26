@@ -25,6 +25,7 @@
 #include <boost/test/included/unit_test.hpp>
 
 #include "goby/middleware/marshalling/mavlink.h"
+#include <iostream>
 #include "goby/util/binary.h"
 
 using goby::middleware::SerializerParserHelper;

@@ -42,6 +42,7 @@
 #include "goby/acomms/ip_codecs.h"
 #include "goby/acomms/protobuf/modem_message.pb.h"
 #include "goby/middleware/acomms/groups.h"
+#include <iostream>
 #include "goby/util/binary.h"
 #include "goby/util/dccl_compat.h"
 #include "goby/zeromq/application/single_thread.h"

@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 
 #include "goby/acomms/ip_codecs.h"
+#include <iostream>
 #include "goby/util/binary.h"
 #include "goby/util/dccl_compat.h"
 #include "goby/util/debug_logger.h"

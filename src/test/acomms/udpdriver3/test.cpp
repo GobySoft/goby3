@@ -30,6 +30,7 @@
 #include "goby/acomms/modemdriver/udp_driver.h"
 #include "goby/acomms/protobuf/udp_driver.pb.h"
 #include "goby/acomms/queue.h"
+#include <iostream>
 #include "goby/util/binary.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h"
