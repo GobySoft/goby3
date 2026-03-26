@@ -26,7 +26,6 @@
 #define GOBY_ACOMMS_AMAC_MAC_MANAGER_H
 
 #include <boost/signals2/signal.hpp>      // for signal
-#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
 #include <chrono>                         // for seconds
 #include <iosfwd>                         // for ostream
 #include <list>                           // for list, list<>::ite...

@@ -24,8 +24,6 @@
 #ifndef GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_DRIVER_THREAD_H
 #define GOBY_MIDDLEWARE_TRANSPORT_INTERVEHICLE_DRIVER_THREAD_H
 
-#include <algorithm>
-#include <chrono>
 #include <cstddef>
 #include <map>
 #include <memory>
