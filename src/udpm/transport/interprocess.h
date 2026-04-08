@@ -135,8 +135,10 @@ class InterProcessPortalImplementation
 
     ~InterProcessPortalImplementation()
     {
-        socket_.close();
-        io_work_.reset();
+        // Close socket first to cancel any pending async operations,
+        // then release the work guard so io_.ctx.run() can return, then join.
+        io_.socket.close();
+        io_.work.reset();
         if (io_thread_.joinable())
             io_thread_.join();
     }
@@ -150,6 +152,10 @@ class InterProcessPortalImplementation
     friend typename Base::Common;
 
   private:
+    // -----------------------------------------------------------------------
+    // Called from main thread before io_thread_ starts; sets up socket and
+    // launches io_thread_.
+    // -----------------------------------------------------------------------
     void _init()
     {
         goby::glog.set_lock_action(goby::util::logger_lock::lock);
@@ -161,29 +167,36 @@ class InterProcessPortalImplementation
         short multicast_port = static_cast<short>(cfg_.multicast_port());
 
         boost::asio::ip::udp::endpoint listen_endpoint(listen_address, multicast_port);
-        transmit_endpoint_ = boost::asio::ip::udp::endpoint(multicast_address, multicast_port);
+        io_.transmit_endpoint = boost::asio::ip::udp::endpoint(multicast_address, multicast_port);
 
-        socket_.open(listen_endpoint.protocol());
-        socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
-        socket_.bind(listen_endpoint);
-        socket_.set_option(boost::asio::ip::multicast::join_group(multicast_address));
+        io_.socket.open(listen_endpoint.protocol());
+        io_.socket.set_option(boost::asio::ip::udp::socket::reuse_address(true));
+        io_.socket.bind(listen_endpoint);
+        io_.socket.set_option(boost::asio::ip::multicast::join_group(multicast_address));
 
+        // Arm the first async receive before starting io_thread_ so the
+        // operation is already queued when io_.ctx.run() is called.
         _start_async_receive();
-        io_thread_ = std::thread([this]() { io_.run(); });
+        io_thread_ = std::thread([this]() { io_.ctx.run(); });
     }
 
+    // -----------------------------------------------------------------------
+    // Runs on io_thread_: arms (or re-arms) a single async datagram receive.
+    // Called once from _init() (main thread, before io_thread_ starts) and
+    // then re-posted from within the completion handler on io_thread_.
+    // -----------------------------------------------------------------------
     void _start_async_receive()
     {
-        socket_.async_receive_from(
-            boost::asio::buffer(rx_buffer_), sender_endpoint_,
+        io_.socket.async_receive_from(
+            boost::asio::buffer(io_.rx_buffer), io_.sender_endpoint,
             [this](boost::system::error_code ec, std::size_t length)
             {
                 if (!ec)
                 {
                     {
                         std::lock_guard<std::mutex> l(rx_mutex_);
-                        rx_.push_back(
-                            std::string(rx_buffer_.begin(), rx_buffer_.begin() + length));
+                        rx_.push_back(std::string(io_.rx_buffer.begin(),
+                                                  io_.rx_buffer.begin() + length));
                     }
                     // Acquire poll_mutex briefly to ensure the main thread is not in the
                     // limbo region between _poll_all() releasing the lock and calling
@@ -196,6 +209,10 @@ class InterProcessPortalImplementation
                 }
             });
     }
+
+    // -----------------------------------------------------------------------
+    // Main thread helpers
+    // -----------------------------------------------------------------------
 
     std::shared_ptr<std::vector<char>> _build_packet(const std::string& identifier,
                                                      const UDPMPacketHeader& hdr,
@@ -240,11 +257,13 @@ class InterProcessPortalImplementation
 
     void _do_socket_send(std::shared_ptr<std::vector<char>> pkt)
     {
-        boost::asio::post(io_,
+        // Post the actual socket write to io_thread_ so that the socket is
+        // only ever touched from io_thread_.
+        boost::asio::post(io_.ctx,
                           [this, pkt = std::move(pkt)]()
                           {
-                              socket_.async_send_to(
-                                  boost::asio::buffer(*pkt), transmit_endpoint_,
+                              io_.socket.async_send_to(
+                                  boost::asio::buffer(*pkt), io_.transmit_endpoint,
                                   [pkt](boost::system::error_code ec, std::size_t length)
                                   {
                                       if (!ec)
@@ -452,27 +471,69 @@ class InterProcessPortalImplementation
         std::vector<std::shared_ptr<std::vector<char>>> packets;
     };
 
+    // -----------------------------------------------------------------------
+    // Read-only configuration: written once in constructor, then safe to read
+    // from any thread without synchronization.
+    // -----------------------------------------------------------------------
     const protobuf::InterProcessPortalConfig cfg_;
 
-    boost::asio::io_context io_;
-    boost::asio::ip::udp::socket socket_{io_};
-    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> io_work_{
-        io_.get_executor()};
-    boost::asio::ip::udp::endpoint sender_endpoint_;
-    boost::asio::ip::udp::endpoint transmit_endpoint_;
+    // -----------------------------------------------------------------------
+    // io_thread_ exclusive state
+    //
+    // All members of IOState are accessed ONLY from io_thread_, or from
+    // _init() before io_thread_ is started. Do NOT access these directly
+    // from the main thread once io_thread_ is running.
+    //
+    // Methods that run on io_thread_:
+    //   _start_async_receive()  -- arms / re-arms async receives
+    //   async_receive_from completion handler  -- pushes to rx_ then notifies
+    //   async_send_to operation  -- posted by _do_socket_send() via boost::asio::post
+    // -----------------------------------------------------------------------
+    struct IOState
+    {
+        boost::asio::io_context ctx;
+        boost::asio::ip::udp::socket socket{ctx};
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work{
+            ctx.get_executor()};
+        boost::asio::ip::udp::endpoint sender_endpoint;   // updated by async_receive_from
+        boost::asio::ip::udp::endpoint transmit_endpoint; // set once in _init, then read-only
 
-    static constexpr int max_udp_size{65507};
-    std::array<char, max_udp_size> rx_buffer_;
-    std::deque<std::string> rx_;
+        static constexpr int max_udp_size{65507};
+        std::array<char, max_udp_size> rx_buffer{}; // staging buffer for incoming datagrams
+    } io_;
+
+    // -----------------------------------------------------------------------
+    // Shared state: written by io_thread_, read (swapped) by main thread.
+    //
+    // rx_  : io_thread_ pushes completed datagrams; main thread swaps it out
+    //        in _poll(). All accesses must hold rx_mutex_.
+    // -----------------------------------------------------------------------
     std::mutex rx_mutex_;
+    std::deque<std::string> rx_;
 
+    // -----------------------------------------------------------------------
+    // Main thread exclusive state
+    //
+    // These members are accessed ONLY from the main thread.
+    //
+    // Methods that run on the main thread:
+    //   _init()                        -- setup; starts io_thread_
+    //   _build_packet()                -- serializes outgoing datagrams
+    //   _async_send()                  -- rate-limiter; calls _do_socket_send()
+    //   _do_socket_send()              -- posts async_send_to to io_thread_
+    //   _do_publish()                  -- fragments and enqueues outgoing messages
+    //   _do_portal_subscribe/unsubscribe/wildcard_*  -- subscription bookkeeping
+    //   _process_received_packet()     -- reassembles and dispatches incoming data
+    //   _poll()                        -- drains rx_ and calls _process_received_packet
+    // -----------------------------------------------------------------------
     std::unordered_map<std::string, uint32_t> tx_message_index_;
     std::unordered_map<std::string, RxPartialMessage> rx_partial_;
-
-    // Rate-limiting send queue
     std::chrono::steady_clock::time_point next_send_time_{std::chrono::steady_clock::now()};
 
-    std::thread io_thread_;
+    // -----------------------------------------------------------------------
+    // Thread management
+    // -----------------------------------------------------------------------
+    std::thread io_thread_; // runs io_.ctx.run()
 };
 
 template <typename InnerTransporter = middleware::NullTransporter>
