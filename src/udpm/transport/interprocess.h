@@ -28,8 +28,10 @@
 #include <arpa/inet.h>
 #include <array>
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/executor_work_guard.hpp>
 #include <boost/asio/ip/multicast.hpp>
 #include <boost/asio/ip/udp.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/asio/socket_base.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/circular_buffer.hpp>
@@ -37,7 +39,9 @@
 #include <cstring>
 #include <deque>
 #include <memory>
+#include <mutex>
 #include <set>
+#include <thread>
 #include <unordered_map>
 
 #include "goby/middleware/transport/identifier.h"
@@ -129,7 +133,13 @@ class InterProcessPortalImplementation
         _init();
     }
 
-    ~InterProcessPortalImplementation() { socket_.close(); }
+    ~InterProcessPortalImplementation()
+    {
+        socket_.close();
+        io_work_.reset();
+        if (io_thread_.joinable())
+            io_thread_.join();
+    }
 
     // no-op - no hold implemented in UDPM
     void ready() {}
@@ -159,6 +169,7 @@ class InterProcessPortalImplementation
         socket_.set_option(boost::asio::ip::multicast::join_group(multicast_address));
 
         _start_async_receive();
+        io_thread_ = std::thread([this]() { io_.run(); });
     }
 
     void _start_async_receive()
@@ -169,7 +180,18 @@ class InterProcessPortalImplementation
             {
                 if (!ec)
                 {
-                    rx_.push_back(std::string(rx_buffer_.begin(), rx_buffer_.begin() + length));
+                    {
+                        std::lock_guard<std::mutex> l(rx_mutex_);
+                        rx_.push_back(
+                            std::string(rx_buffer_.begin(), rx_buffer_.begin() + length));
+                    }
+                    // Acquire poll_mutex briefly to ensure the main thread is not in the
+                    // limbo region between _poll_all() releasing the lock and calling
+                    // cv_.wait(). Without this, notify_all() could be missed.
+                    {
+                        std::lock_guard<std::mutex> l(*this->poll_mutex());
+                    }
+                    this->cv()->notify_all();
                     _start_async_receive();
                 }
             });
@@ -218,17 +240,23 @@ class InterProcessPortalImplementation
 
     void _do_socket_send(std::shared_ptr<std::vector<char>> pkt)
     {
-        socket_.async_send_to(boost::asio::buffer(*pkt), transmit_endpoint_,
-                              [pkt](boost::system::error_code ec, std::size_t length)
-                              {
-                                  if (!ec)
-                                      goby::glog.is_debug3() &&
-                                          goby::glog << "UDPM: Sent " << length << "B" << std::endl;
-                                  else
-                                      goby::glog.is_warn() &&
-                                          goby::glog << "UDPM: Send error: " << ec.message()
-                                                     << std::endl;
-                              });
+        boost::asio::post(io_,
+                          [this, pkt = std::move(pkt)]()
+                          {
+                              socket_.async_send_to(
+                                  boost::asio::buffer(*pkt), transmit_endpoint_,
+                                  [pkt](boost::system::error_code ec, std::size_t length)
+                                  {
+                                      if (!ec)
+                                          goby::glog.is_debug3() &&
+                                              goby::glog << "UDPM: Sent " << length << "B"
+                                                         << std::endl;
+                                      else
+                                          goby::glog.is_warn() &&
+                                              goby::glog << "UDPM: Send error: " << ec.message()
+                                                         << std::endl;
+                                  });
+                          });
     }
 
     void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
@@ -393,13 +421,18 @@ class InterProcessPortalImplementation
     int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         int items = 0;
-        io_.poll();
 
-        while (!rx_.empty())
+        std::deque<std::string> local_rx;
+        {
+            std::lock_guard<std::mutex> l(rx_mutex_);
+            local_rx.swap(rx_);
+        }
+
+        while (!local_rx.empty())
         {
             ++items;
-            _process_received_packet(lock, rx_.front());
-            rx_.pop_front();
+            _process_received_packet(lock, local_rx.front());
+            local_rx.pop_front();
         }
 
         return items;
@@ -423,18 +456,23 @@ class InterProcessPortalImplementation
 
     boost::asio::io_context io_;
     boost::asio::ip::udp::socket socket_{io_};
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> io_work_{
+        io_.get_executor()};
     boost::asio::ip::udp::endpoint sender_endpoint_;
     boost::asio::ip::udp::endpoint transmit_endpoint_;
 
     static constexpr int max_udp_size{65507};
     std::array<char, max_udp_size> rx_buffer_;
     std::deque<std::string> rx_;
+    std::mutex rx_mutex_;
 
     std::unordered_map<std::string, uint32_t> tx_message_index_;
     std::unordered_map<std::string, RxPartialMessage> rx_partial_;
 
     // Rate-limiting send queue
     std::chrono::steady_clock::time_point next_send_time_{std::chrono::steady_clock::now()};
+
+    std::thread io_thread_;
 };
 
 template <typename InnerTransporter = middleware::NullTransporter>
