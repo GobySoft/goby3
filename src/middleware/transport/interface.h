@@ -29,6 +29,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 #include "goby/middleware/group.h"
 #include "goby/middleware/marshalling/interface.h"
@@ -166,6 +167,24 @@ class PollerInterface
     /// \return pointer to the condition variable used for polling
     std::shared_ptr<std::condition_variable> cv() { return cv_; }
 
+    /// \brief Attach another PollerInterface to this one so that its _transporter_poll() is also called during _poll_all()
+    ///
+    /// The attached PollerInterface must share the same poll_mutex() and cv() as this PollerInterface.
+    /// The attached poller must remain valid (outlive or have the same lifetime as this instance).
+    /// \param poller Non-null pointer to the PollerInterface to attach; must not be null
+    /// \throws goby::Exception if poller is null or if poll_mutex() or cv() of the attached poller do not match those of this poller
+    void attach(PollerInterface* poller)
+    {
+        if (!poller)
+            throw(goby::Exception("Cannot attach a null PollerInterface"));
+
+        if (poller->cv() != cv() || poller->poll_mutex() != poll_mutex())
+            throw(goby::Exception("Cannot attach PollerInterface with a different cv() and/or "
+                                  "poll_mutex(). Make sure the PollerInterface you are trying to "
+                                  "attach has the same innermost PollerInterface"));
+        attached_pollers_.push_back(poller);
+    }
+
   protected:
     PollerInterface(std::shared_ptr<std::mutex> poll_mutex,
                     std::shared_ptr<std::condition_variable> cv)
@@ -186,6 +205,9 @@ class PollerInterface
     std::shared_ptr<std::mutex> poll_mutex_;
     // signaled when there's no data for this thread to read during _poll()
     std::shared_ptr<std::condition_variable> cv_;
+    // non-owning pointers to additional PollerInterface instances to poll alongside this one;
+    // attached pollers must remain valid for the lifetime of this instance
+    std::vector<PollerInterface*> attached_pollers_;
 };
 
 /// \brief Used to tag subscriptions based on their necessity (e.g. required for correct functioning, or optional)
@@ -366,7 +388,13 @@ int goby::middleware::PollerInterface::_poll_all(
         new std::unique_lock<std::mutex>(*poll_mutex_));
     //    std::cout << std::this_thread::get_id() <<  " _poll_all locking: " << poll_mutex_.get() << std::endl;
 
-    int poll_items = _transporter_poll(lock);
+    auto poll_all_once = [this, &lock]()
+    {
+        int poll_items = _transporter_poll(lock);
+        for (auto* poller : attached_pollers_) poll_items += poller->_transporter_poll(lock);
+        return poll_items;
+    };
+    int poll_items = poll_all_once();
     while (poll_items == 0)
     {
         if (!lock)
@@ -376,7 +404,7 @@ int goby::middleware::PollerInterface::_poll_all(
         if (timeout == Clock::time_point::max())
         {
             cv_->wait(*lock); // wait_until doesn't work well with time_point::max()
-            poll_items = _transporter_poll(lock);
+            poll_items = poll_all_once();
 
             // TODO: fix this message now that zeromq::InterProcessPortal can have
             // a condition_variable trigger for REQUEST_HOLD_STATE
@@ -388,7 +416,7 @@ int goby::middleware::PollerInterface::_poll_all(
         else
         {
             if (cv_->wait_until(*lock, timeout) == std::cv_status::no_timeout)
-                poll_items = _transporter_poll(lock);
+                poll_items = poll_all_once();
             else
                 return poll_items;
         }
