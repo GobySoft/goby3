@@ -26,6 +26,7 @@
 
 #include "goby/exception.h"
 #include "goby/middleware/transport/detail/static_group_names.h"
+#include "goby/zeromq/transport/detail/tags.h"
 
 namespace goby
 {
@@ -68,7 +69,7 @@ struct IOTransporterByLayer<Derived, direction, PubSubLayer::INTERPROCESS>
 {
   protected:
     using Transporter = InterProcessForwarder<InterThreadTransporter,
-                                              ::goby::middleware::detail::ZeromqInterprocessTag>;
+                                              ::goby::zeromq::detail::ZeromqInterprocessTag>;
     Transporter& io_transporter() { return static_cast<Derived*>(this)->interprocess(); }
 };
 

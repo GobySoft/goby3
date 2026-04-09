@@ -643,7 +643,11 @@ template <typename InnerTransporter>
 class InterVehiclePortal
     : public InterVehicleTransporterBase<InterVehiclePortal<InnerTransporter>, InnerTransporter>
 {
-    using modem_id_type = goby::middleware::intervehicle::ModemDriverThread::modem_id_type;
+    // Derive the ImplementationTag from InnerTransporter so that the modem driver thread
+    // uses the same InterProcessForwarder prefix as the portal's inner transporter.
+    using ImplementationTag = typename InnerTransporter::implementation_tag;
+    using modem_id_type =
+        typename goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::modem_id_type;
 
   public:
     using Base =
@@ -782,7 +786,8 @@ class InterVehiclePortal
                 {
                     try
                     {
-                        data.modem_driver_thread.reset(new intervehicle::ModemDriverThread(*link));
+                        data.modem_driver_thread.reset(
+                            new intervehicle::ModemDriverThread<ImplementationTag>(*link));
                         data.modem_driver_thread->run(data.driver_thread_alive);
                     }
                     catch (std::exception& e)
@@ -897,7 +902,7 @@ class InterVehiclePortal
     struct ModemDriverData
     {
         std::unique_ptr<std::thread> underlying_thread;
-        std::unique_ptr<intervehicle::ModemDriverThread> modem_driver_thread;
+        std::unique_ptr<intervehicle::ModemDriverThread<ImplementationTag>> modem_driver_thread;
         std::atomic<bool> driver_thread_alive{true};
     };
     std::vector<std::unique_ptr<ModemDriverData>> modem_drivers_;

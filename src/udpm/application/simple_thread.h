@@ -1,4 +1,4 @@
-// Copyright 2020-2026:
+// Copyright 2022-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,26 +21,21 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_UDPM_TRANSPORT_INTERMODULE_H
-#define GOBY_UDPM_TRANSPORT_INTERMODULE_H
+#ifndef GOBY_UDPM_APPLICATION_SIMPLE_THREAD_H
+#define GOBY_UDPM_APPLICATION_SIMPLE_THREAD_H
 
-#include "goby/middleware/transport/intermodule.h"
-
+#include "goby/middleware/application/simple_thread.h"
 #include "goby/udpm/transport/detail/tags.h"
-#include "goby/udpm/transport/interprocess.h"
 
 namespace goby
 {
 namespace udpm
 {
-template <typename InnerTransporter = middleware::NullTransporter>
-using InterModulePortal =
-    InterProcessPortalImplementation<InnerTransporter, middleware::InterModulePortalBase,
-                                     detail::UdpmIntermoduleTag>;
-
-template <typename InnerTransporter = middleware::NullTransporter>
-using InterModuleForwarder =
-    middleware::InterModuleForwarder<InnerTransporter, detail::UdpmIntermoduleTag>;
+/// \brief UDPM-backed SimpleThread. Derives from middleware::SimpleThread using UdpmInterprocessTag.
+///
+/// \tparam Config Configuration type
+template <typename Config>
+using SimpleThread = middleware::SimpleThread<Config, detail::UdpmInterprocessTag>;
 
 } // namespace udpm
 } // namespace goby

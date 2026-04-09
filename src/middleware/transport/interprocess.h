@@ -41,6 +41,8 @@
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
 #include "goby/middleware/transport/serialization_handlers.h"
+#include "goby/zeromq/transport/detail/tags.h"
+#include "goby/udpm/transport/detail/tags.h"
 
 namespace goby
 {
@@ -67,6 +69,9 @@ class InterProcessTransporterBase
         Poller<InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>>;
 
   public:
+    /// \brief The ImplementationTag for this transporter (allows InterVehiclePortal to match the driver thread's forwarder tag to the InnerTransporter's tag)
+    using implementation_tag = ImplementationTag;
+
     InterProcessTransporterBase(InnerTransporter& inner)
         : InterfaceType(inner), PollerType(&this->inner())
     {
@@ -484,10 +489,10 @@ class InterProcessForwarder
 /// or udpm::InterProcessForwarder<> explicitly.
 template <typename InnerTransporter>
 class InterProcessForwarder<InnerTransporter, void>
-    : public InterProcessForwarder<InnerTransporter, detail::ZeromqInterprocessTag>
+    : public InterProcessForwarder<InnerTransporter, zeromq::detail::ZeromqInterprocessTag>
 {
   public:
-    using Base = InterProcessForwarder<InnerTransporter, detail::ZeromqInterprocessTag>;
+    using Base = InterProcessForwarder<InnerTransporter, zeromq::detail::ZeromqInterprocessTag>;
 
     [[deprecated("Use zeromq::InterProcessForwarder<> or udpm::InterProcessForwarder<> instead of "
                  "middleware::InterProcessForwarder<>")]]

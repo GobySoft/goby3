@@ -127,10 +127,14 @@ serialize_publication(const Data& d, const Group& group, const Publisher<Data>& 
     return msg;
 }
 
+/// \brief Provides the modem driver thread used by InterVehiclePortal, templated on
+///        ImplementationTag so it uses the same InterProcessForwarder prefix as the portal's
+///        InnerTransporter.
+template <typename ImplementationTag>
 class ModemDriverThread
     : public goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
                                       InterProcessForwarder<InterThreadTransporter,
-                                                            detail::ZeromqInterprocessTag>>
+                                                            ImplementationTag>>
 {
   public:
     using buffer_data_type = goby::middleware::protobuf::SerializerTransporterMessage;
@@ -168,7 +172,7 @@ class ModemDriverThread
 
     void _try_create_or_update_buffer(modem_id_type dest_id, const subbuffer_id_type& buffer_id);
 
-    modem_id_type _broadcast_id() { return cfg().modem_id() & cfg().subnet_mask(); }
+    modem_id_type _broadcast_id() { return this->cfg().modem_id() & this->cfg().subnet_mask(); }
 
     // id within subnet
     modem_id_type _id_within_subnet(modem_id_type id) { return id - _broadcast_id(); }
@@ -179,12 +183,12 @@ class ModemDriverThread
     bool _dest_is_in_subnet(modem_id_type dest_id)
     {
         bool dest_in_subnet =
-            (dest_id & cfg().subnet_mask()) == (cfg().modem_id() & cfg().subnet_mask());
+            (dest_id & this->cfg().subnet_mask()) == (this->cfg().modem_id() & this->cfg().subnet_mask());
         if (!dest_in_subnet)
             goby::glog.is_debug3() && goby::glog
                                           << "Dest: " << dest_id
-                                          << " is not in subnet (our id: " << cfg().modem_id()
-                                          << ", mask: " << cfg().subnet_mask() << ")" << std::endl;
+                                          << " is not in subnet (our id: " << this->cfg().modem_id()
+                                          << ", mask: " << this->cfg().subnet_mask() << ")" << std::endl;
 
         return dest_in_subnet;
     }
@@ -193,8 +197,7 @@ class ModemDriverThread
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
-    std::unique_ptr<InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>
-        interprocess_;
+    std::unique_ptr<InterProcessForwarder<InterThreadTransporter, ImplementationTag>> interprocess_;
 
     std::multimap<subbuffer_id_type, goby::middleware::protobuf::SerializerTransporterKey>
         publisher_buffer_cfg_;
@@ -217,8 +220,6 @@ class ModemDriverThread
     goby::acomms::MACManager mac_;
 
     std::string glog_group_;
-
-    static std::map<std::string, void*> driver_plugins_;
 
     goby::time::SteadyClock::time_point next_modem_report_time_;
     const goby::time::SteadyClock::duration modem_report_interval_;

@@ -26,6 +26,7 @@
 
 #include "goby/middleware/transport/intermodule.h"
 
+#include "goby/zeromq/transport/detail/tags.h"
 #include "goby/zeromq/transport/interprocess.h"
 
 namespace goby
@@ -35,11 +36,11 @@ namespace zeromq
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterModulePortal =
     InterProcessPortalImplementation<InnerTransporter, middleware::InterModulePortalBase,
-                                     middleware::detail::ZeromqIntermoduleTag>;
+                                     detail::ZeromqIntermoduleTag>;
 
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterModuleForwarder =
-    middleware::InterModuleForwarder<InnerTransporter, middleware::detail::ZeromqIntermoduleTag>;
+    middleware::InterModuleForwarder<InnerTransporter, detail::ZeromqIntermoduleTag>;
 
 } // namespace zeromq
 } // namespace goby

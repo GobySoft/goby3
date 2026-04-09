@@ -1,4 +1,4 @@
-// Copyright 2022-2023:
+// Copyright 2022-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -30,6 +30,7 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 #include "goby/middleware/transport/intervehicle.h"
+#include "goby/zeromq/transport/detail/tags.h"
 
 namespace goby
 {
@@ -38,19 +39,22 @@ namespace middleware
 /// \brief Implements Thread for a three layer middleware setup ([ intervehicle [ interprocess [ interthread ] ] ]) based around InterVehicleForwarder.
 ///
 /// \tparam Config Configuration type
+/// \tparam ImplementationTag Tag type selecting the interprocess implementation (e.g. zeromq::detail::ZeromqInterprocessTag). Defaults to void (deprecated; use zeromq::SimpleThread or udpm::SimpleThread instead).
+///
 /// Derive from this class to create standalone threads that can be launched and joined by MultiThreadApplication's launch_thread and join_thread methods.
-template <typename Config>
+template <typename Config, typename ImplementationTag = void>
 class SimpleThread
     : public Thread<Config,
-                    InterVehicleForwarder<InterProcessForwarder<
-                        InterThreadTransporter, detail::ZeromqInterprocessTag>>>,
-      public coroner::Thread<SimpleThread<Config>>
+                    InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter,
+                                                                ImplementationTag>>>,
+      public coroner::Thread<SimpleThread<Config, ImplementationTag>>
 {
     using SimpleThreadBase =
-        Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter,
-                                                                   detail::ZeromqInterprocessTag>>>;
+        Thread<Config,
+               InterVehicleForwarder<
+                   InterProcessForwarder<InterThreadTransporter, ImplementationTag>>>;
 
-    friend class coroner::Thread<SimpleThread<Config>>;
+    friend class coroner::Thread<SimpleThread<Config, ImplementationTag>>;
 
   public:
     /// \brief Construct a thread with a given configuration, optionally a loop frequency and/or index
@@ -73,11 +77,10 @@ class SimpleThread
         : SimpleThreadBase(cfg, loop_freq, index)
     {
         interthread_.reset(new InterThreadTransporter);
-        interprocess_.reset(new InterProcessForwarder<InterThreadTransporter,
-                                                      detail::ZeromqInterprocessTag>(*interthread_));
+        interprocess_.reset(
+            new InterProcessForwarder<InterThreadTransporter, ImplementationTag>(*interthread_));
         intervehicle_.reset(
-            new InterVehicleForwarder<
-                InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>(
+            new InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter, ImplementationTag>>(
                 *interprocess_));
 
         this->set_transporter(intervehicle_.get());
@@ -86,15 +89,14 @@ class SimpleThread
     }
 
     /// \brief Access the transporter on the intervehicle layer (which wraps interprocess and interthread)
-    InterVehicleForwarder<
-        InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>&
+    InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter, ImplementationTag>>&
     intervehicle()
     {
         return this->transporter();
     }
 
     /// \brief Access the transporter on the interprocess layer (which wraps interthread)
-    InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>& interprocess()
+    InterProcessForwarder<InterThreadTransporter, ImplementationTag>& interprocess()
     {
         return this->transporter().inner();
     }
@@ -104,12 +106,38 @@ class SimpleThread
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
-    std::unique_ptr<InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>
-        interprocess_;
-    std::unique_ptr<InterVehicleForwarder<
-        InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>>
+    std::unique_ptr<InterProcessForwarder<InterThreadTransporter, ImplementationTag>> interprocess_;
+    std::unique_ptr<
+        InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter, ImplementationTag>>>
         intervehicle_;
 };
+
+/// \brief Deprecated 1-arg specialisation: use goby::zeromq::SimpleThread or goby::udpm::SimpleThread
+template <typename Config>
+class SimpleThread<Config, void>
+    : public SimpleThread<Config, zeromq::detail::ZeromqInterprocessTag>
+{
+  public:
+    using Base = SimpleThread<Config, zeromq::detail::ZeromqInterprocessTag>;
+
+    [[deprecated(
+        "Use goby::zeromq::SimpleThread or goby::udpm::SimpleThread instead of "
+        "goby::middleware::SimpleThread")]]
+    SimpleThread(const Config& cfg, double loop_freq_hertz = 0, int index = -1)
+        : Base(cfg, loop_freq_hertz, index)
+    {
+    }
+
+    [[deprecated(
+        "Use goby::zeromq::SimpleThread or goby::udpm::SimpleThread instead of "
+        "goby::middleware::SimpleThread")]]
+    SimpleThread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
+                 int index = -1)
+        : Base(cfg, loop_freq, index)
+    {
+    }
+};
+
 } // namespace middleware
 } // namespace goby
 

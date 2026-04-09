@@ -38,6 +38,8 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
+#include "goby/zeromq/transport/detail/tags.h"
+#include "goby/udpm/transport/detail/tags.h"
 #include "goby/middleware/transport/serialization_handlers.h"
 
 namespace goby
@@ -205,10 +207,10 @@ class InterModuleForwarder
 /// or udpm::InterModuleForwarder<> explicitly.
 template <typename InnerTransporter>
 class InterModuleForwarder<InnerTransporter, void>
-    : public InterModuleForwarder<InnerTransporter, detail::ZeromqIntermoduleTag>
+    : public InterModuleForwarder<InnerTransporter, zeromq::detail::ZeromqIntermoduleTag>
 {
   public:
-    using Base = InterModuleForwarder<InnerTransporter, detail::ZeromqIntermoduleTag>;
+    using Base = InterModuleForwarder<InnerTransporter, zeromq::detail::ZeromqIntermoduleTag>;
 
     [[deprecated("Use zeromq::InterModuleForwarder<> or udpm::InterModuleForwarder<> instead of "
                  "middleware::InterModuleForwarder<>")]]

@@ -1,4 +1,4 @@
-// Copyright 2020-2026:
+// Copyright 2022-2024:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -21,28 +21,23 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_UDPM_TRANSPORT_INTERMODULE_H
-#define GOBY_UDPM_TRANSPORT_INTERMODULE_H
+#ifndef GOBY_ZEROMQ_APPLICATION_SIMPLE_THREAD_H
+#define GOBY_ZEROMQ_APPLICATION_SIMPLE_THREAD_H
 
-#include "goby/middleware/transport/intermodule.h"
-
-#include "goby/udpm/transport/detail/tags.h"
-#include "goby/udpm/transport/interprocess.h"
+#include "goby/middleware/application/simple_thread.h"
+#include "goby/zeromq/transport/detail/tags.h"
 
 namespace goby
 {
-namespace udpm
+namespace zeromq
 {
-template <typename InnerTransporter = middleware::NullTransporter>
-using InterModulePortal =
-    InterProcessPortalImplementation<InnerTransporter, middleware::InterModulePortalBase,
-                                     detail::UdpmIntermoduleTag>;
+/// \brief Zeromq-backed SimpleThread. Derives from middleware::SimpleThread using ZeromqInterprocessTag.
+///
+/// \tparam Config Configuration type
+template <typename Config>
+using SimpleThread = middleware::SimpleThread<Config, detail::ZeromqInterprocessTag>;
 
-template <typename InnerTransporter = middleware::NullTransporter>
-using InterModuleForwarder =
-    middleware::InterModuleForwarder<InnerTransporter, detail::UdpmIntermoduleTag>;
-
-} // namespace udpm
+} // namespace zeromq
 } // namespace goby
 
 #endif

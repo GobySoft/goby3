@@ -50,6 +50,7 @@
 #include "goby/util/debug_logger.h"
 
 #include "goby/udpm/protobuf/interprocess_config.pb.h"
+#include "goby/udpm/transport/detail/tags.h"
 
 namespace goby
 {
@@ -543,12 +544,11 @@ class InterProcessPortalImplementation
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterProcessPortal =
     InterProcessPortalImplementation<InnerTransporter, middleware::InterProcessPortalBase,
-                                     middleware::detail::UdpmInterprocessTag>;
+                                     detail::UdpmInterprocessTag>;
 
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterProcessForwarder =
-    middleware::InterProcessForwarder<InnerTransporter,
-                                      middleware::detail::UdpmInterprocessTag>;
+    middleware::InterProcessForwarder<InnerTransporter, detail::UdpmInterprocessTag>;
 
 } // namespace udpm
 } // namespace goby
