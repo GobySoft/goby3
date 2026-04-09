@@ -31,11 +31,11 @@ namespace goby
 {
 namespace zeromq
 {
-/// \brief Zeromq-backed SimpleThread. Derives from middleware::SimpleThread using ZeromqInterprocessTag.
+/// \brief Zeromq-backed SimpleThread. Derives from middleware::SimpleThread using InterProcessTag.
 ///
 /// \tparam Config Configuration type
 template <typename Config>
-using SimpleThread = middleware::SimpleThread<Config, detail::ZeromqInterprocessTag>;
+using SimpleThread = middleware::SimpleThread<Config, detail::InterProcessTag>;
 
 } // namespace zeromq
 } // namespace goby

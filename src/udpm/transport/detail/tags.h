@@ -32,15 +32,15 @@ namespace detail
 {
 
 /// \brief ImplementationTag for udpm interprocess transporters
-struct UdpmInterprocessTag
+struct InterProcessTag
 {
-    inline static constexpr const char prefix[] = "goby::middleware::interprocess::udpm";
+    inline static constexpr const char prefix[] = "goby::udpm::interprocess";
 };
 
 /// \brief ImplementationTag for udpm intermodule transporters
-struct UdpmIntermoduleTag
+struct InterModuleTag
 {
-    inline static constexpr const char prefix[] = "goby::middleware::intermodule::udpm";
+    inline static constexpr const char prefix[] = "goby::udpm::intermodule";
 };
 
 } // namespace detail

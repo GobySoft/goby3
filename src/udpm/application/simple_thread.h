@@ -31,11 +31,11 @@ namespace goby
 {
 namespace udpm
 {
-/// \brief UDPM-backed SimpleThread. Derives from middleware::SimpleThread using UdpmInterprocessTag.
+/// \brief UDPM-backed SimpleThread. Derives from middleware::SimpleThread using InterProcessTag.
 ///
 /// \tparam Config Configuration type
 template <typename Config>
-using SimpleThread = middleware::SimpleThread<Config, detail::UdpmInterprocessTag>;
+using SimpleThread = middleware::SimpleThread<Config, detail::InterProcessTag>;
 
 } // namespace udpm
 } // namespace goby

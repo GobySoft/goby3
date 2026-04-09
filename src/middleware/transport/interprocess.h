@@ -301,7 +301,7 @@ class InterProcessTransporterBase
 ///
 /// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer. For example, the main thread might instantiate a portal and then spawn several threads that instantiate forwarders. These auxiliary threads can then communicate on the interprocess layer as if they had a direct connection to other interprocess nodes.
 /// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
-/// \tparam ImplementationTag Distinguishes different implementations using different internal groups (e.g. detail::ZeromqInterprocessTag or detail::UdpmInterprocessTag)
+/// \tparam ImplementationTag Distinguishes different implementations using different internal groups (e.g. detail::InterProcessTag or detail::InterProcessTag)
 template <typename InnerTransporter, typename ImplementationTag = void> class InterProcessForwarder;
 
 /// \brief Implements the forwarder concept for the interprocess layer (implementation)
@@ -797,10 +797,10 @@ namespace middleware
 /// or udpm::InterProcessForwarder<> explicitly.
 template <typename InnerTransporter>
 class InterProcessForwarder<InnerTransporter, void>
-    : public InterProcessForwarder<InnerTransporter, zeromq::detail::ZeromqInterprocessTag>
+    : public InterProcessForwarder<InnerTransporter, zeromq::detail::InterProcessTag>
 {
   public:
-    using Base = InterProcessForwarder<InnerTransporter, zeromq::detail::ZeromqInterprocessTag>;
+    using Base = InterProcessForwarder<InnerTransporter, zeromq::detail::InterProcessTag>;
 
     [[deprecated("Use zeromq::InterProcessForwarder<> or udpm::InterProcessForwarder<> instead of "
                  "middleware::InterProcessForwarder<>")]]

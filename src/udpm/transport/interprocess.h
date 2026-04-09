@@ -544,11 +544,11 @@ class InterProcessPortalImplementation
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterProcessPortal =
     InterProcessPortalImplementation<InnerTransporter, middleware::InterProcessPortalBase,
-                                     detail::UdpmInterprocessTag>;
+                                     detail::InterProcessTag>;
 
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterProcessForwarder =
-    middleware::InterProcessForwarder<InnerTransporter, detail::UdpmInterprocessTag>;
+    middleware::InterProcessForwarder<InnerTransporter, detail::InterProcessTag>;
 
 } // namespace udpm
 } // namespace goby

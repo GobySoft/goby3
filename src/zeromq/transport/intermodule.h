@@ -36,11 +36,11 @@ namespace zeromq
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterModulePortal =
     InterProcessPortalImplementation<InnerTransporter, middleware::InterModulePortalBase,
-                                     detail::ZeromqIntermoduleTag>;
+                                     detail::InterModuleTag>;
 
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterModuleForwarder =
-    middleware::InterModuleForwarder<InnerTransporter, detail::ZeromqIntermoduleTag>;
+    middleware::InterModuleForwarder<InnerTransporter, detail::InterModuleTag>;
 
 } // namespace zeromq
 } // namespace goby

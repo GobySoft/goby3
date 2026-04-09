@@ -64,7 +64,7 @@ using InterModuleTransporterBase =
 ///
 /// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer.
 /// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
-/// \tparam ImplementationTag Distinguishes different implementations using different internal groups (e.g. detail::ZeromqIntermoduleTag or detail::UdpmIntermoduleTag)
+/// \tparam ImplementationTag Distinguishes different implementations using different internal groups (e.g. detail::InterModuleTag or detail::InterModuleTag)
 template <typename InnerTransporter, typename ImplementationTag = void> class InterModuleForwarder;
 
 /// \brief Implements the forwarder concept for the intermodule layer (implementation)
@@ -262,10 +262,10 @@ namespace middleware
 /// or udpm::InterModuleForwarder<> explicitly.
 template <typename InnerTransporter>
 class InterModuleForwarder<InnerTransporter, void>
-    : public InterModuleForwarder<InnerTransporter, zeromq::detail::ZeromqIntermoduleTag>
+    : public InterModuleForwarder<InnerTransporter, zeromq::detail::InterModuleTag>
 {
   public:
-    using Base = InterModuleForwarder<InnerTransporter, zeromq::detail::ZeromqIntermoduleTag>;
+    using Base = InterModuleForwarder<InnerTransporter, zeromq::detail::InterModuleTag>;
 
     [[deprecated("Use zeromq::InterModuleForwarder<> or udpm::InterModuleForwarder<> instead of "
                  "middleware::InterModuleForwarder<>")]]

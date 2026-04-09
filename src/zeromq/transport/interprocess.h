@@ -58,7 +58,7 @@
 #include "goby/middleware/transport/subscriber.h"               // for Subs...
 #include "goby/time/system_clock.h"                             // for Syst...
 #include "goby/util/debug_logger/flex_ostream.h"                // for Flex...
-#include "goby/zeromq/transport/detail/tags.h"                  // for ZeromqInterprocessTag
+#include "goby/zeromq/transport/detail/tags.h"                  // for InterProcessTag
 #include "goby/util/debug_logger/flex_ostreambuf.h"             // for lock
 #include "goby/zeromq/protobuf/interprocess_config.pb.h"        // for Inte...
 #include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"        // for Inpr...
@@ -478,11 +478,11 @@ class Manager
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterProcessPortal =
     InterProcessPortalImplementation<InnerTransporter, middleware::InterProcessPortalBase,
-                                     detail::ZeromqInterprocessTag>;
+                                     detail::InterProcessTag>;
 
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterProcessForwarder =
-    middleware::InterProcessForwarder<InnerTransporter, detail::ZeromqInterprocessTag>;
+    middleware::InterProcessForwarder<InnerTransporter, detail::InterProcessTag>;
 
 } // namespace zeromq
 } // namespace goby

@@ -36,11 +36,11 @@ namespace udpm
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterModulePortal =
     InterProcessPortalImplementation<InnerTransporter, middleware::InterModulePortalBase,
-                                     detail::UdpmIntermoduleTag>;
+                                     detail::InterModuleTag>;
 
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterModuleForwarder =
-    middleware::InterModuleForwarder<InnerTransporter, detail::UdpmIntermoduleTag>;
+    middleware::InterModuleForwarder<InnerTransporter, detail::InterModuleTag>;
 
 } // namespace udpm
 } // namespace goby

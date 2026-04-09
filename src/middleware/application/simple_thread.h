@@ -38,7 +38,7 @@ namespace middleware
 /// \brief Implements Thread for a three layer middleware setup ([ intervehicle [ interprocess [ interthread ] ] ]) based around InterVehicleForwarder.
 ///
 /// \tparam Config Configuration type
-/// \tparam ImplementationTag Tag type selecting the interprocess implementation (e.g. zeromq::detail::ZeromqInterprocessTag). Defaults to void (deprecated; use zeromq::SimpleThread or udpm::SimpleThread instead).
+/// \tparam ImplementationTag Tag type selecting the interprocess implementation (e.g. zeromq::detail::InterProcessTag). Defaults to void (deprecated; use zeromq::SimpleThread or udpm::SimpleThread instead).
 ///
 /// Derive from this class to create standalone threads that can be launched and joined by MultiThreadApplication's launch_thread and join_thread methods.
 template <typename Config, typename ImplementationTag = void>
@@ -122,10 +122,10 @@ namespace middleware
 /// \brief Deprecated 1-arg specialisation: use goby::zeromq::SimpleThread or goby::udpm::SimpleThread
 template <typename Config>
 class SimpleThread<Config, void>
-    : public SimpleThread<Config, zeromq::detail::ZeromqInterprocessTag>
+    : public SimpleThread<Config, zeromq::detail::InterProcessTag>
 {
   public:
-    using Base = SimpleThread<Config, zeromq::detail::ZeromqInterprocessTag>;
+    using Base = SimpleThread<Config, zeromq::detail::InterProcessTag>;
 
     [[deprecated("Use goby::zeromq::SimpleThread or goby::udpm::SimpleThread instead of "
                  "goby::middleware::SimpleThread")]]

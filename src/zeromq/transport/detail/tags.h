@@ -32,15 +32,15 @@ namespace detail
 {
 
 /// \brief ImplementationTag for zeromq interprocess transporters
-struct ZeromqInterprocessTag
+struct InterProcessTag
 {
-    inline static constexpr const char prefix[] = "goby::middleware::interprocess::zeromq";
+    inline static constexpr const char prefix[] = "goby::zeromq::interprocess";
 };
 
 /// \brief ImplementationTag for zeromq intermodule transporters
-struct ZeromqIntermoduleTag
+struct InterModuleTag
 {
-    inline static constexpr const char prefix[] = "goby::middleware::intermodule::zeromq";
+    inline static constexpr const char prefix[] = "goby::zeromq::intermodule";
 };
 
 } // namespace detail
