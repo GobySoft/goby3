@@ -64,7 +64,7 @@ constexpr goby::middleware::Group sample_special_chars{"[Sample]()"};
 // thread 1 - parent process
 void publisher()
 {
-    goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
+    goby::zeromq::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
     double a = 0;
     while (publish_count < max_publish)
     {
@@ -102,11 +102,12 @@ void handle_all(const std::vector<unsigned char>& data, int scheme, const std::s
 
 void subscriber()
 {
-    goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
+    goby::zeromq::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
     ipc.subscribe_regex(&handle_all, {goby::middleware::MarshallingScheme::ALL_SCHEMES});
 
     ipc.subscribe_type_regex<sample1, google::protobuf::Message>(
-        [&](const std::shared_ptr<const google::protobuf::Message>& msg, const std::string& type) {
+        [&](const std::shared_ptr<const google::protobuf::Message>& msg, const std::string& type)
+        {
             glog.is(DEBUG1) &&
                 glog << "(template) InterProcessForwarder received publication of type: " << type
                      << " with values: " << msg->ShortDebugString() << std::endl;
@@ -136,7 +137,8 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
     goby::zeromq::InterProcessPortal<goby::middleware::InterThreadTransporter> ipc(inproc3, cfg);
     ipc.subscribe_regex(
         [&](const std::vector<unsigned char>& data, int scheme, const std::string& type,
-            const goby::middleware::Group& group) {
+            const goby::middleware::Group& group)
+        {
             glog.is(DEBUG1) && glog << "InterProcessPortal received publication of " << data.size()
                                     << " bytes from group: " << group << " of type: " << type
                                     << " from scheme: " << scheme << std::endl;
@@ -147,7 +149,8 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         {goby::middleware::MarshallingScheme::PROTOBUF}, ".*Sample", "Sample1|Sample2");
 
     ipc.subscribe_type_regex<sample1, google::protobuf::Message>(
-        [&](const std::shared_ptr<const google::protobuf::Message>& msg, const std::string& type) {
+        [&](const std::shared_ptr<const google::protobuf::Message>& msg, const std::string& type)
+        {
             glog.is(DEBUG1) &&
                 glog << "(template) InterProcessPortal received publication of type: " << type
                      << " with values: " << msg->ShortDebugString() << std::endl;
@@ -159,7 +162,8 @@ void zmq_forward(const goby::zeromq::protobuf::InterProcessPortalConfig& cfg)
         ".*Sample");
 
     ipc.subscribe_type_regex<sample_special_chars, google::protobuf::Message>(
-        [&](const std::shared_ptr<const google::protobuf::Message>& msg, const std::string& type) {
+        [&](const std::shared_ptr<const google::protobuf::Message>& msg, const std::string& type)
+        {
             glog.is(DEBUG1) &&
                 glog << "(special chars) InterProcessPortal received publication of type: " << type
                      << " with values: " << msg->ShortDebugString() << std::endl;

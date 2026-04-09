@@ -56,20 +56,30 @@ inline bool operator<(const SerializerTransporterKey& k1, const SerializerTransp
 }
 } // namespace protobuf
 
-template <typename Derived, typename InnerTransporter>
-using InterModuleTransporterBase = InterProcessTransporterBase<Derived, InnerTransporter>;
+template <typename Derived, typename InnerTransporter, typename ImplementationTag>
+using InterModuleTransporterBase =
+    InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>;
 
 /// \brief Implements the forwarder concept for the intermodule layer
 ///
 /// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer.
 /// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
-template <typename InnerTransporter>
+/// \tparam ImplementationTag Distinguishes different implementations using different internal groups (e.g. detail::InterModuleTag or detail::InterModuleTag)
+template <typename InnerTransporter, typename ImplementationTag = void> class InterModuleForwarder;
+
+/// \brief Implements the forwarder concept for the intermodule layer (implementation)
+///
+/// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
+/// \tparam ImplementationTag Must be provided explicitly; use zeromq::InterModuleForwarder or udpm::InterModuleForwarder for the common cases
+template <typename InnerTransporter, typename ImplementationTag>
 class InterModuleForwarder
-    : public InterModuleTransporterBase<InterModuleForwarder<InnerTransporter>, InnerTransporter>
+    : public InterModuleTransporterBase<InterModuleForwarder<InnerTransporter, ImplementationTag>,
+                                        InnerTransporter, ImplementationTag>
 {
   public:
     using Base =
-        InterModuleTransporterBase<InterModuleForwarder<InnerTransporter>, InnerTransporter>;
+        InterModuleTransporterBase<InterModuleForwarder<InnerTransporter, ImplementationTag>,
+                                   InnerTransporter, ImplementationTag>;
 
     /// \brief Construct a forwarder for the intermodule layer
     ///
@@ -187,12 +197,13 @@ class InterModuleForwarder
         subscriptions_;
 };
 
-template <typename Derived, typename InnerTransporter>
-class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTransporter>,
-                              public InterProcessPortalCommon<Derived, InnerTransporter>
+template <typename Derived, typename InnerTransporter, typename ImplementationTag>
+class InterModulePortalBase
+    : public InterModuleTransporterBase<Derived, InnerTransporter, ImplementationTag>,
+      public InterProcessPortalCommon<Derived, InnerTransporter>
 {
   public:
-    using Base = InterModuleTransporterBase<Derived, InnerTransporter>;
+    using Base = InterModuleTransporterBase<Derived, InnerTransporter, ImplementationTag>;
     using Common = InterProcessPortalCommon<Derived, InnerTransporter>;
 
     InterModulePortalBase(InnerTransporter& inner) : Base(inner) { _init(); }
@@ -235,6 +246,34 @@ class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTr
     }
 };
 
+} // namespace middleware
+} // namespace goby
+
+#include "goby/zeromq/transport/detail/tags.h"
+
+namespace goby
+{
+namespace middleware
+{
+/// \brief Deprecated: use zeromq::InterModuleForwarder or udpm::InterModuleForwarder instead
+///
+/// This 1-argument specialisation (ImplementationTag = void) is kept for backwards compatibility.
+/// It resolves to the zeromq implementation. New code should use zeromq::InterModuleForwarder<>
+/// or udpm::InterModuleForwarder<> explicitly.
+template <typename InnerTransporter>
+class InterModuleForwarder<InnerTransporter, void>
+    : public InterModuleForwarder<InnerTransporter, zeromq::detail::InterModuleTag>
+{
+  public:
+    using Base = InterModuleForwarder<InnerTransporter, zeromq::detail::InterModuleTag>;
+
+    [[deprecated("Use zeromq::InterModuleForwarder<> or udpm::InterModuleForwarder<> instead of "
+                 "middleware::InterModuleForwarder<>")]]
+    explicit InterModuleForwarder(InnerTransporter& inner)
+        : Base(inner)
+    {
+    }
+};
 } // namespace middleware
 } // namespace goby
 

@@ -1,6 +1,5 @@
-// Copyright 2009-2026:
+// Copyright 2022-2024:
 //   GobySoft, LLC (2013-)
-//   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
@@ -22,20 +21,30 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_UDPM_APPLICATION_MULTI_THREAD_H
-#define GOBY_UDPM_APPLICATION_MULTI_THREAD_H
-
-#include "goby/middleware/application/multi_thread.h"
-#include "goby/udpm/application/simple_thread.h"
-#include "goby/udpm/transport/interprocess.h"
+#ifndef GOBY_UDPM_TRANSPORT_DETAIL_TAGS_H
+#define GOBY_UDPM_TRANSPORT_DETAIL_TAGS_H
 
 namespace goby
 {
 namespace udpm
 {
-template <class Config>
-using MultiThreadApplication = goby::middleware::MultiThreadApplication<Config, InterProcessPortal>;
-}
+namespace detail
+{
+
+/// \brief ImplementationTag for udpm interprocess transporters
+struct InterProcessTag
+{
+    inline static constexpr const char prefix[] = "goby::udpm::interprocess";
+};
+
+/// \brief ImplementationTag for udpm intermodule transporters
+struct InterModuleTag
+{
+    inline static constexpr const char prefix[] = "goby::udpm::intermodule";
+};
+
+} // namespace detail
+} // namespace udpm
 } // namespace goby
 
 #endif

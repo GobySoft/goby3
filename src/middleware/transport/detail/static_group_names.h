@@ -1,11 +1,10 @@
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_DETAIL_STATIC_GROUP_NAMES_H
+#define GOBY_MIDDLEWARE_TRANSPORT_DETAIL_STATIC_GROUP_NAMES_H
+
+#include <array>
 
 namespace goby::middleware::detail
 {
-
-struct DefaultInterprocessTag
-{
-    inline static constexpr const char prefix[] = "goby::middleware::interprocess";
-};
 
 // helper for concatenating prefix to group name
 template <std::size_t N1, std::size_t N2>
@@ -18,3 +17,5 @@ constexpr auto concat(const char (&a)[N1], const char (&b)[N2])
 }
 
 } // namespace goby::middleware::detail
+
+#endif

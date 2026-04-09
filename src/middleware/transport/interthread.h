@@ -64,6 +64,8 @@ class InterThreadTransporter
     };
 
   public:
+    using implementation_tag = void;
+
     InterThreadTransporter() : data_mutex_(std::make_shared<std::mutex>()) {}
 
     virtual ~InterThreadTransporter()

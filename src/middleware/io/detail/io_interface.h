@@ -53,7 +53,7 @@ namespace middleware
 {
 class Group;
 class InterThreadTransporter;
-template <typename InnerTransporter> class InterProcessForwarder;
+template <typename InnerTransporter, typename ImplementationTag> class InterProcessForwarder;
 namespace io
 {
 enum class ThreadState
@@ -76,15 +76,18 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group, PubSubLayer publish_layer,
           PubSubLayer subscribe_layer, typename IOConfig, typename SocketType,
           template <class> class ThreadType, bool use_indexed_groups = false>
-class IOThread : public ThreadType<IOConfig>,
-                 public IOPublishTransporter<
-                     IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                              IOConfig, SocketType, ThreadType, use_indexed_groups>,
-                     line_in_group, publish_layer, use_indexed_groups>,
-                 public IOSubscribeTransporter<
-                     IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
-                              IOConfig, SocketType, ThreadType, use_indexed_groups>,
-                     line_out_group, subscribe_layer, use_indexed_groups>
+class IOThread
+    : public ThreadType<IOConfig>,
+      public IOPublishTransporter<
+          IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
+                   SocketType, ThreadType, use_indexed_groups>,
+          line_in_group, publish_layer,
+          typename ThreadType<IOConfig>::Transporter::implementation_tag, use_indexed_groups>,
+      public IOSubscribeTransporter<
+          IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
+                   SocketType, ThreadType, use_indexed_groups>,
+          line_out_group, subscribe_layer,
+          typename ThreadType<IOConfig>::Transporter::implementation_tag, use_indexed_groups>
 {
   public:
     /// \brief Constructs the thread.
@@ -96,21 +99,26 @@ class IOThread : public ThreadType<IOConfig>,
           IOPublishTransporter<
               IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
                        SocketType, ThreadType, use_indexed_groups>,
-              line_in_group, publish_layer, use_indexed_groups>(index),
+              line_in_group, publish_layer,
+              typename ThreadType<IOConfig>::Transporter::implementation_tag, use_indexed_groups>(
+              index),
           IOSubscribeTransporter<
               IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, IOConfig,
                        SocketType, ThreadType, use_indexed_groups>,
-              line_out_group, subscribe_layer, use_indexed_groups>(index),
+              line_out_group, subscribe_layer,
+              typename ThreadType<IOConfig>::Transporter::implementation_tag, use_indexed_groups>(
+              index),
           glog_group_(glog_group + " / t" + std::to_string(goby::middleware::gettid())),
           thread_name_(glog_group)
     {
         auto data_out_callback =
-            [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg) {
-                if (!io_msg->has_index() || io_msg->index() == this->index())
-                {
-                    write(io_msg);
-                }
-            };
+            [this](std::shared_ptr<const goby::middleware::protobuf::IOData> io_msg)
+        {
+            if (!io_msg->has_index() || io_msg->index() == this->index())
+            {
+                write(io_msg);
+            }
+        };
 
         this->template subscribe_out<goby::middleware::protobuf::IOData>(data_out_callback);
 
@@ -124,15 +132,17 @@ class IOThread : public ThreadType<IOConfig>,
     void initialize() override
     {
         // thread to handle synchonization between boost::asio and goby condition_variable signaling
-        incoming_mail_notify_thread_.reset(new std::thread([this]() {
-            while (this->alive())
+        incoming_mail_notify_thread_.reset(new std::thread(
+            [this]()
             {
-                std::unique_lock<std::mutex> lock(incoming_mail_notify_mutex_);
-                this->interthread().cv()->wait(lock);
-                // post empty handler to cause loop() to return and allow incoming mail to be handled
-                io_.post([]() {});
-            }
-        }));
+                while (this->alive())
+                {
+                    std::unique_lock<std::mutex> lock(incoming_mail_notify_mutex_);
+                    this->interthread().cv()->wait(lock);
+                    // post empty handler to cause loop() to return and allow incoming mail to be handled
+                    io_.post([]() {});
+                }
+            }));
 
         this->set_name(thread_name_);
     }
@@ -264,7 +274,8 @@ void basic_async_write(IOThreadImplementation* this_thread,
     boost::asio::async_write(
         this_thread->mutable_socket(), boost::asio::buffer(io_msg->data()),
         // capture io_msg in callback to ensure write buffer exists until async_write is done
-        [this_thread, io_msg](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+        [this_thread, io_msg](const boost::system::error_code& ec, std::size_t bytes_transferred)
+        {
             if (!ec && bytes_transferred > 0)
             {
                 this_thread->handle_write_success(bytes_transferred);

@@ -1,6 +1,5 @@
-// Copyright 2009-2026:
+// Copyright 2022-2024:
 //   GobySoft, LLC (2013-)
-//   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
@@ -22,20 +21,23 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_UDPM_APPLICATION_MULTI_THREAD_H
-#define GOBY_UDPM_APPLICATION_MULTI_THREAD_H
+#ifndef GOBY_ZEROMQ_APPLICATION_SIMPLE_THREAD_H
+#define GOBY_ZEROMQ_APPLICATION_SIMPLE_THREAD_H
 
-#include "goby/middleware/application/multi_thread.h"
-#include "goby/udpm/application/simple_thread.h"
-#include "goby/udpm/transport/interprocess.h"
+#include "goby/middleware/application/simple_thread.h"
+#include "goby/zeromq/transport/detail/tags.h"
 
 namespace goby
 {
-namespace udpm
+namespace zeromq
 {
-template <class Config>
-using MultiThreadApplication = goby::middleware::MultiThreadApplication<Config, InterProcessPortal>;
-}
+/// \brief Zeromq-backed SimpleThread. Derives from middleware::SimpleThread using InterProcessTag.
+///
+/// \tparam Config Configuration type
+template <typename Config>
+using SimpleThread = middleware::SimpleThread<Config, detail::InterProcessTag>;
+
+} // namespace zeromq
 } // namespace goby
 
 #endif

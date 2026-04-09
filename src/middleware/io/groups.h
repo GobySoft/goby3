@@ -37,8 +37,8 @@ namespace io
 namespace groups
 {
 
-constexpr goby::middleware::Group mavlink_raw_in{"goby::apps::zeromq::mavlink_raw_in"};
-constexpr goby::middleware::Group mavlink_raw_out{"goby::apps::zeromq::mavlink_raw_out"};
+constexpr goby::middleware::Group mavlink_raw_in{"goby::middleware::io::mavlink_raw_in"};
+constexpr goby::middleware::Group mavlink_raw_out{"goby::middleware::io::mavlink_raw_out"};
 
 constexpr goby::middleware::Group nmea0183_in{"goby::middleware::io::nmea0183_in"};
 constexpr goby::middleware::Group nmea0183_out{"goby::middleware::io::nmea0183_out"};

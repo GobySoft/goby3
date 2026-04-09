@@ -31,7 +31,22 @@
 #include <boost/function.hpp>                          // for function
 #include <boost/signals2/expired_slot.hpp>             // for expired_slot
 #include <boost/signals2/signal.hpp>                   // for signal
+
+// Deprecation warning in Boost 1.83
+#if defined(__clang__)
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(__GNUC__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 #include <boost/statechart/state_machine.hpp>          // for state_mac...
+#if defined(__clang__)
+#  pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#  pragma GCC diagnostic pop
+#endif
+
 #include <cerrno>                                      // for errno
 #include <chrono>                                      // for operator/
 #include <cstring>                                     // for strerror
