@@ -233,6 +233,7 @@ class MMDriver : public ModemDriverBase
     // doxygen
 
     /// \example acomms/modemdriver/driver_simple/driver_simple.cpp
+    // goby3_example_driver_simple
     // \example acomms/chat/chat.cpp
 
   private:

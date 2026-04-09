@@ -144,4 +144,4 @@ At the driver layer, messages are requested using goby::acomms::QueueManager::ha
 
 You must run goby::acomms::QueueManager::do_work() regularly (faster than 1 Hz; 10 Hertz is good) to process expired messages (goby::acomms::QueueManager::signal_expire). All other signals are emitted in response to a driver level signal (and thus are called during a call to goby::acomms::ModemDriverBase::do_work() if using the Goby modemdriver).
 
-See queue_simple.cpp for a basic complete example.
+See goby3_example_queue_simple for a basic complete example.

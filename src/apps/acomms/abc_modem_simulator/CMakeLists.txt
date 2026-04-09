@@ -1,2 +1,2 @@
-add_executable(abc_modem_simulator abc_modem_simulator.cpp)
-target_link_libraries(abc_modem_simulator goby)
+add_executable(goby_abc_modem_simulator abc_modem_simulator.cpp)
+target_link_libraries(goby_abc_modem_simulator goby)

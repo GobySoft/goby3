@@ -97,6 +97,7 @@ class MACManager : public std::list<protobuf::ModemTransmission>
     boost::signals2::signal<void(const protobuf::ModemTransmission& m)> signal_slot_start;
 
     /// \example acomms/amac/amac_simple/amac_simple.cpp
+    // goby3_example_amac_simple
 
     unsigned cycle_count() { return std::list<protobuf::ModemTransmission>::size(); }
     time::SystemClock::duration cycle_duration();

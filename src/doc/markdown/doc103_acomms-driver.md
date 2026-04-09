@@ -163,18 +163,18 @@ void goby::acomms::ABCDriver::do_work()
 } // do_work
 ```
 
-The full ABC Modem example driver exists in acomms/modemdriver/abc_driver.h and acomms/modemdriver/abc_driver.cpp. A simulator for the ABC Modem exists that uses TCP to mimic a very basic set of modem commands (send data and acknowledgment). To use the ABC Modem using the driver_simple example, run this set of commands (`socat` is available in most package managers or at <http://www.dest-unreach.org/socat/>):
+The full ABC Modem example driver exists in acomms/modemdriver/abc_driver.h and acomms/modemdriver/abc_driver.cpp. A simulator for the ABC Modem exists that uses TCP to mimic a very basic set of modem commands (send data and acknowledgment). To use the ABC Modem using the goby3_example_driver_simple example, run this set of commands (`socat` is available in most package managers or at <http://www.dest-unreach.org/socat/>):
 
 ```
-1. run abc_modem_simulator running on same port (as TCP server)
-> abc_modem_simulator 54321
+1. run goby_abc_modem_simulator running on same port (as TCP server)
+> goby_abc_modem_simulator 54321
 2. create fake tty terminals connected to TCP as client to port 54321
 > socat -d -d -v pty,raw,echo=0,link=/tmp/ttyFAKE1 TCP:localhost:54321
 > socat -d -d -v pty,raw,echo=0,link=/tmp/ttyFAKE2 TCP:localhost:54321
-3. start up driver_simple
-> driver_simple /tmp/ttyFAKE1 1 ABCDriver
+3. start up goby3_example_driver_simple
+> goby3_example_driver_simple /tmp/ttyFAKE1 1 ABCDriver
 // wait a few seconds to avoid collisions
-> driver_simple /tmp/ttyFAKE2 2 ABCDriver
+> goby3_example_driver_simple /tmp/ttyFAKE2 2 ABCDriver
 ```
 
 Notes:
