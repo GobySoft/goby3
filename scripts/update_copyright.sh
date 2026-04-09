@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 here=`pwd`
 
 header_strip()
@@ -57,7 +58,7 @@ EOF
         if [ ! -z "$proper_email" ]; then
             proper_email=" <${proper_email}>"
         fi
-        if ! grep -q $proper_email /tmp/goby_authors.tmp; then
+        if ! grep -q "$proper_email" /tmp/goby_authors.tmp; then
             echo "//   $proper_author$proper_email"  >> /tmp/goby_authors.tmp
         fi
     done
