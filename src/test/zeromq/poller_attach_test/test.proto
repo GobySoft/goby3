@@ -1,0 +1,8 @@
+syntax = "proto2";
+
+package goby.test.zeromq.poller_attach_test.protobuf;
+
+message Sample
+{
+    optional int32 a = 1;
+}
