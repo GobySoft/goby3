@@ -39,12 +39,12 @@
 
 #include "goby/middleware/marshalling/protobuf.h"
 
-#include "goby/acomms/acomms_constants.h"                   // for BROADCAS...
-#include "goby/acomms/bind.h"                               // for bind
-#include "goby/acomms/modemdriver/benthos_atm900_driver.h"  // for BenthosA...
-#include "goby/acomms/modemdriver/iridium_driver.h"         // for IridiumD...
-#include "goby/acomms/modemdriver/iridium_shore_driver.h"   // for IridiumS...
-#include "goby/acomms/modemdriver/mm_driver.h"              // for MMDriver
+#include "goby/acomms/acomms_constants.h"                  // for BROADCAS...
+#include "goby/acomms/bind.h"                              // for bind
+#include "goby/acomms/modemdriver/benthos_atm900_driver.h" // for BenthosA...
+#include "goby/acomms/modemdriver/iridium_driver.h"        // for IridiumD...
+#include "goby/acomms/modemdriver/iridium_shore_driver.h"  // for IridiumS...
+#include "goby/acomms/modemdriver/mm_driver.h"             // for MMDriver
 #include "goby/acomms/modemdriver/store_server_driver.h"
 #include "goby/acomms/modemdriver/udp_driver.h"             // for UDPDriver
 #include "goby/acomms/modemdriver/udp_multicast_driver.h"   // for UDPMulti...
@@ -59,14 +59,12 @@
 #include "goby/util/debug_logger/logger_manipulators.h"     // for operator<<
 #include "goby/util/debug_logger/term_color.h"              // for Colors
 #ifdef ENABLE_JANUS_ACOMMS
-#include "goby/acomms/modemdriver/janus_driver.h"          // for JanusDriver...
+#include "goby/acomms/modemdriver/janus_driver.h" // for JanusDriver...
 #endif
 #ifdef ENABLE_POPOTO_ACOMMS
-#include "goby/acomms/modemdriver/popoto_driver.h"          // for PopotoDr...
+#include "goby/acomms/modemdriver/popoto_driver.h" // for PopotoDr...
 #endif
 #include "driver_thread.h"
-#include "goby/zeromq/transport/detail/tags.h"
-#include "goby/udpm/transport/detail/tags.h"
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -136,8 +134,7 @@ template <typename ImplementationTag>
 goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::ModemDriverThread(
     const intervehicle::protobuf::PortalConfig::LinkConfig& config)
     : goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
-                               InterProcessForwarder<InterThreadTransporter,
-                                                     ImplementationTag>>(
+                               InterProcessForwarder<InterThreadTransporter, ImplementationTag>>(
           config, 10 * boost::units::si::hertz),
       buffer_(this->cfg().modem_id()),
       mac_(this->cfg().modem_id()),
@@ -149,24 +146,26 @@ goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::ModemDrive
 {
     goby::glog.add_group(glog_group_, util::Colors::blue);
     interthread_ = std::make_unique<InterThreadTransporter>();
-    interprocess_ = std::make_unique<
-        InterProcessForwarder<InterThreadTransporter, ImplementationTag>>(
-        *interthread_);
+    interprocess_ =
+        std::make_unique<InterProcessForwarder<InterThreadTransporter, ImplementationTag>>(
+            *interthread_);
     this->set_transporter(interprocess_.get());
 
     interprocess_->template subscribe<groups::modem_data_out, SerializerTransporterMessage>(
         [this](std::shared_ptr<const SerializerTransporterMessage> msg)
         { _buffer_message(std::move(msg)); });
 
-    interprocess_->template subscribe<groups::modem_subscription_forward_tx,
+    interprocess_
+        ->template subscribe<groups::modem_subscription_forward_tx,
                              intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
-        [this](const std::shared_ptr<const intervehicle::protobuf::Subscription>& subscription)
-        { _forward_subscription(*subscription); });
+            [this](const std::shared_ptr<const intervehicle::protobuf::Subscription>& subscription)
+            { _forward_subscription(*subscription); });
 
-    interprocess_->template subscribe<groups::modem_subscription_forward_rx,
+    interprocess_
+        ->template subscribe<groups::modem_subscription_forward_rx,
                              intervehicle::protobuf::Subscription, MarshallingScheme::PROTOBUF>(
-        [this](const std::shared_ptr<const intervehicle::protobuf::Subscription>& subscription)
-        { _accept_subscription(*subscription); });
+            [this](const std::shared_ptr<const intervehicle::protobuf::Subscription>& subscription)
+            { _accept_subscription(*subscription); });
 
     if (this->cfg().driver().has_driver_name())
     {
@@ -228,17 +227,17 @@ goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::ModemDrive
                 driver_ = std::make_unique<goby::acomms::StoreServerDriver>();
                 break;
 
-            #ifdef ENABLE_POPOTO_ACOMMS
+#ifdef ENABLE_POPOTO_ACOMMS
             case goby::acomms::protobuf::DRIVER_POPOTO:
                 driver_ = std::make_unique<goby::acomms::PopotoDriver>();
                 break;
-            #endif
+#endif
 
-            #ifdef ENABLE_JANUS_ACOMMS
+#ifdef ENABLE_JANUS_ACOMMS
             case goby::acomms::protobuf::DRIVER_JANUS:
                 driver_ = std::make_unique<goby::acomms::JanusDriver>();
                 break;
-            #endif
+#endif
             case goby::acomms::protobuf::DRIVER_NONE:
             case goby::acomms::protobuf::DRIVER_ABC_EXAMPLE_MODEM:
             case goby::acomms::protobuf::DRIVER_UFIELD_SIM_DRIVER:
@@ -496,8 +495,8 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_data
 
 template <typename ImplementationTag>
 typename goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::subbuffer_id_type
-goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_create_buffer_id(unsigned dccl_id,
-                                                                     unsigned group)
+goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_create_buffer_id(
+    unsigned dccl_id, unsigned group)
 {
     return "/group:" + std::to_string(group) + "/id:" + std::to_string(dccl_id) + "/";
 }
@@ -593,8 +592,9 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_acce
 }
 
 template <typename ImplementationTag>
-void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_try_create_or_update_buffer(
-    modem_id_type dest_id, const subbuffer_id_type& buffer_id)
+void goby::middleware::intervehicle::ModemDriverThread<
+    ImplementationTag>::_try_create_or_update_buffer(modem_id_type dest_id,
+                                                     const subbuffer_id_type& buffer_id)
 {
     auto pub_it_pair = publisher_buffer_cfg_.equal_range(buffer_id);
     auto& dest_subscriber_buffer_cfg = subscriber_buffer_cfg_[dest_id];
@@ -817,8 +817,8 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_rece
 }
 
 template <typename ImplementationTag>
-void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_publish_subscription_report(
-    const intervehicle::protobuf::Subscription& changed)
+void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::
+    _publish_subscription_report(const intervehicle::protobuf::Subscription& changed)
 {
     protobuf::SubscriptionReport report;
     report.set_link_modem_id(this->cfg().modem_id());
@@ -830,6 +830,9 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_publ
     *report.mutable_changed() = changed;
     interprocess_->template publish<groups::subscription_report>(report);
 }
+
+#include "goby/udpm/transport/detail/tags.h"
+#include "goby/zeromq/transport/detail/tags.h"
 
 // Explicit template instantiations for known implementation tags
 namespace goby::middleware::intervehicle
