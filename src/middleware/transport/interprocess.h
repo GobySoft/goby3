@@ -36,6 +36,7 @@
 #include "goby/middleware/group.h"
 
 #include "goby/middleware/marshalling/interface.h"
+#include "goby/middleware/transport/detail/static_group_names.h"
 #include "goby/middleware/transport/identifier.h"
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
@@ -45,21 +46,26 @@ namespace goby
 {
 namespace middleware
 {
+
 /// \brief Base class for implementing transporters (both portal and forwarder) for the interprocess layer
 ///
 /// \tparam Derived derived class (curiously recurring template pattern)
 /// \tparam InnerTransporter inner layer transporter type
-template <typename Derived, typename InnerTransporter>
+/// \tparam ImplementationTag Distinguishes different implementations using different internal groups
+template <typename Derived, typename InnerTransporter,
+          typename ImplementationTag = detail::DefaultInterprocessTag>
 class InterProcessTransporterBase
-    : public StaticTransporterInterface<InterProcessTransporterBase<Derived, InnerTransporter>,
-                                        InnerTransporter>,
-      public Poller<InterProcessTransporterBase<Derived, InnerTransporter>>
+    : public StaticTransporterInterface<
+          InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>,
+          InnerTransporter>,
+      public Poller<InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>>
 {
-    using InterfaceType =
-        StaticTransporterInterface<InterProcessTransporterBase<Derived, InnerTransporter>,
-                                   InnerTransporter>;
+    using InterfaceType = StaticTransporterInterface<
+        InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>,
+        InnerTransporter>;
 
-    using PollerType = Poller<InterProcessTransporterBase<Derived, InnerTransporter>>;
+    using PollerType =
+        Poller<InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>>;
 
   public:
     InterProcessTransporterBase(InnerTransporter& inner)
@@ -270,9 +276,16 @@ class InterProcessTransporterBase
     }
 
   protected:
-    static constexpr Group to_portal_group_{"goby::middleware::interprocess::to_portal"};
-    static constexpr Group regex_group_{"goby::middleware::interprocess::regex"};
-    static constexpr Group from_portal_group_{"goby::middleware::interprocess::from_portal"};
+    inline static constexpr auto to_portal_group_name_ =
+        detail::concat(ImplementationTag::prefix, "::to_portal");
+    inline static constexpr auto regex_group_name_ =
+        detail::concat(ImplementationTag::prefix, "::regex");
+    inline static constexpr auto from_portal_group_name_ =
+        detail::concat(ImplementationTag::prefix, "::from_portal");
+
+    inline static constexpr Group to_portal_group_{to_portal_group_name_.data()};
+    inline static constexpr Group regex_group_{regex_group_name_.data()};
+    inline static constexpr Group from_portal_group_{from_portal_group_name_.data()};
 
   private:
     friend PollerType;
@@ -281,16 +294,6 @@ class InterProcessTransporterBase
         return static_cast<Derived*>(this)->_poll(lock);
     }
 };
-
-template <typename Derived, typename InnerTransporter>
-constexpr goby::middleware::Group
-    InterProcessTransporterBase<Derived, InnerTransporter>::to_portal_group_;
-template <typename Derived, typename InnerTransporter>
-constexpr goby::middleware::Group
-    InterProcessTransporterBase<Derived, InnerTransporter>::regex_group_;
-template <typename Derived, typename InnerTransporter>
-constexpr goby::middleware::Group
-    InterProcessTransporterBase<Derived, InnerTransporter>::from_portal_group_;
 
 /// \brief Implements the forwarder concept for the interprocess layer
 ///
@@ -307,7 +310,8 @@ class InterProcessForwarder
     /// \brief Construct a forwarder for the interprocess layer
     ///
     /// \param inner A reference to the inner transporter used to forward messages to and from the portal
-    InterProcessForwarder(InnerTransporter& inner) : Base(inner), alive_(std::make_shared<std::atomic<bool>>(true))
+    InterProcessForwarder(InnerTransporter& inner)
+        : Base(inner), alive_(std::make_shared<std::atomic<bool>>(true))
     {
         this->inner()
             .template subscribe<Base::regex_group_,
