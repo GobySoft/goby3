@@ -62,7 +62,7 @@ class ModemTransmission;
 /// \example acomms/queue/queue_simple/queue_simple.cpp
 /// simple.proto
 /// \verbinclude simple.proto
-/// queue_simple.cpp
+/// goby3_example_queue_simple
 class QueueManager
 {
   public:

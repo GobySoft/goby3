@@ -87,4 +87,4 @@ Then, for either MAC scheme, start the goby::acomms::MACManager running (goby::a
 
 You can modify the MAC scheme while MACManager is running. Simply use the std::list insert, push, pop, erase methods to changes slots (goby::acomms::protobuf::ModemTransmission objects). After any changes that invalidate std::list iterators (insert, push, pop, erase), you *must* call goby::acomms::MACManager::update() before the next call to goby::acomms::MACManager::do_work().
 
-See acomms/amac/amac_simple/amac_simple.cpp for a basic complete example.
+See goby3_example_amac_simple for a basic complete example.

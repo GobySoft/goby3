@@ -11,10 +11,10 @@ To start on some (hopefully) common ground, let's begin with an analogy to Open 
 |Application     |N/A                            |                               |`gobyd`             |
 |Presentation    |[DCCL](http://libdccl.org)     |dccl::Codec                    |                    |
 |Session         |No sessions                    |                               |                    |
-|Transport       |[queue](doc101_acomms-queue.md)|goby::acomms::QueueManager     |queue_simple.cpp, chat.cpp|
+|Transport       |[queue](doc101_acomms-queue.md)|goby::acomms::QueueManager     |goby3_example_queue_simple, goby3_example_chat|
 |Network         |Does not yet exist.            |                               |                    |
-|Data Link       |[driver](doc103_acomms-driver.md)|subclasses of goby::acomms::ModemDriverBase, e.g. goby::acomms::MMDriver | driver_simple.cpp, chat.cpp               |
-|                |[amac](doc102_acomms-mac.md) |goby::acomms::MACManager       |amac_simple.cpp, chat.cpp|
+|Data Link       |[driver](doc103_acomms-driver.md)|subclasses of goby::acomms::ModemDriverBase, e.g. goby::acomms::MMDriver | goby3_example_driver_simple, goby3_example_chat               |
+|                |[amac](doc102_acomms-mac.md) |goby::acomms::MACManager       |goby3_example_amac_simple, goby3_example_chat|
 |Physical        |Not part of Goby             |                               |Modem Firmware, e.g. WHOI Micro-Modem Firmware (NMEA 0183 on RS-232) (see Interface Guide)|
 
 ### Acoustic Communications are slow

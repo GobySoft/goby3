@@ -92,7 +92,7 @@ The goby::glog debug logging tool provides:
 * automatic time-date stamping of log entries
 * optional thread safe access
 
-The best way to get used to goby::glog is to compile and play with the flexostream_simple.cpp example.
+The best way to get used to goby::glog is to compile and play with the goby3_example_flexostream_simple example.
 
 A handful of examples:
 
@@ -105,7 +105,7 @@ Graphical user interface logger mode:
 Simultaneous terminal window and file logging:
 
 ```
-flexostream_simple quiet|warn|verbose|debug|gui test.txt
+goby3_example_flexostream_simple quiet|warn|verbose|debug|gui test.txt
 ```
 
 Writes the following to test.txt:
