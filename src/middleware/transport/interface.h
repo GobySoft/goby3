@@ -170,10 +170,13 @@ class PollerInterface
     /// \brief Attach another PollerInterface to this one so that its _transporter_poll() is also called during _poll_all()
     ///
     /// The attached PollerInterface must share the same poll_mutex() and cv() as this PollerInterface.
-    /// \param poller Pointer to the PollerInterface to attach
-    /// \throws goby::Exception if poll_mutex() or cv() of the attached poller do not match those of this poller
+    /// The attached poller must remain valid (outlive or have the same lifetime as this instance).
+    /// \param poller Non-null pointer to the PollerInterface to attach; must not be null
+    /// \throws goby::Exception if poller is null or if poll_mutex() or cv() of the attached poller do not match those of this poller
     void attach_poller(PollerInterface* poller)
     {
+        if (!poller)
+            throw(goby::Exception("Cannot attach a null PollerInterface"));
         if (poller->poll_mutex() != poll_mutex_ || poller->cv() != cv_)
             throw(goby::Exception(
                 "Cannot attach a PollerInterface whose poll_mutex() or cv() differ from this "
@@ -201,7 +204,8 @@ class PollerInterface
     std::shared_ptr<std::mutex> poll_mutex_;
     // signaled when there's no data for this thread to read during _poll()
     std::shared_ptr<std::condition_variable> cv_;
-    // additional PollerInterface instances to poll alongside this one
+    // non-owning pointers to additional PollerInterface instances to poll alongside this one;
+    // attached pollers must remain valid for the lifetime of this instance
     std::vector<PollerInterface*> attached_pollers_;
 };
 
