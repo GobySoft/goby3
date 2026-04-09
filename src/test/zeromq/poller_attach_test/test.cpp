@@ -21,7 +21,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-// Tests PollerInterface::attach_poller() by running one ZeroMQ portal and one
+// Tests PollerInterface::attach() by running one ZeroMQ portal and one
 // UDPM portal on each fork, with the UDPM portal's poller attached to the ZeroMQ
 // portal's poller.  Only the ZeroMQ portal's poll() is called on each fork;
 // the UDPM portal is polled automatically via the attach mechanism.
@@ -81,7 +81,7 @@ void run_fork1(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
                const goby::udpm::protobuf::InterProcessPortalConfig& udpm_cfg)
 {
     // Shared NullTransporter gives A and B the same poll_mutex and cv, which
-    // is required for attach_poller().
+    // is required for attach().
     goby::middleware::NullTransporter null_inner;
 
     goby::zeromq::InterProcessPortal<goby::middleware::NullTransporter> portal_a(null_inner,
@@ -90,7 +90,7 @@ void run_fork1(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
                                                                                udpm_cfg);
 
     // Attach B to A: portal_a.poll() will also call _transporter_poll() on B.
-    portal_a.attach_poller(&portal_b);
+    portal_a.attach(&portal_b);
 
     std::atomic<int> recv_a{0}; // messages A receives from C via ZMQ
     std::atomic<int> recv_b{0}; // messages B receives from D via UDPM
@@ -144,8 +144,8 @@ void run_fork1(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
                                  << " (expected " << n_msgs << " each)" << std::endl;
     }
 
-    glog.is(VERBOSE) &&
-        glog << "FORK1 done: recv_a=" << recv_a << " recv_b=" << recv_b << std::endl;
+    glog.is(VERBOSE) && glog << "FORK1 done: recv_a=" << recv_a << " recv_b=" << recv_b
+                             << std::endl;
     assert(recv_a == n_msgs);
     assert(recv_b == n_msgs);
 }
@@ -164,7 +164,7 @@ void run_fork2(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
                                                                                udpm_cfg);
 
     // Attach D to C: portal_c.poll() will also call _transporter_poll() on D.
-    portal_c.attach_poller(&portal_d);
+    portal_c.attach(&portal_d);
 
     std::atomic<int> recv_c{0}; // messages C receives from A via ZMQ
     std::atomic<int> recv_d{0}; // messages D receives from B via UDPM
@@ -212,8 +212,8 @@ void run_fork2(const goby::zeromq::protobuf::InterProcessPortalConfig& zmq_cfg,
                                  << " (expected " << n_msgs << " each)" << std::endl;
     }
 
-    glog.is(VERBOSE) &&
-        glog << "FORK2 done: recv_c=" << recv_c << " recv_d=" << recv_d << std::endl;
+    glog.is(VERBOSE) && glog << "FORK2 done: recv_c=" << recv_c << " recv_d=" << recv_d
+                             << std::endl;
     assert(recv_c == n_msgs);
     assert(recv_d == n_msgs);
 }
@@ -250,11 +250,11 @@ int main(int /*argc*/, char* argv[])
         role = FORK2;
 
     // ---- Set up logging ----
-    const char* role_str =
-        (role == MANAGER_ROUTER) ? "manager_router" : (role == FORK1) ? "fork1" : "fork2";
+    const char* role_str = (role == MANAGER_ROUTER) ? "manager_router"
+                           : (role == FORK1)        ? "fork1"
+                                                    : "fork2";
 
-    std::string log_path =
-        std::string("/tmp/goby_test_poller_attach_") + role_str + ".log";
+    std::string log_path = std::string("/tmp/goby_test_poller_attach_") + role_str + ".log";
     std::ofstream log_file(log_path);
     goby::glog.add_stream(goby::util::logger::DEBUG3, &log_file);
     goby::glog.set_name(std::string(argv[0]) + "_" + role_str);
