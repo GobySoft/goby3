@@ -34,6 +34,7 @@
 #include "goby/middleware/io/detail/io_interface.h"  // for PubSubLayer
 #include "goby/middleware/io/detail/pty_interface.h" // for PTYThread
 #include "goby/middleware/io/line_based/common.h"    // for match_regex
+#include "goby/zeromq/application/simple_thread.h"
 
 namespace goby
 {
@@ -62,12 +63,11 @@ namespace io
 /// \brief Reads/Writes strings from/to serial port using a line-based (typically ASCII) protocol with a defined end-of-line regex.
 /// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the serial port
 /// \tparam line_out_group goby::middleware::Group to subcribe to for data to send to the serial port
-template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          template <class> class ThreadType = goby::middleware::SimpleThread,
-          bool use_indexed_groups = false>
+template <
+    const goby::middleware::Group& line_in_group, const goby::middleware::Group& line_out_group,
+    PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
+    PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+    template <class> class ThreadType = goby::zeromq::SimpleThread, bool use_indexed_groups = false>
 class PTYThreadLineBased : public detail::PTYThread<line_in_group, line_out_group, publish_layer,
                                                     subscribe_layer, ThreadType, use_indexed_groups>
 {

@@ -63,7 +63,7 @@ int main(int /*argc*/, char* argv[])
     //    goby::ProtobufMarshaller pb;
     goby::middleware::InterThreadTransporter inproc;
     goby::zeromq::InterProcessPortal<> zmq_blank(zmq_cfg);
-    goby::middleware::InterProcessForwarder<decltype(inproc)> interprocess_default(inproc);
+    goby::zeromq::InterProcessForwarder<decltype(inproc)> interprocess_default(inproc);
     goby::zeromq::InterProcessPortal<decltype(inproc)> zmq(inproc, zmq_cfg);
 
     CTDSample s;

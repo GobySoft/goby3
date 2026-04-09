@@ -411,6 +411,30 @@ template <class Config> class MultiThreadTest : public MultiThreadStandaloneAppl
     InterThreadTransporter& intervehicle() { return Base::interthread(); }
 };
 
+/// \brief Class for use with MultiThreadStandaloneApplication (interthread only)
+template <typename Config> class StandaloneThread : public Thread<Config, InterThreadTransporter>
+{
+  public:
+    StandaloneThread(const Config& cfg, double loop_freq_hertz = 0, int index = -1)
+        : StandaloneThread(cfg, loop_freq_hertz * boost::units::si::hertz, index)
+    {
+    }
+    
+    StandaloneThread(const Config& cfg,
+                     boost::units::quantity<boost::units::si::frequency> loop_freq, int index = -1)
+        : Thread<Config, InterThreadTransporter>(cfg, loop_freq, index)
+    {
+        interthread_.reset(new InterThreadTransporter);
+
+        this->set_transporter(interthread_.get());
+    }
+
+    InterThreadTransporter& interthread() { return this->transporter(); }
+
+  private:
+    std::unique_ptr<InterThreadTransporter> interthread_;
+};
+
 } // namespace middleware
 
 template <class Config, class Transporter>

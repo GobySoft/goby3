@@ -33,6 +33,7 @@
 #include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer, Pub...
 #include "goby/middleware/io/mavlink/common.h"      // for IOThreadMAVLink
 #include "goby/middleware/io/udp_point_to_point.h"  // for UDPPointToPointT...
+#include "goby/zeromq/application/simple_thread.h"
 
 namespace goby
 {
@@ -74,7 +75,7 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          template <class> class ThreadType = goby::middleware::SimpleThread>
+          template <class> class ThreadType = goby::zeromq::SimpleThread>
 class UDPThreadMAVLink : public UDPThreadMAVLinkBase<line_in_group, line_out_group, publish_layer,
                                                      subscribe_layer, ThreadType>
 {
@@ -106,7 +107,8 @@ void goby::middleware::io::UDPThreadMAVLink<line_in_group, line_out_group, publi
 {
     this->mutable_socket().async_receive_from(
         boost::asio::buffer(this->buffer()), sender_endpoint_,
-        [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+        [this](const boost::system::error_code& ec, std::size_t bytes_transferred)
+        {
             if (!ec && bytes_transferred > 0)
             {
                 this->try_parse(bytes_transferred);

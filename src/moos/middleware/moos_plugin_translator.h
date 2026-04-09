@@ -38,9 +38,9 @@
 #include <boost/units/systems/si/frequency.hpp> // for frequency, hertz
 
 #include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"    // for MOOSAsyncComm...
-#include "goby/middleware/application/multi_thread.h"  // for SimpleThread
 #include "goby/moos/protobuf/moos_gateway_config.pb.h" // for GobyMOOSGatew...
 #include "goby/time/system_clock.h"                    // for SystemClock
+#include "goby/zeromq/application/simple_thread.h"     // for SimpleThread
 
 class CMOOSCommClient;
 
@@ -152,7 +152,7 @@ class BasicTranslator : public TranslatorBase,
     void loop() override { this->TranslatorBase::loop(); }
 };
 
-using Translator = BasicTranslator<goby::middleware::SimpleThread>;
+using Translator = BasicTranslator<goby::zeromq::SimpleThread>;
 
 } // namespace moos
 } // namespace goby

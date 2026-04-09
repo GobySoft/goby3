@@ -210,12 +210,12 @@ class LiaisonContainerWithComms : public LiaisonContainer
 
 template <typename WtContainer>
 class LiaisonCommsThread
-    : public goby::middleware::SimpleThread<goby::apps::zeromq::protobuf::LiaisonConfig>
+    : public goby::zeromq::SimpleThread<goby::apps::zeromq::protobuf::LiaisonConfig>
 {
   public:
     LiaisonCommsThread(WtContainer* container,
                        const goby::apps::zeromq::protobuf::LiaisonConfig& config, int index)
-        : goby::middleware::SimpleThread<goby::apps::zeromq::protobuf::LiaisonConfig>(
+        : goby::zeromq::SimpleThread<goby::apps::zeromq::protobuf::LiaisonConfig>(
               config, config.update_freq() * boost::units::si::hertz, index),
           container_(container)
     {
