@@ -171,17 +171,25 @@ class PollerInterface
     ///
     /// The attached PollerInterface must share the same poll_mutex() and cv() as this PollerInterface.
     /// The attached poller must remain valid (outlive or have the same lifetime as this instance).
-    /// \param poller Non-null pointer to the PollerInterface to attach; must not be null
-    /// \throws goby::Exception if poller is null or if poll_mutex() or cv() of the attached poller do not match those of this poller
+    /// \param poller Non-null pointer to the PollerInterface to attach; must not be null and must not be this
+    /// \throws goby::Exception if poller is null, is this instance, is already attached, or if poll_mutex() or cv() of the attached poller do not match those of this poller
     void attach(PollerInterface* poller)
     {
         if (!poller)
             throw(goby::Exception("Cannot attach a null PollerInterface"));
 
+        if (poller == this)
+            throw(goby::Exception("Cannot attach a PollerInterface to itself"));
+
         if (poller->cv() != cv() || poller->poll_mutex() != poll_mutex())
             throw(goby::Exception("Cannot attach PollerInterface with a different cv() and/or "
                                   "poll_mutex(). Make sure the PollerInterface you are trying to "
                                   "attach has the same innermost PollerInterface"));
+
+        std::lock_guard<std::mutex> lock(*poll_mutex_);
+        if (std::find(attached_pollers_.begin(), attached_pollers_.end(), poller) !=
+            attached_pollers_.end())
+            throw(goby::Exception("Cannot attach the same PollerInterface more than once"));
         attached_pollers_.push_back(poller);
     }
 
