@@ -30,7 +30,6 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 #include "goby/middleware/transport/intervehicle.h"
-#include "goby/zeromq/transport/detail/tags.h"
 
 namespace goby
 {
@@ -44,15 +43,13 @@ namespace middleware
 /// Derive from this class to create standalone threads that can be launched and joined by MultiThreadApplication's launch_thread and join_thread methods.
 template <typename Config, typename ImplementationTag = void>
 class SimpleThread
-    : public Thread<Config,
-                    InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter,
-                                                                ImplementationTag>>>,
+    : public Thread<Config, InterVehicleForwarder<
+                                InterProcessForwarder<InterThreadTransporter, ImplementationTag>>>,
       public coroner::Thread<SimpleThread<Config, ImplementationTag>>
 {
-    using SimpleThreadBase =
-        Thread<Config,
-               InterVehicleForwarder<
-                   InterProcessForwarder<InterThreadTransporter, ImplementationTag>>>;
+    using SimpleThreadBase = Thread<
+        Config,
+        InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter, ImplementationTag>>>;
 
     friend class coroner::Thread<SimpleThread<Config, ImplementationTag>>;
 
@@ -80,8 +77,8 @@ class SimpleThread
         interprocess_.reset(
             new InterProcessForwarder<InterThreadTransporter, ImplementationTag>(*interthread_));
         intervehicle_.reset(
-            new InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter, ImplementationTag>>(
-                *interprocess_));
+            new InterVehicleForwarder<
+                InterProcessForwarder<InterThreadTransporter, ImplementationTag>>(*interprocess_));
 
         this->set_transporter(intervehicle_.get());
 
@@ -112,6 +109,16 @@ class SimpleThread
         intervehicle_;
 };
 
+} // namespace middleware
+} // namespace goby
+
+#include "goby/zeromq/transport/detail/tags.h"
+
+namespace goby
+{
+namespace middleware
+{
+
 /// \brief Deprecated 1-arg specialisation: use goby::zeromq::SimpleThread or goby::udpm::SimpleThread
 template <typename Config>
 class SimpleThread<Config, void>
@@ -120,17 +127,15 @@ class SimpleThread<Config, void>
   public:
     using Base = SimpleThread<Config, zeromq::detail::ZeromqInterprocessTag>;
 
-    [[deprecated(
-        "Use goby::zeromq::SimpleThread or goby::udpm::SimpleThread instead of "
-        "goby::middleware::SimpleThread")]]
+    [[deprecated("Use goby::zeromq::SimpleThread or goby::udpm::SimpleThread instead of "
+                 "goby::middleware::SimpleThread")]]
     SimpleThread(const Config& cfg, double loop_freq_hertz = 0, int index = -1)
         : Base(cfg, loop_freq_hertz, index)
     {
     }
 
-    [[deprecated(
-        "Use goby::zeromq::SimpleThread or goby::udpm::SimpleThread instead of "
-        "goby::middleware::SimpleThread")]]
+    [[deprecated("Use goby::zeromq::SimpleThread or goby::udpm::SimpleThread instead of "
+                 "goby::middleware::SimpleThread")]]
     SimpleThread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
                  int index = -1)
         : Base(cfg, loop_freq, index)

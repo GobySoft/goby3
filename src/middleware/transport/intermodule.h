@@ -38,8 +38,6 @@
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
-#include "goby/zeromq/transport/detail/tags.h"
-#include "goby/udpm/transport/detail/tags.h"
 #include "goby/middleware/transport/serialization_handlers.h"
 
 namespace goby
@@ -67,8 +65,7 @@ using InterModuleTransporterBase =
 /// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer.
 /// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
 /// \tparam ImplementationTag Distinguishes different implementations using different internal groups (e.g. detail::ZeromqIntermoduleTag or detail::UdpmIntermoduleTag)
-template <typename InnerTransporter, typename ImplementationTag = void>
-class InterModuleForwarder;
+template <typename InnerTransporter, typename ImplementationTag = void> class InterModuleForwarder;
 
 /// \brief Implements the forwarder concept for the intermodule layer (implementation)
 ///
@@ -200,23 +197,6 @@ class InterModuleForwarder
         subscriptions_;
 };
 
-/// \brief Deprecated: use zeromq::InterModuleForwarder or udpm::InterModuleForwarder instead
-///
-/// This 1-argument specialisation (ImplementationTag = void) is kept for backwards compatibility.
-/// It resolves to the zeromq implementation. New code should use zeromq::InterModuleForwarder<>
-/// or udpm::InterModuleForwarder<> explicitly.
-template <typename InnerTransporter>
-class InterModuleForwarder<InnerTransporter, void>
-    : public InterModuleForwarder<InnerTransporter, zeromq::detail::ZeromqIntermoduleTag>
-{
-  public:
-    using Base = InterModuleForwarder<InnerTransporter, zeromq::detail::ZeromqIntermoduleTag>;
-
-    [[deprecated("Use zeromq::InterModuleForwarder<> or udpm::InterModuleForwarder<> instead of "
-                 "middleware::InterModuleForwarder<>")]]
-    explicit InterModuleForwarder(InnerTransporter& inner) : Base(inner) {}
-};
-
 template <typename Derived, typename InnerTransporter, typename ImplementationTag>
 class InterModulePortalBase
     : public InterModuleTransporterBase<Derived, InnerTransporter, ImplementationTag>,
@@ -266,6 +246,34 @@ class InterModulePortalBase
     }
 };
 
+} // namespace middleware
+} // namespace goby
+
+#include "goby/zeromq/transport/detail/tags.h"
+
+namespace goby
+{
+namespace middleware
+{
+/// \brief Deprecated: use zeromq::InterModuleForwarder or udpm::InterModuleForwarder instead
+///
+/// This 1-argument specialisation (ImplementationTag = void) is kept for backwards compatibility.
+/// It resolves to the zeromq implementation. New code should use zeromq::InterModuleForwarder<>
+/// or udpm::InterModuleForwarder<> explicitly.
+template <typename InnerTransporter>
+class InterModuleForwarder<InnerTransporter, void>
+    : public InterModuleForwarder<InnerTransporter, zeromq::detail::ZeromqIntermoduleTag>
+{
+  public:
+    using Base = InterModuleForwarder<InnerTransporter, zeromq::detail::ZeromqIntermoduleTag>;
+
+    [[deprecated("Use zeromq::InterModuleForwarder<> or udpm::InterModuleForwarder<> instead of "
+                 "middleware::InterModuleForwarder<>")]]
+    explicit InterModuleForwarder(InnerTransporter& inner)
+        : Base(inner)
+    {
+    }
+};
 } // namespace middleware
 } // namespace goby
 
