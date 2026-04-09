@@ -41,8 +41,6 @@
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
 #include "goby/middleware/transport/serialization_handlers.h"
-#include "goby/zeromq/transport/detail/tags.h"
-#include "goby/udpm/transport/detail/tags.h"
 
 namespace goby
 {
@@ -304,8 +302,7 @@ class InterProcessTransporterBase
 /// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer. For example, the main thread might instantiate a portal and then spawn several threads that instantiate forwarders. These auxiliary threads can then communicate on the interprocess layer as if they had a direct connection to other interprocess nodes.
 /// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
 /// \tparam ImplementationTag Distinguishes different implementations using different internal groups (e.g. detail::ZeromqInterprocessTag or detail::UdpmInterprocessTag)
-template <typename InnerTransporter, typename ImplementationTag = void>
-class InterProcessForwarder;
+template <typename InnerTransporter, typename ImplementationTag = void> class InterProcessForwarder;
 
 /// \brief Implements the forwarder concept for the interprocess layer (implementation)
 ///
@@ -314,7 +311,7 @@ class InterProcessForwarder;
 template <typename InnerTransporter, typename ImplementationTag>
 class InterProcessForwarder
     : public InterProcessTransporterBase<InterProcessForwarder<InnerTransporter, ImplementationTag>,
-                                        InnerTransporter, ImplementationTag>
+                                         InnerTransporter, ImplementationTag>
 {
   public:
     using Base =
@@ -480,23 +477,6 @@ class InterProcessForwarder
     // Shared flag checked by forwarding lambdas to avoid accessing `this`
     // after the forwarder has been destroyed (set to false in the destructor).
     std::shared_ptr<std::atomic<bool>> alive_;
-};
-
-/// \brief Deprecated: use zeromq::InterProcessForwarder or udpm::InterProcessForwarder instead
-///
-/// This 1-argument specialisation (ImplementationTag = void) is kept for backwards compatibility.
-/// It resolves to the zeromq implementation. New code should use zeromq::InterProcessForwarder<>
-/// or udpm::InterProcessForwarder<> explicitly.
-template <typename InnerTransporter>
-class InterProcessForwarder<InnerTransporter, void>
-    : public InterProcessForwarder<InnerTransporter, zeromq::detail::ZeromqInterprocessTag>
-{
-  public:
-    using Base = InterProcessForwarder<InnerTransporter, zeromq::detail::ZeromqInterprocessTag>;
-
-    [[deprecated("Use zeromq::InterProcessForwarder<> or udpm::InterProcessForwarder<> instead of "
-                 "middleware::InterProcessForwarder<>")]]
-    explicit InterProcessForwarder(InnerTransporter& inner) : Base(inner) {}
 };
 
 template <typename Derived, typename InnerTransporter>
@@ -797,6 +777,36 @@ class InterProcessPortalBase
         this->inner().template subscribe<Base::to_portal_group_, SerializationUnSubscribeAll>(
             [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s)
             { static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id()); });
+    }
+};
+
+} // namespace middleware
+} // namespace goby
+
+#include "goby/zeromq/transport/detail/tags.h"
+
+namespace goby
+{
+namespace middleware
+{
+
+/// \brief Deprecated: use zeromq::InterProcessForwarder or udpm::InterProcessForwarder instead
+///
+/// This 1-argument specialisation (ImplementationTag = void) is kept for backwards compatibility.
+/// It resolves to the zeromq implementation. New code should use zeromq::InterProcessForwarder<>
+/// or udpm::InterProcessForwarder<> explicitly.
+template <typename InnerTransporter>
+class InterProcessForwarder<InnerTransporter, void>
+    : public InterProcessForwarder<InnerTransporter, zeromq::detail::ZeromqInterprocessTag>
+{
+  public:
+    using Base = InterProcessForwarder<InnerTransporter, zeromq::detail::ZeromqInterprocessTag>;
+
+    [[deprecated("Use zeromq::InterProcessForwarder<> or udpm::InterProcessForwarder<> instead of "
+                 "middleware::InterProcessForwarder<>")]]
+    explicit InterProcessForwarder(InnerTransporter& inner)
+        : Base(inner)
+    {
     }
 };
 

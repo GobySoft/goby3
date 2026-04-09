@@ -35,7 +35,6 @@ set(MIDDLEWARE_SRC
   middleware/application/tool.cpp
   middleware/log/log_entry.cpp
   middleware/frontseat/interface.cpp
-  middleware/coroner/health_monitor_thread.cpp
   ${MIDDLEWARE_PROTO_SRCS} ${MIDDLEWARE_PROTO_HDRS} 
   )
 
