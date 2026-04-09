@@ -129,7 +129,8 @@ std::map<std::string, void*>
 goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
     const intervehicle::protobuf::PortalConfig::LinkConfig& config)
     : goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
-                               InterProcessForwarder<InterThreadTransporter>>(
+                               InterProcessForwarder<InterThreadTransporter,
+                                                     detail::ZeromqInterprocessTag>>(
           config, 10 * boost::units::si::hertz),
       buffer_(cfg().modem_id()),
       mac_(cfg().modem_id()),
@@ -141,7 +142,9 @@ goby::middleware::intervehicle::ModemDriverThread::ModemDriverThread(
 {
     goby::glog.add_group(glog_group_, util::Colors::blue);
     interthread_ = std::make_unique<InterThreadTransporter>();
-    interprocess_ = std::make_unique<InterProcessForwarder<InterThreadTransporter>>(*interthread_);
+    interprocess_ = std::make_unique<
+        InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>(
+        *interthread_);
     this->set_transporter(interprocess_.get());
 
     interprocess_->subscribe<groups::modem_data_out, SerializerTransporterMessage>(

@@ -129,7 +129,8 @@ serialize_publication(const Data& d, const Group& group, const Publisher<Data>& 
 
 class ModemDriverThread
     : public goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
-                                      InterProcessForwarder<InterThreadTransporter>>
+                                      InterProcessForwarder<InterThreadTransporter,
+                                                            detail::ZeromqInterprocessTag>>
 {
   public:
     using buffer_data_type = goby::middleware::protobuf::SerializerTransporterMessage;
@@ -192,7 +193,8 @@ class ModemDriverThread
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
-    std::unique_ptr<InterProcessForwarder<InterThreadTransporter>> interprocess_;
+    std::unique_ptr<InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>
+        interprocess_;
 
     std::multimap<subbuffer_id_type, goby::middleware::protobuf::SerializerTransporterKey>
         publisher_buffer_cfg_;

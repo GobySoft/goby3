@@ -52,8 +52,7 @@ namespace middleware
 /// \tparam Derived derived class (curiously recurring template pattern)
 /// \tparam InnerTransporter inner layer transporter type
 /// \tparam ImplementationTag Distinguishes different implementations using different internal groups
-template <typename Derived, typename InnerTransporter,
-          typename ImplementationTag = detail::DefaultInterprocessTag>
+template <typename Derived, typename InnerTransporter, typename ImplementationTag>
 class InterProcessTransporterBase
     : public StaticTransporterInterface<
           InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>,
@@ -299,13 +298,23 @@ class InterProcessTransporterBase
 ///
 /// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer. For example, the main thread might instantiate a portal and then spawn several threads that instantiate forwarders. These auxiliary threads can then communicate on the interprocess layer as if they had a direct connection to other interprocess nodes.
 /// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
-template <typename InnerTransporter>
+/// \tparam ImplementationTag Distinguishes different implementations using different internal groups (e.g. detail::ZeromqInterprocessTag or detail::UdpmInterprocessTag)
+template <typename InnerTransporter, typename ImplementationTag = void>
+class InterProcessForwarder;
+
+/// \brief Implements the forwarder concept for the interprocess layer (implementation)
+///
+/// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
+/// \tparam ImplementationTag Must be provided explicitly; use zeromq::InterProcessForwarder or udpm::InterProcessForwarder for the common cases
+template <typename InnerTransporter, typename ImplementationTag>
 class InterProcessForwarder
-    : public InterProcessTransporterBase<InterProcessForwarder<InnerTransporter>, InnerTransporter>
+    : public InterProcessTransporterBase<InterProcessForwarder<InnerTransporter, ImplementationTag>,
+                                        InnerTransporter, ImplementationTag>
 {
   public:
     using Base =
-        InterProcessTransporterBase<InterProcessForwarder<InnerTransporter>, InnerTransporter>;
+        InterProcessTransporterBase<InterProcessForwarder<InnerTransporter, ImplementationTag>,
+                                    InnerTransporter, ImplementationTag>;
 
     /// \brief Construct a forwarder for the interprocess layer
     ///
@@ -466,6 +475,23 @@ class InterProcessForwarder
     // Shared flag checked by forwarding lambdas to avoid accessing `this`
     // after the forwarder has been destroyed (set to false in the destructor).
     std::shared_ptr<std::atomic<bool>> alive_;
+};
+
+/// \brief Deprecated: use zeromq::InterProcessForwarder or udpm::InterProcessForwarder instead
+///
+/// This 1-argument specialisation (ImplementationTag = void) is kept for backwards compatibility.
+/// It resolves to the zeromq implementation. New code should use zeromq::InterProcessForwarder<>
+/// or udpm::InterProcessForwarder<> explicitly.
+template <typename InnerTransporter>
+class InterProcessForwarder<InnerTransporter, void>
+    : public InterProcessForwarder<InnerTransporter, detail::ZeromqInterprocessTag>
+{
+  public:
+    using Base = InterProcessForwarder<InnerTransporter, detail::ZeromqInterprocessTag>;
+
+    [[deprecated("Use zeromq::InterProcessForwarder<> or udpm::InterProcessForwarder<> instead of "
+                 "middleware::InterProcessForwarder<>")]]
+    explicit InterProcessForwarder(InnerTransporter& inner) : Base(inner) {}
 };
 
 template <typename Derived, typename InnerTransporter>
@@ -726,12 +752,13 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
         regex_subscriptions_;
 };
 
-template <typename Derived, typename InnerTransporter>
-class InterProcessPortalBase : public InterProcessTransporterBase<Derived, InnerTransporter>,
-                               public InterProcessPortalCommon<Derived, InnerTransporter>
+template <typename Derived, typename InnerTransporter, typename ImplementationTag>
+class InterProcessPortalBase
+    : public InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>,
+      public InterProcessPortalCommon<Derived, InnerTransporter>
 {
   public:
-    using Base = InterProcessTransporterBase<Derived, InnerTransporter>;
+    using Base = InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>;
     using Common = InterProcessPortalCommon<Derived, InnerTransporter>;
 
     InterProcessPortalBase(InnerTransporter& inner) : Base(inner) { _init(); }

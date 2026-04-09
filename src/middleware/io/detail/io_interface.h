@@ -53,7 +53,7 @@ namespace middleware
 {
 class Group;
 class InterThreadTransporter;
-template <typename InnerTransporter> class InterProcessForwarder;
+template <typename InnerTransporter, typename ImplementationTag> class InterProcessForwarder;
 namespace io
 {
 enum class ThreadState

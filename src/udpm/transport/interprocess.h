@@ -110,14 +110,18 @@ inline UDPMPacketHeader decode_header(const char* buf)
 }
 
 template <typename InnerTransporter,
-          template <typename Derived, typename InnerTransporterType> class PortalBase>
+          template <typename Derived, typename InnerTransporterType,
+                    typename ImplementationTag_> class PortalBase,
+          typename ImplementationTag>
 class InterProcessPortalImplementation
-    : public PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase>,
-                        InnerTransporter>
+    : public PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase,
+                                                        ImplementationTag>,
+                        InnerTransporter, ImplementationTag>
 {
   public:
-    using Base = PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase>,
-                            InnerTransporter>;
+    using Base = PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase,
+                                                            ImplementationTag>,
+                            InnerTransporter, ImplementationTag>;
 
     using IdentifierWildcard = middleware::IdentifierWildcard;
 
@@ -538,7 +542,13 @@ class InterProcessPortalImplementation
 
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterProcessPortal =
-    InterProcessPortalImplementation<InnerTransporter, middleware::InterProcessPortalBase>;
+    InterProcessPortalImplementation<InnerTransporter, middleware::InterProcessPortalBase,
+                                     middleware::detail::UdpmInterprocessTag>;
+
+template <typename InnerTransporter = middleware::NullTransporter>
+using InterProcessForwarder =
+    middleware::InterProcessForwarder<InnerTransporter,
+                                      middleware::detail::UdpmInterprocessTag>;
 
 } // namespace udpm
 } // namespace goby

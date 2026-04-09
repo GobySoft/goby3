@@ -25,6 +25,7 @@
 #define GOBY_MIDDLEWARE_IO_DETAIL_IO_TRANSPORTERS_H
 
 #include "goby/exception.h"
+#include "goby/middleware/transport/detail/static_group_names.h"
 
 namespace goby
 {
@@ -32,7 +33,7 @@ namespace middleware
 {
 class Group;
 class InterThreadTransporter;
-template <typename InnerTransporter> class InterProcessForwarder;
+template <typename InnerTransporter, typename ImplementationTag> class InterProcessForwarder;
 namespace io
 {
 enum class PubSubLayer
@@ -66,7 +67,8 @@ template <class Derived, Direction direction>
 struct IOTransporterByLayer<Derived, direction, PubSubLayer::INTERPROCESS>
 {
   protected:
-    using Transporter = InterProcessForwarder<InterThreadTransporter>;
+    using Transporter = InterProcessForwarder<InterThreadTransporter,
+                                              ::goby::middleware::detail::ZeromqInterprocessTag>;
     Transporter& io_transporter() { return static_cast<Derived*>(this)->interprocess(); }
 };
 

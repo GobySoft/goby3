@@ -41,11 +41,14 @@ namespace middleware
 /// Derive from this class to create standalone threads that can be launched and joined by MultiThreadApplication's launch_thread and join_thread methods.
 template <typename Config>
 class SimpleThread
-    : public Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>,
+    : public Thread<Config,
+                    InterVehicleForwarder<InterProcessForwarder<
+                        InterThreadTransporter, detail::ZeromqInterprocessTag>>>,
       public coroner::Thread<SimpleThread<Config>>
 {
     using SimpleThreadBase =
-        Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>;
+        Thread<Config, InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter,
+                                                                   detail::ZeromqInterprocessTag>>>;
 
     friend class coroner::Thread<SimpleThread<Config>>;
 
@@ -70,9 +73,11 @@ class SimpleThread
         : SimpleThreadBase(cfg, loop_freq, index)
     {
         interthread_.reset(new InterThreadTransporter);
-        interprocess_.reset(new InterProcessForwarder<InterThreadTransporter>(*interthread_));
+        interprocess_.reset(new InterProcessForwarder<InterThreadTransporter,
+                                                      detail::ZeromqInterprocessTag>(*interthread_));
         intervehicle_.reset(
-            new InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>(
+            new InterVehicleForwarder<
+                InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>(
                 *interprocess_));
 
         this->set_transporter(intervehicle_.get());
@@ -81,13 +86,15 @@ class SimpleThread
     }
 
     /// \brief Access the transporter on the intervehicle layer (which wraps interprocess and interthread)
-    InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>& intervehicle()
+    InterVehicleForwarder<
+        InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>&
+    intervehicle()
     {
         return this->transporter();
     }
 
     /// \brief Access the transporter on the interprocess layer (which wraps interthread)
-    InterProcessForwarder<InterThreadTransporter>& interprocess()
+    InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>& interprocess()
     {
         return this->transporter().inner();
     }
@@ -97,8 +104,10 @@ class SimpleThread
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
-    std::unique_ptr<InterProcessForwarder<InterThreadTransporter>> interprocess_;
-    std::unique_ptr<InterVehicleForwarder<InterProcessForwarder<InterThreadTransporter>>>
+    std::unique_ptr<InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>
+        interprocess_;
+    std::unique_ptr<InterVehicleForwarder<
+        InterProcessForwarder<InterThreadTransporter, detail::ZeromqInterprocessTag>>>
         intervehicle_;
 };
 } // namespace middleware

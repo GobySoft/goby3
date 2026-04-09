@@ -1,10 +1,35 @@
 
+#ifndef GOBY_MIDDLEWARE_TRANSPORT_DETAIL_STATIC_GROUP_NAMES_H
+#define GOBY_MIDDLEWARE_TRANSPORT_DETAIL_STATIC_GROUP_NAMES_H
+
+#include <array>
+
 namespace goby::middleware::detail
 {
 
 struct DefaultInterprocessTag
 {
     inline static constexpr const char prefix[] = "goby::middleware::interprocess";
+};
+
+struct ZeromqInterprocessTag
+{
+    inline static constexpr const char prefix[] = "goby::middleware::interprocess::zeromq";
+};
+
+struct ZeromqIntermoduleTag
+{
+    inline static constexpr const char prefix[] = "goby::middleware::intermodule::zeromq";
+};
+
+struct UdpmInterprocessTag
+{
+    inline static constexpr const char prefix[] = "goby::middleware::interprocess::udpm";
+};
+
+struct UdpmIntermoduleTag
+{
+    inline static constexpr const char prefix[] = "goby::middleware::intermodule::udpm";
 };
 
 // helper for concatenating prefix to group name
@@ -18,3 +43,5 @@ constexpr auto concat(const char (&a)[N1], const char (&b)[N2])
 }
 
 } // namespace goby::middleware::detail
+
+#endif
