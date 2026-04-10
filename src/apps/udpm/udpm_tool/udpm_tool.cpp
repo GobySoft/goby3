@@ -1,4 +1,4 @@
-// Copyright 2024:
+// Copyright 2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -24,22 +24,23 @@
 #include "goby/middleware/application/configuration_reader.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/tool.h"
+#include "goby/middleware/protobuf/tool_config.pb.h"
 #include "goby/middleware/tool/publish_subscribe_tool.h"
-#include "goby/zeromq/application/single_thread.h"
-#include "goby/zeromq/protobuf/tool_config.pb.h"
+#include "goby/udpm/application/single_thread.h"
+#include "goby/udpm/protobuf/tool_config.pb.h"
 
 namespace goby
 {
 namespace apps
 {
-namespace zeromq
+namespace udpm
 {
-class ZeroMQToolConfigurator
-    : public goby::middleware::ProtobufConfigurator<protobuf::ZeroMQToolConfig>
+class UDPMToolConfigurator
+    : public goby::middleware::ProtobufConfigurator<goby::udpm::protobuf::UDPMToolConfig>
 {
   public:
-    ZeroMQToolConfigurator(int argc, char* argv[])
-        : goby::middleware::ProtobufConfigurator<protobuf::ZeroMQToolConfig>(argc, argv)
+    UDPMToolConfigurator(int argc, char* argv[])
+        : goby::middleware::ProtobufConfigurator<goby::udpm::protobuf::UDPMToolConfig>(argc, argv)
     {
         auto& cfg = mutable_cfg();
         if (!cfg.app().glog_config().has_tty_verbosity())
@@ -48,11 +49,11 @@ class ZeroMQToolConfigurator
     }
 };
 
-class ZeroMQTool : public goby::middleware::Application<protobuf::ZeroMQToolConfig>
+class UDPMTool : public goby::middleware::Application<goby::udpm::protobuf::UDPMToolConfig>
 {
   public:
-    ZeroMQTool();
-    ~ZeroMQTool() override {}
+    UDPMTool();
+    ~UDPMTool() override {}
 
   private:
     // never gets called
@@ -61,60 +62,62 @@ class ZeroMQTool : public goby::middleware::Application<protobuf::ZeroMQToolConf
   private:
 };
 
-class PublishTool : public goby::zeromq::SingleThreadApplication<protobuf::PublishToolConfig>,
-                    public goby::middleware::ToolSharedLibraryLoader
+class UDPMPublishTool
+    : public goby::udpm::SingleThreadApplication<goby::middleware::protobuf::PublishToolConfig>,
+      public goby::middleware::ToolSharedLibraryLoader
 {
   public:
-    PublishTool();
-    ~PublishTool() override {}
+    UDPMPublishTool();
+    ~UDPMPublishTool() override {}
     void loop() override;
 
   private:
 };
 
-class SubscribeTool : public goby::zeromq::SingleThreadApplication<protobuf::SubscribeToolConfig>,
-                      public goby::middleware::ToolSharedLibraryLoader
+class UDPMSubscribeTool
+    : public goby::udpm::SingleThreadApplication<goby::middleware::protobuf::SubscribeToolConfig>,
+      public goby::middleware::ToolSharedLibraryLoader
 {
   public:
-    SubscribeTool();
-    ~SubscribeTool() override {}
+    UDPMSubscribeTool();
+    ~UDPMSubscribeTool() override {}
 
   private:
     std::map<int, std::unique_ptr<goby::middleware::log::LogPlugin>> plugins_;
 };
 
-} // namespace zeromq
+} // namespace udpm
 } // namespace apps
 } // namespace goby
 
 int main(int argc, char* argv[])
 {
-    return goby::run<goby::apps::zeromq::ZeroMQTool>(
-        goby::apps::zeromq::ZeroMQToolConfigurator(argc, argv));
+    return goby::run<goby::apps::udpm::UDPMTool>(
+        goby::apps::udpm::UDPMToolConfigurator(argc, argv));
 }
 
-goby::apps::zeromq::ZeroMQTool::ZeroMQTool()
+goby::apps::udpm::UDPMTool::UDPMTool()
 {
     goby::middleware::ToolHelper tool_helper(
         app_cfg().app().binary(), app_cfg().app().tool_cfg(),
-        goby::apps::zeromq::protobuf::ZeroMQToolConfig::Action_descriptor());
+        goby::udpm::protobuf::UDPMToolConfig::Action_descriptor());
 
     if (!tool_helper.perform_action(app_cfg().action()))
     {
         switch (app_cfg().action())
         {
-            case goby::apps::zeromq::protobuf::ZeroMQToolConfig::help:
+            case goby::udpm::protobuf::UDPMToolConfig::help:
                 int action_for_help;
                 if (!tool_helper.help(&action_for_help))
                 {
                     switch (action_for_help)
                     {
-                        case goby::apps::zeromq::protobuf::ZeroMQToolConfig::publish:
-                            tool_helper.help<goby::apps::zeromq::PublishTool>(action_for_help);
+                        case goby::udpm::protobuf::UDPMToolConfig::publish:
+                            tool_helper.help<goby::apps::udpm::UDPMPublishTool>(action_for_help);
                             break;
 
-                        case goby::apps::zeromq::protobuf::ZeroMQToolConfig::subscribe:
-                            tool_helper.help<goby::apps::zeromq::SubscribeTool>(action_for_help);
+                        case goby::udpm::protobuf::UDPMToolConfig::subscribe:
+                            tool_helper.help<goby::apps::udpm::UDPMSubscribeTool>(action_for_help);
                             break;
 
                         default:
@@ -125,12 +128,12 @@ goby::apps::zeromq::ZeroMQTool::ZeroMQTool()
                 }
                 break;
 
-            case goby::apps::zeromq::protobuf::ZeroMQToolConfig::publish:
-                tool_helper.run_subtool<goby::apps::zeromq::PublishTool>();
+            case goby::udpm::protobuf::UDPMToolConfig::publish:
+                tool_helper.run_subtool<goby::apps::udpm::UDPMPublishTool>();
                 break;
 
-            case goby::apps::zeromq::protobuf::ZeroMQToolConfig::subscribe:
-                tool_helper.run_subtool<goby::apps::zeromq::SubscribeTool>();
+            case goby::udpm::protobuf::UDPMToolConfig::subscribe:
+                tool_helper.run_subtool<goby::apps::udpm::UDPMSubscribeTool>();
                 break;
 
             default:
@@ -144,15 +147,15 @@ goby::apps::zeromq::ZeroMQTool::ZeroMQTool()
     quit(0);
 }
 
-goby::apps::zeromq::PublishTool::PublishTool()
-    : goby::zeromq::SingleThreadApplication<protobuf::PublishToolConfig>(1.0 *
-                                                                         boost::units::si::hertz),
+goby::apps::udpm::UDPMPublishTool::UDPMPublishTool()
+    : goby::udpm::SingleThreadApplication<goby::middleware::protobuf::PublishToolConfig>(
+          1.0 * boost::units::si::hertz),
       goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
 {
-    goby::middleware::tool::publish_tool_impl(interprocess(), cfg(), "goby zeromq publish");
+    goby::middleware::tool::publish_tool_impl(interprocess(), cfg(), "goby udpm publish");
 }
 
-void goby::apps::zeromq::PublishTool::loop()
+void goby::apps::udpm::UDPMPublishTool::loop()
 {
     static int i = 0;
     ++i;
@@ -160,9 +163,8 @@ void goby::apps::zeromq::PublishTool::loop()
         quit(0);
 }
 
-goby::apps::zeromq::SubscribeTool::SubscribeTool()
+goby::apps::udpm::UDPMSubscribeTool::UDPMSubscribeTool()
     : goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
 {
-    goby::middleware::tool::subscribe_tool_impl(interprocess(), cfg(), plugins_,
-                                                "goby::zeromq::_internal.*");
+    goby::middleware::tool::subscribe_tool_impl(interprocess(), cfg(), plugins_);
 }
