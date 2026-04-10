@@ -3,7 +3,6 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Copilot <198982749+Copilot@users.noreply.github.com>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -44,12 +43,10 @@
 #define GOBY_TSAN_ACQUIRE(p) __tsan_acquire(p)
 #else
 #define GOBY_TSAN_RELEASE(p) \
-    do                       \
-    {                        \
+    do {                     \
     } while (0)
 #define GOBY_TSAN_ACQUIRE(p) \
-    do                       \
-    {                        \
+    do {                     \
     } while (0)
 #endif
 
@@ -112,8 +109,6 @@ void goby::zeromq::setup_socket(zmq::socket_t& socket, const protobuf::Socket& c
 
             endpoint = "tcp://" + (bind ? std::string("*") : formatted_address) + ":" +
                        std::to_string(cfg.ethernet_port());
-
-            std::cout << cfg.ShortDebugString() << ": " << endpoint << std::endl;
 
             break;
         }
@@ -530,7 +525,8 @@ unsigned goby::zeromq::Router::last_port(zmq::socket_t& socket)
     constexpr size_t last_endpoint_size = 100;
     size_t zmq_last_endpoint_size = last_endpoint_size;
     char last_endpoint[last_endpoint_size];
-    int rc = zmq_getsockopt((void*)socket, ZMQ_LAST_ENDPOINT, &last_endpoint, &zmq_last_endpoint_size);
+    int rc =
+        zmq_getsockopt((void*)socket, ZMQ_LAST_ENDPOINT, &last_endpoint, &zmq_last_endpoint_size);
 
     if (rc != 0)
         throw(std::runtime_error("Could not retrieve ZMQ_LAST_ENDPOINT"));

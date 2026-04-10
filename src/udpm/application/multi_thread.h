@@ -26,6 +26,7 @@
 #define GOBY_UDPM_APPLICATION_MULTI_THREAD_H
 
 #include "goby/middleware/application/multi_thread.h"
+#include "goby/udpm/application/simple_thread.h"
 #include "goby/udpm/transport/interprocess.h"
 
 namespace goby

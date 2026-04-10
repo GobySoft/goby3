@@ -3,7 +3,6 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Copilot <198982749+Copilot@users.noreply.github.com>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Binaries
@@ -29,9 +28,11 @@
 #if defined(test_for_zeromq)
 #include "goby/test/middleware/multi_thread_app1/zeromq.pb.h"
 #include "goby/zeromq/application/multi_thread.h"
+using goby::zeromq::SimpleThread;
 #elif defined(test_for_udpm)
 #include "goby/test/middleware/multi_thread_app1/udpm.pb.h"
 #include "goby/udpm/application/multi_thread.h"
+using goby::udpm::SimpleThread;
 #else
 #error "No test_for_<impl> defined"
 #endif
@@ -100,7 +101,7 @@ class TestTxConfigurator : public goby::middleware::ProtobufConfigurator<TestCon
     }
 };
 
-class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
+class TestThreadRx : public SimpleThread<TestConfig>
 {
   public:
     TestThreadRx(const TestConfig& cfg) : SimpleThread(cfg)

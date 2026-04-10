@@ -3,7 +3,6 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Copilot <198982749+Copilot@users.noreply.github.com>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -58,6 +57,7 @@
 #include "goby/middleware/transport/subscriber.h"               // for Subs...
 #include "goby/time/system_clock.h"                             // for Syst...
 #include "goby/util/debug_logger/flex_ostream.h"                // for Flex...
+#include "goby/zeromq/transport/detail/tags.h"                  // for InterProcessTag
 #include "goby/util/debug_logger/flex_ostreambuf.h"             // for lock
 #include "goby/zeromq/protobuf/interprocess_config.pb.h"        // for Inte...
 #include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"        // for Inpr...
@@ -208,14 +208,18 @@ class InterProcessPortalReadThread
 };
 
 template <typename InnerTransporter,
-          template <typename Derived, typename InnerTransporterType> class PortalBase>
+          template <typename Derived, typename InnerTransporterType,
+                    typename ImplementationTag_> class PortalBase,
+          typename ImplementationTag>
 class InterProcessPortalImplementation
-    : public PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase>,
-                        InnerTransporter>
+    : public PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase,
+                                                        ImplementationTag>,
+                        InnerTransporter, ImplementationTag>
 {
   public:
-    using Base = PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase>,
-                            InnerTransporter>;
+    using Base = PortalBase<InterProcessPortalImplementation<InnerTransporter, PortalBase,
+                                                            ImplementationTag>,
+                            InnerTransporter, ImplementationTag>;
     using IdentifierWildcard = middleware::IdentifierWildcard;
 
     InterProcessPortalImplementation(const protobuf::InterProcessPortalConfig& cfg)
@@ -472,7 +476,12 @@ class Manager
 
 template <typename InnerTransporter = middleware::NullTransporter>
 using InterProcessPortal =
-    InterProcessPortalImplementation<InnerTransporter, middleware::InterProcessPortalBase>;
+    InterProcessPortalImplementation<InnerTransporter, middleware::InterProcessPortalBase,
+                                     detail::InterProcessTag>;
+
+template <typename InnerTransporter = middleware::NullTransporter>
+using InterProcessForwarder =
+    middleware::InterProcessForwarder<InnerTransporter, detail::InterProcessTag>;
 
 } // namespace zeromq
 } // namespace goby

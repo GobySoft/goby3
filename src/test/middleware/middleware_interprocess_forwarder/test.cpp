@@ -3,7 +3,6 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Copilot <198982749+Copilot@users.noreply.github.com>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Binaries
@@ -33,8 +32,10 @@
 
 #if defined(test_for_zeromq)
 #include "goby/zeromq/transport/interprocess.h"
+using goby::zeromq::InterProcessForwarder;
 #elif defined(test_for_udpm)
 #include "goby/udpm/transport/interprocess.h"
+using goby::udpm::InterProcessForwarder;
 #else
 #error "No test_for_<impl> defined"
 #endif
@@ -53,14 +54,12 @@ using goby::test::middleware::protobuf::Widget;
 // tests InterProcessForwarder
 
 // avoid static initialization order problem
-goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter>& ipc_child()
+InterProcessForwarder<goby::middleware::InterThreadTransporter>& ipc_child()
 {
     static std::unique_ptr<goby::middleware::InterThreadTransporter> inner(
         new goby::middleware::InterThreadTransporter);
-    static std::unique_ptr<
-        goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter>>
-        p(new goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter>(
-            *inner));
+    static std::unique_ptr<InterProcessForwarder<goby::middleware::InterThreadTransporter>> p(
+        new InterProcessForwarder<goby::middleware::InterThreadTransporter>(*inner));
     return *p;
 }
 
@@ -100,7 +99,7 @@ namespace middleware
 void publisher()
 {
     goby::middleware::InterThreadTransporter inproc1;
-    goby::middleware::InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
+    InterProcessForwarder<goby::middleware::InterThreadTransporter> ipc(inproc1);
     double a = 0;
 
     while (hold) usleep(1e4);
@@ -113,8 +112,8 @@ void publisher()
         auto lm = std::make_shared<LargeMessage>();
         lm->set_index(0);
         lm->set_payload(std::string(large_msg_payload_bytes, 'X'));
-        glog.is(DEBUG1) && glog << "Publishing LargeMessage (" << lm->payload().size()
-                                << " bytes)" << std::endl;
+        glog.is(DEBUG1) && glog << "Publishing LargeMessage (" << lm->payload().size() << " bytes)"
+                                << std::endl;
         ipc.publish<large_msg>(lm);
     }
 #endif
@@ -200,9 +199,9 @@ void subscriber()
     ipc_child().subscribe<large_msg, LargeMessage>(
         [](const LargeMessage& lm)
         {
-            glog.is(DEBUG1) &&
-                glog << "Received LargeMessage index=" << lm.index()
-                     << ", payload size=" << lm.payload().size() << " bytes" << std::endl;
+            glog.is(DEBUG1) && glog << "Received LargeMessage index=" << lm.index()
+                                    << ", payload size=" << lm.payload().size() << " bytes"
+                                    << std::endl;
             assert(lm.index() == 0);
             assert(static_cast<int>(lm.payload().size()) == large_msg_payload_bytes);
             assert(lm.payload() == std::string(large_msg_payload_bytes, 'X'));

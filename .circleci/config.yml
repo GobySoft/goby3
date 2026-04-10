@@ -214,10 +214,8 @@ workflows:
           <<: *filter-template-non-master
       - amd64-noble-build:
           <<: *filter-template-non-master
-
-          
       - amd64-noble-minimal-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-non-master
       
       - get-orig-source:
           <<: *filter-template-master-only

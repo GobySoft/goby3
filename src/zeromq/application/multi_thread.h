@@ -1,4 +1,4 @@
-// Copyright 2009-2021:
+// Copyright 2009-2026:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -26,6 +26,7 @@
 #define GOBY_ZEROMQ_APPLICATION_MULTI_THREAD_H
 
 #include "goby/middleware/application/multi_thread.h"
+#include "goby/zeromq/application/simple_thread.h"
 #include "goby/zeromq/transport/interprocess.h"
 
 namespace goby

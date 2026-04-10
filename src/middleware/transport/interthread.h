@@ -3,7 +3,6 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Copilot <198982749+Copilot@users.noreply.github.com>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -64,6 +63,8 @@ class InterThreadTransporter
     };
 
   public:
+    using implementation_tag = void;
+
     InterThreadTransporter() : data_mutex_(std::make_shared<std::mutex>()) {}
 
     virtual ~InterThreadTransporter()

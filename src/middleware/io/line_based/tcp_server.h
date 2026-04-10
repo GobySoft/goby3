@@ -1,4 +1,4 @@
-// Copyright 2020-2021:
+// Copyright 2020-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -39,6 +39,8 @@
 #include "goby/middleware/io/line_based/common.h"           // for match_regex
 #include "goby/middleware/protobuf/io.pb.h"                 // for IOData
 #include "goby/middleware/protobuf/tcp_config.pb.h"         // for TCPServe...
+#include "goby/zeromq/application/simple_thread.h"
+
 namespace goby
 {
 namespace middleware
@@ -69,7 +71,8 @@ class TCPSessionLineBased : public detail::TCPSession<TCPServerThreadType>
         auto self(this->shared_from_this());
         boost::asio::async_read_until(
             this->mutable_socket(), buffer_, eol_matcher_,
-            [this, self](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+            [this, self](const boost::system::error_code& ec, std::size_t bytes_transferred)
+            {
                 if (!ec && bytes_transferred > 0)
                 {
                     auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();
@@ -93,15 +96,14 @@ class TCPSessionLineBased : public detail::TCPSession<TCPServerThreadType>
     boost::asio::streambuf buffer_;
 };
 
-template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          // by default publish all incoming traffic to interprocess for logging
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          // but only subscribe on interthread for outgoing traffic
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          typename Config = goby::middleware::protobuf::TCPServerConfig,
-          template <class> class ThreadType = goby::middleware::SimpleThread,
-          bool use_indexed_groups = false>
+template <
+    const goby::middleware::Group& line_in_group, const goby::middleware::Group& line_out_group,
+    // by default publish all incoming traffic to interprocess for logging
+    PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
+    // but only subscribe on interthread for outgoing traffic
+    PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+    typename Config = goby::middleware::protobuf::TCPServerConfig,
+    template <class> class ThreadType = goby::zeromq::SimpleThread, bool use_indexed_groups = false>
 class TCPServerThreadLineBased
     : public detail::TCPServerThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
                                      Config, ThreadType, use_indexed_groups>

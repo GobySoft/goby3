@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -34,6 +34,7 @@
 #include "goby/middleware/io/detail/io_interface.h"     // for PubSubLayer
 #include "goby/middleware/io/detail/serial_interface.h" // for SerialThread
 #include "goby/middleware/io/mavlink/common.h"          // for IOThreadMAVLink
+#include "goby/zeromq/application/simple_thread.h"
 
 namespace goby
 {
@@ -74,7 +75,7 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          template <class> class ThreadType = goby::middleware::SimpleThread>
+          template <class> class ThreadType = goby::zeromq::SimpleThread>
 class SerialThreadMAVLink
     : public SerialThreadMAVLinkBase<line_in_group, line_out_group, publish_layer, subscribe_layer,
                                      ThreadType>
@@ -105,7 +106,8 @@ void goby::middleware::io::SerialThreadMAVLink<line_in_group, line_out_group, pu
     boost::asio::async_read(
         this->mutable_serial_port(), boost::asio::buffer(this->buffer()),
         boost::asio::transfer_at_least(1),
-        [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+        [this](const boost::system::error_code& ec, std::size_t bytes_transferred)
+        {
             if (!ec && bytes_transferred > 0)
             {
                 this->try_parse(bytes_transferred);
