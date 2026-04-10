@@ -10,9 +10,14 @@ is_multithreaded = false
 
 include("GobyMultiThread.jl")
 
+function goby_type_name(type)
+    return string(nameof(type))
+#    return replace(string(type), r"^Main\." => "")
+end
+
 # main task Protobuf publish
 # TODO: add more schemes as additional publish functions
-"""
+"""i
     publish(app, layer, group, msg)
 
 Publish a message `msg` using this `app` (CxxWrap'd Goby App) to this `layer` (e.g., Goby.INTERPROCESS), using this `group` (string). Current `msg` must be an AbstractProtoBufMessage generated using the ProtoBuf.jl library, unless `layer` is Goby.INTERTHREAD (in which case `msg` can be any Julia type).
@@ -28,7 +33,7 @@ function publish(app, layer, group::String, msg::AbstractProtoBufMessage)
     encode(e, msg)
     bytes = take!(io)
     vec = StdVector{UInt8}(bytes)
-    type_name = string(nameof(typeof(msg)))
+    type_name = goby_type_name(typeof(msg))
 
     
     threadid=Threads.threadid()
@@ -50,7 +55,7 @@ end
 interprocess_callbacks=Dict{Int, Dict{Int, Dict{String, Dict{String, Function}}}}()
 
 function pb_name_from_callback(callback::Function)
-    return string(nameof(pb_type_from_callback(callback)))
+    return goby_type_name(pb_type_from_callback(callback))
 end
 
 function pb_type_from_callback(callback::Function)
