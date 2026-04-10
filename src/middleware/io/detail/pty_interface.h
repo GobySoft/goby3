@@ -67,14 +67,12 @@ namespace io
 {
 namespace detail
 {
-template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          // by default publish all incoming traffic to interprocess for logging
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          // but only subscribe on interthread for outgoing traffic
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          template <class> class ThreadType = goby::middleware::SimpleThread,
-          bool use_indexed_groups = false>
+template <
+    const goby::middleware::Group& line_in_group, const goby::middleware::Group& line_out_group,
+    // by default publish all incoming traffic to interprocess for logging
+    PubSubLayer publish_layer,
+    // but only subscribe on interthread for outgoing traffic
+    PubSubLayer subscribe_layer, template <class> class ThreadType, bool use_indexed_groups = false>
 class PTYThread
     : public detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
                               goby::middleware::protobuf::PTYConfig,

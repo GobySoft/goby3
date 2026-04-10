@@ -36,6 +36,7 @@
 #include "goby/middleware/io/detail/io_interface.h"         // for PubSubLayer
 #include "goby/middleware/io/detail/tcp_client_interface.h" // for TCPClien...
 #include "goby/middleware/protobuf/io.pb.h"                 // for IOData
+#include "goby/zeromq/application/simple_thread.h"
 
 namespace goby
 {
@@ -69,7 +70,7 @@ template <const goby::middleware::Group& packet_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
           typename Config = goby::middleware::protobuf::TCPClientConfig,
-          template <class> class ThreadType = goby::middleware::SimpleThread,
+          template <class> class ThreadType = goby::zeromq::SimpleThread,
           bool use_indexed_groups = false>
 class TCPClientThreadCOBS
     : public detail::TCPClientThread<packet_in_group, packet_out_group, publish_layer,
