@@ -24,6 +24,7 @@
 #include "goby/middleware/application/configuration_reader.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/tool.h"
+#include "goby/middleware/protobuf/tool_config.pb.h"
 #include "goby/middleware/tool/publish_subscribe_tool.h"
 #include "goby/udpm/application/single_thread.h"
 #include "goby/udpm/protobuf/tool_config.pb.h"
@@ -62,7 +63,7 @@ class UDPMTool : public goby::middleware::Application<goby::udpm::protobuf::UDPM
 };
 
 class UDPMPublishTool
-    : public goby::udpm::SingleThreadApplication<goby::udpm::protobuf::UDPMPublishToolConfig>,
+    : public goby::udpm::SingleThreadApplication<goby::middleware::protobuf::PublishToolConfig>,
       public goby::middleware::ToolSharedLibraryLoader
 {
   public:
@@ -74,7 +75,7 @@ class UDPMPublishTool
 };
 
 class UDPMSubscribeTool
-    : public goby::udpm::SingleThreadApplication<goby::udpm::protobuf::UDPMSubscribeToolConfig>,
+    : public goby::udpm::SingleThreadApplication<goby::middleware::protobuf::SubscribeToolConfig>,
       public goby::middleware::ToolSharedLibraryLoader
 {
   public:
@@ -147,7 +148,7 @@ goby::apps::udpm::UDPMTool::UDPMTool()
 }
 
 goby::apps::udpm::UDPMPublishTool::UDPMPublishTool()
-    : goby::udpm::SingleThreadApplication<goby::udpm::protobuf::UDPMPublishToolConfig>(
+    : goby::udpm::SingleThreadApplication<goby::middleware::protobuf::PublishToolConfig>(
           1.0 * boost::units::si::hertz),
       goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
 {

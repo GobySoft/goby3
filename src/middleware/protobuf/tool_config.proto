@@ -22,15 +22,25 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 syntax = "proto2";
+import "goby/middleware/protobuf/app_config.proto";
 import "goby/protobuf/option_extensions.proto";
+import "goby/udpm/protobuf/interprocess_config.proto";
 
 package goby.middleware.protobuf;
 
-// Shared configuration for interprocess publish tools.
-// Transport-specific tool configs embed this message alongside their
-// transport-specific interprocess field (field 2).
 message PublishToolConfig
 {
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+    optional goby.udpm.protobuf.InterProcessPortalConfig interprocess = 2
+            [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
     required string group = 10 [(goby.field) = {
         description: "Group as string",
         cfg { position: { enable: true }, cli_short: "g" }
@@ -52,11 +62,19 @@ message PublishToolConfig
     }];
 }
 
-// Shared configuration for interprocess subscribe tools.
-// Transport-specific tool configs embed this message alongside their
-// transport-specific interprocess field (field 2).
 message SubscribeToolConfig
 {
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+    optional goby.udpm.protobuf.InterProcessPortalConfig interprocess = 2
+            [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
+
     optional string group_regex = 10 [
         default = ".*",
         (goby.field) = {
