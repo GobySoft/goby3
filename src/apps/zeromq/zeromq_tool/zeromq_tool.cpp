@@ -21,21 +21,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "goby/middleware/marshalling/dccl.h"
-#include "goby/middleware/marshalling/json.h"
-#include "goby/middleware/marshalling/protobuf.h"
-
-#include "goby/middleware/log/dccl_log_plugin.h"
-#include "goby/middleware/log/json_log_plugin.h"
-#include "goby/middleware/log/protobuf_log_plugin.h"
-
 #include "goby/middleware/application/configuration_reader.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/tool.h"
+#include "goby/middleware/tool/publish_subscribe_tool.h"
 #include "goby/zeromq/application/single_thread.h"
 #include "goby/zeromq/protobuf/tool_config.pb.h"
-
-using goby::glog;
 
 namespace goby
 {
@@ -157,83 +148,8 @@ goby::apps::zeromq::PublishTool::PublishTool()
     : goby::zeromq::SingleThreadApplication<protobuf::PublishToolConfig>(1.0 *
                                                                          boost::units::si::hertz),
       goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
-
 {
-    std::string type_scheme_str = cfg().type();
-    std::string type;
-    int scheme{0};
-
-    std::string::size_type slash_pos = type_scheme_str.find('/');
-    if (slash_pos == std::string::npos)
-    {
-        // special cases
-        if (type_scheme_str == "JSON")
-        {
-            scheme = goby::middleware::MarshallingScheme::JSON;
-        }
-        else if (type_scheme_str.find("protobuf.") != std::string::npos)
-        {
-            scheme = goby::middleware::MarshallingScheme::PROTOBUF;
-            type = type_scheme_str;
-        }
-    }
-    else
-    {
-        scheme =
-            goby::middleware::MarshallingScheme::from_string(type_scheme_str.substr(0, slash_pos));
-        type = type_scheme_str.substr(slash_pos + 1);
-    }
-
-    goby::middleware::DynamicGroup group(cfg().group());
-    switch (scheme)
-    {
-        case goby::middleware::MarshallingScheme::DCCL:
-        case goby::middleware::MarshallingScheme::PROTOBUF:
-        {
-            // use TextFormat
-            auto pb_msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                std::shared_ptr<google::protobuf::Message>>(type);
-            google::protobuf::TextFormat::Parser parser;
-            goby::util::FlexOStreamErrorCollector error_collector(cfg().value());
-            parser.RecordErrorsTo(&error_collector);
-            parser.AllowPartialMessage(false);
-            parser.ParseFromString(cfg().value(), pb_msg.get());
-
-            if (scheme == goby::middleware::MarshallingScheme::DCCL)
-                interprocess()
-                    .publish_dynamic<google::protobuf::Message,
-                                     goby::middleware::MarshallingScheme::DCCL>(pb_msg, group);
-            else if (scheme == goby::middleware::MarshallingScheme::PROTOBUF)
-                interprocess()
-                    .publish_dynamic<google::protobuf::Message,
-                                     goby::middleware::MarshallingScheme::PROTOBUF>(pb_msg, group);
-            break;
-        }
-
-        case goby::middleware::MarshallingScheme::JSON:
-        {
-            auto j = nlohmann::json::parse(cfg().value());
-            if (type.empty() || type == "nlohmann::json")
-            {
-                interprocess().publish_dynamic<nlohmann::json>(j, group);
-            }
-            else
-            {
-                // allow for specialized types, e.g. goby_json_type = "NavigationReport";
-                std::vector<char> bytes = goby::middleware::SerializerParserHelper<
-                    nlohmann::json, goby::middleware::MarshallingScheme::JSON>::serialize(j);
-
-                interprocess().publish_serialized(type, goby::middleware::MarshallingScheme::JSON,
-                                                  bytes, group);
-            }
-
-            break;
-        }
-
-        default:
-            glog.is_die() && glog << "Scheme " << scheme
-                                  << " is not implemented for 'goby zeromq publish'" << std::endl;
-    }
+    goby::middleware::tool::publish_tool_impl(interprocess(), cfg(), "goby zeromq publish");
 }
 
 void goby::apps::zeromq::PublishTool::loop()
@@ -246,58 +162,7 @@ void goby::apps::zeromq::PublishTool::loop()
 
 goby::apps::zeromq::SubscribeTool::SubscribeTool()
     : goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
-
 {
-    std::set<int> schemes{goby::middleware::MarshallingScheme::ALL_SCHEMES};
-
-    if (cfg().has_scheme())
-    {
-        int scheme = goby::middleware::MarshallingScheme::from_string(cfg().scheme());
-        schemes = {scheme};
-    }
-
-    plugins_[goby::middleware::MarshallingScheme::PROTOBUF] =
-        std::make_unique<goby::middleware::log::ProtobufPlugin>();
-    plugins_[goby::middleware::MarshallingScheme::DCCL] =
-        std::make_unique<goby::middleware::log::DCCLPlugin>();
-    plugins_[goby::middleware::MarshallingScheme::JSON] =
-        std::make_unique<goby::middleware::log::JSONPlugin>();
-
-    interprocess().subscribe_regex(
-        [this](const std::vector<unsigned char>& bytes, int scheme, const std::string& type,
-               const goby::middleware::Group& group)
-        {
-            std::regex exclude_pattern("goby::zeromq::_internal.*");
-            if (std::regex_match(std::string(group), exclude_pattern) &&
-                !cfg().include_internal_groups())
-                return;
-
-            goby::middleware::log::LogEntry log_entry(bytes, scheme, type, group);
-            std::string debug_text;
-
-            auto plugin = plugins_.find(log_entry.scheme());
-            if (plugin == plugins_.end())
-            {
-                debug_text = std::string("Message of " + std::to_string(bytes.size()) + " bytes");
-            }
-            else
-            {
-                try
-                {
-                    debug_text = plugin->second->debug_text_message(log_entry);
-                }
-                catch (goby::middleware::log::LogException& e)
-                {
-                    debug_text = "Unable to parse message of " +
-                                 std::to_string(log_entry.data().size()) +
-                                 " bytes. Reason: " + e.what();
-                }
-            }
-
-            // use similar format to goby_log_tool DEBUG_TEXT
-            std::cout << scheme << " | " << group << " | " << type << " | "
-                      << goby::time::convert<boost::posix_time::ptime>(log_entry.timestamp())
-                      << " | " << debug_text << std::endl;
-        },
-        schemes, cfg().type_regex(), cfg().group_regex());
+    goby::middleware::tool::subscribe_tool_impl(interprocess(), cfg(), plugins_,
+                                                "goby::zeromq::_internal.*");
 }

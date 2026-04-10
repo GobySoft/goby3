@@ -1,80 +1,36 @@
-// Copyright 2026:
+// Copyright 2024-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
 //
 //
-// This file is part of the Goby Underwater Autonomy Project Binaries
-// ("The Goby Binaries").
+// This file is part of the Goby Underwater Autonomy Project Libraries
+// ("The Goby Libraries").
 //
-// The Goby Binaries are free software: you can redistribute them and/or modify
-// them under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
+// The Goby Libraries are free software: you can redistribute them and/or modify
+// them under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 2.1 of the License, or
 // (at your option) any later version.
 //
-// The Goby Binaries are distributed in the hope that they will be useful,
+// The Goby Libraries are distributed in the hope that they will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// GNU Lesser General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 syntax = "proto2";
-import "goby/middleware/protobuf/app_config.proto";
 import "goby/protobuf/option_extensions.proto";
-import "goby/udpm/protobuf/interprocess_config.proto";
 
-package goby.apps.udpm.protobuf;
+package goby.middleware.protobuf;
 
-message UDPMToolConfig
+// Shared configuration for interprocess publish tools.
+// Transport-specific tool configs embed this message alongside their
+// transport-specific interprocess field (field 2).
+message PublishToolConfig
 {
-    option (goby.msg).cfg.tool = {
-        is_tool: true
-        has_subtools: true
-        has_help_action: true
-    };
-
-    optional goby.middleware.protobuf.AppConfig app = 1
-        [(goby.field) = { cfg { action: DEVELOPER } }];
-
-    enum Action
-    {
-        // tools
-        help = 0 [(goby.ev).cfg = {
-            short_help_msg: "Print usage information",
-            full_help_msg: "Usage: \"goby udpm help [action]\"\n"
-        }];
-        publish = 1 [(goby.ev).cfg = {
-            short_help_msg: "Publish a message (on interprocess)",
-        }];
-        subscribe = 2 [(goby.ev).cfg = {
-            short_help_msg: "Subscribe to messages (on interprocess)",
-        }];
-    }
-    optional Action action = 2 [
-        default = help,
-        (goby.field) = {
-            description: "The action this tool should take [can omit --action if 1st parameter]",
-            cfg { position: { enable: true }, cli_short: "A", action: HIDDEN }
-        }
-    ];
-}
-
-message UDPMPublishToolConfig
-{
-    option (goby.msg).cfg.tool = {
-        is_tool: true
-        has_subtools: false
-        has_help_action: false
-    };
-
-    optional goby.middleware.protobuf.AppConfig app = 1
-        [(goby.field) = { cfg { action: DEVELOPER } }];
-    optional goby.udpm.protobuf.InterProcessPortalConfig interprocess = 2
-            [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
-
     required string group = 10 [(goby.field) = {
         description: "Group as string",
         cfg { position: { enable: true }, cli_short: "g" }
@@ -96,19 +52,11 @@ message UDPMPublishToolConfig
     }];
 }
 
-message UDPMSubscribeToolConfig
+// Shared configuration for interprocess subscribe tools.
+// Transport-specific tool configs embed this message alongside their
+// transport-specific interprocess field (field 2).
+message SubscribeToolConfig
 {
-    option (goby.msg).cfg.tool = {
-        is_tool: true
-        has_subtools: false
-        has_help_action: false
-    };
-
-    optional goby.middleware.protobuf.AppConfig app = 1
-        [(goby.field) = { cfg { action: DEVELOPER } }];
-    optional goby.udpm.protobuf.InterProcessPortalConfig interprocess = 2
-            [(goby.field) = { cfg { env: "GOBY_INTERPROCESS" } }];
-
     optional string group_regex = 10 [
         default = ".*",
         (goby.field) = {
