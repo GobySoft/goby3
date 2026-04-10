@@ -1,6 +1,6 @@
 # Goby.jl – Julia Support for Goby
 
-This package provides the Julia-side runtime and code-generation tooling that allows a Goby application to be driven from Julia code.
+This package provides the ability to run Goby applications from the Julia language. The Julia CxxWrap module is used to wrap the Goby C++ implementation (except for the `interthread` layer which is directly implemented in Julia) in order to keep the Julia implementation lightweight and feature-compliant with the C++ implementation.
 
 ---
 
@@ -8,17 +8,21 @@ This package provides the Julia-side runtime and code-generation tooling that al
 
 | File | Purpose |
 |------|---------|
-| `Project.toml` | Julia package manifest; declares dependencies (`CxxWrap`, `ProtoBuf`, `YAML`, `ThreadPools`) and package metadata. |
-| `src/Goby.jl` | Main Julia module. Wraps the CxxWrap'd C++ Goby application class and exposes `publish`, `subscribe`, `run`, `cfg`, and `read_cli_cfg` to Julia user code. |
-| `src/GobyMultiThread.jl` | `MultiThread` sub-module. Implements inter-task (interthread) communication using Julia `Channel`s and `ThreadPools`, enabling multi-threaded Julia Goby apps where each task runs on a dedicated Julia thread. |
+| `src/Goby.jl` | **Main Julia module.** Wraps the CxxWrap'd C++ Goby application class and exposes `publish`, `subscribe`, `run`, `cfg`, and `read_cli_cfg` to Julia user code. |
 | `src/gen_goby.jl` | **Code generator.** Reads an `interface.yml` file and emits a C++ source file containing the `publish`/`subscribe` glue code for all declared transport layers. Invoked at build time by CMake. |
+| `src/GobyMultiThread.jl` | `MultiThread` sub-module. Not directly included from user code. Implements interthread communication using Julia `Channel`s and `ThreadPools`, enabling multi-threaded Julia Goby apps where each task runs on a dedicated Julia thread. |
 | `src/pkg.jl` | Minimal helper script used by CMake to install/instantiate the Julia package dependencies (`Pkg.instantiate()`). |
+| `Project.toml` | Julia package manifest; declares dependencies (`CxxWrap`, `ProtoBuf`, `YAML`, `ThreadPools`) and package metadata. |
 
 ---
 
 ## `interface.yml` Reference
 
-The interface file describes the Goby application and every message the Julia code is allowed to publish or subscribe to.  `gen_goby.jl` reads this file and generates the C++ glue code.
+Julia is not a static language, but C++ is, and Goby3 relies heavily on the benefits of static analysis (e.g., through the use of constexpr Groups). 
+
+To reconcile this for Julia, we require that the application author write a definition of the interfaces that the Julia application will use to publish and subscribe on. This is the `interface.yml` file and `gen_goby.jl` reads this file and generates the C++ glue code. 
+
+Thus, the Julia application author does not need to directly write any C++ code, just this .yml file and the Julia code.
 
 ### Top-level keys
 
@@ -35,20 +39,19 @@ The interface file describes the Goby application and every message the Julia co
 application:
   name: <CamelCase application name>      # used as the C++ class name and Julia type name
   cpp_type: <C++ template base class>     # e.g. goby::middleware::SingleThreadApplication
-  config:
+  config:                                 # configuration at launch, same as Config template parameter to the cpp_type class
     scheme: PROTOBUF                      # only PROTOBUF is currently supported
     type: <protobuf message type>         # dot-separated (Julia/proto) or ::-separated (C++)
 ```
 
 ### Transport layers (`interthread`, `interprocess`, `intermodule`)
 
-Each layer accepts either a **single mapping** (one portal) or an **array of mappings** (multiple portals, each with its own `alias`).
+Each layer accepts either a **single mapping** (one portal) or an **array of mappings** (multiple portals, each with its own `alias` which is corresponds to the portal function name in the class given to `application: cpp_type`). For example, if your `interprocess` portal is accessed via `interblock()`, use `alias: interblock`). For the Goby3 reference implementation, these function names are identical to the layer names and so alias should be omitted.
 
-#### Single portal (mapping form)
+#### Single portal (mapping form): typical usage
 
 ```yaml
 interprocess:
-  alias: my_portal            # optional; defaults to the layer name if omitted
   publishes:
     - group: <C++ group expression>
       scheme: PROTOBUF
@@ -59,16 +62,18 @@ interprocess:
       type: <protobuf message type>
 ```
 
-#### Multiple portals (array form)
+#### Multiple portals (array form): advanced usage
+
+When running a custom Application class that supports multiple INTERPROCESS layer transporters, you will need to use this form to distinguish them.
 
 ```yaml
 interprocess:
-  - alias: portal_a
+  - alias: interprocess_zeromq  # uses Application::interprocess_zeromq()
     publishes:
       - group: <C++ group expression>
         scheme: PROTOBUF
         type: <protobuf message type>
-  - alias: portal_b
+  - alias: interprocess_udpm    # uses Application::interprocess_udpm()
     subscribes:
       - group: <C++ group expression>
         scheme: PROTOBUF
@@ -98,22 +103,14 @@ application:
     type: project.config.protobuf.JuliaDemoConfig
 
 interprocess:
-  - alias: interblock
-    publishes:
-      - group: project::host_interface::groups::outgoing_modem_transmission
-        scheme: PROTOBUF
-        type: project.protobuf.CommunicationsRequestOrReport
-  - alias: interblock_udpm
-    publishes:
-      - group: project::host_interface::groups::udpm_test
-        scheme: PROTOBUF
-        type: project.protobuf.Example
-
-intermodule:
-  subscribes:
-    - group: project::intermodule::groups::incoming_modem_message
+  publishes:
+    - group: project::groups::modem_tx
       scheme: PROTOBUF
-      type: project.protobuf.CommunicationsRequestOrReport
+      type: project.protobuf.CommsTx
+  subscribes:
+    - group: project::groups::modem_rx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsRx
 ```
 
 ### Generated C++ output (excerpt)
@@ -122,11 +119,10 @@ For the `interprocess` block above the generator emits:
 
 ```cpp
 // publish() method body
-GOBY_JULIA_IF_PUBLICATION(PROTOBUF, INTERPROCESS, interblock, project::host_interface::groups::outgoing_modem_transmission, project::protobuf::CommunicationsRequestOrReport)
-GOBY_JULIA_IF_PUBLICATION(PROTOBUF, INTERPROCESS, interblock_udpm, project::host_interface::groups::udpm_test, project::protobuf::Example)
+GOBY_JULIA_IF_PUBLICATION(PROTOBUF, INTERPROCESS, interprocess, project::groups::modem_tx, project::protobuf::CommsTx)
 
 // subscribe() method body
-GOBY_JULIA_IF_SUBSCRIPTION(PROTOBUF, INTERMODULE, intermodule, project::intermodule::groups::incoming_modem_message, project::protobuf::CommunicationsRequestOrReport)
+GOBY_JULIA_IF_SUBSCRIPTION(PROTOBUF, INTERPROCESS, interprocess, project::groups::modem_rx, project::protobuf::CommsRx)
 ```
 
 ---
@@ -136,7 +132,7 @@ GOBY_JULIA_IF_SUBSCRIPTION(PROTOBUF, INTERMODULE, intermodule, project::intermod
 ```
 interface.yml
       │
-      │  gen_goby.jl (Julia, invoked by CMake add_custom_command)
+      │  gen_goby.jl (Julia, typically invoked by CMake add_custom_command)
       ▼
 JuliaDemo.cpp          ← autogenerated C++ glue
       │
@@ -153,22 +149,22 @@ Julia user script (JuliaDemo.jl)
 
 1. **Package installation** – CMake runs `pkg.jl` via Julia to call `Pkg.instantiate()`, downloading all dependencies declared in `Project.toml` into the build directory's `Manifest.toml`.
 
-2. **Proto generation** – `PROTOBUF_GENERATE_JULIA` and `generate_julia_protos()` CMake helpers invoke the Julia protobuf compiler to produce `*_pb.jl` files alongside the C++ `.pb.h`/`.pb.cc` files.
+2. **Proto generation** – Use the Julia Protobuf.jl compiler to produce `*_pb.jl` files alongside the C++ `.pb.h`/`.pb.cc` files.
 
-3. **C++ glue generation** – `GOBY_GENERATE_JULIA(OUTPUT_TARGET INTERFACE_YML CONFIG_PROTO …)` invokes `gen_goby.jl`:
+3. **C++ glue generation** – Use gen_goby.jl:
    ```
    julia --project=<Goby.jl> -L gen_goby.jl \
          -e 'goby_gen_cpp("interface.yml", "JuliaDemo.cpp", ["proto_header.pb.h"])'
    ```
    This produces `JuliaDemo.cpp`, which:
-   - `#include`s `<goby/middleware/languages/julia/application.h>` and any additional headers.
+   - `#include`s `<goby/middleware/languages/julia/application.h>` and any additional headers passed as the third argument.
    - Defines `CONFIG_TYPE`, `APPLICATION_TYPE`, and `APPLICATION_NAME` macros.
    - Declares a class `JuliaDemo` extending `goby::middleware::julia::Application<APPLICATION_TYPE>` with `publish()` and `subscribe()` bodies built from `GOBY_JULIA_IF_PUBLICATION` / `GOBY_JULIA_IF_SUBSCRIPTION` macros.
    - Registers the CxxWrap module entry point via `GOBY_JULIA_DEFINE_MODULE(JuliaDemo)`.
 
-4. **Shared library** – CMake compiles `JuliaDemo.cpp` into `libJuliaDemo.so`, linked against Goby, ZeroMQ transport, and JlCxx.
+4. **Shared library** – Compile `JuliaDemo.cpp` into `libJuliaDemo.so`, link against Goby, ZeroMQ transport, and JlCxx.
 
-5. **Julia runtime** – The user script loads `libJuliaDemo.so` through `CxxWrap` (typically via a thin wrapper module), then uses the `Goby` module (`Goby.jl`) to publish and subscribe.
+5. **Julia runtime** – The user Julia script loads `libJuliaDemo.so` through `CxxWrap` (typically via a thin wrapper module), then uses the `Goby` module (`Goby.jl`) to publish and subscribe.
 
 ---
 
@@ -180,18 +176,17 @@ This example corresponds to the `interface.yml` above.
 using Goby
 # Load the generated CxxWrap module and application-specific protobuf types
 # (exact using/import statements depend on your project layout)
-# using JuliaDemo
-# using project.protobuf
+
 
 # ---------- Callbacks ----------
 
 function publish_outgoing_msg()
-    msg = project.protobuf.CommunicationsRequestOrReport(request_id = 42)
-    Goby.publish(goby_app, Goby.INTERPROCESS, "project::host_interface::groups::outgoing_modem_transmission", msg)
+    msg = project.protobuf.CommsTx(request_id = 42)
+    Goby.publish(goby_app, Goby.INTERPROCESS, "project::groups::modem_tx", msg)
     println("PUBLISHED: $msg")
 end
 
-function receive_incoming_msg(msg::project.protobuf.CommunicationsRequestOrReport)
+function receive_incoming_msg(msg::project.protobuf.CommsRx)
     println("RECEIVED: $msg")
 end
 
@@ -207,7 +202,7 @@ end
 # Read the Protobuf TextFormat config file whose path is given as the first CLI argument
 goby_app = Goby.JuliaDemo(Goby.read_cli_cfg())
 
-# Pull typed config out of the app
+# Pull protobuf config out of the app
 pb_cfg = Goby.cfg(goby_app, project.config.protobuf.JuliaDemoConfig)
 println("Configuration: my_value_a=$(pb_cfg.my_value_a); my_value_b=$(pb_cfg.my_value_b)")
 
@@ -220,8 +215,8 @@ goby_cfg = Dict(
 # ---------- Subscriptions ----------
 
 function start()
-    Goby.subscribe(goby_app, Goby.INTERMODULE,
-                   "project::intermodule::groups::incoming_modem_message",
+    Goby.subscribe(goby_app, Goby.INTERPROCESS,
+                   "project::groups::comms_rx",
                    receive_incoming_msg)
 end
 
@@ -231,14 +226,14 @@ end
 Goby.run(goby_app)
 ```
 
-### Key `Goby` API
+### Key `Goby` Julia API
 
 | Function | Description |
 |----------|-------------|
 | `Goby.read_cli_cfg()` | Reads the TextFormat config file given as the first CLI positional argument and returns it as a `String`. |
-| `Goby.JuliaDemo(cfg_str)` | Constructs the CxxWrap'd application object, parsing `cfg_str` as a Protobuf TextFormat message. |
+| `Goby.JuliaDemo(cfg_str)` | Constructs the CxxWrap'd application object, parsing `cfg_str` as a Protobuf TextFormat message. Returns `app` used by the remaining functions. |
 | `Goby.cfg(app, PbType)` | Deserialises and returns the application's configuration as a `PbType` protobuf message. |
 | `Goby.publish(app, layer, group, msg)` | Publishes protobuf `msg` on `layer` (e.g. `Goby.INTERPROCESS`) to the given `group` string. |
 | `Goby.subscribe(app, layer, group, callback)` | Subscribes to messages on `layer`/`group`; `callback` must accept a single argument of the expected protobuf type. |
 | `Goby.run(app)` | Starts the Goby event loop (blocking). Calls `start()` and then enters the C++ run loop, invoking `loop()` at `goby_cfg[:loop_frequency]` Hz. |
-| `Goby.run(app, Main, [TaskModuleA, …])` | Multi-threaded variant; each `TaskModule` is spawned on its own Julia thread. Requires `julia -t <N>`. |
+| `Goby.run(app, Main, [TaskModuleA, …])` | Multi-threaded variant; each `TaskModule` is spawned on its own Julia thread. Requires `julia -t <N>` where N is at least the number of TaskModules plus 3 (e.g., -t 5 for an application with two TaskModules). |
