@@ -168,4 +168,26 @@ template <> struct hash<goby::middleware::Group>
     constexpr goby::middleware::Group NAME{#QNAME "::" #NAME}; \
     }
 
+/// \brief Macro to define a goby::middleware::Group variable with a numeric value in a given namespace.
+///
+/// This is a convenience macro for defining a \c constexpr goby::middleware::Group with both a
+/// string and a numeric value, suitable for use on intervehicle and outer layers.
+/// The group's string value is automatically set to the fully-qualified name
+/// "<QNAME>::<NAME>", matching the C++ qualified name of the variable.
+/// Requires C++17 or later (uses nested namespace definitions).
+///
+/// Example usage:
+/// \code
+/// GOBY_DEFINE_INTERVEHICLE_GROUP(groups::nav, nav, goby::middleware::Group::broadcast_group)
+/// // equivalent to:
+/// // namespace groups::nav {
+/// //   constexpr goby::middleware::Group nav{"groups::nav::nav", goby::middleware::Group::broadcast_group};
+/// // }
+/// \endcode
+#define GOBY_DEFINE_INTERVEHICLE_GROUP(QNAME, NAME, NUMERIC)                         \
+    namespace QNAME                                                                   \
+    {                                                                                 \
+    constexpr goby::middleware::Group NAME{#QNAME "::" #NAME, static_cast<std::uint32_t>(NUMERIC)}; \
+    }
+
 #endif
