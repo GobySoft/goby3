@@ -1,4 +1,12 @@
 using YAML
+using ProtoBuf
+
+function gen_proto(protos, includes, outdir, stampfile)
+    protojl(protos, includes, outdir, common_abstract_type=true, add_kwarg_constructors=true)
+    open(stampfile, "w") do io
+        write(io, "done")
+    end
+end
 
 struct InvalidInterfaceError <: Exception
 var::String

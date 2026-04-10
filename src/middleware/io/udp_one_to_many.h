@@ -37,6 +37,7 @@
 #include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer
 #include "goby/middleware/protobuf/io.pb.h"         // for IOData, UDPEndP...
 #include "goby/middleware/protobuf/udp_config.pb.h" // for UDPOneToManyConfig
+#include "goby/zeromq/application/simple_thread.h"
 
 namespace goby
 {
@@ -59,7 +60,7 @@ template <const goby::middleware::Group& line_in_group,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
           typename Config = goby::middleware::protobuf::UDPOneToManyConfig,
-          template <class> class ThreadType = goby::middleware::SimpleThread,
+          template <class> class ThreadType = goby::zeromq::SimpleThread,
           bool use_indexed_groups = false>
 class UDPOneToManyThread
     : public detail::IOThread<line_in_group, line_out_group, publish_layer, subscribe_layer, Config,
