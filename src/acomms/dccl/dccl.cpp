@@ -24,7 +24,6 @@
 
 #include "dccl.h"
 
-#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
 #include <dccl/codec.h>                   // for Codec
 
 #include "goby/util/debug_logger/term_color.h" // for Colors, Colors::lt_blue

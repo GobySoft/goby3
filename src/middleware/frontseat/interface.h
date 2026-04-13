@@ -30,7 +30,6 @@
 #include <string> // for string
 
 #include <boost/signals2/signal.hpp>      // for signal
-#include <boost/smart_ptr/shared_ptr.hpp> // for shared_ptr
 
 #include "goby/middleware/protobuf/frontseat.pb.h"        // for InterfaceS...
 #include "goby/middleware/protobuf/frontseat_config.pb.h" // for Config
