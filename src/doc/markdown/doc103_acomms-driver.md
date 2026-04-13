@@ -268,11 +268,82 @@ Flexible Data Protocol (Micro-Modem 2)
 
 
 
-## UDP Multicast Driver
+## Store Server Driver
 
-The goby::acomms::UDPMulticastDriver provides an easy localhost testing interface as it implements ModemDriverBase for an Internet Protocol (IP) User Datagram Protocol (UDP) multicast transport.
+The goby::acomms::StoreServerDriver implements a store-and-forward modem emulator that talks to the `goby_store_server` application. The server maintains an SQLite database so nodes can exchange messages asynchronously even when they are not simultaneously online. This driver is useful for simulating acoustic links over a shared infrastructure (e.g. RUDICS / satellite), or for testing MAC/queue logic without hardware.
 
-For example, configure any number of modems running on a multicast enabled network:
+### Connection
+
+| Type | Details |
+|------|---------|
+| TCP (client) | Connects to `goby_store_server` at the configured TCP address/port (default port 11244). Reconnects automatically on timeout. |
+
+The `connection_type` field is ignored; the driver always opens a TCP client connection.
+
+### Protocol: ModemTransmission → StoreServer wire format
+
+Each poll cycle the driver serializes a `goby.acomms.protobuf.StoreServerRequest` and sends it to the server; the server replies with a `goby.acomms.protobuf.StoreServerResponse`. Both messages are Protobuf-serialized binary, framed with a RUDICS-style byte-stuffing encoding and a `\r` line delimiter.
+
+| StoreServerRequest field | Source |
+|--------------------------|--------|
+| `modem_id` | `DriverConfig.modem_id` |
+| `outbox` (repeated `ModemTransmission`) | DATA messages queued since the last poll, one entry per `handle_initiate_transmission` call where `src` == local modem ID |
+
+| StoreServerResponse field | Action |
+|---------------------------|--------|
+| `inbox` (repeated `ModemTransmission`) | Each message is delivered via `signal_receive`. ACKs are auto-generated for messages with `ack_requested == true`. |
+
+### DRIVER_SPECIFIC features
+
+| Extension type | Description |
+|----------------|-------------|
+| `STORE_SERVER_DRIVER_POLL` | When the MAC schedules a transmission *from* a remote modem (i.e. `src` ≠ local modem ID), the driver sends a poll request through the server asking the remote node to forward data to the local modem. The remote driver sees this in its inbox and calls `handle_initiate_transmission` to enqueue the reply. |
+
+### Example configuration
+
+```
+modem_id: 1
+driver_type: DRIVER_STORE_SERVER
+connection_type: CONNECTION_TCP_AS_CLIENT
+tcp_server: "localhost"
+tcp_port: 11244
+[goby.acomms.store_server.protobuf.config] {
+    query_interval_seconds: 1
+    max_frame_size: 65536
+    reset_interval_seconds: 120
+}
+```
+
+## UDP / UDP Multicast Drivers
+
+goby::acomms::UDPDriver and goby::acomms::UDPMulticastDriver implement ModemDriverBase over IP/UDP. They are useful for simulation, testing, or real Ethernet/Wi-Fi links where no acoustic hardware is involved. Both drivers generate software ACKs (there is no acoustic acknowledgment).
+
+### Connection
+
+| Driver | Transport | Details |
+|--------|-----------|---------|
+| `DRIVER_UDP` | IPv4 or IPv6 UDP unicast | Binds a local UDP port; sends to one or more explicitly configured remote endpoints (IP + port + modem ID). Supports IPv6 via `ipv6: true`. |
+| `DRIVER_UDP_MULTICAST` | IPv4 UDP multicast | Joins a multicast group; all nodes on the same multicast address/port receive every packet. Simpler configuration for single-subnet deployments. |
+
+Serial connections are not used. The `connection_type` field in `DriverConfig` is ignored.
+
+### Protocol: ModemTransmission → UDP wire format
+
+The entire `ModemTransmission` Protobuf message is serialized as a binary Protobuf byte string and sent as a single UDP datagram (up to `max_frame_size` bytes, default 1400). The receiver calls `ParseFromArray` to reconstruct the message. No additional header or framing is added.
+
+| ModemTransmission field | Wire behavior |
+|-------------------------|---------------|
+| `src`, `dest`, `type`, `ack_requested`, `frame(0)` | Serialized as-is in the binary Protobuf datagram |
+| `dest` == BROADCAST_ID | Sent to all configured `remote` endpoints (UDP) or to the multicast group (UDP Multicast) |
+| `ack_requested` == true | Receiving driver sends an ACK `ModemTransmission` back immediately in software |
+
+### DRIVER_SPECIFIC features
+
+Neither driver defines any DRIVER_SPECIFIC transmission types.
+
+### Example configuration
+
+#### DRIVER_UDP_MULTICAST
 
 ```
 modem_id: 1
@@ -285,85 +356,175 @@ driver_type: DRIVER_UDP_MULTICAST
 }
 ```
 
-## UDP Driver
+#### DRIVER_UDP (pair of modems on localhost)
 
-The goby::acomms::UDPDriver is similar to the goby::acomms::UDPMulticastDriver but rather uses unicast UDP packets to an explicitly configured list of remote destinations. This is better suited when routing is involved.
-
-Configuration merely involves setting the local udp port, and at least one remote endpoint (ip address, port, and modem id). For example, for a pair of modems (ids 1 and 2) running on localhost:
-
-### Modem 1
-
+Modem 1:
 ```
 modem_id: 1
 driver_type: DRIVER_UDP
 [goby.acomms.udp.protobuf.config] {
-    local {
-      port: 50001
-    }
-    remote {
-      modem_id: 2
-      ip: "127.0.0.1"
-      port: 50002
-    }
+    local { port: 50001 }
+    remote { modem_id: 2  ip: "127.0.0.1"  port: 50002 }
     max_frame_size: 1400
 }
 ```
 
-### Modem 2
-
+Modem 2:
 ```
 modem_id: 2
 driver_type: DRIVER_UDP
 [goby.acomms.udp.protobuf.config] {
-    local {
-      port: 50002
-    }
-    remote {
-      modem_id: 1
-      ip: "127.0.0.1"
-      port: 50001
-    }
+    local { port: 50002 }
+    remote { modem_id: 1  ip: "127.0.0.1"  port: 50001 }
     max_frame_size: 1400
 }
 ```
 
 ## Iridium Drivers
 
-The goby::acomms::IridiumDriver was designed and testing on the Iridium 9523 for both RUDICS and short burst data (SBD). It may also work on other Iridium RUDICS and/or SBD enabled devices. It is intended to be used in companion with the goby::acomms::IridiumShoreDriver to handle DirectIP data and RUDICS in-bound (mobile-originated or MO) calls. Making calls from the shore station (mobile-terminated or MT) is not well supported by Iridium, and is thus not supported in Goby.
+goby::acomms::IridiumDriver (vehicle side) and goby::acomms::IridiumShoreDriver (shore side) together provide support for Iridium satellite communications. The vehicle driver has been tested on the Iridium 9523 (voice-enabled ISU) for RUDICS, and on the Iridium 9602/9603 (e.g. RockBLOCK) for SBD. Making mobile-terminated (MT, shore-to-vehicle) calls is not supported; all calls are mobile-originated (MO, vehicle-to-shore).
 
-## Benthos Driver
+### Connection
 
-The Benthos ATM900 series of acoustic modems is supported by the goby::acomms::BenthosATM900Driver using the Benthos CLAM shell and AT commands.
+| Driver | Connection type | Details |
+|--------|-----------------|---------|
+| `DRIVER_IRIDIUM` | Serial | RS-232 serial connection to the Iridium ISU; AT (Hayes) command set used to control the modem |
+| `DRIVER_IRIDIUM_SHORE` (RUDICS) | TCP server | Listens for inbound RUDICS TCP connections from the ISU on `rudics_server_port` |
+| `DRIVER_IRIDIUM_SHORE` (SBD DirectIP) | TCP server | Listens for MO SBD messages from the Iridium gateway on `mo_sbd_server_port` (default 40001); sends MT SBD to Iridium gateway via TCP |
+| `DRIVER_IRIDIUM_SHORE` (SBD RockBLOCK) | HTTPS | Receives MO messages via RockBLOCK webhook; sends MT messages via RockBLOCK HTTP API |
 
-An example configuration might look like:
+### Protocol: ModemTransmission → Iridium wire format
+
+A compact DCCL-encoded `IridiumHeader` (7 bytes max) is prepended to the raw payload bytes. The header carries `src`, `dest`, `rate`, `type`, `ack_requested`, `frame_start`, and `acked_frame`. The remaining bytes after the header are the contents of `frame(0)`.
+
+| `ModemTransmission.rate` | Mode | Max payload (MO/MT) |
+|--------------------------|------|---------------------|
+| 0 (SBD) | Iridium Short Burst Data — stores data in ISU buffer and initiates mailbox check | ~1953 / ~1883 bytes (9523); ~333 / ~263 bytes (9602/9603) |
+| 1 (RUDICS) | RUDICS call — opens a dial-up data call to the shore station; binary stream | ~1500 bytes per transaction (configurable) |
+
+### DRIVER_SPECIFIC features
+
+| Extension field | Description |
+|-----------------|-------------|
+| `iridium::protobuf::Transmission::rockblock_rx` | Populated on receive when using RockBLOCK SBD mode; contains IMEI, MOMSN, GPS fix, CEP (Circular Error Probable) radius, and JWT verification flag from the RockBLOCK webhook payload |
+| `iridium::protobuf::Transmission::rockblock_tx` | Populated after an MT SBD send via RockBLOCK; indicates success/failure and the Iridium MT ID or error code |
+| `iridium::protobuf::Transmission::if_no_data_do_mailbox_check` | When true (default), an SBD mailbox check is initiated even if there is no outgoing data, allowing the driver to retrieve pending MT messages |
+
+### Example vehicle configuration (RUDICS + SBD)
+
+```
+modem_id: 1
+driver_type: DRIVER_IRIDIUM
+connection_type: CONNECTION_SERIAL
+serial_port: "/dev/ttyUSB0"
+serial_baud: 19200
+[goby.acomms.iridium.protobuf.config] {
+    remote { iridium_number: "008816xxxxxxxx"  modem_id: 2 }
+    max_frame_size: 1500
+    dial_attempts: 3
+    hangup_seconds_after_empty: 30
+}
+```
+
+## Benthos ATM900 Driver
+
+goby::acomms::BenthosATM900Driver supports the Benthos ATM900 series of acoustic modems using the Benthos CLAM (Command Language for Acoustic Modems) shell and AT command set.
+
+### Connection
+
+| Type | Details |
+|------|---------|
+| Serial | RS-232 serial connection (default 9600 baud) to the modem |
+
+### Protocol: ModemTransmission → Benthos wire format
+
+A DCCL-encoded 5-byte `BenthosHeader` is prepended to the payload. The header contains `type`, `ack_requested`, and `acked_frame` list. Each data frame is then RUDICS-encoded (byte-stuffing for binary safety) and delimited by `\r`.
+
+| `ModemTransmission` field | Wire element |
+|---------------------------|--------------|
+| `type`, `ack_requested`, `acked_frame(n)` | DCCL-encoded into `BenthosHeader` (5 bytes) |
+| `frame(n)` | RUDICS-encoded and appended after the header |
+| `src`, `dest` | Carried by the Benthos AT layer (not in the Goby header) |
+
+### DRIVER_SPECIFIC features
+
+| Extension type | Description |
+|----------------|-------------|
+| `BENTHOS_TWO_WAY_PING` | Initiates a two-way ranging ping. Modem 1 interrogates modem 2; modem 2 replies and modem 1 computes the one-way travel time. The result is returned in `benthos::protobuf::Transmission::ranging_reply.one_way_travel_time`. |
+
+### Example configuration
+
 ```
 modem_id: 1
 driver_type: DRIVER_BENTHOS_ATM900
 connection_type: CONNECTION_SERIAL
 serial_port: "/dev/ttyS0"
 [goby.acomms.benthos.protobuf.config] {
-        factory_reset: false
-        start_timeout: 20
-        max_frame_size: 128
-        config: "@TxPower=8"
+    factory_reset: false
+    start_timeout: 20
+    max_frame_size: 128
+    config: "@TxPower=8"
 }
 ```
 
 ## Popoto Driver
 
-For the Popoto Acoustic modem (https://www.popotomodem.com)
+goby::acomms::PopotoDriver supports the [Popoto acoustic modem](https://www.popotomodem.com) using its JSON command API. This driver was contributed by Mission Systems Pty Ltd.
 
+### Connection
+
+| Type | Details |
+|------|---------|
+| Serial | RS-232 serial connection (default 115200 baud) |
+| TCP | TCP client connection to the modem's network interface |
+
+### Protocol: ModemTransmission → Popoto wire format
+
+Commands are sent as JSON objects with `Command` and `Arguments` fields, newline-delimited. Incoming messages are also received as JSON. Data payloads are sent using the `TransmitJSON` command.
+
+| `ModemTransmission` field | JSON mapping |
+|---------------------------|-------------|
+| `src` | `SetValue LocalID <src>` before each transmission |
+| `dest` | `SetValue RemoteID <dest>` (255 for BROADCAST) |
+| `rate` (0–5) | Rate command sent before transmission: 0=80 bps, 1=640 bps, 2=1280 bps, 3=2560 bps, 4=5120 bps, 5=10240 bps |
+| `ack_requested` | `TransmitJSON.AckRequest` field (boolean: 1 = ACK requested, 0 = no ACK) |
+| `frame(0)` | 1-byte Goby header (encodes `type`, `ack_requested`, frame number) prepended to raw payload bytes; sent as `TransmitJSON.Payload.Data` byte array |
+
+### DRIVER_SPECIFIC features
+
+| Extension type | Description |
+|----------------|-------------|
+| `POPOTO_TWO_WAY_RANGE_REQUEST` | Send a ranging request to `dest`; result arrives as a received `POPOTO_TWO_WAY_RANGE_RESPONSE` with `ranging_reply.one_way_travel_time`, `two_way_travel_time`, and `modem_range` |
+| `POPOTO_TWO_WAY_RANGE_RESPONSE` | Received only; contains ranging results in `popoto::protobuf::Transmission::ranging_reply` |
+| `POPOTO_PLAY_FILE` | Play an audio file stored on the modem; set `popoto::protobuf::Transmission::file_location` and optionally `transmit_power` |
+| `POPOTO_DEEP_SLEEP` | Put the local modem into low-power sleep mode |
+| `POPOTO_WAKE` | Wake a sleeping remote modem (sends a ping) |
+| `POPOTO_SET_TX` | Update the transmit power; set `popoto::protobuf::Transmission::transmit_power` (watts) |
+
+### Example configuration
+
+```
+modem_id: 1
+driver_type: DRIVER_POPOTO
+connection_type: CONNECTION_SERIAL
+serial_port: "/dev/ttyUSB0"
+[goby.acomms.popoto.protobuf.config] {
+    start_timeout: 30
+    payload_mode: 0
+    modem_power: 10
+    application_type: 0
+}
+```
 
 ## Mission Systems Drivers
 
 These drivers were contributed by Mission Systems Pty Ltd (https://github.com/mission-systems-pty-ltd). For questions about these drivers please contact Mission Systems via their Github page.
 
-
 These drivers currently require that Goby be built from source with additional dependencies.
 
 ### Janus Driver
 
-This driver will enable any ALSA-compatible devices to function as acoustic communication transmitters and receivers under the Janus (NATO) standard.
+goby::acomms::JanusDriver implements the [JANUS NATO STANAG 4748](https://www.janus-wiki.eu/) underwater acoustic communication standard, allowing any ALSA-compatible sound device to act as an acoustic modem.
 
 Requires libplugin libraries which can be built following instructions from https://github.com/mission-systems-pty-ltd/janus-c
 
@@ -374,7 +535,28 @@ cd goby3/build
 cmake .. -Denable_janus_acomms=ON -DJANUS_ROOT_DIR=/path/to/janus-c
 ```
 
-Sample driver config:
+#### Connection
+
+| Type | Details |
+|------|---------|
+| ALSA | Audio input/output device (e.g. `default`, `hw:0,0`); configured via `stream_driver` and `stream_driver_args`. No serial or TCP connection is used. Separate TX and RX configurations are given in `rx_config` and `tx_config` extensions. |
+
+#### Protocol: ModemTransmission → JANUS wire format
+
+A 1-byte Goby header (encodes `type`, `ack_requested`, and frame number) is prepended to the raw payload bytes. The combined byte string is placed into the JANUS cargo field and transmitted as a standard JANUS packet with the configured `class_id` and `application_type`. On receive, the JANUS packet is decoded and the Goby header is stripped to reconstruct the `ModemTransmission`.
+
+| `ModemTransmission` field | JANUS mapping |
+|---------------------------|---------------|
+| `src` | JANUS `station_id` |
+| `dest` | JANUS `destination_id` |
+| `ack_requested` | Carried in Goby 1-byte header and `AckRequest` JANUS field |
+| `frame(0)` | JANUS cargo (after stripping 1-byte Goby header) |
+
+#### DRIVER_SPECIFIC features
+
+The Janus driver does not define any DRIVER_SPECIFIC transmission types. Only DATA and ACK transmissions are supported.
+
+#### Sample driver config
 
 ```
 driver_cfg {
@@ -413,3 +595,15 @@ driver_cfg {
   }
 }
 ```
+
+## MOOS-only Drivers
+
+The following drivers are only available when Goby is compiled with MOOS support (`libgoby_moos`) and are used via `pAcommsHandler`. See the [MOOS documentation](doc600_moos.md) for setup details.
+
+### uField Simulation Driver
+
+`DRIVER_UFIELD_SIM_DRIVER` is a simulation driver that uses the [MOOS-IvP uField toolbox](https://oceanai.mit.edu/moos-ivp/pmwiki/pmwiki.php) as its transport layer. It is intended for multi-vehicle simulation within a MOOS-IvP environment and does not communicate with any real acoustic hardware.
+
+### Bluefin MOOS Driver
+
+`DRIVER_BLUEFIN_MOOS` is a driver for Bluefin Robotics autonomous underwater vehicles that communicates via the MOOS middleware. It allows `pAcommsHandler` to exchange acoustic messages through the Bluefin vehicle's native MOOS interface.
