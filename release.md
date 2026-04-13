@@ -1,6 +1,51 @@
 # Goby Release Notes (Major version 3)
 
 
+## Version 3.4.0
+
+### UDP Multicast (UDPM) Transport
+
+A new interprocess transport layer based on UDP multicast (`goby::middleware::UDPMTransport`) has been added. This provides a lightweight alternative to the ZeroMQ interprocess transport, useful for embedded systems or environments where ZeroMQ is not available or desirable:
+
+- Full publish/subscribe support between processes on the same host (or multicast-reachable network).
+- Support for large-message packetization, enabling messages larger than the UDP MTU to be transmitted reliably.
+- Configurable send-rate limiting to control bandwidth usage.
+- Improved UDPM I/O threading: the I/O context now runs in a dedicated thread with condition-variable notification for immediate poll wake-up.
+
+### Middleware
+
+- Added `GOBY_DEFINE_GROUP` and `GOBY_DEFINE_INTERVEHICLE_GROUP` convenience macros to `group.h` to simplify group definitions.
+- Added interprocess implementation tag support (PR #380, #385) for more robust interprocess identification.
+- Popoto modem driver cleanup (PR #386).
+
+### Julia Support
+
+- Updated Julia support to work with Julia 1.12.
+- Added multithreaded application support for Julia: Goby apps can now use Julia Tasks/Channels to run concurrent threaded Goby threads.
+- Consolidated single-threaded and multi-threaded Julia app functions; removed the need to pass `task_id` as a parameter for multithreaded functions.
+- Added ability to set loop frequency after launch from within a thread, enabling Julia apps to handle channel messages correctly in multithreaded mode.
+- Added Julia docstrings for improved in-REPL documentation.
+- Added ability to access Protobuf configuration from Julia.
+
+### DCCL 4.4 Compatibility
+
+- Updated Goby to build against the forthcoming DCCL 4.4 release, including switching to `dccl::any` (now `std::any`).
+
+### Documentation & Tooling
+
+- Renamed `abc_modem_simulator` to `goby_abc_modem_simulator`; updated documentation to use `goby3_example_*` naming convention for examples.
+- Fixed broken Markdown rendering in `src/doc/markdown` documentation.
+- Added UDPM documentation (`doc700_udpm.md`).
+- Added OpenSSF Scorecard CI workflow.
+
+### Bugs
+
+- Fixed heap-use-after-free in `InterProcessForwarder` during thread shutdown (PR #371).
+- Fixed `join_thread` to block until the thread has actually joined (PR #361).
+- Fixed ThreadSanitizer (TSan) false positives: replaced `condition_variable_any`+`timed_mutex` with `condition_variable`+`mutex`; added TSan annotations for ZMQ inproc zero-copy race (PR #362).
+- Fixed ThreadSanitizer CircleCI job failing with unexpected memory mapping on Linux kernel >= 6.x (PR #364).
+- Fixed `std::result_of` deprecation warning; disabled errors on deprecation warnings when using `-Werror`.
+
 ## Version 3.3.1
 
 ### Middleware
