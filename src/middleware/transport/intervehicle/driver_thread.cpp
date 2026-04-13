@@ -61,10 +61,8 @@
 #ifdef ENABLE_JANUS_ACOMMS
 #include "goby/acomms/modemdriver/janus_driver.h" // for JanusDriver...
 #endif
-#ifdef ENABLE_POPOTO_ACOMMS
-#include "goby/acomms/modemdriver/popoto_driver.h" // for PopotoDr...
-#endif
 #include "driver_thread.h"
+#include "goby/acomms/modemdriver/popoto_driver.h" // for PopotoDr...
 
 using goby::glog;
 using namespace goby::util::logger;
@@ -227,11 +225,9 @@ goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::ModemDrive
                 driver_ = std::make_unique<goby::acomms::StoreServerDriver>();
                 break;
 
-#ifdef ENABLE_POPOTO_ACOMMS
             case goby::acomms::protobuf::DRIVER_POPOTO:
                 driver_ = std::make_unique<goby::acomms::PopotoDriver>();
                 break;
-#endif
 
 #ifdef ENABLE_JANUS_ACOMMS
             case goby::acomms::protobuf::DRIVER_JANUS:

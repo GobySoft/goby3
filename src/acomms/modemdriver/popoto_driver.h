@@ -76,7 +76,6 @@ class PopotoDriver : public ModemDriverBase
     {
         send_popoto_command("SetValue", key + " int " + std::to_string(val));
     }
-
     void set_popoto_value(const std::string& key, float val)
     {
         send_popoto_command("SetValue", key + " float " + std::to_string(val));
@@ -91,29 +90,14 @@ class PopotoDriver : public ModemDriverBase
     }
     void send_popoto_command(const std::string& command, const nlohmann::json& args);
 
-    std::uint8_t CreateGobyHeader(const protobuf::ModemTransmission& m);
-    void DecodeGobyHeader(std::uint8_t header, protobuf::ModemTransmission& m);
-    void DecodeHeader(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
-    void ProcessJSON(const std::string& message, protobuf::ModemTransmission& modem_msg);
+    std::uint8_t create_goby_header(const protobuf::ModemTransmission& m);
+    void decode_goby_header(std::uint8_t header, protobuf::ModemTransmission& m);
+    void decode_popoto_header(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
+    void process_popoto_json(const std::string& message, protobuf::ModemTransmission& modem_msg);
 
     const popoto::protobuf::Config& popoto_driver_cfg() const
     {
         return driver_cfg_.GetExtension(popoto::protobuf::config);
-    }
-
-    static std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes)
-    {
-        std::string output;
-
-        for (int i = 0, n = num_bytes; i < n; i++)
-        {
-            output.append(std::to_string((uint8_t)buf[i]));
-            if (i < n - 1)
-            {
-                output.append(",");
-            }
-        }
-        return output;
     }
 
     static std::string json_to_binary(const nlohmann::json& element)
@@ -124,7 +108,7 @@ class PopotoDriver : public ModemDriverBase
     }
 
     // Remove popoto trash from the incoming serial string
-    static std::string StripString(std::string in, std::string p)
+    static std::string clean_popoto_string(std::string in, std::string p)
     {
         std::string out = std::move(in);
         std::string::size_type n = p.length();
@@ -139,7 +123,7 @@ class PopotoDriver : public ModemDriverBase
     int sender_id_{0};
     float modem_power_;
     std::uint32_t next_frame_{0};
-    
+
     protobuf::ModemTransmission modem_msg_;
     bool modem_msg_complete_ = false;
 
@@ -152,16 +136,6 @@ class PopotoDriver : public ModemDriverBase
     // Bitrates with Popoto modem: map these onto 0-5
     std::vector<std::string> rate_to_speed{"setRate80",   "setRate640",  "setRate1280",
                                            "setRate2560", "setRate5120", "setRate10240"};
-
-    enum TransmissionTypeInternal
-    {
-        UNKNOWN = 0,                      // used
-        DATA = 1,                         // just placeholder
-        ACK = 2,                          // just placeholder
-        POPOTO_TWO_WAY_RANGE_REQUEST = 3, // used
-        POPOTO_TWO_WAY_RANGE_RESPONSE = 4 // used
-    };
-    TransmissionTypeInternal transmissions_type_internal;
 
     bool startup_done_{false};
 };

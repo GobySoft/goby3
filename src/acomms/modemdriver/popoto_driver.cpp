@@ -54,8 +54,6 @@
 #include "goby/util/debug_logger.h"
 #include "goby/util/protobuf/io.h" // for operator<<
 
-//#include "popoto_client.hpp" // For popoto api (Ethernet driver)
-
 using goby::glog;
 using namespace goby::util::logger;
 using json = nlohmann::json;
@@ -182,14 +180,6 @@ void goby::acomms::PopotoDriver::handle_initiate_transmission(
 
                 case popoto::protobuf::POPOTO_PLAY_FILE: play_file(msg); break;
 
-                case popoto::protobuf::POPOTO_TWO_WAY_PING:
-                    glog.is(DEBUG1) && glog << group(glog_out_group())
-                                            << "We were asked to send a two-way ping from "
-                                            << msg.src() << " to " << msg.dest() << " at TX power "
-                                            << modem_power_ << std::endl;
-                    send_ping(msg);
-                    break;
-
                 case popoto::protobuf::POPOTO_DEEP_SLEEP: popoto_sleep(); break;
 
                 case popoto::protobuf::POPOTO_SET_TX: popoto_update_power(msg); break;
@@ -285,7 +275,7 @@ void goby::acomms::PopotoDriver::send(protobuf::ModemTransmission& msg)
     int dest = (msg.dest() == goby::acomms::BROADCAST_ID) ? POPOTO_BROADCAST_ID : msg.dest();
     set_popoto_value("RemoteID", dest);
 
-    uint8_t header = CreateGobyHeader(msg);
+    uint8_t header = create_goby_header(msg);
     std::vector<std::uint8_t> bytes;
     bytes.push_back(header);
     if (msg.type() == protobuf::ModemTransmission::DATA)
@@ -331,22 +321,22 @@ void goby::acomms::PopotoDriver::do_work()
         try
         {
             // Remove VT100 sequences (if they exist) and popoto prompt
-            in = StripString(in, "Popoto->");
+            in = clean_popoto_string(in, "Popoto->");
             constexpr const char *VT100_BOLD_ON = "\x1b[1m", *VT100_BOLD_OFF = "\x1b[0m";
 
-            in = StripString(in, VT100_BOLD_ON); // Below is over serial only
-            in = StripString(in, VT100_BOLD_OFF);
-            in = StripString(in, "MSMStatus "); // Below is over ethernet only
-            in = StripString(in, "DataPacket ");
-            in = StripString(in, "HeaderPacket ");
-            in = StripString(in, "RangeReport ");
+            in = clean_popoto_string(in, VT100_BOLD_ON); // Below is over serial only
+            in = clean_popoto_string(in, VT100_BOLD_OFF);
+            in = clean_popoto_string(in, "MSMStatus "); // Below is over ethernet only
+            in = clean_popoto_string(in, "DataPacket ");
+            in = clean_popoto_string(in, "HeaderPacket ");
+            in = clean_popoto_string(in, "RangeReport ");
 
             protobuf::ModemRaw raw;
             raw.set_raw(in);
             ModemDriverBase::signal_raw_incoming(raw);
             if (json::accept(in))
             {
-                ProcessJSON(in, modem_msg_);
+                process_popoto_json(in, modem_msg_);
                 if (modem_msg_complete_)
                 {
                     glog.is(DEBUG1) && glog << group(glog_in_group()) << "received: " << modem_msg_
@@ -370,8 +360,6 @@ void goby::acomms::PopotoDriver::do_work()
                     ModemDriverBase::signal_receive(modem_msg_);
                     modem_msg_.Clear();
                     modem_msg_complete_ = false;
-
-                    transmissions_type_internal = UNKNOWN; // clearing this
                 }
             }
         }
@@ -401,8 +389,8 @@ void goby::acomms::PopotoDriver::send_popoto_command(const std::string& command,
 }
 
 // Decode Popoto header
-void goby::acomms::PopotoDriver::DecodeHeader(std::vector<uint8_t> data,
-                                              protobuf::ModemTransmission& modem_msg)
+void goby::acomms::PopotoDriver::decode_popoto_header(std::vector<uint8_t> data,
+                                                      protobuf::ModemTransmission& modem_msg)
 {
     std::string type;
 
@@ -481,9 +469,8 @@ void goby::acomms::PopotoDriver::DecodeHeader(std::vector<uint8_t> data,
                             << " at tx power: " << tx_power << std::endl;
 }
 
-// The only msg that is important for the dccl driver is the header and data. We will just print everything else to terminal for the moment
-void goby::acomms::PopotoDriver::ProcessJSON(const std::string& message,
-                                             protobuf::ModemTransmission& modem_msg)
+void goby::acomms::PopotoDriver::process_popoto_json(const std::string& message,
+                                                     protobuf::ModemTransmission& modem_msg)
 {
     json j = json::parse(message);
     json::iterator it = j.begin();
@@ -494,12 +481,12 @@ void goby::acomms::PopotoDriver::ProcessJSON(const std::string& message,
     raw.set_raw(message);
     if (label == "Header")
     {
-        DecodeHeader(j["Header"], modem_msg);
+        decode_popoto_header(j["Header"], modem_msg);
     }
     else if (label == "Data")
     {
         std::string data = json_to_binary(j["Data"]);
-        DecodeGobyHeader(data[0], modem_msg);
+        decode_goby_header(data[0], modem_msg);
         if (modem_msg.type() == protobuf::ModemTransmission::DATA)
             *modem_msg.add_frame() = data.substr(1);
 
@@ -523,7 +510,9 @@ void goby::acomms::PopotoDriver::ProcessJSON(const std::string& message,
     }
 
     // Parsing the range report
-    if (transmissions_type_internal == POPOTO_TWO_WAY_RANGE_RESPONSE)
+    if (modem_msg_.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
+        modem_msg_.GetExtension(popoto::protobuf::transmission).type() ==
+            popoto::protobuf::POPOTO_TWO_WAY_RANGE_RESPONSE)
     {
         if (j.contains("Range") && j.contains("Roundtrip Delay") && j.contains("SpeedOfSound"))
         {
@@ -546,7 +535,7 @@ void goby::acomms::PopotoDriver::ProcessJSON(const std::string& message,
     }
 }
 
-std::uint8_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemTransmission& m)
+std::uint8_t goby::acomms::PopotoDriver::create_goby_header(const protobuf::ModemTransmission& m)
 {
     std::uint8_t header{0};
     if (m.type() == protobuf::ModemTransmission::DATA)
@@ -554,7 +543,7 @@ std::uint8_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemT
         header |= (GOBY_DATA_TYPE & 0b11) << 6;
 
         // See if ack is requested, and encode it to the header.
-        // This part was missing; thus, DecodeGobyHeader() was misbehaving..  -Supun-
+        // This part was missing; thus, decode_goby_header() was misbehaving..  -Supun-
         header &= ~(1 << GOBY_HEADER_ACK_REQUEST); // Clear bit 1 to set header to no-ack-request
         if (m.ack_requested())
         {
@@ -568,14 +557,14 @@ std::uint8_t goby::acomms::PopotoDriver::CreateGobyHeader(const protobuf::ModemT
     }
     else
     {
-        throw(goby::Exception(std::string("Unsupported type provided to CreateGobyHeader: ") +
+        throw(goby::Exception(std::string("Unsupported type provided to create_goby_header: ") +
                               protobuf::ModemTransmission::TransmissionType_Name(m.type())));
     }
     return header;
 }
 
-void goby::acomms::PopotoDriver::DecodeGobyHeader(std::uint8_t header,
-                                                  protobuf::ModemTransmission& m)
+void goby::acomms::PopotoDriver::decode_goby_header(std::uint8_t header,
+                                                    protobuf::ModemTransmission& m)
 {
     uint8_t goby_header_type = (header >> 6) & 0b11;
     switch (goby_header_type)
