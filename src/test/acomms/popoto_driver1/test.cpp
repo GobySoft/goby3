@@ -65,7 +65,6 @@
 #include "goby/acomms/modemdriver/popoto_driver.h"
 #include <cstdlib>
 
-
 std::shared_ptr<goby::acomms::ModemDriverBase> driver1, driver2;
 
 void handle_raw_incoming(int driver, const goby::acomms::protobuf::ModemRaw& raw)
@@ -108,8 +107,21 @@ int main(int argc, char* argv[])
     cfg1.set_modem_id(1);
     cfg2.set_modem_id(2);
 
-    cfg1.set_serial_port("/tmp/ttyvmodem0");
-    cfg2.set_serial_port("/tmp/ttyvmodem1");
+    cfg1.set_connection_type(goby::acomms::protobuf::DriverConfig::CONNECTION_TCP_AS_CLIENT);
+    cfg2.set_connection_type(goby::acomms::protobuf::DriverConfig::CONNECTION_TCP_AS_CLIENT);
+
+    cfg1.set_tcp_server("127.0.0.1");
+    cfg2.set_tcp_server("127.0.0.1");
+
+    // default Popoto virtual ocean
+    cfg1.set_tcp_port(17000);
+    cfg2.set_tcp_port(18000);
+
+    auto& popoto_cfg1 = *cfg1.MutableExtension(goby::acomms::popoto::protobuf::config);
+    auto& popoto_cfg2 = *cfg2.MutableExtension(goby::acomms::popoto::protobuf::config);
+
+    popoto_cfg1.set_modem_power(1);
+    popoto_cfg2.set_modem_power(1);
 
     std::vector<int> tests_to_run;
     tests_to_run.push_back(4);

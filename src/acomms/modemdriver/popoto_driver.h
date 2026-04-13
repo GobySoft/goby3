@@ -71,14 +71,15 @@ class PopotoDriver : public ModemDriverBase
 
   private:
     void parse_in(const std::string& in, std::map<std::string, std::string>* out);
-    void signal_and_write(const std::string& raw);
-    void signal_and_write_raw(std::string raw);
 
-    // 2 byte header code
-    // std::uint16_t CreateGobyHeader(const protobuf::ModemTransmission& m);
+    void send_popoto_command(const std::string& command)
+    {
+        send_popoto_command(command, " Unused Arguments");
+    }
+    void send_popoto_command(const std::string& command, const nlohmann::json& args);
+
     std::uint8_t CreateGobyHeader(const protobuf::ModemTransmission& m);
-    void DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num,
-                          protobuf::ModemTransmission& m);
+    void DecodeGobyHeader(std::uint8_t header, protobuf::ModemTransmission& m);
     void DecodeHeader(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
     void ProcessJSON(const std::string& message, protobuf::ModemTransmission& modem_msg);
     std::string change_to_popoto_json(std::string input, size_t pos, std::string setval,
@@ -144,23 +145,25 @@ class PopotoDriver : public ModemDriverBase
     ConnectionType myConnection;
 
     // Bitrates with Popoto modem: map these onto 0-5
-    std::vector<std::string> rate_to_speed{"setRate80\n",   "setRate640\n",  "setRate1280\n",
-                                           "setRate2560\n", "setRate5120\n", "setRate10240\n"};
+    std::vector<std::string> rate_to_speed{"setRate80",   "setRate640",  "setRate1280",
+                                           "setRate2560", "setRate5120", "setRate10240"};
 
     const std::string setvali = "setvaluei";
     const std::string setvalf = "setvaluef";
     const std::string getvali = "getvaluei";
     const std::string getvalf = "getvaluef";
-    
+
     enum TransmissionTypeInternal
     {
-        UNKNOWN                       = 0, // used
-        DATA                          = 1, // just placeholder
-        ACK                           = 2, // just placeholder
-        POPOTO_TWO_WAY_RANGE_REQUEST  = 3, // used
-        POPOTO_TWO_WAY_RANGE_RESPONSE = 4  // used
+        UNKNOWN = 0,                      // used
+        DATA = 1,                         // just placeholder
+        ACK = 2,                          // just placeholder
+        POPOTO_TWO_WAY_RANGE_REQUEST = 3, // used
+        POPOTO_TWO_WAY_RANGE_RESPONSE = 4 // used
     };
     TransmissionTypeInternal transmissions_type_internal;
+
+    bool startup_done_{false};
 };
 } // namespace acomms
 } // namespace goby
