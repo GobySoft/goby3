@@ -270,7 +270,7 @@ Flexible Data Protocol (Micro-Modem 2)
 
 ## Store Server Driver
 
-The goby::acomms::StoreServerDriver implements a store-and-forward modem emulator that talks to the `goby_store_server` application. The server maintains an SQLite database so nodes can exchange messages asynchronously even when they are not simultaneously online. This driver is useful for simulating acoustic links over a shared infrastructure (e.g. RUDICS / satellite), or for testing MAC/queue logic without hardware.
+The goby::acomms::StoreServerDriver implements a store-and-forward modem emulator that talks to the `goby_store_server` application. The server maintains an SQLite database so nodes can exchange messages asynchronously even when they are not simultaneously online. This driver is useful any time that nodes need to communicate over (potentially low throughput) TCP links but may not be present at the same time.
 
 ### Connection
 
@@ -282,7 +282,7 @@ The `connection_type` field is ignored; the driver always opens a TCP client con
 
 ### Protocol: ModemTransmission → StoreServer wire format
 
-Each poll cycle the driver serializes a `goby.acomms.protobuf.StoreServerRequest` and sends it to the server; the server replies with a `goby.acomms.protobuf.StoreServerResponse`. Both messages are Protobuf-serialized binary, framed with a RUDICS-style byte-stuffing encoding and a `\r` line delimiter.
+Each poll cycle the driver serializes a `goby.acomms.protobuf.StoreServerRequest` and sends it to the server; the server replies with a `goby.acomms.protobuf.StoreServerResponse`. Both messages are Protobuf-serialized binary, framed with a encoding also used by the Iridium RUDICS driver and a `\r` line delimiter.
 
 | StoreServerRequest field | Source |
 |--------------------------|--------|
@@ -316,7 +316,7 @@ tcp_port: 11244
 
 ## UDP / UDP Multicast Drivers
 
-goby::acomms::UDPDriver and goby::acomms::UDPMulticastDriver implement ModemDriverBase over IP/UDP. They are useful for simulation, testing, or real Ethernet/Wi-Fi links where no acoustic hardware is involved. Both drivers generate software ACKs (there is no acoustic acknowledgment).
+goby::acomms::UDPDriver and goby::acomms::UDPMulticastDriver implement ModemDriverBase over IP/UDP. They are useful for simulation, testing, or real Ethernet/Wi-Fi links where no acoustic hardware is involved. 
 
 ### Connection
 
@@ -344,6 +344,9 @@ Neither driver defines any DRIVER_SPECIFIC transmission types.
 ### Example configuration
 
 #### DRIVER_UDP_MULTICAST
+
+
+All drivers use the same configuration except for `modem_id`, but this typically only works on localhost or a single switch (most routers do not forward multicast data):
 
 ```
 modem_id: 1
@@ -380,9 +383,11 @@ driver_type: DRIVER_UDP
 }
 ```
 
+Add more `remotes` to expand beyond two modems.
+
 ## Iridium Drivers
 
-goby::acomms::IridiumDriver (vehicle side) and goby::acomms::IridiumShoreDriver (shore side) together provide support for Iridium satellite communications. The vehicle driver has been tested on the Iridium 9523 (voice-enabled ISU) for RUDICS, and on the Iridium 9602/9603 (e.g. RockBLOCK) for SBD. Making mobile-terminated (MT, shore-to-vehicle) calls is not supported; all calls are mobile-originated (MO, vehicle-to-shore).
+goby::acomms::IridiumDriver (vehicle side) and goby::acomms::IridiumShoreDriver (shore side) together provide support for Iridium satellite communications. The vehicle driver has been tested on the Iridium 9523 (voice-enabled ISU) for RUDICS (call-based stream protocol), and on the Iridium 9602/9603 (e.g. RockBLOCK) for SBD (message-based protocol). Making mobile-terminated (MT, shore-to-vehicle) RUDICS calls is not supported; all calls are mobile-originated (MO, vehicle-to-shore). SBD works for both MT and MO.
 
 ### Connection
 
@@ -399,10 +404,10 @@ A compact DCCL-encoded `IridiumHeader` (7 bytes max) is prepended to the raw pay
 
 | `ModemTransmission.rate` | Mode | Max payload (MO/MT) |
 |--------------------------|------|---------------------|
-| 0 (SBD) | Iridium Short Burst Data — stores data in ISU buffer and initiates mailbox check | ~1953 / ~1883 bytes (9523); ~333 / ~263 bytes (9602/9603) |
-| 1 (RUDICS) | RUDICS call — opens a dial-up data call to the shore station; binary stream | ~1500 bytes per transaction (configurable) |
+| 0 (SBD) | Iridium Short Burst Data — stores data in ISU buffer and initiates mailbox check | ~1953 / ~1883 bytes (9523); ~333 / ~263 bytes (9602/9603). See iridium_driver_common.h for precise details. |
+| 1 (RUDICS) | RUDICS call — opens a dial-up data call to the shore station; binary stream | ~1500 bytes per message (configurable). Messages are sent regularly while the call is in progress.  |
 
-### DRIVER_SPECIFIC features
+### Driver specific features
 
 | Extension field | Description |
 |-----------------|-------------|
@@ -469,7 +474,7 @@ serial_port: "/dev/ttyS0"
 
 ## Popoto Driver
 
-goby::acomms::PopotoDriver supports the [Popoto acoustic modem](https://www.popotomodem.com) using its JSON command API. This driver was contributed by Mission Systems Pty Ltd.
+goby::acomms::PopotoDriver supports the [Popoto acoustic modem](https://www.popotomodem.com) using its JSON command API.
 
 ### Connection
 
