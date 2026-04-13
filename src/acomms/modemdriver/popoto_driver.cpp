@@ -493,9 +493,11 @@ void goby::acomms::PopotoDriver::process_popoto_json(const std::string& message,
     else if (label == "Data")
     {
         std::string data = json_to_binary(j["Data"]);
-        decode_goby_header(data[0], modem_msg);
         if (modem_msg.type() == protobuf::ModemTransmission::DATA)
+        {
+            decode_goby_header(data[0], modem_msg);
             *modem_msg.add_frame() = data.substr(1);
+        }
 
         // usually Data is the last message we receive
         modem_msg_complete_ = true;
@@ -584,7 +586,6 @@ void goby::acomms::PopotoDriver::decode_goby_header(std::uint8_t header,
             m.set_type(protobuf::ModemTransmission::ACK);
             m.add_acked_frame(0);
             break;
-        default:
-            throw(goby::Exception("Unsupported Goby header type in decode_goby_header"));
+        default: throw(goby::Exception("Unsupported Goby header type in decode_goby_header"));
     }
 }
