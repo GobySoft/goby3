@@ -1,10 +1,9 @@
-// Copyright 2020-2025:
+// Copyright 2020-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
-//   Thomas McCabe <tom.mccabe@missionsystems.com.au>
 //   Toby Schneider <toby@gobysoft.org>
-//   Jared Silbermann <jared.silbermann@missionsystems.com.au>
+//   Thomas McCabe <tom.mccabe@missionsystems.com.au>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
