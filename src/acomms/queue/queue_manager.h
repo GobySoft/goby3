@@ -1,4 +1,4 @@
-// Copyright 2009-2025:
+// Copyright 2009-2026:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -62,7 +62,7 @@ class ModemTransmission;
 /// \example acomms/queue/queue_simple/queue_simple.cpp
 /// simple.proto
 /// \verbinclude simple.proto
-/// queue_simple.cpp
+/// goby3_example_queue_simple
 class QueueManager
 {
   public:

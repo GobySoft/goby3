@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -36,6 +36,7 @@
 #include "goby/middleware/io/detail/tcp_client_interface.h" // for TCPClien...
 #include "goby/middleware/io/line_based/common.h"           // for match_regex
 #include "goby/middleware/protobuf/io.pb.h"                 // for IOData
+#include "goby/zeromq/application/simple_thread.h"
 
 namespace goby
 {
@@ -64,13 +65,12 @@ namespace io
 /// \brief Reads/Writes strings from/to a TCP connection using a line-based (typically ASCII) protocol with a defined end-of-line regex.
 /// \tparam line_in_group goby::middleware::Group to publish to after receiving data from the TCP socket
 /// \tparam line_out_group goby::middleware::Group to subcribe to for data to send to the TCP socket
-template <const goby::middleware::Group& line_in_group,
-          const goby::middleware::Group& line_out_group,
-          PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
-          PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          typename Config = goby::middleware::protobuf::TCPClientConfig,
-          template <class> class ThreadType = goby::middleware::SimpleThread,
-          bool use_indexed_groups = false>
+template <
+    const goby::middleware::Group& line_in_group, const goby::middleware::Group& line_out_group,
+    PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
+    PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
+    typename Config = goby::middleware::protobuf::TCPClientConfig,
+    template <class> class ThreadType = goby::zeromq::SimpleThread, bool use_indexed_groups = false>
 class TCPClientThreadLineBased
     : public detail::TCPClientThread<line_in_group, line_out_group, publish_layer, subscribe_layer,
                                      Config, ThreadType, use_indexed_groups>
@@ -113,7 +113,8 @@ void goby::middleware::io::TCPClientThreadLineBased<line_in_group, line_out_grou
 {
     boost::asio::async_read_until(
         this->mutable_socket(), buffer_, eol_matcher_,
-        [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+        [this](const boost::system::error_code& ec, std::size_t bytes_transferred)
+        {
             if (!ec && bytes_transferred > 0)
             {
                 auto io_msg = std::make_shared<goby::middleware::protobuf::IOData>();

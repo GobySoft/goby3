@@ -1,4 +1,4 @@
-// Copyright 2017-2021:
+// Copyright 2017-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -48,7 +48,7 @@ namespace test
 {
 namespace zeromq
 {
-class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
+class TestThreadRx : public goby::zeromq::SimpleThread<TestConfig>
 {
   public:
     TestThreadRx(const TestConfig& cfg, int index) : SimpleThread(cfg, 0, index)
@@ -84,7 +84,7 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
     int rx_count_{0};
 };
 
-class TestThreadTx : public goby::middleware::SimpleThread<TestConfig>
+class TestThreadTx : public goby::zeromq::SimpleThread<TestConfig>
 {
   public:
     TestThreadTx(const TestConfig& cfg, int index) : SimpleThread(cfg, 100000, index)

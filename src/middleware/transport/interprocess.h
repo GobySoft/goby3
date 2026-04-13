@@ -1,4 +1,4 @@
-// Copyright 2016-2024:
+// Copyright 2016-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -35,6 +35,7 @@
 #include "goby/middleware/group.h"
 
 #include "goby/middleware/marshalling/interface.h"
+#include "goby/middleware/transport/detail/static_group_names.h"
 #include "goby/middleware/transport/identifier.h"
 #include "goby/middleware/transport/null.h"
 #include "goby/middleware/transport/poller.h"
@@ -44,23 +45,30 @@ namespace goby
 {
 namespace middleware
 {
+
 /// \brief Base class for implementing transporters (both portal and forwarder) for the interprocess layer
 ///
 /// \tparam Derived derived class (curiously recurring template pattern)
 /// \tparam InnerTransporter inner layer transporter type
-template <typename Derived, typename InnerTransporter>
+/// \tparam ImplementationTag Distinguishes different implementations using different internal groups
+template <typename Derived, typename InnerTransporter, typename ImplementationTag>
 class InterProcessTransporterBase
-    : public StaticTransporterInterface<InterProcessTransporterBase<Derived, InnerTransporter>,
-                                        InnerTransporter>,
-      public Poller<InterProcessTransporterBase<Derived, InnerTransporter>>
+    : public StaticTransporterInterface<
+          InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>,
+          InnerTransporter>,
+      public Poller<InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>>
 {
-    using InterfaceType =
-        StaticTransporterInterface<InterProcessTransporterBase<Derived, InnerTransporter>,
-                                   InnerTransporter>;
+    using InterfaceType = StaticTransporterInterface<
+        InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>,
+        InnerTransporter>;
 
-    using PollerType = Poller<InterProcessTransporterBase<Derived, InnerTransporter>>;
+    using PollerType =
+        Poller<InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>>;
 
   public:
+    /// \brief The ImplementationTag for this transporter (allows InterVehiclePortal to match the driver thread's forwarder tag to the InnerTransporter's tag)
+    using implementation_tag = ImplementationTag;
+
     InterProcessTransporterBase(InnerTransporter& inner)
         : InterfaceType(inner), PollerType(&this->inner())
     {
@@ -269,9 +277,16 @@ class InterProcessTransporterBase
     }
 
   protected:
-    static constexpr Group to_portal_group_{"goby::middleware::interprocess::to_portal"};
-    static constexpr Group regex_group_{"goby::middleware::interprocess::regex"};
-    static constexpr Group from_portal_group_{"goby::middleware::interprocess::from_portal"};
+    inline static constexpr auto to_portal_group_name_ =
+        detail::concat(ImplementationTag::prefix, "::to_portal");
+    inline static constexpr auto regex_group_name_ =
+        detail::concat(ImplementationTag::prefix, "::regex");
+    inline static constexpr auto from_portal_group_name_ =
+        detail::concat(ImplementationTag::prefix, "::from_portal");
+
+    inline static constexpr Group to_portal_group_{to_portal_group_name_.data()};
+    inline static constexpr Group regex_group_{regex_group_name_.data()};
+    inline static constexpr Group from_portal_group_{from_portal_group_name_.data()};
 
   private:
     friend PollerType;
@@ -281,32 +296,32 @@ class InterProcessTransporterBase
     }
 };
 
-template <typename Derived, typename InnerTransporter>
-constexpr goby::middleware::Group
-    InterProcessTransporterBase<Derived, InnerTransporter>::to_portal_group_;
-template <typename Derived, typename InnerTransporter>
-constexpr goby::middleware::Group
-    InterProcessTransporterBase<Derived, InnerTransporter>::regex_group_;
-template <typename Derived, typename InnerTransporter>
-constexpr goby::middleware::Group
-    InterProcessTransporterBase<Derived, InnerTransporter>::from_portal_group_;
-
 /// \brief Implements the forwarder concept for the interprocess layer
 ///
 /// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer. For example, the main thread might instantiate a portal and then spawn several threads that instantiate forwarders. These auxiliary threads can then communicate on the interprocess layer as if they had a direct connection to other interprocess nodes.
 /// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
-template <typename InnerTransporter>
+/// \tparam ImplementationTag Distinguishes different implementations using different internal groups (e.g. detail::InterProcessTag or detail::InterProcessTag)
+template <typename InnerTransporter, typename ImplementationTag = void> class InterProcessForwarder;
+
+/// \brief Implements the forwarder concept for the interprocess layer (implementation)
+///
+/// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
+/// \tparam ImplementationTag Must be provided explicitly; use zeromq::InterProcessForwarder or udpm::InterProcessForwarder for the common cases
+template <typename InnerTransporter, typename ImplementationTag>
 class InterProcessForwarder
-    : public InterProcessTransporterBase<InterProcessForwarder<InnerTransporter>, InnerTransporter>
+    : public InterProcessTransporterBase<InterProcessForwarder<InnerTransporter, ImplementationTag>,
+                                         InnerTransporter, ImplementationTag>
 {
   public:
     using Base =
-        InterProcessTransporterBase<InterProcessForwarder<InnerTransporter>, InnerTransporter>;
+        InterProcessTransporterBase<InterProcessForwarder<InnerTransporter, ImplementationTag>,
+                                    InnerTransporter, ImplementationTag>;
 
     /// \brief Construct a forwarder for the interprocess layer
     ///
     /// \param inner A reference to the inner transporter used to forward messages to and from the portal
-    InterProcessForwarder(InnerTransporter& inner) : Base(inner), alive_(std::make_shared<std::atomic<bool>>(true))
+    InterProcessForwarder(InnerTransporter& inner)
+        : Base(inner), alive_(std::make_shared<std::atomic<bool>>(true))
     {
         this->inner()
             .template subscribe<Base::regex_group_,
@@ -721,12 +736,13 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
         regex_subscriptions_;
 };
 
-template <typename Derived, typename InnerTransporter>
-class InterProcessPortalBase : public InterProcessTransporterBase<Derived, InnerTransporter>,
-                               public InterProcessPortalCommon<Derived, InnerTransporter>
+template <typename Derived, typename InnerTransporter, typename ImplementationTag>
+class InterProcessPortalBase
+    : public InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>,
+      public InterProcessPortalCommon<Derived, InnerTransporter>
 {
   public:
-    using Base = InterProcessTransporterBase<Derived, InnerTransporter>;
+    using Base = InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>;
     using Common = InterProcessPortalCommon<Derived, InnerTransporter>;
 
     InterProcessPortalBase(InnerTransporter& inner) : Base(inner) { _init(); }
@@ -760,6 +776,36 @@ class InterProcessPortalBase : public InterProcessTransporterBase<Derived, Inner
         this->inner().template subscribe<Base::to_portal_group_, SerializationUnSubscribeAll>(
             [this](std::shared_ptr<const middleware::SerializationUnSubscribeAll> s)
             { static_cast<Derived*>(this)->_unsubscribe_all(s->subscriber_id()); });
+    }
+};
+
+} // namespace middleware
+} // namespace goby
+
+#include "goby/zeromq/transport/detail/tags.h"
+
+namespace goby
+{
+namespace middleware
+{
+
+/// \brief Deprecated: use zeromq::InterProcessForwarder or udpm::InterProcessForwarder instead
+///
+/// This 1-argument specialisation (ImplementationTag = void) is kept for backwards compatibility.
+/// It resolves to the zeromq implementation. New code should use zeromq::InterProcessForwarder<>
+/// or udpm::InterProcessForwarder<> explicitly.
+template <typename InnerTransporter>
+class InterProcessForwarder<InnerTransporter, void>
+    : public InterProcessForwarder<InnerTransporter, zeromq::detail::InterProcessTag>
+{
+  public:
+    using Base = InterProcessForwarder<InnerTransporter, zeromq::detail::InterProcessTag>;
+
+    [[deprecated("Use zeromq::InterProcessForwarder<> or udpm::InterProcessForwarder<> instead of "
+                 "middleware::InterProcessForwarder<>")]]
+    explicit InterProcessForwarder(InnerTransporter& inner)
+        : Base(inner)
+    {
     }
 };
 

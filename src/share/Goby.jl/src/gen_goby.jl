@@ -1,4 +1,12 @@
 using YAML
+using ProtoBuf
+
+function gen_proto(protos, includes, outdir, stampfile)
+    protojl(protos, includes, outdir, common_abstract_type=true, add_kwarg_constructors=true)
+    open(stampfile, "w") do io
+        write(io, "done")
+    end
+end
 
 struct InvalidInterfaceError <: Exception
 var::String
@@ -142,9 +150,18 @@ function goby_gen_cpp(in_yaml::String, out_cpp::String, includes)
     subscribe = Vector{String}()
     for layer in layers
         if haskey(interface_yaml, layer)
-            p, s = collect_layer(layer, interface_yaml[layer])
-            append!(publish, p)
-            append!(subscribe, s)
+            layer_value = interface_yaml[layer]
+            if isa(layer_value, Vector)
+                for entry in layer_value
+                    p, s = collect_layer(layer, entry)
+                    append!(publish, p)
+                    append!(subscribe, s)
+                end
+            else
+                p, s = collect_layer(layer, layer_value)
+                append!(publish, p)
+                append!(subscribe, s)
+            end
         end
     end
     gen_class(io_out, interface_yaml["application"]["name"], publish, subscribe)

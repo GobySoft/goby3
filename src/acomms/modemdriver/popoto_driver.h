@@ -71,40 +71,35 @@ class PopotoDriver : public ModemDriverBase
 
   private:
     void parse_in(const std::string& in, std::map<std::string, std::string>* out);
-    void signal_and_write(const std::string& raw);
 
-    // 2 byte header code
-    // std::uint16_t CreateGobyHeader(const protobuf::ModemTransmission& m);
-    std::uint8_t CreateGobyHeader(const protobuf::ModemTransmission& m);
-    void DecodeGobyHeader(std::uint8_t header, std::uint8_t ack_num,
-                          protobuf::ModemTransmission& m);
-    void DecodeHeader(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
-    void ProcessJSON(const std::string& message, protobuf::ModemTransmission& modem_msg);
-    std::string change_to_popoto_json(std::string input, size_t pos, std::string setval,
-                                      std::string num_type);
-    std::string setrate_to_payload_mode(std::string setRate);
+    void set_popoto_value(const std::string& key, int val)
+    {
+        send_popoto_command("SetValue", key + " int " + std::to_string(val));
+    }
+    void set_popoto_value(const std::string& key, float val)
+    {
+        send_popoto_command("SetValue", key + " float " + std::to_string(val));
+    }
+
+    void get_popoto_value(const std::string& key) { send_popoto_command("GetValue", key); }
+
+    void send_popoto_command(const std::string& command)
+    {
+        // https://github.com/Delresearch/PopotoAPI/blob/2b511ff2109b6cde85b2261aec414882a332e8eb/CPP/popoto_client/include/TCPCmdClient.hpp#L50
+        send_popoto_command(command, " Unused Arguments");
+    }
+    void send_popoto_command(const std::string& command, const nlohmann::json& args);
+
+    std::uint8_t create_goby_header(const protobuf::ModemTransmission& m);
+    void decode_goby_header(std::uint8_t header, protobuf::ModemTransmission& m);
+    void decode_popoto_header(std::vector<uint8_t> data, protobuf::ModemTransmission& m);
+    void process_popoto_json(const std::string& message, protobuf::ModemTransmission& modem_msg);
 
     const popoto::protobuf::Config& popoto_driver_cfg() const
     {
         return driver_cfg_.GetExtension(popoto::protobuf::config);
     }
 
-    static std::string binary_to_json(const std::uint8_t* buf, size_t num_bytes)
-    {
-        std::string output;
-
-        for (int i = 0, n = num_bytes; i < n; i++)
-        {
-            output.append(std::to_string((uint8_t)buf[i]));
-            if (i < n - 1)
-            {
-                output.append(",");
-            }
-        }
-        return output;
-    }
-
-    // Convert csv values back to dccl binary for the dccl codec to decode
     static std::string json_to_binary(const nlohmann::json& element)
     {
         std::string output;
@@ -113,7 +108,7 @@ class PopotoDriver : public ModemDriverBase
     }
 
     // Remove popoto trash from the incoming serial string
-    static std::string StripString(std::string in, std::string p)
+    static std::string clean_popoto_string(std::string in, std::string p)
     {
         std::string out = std::move(in);
         std::string::size_type n = p.length();
@@ -126,30 +121,23 @@ class PopotoDriver : public ModemDriverBase
   private:
     protobuf::DriverConfig driver_cfg_;
     int sender_id_{0};
-    float modem_p;
+    float modem_power_;
     std::uint32_t next_frame_{0};
+
     protobuf::ModemTransmission modem_msg_;
-    int application_type;
+    bool modem_msg_complete_ = false;
+
+    int application_type_;
 
     static constexpr int DEFAULT_BAUD{115200};
     static constexpr int DEFAULT_MTU_BYTES{1024};
     static constexpr int POPOTO_BROADCAST_ID{255};
 
-    enum ConnectionType
-    {
-        SERIAL_CONNECTION = 0,  // 0 == Data, 1 == Ack
-        ETHERNET_CONNECTION = 1 // 0 == no ack requested, 1 == ack requested
-    };
-    ConnectionType myConnection;
-
     // Bitrates with Popoto modem: map these onto 0-5
-    std::vector<std::string> rate_to_speed{"setRate80\n",   "setRate640\n",  "setRate1280\n",
-                                           "setRate2560\n", "setRate5120\n", "setRate10240\n"};
+    std::vector<std::string> rate_to_speed{"setRate80",   "setRate640",  "setRate1280",
+                                           "setRate2560", "setRate5120", "setRate10240"};
 
-    const std::string setvali = "setvaluei";
-    const std::string setvalf = "setvaluef";
-    const std::string getvali = "getvaluei";
-    const std::string getvalf = "getvaluef";
+    bool startup_done_{false};
 };
 } // namespace acomms
 } // namespace goby

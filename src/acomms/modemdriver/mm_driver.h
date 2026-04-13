@@ -1,4 +1,4 @@
-// Copyright 2009-2021:
+// Copyright 2009-2026:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -233,6 +233,7 @@ class MMDriver : public ModemDriverBase
     // doxygen
 
     /// \example acomms/modemdriver/driver_simple/driver_simple.cpp
+    // goby3_example_driver_simple
     // \example acomms/chat/chat.cpp
 
   private:

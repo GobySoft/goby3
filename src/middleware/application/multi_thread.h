@@ -1,4 +1,4 @@
-// Copyright 2017-2025:
+// Copyright 2017-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -313,7 +313,8 @@ class MultiThreadApplication
             this->app_cfg());
 
         if (this->app_cfg().app().health_cfg().run_health_monitor_thread())
-            this->template launch_thread_without_cfg<HealthMonitorThread>();
+            this->template launch_thread_without_cfg<HealthMonitorThread<
+                typename InterProcessPortal<InterThreadTransporter>::implementation_tag>>();
     }
 
     virtual ~MultiThreadApplication() {}
@@ -408,6 +409,30 @@ template <class Config> class MultiThreadTest : public MultiThreadStandaloneAppl
     // so we can add on threads that publish to the outside for testing
     InterThreadTransporter& interprocess() { return Base::interthread(); }
     InterThreadTransporter& intervehicle() { return Base::interthread(); }
+};
+
+/// \brief Class for use with MultiThreadStandaloneApplication (interthread only)
+template <typename Config> class StandaloneThread : public Thread<Config, InterThreadTransporter>
+{
+  public:
+    StandaloneThread(const Config& cfg, double loop_freq_hertz = 0, int index = -1)
+        : StandaloneThread(cfg, loop_freq_hertz * boost::units::si::hertz, index)
+    {
+    }
+
+    StandaloneThread(const Config& cfg,
+                     boost::units::quantity<boost::units::si::frequency> loop_freq, int index = -1)
+        : Thread<Config, InterThreadTransporter>(cfg, loop_freq, index)
+    {
+        interthread_.reset(new InterThreadTransporter);
+
+        this->set_transporter(interthread_.get());
+    }
+
+    InterThreadTransporter& interthread() { return this->transporter(); }
+
+  private:
+    std::unique_ptr<InterThreadTransporter> interthread_;
 };
 
 } // namespace middleware

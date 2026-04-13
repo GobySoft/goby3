@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -63,6 +63,8 @@ class InterThreadTransporter
     };
 
   public:
+    using implementation_tag = void;
+
     InterThreadTransporter() : data_mutex_(std::make_shared<std::mutex>()) {}
 
     virtual ~InterThreadTransporter()
