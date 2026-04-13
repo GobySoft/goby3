@@ -21,6 +21,13 @@ message AppConfig
         cfg { action: NEVER }
     }];
 
+    optional double loop_frequency = 3 [
+        (goby.field) = {
+            description: "Frequency to call loop() at. If not set, uses compile-time loop frequency. Zero or negative means loop() is never called."
+        },
+        (dccl.field).units = { base_dimensions: "T^-1" }
+    ];
+
     optional goby.util.protobuf.GLogConfig glog_config = 10
         [(goby.field).description =
              "configure the Goby Logger (TTY terminal and file debugging "
@@ -95,4 +102,14 @@ message AppConfig
             "parsed configuration to stdout and exit",
         (goby.field).cfg = { action: ADVANCED }
     ];
+
+    message Intervehicle
+    {
+        optional string dccl_passphrase = 1 [
+            (goby.field).description =
+                "If set, encrypt and decrypt all DCCL intervehicle messages with this passphrase using AES encryption. This passphrase must match all intervehicle publishers and subscribers using any DCCL messages within this system, include gobyd/goby_intervehicle_portal."
+        ];
+    }
+    optional Intervehicle intervehicle_cfg = 150
+        [(goby.field).cfg = { action: ADVANCED }];
 }

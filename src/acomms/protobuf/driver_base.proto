@@ -21,7 +21,6 @@ enum DriverType
     DRIVER_JANUS = 13;
 }
 
-
 message DriverConfig
 {
     oneof driver
@@ -98,6 +97,12 @@ message DriverConfig
         [(goby.field).description =
              "File to write raw modem log to. If %1% is present, is replaced "
              "with the current timestamp."];
+
+    optional bool ipv6 = 31 [
+        (goby.field).description =
+            "If true, support IPv6 addresses for CONNECTION_TCP_AS_SERVER",
+        default = false
+    ];
 
     extensions 1000 to max;
     // extension 1000 used by acomms_mm_driver.proto

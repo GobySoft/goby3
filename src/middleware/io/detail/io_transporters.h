@@ -1,4 +1,4 @@
-// Copyright 2021:
+// Copyright 2021-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -25,6 +25,7 @@
 #define GOBY_MIDDLEWARE_IO_DETAIL_IO_TRANSPORTERS_H
 
 #include "goby/exception.h"
+#include "goby/middleware/transport/detail/static_group_names.h"
 
 namespace goby
 {
@@ -32,7 +33,7 @@ namespace middleware
 {
 class Group;
 class InterThreadTransporter;
-template <typename InnerTransporter> class InterProcessForwarder;
+template <typename InnerTransporter, typename ImplementationTag> class InterProcessForwarder;
 namespace io
 {
 enum class PubSubLayer
@@ -50,50 +51,51 @@ enum class Direction
 };
 
 // Direction template parameter required to avoid diamond inheritance problem with IOThread
-template <class Derived, Direction direction, PubSubLayer layer> struct IOTransporterByLayer
+template <class Derived, Direction direction, typename ImplementationTag, PubSubLayer layer>
+struct IOTransporterByLayer
 {
 };
 
-template <class Derived, Direction direction>
-struct IOTransporterByLayer<Derived, direction, PubSubLayer::INTERTHREAD>
+template <class Derived, Direction direction, typename ImplementationTag>
+struct IOTransporterByLayer<Derived, direction, ImplementationTag, PubSubLayer::INTERTHREAD>
 {
-  protected:
     using Transporter = InterThreadTransporter;
     Transporter& io_transporter() { return static_cast<Derived*>(this)->interthread(); }
 };
 
-template <class Derived, Direction direction>
-struct IOTransporterByLayer<Derived, direction, PubSubLayer::INTERPROCESS>
+template <class Derived, Direction direction, typename ImplementationTag>
+struct IOTransporterByLayer<Derived, direction, ImplementationTag, PubSubLayer::INTERPROCESS>
 {
-  protected:
-    using Transporter = InterProcessForwarder<InterThreadTransporter>;
+    using Transporter = InterProcessForwarder<InterThreadTransporter, ImplementationTag>;
     Transporter& io_transporter() { return static_cast<Derived*>(this)->interprocess(); }
 };
 
 template <class Derived, const goby::middleware::Group& line_in_group, PubSubLayer layer,
-          bool use_indexed_group>
+          typename ImplementationTag, bool use_indexed_group>
 struct IOPublishTransporter
 {
 };
 
-template <class Derived, const goby::middleware::Group& line_in_group, PubSubLayer layer>
-struct IOPublishTransporter<Derived, line_in_group, layer, false>
-    : IOTransporterByLayer<Derived, Direction::PUBLISH, layer>
+template <class Derived, const goby::middleware::Group& line_in_group, PubSubLayer layer,
+          typename ImplementationTag>
+struct IOPublishTransporter<Derived, line_in_group, layer, ImplementationTag, false>
+    : IOTransporterByLayer<Derived, Direction::PUBLISH, ImplementationTag, layer>
 {
     IOPublishTransporter(int index) {}
-    template <
-        typename Data,
-        int scheme = transporter_scheme<
-            Data, typename IOTransporterByLayer<Derived, Direction::PUBLISH, layer>::Transporter>()>
+    template <typename Data,
+              int scheme = transporter_scheme<
+                  Data, typename IOTransporterByLayer<Derived, Direction::PUBLISH,
+                                                      ImplementationTag, layer>::Transporter>()>
     void publish_in(std::shared_ptr<Data> data)
     {
         this->io_transporter().template publish<line_in_group, Data, scheme>(data);
     }
 };
 
-template <class Derived, const goby::middleware::Group& line_in_group, PubSubLayer layer>
-struct IOPublishTransporter<Derived, line_in_group, layer, true>
-    : IOTransporterByLayer<Derived, Direction::PUBLISH, layer>
+template <class Derived, const goby::middleware::Group& line_in_group, PubSubLayer layer,
+          typename ImplementationTag>
+struct IOPublishTransporter<Derived, line_in_group, layer, ImplementationTag, true>
+    : IOTransporterByLayer<Derived, Direction::PUBLISH, ImplementationTag, layer>
 
 {
     IOPublishTransporter(int index)
@@ -103,10 +105,10 @@ struct IOPublishTransporter<Derived, line_in_group, layer, true>
             throw(goby::Exception("Index must be less than or equal to: " +
                                   std::to_string(Group::maximum_valid_group)));
     }
-    template <
-        typename Data,
-        int scheme = transporter_scheme<
-            Data, typename IOTransporterByLayer<Derived, Direction::PUBLISH, layer>::Transporter>()>
+    template <typename Data,
+              int scheme = transporter_scheme<
+                  Data, typename IOTransporterByLayer<Derived, Direction::PUBLISH,
+                                                      ImplementationTag, layer>::Transporter>()>
     void publish_in(std::shared_ptr<Data> data)
     {
         this->io_transporter().template publish_dynamic<Data, scheme>(data, in_group_);
@@ -117,39 +119,42 @@ struct IOPublishTransporter<Derived, line_in_group, layer, true>
 };
 
 template <class Derived, const goby::middleware::Group& line_out_group, PubSubLayer layer,
-          bool use_indexed_group>
+          typename ImplementationTag, bool use_indexed_group>
 struct IOSubscribeTransporter
 {
 };
 
-template <class Derived, const goby::middleware::Group& line_out_group, PubSubLayer layer>
-struct IOSubscribeTransporter<Derived, line_out_group, layer, false>
-    : IOTransporterByLayer<Derived, Direction::SUBSCRIBE, layer>
+template <class Derived, const goby::middleware::Group& line_out_group, PubSubLayer layer,
+          typename ImplementationTag>
+struct IOSubscribeTransporter<Derived, line_out_group, layer, ImplementationTag, false>
+    : IOTransporterByLayer<Derived, Direction::SUBSCRIBE, ImplementationTag, layer>
 {
     IOSubscribeTransporter(int index) {}
 
     template <typename Data,
               int scheme = transporter_scheme<
                   Data, typename IOTransporterByLayer<Derived, Direction::SUBSCRIBE,
-                                                      layer>::Transporter>(),
+                                                      ImplementationTag, layer>::Transporter>(),
               Necessity necessity = Necessity::OPTIONAL>
     void subscribe_out(std::function<void(std::shared_ptr<const Data>)> f)
     {
         this->io_transporter().template subscribe<line_out_group, Data, scheme, necessity>(f);
     }
 
-    template <typename Data, int scheme = transporter_scheme<
-                                 Data, typename IOTransporterByLayer<Derived, Direction::SUBSCRIBE,
-                                                                     layer>::Transporter>()>
+    template <typename Data,
+              int scheme = transporter_scheme<
+                  Data, typename IOTransporterByLayer<Derived, Direction::SUBSCRIBE,
+                                                      ImplementationTag, layer>::Transporter>()>
     void unsubscribe_out()
     {
         this->io_transporter().template unsubscribe<line_out_group, Data, scheme>();
     }
 };
 
-template <class Derived, const goby::middleware::Group& line_out_group, PubSubLayer layer>
-struct IOSubscribeTransporter<Derived, line_out_group, layer, true>
-    : IOTransporterByLayer<Derived, Direction::SUBSCRIBE, layer>
+template <class Derived, const goby::middleware::Group& line_out_group, PubSubLayer layer,
+          typename ImplementationTag>
+struct IOSubscribeTransporter<Derived, line_out_group, layer, ImplementationTag, true>
+    : IOTransporterByLayer<Derived, Direction::SUBSCRIBE, ImplementationTag, layer>
 {
     IOSubscribeTransporter(int index)
         : out_group_(std::string(line_out_group),
@@ -163,16 +168,17 @@ struct IOSubscribeTransporter<Derived, line_out_group, layer, true>
     template <typename Data,
               int scheme = transporter_scheme<
                   Data, typename IOTransporterByLayer<Derived, Direction::SUBSCRIBE,
-                                                      layer>::Transporter>(),
+                                                      ImplementationTag, layer>::Transporter>(),
               Necessity necessity = Necessity::OPTIONAL>
     void subscribe_out(std::function<void(std::shared_ptr<const Data>)> f)
     {
         this->io_transporter().template subscribe_dynamic<Data, scheme>(f, out_group_);
     }
 
-    template <typename Data, int scheme = transporter_scheme<
-                                 Data, typename IOTransporterByLayer<Derived, Direction::SUBSCRIBE,
-                                                                     layer>::Transporter>()>
+    template <typename Data,
+              int scheme = transporter_scheme<
+                  Data, typename IOTransporterByLayer<Derived, Direction::SUBSCRIBE,
+                                                      ImplementationTag, layer>::Transporter>()>
     void unsubscribe_out()
     {
         this->io_transporter().template unsubscribe_dynamic<Data, scheme>(out_group_);

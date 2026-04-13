@@ -1,4 +1,4 @@
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS test_config.proto)
+protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS test_config.proto)
 
 add_executable(goby_test_mmdriver2 test.cpp ${PROTO_SRCS} ${PROTO_HDRS})
 target_link_libraries(goby_test_mmdriver2 goby)

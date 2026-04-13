@@ -15,7 +15,6 @@ This means for every sub-buffer, the user has control over two variables (\f$V_{
 The following graph illustrates the priority growth over time of three sub-buffers with different \f$ttl\f$ and \f$V_{base}\f$. A message is sent every 100 seconds and the sub-buffer that is chosen is marked on the graph.
 
 ![](images/priority_graph.png)
-\image latex priority_graph.eps "Graph of the growth of queueing priorities for \c queue for three different queues. A message is sent every 100 seconds from the %queue with the highest priority (numbered on the graph)." width=0.9\textwidth
 
 ## goby::acomms::QueueManager or goby::acomms::DynamicBuffer
 
@@ -95,7 +94,7 @@ In the former case (the default), you can tag a given field of a DCCL message to
 
 #### Instantiate and configure
 
-The goby::acomms::QueueManager is configured similarly to the goby::acomms::DCCLCodec. You need to set a unique identification number for this platform (the "modem ID") through the \link queue.proto goby::acomms::protobuf::QueueManagerConfig \endlink.
+The goby::acomms::QueueManager is configured similarly to the goby::acomms::DCCLCodec. You need to set a unique identification number for this platform (the "modem ID") through the `goby::acomms::protobuf::QueueManagerConfig` (defined in queue.proto).
 
 You can configure queues by added repeated fields to the QueueManagerConfig's message_entry field, or by calling goby::acomms::QueueManager::add_queue() directly.
 
@@ -129,13 +128,13 @@ q_manager.set_cfg(cfg);
 
 Then, you need to do a few more initialization chores:
 
-* Connect (using goby::acomms::connect()) QueueManager signals to your application layer slots (functions or member functions that match the signal's signature). You do not need to connect a slot to a given signal if you do not need its functionality. See \ref signal_slot for more on using signals and slots:
+* Connect (using goby::acomms::connect()) QueueManager signals to your application layer slots (functions or member functions that match the signal's signature). You do not need to connect a slot to a given signal if you do not need its functionality. See the [signals and slots documentation](https://www.boost.org/doc/libs/release/doc/html/signals2.html) for more on using signals and slots:
     * Received (and decoded) DCCL data: goby::acomms::QueueManager::signal_receive
     * Received acknowledgements: goby::acomms::QueueManager::signal_ack
     * Expired messages (ttl exceeded): goby::acomms::QueueManager::signal_expire
 * Additional advanced features
     * Connect a slot to learn every time a queue size changes due to a new message being pushed or a message being sent: goby::acomms::QueueManager::signal_queue_size_change
-    * Request that a queue be <i>on_demand</i>, that is, request data from the application layer every time the %modem layer requests data (DCCL messages only). This effectively bypasses the queue and forwards the modem's data request to the application layer. Use this for sending highly time sensitive data which needs to be encoded immediately prior to sending. Set the encode_on_demand option to true for that particular Protobuf message (and if desired change the on_demand_skew_seconds). You must also connect a slot that will be executed each time data is requested to the signal goby::acomms::QueueManager::signal_data_on_demand.
+    * Request that a queue be *on_demand*, that is, request data from the application layer every time the modem layer requests data (DCCL messages only). This effectively bypasses the queue and forwards the modem's data request to the application layer. Use this for sending highly time sensitive data which needs to be encoded immediately prior to sending. Set the encode_on_demand option to true for that particular Protobuf message (and if desired change the on_demand_skew_seconds). You must also connect a slot that will be executed each time data is requested to the signal goby::acomms::QueueManager::signal_data_on_demand.
 
 #### Operation
 
@@ -145,4 +144,4 @@ At the driver layer, messages are requested using goby::acomms::QueueManager::ha
 
 You must run goby::acomms::QueueManager::do_work() regularly (faster than 1 Hz; 10 Hertz is good) to process expired messages (goby::acomms::QueueManager::signal_expire). All other signals are emitted in response to a driver level signal (and thus are called during a call to goby::acomms::ModemDriverBase::do_work() if using the Goby modemdriver).
 
-See queue_simple.cpp for a basic complete example.
+See goby3_example_queue_simple for a basic complete example.

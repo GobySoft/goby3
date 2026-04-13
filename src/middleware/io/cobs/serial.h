@@ -34,6 +34,7 @@
 #include "goby/middleware/io/cobs/common.h"
 #include "goby/middleware/io/detail/io_interface.h"     // for PubSubLayer
 #include "goby/middleware/io/detail/serial_interface.h" // for SerialThread
+#include "goby/zeromq/application/simple_thread.h"
 
 namespace goby
 {
@@ -66,7 +67,7 @@ template <const goby::middleware::Group& line_in_group,
           const goby::middleware::Group& line_out_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          template <class> class ThreadType = goby::middleware::SimpleThread,
+          template <class> class ThreadType = goby::zeromq::SimpleThread,
           bool use_indexed_groups = false>
 class SerialThreadCOBS
     : public detail::SerialThread<line_in_group, line_out_group, publish_layer, subscribe_layer,

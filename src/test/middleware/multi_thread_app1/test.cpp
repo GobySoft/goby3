@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -24,7 +24,18 @@
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/time.h"
 #include "goby/time/io.h"
+
+#if defined(test_for_zeromq)
+#include "goby/test/middleware/multi_thread_app1/zeromq.pb.h"
 #include "goby/zeromq/application/multi_thread.h"
+using goby::zeromq::SimpleThread;
+#elif defined(test_for_udpm)
+#include "goby/test/middleware/multi_thread_app1/udpm.pb.h"
+#include "goby/udpm/application/multi_thread.h"
+using goby::udpm::SimpleThread;
+#else
+#error "No test_for_<impl> defined"
+#endif
 
 #include <boost/units/io.hpp>
 #include <memory>
@@ -32,10 +43,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "goby/test/zeromq/multi_thread_app1/test.pb.h"
+#include "goby/test/middleware/multi_thread_app1/test.pb.h"
+
 using goby::glog;
 
-using namespace goby::test::zeromq::protobuf;
+using namespace goby::test::middleware::protobuf;
 
 extern constexpr goby::middleware::Group widget1{"widget1", 1};
 extern constexpr goby::middleware::Group widget2{"widget2"};
@@ -45,13 +57,19 @@ const std::string platform_name{"multi_thread_app1"};
 
 constexpr int num_messages{10};
 
-using AppBase = goby::zeromq::MultiThreadApplication<TestConfig>;
+#if defined(test_for_zeromq)
+using AppBase = goby::zeromq::MultiThreadApplication<TestZeroMQConfig>;
+using TestConfig = TestZeroMQConfig;
+#elif defined(test_for_udpm)
+using AppBase = goby::udpm::MultiThreadApplication<TestUDPMConfig>;
+using TestConfig = TestUDPMConfig;
+#endif
 
 namespace goby
 {
 namespace test
 {
-namespace zeromq
+namespace middleware
 {
 void noop_func(const Widget& widget) {}
 
@@ -76,10 +94,14 @@ class TestTxConfigurator : public goby::middleware::ProtobufConfigurator<TestCon
         TestConfig& cfg = mutable_cfg();
         cfg.mutable_app()->set_name("TestAppTx");
         cfg.mutable_interprocess()->set_platform(platform_name);
+
+#if defined(test_for_udpm)
+        cfg.mutable_interprocess()->set_max_send_rate_bytes_per_second(1000);
+#endif
     }
 };
 
-class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
+class TestThreadRx : public SimpleThread<TestConfig>
 {
   public:
     TestThreadRx(const TestConfig& cfg) : SimpleThread(cfg)
@@ -94,7 +116,7 @@ class TestThreadRx : public goby::middleware::SimpleThread<TestConfig>
         ready = true;
     }
 
-    ~TestThreadRx() override = default;
+    ~TestThreadRx() { glog.is_verbose() && glog << "~TestThreadRx" << std::endl; }
 
     void post(const Widget& widget)
     {
@@ -137,7 +159,10 @@ class TestAppRx : public AppBase
         assert(widget.b() == rx_count_);
         ++rx_count_;
         if (rx_count_ == num_messages)
+        {
+            glog.is_verbose() && glog << "TestAppRx main thread done" << std::endl;
             quit();
+        }
     }
 
     void post2(const Widget& widget)
@@ -175,22 +200,26 @@ class TestAppTx : public AppBase
 
     void loop() override
     {
-        static int i = 0;
-        ++i;
+        //        static int i = 0;
+        //       ++i;
 
-        if (!interprocess().hold_state())
+#if defined(test_for_zeromq)
+        if (interprocess().hold_state())
+            return;
+#endif
+        glog.is_verbose() && glog << goby::time::SystemClock::now() << std::endl;
+        Widget w;
+        w.set_b(tx_count_++);
         {
-            glog.is_verbose() && glog << goby::time::SystemClock::now() << std::endl;
-            Widget w;
-            w.set_b(tx_count_++);
-            {
-                glog.is_verbose() && glog << "Tx: " << w.DebugString() << std::flush;
-            }
+            glog.is_verbose() && glog << "Tx: " << w.DebugString() << std::flush;
+        }
 
-            interprocess().publish<widget1>(w);
+        interprocess().publish<widget1>(w);
 
-            if (tx_count_ == (num_messages + 5))
-                quit();
+        if (tx_count_ == (num_messages + 5))
+        {
+            glog.is_verbose() && glog << "TestAppTx main thread done" << std::endl;
+            quit();
         }
     }
 
@@ -199,12 +228,13 @@ class TestAppTx : public AppBase
   private:
     int tx_count_{0};
 };
-} // namespace zeromq
+} // namespace middleware
 } // namespace test
 } // namespace goby
 
 int main(int argc, char* argv[])
 {
+#if defined(test_for_zeromq)
     int child_pid = fork();
 
     std::unique_ptr<std::thread> t2, t3;
@@ -240,12 +270,13 @@ int main(int argc, char* argv[])
     {
         // let manager and router start up
         // sleep(1);
+#endif
         int child2_pid = fork();
         if (child2_pid != 0)
         {
             int wstatus;
-            int rc = goby::run<goby::test::zeromq::TestAppRx>(
-                goby::test::zeromq::TestRxConfigurator(argc, argv));
+            int rc = goby::run<goby::test::middleware::TestAppRx>(
+                goby::test::middleware::TestRxConfigurator(argc, argv));
             wait(&wstatus);
             if (wstatus != 0)
                 exit(EXIT_FAILURE);
@@ -253,9 +284,16 @@ int main(int argc, char* argv[])
         }
         else
         {
-            return goby::run<goby::test::zeromq::TestAppTx>(
-                goby::test::zeromq::TestTxConfigurator(argc, argv));
+#if defined(test_for_udpm)
+            // no hold feature implemented, so we have to wait for the Rx App to start first
+            sleep(1);
+#endif
+
+            return goby::run<goby::test::middleware::TestAppTx>(
+                goby::test::middleware::TestTxConfigurator(argc, argv));
         }
+#if defined(test_for_zeromq)
     }
+#endif
     std::cout << "All tests passed." << std::endl;
 }

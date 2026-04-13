@@ -92,22 +92,20 @@ The goby::glog debug logging tool provides:
 * automatic time-date stamping of log entries
 * optional thread safe access
 
-The best way to get used to goby::glog is to compile and play with the flexostream_simple.cpp example.
+The best way to get used to goby::glog is to compile and play with the goby3_example_flexostream_simple example.
 
 A handful of examples:
 
 ![](images/glogger-example.png)
-\image latex images/glogger-example.png "Example of the goby::glog output at different verbosity settings to the terminal window"
 
 Graphical user interface logger mode:
 
 ![](images/glogger-gui.png)
-\image latex images/glogger-gui.png "Example of the goby::glog in NCurses GUI mode"
 
 Simultaneous terminal window and file logging:
 
 ```
-flexostream_simple quiet|warn|verbose|debug|gui test.txt
+goby3_example_flexostream_simple quiet|warn|verbose|debug|gui test.txt
 ```
 
 Writes the following to test.txt:

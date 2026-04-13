@@ -1,4 +1,4 @@
-// Copyright 2019-2021:
+// Copyright 2019-2025:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -110,7 +110,6 @@ struct DCCLSerializerParserHelperBase
                 std::make_pair(desc, std::unique_ptr<LoaderBase>(new LoaderDynamic(desc))));
     }
 
-
     static dccl::Codec& codec()
     {
         if (!codec_)
@@ -165,6 +164,13 @@ struct DCCLSerializerParserHelperBase
 
     /// \brief Enable dlog output to glog using same verbosity settings as glog.
     static void setup_dlog();
+
+    static void
+    set_crypto_passphrase(const std::string& passphrase,
+                          const std::set<dccl::int32>& do_not_encrypt_ids = std::set<dccl::int32>())
+    {
+        codec().set_crypto_passphrase(passphrase, do_not_encrypt_ids);
+    }
 };
 } // namespace detail
 

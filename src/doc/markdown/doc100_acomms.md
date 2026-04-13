@@ -11,10 +11,10 @@ To start on some (hopefully) common ground, let's begin with an analogy to Open 
 |Application     |N/A                            |                               |`gobyd`             |
 |Presentation    |[DCCL](http://libdccl.org)     |dccl::Codec                    |                    |
 |Session         |No sessions                    |                               |                    |
-|Transport       |[queue](doc101_acomms-queue.md)|goby::acomms::QueueManager     |\ref acomms/queue/queue_simple/queue_simple.cpp "queue_simple.cpp" \ref acomms/chat/chat.cpp "chat.cpp"|
+|Transport       |[queue](doc101_acomms-queue.md)|goby::acomms::QueueManager     |goby3_example_queue_simple, goby3_example_chat|
 |Network         |Does not yet exist.            |                               |                    |
-|Data Link       |[driver](doc103_acomms-driver.md)|subclasses of goby::acomms::ModemDriverBase, e.g. goby::acomms::MMDriver | \ref acomms/modemdriver/driver_simple/driver_simple.cpp "driver_simple.cpp" \ref acomms/chat/chat.cpp "chat.cpp"               |
-|                |[amac](doc102_acomms-mac.md) |goby::acomms::MACManager       |\ref acomms/amac/amac_simple/amac_simple.cpp "amac_simple.cpp" \ref acomms/chat/chat.cpp "chat.cpp"|
+|Data Link       |[driver](doc103_acomms-driver.md)|subclasses of goby::acomms::ModemDriverBase, e.g. goby::acomms::MMDriver | goby3_example_driver_simple, goby3_example_chat               |
+|                |[amac](doc102_acomms-mac.md) |goby::acomms::MACManager       |goby3_example_amac_simple, goby3_example_chat|
 |Physical        |Not part of Goby             |                               |Modem Firmware, e.g. WHOI Micro-Modem Firmware (NMEA 0183 on RS-232) (see Interface Guide)|
 
 ### Acoustic Communications are slow
@@ -40,8 +40,6 @@ The "law of diminishing returns" means that at some point, if we try to optimize
 A relatively simple component model for the goby-acomms library showing the interface classes:
 ![](images/goby-acomms-overview.png)
 
-\image latex goby-acomms-overview.eps "Basic overview of goby-acomms libraries."
-
 ## dccl: Encoding and decoding
 
 The Dynamic Compact Control Language (DCCL) provides a structure for defining messages to be sent through an acoustic modem. The messages are configured in Google Protocol Buffers and are intended to be easily reconfigurable, unlike the original CCL framework used in the REMUS vehicles and others (for information on CCL, see <http://acomms.whoi.edu/ccl/>.
@@ -54,7 +52,7 @@ DCCL is now a standalone library that can be used with or without Goby. See <htt
 
 The goby-acomms queuing (`queue`) component interacts with both the application level process and the modem driver process that talks directly to the modem.
 
-On the application side, `queue` provides the ability for the application level process to push DCCL messages to various queues and receive messages from a remote sender that correspond to messages in the same queue (e.g. you have a queue for STATUS_MESSAGE that you can push messages to you and also receive other STATUS_MESSAGEs on). The push feature is called by the application level process and received messages are signaled to all previous bound slots (see \ref signal_slot).
+On the application side, `queue` provides the ability for the application level process to push DCCL messages to various queues and receive messages from a remote sender that correspond to messages in the same queue (e.g. you have a queue for STATUS_MESSAGE that you can push messages to you and also receive other STATUS_MESSAGEs on). The push feature is called by the application level process and received messages are signaled to all previous bound slots (see the [signals and slots documentation](https://www.boost.org/doc/libs/release/doc/html/signals2.html)).
 
 On the driver side, `queue` provides the modem driver with data upon request. It chooses the data to send based on dynamic priorities (and several other configuration parameters). It will also pack as many messages from the user into a single frame from the modem as possible using the DCCLCodec's repeated encoding functionality. Note, however, that `queue` will <em>not</em> split a user's data into frames (like TCP/IP). If this functionality is desired, it must be provided at the application layer. Acoustic communications are too unpredictable to reliably stitch together frames.
 
@@ -172,12 +170,10 @@ Clearly the .proto representation is more compact and amenable to easy modificat
 
 ## UML models
 
-Model that gives the sequence for sending a message with goby-acomms (using the :
+Model that gives the sequence for sending a message with goby-acomms:
 
 ![](images/goby-acomms-send-message-sequence.png)
-\image latex goby-acomms-send-message-sequence.eps "UML model that gives the sequence of calls required in sending a message using goby-acomms. The WHOI Micro-Modem is used as example firmware but the specific modemdriver-firmware interaction will depend on the acoustic modem used." width=\textwidth
 
 Model that shows the commands needed to start and keep goby-acomms running:
 
 ![](images/goby-acomms-background-sequence.png)
-\image latex goby-acomms-send-message-sequence.eps "UML model that gives the sequence of calls required in sending a message using goby-acomms. The WHOI Micro-Modem is used as example firmware but the specific modemdriver-firmware interaction will depend on the acoustic modem used." width=\textwidth

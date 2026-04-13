@@ -1,4 +1,4 @@
-// Copyright 2016-2025:
+// Copyright 2016-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -58,7 +58,7 @@ class SubscriptionStoreBase
 
     // returns number of data items posted to callbacks
     static int poll_all(std::thread::id thread_id,
-                        std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+                        std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         // make a copy so that other threads can subscribe if
         // necessary in their callbacks
@@ -106,21 +106,21 @@ class SubscriptionStoreBase
 
   protected:
     virtual int poll(std::thread::id thread_id,
-                     std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) = 0;
+                     std::unique_ptr<std::unique_lock<std::mutex>>& lock) = 0;
     virtual void unsubscribe_all_groups(std::thread::id thread_id) = 0;
 };
 
 struct DataProtection
 {
-    DataProtection(std::shared_ptr<std::mutex> dm, std::shared_ptr<std::condition_variable_any> pcv,
-                   std::shared_ptr<std::timed_mutex> pm)
+    DataProtection(std::shared_ptr<std::mutex> dm, std::shared_ptr<std::condition_variable> pcv,
+                   std::shared_ptr<std::mutex> pm)
         : data_mutex(dm), poller_cv(pcv), poller_mutex(pm)
     {
     }
 
     std::shared_ptr<std::mutex> data_mutex;
-    std::shared_ptr<std::condition_variable_any> poller_cv;
-    std::shared_ptr<std::timed_mutex> poller_mutex;
+    std::shared_ptr<std::condition_variable> poller_cv;
+    std::shared_ptr<std::mutex> poller_mutex;
 };
 
 /// \brief Storage class for a specific interthread subscription (and related data). Used by InterThreadTransporter
@@ -129,8 +129,8 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
   public:
     static void subscribe(std::function<void(std::shared_ptr<const Data>)> func, const Group& group,
                           std::thread::id thread_id, std::shared_ptr<std::mutex> data_mutex,
-                          std::shared_ptr<std::condition_variable_any> cv,
-                          std::shared_ptr<std::timed_mutex> poller_mutex)
+                          std::shared_ptr<std::condition_variable> cv,
+                          std::shared_ptr<std::mutex> poller_mutex)
     {
         {
             std::lock_guard<std::shared_timed_mutex> lock(subscription_mutex_);
@@ -222,7 +222,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
                 // between _poll_all() and wait(), where the condition variable
                 // signal would be lost
 
-                std::lock_guard<std::timed_mutex> l(*data_protection.poller_mutex);
+                std::lock_guard<std::mutex> l(*data_protection.poller_mutex);
             }
             data_protection.poller_cv->notify_all();
         }
@@ -230,7 +230,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
 
   private:
     int poll(std::thread::id thread_id,
-             std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock) override
+             std::unique_ptr<std::unique_lock<std::mutex>>& lock) override
     {
         std::vector<std::pair<std::shared_ptr<typename Callback::CallbackType>,
                               std::shared_ptr<const Data>>>

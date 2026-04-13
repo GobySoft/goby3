@@ -1,5 +1,27 @@
 # Goby Release Notes (Major version 3)
 
+
+## Version 3.3.1
+
+### Middleware
+
+- Enable support for existing DCCL encryption by setting `app { intervehicle_cfg { dccl_passphrase: "" }}`
+
+### Bugs
+
+- Fix reversed order of fields in Liaison Commander
+- Fix bug in escape function of goby_geov_interface for newer versions of MySQL
+
+## Version 3.3.0
+
+### Middleware
+
+- Preliminary support for Julia language apps in the Goby ZeroMQ middleware via CxxWrap.jl
+
+### Acomms
+
+- Added IPv6 support to the ModemDriver base TCP server (and thus Iridium RockBLOCK driver)
+
 ## Version 3.2.3
 
 ### Acomms

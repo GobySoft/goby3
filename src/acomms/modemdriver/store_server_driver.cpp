@@ -1,4 +1,4 @@
-// Copyright 2024:
+// Copyright 2024-2025:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -35,6 +35,9 @@ using goby::glog;
 using goby::util::hex_decode;
 using goby::util::hex_encode;
 using namespace goby::util::logger;
+
+const char* goby::acomms::StoreServerDriver::eol{"\r"};
+const int goby::acomms::StoreServerDriver::default_port{11244};
 
 goby::acomms::StoreServerDriver::StoreServerDriver()
     : last_send_time_(goby::time::SystemClock::now<goby::time::MicroTime>().value()),

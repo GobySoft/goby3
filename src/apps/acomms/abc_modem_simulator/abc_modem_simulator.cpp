@@ -1,4 +1,4 @@
-// Copyright 2011-2021:
+// Copyright 2011-2026:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -24,8 +24,8 @@
 
 //
 // Usage:
-// 1. run abc_modem_simulator running on same port (as TCP server)
-// > abc_modem_simulator 54321
+// 1. run goby_abc_modem_simulator running on same port (as TCP server)
+// > goby_abc_modem_simulator 54321
 // 2. create fake tty terminals connected to TCP as client to port 54321
 // > socat -d -d -v pty,raw,echo=0,link=/tmp/ttyFAKE1 TCP:localhost:54321
 // > socat -d -d -v pty,raw,echo=0,link=/tmp/ttyFAKE2 TCP:localhost:54321
@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
 {
     if (argc < 2)
     {
-        std::cout << "usage: abc_modem_simulator [tcp listen port]" << std::endl;
+        std::cout << "usage: goby_abc_modem_simulator [tcp listen port]" << std::endl;
         exit(1);
     }
 

@@ -6,7 +6,7 @@ The Medium Access Control schemes provided by `amac` are based on Time Division 
 
 The two variations on this scheme provided by `amac` are:
 
-* Decentralized: Each vehicle initiates its own transmission at the start of its slot (\link amac.proto goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED\endlink): Slots are set at launch and can be updated using the [std::list](http://www.cplusplus.com/reference/stl/list/) insert, push, pop, erase, etc. Each vehicle can have more than one slot in the cycle. The cycles must agree across all platforms; the network designer is responsible for this. Most of the time you will want to use this mode.
+* Decentralized: Each vehicle initiates its own transmission at the start of its slot (`goby::acomms::protobuf::MAC_FIXED_DECENTRALIZED`): Slots are set at launch and can be updated using the [std::list](http://www.cplusplus.com/reference/stl/list/) insert, push, pop, erase, etc. Each vehicle can have more than one slot in the cycle. The cycles must agree across all platforms; the network designer is responsible for this. Most of the time you will want to use this mode.
 * Centralized Polling (goby::acomms::protobuf::MAC_POLLED on the master, goby::acomms::protobuf::MAC_NONE on all other nodes): The TDMA cycle is set up and operated by a centralized master modem ("poller"), which is usually the modem connected to the vehicle operator's topside. The poller initiates each transmission and thus the vehicles are not required to maintain synchronous clocks. This mode requires third-party initiation of transmissions to function.
 
 ## Interacting with the goby::acomms::MACManager
@@ -17,7 +17,7 @@ To use the goby::acomms::MACManager, you need to instantiate it:
 goby::acomms::MACManager mac;
 ```
 
-Then you need to provide a callback (or "slot", not to be confused with a TDMA slot) for initiated transmissions for the signal goby::acomms::MACManager::signal_initiate_transmission. This signal will be called when the goby::acomms::MACManager determines it is time to send a message. If using \c modemdriver, simply call goby::acomms::bind(goby::acomms::MACManager&, goby::acomms::ModemDriverBase&) to bind this callback to the modem driver.
+Then you need to provide a callback (or "slot", not to be confused with a TDMA slot) for initiated transmissions for the signal goby::acomms::MACManager::signal_initiate_transmission. This signal will be called when the goby::acomms::MACManager determines it is time to send a message. If using `modemdriver`, simply call goby::acomms::bind(goby::acomms::MACManager&, goby::acomms::ModemDriverBase&) to bind this callback to the modem driver.
 
 Next you need to decide which type of MAC to use:  decentralized fixed or centralized polling and set the type of the goby::acomms::protobuf::MACConfig with the corresponding goby::acomms::protobuf::MACType. We also need to give goby::acomms::MACManager the vehicle's modem id (like all the other components of goby-acomms):
 
@@ -87,4 +87,4 @@ Then, for either MAC scheme, start the goby::acomms::MACManager running (goby::a
 
 You can modify the MAC scheme while MACManager is running. Simply use the std::list insert, push, pop, erase methods to changes slots (goby::acomms::protobuf::ModemTransmission objects). After any changes that invalidate std::list iterators (insert, push, pop, erase), you *must* call goby::acomms::MACManager::update() before the next call to goby::acomms::MACManager::do_work().
 
-See acomms/amac/amac_simple/amac_simple.cpp for a basic complete example.
+See goby3_example_amac_simple for a basic complete example.

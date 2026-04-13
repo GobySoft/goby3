@@ -9,8 +9,11 @@
 cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
 project(goby C CXX)
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(((NOT DEFINED CMAKE_CXX_STANDARD) OR ("${CMAKE_CXX_STANDARD}" STREQUAL "03") OR ("${CMAKE_CXX_STANDARD}" STREQUAL "11") OR ("${CMAKE_CXX_STANDARD}" STREQUAL "14")))
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  message ("Setting CMAKE_CXX_STANDARD to 17 as required by Goby. If you wish to use a newer standard, set CMAKE_CXX_STANDARD directly")
+endif()
 
 ## allows us to write custom modules or modifying existing ones
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
@@ -57,9 +60,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 endif()
 
 set(GOBY_VERSION_MAJOR "3")
-set(GOBY_VERSION_MINOR "2")
-set(GOBY_VERSION_PATCH "3")
-
+set(GOBY_VERSION_MINOR "3")
+set(GOBY_VERSION_PATCH "1")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    message(STATUS "Compiling in Git source tree.")
@@ -88,10 +90,16 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    
 else()
    message(STATUS "Compiling from release tarball (${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}).")
-   set(GOBY_VERSION_DATE "2025.05.13")
+   set(GOBY_VERSION_DATE "2025.11.25")
 endif()
 
 set(GOBY_VERSION "${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}")
+
+# julia can't handle our git version strings - mutate them to conform
+## remove the second '+' (combine revision and hash)
+string(REGEX REPLACE "\\+(g[0-9a-f]+)" "\\1" GOBY_VERSION_PATCH_JULIA_TMP "${GOBY_VERSION_PATCH}")
+## remove remaining '-' (e.g., '-dirty' -> 'dirty')
+string(REPLACE "-" "" GOBY_VERSION_PATCH_JULIA "${GOBY_VERSION_PATCH_JULIA_TMP}")
 
 # give Goby 1 series a few more soversions
 set(GOBY_SOVERSION "30")
@@ -125,7 +133,7 @@ add_custom_command(OUTPUT ShareLink COMMAND ${CMAKE_COMMAND} -E create_symlink $
 add_custom_target(share_link ALL DEPENDS ShareLink)
 
 
-set(GOBY_DEBUG_OPTIONS -Wall -Werror -Wno-sign-compare -Wno-unknown-warning-option)
+set(GOBY_DEBUG_OPTIONS -Wall -Werror -Wno-sign-compare)
 add_compile_options("$<$<CONFIG:DEBUG>:${GOBY_DEBUG_OPTIONS}>")
 add_compile_options("$<$<CXX_COMPILER_ID:Clang>:-Wdocumentation>")
 
@@ -207,6 +215,7 @@ file(GLOB_RECURSE INCLUDE_FILES RELATIVE ${goby_SRC_DIR}
   src/time/*.h
   src/protobuf/*.h
   src/zeromq/*.h
+  src/udpm/*.h
   )
 
 file(GLOB_RECURSE PROTOBUF_FILES RELATIVE ${goby_SRC_DIR}
@@ -233,6 +242,8 @@ foreach(I ${SHARE_FILES})
   file(COPY ${goby_SRC_DIR}/${I} DESTINATION ${goby_SHARE_DIR}/goby)
 endforeach()
 
+# configure Project.toml for Julia version
+configure_file(${goby_SRC_DIR}/share/Goby.jl/Project.toml ${goby_SHARE_DIR}/goby/Goby.jl/Project.toml @ONLY)
 
 # configuration export - installed version
 include(CMakePackageConfigHelpers)

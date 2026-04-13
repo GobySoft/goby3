@@ -1,4 +1,4 @@
-// Copyright 2016-2023:
+// Copyright 2016-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -55,20 +55,30 @@ inline bool operator<(const SerializerTransporterKey& k1, const SerializerTransp
 }
 } // namespace protobuf
 
-template <typename Derived, typename InnerTransporter>
-using InterModuleTransporterBase = InterProcessTransporterBase<Derived, InnerTransporter>;
+template <typename Derived, typename InnerTransporter, typename ImplementationTag>
+using InterModuleTransporterBase =
+    InterProcessTransporterBase<Derived, InnerTransporter, ImplementationTag>;
 
 /// \brief Implements the forwarder concept for the intermodule layer
 ///
 /// The forwarder is intended to be used by inner nodes within the layer that do not connect directly to other nodes on that layer.
 /// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
-template <typename InnerTransporter>
+/// \tparam ImplementationTag Distinguishes different implementations using different internal groups (e.g. detail::InterModuleTag or detail::InterModuleTag)
+template <typename InnerTransporter, typename ImplementationTag = void> class InterModuleForwarder;
+
+/// \brief Implements the forwarder concept for the intermodule layer (implementation)
+///
+/// \tparam InnerTransporter The type of the inner transporter used to forward data to and from this node
+/// \tparam ImplementationTag Must be provided explicitly; use zeromq::InterModuleForwarder or udpm::InterModuleForwarder for the common cases
+template <typename InnerTransporter, typename ImplementationTag>
 class InterModuleForwarder
-    : public InterModuleTransporterBase<InterModuleForwarder<InnerTransporter>, InnerTransporter>
+    : public InterModuleTransporterBase<InterModuleForwarder<InnerTransporter, ImplementationTag>,
+                                        InnerTransporter, ImplementationTag>
 {
   public:
     using Base =
-        InterModuleTransporterBase<InterModuleForwarder<InnerTransporter>, InnerTransporter>;
+        InterModuleTransporterBase<InterModuleForwarder<InnerTransporter, ImplementationTag>,
+                                   InnerTransporter, ImplementationTag>;
 
     /// \brief Construct a forwarder for the intermodule layer
     ///
@@ -106,10 +116,13 @@ class InterModuleForwarder
             this->inner()
                 .template subscribe<Base::from_portal_group_,
                                     protobuf::SerializerTransporterMessage>(
-                    [this](const protobuf::SerializerTransporterMessage& msg) {
+                    [this](const protobuf::SerializerTransporterMessage& msg)
+                    {
                         auto range = subscriptions_.equal_range(msg.key());
                         for (auto it = range.first; it != range.second; ++it)
-                        { it->second->post(msg.data().begin(), msg.data().end()); }
+                        {
+                            it->second->post(msg.data().begin(), msg.data().end());
+                        }
                     });
 
         auto local_subscription = std::make_shared<SerializationSubscription<Data, scheme>>(
@@ -172,7 +185,7 @@ class InterModuleForwarder
     // {
     // }
 
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         return 0;
     } // A forwarder is a shell, only the inner Transporter has data
@@ -183,11 +196,14 @@ class InterModuleForwarder
         subscriptions_;
 };
 
-template <typename Derived, typename InnerTransporter>
-class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTransporter>
+template <typename Derived, typename InnerTransporter, typename ImplementationTag>
+class InterModulePortalBase
+    : public InterModuleTransporterBase<Derived, InnerTransporter, ImplementationTag>,
+      public InterProcessPortalCommon<Derived, InnerTransporter>
 {
   public:
-    using Base = InterModuleTransporterBase<Derived, InnerTransporter>;
+    using Base = InterModuleTransporterBase<Derived, InnerTransporter, ImplementationTag>;
+    using Common = InterProcessPortalCommon<Derived, InnerTransporter>;
 
     InterModulePortalBase(InnerTransporter& inner) : Base(inner) { _init(); }
     InterModulePortalBase() { _init(); }
@@ -200,15 +216,19 @@ class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTr
         using goby::middleware::intermodule::protobuf::Subscription;
         using goby::middleware::protobuf::SerializerTransporterMessage;
         this->inner().template subscribe<Base::to_portal_group_, SerializerTransporterMessage>(
-            [this](const SerializerTransporterMessage& d) {
-                static_cast<Derived*>(this)->_receive_publication_forwarded(d);
+            [this](const SerializerTransporterMessage& d)
+            {
+                std::vector<char> data(d.data().begin(), d.data().end());
+                static_cast<Derived*>(this)->_publish_serialized(
+                    d.key().type(), d.key().marshalling_scheme(), data,
+                    goby::middleware::DynamicGroup(d.key().group()));
             });
 
         this->inner().template subscribe<Base::to_portal_group_, Subscription>(
-            [this](const Subscription& s) {
-                auto on_subscribe = [this](const SerializerTransporterMessage& d) {
-                    this->inner().template publish<Base::from_portal_group_>(d);
-                };
+            [this](const Subscription& s)
+            {
+                auto on_subscribe = [this](const SerializerTransporterMessage& d)
+                { this->inner().template publish<Base::from_portal_group_>(d); };
                 auto sub = std::make_shared<SerializationInterModuleSubscription>(on_subscribe, s);
 
                 switch (s.action())
@@ -225,6 +245,34 @@ class InterModulePortalBase : public InterModuleTransporterBase<Derived, InnerTr
     }
 };
 
+} // namespace middleware
+} // namespace goby
+
+#include "goby/zeromq/transport/detail/tags.h"
+
+namespace goby
+{
+namespace middleware
+{
+/// \brief Deprecated: use zeromq::InterModuleForwarder or udpm::InterModuleForwarder instead
+///
+/// This 1-argument specialisation (ImplementationTag = void) is kept for backwards compatibility.
+/// It resolves to the zeromq implementation. New code should use zeromq::InterModuleForwarder<>
+/// or udpm::InterModuleForwarder<> explicitly.
+template <typename InnerTransporter>
+class InterModuleForwarder<InnerTransporter, void>
+    : public InterModuleForwarder<InnerTransporter, zeromq::detail::InterModuleTag>
+{
+  public:
+    using Base = InterModuleForwarder<InnerTransporter, zeromq::detail::InterModuleTag>;
+
+    [[deprecated("Use zeromq::InterModuleForwarder<> or udpm::InterModuleForwarder<> instead of "
+                 "middleware::InterModuleForwarder<>")]]
+    explicit InterModuleForwarder(InnerTransporter& inner)
+        : Base(inner)
+    {
+    }
+};
 } // namespace middleware
 } // namespace goby
 

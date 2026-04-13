@@ -1,5 +1,5 @@
 file(GLOB PROTOS *.proto)
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOS})
+protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS ${PROTOS})
 
 add_executable(pGobyMOOSAppTemplate
   pGobyMOOSAppTemplate.cpp

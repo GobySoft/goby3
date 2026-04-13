@@ -1,4 +1,4 @@
-// Copyright 2020-2023:
+// Copyright 2020-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -106,7 +106,7 @@ void portal_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& p_
 void forwarder_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& p_cfg)
 {
     goby::zeromq::InterProcessPortal<> interprocess(p_cfg);
-    goby::middleware::InterModuleForwarder<goby::zeromq::InterProcessPortal<>> intermodule(
+    goby::zeromq::InterModuleForwarder<goby::zeromq::InterProcessPortal<>> intermodule(
         interprocess);
 
     intermodule.subscribe<complete, Complete>([](const Complete& complete) {
@@ -195,7 +195,7 @@ void portal_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& p
 void forwarder_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& p_cfg)
 {
     goby::zeromq::InterProcessPortal<> interprocess(p_cfg);
-    goby::middleware::InterModuleForwarder<goby::zeromq::InterProcessPortal<>> intermodule(
+    goby::zeromq::InterModuleForwarder<goby::zeromq::InterProcessPortal<>> intermodule(
         interprocess);
 
     intermodule.subscribe<sample1, Sample>([](const Sample& sample) {

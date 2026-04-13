@@ -1,0 +1,11 @@
+syntax = "proto2";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/udpm/protobuf/interprocess_config.proto";
+
+package goby.test.middleware.protobuf;
+
+message TestUDPMConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.udpm.protobuf.InterProcessPortalConfig interprocess = 2;
+}

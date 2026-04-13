@@ -1,4 +1,4 @@
-// Copyright 2016-2021:
+// Copyright 2016-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -63,6 +63,8 @@ class InterThreadTransporter
     };
 
   public:
+    using implementation_tag = void;
+
     InterThreadTransporter() : data_mutex_(std::make_shared<std::mutex>()) {}
 
     virtual ~InterThreadTransporter()
@@ -202,7 +204,7 @@ class InterThreadTransporter
 
   private:
     friend Poller<InterThreadTransporter>;
-    int _poll(std::unique_ptr<std::unique_lock<std::timed_mutex>>& lock)
+    int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         return detail::SubscriptionStoreBase::poll_all(std::this_thread::get_id(), lock);
     }

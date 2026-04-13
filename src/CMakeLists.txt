@@ -10,12 +10,12 @@ endmacro()
 ## find external packages, libraries, and headers for the entire goby project
 #mandatory
 goby_find_required_package(ProtobufGoby)
-include_directories(${PROTOBUF_INCLUDE_DIRS})
+include_directories(${Protobuf_INCLUDE_DIRS})
 
-string(STRIP ${PROTOC_VERSION} PROTOC_VERSION_CLEAN)
-message(STATUS "Using Protocol Buffers ${PROTOC_VERSION_CLEAN}: ${PROTOBUF_INCLUDE_DIRS}")
+string(STRIP ${protobuf_VERSION} PROTOC_VERSION_CLEAN)
+message(STATUS "Using Protocol Buffers ${protobuf_VERSION}: ${Protobuf_INCLUDE_DIRS}")
 
-if(${PROTOC_VERSION} VERSION_LESS 3.0.0) 
+if(${protobuf_VERSION} VERSION_LESS 3.0.0) 
   message(STATUS "\tlibprotobuf < 3.0.0, removing syntax= string")
   set(PROTOBUF_HAS_SYNTAX_VERSION FALSE PARENT_SCOPE)
 else()
@@ -211,9 +211,9 @@ endmacro()
 
 ## boost
 goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
-include_directories(${Boost_INCLUDE_DIRS})
+include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
-protobuf_generate_cpp(BASE_PROTO_SRCS BASE_PROTO_HDRS 
+protobuf_generate_cpp_dccl(BASE_PROTO_SRCS BASE_PROTO_HDRS 
   protobuf/option_extensions.proto
   )
 
@@ -222,6 +222,7 @@ include(acomms/src.cmake)
 include(util/src.cmake)
 include(time/src.cmake)
 include(middleware/src.cmake)
+include(udpm/src.cmake)
 
 if(NOT enable_janus_acomms)
   list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*janus_driver.cpp")
@@ -237,6 +238,7 @@ add_library(goby
   ${UTIL_SRC}
   ${TIME_SRC}
   ${MIDDLEWARE_SRC}
+  ${UDPM_SRC}
   )
 
 
@@ -247,7 +249,7 @@ target_link_libraries(goby
   boost_filesystem
   boost_program_options
   boost_date_time
-  ${PROTOBUF_LIBRARY}
+  protobuf::libprotobuf
   ${PROJ_LIBRARY}
   )
 

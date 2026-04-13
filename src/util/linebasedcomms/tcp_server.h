@@ -1,4 +1,4 @@
-// Copyright 2010-2021:
+// Copyright 2010-2025:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
@@ -47,7 +47,7 @@ class TCPServer : public LineBasedInterface
     ///
     /// \param port port of the server (use 50000+ to avoid problems with special system ports)
     /// \param delimiter string used to split lines
-    TCPServer(unsigned port, const std::string& delimiter = "\r\n");
+    TCPServer(unsigned port, const std::string& delimiter = "\r\n", bool ipv6 = false);
     ~TCPServer() override;
 
     /// \brief string representation of the local endpoint (e.g. 192.168.1.105:54230)
@@ -76,7 +76,8 @@ class TCPServer : public LineBasedInterface
     std::atomic<bool> tcp_alive_{false};
     std::unique_ptr<std::thread> tcp_thread_;
     unsigned port_;
-
+    bool ipv6_;
+    
     goby::middleware::protobuf::TCPServerEvent event_;
 
     goby::middleware::protobuf::TCPEndPoint local_endpoint_;

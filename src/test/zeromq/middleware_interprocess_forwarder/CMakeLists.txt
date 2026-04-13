@@ -1,7 +1,2 @@
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS test.proto)
-
-add_executable(goby_test_middleware_interprocess_forwarder test.cpp  ${PROTO_SRCS} ${PROTO_HDRS})
-target_link_libraries(goby_test_middleware_interprocess_forwarder goby goby_zeromq)
-
-add_test(goby_test_middleware_interprocess_forwarder ${goby_BIN_DIR}/goby_test_middleware_interprocess_forwarder)
-
+include(../../middleware/middleware_interprocess_forwarder/test.cmake)
+create_middleware_interprocess_forwarder_test(zeromq goby_zeromq)

@@ -1,0 +1,4 @@
+add_subdirectory(middleware_interprocess_forwarder)
+add_subdirectory(single_thread_app1)
+add_subdirectory(multi_thread_app1)
+

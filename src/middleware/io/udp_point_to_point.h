@@ -34,6 +34,7 @@
 
 #include "goby/middleware/io/detail/io_interface.h" // for PubSubLayer, Pub...
 #include "goby/middleware/protobuf/io.pb.h"         // for IOData
+#include "goby/zeromq/application/simple_thread.h"
 
 #include "udp_one_to_many.h"
 
@@ -67,7 +68,7 @@ template <const goby::middleware::Group& line_in_group,
           PubSubLayer publish_layer = PubSubLayer::INTERPROCESS,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
-          template <class> class ThreadType = goby::middleware::SimpleThread,
+          template <class> class ThreadType = goby::zeromq::SimpleThread,
           bool use_indexed_groups = false>
 class UDPPointToPointThread
     : public UDPOneToManyThread<line_in_group, line_out_group, publish_layer, subscribe_layer,

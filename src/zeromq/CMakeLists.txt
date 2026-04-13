@@ -1,4 +1,4 @@
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
+protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS
   protobuf/interprocess_config.proto
   protobuf/interprocess_zeromq.proto
   protobuf/gobyd_config.proto

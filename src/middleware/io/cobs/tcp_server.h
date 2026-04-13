@@ -39,6 +39,7 @@
 #include "goby/middleware/io/detail/tcp_server_interface.h" // for TCPServe...
 #include "goby/middleware/protobuf/io.pb.h"                 // for IOData
 #include "goby/middleware/protobuf/tcp_config.pb.h"         // for TCPServe...
+#include "goby/zeromq/application/simple_thread.h"
 
 namespace goby
 {
@@ -93,7 +94,7 @@ template <const goby::middleware::Group& packet_in_group,
           // but only subscribe on interthread for outgoing traffic
           PubSubLayer subscribe_layer = PubSubLayer::INTERTHREAD,
           typename Config = goby::middleware::protobuf::TCPServerConfig,
-          template <class> class ThreadType = goby::middleware::SimpleThread,
+          template <class> class ThreadType = goby::zeromq::SimpleThread,
           bool use_indexed_groups = false>
 class TCPServerThreadCOBS
     : public detail::TCPServerThread<packet_in_group, packet_out_group, publish_layer,

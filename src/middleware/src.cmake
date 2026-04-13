@@ -1,4 +1,4 @@
-protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
+protobuf_generate_cpp_dccl(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/app_config.proto
   middleware/protobuf/hdf5.proto
   middleware/protobuf/serializer_transporter.proto
@@ -23,18 +23,19 @@ protobuf_generate_cpp(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/pty_config.proto
   middleware/protobuf/navigation.proto
   middleware/protobuf/logger.proto
+  middleware/protobuf/tool_config.proto
   )
 
 set(MIDDLEWARE_SRC
   middleware/marshalling/interface.cpp
   middleware/marshalling/detail/dccl_serializer_parser.cpp 
   middleware/transport/interthread.cpp
+  middleware/transport/identifier.cpp
   middleware/transport/intervehicle/driver_thread.cpp
   middleware/application/configuration_reader.cpp
   middleware/application/tool.cpp
   middleware/log/log_entry.cpp
   middleware/frontseat/interface.cpp
-  middleware/coroner/health_monitor_thread.cpp
   ${MIDDLEWARE_PROTO_SRCS} ${MIDDLEWARE_PROTO_HDRS} 
   )
 

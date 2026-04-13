@@ -1,4 +1,4 @@
-// Copyright 2016-2023:
+// Copyright 2016-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -153,20 +153,19 @@ template <typename Config, typename TransporterType> class Thread
     int uid() { return uid_; }
     void set_uid(int uid) { uid_ = uid; }
 
-    static constexpr goby::middleware::Group shutdown_group_{"goby::middleware::Thread::shutdown"};
-    static constexpr goby::middleware::Group joinable_group_{"goby::middleware::Thread::joinable"};
+    double loop_frequency_hertz() const { return loop_frequency_ / boost::units::si::hertz; }
+    decltype(loop_frequency_) loop_frequency() const { return loop_frequency_; }
 
-  protected:
-    Thread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
-           int index = -1)
-        : loop_frequency_(loop_freq),
-          loop_time_(std::chrono::steady_clock::now()),
-          cfg_(cfg),
-          index_(index),
-          thread_id_(goby::middleware::gettid()),
-          thread_name_(std::to_string(thread_id_)),
-          uid_(-1)
+    void set_loop_frequency_hertz(double loop_freq_hertz)
     {
+        set_loop_frequency(loop_freq_hertz * boost::units::si::hertz);
+    }
+
+    void set_loop_frequency(boost::units::quantity<boost::units::si::frequency> loop_freq)
+    {
+        loop_frequency_ = loop_freq;
+        loop_time_ = std::chrono::steady_clock::now();
+
         if (loop_frequency_hertz() > 0 &&
             loop_frequency_hertz() != std::numeric_limits<double>::infinity())
         {
@@ -183,6 +182,23 @@ template <typename Config, typename TransporterType> class Thread
         }
     }
 
+    static constexpr goby::middleware::Group shutdown_group_{"goby::middleware::Thread::shutdown"};
+    static constexpr goby::middleware::Group joinable_group_{"goby::middleware::Thread::joinable"};
+
+  protected:
+    Thread(const Config& cfg, boost::units::quantity<boost::units::si::frequency> loop_freq,
+           int index = -1)
+        : loop_frequency_(loop_freq),
+          loop_time_(std::chrono::steady_clock::now()),
+          cfg_(cfg),
+          index_(index),
+          thread_id_(goby::middleware::gettid()),
+          thread_name_(std::to_string(thread_id_)),
+          uid_(-1)
+    {
+        set_loop_frequency(loop_freq);
+    }
+
     void set_transporter(TransporterType* transporter) { transporter_ = transporter; }
 
     virtual void loop()
@@ -191,8 +207,6 @@ template <typename Config, typename TransporterType> class Thread
             "void Thread::loop() must be overridden for non-zero loop frequencies"));
     }
 
-    double loop_frequency_hertz() const { return loop_frequency_ / boost::units::si::hertz; }
-    decltype(loop_frequency_) loop_frequency() const { return loop_frequency_; }
     double loop_max_frequency() const { return std::numeric_limits<double>::infinity(); }
     void run_once();
 
@@ -251,7 +265,8 @@ template <typename Config, typename TransporterType> class Thread
         transporter()
             .innermost()
             .template subscribe<shutdown_group_, ThreadIdentifier, MarshallingScheme::CXX_OBJECT>(
-                [this](const ThreadIdentifier ti) {
+                [this](const ThreadIdentifier ti)
+                {
                     if (ti.all_threads ||
                         (ti.type_i == this->type_index() && ti.index == this->index()))
                     {

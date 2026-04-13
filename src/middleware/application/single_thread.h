@@ -1,4 +1,4 @@
-// Copyright 2016-2023:
+// Copyright 2016-2025:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -61,6 +61,7 @@ class SingleThreadApplication
 
     friend class coroner::Application<SingleThreadApplication<Config, InterProcessPortal>>;
     friend class terminate::Application<SingleThreadApplication<Config, InterProcessPortal>>;
+    template <typename App> friend class goby::middleware::julia::ApplicationWrapper;
 
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)
@@ -75,7 +76,7 @@ class SingleThreadApplication
     ///
     /// \param loop_freq The frequency at which to attempt to call loop(), assuming the main thread isn't blocked handling transporter callbacks (e.g. subscribe callbacks). Zero or negative indicates loop() will never be called.
     SingleThreadApplication(boost::units::quantity<boost::units::si::frequency> loop_freq)
-        : MainThread(this->app_cfg(), loop_freq),
+        : MainThread(this->app_cfg(), this->choose_loop_freq(loop_freq)),
           interprocess_(
               detail::make_interprocess_config(this->app_cfg().interprocess(), this->app_name())),
           intervehicle_(interprocess_)
