@@ -64,7 +64,7 @@ goby::acomms::ModemDriverBase::~ModemDriverBase() { modem_close(); }
 
 void goby::acomms::ModemDriverBase::modem_write(const std::string& out)
 {
-    if (modem_->active())
+    if (modem_ && modem_->active())
         modem_->write(out);
     else
         throw(ModemDriverException("Modem physical connection failed.",

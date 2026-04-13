@@ -236,6 +236,14 @@ void goby::test::acomms::DriverTester::handle_data_receive1(const protobuf::Mode
                            benthos::protobuf::BENTHOS_TWO_WAY_PING);
                 ++check_count_;
             }
+            else if (driver_type_ == goby::acomms::protobuf::DRIVER_POPOTO)
+            {
+                assert(msg.type() == protobuf::ModemTransmission::DRIVER_SPECIFIC &&
+                       msg.GetExtension(popoto::protobuf::transmission).type() ==
+                           popoto::protobuf::POPOTO_TWO_WAY_RANGE_RESPONSE);
+                ++check_count_;
+            }
+
             break;
         }
 
@@ -469,6 +477,9 @@ void goby::test::acomms::DriverTester::test0()
     else if (driver_type_ == goby::acomms::protobuf::DRIVER_BENTHOS_ATM900)
         transmit.MutableExtension(benthos::protobuf::transmission)
             ->set_type(benthos::protobuf::BENTHOS_TWO_WAY_PING);
+    else if (driver_type_ == goby::acomms::protobuf::DRIVER_POPOTO)
+        transmit.MutableExtension(popoto::protobuf::transmission)
+            ->set_type(popoto::protobuf::POPOTO_TWO_WAY_RANGE_REQUEST);
 
     transmit.set_src(1);
     transmit.set_dest(2);
@@ -489,6 +500,8 @@ void goby::test::acomms::DriverTester::test0()
         assert(check_count_ == 2);
     else if (driver_type_ == goby::acomms::protobuf::DRIVER_BENTHOS_ATM900)
         assert(check_count_ == 1); // no clear indication of ping on the pinged modem
+    else if (driver_type_ == goby::acomms::protobuf::DRIVER_POPOTO)
+        assert(check_count_ == 1);
 }
 
 void goby::test::acomms::DriverTester::test1()

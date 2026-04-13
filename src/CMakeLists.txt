@@ -58,8 +58,6 @@ endif()
 
 option(enable_janus_acomms "Enable Janus Acomms Driver" OFF)
 
-option(enable_popoto_acomms "Enable Popoto Acomms Driver" OFF)
-
 if(enable_ncurses)
   goby_find_required_package(Curses)  
   add_definitions(-DHAS_NCURSES)
@@ -228,10 +226,6 @@ if(NOT enable_janus_acomms)
   list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*janus_driver.cpp")
 endif()
 
-if(NOT enable_popoto_acomms)
-  list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*popoto_driver.cpp")
-endif()
-
 add_library(goby
   ${BASE_PROTO_SRCS} ${BASE_PROTO_HDRS}
   ${ACOMMS_SRC}
@@ -253,18 +247,6 @@ target_link_libraries(goby
   ${PROJ_LIBRARY}
   )
 
-if (enable_popoto_acomms)
-  if(NOT POPOTO_ROOT_DIR)
-    message(FATAL_ERROR "You must set POPOTO_ROOT_DIR to the Top level directory for Popoto API (cmake -DPOPOTO_ROOT_DIR=/path/to/PopotoAPI/CPP/popoto_client)")
-  endif()
-  
-  target_include_directories(goby SYSTEM PUBLIC ${POPOTO_ROOT_DIR}/include)
-
-  add_definitions(-DENABLE_POPOTO_ACOMMS)
-  target_link_libraries(goby
-    ${POPOTO_ROOT_DIR}/build/libpopoto_api.a
-  )
-endif()
 
 if(enable_janus_acomms)
   if(NOT JANUS_ROOT_DIR)
