@@ -5,38 +5,39 @@
 
 ### UDP Multicast (UDPM) Transport
 
-A new interprocess transport layer based on UDP multicast (`goby::middleware::UDPMTransport`) has been added. This provides a lightweight alternative to the ZeroMQ interprocess transport, useful for embedded systems or environments where ZeroMQ is not available or desirable:
+A new interprocess transport layer based on UDP multicast (`goby::middleware::UDPMTransport`) has been added. This provides a lightweight alternative to the ZeroMQ interprocess transport:
 
 - Full publish/subscribe support between processes on the same host (or multicast-reachable network).
 - Support for large-message packetization, enabling messages larger than the UDP MTU to be transmitted reliably.
 - Configurable send-rate limiting to control bandwidth usage.
-- Improved UDPM I/O threading: the I/O context now runs in a dedicated thread with condition-variable notification for immediate poll wake-up.
 
 ### Middleware
 
-- Added `GOBY_DEFINE_GROUP` and `GOBY_DEFINE_INTERVEHICLE_GROUP` convenience macros to `group.h` to simplify group definitions.
-- Added interprocess implementation tag support (PR #380, #385) for more robust interprocess identification.
-- Popoto modem driver cleanup (PR #386).
+- Added `GOBY_DEFINE_GROUP` and `GOBY_DEFINE_INTERVEHICLE_GROUP` convenience macros to `group.h` to simplify group definitions. This is important for Julia (and future Python) bindings to avoid confusion about the difference between the C++ Group instantiation name (namespace + object) and Group string name, as these macros ensure that these are identical.
+- Added interprocess implementation tag support (PR #380, #385) to allow creation of Applications and Threads running multiple interprocess implementations simultaneously (e.g., ZeroMQ and UDPM together).
+
+### Acomms
+
+- Popoto modem driver fixes and cleanup (PR #386). Thanks @SupunRandeni
 
 ### Julia Support
 
 - Updated Julia support to work with Julia 1.12.
 - Added multithreaded application support for Julia: Goby apps can now use Julia Tasks/Channels to run concurrent threaded Goby threads.
 - Consolidated single-threaded and multi-threaded Julia app functions; removed the need to pass `task_id` as a parameter for multithreaded functions.
-- Added ability to set loop frequency after launch from within a thread, enabling Julia apps to handle channel messages correctly in multithreaded mode.
-- Added Julia docstrings for improved in-REPL documentation.
-- Added ability to access Protobuf configuration from Julia.
+- Added Julia docstrings for functions.
+- Added ability to access Protobuf runtime configuration from Julia.
 
-### DCCL 4.4 Compatibility
+### DCCL 5.0 Compatibility
 
-- Updated Goby to build against the forthcoming DCCL 4.4 release, including switching to `dccl::any` (now `std::any`).
+- Updated Goby to build against the forthcoming DCCL 5.0 release
 
 ### Documentation & Tooling
 
 - Renamed `abc_modem_simulator` to `goby_abc_modem_simulator`; updated documentation to use `goby3_example_*` naming convention for examples.
 - Fixed broken Markdown rendering in `src/doc/markdown` documentation.
 - Added UDPM documentation (`doc700_udpm.md`).
-- Added OpenSSF Scorecard CI workflow.
+- Added OpenSSF Scorecard CI workflow in collaboration with Open Ocean Software (https://oceansoft.org/).
 
 ### Bugs
 
