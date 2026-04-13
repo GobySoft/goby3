@@ -124,6 +124,7 @@ int main(int argc, char* argv[])
     popoto_cfg2.set_modem_power(1);
 
     std::vector<int> tests_to_run;
+    tests_to_run.push_back(0);
     tests_to_run.push_back(4);
     tests_to_run.push_back(5);
 
