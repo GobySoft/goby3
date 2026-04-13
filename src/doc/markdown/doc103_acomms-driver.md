@@ -611,4 +611,4 @@ The following drivers are only available when Goby is compiled with MOOS support
 
 ### Bluefin MOOS Driver
 
-`DRIVER_BLUEFIN_MOOS` is a driver for Bluefin Robotics autonomous underwater vehicles that communicates via the MOOS middleware. It allows `pAcommsHandler` to exchange acoustic messages through the Bluefin vehicle's native MOOS interface.
+`DRIVER_BLUEFIN_MOOS` is a driver for Bluefin Robotics autonomous underwater vehicles that communicates via the MOOS middleware. It allows `pAcommsHandler` (using `iFrontSeat_bluefin` to exchange acoustic messages through the Bluefin vehicle's Standard Payload Interface using the `$BPCPD`, `$BFCPS`, `$BFCMA`, and `$BFCPR` messages.
