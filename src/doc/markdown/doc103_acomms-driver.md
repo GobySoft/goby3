@@ -349,24 +349,17 @@ serial_port: "/dev/ttyS0"
 }
 ```
 
+## Popoto Driver
+
+For the Popoto Acoustic modem (https://www.popotomodem.com)
+
+
 ## Mission Systems Drivers
 
 These drivers were contributed by Mission Systems Pty Ltd (https://github.com/mission-systems-pty-ltd). For questions about these drivers please contact Mission Systems via their Github page.
 
-Both currently require that Goby be built from source with additional dependencies.
 
-### Popoto Driver
-
-For the Popoto Acoustic modem (https://www.popotomodem.com)
-
-Requires `libpopoto_api.a` which can be built following instructions from https://github.com/Delresearch/PopotoAPI.
-
-Compile in Goby using
-
-```
-cd goby3/build
-cmake .. -Denable_popoto_acomms=ON -DPOPOTO_ROOT_DIR=/path/to/PopotoAPI/CPP/popoto_client
-```
+These drivers currently require that Goby be built from source with additional dependencies.
 
 ### Janus Driver
 
