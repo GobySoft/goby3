@@ -108,10 +108,17 @@ void goby::acomms::PopotoDriver::startup(const protobuf::DriverConfig& cfg)
                                        protobuf::ModemDriverStatus::STARTUP_FAILED));
     }
 
+    int startup_done_elapsed_ms = 0;
     while (!startup_done_)
     {
         do_work();
         usleep(100000); // 10 Hz
+        startup_done_elapsed_ms += 100;
+
+        if (startup_done_elapsed_ms / 1000 >= start_timeout)
+            throw(ModemDriverException(
+                "Modem configuration/telemetry failed to complete during startup.",
+                protobuf::ModemDriverStatus::STARTUP_FAILED));
     }
 
     glog.is(DEBUG1) && glog << "Modem " << driver_cfg_.modem_id() << " initialized OK."
@@ -577,5 +584,7 @@ void goby::acomms::PopotoDriver::decode_goby_header(std::uint8_t header,
             m.set_type(protobuf::ModemTransmission::ACK);
             m.add_acked_frame(0);
             break;
+        default:
+            throw(goby::Exception("Unsupported Goby header type in decode_goby_header"));
     }
 }
