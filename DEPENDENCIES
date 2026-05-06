@@ -102,9 +102,9 @@ case $OS_ID in
         echo "Release: $RELEASE_CODENAME"
 
         echo "==== Installing packages required to run this script ==="
-        (set -x; apt-get update -qq && apt-get -y install wget dirmngr apt-transport-https)
+        (set -x; apt-get update -qq && apt-get -y install wget dirmngr curl)
         
-        PACKAGES_URL_BASE="https://packages.gobysoft.org/${OS_ID}/${PACKAGE_SERIES}/"
+        PACKAGES_URL_BASE="http://packages.gobysoft.org/${OS_ID}/${PACKAGE_SERIES}/"
 
         echo "==== Checking dependencies for your OS (${OS_ID}) and release (${RELEASE_CODENAME}) on packages.gobysoft.org ===="
         if validate_url ${PACKAGES_URL_BASE}/${RELEASE_CODENAME}/Release; then
