@@ -23,9 +23,13 @@ RUN git clone \
     https://github.com/GobySoft/goby-debian -b 3.0 debian
 
 RUN apt-get update && \
-    if [[ "${TARGET_ARCH}" == "amd64" ]]; then \
-      mk-build-deps -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "debian/control"; \
-    else \
-      mk-build-deps --build-dep -a "${TARGET_ARCH}" --host-arch "${TARGET_ARCH}" --build-arch amd64 -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "debian/control"; \
-    fi && \
+    case "${TARGET_ARCH}" in \
+      amd64) \
+        mk-build-deps -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "debian/control" ;; \
+      arm64|armhf) \
+        mk-build-deps --build-dep -a "${TARGET_ARCH}" --host-arch "${TARGET_ARCH}" --build-arch amd64 -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "debian/control" ;; \
+      *) \
+        echo "Unsupported TARGET_ARCH: ${TARGET_ARCH}. Expected one of: amd64, arm64, armhf." >&2; \
+        exit 1 ;; \
+    esac && \
     rm -rf /var/lib/apt/lists/*
