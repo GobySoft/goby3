@@ -32,6 +32,7 @@
 #include <map>           // for operat...
 #include <memory>        // for allocator
 #include <ostream>       // for basic_...
+#include <filesystem>
 #include <stdexcept>     // for runtim...
 #include <string>        // for string
 #include <type_traits>   // for __succ...
@@ -45,10 +46,8 @@
 #include <Wt/WServer.h>                              // for WServer
 #include <boost/algorithm/string/classification.hpp> // for is_any...
 #include <boost/algorithm/string/split.hpp>          // for split
-#include <boost/filesystem.hpp>                      // for direct...
 #include <boost/iterator/iterator_facade.hpp>        // for iterat...
 #include <boost/lexical_cast/bad_lexical_cast.hpp>   // for bad_le...
-#include <boost/system/error_code.hpp>               // for error_...
 #include <boost/units/quantity.hpp>                  // for operator/
 #include <google/protobuf/descriptor.h>              // for Descri...
 
@@ -177,15 +176,11 @@ goby::apps::zeromq::Liaison::Liaison()
     // load all .proto file directories
     for (int i = 0, n = cfg().load_proto_dir_size(); i < n; ++i)
     {
-        boost::filesystem::path current_dir(cfg().load_proto_dir(i));
+        std::filesystem::path current_dir(cfg().load_proto_dir(i));
 
-        for (boost::filesystem::directory_iterator iter(current_dir), end; iter != end; ++iter)
+        for (std::filesystem::directory_iterator iter(current_dir), end; iter != end; ++iter)
         {
-#if BOOST_FILESYSTEM_VERSION == 3
             if (iter->path().extension().string() == ".proto")
-#else
-            if (iter->path().extension() == ".proto")
-#endif
 
                 load_proto_file(iter->path().string());
         }
@@ -195,14 +190,14 @@ goby::apps::zeromq::Liaison::Liaison()
     {
         std::string doc_root;
 
-        boost::system::error_code ec;
+        std::error_code ec;
         if (cfg().has_docroot())
             doc_root = cfg().docroot();
-        else if (boost::filesystem::exists(boost::filesystem::path(GOBY_LIAISON_COMPILED_DOCROOT),
-                                           ec))
+        else if (std::filesystem::exists(std::filesystem::path(GOBY_LIAISON_COMPILED_DOCROOT),
+                                         ec))
             doc_root = GOBY_LIAISON_COMPILED_DOCROOT;
-        else if (boost::filesystem::exists(boost::filesystem::path(GOBY_LIAISON_INSTALLED_DOCROOT),
-                                           ec))
+        else if (std::filesystem::exists(std::filesystem::path(GOBY_LIAISON_INSTALLED_DOCROOT),
+                                         ec))
             doc_root = GOBY_LIAISON_INSTALLED_DOCROOT;
         else
             throw(std::runtime_error("No valid docroot found for Goby Liaison. Set docroot to the "
@@ -269,13 +264,7 @@ goby::apps::zeromq::Liaison::Liaison()
 
 void goby::apps::zeromq::Liaison::load_proto_file(const std::string& path)
 {
-#if BOOST_FILESYSTEM_VERSION == 3
-    boost::filesystem::path bpath = boost::filesystem::absolute(path);
-    bpath.lexically_normal();
-#else
-    boost::filesystem::path bpath = boost::filesystem::complete(path);
-    bpath.normalize();
-#endif
+    std::filesystem::path bpath = std::filesystem::absolute(path).lexically_normal();
 
     glog.is(VERBOSE) && glog << "Loading protobuf file: " << bpath << std::endl;
 

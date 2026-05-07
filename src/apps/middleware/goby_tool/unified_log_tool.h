@@ -24,7 +24,7 @@
 #ifndef GOBY_APPS_MIDDLEWARE_GOBY_TOOL_UNIFIED_LOG_TOOL_H
 #define GOBY_APPS_MIDDLEWARE_GOBY_TOOL_UNIFIED_LOG_TOOL_H
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include "goby/apps/middleware/goby_tool/log.pb.h"
 #include "goby/middleware/application/interface.h"
@@ -78,7 +78,7 @@ class LogConvertToolConfigurator
         // special case for backwards compatibility
         if (cfg.input_file_size() == 2)
         {
-            boost::filesystem::path potential_output_path(cfg.input_file(1));
+            std::filesystem::path potential_output_path(cfg.input_file(1));
             if (potential_output_path.extension().native() != ".goby")
             {
                 cfg.set_output_file(cfg.input_file(1));
@@ -93,19 +93,19 @@ class LogConvertToolConfigurator
 
         bool single_input_file = (input_files_or_dirs.size() == 1);
 
-        auto add_file = [&cfg, &single_input_file](boost::filesystem::path input_path)
+        auto add_file = [&cfg, &single_input_file](std::filesystem::path input_path)
         {
             // ignore symlinks except for unitary case
-            if (boost::filesystem::is_symlink(input_path))
+            if (std::filesystem::is_symlink(input_path))
             {
                 if (single_input_file)
-                    cfg.add_input_file(input_path.native());
+                    cfg.add_input_file(input_path.string());
                 else
                     std::cerr << "Ignoring symlink in batch mode: " << input_path << std::endl;
             }
-            else if (boost::filesystem::is_regular_file(input_path))
+            else if (std::filesystem::is_regular_file(input_path))
             {
-                cfg.add_input_file(input_path.native());
+                cfg.add_input_file(input_path.string());
             }
             else
             {
@@ -116,18 +116,18 @@ class LogConvertToolConfigurator
         // check validity and convert directories into files
         for (const auto& input_path_str : input_files_or_dirs)
         {
-            boost::filesystem::path input_path(input_path_str);
-            if (!boost::filesystem::exists(input_path))
+            std::filesystem::path input_path(input_path_str);
+            if (!std::filesystem::exists(input_path))
             {
                 std::cerr << "Input file or directory does not exist: " << input_path_str
                           << std::endl;
                 exit(EXIT_FAILURE);
             }
 
-            if (boost::filesystem::is_directory(input_path))
+            if (std::filesystem::is_directory(input_path))
             {
                 single_input_file = false;
-                for (auto const& entry : boost::filesystem::directory_iterator(input_path))
+                for (auto const& entry : std::filesystem::directory_iterator(input_path))
                 {
                     if (entry.path().extension() == ".goby")
                         add_file(entry.path());

@@ -23,7 +23,7 @@
 
 #include <sqlite3.h>
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include "goby/middleware/marshalling/protobuf.h"
 
@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
 goby::apps::acomms::StoreServer::StoreServer() : db_(0)
 {
     // create database
-    if (!boost::filesystem::exists(cfg().db_file_dir()))
+    if (!std::filesystem::exists(cfg().db_file_dir()))
         throw(goby::Exception("db_file_dir does not exist: " + cfg().db_file_dir()));
 
     std::string full_db_name = cfg().db_file_dir() + "/";

@@ -29,10 +29,10 @@
 #include <cstdlib>   // for exit, EXIT_S...
 #include <iostream>  // for cout, cerr
 #include <iterator>  // for istreambuf_i...
+#include <filesystem>
 #include <utility>   // for pair
 
 #include <boost/algorithm/string/replace.hpp>           // for replace_all
-#include <boost/filesystem.hpp>                         // for path, BOOST_...
 #include <boost/program_options/parsers.hpp>            // for basic_comman...
 #include <boost/program_options/positional_options.hpp> // for positional_o...
 #include <google/protobuf/descriptor.pb.h>              // for MessageTypeT...
@@ -89,13 +89,8 @@ int goby::middleware::ConfigReader::read_cfg(
         tool_cfg = message->GetDescriptor()->options().GetExtension(goby::msg).cfg().tool();
     }
 
-    boost::filesystem::path launch_path(argv[0]);
-
-#if BOOST_FILESYSTEM_VERSION == 3
+    std::filesystem::path launch_path(argv[0]);
     *binary_name = launch_path.filename().string();
-#else
-    *binary_name = launch_path.filename();
-#endif
     *application_name = *binary_name;
 
     std::string cfg_path, exec_cfg_path;
