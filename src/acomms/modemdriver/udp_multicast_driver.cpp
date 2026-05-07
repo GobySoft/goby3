@@ -68,7 +68,8 @@ void goby::acomms::UDPMulticastDriver::startup(const protobuf::DriverConfig& cfg
     socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
     socket_.bind(listen_endpoint);
 
-    auto multicast_address = boost::asio::ip::make_address(multicast_driver_cfg().multicast_address());
+    auto multicast_address =
+        boost::asio::ip::make_address(multicast_driver_cfg().multicast_address());
 
     socket_.set_option(boost::asio::ip::multicast::join_group(multicast_address));
 
