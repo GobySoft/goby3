@@ -42,11 +42,7 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
 {
   public:
     static std::shared_ptr<RUDICSConnection> create(
-#ifdef USE_BOOST_IO_SERVICE
-        boost::asio::io_service& executor)
-#else
         const boost::asio::ip::tcp::socket::executor_type& executor)
-#endif
     {
         return std::shared_ptr<RUDICSConnection>(new RUDICSConnection(executor));
     }
@@ -109,11 +105,7 @@ class RUDICSConnection : public std::enable_shared_from_this<RUDICSConnection>
 
   private:
     RUDICSConnection(
-#ifdef USE_BOOST_IO_SERVICE
-        boost::asio::io_service& executor)
-#else
         const boost::asio::ip::tcp::socket::executor_type& executor)
-#endif
         : socket_(executor), remote_endpoint_str_("Unknown"), packet_failures_(0)
     {
     }
@@ -190,11 +182,7 @@ class RUDICSServer
     void start_accept()
     {
         std::shared_ptr<RUDICSConnection> new_connection =
-#ifdef USE_BOOST_IO_SERVICE
-            RUDICSConnection::create(acceptor_.get_io_service());
-#else
             RUDICSConnection::create(acceptor_.get_executor());
-#endif
         acceptor_.async_accept(new_connection->socket(),
                                boost::bind(&RUDICSServer::handle_accept, this, new_connection,
                                            boost::asio::placeholders::error));

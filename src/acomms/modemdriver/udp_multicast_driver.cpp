@@ -62,14 +62,14 @@ void goby::acomms::UDPMulticastDriver::startup(const protobuf::DriverConfig& cfg
         rate_to_bytes_[rate_bytes_pair.rate()] = rate_bytes_pair.bytes();
 
     boost::asio::ip::udp::endpoint listen_endpoint(
-        boost::asio::ip::address::from_string(multicast_driver_cfg().listen_address()),
+        goby::util::asio_compat::make_address(multicast_driver_cfg().listen_address()),
         multicast_driver_cfg().multicast_port());
     socket_.open(listen_endpoint.protocol());
     socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
     socket_.bind(listen_endpoint);
 
     auto multicast_address =
-        boost::asio::ip::address::from_string(multicast_driver_cfg().multicast_address());
+        goby::util::asio_compat::make_address(multicast_driver_cfg().multicast_address());
 
     socket_.set_option(boost::asio::ip::multicast::join_group(multicast_address));
 

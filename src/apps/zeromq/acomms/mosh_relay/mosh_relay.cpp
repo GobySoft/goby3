@@ -27,6 +27,7 @@
 
 #include "goby/acomms/protobuf/mosh_packet.pb.h"
 #include "goby/middleware/acomms/groups.h"
+#include "goby/util/asio_compat.h"
 #include "goby/zeromq/application/single_thread.h"
 #include "goby/zeromq/protobuf/mosh_relay_config.pb.h"
 
@@ -73,7 +74,7 @@ class MoshRelay : public goby::zeromq::SingleThreadApplication<protobuf::MoshRel
     void handle_udp_send(const boost::system::error_code& error, std::size_t bytes_transferred);
 
   private:
-    boost::asio::io_service io_service_;
+    boost::asio::io_context io_service_;
     udp::socket socket_;
 
     enum
@@ -150,12 +151,12 @@ goby::apps::zeromq::acomms::MoshRelay::MoshRelay()
     socket_.open(udp::v4());
     if (cfg().bind())
     {
-        socket_.bind(udp::endpoint(boost::asio::ip::address::from_string(cfg().ip_address()),
+        socket_.bind(udp::endpoint(goby::util::asio_compat::make_address(cfg().ip_address()),
                                    cfg().udp_port()));
     }
     else
     {
-        remote_endpoint_ = udp::endpoint(boost::asio::ip::address::from_string(cfg().ip_address()),
+        remote_endpoint_ = udp::endpoint(goby::util::asio_compat::make_address(cfg().ip_address()),
                                          cfg().udp_port());
     }
     start_udp_receive();

@@ -39,7 +39,7 @@ std::string create_sbd_mt_data_message(const std::string& payload, const std::st
 
 void goby::acomms::IridiumShoreDriver::startup_sbd_directip(const protobuf::DriverConfig& cfg)
 {
-    sbd_io_.reset(new boost::asio::io_service);
+    sbd_io_.reset(new boost::asio::io_context);
 
     directip_mo_sbd_server_.reset(
         new directip::SBDServer(*sbd_io_, iridium_shore_driver_cfg().mo_sbd_server_port(),
@@ -102,22 +102,23 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt_directip(const std::string& b
     {
         using boost::asio::ip::tcp;
 
-        boost::asio::io_service io_service;
+        boost::asio::io_context io_context;
 
-        tcp::resolver resolver(io_service);
-        tcp::resolver::query query(
-            iridium_shore_driver_cfg().mt_sbd_server_address(),
+        tcp::resolver resolver(io_context);
+        const auto protocol = iridium_shore_driver_cfg().ipv6() ? tcp::v6() : tcp::v4();
+        auto endpoint_iterator = resolver.resolve(
+            protocol, iridium_shore_driver_cfg().mt_sbd_server_address(),
             goby::util::as<std::string>(iridium_shore_driver_cfg().mt_sbd_server_port()),
-            boost::asio::ip::resolver_query_base::numeric_service);
-        tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-        tcp::resolver::iterator end;
+            boost::asio::ip::resolver_base::numeric_service);
 
-        tcp::socket socket(io_service);
+        tcp::socket socket(io_context);
         boost::system::error_code error = boost::asio::error::host_not_found;
-        while (error && endpoint_iterator != end)
+        for (const auto& endpoint : endpoint_iterator)
         {
+            if (!error)
+                break;
             socket.close();
-            socket.connect(*endpoint_iterator++, error);
+            socket.connect(endpoint.endpoint(), error);
         }
         if (error)
             throw boost::system::system_error(error);
@@ -137,7 +138,7 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt_directip(const std::string& b
         while (!message.data_ready() &&
                (start_time + timeout >
                 time::SystemClock::now().time_since_epoch() / std::chrono::seconds(1)))
-            io_service.poll();
+            io_context.poll();
 
         if (message.data_ready())
         {

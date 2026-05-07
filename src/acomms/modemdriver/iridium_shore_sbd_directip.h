@@ -210,11 +210,7 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
 {
   public:
     static std::shared_ptr<SBDConnection> create(
-#ifdef USE_BOOST_IO_SERVICE
-        boost::asio::io_service& executor)
-#else
         const boost::asio::ip::tcp::socket::executor_type& executor)
-#endif
     {
         return std::shared_ptr<SBDConnection>(new SBDConnection(executor));
     }
@@ -241,11 +237,7 @@ class SBDConnection : public boost::enable_shared_from_this<SBDConnection>
 
   private:
     SBDConnection(
-#ifdef USE_BOOST_IO_SERVICE
-        boost::asio::io_service& executor)
-#else
         const boost::asio::ip::tcp::socket::executor_type& executor)
-#endif
         : socket_(executor), connect_time_(-1), message_(socket_), remote_endpoint_str_("Unknown")
     {
     }
@@ -273,11 +265,7 @@ class SBDServer
     void start_accept()
     {
         std::shared_ptr<SBDConnection> new_connection =
-#ifdef USE_BOOST_IO_SERVICE
-            SBDConnection::create(acceptor_.get_io_service());
-#else
             SBDConnection::create(acceptor_.get_executor());
-#endif
         connections_.insert(new_connection);
 
         acceptor_.async_accept(new_connection->socket(),
