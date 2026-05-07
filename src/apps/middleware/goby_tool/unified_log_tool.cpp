@@ -31,6 +31,12 @@
 
 #include "unified_log_tool.h"
 
+#if __has_include(<boost/process/v1.hpp>)
+namespace bp = boost::process::v1;
+#else
+namespace bp = boost::process;
+#endif
+
 goby::apps::middleware::UnifiedLogTool::UnifiedLogTool()
 {
     goby::middleware::ToolHelper tool_helper(
@@ -78,12 +84,6 @@ goby::apps::middleware::UnifiedLogTool::UnifiedLogTool()
 goby::apps::middleware::LogConvertTool::LogConvertTool()
     : goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
 {
-#if __has_include(<boost/process/v1.hpp>)
-    namespace bp = boost::process::v1;
-#else
-    namespace bp = boost::process;
-#endif
-
     std::deque<std::string> input_files;
     for (int i = 0, n = app_cfg().input_file_size(); i < n; ++i)
         input_files.push_back(app_cfg().input_file(i));
