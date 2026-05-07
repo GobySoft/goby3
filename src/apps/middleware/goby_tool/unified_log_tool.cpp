@@ -22,6 +22,9 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <boost/process.hpp>
+#if __has_include(<boost/process/v1.hpp>)
+#include <boost/process/v1.hpp>
+#endif
 #include <thread>
 
 #include "goby/middleware/application/tool.h"
@@ -75,7 +78,11 @@ goby::apps::middleware::UnifiedLogTool::UnifiedLogTool()
 goby::apps::middleware::LogConvertTool::LogConvertTool()
     : goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
 {
+#if __has_include(<boost/process/v1.hpp>)
+    namespace bp = boost::process::v1;
+#else
     namespace bp = boost::process;
+#endif
 
     std::deque<std::string> input_files;
     for (int i = 0, n = app_cfg().input_file_size(); i < n; ++i)
@@ -85,7 +92,7 @@ goby::apps::middleware::LogConvertTool::LogConvertTool()
 
     auto start_job = [this, &children](std::string input_file)
     {
-        boost::process::opstream in;
+        bp::opstream in;
         std::string in_str;
         auto child_cfg = app_cfg();
         child_cfg.clear_input_file();
@@ -94,7 +101,7 @@ goby::apps::middleware::LogConvertTool::LogConvertTool()
         std::string name = input_file;
         children.emplace_back("goby_log_tool --app_name=" + name +
                                   " --binary=\"goby log convert\" -c -",
-                              boost::process::std_in < in);
+                              bp::std_in < in);
         in << in_str;
     };
 
