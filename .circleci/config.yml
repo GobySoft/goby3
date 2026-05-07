@@ -57,7 +57,6 @@ docker-arm64-noble: &docker-arm64-noble
   - image: gobysoft/goby3-ubuntu-build-arm64:24.04.2
 docker-armhf-noble: &docker-armhf-noble
   - image: gobysoft/goby3-ubuntu-build-armhf:24.04.2
-
     
 ## Pre-declare job templates
 job-template-amd64: &job-template-amd64

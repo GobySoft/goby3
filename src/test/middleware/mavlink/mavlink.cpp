@@ -93,14 +93,14 @@ std::tuple<int, int, MAVLinkMessage> run_serialize_parse_with_metadata(
     return *packet_out_with_metadata;
 }
 
-BOOST_AUTO_TEST_CASE(mavlink_common_heartbeat)
+BOOST_AUTO_TEST_CASE(mavlink_minimal_heartbeat)
 {
-    constexpr auto scheme = goby::middleware::scheme<mavlink::common::msg::HEARTBEAT>();
+    constexpr auto scheme = goby::middleware::scheme<mavlink::minimal::msg::HEARTBEAT>();
 
     BOOST_REQUIRE_EQUAL(scheme, goby::middleware::MarshallingScheme::MAVLINK);
 
     // from mavlink's gtestsuite.hpp
-    mavlink::common::msg::HEARTBEAT packet_in{};
+    mavlink::minimal::msg::HEARTBEAT packet_in{};
     packet_in.type = 17;
     packet_in.autopilot = 84;
     packet_in.base_mode = 151;
