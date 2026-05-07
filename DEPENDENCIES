@@ -1,5 +1,6 @@
 #!/bin/bash
 # Dependencies installation script for Goby
+set -euo pipefail
 
 if [[ $UID -ne 0 ]]; then printf "You must run this script as root. Use 'sudo' in Ubuntu. \n" 1>&2; exit 1; fi
 
@@ -101,17 +102,19 @@ case $OS_ID in
         echo "Release: $RELEASE_CODENAME"
 
         echo "==== Installing packages required to run this script ==="
-        (set -x; apt-get update -qq && apt-get -y install wget dirmngr apt-transport-https)
+        (set -x; apt-get update -qq && apt-get -y install wget dirmngr curl)
         
-        PACKAGES_URL_BASE="https://packages.gobysoft.org/${OS_ID}/${PACKAGE_SERIES}/"
+        PACKAGES_URL_BASE="http://packages.gobysoft.org/${OS_ID}/${PACKAGE_SERIES}/"
 
         echo "==== Checking dependencies for your OS (${OS_ID}) and release (${RELEASE_CODENAME}) on packages.gobysoft.org ===="
         if validate_url ${PACKAGES_URL_BASE}/${RELEASE_CODENAME}/Release; then
             echo "Release codename found"
             echo "==== Adding packages.gobysoft.org Debian repository ===="
-            (set -x; echo -e "deb ${PACKAGES_URL_BASE} ${RELEASE_CODENAME}/\ndeb-src ${PACKAGES_URL_BASE} ${RELEASE_CODENAME}/" > /etc/apt/sources.list.d/gobysoft_${PACKAGE_SERIES}.list && \
-                 apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE &&
-                 apt-get update -qq)
+            (set -x
+             install -m 0755 -d /usr/share/keyrings
+             curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x19478082E2F8D3FE" | gpg --dearmor -o /usr/share/keyrings/gobysoft-archive-keyring.gpg 
+             echo -e "deb [signed-by=/usr/share/keyrings/gobysoft-archive-keyring.gpg] ${PACKAGES_URL_BASE} ${RELEASE_CODENAME}/\ndeb-src [signed-by=/usr/share/keyrings/gobysoft-archive-keyring.gpg] ${PACKAGES_URL_BASE} ${RELEASE_CODENAME}/" > /etc/apt/sources.list.d/gobysoft_${PACKAGE_SERIES}.list
+             apt-get update -qq)
         else
             echo "Release codename not found on packages.gobysoft.org."
             fail
