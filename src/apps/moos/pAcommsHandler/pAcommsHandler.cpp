@@ -127,9 +127,7 @@ goby::apps::moos::CpAcommsHandler::CpAcommsHandler()
       lat_origin_(std::numeric_limits<double>::quiet_NaN()),
       lon_origin_(std::numeric_limits<double>::quiet_NaN()),
       new_origin_(false),
-      dccl_(goby::acomms::DCCLCodec::get()),
-      work_(timer_io_context_)
-
+      dccl_(goby::acomms::DCCLCodec::get())
 {
     translator_.add_entry(cfg_.translator_entry());
 
@@ -588,7 +586,7 @@ void goby::apps::moos::CpAcommsHandler::process_configuration()
 
             Timer& new_timer = *timers_.back();
 
-            new_timer.expires_from_now(
+            new_timer.expires_after(
                 std::chrono::seconds(cfg_.translator_entry(i).trigger().period()));
             // Start an asynchronous wait.
             new_timer.async_wait(boost::bind(&CpAcommsHandler::create_on_timer, this,
@@ -838,7 +836,7 @@ void goby::apps::moos::CpAcommsHandler::create_on_timer(
 {
     if (!error)
     {
-        double skew_seconds = std::abs((goby::time::SystemClock::now() - timer->expires_at()) /
+        double skew_seconds = std::abs((goby::time::SystemClock::now() - timer->expiry()) /
                                        std::chrono::seconds(1));
         if (skew_seconds > ALLOWED_TIMER_SKEW_SECONDS)
         {
@@ -851,7 +849,7 @@ void goby::apps::moos::CpAcommsHandler::create_on_timer(
         else
         {
             // reset the timer
-            timer->expires_at(timer->expires_at() + std::chrono::seconds(entry.trigger().period()));
+            timer->expires_at(timer->expiry() + std::chrono::seconds(entry.trigger().period()));
         }
 
         timer->async_wait(boost::bind(&CpAcommsHandler::create_on_timer, this,
@@ -859,7 +857,7 @@ void goby::apps::moos::CpAcommsHandler::create_on_timer(
 
         glog.is(DEBUG2) && glog << group("pAcommsHandler")
                                 << "Received trigger for: " << entry.protobuf_name() << std::endl;
-        glog.is(DEBUG2) && glog << group("pAcommsHandler") << "Next expiry: " << timer->expires_at()
+        glog.is(DEBUG2) && glog << group("pAcommsHandler") << "Next expiry: " << timer->expiry()
                                 << std::endl;
 
         translate_and_push(entry);
