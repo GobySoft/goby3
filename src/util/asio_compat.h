@@ -25,11 +25,6 @@
 #ifndef GOBY_UTIL_ASIO_COMPAT_H
 #define GOBY_UTIL_ASIO_COMPAT_H
 
-#include <string>
-#include <utility>
-
-#include <boost/asio/ip/address.hpp>
-#include <boost/asio/post.hpp>
 #include <boost/version.hpp>
 
 // manage the switch from ASIO io_service to io_context introduced in Boost 1.66 but functions were not reworked until 1.70
@@ -50,27 +45,5 @@ using io_context = io_service;
 } // namespace asio
 } // namespace boost
 #endif
-
-namespace goby
-{
-namespace util
-{
-namespace asio_compat
-{
-template <typename IoContext> inline void restart(IoContext& io) { io.restart(); }
-
-template <typename IoContext, typename CompletionToken>
-inline auto post(IoContext& io, CompletionToken&& token)
-{
-    return boost::asio::post(io, std::forward<CompletionToken>(token));
-}
-
-inline boost::asio::ip::address make_address(const std::string& addr)
-{
-    return boost::asio::ip::make_address(addr);
-}
-} // namespace asio_compat
-} // namespace util
-} // namespace goby
 
 #endif

@@ -102,7 +102,7 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
         application_ack_ids_.insert(id);
 
     start_receive();
-    goby::util::asio_compat::restart(io_context_);
+    io_context_.restart();
 }
 
 void goby::acomms::UDPDriver::shutdown()

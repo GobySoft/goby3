@@ -34,6 +34,7 @@
 #include <unistd.h>  // for usleep
 
 #include <boost/asio/write.hpp>        // for async_write
+#include <boost/asio/post.hpp>
 #include <boost/system/error_code.hpp> // for error_code
 
 #include "goby/exception.h"                           // for Exception
@@ -140,7 +141,7 @@ class IOThread
                     std::unique_lock<std::mutex> lock(incoming_mail_notify_mutex_);
                     this->interthread().cv()->wait(lock);
                     // post empty handler to cause loop() to return and allow incoming mail to be handled
-                    goby::util::asio_compat::post(io_, []() {});
+                    boost::asio::post(io_, []() {});
                 }
             }));
 
@@ -310,7 +311,7 @@ void goby::middleware::io::detail::IOThread<line_in_group, line_out_group, publi
         this->async_read();
 
         // reset io_context, which ran out of work
-        goby::util::asio_compat::restart(io_);
+        io_.restart();
 
         // successful, reset backoff
         backoff_interval_ = min_backoff_interval_;
