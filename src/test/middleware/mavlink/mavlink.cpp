@@ -27,6 +27,8 @@
 #include "goby/middleware/marshalling/mavlink.h"
 #include "goby/util/binary.h"
 
+#include <mavlink/v2.0/minimal/mavlink_msg_heartbeat.hpp>
+
 using goby::middleware::SerializerParserHelper;
 
 struct GlogConfig

@@ -49,6 +49,9 @@
 #include "goby/zeromq/protobuf/mavlink_gateway_config.pb.h"   // for MAVLin...
 #include "goby/zeromq/transport/interprocess.h"               // for InterP...
 
+#include <mavlink/v2.0/minimal/mavlink_msg_heartbeat.hpp>
+
+
 using AppBase =
     goby::zeromq::MultiThreadApplication<goby::apps::zeromq::protobuf::MAVLinkGatewayConfig>;
 using ThreadBase =
