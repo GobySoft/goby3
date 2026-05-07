@@ -79,7 +79,7 @@ class LogConvertToolConfigurator
         if (cfg.input_file_size() == 2)
         {
             std::filesystem::path potential_output_path(cfg.input_file(1));
-            if (potential_output_path.extension().native() != ".goby")
+            if (potential_output_path.extension().string() != ".goby")
             {
                 cfg.set_output_file(cfg.input_file(1));
                 cfg.mutable_input_file()->RemoveLast();
