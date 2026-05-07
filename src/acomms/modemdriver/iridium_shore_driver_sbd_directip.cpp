@@ -115,10 +115,10 @@ void goby::acomms::IridiumShoreDriver::send_sbd_mt_directip(const std::string& b
         boost::system::error_code error = boost::asio::error::host_not_found;
         for (const auto& endpoint : endpoint_iterator)
         {
-            if (!error)
-                break;
             socket.close();
             socket.connect(endpoint.endpoint(), error);
+            if (!error)
+                break;
         }
         if (error)
             throw boost::system::system_error(error);
