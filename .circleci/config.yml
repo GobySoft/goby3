@@ -27,6 +27,10 @@ environment-template-bookworm: &environment-template-bookworm
   DISTRO_RELEASE_CODENAME: "bookworm"
   DISTRO_RELEASE_VERSION: "debian12"
 
+environment-template-trixie: &environment-template-trixie
+  DISTRO_RELEASE_CODENAME: "trixie"
+  DISTRO_RELEASE_VERSION: "debian13"
+
 environment-template-jammy: &environment-template-jammy
   DISTRO_RELEASE_CODENAME: "jammy"
   DISTRO_RELEASE_VERSION: "ubuntu22.04"
@@ -34,6 +38,10 @@ environment-template-jammy: &environment-template-jammy
 environment-template-noble: &environment-template-noble
   DISTRO_RELEASE_CODENAME: "noble"
   DISTRO_RELEASE_VERSION: "ubuntu24.04"
+
+environment-template-resolute: &environment-template-resolute
+  DISTRO_RELEASE_CODENAME: "resolute"
+  DISTRO_RELEASE_VERSION: "ubuntu26.04"
   
 ## Pre-declare Docker containers
 
@@ -43,6 +51,13 @@ docker-arm64-bookworm: &docker-arm64-bookworm
   - image: gobysoft/goby3-debian-build-arm64:12.1
 docker-armhf-bookworm: &docker-armhf-bookworm
   - image: gobysoft/goby3-debian-build-armhf:12.1
+
+docker-base-trixie: &docker-base-trixie
+  - image: gobysoft/goby3-debian-build-base:13.0
+docker-arm64-trixie: &docker-arm64-trixie
+  - image: gobysoft/goby3-debian-build-arm64:13.0
+docker-armhf-trixie: &docker-armhf-trixie
+  - image: gobysoft/goby3-debian-build-armhf:13.0
     
 docker-base-jammy: &docker-base-jammy
   - image: gobysoft/goby3-ubuntu-build-base:22.04.1
@@ -57,6 +72,13 @@ docker-arm64-noble: &docker-arm64-noble
   - image: gobysoft/goby3-ubuntu-build-arm64:24.04.2
 docker-armhf-noble: &docker-armhf-noble
   - image: gobysoft/goby3-ubuntu-build-armhf:24.04.2
+
+docker-base-resolute: &docker-base-resolute
+  - image: gobysoft/goby3-ubuntu-build-base:26.04
+docker-arm64-resolute: &docker-arm64-resolute
+  - image: gobysoft/goby3-ubuntu-build-arm64:26.04
+docker-armhf-resolute: &docker-armhf-resolute
+  - image: gobysoft/goby3-ubuntu-build-armhf:26.04
     
 ## Pre-declare job templates
 job-template-amd64: &job-template-amd64
@@ -175,7 +197,7 @@ job-template-sanitizers: &job-template-sanitizers
 # Base upload off Noble build
 job-template-upload: &job-template-upload
   <<: *job-template-amd64
-  docker: *docker-base-noble
+  docker: *docker-base-resolute
   resource_class: small
 
 
@@ -209,11 +231,17 @@ workflows:
           <<: *filter-template-non-master
       - amd64-bookworm-build:        
           <<: *filter-template-non-master
+      - amd64-trixie-build:
+          <<: *filter-template-non-master
       - amd64-jammy-build:
           <<: *filter-template-non-master
       - amd64-noble-build:
           <<: *filter-template-non-master
+      - amd64-resolute-build:
+          <<: *filter-template-non-master
       - amd64-noble-minimal-build:
+          <<: *filter-template-non-master
+      - amd64-resolute-minimal-build:
           <<: *filter-template-non-master
       
       - get-orig-source:
@@ -223,11 +251,23 @@ workflows:
           <<: *filter-template-master-only
           requires:
             - get-orig-source
+      - amd64-trixie-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
       - arm64-bookworm-deb-build:
           <<: *filter-template-master-only
           requires:
             - get-orig-source
+      - arm64-trixie-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
       - armhf-bookworm-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - armhf-trixie-deb-build:
           <<: *filter-template-master-only
           requires:
             - get-orig-source
@@ -249,11 +289,23 @@ workflows:
           <<: *filter-template-master-only
           requires:
             - get-orig-source
+      - amd64-resolute-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
       - arm64-noble-deb-build:
           <<: *filter-template-master-only
           requires:
             - get-orig-source
+      - arm64-resolute-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
       - armhf-noble-deb-build:
+          <<: *filter-template-master-only
+          requires:
+            - get-orig-source
+      - armhf-resolute-deb-build:
           <<: *filter-template-master-only
           requires:
             - get-orig-source
@@ -262,14 +314,20 @@ workflows:
       - continuous-upload:
           requires:
             - amd64-bookworm-deb-build
+            - amd64-trixie-deb-build
             - arm64-bookworm-deb-build
+            - arm64-trixie-deb-build
             - armhf-bookworm-deb-build
+            - armhf-trixie-deb-build
             - amd64-jammy-deb-build
             - arm64-jammy-deb-build
             - armhf-jammy-deb-build
             - amd64-noble-deb-build
             - arm64-noble-deb-build
             - armhf-noble-deb-build
+            - amd64-resolute-deb-build
+            - arm64-resolute-deb-build
+            - armhf-resolute-deb-build
 
       # only do the release upload on tagged builds
       - release-upload:
@@ -280,14 +338,20 @@ workflows:
               ignore: /.*/
           requires:
             - amd64-bookworm-deb-build
+            - amd64-trixie-deb-build
             - arm64-bookworm-deb-build
+            - arm64-trixie-deb-build
             - armhf-bookworm-deb-build
+            - armhf-trixie-deb-build
             - amd64-jammy-deb-build
             - arm64-jammy-deb-build
             - armhf-jammy-deb-build
             - amd64-noble-deb-build
             - arm64-noble-deb-build
             - armhf-noble-deb-build
+            - amd64-resolute-deb-build
+            - arm64-resolute-deb-build
+            - armhf-resolute-deb-build
             
       - amd64+scan-build:
           <<: *filter-template-master-only
@@ -302,10 +366,10 @@ jobs:
 
   get-orig-source:
     <<: *job-template-deb-amd64
-    docker: *docker-base-noble
+    docker: *docker-base-resolute
     environment:
       <<: *environment-template-common
-      <<: *environment-template-noble
+      <<: *environment-template-resolute
       <<: *environment-template-amd64
     steps:
       - checkout
@@ -343,6 +407,13 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-bookworm
       
+  amd64-trixie-build:
+    <<: *job-template-amd64
+    docker: *docker-base-trixie
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-trixie
+      
 
   amd64-jammy-build:
     <<: *job-template-amd64
@@ -358,6 +429,13 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-noble    
             
+  amd64-resolute-build:
+    <<: *job-template-amd64
+    docker: *docker-base-resolute
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-resolute
+
       
   amd64-noble-minimal-build:
     docker:
@@ -385,6 +463,32 @@ jobs:
           command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
       - run: *run-tests
 
+  amd64-resolute-minimal-build:
+    docker:
+      - image: ubuntu:resolute
+    resource_class: large
+    working_directory: /root/goby3
+    environment:
+      DEBIAN_FRONTEND: "noninteractive"
+      DEBIAN_PRIORITY: "critical"
+    steps:
+      - run:
+          name: Install packages server
+          command: |
+            apt-get update && apt-get -y install dirmngr ca-certificates gnupg && \
+            echo "deb http://packages.gobysoft.org/ubuntu/release/ resolute/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
+            apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE
+      - run:
+          name: Install apt packages
+          command: |
+            apt-get update &&
+            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler
+      - checkout
+      - run:
+          name: Build
+          command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
+      - run: *run-tests
+
   amd64-bookworm-deb-build:
     <<: *job-template-deb-amd64
     docker: *docker-base-bookworm
@@ -405,6 +509,27 @@ jobs:
     environment:
       <<: *environment-template-common
       <<: *environment-template-bookworm
+      <<: *environment-template-armhf
+  amd64-trixie-deb-build:
+    <<: *job-template-deb-amd64
+    docker: *docker-base-trixie
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-trixie
+      <<: *environment-template-amd64
+  arm64-trixie-deb-build:
+    <<: *job-template-deb-cross
+    docker: *docker-arm64-trixie
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-trixie
+      <<: *environment-template-arm64
+  armhf-trixie-deb-build:
+    <<: *job-template-deb-cross
+    docker: *docker-armhf-trixie
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-trixie
       <<: *environment-template-armhf
   amd64-jammy-deb-build:
     <<: *job-template-deb-amd64
@@ -448,6 +573,27 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-noble
       <<: *environment-template-armhf
+  amd64-resolute-deb-build:
+    <<: *job-template-deb-amd64
+    docker: *docker-base-resolute
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-resolute
+      <<: *environment-template-amd64
+  arm64-resolute-deb-build:
+    <<: *job-template-deb-cross
+    docker: *docker-arm64-resolute
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-resolute
+      <<: *environment-template-arm64
+  armhf-resolute-deb-build:
+    <<: *job-template-deb-cross
+    docker: *docker-armhf-resolute
+    environment:
+      <<: *environment-template-common
+      <<: *environment-template-resolute
+      <<: *environment-template-armhf
       
   amd64+scan-build:
     <<: *job-template-sanitizers
@@ -488,7 +634,7 @@ jobs:
     working_directory: /home/circleci/goby3
     environment:
       <<: *environment-template-common
-      <<: *environment-template-noble
+      <<: *environment-template-resolute
       <<: *environment-template-amd64
       SANITIZER_NUM_JOBS: 4
     steps:
@@ -504,7 +650,7 @@ jobs:
             docker run -d --name tsan-build \
               -v /home/circleci/goby3:/root/goby3 \
               -e TSAN_OPTIONS="suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6" \
-              gobysoft/goby3-ubuntu-build-base:24.04.2 \
+              gobysoft/goby3-ubuntu-build-base:26.04 \
               sleep infinity
             # Fix git "dubious ownership" (host checkout owned by circleci, container runs as root)
             docker exec tsan-build git config --global --add safe.directory /root/goby3
@@ -537,7 +683,7 @@ jobs:
     <<: *job-template-upload
     environment:
       <<: *environment-template-common
-      <<: *environment-template-noble
+      <<: *environment-template-resolute
       <<: *environment-template-amd64
       UPLOAD_DESTINATION: "gobysoft-continuous"
     steps: &steps-upload
@@ -566,7 +712,7 @@ jobs:
     <<: *job-template-upload
     environment:
       <<: *environment-template-common
-      <<: *environment-template-noble
+      <<: *environment-template-resolute
       <<: *environment-template-amd64
       UPLOAD_DESTINATION: "gobysoft-release"
     steps: *steps-upload
