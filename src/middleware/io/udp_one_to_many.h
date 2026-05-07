@@ -185,8 +185,11 @@ void goby::middleware::io::UDPOneToManyThread<
 
     boost::asio::ip::udp::resolver resolver(this->mutable_io());
     boost::asio::ip::udp::endpoint remote_endpoint =
-        *resolver.resolve({io_msg->udp_dest().addr(), std::to_string(io_msg->udp_dest().port()),
-                           boost::asio::ip::resolver_query_base::numeric_service});
+        resolver
+            .resolve(io_msg->udp_dest().addr(), std::to_string(io_msg->udp_dest().port()),
+                     boost::asio::ip::resolver_base::numeric_service)
+            .begin()
+            ->endpoint();
 
     this->mutable_socket().async_send_to(
         boost::asio::buffer(io_msg->data()), remote_endpoint,
