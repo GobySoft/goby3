@@ -81,8 +81,7 @@ goby::apps::moos::CpTranslator::CpTranslator()
                   cfg_.modem_id_lookup_path()),
       lat_origin_(std::numeric_limits<double>::quiet_NaN()),
       lon_origin_(std::numeric_limits<double>::quiet_NaN()),
-      new_origin_(false),
-      work_(timer_io_context_)
+      new_origin_(false)
 {
     dccl::DynamicProtobufManager::enable_compilation();
 
@@ -136,7 +135,7 @@ goby::apps::moos::CpTranslator::CpTranslator()
 
             Timer& new_timer = *timers_.back();
 
-            new_timer.expires_from_now(
+            new_timer.expires_after(
                 std::chrono::seconds(cfg_.translator_entry(i).trigger().period()));
             // Start an asynchronous wait.
             new_timer.async_wait(boost::bind(&CpTranslator::create_on_timer, this, boost::placeholders::_1,
@@ -246,7 +245,7 @@ void goby::apps::moos::CpTranslator::create_on_timer(
 {
     if (!error)
     {
-        double skew_seconds = std::abs((goby::time::SystemClock::now() - timer->expires_at()) /
+        double skew_seconds = std::abs((goby::time::SystemClock::now() - timer->expiry()) /
                                        std::chrono::seconds(1));
         if (skew_seconds > ALLOWED_TIMER_SKEW_SECONDS)
         {
@@ -258,13 +257,13 @@ void goby::apps::moos::CpTranslator::create_on_timer(
         else
         {
             // reset the timer
-            timer->expires_at(timer->expires_at() + std::chrono::seconds(entry.trigger().period()));
+            timer->expires_at(timer->expiry() + std::chrono::seconds(entry.trigger().period()));
         }
 
         timer->async_wait(boost::bind(&CpTranslator::create_on_timer, this, boost::placeholders::_1, entry, timer));
 
         glog.is(VERBOSE) && glog << "Received trigger for: " << entry.protobuf_name() << std::endl;
-        glog.is(VERBOSE) && glog << "Next expiry: " << timer->expires_at() << std::endl;
+        glog.is(VERBOSE) && glog << "Next expiry: " << timer->expiry() << std::endl;
 
         do_translation(entry);
     }
