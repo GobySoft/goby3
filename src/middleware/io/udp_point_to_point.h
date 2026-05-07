@@ -87,12 +87,14 @@ class UDPPointToPointThread
         : Base(config, index, false)
     {
         boost::asio::ip::udp::resolver resolver(this->mutable_io());
-        remote_endpoint_ = resolver
-                               .resolve(this->cfg().remote_address(),
-                                        std::to_string(this->cfg().remote_port()),
-                                        boost::asio::ip::resolver_base::numeric_service)
-                               .begin()
-                               ->endpoint();
+        auto endpoints = resolver.resolve(this->cfg().remote_address(),
+                                          std::to_string(this->cfg().remote_port()),
+                                          boost::asio::ip::resolver_base::numeric_service);
+        if (endpoints.begin() == endpoints.end())
+            throw(goby::Exception("Failed to resolve UDP remote endpoint: " +
+                                  this->cfg().remote_address() + ":" +
+                                  std::to_string(this->cfg().remote_port())));
+        remote_endpoint_ = endpoints.begin()->endpoint();
 
         auto ready = ThreadState::SUBSCRIPTIONS_COMPLETE;
         this->interthread().template publish<line_in_group>(ready);
