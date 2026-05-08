@@ -53,11 +53,11 @@ docker-armhf-bookworm: &docker-armhf-bookworm
   - image: gobysoft/goby3-debian-build-armhf:12.1
 
 docker-base-trixie: &docker-base-trixie
-  - image: gobysoft/goby3-debian-build-base:13.0
+  - image: gobysoft/goby3-debian-build-base:13.1
 docker-arm64-trixie: &docker-arm64-trixie
-  - image: gobysoft/goby3-debian-build-arm64:13.0
+  - image: gobysoft/goby3-debian-build-arm64:13.1
 docker-armhf-trixie: &docker-armhf-trixie
-  - image: gobysoft/goby3-debian-build-armhf:13.0
+  - image: gobysoft/goby3-debian-build-armhf:13.1
     
 docker-base-jammy: &docker-base-jammy
   - image: gobysoft/goby3-ubuntu-build-base:22.04.1
@@ -74,11 +74,11 @@ docker-armhf-noble: &docker-armhf-noble
   - image: gobysoft/goby3-ubuntu-build-armhf:24.04.2
 
 docker-base-resolute: &docker-base-resolute
-  - image: gobysoft/goby3-ubuntu-build-base:26.04
+  - image: gobysoft/goby3-ubuntu-build-base:26.04.1
 docker-arm64-resolute: &docker-arm64-resolute
-  - image: gobysoft/goby3-ubuntu-build-arm64:26.04
+  - image: gobysoft/goby3-ubuntu-build-arm64:26.04.1
 docker-armhf-resolute: &docker-armhf-resolute
-  - image: gobysoft/goby3-ubuntu-build-armhf:26.04
+  - image: gobysoft/goby3-ubuntu-build-armhf:26.04.1
     
 ## Pre-declare job templates
 job-template-amd64: &job-template-amd64
