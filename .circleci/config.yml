@@ -90,7 +90,7 @@ job-template-amd64: &job-template-amd64
         name: Add continuous build package sources.list (if not a tagged release)
         command: |
           [ -z "${CIRCLE_TAG}" ] &&
-          echo "deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/" >> /etc/apt/sources.list.d/gobysoft_continuous.list ||
+          echo "deb [signed-by=/etc/apt/keyrings/gobysoft.gpg] http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/" >> /etc/apt/sources.list.d/gobysoft_continuous.list ||
           true
     - run: &run-update-apt
         name: Update apt packages
@@ -456,7 +456,7 @@ jobs:
           name: Install apt packages
           command: |
             apt-get update &&
-            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler
+            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libboost-process-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler
       - checkout
       - run:
           name: Build
