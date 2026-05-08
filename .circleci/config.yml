@@ -239,8 +239,6 @@ workflows:
           <<: *filter-template-non-master
       - amd64-resolute-build:
           <<: *filter-template-non-master
-      - amd64-noble-minimal-build:
-          <<: *filter-template-non-master
       - amd64-resolute-minimal-build:
           <<: *filter-template-non-master
       
@@ -436,33 +434,6 @@ jobs:
       <<: *environment-template-common
       <<: *environment-template-resolute
 
-      
-  amd64-noble-minimal-build:
-    docker:
-      - image: ubuntu:noble
-    resource_class: large
-    working_directory: /root/goby3
-    environment:
-      DEBIAN_FRONTEND: "noninteractive"
-      DEBIAN_PRIORITY: "critical"
-    steps:
-      - run:
-          name: Install packages server
-          command: |
-            apt-get update && apt-get -y install dirmngr ca-certificates gnupg && \
-            echo "deb http://packages.gobysoft.org/ubuntu/release/ noble/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
-            apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE    
-      - run: 
-          name: Install apt packages
-          command: |
-            apt-get update &&
-            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler
-      - checkout
-      - run: 
-          name: Build
-          command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
-      - run: *run-tests
-
   amd64-resolute-minimal-build:
     docker:
       - image: ubuntu:resolute
@@ -475,9 +446,12 @@ jobs:
       - run:
           name: Install packages server
           command: |
-            apt-get update && apt-get -y install dirmngr ca-certificates gnupg && \
-            echo "deb http://packages.gobysoft.org/ubuntu/release/ resolute/" >> /etc/apt/sources.list.d/gobysoft_release.list && \
-            apt-key adv --recv-key --keyserver keyserver.ubuntu.com 19478082E2F8D3FE
+            apt-get update && apt-get -y install dirmngr gpg
+            export COMPONENT=release
+            export GOBYSOFT_SIGNING_KEY=19478082E2F8D3FE
+            install -d -m 0755 /etc/apt/keyrings
+            gpg --keyserver keyserver.ubuntu.com --recv-keys ${GOBYSOFT_SIGNING_KEY} && gpg --export ${GOBYSOFT_SIGNING_KEY} >/etc/apt/keyrings/gobysoft.gpg
+            echo "deb [signed-by=/etc/apt/keyrings/gobysoft.gpg] http://packages.gobysoft.org/$(. /etc/os-release; echo "$ID")/${COMPONENT}/ $(. /etc/os-release; echo "$VERSION_CODENAME")/" >/etc/apt/sources.list.d/gobysoft_${COMPONENT}.list
       - run:
           name: Install apt packages
           command: |
@@ -650,7 +624,7 @@ jobs:
             docker run -d --name tsan-build \
               -v /home/circleci/goby3:/root/goby3 \
               -e TSAN_OPTIONS="suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6" \
-              gobysoft/goby3-ubuntu-build-base:26.04 \
+              gobysoft/goby3-ubuntu-build-base:26.04.1 \
               sleep infinity
             # Fix git "dubious ownership" (host checkout owned by circleci, container runs as root)
             docker exec tsan-build git config --global --add safe.directory /root/goby3
@@ -658,7 +632,7 @@ jobs:
           name: Add continuous build package sources.list in container (if not a tagged release)
           command: |
             [ -z "${CIRCLE_TAG}" ] &&
-            docker exec tsan-build bash -c "echo 'deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/' >> /etc/apt/sources.list.d/gobysoft_continuous.list" ||
+            docker exec tsan-build bash -c "echo 'deb [signed-by=/etc/apt/keyrings/gobysoft.gpg] http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/' >> /etc/apt/sources.list.d/gobysoft_continuous.list" ||
             true
       - run:
           name: Update apt packages in container
