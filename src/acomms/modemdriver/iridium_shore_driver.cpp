@@ -109,7 +109,7 @@ void goby::acomms::IridiumShoreDriver::startup(const protobuf::DriverConfig& cfg
         rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
         rudics_mac_msg_.set_rate(RATE_RUDICS);
 
-        rudics_io_.reset(new boost::asio::io_service);
+        rudics_io_.reset(new boost::asio::io_context);
         rudics_server_.reset(new RUDICSServer(*rudics_io_,
                                               iridium_shore_driver_cfg().rudics_server_port(),
                                               iridium_shore_driver_cfg().ipv6()));

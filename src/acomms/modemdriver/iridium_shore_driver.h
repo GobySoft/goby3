@@ -29,7 +29,6 @@
 #include <memory>  // for shared_ptr
 #include <string>  // for string
 
-#include <boost/asio/io_service.hpp> // for io_service
 #include <boost/bimap.hpp>
 #include <boost/circular_buffer.hpp> // for circular_b...
 
@@ -38,6 +37,7 @@
 #include "goby/acomms/protobuf/iridium_driver.pb.h"       // for MessageTyp...
 #include "goby/acomms/protobuf/iridium_shore_driver.pb.h" // for ShoreConfig
 #include "goby/acomms/protobuf/modem_message.pb.h"        // for ModemTrans...
+#include "goby/util/asio_compat.h"
 
 namespace goby
 {
@@ -136,9 +136,9 @@ class IridiumShoreDriver : public ModemDriverBase
 
     std::map<ModemId, RemoteNode> remote_;
 
-    std::unique_ptr<boost::asio::io_service> rudics_io_;
+    std::unique_ptr<boost::asio::io_context> rudics_io_;
     std::unique_ptr<RUDICSServer> rudics_server_;
-    std::unique_ptr<boost::asio::io_service> sbd_io_;
+    std::unique_ptr<boost::asio::io_context> sbd_io_;
     std::unique_ptr<directip::SBDServer> directip_mo_sbd_server_;
 
     // maps remote modem to connection

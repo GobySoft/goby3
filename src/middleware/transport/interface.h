@@ -358,7 +358,7 @@ class StaticTransporterInterface : public InnerTransporterInterface<Transporter,
     }
 
     /// \brief Unsubscribe to all messages that this transporter has subscribed to
-    void unsubscribe_all() { static_cast<Transporter*>(this)->template unsubscribe_all(); }
+    void unsubscribe_all() { static_cast<Transporter*>(this)->unsubscribe_all(); }
 
   protected:
     StaticTransporterInterface(InnerTransporter& inner)

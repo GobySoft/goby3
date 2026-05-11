@@ -208,7 +208,14 @@ macro(goby_install_lib target_lib component)
 endmacro()
 
 ## boost
-goby_find_required_package(Boost 1.58.0 COMPONENTS system date_time program_options filesystem)
+set(BOOST_COMPONENTS date_time program_options filesystem)
+find_package(Boost 1.58.0 REQUIRED)
+if(Boost_VERSION VERSION_GREATER_EQUAL 1.86.0)
+  # boost process is no longer header only in 1.86+
+  list(APPEND BOOST_COMPONENTS process)
+endif()
+goby_find_required_package(Boost 1.58.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 protobuf_generate_cpp_dccl(BASE_PROTO_SRCS BASE_PROTO_HDRS 

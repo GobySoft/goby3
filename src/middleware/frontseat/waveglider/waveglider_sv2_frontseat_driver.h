@@ -28,7 +28,6 @@
 #include <memory>
 #include <string>
 
-#include <boost/asio/io_service.hpp>
 #include <boost/circular_buffer.hpp>
 #include <dccl/codec.h>
 
@@ -36,6 +35,7 @@
 #include "goby/middleware/frontseat/waveglider/waveglider_sv2_frontseat_driver_config.pb.h"
 #include "goby/middleware/protobuf/frontseat.pb.h"
 #include "goby/time/system_clock.h"
+#include "goby/util/asio_compat.h"
 
 namespace google
 {
@@ -94,7 +94,7 @@ class WavegliderSV2 : public InterfaceBase
     goby::time::SystemClock::time_point last_frontseat_data_time_;
     protobuf::FrontSeatState frontseat_state_;
 
-    boost::asio::io_service io_;
+    boost::asio::io_context io_;
     std::shared_ptr<SV2SerialConnection> serial_;
 
     boost::circular_buffer<std::shared_ptr<protobuf::SV2CommandFollowFixedHeading>>

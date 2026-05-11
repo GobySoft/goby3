@@ -83,11 +83,10 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
                                 << "Resolving receiver: " << remote.ShortDebugString() << std::endl;
 
         boost::asio::ip::udp::resolver resolver(io_context_);
-        boost::asio::ip::udp::resolver::query query(
+        auto endpoint_iterator = resolver.resolve(
             protocol, remote.ip(), goby::util::as<std::string>(remote.port()),
-            boost::asio::ip::resolver_query_base::numeric_service);
-        boost::asio::ip::udp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-        const boost::asio::ip::udp::endpoint& receiver = *endpoint_iterator;
+            boost::asio::ip::resolver_base::numeric_service);
+        const boost::asio::ip::udp::endpoint& receiver = endpoint_iterator.begin()->endpoint();
         receivers_.insert(std::make_pair(remote.modem_id(), receiver));
 
         glog.is(DEBUG1) && glog << group(glog_out_group())
@@ -103,7 +102,7 @@ void goby::acomms::UDPDriver::startup(const protobuf::DriverConfig& cfg)
         application_ack_ids_.insert(id);
 
     start_receive();
-    io_context_.reset();
+    io_context_.restart();
 }
 
 void goby::acomms::UDPDriver::shutdown()

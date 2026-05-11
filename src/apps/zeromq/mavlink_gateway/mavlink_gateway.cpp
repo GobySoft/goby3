@@ -49,6 +49,9 @@
 #include "goby/zeromq/protobuf/mavlink_gateway_config.pb.h"   // for MAVLin...
 #include "goby/zeromq/transport/interprocess.h"               // for InterP...
 
+#include <mavlink/v2.0/minimal/mavlink_msg_heartbeat.hpp>
+
+
 using AppBase =
     goby::zeromq::MultiThreadApplication<goby::apps::zeromq::protobuf::MAVLinkGatewayConfig>;
 using ThreadBase =
@@ -82,10 +85,10 @@ class MAVLinkGateway : public AppBase
     {
         interprocess()
             .subscribe<goby::middleware::io::groups::mavlink_raw_in,
-                       std::tuple<int, int, mavlink::common::msg::HEARTBEAT>>(
-                [](const std::tuple<int, int, mavlink::common::msg::HEARTBEAT>& hb_with_metadata) {
+                       std::tuple<int, int, mavlink::minimal::msg::HEARTBEAT>>(
+                [](const std::tuple<int, int, mavlink::minimal::msg::HEARTBEAT>& hb_with_metadata) {
                     int sysid, compid;
-                    mavlink::common::msg::HEARTBEAT hb;
+                    mavlink::minimal::msg::HEARTBEAT hb;
                     std::tie(sysid, compid, hb) = hb_with_metadata;
                     goby::glog.is_debug1() && goby::glog << "Received heartbeat [sysid: " << sysid
                                                          << ", compid: " << compid
