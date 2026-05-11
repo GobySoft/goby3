@@ -313,7 +313,7 @@ class InterProcessPortalImplementation
 
     void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
     {
-        zmq_main_.publish(identifier, &bytes[0], bytes.size(), ignore_buffer_);
+        zmq_main_.publish(identifier, bytes.data(), bytes.size(), ignore_buffer_);
     }
 
     void _do_portal_subscribe(const std::string& identifier) { zmq_main_.subscribe(identifier); }

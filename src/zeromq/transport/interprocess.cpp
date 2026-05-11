@@ -182,7 +182,7 @@ void goby::zeromq::InterProcessPortalMainThread::set_hold_state(bool hold)
 
         // publish any queued up messages
         for (auto& pub_pair : publish_queue_)
-            publish(pub_pair.first, &pub_pair.second[0], pub_pair.second.size());
+            publish(pub_pair.first, pub_pair.second.data(), pub_pair.second.size());
         publish_queue_.clear();
     }
 
@@ -200,7 +200,8 @@ void goby::zeromq::InterProcessPortalMainThread::publish(const std::string& iden
     {
         zmq::message_t msg(identifier.size() + size);
         memcpy(msg.data(), identifier.data(), identifier.size());
-        memcpy(static_cast<char*>(msg.data()) + identifier.size(), bytes, size);
+        if (size > 0)
+            memcpy(static_cast<char*>(msg.data()) + identifier.size(), bytes, size);
 
         publish_socket_.send(msg, zmq_send_flags_none);
 
@@ -212,7 +213,10 @@ void goby::zeromq::InterProcessPortalMainThread::publish(const std::string& iden
         glog.is(DEBUG3) && glog << "Buffering publication of " << size << " bytes to ["
                                 << identifier.substr(0, identifier.size() - 1) << "]" << std::endl;
 
-        publish_queue_.emplace_back(identifier, std::vector<char>(bytes, bytes + size));
+        if (size > 0)
+            publish_queue_.emplace_back(identifier, std::vector<char>(bytes, bytes + size));
+        else
+            publish_queue_.emplace_back(identifier, std::vector<char>{});
     }
 }
 
