@@ -15,13 +15,6 @@ include_directories(${Protobuf_INCLUDE_DIRS})
 string(STRIP ${protobuf_VERSION} PROTOC_VERSION_CLEAN)
 message(STATUS "Using Protocol Buffers ${protobuf_VERSION}: ${Protobuf_INCLUDE_DIRS}")
 
-if(${protobuf_VERSION} VERSION_LESS 3.0.0) 
-  message(STATUS "\tlibprotobuf < 3.0.0, removing syntax= string")
-  set(PROTOBUF_HAS_SYNTAX_VERSION FALSE PARENT_SCOPE)
-else()
-  set(PROTOBUF_HAS_SYNTAX_VERSION TRUE PARENT_SCOPE)
-endif()
-
 #dccl
 goby_find_required_package(DCCL)
 message(STATUS "Using DCCL in ${DCCL_DIR}")

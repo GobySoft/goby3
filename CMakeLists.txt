@@ -27,27 +27,6 @@ if(enable_testing)
   include(CTest)
 endif()
 
-# Check GCC version
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    # require at least gcc 7.2
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.2)
-      message(WARNING "Due to a GCC bug (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52036), the GCC version must be at least 7.2 (you have ${CMAKE_CXX_COMPILER_VERSION}). Attempting to use Clang instead")
-
-      find_program(CLANG_C_BINARY clang)
-      find_program(CLANG_CXX_BINARY clang++)     
-
-      if(NOT CLANG_C_BINARY OR NOT CLANG_CXX_BINARY)
-        message(FATAL_ERROR "Could not find clang. On Debian or Ubuntu use 'apt install clang'")
-      else()
-        message(STATUS "Found Clang: ${CLANG_C_BINARY}, ${CLANG_CXX_BINARY}")
-      endif()
-      
-      set(CMAKE_C_COMPILER "${CLANG_C_BINARY}")
-      set(CMAKE_CXX_COMPILER "${CLANG_CXX_BINARY}")
-
-    endif()
-endif()
-
 # If we're using clang, use lld as well
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   find_program(LLD_BINARY lld)
@@ -193,8 +172,14 @@ install(FILES ${goby_SCRIPTS_DIR}/goby_launch DESTINATION ${CMAKE_INSTALL_BINDIR
   PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )
 
 install(DIRECTORY ${goby_SHARE_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX}/share)
-install(DIRECTORY ${goby_INC_DIR}/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING REGEX .*\\.h|.*\\.proto)
+
+install(
+  DIRECTORY ${goby_INC_DIR}/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING
+    REGEX ".*\\.(h|proto)$"
+  PATTERN "*/test/*" EXCLUDE
+)
 
 # clear library list
 unset(GOBY_CORE_LIBRARY_LIST CACHE)
@@ -226,15 +211,6 @@ foreach(I ${BASE_INCLUDE_FILES} ${INCLUDE_FILES} ${PROTOBUF_FILES})
   configure_file(${goby_SRC_DIR}/${I} ${goby_INC_DIR}/goby/${I} @ONLY)
 endforeach()
 configure_file(${goby_SRC_DIR}/goby.h ${goby_INC_DIR}/goby.h @ONLY)
-
-if(NOT PROTOBUF_HAS_SYNTAX_VERSION)
-  # erase the proto syntax version if not supported (protobuf before 3.0)
-  foreach(I ${PROTOBUF_FILES})
-    file(READ ${goby_INC_DIR}/goby/${I} CONTENTS)
-    string(REGEX REPLACE "syntax *= *\\\"proto2\\\" *;" "" CONTENTS_OUTPUT "${CONTENTS}")
-    file(WRITE ${goby_INC_DIR}/goby/${I} "${CONTENTS_OUTPUT}")
-  endforeach()
-endif()
 
 ## copy to build/share
 file(GLOB SHARE_FILES RELATIVE ${goby_SRC_DIR} src/share/*)
