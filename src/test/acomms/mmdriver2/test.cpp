@@ -24,6 +24,9 @@
 
 // tests functionality of the MMDriver WHOI Micro-Modem driver
 
+#include <chrono>
+#include <thread>
+
 #include "goby/acomms/connect.h"
 #include "goby/acomms/modemdriver/mm_driver.h"
 #include "goby/middleware/application/interface.h"
@@ -125,7 +128,8 @@ void goby::test::acomms::MMDriverTest2::run()
                 driver2.handle_initiate_transmission(
                     app_cfg().transmission(last_transmission_index));
             }
-            sleep(app_cfg().transmission(last_transmission_index).slot_seconds());
+            std::this_thread::sleep_for(
+                std::chrono::seconds(app_cfg().transmission(last_transmission_index).slot_seconds()));
         }
     }
 

@@ -25,7 +25,9 @@
 #include <sys/wait.h>
 
 #include <atomic>
+#include <chrono>
 #include <deque>
+#include <thread>
 
 #include "goby/middleware/marshalling/protobuf.h"
 #include "goby/zeromq/transport/intermodule.h"
@@ -188,7 +190,7 @@ void portal_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& p
 
     while (running) intermodule.poll(std::chrono::seconds(1));
 
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     glog.is(DEBUG1) && glog << "Portal Subscriber complete." << std::endl;
 }
 
