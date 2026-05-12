@@ -31,10 +31,16 @@
 #include "goby/util/debug_logger/flex_ostreambuf.h"     // for DEBUG1
 #include "goby/util/debug_logger/logger_manipulators.h" // for opera...
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdocumentation-deprecated-sync" 
 #include "goby/util/thirdparty/jwt-cpp/traits/nlohmann-json/defaults.h"
+#pragma clang diagnostic pop
 
 #define CPPHTTPLIB_OPENSSL_SUPPORT
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-literal-operator" 
 #include "goby/util/thirdparty/cpp-httplib/httplib.h"
+#pragma clang diagnostic pop
 
 #include "iridium_shore_driver.h"
 

@@ -33,7 +33,11 @@
 #include "goby/acomms/protobuf/iridium_driver.pb.h"
 #include "goby/acomms/protobuf/rockblock_simulator_config.pb.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-literal-operator" 
 #include "goby/util/thirdparty/cpp-httplib/httplib.h"
+#pragma clang diagnostic pop
+
 #include "goby/util/thirdparty/nlohmann/json.hpp"
 
 using goby::glog;
