@@ -68,15 +68,13 @@ class MMDriverTest2
     void handle_transmit_result2(const ModemTransmission& msg);
     void handle_data_receive2(const ModemTransmission& msg);
 
-    void
-    summary(const std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics> >& receive,
-            const goby::acomms::protobuf::DriverConfig& cfg);
+    void summary(const std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics>>& receive,
+                 const goby::acomms::protobuf::DriverConfig& cfg);
 
   private:
-
     goby::acomms::MMDriver driver1, driver2;
     // maps transmit index to receive statistics
-    std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics> > driver1_receive,
+    std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics>> driver1_receive,
         driver2_receive;
 
     bool modems_running_{true};
@@ -128,8 +126,10 @@ void goby::test::acomms::MMDriverTest2::run()
                 driver2.handle_initiate_transmission(
                     app_cfg().transmission(last_transmission_index));
             }
-            std::this_thread::sleep_for(
-                std::chrono::seconds(app_cfg().transmission(last_transmission_index).slot_seconds()));
+
+            std::chrono::seconds::rep slot_length =
+                app_cfg().transmission(last_transmission_index).slot_seconds();
+            std::this_thread::sleep_for(std::chrono::seconds(slot_length));
         }
     }
 
@@ -191,7 +191,7 @@ void goby::test::acomms::MMDriverTest2::handle_transmit_result2(const ModemTrans
 }
 
 void goby::test::acomms::MMDriverTest2::summary(
-    const std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics> >& receive,
+    const std::map<int, std::vector<micromodem::protobuf::ReceiveStatistics>>& receive,
     const goby::acomms::protobuf::DriverConfig& cfg)
 {
     goby::glog.is(VERBOSE) && goby::glog << "*** Begin modem " << cfg.modem_id()

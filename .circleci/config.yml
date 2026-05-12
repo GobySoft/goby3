@@ -352,7 +352,7 @@ workflows:
             - armhf-resolute-deb-build
             
       - amd64+scan-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-non-master
       - amd64+asan-build:
           <<: *filter-template-master-only
 
